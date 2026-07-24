@@ -1,0 +1,187 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Helm
+
+import Foundation
+import HelmContract
+
+/// Orchestrates VPN connect/disconnect/toggle (via `scutil --nc`) and per-app
+/// auto-connect (VPNAutoConnectCore) against the injected ports. `activate()`/
+/// `deactivate()` are the MODULE lifecycle (host enables/disables the module);
+/// they also start/stop the auto-connect app observation.
+public final class VPNEngine: ModuleEngine, @unchecked Sendable {
+    private let settings: VPNSettings
+    private let runner: VPNRunnerPort
+    private let credentials: VPNCredentialsPort?
+    private let apps: AppObserverPort
+    private let localTransport: LocalTransport
+    public let transport: EngineTransport
+
+    public private(set) var connections: [VPNConnection] = []
+    public private(set) var autoConnected: Set<String> = []
+    public private(set) var runState: String?
+
+    private var core = VPNAutoConnectCore(rules: [:])
+    private var knownBundleIDs: Set<String> = []
+    private var running = false
+
+    public init(settings: VPNSettings,
+                runner: VPNRunnerPort,
+                credentials: VPNCredentialsPort? = nil,
+                apps: AppObserverPort,
+                transport: LocalTransport = LocalTransport()) {
+        self.settings = settings
+        self.runner = runner
+        self.credentials = credentials
+        self.apps = apps
+        self.localTransport = transport
+        self.transport = transport
+        wireTransport()
+    }
+
+    // MARK: - ModuleEngine (module enabled/disabled)
+
+    public func activate() {
+        running = true
+        reloadRules()
+        knownBundleIDs = apps.runningBundleIDs()
+        for id in knownBundleIDs {
+            core.appLaunched(id,
+                              connect: { [weak self] in self?.connect($0, auto: true) },
+                              disconnect: { _ in })
+        }
+        apps.startObserving { [weak self] in self?.appsChanged() }
+    }
+
+    public func deactivate() {
+        running = false
+    }
+
+    // MARK: - VPN control
+
+    public func refresh() {
+        connections = VPNListParser.parseList(runner.run(["--nc", "list"]))
+        emitState()
+    }
+
+    public var defaultConnection: VPNConnection? {
+        if let live = connections.first(where: { $0.status == .connected || $0.status == .connecting }) {
+            return live
+        }
+        return VPNListParser.defaultConnection(from: connections, lastUsedName: settings.lastUsedName)
+    }
+
+    public func toggleDefault() {
+        refresh()
+        guard let target = defaultConnection else { return }
+        settings.setLastUsed(target.name)
+        if target.status == .connected || target.status == .connecting {
+            disconnect(target.name)
+        } else {
+            connect(target.name)
+        }
+    }
+
+    public func connect(_ name: String, auto: Bool = false) {
+        if auto { autoConnected.insert(name) }
+        runState = "working"
+        var args = ["--nc", "start", name]
+        if let creds = credentials?.credentials(for: name), creds.secret?.isEmpty == false {
+            if let u = creds.user, !u.isEmpty { args += ["--user", u] }
+            if let p = creds.password, !p.isEmpty { args += ["--password", p] }
+            if let s = creds.secret, !s.isEmpty { args += ["--secret", s] }
+        }
+        _ = runner.run(args)
+        emitState()
+        scheduleRefresh()
+    }
+
+    public func disconnect(_ name: String) {
+        autoConnected.remove(name)
+        runState = "working"
+        _ = runner.run(["--nc", "stop", name])
+        emitState()
+        scheduleRefresh()
+    }
+
+    public func status(_ name: String) -> VPNStatus {
+        connections.first(where: { $0.name == name })?.status ?? .unknown
+    }
+
+    private func scheduleRefresh() {
+        // Give the transition a beat, then re-read. Tests use a synchronous
+        // runner and assert on issued commands, not on this async refresh.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+            self?.refresh()
+            self?.runState = nil
+            self?.emitState()
+        }
+    }
+
+    // MARK: - Auto-connect
+
+    public func reloadRules() {
+        refresh()
+        core.rules = VPNRules.valid(VPNRules.decode(settings.rulesJSON), against: connections)
+    }
+
+    private func appsChanged() {
+        guard running else { return }
+        let now = apps.runningBundleIDs()
+        let launched = now.subtracting(knownBundleIDs)
+        let quit = knownBundleIDs.subtracting(now)
+        knownBundleIDs = now
+        let connectAuto: (String) -> Void = { [weak self] in self?.connect($0, auto: true) }
+        let disconnectClosure: (String) -> Void = { [weak self] in self?.disconnect($0) }
+        for id in launched where core.rules[id] != nil {
+            core.appLaunched(id, connect: connectAuto, disconnect: disconnectClosure)
+        }
+        for id in quit where core.rules[id] != nil {
+            core.appTerminated(id, connect: connectAuto, disconnect: disconnectClosure)
+        }
+    }
+
+    // MARK: - Transport
+
+    private struct NamePayload: Codable { let name: String }
+    private struct StatePayload: Codable {
+        let connections: [VPNConnection]
+        let autoConnected: [String]
+        let runState: String?
+        let defaultName: String?
+    }
+
+    private func wireTransport() {
+        localTransport.setHandler { [weak self] cmd in
+            guard let self else { return Data() }
+            switch cmd.name {
+            case "toggle":
+                self.toggleDefault()
+            case "connect":
+                if let payload = try? JSONDecoder().decode(NamePayload.self, from: cmd.payload) {
+                    self.connect(payload.name)
+                }
+            case "disconnect":
+                if let payload = try? JSONDecoder().decode(NamePayload.self, from: cmd.payload) {
+                    self.disconnect(payload.name)
+                }
+            case "refresh":
+                self.refresh()
+            case "reloadRules":
+                self.reloadRules()
+            default:
+                break
+            }
+            return Data()
+        }
+    }
+
+    private func emitState() {
+        let payload = StatePayload(connections: connections,
+                                    autoConnected: autoConnected.sorted(),
+                                    runState: runState,
+                                    defaultName: defaultConnection?.name)
+        if let data = try? JSONEncoder().encode(payload) {
+            localTransport.emit(EngineEvent(name: "state", payload: data))
+        }
+    }
+}
