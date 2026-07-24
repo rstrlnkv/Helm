@@ -92,21 +92,49 @@ private struct HelmPanelContent: View {
     @ObservedObject var host: ModuleHost
     @State private var utilitiesExpanded = false
 
+    private struct Tile { let view: AnyView; let span: PanelTileSpan }
+
     /// Modules split by how they present in the panel: interactive tiles stay
     /// visible, utilities collapse behind one row so the panel stays compact.
     /// One pass — `menuBar` builds a view, so it is asked once per module.
-    private var split: (tiles: [AnyView], utilities: [ModuleHost.Live]) {
-        var tiles: [AnyView] = []
+    private var split: (tiles: [Tile], utilities: [ModuleHost.Live]) {
+        var tiles: [Tile] = []
         var utilities: [ModuleHost.Live] = []
         for live in host.enabledModules {
             guard let contribution = live.descriptor.menuBar(live.vm) else { continue }
             if contribution.isUtility {
                 utilities.append(live)
             } else if let tile = contribution.panelTile {
-                tiles.append(tile)
+                tiles.append(Tile(view: tile, span: contribution.span))
             }
         }
         return (tiles, utilities)
+    }
+
+    /// Mirrors the stored setting; the store isn't observable, so the panel
+    /// re-reads it when the settings window announces a change.
+    @State private var layoutRaw = AppSettings.panelLayout
+    private var layout: PanelLayoutStyle {
+        PanelLayoutStyle(rawValue: layoutRaw) ?? .grid
+    }
+
+    /// Control-Centre style rows: compact tiles pair up, wide tiles take a row.
+    @ViewBuilder
+    private func gridTiles(_ tiles: [Tile]) -> some View {
+        let rows = PanelGridLayout.rows(of: tiles.map(\.span))
+        ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+            HStack(alignment: .top, spacing: 8) {
+                ForEach(row, id: \.self) { index in
+                    tiles[index].view
+                        .environment(\.helmTileSpan, tiles[index].span)
+                        .frame(maxWidth: .infinity)
+                }
+                // A lone compact tile keeps its half width instead of stretching.
+                if row.count == 1, tiles[row[0]].span == .compact {
+                    Color.clear.frame(maxWidth: .infinity)
+                }
+            }
+        }
     }
 
     var body: some View {
@@ -125,8 +153,12 @@ private struct HelmPanelContent: View {
                 .padding(.vertical, 24)
             } else {
                 let (tiles, utilities) = split
-                ForEach(Array(tiles.enumerated()), id: \.offset) { _, tile in
-                    tile
+                if layout == .grid {
+                    gridTiles(tiles)
+                } else {
+                    ForEach(Array(tiles.enumerated()), id: \.offset) { _, tile in
+                        tile.view.environment(\.helmTileSpan, .wide)
+                    }
                 }
                 if !utilities.isEmpty {
                     UtilitiesSection(modules: utilities, expanded: $utilitiesExpanded)
@@ -135,6 +167,9 @@ private struct HelmPanelContent: View {
         }
         .padding(12)
         .frame(width: 300)
+        .onReceive(NotificationCenter.default.publisher(for: .helmMenuBarStyleChanged)) { _ in
+            layoutRaw = AppSettings.panelLayout
+        }
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 20, style: .continuous)

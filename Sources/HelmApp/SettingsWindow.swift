@@ -224,12 +224,22 @@ private struct MenuBarSettingsView: View {
     @State private var style: String = AppSettings.menuBarIconStyle
     @State private var size: String = AppSettings.menuBarIconSize
     @State private var launchAtLogin: Bool = LoginItem.isEnabled
+    @State private var panelLayout: String = AppSettings.panelLayout
 
     var body: some View {
         Form {
             Section(AppStr.general) {
                 Toggle(AppStr.launchAtLogin, isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, v in LoginItem.setEnabled(v) }
+            }
+            Section(AppStr.panelLayout) {
+                Picker(AppStr.panelLayout, selection: $panelLayout) {
+                    ForEach(PanelLayoutStyle.allCases, id: \.rawValue) { style in
+                        Text(style.label).tag(style.rawValue)
+                    }
+                }
+                .pickerStyle(.segmented).labelsHidden()
+                .onChange(of: panelLayout) { _, v in AppSettings.panelLayout = v }
             }
             Section(AppStr.iconShape) {
                 IconShapePicker(selection: $style)
