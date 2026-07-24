@@ -47,74 +47,74 @@ public struct KeepAwakeSettingsPage: View {
 
     public var body: some View {
         Form {
-            Section("Automation") {
-                Toggle("Keep awake with external display", isOn: $autoExternalDisplay)
+            Section(KAStr.automation) {
+                Toggle(KAStr.withExternalDisplay, isOn: $autoExternalDisplay)
                     .onChange(of: autoExternalDisplay) { _, v in write(v, "autoExternalDisplay") }
-                Toggle("Keep awake while on power", isOn: $autoPower)
+                Toggle(KAStr.whileOnPower, isOn: $autoPower)
                     .onChange(of: autoPower) { _, v in write(v, "autoPower") }
             }
 
-            Section("Apps that keep the Mac awake") {
+            Section(KAStr.appsSection) {
                 appTriggersEditor
             }
 
-            Section("Behavior") {
-                Toggle("Keep display on", isOn: $keepDisplayOn)
+            Section(KAStr.behavior) {
+                Toggle(KAStr.keepDisplayOn, isOn: $keepDisplayOn)
                     .onChange(of: keepDisplayOn) { _, v in write(v, "keepDisplayOn") }
-                Toggle("Move pointer periodically", isOn: $jiggleEnabled)
+                Toggle(KAStr.movePointer, isOn: $jiggleEnabled)
                     .onChange(of: jiggleEnabled) { _, v in write(v, "jiggleEnabled") }
-                Stepper("Every \(jiggleIntervalMinutes) min", value: $jiggleIntervalMinutes, in: 1...60)
+                Stepper(KAStr.everyMinutes(jiggleIntervalMinutes), value: $jiggleIntervalMinutes, in: 1...60)
                     .disabled(!jiggleEnabled)
                     .onChange(of: jiggleIntervalMinutes) { _, v in write(v, "jiggleIntervalMinutes") }
-                Picker("Default duration", selection: $defaultDurationMinutes) {
-                    Text("15 min").tag(15)
-                    Text("1 hour").tag(60)
-                    Text("2 hours").tag(120)
-                    Text("Indefinite").tag(0)
+                Picker(KAStr.defaultDuration, selection: $defaultDurationMinutes) {
+                    Text(KAStr.min15).tag(15)
+                    Text(KAStr.oneHour).tag(60)
+                    Text(KAStr.twoHours).tag(120)
+                    Text(KAStr.indefinite).tag(0)
                 }
                 .onChange(of: defaultDurationMinutes) { _, v in write(v, "defaultDurationMinutes") }
             }
 
-            Section("Global shortcut") {
+            Section(KAStr.globalShortcut) {
                 HStack(spacing: 10) {
-                    Text("Toggle Keep Awake")
+                    Text(KAStr.toggleAction)
                     Spacer()
                     if recorder.recording {
-                        Text("Press keys…").foregroundStyle(.secondary)
+                        Text(KAStr.pressKeys).foregroundStyle(.secondary)
                     } else if !recorder.label.isEmpty {
                         Text(recorder.label).font(.body.monospaced())
                     } else {
-                        Text("None").foregroundStyle(.secondary)
+                        Text(KAStr.none).foregroundStyle(.secondary)
                     }
-                    Button(recorder.recording ? "Cancel" : "Record") {
+                    Button(recorder.recording ? KAStr.cancel : KAStr.record) {
                         recorder.recording ? recorder.stop() : recorder.startRecording()
                     }
                     .controlSize(.small)
                     if !recorder.label.isEmpty && !recorder.recording {
-                        Button("Clear") { recorder.clear() }
+                        Button(KAStr.clear) { recorder.clear() }
                             .controlSize(.small)
                     }
                 }
             }
 
-            Section("Closed lid") {
-                Toggle("Keep awake with the lid closed", isOn: $clamshellEnabled)
+            Section(KAStr.closedLid) {
+                Toggle(KAStr.keepAwakeLidClosed, isOn: $clamshellEnabled)
                     .onChange(of: clamshellEnabled) { _, v in write(v, "clamshellEnabled") }
-                Text("Requires an admin password once (uses pmset).")
+                Text(KAStr.adminNote)
                     .font(.caption).foregroundStyle(.secondary)
             }
 
-            Section("Battery") {
-                Toggle("Turn off on low battery", isOn: $batteryGuardEnabled)
+            Section(KAStr.battery) {
+                Toggle(KAStr.turnOffLowBattery, isOn: $batteryGuardEnabled)
                     .onChange(of: batteryGuardEnabled) { _, v in write(v, "batteryGuardEnabled") }
-                Stepper("Below \(batteryGuardPercent)%", value: $batteryGuardPercent, in: 5...50, step: 5)
+                Stepper(KAStr.belowPercent(batteryGuardPercent), value: $batteryGuardPercent, in: 5...50, step: 5)
                     .disabled(!batteryGuardEnabled)
                     .onChange(of: batteryGuardPercent) { _, v in write(v, "batteryGuardPercent") }
             }
 
-            Section("Active icon color") {
+            Section(KAStr.activeIconColor) {
                 colorSwatches
-                Text("Menu-bar ring color while active (white when idle).")
+                Text(KAStr.ringColorNote)
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -151,7 +151,7 @@ public struct KeepAwakeSettingsPage: View {
             Button {
                 pickApp()
             } label: {
-                Label("Add app…", systemImage: "plus")
+                Label(KAStr.addApp, systemImage: "plus")
             }
         }
     }

@@ -7,7 +7,7 @@ import Module_VPN_Engine
 @MainActor public final class VPNDescriptor: ModuleDescriptor {
     public static let id = ModuleID("vpn")
     public static let metadata = ModuleMetadata(
-        id: id, name: "VPN", summary: "Connect system VPNs, automatically per app.",
+        id: id, name: "VPN", summary: VPNStr.summary,
         sfSymbol: "lock.shield", permissions: [])
     public static let isolation: ModuleIsolation = .inProcess
     public static let category: ModuleCategory = .network
