@@ -5,6 +5,20 @@ All notable changes to Helm are documented here. The format is loosely based on
 [VERSIONING.md](VERSIONING.md) — MAJOR = global changes, MINOR = new/polished
 features, PATCH = fixes.
 
+## [0.3.0] — 2026-07-24
+
+### Changed
+- **Update check moved into About** — the version status and "Check for Updates"
+  button now live in Settings → About, next to the version, instead of a separate
+  section under General.
+
+### Fixed
+- **Panel toggle stuck off while a module was active.** A module that turned on
+  automatically at launch (e.g. Keep Awake on power) held correctly but its panel
+  toggle read off, because the view model subscribed to the engine's event stream
+  after the initial state was emitted. The transport now replays the last state to
+  late subscribers.
+
 ## [0.2.0] — 2026-07-24
 
 ### Added
@@ -29,4 +43,5 @@ features, PATCH = fixes.
 - **Localization** — English, 中文, Español, Français, Deutsch, 日本語,
   Русский, Português.
 
+[0.3.0]: https://github.com/rstrlnkv/Helm/releases/tag/v0.3.0
 [0.2.0]: https://github.com/rstrlnkv/Helm/releases/tag/v0.2.0

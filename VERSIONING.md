@@ -10,6 +10,15 @@ Helm uses `MAJOR.MINOR.PATCH` (SemVer-style). The release tag is `vMAJOR.MINOR.P
 
 Rules:
 - A MINOR bump resets PATCH to 0 (`0.3.4 → 0.4.0`). A MAJOR bump resets both (`0.9.2 → 1.0.0`).
+- **Pre-1.0:** while `0.x`, MINOR is the main lane (features + polish); don't bump
+  MAJOR. Reserve `1.0.0` for a real milestone — Developer ID + notarization (opens
+  cleanly, no `xattr`) plus a stable module set. "1.0" means "ready for other people".
+- **Every release bumps the version.** The updater compares versions with
+  `UpdateVersion.isNewer`; two releases sharing a version means clients never see the
+  update. No bump → no release.
+- **No pre-release tags for now.** `UpdateVersion.parse` strips non-numeric parts, so
+  `v0.3.0-beta.1` parses equal to `0.3.0` and the updater can't tell them apart. Ship
+  plain `vX.Y.Z`. If betas are ever needed, teach the parser pre-release precedence first.
 - The number lives in `Resources/HelmApp/Info.plist` → `CFBundleShortVersionString`.
   `CFBundleVersion` (build number) is set automatically from the git commit count
   by `Scripts/package-app.sh` — never edit it by hand.
