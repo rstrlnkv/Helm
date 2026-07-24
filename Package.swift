@@ -7,7 +7,7 @@ let package = Package(
     targets: [
         .target(name: "HelmContract"),
         .target(name: "HelmRuntime"),
-        .target(name: "HelmUI", dependencies: ["HelmContract"]),
+        .target(name: "HelmUI", dependencies: ["HelmContract", "HelmRuntime"]),
         .target(
             name: "Module_KeepAwake_Engine",
             dependencies: ["HelmContract", "HelmRuntime"],
