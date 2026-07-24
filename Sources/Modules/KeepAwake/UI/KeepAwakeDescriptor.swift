@@ -45,11 +45,22 @@ import Module_KeepAwake_Engine
         // Countdown ring: only while a timed session is running, and only if the
         // user asked for it.
         var progress: Double?
-        if store.bool("ringTimer", default: true), let end = vm.endDate, let start = vm.startDate {
-            progress = TimerProgress.remainingFraction(now: Date(), start: start, end: end)
+        var title: String?
+        var tint = KeepAwakeSettings(store: store).activeTintColor
+        if let end = vm.endDate {
+            if store.bool("ringTimer", default: true), let start = vm.startDate {
+                progress = TimerProgress.remainingFraction(now: Date(), start: start, end: end)
+            }
+            if store.bool("showTimerText", default: false) {
+                title = TimerProgress.label(remaining: end.timeIntervalSinceNow)
+            }
+            // A dedicated timer colour, when the user picked one.
+            let timerTint = store.string("timerTintColor", default: "")
+            if !timerTint.isEmpty { tint = timerTint }
         }
-        return StatusAppearance(tintToken: KeepAwakeSettings(store: store).activeTintColor,
+        return StatusAppearance(tintToken: tint,
                                 iconStyle: iconStyle,
-                                timerProgress: progress)
+                                timerProgress: progress,
+                                title: title)
     }
 }

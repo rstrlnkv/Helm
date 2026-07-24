@@ -130,6 +130,9 @@ public enum RingIcon {
         p.stroke()
     }
 
+    /// Palette lookup, also used for menu-bar text drawn beside the glyph.
+    public static func nsColor(forTintToken token: String?) -> NSColor { nsColor(tintToken: token) }
+
     private static func nsColor(tintToken: String?) -> NSColor {
         switch tintToken {
         case nil, "white": return .white

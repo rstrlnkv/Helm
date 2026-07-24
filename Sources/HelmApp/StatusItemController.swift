@@ -87,10 +87,22 @@ import HelmUI
         // Modules emit state on every tick; only redraw when the glyph changes.
         // Progress is bucketed so a countdown redraws ~1% at a time, not per pixel.
         let bucket = progress.map { Int(($0 * 100).rounded()) }
-        let key = "\(style.rawValue)|\(size.rawValue)|\(token ?? "")|\(bucket.map(String.init) ?? "-")"
+        let title = appearance.title
+        let key = "\(style.rawValue)|\(size.rawValue)|\(token ?? "")|\(bucket.map(String.init) ?? "-")|\(title ?? "")"
         guard key != lastIconKey else { return }
         lastIconKey = key
         button.image = RingIcon.make(style: style, size: size, tintToken: token, progress: progress)
+        // Countdown text sits after the glyph, in the tint the module asked for.
+        if let title {
+            button.imagePosition = .imageLeading
+            button.attributedTitle = NSAttributedString(string: " " + title, attributes: [
+                .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .medium),
+                .foregroundColor: RingIcon.nsColor(forTintToken: token),
+            ])
+        } else {
+            button.imagePosition = .imageOnly
+            button.attributedTitle = NSAttributedString(string: "")
+        }
     }
 
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
