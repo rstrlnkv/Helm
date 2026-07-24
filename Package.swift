@@ -34,6 +34,7 @@ let package = Package(
                            "Module_KeepAwake_Engine", "Module_KeepAwake_UI",
                            "Module_VPN_Engine", "Module_VPN_UI"]
         ),
+        .testTarget(name: "HelmContractTests", dependencies: ["HelmContract"]),
         .testTarget(name: "HelmRuntimeTests", dependencies: ["HelmRuntime"]),
         .testTarget(
             name: "Module_KeepAwake_EngineTests",
