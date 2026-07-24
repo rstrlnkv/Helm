@@ -1,0 +1,157 @@
+import AppKit
+import SwiftUI
+import HelmContract
+import HelmRuntime
+import HelmUI
+import Module_Island_Engine
+
+@MainActor public final class IslandDescriptor: ModuleDescriptor {
+    public static let id = ModuleID("island")
+    public static let metadata = ModuleMetadata(
+        id: id, name: IsStr.moduleName, summary: IsStr.summary,
+        sfSymbol: "sparkles.rectangle.stack", permissions: [])
+    public static let isolation: ModuleIsolation = .inProcess
+    public static let category: ModuleCategory = .appearance
+
+    private var controller: IslandWindowController?
+    private var shelf: ShelfViewModel?
+    private var dragMonitor: IslandDragMonitor?
+    private var powerSource: IslandPowerSource?
+    private var store: NamespacedStore?
+
+    public init() {}
+
+    public func makeEngine(store: NamespacedStore) -> any ModuleEngine {
+        self.store = store
+        return IslandEngine(
+            onActivate: { [weak self] in self?.start() },
+            onDeactivate: { [weak self] in self?.stop() })
+    }
+
+    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { nil }
+
+    public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
+        guard let store else { return AnyView(EmptyView()) }
+        return AnyView(IslandSettingsPage(store: store, hasNotch: IslandDescriptor.hasNotch))
+    }
+
+    static var hasNotch: Bool {
+        guard let s = NSScreen.main else { return false }
+        return NotchMetrics.compute(screen: s.frame, topInset: s.safeAreaInsets.top,
+                                    auxTopLeftWidth: s.auxiliaryTopLeftArea?.width ?? 0) != nil
+    }
+
+    // MARK: - Lifecycle
+
+    private func start() {
+        guard controller == nil, let store else { return }
+        let shelfStore = ShelfStore(store: store, bookmarks: FileBookmarkPort())
+        let shelfVM = ShelfViewModel(store: shelfStore)
+        self.shelf = shelfVM
+
+        var content: ((IslandModel) -> AnyView)?
+        content = { model in
+            AnyView(IslandShelfView(shelf: shelfVM, model: model,
+                                    onDropped: { [weak self] in self?.controller?.apply(.dropped) }))
+        }
+        guard let controller = IslandWindowController(makeContent: content!) else { return }
+        self.controller = controller
+        controller.onDrop = { [weak shelfVM] urls in shelfVM?.add(urls) }
+
+        // Reveal on drag-start anywhere (primary path; avoids Mission Control's
+        // top-edge dwell). The sensor over the notch stays as a secondary path.
+        if store.bool("revealOnDrag", default: true) {
+            dragMonitor = IslandDragMonitor(
+                onDragStarted: { [weak self] in self?.controller?.apply(.dragEntered) },
+                onDragEnded: { [weak self] in self?.controller?.apply(.dragExited) })
+        }
+        controller.hoverEnabled = store.bool("hoverToOpen", default: true)
+
+        if store.bool("powerEvents", default: true) {
+            powerSource = IslandPowerSource { [weak self] text, symbol in
+                self?.controller?.showEvent(id: "power", text: text, symbol: symbol, ttl: 3.0)
+            }
+        }
+
+        NotificationCenter.default.addObserver(forName: .helmStoreChanged, object: nil,
+                                               queue: .main) { [weak self] note in
+            let key = note.userInfo?["key"] as? String
+            MainActor.assumeIsolated { self?.settingsChanged(key) }
+        }
+    }
+
+    private func stop() {
+        controller?.teardown()
+        controller = nil
+        shelf = nil
+        dragMonitor?.stop()
+        dragMonitor = nil
+        powerSource = nil
+        NotificationCenter.default.removeObserver(self, name: .helmStoreChanged, object: nil)
+    }
+
+    private func settingsChanged(_ key: String?) {
+        guard let key, key.hasPrefix("island."),
+              let store, controller != nil else { return }
+        controller?.hoverEnabled = store.bool("hoverToOpen", default: true)
+        if store.bool("revealOnDrag", default: true) {
+            if dragMonitor == nil {
+                dragMonitor = IslandDragMonitor(
+                    onDragStarted: { [weak self] in self?.controller?.apply(.dragEntered) },
+                    onDragEnded: { [weak self] in self?.controller?.apply(.dragExited) })
+            }
+        } else {
+            dragMonitor?.stop()
+            dragMonitor = nil
+        }
+        if store.bool("powerEvents", default: true) {
+            if powerSource == nil {
+                powerSource = IslandPowerSource { [weak self] text, symbol in
+                    self?.controller?.showEvent(id: "power", text: text, symbol: symbol, ttl: 3.0)
+                }
+            }
+        } else {
+            powerSource = nil
+        }
+    }
+}
+
+// MARK: - Settings page
+
+struct IslandSettingsPage: View {
+    let store: NamespacedStore
+    let hasNotch: Bool
+    @State private var hoverToOpen = true
+    @State private var revealOnDrag = true
+    @State private var powerEvents = true
+
+    var body: some View {
+        Form {
+            if !hasNotch {
+                Section {
+                    Label(IsStr.noNotch, systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Section(IsStr.behavior) {
+                Toggle(IsStr.hoverToOpen, isOn: $hoverToOpen)
+                    .onChange(of: hoverToOpen) { _, v in store.set(v, for: "hoverToOpen") }
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle(IsStr.revealOnDrag, isOn: $revealOnDrag)
+                        .onChange(of: revealOnDrag) { _, v in store.set(v, for: "revealOnDrag") }
+                    Text(IsStr.revealOnDragNote)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Toggle(IsStr.systemEvents, isOn: $powerEvents)
+                    .onChange(of: powerEvents) { _, v in store.set(v, for: "powerEvents") }
+            }
+        }
+        .formStyle(.grouped)
+        .onAppear {
+            hoverToOpen = store.bool("hoverToOpen", default: true)
+            revealOnDrag = store.bool("revealOnDrag", default: true)
+            powerEvents = store.bool("powerEvents", default: true)
+        }
+    }
+}
