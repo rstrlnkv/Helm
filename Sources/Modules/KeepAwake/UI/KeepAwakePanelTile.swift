@@ -33,9 +33,12 @@ public struct KeepAwakePanelTile: View {
                 }
             }
         }
-        // Clip so the revealed controls can't draw outside the card while it grows.
-        .clipped()
         .helmPanelCard()
+        // Clip AFTER the card's padding, to the card's own shape: content that
+        // is already at full height while the card is still growing must not
+        // paint over the neighbouring tile. Clipping before the padding (an
+        // earlier attempt) cut the preset pills instead.
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     // MARK: - Header
