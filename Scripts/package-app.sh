@@ -24,6 +24,11 @@ cp "$REPO_ROOT/.build/release/HelmApp" "$MACOS_DIR/HelmApp"
 cp "$REPO_ROOT/Resources/HelmApp/Info.plist" "$CONTENTS_DIR/Info.plist"
 printf 'APPL????' > "$CONTENTS_DIR/PkgInfo"
 
+# Build number = git commit count, so About shows a real, increasing build.
+BUILD_NO="$(git -C "$REPO_ROOT" rev-list --count HEAD 2>/dev/null || echo 1)"
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NO" "$CONTENTS_DIR/Info.plist" >/dev/null 2>&1 || true
+echo "==> Build number: $BUILD_NO"
+
 echo "==> Compiling Liquid Glass app icon (Icon Composer .icon → Assets.car)"
 ICONOUT="$BUILD_DIR/iconout"
 rm -rf "$ICONOUT" && mkdir -p "$ICONOUT"
