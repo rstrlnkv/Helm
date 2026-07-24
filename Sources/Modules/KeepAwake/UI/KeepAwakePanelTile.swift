@@ -17,26 +17,19 @@ public struct KeepAwakePanelTile: View {
                 captionRow
             }
         }
-        .padding(12)
-        .frame(width: 260)
+        .helmPanelCard()
     }
 
     private var header: some View {
-        Button {
-            vm.send("toggle")
-        } label: {
-            HStack {
-                Image(systemName: "moon.zzz.fill")
-                    .foregroundStyle(vm.isActive ? Color.accentColor : .secondary)
-                Text("Keep Awake")
-                    .font(.headline)
-                Spacer()
-                Text(vm.isActive ? "On" : "Off")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(vm.isActive ? Color.accentColor : .secondary)
-            }
+        HStack(spacing: 10) {
+            HelmIconBadge(symbol: "moon.zzz.fill", color: .orange, active: vm.isActive)
+            Text("Keep Awake").font(.headline)
+            Spacer()
+            Toggle("", isOn: Binding(get: { vm.isActive }, set: { _ in vm.send("toggle") }))
+                .toggleStyle(.switch)
+                .labelsHidden()
+                .controlSize(.small)
         }
-        .buttonStyle(.plain)
     }
 
     private var presetRow: some View {

@@ -23,20 +23,16 @@ public struct VPNPanelTile: View {
                 connectionsList
             }
         }
-        .padding(12)
-        .frame(width: 260)
+        .helmPanelCard()
     }
 
     private var header: some View {
-        HStack {
-            Image(systemName: "lock.shield")
-                .foregroundStyle(isDefaultActive ? Color.accentColor : .secondary)
-            Text("VPN")
-                .font(.headline)
+        HStack(spacing: 10) {
+            HelmIconBadge(symbol: "lock.shield", color: .indigo, active: isDefaultActive)
+            Text("VPN").font(.headline)
             Spacer()
             if vm.runState == "working" {
-                ProgressView()
-                    .controlSize(.small)
+                ProgressView().controlSize(.small)
             }
             statusDot(for: defaultStatus)
         }
