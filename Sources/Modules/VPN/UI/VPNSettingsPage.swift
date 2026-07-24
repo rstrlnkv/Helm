@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import HelmRuntime
+import HelmUI
 import Module_VPN_Engine
 
 /// Settings page for the VPN module. Connections are read live from the view
@@ -54,9 +55,7 @@ public struct VPNSettingsPage: View {
         let active = c.status == .connected || c.status == .connecting
         let transitioning = c.status == .connecting || c.status == .disconnecting
         return HStack(spacing: 12) {
-            Circle()
-                .fill(active ? Color.green : Color.secondary.opacity(0.4))
-                .frame(width: 9, height: 9)
+            HelmStatusDot(active: active)
             VStack(alignment: .leading, spacing: 1) {
                 Text(c.name)
                 HStack(spacing: 6) {
@@ -114,7 +113,7 @@ public struct VPNSettingsPage: View {
     }
 
     private func appRuleRow(_ bundleID: String) -> some View {
-        let info = Self.appInfo(bundleID)
+        let info = AppInfo.resolve(bundleID)
         return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
                 Image(nsImage: info.icon)
@@ -183,30 +182,12 @@ public struct VPNSettingsPage: View {
     }
 
     private func pickApp() {
-        let panel = NSOpenPanel()
-        panel.title = "Choose apps"
-        panel.directoryURL = URL(fileURLWithPath: "/Applications")
-        panel.allowedContentTypes = [.application]
-        panel.allowsMultipleSelection = true
-        panel.canChooseDirectories = false
-        panel.canChooseFiles = true
-        guard panel.runModal() == .OK else { return }
         let defaultVPN = vm.connections.first?.name ?? ""
         var added = false
-        for url in panel.urls {
-            guard let bundleID = Bundle(url: url)?.bundleIdentifier, rules[bundleID] == nil else { continue }
+        for bundleID in AppPicker.choose() where rules[bundleID] == nil {
             rules[bundleID] = VPNAppRule(vpnName: defaultVPN)
             added = true
         }
         if added { persist() }
-    }
-
-    private static func appInfo(_ bundleID: String) -> (name: String, icon: NSImage) {
-        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
-            let name = FileManager.default.displayName(atPath: url.path)
-                .replacingOccurrences(of: ".app", with: "")
-            return (name, NSWorkspace.shared.icon(forFile: url.path))
-        }
-        return (bundleID, NSWorkspace.shared.icon(for: .applicationBundle))
     }
 }

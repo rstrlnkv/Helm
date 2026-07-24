@@ -62,10 +62,10 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     // MARK: - ModuleEngine (module enabled/disabled)
 
     public func activate() {
-        if ClamshellRecovery.shouldRestoreSleep(
-            guardFlagSet: store.bool("clamshellGuard", default: false),
-            pmsetShowsDisabled: ClamshellRecovery.sleepDisabled(inPmsetOutput: clamshell.pmsetReport())
-        ) {
+        // Only shell out to pmset when we actually recorded disabling sleep;
+        // Swift evaluates both call arguments, so short-circuit with the flag.
+        if store.bool("clamshellGuard", default: false),
+           ClamshellRecovery.sleepDisabled(inPmsetOutput: clamshell.pmsetReport()) {
             _ = clamshell.setDisableSleep(false)
             store.set(false, for: "clamshellGuard")
         }

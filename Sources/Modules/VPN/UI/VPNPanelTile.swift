@@ -32,7 +32,7 @@ public struct VPNPanelTile: View {
             HelmIconBadge(symbol: "lock.shield", color: .indigo, active: anyConnected)
             Text("VPN").font(.headline)
             Spacer()
-            statusDot(active: anyConnected)
+            HelmStatusDot(active: anyConnected)
         }
     }
 
@@ -44,7 +44,7 @@ public struct VPNPanelTile: View {
         let active = c.status == .connected || c.status == .connecting
         let transitioning = c.status == .connecting || c.status == .disconnecting
         return HStack(spacing: 8) {
-            statusDot(active: active)
+            HelmStatusDot(active: active)
             Text(c.name).lineLimit(1)
             Spacer(minLength: 8)
             if transitioning { ProgressView().controlSize(.small) }
@@ -57,9 +57,4 @@ public struct VPNPanelTile: View {
         }
     }
 
-    private func statusDot(active: Bool) -> some View {
-        Circle()
-            .fill(active ? Color.green : Color.secondary.opacity(0.4))
-            .frame(width: 8, height: 8)
-    }
 }

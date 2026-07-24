@@ -47,7 +47,9 @@ public final class WorkspaceAppObserver: AppObserverPort {
     }
 
     public func startObserving(_ onChange: @escaping @Sendable () -> Void) {
-        observation = NSWorkspace.shared.observe(\.runningApplications, options: [.initial]) { _, _ in
+        // No .initial: the engine seeds already-running apps itself, so firing
+        // on registration would just cause a redundant full app-list scan.
+        observation = NSWorkspace.shared.observe(\.runningApplications) { _, _ in
             onChange()
         }
     }

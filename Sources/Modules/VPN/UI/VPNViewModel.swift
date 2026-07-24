@@ -6,7 +6,6 @@ import Module_VPN_Engine
 @MainActor public final class VPNViewModel: ObservableObject {
     @Published public private(set) var connections: [VPNConnection] = []
     @Published public private(set) var autoConnected: Set<String> = []
-    @Published public private(set) var runState: String?
     @Published public private(set) var defaultName: String?
 
     private let transport: EngineTransport
@@ -19,14 +18,13 @@ import Module_VPN_Engine
     }
     private struct StatePayload: Codable {
         let connections: [VPNConnection]; let autoConnected: [String]
-        let runState: String?; let defaultName: String?
+        let defaultName: String?
     }
     private func handle(_ e: EngineEvent) {
         guard e.name == "state",
               let p = try? JSONDecoder().decode(StatePayload.self, from: e.payload) else { return }
         connections = p.connections
         autoConnected = Set(p.autoConnected)
-        runState = p.runState
         defaultName = p.defaultName
     }
     public func send(_ name: String, payload: Data = Data()) {
