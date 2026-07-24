@@ -287,8 +287,8 @@ private struct UtilitiesSection: View {
                 .padding(.top, 8)
             }
         }
-        .clipped()
         .helmPanelCard()
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private func utilityRow(_ live: ModuleHost.Live) -> some View {
