@@ -1,11 +1,13 @@
 import AppKit
 import HelmContract
 import Module_Island_UI
+import SwiftUI
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
     let host = ModuleHost.shared
     var statusController: StatusItemController!
     var islandPrototype: IslandWindowController?
+    var islandDebugStep = 0
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -25,9 +27,24 @@ import Module_Island_UI
 
         UpdateService.shared.checkOnLaunch()
 
-        // Island drag-detection prototype (risk gate, plan Task 2).
+        // Island debug harness: cycle states for frame capture.
         if ProcessInfo.processInfo.environment["HELM_DEBUG_ISLAND"] == "1" {
-            islandPrototype = IslandWindowController()
+            let controller = IslandWindowController(content: AnyView(
+                Text("Drop files here").foregroundStyle(.white).frame(height: 120)))
+            islandPrototype = controller
+            islandDebugStep = 0
+            Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { _ in
+                Task { @MainActor in
+                    guard let c = self.islandPrototype else { return }
+                    switch self.islandDebugStep % 4 {
+                    case 0: c.apply(.hoverEntered)
+                    case 1: c.apply(.event(id: "demo"))
+                    case 2: c.apply(.hoverExited); c.apply(.graceElapsed)   // → peek (event alive)
+                    default: c.apply(.dismiss)
+                    }
+                    self.islandDebugStep += 1
+                }
+            }
         }
     }
 }
