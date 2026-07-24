@@ -1,0 +1,151 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Helm
+
+import AppKit
+import Foundation
+
+// MARK: - Shell
+
+/// Minimal `Process` wrapper for invoking system command-line tools. Local to
+/// this file — the rest of the engine target stays free of any shell dependency
+/// so the core logic (Ports.swift, VPNEngine, etc.) can be unit-tested with
+/// fakes instead.
+enum Shell {
+    struct Result { let status: Int32; let output: String }
+
+    @discardableResult
+    static func run(_ path: String, _ args: [String]) -> Result {
+        let p = Process(); p.executableURL = URL(fileURLWithPath: path); p.arguments = args
+        let pipe = Pipe(); p.standardOutput = pipe; p.standardError = Pipe()
+        do { try p.run() } catch { return Result(status: -1, output: "") }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        p.waitUntilExit()
+        return Result(status: p.terminationStatus, output: String(data: data, encoding: .utf8) ?? "")
+    }
+}
+
+// MARK: - ScutilRunner
+
+/// Production `VPNRunnerPort`: shells out to `/usr/sbin/scutil`.
+public final class ScutilRunner: VPNRunnerPort {
+    public init() {}
+    public func run(_ args: [String]) -> String { Shell.run("/usr/sbin/scutil", args).output }
+}
+
+// MARK: - WorkspaceAppObserver
+
+/// Production `AppObserverPort`: reads/observes `NSWorkspace.runningApplications`.
+/// Uses KVO (rather than `NSWorkspace` launch/terminate notifications) because
+/// KVO is more reliable for Catalyst apps, per the fork's implementation notes.
+public final class WorkspaceAppObserver: AppObserverPort {
+    private var observation: NSKeyValueObservation?
+
+    public init() {}
+
+    public func runningBundleIDs() -> Set<String> {
+        Set(NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier))
+    }
+
+    public func startObserving(_ onChange: @escaping @Sendable () -> Void) {
+        observation = NSWorkspace.shared.observe(\.runningApplications, options: [.initial]) { _, _ in
+            onChange()
+        }
+    }
+}
+
+// MARK: - KeychainCredentials
+
+/// Production `VPNCredentialsPort`: reads the shared-secret/password an
+/// L2TP/IPSec VPN needs so `scutil --nc start` connects silently instead of
+/// prompting for the IPSec shared secret.
+///
+/// macOS gates every read of a VPN secret in the System keychain by a
+/// third-party app behind a prompt (System Settings is exempt as an Apple
+/// binary). So we read the System keychain at most ONCE, cache the values in
+/// Helm's own login-keychain items (which we can read back without a prompt),
+/// and use the cache thereafter. Returns nil for VPNs without a stored shared
+/// secret (e.g. IKEv2). Secrets stay in memory / the keychain, never logged.
+public final class KeychainCredentials: VPNCredentialsPort {
+    /// Service used for Helm's own cached copy of a VPN's credentials.
+    private let helmVPNKeychainService = "com.helm.vpn"
+
+    public init() {}
+
+    public func credentials(for name: String) -> VPNCredentials? {
+        let show = Shell.run("/usr/sbin/scutil", ["--nc", "show", name]).output
+        guard let uuid = Self.value(inScutilShow: show, field: "AuthPassword") else { return nil }
+        let authName = Self.value(inScutilShow: show, field: "AuthName")
+
+        // 1. Helm's own cache (no prompt — we own these items).
+        if let secret = helmCacheRead("\(uuid).ss"), !secret.isEmpty {
+            return VPNCredentials(user: authName,
+                                  password: helmCacheRead("\(uuid).pw"),
+                                  secret: secret)
+        }
+
+        // 2. First time: read the System keychain (this may prompt once).
+        let secret = Self.keychainSecret(service: "\(uuid).SS", account: nil,
+                                         keychain: "/Library/Keychains/System.keychain")
+        guard let secret, !secret.isEmpty else { return nil }
+        let password = Self.keychainSecret(service: uuid, account: authName,
+                                           keychain: "/Library/Keychains/System.keychain")
+
+        // 3. Cache in Helm's login keychain so future connects need no prompt.
+        helmCacheWrite("\(uuid).ss", secret)
+        if let password, !password.isEmpty { helmCacheWrite("\(uuid).pw", password) }
+
+        return VPNCredentials(user: authName, password: password, secret: secret)
+    }
+
+    private func helmCacheRead(_ account: String) -> String? {
+        Self.keychainSecret(service: helmVPNKeychainService, account: account, keychain: nil)
+    }
+
+    private func helmCacheWrite(_ account: String, _ value: String) {
+        // -U updates in place; -T trusts the security tool so later reads via the
+        // same tool don't prompt. Stored in the user's (default) login keychain.
+        _ = Shell.run("/usr/bin/security",
+                      ["add-generic-password", "-U",
+                       "-s", helmVPNKeychainService, "-a", account,
+                       "-T", "/usr/bin/security", "-w", value])
+    }
+
+    /// The value of a `Field : value` line in `scutil --nc show` output.
+    private static func value(inScutilShow output: String, field: String) -> String? {
+        for line in output.split(separator: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard trimmed.hasPrefix("\(field) :") else { continue }
+            let parts = trimmed.components(separatedBy: " : ")
+            if parts.count >= 2 {
+                let v = parts[1].trimmingCharacters(in: .whitespaces)
+                return v.isEmpty ? nil : v
+            }
+        }
+        return nil
+    }
+
+    /// Reads a generic password value (`security -w`) from `keychain` (nil = the
+    /// default/login keychain). Returns nil if absent or unreadable. Never logs
+    /// the value.
+    private static func keychainSecret(service: String, account: String?, keychain: String?) -> String? {
+        var args = ["find-generic-password", "-w", "-s", service]
+        if let account, !account.isEmpty { args += ["-a", account] }
+        if let keychain { args.append(keychain) }
+        let result = Shell.run("/usr/bin/security", args)
+        guard result.status == 0 else { return nil }
+        let value = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
+    }
+}
+
+// MARK: - VPNSystemPorts
+
+/// Bundles the production, system-backed ports the VPN engine needs at
+/// runtime. AppKit/Foundation only — kept in this one file so the rest of the
+/// engine target stays SwiftUI/AppKit-free and unit-testable with fakes.
+public struct VPNSystemPorts {
+    public let runner = ScutilRunner()
+    public let credentials = KeychainCredentials()
+    public let apps = WorkspaceAppObserver()
+    public init() {}
+}
