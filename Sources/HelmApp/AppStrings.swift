@@ -2,6 +2,9 @@ import HelmUI
 
 /// Localized strings for the app shell (settings window chrome).
 enum AppStr {
+    /// Sidebar entry for the app-level pane (login item, panel layout, menu-bar icon).
+    static var settingsPane: String { L("Settings", [.ru: "Настройки", .es: "Ajustes", .fr: "Réglages", .de: "Einstellungen", .ja: "設定", .zh: "设置", .pt: "Ajustes"]) }
+    /// Section title inside that pane, for the menu-bar icon controls.
     static var menuBar: String { L("Menu Bar", [.ru: "Строка меню", .es: "Barra de menús", .fr: "Barre des menus", .de: "Menüleiste", .ja: "メニューバー", .zh: "菜单栏", .pt: "Barra de menus"]) }
     static var general: String { L("General", [.ru: "Основные", .es: "General", .fr: "Général", .de: "Allgemein", .ja: "一般", .zh: "通用", .pt: "Geral"]) }
     static var launchAtLogin: String { L("Launch at login", [.ru: "Запуск при входе", .es: "Abrir al iniciar sesión", .fr: "Ouvrir à l’ouverture de session", .de: "Beim Anmelden öffnen", .ja: "ログイン時に起動", .zh: "登录时启动", .pt: "Abrir ao iniciar sessão"]) }
@@ -25,15 +28,17 @@ enum AppStr {
     static var whatsNew: String { L("What’s New", [.ru: "Что нового", .es: "Novedades", .fr: "Nouveautés", .de: "Neuigkeiten", .ja: "新機能", .zh: "新增内容", .pt: "Novidades"]) }
     static var close: String { L("Close", [.ru: "Закрыть", .es: "Cerrar", .fr: "Fermer", .de: "Schließen", .ja: "閉じる", .zh: "关闭", .pt: "Fechar"]) }
     static var quit: String { L("Quit", [.ru: "Выход", .es: "Salir", .fr: "Quitter", .de: "Beenden", .ja: "終了", .zh: "退出", .pt: "Sair"]) }
+    /// Explains the tint rule without naming a specific module (the icon is no
+    /// longer ring-only, and module names are themselves localized).
     static var menuBarNote: String {
-        L("The Helm ring turns your Keep Awake color while active, white when idle.",
-          [.ru: "Кольцо Helm в меню-баре красится в цвет Keep Awake когда активно, белое в покое.",
-           .es: "El anillo de Helm toma tu color de Keep Awake cuando está activo, blanco en reposo.",
-           .fr: "L’anneau Helm prend votre couleur Keep Awake lorsqu’actif, blanc au repos.",
-           .de: "Der Helm-Ring nimmt bei Aktivität deine Keep-Awake-Farbe an, weiß im Ruhezustand.",
-           .ja: "Helm のリングはアクティブ時に Keep Awake の色になり、待機時は白です。",
-           .zh: "Helm 圆环在激活时显示 Keep Awake 颜色，空闲时为白色。",
-           .pt: "O anel do Helm assume a cor do Keep Awake quando ativo, branco em repouso."])
+        L("The icon is white when idle and takes on the colour of whichever module is active.",
+          [.ru: "В покое иконка белая, а пока модуль работает — принимает его цвет.",
+           .es: "El icono es blanco en reposo y toma el color del módulo que esté activo.",
+           .fr: "L’icône est blanche au repos et prend la couleur du module actif.",
+           .de: "Im Ruhezustand ist das Symbol weiß; es nimmt die Farbe des aktiven Moduls an.",
+           .ja: "待機時のアイコンは白で、モジュールが動作している間はその色になります。",
+           .zh: "空闲时图标为白色；某个模块工作时会显示该模块的颜色。",
+           .pt: "O ícone é branco em repouso e assume a cor do módulo que estiver ativo."])
     }
 
     static func categoryName(_ c: ModuleCategory) -> String {
