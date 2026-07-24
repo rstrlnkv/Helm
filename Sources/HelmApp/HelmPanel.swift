@@ -10,9 +10,22 @@ private final class KeyablePanel: NSPanel {
     override var canBecomeKey: Bool { true }
 }
 
+/// Hosting view that lets clicks below the card fall through: the window spans a
+/// transparent strip, so only the card itself should catch events. Pass-through
+/// clicks reach the global outside-click monitor and dismiss the panel.
+private final class PassThroughHostingView: NSHostingView<HelmPanelContent> {
+    var cardHeight: () -> CGFloat = { .greatestFiniteMagnitude }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        let localY = isFlipped ? point.y : bounds.height - point.y
+        guard localY <= cardHeight() else { return nil }
+        return super.hitTest(point)
+    }
+}
+
 @MainActor final class HelmPanel: NSObject {
     private let panel: NSPanel
-    private let hosting: NSHostingView<HelmPanelContent>
+    private let hosting: PassThroughHostingView
     private let sizeRelay: SizeRelay
     private var dismissMonitor: Any?
     private var statusButtonScreenFrame: NSRect = .zero
@@ -38,19 +51,25 @@ private final class KeyablePanel: NSPanel {
         panel.isMovable = false
         self.panel = panel
 
-        // The window frame is OURS: the hosting view must not auto-resize the
-        // window (its resize keeps the bottom edge, pushing the top under the
-        // menu bar). Content reports its size; applySize sets the whole frame
-        // atomically with the top edge anchored under the status item. Height
-        // changes are applied instantly, in the same tick as the content change.
+        // Two facts drive this design, both established by measurement:
+        //  1. Moving a transparent layer-backed window's origin shifts the
+        //     composited surface before SwiftUI redraws, so a window that
+        //     resizes per animation frame drags the card with it.
+        //  2. A non-activating panel only ticks animations once it is key.
+        // Hence: the window is sized ONCE per open (a transparent strip from the
+        // status item to the screen bottom) and never moves; the card is
+        // top-pinned inside it and animates purely in SwiftUI.
         let sizeBox = SizeRelay()
-        let hosting = NSHostingView(rootView: HelmPanelContent(host: host, sizeRelay: sizeBox))
+        let hosting = PassThroughHostingView(rootView: HelmPanelContent(host: host, sizeRelay: sizeBox))
         hosting.sizingOptions = []
+        hosting.cardHeight = { [weak sizeBox] in sizeBox?.lastSize.height ?? .greatestFiniteMagnitude }
         self.hosting = hosting
         self.sizeRelay = sizeBox
         panel.contentView = hosting
         super.init()
-        sizeBox.onChange = { [weak self] size in self?.applySize(size) }
+        // The card's opaque shape changes inside a static window; keep the shadow
+        // following it rather than lagging a size behind.
+        sizeBox.onChange = { [weak self] _ in self?.panel.invalidateShadow() }
     }
 
     var isVisible: Bool { panel.isVisible }
@@ -63,25 +82,19 @@ private final class KeyablePanel: NSPanel {
         guard let buttonWindow = statusButton.window else { return }
         statusButtonScreenFrame = buttonWindow.convertToScreen(statusButton.frame)
         anchorScreen = buttonWindow.screen ?? NSScreen.main
-        hosting.layoutSubtreeIfNeeded()
-        applySize(sizeRelay.lastSize == .zero ? hosting.fittingSize : sizeRelay.lastSize)
-        panel.orderFrontRegardless()
-        installDismissMonitor()
-    }
-
-    /// Single atomic frame update: top edge just below the status item, clamped
-    /// into the screen so an edge-adjacent status item doesn't clip the panel.
-    /// Growth therefore always extends DOWNWARD; the top never moves.
-    private func applySize(_ size: CGSize) {
-        guard size.width > 1, size.height > 1 else { return }
         let visible = anchorScreen?.visibleFrame ?? .zero
         let margin: CGFloat = 8
-        var x = statusButtonScreenFrame.midX - size.width / 2
-        x = min(max(x, visible.minX + margin), visible.maxX - size.width - margin)
-        var y = statusButtonScreenFrame.minY - size.height - 4
-        if y < visible.minY + margin { y = visible.minY + margin }
-        panel.setFrame(NSRect(x: x, y: y, width: size.width, height: size.height),
+        let width: CGFloat = 300
+        var x = statusButtonScreenFrame.midX - width / 2
+        x = min(max(x, visible.minX + margin), visible.maxX - width - margin)
+        let top = statusButtonScreenFrame.minY - 4
+        let bottom = visible.minY + margin
+        panel.setFrame(NSRect(x: x, y: bottom, width: width, height: max(top - bottom, 100)),
                        display: true, animate: false)
+        panel.orderFrontRegardless()
+        // Key focus (without activating the app) is what makes animations tick.
+        panel.makeKey()
+        installDismissMonitor()
     }
 
     private func hide() {
@@ -230,7 +243,7 @@ private struct UtilitiesSection: View {
     var body: some View {
         VStack(spacing: 0) {
             Button {
-                expanded.toggle()
+                withAnimation(.easeInOut(duration: 0.24)) { expanded.toggle() }
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "wrench.and.screwdriver")
@@ -251,13 +264,23 @@ private struct UtilitiesSection: View {
 
             if expanded {
                 VStack(spacing: 2) {
-                    ForEach(modules, id: \.descriptor.idRaw) { live in
+                    ForEach(Array(modules.enumerated()), id: \.element.descriptor.idRaw) { index, live in
                         utilityRow(live)
+                            // Each row fades slightly after the previous one.
+                            .transition(.opacity.animation(
+                                .easeOut(duration: 0.18).delay(Double(index) * 0.06)))
                     }
                 }
                 .padding(.top, 8)
+                // Fade only. `.move(edge: .top)` made the rows fly in from above
+                // and paint OVER the header mid-animation; the card's own height
+                // change (animated by the enclosing withAnimation) is what should
+                // reveal them, growing downward.
+                .transition(.opacity)
             }
         }
+        // Clip so rows can never draw outside the card while it grows.
+        .clipped()
         .helmPanelCard()
     }
 
