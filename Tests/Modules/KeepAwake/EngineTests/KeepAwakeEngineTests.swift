@@ -106,6 +106,26 @@ final class KeepAwakeEngineTests: XCTestCase {
         XCTAssertEqual(backing.raw["module.keep-awake.clamshellGuard"] as? Bool, false)
     }
 
+    func test_clamshell_async_install_completing_after_stop_does_not_disable_sleep() {
+        store.set(true, for: "clamshellEnabled")
+        clamshell.sudoersInstalled = false // forces the async installSudoers path
+
+        engine.activate()
+        engine.startSession(minutes: 0)
+        XCTAssertNotNil(clamshell.installCompletion, "install should have been requested")
+        XCTAssertTrue(clamshell.disableSleepCalls.isEmpty, "must not disable sleep before install completes")
+
+        engine.stopSession()
+
+        // Sudoers install completes AFTER the session already ended.
+        clamshell.installCompletion?(true)
+
+        XCTAssertFalse(clamshell.disableSleepCalls.contains(true),
+                        "must never disable sleep once the session has ended")
+        XCTAssertFalse(engine.clamshellActive)
+        XCTAssertFalse(store.bool("clamshellGuard", default: false))
+    }
+
     func test_clamshell_recovery_on_activate() {
         store.set(true, for: "clamshellGuard")
         clamshell.pmset = "SleepDisabled 1"
