@@ -281,13 +281,8 @@ private struct AboutHelmView: View {
                     .de: "\(moduleCount) Module", .ja: "\(moduleCount) 個のモジュール", .zh: "\(moduleCount) 个模块",
                     .pt: "\(moduleCount) módulos"]))
                 .font(.caption).foregroundStyle(.tertiary)
-            HStack(spacing: 10) {
-                updateStatus
-                Button(AppStr.checkForUpdates) { updater.checkNow() }
-                    .controlSize(.small)
-                    .disabled(updater.checking)
-            }
-            .font(.callout)
+            updateArea
+                .font(.callout)
             HStack(spacing: 16) {
                 Button(AppStr.whatsNew) { showWhatsNew = true }
                 if let url = URL(string: "https://github.com/rstrlnkv/Helm") {
@@ -306,21 +301,45 @@ private struct AboutHelmView: View {
     }
 
     @ViewBuilder
-    private var updateStatus: some View {
-        if updater.checking {
-            HStack(spacing: 6) {
-                ProgressView().controlSize(.small)
-                Text(AppStr.checking).foregroundStyle(.secondary)
+    private var updateArea: some View {
+        switch updater.installState {
+        case .downloading:
+            progressRow(AppStr.downloadingUpdate)
+        case .installing:
+            progressRow(AppStr.installingUpdate)
+        case .failed:
+            VStack(spacing: 6) {
+                Text(AppStr.updateFailed).foregroundStyle(.red)
+                if let rel = updater.available {
+                    Button(AppStr.updateAndRelaunch) { updater.downloadAndInstall() }
+                    Link(AppStr.download, destination: rel.downloadURL ?? rel.pageURL)
+                        .font(.caption)
+                }
             }
-        } else if let release = updater.available {
-            HStack(spacing: 8) {
-                Text(AppStr.updateAvailable(release.version))
-                Link(AppStr.download, destination: release.downloadURL ?? release.pageURL)
+        case .idle:
+            if updater.checking {
+                progressRow(AppStr.checking)
+            } else if let rel = updater.available {
+                VStack(spacing: 6) {
+                    Text(AppStr.updateAvailable(rel.version))
+                    Button(AppStr.updateAndRelaunch) { updater.downloadAndInstall() }
+                        .buttonStyle(.borderedProminent)
+                }
+            } else if updater.lastMessage == "up-to-date" {
+                HStack(spacing: 10) {
+                    Text(AppStr.upToDate).foregroundStyle(.secondary)
+                    Button(AppStr.checkForUpdates) { updater.checkNow() }.controlSize(.small)
+                }
+            } else {
+                Button(AppStr.checkForUpdates) { updater.checkNow() }.controlSize(.small)
             }
-        } else if updater.lastMessage == "up-to-date" {
-            Text(AppStr.upToDate).foregroundStyle(.secondary)
-        } else {
-            EmptyView()   // idle, not yet checked — the button speaks for itself
+        }
+    }
+
+    private func progressRow(_ text: String) -> some View {
+        HStack(spacing: 6) {
+            ProgressView().controlSize(.small)
+            Text(text).foregroundStyle(.secondary)
         }
     }
 }
