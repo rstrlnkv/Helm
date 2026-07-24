@@ -26,6 +26,8 @@ public struct KeepAwakeSettingsPage: View {
     @State private var batteryGuardPercent: Int
 
     @State private var activeTintColor: String
+    @State private var customActiveIcon: Bool
+    @State private var activeIconShape: String
     @StateObject private var recorder: HotkeyRecorder
 
     public init(vm: ModuleViewModel, store: NamespacedStore) {
@@ -43,6 +45,8 @@ public struct KeepAwakeSettingsPage: View {
         _batteryGuardEnabled = State(initialValue: store.bool("batteryGuardEnabled", default: false))
         _batteryGuardPercent = State(initialValue: store.int("batteryGuardPercent", default: 20))
         _activeTintColor = State(initialValue: store.string("activeTintColor", default: "green"))
+        _customActiveIcon = State(initialValue: store.bool("customActiveIcon", default: false))
+        _activeIconShape = State(initialValue: store.string("activeIconShape", default: "ring"))
     }
 
     public var body: some View {
@@ -115,6 +119,17 @@ public struct KeepAwakeSettingsPage: View {
             Section(KAStr.activeIconColor) {
                 colorSwatches
                 Text(KAStr.ringColorNote)
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
+            Section(KAStr.activeIcon) {
+                Toggle(KAStr.customActiveIcon, isOn: $customActiveIcon)
+                    .onChange(of: customActiveIcon) { _, v in write(v, "customActiveIcon") }
+                if customActiveIcon {
+                    IconShapePicker(selection: $activeIconShape, tintToken: activeTintColor)
+                        .onChange(of: activeIconShape) { _, v in write(v, "activeIconShape") }
+                }
+                Text(KAStr.customActiveIconNote)
                     .font(.caption).foregroundStyle(.secondary)
             }
         }

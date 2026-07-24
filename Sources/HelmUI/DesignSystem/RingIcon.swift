@@ -2,13 +2,14 @@ import AppKit
 
 /// Menu-bar icon shape. The host icon is configurable; Keep Awake tints it while active.
 public enum MenuBarIconStyle: String, CaseIterable, Sendable {
-    case ring, disc, ringDot, dot
+    case ring, doubleRing, ringDot, disc, dot
 
     public var label: String {
         switch self {
         case .ring: return L("Ring", [.ru: "Кольцо", .es: "Anillo", .fr: "Anneau", .de: "Ring", .ja: "リング", .zh: "圆环", .pt: "Anel"])
-        case .disc: return L("Filled", [.ru: "Залитый", .es: "Relleno", .fr: "Plein", .de: "Gefüllt", .ja: "塗りつぶし", .zh: "实心", .pt: "Preenchido"])
+        case .doubleRing: return L("Double ring", [.ru: "Двойное кольцо", .es: "Anillo doble", .fr: "Double anneau", .de: "Doppelring", .ja: "二重リング", .zh: "双环", .pt: "Anel duplo"])
         case .ringDot: return L("Ring + dot", [.ru: "Кольцо + точка", .es: "Anillo + punto", .fr: "Anneau + point", .de: "Ring + Punkt", .ja: "リング＋点", .zh: "圆环+点", .pt: "Anel + ponto"])
+        case .disc: return L("Filled", [.ru: "Залитый", .es: "Relleno", .fr: "Plein", .de: "Gefüllt", .ja: "塗りつぶし", .zh: "实心", .pt: "Preenchido"])
         case .dot: return L("Dot", [.ru: "Точка", .es: "Punto", .fr: "Point", .de: "Punkt", .ja: "点", .zh: "点", .pt: "Ponto"])
         }
     }
@@ -16,20 +17,27 @@ public enum MenuBarIconStyle: String, CaseIterable, Sendable {
 
 /// Menu-bar icon size (canvas point size).
 public enum MenuBarIconSize: String, CaseIterable, Sendable {
-    case small, medium, large
+    // rawValues kept stable for stored-settings compatibility; the small end was
+    // extended (xxSmall/xxxSmall) and the large end dropped per design.
+    case xxxSmall, xxSmall, extraSmall, small, medium
 
     public var points: CGFloat {
         switch self {
+        case .xxxSmall: return 9
+        case .xxSmall: return 11
+        case .extraSmall: return 13
         case .small: return 15
         case .medium: return 18
-        case .large: return 22
         }
     }
+    /// Human, localized size name (shown once for the selected size in the picker).
     public var label: String {
         switch self {
-        case .small: return L("Small", [.ru: "Маленький", .es: "Pequeño", .fr: "Petit", .de: "Klein", .ja: "小", .zh: "小", .pt: "Pequeno"])
-        case .medium: return L("Medium", [.ru: "Средний", .es: "Mediano", .fr: "Moyen", .de: "Mittel", .ja: "中", .zh: "中", .pt: "Médio"])
-        case .large: return L("Large", [.ru: "Большой", .es: "Grande", .fr: "Grand", .de: "Groß", .ja: "大", .zh: "大", .pt: "Grande"])
+        case .xxxSmall: return L("Tiny", [.ru: "Крошечный", .es: "Diminuto", .fr: "Minuscule", .de: "Winzig", .ja: "極小", .zh: "极小", .pt: "Minúsculo"])
+        case .xxSmall: return L("Very small", [.ru: "Очень маленький", .es: "Muy pequeño", .fr: "Très petit", .de: "Sehr klein", .ja: "とても小さい", .zh: "很小", .pt: "Muito pequeno"])
+        case .extraSmall: return L("Small", [.ru: "Маленький", .es: "Pequeño", .fr: "Petit", .de: "Klein", .ja: "小", .zh: "小", .pt: "Pequeno"])
+        case .small: return L("Medium", [.ru: "Средний", .es: "Mediano", .fr: "Moyen", .de: "Mittel", .ja: "中", .zh: "中", .pt: "Médio"])
+        case .medium: return L("Large", [.ru: "Большой", .es: "Grande", .fr: "Grand", .de: "Groß", .ja: "大", .zh: "大", .pt: "Grande"])
         }
     }
 }
@@ -59,12 +67,19 @@ public enum RingIcon {
         switch style {
         case .ring:
             strokeOval(inset: inset, lineWidth: lineWidth, size: dim)
-        case .disc:
-            NSBezierPath(ovalIn: NSRect(x: inset, y: inset, width: s - 2 * inset, height: s - 2 * inset)).fill()
+        case .doubleRing:
+            strokeOval(inset: inset, lineWidth: lineWidth, size: dim)
+            let innerInset = inset + s * 0.2
+            let inner = NSBezierPath(ovalIn: NSRect(x: innerInset, y: innerInset,
+                                                    width: s - 2 * innerInset, height: s - 2 * innerInset))
+            inner.lineWidth = max(1, lineWidth * 0.7)
+            inner.stroke()
         case .ringDot:
             strokeOval(inset: inset, lineWidth: lineWidth, size: dim)
             let d = s * 0.24
             NSBezierPath(ovalIn: NSRect(x: (s - d) / 2, y: (s - d) / 2, width: d, height: d)).fill()
+        case .disc:
+            NSBezierPath(ovalIn: NSRect(x: inset, y: inset, width: s - 2 * inset, height: s - 2 * inset)).fill()
         case .dot:
             let d = s * 0.5
             NSBezierPath(ovalIn: NSRect(x: (s - d) / 2, y: (s - d) / 2, width: d, height: d)).fill()

@@ -38,6 +38,11 @@ import Module_KeepAwake_Engine
 
     public func statusAppearance(_ vm: ModuleViewModel) -> StatusAppearance {
         guard vm.isActive, let store else { return .inactive }
-        return StatusAppearance(tintToken: KeepAwakeSettings(store: store).activeTintColor)
+        // Optional per-module active-state glyph: when enabled, the menu bar shows
+        // this shape while Keep Awake is active (otherwise it keeps the global shape).
+        let iconStyle = store.bool("customActiveIcon", default: false)
+            ? store.string("activeIconShape", default: "ring") : nil
+        return StatusAppearance(tintToken: KeepAwakeSettings(store: store).activeTintColor,
+                                iconStyle: iconStyle)
     }
 }
