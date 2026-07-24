@@ -131,7 +131,7 @@ private struct SettingsSidebar: View {
     var body: some View {
         List(selection: $model.selection) {
             Section {
-                sidebarRow(AppStr.menuBar, "menubar.rectangle", .gray)
+                sidebarRow(AppStr.settingsPane, "gearshape", .gray)
                     .tag(SettingsSelection.general)
             }
             ForEach(ModuleCategory.allCases, id: \.self) { category in
@@ -260,15 +260,15 @@ private struct MenuBarSettingsView: View {
                 .pickerStyle(.segmented).labelsHidden()
                 .onChange(of: panelLayout) { _, v in AppSettings.panelLayout = v }
             }
-            Section(AppStr.iconShape) {
-                IconShapePicker(selection: $style)
-                    .onChange(of: style) { _, v in AppSettings.menuBarIconStyle = v }
-            }
-            Section(AppStr.iconSize) {
-                IconSizePicker(selection: $size, style: currentStyle)
-                    .onChange(of: size) { _, v in AppSettings.menuBarIconSize = v }
-            }
-            Section {
+            Section(AppStr.menuBar) {
+                LabeledContent(AppStr.iconShape) {
+                    IconShapePicker(selection: $style)
+                        .onChange(of: style) { _, v in AppSettings.menuBarIconStyle = v }
+                }
+                LabeledContent(AppStr.iconSize) {
+                    IconSizePicker(selection: $size, style: currentStyle)
+                        .onChange(of: size) { _, v in AppSettings.menuBarIconSize = v }
+                }
                 Text(AppStr.menuBarNote)
                     .font(.caption).foregroundStyle(.secondary)
             }

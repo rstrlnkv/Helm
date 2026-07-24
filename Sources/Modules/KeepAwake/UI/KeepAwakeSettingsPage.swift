@@ -122,8 +122,14 @@ public struct KeepAwakeSettingsPage: View {
                     .onChange(of: batteryGuardPercent) { _, v in write(v, "batteryGuardPercent") }
             }
 
-            Section(KAStr.activeIconColor) {
-                colorSwatches
+            Section(KAStr.menuBarIcon) {
+                LabeledContent(KAStr.activeIconColor) { colorSwatches }
+                Toggle(KAStr.customActiveIcon, isOn: $customActiveIcon)
+                    .onChange(of: customActiveIcon) { _, v in write(v, "customActiveIcon") }
+                if customActiveIcon {
+                    IconShapePicker(selection: $activeIconShape, tintToken: activeTintColor)
+                        .onChange(of: activeIconShape) { _, v in write(v, "activeIconShape") }
+                }
                 Text(KAStr.ringColorNote)
                     .font(.caption).foregroundStyle(.secondary)
             }
@@ -138,16 +144,6 @@ public struct KeepAwakeSettingsPage: View {
                 LabeledContent(KAStr.timerColor) { timerColorSwatches }
             }
 
-            Section(KAStr.activeIcon) {
-                Toggle(KAStr.customActiveIcon, isOn: $customActiveIcon)
-                    .onChange(of: customActiveIcon) { _, v in write(v, "customActiveIcon") }
-                if customActiveIcon {
-                    IconShapePicker(selection: $activeIconShape, tintToken: activeTintColor)
-                        .onChange(of: activeIconShape) { _, v in write(v, "activeIconShape") }
-                }
-                Text(KAStr.customActiveIconNote)
-                    .font(.caption).foregroundStyle(.secondary)
-            }
         }
         .formStyle(.grouped)
     }
