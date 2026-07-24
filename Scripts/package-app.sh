@@ -24,11 +24,18 @@ cp "$REPO_ROOT/.build/release/HelmApp" "$MACOS_DIR/HelmApp"
 cp "$REPO_ROOT/Resources/HelmApp/Info.plist" "$CONTENTS_DIR/Info.plist"
 printf 'APPL????' > "$CONTENTS_DIR/PkgInfo"
 
-echo "==> Generating app icon"
-ICONSET_DIR="$BUILD_DIR/AppIcon.iconset"
-rm -rf "$ICONSET_DIR"
-swift "$REPO_ROOT/Scripts/make-appicon.swift" "$ICONSET_DIR"
-iconutil -c icns "$ICONSET_DIR" -o "$RESOURCES_DIR/AppIcon.icns"
+echo "==> Compiling Liquid Glass app icon (Icon Composer .icon → Assets.car)"
+ICONOUT="$BUILD_DIR/iconout"
+rm -rf "$ICONOUT" && mkdir -p "$ICONOUT"
+xcrun actool "$REPO_ROOT/Resources/Icon/Helm.icon" \
+  --compile "$ICONOUT" \
+  --platform macosx \
+  --minimum-deployment-target 26.0 \
+  --app-icon Helm \
+  --output-partial-info-plist "$ICONOUT/partial.plist" \
+  --output-format human-readable-text
+cp "$ICONOUT/Assets.car" "$RESOURCES_DIR/Assets.car"
+cp "$ICONOUT/Helm.icns" "$RESOURCES_DIR/Helm.icns"
 
 echo "==> Stripping extended attributes"
 xattr -cr "$APP_DIR"

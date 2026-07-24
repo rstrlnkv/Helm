@@ -9,7 +9,9 @@
 	<key>CFBundleName</key>
 	<string>Helm</string>
 	<key>CFBundleIconFile</key>
-	<string>AppIcon</string>
+	<string>Helm</string>
+	<key>CFBundleIconName</key>
+	<string>Helm</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
