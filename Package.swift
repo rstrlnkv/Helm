@@ -28,11 +28,22 @@ let package = Package(
             dependencies: ["HelmContract", "HelmUI", "Module_VPN_Engine"],
             path: "Sources/Modules/VPN/UI"
         ),
+        .target(
+            name: "Module_Uninstaller_Engine",
+            dependencies: ["HelmContract", "HelmRuntime"],
+            path: "Sources/Modules/Uninstaller/Engine"
+        ),
+        .target(
+            name: "Module_Uninstaller_UI",
+            dependencies: ["HelmContract", "HelmUI", "Module_Uninstaller_Engine"],
+            path: "Sources/Modules/Uninstaller/UI"
+        ),
         .executableTarget(
             name: "HelmApp",
             dependencies: ["HelmContract", "HelmRuntime", "HelmUI",
                            "Module_KeepAwake_Engine", "Module_KeepAwake_UI",
-                           "Module_VPN_Engine", "Module_VPN_UI"]
+                           "Module_VPN_Engine", "Module_VPN_UI",
+                           "Module_Uninstaller_Engine", "Module_Uninstaller_UI"]
         ),
         .testTarget(name: "HelmContractTests", dependencies: ["HelmContract"]),
         .testTarget(name: "HelmRuntimeTests", dependencies: ["HelmRuntime"]),
@@ -45,6 +56,11 @@ let package = Package(
             name: "Module_VPN_EngineTests",
             dependencies: ["Module_VPN_Engine"],
             path: "Tests/Modules/VPN/EngineTests"
+        ),
+        .testTarget(
+            name: "Module_Uninstaller_EngineTests",
+            dependencies: ["Module_Uninstaller_Engine"],
+            path: "Tests/Modules/Uninstaller/EngineTests"
         ),
     ]
 )
