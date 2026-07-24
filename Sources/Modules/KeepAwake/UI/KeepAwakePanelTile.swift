@@ -22,7 +22,7 @@ public struct KeepAwakePanelTile: View {
                 customRow
             }
             if vm.isActive && vm.clamshellActive {
-                Text("Lid closed — staying awake")
+                Text(KAStr.lidClosed)
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -32,7 +32,7 @@ public struct KeepAwakePanelTile: View {
     private var header: some View {
         HStack(spacing: 10) {
             HelmIconBadge(symbol: "moon.zzz.fill", color: .orange, active: vm.isActive)
-            Text("Keep Awake").font(.headline)
+            Text(KAStr.moduleName).font(.headline)
             Spacer()
             Toggle("", isOn: Binding(get: { vm.isActive }, set: { _ in vm.send("toggle") }))
                 .toggleStyle(.switch)
@@ -68,9 +68,9 @@ public struct KeepAwakePanelTile: View {
 
     private var customRow: some View {
         HStack(spacing: 8) {
-            Stepper("\(customMinutes) min", value: $customMinutes, in: 5...720, step: 5)
+            Stepper("\(customMinutes) \(KAStr.minutesUnit)", value: $customMinutes, in: 5...720, step: 5)
                 .font(.subheadline)
-            Button("Start") {
+            Button(KAStr.start) {
                 vm.send("start", payload: startPayload(customMinutes))
             }
             .controlSize(.small)
@@ -113,20 +113,9 @@ public struct KeepAwakePanelTile: View {
 
     private var conditionsCaption: String {
         vm.activeConditions
-            .map(Self.readableCondition)
+            .map(KAStr.condition)
             .sorted()
             .joined(separator: ", ")
-    }
-
-    private static func readableCondition(_ wireName: String) -> String {
-        switch wireName {
-        case "manual": return "Manual"
-        case "timer": return "Timer"
-        case "externalDisplay": return "External display"
-        case "power": return "Power"
-        case "app": return "App"
-        default: return wireName
-        }
     }
 }
 

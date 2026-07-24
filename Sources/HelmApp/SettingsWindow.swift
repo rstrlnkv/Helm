@@ -265,14 +265,46 @@ private struct MenuBarSettingsView: View {
 }
 
 private struct AboutHelmView: View {
+    private var version: String {
+        let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        return "\(short) (\(build))"
+    }
+    private var moduleCount: Int { ModuleRegistry.all.count }
+
     var body: some View {
-        VStack(spacing: 10) {
-            Image(nsImage: RingIcon.make(style: .ring, size: .large, tintToken: "blue"))
-                .resizable().frame(width: 64, height: 64)
-            Text("Helm").font(.largeTitle.bold())
-            Text("A lightweight menu-bar module host for macOS.")
-                .foregroundStyle(.secondary)
+        VStack(spacing: 14) {
+            Spacer()
+            Image(nsImage: NSApplication.shared.applicationIconImage)
+                .resizable()
+                .frame(width: 112, height: 112)
+            VStack(spacing: 4) {
+                Text("Helm").font(.system(size: 30, weight: .bold))
+                Text(L("Version", [.ru: "Версия", .es: "Versión", .fr: "Version", .de: "Version", .ja: "バージョン", .zh: "版本", .pt: "Versão"]) + " \(version)")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+            Text(L("A menu-bar suite of macOS utilities.",
+                   [.ru: "Набор macOS-утилит в строке меню.",
+                    .es: "Un conjunto de utilidades de macOS en la barra de menús.",
+                    .fr: "Une suite d’utilitaires macOS dans la barre des menus.",
+                    .de: "Eine Menüleisten-Sammlung von macOS-Werkzeugen.",
+                    .ja: "メニューバーの macOS ユーティリティ集。",
+                    .zh: "菜单栏中的 macOS 实用工具套件。",
+                    .pt: "Um conjunto de utilitários do macOS na barra de menus."]))
+                .font(.subheadline).foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            Text(L("\(moduleCount) modules",
+                   [.ru: "Модулей: \(moduleCount)", .es: "\(moduleCount) módulos", .fr: "\(moduleCount) modules",
+                    .de: "\(moduleCount) Module", .ja: "\(moduleCount) 個のモジュール", .zh: "\(moduleCount) 个模块",
+                    .pt: "\(moduleCount) módulos"]))
+                .font(.caption).foregroundStyle(.tertiary)
+            if let url = URL(string: "https://github.com/rstrlnkv/Helm") {
+                Link("GitHub", destination: url).font(.callout)
+            }
+            Spacer()
+            Text("© 2026 Helm").font(.caption).foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(28)
     }
 }

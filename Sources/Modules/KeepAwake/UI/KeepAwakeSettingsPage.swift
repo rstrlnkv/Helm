@@ -186,7 +186,8 @@ public struct KeepAwakeSettingsPage: View {
     // MARK: - Color swatches
 
     private var colorSwatches: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.fixed(30), spacing: 8), count: 6), spacing: 10) {
+        // 5 columns × 2 rows for the 10 palette colors.
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 24, maximum: 44)), count: 5), spacing: 12) {
             ForEach(PaletteColor.allCases, id: \.rawValue) { palette in
                 let selected = activeTintColor == palette.rawValue
                 Circle()
