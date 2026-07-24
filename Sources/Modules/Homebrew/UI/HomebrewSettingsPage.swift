@@ -189,7 +189,11 @@ public struct HomebrewSettingsPage: View {
                                                          @ViewBuilder row: @escaping (T) -> Row) -> some View {
         Group {
             if items.isEmpty { HelmCenteredContent { Text(empty).foregroundStyle(.secondary).multilineTextAlignment(.center).padding() } }
-            else { List(items) { row($0) } }
+            else {
+                List(items) { row($0).listRowSeparator(.hidden) }
+                    .listStyle(.inset)
+                    .scrollContentBackground(.hidden)
+            }
         }
     }
 
