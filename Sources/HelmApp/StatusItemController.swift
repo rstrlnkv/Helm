@@ -52,10 +52,14 @@ import HelmUI
 
     private func refreshIcon() {
         guard let button = statusItem.button else { return }
-        let token = host.enabledModules
-            .compactMap { $0.descriptor.statusAppearance($0.vm).tintToken }
-            .first
-        let style = MenuBarIconStyle(rawValue: AppSettings.menuBarIconStyle) ?? .ring
+        // First active module (non-nil tint) drives both the tint and an optional
+        // active-state shape override.
+        let appearance = host.enabledModules
+            .map { $0.descriptor.statusAppearance($0.vm) }
+            .first { $0.tintToken != nil } ?? .inactive
+        let token = appearance.tintToken
+        let globalStyle = MenuBarIconStyle(rawValue: AppSettings.menuBarIconStyle) ?? .ring
+        let style = appearance.iconStyle.flatMap(MenuBarIconStyle.init(rawValue:)) ?? globalStyle
         let size = MenuBarIconSize(rawValue: AppSettings.menuBarIconSize) ?? .medium
         // Modules emit state on every tick; only redraw when the glyph changes.
         let key = "\(style.rawValue)|\(size.rawValue)|\(token ?? "")"

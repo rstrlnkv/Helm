@@ -225,21 +225,12 @@ private struct MenuBarSettingsView: View {
                     .onChange(of: launchAtLogin) { _, v in LoginItem.setEnabled(v) }
             }
             Section(AppStr.iconShape) {
-                HStack(spacing: 14) {
-                    ForEach(MenuBarIconStyle.allCases, id: \.rawValue) { s in
-                        styleTile(s)
-                    }
-                }
-                .padding(.vertical, 4)
+                IconShapePicker(selection: $style)
+                    .onChange(of: style) { _, v in AppSettings.menuBarIconStyle = v }
             }
             Section(AppStr.iconSize) {
-                Picker(AppStr.size, selection: $size) {
-                    ForEach(MenuBarIconSize.allCases, id: \.rawValue) { sz in
-                        Text(sz.label).tag(sz.rawValue)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .onChange(of: size) { _, v in AppSettings.menuBarIconSize = v }
+                IconSizePicker(selection: $size, style: currentStyle)
+                    .onChange(of: size) { _, v in AppSettings.menuBarIconSize = v }
             }
             Section {
                 Text(AppStr.menuBarNote)
@@ -249,28 +240,8 @@ private struct MenuBarSettingsView: View {
         .formStyle(.grouped)
     }
 
-    private func styleTile(_ s: MenuBarIconStyle) -> some View {
-        let selected = style == s.rawValue
-        return VStack(spacing: 6) {
-            Image(nsImage: RingIcon.make(style: s, size: .large, tintToken: "blue"))
-                .frame(width: 24, height: 24)
-            Text(s.label)
-                .font(.caption2)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .minimumScaleFactor(0.75)
-                .frame(height: 26)
-        }
-        .frame(width: 76, height: 66)
-        .background(RoundedRectangle(cornerRadius: 8)
-            .fill(selected ? Color.accentColor.opacity(0.18) : Color.primary.opacity(0.04)))
-        .overlay(RoundedRectangle(cornerRadius: 8)
-            .strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 1.5))
-        .contentShape(RoundedRectangle(cornerRadius: 8))
-        .onTapGesture {
-            style = s.rawValue
-            AppSettings.menuBarIconStyle = s.rawValue
-        }
+    private var currentStyle: MenuBarIconStyle {
+        MenuBarIconStyle(rawValue: style) ?? .ring
     }
 }
 
