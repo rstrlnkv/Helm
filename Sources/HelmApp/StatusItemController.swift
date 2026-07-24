@@ -11,6 +11,7 @@ import HelmUI
     private var hostCancellable: AnyCancellable?
     private var moduleCancellables: Set<AnyCancellable> = []
     private var styleObserver: NSObjectProtocol?
+    private var openSettingsObserver: NSObjectProtocol?
 
     private lazy var panel = HelmPanel(host: host)
     private lazy var settingsWindow = SettingsWindow(host: host)
@@ -34,6 +35,11 @@ import HelmUI
         ) { [weak self] _ in
             guard let self else { return }
             Task { @MainActor in self.refreshIcon() }
+        }
+        openSettingsObserver = NotificationCenter.default.addObserver(
+            forName: .helmOpenSettings, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.openSettings() }
         }
         resubscribeToModules()
     }
