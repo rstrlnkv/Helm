@@ -140,30 +140,35 @@ private struct HelmPanelContent: View {
     @State private var showQuitButton = AppSettings.showQuitButton
 
     /// Optional shortcuts; both actions also live in the status item's
-    /// right-click menu, so they stay off by default.
+    /// right-click menu, so they stay off by default. Rendered as a card row so
+    /// they read as part of the panel rather than loose text under it.
     private var footer: some View {
         HStack(spacing: 8) {
             if showSettingsButton {
-                Button {
+                footerButton(AppStr.settingsPane, "gearshape") {
                     NotificationCenter.default.post(name: .helmOpenSettings, object: nil)
-                } label: {
-                    Label(AppStr.settings, systemImage: "gearshape")
-                        .font(.callout)
                 }
-                .buttonStyle(.plain)
             }
-            Spacer()
+            if showSettingsButton && showQuitButton { Spacer() }
             if showQuitButton {
-                Button { NSApp.terminate(nil) } label: {
-                    Label(AppStr.quit, systemImage: "power")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
+                footerButton(AppStr.quit, "power") { NSApp.terminate(nil) }
             }
         }
-        .padding(.horizontal, 4)
-        .padding(.top, 2)
+        .helmPanelCard()
+    }
+
+    private func footerButton(_ title: String, _ symbol: String,
+                              action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: symbol)
+                    .font(.system(size: 12, weight: .semibold))
+                Text(title).font(.subheadline.weight(.medium))
+            }
+            .foregroundStyle(.secondary)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private struct Tile { let view: AnyView }
