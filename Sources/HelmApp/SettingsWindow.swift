@@ -93,6 +93,7 @@ private func categoryColor(_ category: ModuleCategory) -> Color {
     case .media: return .pink
     case .files: return .cyan
     case .appearance: return .purple
+    case .maintenance: return .pink
     case .misc: return .gray
     }
 }
