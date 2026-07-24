@@ -142,21 +142,14 @@ public struct KeepAwakePanelTile: View {
         // The top gap lives INSIDE the measured block: with stack spacing at 0
         // it must not exist while collapsed, and it should animate in with the
         // rest of the block.
+        // Order follows intent: the custom timer continues the preset row above
+        // it (same action, arbitrary length), then the automation rules — which
+        // are standing settings, not actions — sit under their own heading so
+        // their labels read as conditions.
         VStack(alignment: .leading, spacing: 8) {
             Divider().padding(.top, 10)
-            // Label left, control hard against the right edge — one alignment
-            // line for every row in the block.
-            settingRow(KAStr.withExternalDisplay) {
-                Toggle("", isOn: $autoExternalDisplay)
-                    .onChange(of: autoExternalDisplay) { _, v in writeSetting(v, "autoExternalDisplay") }
-            }
 
-            settingRow(KAStr.whileOnPower) {
-                Toggle("", isOn: $autoPower)
-                    .onChange(of: autoPower) { _, v in writeSetting(v, "autoPower") }
-            }
-
-            settingRow(KAStr.timer) {
+            settingRow(KAStr.customTimer) {
                 HStack(spacing: 6) {
                     // A menu of sensible durations beats nudging a stepper five
                     // minutes at a time in a 300pt panel.
@@ -177,6 +170,20 @@ public struct KeepAwakePanelTile: View {
                     }
                     .controlSize(.small)
                 }
+            }
+
+            Text(KAStr.automation)
+                .font(.caption).foregroundStyle(.secondary)
+                .padding(.top, 2)
+
+            settingRow(KAStr.onExternalDisplay) {
+                Toggle("", isOn: $autoExternalDisplay)
+                    .onChange(of: autoExternalDisplay) { _, v in writeSetting(v, "autoExternalDisplay") }
+            }
+
+            settingRow(KAStr.onPower) {
+                Toggle("", isOn: $autoPower)
+                    .onChange(of: autoPower) { _, v in writeSetting(v, "autoPower") }
             }
         }
     }

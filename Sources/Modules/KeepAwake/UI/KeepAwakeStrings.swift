@@ -14,6 +14,11 @@ enum KAStr {
            .ja: "Mac がスリープするのを防ぎます。", .zh: "防止 Mac 进入睡眠。",
            .pt: "Impede que o Mac entre em repouso."])
     }
+    static var customTimer: String { L("Custom timer", [.ru: "Свой таймер", .es: "Temporizador propio", .fr: "Minuteur personnalisé", .de: "Eigener Timer", .ja: "カスタムタイマー", .zh: "自定义计时", .pt: "Timer personalizado"]) }
+    /// Short forms used under the "Automatically" heading, where the context is
+    /// already given by the group title.
+    static var onExternalDisplay: String { L("With an external display", [.ru: "При внешнем дисплее", .es: "Con pantalla externa", .fr: "Avec un écran externe", .de: "Mit externem Bildschirm", .ja: "外部ディスプレイ接続時", .zh: "连接外接显示器时", .pt: "Com tela externa"]) }
+    static var onPower: String { L("On power", [.ru: "При питании", .es: "Con corriente", .fr: "Sur secteur", .de: "Am Netzstrom", .ja: "電源接続時", .zh: "接通电源时", .pt: "Na tomada"]) }
     static var timer: String { L("Timer", [.ru: "Таймер", .es: "Temporizador", .fr: "Minuteur", .de: "Timer", .ja: "タイマー", .zh: "计时器", .pt: "Timer"]) }
     static var start: String {
         L("Start", [.ru: "Старт", .es: "Iniciar", .fr: "Démarrer", .de: "Start", .ja: "開始", .zh: "开始", .pt: "Iniciar"])
