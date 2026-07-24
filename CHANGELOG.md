@@ -1,7 +1,9 @@
 # Changelog
 
 All notable changes to Helm are documented here. The format is loosely based on
-[Keep a Changelog](https://keepachangelog.com/); versions follow SemVer.
+[Keep a Changelog](https://keepachangelog.com/). Version-bump rules: see
+[VERSIONING.md](VERSIONING.md) — MAJOR = global changes, MINOR = new/polished
+features, PATCH = fixes.
 
 ## [0.2.0] — 2026-07-24
 
