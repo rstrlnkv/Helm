@@ -7,7 +7,7 @@ import HelmContract
     @Published public private(set) var clamshellActive = false
     @Published public private(set) var endDate: Date?
 
-    private let transport: EngineTransport
+    public let transport: EngineTransport
 
     public init(transport: EngineTransport) {
         self.transport = transport
