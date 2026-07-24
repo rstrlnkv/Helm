@@ -103,8 +103,8 @@ private struct HelmPanelContent: View {
                 Text("No modules enabled")
                     .font(.callout)
                     .foregroundStyle(.secondary)
-                    .padding(.horizontal, 12)
-                    .padding(.top, 12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 8)
             } else {
                 ForEach(Array(host.enabledModules.enumerated()), id: \.offset) { _, live in
                     if let tile = live.descriptor.menuBar(live.vm)?.panelTile {
@@ -113,22 +113,30 @@ private struct HelmPanelContent: View {
                 }
             }
 
-            Divider()
+            Divider().padding(.horizontal, -2)
 
-            HStack {
-                Button("Settings…", action: onOpenSettings)
-                    .buttonStyle(.plain)
+            HStack(spacing: 16) {
+                footerButton("Settings", "gearshape", action: onOpenSettings)
                 Spacer()
-                Button("Quit", action: onQuit)
-                    .buttonStyle(.plain)
+                footerButton("Quit", "power", action: onQuit)
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 12)
-            .padding(.bottom, 10)
+            .padding(.horizontal, 2)
         }
-        .padding(.top, 4)
-        .frame(width: 280)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .padding(12)
+        .frame(width: 300)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+        )
+    }
+
+    private func footerButton(_ title: String, _ symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: symbol)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
     }
 }
