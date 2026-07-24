@@ -111,7 +111,7 @@ public struct HomebrewSettingsPage: View {
             }.padding(10)
             Divider()
             if query.isEmpty && hb.searchHits.isEmpty {
-                centered(HbStr.typeToSearch)
+                HelmCenteredContent { Text(HbStr.typeToSearch).foregroundStyle(.secondary) }
             } else {
                 listOrEmpty(hb.searchHits, empty: HbStr.noResults) { hit in
                     pkgRow(name: hit.name, detail: nil, isCask: hit.isCask) {
@@ -188,13 +188,9 @@ public struct HomebrewSettingsPage: View {
     private func listOrEmpty<T: Identifiable, Row: View>(_ items: [T], empty: String,
                                                          @ViewBuilder row: @escaping (T) -> Row) -> some View {
         Group {
-            if items.isEmpty { centered(empty) }
+            if items.isEmpty { HelmCenteredContent { Text(empty).foregroundStyle(.secondary).multilineTextAlignment(.center).padding() } }
             else { List(items) { row($0) } }
         }
     }
 
-    private func centered(_ text: String) -> some View {
-        VStack { Spacer(); Text(text).foregroundStyle(.secondary).multilineTextAlignment(.center).padding(); Spacer() }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
 }

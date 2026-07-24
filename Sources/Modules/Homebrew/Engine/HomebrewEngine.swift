@@ -116,8 +116,9 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             emitLog("Administrator authorization was cancelled.")
             return
         }
-        let installer = "/bin/bash -c \"$(curl -fsSL \(Self.installerURL))\""
-        runner.stream("/bin/bash", ["-lc", installer], env: ["NONINTERACTIVE": "1"],
+        // One shell level: fetch the official installer and run it in this bash.
+        let installer = "eval \"$(/usr/bin/curl -fsSL \(Self.installerURL))\""
+        runner.stream("/bin/bash", ["-c", installer], env: ["NONINTERACTIVE": "1"],
                       onLine: { [weak self] line in self?.emitLog(line) },
                       onExit: { [weak self] code in
                           guard let self else { return }
