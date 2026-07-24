@@ -89,9 +89,9 @@ public struct UninstallerSettingsPage: View {
 
     @ViewBuilder private var detail: some View {
         if selectedApp == nil {
-            centered { Text(UnStr.pickApp).foregroundStyle(.secondary).multilineTextAlignment(.center).padding() }
+            HelmCenteredContent { Text(UnStr.pickApp).foregroundStyle(.secondary).multilineTextAlignment(.center).padding() }
         } else if scanning {
-            centered { ProgressView(); Text(UnStr.scanning).font(.caption).foregroundStyle(.secondary) }
+            HelmCenteredContent { ProgressView(); Text(UnStr.scanning).font(.caption).foregroundStyle(.secondary) }
         } else if let scan {
             scanView(scan)
         }
@@ -191,9 +191,6 @@ public struct UninstallerSettingsPage: View {
     private func selectedCount(_ scan: ScanResult) -> Int { 1 + selectedPaths.count }
     private func selectedTotalSize(_ scan: ScanResult) -> Int {
         scan.appSizeBytes + scan.leftovers.filter { selectedPaths.contains($0.path) }.reduce(0) { $0 + $1.sizeBytes }
-    }
-    private func centered<C: View>(@ViewBuilder _ c: () -> C) -> some View {
-        VStack(spacing: 8) { Spacer(); c(); Spacer() }.frame(maxWidth: .infinity)
     }
 
     private func reload() async {

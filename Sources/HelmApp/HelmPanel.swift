@@ -94,14 +94,19 @@ private struct HelmPanelContent: View {
 
     /// Modules split by how they present in the panel: interactive tiles stay
     /// visible, utilities collapse behind one row so the panel stays compact.
-    private var tiles: [(live: ModuleHost.Live, view: AnyView)] {
-        host.enabledModules.compactMap { live in
-            guard let c = live.descriptor.menuBar(live.vm), !c.isUtility, let tile = c.panelTile else { return nil }
-            return (live, tile)
+    /// One pass — `menuBar` builds a view, so it is asked once per module.
+    private var split: (tiles: [AnyView], utilities: [ModuleHost.Live]) {
+        var tiles: [AnyView] = []
+        var utilities: [ModuleHost.Live] = []
+        for live in host.enabledModules {
+            guard let contribution = live.descriptor.menuBar(live.vm) else { continue }
+            if contribution.isUtility {
+                utilities.append(live)
+            } else if let tile = contribution.panelTile {
+                tiles.append(tile)
+            }
         }
-    }
-    private var utilities: [ModuleHost.Live] {
-        host.enabledModules.filter { $0.descriptor.menuBar($0.vm)?.isUtility == true }
+        return (tiles, utilities)
     }
 
     var body: some View {
@@ -119,8 +124,9 @@ private struct HelmPanelContent: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
             } else {
-                ForEach(Array(tiles.enumerated()), id: \.offset) { _, item in
-                    item.view
+                let (tiles, utilities) = split
+                ForEach(Array(tiles.enumerated()), id: \.offset) { _, tile in
+                    tile
                 }
                 if !utilities.isEmpty {
                     UtilitiesSection(modules: utilities, expanded: $utilitiesExpanded)

@@ -46,7 +46,8 @@ import HelmRuntime
     /// On success the app terminates (the swap script relaunches it), so this never
     /// returns normally in the happy path.
     func downloadAndInstall() {
-        guard let rel = available, installState == .idle else { return }
+        // Retry after a failure must work: only an in-flight download/install blocks.
+        guard let rel = available, installState != .downloading, installState != .installing else { return }
         guard let zip = rel.zipURL else {
             NSWorkspace.shared.open(rel.pageURL)   // no installable asset — manual path
             return
