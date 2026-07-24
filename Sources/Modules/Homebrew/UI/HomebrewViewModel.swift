@@ -13,6 +13,9 @@ import Module_Homebrew_Engine
     @Published public private(set) var searchHits: [SearchHit] = []
     @Published public private(set) var consoleLines: [String] = []
     @Published public private(set) var op: OpState = .idle
+    /// Package descriptions keyed by "f:name" / "c:name", fetched in batches
+    /// after a list or search loads.
+    @Published public private(set) var descriptions: [String: String] = [:]
 
     public init(vm: ModuleViewModel) {
         self.transport = vm.transport
@@ -51,10 +54,36 @@ import Module_Homebrew_Engine
     // MARK: - Queries
 
     public func refreshStatus() async { status = await client.request("status") ?? status }
-    public func refreshInstalled() async { installed = await client.request("listInstalled") ?? [] }
+    public func refreshInstalled() async {
+        installed = await client.request("listInstalled") ?? []
+        await loadDescriptions(formulae: installed.filter { !$0.isCask }.map(\.name),
+                               casks: installed.filter(\.isCask).map(\.name))
+    }
     public func refreshOutdated() async { outdated = await client.request("outdated") ?? [] }
     public func search(_ q: String) async {
         searchHits = await client.request("search", payload: Data(q.utf8)) ?? []
+        await loadDescriptions(formulae: searchHits.filter { !$0.isCask }.map(\.name),
+                               casks: searchHits.filter(\.isCask).map(\.name))
+    }
+
+    public func description(name: String, isCask: Bool) -> String? {
+        descriptions[(isCask ? "c:" : "f:") + name]
+    }
+
+    private struct DescReq: Codable { let names: [String]; let isCask: Bool }
+
+    private func loadDescriptions(formulae: [String], casks: [String]) async {
+        // Only what we don't have yet; one brew call per kind.
+        let newF = formulae.filter { descriptions["f:" + $0] == nil }
+        let newC = casks.filter { descriptions["c:" + $0] == nil }
+        if !newF.isEmpty,
+           let d: [String: String] = await client.request("descriptions", encoding: DescReq(names: newF, isCask: false)) {
+            for (k, v) in d { descriptions["f:" + k] = v }
+        }
+        if !newC.isEmpty,
+           let d: [String: String] = await client.request("descriptions", encoding: DescReq(names: newC, isCask: true)) {
+            for (k, v) in d { descriptions["c:" + k] = v }
+        }
     }
 
     // MARK: - Operations (fire-and-forget; progress via events)

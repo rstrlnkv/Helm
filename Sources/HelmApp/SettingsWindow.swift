@@ -135,7 +135,7 @@ private struct SettingsSidebar: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Color.clear.frame(height: 30)   // traffic-light strip
+            Color.clear.frame(height: 44)   // traffic-light strip + breathing room
             sidebarList
         }
     }
