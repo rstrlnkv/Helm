@@ -1,0 +1,17 @@
+import HelmContract
+import HelmUI
+import Module_KeepAwake_UI
+
+/// All compiled-in module descriptors. Add future modules here.
+@MainActor enum ModuleRegistry {
+    static let all: [any ModuleDescriptor] = [KeepAwakeDescriptor()]
+}
+
+extension ModuleDescriptor {
+    /// `id`/`metadata`/`category` are static requirements and aren't reachable
+    /// directly on the `any ModuleDescriptor` existential; these instance
+    /// forwarders go through the concrete type via `type(of:)` in one place.
+    var idRaw: String { type(of: self).id.rawValue }
+    var moduleMetadata: HelmContract.ModuleMetadata { type(of: self).metadata }
+    var moduleCategory: HelmUI.ModuleCategory { type(of: self).category }
+}
