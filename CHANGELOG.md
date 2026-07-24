@@ -5,6 +5,22 @@ All notable changes to Helm are documented here. The format is loosely based on
 [VERSIONING.md](VERSIONING.md) — MAJOR = global changes, MINOR = new/polished
 features, PATCH = fixes.
 
+## [0.4.0] — 2026-07-24
+
+### Added
+- **Custom active icon for Keep Awake** — Settings → Keep Awake → Active icon lets
+  you pick a shape shown in the menu bar (in the active tint) while Keep Awake is on.
+
+### Changed
+- **Reworked menu-bar icon pickers** — glyph-forward swatches with the selected
+  option's name below the row; the size picker previews each shape at its real size.
+  Preview glyphs are now theme-neutral (match the menu-bar icon) instead of blue.
+- **Icon sizes** are now Tiny/Very small/Small/Medium/Large (9–18pt): dropped the
+  largest sizes, added smaller ones, and replaced XS/S/M codes with words.
+
+### Removed
+- The "Helm" (ship's wheel) menu-bar glyph.
+
 ## [0.3.0] — 2026-07-24
 
 ### Changed
@@ -43,5 +59,6 @@ features, PATCH = fixes.
 - **Localization** — English, 中文, Español, Français, Deutsch, 日本語,
   Русский, Português.
 
+[0.4.0]: https://github.com/rstrlnkv/Helm/releases/tag/v0.4.0
 [0.3.0]: https://github.com/rstrlnkv/Helm/releases/tag/v0.3.0
 [0.2.0]: https://github.com/rstrlnkv/Helm/releases/tag/v0.2.0
