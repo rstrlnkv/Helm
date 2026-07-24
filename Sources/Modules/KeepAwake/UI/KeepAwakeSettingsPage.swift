@@ -71,11 +71,20 @@ public struct KeepAwakeSettingsPage: View {
             Section(KAStr.behavior) {
                 Toggle(KAStr.keepDisplayOn, isOn: $keepDisplayOn)
                     .onChange(of: keepDisplayOn) { _, v in write(v, "keepDisplayOn") }
-                Toggle(KAStr.movePointer, isOn: $jiggleEnabled)
-                    .onChange(of: jiggleEnabled) { _, v in write(v, "jiggleEnabled") }
-                Stepper(KAStr.everyMinutes(jiggleIntervalMinutes), value: $jiggleIntervalMinutes, in: 1...60)
-                    .disabled(!jiggleEnabled)
-                    .onChange(of: jiggleIntervalMinutes) { _, v in write(v, "jiggleIntervalMinutes") }
+                // One row: the interval only means anything with the switch on,
+                // so it sits beside it instead of on a line of its own.
+                LabeledContent(KAStr.movePointer) {
+                    HStack(spacing: 10) {
+                        Stepper(KAStr.everyMinutes(jiggleIntervalMinutes),
+                                value: $jiggleIntervalMinutes, in: 1...60)
+                            .disabled(!jiggleEnabled)
+                            .onChange(of: jiggleIntervalMinutes) { _, v in write(v, "jiggleIntervalMinutes") }
+                            .fixedSize()
+                        Toggle("", isOn: $jiggleEnabled)
+                            .labelsHidden()
+                            .onChange(of: jiggleEnabled) { _, v in write(v, "jiggleEnabled") }
+                    }
+                }
                 Picker(KAStr.defaultDuration, selection: $defaultDurationMinutes) {
                     Text(KAStr.min15).tag(15)
                     Text(KAStr.oneHour).tag(60)
