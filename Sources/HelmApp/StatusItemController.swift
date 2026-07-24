@@ -10,6 +10,7 @@ import HelmUI
     private let statusItem: NSStatusItem
     private var hostCancellable: AnyCancellable?
     private var moduleCancellables: Set<AnyCancellable> = []
+    private var styleObserver: NSObjectProtocol?
 
     private lazy var panel = HelmPanel(
         host: host,
@@ -32,6 +33,12 @@ import HelmUI
 
         hostCancellable = host.$live
             .sink { [weak self] _ in self?.resubscribeToModules() }
+        styleObserver = NotificationCenter.default.addObserver(
+            forName: .helmMenuBarStyleChanged, object: nil, queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            Task { @MainActor in self.refreshIcon() }
+        }
         resubscribeToModules()
     }
 
@@ -50,7 +57,8 @@ import HelmUI
         let token = host.enabledModules
             .compactMap { $0.descriptor.statusAppearance($0.vm).tintToken }
             .first
-        button.image = RingIcon.make(tintToken: token)
+        let style = MenuBarIconStyle(rawValue: AppSettings.menuBarIconStyle) ?? .ring
+        button.image = RingIcon.make(style: style, tintToken: token)
     }
 
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {

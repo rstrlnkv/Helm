@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import HelmRuntime
 import HelmUI
 
@@ -12,7 +13,6 @@ public struct KeepAwakeSettingsPage: View {
     @State private var autoExternalDisplay: Bool
     @State private var autoPower: Bool
     @State private var autoApps: [String]
-    @State private var newAppBundleID: String = ""
 
     @State private var keepDisplayOn: Bool
     @State private var jiggleEnabled: Bool
@@ -46,129 +46,145 @@ public struct KeepAwakeSettingsPage: View {
         Form {
             Section("Automation") {
                 Toggle("Keep awake with external display", isOn: $autoExternalDisplay)
-                    .onChange(of: autoExternalDisplay) { _, v in
-                        store.set(v, for: "autoExternalDisplay")
-                        vm.send("settingsChanged")
-                    }
-                Toggle("Keep awake on power", isOn: $autoPower)
-                    .onChange(of: autoPower) { _, v in
-                        store.set(v, for: "autoPower")
-                        vm.send("settingsChanged")
-                    }
+                    .onChange(of: autoExternalDisplay) { _, v in write(v, "autoExternalDisplay") }
+                Toggle("Keep awake while on power", isOn: $autoPower)
+                    .onChange(of: autoPower) { _, v in write(v, "autoPower") }
+            }
+
+            Section("Apps that keep the Mac awake") {
                 appTriggersEditor
             }
 
             Section("Behavior") {
                 Toggle("Keep display on", isOn: $keepDisplayOn)
-                    .onChange(of: keepDisplayOn) { _, v in
-                        store.set(v, for: "keepDisplayOn")
-                        vm.send("settingsChanged")
-                    }
+                    .onChange(of: keepDisplayOn) { _, v in write(v, "keepDisplayOn") }
                 Toggle("Move pointer periodically", isOn: $jiggleEnabled)
-                    .onChange(of: jiggleEnabled) { _, v in
-                        store.set(v, for: "jiggleEnabled")
-                        vm.send("settingsChanged")
-                    }
+                    .onChange(of: jiggleEnabled) { _, v in write(v, "jiggleEnabled") }
                 Stepper("Every \(jiggleIntervalMinutes) min", value: $jiggleIntervalMinutes, in: 1...60)
                     .disabled(!jiggleEnabled)
-                    .onChange(of: jiggleIntervalMinutes) { _, v in
-                        store.set(v, for: "jiggleIntervalMinutes")
-                        vm.send("settingsChanged")
-                    }
+                    .onChange(of: jiggleIntervalMinutes) { _, v in write(v, "jiggleIntervalMinutes") }
                 Picker("Default duration", selection: $defaultDurationMinutes) {
-                    Text("15m").tag(15)
-                    Text("1h").tag(60)
-                    Text("2h").tag(120)
-                    Text("∞").tag(0)
+                    Text("15 min").tag(15)
+                    Text("1 hour").tag(60)
+                    Text("2 hours").tag(120)
+                    Text("Indefinite").tag(0)
                 }
-                .onChange(of: defaultDurationMinutes) { _, v in
-                    store.set(v, for: "defaultDurationMinutes")
-                    vm.send("settingsChanged")
-                }
+                .onChange(of: defaultDurationMinutes) { _, v in write(v, "defaultDurationMinutes") }
             }
 
             Section("Closed lid") {
-                Toggle("Keep awake with lid closed", isOn: $clamshellEnabled)
-                    .onChange(of: clamshellEnabled) { _, v in
-                        store.set(v, for: "clamshellEnabled")
-                        vm.send("settingsChanged")
-                    }
-                Text("Requires admin permission once (uses pmset).")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Toggle("Keep awake with the lid closed", isOn: $clamshellEnabled)
+                    .onChange(of: clamshellEnabled) { _, v in write(v, "clamshellEnabled") }
+                Text("Requires an admin password once (uses pmset).")
+                    .font(.caption).foregroundStyle(.secondary)
             }
 
             Section("Battery") {
                 Toggle("Turn off on low battery", isOn: $batteryGuardEnabled)
-                    .onChange(of: batteryGuardEnabled) { _, v in
-                        store.set(v, for: "batteryGuardEnabled")
-                        vm.send("settingsChanged")
-                    }
+                    .onChange(of: batteryGuardEnabled) { _, v in write(v, "batteryGuardEnabled") }
                 Stepper("Below \(batteryGuardPercent)%", value: $batteryGuardPercent, in: 5...50, step: 5)
                     .disabled(!batteryGuardEnabled)
-                    .onChange(of: batteryGuardPercent) { _, v in
-                        store.set(v, for: "batteryGuardPercent")
-                        vm.send("settingsChanged")
-                    }
+                    .onChange(of: batteryGuardPercent) { _, v in write(v, "batteryGuardPercent") }
             }
 
-            Section("Appearance") {
-                Picker("Active color", selection: $activeTintColor) {
-                    ForEach(PaletteColor.allCases, id: \.rawValue) { palette in
-                        Label {
-                            Text(palette.rawValue.capitalized)
-                        } icon: {
-                            Circle()
-                                .fill(palette.color)
-                                .frame(width: 10, height: 10)
-                        }
-                        .tag(palette.rawValue)
-                    }
-                }
-                .onChange(of: activeTintColor) { _, v in
-                    store.set(v, for: "activeTintColor")
-                    vm.send("settingsChanged")
-                }
-                Text("Menu-bar ring color while active (inactive = white).")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            Section("Active icon color") {
+                colorSwatches
+                Text("Menu-bar ring color while active (white when idle).")
+                    .font(.caption).foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
     }
 
+    // MARK: - Write-through
+
+    private func write(_ value: Any?, _ key: String) {
+        store.set(value, for: key)
+        vm.send("settingsChanged")
+    }
+
+    // MARK: - App picker
+
     private var appTriggersEditor: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                TextField("Bundle ID (e.g. com.apple.Terminal)", text: $newAppBundleID)
-                    .textFieldStyle(.roundedBorder)
-                Button("Add") {
-                    let trimmed = newAppBundleID.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !trimmed.isEmpty, !autoApps.contains(trimmed) else { return }
-                    autoApps.append(trimmed)
-                    newAppBundleID = ""
-                    store.set(autoApps, for: "autoApps")
-                    vm.send("settingsChanged")
-                }
-                .disabled(newAppBundleID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
-            if !autoApps.isEmpty {
-                ForEach(autoApps, id: \.self) { bundleID in
-                    HStack {
-                        Text(bundleID)
-                            .font(.caption.monospaced())
-                        Spacer()
-                        Button {
-                            autoApps.removeAll { $0 == bundleID }
-                            store.set(autoApps, for: "autoApps")
-                            vm.send("settingsChanged")
-                        } label: {
-                            Image(systemName: "minus.circle")
-                        }
-                        .buttonStyle(.plain)
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(autoApps, id: \.self) { bundleID in
+                let info = Self.appInfo(bundleID)
+                HStack(spacing: 10) {
+                    Image(nsImage: info.icon)
+                        .resizable().frame(width: 20, height: 20)
+                    Text(info.name)
+                    Spacer()
+                    Button {
+                        autoApps.removeAll { $0 == bundleID }
+                        write(autoApps, "autoApps")
+                    } label: {
+                        Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
                     }
+                    .buttonStyle(.plain)
                 }
+            }
+            Button {
+                pickApp()
+            } label: {
+                Label("Add app…", systemImage: "plus")
             }
         }
+    }
+
+    private func pickApp() {
+        let panel = NSOpenPanel()
+        panel.title = "Choose an app"
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+        panel.allowedContentTypes = [.application]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        guard panel.runModal() == .OK, let url = panel.url,
+              let bundleID = Bundle(url: url)?.bundleIdentifier else { return }
+        guard !autoApps.contains(bundleID) else { return }
+        autoApps.append(bundleID)
+        write(autoApps, "autoApps")
+    }
+
+    private static func appInfo(_ bundleID: String) -> (name: String, icon: NSImage) {
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
+            let name = FileManager.default.displayName(atPath: url.path)
+                .replacingOccurrences(of: ".app", with: "")
+            return (name, NSWorkspace.shared.icon(forFile: url.path))
+        }
+        return (bundleID, NSWorkspace.shared.icon(for: .applicationBundle))
+    }
+
+    // MARK: - Color swatches
+
+    private var colorSwatches: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.fixed(30), spacing: 8), count: 6), spacing: 10) {
+            ForEach(PaletteColor.allCases, id: \.rawValue) { palette in
+                let selected = activeTintColor == palette.rawValue
+                Circle()
+                    .fill(palette.color)
+                    .frame(width: 24, height: 24)
+                    .overlay(Circle().strokeBorder(Color.primary.opacity(0.15), lineWidth: 1))
+                    .overlay {
+                        if selected {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(palette == .white || palette == .yellow || palette == .mint ? .black : .white)
+                        }
+                    }
+                    .overlay {
+                        if selected {
+                            Circle().strokeBorder(Color.accentColor, lineWidth: 2).padding(-3)
+                        }
+                    }
+                    .contentShape(Circle())
+                    .onTapGesture {
+                        activeTintColor = palette.rawValue
+                        write(palette.rawValue, "activeTintColor")
+                    }
+                    .help(palette.rawValue.capitalized)
+            }
+        }
+        .padding(.vertical, 4)
     }
 }
