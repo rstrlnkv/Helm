@@ -5,6 +5,13 @@ All notable changes to Helm are documented here. The format is loosely based on
 [VERSIONING.md](VERSIONING.md) — MAJOR = global changes, MINOR = new/polished
 features, PATCH = fixes.
 
+## [0.5.0] — 2026-07-24
+
+### Added
+- **Silent in-app updates** — "Update & Relaunch" downloads the new version,
+  installs it into place, and relaunches, with no manual drag and no Gatekeeper
+  prompt (the app downloads the release zip itself, so it isn't quarantined).
+
 ## [0.4.0] — 2026-07-24
 
 ### Added
@@ -59,6 +66,7 @@ features, PATCH = fixes.
 - **Localization** — English, 中文, Español, Français, Deutsch, 日本語,
   Русский, Português.
 
+[0.5.0]: https://github.com/rstrlnkv/Helm/releases/tag/v0.5.0
 [0.4.0]: https://github.com/rstrlnkv/Helm/releases/tag/v0.4.0
 [0.3.0]: https://github.com/rstrlnkv/Helm/releases/tag/v0.3.0
 [0.2.0]: https://github.com/rstrlnkv/Helm/releases/tag/v0.2.0
