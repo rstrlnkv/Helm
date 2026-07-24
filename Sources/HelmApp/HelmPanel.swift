@@ -10,6 +10,9 @@ private final class KeyablePanel: NSPanel {
     override var canBecomeKey: Bool { true }
 }
 
+/// One width for the strip window and the card content inside it.
+private let helmPanelWidth: CGFloat = 300
+
 @MainActor final class HelmPanel: NSObject {
     private let panel: NSPanel
     private let hosting: NSHostingView<HelmPanelContent>
@@ -74,7 +77,7 @@ private final class KeyablePanel: NSPanel {
         anchorScreen = buttonWindow.screen ?? NSScreen.main
         let visible = anchorScreen?.visibleFrame ?? .zero
         let margin: CGFloat = 8
-        let width: CGFloat = 300
+        let width = helmPanelWidth
         var x = statusButtonScreenFrame.midX - width / 2
         x = min(max(x, visible.minX + margin), visible.maxX - width - margin)
         let top = statusButtonScreenFrame.minY - 4
@@ -230,7 +233,7 @@ private struct HelmPanelContent: View {
             }
         }
         .padding(12)
-        .frame(width: 300)
+        .frame(width: helmPanelWidth)
         .onReceive(NotificationCenter.default.publisher(for: .helmMenuBarStyleChanged)) { _ in
             showSettingsButton = AppSettings.showSettingsButton
             showQuitButton = AppSettings.showQuitButton

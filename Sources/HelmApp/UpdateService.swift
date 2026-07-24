@@ -67,14 +67,6 @@ import HelmRuntime
         }
     }
 
-    private struct GHAsset: Decodable { let name: String; let browser_download_url: String }
-    private struct GHRelease: Decodable {
-        let tag_name: String
-        let html_url: String
-        let body: String?
-        let assets: [GHAsset]
-    }
-
     private func performCheck(manual: Bool) async {
         if manual { checking = true; lastMessage = nil }
         defer { checking = false }
@@ -87,29 +79,25 @@ import HelmRuntime
         do {
             let (data, resp) = try await URLSession.shared.data(for: req)
             guard let http = resp as? HTTPURLResponse else { return }
-            if http.statusCode == 404 {   // no releases published yet
+            // What the response MEANS is decided by the unit-tested core.
+            switch UpdateCheck.evaluate(statusCode: http.statusCode, data: data,
+                                        currentVersion: currentVersion) {
+            case .upToDate:
                 available = nil
                 if manual { lastMessage = "up-to-date" }
-                return
-            }
-            guard http.statusCode == 200 else {
+            case .error:
                 if manual { lastMessage = "error" }
-                return
-            }
-            let gh = try JSONDecoder().decode(GHRelease.self, from: data)
-            if UpdateVersion.isNewer(gh.tag_name, than: currentVersion),
-               let page = URL(string: gh.html_url) {
-                let zip = gh.assets.first { $0.name.hasSuffix(".zip") }
-                let dmg = gh.assets.first { $0.name.hasSuffix(".dmg") }
-                available = Release(version: gh.tag_name,
+            case .available(let r):
+                guard let page = URL(string: r.pageURL) else {
+                    if manual { lastMessage = "error" }
+                    return
+                }
+                available = Release(version: r.version,
                                     pageURL: page,
-                                    zipURL: zip.flatMap { URL(string: $0.browser_download_url) },
-                                    downloadURL: (dmg ?? zip).flatMap { URL(string: $0.browser_download_url) },
-                                    notes: gh.body ?? "")
+                                    zipURL: r.zipURL.flatMap(URL.init(string:)),
+                                    downloadURL: r.downloadURL.flatMap(URL.init(string:)),
+                                    notes: r.notes)
                 if manual { lastMessage = "available" }
-            } else {
-                available = nil
-                if manual { lastMessage = "up-to-date" }
             }
         } catch {
             if manual { lastMessage = "error" }

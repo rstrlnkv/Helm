@@ -5,6 +5,19 @@ import Module_Uninstaller_Engine
 
 extension InstalledApp: Identifiable { public var id: String { bundleID } }
 
+/// `NSWorkspace.icon(forFile:)` hits the disk; List rows re-render often, so
+/// icons are memoized per bundle path.
+@MainActor
+private enum AppIconCache {
+    static let cache = NSCache<NSString, NSImage>()
+    static func icon(forFile path: String) -> NSImage {
+        if let hit = cache.object(forKey: path as NSString) { return hit }
+        let img = NSWorkspace.shared.icon(forFile: path)
+        cache.setObject(img, forKey: path as NSString)
+        return img
+    }
+}
+
 public struct UninstallerSettingsPage: View {
     @StateObject private var uvm: UninstallerViewModel
 
@@ -73,7 +86,7 @@ public struct UninstallerSettingsPage: View {
                 // pane (the vibrant .sidebar material belongs to the real sidebar).
                 List(filtered, selection: $selectedID) { app in
                     HStack(spacing: 10) {
-                        Image(nsImage: NSWorkspace.shared.icon(forFile: app.path))
+                        Image(nsImage: AppIconCache.icon(forFile: app.path))
                             .resizable().frame(width: 30, height: 30)
                         VStack(alignment: .leading, spacing: 1) {
                             Text(app.name).lineLimit(1)
@@ -108,7 +121,7 @@ public struct UninstallerSettingsPage: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     // The app bundle — always removed.
-                    row(icon: NSWorkspace.shared.icon(forFile: scan.appPath),
+                    row(icon: AppIconCache.icon(forFile: scan.appPath),
                         title: selectedApp?.name ?? scan.bundleID,
                         subtitle: UnStr.theApp, size: scan.appSizeBytes,
                         checked: .constant(true), locked: true, byName: false)
