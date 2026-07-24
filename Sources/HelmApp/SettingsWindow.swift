@@ -249,9 +249,14 @@ private struct MenuBarSettingsView: View {
         return VStack(spacing: 6) {
             Image(nsImage: RingIcon.make(style: s, size: .large, tintToken: "blue"))
                 .frame(width: 24, height: 24)
-            Text(s.label).font(.caption2)
+            Text(s.label)
+                .font(.caption2)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .minimumScaleFactor(0.75)
+                .frame(height: 26)
         }
-        .frame(width: 68, height: 58)
+        .frame(width: 76, height: 66)
         .background(RoundedRectangle(cornerRadius: 8)
             .fill(selected ? Color.accentColor.opacity(0.18) : Color.primary.opacity(0.04)))
         .overlay(RoundedRectangle(cornerRadius: 8)

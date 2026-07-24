@@ -7,6 +7,8 @@ enum AppStr {
     static var iconShape: String { L("Icon shape", [.ru: "Форма иконки", .es: "Forma del icono", .fr: "Forme de l’icône", .de: "Symbolform", .ja: "アイコンの形", .zh: "图标形状", .pt: "Forma do ícone"]) }
     static var iconSize: String { L("Icon size", [.ru: "Размер иконки", .es: "Tamaño del icono", .fr: "Taille de l’icône", .de: "Symbolgröße", .ja: "アイコンのサイズ", .zh: "图标大小", .pt: "Tamanho do ícone"]) }
     static var size: String { L("Size", [.ru: "Размер", .es: "Tamaño", .fr: "Taille", .de: "Größe", .ja: "サイズ", .zh: "大小", .pt: "Tamanho"]) }
+    static var settings: String { L("Settings…", [.ru: "Настройки…", .es: "Ajustes…", .fr: "Réglages…", .de: "Einstellungen…", .ja: "設定…", .zh: "设置…", .pt: "Ajustes…"]) }
+    static var quit: String { L("Quit", [.ru: "Выход", .es: "Salir", .fr: "Quitter", .de: "Beenden", .ja: "終了", .zh: "退出", .pt: "Sair"]) }
     static var menuBarNote: String {
         L("The Helm ring turns your Keep Awake color while active, white when idle.",
           [.ru: "Кольцо Helm в меню-баре красится в цвет Keep Awake когда активно, белое в покое.",

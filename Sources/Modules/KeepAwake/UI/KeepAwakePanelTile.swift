@@ -15,11 +15,12 @@ public struct KeepAwakePanelTile: View {
             header
             if vm.isActive, let end = vm.endDate {
                 countdownRow(end)
-            } else if vm.isActive {
-                if !vm.activeConditions.isEmpty { conditionsCaptionView }
             } else {
                 presetRow
                 customRow
+            }
+            if vm.isActive && !vm.activeConditions.isEmpty {
+                conditionsCaptionView
             }
             if vm.isActive && vm.clamshellActive {
                 Text(KAStr.lidClosed)

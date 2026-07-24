@@ -4,7 +4,7 @@ import HelmUI
 /// tables carry zh/es/fr/de/ja/ru/pt.
 enum KAStr {
     static var moduleName: String {
-        L("Keep Awake", [.ru: "Не давать спать", .es: "Mantener activo", .fr: "Rester éveillé",
+        L("Keep Awake", [.ru: "Не спать", .es: "Mantener activo", .fr: "Rester éveillé",
                          .de: "Wach halten", .ja: "スリープ防止", .zh: "保持唤醒", .pt: "Manter ativo"])
     }
     static var summary: String {
