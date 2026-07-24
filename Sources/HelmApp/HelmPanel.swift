@@ -15,6 +15,7 @@ private final class KeyablePanel: NSPanel {
     private let hosting: NSHostingView<HelmPanelContent>
     private let sizeRelay: SizeRelay
     private var dismissMonitor: Any?
+    private var dismissObserver: NSObjectProtocol?
     private var statusButtonScreenFrame: NSRect = .zero
     /// Screen the panel was opened on; clamping target for repositioning.
     private var anchorScreen: NSScreen?
@@ -38,11 +39,13 @@ private final class KeyablePanel: NSPanel {
         panel.isMovable = false
         self.panel = panel
 
-        // The window frame is OURS: the hosting view must not auto-resize the
-        // window (its resize keeps the bottom edge, pushing the top under the
-        // menu bar). Content reports its size; applySize sets the whole frame
-        // atomically with the top edge anchored under the status item. Height
-        // changes are applied instantly, in the same tick as the content change.
+        // Sized ONCE per open (a transparent strip from the status item to the
+        // screen bottom) and never moved while visible: moving a transparent
+        // layer-backed window drags its composited surface ahead of the SwiftUI
+        // redraw, which is what made an animating card look like it slid. The
+        // card is top-pinned and animates entirely inside the static window.
+        // A plain NSHostingView is used deliberately — a custom hitTest here
+        // previously swallowed every click.
         let sizeBox = SizeRelay()
         let hosting = NSHostingView(rootView: HelmPanelContent(host: host, sizeRelay: sizeBox))
         hosting.sizingOptions = []
@@ -50,7 +53,13 @@ private final class KeyablePanel: NSPanel {
         self.sizeRelay = sizeBox
         panel.contentView = hosting
         super.init()
-        sizeBox.onChange = { [weak self] size in self?.applySize(size) }
+        // Card shape changes inside a static window; keep the shadow with it.
+        sizeBox.onChange = { [weak self] _ in self?.panel.invalidateShadow() }
+        dismissObserver = NotificationCenter.default.addObserver(
+            forName: .helmPanelDismissRequested, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.hide() }
+        }
     }
 
     var isVisible: Bool { panel.isVisible }
@@ -63,31 +72,27 @@ private final class KeyablePanel: NSPanel {
         guard let buttonWindow = statusButton.window else { return }
         statusButtonScreenFrame = buttonWindow.convertToScreen(statusButton.frame)
         anchorScreen = buttonWindow.screen ?? NSScreen.main
-        hosting.layoutSubtreeIfNeeded()
-        applySize(sizeRelay.lastSize == .zero ? hosting.fittingSize : sizeRelay.lastSize)
-        panel.orderFrontRegardless()
-        installDismissMonitor()
-    }
-
-    /// Single atomic frame update: top edge just below the status item, clamped
-    /// into the screen so an edge-adjacent status item doesn't clip the panel.
-    /// Growth therefore always extends DOWNWARD; the top never moves.
-    private func applySize(_ size: CGSize) {
-        guard size.width > 1, size.height > 1 else { return }
         let visible = anchorScreen?.visibleFrame ?? .zero
         let margin: CGFloat = 8
-        var x = statusButtonScreenFrame.midX - size.width / 2
-        x = min(max(x, visible.minX + margin), visible.maxX - size.width - margin)
-        var y = statusButtonScreenFrame.minY - size.height - 4
-        if y < visible.minY + margin { y = visible.minY + margin }
-        panel.setFrame(NSRect(x: x, y: y, width: size.width, height: size.height),
+        let width: CGFloat = 300
+        var x = statusButtonScreenFrame.midX - width / 2
+        x = min(max(x, visible.minX + margin), visible.maxX - width - margin)
+        let top = statusButtonScreenFrame.minY - 4
+        let bottom = visible.minY + margin
+        panel.setFrame(NSRect(x: x, y: bottom, width: width, height: max(top - bottom, 120)),
                        display: true, animate: false)
+        panel.orderFrontRegardless()
+        // Key focus (no app activation) is what makes SwiftUI animations tick.
+        panel.makeKey()
+        installDismissMonitor()
     }
 
     private func hide() {
         removeDismissMonitor()
         panel.orderOut(nil)
     }
+
+
 
     /// Close the panel when the user clicks outside it (but not on the status
     /// item itself — that click re-toggles through the normal path).
@@ -107,6 +112,11 @@ private final class KeyablePanel: NSPanel {
             self.dismissMonitor = nil
         }
     }
+}
+
+extension Notification.Name {
+    /// Posted when the transparent area under the card is clicked.
+    static let helmPanelDismissRequested = Notification.Name("helmPanelDismissRequested")
 }
 
 /// Bridges the SwiftUI content's measured size out to `HelmPanel`, which owns
@@ -173,6 +183,20 @@ private struct HelmPanelContent: View {
     }
 
     var body: some View {
+        VStack(spacing: 0) {
+            card
+            // Transparent filler: the window spans a strip, so a click below the
+            // card should dismiss (a menu behaves the same way).
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    NotificationCenter.default.post(name: .helmPanelDismissRequested, object: nil)
+                }
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    private var card: some View {
         VStack(alignment: .leading, spacing: 8) {
             if host.enabledModules.isEmpty {
                 VStack(spacing: 8) {
@@ -230,7 +254,7 @@ private struct UtilitiesSection: View {
     var body: some View {
         VStack(spacing: 0) {
             Button {
-                expanded.toggle()
+                withAnimation(.easeInOut(duration: 0.24)) { expanded.toggle() }
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "wrench.and.screwdriver")
@@ -251,13 +275,19 @@ private struct UtilitiesSection: View {
 
             if expanded {
                 VStack(spacing: 2) {
-                    ForEach(modules, id: \.descriptor.idRaw) { live in
+                    ForEach(Array(modules.enumerated()), id: \.element.descriptor.idRaw) { index, live in
                         utilityRow(live)
+                            // Fade only, cascading: `.move(edge:)` made rows fly in
+                            // over the header. The card's height growth (animated by
+                            // the enclosing withAnimation) is what reveals them.
+                            .transition(.opacity.animation(
+                                .easeOut(duration: 0.18).delay(Double(index) * 0.06)))
                     }
                 }
                 .padding(.top, 8)
             }
         }
+        .clipped()
         .helmPanelCard()
     }
 
