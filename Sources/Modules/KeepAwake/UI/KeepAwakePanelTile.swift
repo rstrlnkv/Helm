@@ -149,7 +149,7 @@ public struct KeepAwakePanelTile: View {
         VStack(alignment: .leading, spacing: 8) {
             Divider().padding(.top, 10)
 
-            settingRow(KAStr.customTimer) {
+            settingRow(KAStr.timer) {
                 HStack(spacing: 6) {
                     // A menu of sensible durations beats nudging a stepper five
                     // minutes at a time in a 300pt panel.
@@ -162,7 +162,7 @@ public struct KeepAwakePanelTile: View {
                     .labelsHidden()
                     .pickerStyle(.menu)
                     .controlSize(.small)
-                    .fixedSize()
+                    .frame(width: 84)
 
                     Button(KAStr.start) {
                         vm.send("start", payload: startPayload(customMinutes))
@@ -188,7 +188,9 @@ public struct KeepAwakePanelTile: View {
         }
     }
 
-    private static let timerOptions = [5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 240]
+    // Round durations only: a compound label ("1 ч 30 мин") forced the menu wide
+    // enough to push Start out of the card.
+    private static let timerOptions = [5, 10, 15, 20, 30, 45, 60, 120, 180, 240]
 
     /// "45 мин" / "1 ч" / "1 ч 30 мин" — minutes below an hour, hours above.
     /// `compact` uses single-letter units, for the narrow preset pills.
