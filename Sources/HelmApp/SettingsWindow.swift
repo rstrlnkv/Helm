@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 import HelmContract
 import HelmUI
@@ -10,6 +11,12 @@ import HelmUI
 @MainActor final class SettingsWindow: NSObject, NSWindowDelegate {
     private let window: NSWindow
     private let model: SettingsModel
+    private var selectionCancellable: AnyCancellable?
+
+    /// Standard size for toggle-style module pages; utilities (Uninstaller,
+    /// Homebrew) show large data lists and get a roomier window.
+    private static let standardSize = NSSize(width: 820, height: 580)
+    private static let largeSize = NSSize(width: 1100, height: 740)
 
     init(host: ModuleHost) {
         let model = SettingsModel(host: host)
@@ -20,12 +27,36 @@ import HelmUI
         window.title = "Helm Settings"
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
-        window.setContentSize(NSSize(width: 820, height: 580))
+        window.setContentSize(Self.standardSize)
         window.center()
         window.isReleasedWhenClosed = false
         self.window = window
         super.init()
         window.delegate = self
+        selectionCancellable = model.$selection.sink { [weak self] selection in
+            Task { @MainActor in self?.adjustSize(for: selection) }
+        }
+    }
+
+    /// Grow the window for list-heavy utility pages, return to the standard
+    /// size elsewhere. The top-left corner stays put (origin is bottom-left).
+    private func adjustSize(for selection: SettingsSelection?) {
+        var large = false
+        if case .module(let id)? = selection,
+           let descriptor = ModuleRegistry.all.first(where: { $0.idRaw == id }),
+           descriptor.moduleCategory == .utilities {
+            large = true
+        }
+        let target = large ? Self.largeSize : Self.standardSize
+        guard window.frame.size != target else { return }
+        var frame = window.frame
+        frame.origin.y = frame.maxY - target.height
+        frame.size = target
+        if let vis = window.screen?.visibleFrame {
+            frame.origin.x = min(max(frame.origin.x, vis.minX), max(vis.maxX - frame.width, vis.minX))
+            frame.origin.y = min(max(frame.origin.y, vis.minY), max(vis.maxY - frame.height, vis.minY))
+        }
+        window.setFrame(frame, display: true, animate: window.isVisible)
     }
 
     /// `selecting` opens the window on that module's page (used by panel utility rows).
