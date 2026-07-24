@@ -7,7 +7,7 @@ public struct KeepAwakePanelTile: View {
     @ObservedObject private var vm: ModuleViewModel
     private let store: NamespacedStore
 
-    @State private var customMinutes = 30
+    @State private var customMinutes: Int
     @State private var showMore = false
     /// Natural height of the ⋯ block, measured once so the disclosure can
     /// animate between 0 and a concrete value.
@@ -20,6 +20,11 @@ public struct KeepAwakePanelTile: View {
         self.store = store
         _autoExternalDisplay = State(initialValue: store.bool("autoExternalDisplay", default: false))
         _autoPower = State(initialValue: store.bool("autoPower", default: false))
+        // Last panel choice wins; otherwise the module's default duration
+        // (0 = indefinite, which isn't a timer value) and finally 30.
+        let remembered = store.int("panelTimerMinutes", default: 0)
+        let fallback = store.int("defaultDurationMinutes", default: 0)
+        _customMinutes = State(initialValue: remembered > 0 ? remembered : (fallback > 0 ? fallback : 30))
     }
 
     public var body: some View {
@@ -32,23 +37,31 @@ public struct KeepAwakePanelTile: View {
                 countdownRow(end).padding(.top, 10)
             } else {
                 presetRow.padding(.top, 10)
-                // Canonical accordion: the block always exists, its natural
-                // height is measured, and the animation interpolates between 0
-                // and that number. Animating to `nil` (or relying on insertion
-                // transitions) left the card's height and the content out of
-                // step — which showed up as clipped pills or the block painting
-                // over the next tile.
-                moreControls
-                    .onGeometryChange(for: CGFloat.self, of: \.size.height) { h in
-                        if h > 0 { moreHeight = h }
-                    }
-                    .frame(height: showMore ? moreHeight : 0, alignment: .top)
-                    .opacity(showMore ? 1 : 0)
-                    .clipped()
-                    .allowsHitTesting(showMore)
             }
+            // Canonical accordion, available in both states: the block always
+            // exists, its natural height is measured, and the animation
+            // interpolates between 0 and that number (SwiftUI can't animate to
+            // `nil`, which left the card and its content out of step).
+            moreControls
+                .onGeometryChange(for: CGFloat.self, of: \.size.height) { h in
+                    if h > 0 { moreHeight = h }
+                }
+                .frame(height: showMore ? moreHeight : 0, alignment: .top)
+                .opacity(showMore ? 1 : 0)
+                .clipped()
+                .allowsHitTesting(showMore)
         }
         .helmPanelCard()
+        // The store isn't observable, so these mirrored values would otherwise
+        // drift once the same settings are changed in the Settings window.
+        .onReceive(NotificationCenter.default.publisher(for: .helmStoreChanged)) { note in
+            if store.changed(note, is: "autoExternalDisplay") {
+                autoExternalDisplay = store.bool("autoExternalDisplay", default: false)
+            }
+            if store.changed(note, is: "autoPower") {
+                autoPower = store.bool("autoPower", default: false)
+            }
+        }
     }
 
     // MARK: - Header
@@ -145,12 +158,19 @@ public struct KeepAwakePanelTile: View {
 
             settingRow(KAStr.timer) {
                 HStack(spacing: 6) {
-                    Text("\(customMinutes) \(KAStr.minutesUnit)")
-                        .font(.caption).monospacedDigit()
-                        .foregroundStyle(.secondary)
-                    Stepper("", value: $customMinutes, in: 5...720, step: 5)
-                        .labelsHidden()
-                        .controlSize(.mini)
+                    // A menu of sensible durations beats nudging a stepper five
+                    // minutes at a time in a 300pt panel.
+                    Picker("", selection: $customMinutes) {
+                        ForEach(Self.timerOptions, id: \.self) { minutes in
+                            Text(Self.durationLabel(minutes)).tag(minutes)
+                        }
+                    }
+                    .onChange(of: customMinutes) { _, v in store.set(v, for: "panelTimerMinutes") }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .controlSize(.small)
+                    .fixedSize()
+
                     Button(KAStr.start) {
                         vm.send("start", payload: startPayload(customMinutes))
                         withAnimation(.easeInOut(duration: 0.24)) { showMore = false }
@@ -159,6 +179,16 @@ public struct KeepAwakePanelTile: View {
                 }
             }
         }
+    }
+
+    private static let timerOptions = [5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 240]
+
+    /// "45 мин" / "1 ч" / "1 ч 30 мин" — minutes below an hour, hours above.
+    private static func durationLabel(_ minutes: Int) -> String {
+        guard minutes >= 60 else { return "\(minutes) \(KAStr.minutesUnit)" }
+        let h = minutes / 60, m = minutes % 60
+        return m == 0 ? "\(h) \(KAStr.hoursUnit)"
+                      : "\(h) \(KAStr.hoursUnit) \(m) \(KAStr.minutesUnit)"
     }
 
     /// Label on the left, trailing control(s) pinned to the right edge.
@@ -194,6 +224,8 @@ public struct KeepAwakePanelTile: View {
                     vm.send("start", payload: startPayload(newMinutes))
                 }
                 .controlSize(.small)
+                // The automation controls must stay reachable while a timer runs.
+                morePill.fixedSize()
             }
         }
     }
