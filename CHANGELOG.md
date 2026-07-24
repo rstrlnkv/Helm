@@ -3,9 +3,14 @@
 All notable changes to Helm are documented here. The format is loosely based on
 [Keep a Changelog](https://keepachangelog.com/); versions follow SemVer.
 
-## [Unreleased]
+## [0.2.0] — 2026-07-24
 
 ### Added
+- **GitHub updates** — Helm checks the public repo's latest release once a day
+  and from Settings → General → Updates, surfacing a download link when a newer
+  version is out.
+- **What's New** — About → "What's New" renders this changelog in-app; About now
+  shows the version, build number, and enabled-module count.
 - **Keep Awake module** — prevent sleep manually, by timer (presets + custom
   minutes with a live countdown), or automatically when an external display or
   power is connected, or when chosen apps run. Optional "keep display on",
@@ -22,4 +27,4 @@ All notable changes to Helm are documented here. The format is loosely based on
 - **Localization** — English, 中文, Español, Français, Deutsch, 日本語,
   Русский, Português.
 
-[Unreleased]: https://github.com/rstrlnkv/Helm
+[0.2.0]: https://github.com/rstrlnkv/Helm/releases/tag/v0.2.0
