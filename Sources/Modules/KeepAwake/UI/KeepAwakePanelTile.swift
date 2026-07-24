@@ -4,6 +4,7 @@ import HelmUI
 /// Compact tile shown in the shared Helm panel.
 public struct KeepAwakePanelTile: View {
     @ObservedObject private var vm: ModuleViewModel
+    @State private var customMinutes = 30
 
     public init(vm: ModuleViewModel) {
         self.vm = vm
@@ -12,9 +13,17 @@ public struct KeepAwakePanelTile: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             header
-            presetRow
-            if vm.isActive {
-                captionRow
+            if vm.isActive, let end = vm.endDate {
+                countdownRow(end)
+            } else if vm.isActive {
+                if !vm.activeConditions.isEmpty { conditionsCaptionView }
+            } else {
+                presetRow
+                customRow
+            }
+            if vm.isActive && vm.clamshellActive {
+                Text("Lid closed — staying awake")
+                    .font(.caption).foregroundStyle(.secondary)
             }
         }
         .helmPanelCard()
@@ -32,36 +41,74 @@ public struct KeepAwakePanelTile: View {
         }
     }
 
+    // MARK: - Idle: presets + custom
+
     private var presetRow: some View {
         HStack(spacing: 6) {
-            presetButton(label: "15m", minutes: 15)
-            presetButton(label: "1h", minutes: 60)
-            presetButton(label: "2h", minutes: 120)
-            presetButton(label: "∞", minutes: 0)
+            presetPill("15m", 15)
+            presetPill("1h", 60)
+            presetPill("2h", 120)
+            presetPill("∞", 0)
         }
     }
 
-    private func presetButton(label: String, minutes: Int) -> some View {
-        Button(label) {
+    private func presetPill(_ label: String, _ minutes: Int) -> some View {
+        Button {
             vm.send("start", payload: startPayload(minutes))
+        } label: {
+            Text(label)
+                .font(.subheadline.weight(.medium))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+                .background(Capsule().fill(Color.primary.opacity(0.08)))
+                .contentShape(Capsule())
         }
-        .buttonStyle(.bordered)
-        .controlSize(.small)
-        .frame(maxWidth: .infinity)
+        .buttonStyle(.plain)
     }
 
-    @ViewBuilder
-    private var captionRow: some View {
-        if !vm.activeConditions.isEmpty {
-            Text(conditionsCaption)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+    private var customRow: some View {
+        HStack(spacing: 8) {
+            Stepper("\(customMinutes) min", value: $customMinutes, in: 5...720, step: 5)
+                .font(.subheadline)
+            Button("Start") {
+                vm.send("start", payload: startPayload(customMinutes))
+            }
+            .controlSize(.small)
         }
-        if vm.clamshellActive {
-            Text("Lid closed — keeping display awake")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+    }
+
+    // MARK: - Active: countdown
+
+    private func countdownRow(_ end: Date) -> some View {
+        TimelineView(.periodic(from: .now, by: 1)) { ctx in
+            let remaining = max(0, end.timeIntervalSince(ctx.date))
+            HStack(spacing: 8) {
+                Image(systemName: "timer").foregroundStyle(.secondary)
+                Text(Self.formatRemaining(remaining))
+                    .font(.subheadline.weight(.semibold))
+                    .monospacedDigit()
+                Spacer()
+                Button("+15m") {
+                    let newMinutes = Int(ceil(remaining / 60)) + 15
+                    vm.send("start", payload: startPayload(newMinutes))
+                }
+                .controlSize(.small)
+            }
         }
+    }
+
+    private static func formatRemaining(_ s: TimeInterval) -> String {
+        let t = Int(s), h = Int(t) / 3600, m = (t % 3600) / 60, sec = t % 60
+        return h > 0 ? String(format: "%d:%02d:%02d", h, m, sec)
+                     : String(format: "%d:%02d", m, sec)
+    }
+
+    // MARK: - Active: auto conditions
+
+    private var conditionsCaptionView: some View {
+        Text(conditionsCaption)
+            .font(.caption)
+            .foregroundStyle(.secondary)
     }
 
     private var conditionsCaption: String {

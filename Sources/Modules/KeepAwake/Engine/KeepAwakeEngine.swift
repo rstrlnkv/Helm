@@ -161,6 +161,26 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         emitState()
     }
 
+    /// Re-apply live-tunable side effects to current settings while a session is
+    /// active, so toggling keepDisplayOn / clamshell / jiggle takes effect now
+    /// (not only on the next session).
+    private func reconcileActiveSettings() {
+        guard isActive else { return }
+        assertions.release()
+        assertions.preventSleep(display: settings.keepDisplayOn)
+        if settings.clamshellEnabled, !clamshellActive {
+            engageClamshell()
+        } else if !settings.clamshellEnabled, clamshellActive {
+            disengageClamshell()
+        }
+        if settings.jiggleEnabled, jiggleToken == nil {
+            scheduleJiggle()
+        } else if !settings.jiggleEnabled {
+            jiggleToken = nil
+        }
+        emitState()
+    }
+
     private func externalDisplayCondition() -> Bool {
         settings.autoExternalDisplay && ExternalDisplaySupport.hasExternal(builtInFlags: displayInfo.builtInFlags())
     }
@@ -288,6 +308,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                 self.stopSession()
             case "settingsChanged":
                 self.recompute()
+                self.reconcileActiveSettings()
             default:
                 break
             }
