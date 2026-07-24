@@ -126,8 +126,11 @@ public struct KeepAwakePanelTile: View {
     /// presets — same disclosure language as the panel's Utilities section
     /// (rows fade in cascading, the card grows downward).
     private var moreControls: some View {
+        // The top gap lives INSIDE the measured block: with stack spacing at 0
+        // it must not exist while collapsed, and it should animate in with the
+        // rest of the block.
         VStack(alignment: .leading, spacing: 8) {
-            Divider()
+            Divider().padding(.top, 10)
             // Label left, control hard against the right edge — one alignment
             // line for every row in the block.
             settingRow(KAStr.withExternalDisplay) {
