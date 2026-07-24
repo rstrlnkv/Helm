@@ -95,6 +95,7 @@ private struct SettingsRootView: View {
     private static func color(for category: ModuleCategory) -> Color {
         switch category {
         case .power: return .orange
+        case .network: return .indigo
         case .clipboard: return .blue
         case .window: return .green
         case .media: return .pink

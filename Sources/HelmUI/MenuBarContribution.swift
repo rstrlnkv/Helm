@@ -8,5 +8,5 @@ public struct MenuBarContribution {
     }
 }
 public enum ModuleCategory: String, CaseIterable, Sendable {
-    case power, clipboard, window, media, files, appearance, misc
+    case power, network, clipboard, window, media, files, appearance, misc
 }
