@@ -6,18 +6,7 @@
 
 **Architecture:** Approach C from [architecture spec](../specs/2026-07-20-helm-architecture-design.md). Keep Awake runs `.inProcess` (LocalTransport). Pure logic is TDD'd headless; side effects (IOKit / pmset / CGEvent / power / display) sit behind injectable protocols. Module = headless `Engine` target (no SwiftUI) + `UI` target. See [Keep Awake spec](../specs/2026-07-20-keep-awake-design.md).
 
-**Tech Stack:** Swift 6, SwiftPM (`swift build` + `swift run HelmTests`), AppKit + SwiftUI, macOS 26 SDK. App assembled into a `.app` bundle by a thin packaging script (LSUIElement / `.accessory`). XPC service target (`HelmModuleHostXPC`) is **deferred** — reserved by the contract, not built until the first `.xpc` module (YAGNI).
-
-## Testing harness (IMPORTANT — read before any test step)
-
-**This machine has only Command Line Tools, no full Xcode → `XCTest` and Swift Testing are unavailable; `.testTarget` will not build.** (Same reason the prior fork used a hand-rolled harness.) So we do NOT use XCTest. Instead:
-
-- A tiny assertion lib `HelmTestKit` exposes `expect(_ cond: Bool, _ msg: String)`.
-- An **executable** target `HelmTests` imports the library targets and runs all checks; `main.swift` ends with `TestReporter.shared.finish()`. Green = prints `TESTS OK (N checks)` and exits 0; any failure prints `FAIL […]` and exits 1.
-- Run tests with **`swift run HelmTests`** (never `swift test`).
-- Pure-logic under test must be `public` (it lives in library targets; the test executable imports it — no `@testable`).
-
-**Translating the XCTest snippets in this plan:** every "failing test" step below is written XCTest-style for readability. Implement it as free functions in `HelmTests` instead: drop `import XCTest`/`XCTestCase`; turn `func test_x()` methods into functions called from `main.swift`; map `XCTAssertEqual(a,b)` → `expect(a == b, "…")`, `XCTAssertTrue(c)` → `expect(c, "…")`, `XCTAssertFalse(c)` → `expect(!c, "…")`. Keep the same cases/coverage.
+**Tech Stack:** Swift 6, SwiftPM (`swift build`/`swift test`), AppKit + SwiftUI, macOS 26 SDK, XCTest. App assembled into a `.app` bundle by a thin packaging script (LSUIElement / `.accessory`). XPC service target (`HelmModuleHostXPC`) is **deferred** — reserved by the contract, not built until the first `.xpc` module (YAGNI).
 
 ---
 
@@ -92,55 +81,24 @@ let package = Package(
             dependencies: ["HelmContract", "HelmRuntime", "HelmUI",
                            "Module_KeepAwake_Engine", "Module_KeepAwake_UI"]
         ),
-        // Test harness (no XCTest on this machine — see "Testing harness").
-        .target(name: "HelmTestKit"),
-        .executableTarget(
-            name: "HelmTests",
-            dependencies: ["HelmTestKit", "HelmContract", "HelmRuntime",
-                           "Module_KeepAwake_Engine"]
+        .testTarget(name: "HelmRuntimeTests", dependencies: ["HelmRuntime"]),
+        .testTarget(
+            name: "Module_KeepAwake_EngineTests",
+            dependencies: ["Module_KeepAwake_Engine"],
+            path: "Tests/Modules/KeepAwake/EngineTests"
         ),
     ]
 )
 ```
 
-- [ ] **Step 2: Add placeholder sources** so every target has ≥1 file. Each placeholder: `enum <TargetName>Placeholder {}` for HelmContract/HelmRuntime/HelmUI/Module_KeepAwake_Engine/Module_KeepAwake_UI. `HelmApp/main.swift`: `print("Helm")`.
+- [ ] **Step 2: Add placeholder sources** so every target has ≥1 file. Each placeholder: `// placeholder` with an empty `enum <TargetName>Placeholder {}`. `HelmApp/main.swift`: `print("Helm")`. Add empty test files with one `import XCTest` + empty `final class SmokeTests: XCTestCase {}` in each test target dir so they compile.
 
-- [ ] **Step 2b: Create the test harness** (`HelmTestKit` + `HelmTests`):
-
-`Sources/HelmTestKit/Expect.swift`:
-```swift
-import Foundation
-public final class TestReporter {
-    public static let shared = TestReporter()
-    private var checks = 0, failures = 0
-    public func expect(_ cond: Bool, _ msg: @autoclosure () -> String,
-                       file: StaticString = #file, line: UInt = #line) {
-        checks += 1
-        if !cond { failures += 1; print("FAIL [\(file):\(line)]: \(msg())") }
-    }
-    public func finish() -> Never {
-        if failures == 0 { print("TESTS OK (\(checks) checks)"); exit(0) }
-        print("TESTS FAILED: \(failures)/\(checks)"); exit(1)
-    }
-}
-public func expect(_ c: Bool, _ m: @autoclosure () -> String = "",
-                   file: StaticString = #file, line: UInt = #line) {
-    TestReporter.shared.expect(c, m(), file: file, line: line)
-}
-```
-`Sources/HelmTests/main.swift`:
-```swift
-import HelmTestKit
-// suite calls appended by later tasks, e.g. runNamespacedStoreTests()
-TestReporter.shared.finish()
-```
-
-- [ ] **Step 3: Verify build + tests**
+- [ ] **Step 3: Verify build + test**
 
 Run: `swift build`
 Expected: builds all targets.
-Run: `swift run HelmTests`
-Expected: prints `TESTS OK (0 checks)` and exits 0.
+Run: `swift test`
+Expected: passes (0 real tests).
 
 - [ ] **Step 4: Commit**
 
