@@ -392,15 +392,9 @@ private struct AboutHelmView: View {
     }
 }
 
-/// Renders the bundled CHANGELOG.md with light block styling.
+/// Localized, structured changelog with New/Upd/Fix badges.
 private struct WhatsNewView: View {
     let onClose: () -> Void
-
-    private var lines: [String] {
-        guard let url = Bundle.main.url(forResource: "CHANGELOG", withExtension: "md"),
-              let text = try? String(contentsOf: url, encoding: .utf8) else { return [] }
-        return text.components(separatedBy: "\n")
-    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -412,32 +406,35 @@ private struct WhatsNewView: View {
             .padding()
             Divider()
             ScrollView {
-                VStack(alignment: .leading, spacing: 5) {
-                    ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
-                        lineView(line)
+                VStack(alignment: .leading, spacing: 18) {
+                    ForEach(Changelog.entries) { entry in
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                Text(entry.version).font(.title3.bold())
+                                Text(entry.date).font(.caption).foregroundStyle(.tertiary)
+                            }
+                            ForEach(entry.items) { item in
+                                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                    badge(item.kind)
+                                    Text(item.text).font(.callout).foregroundStyle(.secondary)
+                                }
+                            }
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
             }
         }
-        .frame(width: 480, height: 440)
+        .frame(width: 520, height: 460)
     }
 
-    @ViewBuilder
-    private func lineView(_ line: String) -> some View {
-        if line.hasPrefix("### ") {
-            Text(line.dropFirst(4)).font(.subheadline.bold()).padding(.top, 4)
-        } else if line.hasPrefix("## ") {
-            Text(line.dropFirst(3)).font(.headline).padding(.top, 6)
-        } else if line.hasPrefix("# ") {
-            Text(line.dropFirst(2)).font(.title3.bold())
-        } else if line.hasPrefix("- ") {
-            Text("•  " + line.dropFirst(2)).font(.callout).foregroundStyle(.secondary)
-        } else if line.hasPrefix("  ") && !line.trimmingCharacters(in: .whitespaces).isEmpty {
-            Text(line.trimmingCharacters(in: .whitespaces)).font(.callout).foregroundStyle(.secondary)
-        } else if !line.isEmpty {
-            Text(line).font(.callout).foregroundStyle(.secondary)
-        }
+    private func badge(_ kind: ChangeKind) -> some View {
+        Text(kind.label)
+            .font(.caption2.weight(.bold))
+            .padding(.horizontal, 6).padding(.vertical, 2)
+            .background(Capsule().fill(kind.color.opacity(0.2)))
+            .foregroundStyle(kind.color)
+            .frame(width: 44)
     }
 }

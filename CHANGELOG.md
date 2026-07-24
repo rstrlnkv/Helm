@@ -5,6 +5,43 @@ All notable changes to Helm are documented here. The format is loosely based on
 [VERSIONING.md](VERSIONING.md) — MAJOR = global changes, MINOR = new/polished
 features, PATCH = fixes.
 
+## [0.6.0] — 2026-07-25
+
+### Added
+- **App Uninstaller module** — list installed apps, scan their leftovers
+  (caches, preferences, containers, logs, …) by bundle id and exact name, and
+  move everything to the Trash; a Leftovers tab finds files from apps that are
+  already gone. User-domain only, always reversible.
+- **Homebrew module** — installed formulae and casks with one-line
+  descriptions, updates with per-package and bulk upgrade, search and install,
+  a live console for long operations, and an in-app Homebrew installer for
+  machines without brew.
+- **Menu-bar timer** — while a timer runs the ring empties clockwise, with an
+  optional remaining-time label and a dedicated timer colour.
+- **Panel** — utility modules collapse behind an animated Utilities row;
+  optional Settings/Quit buttons; the icon's right-click menu jumps straight to
+  any module's settings page.
+- In-app changelog is now structured, localized in all eight languages, and
+  badged New/Upd/Fix.
+
+### Changed
+- Keep Awake's ⋯ controls open inline in the card (custom timer with a
+  durations menu and free-form entry, automation toggles, Stop button in the
+  countdown row); the module toggle turns orange while an automation rule is
+  holding the session.
+- Settings window: the app pane is now Settings; utility pages get a larger
+  window; module lists use the macOS 26 inset style; copy reviewed in all
+  languages.
+- Store writes now announce themselves, keeping the panel and the Settings
+  window in sync in both directions.
+
+### Fixed
+- The panel no longer jumps or slides when disclosures open (window is sized
+  once per open; content animates inside it).
+- The menu-bar countdown ticks reliably (state was read before it landed).
+- brew calls and filesystem scans no longer stall the app's async machinery.
+- The updater's retry button works after a failed install.
+
 ## [0.5.1] — 2026-07-24
 
 ### Fixed
@@ -72,6 +109,7 @@ features, PATCH = fixes.
 - **Localization** — English, 中文, Español, Français, Deutsch, 日本語,
   Русский, Português.
 
+[0.6.0]: https://github.com/rstrlnkv/Helm/releases/tag/v0.6.0
 [0.5.1]: https://github.com/rstrlnkv/Helm/releases/tag/v0.5.1
 [0.5.0]: https://github.com/rstrlnkv/Helm/releases/tag/v0.5.0
 [0.4.0]: https://github.com/rstrlnkv/Helm/releases/tag/v0.4.0
