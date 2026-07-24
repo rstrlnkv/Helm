@@ -32,9 +32,6 @@ public struct KeepAwakePanelTile: View {
         // Clip so the revealed controls can't draw outside the card while it grows.
         .clipped()
         .helmPanelCard()
-        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("helmDebugToggleMore"))) { _ in
-            withAnimation(.easeInOut(duration: 0.24)) { showMore.toggle() }
-        }
     }
 
     // MARK: - Header
