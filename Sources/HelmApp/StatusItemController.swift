@@ -12,11 +12,7 @@ import HelmUI
     private var moduleCancellables: Set<AnyCancellable> = []
     private var styleObserver: NSObjectProtocol?
 
-    private lazy var panel = HelmPanel(
-        host: host,
-        onOpenSettings: { [weak self] in self?.openSettings() },
-        onQuit: { NSApp.terminate(nil) }
-    )
+    private lazy var panel = HelmPanel(host: host)
     private lazy var settingsWindow = SettingsWindow(host: host)
 
     init(host: ModuleHost) {

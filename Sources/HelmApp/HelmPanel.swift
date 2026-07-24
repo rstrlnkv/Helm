@@ -14,7 +14,7 @@ private final class KeyablePanel: NSPanel {
     private var dismissMonitor: Any?
     private var statusButtonScreenFrame: NSRect = .zero
 
-    init(host: ModuleHost, onOpenSettings: @escaping () -> Void, onQuit: @escaping () -> Void) {
+    init(host: ModuleHost) {
         let panel = KeyablePanel(
             contentRect: NSRect(x: 0, y: 0, width: 300, height: 200),
             styleMask: [.nonactivatingPanel, .borderless],
@@ -34,11 +34,7 @@ private final class KeyablePanel: NSPanel {
         self.panel = panel
         super.init()
 
-        let content = HelmPanelContent(host: host, onOpenSettings: { [weak self] in
-            self?.panel.orderOut(nil)
-            onOpenSettings()
-        }, onQuit: onQuit)
-        let hosting = NSHostingView(rootView: content)
+        let hosting = NSHostingView(rootView: HelmPanelContent(host: host))
         panel.contentView = hosting
     }
 
@@ -94,8 +90,6 @@ private final class KeyablePanel: NSPanel {
 
 private struct HelmPanelContent: View {
     @ObservedObject var host: ModuleHost
-    let onOpenSettings: () -> Void
-    let onQuit: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -112,15 +106,6 @@ private struct HelmPanelContent: View {
                     }
                 }
             }
-
-            Divider().padding(.horizontal, -2)
-
-            HStack(spacing: 16) {
-                footerButton("Settings", "gearshape", action: onOpenSettings)
-                Spacer()
-                footerButton("Quit", "power", action: onQuit)
-            }
-            .padding(.horizontal, 2)
         }
         .padding(12)
         .frame(width: 300)
@@ -129,14 +114,5 @@ private struct HelmPanelContent: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
         )
-    }
-
-    private func footerButton(_ title: String, _ symbol: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Label(title, systemImage: symbol)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-        }
-        .buttonStyle(.plain)
     }
 }
