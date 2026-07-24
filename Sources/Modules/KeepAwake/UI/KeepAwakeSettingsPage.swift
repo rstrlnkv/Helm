@@ -133,17 +133,20 @@ public struct KeepAwakeSettingsPage: View {
 
     private func pickApp() {
         let panel = NSOpenPanel()
-        panel.title = "Choose an app"
+        panel.title = "Choose apps"
         panel.directoryURL = URL(fileURLWithPath: "/Applications")
         panel.allowedContentTypes = [.application]
-        panel.allowsMultipleSelection = false
+        panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
         panel.canChooseFiles = true
-        guard panel.runModal() == .OK, let url = panel.url,
-              let bundleID = Bundle(url: url)?.bundleIdentifier else { return }
-        guard !autoApps.contains(bundleID) else { return }
-        autoApps.append(bundleID)
-        write(autoApps, "autoApps")
+        guard panel.runModal() == .OK else { return }
+        var added = false
+        for url in panel.urls {
+            guard let bundleID = Bundle(url: url)?.bundleIdentifier, !autoApps.contains(bundleID) else { continue }
+            autoApps.append(bundleID)
+            added = true
+        }
+        if added { write(autoApps, "autoApps") }
     }
 
     private static func appInfo(_ bundleID: String) -> (name: String, icon: NSImage) {

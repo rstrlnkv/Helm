@@ -11,7 +11,7 @@ import HelmUI
 
     init(host: ModuleHost) {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 720, height: 560),
+            contentRect: NSRect(x: 0, y: 0, width: 820, height: 580),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -88,7 +88,7 @@ private struct SettingsRootView: View {
                 }
             }
             .listStyle(.sidebar)
-            .navigationSplitViewColumnWidth(min: 230, ideal: 250, max: 300)
+            .navigationSplitViewColumnWidth(min: 250, ideal: 280, max: 340)
             .toolbar(removing: .sidebarToggle)
         } detail: {
             detail
