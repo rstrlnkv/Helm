@@ -11,7 +11,7 @@ import Module_Homebrew_Engine
         id: id, name: HbStr.moduleName, summary: HbStr.summary,
         sfSymbol: "shippingbox", permissions: [])
     public static let isolation: ModuleIsolation = .inProcess
-    public static let category: ModuleCategory = .maintenance
+    public static let category: ModuleCategory = .utilities
 
     public init() {}
 
@@ -21,9 +21,7 @@ import Module_Homebrew_Engine
                               privileged: ports.privileged, user: NSUserName())
     }
 
-    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? {
-        MenuBarContribution(panelTile: AnyView(HomebrewPanelTile()))
-    }
+    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { .utility }
 
     public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
         AnyView(HomebrewSettingsPage(vm: vm))
