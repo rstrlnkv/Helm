@@ -100,9 +100,9 @@ public struct KeepAwakePanelTile: View {
 
     private var presetRow: some View {
         HStack(spacing: 6) {
-            presetPill("15m", 15)
-            presetPill("1h", 60)
-            presetPill("2h", 120)
+            presetPill(Self.durationLabel(15), 15)
+            presetPill(Self.durationLabel(60), 60)
+            presetPill(Self.durationLabel(120), 120)
             presetPill("∞", 0)
             morePill
         }
@@ -219,7 +219,7 @@ public struct KeepAwakePanelTile: View {
                     .font(.subheadline.weight(.semibold))
                     .monospacedDigit()
                 Spacer()
-                Button("+15m") {
+                Button("+" + Self.durationLabel(15)) {
                     let newMinutes = Int(ceil(remaining / 60)) + 15
                     vm.send("start", payload: startPayload(newMinutes))
                 }

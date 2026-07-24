@@ -25,6 +25,8 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     public private(set) var activeConditions: Set<ActiveCondition> = []
     public private(set) var clamshellActive = false
     public private(set) var endDate: Date?
+    /// When the current timed session began (nil when there is no timer).
+    public private(set) var startDate: Date?
 
     private var manualOn = false
     private var suppressed = false
@@ -87,6 +89,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         manualOn = false
         suppressed = false
         endDate = nil
+        startDate = nil
         activeConditions = []
         emitState()
     }
@@ -106,9 +109,11 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         suppressed = false
         expiryToken = nil
         if minutes > 0 {
+            startDate = clock.now()
             endDate = clock.now().addingTimeInterval(TimeInterval(minutes * 60))
             scheduleExpiry(minutes: minutes)
         } else {
+            startDate = nil
             endDate = nil
         }
         recompute()
@@ -120,6 +125,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         }
         manualOn = false
         endDate = nil
+        startDate = nil
         expiryToken = nil
         recompute()
     }
@@ -207,6 +213,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         case .continueAsAuto:
             manualOn = false
             endDate = nil
+            startDate = nil
             recompute()
         case .deactivate:
             stopSession()
@@ -292,6 +299,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         let conditions: [String]
         let clamshellActive: Bool
         let endDate: Date?
+        let startDate: Date?
     }
 
     private func wireTransport() {
@@ -320,7 +328,8 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         let payload = StatePayload(isActive: isActive,
                                     conditions: activeConditions.map(\.wireName).sorted(),
                                     clamshellActive: clamshellActive,
-                                    endDate: endDate)
+                                    endDate: endDate,
+                                    startDate: startDate)
         if let data = try? JSONEncoder().encode(payload) {
             localTransport.emit(EngineEvent(name: "state", payload: data))
         }
