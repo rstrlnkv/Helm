@@ -31,7 +31,17 @@ public final class NamespacedStore {
     private func k(_ key: String) -> String { prefix + key }
     public func set(_ value: Any?, for key: String) {
         backing.set(value, forKey: k(key))
-        NotificationCenter.default.post(name: .helmStoreChanged, object: k(key))
+        // Observers mirror values into SwiftUI @State, so the announcement must
+        // arrive on the main thread regardless of who wrote (e.g. the clamshell
+        // sudoers callback writes from a background queue).
+        let key = k(key)
+        if Thread.isMainThread {
+            NotificationCenter.default.post(name: .helmStoreChanged, object: key)
+        } else {
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .helmStoreChanged, object: key)
+            }
+        }
     }
 
     /// True when `note` announces a change to `key` in this store.

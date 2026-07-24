@@ -13,5 +13,5 @@ public struct KeepAwakeSettings {
     public var batteryGuardEnabled: Bool { store.bool("batteryGuardEnabled", default: false) }
     public var batteryGuardPercent: Int { store.int("batteryGuardPercent", default: 20) }
     public var defaultDurationMinutes: Int { store.int("defaultDurationMinutes", default: 0) }
-    public var activeTintColor: String { store.string("activeTintColor", default: "green") }
+    public var activeTintColor: String { store.string("activeTintColor", default: "orange") }
 }

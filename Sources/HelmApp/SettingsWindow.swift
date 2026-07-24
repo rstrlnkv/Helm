@@ -101,6 +101,11 @@ final class SettingsSplitViewController: NSSplitViewController {
         super.viewDidLoad()
 
         let sidebar = NSHostingController(rootView: SettingsSidebar(model: model))
+        // Own the top strip ourselves: with the automatic titlebar safe area the
+        // list scrolls under the traffic lights and gets the system scroll-edge
+        // fade; dropping the safe area and reserving a fixed strip in the view
+        // keeps the first row clear with no fade and no double inset.
+        sidebar.safeAreaRegions = []
         let sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebar)
         sidebarItem.canCollapse = false
         sidebarItem.minimumThickness = 250
@@ -129,6 +134,13 @@ private struct SettingsSidebar: View {
     @ObservedObject var model: SettingsModel
 
     var body: some View {
+        VStack(spacing: 0) {
+            Color.clear.frame(height: 30)   // traffic-light strip
+            sidebarList
+        }
+    }
+
+    private var sidebarList: some View {
         List(selection: $model.selection) {
             Section {
                 sidebarRow(AppStr.settingsPane, "gearshape", .gray)
@@ -154,9 +166,6 @@ private struct SettingsSidebar: View {
         }
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)   // let the AppKit sidebar material show
-        // The window draws its content full-size, so the traffic lights float
-        // over the sidebar; reserve their strip so the first row clears them.
-        .safeAreaInset(edge: .top) { Color.clear.frame(height: 28) }
     }
 
     private func sidebarRow(_ title: String, _ symbol: String, _ color: Color) -> some View {

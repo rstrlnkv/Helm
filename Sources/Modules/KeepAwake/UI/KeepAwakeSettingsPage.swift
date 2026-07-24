@@ -47,10 +47,10 @@ public struct KeepAwakeSettingsPage: View {
         _clamshellEnabled = State(initialValue: store.bool("clamshellEnabled", default: false))
         _batteryGuardEnabled = State(initialValue: store.bool("batteryGuardEnabled", default: false))
         _batteryGuardPercent = State(initialValue: store.int("batteryGuardPercent", default: 20))
-        _activeTintColor = State(initialValue: store.string("activeTintColor", default: "green"))
+        _activeTintColor = State(initialValue: store.string("activeTintColor", default: "orange"))
         _ringTimer = State(initialValue: store.bool("ringTimer", default: true))
         _showTimerText = State(initialValue: store.bool("showTimerText", default: false))
-        _timerTintColor = State(initialValue: store.string("timerTintColor", default: ""))
+        _timerTintColor = State(initialValue: store.string("timerTintColor", default: "red"))
         _customActiveIcon = State(initialValue: store.bool("customActiveIcon", default: false))
         _activeIconShape = State(initialValue: store.string("activeIconShape", default: "ring"))
     }
@@ -155,6 +155,16 @@ public struct KeepAwakeSettingsPage: View {
 
         }
         .formStyle(.grouped)
+        // The panel's ⋯ block writes the same keys; without this the page shows
+        // stale values when both are open (the reverse direction already works).
+        .onReceive(NotificationCenter.default.publisher(for: .helmStoreChanged)) { note in
+            if store.changed(note, is: "autoExternalDisplay") {
+                autoExternalDisplay = store.bool("autoExternalDisplay", default: false)
+            }
+            if store.changed(note, is: "autoPower") {
+                autoPower = store.bool("autoPower", default: false)
+            }
+        }
     }
 
     // MARK: - Write-through
