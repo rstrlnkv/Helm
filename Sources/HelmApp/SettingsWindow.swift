@@ -314,14 +314,14 @@ private struct AboutHelmView: View {
                 Text(L("Version", [.ru: "Версия", .es: "Versión", .fr: "Version", .de: "Version", .ja: "バージョン", .zh: "版本", .pt: "Versão"]) + " \(version)")
                     .font(.callout).foregroundStyle(.secondary)
             }
-            Text(L("A menu-bar suite of macOS utilities.",
-                   [.ru: "Набор macOS-утилит в строке меню.",
-                    .es: "Un conjunto de utilidades de macOS en la barra de menús.",
-                    .fr: "Une suite d’utilitaires macOS dans la barre des menus.",
-                    .de: "Eine Menüleisten-Sammlung von macOS-Werkzeugen.",
-                    .ja: "メニューバーの macOS ユーティリティ集。",
-                    .zh: "菜单栏中的 macOS 实用工具套件。",
-                    .pt: "Um conjunto de utilitários do macOS na barra de menus."]))
+            Text(L("Tools for your Mac.",
+                   [.ru: "Инструменты для вашего Mac.",
+                    .es: "Herramientas para tu Mac.",
+                    .fr: "Des outils pour votre Mac.",
+                    .de: "Werkzeuge für deinen Mac.",
+                    .ja: "あなたの Mac のためのツール。",
+                    .zh: "为你的 Mac 打造的工具。",
+                    .pt: "Ferramentas para o seu Mac."]))
                 .font(.subheadline).foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             Text(L("\(moduleCount) modules",
