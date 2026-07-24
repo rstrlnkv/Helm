@@ -12,11 +12,16 @@ import HelmUI
     init(host: ModuleHost) {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 820, height: 580),
-            styleMask: [.titled, .closable, .miniaturizable],
+            styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
         window.title = "Helm Settings"
+        // System Settings look: content (sidebar material) runs to the very top,
+        // traffic lights float over it, no title-bar strip.
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.isMovableByWindowBackground = true
         window.center()
         window.isReleasedWhenClosed = false
         self.window = window
@@ -90,12 +95,17 @@ private struct SettingsRootView: View {
             .listStyle(.sidebar)
             .frame(width: 250)
             .frame(maxHeight: .infinity)
+            // Clear the traffic lights without breaking the full-height sidebar
+            // material (rows start below the light buttons).
+            .safeAreaInset(edge: .top, spacing: 0) { Color.clear.frame(height: 30) }
 
             Divider()
 
             detail
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .safeAreaInset(edge: .top, spacing: 0) { Color.clear.frame(height: 30) }
         }
+        .ignoresSafeArea(.container, edges: .top)
     }
 
     private func sidebarRow(_ title: String, _ symbol: String, _ color: Color) -> some View {
