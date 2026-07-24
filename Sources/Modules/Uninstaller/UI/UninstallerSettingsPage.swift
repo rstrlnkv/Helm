@@ -68,21 +68,24 @@ public struct UninstallerSettingsPage: View {
             if loading {
                 Spacer(); ProgressView().controlSize(.small); Text(UnStr.loadingApps).font(.caption).foregroundStyle(.secondary); Spacer()
             } else {
+                // macOS 26-style content list: inset rows with the automatic
+                // rounded selection, no separators, background blending into the
+                // pane (the vibrant .sidebar material belongs to the real sidebar).
                 List(filtered, selection: $selectedID) { app in
-                    HStack(spacing: 8) {
+                    HStack(spacing: 10) {
                         Image(nsImage: NSWorkspace.shared.icon(forFile: app.path))
-                            .resizable().frame(width: 22, height: 22)
+                            .resizable().frame(width: 30, height: 30)
                         VStack(alignment: .leading, spacing: 1) {
                             Text(app.name).lineLimit(1)
-                            Text(ByteFormat.string(app.sizeBytes)).font(.caption2).foregroundStyle(.secondary)
+                            Text(ByteFormat.string(app.sizeBytes)).font(.caption).foregroundStyle(.secondary)
                         }
                     }
+                    .padding(.vertical, 3)
                     .tag(app.bundleID)
+                    .listRowSeparator(.hidden)
                 }
-                // .plain, not .sidebar: the vibrant sidebar material is for the
-                // window's real sidebar; in a content column it shows the desktop
-                // through the window.
-                .listStyle(.plain)
+                .listStyle(.inset)
+                .scrollContentBackground(.hidden)
             }
         }
         .onChange(of: selectedID) { _, _ in Task { await runScan() } }
