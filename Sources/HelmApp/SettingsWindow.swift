@@ -63,7 +63,7 @@ private struct SettingsRootView: View {
     @State private var selection: SettingsSelection? = .general
 
     var body: some View {
-        NavigationSplitView {
+        HStack(spacing: 0) {
             List(selection: $selection) {
                 Section {
                     sidebarRow("Menu Bar", "menubar.rectangle", .gray)
@@ -88,10 +88,13 @@ private struct SettingsRootView: View {
                 }
             }
             .listStyle(.sidebar)
-            .navigationSplitViewColumnWidth(min: 250, ideal: 280, max: 340)
-            .toolbar(removing: .sidebarToggle)
-        } detail: {
+            .frame(width: 250)
+            .frame(maxHeight: .infinity)
+
+            Divider()
+
             detail
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
