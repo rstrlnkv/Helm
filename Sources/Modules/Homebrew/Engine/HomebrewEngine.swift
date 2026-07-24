@@ -59,6 +59,13 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         return BrewOutdatedParser.parse(Data(out.utf8))
     }
 
+    /// One `brew desc` call per kind covers a whole list of names.
+    public func descriptions(names: [String], isCask: Bool) -> [String: String] {
+        guard let brew = locator.brewPath(), !names.isEmpty else { return [:] }
+        let out = runner.run(brew, ["desc", isCask ? "--cask" : "--formula"] + names, env: [:]).stdout
+        return BrewDescParser.parse(out)
+    }
+
     public func search(_ query: String) -> [SearchHit] {
         guard let brew = locator.brewPath(), !query.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
         let out = runner.run(brew, ["search", query], env: [:]).stdout
@@ -139,6 +146,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     // MARK: - Transport
 
     private struct PkgReq: Codable { let name: String; let isCask: Bool }
+    private struct DescReq: Codable { let names: [String]; let isCask: Bool }
     private struct NameReq: Codable { let name: String }
 
     private func wireTransport() {
@@ -152,6 +160,9 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             case "search":
                 let query = String(decoding: cmd.payload, as: UTF8.self)
                 return json(await self.blocking { self.search(query) })
+            case "descriptions":
+                guard let r = try? JSONDecoder().decode(DescReq.self, from: cmd.payload) else { return Data() }
+                return json(await self.blocking { self.descriptions(names: r.names, isCask: r.isCask) })
             case "install":
                 if let r = try? JSONDecoder().decode(PkgReq.self, from: cmd.payload) { self.install(name: r.name, isCask: r.isCask) }
             case "uninstall":

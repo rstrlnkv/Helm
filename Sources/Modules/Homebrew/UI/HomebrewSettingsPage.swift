@@ -78,7 +78,8 @@ public struct HomebrewSettingsPage: View {
 
     private var installedList: some View {
         listOrEmpty(hb.installed, empty: HbStr.noneInstalled) { pkg in
-            pkgRow(name: pkg.name, detail: pkg.version, isCask: pkg.isCask) {
+            pkgRow(name: pkg.name, detail: pkg.version, isCask: pkg.isCask,
+                   desc: hb.description(name: pkg.name, isCask: pkg.isCask)) {
                 Button(HbStr.uninstall) { hb.uninstall(pkg) }.disabled(hb.running)
             }
         }
@@ -114,7 +115,8 @@ public struct HomebrewSettingsPage: View {
                 HelmCenteredContent { Text(HbStr.typeToSearch).foregroundStyle(.secondary) }
             } else {
                 listOrEmpty(hb.searchHits, empty: HbStr.noResults) { hit in
-                    pkgRow(name: hit.name, detail: nil, isCask: hit.isCask) {
+                    pkgRow(name: hit.name, detail: nil, isCask: hit.isCask,
+                           desc: hb.description(name: hit.name, isCask: hit.isCask)) {
                         Button(HbStr.install) { hb.install(hit) }.disabled(hb.running)
                     }
                 }
@@ -167,6 +169,7 @@ public struct HomebrewSettingsPage: View {
     // MARK: - Row helpers
 
     private func pkgRow<Action: View>(name: String, detail: String?, isCask: Bool,
+                                      desc: String? = nil,
                                       @ViewBuilder action: () -> Action) -> some View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 1) {
@@ -176,8 +179,11 @@ public struct HomebrewSettingsPage: View {
                         .padding(.horizontal, 5).padding(.vertical, 1)
                         .background(Capsule().fill(isCask ? Color.purple.opacity(0.2) : Color.blue.opacity(0.2)))
                         .foregroundStyle(isCask ? .purple : .blue)
+                    if let detail { Text(detail).font(.caption2).foregroundStyle(.secondary) }
                 }
-                if let detail { Text(detail).font(.caption2).foregroundStyle(.secondary) }
+                if let desc {
+                    Text(desc).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                }
             }
             Spacer()
             action().controlSize(.small)
