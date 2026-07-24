@@ -216,9 +216,14 @@ private struct ModuleDetailView: View {
 private struct MenuBarSettingsView: View {
     @State private var style: String = AppSettings.menuBarIconStyle
     @State private var size: String = AppSettings.menuBarIconSize
+    @State private var launchAtLogin: Bool = LoginItem.isEnabled
 
     var body: some View {
         Form {
+            Section(AppStr.general) {
+                Toggle(AppStr.launchAtLogin, isOn: $launchAtLogin)
+                    .onChange(of: launchAtLogin) { _, v in LoginItem.setEnabled(v) }
+            }
             Section(AppStr.iconShape) {
                 HStack(spacing: 14) {
                     ForEach(MenuBarIconStyle.allCases, id: \.rawValue) { s in
