@@ -6,6 +6,8 @@ import HelmContract
     @Published public private(set) var activeConditions: Set<String> = []
     @Published public private(set) var clamshellActive = false
     @Published public private(set) var endDate: Date?
+    /// Start of the current timed session, for progress rendering.
+    @Published public private(set) var startDate: Date?
 
     public let transport: EngineTransport
 
@@ -19,7 +21,7 @@ import HelmContract
 
     private struct StatePayload: Codable {
         let isActive: Bool; let conditions: [String]
-        let clamshellActive: Bool; let endDate: Date?
+        let clamshellActive: Bool; let endDate: Date?; let startDate: Date?
     }
 
     private func handle(_ e: EngineEvent) {
@@ -29,6 +31,7 @@ import HelmContract
         activeConditions = Set(p.conditions)
         clamshellActive = p.clamshellActive
         endDate = p.endDate
+        startDate = p.startDate
     }
 
     /// Fire-and-forget command to the engine.

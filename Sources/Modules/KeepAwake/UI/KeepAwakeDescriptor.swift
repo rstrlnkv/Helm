@@ -42,7 +42,14 @@ import Module_KeepAwake_Engine
         // this shape while Keep Awake is active (otherwise it keeps the global shape).
         let iconStyle = store.bool("customActiveIcon", default: false)
             ? store.string("activeIconShape", default: "ring") : nil
+        // Countdown ring: only while a timed session is running, and only if the
+        // user asked for it.
+        var progress: Double?
+        if store.bool("ringTimer", default: true), let end = vm.endDate, let start = vm.startDate {
+            progress = TimerProgress.remainingFraction(now: Date(), start: start, end: end)
+        }
         return StatusAppearance(tintToken: KeepAwakeSettings(store: store).activeTintColor,
-                                iconStyle: iconStyle)
+                                iconStyle: iconStyle,
+                                timerProgress: progress)
     }
 }
