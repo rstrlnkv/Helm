@@ -39,5 +39,6 @@ public struct HelmStatusDot: View {
         Circle()
             .fill(active ? Color.green : Color.secondary.opacity(0.4))
             .frame(width: 8, height: 8)
+            .accessibilityHidden(true)
     }
 }

@@ -23,6 +23,7 @@ mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 cp "$REPO_ROOT/.build/release/HelmApp" "$MACOS_DIR/HelmApp"
 cp "$REPO_ROOT/Resources/HelmApp/Info.plist" "$CONTENTS_DIR/Info.plist"
 printf 'APPL????' > "$CONTENTS_DIR/PkgInfo"
+cp "$REPO_ROOT/CHANGELOG.md" "$RESOURCES_DIR/CHANGELOG.md" 2>/dev/null || true
 
 # Build number = git commit count, so About shows a real, increasing build.
 BUILD_NO="$(git -C "$REPO_ROOT" rev-list --count HEAD 2>/dev/null || echo 1)"

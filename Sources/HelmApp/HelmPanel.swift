@@ -94,11 +94,17 @@ private struct HelmPanelContent: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if host.enabledModules.isEmpty {
-                Text("No modules enabled")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 8)
+                VStack(spacing: 8) {
+                    Image(systemName: "square.grid.2x2")
+                        .font(.system(size: 30))
+                        .foregroundStyle(.secondary)
+                    Text(AppStr.noModules).font(.headline)
+                    Text(AppStr.noModulesHint)
+                        .font(.caption).foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
             } else {
                 ForEach(Array(host.enabledModules.enumerated()), id: \.offset) { _, live in
                     if let tile = live.descriptor.menuBar(live.vm)?.panelTile {

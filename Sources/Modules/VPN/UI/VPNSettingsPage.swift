@@ -75,6 +75,7 @@ public struct VPNSettingsPage: View {
                 .toggleStyle(.switch)
                 .labelsHidden()
                 .controlSize(.small)
+                .accessibilityLabel(c.name)
         }
         .padding(.vertical, 3)
     }

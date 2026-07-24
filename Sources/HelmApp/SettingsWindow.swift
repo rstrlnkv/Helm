@@ -275,6 +275,7 @@ private struct MenuBarSettingsView: View {
 }
 
 private struct AboutHelmView: View {
+    @State private var showWhatsNew = false
     private var version: String {
         let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
@@ -308,13 +309,70 @@ private struct AboutHelmView: View {
                     .de: "\(moduleCount) Module", .ja: "\(moduleCount) 個のモジュール", .zh: "\(moduleCount) 个模块",
                     .pt: "\(moduleCount) módulos"]))
                 .font(.caption).foregroundStyle(.tertiary)
-            if let url = URL(string: "https://github.com/rstrlnkv/Helm") {
-                Link("GitHub", destination: url).font(.callout)
+            HStack(spacing: 16) {
+                Button(AppStr.whatsNew) { showWhatsNew = true }
+                if let url = URL(string: "https://github.com/rstrlnkv/Helm") {
+                    Link("GitHub", destination: url)
+                }
             }
+            .font(.callout)
             Spacer()
             Text("© 2026 Helm").font(.caption).foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(28)
+        .sheet(isPresented: $showWhatsNew) {
+            WhatsNewView(onClose: { showWhatsNew = false })
+        }
+    }
+}
+
+/// Renders the bundled CHANGELOG.md with light block styling.
+private struct WhatsNewView: View {
+    let onClose: () -> Void
+
+    private var lines: [String] {
+        guard let url = Bundle.main.url(forResource: "CHANGELOG", withExtension: "md"),
+              let text = try? String(contentsOf: url, encoding: .utf8) else { return [] }
+        return text.components(separatedBy: "\n")
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text(AppStr.whatsNew).font(.headline)
+                Spacer()
+                Button(AppStr.close, action: onClose)
+            }
+            .padding()
+            Divider()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 5) {
+                    ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                        lineView(line)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+            }
+        }
+        .frame(width: 480, height: 440)
+    }
+
+    @ViewBuilder
+    private func lineView(_ line: String) -> some View {
+        if line.hasPrefix("### ") {
+            Text(line.dropFirst(4)).font(.subheadline.bold()).padding(.top, 4)
+        } else if line.hasPrefix("## ") {
+            Text(line.dropFirst(3)).font(.headline).padding(.top, 6)
+        } else if line.hasPrefix("# ") {
+            Text(line.dropFirst(2)).font(.title3.bold())
+        } else if line.hasPrefix("- ") {
+            Text("•  " + line.dropFirst(2)).font(.callout).foregroundStyle(.secondary)
+        } else if line.hasPrefix("  ") && !line.trimmingCharacters(in: .whitespaces).isEmpty {
+            Text(line.trimmingCharacters(in: .whitespaces)).font(.callout).foregroundStyle(.secondary)
+        } else if !line.isEmpty {
+            Text(line).font(.callout).foregroundStyle(.secondary)
+        }
     }
 }
