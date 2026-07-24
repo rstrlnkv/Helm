@@ -31,6 +31,14 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     public func activate() {}
     public func deactivate() {}
 
+    /// Runs blocking work (Process + waitUntilExit, file IO) on a dispatch
+    /// queue so it never parks a Swift-concurrency pool thread for seconds.
+    private func blocking<T: Sendable>(_ work: @escaping @Sendable () -> T) async -> T {
+        await withCheckedContinuation { cont in
+            DispatchQueue.global(qos: .userInitiated).async { cont.resume(returning: work()) }
+        }
+    }
+
     // MARK: - Queries
 
     public func status() -> BrewStatus {
@@ -138,10 +146,12 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             guard let self else { return Data() }
             func json<T: Encodable>(_ v: T) -> Data { (try? JSONEncoder().encode(v)) ?? Data() }
             switch cmd.name {
-            case "status":        return json(self.status())
-            case "listInstalled": return json(self.listInstalled())
-            case "outdated":      return json(self.outdated())
-            case "search":        return json(self.search(String(decoding: cmd.payload, as: UTF8.self)))
+            case "status":        return json(await self.blocking { self.status() })
+            case "listInstalled": return json(await self.blocking { self.listInstalled() })
+            case "outdated":      return json(await self.blocking { self.outdated() })
+            case "search":
+                let query = String(decoding: cmd.payload, as: UTF8.self)
+                return json(await self.blocking { self.search(query) })
             case "install":
                 if let r = try? JSONDecoder().decode(PkgReq.self, from: cmd.payload) { self.install(name: r.name, isCask: r.isCask) }
             case "uninstall":

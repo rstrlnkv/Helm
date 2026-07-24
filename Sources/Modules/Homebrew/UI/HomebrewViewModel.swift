@@ -5,6 +5,7 @@ import Module_Homebrew_Engine
 
 @MainActor public final class HomebrewViewModel: ObservableObject {
     private let transport: EngineTransport
+    private let client: TransportClient
 
     @Published public private(set) var status = BrewStatus(installed: false, brewPath: nil)
     @Published public private(set) var installed: [BrewPackage] = []
@@ -15,6 +16,7 @@ import Module_Homebrew_Engine
 
     public init(vm: ModuleViewModel) {
         self.transport = vm.transport
+        self.client = TransportClient(vm.transport)
         let events = transport.events
         Task { [weak self] in
             for await e in events {
@@ -48,11 +50,11 @@ import Module_Homebrew_Engine
 
     // MARK: - Queries
 
-    public func refreshStatus() async { status = await send("status", Data(), as: BrewStatus.self) ?? status }
-    public func refreshInstalled() async { installed = await send("listInstalled", Data(), as: [BrewPackage].self) ?? [] }
-    public func refreshOutdated() async { outdated = await send("outdated", Data(), as: [OutdatedPackage].self) ?? [] }
+    public func refreshStatus() async { status = await client.request("status") ?? status }
+    public func refreshInstalled() async { installed = await client.request("listInstalled") ?? [] }
+    public func refreshOutdated() async { outdated = await client.request("outdated") ?? [] }
     public func search(_ q: String) async {
-        searchHits = await send("search", Data(q.utf8), as: [SearchHit].self) ?? []
+        searchHits = await client.request("search", payload: Data(q.utf8)) ?? []
     }
 
     // MARK: - Operations (fire-and-forget; progress via events)
@@ -60,25 +62,11 @@ import Module_Homebrew_Engine
     private struct PkgReq: Codable { let name: String; let isCask: Bool }
     private struct NameReq: Codable { let name: String }
 
-    public func install(_ hit: SearchHit) { fire("install", PkgReq(name: hit.name, isCask: hit.isCask)) }
-    public func uninstall(_ pkg: BrewPackage) { fire("uninstall", PkgReq(name: pkg.name, isCask: pkg.isCask)) }
-    public func upgrade(_ pkg: OutdatedPackage) { fire("upgrade", NameReq(name: pkg.name)) }
-    public func upgradeAll() { fireEmpty("upgradeAll") }
-    public func installBrew() { consoleLines.removeAll(); fireEmpty("installBrew") }
+    public func install(_ hit: SearchHit) { client.fire("install", encoding: PkgReq(name: hit.name, isCask: hit.isCask)) }
+    public func uninstall(_ pkg: BrewPackage) { client.fire("uninstall", encoding: PkgReq(name: pkg.name, isCask: pkg.isCask)) }
+    public func upgrade(_ pkg: OutdatedPackage) { client.fire("upgrade", encoding: NameReq(name: pkg.name)) }
+    public func upgradeAll() { client.fire("upgradeAll") }
+    public func installBrew() { consoleLines.removeAll(); client.fire("installBrew") }
 
     public func clearConsole() { consoleLines.removeAll() }
-
-    // MARK: - Plumbing
-
-    private func send<T: Decodable>(_ name: String, _ payload: Data, as: T.Type) async -> T? {
-        guard let data = try? await transport.send(EngineCommand(name: name, payload: payload)) else { return nil }
-        return try? JSONDecoder().decode(T.self, from: data)
-    }
-    private func fire<T: Encodable>(_ name: String, _ payload: T) {
-        let data = (try? JSONEncoder().encode(payload)) ?? Data()
-        Task { _ = try? await transport.send(EngineCommand(name: name, payload: data)) }
-    }
-    private func fireEmpty(_ name: String) {
-        Task { _ = try? await transport.send(EngineCommand(name: name, payload: Data())) }
-    }
 }
