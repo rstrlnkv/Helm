@@ -22,7 +22,6 @@ import HelmUI
         super.init()
 
         if let button = statusItem.button {
-            button.image = RingIcon.make(tintToken: nil)
             button.target = self
             button.action = #selector(statusItemClicked(_:))
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])

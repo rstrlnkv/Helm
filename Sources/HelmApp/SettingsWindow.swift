@@ -90,19 +90,7 @@ final class SettingsSplitViewController: NSSplitViewController {
 
 // MARK: - Category tint
 
-private func categoryColor(_ category: ModuleCategory) -> Color {
-    switch category {
-    case .power: return .orange
-    case .network: return .indigo
-    case .clipboard: return .blue
-    case .window: return .green
-    case .media: return .pink
-    case .files: return .cyan
-    case .appearance: return .purple
-    case .utilities: return .pink
-    case .misc: return .gray
-    }
-}
+private func categoryColor(_ category: ModuleCategory) -> Color { category.tint }
 
 // MARK: - Sidebar
 

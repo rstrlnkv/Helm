@@ -19,10 +19,10 @@ extension Notification.Name {
         }
     }
 
-    /// Panel presentation: "grid" (default) or "list" (the original stacked
-    /// layout, kept as a rollback).
+    /// Panel presentation. "list" (the stacked layout) is the default — the grid
+    /// is an opt-in experiment kept behind Settings → Menu Bar → Panel layout.
     static var panelLayout: String {
-        get { store.string("panelLayout", default: PanelLayoutStyle.grid.rawValue) }
+        get { store.string("panelLayout", default: PanelLayoutStyle.list.rawValue) }
         set {
             store.set(newValue, for: "panelLayout")
             NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)

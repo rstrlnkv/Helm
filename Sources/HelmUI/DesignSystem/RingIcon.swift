@@ -43,15 +43,6 @@ public enum MenuBarIconSize: String, CaseIterable, Sendable {
 }
 
 public enum RingIcon {
-    /// Backwards-compatible: a medium ring in the given tint.
-    public static func make(tintToken: String?) -> NSImage {
-        make(style: .ring, size: .medium, tintToken: tintToken)
-    }
-
-    public static func make(style: MenuBarIconStyle, tintToken: String?) -> NSImage {
-        make(style: style, size: .medium, tintToken: tintToken)
-    }
-
     /// Menu-bar glyph. `tintToken` nil → template (system-recolored, white/inactive).
     /// Non-nil → drawn in that palette color (non-template, shows while active).
     public static func make(style: MenuBarIconStyle, size: MenuBarIconSize, tintToken: String?) -> NSImage {
