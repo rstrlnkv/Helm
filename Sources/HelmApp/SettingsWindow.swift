@@ -154,6 +154,9 @@ private struct SettingsSidebar: View {
         }
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)   // let the AppKit sidebar material show
+        // The window draws its content full-size, so the traffic lights float
+        // over the sidebar; reserve their strip so the first row clears them.
+        .safeAreaInset(edge: .top) { Color.clear.frame(height: 28) }
     }
 
     private func sidebarRow(_ title: String, _ symbol: String, _ color: Color) -> some View {
