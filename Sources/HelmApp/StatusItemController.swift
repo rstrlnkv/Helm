@@ -58,7 +58,8 @@ import HelmUI
             .compactMap { $0.descriptor.statusAppearance($0.vm).tintToken }
             .first
         let style = MenuBarIconStyle(rawValue: AppSettings.menuBarIconStyle) ?? .ring
-        button.image = RingIcon.make(style: style, tintToken: token)
+        let size = MenuBarIconSize(rawValue: AppSettings.menuBarIconSize) ?? .medium
+        button.image = RingIcon.make(style: style, size: size, tintToken: token)
     }
 
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {

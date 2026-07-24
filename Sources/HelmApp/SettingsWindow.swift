@@ -3,9 +3,9 @@ import SwiftUI
 import HelmContract
 import HelmUI
 
-/// Standard titled settings window: sidebar of modules grouped by category
-/// (with enable toggles) + an "About Helm" entry, detail shows the selected
-/// module's settings page.
+/// System Settings-style window: a source-list sidebar (colored icon tiles, no
+/// inline toggles, no collapse button) + a detail pane. The per-module enable
+/// switch lives at the top of each module's detail page.
 @MainActor final class SettingsWindow: NSObject, NSWindowDelegate {
     private let window: NSWindow
 
@@ -27,12 +27,12 @@ import HelmUI
 
     func show() {
         NSApp.setActivationPolicy(.regular)
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         window.makeKeyAndOrderFront(nil)
     }
 
     func windowWillClose(_ notification: Notification) {
-        // Menu-bar app: drop back to accessory once the last regular window closes.
+        // Menu-bar app: drop back to accessory once the settings window closes.
         NSApp.setActivationPolicy(.accessory)
     }
 }
@@ -45,13 +45,13 @@ private enum SettingsSelection: Hashable {
 
 private struct SettingsRootView: View {
     @ObservedObject var host: ModuleHost
-    @State private var selection: SettingsSelection?
+    @State private var selection: SettingsSelection? = .general
 
     var body: some View {
         NavigationSplitView {
             List(selection: $selection) {
                 Section {
-                    Label("Menu Bar", systemImage: "menubar.rectangle")
+                    sidebarRow("Menu Bar", "menubar.rectangle", .gray)
                         .tag(SettingsSelection.general)
                 }
                 ForEach(ModuleCategory.allCases, id: \.self) { category in
@@ -59,36 +59,48 @@ private struct SettingsRootView: View {
                     if !modules.isEmpty {
                         Section(category.rawValue.capitalized) {
                             ForEach(modules, id: \.idRaw) { descriptor in
-                                moduleRow(descriptor)
+                                sidebarRow(descriptor.moduleMetadata.name,
+                                           descriptor.moduleMetadata.sfSymbol,
+                                           Self.color(for: category))
                                     .tag(SettingsSelection.module(descriptor.idRaw))
                             }
                         }
                     }
                 }
                 Section {
-                    Label("About Helm", systemImage: "info.circle")
+                    sidebarRow("About Helm", "info.circle", .gray)
                         .tag(SettingsSelection.about)
                 }
             }
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
+            .listStyle(.sidebar)
+            .navigationSplitViewColumnWidth(min: 200, ideal: 210)
+            .toolbar(removing: .sidebarToggle)
         } detail: {
             detail
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .padding()
         }
     }
 
-    @ViewBuilder
-    private func moduleRow(_ descriptor: any ModuleDescriptor) -> some View {
-        HStack {
-            Label(descriptor.moduleMetadata.name, systemImage: descriptor.moduleMetadata.sfSymbol)
-            Spacer()
-            Toggle("", isOn: Binding(
-                get: { host.isEnabled(descriptor) },
-                set: { host.setEnabled(descriptor, $0) }
-            ))
-            .toggleStyle(.switch)
-            .labelsHidden()
+    private func sidebarRow(_ title: String, _ symbol: String, _ color: Color) -> some View {
+        Label {
+            Text(title)
+        } icon: {
+            Image(systemName: symbol)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 22, height: 22)
+                .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(color))
+        }
+    }
+
+    private static func color(for category: ModuleCategory) -> Color {
+        switch category {
+        case .power: return .orange
+        case .clipboard: return .blue
+        case .window: return .green
+        case .media: return .pink
+        case .files: return .cyan
+        case .appearance: return .purple
+        case .misc: return .gray
         }
     }
 
@@ -101,59 +113,118 @@ private struct SettingsRootView: View {
             AboutHelmView()
         case .module(let id):
             if let descriptor = ModuleRegistry.all.first(where: { $0.idRaw == id }) {
-                if let live = host.liveModule(id) {
-                    descriptor.settingsPage(live.vm)
-                } else {
-                    Text("Enable \(descriptor.moduleMetadata.name) to configure it.")
-                        .foregroundStyle(.secondary)
-                }
+                ModuleDetailView(host: host, descriptor: descriptor, id: id)
             }
         }
+    }
+}
+
+/// A module's detail page: header (icon, name, summary, enable switch) + the
+/// module's own settings, shown only when enabled.
+private struct ModuleDetailView: View {
+    @ObservedObject var host: ModuleHost
+    let descriptor: any ModuleDescriptor
+    let id: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 12) {
+                Image(systemName: descriptor.moduleMetadata.sfSymbol)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 40, height: 40)
+                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.orange))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(descriptor.moduleMetadata.name).font(.title2.bold())
+                    Text(descriptor.moduleMetadata.summary)
+                        .font(.callout).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Toggle("", isOn: Binding(
+                    get: { host.isEnabled(descriptor) },
+                    set: { host.setEnabled(descriptor, $0) }
+                ))
+                .toggleStyle(.switch)
+                .labelsHidden()
+            }
+            .padding(20)
+            Divider()
+            if let live = host.liveModule(id) {
+                descriptor.settingsPage(live.vm)
+            } else {
+                VStack {
+                    Spacer()
+                    Text("Turn on \(descriptor.moduleMetadata.name) to configure it.")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 
 private struct MenuBarSettingsView: View {
     @State private var style: String = AppSettings.menuBarIconStyle
+    @State private var size: String = AppSettings.menuBarIconSize
 
     var body: some View {
         Form {
-            Section("Menu-bar icon") {
+            Section("Icon shape") {
                 HStack(spacing: 14) {
                     ForEach(MenuBarIconStyle.allCases, id: \.rawValue) { s in
-                        let selected = style == s.rawValue
-                        VStack(spacing: 6) {
-                            Image(nsImage: RingIcon.make(style: s, tintToken: "blue"))
-                                .frame(width: 22, height: 22)
-                            Text(s.label).font(.caption2)
-                        }
-                        .frame(width: 64, height: 56)
-                        .background(RoundedRectangle(cornerRadius: 8)
-                            .fill(selected ? Color.accentColor.opacity(0.18) : Color.primary.opacity(0.04)))
-                        .overlay(RoundedRectangle(cornerRadius: 8)
-                            .strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 1.5))
-                        .contentShape(RoundedRectangle(cornerRadius: 8))
-                        .onTapGesture {
-                            style = s.rawValue
-                            AppSettings.menuBarIconStyle = s.rawValue
-                        }
+                        styleTile(s)
                     }
                 }
                 .padding(.vertical, 4)
-                Text("Shape of the Helm icon in the menu bar. It turns your Keep Awake color while active, white when idle.")
+            }
+            Section("Icon size") {
+                Picker("Size", selection: $size) {
+                    ForEach(MenuBarIconSize.allCases, id: \.rawValue) { sz in
+                        Text(sz.label).tag(sz.rawValue)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: size) { _, v in AppSettings.menuBarIconSize = v }
+            }
+            Section {
+                Text("The Helm ring turns your Keep Awake color while active, white when idle.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
     }
+
+    private func styleTile(_ s: MenuBarIconStyle) -> some View {
+        let selected = style == s.rawValue
+        return VStack(spacing: 6) {
+            Image(nsImage: RingIcon.make(style: s, size: .large, tintToken: "blue"))
+                .frame(width: 24, height: 24)
+            Text(s.label).font(.caption2)
+        }
+        .frame(width: 68, height: 58)
+        .background(RoundedRectangle(cornerRadius: 8)
+            .fill(selected ? Color.accentColor.opacity(0.18) : Color.primary.opacity(0.04)))
+        .overlay(RoundedRectangle(cornerRadius: 8)
+            .strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 1.5))
+        .contentShape(RoundedRectangle(cornerRadius: 8))
+        .onTapGesture {
+            style = s.rawValue
+            AppSettings.menuBarIconStyle = s.rawValue
+        }
+    }
 }
 
 private struct AboutHelmView: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Helm")
-                .font(.largeTitle.bold())
+        VStack(spacing: 10) {
+            Image(nsImage: RingIcon.make(style: .ring, size: .large, tintToken: "blue"))
+                .resizable().frame(width: 64, height: 64)
+            Text("Helm").font(.largeTitle.bold())
             Text("A lightweight menu-bar module host for macOS.")
                 .foregroundStyle(.secondary)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

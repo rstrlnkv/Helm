@@ -46,7 +46,11 @@ import HelmUI
         let x = buttonFrameInScreen.midX - panelSize.width / 2
         let y = buttonFrameInScreen.minY - panelSize.height - 4
         panel.setFrameOrigin(NSPoint(x: x, y: y))
-        panel.orderFrontRegardless()
+        // Activate so a non-activating panel with hidesOnDeactivate stays put
+        // (otherwise it appears then vanishes because the app was never active);
+        // clicking away then deactivates the app and dismisses the panel.
+        NSApp.activate()
+        panel.makeKeyAndOrderFront(nil)
     }
 }
 

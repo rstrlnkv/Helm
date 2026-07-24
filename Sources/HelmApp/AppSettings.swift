@@ -17,4 +17,12 @@ extension Notification.Name {
             NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
         }
     }
+
+    static var menuBarIconSize: String {
+        get { store.string("menuBarIconSize", default: "medium") }
+        set {
+            store.set(newValue, for: "menuBarIconSize")
+            NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
+        }
+    }
 }
