@@ -56,7 +56,6 @@ let package = Package(
                            "Module_Uninstaller_Engine", "Module_Uninstaller_UI",
                            "Module_Homebrew_Engine", "Module_Homebrew_UI"]
         ),
-        .testTarget(name: "HelmUITests", dependencies: ["HelmUI"]),
         .testTarget(name: "HelmContractTests", dependencies: ["HelmContract"]),
         .testTarget(name: "HelmRuntimeTests", dependencies: ["HelmRuntime"]),
         .testTarget(

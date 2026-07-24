@@ -6,7 +6,6 @@ import Module_VPN_Engine
 /// small connect/disconnect switch.
 public struct VPNPanelTile: View {
     @ObservedObject private var vm: VPNViewModel
-    @Environment(\.helmTileSpan) private var span
 
     public init(vm: VPNViewModel) {
         self.vm = vm
@@ -19,11 +18,6 @@ public struct VPNPanelTile: View {
                 Text(VPNStr.noVPNs)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-            } else if span == .compact {
-                // Half width: one switch for the whole module — it toggles the
-                // connected VPN off, or the first one on. The full list lives in
-                // the wide tile and in Settings.
-                compactControl
             } else {
                 VStack(spacing: 8) {
                     ForEach(vm.connections) { connectionRow($0) }
@@ -31,31 +25,6 @@ public struct VPNPanelTile: View {
             }
         }
         .helmPanelCard()
-    }
-
-    /// Summary + single switch used when the grid gives this tile half a row.
-    private var compactControl: some View {
-        let connected = vm.connections.first { $0.status == .connected || $0.status == .connecting }
-        return HStack(spacing: 8) {
-            Text(connected?.name ?? VPNStr.status(.disconnected))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-            Spacer(minLength: 6)
-            Toggle("", isOn: Binding(
-                get: { connected != nil },
-                set: { on in
-                    if on {
-                        if let first = vm.connections.first { vm.connect(first.name) }
-                    } else if let connected {
-                        vm.disconnect(connected.name)
-                    }
-                }))
-                .toggleStyle(.switch)
-                .labelsHidden()
-                .controlSize(.mini)
-                .accessibilityLabel("VPN")
-        }
     }
 
     private var header: some View {

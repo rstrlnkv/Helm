@@ -136,8 +136,37 @@ private struct HelmPanelContent: View {
     @ObservedObject var host: ModuleHost
     let sizeRelay: SizeRelay
     @State private var utilitiesExpanded = false
+    @State private var showSettingsButton = AppSettings.showSettingsButton
+    @State private var showQuitButton = AppSettings.showQuitButton
 
-    private struct Tile { let view: AnyView; let span: PanelTileSpan }
+    /// Optional shortcuts; both actions also live in the status item's
+    /// right-click menu, so they stay off by default.
+    private var footer: some View {
+        HStack(spacing: 8) {
+            if showSettingsButton {
+                Button {
+                    NotificationCenter.default.post(name: .helmOpenSettings, object: nil)
+                } label: {
+                    Label(AppStr.settings, systemImage: "gearshape")
+                        .font(.callout)
+                }
+                .buttonStyle(.plain)
+            }
+            Spacer()
+            if showQuitButton {
+                Button { NSApp.terminate(nil) } label: {
+                    Label(AppStr.quit, systemImage: "power")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 4)
+        .padding(.top, 2)
+    }
+
+    private struct Tile { let view: AnyView }
 
     /// Modules split by how they present in the panel: interactive tiles stay
     /// visible, utilities collapse behind one row so the panel stays compact.
@@ -150,36 +179,10 @@ private struct HelmPanelContent: View {
             if contribution.isUtility {
                 utilities.append(live)
             } else if let tile = contribution.panelTile {
-                tiles.append(Tile(view: tile, span: contribution.span))
+                tiles.append(Tile(view: tile))
             }
         }
         return (tiles, utilities)
-    }
-
-    /// Mirrors the stored setting; the store isn't observable, so the panel
-    /// re-reads it when the settings window announces a change.
-    @State private var layoutRaw = AppSettings.panelLayout
-    private var layout: PanelLayoutStyle {
-        PanelLayoutStyle(rawValue: layoutRaw) ?? .list
-    }
-
-    /// Control-Centre style rows: compact tiles pair up, wide tiles take a row.
-    @ViewBuilder
-    private func gridTiles(_ tiles: [Tile]) -> some View {
-        let rows = PanelGridLayout.rows(of: tiles.map(\.span))
-        ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-            HStack(alignment: .top, spacing: 8) {
-                ForEach(row, id: \.self) { index in
-                    tiles[index].view
-                        .environment(\.helmTileSpan, tiles[index].span)
-                        .frame(maxWidth: .infinity)
-                }
-                // A lone compact tile keeps its half width instead of stretching.
-                if row.count == 1, tiles[row[0]].span == .compact {
-                    Color.clear.frame(maxWidth: .infinity)
-                }
-            }
-        }
     }
 
     var body: some View {
@@ -212,22 +215,20 @@ private struct HelmPanelContent: View {
                 .padding(.vertical, 24)
             } else {
                 let (tiles, utilities) = split
-                if layout == .grid {
-                    gridTiles(tiles)
-                } else {
-                    ForEach(Array(tiles.enumerated()), id: \.offset) { _, tile in
-                        tile.view.environment(\.helmTileSpan, .wide)
-                    }
+                ForEach(Array(tiles.enumerated()), id: \.offset) { _, tile in
+                    tile.view
                 }
                 if !utilities.isEmpty {
                     UtilitiesSection(modules: utilities, expanded: $utilitiesExpanded)
                 }
+                if showSettingsButton || showQuitButton { footer }
             }
         }
         .padding(12)
         .frame(width: 300)
         .onReceive(NotificationCenter.default.publisher(for: .helmMenuBarStyleChanged)) { _ in
-            layoutRaw = AppSettings.panelLayout
+            showSettingsButton = AppSettings.showSettingsButton
+            showQuitButton = AppSettings.showQuitButton
         }
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(
