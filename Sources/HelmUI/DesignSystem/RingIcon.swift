@@ -99,6 +99,8 @@ public enum RingIcon {
     private static func nsColor(tintToken: String?) -> NSColor {
         switch tintToken {
         case nil, "white": return .white
+        // Theme-adaptive neutral for in-app previews: white on dark, black on light.
+        case "primary": return .labelColor
         case "red": return .systemRed
         case "orange": return .systemOrange
         case "yellow": return .systemYellow

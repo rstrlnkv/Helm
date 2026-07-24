@@ -9,7 +9,7 @@ public struct IconShapePicker: View {
     @Binding private var selection: String
     private let tintToken: String
 
-    public init(selection: Binding<String>, tintToken: String = "blue") {
+    public init(selection: Binding<String>, tintToken: String = "primary") {
         self._selection = selection
         self.tintToken = tintToken
     }
@@ -57,7 +57,7 @@ public struct IconSizePicker: View {
     private let style: MenuBarIconStyle
     private let tintToken: String
 
-    public init(selection: Binding<String>, style: MenuBarIconStyle, tintToken: String = "blue") {
+    public init(selection: Binding<String>, style: MenuBarIconStyle, tintToken: String = "primary") {
         self._selection = selection
         self.style = style
         self.tintToken = tintToken
