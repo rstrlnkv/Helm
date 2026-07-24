@@ -263,7 +263,11 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     private func engageClamshell() {
         if !clamshell.isSudoersInstalled() {
             clamshell.installSudoers { [weak self] ok in
-                if ok { self?.reallyEngageClamshell() }
+                // The osascript callback arrives on a background queue; engine
+                // state and store writes belong on main.
+                DispatchQueue.main.async {
+                    if ok { self?.reallyEngageClamshell() }
+                }
             }
         } else {
             reallyEngageClamshell()
