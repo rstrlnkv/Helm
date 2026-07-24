@@ -47,9 +47,14 @@ shell.
 
 ### File shelf (first source)
 
-- **Drag-in:** the hidden window registers as an `NSDraggingDestination` over
-  the notch rect; `draggingEntered` reveals the island in "receiving" state;
-  a drop stores the items.
+- **Drag-in (adjusted after the risk gate):** hovering a drag at the top edge
+  triggers Mission Control on macOS 26, so aiming at the notch strip cannot be
+  the primary path. Instead a global monitor detects that a file drag started
+  anywhere (drag pasteboard + mouse-drag events) and the island immediately
+  expands with a drop zone hanging BELOW the menu bar — the user drops onto
+  the card without dwelling at the top edge. The notch-strip dragging
+  destination stays as a secondary path (proven working over the invisible
+  window: 5/5 `draggingEntered` in the prototype).
 - **Storage: references only** — security-scoped bookmarks; files never move.
   A missing file renders greyed with a note. The shelf persists across
   relaunches (bookmarks in the module store).
@@ -83,8 +88,10 @@ shell.
 
 - The hover window must never steal menu-bar clicks → interactive region is
   strictly the notch rect (no clickable menu items live there).
-- Drag-detection over a transparent, initially-invisible window is the main
-  technical unknown → prototyped first, before any other work.
+- ~~Drag-detection over a transparent window~~ — retired 2026-07-25: the
+  prototype logged 5/5 `draggingEntered`. New named risk: macOS 26 opens
+  Mission Control on top-edge drag dwell → mitigated by the global
+  drag-started reveal with a below-the-bar drop zone.
 - Fullscreen apps hide the menu bar → island suppressed in v1.
 
 ## Out of scope (v1)
