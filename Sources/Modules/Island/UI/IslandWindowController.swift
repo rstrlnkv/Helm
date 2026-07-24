@@ -1,75 +1,173 @@
 import AppKit
 import SwiftUI
+import Module_Island_Engine
 
-/// RISK-GATE PROTOTYPE (Task 2): an invisible, borderless, non-activating
-/// window over the notch that registers as a dragging destination and logs
-/// what it receives. Proves (or disproves) that drag-detection works over a
-/// fully transparent window before the real shell is built on top of it.
+/// Observable bridge between the controller and the SwiftUI content.
+@MainActor public final class IslandModel: ObservableObject {
+    @Published public internal(set) var state: IslandStateMachine.State = .hidden
+    @Published public internal(set) var notchWidth: CGFloat = 200
+    @Published public internal(set) var receivingDrag = false
+    public internal(set) var dismiss: () -> Void = {}
+}
+
+/// The island shell. Two windows, per the spec's click-safety rule:
+///  - a permanent, invisible SENSOR strictly over the notch rect (hover +
+///    drag-in detection; the notch strip has no clickable content, so it can
+///    safely own that area);
+///  - the ISLAND window with one static frame (NotchMetrics.windowRect) that is
+///    ordered in only while the state machine is not `.hidden`, so an idle
+///    island never swallows clicks. All animation is SwiftUI inside the static
+///    frame — the frame itself never moves (ARCHITECTURE.md panel rules).
 @MainActor public final class IslandWindowController {
-    private let panel: NSPanel
-    private let dragView: IslandDragProbeView
+    private let sensor: NSPanel
+    private let island: IslandKeyPanel
+    private var machine = IslandStateMachine()
+    private var graceTimer: Timer?
+    public let model = IslandModel()
 
-    public init?() {
-        // Notch geometry straight from the screen; nil on no-notch displays.
+    public init?(content: AnyView = AnyView(EmptyView())) {
         guard let screen = NSScreen.main,
-              let aux = screen.auxiliaryTopLeftArea, aux.width > 0,
-              screen.safeAreaInsets.top > 0 else { return nil }
-        let notchWidth = screen.frame.width - 2 * aux.width
-        let rect = NSRect(x: screen.frame.midX - notchWidth / 2 - 60,
-                          y: screen.frame.maxY - screen.safeAreaInsets.top,
-                          width: notchWidth + 120,
-                          height: screen.safeAreaInsets.top)
+              let metrics = NotchMetrics.compute(
+                  screen: screen.frame,
+                  topInset: screen.safeAreaInsets.top,
+                  auxTopLeftWidth: screen.auxiliaryTopLeftArea?.width ?? 0)
+        else { return nil }
 
-        let panel = NSPanel(contentRect: rect,
-                            styleMask: [.nonactivatingPanel, .borderless],
-                            backing: .buffered, defer: false)
+        model.notchWidth = metrics.notchRect.width
+
+        // Sensor: notch rect only, always present.
+        let sensor = NSPanel(contentRect: metrics.notchRect,
+                             styleMask: [.nonactivatingPanel, .borderless],
+                             backing: .buffered, defer: false)
+        Self.configure(sensor)
+        self.sensor = sensor
+
+        // Island: static frame, hidden until needed.
+        let island = IslandKeyPanel(contentRect: metrics.windowRect,
+                                    styleMask: [.nonactivatingPanel, .borderless],
+                                    backing: .buffered, defer: false)
+        Self.configure(island)
+        self.island = island
+
+        let sensorView = IslandSensorView(frame: NSRect(origin: .zero, size: metrics.notchRect.size))
+        sensor.contentView = sensorView
+        sensor.setFrame(metrics.notchRect, display: true)
+        sensor.orderFrontRegardless()
+
+        island.contentView = NSHostingView(rootView: IslandView(model: model, content: content))
+        island.setFrame(metrics.windowRect, display: true)
+
+        model.dismiss = { [weak self] in self?.apply(.dismiss) }
+        sensorView.onHover = { [weak self] inside in
+            self?.apply(inside ? .hoverEntered : .hoverExited)
+        }
+        sensorView.onDrag = { [weak self] phase in
+            switch phase {
+            case .entered: self?.apply(.dragEntered)
+            case .exited: self?.apply(.dragExited)
+            case .dropped(let urls):
+                self?.handleDrop(urls)
+            }
+        }
+    }
+
+    /// Task 7 replaces this with the shelf store; the shell just pins open.
+    var onDrop: ([URL]) -> Void = { _ in }
+
+    private func handleDrop(_ urls: [URL]) {
+        onDrop(urls)
+        apply(.dropped)
+        apply(.dragExited)
+    }
+
+    public func apply(_ input: IslandStateMachine.Input) {
+        switch input {
+        case .hoverExited, .dragExited: armGrace()
+        case .hoverEntered, .dragEntered: graceTimer?.invalidate(); graceTimer = nil
+        default: break
+        }
+        machine.apply(input)
+        if case .dragEntered = input { model.receivingDrag = true }
+        if case .dragExited = input { model.receivingDrag = false }
+        if case .dismiss = input { model.receivingDrag = false }
+        model.state = machine.state
+        syncWindows()
+    }
+
+    private func armGrace() {
+        graceTimer?.invalidate()
+        graceTimer = Timer.scheduledTimer(withTimeInterval: 0.35, repeats: false) { [weak self] _ in
+            Task { @MainActor in self?.apply(.graceElapsed) }
+        }
+    }
+
+    private func syncWindows() {
+        switch machine.state {
+        case .hidden:
+            island.orderOut(nil)
+        case .peek:
+            island.orderFrontRegardless()
+        case .expanded:
+            island.orderFrontRegardless()
+            island.makeKey()   // animations only tick while key (ARCHITECTURE.md)
+        }
+    }
+
+    private static func configure(_ panel: NSPanel) {
         panel.isFloatingPanel = true
         panel.level = NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue + 1)
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = false
-        panel.ignoresMouseEvents = false
         panel.hidesOnDeactivate = false
-        panel.collectionBehavior = [.canJoinAllSpaces, .stationary]
-        self.panel = panel
-
-        let view = IslandDragProbeView(frame: NSRect(origin: .zero, size: rect.size))
-        self.dragView = view
-        panel.contentView = view
-        panel.setFrame(rect, display: true)
-        panel.orderFrontRegardless()
-        IslandDragProbeView.log("prototype window up at \(rect)")
+        panel.isMovable = false
+        panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
     }
 }
 
-final class IslandDragProbeView: NSView {
+/// Borderless panels can't normally become key; the island must, so its
+/// SwiftUI controls and animations work while the app stays inactive.
+final class IslandKeyPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+}
+
+// MARK: - Sensor
+
+enum IslandDragPhase {
+    case entered, exited
+    case dropped([URL])
+}
+
+/// Invisible view over the notch: mouse tracking + drag destination.
+final class IslandSensorView: NSView {
+    var onHover: (Bool) -> Void = { _ in }
+    var onDrag: (IslandDragPhase) -> Void = { _ in }
+
     override init(frame: NSRect) {
         super.init(frame: frame)
         registerForDraggedTypes([.fileURL])
     }
     required init?(coder: NSCoder) { nil }
 
-    static func log(_ m: String) {
-        let line = String(format: "%.2f ", Date().timeIntervalSince1970) + m + "\n"
-        if let d = line.data(using: .utf8), let h = FileHandle(forWritingAtPath: "/tmp/helm-island.log") {
-            h.seekToEndOfFile(); h.write(d); h.closeFile()
-        } else {
-            try? line.write(toFile: "/tmp/helm-island.log", atomically: false, encoding: .utf8)
-        }
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(NSTrackingArea(rect: bounds,
+                                       options: [.mouseEnteredAndExited, .activeAlways],
+                                       owner: self, userInfo: nil))
     }
+
+    override func mouseEntered(with event: NSEvent) { onHover(true) }
+    override func mouseExited(with event: NSEvent) { onHover(false) }
 
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-        Self.log("draggingEntered")
+        onDrag(.entered)
         return .copy
     }
-
-    override func draggingExited(_ sender: NSDraggingInfo?) {
-        Self.log("draggingExited")
-    }
-
+    override func draggingExited(_ sender: NSDraggingInfo?) { onDrag(.exited) }
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
         let urls = sender.draggingPasteboard.readObjects(forClasses: [NSURL.self]) as? [URL] ?? []
-        Self.log("performDrag urls=\(urls.map(\.lastPathComponent))")
-        return true
+        onDrag(.dropped(urls))
+        return !urls.isEmpty
     }
 }
