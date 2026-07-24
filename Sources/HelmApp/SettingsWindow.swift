@@ -243,7 +243,8 @@ private struct MenuBarSettingsView: View {
     @State private var style: String = AppSettings.menuBarIconStyle
     @State private var size: String = AppSettings.menuBarIconSize
     @State private var launchAtLogin: Bool = LoginItem.isEnabled
-    @State private var panelLayout: String = AppSettings.panelLayout
+    @State private var showSettingsButton = AppSettings.showSettingsButton
+    @State private var showQuitButton = AppSettings.showQuitButton
 
     var body: some View {
         Form {
@@ -251,14 +252,13 @@ private struct MenuBarSettingsView: View {
                 Toggle(AppStr.launchAtLogin, isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, v in LoginItem.setEnabled(v) }
             }
-            Section(AppStr.panelLayout) {
-                Picker(AppStr.panelLayout, selection: $panelLayout) {
-                    ForEach(PanelLayoutStyle.allCases, id: \.rawValue) { style in
-                        Text(style.label).tag(style.rawValue)
-                    }
-                }
-                .pickerStyle(.segmented).labelsHidden()
-                .onChange(of: panelLayout) { _, v in AppSettings.panelLayout = v }
+            Section(AppStr.panel) {
+                Toggle(AppStr.showSettingsButton, isOn: $showSettingsButton)
+                    .onChange(of: showSettingsButton) { _, v in AppSettings.showSettingsButton = v }
+                Toggle(AppStr.showQuitButton, isOn: $showQuitButton)
+                    .onChange(of: showQuitButton) { _, v in AppSettings.showQuitButton = v }
+                Text(AppStr.panelButtonsNote)
+                    .font(.caption).foregroundStyle(.secondary)
             }
             Section(AppStr.menuBar) {
                 LabeledContent(AppStr.iconShape) {
