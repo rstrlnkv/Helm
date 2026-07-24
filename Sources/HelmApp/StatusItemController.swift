@@ -63,8 +63,7 @@ import HelmUI
     }
 
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
-        let isRightClick = NSApp.currentEvent?.type == .rightMouseUp
-        if isRightClick {
+        if NSApp.currentEvent?.type == .rightMouseUp {
             showMenu()
         } else {
             togglePanel()

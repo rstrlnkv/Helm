@@ -4,11 +4,18 @@ import HelmUI
 
 /// Borderless, non-activating panel shown below the status item. Stacks
 /// each enabled module's panel tile, with a small Settings/Quit footer.
+/// Borderless panel that can still become key so its SwiftUI controls work.
+private final class KeyablePanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+}
+
 @MainActor final class HelmPanel: NSObject {
     private let panel: NSPanel
+    private var dismissMonitor: Any?
+    private var statusButtonScreenFrame: NSRect = .zero
 
     init(host: ModuleHost, onOpenSettings: @escaping () -> Void, onQuit: @escaping () -> Void) {
-        let panel = NSPanel(
+        let panel = KeyablePanel(
             contentRect: NSRect(x: 0, y: 0, width: 300, height: 200),
             styleMask: [.nonactivatingPanel, .borderless],
             backing: .buffered,
@@ -16,7 +23,10 @@ import HelmUI
         )
         panel.isFloatingPanel = true
         panel.level = .popUpMenu
-        panel.hidesOnDeactivate = true
+        // NOT hidesOnDeactivate: the app is usually inactive when the panel is
+        // shown from the menu bar, which would hide it instantly. We dismiss it
+        // ourselves via an outside-click monitor.
+        panel.hidesOnDeactivate = false
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
@@ -36,21 +46,43 @@ import HelmUI
 
     func toggle(relativeTo statusButton: NSStatusBarButton) {
         if panel.isVisible {
-            panel.orderOut(nil)
+            hide()
             return
         }
         guard let buttonWindow = statusButton.window else { return }
         let buttonFrameInScreen = buttonWindow.convertToScreen(statusButton.frame)
+        statusButtonScreenFrame = buttonFrameInScreen
         panel.layoutIfNeeded()
         let panelSize = panel.frame.size
         let x = buttonFrameInScreen.midX - panelSize.width / 2
         let y = buttonFrameInScreen.minY - panelSize.height - 4
         panel.setFrameOrigin(NSPoint(x: x, y: y))
-        // Activate so a non-activating panel with hidesOnDeactivate stays put
-        // (otherwise it appears then vanishes because the app was never active);
-        // clicking away then deactivates the app and dismisses the panel.
-        NSApp.activate()
-        panel.makeKeyAndOrderFront(nil)
+        panel.orderFrontRegardless()
+        installDismissMonitor()
+    }
+
+    private func hide() {
+        removeDismissMonitor()
+        panel.orderOut(nil)
+    }
+
+    /// Close the panel when the user clicks outside it (but not on the status
+    /// item itself — that click re-toggles through the normal path).
+    private func installDismissMonitor() {
+        removeDismissMonitor()
+        dismissMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            guard let self else { return }
+            let loc = NSEvent.mouseLocation
+            if self.statusButtonScreenFrame.contains(loc) { return }
+            self.hide()
+        }
+    }
+
+    private func removeDismissMonitor() {
+        if let dismissMonitor {
+            NSEvent.removeMonitor(dismissMonitor)
+            self.dismissMonitor = nil
+        }
     }
 }
 
