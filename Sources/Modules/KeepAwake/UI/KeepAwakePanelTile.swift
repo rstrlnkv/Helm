@@ -225,7 +225,9 @@ public struct KeepAwakePanelTile: View {
                 }
                 .controlSize(.small)
                 // The automation controls must stay reachable while a timer runs.
-                morePill.fixedSize()
+                // A fixed width, not fixedSize(): the pill stretches inside the
+                // preset row, so left to itself here it shrank to the glyph.
+                morePill.frame(width: 46)
             }
         }
     }
