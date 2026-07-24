@@ -82,8 +82,16 @@ public struct KeepAwakePanelTile: View {
                 .toggleStyle(.switch)
                 .labelsHidden()
                 .controlSize(.small)
+                // Orange switch = an automation rule (display/power/app) is
+                // holding the session, so flipping it off may not stick.
+                .tint(autoDriven ? .orange : nil)
                 .accessibilityLabel(KAStr.moduleName)
         }
+    }
+
+    /// True while an automation condition (not just manual/timer) is active.
+    private var autoDriven: Bool {
+        !vm.activeConditions.isDisjoint(with: ["externalDisplay", "power", "app"])
     }
 
     /// Line under the title while active: the auto conditions and a lid hint,
