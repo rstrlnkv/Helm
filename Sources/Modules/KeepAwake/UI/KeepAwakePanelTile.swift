@@ -26,9 +26,15 @@ public struct KeepAwakePanelTile: View {
                 countdownRow(end)
             } else {
                 presetRow
+                if showMore { moreControls }
             }
         }
+        // Clip so the revealed controls can't draw outside the card while it grows.
+        .clipped()
         .helmPanelCard()
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("helmDebugToggleMore"))) { _ in
+            withAnimation(.easeInOut(duration: 0.24)) { showMore.toggle() }
+        }
     }
 
     // MARK: - Header
@@ -85,11 +91,12 @@ public struct KeepAwakePanelTile: View {
     }
 
     private var morePill: some View {
-        Button { showMore.toggle() } label: {
+        Button {
+            withAnimation(.easeInOut(duration: 0.24)) { showMore.toggle() }
+        } label: {
             pillLabel(Image(systemName: "ellipsis"), active: showMore)
         }
         .buttonStyle(.plain)
-        .popover(isPresented: $showMore, arrowEdge: .bottom) { moreControls }
     }
 
     private func pillLabel(_ content: some View, active: Bool = false) -> some View {
@@ -101,28 +108,31 @@ public struct KeepAwakePanelTile: View {
             .contentShape(Capsule())
     }
 
-    /// Popover with quick automation toggles + a custom timer — kept out of the
-    /// tile so the panel never resizes.
+    /// Quick automation toggles + a custom timer, revealed inline under the
+    /// presets — same disclosure language as the panel's Utilities section
+    /// (rows fade in cascading, the card grows downward).
     private var moreControls: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
+            Divider()
             Toggle(KAStr.withExternalDisplay, isOn: $autoExternalDisplay)
                 .onChange(of: autoExternalDisplay) { _, v in writeSetting(v, "autoExternalDisplay") }
+                .transition(.opacity.animation(.easeOut(duration: 0.18)))
             Toggle(KAStr.whileOnPower, isOn: $autoPower)
                 .onChange(of: autoPower) { _, v in writeSetting(v, "autoPower") }
-            Divider()
+                .transition(.opacity.animation(.easeOut(duration: 0.18).delay(0.06)))
             HStack(spacing: 8) {
                 Stepper("\(customMinutes) \(KAStr.minutesUnit)", value: $customMinutes, in: 5...720, step: 5)
                     .font(.subheadline)
                 Button(KAStr.start) {
                     vm.send("start", payload: startPayload(customMinutes))
-                    showMore = false
+                    withAnimation(.easeInOut(duration: 0.24)) { showMore = false }
                 }
                 .controlSize(.small)
             }
+            .transition(.opacity.animation(.easeOut(duration: 0.18).delay(0.12)))
         }
+        .font(.subheadline)
         .toggleStyle(.switch)
-        .padding(14)
-        .frame(width: 260)
     }
 
     private func writeSetting(_ value: Any?, _ key: String) {
