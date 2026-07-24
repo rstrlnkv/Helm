@@ -3,10 +3,11 @@ import HelmUI
 import Module_KeepAwake_UI
 import Module_VPN_UI
 import Module_Uninstaller_UI
+import Module_Homebrew_UI
 
 /// All compiled-in module descriptors. Add future modules here.
 @MainActor enum ModuleRegistry {
-    static let all: [any ModuleDescriptor] = [KeepAwakeDescriptor(), VPNDescriptor(), UninstallerDescriptor()]
+    static let all: [any ModuleDescriptor] = [KeepAwakeDescriptor(), VPNDescriptor(), UninstallerDescriptor(), HomebrewDescriptor()]
 }
 
 extension ModuleDescriptor {
