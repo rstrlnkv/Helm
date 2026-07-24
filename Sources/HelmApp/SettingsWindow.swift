@@ -28,7 +28,9 @@ import HelmUI
         window.delegate = self
     }
 
-    func show() {
+    /// `selecting` opens the window on that module's page (used by panel utility rows).
+    func show(selecting moduleID: String? = nil) {
+        if let moduleID { model.selection = .module(moduleID) }
         NSApp.setActivationPolicy(.regular)
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)
@@ -74,6 +76,10 @@ final class SettingsSplitViewController: NSSplitViewController {
         sidebarItem.maximumThickness = 250
 
         let detail = NSHostingController(rootView: SettingsDetail(model: model))
+        // fullSizeContentView + a transparent title bar makes AppKit inset the
+        // detail pane by the title-bar height, leaving a dead gap above the
+        // module header. The pane draws its own top padding, so drop the inset.
+        detail.safeAreaRegions = []
         let detailItem = NSSplitViewItem(viewController: detail)
         detailItem.minimumThickness = 420
 
@@ -93,7 +99,7 @@ private func categoryColor(_ category: ModuleCategory) -> Color {
     case .media: return .pink
     case .files: return .cyan
     case .appearance: return .purple
-    case .maintenance: return .pink
+    case .utilities: return .pink
     case .misc: return .gray
     }
 }

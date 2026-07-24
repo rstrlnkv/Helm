@@ -20,6 +20,7 @@ enum AppStr {
     static var iconSize: String { L("Icon size", [.ru: "Размер иконки", .es: "Tamaño del icono", .fr: "Taille de l’icône", .de: "Symbolgröße", .ja: "アイコンのサイズ", .zh: "图标大小", .pt: "Tamanho do ícone"]) }
     static var size: String { L("Size", [.ru: "Размер", .es: "Tamaño", .fr: "Taille", .de: "Größe", .ja: "サイズ", .zh: "大小", .pt: "Tamanho"]) }
     static var settings: String { L("Settings…", [.ru: "Настройки…", .es: "Ajustes…", .fr: "Réglages…", .de: "Einstellungen…", .ja: "設定…", .zh: "设置…", .pt: "Ajustes…"]) }
+    static var utilities: String { L("Utilities", [.ru: "Утилиты", .es: "Utilidades", .fr: "Utilitaires", .de: "Dienstprogramme", .ja: "ユーティリティ", .zh: "实用工具", .pt: "Utilitários"]) }
     static var noModules: String { L("No modules enabled", [.ru: "Нет включённых модулей", .es: "No hay módulos activados", .fr: "Aucun module activé", .de: "Keine Module aktiviert", .ja: "有効なモジュールがありません", .zh: "未启用任何模块", .pt: "Nenhum módulo ativado"]) }
     static var noModulesHint: String { L("Enable a module in Settings.", [.ru: "Включите модуль в настройках.", .es: "Activa un módulo en Ajustes.", .fr: "Activez un module dans Réglages.", .de: "Aktiviere ein Modul in den Einstellungen.", .ja: "設定でモジュールを有効にしてください。", .zh: "在设置中启用一个模块。", .pt: "Ative um módulo nos Ajustes."]) }
     static var whatsNew: String { L("What’s New", [.ru: "Что нового", .es: "Novedades", .fr: "Nouveautés", .de: "Neuigkeiten", .ja: "新機能", .zh: "新增内容", .pt: "Novidades"]) }
@@ -45,7 +46,7 @@ enum AppStr {
         case .media: return L("Media", [.ru: "Медиа", .es: "Multimedia", .fr: "Médias", .de: "Medien", .ja: "メディア", .zh: "媒体", .pt: "Mídia"])
         case .files: return L("Files", [.ru: "Файлы", .es: "Archivos", .fr: "Fichiers", .de: "Dateien", .ja: "ファイル", .zh: "文件", .pt: "Arquivos"])
         case .appearance: return L("Appearance", [.ru: "Оформление", .es: "Apariencia", .fr: "Apparence", .de: "Erscheinungsbild", .ja: "外観", .zh: "外观", .pt: "Aparência"])
-        case .maintenance: return L("Maintenance", [.ru: "Обслуживание", .es: "Mantenimiento", .fr: "Maintenance", .de: "Wartung", .ja: "メンテナンス", .zh: "维护", .pt: "Manutenção"])
+        case .utilities: return AppStr.utilities
         case .misc: return L("Other", [.ru: "Прочее", .es: "Otros", .fr: "Autres", .de: "Sonstiges", .ja: "その他", .zh: "其他", .pt: "Outros"])
         }
     }
