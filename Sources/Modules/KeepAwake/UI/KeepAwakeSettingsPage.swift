@@ -27,6 +27,8 @@ public struct KeepAwakeSettingsPage: View {
 
     @State private var activeTintColor: String
     @State private var ringTimer: Bool
+    @State private var showTimerText: Bool
+    @State private var timerTintColor: String
     @State private var customActiveIcon: Bool
     @State private var activeIconShape: String
     @StateObject private var recorder: HotkeyRecorder
@@ -47,6 +49,8 @@ public struct KeepAwakeSettingsPage: View {
         _batteryGuardPercent = State(initialValue: store.int("batteryGuardPercent", default: 20))
         _activeTintColor = State(initialValue: store.string("activeTintColor", default: "green"))
         _ringTimer = State(initialValue: store.bool("ringTimer", default: true))
+        _showTimerText = State(initialValue: store.bool("showTimerText", default: false))
+        _timerTintColor = State(initialValue: store.string("timerTintColor", default: ""))
         _customActiveIcon = State(initialValue: store.bool("customActiveIcon", default: false))
         _activeIconShape = State(initialValue: store.string("activeIconShape", default: "ring"))
     }
@@ -124,11 +128,17 @@ public struct KeepAwakeSettingsPage: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
 
-            Section(KAStr.activeIcon) {
+            Section(KAStr.timer) {
                 Toggle(KAStr.ringTimer, isOn: $ringTimer)
                     .onChange(of: ringTimer) { _, v in write(v, "ringTimer") }
                 Text(KAStr.ringTimerNote)
                     .font(.caption).foregroundStyle(.secondary)
+                Toggle(KAStr.showTimerText, isOn: $showTimerText)
+                    .onChange(of: showTimerText) { _, v in write(v, "showTimerText") }
+                LabeledContent(KAStr.timerColor) { timerColorSwatches }
+            }
+
+            Section(KAStr.activeIcon) {
                 Toggle(KAStr.customActiveIcon, isOn: $customActiveIcon)
                     .onChange(of: customActiveIcon) { _, v in write(v, "customActiveIcon") }
                 if customActiveIcon {
@@ -189,10 +199,35 @@ public struct KeepAwakeSettingsPage: View {
     // MARK: - Color swatches
 
     private var colorSwatches: some View {
+        swatchGrid(selection: activeTintColor) { token in
+            activeTintColor = token
+            write(token, "activeTintColor")
+        }
+    }
+
+    /// Timer palette with an extra "inherit" swatch, so the countdown can either
+    /// match the active colour or stand out on its own.
+    private var timerColorSwatches: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            swatchGrid(selection: timerTintColor) { token in
+                timerTintColor = token
+                write(token, "timerTintColor")
+            }
+            Toggle(KAStr.sameAsActive, isOn: Binding(
+                get: { timerTintColor.isEmpty },
+                set: { same in
+                    timerTintColor = same ? "" : activeTintColor
+                    write(timerTintColor, "timerTintColor")
+                }))
+                .font(.caption)
+        }
+    }
+
+    private func swatchGrid(selection: String, pick: @escaping (String) -> Void) -> some View {
         // 5 columns × 2 rows for the 10 palette colors.
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 24, maximum: 44)), count: 5), spacing: 12) {
             ForEach(PaletteColor.allCases, id: \.rawValue) { palette in
-                let selected = activeTintColor == palette.rawValue
+                let selected = selection == palette.rawValue
                 Circle()
                     .fill(palette.color)
                     .frame(width: 24, height: 24)
@@ -210,10 +245,7 @@ public struct KeepAwakeSettingsPage: View {
                         }
                     }
                     .contentShape(Circle())
-                    .onTapGesture {
-                        activeTintColor = palette.rawValue
-                        write(palette.rawValue, "activeTintColor")
-                    }
+                    .onTapGesture { pick(palette.rawValue) }
                     .help(palette.rawValue.capitalized)
             }
         }

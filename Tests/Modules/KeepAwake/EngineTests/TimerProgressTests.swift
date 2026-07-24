@@ -21,6 +21,13 @@ final class TimerProgressTests: XCTestCase {
         XCTAssertEqual(TimerProgress.remainingFraction(now: after, start: start, end: end), 0, accuracy: 0.001)
     }
 
+    func testLabelFormatsBelowAndAboveAnHour() {
+        XCTAssertEqual(TimerProgress.label(remaining: 545), "9:05")
+        XCTAssertEqual(TimerProgress.label(remaining: 3849), "1:04:09")
+        XCTAssertEqual(TimerProgress.label(remaining: 0), "0:00")
+        XCTAssertEqual(TimerProgress.label(remaining: -5), "0:00")
+    }
+
     func testZeroLengthSessionIsFinished() {
         XCTAssertEqual(TimerProgress.remainingFraction(now: start, start: start, end: start), 0, accuracy: 0.001)
     }
