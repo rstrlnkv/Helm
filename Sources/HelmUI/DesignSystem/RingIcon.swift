@@ -12,43 +12,56 @@ public enum MenuBarIconStyle: String, CaseIterable, Sendable {
         case .dot: return "Dot"
         }
     }
+}
 
-    /// SF Symbol used only to represent the style in pickers (not the real glyph).
-    public var previewSymbol: String {
+/// Menu-bar icon size (canvas point size).
+public enum MenuBarIconSize: String, CaseIterable, Sendable {
+    case small, medium, large
+
+    public var points: CGFloat {
         switch self {
-        case .ring: return "circle"
-        case .disc: return "circle.fill"
-        case .ringDot: return "circle.circle"
-        case .dot: return "smallcircle.filled.circle.fill"
+        case .small: return 15
+        case .medium: return 18
+        case .large: return 22
         }
     }
+    public var label: String { rawValue.capitalized }
 }
 
 public enum RingIcon {
-    /// Backwards-compatible: a ring in the given tint.
+    /// Backwards-compatible: a medium ring in the given tint.
     public static func make(tintToken: String?) -> NSImage {
-        make(style: .ring, tintToken: tintToken)
+        make(style: .ring, size: .medium, tintToken: tintToken)
+    }
+
+    public static func make(style: MenuBarIconStyle, tintToken: String?) -> NSImage {
+        make(style: style, size: .medium, tintToken: tintToken)
     }
 
     /// Menu-bar glyph. `tintToken` nil → template (system-recolored, white/inactive).
     /// Non-nil → drawn in that palette color (non-template, shows while active).
-    public static func make(style: MenuBarIconStyle, tintToken: String?) -> NSImage {
-        let size = NSSize(width: 18, height: 18)
-        let img = NSImage(size: size)
+    public static func make(style: MenuBarIconStyle, size: MenuBarIconSize, tintToken: String?) -> NSImage {
+        let s = size.points
+        let dim = NSSize(width: s, height: s)
+        let lineWidth = max(1.5, s * 0.12)
+        let inset = lineWidth
+        let img = NSImage(size: dim)
         img.lockFocus()
         let color = nsColor(tintToken: tintToken)
         color.setStroke()
         color.setFill()
         switch style {
         case .ring:
-            strokeOval(inset: 2, lineWidth: 2, size: size)
+            strokeOval(inset: inset, lineWidth: lineWidth, size: dim)
         case .disc:
-            NSBezierPath(ovalIn: NSRect(x: 2, y: 2, width: size.width - 4, height: size.height - 4)).fill()
+            NSBezierPath(ovalIn: NSRect(x: inset, y: inset, width: s - 2 * inset, height: s - 2 * inset)).fill()
         case .ringDot:
-            strokeOval(inset: 2, lineWidth: 2, size: size)
-            NSBezierPath(ovalIn: NSRect(x: size.width / 2 - 2, y: size.height / 2 - 2, width: 4, height: 4)).fill()
+            strokeOval(inset: inset, lineWidth: lineWidth, size: dim)
+            let d = s * 0.24
+            NSBezierPath(ovalIn: NSRect(x: (s - d) / 2, y: (s - d) / 2, width: d, height: d)).fill()
         case .dot:
-            NSBezierPath(ovalIn: NSRect(x: 5, y: 5, width: size.width - 10, height: size.height - 10)).fill()
+            let d = s * 0.5
+            NSBezierPath(ovalIn: NSRect(x: (s - d) / 2, y: (s - d) / 2, width: d, height: d)).fill()
         }
         img.unlockFocus()
         img.isTemplate = (tintToken == nil)

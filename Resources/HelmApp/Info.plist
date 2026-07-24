@@ -8,6 +8,8 @@
 	<string>com.helm.app</string>
 	<key>CFBundleName</key>
 	<string>Helm</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
