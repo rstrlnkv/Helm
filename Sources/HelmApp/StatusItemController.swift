@@ -127,9 +127,27 @@ import HelmUI
         guard let button = statusItem.button else { return }
         let menu = NSMenu()
         menu.addItem(withTitle: AppStr.settings, action: #selector(openSettings), keyEquivalent: "").target = self
+
+        // Jump straight to a module's page instead of opening Settings and
+        // hunting for it in the sidebar.
+        menu.addItem(.separator())
+        for descriptor in ModuleRegistry.all {
+            let item = NSMenuItem(title: descriptor.moduleMetadata.name,
+                                  action: #selector(openModuleSettings(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = descriptor.idRaw
+            item.image = NSImage(systemSymbolName: descriptor.moduleMetadata.sfSymbol,
+                                 accessibilityDescription: nil)
+            menu.addItem(item)
+        }
+
         menu.addItem(.separator())
         menu.addItem(withTitle: AppStr.quit, action: #selector(quit), keyEquivalent: "q").target = self
         menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height + 4), in: button)
+    }
+
+    @objc private func openModuleSettings(_ sender: NSMenuItem) {
+        showSettings(module: sender.representedObject as? String)
     }
 
     @objc func openSettings() {
