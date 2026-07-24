@@ -23,12 +23,15 @@ public struct KeepAwakePanelTile: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        // spacing 0 + explicit padding: a stack spacing would still insert its
+        // gap before the collapsed (zero-height) disclosure, leaving a stray
+        // strip under the presets.
+        VStack(alignment: .leading, spacing: 0) {
             header
             if vm.isActive, let end = vm.endDate {
-                countdownRow(end)
+                countdownRow(end).padding(.top, 10)
             } else {
-                presetRow
+                presetRow.padding(.top, 10)
                 // Canonical accordion: the block always exists, its natural
                 // height is measured, and the animation interpolates between 0
                 // and that number. Animating to `nil` (or relying on insertion
