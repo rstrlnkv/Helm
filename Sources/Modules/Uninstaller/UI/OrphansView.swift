@@ -34,16 +34,16 @@ struct OrphansView: View {
 
     @ViewBuilder private var content: some View {
         if scanning {
-            centered { ProgressView(); Text(UnStr.scanningOrphans).font(.caption).foregroundStyle(.secondary) }
+            HelmCenteredContent { ProgressView(); Text(UnStr.scanningOrphans).font(.caption).foregroundStyle(.secondary) }
         } else if !scanned {
-            centered {
+            HelmCenteredContent {
                 Image(systemName: "clock.arrow.circlepath").font(.system(size: 34)).foregroundStyle(.secondary)
                 Text(UnStr.orphansIntro).multilineTextAlignment(.center).foregroundStyle(.secondary)
                     .frame(maxWidth: 380)
                 Button(UnStr.scanOrphans) { Task { await scan() } }.buttonStyle(.borderedProminent)
             }
         } else if groups.isEmpty {
-            centered {
+            HelmCenteredContent {
                 Image(systemName: "checkmark.circle").font(.system(size: 34)).foregroundStyle(.green)
                 Text(UnStr.noOrphans).foregroundStyle(.secondary)
                 Button(UnStr.rescan) { Task { await scan() } }
@@ -119,8 +119,4 @@ struct OrphansView: View {
                 })
     }
 
-    private func centered<C: View>(@ViewBuilder _ content: () -> C) -> some View {
-        VStack(spacing: 10) { Spacer(); content(); Spacer() }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
 }
