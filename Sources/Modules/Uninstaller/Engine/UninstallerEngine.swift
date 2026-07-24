@@ -67,6 +67,51 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
 
     public func quit(bundleID: String) { running.quit(bundleID: bundleID) }
 
+    /// Directories whose bundle-id-named entries belong to a single app, so a
+    /// leftover there identifies the app that owned it.
+    private static let orphanScanDirs: [(String, LeftoverKind)] = [
+        ("Application Support", .appSupport),
+        ("Caches", .caches),
+        ("Preferences", .preferences),
+        ("Containers", .containers),
+        ("Saved Application State", .savedState),
+        ("HTTPStorages", .httpStorages),
+        ("WebKit", .webKit),
+        ("Application Scripts", .appScripts),
+        ("Logs", .logs),
+    ]
+
+    /// Finds leftovers whose owning app is no longer installed, grouped by bundle
+    /// id. Conservative by design — see `OrphanDetector`.
+    public func scanOrphans() async -> [OrphanGroup] {
+        let installedIDs = Set(apps.installedApps().map(\.bundleID))
+        var byID: [String: [Leftover]] = [:]
+        for (dir, kind) in Self.orphanScanDirs {
+            for url in fs.children(of: library.appendingPathComponent(dir)) {
+                let name = url.lastPathComponent
+                guard OrphanDetector.isOrphan(name: name, installedBundleIDs: installedIDs) else { continue }
+                let id = OrphanDetector.bundleID(from: name)
+                byID[id, default: []].append(
+                    Leftover(path: url.path, kind: kind, sizeBytes: fs.size(url), matchedByName: false))
+            }
+        }
+        return byID
+            .map { OrphanGroup(bundleID: $0.key, leftovers: $0.value.sorted { $0.sizeBytes > $1.sizeBytes }) }
+            .sorted { $0.totalBytes > $1.totalBytes }
+    }
+
+    /// Trashes arbitrary leftover paths (no app bundle involved).
+    public func trashPaths(_ paths: [String]) async -> UninstallResult {
+        var trashed: [String] = [], failed: [String] = []
+        var freed = 0
+        for p in paths {
+            let url = URL(fileURLWithPath: p)
+            let size = fs.size(url)
+            if trash.trash(url) { trashed.append(p); freed += size } else { failed.append(p) }
+        }
+        return UninstallResult(trashed: trashed, failed: failed, freedBytes: freed)
+    }
+
     // MARK: - Transport (request/response)
 
     private struct ScanReq: Codable { let bundleID: String; let appPath: String; let appName: String }
@@ -87,6 +132,11 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
                 guard let r = try? JSONDecoder().decode(UninstallReq.self, from: cmd.payload) else { return Data() }
                 let res = try await self.uninstall(appPath: r.appPath, paths: r.paths)
                 return (try? JSONEncoder().encode(res)) ?? Data()
+            case "scanOrphans":
+                return (try? JSONEncoder().encode(await self.scanOrphans())) ?? Data()
+            case "trashPaths":
+                guard let paths = try? JSONDecoder().decode([String].self, from: cmd.payload) else { return Data() }
+                return (try? JSONEncoder().encode(await self.trashPaths(paths))) ?? Data()
             case "quit":
                 if let r = try? JSONDecoder().decode(QuitReq.self, from: cmd.payload) { self.quit(bundleID: r.bundleID) }
                 return Data()

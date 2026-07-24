@@ -73,6 +73,11 @@ public struct FMFileSystem: FileSystemPort {
             .filter { $0.count >= prefix.count + suffix.count && $0.hasPrefix(prefix) && $0.hasSuffix(suffix) }
             .map { dir.appendingPathComponent($0) }
     }
+
+    public func children(of url: URL) -> [URL] {
+        (try? FileManager.default.contentsOfDirectory(atPath: url.path))?
+            .map { url.appendingPathComponent($0) } ?? []
+    }
 }
 
 // MARK: - Trash

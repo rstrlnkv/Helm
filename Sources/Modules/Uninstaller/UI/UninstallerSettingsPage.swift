@@ -30,11 +30,27 @@ public struct UninstallerSettingsPage: View {
     }
     private var selectedApp: InstalledApp? { apps.first { $0.bundleID == selectedID } }
 
+    /// 0 = installed apps, 1 = leftovers from apps that are already gone.
+    @State private var tab = 0
+
     public var body: some View {
-        HStack(spacing: 0) {
-            appList.frame(width: 260)
+        VStack(spacing: 0) {
+            Picker("", selection: $tab) {
+                Text(UnStr.tabApps).tag(0)
+                Text(UnStr.tabOrphans).tag(1)
+            }
+            .pickerStyle(.segmented).labelsHidden()
+            .padding(.horizontal, 12).padding(.top, 12).padding(.bottom, 8)
             Divider()
-            detail.frame(maxWidth: .infinity, maxHeight: .infinity)
+            if tab == 0 {
+                HStack(spacing: 0) {
+                    appList.frame(width: 260)
+                    Divider()
+                    detail.frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            } else {
+                OrphansView(uvm: uvm)
+            }
         }
         .task { await reload() }
     }

@@ -45,3 +45,13 @@ public struct UninstallResult: Codable, Equatable, Sendable {
         self.trashed = trashed; self.failed = failed; self.freedBytes = freedBytes
     }
 }
+
+/// Leftovers grouped by the bundle id of an app that is no longer installed.
+public struct OrphanGroup: Codable, Equatable, Sendable {
+    public let bundleID: String
+    public let leftovers: [Leftover]
+    public var totalBytes: Int { leftovers.reduce(0) { $0 + $1.sizeBytes } }
+    public init(bundleID: String, leftovers: [Leftover]) {
+        self.bundleID = bundleID; self.leftovers = leftovers
+    }
+}

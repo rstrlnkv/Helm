@@ -11,6 +11,8 @@ public protocol FileSystemPort: Sendable {
     func size(_ url: URL) -> Int
     /// Resolve a `*`-in-last-component pattern against its parent dir.
     func glob(_ pattern: URL) -> [URL]
+    /// Immediate children of a directory; empty if missing or unreadable.
+    func children(of url: URL) -> [URL]
 }
 
 public protocol TrashPort: Sendable {

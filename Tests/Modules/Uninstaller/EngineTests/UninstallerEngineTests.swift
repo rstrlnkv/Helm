@@ -5,11 +5,19 @@ import XCTest
 
 private struct FakeFS: FileSystemPort {
     let existing: [String: Int]
+    /// Directory listings for the orphan scan, keyed by parent path.
+    var listings: [String: [String]] = [:]
     func exists(_ url: URL) -> Bool { existing[url.path] != nil }
     func size(_ url: URL) -> Int { existing[url.path] ?? 0 }
     func glob(_ pattern: URL) -> [URL] { [] }
+    func children(of url: URL) -> [URL] {
+        (listings[url.path] ?? []).map { url.appendingPathComponent($0) }
+    }
 }
-private struct FakeApps: AppLister { func installedApps() -> [InstalledApp] { [] } }
+private struct FakeApps: AppLister {
+    var apps: [InstalledApp] = []
+    func installedApps() -> [InstalledApp] { apps }
+}
 private final class FakeTrash: TrashPort, @unchecked Sendable {
     var trashed: [String] = []
     let failing: Set<String>
@@ -73,5 +81,43 @@ final class UninstallerEngineTests: XCTestCase {
             .uninstall(appPath: "/Applications/Tool.app", paths: ["/a", "/b"])
         XCTAssertEqual(r.failed, ["/b"])
         XCTAssertEqual(r.freedBytes, 1100)
+    }
+}
+
+final class UninstallerOrphanScanTests: XCTestCase {
+    /// Only bundle-id-shaped entries with no installed app are reported, grouped by id.
+    func testScanOrphansGroupsByBundleID() async {
+        var fs = FakeFS(existing: [
+            "/Users/x/Library/Caches/com.gone.app": 500,
+            "/Users/x/Library/Preferences/com.gone.app.plist": 20,
+            "/Users/x/Library/Caches/com.acme.tool": 100,
+            "/Users/x/Library/Caches/Google": 999,
+        ])
+        fs.listings = [
+            "/Users/x/Library/Caches": ["com.gone.app", "com.acme.tool", "Google"],
+            "/Users/x/Library/Preferences": ["com.gone.app.plist"],
+        ]
+        let e = UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
+                                  apps: FakeApps(apps: [InstalledApp(name: "Tool", bundleID: "com.acme.tool",
+                                                                     path: "/Applications/Tool.app", sizeBytes: 1)]),
+                                  fs: fs, trash: FakeTrash(), running: FakeRunning(running: []))
+        let groups = await e.scanOrphans()
+        XCTAssertEqual(groups.count, 1)
+        XCTAssertEqual(groups.first?.bundleID, "com.gone.app")
+        XCTAssertEqual(groups.first?.totalBytes, 520)
+        XCTAssertEqual(Set(groups.first?.leftovers.map(\.path) ?? []),
+                       ["/Users/x/Library/Caches/com.gone.app",
+                        "/Users/x/Library/Preferences/com.gone.app.plist"])
+    }
+
+    func testTrashPathsSumsFreedAndReportsFailures() async {
+        let trash = FakeTrash(failing: ["/b"])
+        let fs = FakeFS(existing: ["/a": 100, "/b": 50])
+        let e = UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
+                                  apps: FakeApps(), fs: fs, trash: trash, running: FakeRunning(running: []))
+        let r = await e.trashPaths(["/a", "/b"])
+        XCTAssertEqual(r.freedBytes, 100)
+        XCTAssertEqual(r.failed, ["/b"])
+        XCTAssertEqual(trash.trashed, ["/a"])
     }
 }
