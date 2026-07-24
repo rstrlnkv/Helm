@@ -33,7 +33,7 @@ import Module_VPN_Engine
     }
 
     public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? {
-        MenuBarContribution(panelTile: AnyView(VPNPanelTile(vm: viewModel(vm))), span: .compact)
+        MenuBarContribution(panelTile: AnyView(VPNPanelTile(vm: viewModel(vm))))
     }
     public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
         let store = self.store ?? NamespacedStore(namespace: "vpn", backing: UserDefaults.standard)

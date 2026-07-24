@@ -19,12 +19,20 @@ extension Notification.Name {
         }
     }
 
-    /// Panel presentation. "list" (the stacked layout) is the default — the grid
-    /// is an opt-in experiment kept behind Settings → Menu Bar → Panel layout.
-    static var panelLayout: String {
-        get { store.string("panelLayout", default: PanelLayoutStyle.list.rawValue) }
+    /// Optional shortcuts in the panel footer; both actions are always available
+    /// from the status item's right-click menu, so these default to off.
+    static var showSettingsButton: Bool {
+        get { store.bool("showSettingsButton", default: false) }
         set {
-            store.set(newValue, for: "panelLayout")
+            store.set(newValue, for: "showSettingsButton")
+            NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
+        }
+    }
+
+    static var showQuitButton: Bool {
+        get { store.bool("showQuitButton", default: false) }
+        set {
+            store.set(newValue, for: "showQuitButton")
             NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
         }
     }
