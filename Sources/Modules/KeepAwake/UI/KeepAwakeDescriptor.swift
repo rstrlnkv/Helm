@@ -7,8 +7,8 @@ import Module_KeepAwake_Engine
 @MainActor public final class KeepAwakeDescriptor: ModuleDescriptor {
     public static let id = ModuleID("keep-awake")
     public static let metadata = ModuleMetadata(
-        id: id, name: "Keep Awake",
-        summary: "Prevent your Mac from sleeping.",
+        id: id, name: KAStr.moduleName,
+        summary: KAStr.summary,
         sfSymbol: "moon.zzz.fill", permissions: [.adminHelper])
     public static let isolation: ModuleIsolation = .inProcess
     public static let category: ModuleCategory = .power
