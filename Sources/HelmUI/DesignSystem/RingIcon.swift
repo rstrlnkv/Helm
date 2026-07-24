@@ -45,7 +45,50 @@ public enum MenuBarIconSize: String, CaseIterable, Sendable {
 public enum RingIcon {
     /// Menu-bar glyph. `tintToken` nil → template (system-recolored, white/inactive).
     /// Non-nil → drawn in that palette color (non-template, shows while active).
-    public static func make(style: MenuBarIconStyle, size: MenuBarIconSize, tintToken: String?) -> NSImage {
+    /// `progress` (0…1) draws the ring as a countdown arc: full at 1, empty at
+    /// 0, consumed clockwise from 12 o'clock. nil = the plain glyph.
+    public static func make(style: MenuBarIconStyle, size: MenuBarIconSize,
+                            tintToken: String?, progress: Double? = nil) -> NSImage {
+        if let progress, style != .dot, style != .disc {
+            return makeArc(size: size, tintToken: tintToken, progress: progress)
+        }
+        return makeGlyph(style: style, size: size, tintToken: tintToken)
+    }
+
+    /// Ring drawn as an arc, plus a faint track so the icon keeps its footprint.
+    private static func makeArc(size: MenuBarIconSize, tintToken: String?, progress: Double) -> NSImage {
+        let s = size.points
+        let lineWidth = max(1.5, s * 0.12)
+        let radius = (s - lineWidth) / 2
+        let center = CGPoint(x: s / 2, y: s / 2)
+        let img = NSImage(size: NSSize(width: s, height: s))
+        img.lockFocus()
+        let color = nsColor(tintToken: tintToken)
+
+        let track = NSBezierPath()
+        track.appendArc(withCenter: center, radius: radius, startAngle: 0, endAngle: 360)
+        track.lineWidth = lineWidth
+        color.withAlphaComponent(0.25).setStroke()
+        track.stroke()
+
+        let remaining = min(1, max(0, progress))
+        if remaining > 0 {
+            // Clockwise from 12 o'clock: AppKit angles are counter-clockwise
+            // from 3 o'clock, so start at 90° and sweep backwards.
+            let arc = NSBezierPath()
+            arc.appendArc(withCenter: center, radius: radius,
+                          startAngle: 90, endAngle: 90 - 360 * remaining, clockwise: true)
+            arc.lineWidth = lineWidth
+            arc.lineCapStyle = .round
+            color.setStroke()
+            arc.stroke()
+        }
+        img.unlockFocus()
+        img.isTemplate = (tintToken == nil)
+        return img
+    }
+
+    private static func makeGlyph(style: MenuBarIconStyle, size: MenuBarIconSize, tintToken: String?) -> NSImage {
         let s = size.points
         let dim = NSSize(width: s, height: s)
         let lineWidth = max(1.5, s * 0.12)

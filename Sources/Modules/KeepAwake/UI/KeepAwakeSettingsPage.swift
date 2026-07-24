@@ -26,6 +26,7 @@ public struct KeepAwakeSettingsPage: View {
     @State private var batteryGuardPercent: Int
 
     @State private var activeTintColor: String
+    @State private var ringTimer: Bool
     @State private var customActiveIcon: Bool
     @State private var activeIconShape: String
     @StateObject private var recorder: HotkeyRecorder
@@ -45,6 +46,7 @@ public struct KeepAwakeSettingsPage: View {
         _batteryGuardEnabled = State(initialValue: store.bool("batteryGuardEnabled", default: false))
         _batteryGuardPercent = State(initialValue: store.int("batteryGuardPercent", default: 20))
         _activeTintColor = State(initialValue: store.string("activeTintColor", default: "green"))
+        _ringTimer = State(initialValue: store.bool("ringTimer", default: true))
         _customActiveIcon = State(initialValue: store.bool("customActiveIcon", default: false))
         _activeIconShape = State(initialValue: store.string("activeIconShape", default: "ring"))
     }
@@ -123,6 +125,10 @@ public struct KeepAwakeSettingsPage: View {
             }
 
             Section(KAStr.activeIcon) {
+                Toggle(KAStr.ringTimer, isOn: $ringTimer)
+                    .onChange(of: ringTimer) { _, v in write(v, "ringTimer") }
+                Text(KAStr.ringTimerNote)
+                    .font(.caption).foregroundStyle(.secondary)
                 Toggle(KAStr.customActiveIcon, isOn: $customActiveIcon)
                     .onChange(of: customActiveIcon) { _, v in write(v, "customActiveIcon") }
                 if customActiveIcon {

@@ -56,6 +56,20 @@ import HelmUI
     }
 
     private var lastIconKey: String?
+    /// Drives the countdown ring: modules only emit on state changes, so the
+    /// arc needs its own tick while a timer is running.
+    private var timerTick: Timer?
+
+    private func scheduleTimerTick(active: Bool) {
+        if active, timerTick == nil {
+            timerTick = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+                Task { @MainActor in self?.refreshIcon() }
+            }
+        } else if !active, timerTick != nil {
+            timerTick?.invalidate()
+            timerTick = nil
+        }
+    }
 
     private func refreshIcon() {
         guard let button = statusItem.button else { return }
@@ -68,11 +82,15 @@ import HelmUI
         let globalStyle = MenuBarIconStyle(rawValue: AppSettings.menuBarIconStyle) ?? .ring
         let style = appearance.iconStyle.flatMap(MenuBarIconStyle.init(rawValue:)) ?? globalStyle
         let size = MenuBarIconSize(rawValue: AppSettings.menuBarIconSize) ?? .medium
+        let progress = appearance.timerProgress
+        scheduleTimerTick(active: progress != nil)
         // Modules emit state on every tick; only redraw when the glyph changes.
-        let key = "\(style.rawValue)|\(size.rawValue)|\(token ?? "")"
+        // Progress is bucketed so a countdown redraws ~1% at a time, not per pixel.
+        let bucket = progress.map { Int(($0 * 100).rounded()) }
+        let key = "\(style.rawValue)|\(size.rawValue)|\(token ?? "")|\(bucket.map(String.init) ?? "-")"
         guard key != lastIconKey else { return }
         lastIconKey = key
-        button.image = RingIcon.make(style: style, size: size, tintToken: token)
+        button.image = RingIcon.make(style: style, size: size, tintToken: token, progress: progress)
     }
 
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
