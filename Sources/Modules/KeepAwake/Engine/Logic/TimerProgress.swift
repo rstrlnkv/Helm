@@ -9,4 +9,13 @@ public enum TimerProgress {
         let left = end.timeIntervalSince(now)
         return min(1, max(0, left / total))
     }
+
+    /// Compact remaining-time label for the menu bar: "9:05" under an hour,
+    /// "1:04:09" above it. Never negative.
+    public static func label(remaining seconds: TimeInterval) -> String {
+        let t = max(0, Int(seconds.rounded()))
+        let h = t / 3600, m = (t % 3600) / 60, s = t % 60
+        return h > 0 ? String(format: "%d:%02d:%02d", h, m, s)
+                     : String(format: "%d:%02d", m, s)
+    }
 }

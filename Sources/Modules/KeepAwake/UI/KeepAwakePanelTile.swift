@@ -100,9 +100,9 @@ public struct KeepAwakePanelTile: View {
 
     private var presetRow: some View {
         HStack(spacing: 6) {
-            presetPill(Self.durationLabel(15), 15)
-            presetPill(Self.durationLabel(60), 60)
-            presetPill(Self.durationLabel(120), 120)
+            presetPill(Self.durationLabel(15, compact: true), 15)
+            presetPill(Self.durationLabel(60, compact: true), 60)
+            presetPill(Self.durationLabel(120, compact: true), 120)
             presetPill("∞", 0)
             morePill
         }
@@ -184,11 +184,13 @@ public struct KeepAwakePanelTile: View {
     private static let timerOptions = [5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 240]
 
     /// "45 мин" / "1 ч" / "1 ч 30 мин" — minutes below an hour, hours above.
-    private static func durationLabel(_ minutes: Int) -> String {
-        guard minutes >= 60 else { return "\(minutes) \(KAStr.minutesUnit)" }
+    /// `compact` uses single-letter units, for the narrow preset pills.
+    private static func durationLabel(_ minutes: Int, compact: Bool = false) -> String {
+        let mUnit = compact ? KAStr.minutesUnitShort : KAStr.minutesUnit
+        let hUnit = compact ? KAStr.hoursUnitShort : KAStr.hoursUnit
+        guard minutes >= 60 else { return "\(minutes) \(mUnit)" }
         let h = minutes / 60, m = minutes % 60
-        return m == 0 ? "\(h) \(KAStr.hoursUnit)"
-                      : "\(h) \(KAStr.hoursUnit) \(m) \(KAStr.minutesUnit)"
+        return m == 0 ? "\(h) \(hUnit)" : "\(h) \(hUnit) \(m) \(mUnit)"
     }
 
     /// Label on the left, trailing control(s) pinned to the right edge.
@@ -219,7 +221,7 @@ public struct KeepAwakePanelTile: View {
                     .font(.subheadline.weight(.semibold))
                     .monospacedDigit()
                 Spacer()
-                Button("+" + Self.durationLabel(15)) {
+                Button("+" + Self.durationLabel(15, compact: true)) {
                     let newMinutes = Int(ceil(remaining / 60)) + 15
                     vm.send("start", payload: startPayload(newMinutes))
                 }

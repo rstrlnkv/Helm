@@ -6,10 +6,14 @@ public struct StatusAppearance: Equatable, Sendable {
     /// 0…1 remaining fraction of a timed session; the host draws the ring as a
     /// countdown arc. nil = no timer running.
     public var timerProgress: Double?
-    public init(tintToken: String? = nil, iconStyle: String? = nil, timerProgress: Double? = nil) {
+    /// Short text shown next to the icon (e.g. a countdown). nil = icon only.
+    public var title: String?
+    public init(tintToken: String? = nil, iconStyle: String? = nil,
+                timerProgress: Double? = nil, title: String? = nil) {
         self.tintToken = tintToken
         self.iconStyle = iconStyle
         self.timerProgress = timerProgress
+        self.title = title
     }
     public static let inactive = StatusAppearance()
 }
