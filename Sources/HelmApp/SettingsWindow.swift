@@ -105,13 +105,13 @@ private struct SettingsSidebar: View {
     var body: some View {
         List(selection: $model.selection) {
             Section {
-                sidebarRow("Menu Bar", "menubar.rectangle", .gray)
+                sidebarRow(AppStr.menuBar, "menubar.rectangle", .gray)
                     .tag(SettingsSelection.general)
             }
             ForEach(ModuleCategory.allCases, id: \.self) { category in
                 let modules = ModuleRegistry.all.filter { $0.moduleCategory == category }
                 if !modules.isEmpty {
-                    Section(category.rawValue.capitalized) {
+                    Section(AppStr.categoryName(category)) {
                         ForEach(modules, id: \.idRaw) { descriptor in
                             sidebarRow(descriptor.moduleMetadata.name,
                                        descriptor.moduleMetadata.sfSymbol,
@@ -122,7 +122,7 @@ private struct SettingsSidebar: View {
                 }
             }
             Section {
-                sidebarRow("About Helm", "info.circle", .gray)
+                sidebarRow(AppStr.aboutHelm, "info.circle", .gray)
                     .tag(SettingsSelection.about)
             }
         }
@@ -202,7 +202,7 @@ private struct ModuleDetailView: View {
             } else {
                 VStack {
                     Spacer()
-                    Text("Turn on \(descriptor.moduleMetadata.name) to configure it.")
+                    Text(AppStr.turnOnToConfigure(descriptor.moduleMetadata.name))
                         .foregroundStyle(.secondary)
                     Spacer()
                 }
@@ -219,7 +219,7 @@ private struct MenuBarSettingsView: View {
 
     var body: some View {
         Form {
-            Section("Icon shape") {
+            Section(AppStr.iconShape) {
                 HStack(spacing: 14) {
                     ForEach(MenuBarIconStyle.allCases, id: \.rawValue) { s in
                         styleTile(s)
@@ -227,8 +227,8 @@ private struct MenuBarSettingsView: View {
                 }
                 .padding(.vertical, 4)
             }
-            Section("Icon size") {
-                Picker("Size", selection: $size) {
+            Section(AppStr.iconSize) {
+                Picker(AppStr.size, selection: $size) {
                     ForEach(MenuBarIconSize.allCases, id: \.rawValue) { sz in
                         Text(sz.label).tag(sz.rawValue)
                     }
@@ -237,7 +237,7 @@ private struct MenuBarSettingsView: View {
                 .onChange(of: size) { _, v in AppSettings.menuBarIconSize = v }
             }
             Section {
-                Text("The Helm ring turns your Keep Awake color while active, white when idle.")
+                Text(AppStr.menuBarNote)
                     .font(.caption).foregroundStyle(.secondary)
             }
         }

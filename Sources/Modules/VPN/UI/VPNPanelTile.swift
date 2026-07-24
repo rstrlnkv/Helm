@@ -15,7 +15,7 @@ public struct VPNPanelTile: View {
         VStack(alignment: .leading, spacing: 10) {
             header
             if vm.connections.isEmpty {
-                Text("No VPNs configured")
+                Text(VPNStr.noVPNs)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {

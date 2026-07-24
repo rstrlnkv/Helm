@@ -6,10 +6,10 @@ public enum MenuBarIconStyle: String, CaseIterable, Sendable {
 
     public var label: String {
         switch self {
-        case .ring: return "Ring"
-        case .disc: return "Filled"
-        case .ringDot: return "Ring + dot"
-        case .dot: return "Dot"
+        case .ring: return L("Ring", [.ru: "Кольцо", .es: "Anillo", .fr: "Anneau", .de: "Ring", .ja: "リング", .zh: "圆环", .pt: "Anel"])
+        case .disc: return L("Filled", [.ru: "Залитый", .es: "Relleno", .fr: "Plein", .de: "Gefüllt", .ja: "塗りつぶし", .zh: "实心", .pt: "Preenchido"])
+        case .ringDot: return L("Ring + dot", [.ru: "Кольцо + точка", .es: "Anillo + punto", .fr: "Anneau + point", .de: "Ring + Punkt", .ja: "リング＋点", .zh: "圆环+点", .pt: "Anel + ponto"])
+        case .dot: return L("Dot", [.ru: "Точка", .es: "Punto", .fr: "Point", .de: "Punkt", .ja: "点", .zh: "点", .pt: "Ponto"])
         }
     }
 }
@@ -25,7 +25,13 @@ public enum MenuBarIconSize: String, CaseIterable, Sendable {
         case .large: return 22
         }
     }
-    public var label: String { rawValue.capitalized }
+    public var label: String {
+        switch self {
+        case .small: return L("Small", [.ru: "Маленький", .es: "Pequeño", .fr: "Petit", .de: "Klein", .ja: "小", .zh: "小", .pt: "Pequeno"])
+        case .medium: return L("Medium", [.ru: "Средний", .es: "Mediano", .fr: "Moyen", .de: "Mittel", .ja: "中", .zh: "中", .pt: "Médio"])
+        case .large: return L("Large", [.ru: "Большой", .es: "Grande", .fr: "Grand", .de: "Groß", .ja: "大", .zh: "大", .pt: "Grande"])
+        }
+    }
 }
 
 public enum RingIcon {

@@ -37,4 +37,36 @@ enum KAStr {
         default: return wire
         }
     }
+
+    // MARK: - Settings
+
+    static var automation: String { L("Automation", [.ru: "Автоматизация", .es: "Automatización", .fr: "Automatisation", .de: "Automatisierung", .ja: "自動化", .zh: "自动化", .pt: "Automação"]) }
+    static var withExternalDisplay: String { L("Keep awake with external display", [.ru: "Не спать при внешнем дисплее", .es: "Mantener activo con pantalla externa", .fr: "Rester éveillé avec un écran externe", .de: "Mit externem Bildschirm wach halten", .ja: "外部ディスプレイ接続中はスリープ防止", .zh: "连接外接显示器时保持唤醒", .pt: "Manter ativo com tela externa"]) }
+    static var whileOnPower: String { L("Keep awake while on power", [.ru: "Не спать при питании", .es: "Mantener activo con corriente", .fr: "Rester éveillé sur secteur", .de: "Am Netzstrom wach halten", .ja: "電源接続中はスリープ防止", .zh: "接通电源时保持唤醒", .pt: "Manter ativo na tomada"]) }
+    static var appsSection: String { L("Apps that keep the Mac awake", [.ru: "Приложения, не дающие спать", .es: "Apps que mantienen activo el Mac", .fr: "Apps qui gardent le Mac éveillé", .de: "Apps, die den Mac wach halten", .ja: "Mac を起動させ続けるアプリ", .zh: "保持 Mac 唤醒的应用", .pt: "Apps que mantêm o Mac ativo"]) }
+    static var behavior: String { L("Behavior", [.ru: "Поведение", .es: "Comportamiento", .fr: "Comportement", .de: "Verhalten", .ja: "動作", .zh: "行为", .pt: "Comportamento"]) }
+    static var keepDisplayOn: String { L("Keep display on", [.ru: "Держать дисплей включённым", .es: "Mantener la pantalla encendida", .fr: "Garder l’écran allumé", .de: "Bildschirm anlassen", .ja: "ディスプレイを点灯したまま", .zh: "保持显示器常亮", .pt: "Manter a tela ligada"]) }
+    static var movePointer: String { L("Move pointer periodically", [.ru: "Двигать указатель периодически", .es: "Mover el puntero periódicamente", .fr: "Déplacer le pointeur régulièrement", .de: "Zeiger regelmäßig bewegen", .ja: "定期的にポインタを動かす", .zh: "定期移动指针", .pt: "Mover o ponteiro periodicamente"]) }
+    static func everyMinutes(_ n: Int) -> String { L("Every \(n) min", [.ru: "Каждые \(n) мин", .es: "Cada \(n) min", .fr: "Toutes les \(n) min", .de: "Alle \(n) Min.", .ja: "\(n) 分ごと", .zh: "每 \(n) 分钟", .pt: "A cada \(n) min"]) }
+    static var defaultDuration: String { L("Default duration", [.ru: "Длительность по умолчанию", .es: "Duración por defecto", .fr: "Durée par défaut", .de: "Standarddauer", .ja: "デフォルトの継続時間", .zh: "默认时长", .pt: "Duração padrão"]) }
+    static var oneHour: String { L("1 hour", [.ru: "1 час", .es: "1 hora", .fr: "1 heure", .de: "1 Stunde", .ja: "1 時間", .zh: "1 小时", .pt: "1 hora"]) }
+    static var twoHours: String { L("2 hours", [.ru: "2 часа", .es: "2 horas", .fr: "2 heures", .de: "2 Stunden", .ja: "2 時間", .zh: "2 小时", .pt: "2 horas"]) }
+    static var indefinite: String { L("Indefinite", [.ru: "Бессрочно", .es: "Indefinido", .fr: "Illimité", .de: "Unbegrenzt", .ja: "無期限", .zh: "无限期", .pt: "Indefinido"]) }
+    static var globalShortcut: String { L("Global shortcut", [.ru: "Глобальный хоткей", .es: "Atajo global", .fr: "Raccourci global", .de: "Globaler Kurzbefehl", .ja: "グローバルショートカット", .zh: "全局快捷键", .pt: "Atalho global"]) }
+    static var toggleAction: String { L("Toggle Keep Awake", [.ru: "Вкл/выкл «Не давать спать»", .es: "Alternar Mantener activo", .fr: "Activer/désactiver Rester éveillé", .de: "Wach halten umschalten", .ja: "スリープ防止の切り替え", .zh: "切换保持唤醒", .pt: "Alternar Manter ativo"]) }
+    static var pressKeys: String { L("Press keys…", [.ru: "Нажмите клавиши…", .es: "Pulsa las teclas…", .fr: "Appuyez sur les touches…", .de: "Tasten drücken…", .ja: "キーを押してください…", .zh: "请按下按键…", .pt: "Pressione as teclas…"]) }
+    static var none: String { L("None", [.ru: "Нет", .es: "Ninguno", .fr: "Aucun", .de: "Keiner", .ja: "なし", .zh: "无", .pt: "Nenhum"]) }
+    static var record: String { L("Record", [.ru: "Задать", .es: "Grabar", .fr: "Enregistrer", .de: "Aufnehmen", .ja: "記録", .zh: "录制", .pt: "Gravar"]) }
+    static var cancel: String { L("Cancel", [.ru: "Отмена", .es: "Cancelar", .fr: "Annuler", .de: "Abbrechen", .ja: "キャンセル", .zh: "取消", .pt: "Cancelar"]) }
+    static var clear: String { L("Clear", [.ru: "Очистить", .es: "Borrar", .fr: "Effacer", .de: "Löschen", .ja: "クリア", .zh: "清除", .pt: "Limpar"]) }
+    static var closedLid: String { L("Closed lid", [.ru: "Закрытая крышка", .es: "Tapa cerrada", .fr: "Capot fermé", .de: "Geschlossener Deckel", .ja: "ふたを閉じた状態", .zh: "合盖", .pt: "Tampa fechada"]) }
+    static var keepAwakeLidClosed: String { L("Keep awake with the lid closed", [.ru: "Не спать с закрытой крышкой", .es: "Mantener activo con la tapa cerrada", .fr: "Rester éveillé capot fermé", .de: "Bei geschlossenem Deckel wach halten", .ja: "ふたを閉じてもスリープ防止", .zh: "合盖时保持唤醒", .pt: "Manter ativo com a tampa fechada"]) }
+    static var adminNote: String { L("Requires an admin password once (uses pmset).", [.ru: "Нужен пароль администратора один раз (использует pmset).", .es: "Requiere una contraseña de administrador una vez (usa pmset).", .fr: "Nécessite un mot de passe administrateur une fois (utilise pmset).", .de: "Erfordert einmalig ein Admin-Passwort (nutzt pmset).", .ja: "管理者パスワードが一度必要です（pmset を使用）。", .zh: "需要一次管理员密码（使用 pmset）。", .pt: "Requer uma senha de administrador uma vez (usa pmset)."]) }
+    static var battery: String { L("Battery", [.ru: "Батарея", .es: "Batería", .fr: "Batterie", .de: "Batterie", .ja: "バッテリー", .zh: "电池", .pt: "Bateria"]) }
+    static var turnOffLowBattery: String { L("Turn off on low battery", [.ru: "Выключать при низком заряде", .es: "Apagar con batería baja", .fr: "Désactiver à batterie faible", .de: "Bei niedrigem Akku ausschalten", .ja: "バッテリー残量が少ないとき無効化", .zh: "电量低时关闭", .pt: "Desligar com bateria fraca"]) }
+    static func belowPercent(_ n: Int) -> String { L("Below \(n)%", [.ru: "Ниже \(n)%", .es: "Por debajo del \(n)%", .fr: "En dessous de \(n) %", .de: "Unter \(n) %", .ja: "\(n)% 未満", .zh: "低于 \(n)%", .pt: "Abaixo de \(n)%"]) }
+    static var activeIconColor: String { L("Active icon color", [.ru: "Цвет активной иконки", .es: "Color del icono activo", .fr: "Couleur de l’icône active", .de: "Farbe des aktiven Symbols", .ja: "アクティブ時のアイコン色", .zh: "激活时的图标颜色", .pt: "Cor do ícone ativo"]) }
+    static var ringColorNote: String { L("Menu-bar ring color while active (white when idle).", [.ru: "Цвет кольца в меню-баре когда активно (белое в покое).", .es: "Color del anillo en la barra de menús mientras está activo (blanco en reposo).", .fr: "Couleur de l’anneau dans la barre des menus lorsqu’actif (blanc au repos).", .de: "Farbe des Menüleisten-Rings bei Aktivität (weiß im Ruhezustand).", .ja: "アクティブ時のメニューバーのリング色（待機時は白）。", .zh: "激活时菜单栏圆环的颜色（空闲时为白色）。", .pt: "Cor do anel na barra de menus quando ativo (branco em repouso)."]) }
+    static var addApp: String { L("Add app…", [.ru: "Добавить приложение…", .es: "Añadir app…", .fr: "Ajouter une app…", .de: "App hinzufügen…", .ja: "アプリを追加…", .zh: "添加应用…", .pt: "Adicionar app…"]) }
+    static var min15: String { "15 " + minutesUnit }
 }

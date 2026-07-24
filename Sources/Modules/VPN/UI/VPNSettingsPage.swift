@@ -21,11 +21,11 @@ public struct VPNSettingsPage: View {
 
     public var body: some View {
         Form {
-            Section("Connections") {
+            Section(VPNStr.connections) {
                 connectionsList
             }
 
-            Section("Per-app automation") {
+            Section(VPNStr.perAppAutomation) {
                 appRulesEditor
             }
         }
@@ -39,7 +39,7 @@ public struct VPNSettingsPage: View {
         if vm.connections.isEmpty {
             HStack(spacing: 8) {
                 Image(systemName: "lock.slash")
-                Text("No VPNs configured in System Settings.")
+                Text(VPNStr.noVPNsSystem)
             }
             .font(.callout)
             .foregroundStyle(.secondary)
@@ -86,15 +86,7 @@ public struct VPNSettingsPage: View {
         return raw.split(separator: ":").first.map(String.init)
     }
 
-    private func statusText(_ status: VPNStatus) -> String {
-        switch status {
-        case .connected: return "Connected"
-        case .connecting: return "Connecting…"
-        case .disconnected: return "Disconnected"
-        case .disconnecting: return "Disconnecting…"
-        case .unknown: return "Unknown"
-        }
-    }
+    private func statusText(_ status: VPNStatus) -> String { VPNStr.status(status) }
 
     // MARK: - Per-app automation
 
@@ -105,7 +97,7 @@ public struct VPNSettingsPage: View {
     @ViewBuilder
     private var appRulesEditor: some View {
         if rules.isEmpty {
-            Text("Add an app to automatically connect a VPN while that app is running.")
+            Text(VPNStr.perAppHint)
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
@@ -116,7 +108,7 @@ public struct VPNSettingsPage: View {
         Button {
             pickApp()
         } label: {
-            Label("Add app…", systemImage: "plus")
+            Label(VPNStr.addApp, systemImage: "plus")
         }
         .disabled(vm.connections.isEmpty)
     }
@@ -144,9 +136,9 @@ public struct VPNSettingsPage: View {
                 }
                 .buttonStyle(.plain)
             }
-            Toggle("Connect when it launches", isOn: connectOnLaunchBinding(bundleID))
+            Toggle(VPNStr.connectOnLaunch, isOn: connectOnLaunchBinding(bundleID))
                 .controlSize(.small)
-            Toggle("Disconnect when it quits", isOn: disconnectOnQuitBinding(bundleID))
+            Toggle(VPNStr.disconnectOnQuit, isOn: disconnectOnQuitBinding(bundleID))
                 .controlSize(.small)
         }
         .padding(.vertical, 4)
