@@ -1,0 +1,73 @@
+import SwiftUI
+import HelmUI
+
+/// The in-app changelog: structured and localized through the same `L()` tables
+/// as the rest of the UI, so "What's New" reads in the user's language. The
+/// repo's CHANGELOG.md stays the canonical English record for GitHub.
+enum ChangeKind {
+    case new, upd, fix
+
+    var label: String {
+        switch self {
+        case .new: return "New"
+        case .upd: return "Upd"
+        case .fix: return "Fix"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .new: return .green
+        case .upd: return .blue
+        case .fix: return .orange
+        }
+    }
+}
+
+struct ChangeItem: Identifiable {
+    let id = UUID()
+    let kind: ChangeKind
+    let text: String
+}
+
+struct ChangelogEntry: Identifiable {
+    var id: String { version }
+    let version: String
+    let date: String
+    let items: [ChangeItem]
+}
+
+enum Changelog {
+    /// Computed so `L()` resolves against the current language each time.
+    static var entries: [ChangelogEntry] {
+        [
+            ChangelogEntry(version: "0.6.0", date: "2026-07-25", items: [
+                ChangeItem(kind: .new, text: L("App Uninstaller module: remove apps together with their caches, settings and other leftovers; find leftovers of apps that are already gone.", [.ru: "Модуль «Удаление приложений»: удаление вместе с кешами, настройками и другими хвостами; поиск остатков уже удалённых программ.", .es: "Módulo Desinstalador: elimina apps junto con sus cachés, ajustes y otros restos; encuentra restos de apps ya eliminadas.", .fr: "Module Désinstallation : supprime les apps avec leurs caches, réglages et autres restes ; retrouve les restes d’apps déjà supprimées.", .de: "Deinstallations-Modul: entfernt Apps samt Caches, Einstellungen und anderen Resten; findet Reste bereits gelöschter Apps.", .ja: "アンインストールモジュール：キャッシュや設定などの残存ファイルごとアプリを削除。削除済みアプリの残存ファイルも検索。", .zh: "应用卸载模块：连同缓存、设置等残留一并删除；还可查找已删除应用的残留。", .pt: "Módulo Desinstalador: remove apps junto com caches, ajustes e outros restos; encontra restos de apps já removidos."])),
+                ChangeItem(kind: .new, text: L("Homebrew module: installed packages, updates, search and install, with a live console and package descriptions.", [.ru: "Модуль Homebrew: установленные пакеты, обновления, поиск и установка, живая консоль и описания пакетов.", .es: "Módulo Homebrew: paquetes instalados, actualizaciones, búsqueda e instalación, con consola en vivo y descripciones.", .fr: "Module Homebrew : paquets installés, mises à jour, recherche et installation, avec console en direct et descriptions.", .de: "Homebrew-Modul: installierte Pakete, Updates, Suche und Installation, mit Live-Konsole und Paketbeschreibungen.", .ja: "Homebrew モジュール：インストール済みパッケージ、アップデート、検索とインストール。ライブコンソールと説明付き。", .zh: "Homebrew 模块：已安装包、更新、搜索与安装，带实时控制台和包描述。", .pt: "Módulo Homebrew: pacotes instalados, atualizações, busca e instalação, com console ao vivo e descrições."])),
+                ChangeItem(kind: .new, text: L("Menu-bar timer: the ring empties clockwise while a timer runs, with optional remaining time and its own colour.", [.ru: "Таймер в строке меню: кольцо убывает по часовой, опционально время и свой цвет.", .es: "Temporizador en la barra: el anillo se vacía en sentido horario, con tiempo restante y color propio opcionales.", .fr: "Minuteur dans la barre : l’anneau se vide dans le sens horaire, temps restant et couleur dédiée en option.", .de: "Menüleisten-Timer: der Ring leert sich im Uhrzeigersinn, optional mit Restzeit und eigener Farbe.", .ja: "メニューバーのタイマー：リングが時計回りに減少。残り時間表示と専用カラーも選択可。", .zh: "菜单栏计时：圆环顺时针递减，可选剩余时间与专属颜色。", .pt: "Timer na barra: o anel se esvazia no sentido horário, com tempo restante e cor própria opcionais."])),
+                ChangeItem(kind: .new, text: L("Utilities live in a collapsible panel section; optional Settings and Quit buttons; the right-click menu jumps straight to any module.", [.ru: "Утилиты — в раскрывающейся секции панели; опциональные кнопки «Настройки» и «Выйти»; меню правого клика ведёт сразу в модуль.", .es: "Las utilidades viven en una sección plegable del panel; botones opcionales de Ajustes y Salir; el menú contextual salta directo a un módulo.", .fr: "Les utilitaires vivent dans une section repliable ; boutons Réglages et Quitter en option ; le menu contextuel ouvre directement un module.", .de: "Dienstprogramme in einer aufklappbaren Panel-Sektion; optionale Einstellungen/Beenden-Tasten; das Rechtsklickmenü springt direkt zum Modul.", .ja: "ユーティリティはパネルの折りたたみセクションに。設定/終了ボタンを追加可能。右クリックメニューから各モジュールへ直行。", .zh: "实用工具收纳于面板可折叠区；可选“设置/退出”按钮；右键菜单直达任意模块。", .pt: "Utilitários em seção recolhível do painel; botões opcionais Ajustes e Sair; o menu de contexto abre direto um módulo."])),
+                ChangeItem(kind: .upd, text: L("Keep Awake's ⋯ controls open inline with animation: custom timer with a durations menu, automation toggles, Stop button in the countdown.", [.ru: "Блок «⋯» открывается прямо в карточке с анимацией: свой таймер с меню длительностей, тумблеры автоматизации, «Стоп» в отсчёте.", .es: "Los controles ⋯ se abren en línea con animación: temporizador propio con menú de duraciones, automatización y botón Detener.", .fr: "Les contrôles ⋯ s’ouvrent en ligne avec animation : minuteur personnalisé avec menu de durées, automatisations, bouton Arrêter.", .de: "Die ⋯-Steuerung öffnet inline mit Animation: eigener Timer mit Dauer-Menü, Automatik-Schalter, Stopp-Taste im Countdown.", .ja: "⋯ の操作はカード内でアニメーション表示：時間メニュー付きカスタムタイマー、自動化スイッチ、停止ボタン。", .zh: "⋯ 控件在卡片内动画展开：自定义计时（时长菜单）、自动化开关、倒计时中的停止按钮。", .pt: "Os controles ⋯ abrem na própria carta com animação: timer com menu de durações, automações e botão Parar."])),
+                ChangeItem(kind: .upd, text: L("Settings window polish: larger window for utility pages, macOS 26-style lists, clearer wording throughout.", [.ru: "Полировка окна настроек: увеличенное окно для утилит, списки в стиле macOS 26, выверенные тексты.", .es: "Pulido de Ajustes: ventana mayor para utilidades, listas al estilo macOS 26, textos más claros.", .fr: "Réglages peaufinés : fenêtre agrandie pour les utilitaires, listes façon macOS 26, textes clarifiés.", .de: "Einstellungen poliert: größeres Fenster für Dienstprogramme, Listen im macOS-26-Stil, klarere Texte.", .ja: "設定ウインドウを改良：ユーティリティは大きめのウインドウ、macOS 26 スタイルのリスト、文言を整理。", .zh: "设置窗口打磨：实用工具使用更大窗口、macOS 26 风格列表、更清晰的文案。", .pt: "Ajustes refinados: janela maior para utilitários, listas no estilo macOS 26, textos mais claros."])),
+                ChangeItem(kind: .fix, text: L("The panel no longer jumps or slides when sections expand; settings stay in sync between the panel and the Settings window.", [.ru: "Панель больше не прыгает при раскрытии секций; настройки синхронизированы между панелью и окном настроек.", .es: "El panel ya no salta al expandir secciones; los ajustes se sincronizan entre panel y ventana.", .fr: "Le panneau ne saute plus à l’ouverture des sections ; les réglages restent synchronisés entre panneau et fenêtre.", .de: "Das Panel springt beim Aufklappen nicht mehr; Einstellungen bleiben zwischen Panel und Fenster synchron.", .ja: "セクション展開時にパネルが跳ねなくなり、パネルと設定ウインドウの設定が同期されます。", .zh: "展开区块时面板不再跳动；面板与设置窗口的设置保持同步。", .pt: "O painel não pula mais ao expandir seções; os ajustes ficam sincronizados entre painel e janela."])),
+                ChangeItem(kind: .fix, text: L("The menu-bar countdown ticks reliably; heavy work no longer stalls the app's async machinery.", [.ru: "Отсчёт в строке меню тикает стабильно; тяжёлые операции больше не тормозят асинхронику приложения.", .es: "La cuenta atrás avanza de forma fiable; el trabajo pesado ya no atasca la maquinaria asíncrona.", .fr: "Le compte à rebours avance de façon fiable ; les tâches lourdes ne bloquent plus l’asynchrone.", .de: "Der Countdown tickt zuverlässig; schwere Arbeit bremst die Async-Maschinerie nicht mehr.", .ja: "メニューバーのカウントダウンが確実に進み、重い処理が非同期機構を塞がなくなりました。", .zh: "菜单栏倒计时稳定走动；繁重任务不再阻塞异步机制。", .pt: "A contagem na barra avança de forma confiável; trabalho pesado não trava mais a máquina assíncrona."])),
+            ]),
+            ChangelogEntry(version: "0.5.1", date: "2026-07-24", items: [
+                ChangeItem(kind: .fix, text: L("Silent update cleans up its temporary files after installing.", [.ru: "Тихое обновление подчищает временные файлы после установки.", .es: "La actualización silenciosa limpia sus archivos temporales tras instalar.", .fr: "La mise à jour silencieuse nettoie ses fichiers temporaires après installation.", .de: "Das stille Update räumt seine temporären Dateien nach der Installation auf.", .ja: "サイレントアップデートがインストール後に一時ファイルを削除します。", .zh: "静默更新安装后清理临时文件。", .pt: "A atualização silenciosa limpa os arquivos temporários após instalar."])),
+            ]),
+            ChangelogEntry(version: "0.5.0", date: "2026-07-24", items: [
+                ChangeItem(kind: .new, text: L("Silent in-app updates: Update & Relaunch downloads, installs and restarts with no Gatekeeper prompt.", [.ru: "Тихие обновления: «Обновить и перезапустить» скачивает, ставит и перезапускает без запросов Gatekeeper.", .es: "Actualizaciones silenciosas: Actualizar y reiniciar descarga, instala y reinicia sin avisos de Gatekeeper.", .fr: "Mises à jour silencieuses : Mettre à jour et relancer télécharge, installe et redémarre sans invite Gatekeeper.", .de: "Stille Updates: Aktualisieren & neu starten lädt, installiert und startet neu ohne Gatekeeper-Abfrage.", .ja: "サイレント更新：「更新して再起動」がダウンロード・インストール・再起動まで自動で行います。", .zh: "静默更新：“更新并重启”自动下载、安装并重启，无 Gatekeeper 提示。", .pt: "Atualizações silenciosas: Atualizar e reiniciar baixa, instala e reinicia sem avisos do Gatekeeper."])),
+            ]),
+            ChangelogEntry(version: "0.4.0", date: "2026-07-24", items: [
+                ChangeItem(kind: .new, text: L("Custom active-state icon for Keep Awake.", [.ru: "Своя иконка активного состояния для «Не спать».", .es: "Icono activo personalizado para Mantener activo.", .fr: "Icône active personnalisée pour Rester éveillé.", .de: "Eigenes Aktiv-Symbol für Wach halten.", .ja: "スリープ防止のカスタムアクティブアイコン。", .zh: "保持唤醒的自定义激活图标。", .pt: "Ícone ativo personalizado para Manter ativo."])),
+                ChangeItem(kind: .upd, text: L("Reworked icon pickers with real-size previews; smaller icon sizes.", [.ru: "Переработанные пикеры иконки с превью в реальном размере; меньшие размеры.", .es: "Selectores de icono renovados con vistas a tamaño real; tamaños más pequeños.", .fr: "Sélecteurs d’icône repensés avec aperçus à taille réelle ; tailles plus petites.", .de: "Überarbeitete Symbol-Auswahl mit Vorschau in Originalgröße; kleinere Größen.", .ja: "実寸プレビュー付きの新しいアイコンピッカー。より小さいサイズも追加。", .zh: "重做的图标选择器（实际尺寸预览）；新增更小尺寸。", .pt: "Seletores de ícone renovados com prévia em tamanho real; tamanhos menores."])),
+            ]),
+            ChangelogEntry(version: "0.3.0", date: "2026-07-24", items: [
+                ChangeItem(kind: .upd, text: L("Update check moved into About.", [.ru: "Проверка обновлений переехала в «О Helm».", .es: "La comprobación de actualizaciones se movió a Acerca de.", .fr: "La vérification des mises à jour a déménagé dans À propos.", .de: "Die Update-Prüfung ist nach Über umgezogen.", .ja: "アップデート確認を「Helm について」に移動。", .zh: "更新检查移至“关于”。", .pt: "A verificação de atualizações foi para Sobre."])),
+                ChangeItem(kind: .fix, text: L("Panel toggles show the real state right after launch.", [.ru: "Тумблеры панели показывают реальное состояние сразу после запуска.", .es: "Los interruptores del panel muestran el estado real justo tras el arranque.", .fr: "Les interrupteurs du panneau montrent l’état réel dès le lancement.", .de: "Panel-Schalter zeigen direkt nach dem Start den echten Zustand.", .ja: "起動直後からパネルのスイッチが実際の状態を表示。", .zh: "启动后面板开关即显示真实状态。", .pt: "Os interruptores do painel mostram o estado real logo após o início."])),
+            ]),
+            ChangelogEntry(version: "0.2.0", date: "2026-07-24", items: [
+                ChangeItem(kind: .new, text: L("GitHub update check and the What's New window.", [.ru: "Проверка обновлений через GitHub и окно «Что нового».", .es: "Comprobación de actualizaciones por GitHub y ventana Novedades.", .fr: "Vérification des mises à jour via GitHub et fenêtre Nouveautés.", .de: "GitHub-Update-Prüfung und das Neuigkeiten-Fenster.", .ja: "GitHub 経由のアップデート確認と「新機能」ウインドウ。", .zh: "GitHub 更新检查与“新增内容”窗口。", .pt: "Verificação de atualizações via GitHub e a janela Novidades."])),
+            ]),
+        ]
+    }
+}
