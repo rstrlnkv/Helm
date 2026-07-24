@@ -5,6 +5,12 @@ enum AppStr {
     static var menuBar: String { L("Menu Bar", [.ru: "Строка меню", .es: "Barra de menús", .fr: "Barre des menus", .de: "Menüleiste", .ja: "メニューバー", .zh: "菜单栏", .pt: "Barra de menus"]) }
     static var general: String { L("General", [.ru: "Основные", .es: "General", .fr: "Général", .de: "Allgemein", .ja: "一般", .zh: "通用", .pt: "Geral"]) }
     static var launchAtLogin: String { L("Launch at login", [.ru: "Запуск при входе", .es: "Abrir al iniciar sesión", .fr: "Ouvrir à l’ouverture de session", .de: "Beim Anmelden öffnen", .ja: "ログイン時に起動", .zh: "登录时启动", .pt: "Abrir ao iniciar sessão"]) }
+    static var updates: String { L("Updates", [.ru: "Обновления", .es: "Actualizaciones", .fr: "Mises à jour", .de: "Updates", .ja: "アップデート", .zh: "更新", .pt: "Atualizações"]) }
+    static var checkForUpdates: String { L("Check for Updates", [.ru: "Проверить обновления", .es: "Buscar actualizaciones", .fr: "Rechercher des mises à jour", .de: "Nach Updates suchen", .ja: "アップデートを確認", .zh: "检查更新", .pt: "Procurar atualizações"]) }
+    static var checking: String { L("Checking…", [.ru: "Проверка…", .es: "Buscando…", .fr: "Recherche…", .de: "Suche…", .ja: "確認中…", .zh: "检查中…", .pt: "Verificando…"]) }
+    static var upToDate: String { L("You’re on the latest version.", [.ru: "Установлена последняя версия.", .es: "Tienes la última versión.", .fr: "Vous avez la dernière version.", .de: "Du hast die neueste Version.", .ja: "最新バージョンです。", .zh: "已是最新版本。", .pt: "Você tem a versão mais recente."]) }
+    static var download: String { L("Download", [.ru: "Скачать", .es: "Descargar", .fr: "Télécharger", .de: "Herunterladen", .ja: "ダウンロード", .zh: "下载", .pt: "Baixar"]) }
+    static func updateAvailable(_ v: String) -> String { L("Update available: \(v)", [.ru: "Доступно обновление: \(v)", .es: "Actualización disponible: \(v)", .fr: "Mise à jour disponible : \(v)", .de: "Update verfügbar: \(v)", .ja: "アップデートあり: \(v)", .zh: "有可用更新：\(v)", .pt: "Atualização disponível: \(v)"]) }
     static var aboutHelm: String { L("About Helm", [.ru: "О Helm", .es: "Acerca de Helm", .fr: "À propos de Helm", .de: "Über Helm", .ja: "Helm について", .zh: "关于 Helm", .pt: "Sobre o Helm"]) }
     static var iconShape: String { L("Icon shape", [.ru: "Форма иконки", .es: "Forma del icono", .fr: "Forme de l’icône", .de: "Symbolform", .ja: "アイコンの形", .zh: "图标形状", .pt: "Forma do ícone"]) }
     static var iconSize: String { L("Icon size", [.ru: "Размер иконки", .es: "Tamaño del icono", .fr: "Taille de l’icône", .de: "Symbolgröße", .ja: "アイコンのサイズ", .zh: "图标大小", .pt: "Tamanho do ícone"]) }

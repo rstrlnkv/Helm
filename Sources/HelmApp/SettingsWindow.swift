@@ -217,12 +217,21 @@ private struct MenuBarSettingsView: View {
     @State private var style: String = AppSettings.menuBarIconStyle
     @State private var size: String = AppSettings.menuBarIconSize
     @State private var launchAtLogin: Bool = LoginItem.isEnabled
+    @ObservedObject private var updater = UpdateService.shared
 
     var body: some View {
         Form {
             Section(AppStr.general) {
                 Toggle(AppStr.launchAtLogin, isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, v in LoginItem.setEnabled(v) }
+            }
+            Section(AppStr.updates) {
+                HStack {
+                    updateStatus
+                    Spacer()
+                    Button(AppStr.checkForUpdates) { updater.checkNow() }
+                        .disabled(updater.checking)
+                }
             }
             Section(AppStr.iconShape) {
                 HStack(spacing: 14) {
@@ -247,6 +256,26 @@ private struct MenuBarSettingsView: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    @ViewBuilder
+    private var updateStatus: some View {
+        if updater.checking {
+            HStack(spacing: 6) {
+                ProgressView().controlSize(.small)
+                Text(AppStr.checking).foregroundStyle(.secondary)
+            }
+        } else if let release = updater.available {
+            HStack(spacing: 8) {
+                Text(AppStr.updateAvailable(release.version))
+                Link(AppStr.download, destination: release.downloadURL ?? release.pageURL)
+            }
+        } else if updater.lastMessage == "up-to-date" {
+            Text(AppStr.upToDate).foregroundStyle(.secondary)
+        } else {
+            Text("v" + (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""))
+                .foregroundStyle(.secondary)
+        }
     }
 
     private func styleTile(_ s: MenuBarIconStyle) -> some View {
