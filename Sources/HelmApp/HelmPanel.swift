@@ -2,9 +2,10 @@ import AppKit
 import SwiftUI
 import HelmUI
 
-/// Borderless, non-activating panel shown below the status item. Stacks
-/// each enabled module's panel tile, with a small Settings/Quit footer.
-/// Borderless panel that can still become key so its SwiftUI controls work.
+/// Borderless, non-activating panel shown below the status item; stacks each
+/// enabled module's panel tile (settings/quit live in the right-click menu).
+/// Borderless panels can't normally become key; this one must, so its SwiftUI
+/// controls (toggles, text fields) accept input.
 private final class KeyablePanel: NSPanel {
     override var canBecomeKey: Bool { true }
 }
@@ -13,6 +14,9 @@ private final class KeyablePanel: NSPanel {
     private let panel: NSPanel
     private var dismissMonitor: Any?
     private var statusButtonScreenFrame: NSRect = .zero
+    private var resizeObserver: NSObjectProtocol?
+    /// Screen the panel was opened on; clamping target for repositioning.
+    private var anchorScreen: NSScreen?
 
     init(host: ModuleHost) {
         let panel = KeyablePanel(
@@ -46,25 +50,42 @@ private final class KeyablePanel: NSPanel {
             return
         }
         guard let buttonWindow = statusButton.window else { return }
-        let buttonFrameInScreen = buttonWindow.convertToScreen(statusButton.frame)
-        statusButtonScreenFrame = buttonFrameInScreen
+        statusButtonScreenFrame = buttonWindow.convertToScreen(statusButton.frame)
+        anchorScreen = buttonWindow.screen ?? NSScreen.main
         panel.layoutIfNeeded()
-        let panelSize = panel.frame.size
-        // Clamp into the button's screen so a status item near an edge doesn't
-        // push the panel off-screen (right side clipped near the notch/corner).
-        let visible = (buttonWindow.screen ?? NSScreen.main)?.visibleFrame ?? .zero
-        let margin: CGFloat = 8
-        var x = buttonFrameInScreen.midX - panelSize.width / 2
-        x = min(max(x, visible.minX + margin), visible.maxX - panelSize.width - margin)
-        var y = buttonFrameInScreen.minY - panelSize.height - 4
-        if y < visible.minY + margin { y = visible.minY + margin }
-        panel.setFrameOrigin(NSPoint(x: x, y: y))
+        reposition()
         panel.orderFrontRegardless()
         installDismissMonitor()
+        // SwiftUI content can change height while open (disclosures, timers).
+        // The window's origin is its BOTTOM-left, so an untouched origin makes
+        // growth push the top edge up into the menu bar — the visible "jump".
+        // Re-anchor the TOP edge under the status item on every resize instead.
+        resizeObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didResizeNotification, object: panel, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.reposition() }
+        }
+    }
+
+    /// Position the panel with its top edge just below the status item, clamped
+    /// into the screen so an edge-adjacent status item doesn't clip the panel.
+    private func reposition() {
+        let panelSize = panel.frame.size
+        let visible = anchorScreen?.visibleFrame ?? .zero
+        let margin: CGFloat = 8
+        var x = statusButtonScreenFrame.midX - panelSize.width / 2
+        x = min(max(x, visible.minX + margin), visible.maxX - panelSize.width - margin)
+        var y = statusButtonScreenFrame.minY - panelSize.height - 4
+        if y < visible.minY + margin { y = visible.minY + margin }
+        panel.setFrameOrigin(NSPoint(x: x, y: y))
     }
 
     private func hide() {
         removeDismissMonitor()
+        if let resizeObserver {
+            NotificationCenter.default.removeObserver(resizeObserver)
+            self.resizeObserver = nil
+        }
         panel.orderOut(nil)
     }
 
@@ -115,7 +136,7 @@ private struct HelmPanelContent: View {
     /// re-reads it when the settings window announces a change.
     @State private var layoutRaw = AppSettings.panelLayout
     private var layout: PanelLayoutStyle {
-        PanelLayoutStyle(rawValue: layoutRaw) ?? .grid
+        PanelLayoutStyle(rawValue: layoutRaw) ?? .list
     }
 
     /// Control-Centre style rows: compact tiles pair up, wide tiles take a row.
@@ -229,7 +250,7 @@ private struct UtilitiesSection: View {
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(width: 20, height: 20)
-                    .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(Color.pink))
+                    .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(live.descriptor.moduleCategory.tint))
                 Text(meta.name).font(.callout).lineLimit(1)
                 Spacer()
                 Image(systemName: "arrow.up.forward")

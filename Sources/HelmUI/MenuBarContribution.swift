@@ -25,6 +25,22 @@ public struct MenuBarContribution {
 
 public enum ModuleCategory: String, CaseIterable, Sendable {
     case power, network, clipboard, window, media, files, appearance, utilities, misc
+
+    /// The category's accent, used for sidebar badges and panel utility rows so
+    /// the same category always reads in the same color.
+    public var tint: Color {
+        switch self {
+        case .power: return .orange
+        case .network: return .indigo
+        case .clipboard: return .blue
+        case .window: return .green
+        case .media: return .pink
+        case .files: return .cyan
+        case .appearance: return .purple
+        case .utilities: return .pink
+        case .misc: return .gray
+        }
+    }
 }
 
 public extension Notification.Name {
