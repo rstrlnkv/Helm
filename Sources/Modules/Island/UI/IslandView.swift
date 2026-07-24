@@ -6,7 +6,7 @@ import Module_Island_Engine
 /// (expanded). The window frame is static — only this view animates.
 struct IslandView: View {
     @ObservedObject var model: IslandModel
-    /// Injected by the descriptor (Task 7): shelf content inside the card.
+    /// Injected by the descriptor: shelf content inside the card.
     var content: AnyView = AnyView(EmptyView())
 
     var body: some View {
@@ -36,8 +36,18 @@ struct IslandView: View {
                     .padding(.top, 34)      // clears the physical notch strip
                     .padding(.bottom, 16)
             } else {
-                // Peek: a slim strip just under the notch.
-                Color.clear.frame(height: 38)
+                // Peek: event line rendered BELOW the physical notch strip.
+                HStack(spacing: 6) {
+                    if let symbol = model.eventSymbol {
+                        Image(systemName: symbol).font(.caption)
+                    }
+                    if let text = model.eventText {
+                        Text(text).font(.caption)
+                    }
+                }
+                .foregroundStyle(.white)
+                .padding(.top, model.notchHeight + 2)
+                .padding(.bottom, 7)
             }
         }
         .frame(width: expanded ? cardWidth : model.notchWidth + 24)
