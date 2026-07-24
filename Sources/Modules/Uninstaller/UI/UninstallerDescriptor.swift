@@ -10,7 +10,7 @@ import Module_Uninstaller_Engine
         id: id, name: UnStr.moduleName, summary: UnStr.summary,
         sfSymbol: "trash", permissions: [])
     public static let isolation: ModuleIsolation = .inProcess
-    public static let category: ModuleCategory = .maintenance
+    public static let category: ModuleCategory = .utilities
 
     public init() {}
 
@@ -21,9 +21,7 @@ import Module_Uninstaller_Engine
                                  trash: ports.trash, running: ports.running)
     }
 
-    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? {
-        MenuBarContribution(panelTile: AnyView(UninstallerPanelTile()))
-    }
+    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { .utility }
 
     public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
         AnyView(UninstallerSettingsPage(vm: vm))

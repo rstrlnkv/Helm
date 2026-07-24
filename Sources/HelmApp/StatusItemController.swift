@@ -38,8 +38,10 @@ import HelmUI
         }
         openSettingsObserver = NotificationCenter.default.addObserver(
             forName: .helmOpenSettings, object: nil, queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in self?.openSettings() }
+        ) { [weak self] note in
+            // `object` may carry a module id to open that module's page directly.
+            let moduleID = note.object as? String
+            Task { @MainActor in self?.showSettings(module: moduleID) }
         }
         resubscribeToModules()
     }
@@ -98,6 +100,11 @@ import HelmUI
 
     @objc func openSettings() {
         settingsWindow.show()
+    }
+
+    /// Open Settings focused on a module (panel utility rows pass an id).
+    private func showSettings(module moduleID: String?) {
+        settingsWindow.show(selecting: moduleID)
     }
 
     @objc private func quit() {

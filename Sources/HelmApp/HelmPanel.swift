@@ -90,6 +90,19 @@ private final class KeyablePanel: NSPanel {
 
 private struct HelmPanelContent: View {
     @ObservedObject var host: ModuleHost
+    @State private var utilitiesExpanded = false
+
+    /// Modules split by how they present in the panel: interactive tiles stay
+    /// visible, utilities collapse behind one row so the panel stays compact.
+    private var tiles: [(live: ModuleHost.Live, view: AnyView)] {
+        host.enabledModules.compactMap { live in
+            guard let c = live.descriptor.menuBar(live.vm), !c.isUtility, let tile = c.panelTile else { return nil }
+            return (live, tile)
+        }
+    }
+    private var utilities: [ModuleHost.Live] {
+        host.enabledModules.filter { $0.descriptor.menuBar($0.vm)?.isUtility == true }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -106,10 +119,11 @@ private struct HelmPanelContent: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
             } else {
-                ForEach(Array(host.enabledModules.enumerated()), id: \.offset) { _, live in
-                    if let tile = live.descriptor.menuBar(live.vm)?.panelTile {
-                        tile
-                    }
+                ForEach(Array(tiles.enumerated()), id: \.offset) { _, item in
+                    item.view
+                }
+                if !utilities.isEmpty {
+                    UtilitiesSection(modules: utilities, expanded: $utilitiesExpanded)
                 }
             }
         }
@@ -120,5 +134,70 @@ private struct HelmPanelContent: View {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
         )
+    }
+}
+
+/// One collapsed row listing the modules whose UI lives in Settings. Expanding
+/// reveals compact rows; clicking one opens Settings on that module.
+private struct UtilitiesSection: View {
+    let modules: [ModuleHost.Live]
+    @Binding var expanded: Bool
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.18)) { expanded.toggle() }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "wrench.and.screwdriver")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                    Text(AppStr.utilities).font(.subheadline.weight(.medium))
+                    Spacer()
+                    Text("\(modules.count)").font(.caption).foregroundStyle(.tertiary)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                        .rotationEffect(.degrees(expanded ? 90 : 0))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(AppStr.utilities)
+
+            if expanded {
+                VStack(spacing: 2) {
+                    ForEach(modules, id: \.descriptor.idRaw) { live in
+                        utilityRow(live)
+                    }
+                }
+                .padding(.top, 8)
+                .transition(.opacity)
+            }
+        }
+        .helmPanelCard()
+    }
+
+    private func utilityRow(_ live: ModuleHost.Live) -> some View {
+        let meta = live.descriptor.moduleMetadata
+        return Button {
+            NotificationCenter.default.post(name: .helmOpenSettings, object: live.descriptor.idRaw)
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: meta.sfSymbol)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 20, height: 20)
+                    .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(Color.pink))
+                Text(meta.name).font(.callout).lineLimit(1)
+                Spacer()
+                Image(systemName: "arrow.up.forward")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.vertical, 3)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
