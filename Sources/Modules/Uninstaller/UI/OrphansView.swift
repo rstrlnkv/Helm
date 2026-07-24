@@ -78,9 +78,18 @@ struct OrphansView: View {
         }
     }
 
+    private var allPaths: [String] { groups.flatMap(\.leftovers).map(\.path) }
+    private var allSelected: Bool { selected.count == allPaths.count && !allPaths.isEmpty }
+
     private var footer: some View {
         HStack {
             Button(UnStr.rescan) { Task { await scan() } }.disabled(busy)
+            // One toggle covers both: "select all" flips to "deselect all" when
+            // everything is already checked (default after a scan).
+            Button(allSelected ? UnStr.deselectAll : UnStr.selectAll) {
+                selected = allSelected ? [] : Set(allPaths)
+            }
+            .disabled(busy)
             Spacer()
             Text(UnStr.selectedSummary(selected.count, ByteFormat.string(selectedBytes)))
                 .font(.caption).foregroundStyle(.secondary)
