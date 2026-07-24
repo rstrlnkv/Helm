@@ -5,6 +5,7 @@ import HelmUI
 public struct KeepAwakePanelTile: View {
     @ObservedObject private var vm: ModuleViewModel
     @State private var customMinutes = 30
+    @State private var showCustom = false
 
     public init(vm: ModuleViewModel) {
         self.vm = vm
@@ -17,14 +18,7 @@ public struct KeepAwakePanelTile: View {
                 countdownRow(end)
             } else {
                 presetRow
-                customRow
-            }
-            if vm.isActive && !vm.activeConditions.isEmpty {
-                conditionsCaptionView
-            }
-            if vm.isActive && vm.clamshellActive {
-                Text(KAStr.lidClosed)
-                    .font(.caption).foregroundStyle(.secondary)
+                if showCustom { customRow }
             }
         }
         .helmPanelCard()
@@ -33,13 +27,28 @@ public struct KeepAwakePanelTile: View {
     private var header: some View {
         HStack(spacing: 10) {
             HelmIconBadge(symbol: "moon.zzz.fill", color: .orange, active: vm.isActive)
-            Text(KAStr.moduleName).font(.headline)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(KAStr.moduleName).font(.headline)
+                if let subtitle = activeSubtitle {
+                    Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                }
+            }
             Spacer()
             Toggle("", isOn: Binding(get: { vm.isActive }, set: { _ in vm.send("toggle") }))
                 .toggleStyle(.switch)
                 .labelsHidden()
                 .controlSize(.small)
         }
+    }
+
+    /// Small line under the title while active: the auto conditions (and a
+    /// lid-closed hint), shown next to the toggle instead of at the bottom.
+    private var activeSubtitle: String? {
+        guard vm.isActive else { return nil }
+        var parts: [String] = []
+        if !vm.activeConditions.isEmpty { parts.append(conditionsCaption) }
+        if vm.clamshellActive { parts.append(KAStr.lidClosed) }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     // MARK: - Idle: presets + custom
@@ -50,7 +59,20 @@ public struct KeepAwakePanelTile: View {
             presetPill("1h", 60)
             presetPill("2h", 120)
             presetPill("∞", 0)
+            customPill
         }
+    }
+
+    private var customPill: some View {
+        Button { withAnimation(.easeInOut(duration: 0.15)) { showCustom.toggle() } } label: {
+            Image(systemName: "ellipsis")
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+                .background(Capsule().fill(showCustom ? Color.accentColor.opacity(0.25) : Color.primary.opacity(0.08)))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
     }
 
     private func presetPill(_ label: String, _ minutes: Int) -> some View {
@@ -105,12 +127,6 @@ public struct KeepAwakePanelTile: View {
     }
 
     // MARK: - Active: auto conditions
-
-    private var conditionsCaptionView: some View {
-        Text(conditionsCaption)
-            .font(.caption)
-            .foregroundStyle(.secondary)
-    }
 
     private var conditionsCaption: String {
         vm.activeConditions
