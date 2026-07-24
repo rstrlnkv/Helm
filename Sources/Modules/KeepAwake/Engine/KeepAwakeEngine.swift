@@ -146,11 +146,11 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         let r = Conditions.resolve(inputs)
 
         if r.isActive && !isActive {
+            isActive = true
             assertions.preventSleep(display: settings.keepDisplayOn)
             if settings.clamshellEnabled { engageClamshell() }
             if settings.jiggleEnabled { scheduleJiggle() }
             scheduleBatteryWatch()
-            isActive = true
         } else if !r.isActive && isActive {
             assertions.release()
             if clamshellActive { disengageClamshell() }
@@ -244,6 +244,10 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     }
 
     private func reallyEngageClamshell() {
+        // The sudoers prompt is async; the session may have already ended (or
+        // clamshell may have been disabled) by the time the user answers it.
+        // Never disable sleep for a session that is no longer active.
+        guard isActive, settings.clamshellEnabled else { return }
         store.set(true, for: "clamshellGuard")
         _ = clamshell.setDisableSleep(true)
         clamshellActive = true
