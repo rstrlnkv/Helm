@@ -43,6 +43,21 @@ private enum SettingsSelection: Hashable {
     case about
 }
 
+/// Shared System Settings-style tint per module category (used by both the
+/// sidebar tile and the module detail header so they match).
+private func categoryColor(_ category: ModuleCategory) -> Color {
+    switch category {
+    case .power: return .orange
+    case .network: return .indigo
+    case .clipboard: return .blue
+    case .window: return .green
+    case .media: return .pink
+    case .files: return .cyan
+    case .appearance: return .purple
+    case .misc: return .gray
+    }
+}
+
 private struct SettingsRootView: View {
     @ObservedObject var host: ModuleHost
     @State private var selection: SettingsSelection? = .general
@@ -61,7 +76,7 @@ private struct SettingsRootView: View {
                             ForEach(modules, id: \.idRaw) { descriptor in
                                 sidebarRow(descriptor.moduleMetadata.name,
                                            descriptor.moduleMetadata.sfSymbol,
-                                           Self.color(for: category))
+                                           categoryColor(category))
                                     .tag(SettingsSelection.module(descriptor.idRaw))
                             }
                         }
@@ -73,7 +88,7 @@ private struct SettingsRootView: View {
                 }
             }
             .listStyle(.sidebar)
-            .navigationSplitViewColumnWidth(min: 200, ideal: 210)
+            .navigationSplitViewColumnWidth(min: 230, ideal: 250, max: 300)
             .toolbar(removing: .sidebarToggle)
         } detail: {
             detail
@@ -89,19 +104,6 @@ private struct SettingsRootView: View {
                 .foregroundStyle(.white)
                 .frame(width: 22, height: 22)
                 .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(color))
-        }
-    }
-
-    private static func color(for category: ModuleCategory) -> Color {
-        switch category {
-        case .power: return .orange
-        case .network: return .indigo
-        case .clipboard: return .blue
-        case .window: return .green
-        case .media: return .pink
-        case .files: return .cyan
-        case .appearance: return .purple
-        case .misc: return .gray
         }
     }
 
@@ -134,7 +136,8 @@ private struct ModuleDetailView: View {
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(width: 40, height: 40)
-                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.orange))
+                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(categoryColor(descriptor.moduleCategory)))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(descriptor.moduleMetadata.name).font(.title2.bold())
                     Text(descriptor.moduleMetadata.summary)
