@@ -37,20 +37,53 @@ public struct VPNSettingsPage: View {
     @ViewBuilder
     private var connectionsList: some View {
         if vm.connections.isEmpty {
-            Text("No VPNs configured.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                Image(systemName: "lock.slash")
+                Text("No VPNs configured in System Settings.")
+            }
+            .font(.callout)
+            .foregroundStyle(.secondary)
         } else {
             ForEach(vm.connections) { connection in
-                HStack {
-                    Text(connection.name)
-                    Spacer()
-                    Text(statusText(connection.status))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                connectionRow(connection)
             }
         }
+    }
+
+    private func connectionRow(_ c: VPNConnection) -> some View {
+        let active = c.status == .connected || c.status == .connecting
+        let transitioning = c.status == .connecting || c.status == .disconnecting
+        return HStack(spacing: 12) {
+            Circle()
+                .fill(active ? Color.green : Color.secondary.opacity(0.4))
+                .frame(width: 9, height: 9)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(c.name)
+                HStack(spacing: 6) {
+                    if let kind = prettyKind(c.kind) {
+                        Text(kind)
+                    }
+                    Text("· \(statusText(c.status))")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+            Spacer()
+            if transitioning { ProgressView().controlSize(.small) }
+            Toggle("", isOn: Binding(
+                get: { active },
+                set: { on in on ? vm.connect(c.name) : vm.disconnect(c.name) }))
+                .toggleStyle(.switch)
+                .labelsHidden()
+                .controlSize(.small)
+        }
+        .padding(.vertical, 3)
+    }
+
+    private func prettyKind(_ raw: String?) -> String? {
+        guard let raw else { return nil }
+        for k in ["L2TP", "IKEv2", "IPSec", "WireGuard", "PPTP"] where raw.contains(k) { return k }
+        return raw.split(separator: ":").first.map(String.init)
     }
 
     private func statusText(_ status: VPNStatus) -> String {
@@ -69,27 +102,40 @@ public struct VPNSettingsPage: View {
         rules.keys.sorted()
     }
 
+    @ViewBuilder
     private var appRulesEditor: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ForEach(sortedBundleIDs, id: \.self) { bundleID in
-                appRuleRow(bundleID)
-            }
-            Button {
-                pickApp()
-            } label: {
-                Label("Add app…", systemImage: "plus")
-            }
+        if rules.isEmpty {
+            Text("Add an app to automatically connect a VPN while that app is running.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
         }
+        ForEach(Array(sortedBundleIDs.enumerated()), id: \.element) { index, bundleID in
+            if index > 0 { Divider() }
+            appRuleRow(bundleID)
+        }
+        Button {
+            pickApp()
+        } label: {
+            Label("Add app…", systemImage: "plus")
+        }
+        .disabled(vm.connections.isEmpty)
     }
 
     private func appRuleRow(_ bundleID: String) -> some View {
         let info = Self.appInfo(bundleID)
-        return VStack(alignment: .leading, spacing: 6) {
+        return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
                 Image(nsImage: info.icon)
-                    .resizable().frame(width: 20, height: 20)
-                Text(info.name)
+                    .resizable().frame(width: 24, height: 24)
+                Text(info.name).font(.headline)
                 Spacer()
+                Picker("", selection: vpnNameBinding(bundleID)) {
+                    ForEach(vm.connections.map(\.name), id: \.self) { name in
+                        Text(name).tag(name)
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 160)
                 Button {
                     rules.removeValue(forKey: bundleID)
                     persist()
@@ -98,14 +144,10 @@ public struct VPNSettingsPage: View {
                 }
                 .buttonStyle(.plain)
             }
-            Picker("VPN", selection: vpnNameBinding(bundleID)) {
-                ForEach(vm.connections.map(\.name), id: \.self) { name in
-                    Text(name).tag(name)
-                }
-            }
-            .labelsHidden()
-            Toggle("Connect on launch", isOn: connectOnLaunchBinding(bundleID))
-            Toggle("Disconnect on quit", isOn: disconnectOnQuitBinding(bundleID))
+            Toggle("Connect when it launches", isOn: connectOnLaunchBinding(bundleID))
+                .controlSize(.small)
+            Toggle("Disconnect when it quits", isOn: disconnectOnQuitBinding(bundleID))
+                .controlSize(.small)
         }
         .padding(.vertical, 4)
     }
