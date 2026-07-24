@@ -205,21 +205,13 @@ public struct KeepAwakeSettingsPage: View {
         }
     }
 
-    /// Timer palette with an extra "inherit" swatch, so the countdown can either
-    /// match the active colour or stand out on its own.
+    /// Timer palette: the countdown can stand out from the active colour.
     private var timerColorSwatches: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            swatchGrid(selection: timerTintColor) { token in
-                timerTintColor = token
-                write(token, "timerTintColor")
-            }
-            Toggle(KAStr.sameAsActive, isOn: Binding(
-                get: { timerTintColor.isEmpty },
-                set: { same in
-                    timerTintColor = same ? "" : activeTintColor
-                    write(timerTintColor, "timerTintColor")
-                }))
-                .font(.caption)
+        // No stored value yet → the active colour is what the timer will use, so
+        // show that as the selection.
+        swatchGrid(selection: timerTintColor.isEmpty ? activeTintColor : timerTintColor) { token in
+            timerTintColor = token
+            write(token, "timerTintColor")
         }
     }
 

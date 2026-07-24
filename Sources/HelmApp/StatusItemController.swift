@@ -49,7 +49,12 @@ import HelmUI
         moduleCancellables.removeAll()
         for live in host.enabledModules {
             live.vm.objectWillChange
-                .sink { [weak self] _ in self?.refreshIcon() }
+                // objectWillChange fires BEFORE the property is written, so
+                // refreshing inline read the previous state — the countdown tick
+                // was never started and nothing refreshed it afterwards.
+                .sink { [weak self] _ in
+                    Task { @MainActor in self?.refreshIcon() }
+                }
                 .store(in: &moduleCancellables)
         }
         refreshIcon()

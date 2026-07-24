@@ -12,6 +12,8 @@ public struct KeepAwakePanelTile: View {
     /// Natural height of the ⋯ block, measured once so the disclosure can
     /// animate between 0 and a concrete value.
     @State private var moreHeight: CGFloat = 0
+    @State private var showCustomTime = false
+    @State private var customMinutesText = ""
     @State private var autoExternalDisplay: Bool
     @State private var autoPower: Bool
 
@@ -153,16 +155,23 @@ public struct KeepAwakePanelTile: View {
                 HStack(spacing: 6) {
                     // A menu of sensible durations beats nudging a stepper five
                     // minutes at a time in a 300pt panel.
-                    Picker("", selection: $customMinutes) {
+                    Menu {
                         ForEach(Self.timerOptions, id: \.self) { minutes in
-                            Text(Self.durationLabel(minutes)).tag(minutes)
+                            Button(Self.durationLabel(minutes)) { setMinutes(minutes) }
                         }
+                        Divider()
+                        Button(KAStr.customTime) {
+                            customMinutesText = String(customMinutes)
+                            showCustomTime = true
+                        }
+                    } label: {
+                        Text(Self.durationLabel(customMinutes))
                     }
-                    .onChange(of: customMinutes) { _, v in store.set(v, for: "panelTimerMinutes") }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
+                    .menuStyle(.button)
+                    .buttonStyle(.bordered)
                     .controlSize(.small)
-                    .frame(width: 84)
+                    .fixedSize()
+                    .popover(isPresented: $showCustomTime, arrowEdge: .bottom) { customTimeEditor }
 
                     Button(KAStr.start) {
                         vm.send("start", payload: startPayload(customMinutes))
@@ -212,6 +221,44 @@ public struct KeepAwakePanelTile: View {
                 .toggleStyle(.switch)
                 .controlSize(.mini)
         }
+    }
+
+    private func setMinutes(_ minutes: Int) {
+        customMinutes = minutes
+        store.set(minutes, for: "panelTimerMinutes")
+    }
+
+    /// Free-form duration entry, opened from the menu's "Custom…" entry.
+    private var customTimeEditor: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(KAStr.customTimeTitle)
+                .font(.subheadline.weight(.semibold))
+            // One line: field, unit, confirm — instead of three separate rows.
+            HStack(spacing: 6) {
+                TextField("", text: $customMinutesText)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 56)
+                    .multilineTextAlignment(.trailing)
+                    .onSubmit(applyCustomTime)
+                Text(KAStr.minutesUnit)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 8)
+                Button(KAStr.done, action: applyCustomTime)
+                    .controlSize(.small)
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(12)
+        .frame(width: 218)
+    }
+
+    private func applyCustomTime() {
+        // Clamped to the engine's sane range; junk input keeps the old value.
+        if let entered = Int(customMinutesText.trimmingCharacters(in: .whitespaces)), entered > 0 {
+            setMinutes(min(720, max(1, entered)))
+        }
+        showCustomTime = false
     }
 
     private func writeSetting(_ value: Any?, _ key: String) {
