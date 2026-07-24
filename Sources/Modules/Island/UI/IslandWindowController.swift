@@ -6,7 +6,10 @@ import Module_Island_Engine
 @MainActor public final class IslandModel: ObservableObject {
     @Published public internal(set) var state: IslandStateMachine.State = .hidden
     @Published public internal(set) var notchWidth: CGFloat = 200
-    @Published public internal(set) var receivingDrag = false
+    @Published public internal(set) var notchHeight: CGFloat = 32
+    @Published public var receivingDrag = false
+    @Published public internal(set) var eventText: String?
+    @Published public internal(set) var eventSymbol: String?
     public internal(set) var dismiss: () -> Void = {}
 }
 
@@ -25,7 +28,11 @@ import Module_Island_Engine
     private var graceTimer: Timer?
     public let model = IslandModel()
 
-    public init?(content: AnyView = AnyView(EmptyView())) {
+    /// Hover over the notch opens the island (user setting).
+    public var hoverEnabled = true
+    private var eventTimers: [String: Timer] = [:]
+
+    public init?(makeContent: ((IslandModel) -> AnyView)? = nil) {
         guard let screen = NSScreen.main,
               let metrics = NotchMetrics.compute(
                   screen: screen.frame,
@@ -34,6 +41,7 @@ import Module_Island_Engine
         else { return nil }
 
         model.notchWidth = metrics.notchRect.width
+        model.notchHeight = metrics.notchRect.height
 
         // Sensor: notch rect only, always present.
         let sensor = NSPanel(contentRect: metrics.notchRect,
@@ -54,12 +62,17 @@ import Module_Island_Engine
         sensor.setFrame(metrics.notchRect, display: true)
         sensor.orderFrontRegardless()
 
+        let content = makeContent?(model) ?? AnyView(EmptyView())
         island.contentView = NSHostingView(rootView: IslandView(model: model, content: content))
         island.setFrame(metrics.windowRect, display: true)
 
         model.dismiss = { [weak self] in self?.apply(.dismiss) }
         sensorView.onHover = { [weak self] inside in
-            self?.apply(inside ? .hoverEntered : .hoverExited)
+            guard let self else { return }
+            // Ignore hover-enter when disabled; always deliver exit so an
+            // already-open island still collapses.
+            if inside && !self.hoverEnabled { return }
+            self.apply(inside ? .hoverEntered : .hoverExited)
         }
         sensorView.onDrag = { [weak self] phase in
             switch phase {
@@ -71,8 +84,32 @@ import Module_Island_Engine
         }
     }
 
-    /// Task 7 replaces this with the shelf store; the shell just pins open.
-    var onDrop: ([URL]) -> Void = { _ in }
+    public var onDrop: ([URL]) -> Void = { _ in }
+
+    /// Transient event from a source: peeks (or joins the expanded card) and
+    /// expires after `ttl` seconds.
+    public func showEvent(id: String, text: String, symbol: String?, ttl: TimeInterval) {
+        model.eventText = text
+        model.eventSymbol = symbol
+        apply(.event(id: id))
+        eventTimers[id]?.invalidate()
+        eventTimers[id] = Timer.scheduledTimer(withTimeInterval: ttl, repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                self.eventTimers[id] = nil
+                self.apply(.eventExpired(id: id))
+                if self.model.state == .hidden { self.model.eventText = nil; self.model.eventSymbol = nil }
+            }
+        }
+    }
+
+    public func teardown() {
+        graceTimer?.invalidate()
+        eventTimers.values.forEach { $0.invalidate() }
+        eventTimers.removeAll()
+        island.orderOut(nil)
+        sensor.orderOut(nil)
+    }
 
     private func handleDrop(_ urls: [URL]) {
         onDrop(urls)
