@@ -1,14 +1,22 @@
 import SwiftUI
+import HelmRuntime
 import HelmUI
 
 /// Compact tile shown in the shared Helm panel.
 public struct KeepAwakePanelTile: View {
     @ObservedObject private var vm: ModuleViewModel
-    @State private var customMinutes = 30
-    @State private var showCustom = false
+    private let store: NamespacedStore
 
-    public init(vm: ModuleViewModel) {
+    @State private var customMinutes = 30
+    @State private var showMore = false
+    @State private var autoExternalDisplay: Bool
+    @State private var autoPower: Bool
+
+    public init(vm: ModuleViewModel, store: NamespacedStore) {
         self.vm = vm
+        self.store = store
+        _autoExternalDisplay = State(initialValue: store.bool("autoExternalDisplay", default: false))
+        _autoPower = State(initialValue: store.bool("autoPower", default: false))
     }
 
     public var body: some View {
@@ -18,11 +26,12 @@ public struct KeepAwakePanelTile: View {
                 countdownRow(end)
             } else {
                 presetRow
-                if showCustom { customRow }
             }
         }
         .helmPanelCard()
     }
+
+    // MARK: - Header
 
     private var header: some View {
         HStack(spacing: 10) {
@@ -41,17 +50,19 @@ public struct KeepAwakePanelTile: View {
         }
     }
 
-    /// Small line under the title while active: the auto conditions (and a
-    /// lid-closed hint), shown next to the toggle instead of at the bottom.
+    /// Line under the title while active: the auto conditions and a lid hint,
+    /// shown next to the toggle instead of at the bottom.
     private var activeSubtitle: String? {
         guard vm.isActive else { return nil }
         var parts: [String] = []
-        if !vm.activeConditions.isEmpty { parts.append(conditionsCaption) }
+        if !vm.activeConditions.isEmpty {
+            parts.append(vm.activeConditions.map(KAStr.condition).sorted().joined(separator: ", "))
+        }
         if vm.clamshellActive { parts.append(KAStr.lidClosed) }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
-    // MARK: - Idle: presets + custom
+    // MARK: - Presets + more
 
     private var presetRow: some View {
         HStack(spacing: 6) {
@@ -59,48 +70,66 @@ public struct KeepAwakePanelTile: View {
             presetPill("1h", 60)
             presetPill("2h", 120)
             presetPill("∞", 0)
-            customPill
+            morePill
         }
-    }
-
-    private var customPill: some View {
-        Button { withAnimation(.easeInOut(duration: 0.15)) { showCustom.toggle() } } label: {
-            Image(systemName: "ellipsis")
-                .font(.subheadline.weight(.semibold))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 6)
-                .background(Capsule().fill(showCustom ? Color.accentColor.opacity(0.25) : Color.primary.opacity(0.08)))
-                .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
     }
 
     private func presetPill(_ label: String, _ minutes: Int) -> some View {
         Button {
             vm.send("start", payload: startPayload(minutes))
         } label: {
-            Text(label)
-                .font(.subheadline.weight(.medium))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 6)
-                .background(Capsule().fill(Color.primary.opacity(0.08)))
-                .contentShape(Capsule())
+            pillLabel(Text(label))
         }
         .buttonStyle(.plain)
     }
 
-    private var customRow: some View {
-        HStack(spacing: 8) {
-            Stepper("\(customMinutes) \(KAStr.minutesUnit)", value: $customMinutes, in: 5...720, step: 5)
-                .font(.subheadline)
-            Button(KAStr.start) {
-                vm.send("start", payload: startPayload(customMinutes))
-            }
-            .controlSize(.small)
+    private var morePill: some View {
+        Button { showMore.toggle() } label: {
+            pillLabel(Image(systemName: "ellipsis"), active: showMore)
         }
+        .buttonStyle(.plain)
+        .popover(isPresented: $showMore, arrowEdge: .bottom) { moreControls }
     }
 
-    // MARK: - Active: countdown
+    private func pillLabel(_ content: some View, active: Bool = false) -> some View {
+        content
+            .font(.subheadline.weight(.medium))
+            .frame(maxWidth: .infinity, minHeight: 16)
+            .padding(.vertical, 6)
+            .background(Capsule().fill(active ? Color.accentColor.opacity(0.25) : Color.primary.opacity(0.08)))
+            .contentShape(Capsule())
+    }
+
+    /// Popover with quick automation toggles + a custom timer — kept out of the
+    /// tile so the panel never resizes.
+    private var moreControls: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Toggle(KAStr.withExternalDisplay, isOn: $autoExternalDisplay)
+                .onChange(of: autoExternalDisplay) { _, v in writeSetting(v, "autoExternalDisplay") }
+            Toggle(KAStr.whileOnPower, isOn: $autoPower)
+                .onChange(of: autoPower) { _, v in writeSetting(v, "autoPower") }
+            Divider()
+            HStack(spacing: 8) {
+                Stepper("\(customMinutes) \(KAStr.minutesUnit)", value: $customMinutes, in: 5...720, step: 5)
+                    .font(.subheadline)
+                Button(KAStr.start) {
+                    vm.send("start", payload: startPayload(customMinutes))
+                    showMore = false
+                }
+                .controlSize(.small)
+            }
+        }
+        .toggleStyle(.switch)
+        .padding(14)
+        .frame(width: 260)
+    }
+
+    private func writeSetting(_ value: Any?, _ key: String) {
+        store.set(value, for: key)
+        vm.send("settingsChanged")
+    }
+
+    // MARK: - Active countdown
 
     private func countdownRow(_ end: Date) -> some View {
         TimelineView(.periodic(from: .now, by: 1)) { ctx in
@@ -124,15 +153,6 @@ public struct KeepAwakePanelTile: View {
         let t = Int(s), h = Int(t) / 3600, m = (t % 3600) / 60, sec = t % 60
         return h > 0 ? String(format: "%d:%02d:%02d", h, m, sec)
                      : String(format: "%d:%02d", m, sec)
-    }
-
-    // MARK: - Active: auto conditions
-
-    private var conditionsCaption: String {
-        vm.activeConditions
-            .map(KAStr.condition)
-            .sorted()
-            .joined(separator: ", ")
     }
 }
 

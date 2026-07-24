@@ -28,7 +28,8 @@ import Module_KeepAwake_Engine
     }
 
     public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? {
-        MenuBarContribution(panelTile: AnyView(KeepAwakePanelTile(vm: vm)))
+        let s = store ?? NamespacedStore(namespace: "keep-awake", backing: UserDefaults.standard)
+        return MenuBarContribution(panelTile: AnyView(KeepAwakePanelTile(vm: vm, store: s)))
     }
 
     public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
