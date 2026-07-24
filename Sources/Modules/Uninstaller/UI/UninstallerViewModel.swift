@@ -26,6 +26,16 @@ import Module_Uninstaller_Engine
         return await send("uninstall", encode(req), as: UninstallResult.self)
     }
 
+    /// Leftovers whose owning app is gone, grouped by bundle id.
+    public func scanOrphans() async -> [OrphanGroup] {
+        await send("scanOrphans", Data(), as: [OrphanGroup].self) ?? []
+    }
+
+    /// Trash arbitrary leftover paths (used by the orphans view).
+    public func trashPaths(_ paths: [String]) async -> UninstallResult? {
+        await send("trashPaths", encode(paths), as: UninstallResult.self)
+    }
+
     public func quit(bundleID: String) async {
         _ = try? await transport.send(EngineCommand(name: "quit", payload: encode(QuitReq(bundleID: bundleID))))
     }
