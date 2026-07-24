@@ -45,6 +45,8 @@ enum UnStr {
     static var scanOrphans: String { L("Scan for leftovers", [.ru: "Найти остатки", .es: "Buscar restos", .fr: "Rechercher les restes", .de: "Nach Resten suchen", .ja: "残存ファイルを検索", .zh: "扫描残留文件", .pt: "Procurar restos"]) }
     static var scanningOrphans: String { L("Scanning…", [.ru: "Поиск…", .es: "Buscando…", .fr: "Analyse…", .de: "Suche…", .ja: "検索中…", .zh: "扫描中…", .pt: "Analisando…"]) }
     static var noOrphans: String { L("No leftovers found.", [.ru: "Остатков не найдено.", .es: "No se encontraron restos.", .fr: "Aucun reste trouvé.", .de: "Keine Reste gefunden.", .ja: "残存ファイルは見つかりませんでした。", .zh: "未发现残留文件。", .pt: "Nenhum resto encontrado."]) }
+    static var selectAll: String { L("Select all", [.ru: "Выбрать всё", .es: "Seleccionar todo", .fr: "Tout sélectionner", .de: "Alle auswählen", .ja: "すべて選択", .zh: "全选", .pt: "Selecionar tudo"]) }
+    static var deselectAll: String { L("Deselect all", [.ru: "Снять выделение", .es: "Deseleccionar todo", .fr: "Tout désélectionner", .de: "Auswahl aufheben", .ja: "選択をすべて解除", .zh: "取消全选", .pt: "Desmarcar tudo"]) }
     static var rescan: String { L("Scan again", [.ru: "Искать снова", .es: "Buscar de nuevo", .fr: "Relancer l’analyse", .de: "Erneut suchen", .ja: "再検索", .zh: "重新扫描", .pt: "Procurar novamente"]) }
     static func selectedSummary(_ n: Int, _ size: String) -> String { L("\(n) selected · \(size)", [.ru: "Выбрано: \(n) · \(size)", .es: "\(n) seleccionados · \(size)", .fr: "\(n) sélectionnés · \(size)", .de: "\(n) ausgewählt · \(size)", .ja: "\(n) 件選択 · \(size)", .zh: "已选 \(n) 项 · \(size)", .pt: "\(n) selecionados · \(size)"]) }
 }
