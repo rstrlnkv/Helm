@@ -31,8 +31,9 @@ final class ShelfStoreTests: XCTestCase {
     func testRemoveAndClear() {
         let s = makeStore()
         s.add([URL(fileURLWithPath: "/a.txt"), URL(fileURLWithPath: "/b.txt")])
+        // Batch keeps drop order → [a, b]; removing the second leaves a.
         s.remove(s.items[1].id)
-        XCTAssertEqual(s.items.map(\.name), ["b.txt"])
+        XCTAssertEqual(s.items.map(\.name), ["a.txt"])
         s.clear()
         XCTAssertTrue(s.items.isEmpty)
     }
