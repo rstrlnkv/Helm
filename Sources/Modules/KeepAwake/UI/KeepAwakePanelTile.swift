@@ -26,7 +26,11 @@ public struct KeepAwakePanelTile: View {
                 countdownRow(end)
             } else {
                 presetRow
-                if showMore { moreControls }
+                if showMore {
+                    // One fade for the whole block: per-row cascades made the
+                    // rows pop in one by one, each half-clipped by the growing card.
+                    moreControls.transition(.opacity)
+                }
             }
         }
         // Clip so the revealed controls can't draw outside the card while it grows.
@@ -117,13 +121,11 @@ public struct KeepAwakePanelTile: View {
                 Toggle("", isOn: $autoExternalDisplay)
                     .onChange(of: autoExternalDisplay) { _, v in writeSetting(v, "autoExternalDisplay") }
             }
-            .transition(.opacity.animation(.easeOut(duration: 0.18)))
 
             settingRow(KAStr.whileOnPower) {
                 Toggle("", isOn: $autoPower)
                     .onChange(of: autoPower) { _, v in writeSetting(v, "autoPower") }
             }
-            .transition(.opacity.animation(.easeOut(duration: 0.18).delay(0.06)))
 
             settingRow(KAStr.timer) {
                 HStack(spacing: 6) {
@@ -140,7 +142,6 @@ public struct KeepAwakePanelTile: View {
                     .controlSize(.small)
                 }
             }
-            .transition(.opacity.animation(.easeOut(duration: 0.18).delay(0.12)))
         }
     }
 
