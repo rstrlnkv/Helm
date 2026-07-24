@@ -47,6 +47,7 @@ public struct KeepAwakePanelTile: View {
                 .toggleStyle(.switch)
                 .labelsHidden()
                 .controlSize(.small)
+                .accessibilityLabel(KAStr.moduleName)
         }
     }
 

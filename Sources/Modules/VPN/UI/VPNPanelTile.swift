@@ -54,6 +54,7 @@ public struct VPNPanelTile: View {
                 .toggleStyle(.switch)
                 .labelsHidden()
                 .controlSize(.mini)
+                .accessibilityLabel(c.name)
         }
     }
 

@@ -20,6 +20,7 @@ public struct HelmIconBadge: View {
                 RoundedRectangle(cornerRadius: 7, style: .continuous)
                     .fill(active ? AnyShapeStyle(color.gradient) : AnyShapeStyle(Color.secondary.opacity(0.45)))
             )
+            .accessibilityHidden(true)
     }
 }
 
