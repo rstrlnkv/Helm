@@ -1,0 +1,42 @@
+import HelmUI
+import Module_Uninstaller_Engine
+
+/// Localized strings for the Uninstaller module.
+enum UnStr {
+    static var moduleName: String { L("Uninstaller", [.ru: "Удаление приложений", .es: "Desinstalador", .fr: "Désinstalleur", .de: "Deinstallation", .ja: "アンインストーラ", .zh: "卸载器", .pt: "Desinstalador"]) }
+    static var summary: String { L("Remove apps and all their leftover files", [.ru: "Удаление приложений со всеми хвостами", .es: "Elimina apps y todos sus archivos residuales", .fr: "Supprime les apps et tous leurs fichiers résiduels", .de: "Apps samt aller Restdateien entfernen", .ja: "アプリと残存ファイルをすべて削除", .zh: "删除应用及其所有残留文件", .pt: "Remove apps e todos os arquivos residuais"]) }
+    static var searchApps: String { L("Search apps", [.ru: "Поиск приложений", .es: "Buscar apps", .fr: "Rechercher des apps", .de: "Apps suchen", .ja: "アプリを検索", .zh: "搜索应用", .pt: "Buscar apps"]) }
+    static var loadingApps: String { L("Loading apps…", [.ru: "Загрузка приложений…", .es: "Cargando apps…", .fr: "Chargement des apps…", .de: "Apps werden geladen…", .ja: "アプリを読み込み中…", .zh: "正在加载应用…", .pt: "Carregando apps…"]) }
+    static var scanning: String { L("Scanning…", [.ru: "Сканирование…", .es: "Analizando…", .fr: "Analyse…", .de: "Wird durchsucht…", .ja: "スキャン中…", .zh: "扫描中…", .pt: "Analisando…"]) }
+    static var pickApp: String { L("Select an app to see what will be removed.", [.ru: "Выберите приложение, чтобы увидеть, что будет удалено.", .es: "Selecciona una app para ver qué se eliminará.", .fr: "Sélectionnez une app pour voir ce qui sera supprimé.", .de: "Wähle eine App, um zu sehen, was entfernt wird.", .ja: "削除対象を見るにはアプリを選択してください。", .zh: "选择一个应用以查看将删除的内容。", .pt: "Selecione um app para ver o que será removido."]) }
+    static var theApp: String { L("Application", [.ru: "Приложение", .es: "Aplicación", .fr: "Application", .de: "Programm", .ja: "アプリケーション", .zh: "应用程序", .pt: "Aplicativo"]) }
+    static var supportFiles: String { L("Supporting files", [.ru: "Дополнительные файлы", .es: "Archivos de soporte", .fr: "Fichiers annexes", .de: "Begleitdateien", .ja: "関連ファイル", .zh: "支持文件", .pt: "Arquivos de suporte"]) }
+    static var moveToTrash: String { L("Move to Trash", [.ru: "Переместить в Корзину", .es: "Mover a la Papelera", .fr: "Placer dans la corbeille", .de: "In den Papierkorb", .ja: "ゴミ箱に入れる", .zh: "移到废纸篓", .pt: "Mover para o Lixo"]) }
+    static var byName: String { L("by name", [.ru: "по имени", .es: "por nombre", .fr: "par nom", .de: "nach Name", .ja: "名前で一致", .zh: "按名称", .pt: "por nome"]) }
+    static var nothingFound: String { L("No leftover files found.", [.ru: "Дополнительных файлов не найдено.", .es: "No se encontraron archivos residuales.", .fr: "Aucun fichier résiduel trouvé.", .de: "Keine Restdateien gefunden.", .ja: "残存ファイルは見つかりませんでした。", .zh: "未找到残留文件。", .pt: "Nenhum arquivo residual encontrado."]) }
+    static func confirmTrash(_ count: Int, _ size: String) -> String { L("Move \(count) items (\(size)) to the Trash?", [.ru: "Переместить \(count) объектов (\(size)) в Корзину?", .es: "¿Mover \(count) elementos (\(size)) a la Papelera?", .fr: "Placer \(count) éléments (\(size)) dans la corbeille ?", .de: "\(count) Objekte (\(size)) in den Papierkorb legen?", .ja: "\(count) 項目 (\(size)) をゴミ箱に入れますか？", .zh: "将 \(count) 个项目（\(size)）移到废纸篓？", .pt: "Mover \(count) itens (\(size)) para o Lixo?"]) }
+    static var appRunningTitle: String { L("App is running", [.ru: "Приложение запущено", .es: "La app está en ejecución", .fr: "L’app est en cours d’exécution", .de: "App läuft", .ja: "アプリが実行中です", .zh: "应用正在运行", .pt: "O app está em execução"]) }
+    static var quitAndRemove: String { L("Quit & Remove", [.ru: "Закрыть и удалить", .es: "Salir y eliminar", .fr: "Quitter et supprimer", .de: "Beenden & entfernen", .ja: "終了して削除", .zh: "退出并删除", .pt: "Sair e remover"]) }
+    static var cancel: String { L("Cancel", [.ru: "Отмена", .es: "Cancelar", .fr: "Annuler", .de: "Abbrechen", .ja: "キャンセル", .zh: "取消", .pt: "Cancelar"]) }
+    static func freed(_ size: String) -> String { L("Freed \(size)", [.ru: "Освобождено \(size)", .es: "Liberado \(size)", .fr: "\(size) libérés", .de: "\(size) freigegeben", .ja: "\(size) を解放しました", .zh: "已释放 \(size)", .pt: "Liberado \(size)"]) }
+    static func failedCount(_ n: Int) -> String { L("\(n) items could not be removed", [.ru: "Не удалось удалить объектов: \(n)", .es: "No se pudieron eliminar \(n) elementos", .fr: "\(n) éléments n’ont pas pu être supprimés", .de: "\(n) Objekte konnten nicht entfernt werden", .ja: "\(n) 項目を削除できませんでした", .zh: "\(n) 个项目无法删除", .pt: "\(n) itens não puderam ser removidos"]) }
+    static var openInSettings: String { L("Open in Settings", [.ru: "Открыть в настройках", .es: "Abrir en Ajustes", .fr: "Ouvrir dans Réglages", .de: "In Einstellungen öffnen", .ja: "設定で開く", .zh: "在设置中打开", .pt: "Abrir nos Ajustes"]) }
+    static var panelHint: String { L("Manage app removal in Settings.", [.ru: "Управление удалением — в настройках.", .es: "Gestiona la eliminación en Ajustes.", .fr: "Gérez la suppression dans Réglages.", .de: "Verwalte das Entfernen in den Einstellungen.", .ja: "削除の管理は設定で行います。", .zh: "在设置中管理删除。", .pt: "Gerencie a remoção nos Ajustes."]) }
+
+    static func kind(_ k: LeftoverKind) -> String {
+        switch k {
+        case .appSupport: return L("Application Support", [.ru: "Данные приложения", .es: "Soporte de la app", .fr: "Données de l’app", .de: "App-Daten", .ja: "アプリのサポート", .zh: "应用支持", .pt: "Suporte do app"])
+        case .caches: return L("Caches", [.ru: "Кеши", .es: "Cachés", .fr: "Caches", .de: "Caches", .ja: "キャッシュ", .zh: "缓存", .pt: "Caches"])
+        case .preferences: return L("Preferences", [.ru: "Настройки", .es: "Preferencias", .fr: "Préférences", .de: "Einstellungen", .ja: "環境設定", .zh: "偏好设置", .pt: "Preferências"])
+        case .containers: return L("Containers", [.ru: "Контейнеры", .es: "Contenedores", .fr: "Conteneurs", .de: "Container", .ja: "コンテナ", .zh: "容器", .pt: "Contêineres"])
+        case .groupContainers: return L("Group Containers", [.ru: "Групповые контейнеры", .es: "Contenedores de grupo", .fr: "Conteneurs de groupe", .de: "Gruppencontainer", .ja: "グループコンテナ", .zh: "群组容器", .pt: "Contêineres de grupo"])
+        case .savedState: return L("Saved State", [.ru: "Сохранённое состояние", .es: "Estado guardado", .fr: "État enregistré", .de: "Gespeicherter Zustand", .ja: "保存された状態", .zh: "保存的状态", .pt: "Estado salvo"])
+        case .logs: return L("Logs", [.ru: "Логи", .es: "Registros", .fr: "Journaux", .de: "Protokolle", .ja: "ログ", .zh: "日志", .pt: "Registros"])
+        case .httpStorages: return L("HTTP Storage", [.ru: "HTTP-хранилище", .es: "Almacenamiento HTTP", .fr: "Stockage HTTP", .de: "HTTP-Speicher", .ja: "HTTP ストレージ", .zh: "HTTP 存储", .pt: "Armazenamento HTTP"])
+        case .webKit: return L("WebKit", [.ru: "WebKit", .es: "WebKit", .fr: "WebKit", .de: "WebKit", .ja: "WebKit", .zh: "WebKit", .pt: "WebKit"])
+        case .cookies: return L("Cookies", [.ru: "Cookies", .es: "Cookies", .fr: "Cookies", .de: "Cookies", .ja: "Cookie", .zh: "Cookie", .pt: "Cookies"])
+        case .appScripts: return L("Application Scripts", [.ru: "Скрипты приложения", .es: "Scripts de la app", .fr: "Scripts de l’app", .de: "App-Skripte", .ja: "アプリスクリプト", .zh: "应用脚本", .pt: "Scripts do app"])
+        case .launchAgent: return L("Launch Agents", [.ru: "Агенты запуска", .es: "Agentes de inicio", .fr: "Agents de lancement", .de: "Startagenten", .ja: "起動エージェント", .zh: "启动代理", .pt: "Agentes de inicialização"])
+        }
+    }
+}
