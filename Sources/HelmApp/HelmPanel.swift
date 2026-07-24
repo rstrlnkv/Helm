@@ -13,6 +13,7 @@ private final class KeyablePanel: NSPanel {
 @MainActor final class HelmPanel: NSObject {
     private let panel: NSPanel
     private let hosting: NSHostingView<HelmPanelContent>
+    private let sizeRelay: SizeRelay
     private var dismissMonitor: Any?
     private var statusButtonScreenFrame: NSRect = .zero
     /// Screen the panel was opened on; clamping target for repositioning.
@@ -39,13 +40,14 @@ private final class KeyablePanel: NSPanel {
 
         // The window frame is OURS: the hosting view must not auto-resize the
         // window (its resize keeps the bottom edge, pushing the top under the
-        // menu bar, and correcting afterwards reads as the panel sliding down).
-        // Content reports its size; applySize sets the whole frame atomically
-        // with the top edge anchored under the status item.
+        // menu bar). Content reports its size; applySize sets the whole frame
+        // atomically with the top edge anchored under the status item. Height
+        // changes are applied instantly, in the same tick as the content change.
         let sizeBox = SizeRelay()
         let hosting = NSHostingView(rootView: HelmPanelContent(host: host, sizeRelay: sizeBox))
         hosting.sizingOptions = []
         self.hosting = hosting
+        self.sizeRelay = sizeBox
         panel.contentView = hosting
         super.init()
         sizeBox.onChange = { [weak self] size in self?.applySize(size) }
@@ -62,7 +64,7 @@ private final class KeyablePanel: NSPanel {
         statusButtonScreenFrame = buttonWindow.convertToScreen(statusButton.frame)
         anchorScreen = buttonWindow.screen ?? NSScreen.main
         hosting.layoutSubtreeIfNeeded()
-        applySize(hosting.fittingSize)
+        applySize(sizeRelay.lastSize == .zero ? hosting.fittingSize : sizeRelay.lastSize)
         panel.orderFrontRegardless()
         installDismissMonitor()
     }
@@ -111,6 +113,13 @@ private final class KeyablePanel: NSPanel {
 /// the window frame (the hosting view's own auto-resizing is disabled).
 @MainActor final class SizeRelay {
     var onChange: ((CGSize) -> Void)?
+    /// Last measured card size; `toggle` prefers it over `fittingSize`, which
+    /// is unreliable once the root view is wrapped in an expanding frame.
+    private(set) var lastSize: CGSize = .zero
+    func report(_ size: CGSize) {
+        lastSize = size
+        onChange?(size)
+    }
 }
 
 private struct HelmPanelContent: View {
@@ -201,11 +210,14 @@ private struct HelmPanelContent: View {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
         )
-        // Report every content size (including intermediate animation frames) so
-        // the window tracks the disclosure smoothly, top edge pinned.
+        // Report every content size so the window tracks height changes.
         .onGeometryChange(for: CGSize.self, of: \.size) { size in
-            sizeRelay.onChange?(size)
+            sizeRelay.report(size)
         }
+        // Pin the card to the TOP of the hosting bounds: while window and content
+        // sizes momentarily disagree, the slack stays at the transparent bottom
+        // instead of the default centering, which read as the card dropping.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 
@@ -218,7 +230,7 @@ private struct UtilitiesSection: View {
     var body: some View {
         VStack(spacing: 0) {
             Button {
-                withAnimation(.easeInOut(duration: 0.18)) { expanded.toggle() }
+                expanded.toggle()
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "wrench.and.screwdriver")
@@ -244,7 +256,6 @@ private struct UtilitiesSection: View {
                     }
                 }
                 .padding(.top, 8)
-                .transition(.opacity)
             }
         }
         .helmPanelCard()
