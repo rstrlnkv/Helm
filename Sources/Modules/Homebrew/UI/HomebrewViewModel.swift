@@ -17,7 +17,10 @@ import Module_Homebrew_Engine
         self.transport = vm.transport
         let events = transport.events
         Task { [weak self] in
-            for await e in events { await self?.handle(e) }
+            for await e in events {
+                guard let self else { break }   // page closed: stop consuming
+                await self.handle(e)
+            }
         }
     }
 

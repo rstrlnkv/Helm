@@ -55,7 +55,7 @@ import Module_KeepAwake_Engine
                 title = TimerProgress.label(remaining: end.timeIntervalSinceNow)
             }
             // A dedicated timer colour, when the user picked one.
-            let timerTint = store.string("timerTintColor", default: "")
+            let timerTint = store.string("timerTintColor", default: "red")
             if !timerTint.isEmpty { tint = timerTint }
         }
         return StatusAppearance(tintToken: tint,
