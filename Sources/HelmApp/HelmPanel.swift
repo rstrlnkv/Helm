@@ -250,6 +250,9 @@ private struct HelmPanelContent: View {
 private struct UtilitiesSection: View {
     let modules: [ModuleHost.Live]
     @Binding var expanded: Bool
+    /// Natural height of the rows, measured so the disclosure animates between
+    /// 0 and a concrete value.
+    @State private var rowsHeight: CGFloat = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -288,7 +291,6 @@ private struct UtilitiesSection: View {
             }
         }
         .helmPanelCard()
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private func utilityRow(_ live: ModuleHost.Live) -> some View {

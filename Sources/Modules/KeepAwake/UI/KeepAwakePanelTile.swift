@@ -9,6 +9,9 @@ public struct KeepAwakePanelTile: View {
 
     @State private var customMinutes = 30
     @State private var showMore = false
+    /// Natural height of the ⋯ block, measured once so the disclosure can
+    /// animate between 0 and a concrete value.
+    @State private var moreHeight: CGFloat = 0
     @State private var autoExternalDisplay: Bool
     @State private var autoPower: Bool
 
@@ -26,19 +29,23 @@ public struct KeepAwakePanelTile: View {
                 countdownRow(end)
             } else {
                 presetRow
-                if showMore {
-                    // One fade for the whole block: per-row cascades made the
-                    // rows pop in one by one, each half-clipped by the growing card.
-                    moreControls.transition(.opacity)
-                }
+                // Canonical accordion: the block always exists, its natural
+                // height is measured, and the animation interpolates between 0
+                // and that number. Animating to `nil` (or relying on insertion
+                // transitions) left the card's height and the content out of
+                // step — which showed up as clipped pills or the block painting
+                // over the next tile.
+                moreControls
+                    .onGeometryChange(for: CGFloat.self, of: \.size.height) { h in
+                        if h > 0 { moreHeight = h }
+                    }
+                    .frame(height: showMore ? moreHeight : 0, alignment: .top)
+                    .opacity(showMore ? 1 : 0)
+                    .clipped()
+                    .allowsHitTesting(showMore)
             }
         }
         .helmPanelCard()
-        // Clip AFTER the card's padding, to the card's own shape: content that
-        // is already at full height while the card is still growing must not
-        // paint over the neighbouring tile. Clipping before the padding (an
-        // earlier attempt) cut the preset pills instead.
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     // MARK: - Header
