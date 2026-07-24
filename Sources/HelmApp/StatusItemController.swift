@@ -136,14 +136,23 @@ import HelmUI
                                   action: #selector(openModuleSettings(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = descriptor.idRaw
-            item.image = NSImage(systemSymbolName: descriptor.moduleMetadata.sfSymbol,
+            let symbol = NSImage(systemSymbolName: descriptor.moduleMetadata.sfSymbol,
                                  accessibilityDescription: nil)
+            symbol?.size = NSSize(width: 15, height: 15)
+            symbol?.isTemplate = true
+            item.image = symbol
             menu.addItem(item)
         }
 
         menu.addItem(.separator())
         menu.addItem(withTitle: AppStr.quit, action: #selector(quit), keyEquivalent: "q").target = self
-        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height + 4), in: button)
+
+        // Hand placement to the status item: popUp(at:) with a hand-computed
+        // point stopped fitting once the module entries were added, and the menu
+        // opened scrolled (its first item pushed off-screen).
+        statusItem.menu = menu
+        button.performClick(nil)
+        statusItem.menu = nil
     }
 
     @objc private func openModuleSettings(_ sender: NSMenuItem) {
