@@ -12,9 +12,9 @@ private final class KeyablePanel: NSPanel {
 
 @MainActor final class HelmPanel: NSObject {
     private let panel: NSPanel
+    private let hosting: NSHostingView<HelmPanelContent>
     private var dismissMonitor: Any?
     private var statusButtonScreenFrame: NSRect = .zero
-    private var resizeObserver: NSObjectProtocol?
     /// Screen the panel was opened on; clamping target for repositioning.
     private var anchorScreen: NSScreen?
 
@@ -36,10 +36,19 @@ private final class KeyablePanel: NSPanel {
         panel.hasShadow = true
         panel.isMovable = false
         self.panel = panel
-        super.init()
 
-        let hosting = NSHostingView(rootView: HelmPanelContent(host: host))
+        // The window frame is OURS: the hosting view must not auto-resize the
+        // window (its resize keeps the bottom edge, pushing the top under the
+        // menu bar, and correcting afterwards reads as the panel sliding down).
+        // Content reports its size; applySize sets the whole frame atomically
+        // with the top edge anchored under the status item.
+        let sizeBox = SizeRelay()
+        let hosting = NSHostingView(rootView: HelmPanelContent(host: host, sizeRelay: sizeBox))
+        hosting.sizingOptions = []
+        self.hosting = hosting
         panel.contentView = hosting
+        super.init()
+        sizeBox.onChange = { [weak self] size in self?.applySize(size) }
     }
 
     var isVisible: Bool { panel.isVisible }
@@ -52,40 +61,29 @@ private final class KeyablePanel: NSPanel {
         guard let buttonWindow = statusButton.window else { return }
         statusButtonScreenFrame = buttonWindow.convertToScreen(statusButton.frame)
         anchorScreen = buttonWindow.screen ?? NSScreen.main
-        panel.layoutIfNeeded()
-        reposition()
+        hosting.layoutSubtreeIfNeeded()
+        applySize(hosting.fittingSize)
         panel.orderFrontRegardless()
         installDismissMonitor()
-        // SwiftUI content can change height while open (disclosures, timers).
-        // The window's origin is its BOTTOM-left, so an untouched origin makes
-        // growth push the top edge up into the menu bar — the visible "jump".
-        // Re-anchor the TOP edge under the status item on every resize instead.
-        resizeObserver = NotificationCenter.default.addObserver(
-            forName: NSWindow.didResizeNotification, object: panel, queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in self?.reposition() }
-        }
     }
 
-    /// Position the panel with its top edge just below the status item, clamped
+    /// Single atomic frame update: top edge just below the status item, clamped
     /// into the screen so an edge-adjacent status item doesn't clip the panel.
-    private func reposition() {
-        let panelSize = panel.frame.size
+    /// Growth therefore always extends DOWNWARD; the top never moves.
+    private func applySize(_ size: CGSize) {
+        guard size.width > 1, size.height > 1 else { return }
         let visible = anchorScreen?.visibleFrame ?? .zero
         let margin: CGFloat = 8
-        var x = statusButtonScreenFrame.midX - panelSize.width / 2
-        x = min(max(x, visible.minX + margin), visible.maxX - panelSize.width - margin)
-        var y = statusButtonScreenFrame.minY - panelSize.height - 4
+        var x = statusButtonScreenFrame.midX - size.width / 2
+        x = min(max(x, visible.minX + margin), visible.maxX - size.width - margin)
+        var y = statusButtonScreenFrame.minY - size.height - 4
         if y < visible.minY + margin { y = visible.minY + margin }
-        panel.setFrameOrigin(NSPoint(x: x, y: y))
+        panel.setFrame(NSRect(x: x, y: y, width: size.width, height: size.height),
+                       display: true, animate: false)
     }
 
     private func hide() {
         removeDismissMonitor()
-        if let resizeObserver {
-            NotificationCenter.default.removeObserver(resizeObserver)
-            self.resizeObserver = nil
-        }
         panel.orderOut(nil)
     }
 
@@ -109,8 +107,15 @@ private final class KeyablePanel: NSPanel {
     }
 }
 
+/// Bridges the SwiftUI content's measured size out to `HelmPanel`, which owns
+/// the window frame (the hosting view's own auto-resizing is disabled).
+@MainActor final class SizeRelay {
+    var onChange: ((CGSize) -> Void)?
+}
+
 private struct HelmPanelContent: View {
     @ObservedObject var host: ModuleHost
+    let sizeRelay: SizeRelay
     @State private var utilitiesExpanded = false
 
     private struct Tile { let view: AnyView; let span: PanelTileSpan }
@@ -196,6 +201,11 @@ private struct HelmPanelContent: View {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
         )
+        // Report every content size (including intermediate animation frames) so
+        // the window tracks the disclosure smoothly, top edge pinned.
+        .onGeometryChange(for: CGSize.self, of: \.size) { size in
+            sizeRelay.onChange?(size)
+        }
     }
 }
 
