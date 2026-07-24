@@ -18,7 +18,6 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
 
     public private(set) var connections: [VPNConnection] = []
     public private(set) var autoConnected: Set<String> = []
-    public private(set) var runState: String?
 
     private var core = VPNAutoConnectCore(rules: [:])
     private var knownBundleIDs: Set<String> = []
@@ -83,7 +82,6 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
 
     public func connect(_ name: String, auto: Bool = false) {
         if auto { autoConnected.insert(name) }
-        runState = "working"
         var args = ["--nc", "start", name]
         if let creds = credentials?.credentials(for: name), creds.secret?.isEmpty == false {
             if let u = creds.user, !u.isEmpty { args += ["--user", u] }
@@ -97,7 +95,6 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
 
     public func disconnect(_ name: String) {
         autoConnected.remove(name)
-        runState = "working"
         _ = runner.run(["--nc", "stop", name])
         emitState()
         scheduleRefresh()
@@ -112,7 +109,6 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         // runner and assert on issued commands, not on this async refresh.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
             self?.refresh()
-            self?.runState = nil
             self?.emitState()
         }
     }
@@ -146,7 +142,6 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     private struct StatePayload: Codable {
         let connections: [VPNConnection]
         let autoConnected: [String]
-        let runState: String?
         let defaultName: String?
     }
 
@@ -178,7 +173,6 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     private func emitState() {
         let payload = StatePayload(connections: connections,
                                     autoConnected: autoConnected.sorted(),
-                                    runState: runState,
                                     defaultName: defaultConnection?.name)
         if let data = try? JSONEncoder().encode(payload) {
             localTransport.emit(EngineEvent(name: "state", payload: data))

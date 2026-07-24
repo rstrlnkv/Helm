@@ -48,6 +48,8 @@ import HelmUI
         refreshIcon()
     }
 
+    private var lastIconKey: String?
+
     private func refreshIcon() {
         guard let button = statusItem.button else { return }
         let token = host.enabledModules
@@ -55,6 +57,10 @@ import HelmUI
             .first
         let style = MenuBarIconStyle(rawValue: AppSettings.menuBarIconStyle) ?? .ring
         let size = MenuBarIconSize(rawValue: AppSettings.menuBarIconSize) ?? .medium
+        // Modules emit state on every tick; only redraw when the glyph changes.
+        let key = "\(style.rawValue)|\(size.rawValue)|\(token ?? "")"
+        guard key != lastIconKey else { return }
+        lastIconKey = key
         button.image = RingIcon.make(style: style, size: size, tintToken: token)
     }
 

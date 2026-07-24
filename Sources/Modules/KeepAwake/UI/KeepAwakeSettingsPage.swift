@@ -133,7 +133,7 @@ public struct KeepAwakeSettingsPage: View {
     private var appTriggersEditor: some View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach(autoApps, id: \.self) { bundleID in
-                let info = Self.appInfo(bundleID)
+                let info = AppInfo.resolve(bundleID)
                 HStack(spacing: 10) {
                     Image(nsImage: info.icon)
                         .resizable().frame(width: 20, height: 20)
@@ -157,30 +157,12 @@ public struct KeepAwakeSettingsPage: View {
     }
 
     private func pickApp() {
-        let panel = NSOpenPanel()
-        panel.title = "Choose apps"
-        panel.directoryURL = URL(fileURLWithPath: "/Applications")
-        panel.allowedContentTypes = [.application]
-        panel.allowsMultipleSelection = true
-        panel.canChooseDirectories = false
-        panel.canChooseFiles = true
-        guard panel.runModal() == .OK else { return }
         var added = false
-        for url in panel.urls {
-            guard let bundleID = Bundle(url: url)?.bundleIdentifier, !autoApps.contains(bundleID) else { continue }
+        for bundleID in AppPicker.choose() where !autoApps.contains(bundleID) {
             autoApps.append(bundleID)
             added = true
         }
         if added { write(autoApps, "autoApps") }
-    }
-
-    private static func appInfo(_ bundleID: String) -> (name: String, icon: NSImage) {
-        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
-            let name = FileManager.default.displayName(atPath: url.path)
-                .replacingOccurrences(of: ".app", with: "")
-            return (name, NSWorkspace.shared.icon(forFile: url.path))
-        }
-        return (bundleID, NSWorkspace.shared.icon(for: .applicationBundle))
     }
 
     // MARK: - Color swatches
