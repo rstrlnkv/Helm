@@ -61,6 +61,8 @@ struct OrphansView: View {
                                 }
                             }
                             .toggleStyle(.checkbox)
+                            .padding(.vertical, 2)
+                            .listRowSeparator(.hidden)
                         }
                     } header: {
                         HStack {
@@ -71,6 +73,8 @@ struct OrphansView: View {
                     }
                 }
             }
+            .listStyle(.inset)
+            .scrollContentBackground(.hidden)
         }
     }
 
