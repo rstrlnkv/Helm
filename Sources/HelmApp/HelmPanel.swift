@@ -54,8 +54,14 @@ private final class KeyablePanel: NSPanel {
         statusButtonScreenFrame = buttonFrameInScreen
         panel.layoutIfNeeded()
         let panelSize = panel.frame.size
-        let x = buttonFrameInScreen.midX - panelSize.width / 2
-        let y = buttonFrameInScreen.minY - panelSize.height - 4
+        // Clamp into the button's screen so a status item near an edge doesn't
+        // push the panel off-screen (right side clipped near the notch/corner).
+        let visible = (buttonWindow.screen ?? NSScreen.main)?.visibleFrame ?? .zero
+        let margin: CGFloat = 8
+        var x = buttonFrameInScreen.midX - panelSize.width / 2
+        x = min(max(x, visible.minX + margin), visible.maxX - panelSize.width - margin)
+        var y = buttonFrameInScreen.minY - panelSize.height - 4
+        if y < visible.minY + margin { y = visible.minY + margin }
         panel.setFrameOrigin(NSPoint(x: x, y: y))
         panel.orderFrontRegardless()
         installDismissMonitor()
