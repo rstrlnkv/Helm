@@ -74,9 +74,9 @@ import HelmUI
     private func showMenu() {
         guard let button = statusItem.button else { return }
         let menu = NSMenu()
-        menu.addItem(withTitle: "Settings…", action: #selector(openSettings), keyEquivalent: "").target = self
+        menu.addItem(withTitle: AppStr.settings, action: #selector(openSettings), keyEquivalent: "").target = self
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Quit", action: #selector(quit), keyEquivalent: "q").target = self
+        menu.addItem(withTitle: AppStr.quit, action: #selector(quit), keyEquivalent: "q").target = self
         menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height + 4), in: button)
     }
 
