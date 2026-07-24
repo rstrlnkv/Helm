@@ -17,6 +17,8 @@ import Module_Island_Engine
     private var shelf: ShelfViewModel?
     private var dragMonitor: IslandDragMonitor?
     private var powerSource: IslandPowerSource?
+    private var audioSource: IslandAudioSource?
+    private var mediaSource: IslandMediaSource?
     private var store: NamespacedStore?
 
     public init() {}
@@ -67,11 +69,7 @@ import Module_Island_Engine
         }
         controller.hoverEnabled = store.bool("hoverToOpen", default: true)
 
-        if store.bool("powerEvents", default: true) {
-            powerSource = IslandPowerSource { [weak self] text, symbol in
-                self?.controller?.showEvent(id: "power", text: text, symbol: symbol, ttl: 3.0)
-            }
-        }
+        syncSources(store)
 
         NotificationCenter.default.addObserver(forName: .helmStoreChanged, object: nil,
                                                queue: .main) { [weak self] note in
@@ -87,7 +85,44 @@ import Module_Island_Engine
         dragMonitor?.stop()
         dragMonitor = nil
         powerSource = nil
+        audioSource?.stop(); audioSource = nil
+        mediaSource?.stop(); mediaSource = nil
         NotificationCenter.default.removeObserver(self, name: .helmStoreChanged, object: nil)
+    }
+
+    /// Creates/tears down event sources to match the store's toggles.
+    private func syncSources(_ store: NamespacedStore) {
+        if store.bool("powerEvents", default: true) {
+            if powerSource == nil {
+                powerSource = IslandPowerSource { [weak self] text, symbol in
+                    self?.controller?.showEvent(id: "power", text: text, symbol: symbol, ttl: 3.0)
+                }
+            }
+        } else {
+            powerSource = nil
+        }
+        if store.bool("audioEvents", default: true) {
+            if audioSource == nil {
+                audioSource = IslandAudioSource(
+                    onDeviceEvent: { [weak self] text, symbol in
+                        self?.controller?.showEvent(id: "audio-device", text: text, symbol: symbol, ttl: 3.0)
+                    },
+                    onVolumeEvent: { [weak self] text, symbol in
+                        self?.controller?.showEvent(id: "volume", text: text, symbol: symbol, ttl: 1.6)
+                    })
+            }
+        } else {
+            audioSource?.stop(); audioSource = nil
+        }
+        if store.bool("mediaEvents", default: true) {
+            if mediaSource == nil {
+                mediaSource = IslandMediaSource { [weak self] text, symbol in
+                    self?.controller?.showEvent(id: "media", text: text, symbol: symbol, ttl: 4.0)
+                }
+            }
+        } else {
+            mediaSource?.stop(); mediaSource = nil
+        }
     }
 
     private func settingsChanged(_ key: String?) {
@@ -104,15 +139,7 @@ import Module_Island_Engine
             dragMonitor?.stop()
             dragMonitor = nil
         }
-        if store.bool("powerEvents", default: true) {
-            if powerSource == nil {
-                powerSource = IslandPowerSource { [weak self] text, symbol in
-                    self?.controller?.showEvent(id: "power", text: text, symbol: symbol, ttl: 3.0)
-                }
-            }
-        } else {
-            powerSource = nil
-        }
+        syncSources(store)
     }
 }
 
@@ -124,6 +151,8 @@ struct IslandSettingsPage: View {
     @State private var hoverToOpen = true
     @State private var revealOnDrag = true
     @State private var powerEvents = true
+    @State private var audioEvents = true
+    @State private var mediaEvents = true
 
     var body: some View {
         Form {
@@ -143,8 +172,14 @@ struct IslandSettingsPage: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+            }
+            Section(IsStr.eventsSection) {
                 Toggle(IsStr.systemEvents, isOn: $powerEvents)
                     .onChange(of: powerEvents) { _, v in store.set(v, for: "powerEvents") }
+                Toggle(IsStr.audioEvents, isOn: $audioEvents)
+                    .onChange(of: audioEvents) { _, v in store.set(v, for: "audioEvents") }
+                Toggle(IsStr.mediaEvents, isOn: $mediaEvents)
+                    .onChange(of: mediaEvents) { _, v in store.set(v, for: "mediaEvents") }
             }
         }
         .formStyle(.grouped)
@@ -152,6 +187,8 @@ struct IslandSettingsPage: View {
             hoverToOpen = store.bool("hoverToOpen", default: true)
             revealOnDrag = store.bool("revealOnDrag", default: true)
             powerEvents = store.bool("powerEvents", default: true)
+            audioEvents = store.bool("audioEvents", default: true)
+            mediaEvents = store.bool("mediaEvents", default: true)
         }
     }
 }
