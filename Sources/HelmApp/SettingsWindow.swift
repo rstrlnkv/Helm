@@ -217,21 +217,12 @@ private struct MenuBarSettingsView: View {
     @State private var style: String = AppSettings.menuBarIconStyle
     @State private var size: String = AppSettings.menuBarIconSize
     @State private var launchAtLogin: Bool = LoginItem.isEnabled
-    @ObservedObject private var updater = UpdateService.shared
 
     var body: some View {
         Form {
             Section(AppStr.general) {
                 Toggle(AppStr.launchAtLogin, isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, v in LoginItem.setEnabled(v) }
-            }
-            Section(AppStr.updates) {
-                HStack {
-                    updateStatus
-                    Spacer()
-                    Button(AppStr.checkForUpdates) { updater.checkNow() }
-                        .disabled(updater.checking)
-                }
             }
             Section(AppStr.iconShape) {
                 HStack(spacing: 14) {
@@ -256,26 +247,6 @@ private struct MenuBarSettingsView: View {
             }
         }
         .formStyle(.grouped)
-    }
-
-    @ViewBuilder
-    private var updateStatus: some View {
-        if updater.checking {
-            HStack(spacing: 6) {
-                ProgressView().controlSize(.small)
-                Text(AppStr.checking).foregroundStyle(.secondary)
-            }
-        } else if let release = updater.available {
-            HStack(spacing: 8) {
-                Text(AppStr.updateAvailable(release.version))
-                Link(AppStr.download, destination: release.downloadURL ?? release.pageURL)
-            }
-        } else if updater.lastMessage == "up-to-date" {
-            Text(AppStr.upToDate).foregroundStyle(.secondary)
-        } else {
-            Text("v" + (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""))
-                .foregroundStyle(.secondary)
-        }
     }
 
     private func styleTile(_ s: MenuBarIconStyle) -> some View {
@@ -305,6 +276,7 @@ private struct MenuBarSettingsView: View {
 
 private struct AboutHelmView: View {
     @State private var showWhatsNew = false
+    @ObservedObject private var updater = UpdateService.shared
     private var version: String {
         let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
@@ -338,6 +310,13 @@ private struct AboutHelmView: View {
                     .de: "\(moduleCount) Module", .ja: "\(moduleCount) 個のモジュール", .zh: "\(moduleCount) 个模块",
                     .pt: "\(moduleCount) módulos"]))
                 .font(.caption).foregroundStyle(.tertiary)
+            HStack(spacing: 10) {
+                updateStatus
+                Button(AppStr.checkForUpdates) { updater.checkNow() }
+                    .controlSize(.small)
+                    .disabled(updater.checking)
+            }
+            .font(.callout)
             HStack(spacing: 16) {
                 Button(AppStr.whatsNew) { showWhatsNew = true }
                 if let url = URL(string: "https://github.com/rstrlnkv/Helm") {
@@ -352,6 +331,25 @@ private struct AboutHelmView: View {
         .padding(28)
         .sheet(isPresented: $showWhatsNew) {
             WhatsNewView(onClose: { showWhatsNew = false })
+        }
+    }
+
+    @ViewBuilder
+    private var updateStatus: some View {
+        if updater.checking {
+            HStack(spacing: 6) {
+                ProgressView().controlSize(.small)
+                Text(AppStr.checking).foregroundStyle(.secondary)
+            }
+        } else if let release = updater.available {
+            HStack(spacing: 8) {
+                Text(AppStr.updateAvailable(release.version))
+                Link(AppStr.download, destination: release.downloadURL ?? release.pageURL)
+            }
+        } else if updater.lastMessage == "up-to-date" {
+            Text(AppStr.upToDate).foregroundStyle(.secondary)
+        } else {
+            EmptyView()   // idle, not yet checked — the button speaks for itself
         }
     }
 }
