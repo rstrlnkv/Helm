@@ -20,5 +20,7 @@ import HelmContract
             Task { _ = try? await transport.send(EngineCommand(name: "toggle")) }
         }
         HotkeyManager.shared.start()
+
+        UpdateService.shared.checkOnLaunch()
     }
 }
