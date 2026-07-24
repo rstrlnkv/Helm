@@ -3,26 +3,29 @@ import SwiftUI
 import HelmContract
 import HelmUI
 
-/// System Settings-style window: a source-list sidebar (colored icon tiles, no
-/// inline toggles, no collapse button) + a detail pane. The per-module enable
-/// switch lives at the top of each module's detail page.
+/// System Settings-style settings window built on AppKit `NSSplitViewController`
+/// so the sidebar is a full-height vibrant source list (traffic lights float
+/// over it, no title-bar strip). Each pane hosts a SwiftUI view; a shared
+/// `SettingsModel` carries the selection between them.
 @MainActor final class SettingsWindow: NSObject, NSWindowDelegate {
     private let window: NSWindow
+    private let model: SettingsModel
 
     init(host: ModuleHost) {
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 820, height: 580),
-            styleMask: [.titled, .closable, .miniaturizable],
-            backing: .buffered,
-            defer: false
-        )
+        let model = SettingsModel(host: host)
+        self.model = model
+        let split = SettingsSplitViewController(model: model)
+        let window = NSWindow(contentViewController: split)
+        window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
         window.title = "Helm Settings"
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.setContentSize(NSSize(width: 820, height: 580))
         window.center()
         window.isReleasedWhenClosed = false
         self.window = window
         super.init()
         window.delegate = self
-        window.contentView = NSHostingView(rootView: SettingsRootView(host: host))
     }
 
     func show() {
@@ -32,19 +35,55 @@ import HelmUI
     }
 
     func windowWillClose(_ notification: Notification) {
-        // Menu-bar app: drop back to accessory once the settings window closes.
         NSApp.setActivationPolicy(.accessory)
     }
 }
 
-private enum SettingsSelection: Hashable {
+// MARK: - Shared model
+
+enum SettingsSelection: Hashable {
     case general
     case module(String)
     case about
 }
 
-/// Shared System Settings-style tint per module category (used by both the
-/// sidebar tile and the module detail header so they match).
+@MainActor final class SettingsModel: ObservableObject {
+    let host: ModuleHost
+    @Published var selection: SettingsSelection? = .general
+    init(host: ModuleHost) { self.host = host }
+}
+
+// MARK: - Split controller
+
+final class SettingsSplitViewController: NSSplitViewController {
+    private let model: SettingsModel
+
+    init(model: SettingsModel) {
+        self.model = model
+        super.init(nibName: nil, bundle: nil)
+    }
+    required init?(coder: NSCoder) { fatalError("not supported") }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        let sidebar = NSHostingController(rootView: SettingsSidebar(model: model))
+        let sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebar)
+        sidebarItem.canCollapse = false
+        sidebarItem.minimumThickness = 250
+        sidebarItem.maximumThickness = 250
+
+        let detail = NSHostingController(rootView: SettingsDetail(model: model))
+        let detailItem = NSSplitViewItem(viewController: detail)
+        detailItem.minimumThickness = 420
+
+        addSplitViewItem(sidebarItem)
+        addSplitViewItem(detailItem)
+    }
+}
+
+// MARK: - Category tint
+
 private func categoryColor(_ category: ModuleCategory) -> Color {
     switch category {
     case .power: return .orange
@@ -58,44 +97,37 @@ private func categoryColor(_ category: ModuleCategory) -> Color {
     }
 }
 
-private struct SettingsRootView: View {
-    @ObservedObject var host: ModuleHost
-    @State private var selection: SettingsSelection? = .general
+// MARK: - Sidebar
+
+private struct SettingsSidebar: View {
+    @ObservedObject var model: SettingsModel
 
     var body: some View {
-        HStack(spacing: 0) {
-            List(selection: $selection) {
-                Section {
-                    sidebarRow("Menu Bar", "menubar.rectangle", .gray)
-                        .tag(SettingsSelection.general)
-                }
-                ForEach(ModuleCategory.allCases, id: \.self) { category in
-                    let modules = ModuleRegistry.all.filter { $0.moduleCategory == category }
-                    if !modules.isEmpty {
-                        Section(category.rawValue.capitalized) {
-                            ForEach(modules, id: \.idRaw) { descriptor in
-                                sidebarRow(descriptor.moduleMetadata.name,
-                                           descriptor.moduleMetadata.sfSymbol,
-                                           categoryColor(category))
-                                    .tag(SettingsSelection.module(descriptor.idRaw))
-                            }
+        List(selection: $model.selection) {
+            Section {
+                sidebarRow("Menu Bar", "menubar.rectangle", .gray)
+                    .tag(SettingsSelection.general)
+            }
+            ForEach(ModuleCategory.allCases, id: \.self) { category in
+                let modules = ModuleRegistry.all.filter { $0.moduleCategory == category }
+                if !modules.isEmpty {
+                    Section(category.rawValue.capitalized) {
+                        ForEach(modules, id: \.idRaw) { descriptor in
+                            sidebarRow(descriptor.moduleMetadata.name,
+                                       descriptor.moduleMetadata.sfSymbol,
+                                       categoryColor(category))
+                                .tag(SettingsSelection.module(descriptor.idRaw))
                         }
                     }
                 }
-                Section {
-                    sidebarRow("About Helm", "info.circle", .gray)
-                        .tag(SettingsSelection.about)
-                }
             }
-            .listStyle(.sidebar)
-            .frame(width: 250)
-            .frame(maxHeight: .infinity)
-
-            Divider()
-
-            detail
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            Section {
+                sidebarRow("About Helm", "info.circle", .gray)
+                    .tag(SettingsSelection.about)
+            }
         }
+        .listStyle(.sidebar)
+        .scrollContentBackground(.hidden)   // let the AppKit sidebar material show
     }
 
     private func sidebarRow(_ title: String, _ symbol: String, _ color: Color) -> some View {
@@ -109,24 +141,33 @@ private struct SettingsRootView: View {
                 .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(color))
         }
     }
+}
+
+// MARK: - Detail
+
+private struct SettingsDetail: View {
+    @ObservedObject var model: SettingsModel
+
+    var body: some View {
+        content
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
 
     @ViewBuilder
-    private var detail: some View {
-        switch selection {
+    private var content: some View {
+        switch model.selection {
         case .none, .general:
             MenuBarSettingsView()
         case .about:
             AboutHelmView()
         case .module(let id):
             if let descriptor = ModuleRegistry.all.first(where: { $0.idRaw == id }) {
-                ModuleDetailView(host: host, descriptor: descriptor, id: id)
+                ModuleDetailView(host: model.host, descriptor: descriptor, id: id)
             }
         }
     }
 }
 
-/// A module's detail page: header (icon, name, summary, enable switch) + the
-/// module's own settings, shown only when enabled.
 private struct ModuleDetailView: View {
     @ObservedObject var host: ModuleHost
     let descriptor: any ModuleDescriptor
