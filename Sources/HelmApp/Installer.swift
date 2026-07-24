@@ -25,6 +25,9 @@ enum Installer {
         unzip.waitUntilExit()
         guard unzip.terminationStatus == 0 else { throw InstallError.unzipFailed }
 
+        // The downloaded archive is consumed — drop it now so it never lingers.
+        try? fm.removeItem(at: zipURL)
+
         guard let newApp = firstAppBundle(in: work, fm: fm) else { throw InstallError.appNotFound }
 
         // Sanity: the downloaded bundle must actually be the version we expect.
@@ -37,7 +40,7 @@ enum Installer {
             throw InstallError.notReplaceable
         }
 
-        try launchSwapScript(newApp: newApp.path, installPath: installPath, work: work)
+        try launchSwapScript(newApp: newApp.path, installPath: installPath, workDir: work.path)
         NSApp.terminate(nil)
     }
 
@@ -62,13 +65,16 @@ enum Installer {
         return norm(a) == norm(b)
     }
 
-    private static func launchSwapScript(newApp: String, installPath: String, work: URL) throws {
-        let scriptURL = work.appendingPathComponent("swap.sh")
+    private static func launchSwapScript(newApp: String, installPath: String, workDir: String) throws {
+        // Keep the script OUTSIDE workDir so it can delete workDir (which holds the
+        // unzipped bundle) as its final act without unlinking itself mid-run.
+        let scriptURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("HelmSwap-\(UUID().uuidString).sh")
         let pid = ProcessInfo.processInfo.processIdentifier
         // Quote-safe: paths are passed as positional args, not interpolated into commands.
         let script = """
         #!/bin/bash
-        NEW="$1"; INSTALL="$2"; PID="$3"
+        NEW="$1"; INSTALL="$2"; PID="$3"; WORK="$4"; SELF="$5"
         # Wait for the running Helm to exit before touching its bundle.
         while /bin/kill -0 "$PID" 2>/dev/null; do /bin/sleep 0.2; done
         /bin/sleep 0.3
@@ -76,12 +82,15 @@ enum Installer {
         /usr/bin/ditto "$NEW" "$INSTALL"
         /usr/bin/xattr -cr "$INSTALL" 2>/dev/null || true
         /usr/bin/open "$INSTALL"
+        # Clean up every temp artifact: unzipped bundle dir, then this script.
+        /bin/rm -rf "$WORK"
+        /bin/rm -f "$SELF"
         """
         try script.write(to: scriptURL, atomically: true, encoding: .utf8)
 
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/bin/bash")
-        proc.arguments = [scriptURL.path, newApp, installPath, String(pid)]
+        proc.arguments = [scriptURL.path, newApp, installPath, String(pid), workDir, scriptURL.path]
         // Detach: the script must outlive this process (it swaps + relaunches us).
         proc.standardOutput = nil
         proc.standardError = nil
