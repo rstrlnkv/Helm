@@ -224,6 +224,10 @@ public struct KeepAwakePanelTile: View {
                     vm.send("start", payload: startPayload(newMinutes))
                 }
                 .controlSize(.small)
+                // Ends the timed session; the header toggle is the all-or-nothing
+                // switch, this stops just the countdown.
+                Button(KAStr.stop) { vm.send("stop") }
+                    .controlSize(.small)
                 // The automation controls must stay reachable while a timer runs.
                 // A fixed width, not fixedSize(): the pill stretches inside the
                 // preset row, so left to itself here it shrank to the glyph.
