@@ -18,6 +18,9 @@ enum KAStr {
     static var start: String {
         L("Start", [.ru: "Старт", .es: "Iniciar", .fr: "Démarrer", .de: "Start", .ja: "開始", .zh: "开始", .pt: "Iniciar"])
     }
+    static var hoursUnit: String {
+        L("h", [.ru: "ч", .es: "h", .fr: "h", .de: "Std.", .ja: "時間", .zh: "小时", .pt: "h"])
+    }
     static var minutesUnit: String {
         L("min", [.ru: "мин", .es: "min", .fr: "min", .de: "Min.", .ja: "分", .zh: "分钟", .pt: "min"])
     }

@@ -14,6 +14,13 @@ public final class InMemoryKeyValueStore: KeyValueStore {
 
 extension UserDefaults: KeyValueStore {}
 
+public extension Notification.Name {
+    /// Posted after any `NamespacedStore` write; `object` is the full namespaced
+    /// key ("module.<id>.<key>"). Views that mirror stored values into `@State`
+    /// observe this to stay in sync with other windows.
+    static let helmStoreChanged = Notification.Name("helmStoreChanged")
+}
+
 public final class NamespacedStore {
     private let prefix: String
     private let backing: KeyValueStore
@@ -22,7 +29,15 @@ public final class NamespacedStore {
         self.backing = backing
     }
     private func k(_ key: String) -> String { prefix + key }
-    public func set(_ value: Any?, for key: String) { backing.set(value, forKey: k(key)) }
+    public func set(_ value: Any?, for key: String) {
+        backing.set(value, forKey: k(key))
+        NotificationCenter.default.post(name: .helmStoreChanged, object: k(key))
+    }
+
+    /// True when `note` announces a change to `key` in this store.
+    public func changed(_ note: Notification, is key: String) -> Bool {
+        (note.object as? String) == k(key)
+    }
     public func bool(_ key: String, default d: Bool) -> Bool { backing.object(forKey: k(key)) as? Bool ?? d }
     public func int(_ key: String, default d: Int) -> Int { backing.object(forKey: k(key)) as? Int ?? d }
     public func string(_ key: String, default d: String) -> String { backing.object(forKey: k(key)) as? String ?? d }
