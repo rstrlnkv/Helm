@@ -30,3 +30,20 @@ final class NamespacedStoreTests: XCTestCase {
         XCTAssertEqual(NamespacedStore(namespace: "b", backing: backing).int("k", default: 0), 2)
     }
 }
+
+/// Writes must announce themselves: panel tiles and settings pages read the same
+/// keys, and without a signal one side keeps showing a stale value.
+final class NamespacedStoreChangeNotificationTests: XCTestCase {
+    func testSetPostsChangeNotificationWithNamespacedKey() {
+        let store = NamespacedStore(namespace: "demo", backing: InMemoryKeyValueStore())
+        var received: String?
+        let token = NotificationCenter.default.addObserver(
+            forName: .helmStoreChanged, object: nil, queue: nil
+        ) { note in received = note.object as? String }
+        defer { NotificationCenter.default.removeObserver(token) }
+
+        store.set(true, for: "flag")
+
+        XCTAssertEqual(received, "module.demo.flag")
+    }
+}
