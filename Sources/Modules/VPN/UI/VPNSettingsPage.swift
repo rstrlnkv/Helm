@@ -192,17 +192,21 @@ public struct VPNSettingsPage: View {
 
     private func pickApp() {
         let panel = NSOpenPanel()
-        panel.title = "Choose an app"
+        panel.title = "Choose apps"
         panel.directoryURL = URL(fileURLWithPath: "/Applications")
         panel.allowedContentTypes = [.application]
-        panel.allowsMultipleSelection = false
+        panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
         panel.canChooseFiles = true
-        guard panel.runModal() == .OK, let url = panel.url,
-              let bundleID = Bundle(url: url)?.bundleIdentifier else { return }
-        guard rules[bundleID] == nil else { return }
-        rules[bundleID] = VPNAppRule(vpnName: vm.connections.first?.name ?? "")
-        persist()
+        guard panel.runModal() == .OK else { return }
+        let defaultVPN = vm.connections.first?.name ?? ""
+        var added = false
+        for url in panel.urls {
+            guard let bundleID = Bundle(url: url)?.bundleIdentifier, rules[bundleID] == nil else { continue }
+            rules[bundleID] = VPNAppRule(vpnName: defaultVPN)
+            added = true
+        }
+        if added { persist() }
     }
 
     private static func appInfo(_ bundleID: String) -> (name: String, icon: NSImage) {
