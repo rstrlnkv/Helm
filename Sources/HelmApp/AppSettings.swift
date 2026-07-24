@@ -1,5 +1,6 @@
 import Foundation
 import HelmRuntime
+import HelmUI
 
 extension Notification.Name {
     /// Posted when the host menu-bar icon style changes so the status item redraws.
@@ -14,6 +15,16 @@ extension Notification.Name {
         get { store.string("menuBarIconStyle", default: "ring") }
         set {
             store.set(newValue, for: "menuBarIconStyle")
+            NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
+        }
+    }
+
+    /// Panel presentation: "grid" (default) or "list" (the original stacked
+    /// layout, kept as a rollback).
+    static var panelLayout: String {
+        get { store.string("panelLayout", default: PanelLayoutStyle.grid.rawValue) }
+        set {
+            store.set(newValue, for: "panelLayout")
             NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
         }
     }

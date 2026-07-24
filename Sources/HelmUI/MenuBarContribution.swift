@@ -7,10 +7,13 @@ public struct MenuBarContribution {
     /// compactly behind a disclosure and opens Settings on click, so the panel
     /// stays focused on what you can act on from the menu bar.
     public var isUtility: Bool
+    /// Width this tile asks for in the grid layout (ignored in the list layout).
+    public var span: PanelTileSpan
 
-    public init(panelTile: AnyView? = nil, isUtility: Bool = false) {
+    public init(panelTile: AnyView? = nil, isUtility: Bool = false, span: PanelTileSpan = .wide) {
         self.panelTile = panelTile
         self.isUtility = isUtility
+        self.span = span
     }
 
     /// A module whose UI lives in Settings only. Computed (not a stored global)
