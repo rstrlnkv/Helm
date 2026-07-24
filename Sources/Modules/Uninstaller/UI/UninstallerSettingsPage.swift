@@ -79,7 +79,10 @@ public struct UninstallerSettingsPage: View {
                     }
                     .tag(app.bundleID)
                 }
-                .listStyle(.sidebar)
+                // .plain, not .sidebar: the vibrant sidebar material is for the
+                // window's real sidebar; in a content column it shows the desktop
+                // through the window.
+                .listStyle(.plain)
             }
         }
         .onChange(of: selectedID) { _, _ in Task { await runScan() } }
