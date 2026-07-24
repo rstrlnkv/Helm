@@ -1,21 +1,28 @@
+import AppKit
 import Foundation
 import HelmRuntime
 
-/// Checks the public GitHub repo's latest release and, if it's newer than the
-/// running build, surfaces it. Helm is ad-hoc signed (no in-app installer yet),
-/// so "update" = notify + open the release/download page.
+/// Checks the public GitHub repo's latest release and, if newer than the running
+/// build, offers a one-click silent update: it downloads the release `.zip`
+/// itself (self-downloaded → no quarantine, no Gatekeeper prompt), swaps the app
+/// bundle in place, and relaunches. Falls back to opening the release page when
+/// no installable zip asset is present.
 @MainActor final class UpdateService: ObservableObject {
     static let shared = UpdateService()
 
     struct Release: Equatable {
         let version: String
         let pageURL: URL
-        let downloadURL: URL?
+        let zipURL: URL?        // installable asset for the in-app updater
+        let downloadURL: URL?   // manual asset (.dmg) or page, for the fallback link
         let notes: String
     }
 
+    enum InstallState: Equatable { case idle, downloading, installing, failed }
+
     @Published private(set) var available: Release?
     @Published private(set) var checking = false
+    @Published private(set) var installState: InstallState = .idle
     /// A short status for the settings row after a manual check (nil = idle).
     @Published private(set) var lastMessage: String?
 
@@ -34,6 +41,30 @@ import HelmRuntime
     }
 
     func checkNow() { Task { await performCheck(manual: true) } }
+
+    /// One-click silent update: download the release zip, swap the bundle, relaunch.
+    /// On success the app terminates (the swap script relaunches it), so this never
+    /// returns normally in the happy path.
+    func downloadAndInstall() {
+        guard let rel = available, installState == .idle else { return }
+        guard let zip = rel.zipURL else {
+            NSWorkspace.shared.open(rel.pageURL)   // no installable asset — manual path
+            return
+        }
+        Task {
+            installState = .downloading
+            do {
+                var req = URLRequest(url: zip)
+                req.setValue("Helm", forHTTPHeaderField: "User-Agent")
+                let (tmp, resp) = try await URLSession.shared.download(for: req)
+                guard (resp as? HTTPURLResponse)?.statusCode == 200 else { installState = .failed; return }
+                installState = .installing
+                try Installer.installZip(at: tmp, expectedVersion: rel.version)  // terminates on success
+            } catch {
+                installState = .failed
+            }
+        }
+    }
 
     private struct GHAsset: Decodable { let name: String; let browser_download_url: String }
     private struct GHRelease: Decodable {
@@ -67,10 +98,12 @@ import HelmRuntime
             let gh = try JSONDecoder().decode(GHRelease.self, from: data)
             if UpdateVersion.isNewer(gh.tag_name, than: currentVersion),
                let page = URL(string: gh.html_url) {
-                let asset = gh.assets.first { $0.name.hasSuffix(".dmg") || $0.name.hasSuffix(".zip") }
+                let zip = gh.assets.first { $0.name.hasSuffix(".zip") }
+                let dmg = gh.assets.first { $0.name.hasSuffix(".dmg") }
                 available = Release(version: gh.tag_name,
                                     pageURL: page,
-                                    downloadURL: asset.flatMap { URL(string: $0.browser_download_url) },
+                                    zipURL: zip.flatMap { URL(string: $0.browser_download_url) },
+                                    downloadURL: (dmg ?? zip).flatMap { URL(string: $0.browser_download_url) },
                                     notes: gh.body ?? "")
                 if manual { lastMessage = "available" }
             } else {

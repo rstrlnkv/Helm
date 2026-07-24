@@ -28,5 +28,9 @@ Rules:
 Release flow:
 1. Bump `CFBundleShortVersionString` per the table.
 2. Add a `## [X.Y.Z] — YYYY-MM-DD` section to `CHANGELOG.md`.
-3. `bash Scripts/package-app.sh && bash Scripts/make-dmg.sh`
-4. `gh release create vX.Y.Z build/Helm-X.Y.Z.dmg --title "Helm X.Y.Z" --notes "…"`
+3. `bash Scripts/package-app.sh && bash Scripts/make-dmg.sh && bash Scripts/make-zip.sh`
+4. `gh release create vX.Y.Z build/Helm-X.Y.Z.dmg build/Helm-X.Y.Z.zip --title "Helm X.Y.Z" --notes "…"`
+
+Always attach the **`.zip`** — the in-app updater downloads it for silent install
+(`Installer`); the `.dmg` is the manual/drag-install path. A release without a zip
+asset falls back to opening the release page.
