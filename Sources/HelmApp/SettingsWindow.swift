@@ -11,7 +11,7 @@ import HelmUI
 
     init(host: ModuleHost) {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 640, height: 420),
+            contentRect: NSRect(x: 0, y: 0, width: 720, height: 560),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -38,6 +38,7 @@ import HelmUI
 }
 
 private enum SettingsSelection: Hashable {
+    case general
     case module(String)
     case about
 }
@@ -49,6 +50,10 @@ private struct SettingsRootView: View {
     var body: some View {
         NavigationSplitView {
             List(selection: $selection) {
+                Section {
+                    Label("Menu Bar", systemImage: "menubar.rectangle")
+                        .tag(SettingsSelection.general)
+                }
                 ForEach(ModuleCategory.allCases, id: \.self) { category in
                     let modules = ModuleRegistry.all.filter { $0.moduleCategory == category }
                     if !modules.isEmpty {
@@ -90,9 +95,8 @@ private struct SettingsRootView: View {
     @ViewBuilder
     private var detail: some View {
         switch selection {
-        case .none:
-            Text("Select a module")
-                .foregroundStyle(.secondary)
+        case .none, .general:
+            MenuBarSettingsView()
         case .about:
             AboutHelmView()
         case .module(let id):
@@ -105,6 +109,41 @@ private struct SettingsRootView: View {
                 }
             }
         }
+    }
+}
+
+private struct MenuBarSettingsView: View {
+    @State private var style: String = AppSettings.menuBarIconStyle
+
+    var body: some View {
+        Form {
+            Section("Menu-bar icon") {
+                HStack(spacing: 14) {
+                    ForEach(MenuBarIconStyle.allCases, id: \.rawValue) { s in
+                        let selected = style == s.rawValue
+                        VStack(spacing: 6) {
+                            Image(nsImage: RingIcon.make(style: s, tintToken: "blue"))
+                                .frame(width: 22, height: 22)
+                            Text(s.label).font(.caption2)
+                        }
+                        .frame(width: 64, height: 56)
+                        .background(RoundedRectangle(cornerRadius: 8)
+                            .fill(selected ? Color.accentColor.opacity(0.18) : Color.primary.opacity(0.04)))
+                        .overlay(RoundedRectangle(cornerRadius: 8)
+                            .strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 1.5))
+                        .contentShape(RoundedRectangle(cornerRadius: 8))
+                        .onTapGesture {
+                            style = s.rawValue
+                            AppSettings.menuBarIconStyle = s.rawValue
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+                Text("Shape of the Helm icon in the menu bar. It turns your Keep Awake color while active, white when idle.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
     }
 }
 
