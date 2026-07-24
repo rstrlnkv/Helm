@@ -14,6 +14,10 @@ enum KAStr {
            .ja: "Mac がスリープするのを防ぎます。", .zh: "防止 Mac 进入睡眠。",
            .pt: "Impede que o Mac entre em repouso."])
     }
+    /// Window title: no ellipsis — that belongs to the menu entry that opens it.
+    static var customTimeTitle: String { L("Custom duration", [.ru: "Своё время", .es: "Duración personalizada", .fr: "Durée personnalisée", .de: "Eigene Dauer", .ja: "カスタム時間", .zh: "自定义时长", .pt: "Duração personalizada"]) }
+    static var customTime: String { L("Custom…", [.ru: "Своё время…", .es: "Personalizado…", .fr: "Personnalisé…", .de: "Eigene Zeit…", .ja: "カスタム…", .zh: "自定义…", .pt: "Personalizado…"]) }
+    static var done: String { L("Done", [.ru: "Готово", .es: "Listo", .fr: "OK", .de: "Fertig", .ja: "完了", .zh: "完成", .pt: "OK"]) }
     static var customTimer: String { L("Custom timer", [.ru: "Свой таймер", .es: "Temporizador propio", .fr: "Minuteur personnalisé", .de: "Eigener Timer", .ja: "カスタムタイマー", .zh: "自定义计时", .pt: "Timer personalizado"]) }
     /// Short forms used under the "Automatically" heading, where the context is
     /// already given by the group title.
@@ -91,7 +95,6 @@ enum KAStr {
     static var ringTimerNote: String { L("While a timer runs, the ring empties clockwise.", [.ru: "Пока идёт таймер, кольцо убывает по часовой стрелке.", .es: "Mientras corre el temporizador, el anillo se vacía en sentido horario.", .fr: "Pendant le minuteur, l’anneau se vide dans le sens horaire.", .de: "Während der Timer läuft, leert sich der Ring im Uhrzeigersinn.", .ja: "タイマー作動中はリングが時計回りに減っていきます。", .zh: "计时期间圆环按顺时针递减。", .pt: "Enquanto o timer corre, o anel se esvazia no sentido horário."]) }
     static var showTimerText: String { L("Show remaining time in the menu bar", [.ru: "Показывать время в строке меню", .es: "Mostrar el tiempo restante en la barra de menús", .fr: "Afficher le temps restant dans la barre des menus", .de: "Restzeit in der Menüleiste anzeigen", .ja: "残り時間をメニューバーに表示", .zh: "在菜单栏显示剩余时间", .pt: "Mostrar o tempo restante na barra de menus"]) }
     static var timerColor: String { L("Timer color", [.ru: "Цвет таймера", .es: "Color del temporizador", .fr: "Couleur du minuteur", .de: "Timer-Farbe", .ja: "タイマーの色", .zh: "计时器颜色", .pt: "Cor do timer"]) }
-    static var sameAsActive: String { L("Same as active color", [.ru: "Как у активного состояния", .es: "Igual que el color activo", .fr: "Comme la couleur active", .de: "Wie die aktive Farbe", .ja: "アクティブ時の色と同じ", .zh: "与激活颜色相同", .pt: "Igual à cor ativa"]) }
     static var activeIcon: String { L("Active icon", [.ru: "Активная иконка", .es: "Icono activo", .fr: "Icône active", .de: "Aktives Symbol", .ja: "アクティブアイコン", .zh: "激活图标", .pt: "Ícone ativo"]) }
     static var customActiveIcon: String { L("Custom icon when active", [.ru: "Своя иконка при активации", .es: "Icono propio cuando está activo", .fr: "Icône personnalisée si actif", .de: "Eigenes Symbol bei Aktivität", .ja: "アクティブ時にカスタムアイコン", .zh: "激活时使用自定义图标", .pt: "Ícone personalizado quando ativo"]) }
     static var customActiveIconNote: String { L("Show this shape in the menu bar while Keep Awake is active.", [.ru: "Показывать эту форму в меню-баре, пока «Не давать спать» активно.", .es: "Mostrar esta forma en la barra de menús mientras Mantener activo está activo.", .fr: "Afficher cette forme dans la barre des menus tant que Rester éveillé est actif.", .de: "Diese Form in der Menüleiste anzeigen, solange Wach halten aktiv ist.", .ja: "スリープ防止が有効な間、この形をメニューバーに表示します。", .zh: "在保持唤醒激活时于菜单栏显示此形状。", .pt: "Mostrar esta forma na barra de menus enquanto Manter ativo estiver ativo."]) }
