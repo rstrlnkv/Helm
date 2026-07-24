@@ -93,6 +93,10 @@ features, PATCH = fixes.
   version is out.
 - **What's New** — About → "What's New" renders this changelog in-app; About now
   shows the version, build number, and enabled-module count.
+
+## [0.1.0] — 2026-07-23
+
+### Added
 - **Keep Awake module** — prevent sleep manually, by timer (presets + custom
   minutes with a live countdown), or automatically when an external display or
   power is connected, or when chosen apps run. Optional "keep display on",
@@ -115,3 +119,4 @@ features, PATCH = fixes.
 [0.4.0]: https://github.com/rstrlnkv/Helm/releases/tag/v0.4.0
 [0.3.0]: https://github.com/rstrlnkv/Helm/releases/tag/v0.3.0
 [0.2.0]: https://github.com/rstrlnkv/Helm/releases/tag/v0.2.0
+[0.1.0]: https://github.com/rstrlnkv/Helm
