@@ -14,6 +14,7 @@ enum KAStr {
            .ja: "Mac がスリープするのを防ぎます。", .zh: "防止 Mac 进入睡眠。",
            .pt: "Impede que o Mac entre em repouso."])
     }
+    static var timer: String { L("Timer", [.ru: "Таймер", .es: "Temporizador", .fr: "Minuteur", .de: "Timer", .ja: "タイマー", .zh: "计时器", .pt: "Timer"]) }
     static var start: String {
         L("Start", [.ru: "Старт", .es: "Iniciar", .fr: "Démarrer", .de: "Start", .ja: "開始", .zh: "开始", .pt: "Iniciar"])
     }

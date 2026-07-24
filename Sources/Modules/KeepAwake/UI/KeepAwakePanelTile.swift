@@ -109,27 +109,51 @@ public struct KeepAwakePanelTile: View {
     /// presets — same disclosure language as the panel's Utilities section
     /// (rows fade in cascading, the card grows downward).
     private var moreControls: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             Divider()
-            Toggle(KAStr.withExternalDisplay, isOn: $autoExternalDisplay)
-                .onChange(of: autoExternalDisplay) { _, v in writeSetting(v, "autoExternalDisplay") }
-                .transition(.opacity.animation(.easeOut(duration: 0.18)))
-            Toggle(KAStr.whileOnPower, isOn: $autoPower)
-                .onChange(of: autoPower) { _, v in writeSetting(v, "autoPower") }
-                .transition(.opacity.animation(.easeOut(duration: 0.18).delay(0.06)))
-            HStack(spacing: 8) {
-                Stepper("\(customMinutes) \(KAStr.minutesUnit)", value: $customMinutes, in: 5...720, step: 5)
-                    .font(.subheadline)
-                Button(KAStr.start) {
-                    vm.send("start", payload: startPayload(customMinutes))
-                    withAnimation(.easeInOut(duration: 0.24)) { showMore = false }
+            // Label left, control hard against the right edge — one alignment
+            // line for every row in the block.
+            settingRow(KAStr.withExternalDisplay) {
+                Toggle("", isOn: $autoExternalDisplay)
+                    .onChange(of: autoExternalDisplay) { _, v in writeSetting(v, "autoExternalDisplay") }
+            }
+            .transition(.opacity.animation(.easeOut(duration: 0.18)))
+
+            settingRow(KAStr.whileOnPower) {
+                Toggle("", isOn: $autoPower)
+                    .onChange(of: autoPower) { _, v in writeSetting(v, "autoPower") }
+            }
+            .transition(.opacity.animation(.easeOut(duration: 0.18).delay(0.06)))
+
+            settingRow(KAStr.timer) {
+                HStack(spacing: 6) {
+                    Text("\(customMinutes) \(KAStr.minutesUnit)")
+                        .font(.caption).monospacedDigit()
+                        .foregroundStyle(.secondary)
+                    Stepper("", value: $customMinutes, in: 5...720, step: 5)
+                        .labelsHidden()
+                        .controlSize(.mini)
+                    Button(KAStr.start) {
+                        vm.send("start", payload: startPayload(customMinutes))
+                        withAnimation(.easeInOut(duration: 0.24)) { showMore = false }
+                    }
+                    .controlSize(.small)
                 }
-                .controlSize(.small)
             }
             .transition(.opacity.animation(.easeOut(duration: 0.18).delay(0.12)))
         }
-        .font(.subheadline)
-        .toggleStyle(.switch)
+    }
+
+    /// Label on the left, trailing control(s) pinned to the right edge.
+    private func settingRow<Control: View>(_ title: String,
+                                           @ViewBuilder control: () -> Control) -> some View {
+        HStack(spacing: 8) {
+            Text(title).font(.subheadline).lineLimit(1)
+            Spacer(minLength: 8)
+            control()
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+        }
     }
 
     private func writeSetting(_ value: Any?, _ key: String) {
