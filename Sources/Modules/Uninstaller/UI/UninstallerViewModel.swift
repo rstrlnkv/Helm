@@ -1,6 +1,7 @@
 import Foundation
 import HelmContract
 import HelmUI
+import HelmRuntime
 import Module_Uninstaller_Engine
 
 /// Typed async façade over the engine's request/response transport.
@@ -10,10 +11,13 @@ import Module_Uninstaller_Engine
 
     private struct ScanReq: Codable { let bundleID: String; let appPath: String; let appName: String }
     private struct UninstallReq: Codable { let appPath: String; let paths: [String] }
-    private struct QuitReq: Codable { let bundleID: String }
+    private struct QuitReq: Codable { let bundleID: String; let force: Bool }
 
     public func listApps() async -> [InstalledApp] {
-        await client.request("listApps") ?? []
+        HelmLog.shared.info("uninstaller", "listApps requested")
+        let apps: [InstalledApp] = await client.request("listApps") ?? []
+        HelmLog.shared.info("uninstaller", "listApps returned \(apps.count)")
+        return apps
     }
 
     public func scan(_ app: InstalledApp) async -> ScanResult? {
@@ -34,7 +38,7 @@ import Module_Uninstaller_Engine
         await client.request("trashPaths", encoding: paths)
     }
 
-    public func quit(bundleID: String) async {
-        await client.send("quit", encoding: QuitReq(bundleID: bundleID))
+    public func quit(bundleID: String, force: Bool = false) async {
+        await client.send("quit", encoding: QuitReq(bundleID: bundleID, force: force))
     }
 }

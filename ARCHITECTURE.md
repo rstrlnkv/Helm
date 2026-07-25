@@ -139,3 +139,28 @@ pure reasoning missed.
 
 Design records for the larger modules live in `docs/superpowers/specs/`, the
 step-by-step build plans in `docs/superpowers/plans/`.
+
+## Design language (HelmUI/DesignSystem/HelmSurfaces.swift)
+
+Every screen speaks the same visual language, derived from the app's own
+subject (Helm = the wheel you steer by):
+
+- `HelmPageHeader` — icon plate + title + one line of what the screen is for,
+  with the screen's primary control (usually the on/off switch) at the far end.
+- `HelmIconPlate` — the symbol on its category tint, lit from behind by a soft
+  radial glow. Also used standalone in empty states.
+- `HelmMetricStrip` — instrument readout: monospaced figures over small-caps
+  labels, split by hairlines. Each screen shows the numbers that matter there
+  (About: version/build/modules; Homebrew: packages/updates/casks; Uninstaller:
+  apps/leftovers/size; VPN: connections/active/automatic; Keep Awake:
+  state/timer/automations).
+- `.helmCard()` — the one card treatment: `primary.opacity(0.05)` fill,
+  `primary.opacity(0.08)` hairline border, 12pt continuous corners.
+- The About page's bezel around the app icon rotates **only** while an update
+  check is in flight — motion means work, never decoration.
+- `AppIconImage.dark` draws the app icon forced into `.darkAqua`: AppKit
+  resolves icon variants at draw time, and the light variant's white slab reads
+  as a hole inside Helm's surfaces.
+
+The menu-bar panel deliberately does NOT follow this: it is a transient
+surface with its own hard-won layout rules (see the panel section above).

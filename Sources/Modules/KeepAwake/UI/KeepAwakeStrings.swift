@@ -98,4 +98,9 @@ enum KAStr {
     static var menuBarIcon: String { L("Menu-bar icon", [.ru: "Иконка в строке меню", .es: "Icono en la barra de menús", .fr: "Icône de la barre des menus", .de: "Symbol in der Menüleiste", .ja: "メニューバーのアイコン", .zh: "菜单栏图标", .pt: "Ícone na barra de menus"]) }
     static var customActiveIcon: String { L("Custom icon when active", [.ru: "Своя иконка при активации", .es: "Icono propio cuando está activo", .fr: "Icône personnalisée si actif", .de: "Eigenes Symbol bei Aktivität", .ja: "アクティブ時にカスタムアイコン", .zh: "激活时使用自定义图标", .pt: "Ícone personalizado quando ativo"]) }
     static var min15: String { "15 " + minutesUnit }
+    static var metricState: String { L("STATE", [.ru: "СОСТОЯНИЕ", .es: "ESTADO", .fr: "ÉTAT", .de: "STATUS", .ja: "状態", .zh: "状态", .pt: "ESTADO"]) }
+    static var metricTimer: String { L("TIMER", [.ru: "ТАЙМЕР", .es: "TEMPORIZ.", .fr: "MINUTEUR", .de: "TIMER", .ja: "タイマー", .zh: "计时", .pt: "TIMER"]) }
+    static var metricRules: String { L("AUTOMATIONS", [.ru: "АВТОМАТИКА", .es: "AUTOMATIZ.", .fr: "AUTOMATIS.", .de: "AUTOMATIK", .ja: "自動化", .zh: "自动化", .pt: "AUTOMAÇÕES"]) }
+    static var metricOn: String { L("ON", [.ru: "ВКЛ", .es: "ON", .fr: "ON", .de: "AN", .ja: "オン", .zh: "开", .pt: "ON"]) }
+    static var metricOff: String { L("OFF", [.ru: "ВЫКЛ", .es: "OFF", .fr: "OFF", .de: "AUS", .ja: "オフ", .zh: "关", .pt: "OFF"]) }
 }

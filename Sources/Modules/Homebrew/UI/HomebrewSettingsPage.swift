@@ -34,14 +34,26 @@ public struct HomebrewSettingsPage: View {
     // MARK: - Not installed
 
     private var installScreen: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 16) {
             Spacer()
-            Image(systemName: "shippingbox").font(.system(size: 44)).foregroundStyle(.secondary)
-            Text(HbStr.notInstalledTitle).font(.title3.bold())
-            Text(HbStr.notInstalledBody).font(.callout).foregroundStyle(.secondary)
-                .multilineTextAlignment(.center).frame(maxWidth: 380)
-            Button(HbStr.installBrew) { hb.installBrew() }
-                .buttonStyle(.borderedProminent).disabled(hb.running)
+            HelmIconPlate(symbol: "shippingbox", tint: .pink, size: 56)
+            VStack(spacing: 6) {
+                Text(HbStr.notInstalledTitle)
+                    .font(.system(size: 20, weight: .semibold))
+                Text(HbStr.notInstalledBody)
+                    .font(.callout).foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center).frame(maxWidth: 380)
+            }
+            Button {
+                hb.installBrew()
+            } label: {
+                Label(HbStr.installBrew, systemImage: "arrow.down.circle")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .frame(width: 260)
+            .disabled(hb.running)
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -52,6 +64,14 @@ public struct HomebrewSettingsPage: View {
 
     private var manager: some View {
         VStack(spacing: 0) {
+            HelmMetricStrip([
+                .init("\(hb.installed.count)", HbStr.metricPackages),
+                .init("\(hb.outdated.count)", HbStr.metricOutdated,
+                      tint: hb.outdated.isEmpty ? nil : .orange),
+                .init("\(hb.installed.filter(\.isCask).count)", HbStr.metricCasks),
+            ])
+            .padding(.horizontal, 12)
+            .padding(.top, 12)
             Picker("", selection: $segment) {
                 Text(HbStr.segInstalled).tag(0)
                 Text(HbStr.segUpdates).tag(1)
