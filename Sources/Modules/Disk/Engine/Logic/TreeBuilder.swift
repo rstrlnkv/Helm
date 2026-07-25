@@ -19,7 +19,7 @@ public final class TreeBuilder: @unchecked Sendable {
         self.index = [root: rootNode]
     }
 
-    public func addFile(path: String, bytes: Int, fileID: UInt64) {
+    public func addFile(path: String, bytes: Int, fileID: UInt64, modified: TimeInterval = 0) {
         // A hard link's target is one allocation however many names it has.
         guard seenFileIDs.insert(fileID).inserted else { return }
         let parent = directory(for: (path as NSString).deletingLastPathComponent)
@@ -27,7 +27,8 @@ public final class TreeBuilder: @unchecked Sendable {
             foldedBucket(of: parent).bytes += bytes
         } else {
             parent.children.append(DiskNode(name: (path as NSString).lastPathComponent,
-                                            path: path, bytes: bytes, isDirectory: false))
+                                            path: path, bytes: bytes, isDirectory: false,
+                                            modified: modified))
         }
         charge(bytes, upFrom: parent)
     }

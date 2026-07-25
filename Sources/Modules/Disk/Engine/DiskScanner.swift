@@ -84,7 +84,8 @@ public final class DiskScanner: @unchecked Sendable {
         while let batch = channel.pop() {
             for path in batch.denied { builder.markNoAccess(path: path) }
             for entry in batch.files {
-                builder.addFile(path: entry.path, bytes: entry.allocatedBytes, fileID: entry.fileID)
+                builder.addFile(path: entry.path, bytes: entry.allocatedBytes,
+                                fileID: entry.fileID, modified: entry.modified)
                 filesSeen += 1
                 bytesSeen += entry.allocatedBytes
                 lastPath = entry.path
@@ -221,6 +222,7 @@ public final class DiskScanner: @unchecked Sendable {
         let isDirectory: Bool
         let allocatedBytes: Int
         let fileID: UInt64
+        let modified: TimeInterval
     }
 
     private enum ReadOutcome {
@@ -253,12 +255,14 @@ public final class DiskScanner: @unchecked Sendable {
         // requested — reading them in request order silently misparses every
         // entry. Kept to the minimum set for that reason:
         //   RETURNED_ATTRS (always first), NAME (0x1), OBJTYPE (0x8),
-        //   FILEID (0x2000000), then fileattr ALLOCSIZE.
+        //   MODTIME (0x400, a timespec), FILEID (0x2000000), then fileattr
+        //   ALLOCSIZE.
         var attrList = attrlist()
         attrList.bitmapcount = u_short(ATTR_BIT_MAP_COUNT)
         attrList.commonattr = attrgroup_t(ATTR_CMN_RETURNED_ATTRS)
             | attrgroup_t(ATTR_CMN_NAME)
             | attrgroup_t(ATTR_CMN_OBJTYPE)
+            | attrgroup_t(ATTR_CMN_MODTIME)
             | attrgroup_t(ATTR_CMN_FILEID)
         attrList.fileattr = attrgroup_t(ATTR_FILE_ALLOCSIZE)
 
@@ -301,6 +305,13 @@ public final class DiskScanner: @unchecked Sendable {
                     field += MemoryLayout<fsobj_type_t>.size
                 }
 
+                var modified: TimeInterval = 0
+                if returned.commonattr & attrgroup_t(ATTR_CMN_MODTIME) != 0 {
+                    let ts = field.loadUnaligned(as: timespec.self)
+                    modified = TimeInterval(ts.tv_sec)
+                    field += MemoryLayout<timespec>.size
+                }
+
                 var fileID: UInt64 = 0
                 if returned.commonattr & attrgroup_t(ATTR_CMN_FILEID) != 0 {
                     fileID = field.loadUnaligned(as: UInt64.self)
@@ -314,7 +325,8 @@ public final class DiskScanner: @unchecked Sendable {
 
                 if !name.isEmpty {
                     out.append(Entry(path: path + "/" + name, isDirectory: isDirectory,
-                                     allocatedBytes: allocated, fileID: fileID))
+                                     allocatedBytes: allocated, fileID: fileID,
+                                     modified: modified))
                 }
                 cursor = entryStart.advanced(by: length)
             }

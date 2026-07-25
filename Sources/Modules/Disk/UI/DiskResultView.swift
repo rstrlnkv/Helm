@@ -14,16 +14,27 @@ struct DiskResultView: View {
             BreadcrumbBar(dvm: dvm)
             Divider()
             HStack(spacing: 0) {
-                RingView(segments: dvm.segments,
-                         focusName: dvm.focus?.name ?? "",
-                         focusBytes: dvm.focus?.bytes ?? 0,
-                         growing: dvm.live,
-                         hovered: $hovered,
-                         onSelect: { segment in dvm.drill(into: segment.path) },
-                         onBack: { dvm.back() })
-                    .frame(minWidth: 300, idealWidth: 360, maxWidth: 380)
-                    .aspectRatio(1, contentMode: .fit)
-                    .padding(14)
+                // The ring swaps with a zoom that mirrors the navigation:
+                // drilling in blooms the new ring outward, going back settles
+                // it inward — the chart reads as a camera move, not a redraw.
+                ZStack {
+                    RingView(segments: dvm.segments,
+                             focusName: dvm.focus.map(dvm.displayName(for:)) ?? "",
+                             focusBytes: dvm.focus?.bytes ?? 0,
+                             growing: dvm.live,
+                             hovered: $hovered,
+                             onSelect: { segment in
+                                 withAnimation(HelmMotion.emphasis) { dvm.drill(into: segment.path) }
+                             },
+                             onBack: {
+                                 withAnimation(HelmMotion.emphasis) { dvm.back() }
+                             })
+                        .id(dvm.focus?.path)
+                        .transition(ringTransition)
+                }
+                .frame(minWidth: 300, idealWidth: 360, maxWidth: 380)
+                .aspectRatio(1, contentMode: .fit)
+                .padding(14)
                 Divider()
                 childList
             }
@@ -40,10 +51,25 @@ struct DiskResultView: View {
                          hovered: $hovered,
                          basketed: dvm.isBasketed(child),
                          onToggleBasket: { dvm.toggleBasket(child) },
-                         onDrill: { dvm.drill(into: child.path) })
+                         onDrill: {
+                             withAnimation(HelmMotion.emphasis) { dvm.drill(into: child.path) }
+                         })
             }
         }
         .listStyle(.inset)
+    }
+
+    private var ringTransition: AnyTransition {
+        switch dvm.navDirection {
+        case .down:
+            .asymmetric(insertion: .scale(scale: 0.62).combined(with: .opacity),
+                        removal: .scale(scale: 1.35).combined(with: .opacity))
+        case .up:
+            .asymmetric(insertion: .scale(scale: 1.35).combined(with: .opacity),
+                        removal: .scale(scale: 0.62).combined(with: .opacity))
+        case .none:
+            .opacity
+        }
     }
 
     private func fraction(of child: DiskEntry) -> Double {
@@ -59,11 +85,12 @@ struct DiskResultView: View {
 /// current folder out.
 private struct BreadcrumbBar: View {
     @ObservedObject var dvm: DiskViewModel
+    @State private var showingAdvice = false
 
     var body: some View {
         HStack(spacing: 8) {
             Button {
-                dvm.back()
+                withAnimation(HelmMotion.emphasis) { dvm.back() }
             } label: {
                 Image(systemName: "chevron.backward")
             }
@@ -91,6 +118,19 @@ private struct BreadcrumbBar: View {
                     .font(.caption).foregroundStyle(.tertiary)
             }
 
+            if let advice = dvm.result?.advice, !advice.isEmpty, !dvm.live {
+                Button {
+                    showingAdvice.toggle()
+                } label: {
+                    Label("\(advice.count)", systemImage: "lightbulb")
+                }
+                .controlSize(.small)
+                .help(DkStr.adviceHint)
+                .popover(isPresented: $showingAdvice, arrowEdge: .bottom) {
+                    AdviceList(dvm: dvm, advice: advice)
+                }
+            }
+
             Button(DkStr.newScan) { dvm.newScan() }
                 .controlSize(.small)
         }
@@ -110,7 +150,9 @@ private struct BreadcrumbBar: View {
             Menu {
                 ForEach(Array(path.enumerated().dropFirst().dropLast(2)),
                         id: \.element.path) { index, entry in
-                    Button(entry.name) { dvm.jump(to: index) }
+                    Button(dvm.displayName(for: entry)) {
+                        withAnimation(HelmMotion.emphasis) { dvm.jump(to: index) }
+                    }
                 }
             } label: {
                 Image(systemName: "ellipsis")
@@ -127,15 +169,15 @@ private struct BreadcrumbBar: View {
         if index > 0 { chevron }
         if isLast {
             // The current folder is a fact, not a control.
-            Text(entry.name)
+            Text(dvm.displayName(for: entry))
                 .font(.callout.weight(.semibold))
                 .lineLimit(1).truncationMode(.middle)
                 .frame(maxWidth: 180)
         } else {
             Button {
-                dvm.jump(to: index)
+                withAnimation(HelmMotion.emphasis) { dvm.jump(to: index) }
             } label: {
-                Text(entry.name)
+                Text(dvm.displayName(for: entry))
                     .lineLimit(1).truncationMode(.middle)
                     .frame(maxWidth: 140)
             }
@@ -218,5 +260,83 @@ private struct ChildRow: View {
             }
         }
         .listRowSeparator(.hidden)
+    }
+}
+
+// MARK: - Advice
+
+/// The advisor's suggestions: each row explains why the item is a candidate
+/// and feeds the same basket as the list — nothing is deleted from here.
+private struct AdviceList: View {
+    @ObservedObject var dvm: DiskViewModel
+    let advice: [DiskAdvice]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(DkStr.advice)
+                .font(.headline)
+                .padding(.horizontal, 14).padding(.top, 12).padding(.bottom, 8)
+            Divider()
+            ScrollView {
+                VStack(spacing: 2) {
+                    ForEach(advice) { item in
+                        row(item)
+                    }
+                }
+                .padding(8)
+            }
+            .frame(maxHeight: 320)
+        }
+        .frame(width: 380)
+    }
+
+    private func row(_ item: DiskAdvice) -> some View {
+        let entry = dvm.entry(for: item)
+        let basketed = dvm.isBasketed(entry)
+        return HStack(spacing: 10) {
+            Image(systemName: icon(item.kind))
+                .foregroundStyle(.secondary)
+                .frame(width: 18)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(item.name).lineLimit(1).truncationMode(.middle)
+                Text(reason(item.kind))
+                    .font(.caption2)
+                    .foregroundStyle(Color.primary.opacity(0.55))
+            }
+            Spacer()
+            Text(ByteCountFormatter.string(fromByteCount: Int64(item.bytes), countStyle: .file))
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(.secondary)
+            Button {
+                dvm.toggleBasket(entry)
+            } label: {
+                Image(systemName: basketed ? "checkmark.circle.fill" : "plus.circle")
+                    .foregroundStyle(basketed ? Color.accentColor : .secondary)
+            }
+            .buttonStyle(.borderless)
+            .help(DkStr.addToBasket)
+        }
+        .padding(.vertical, 5).padding(.horizontal, 8)
+        .contextMenu {
+            Button(DkStr.reveal) {
+                NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: item.path)])
+            }
+        }
+    }
+
+    private func icon(_ kind: DiskAdvice.Kind) -> String {
+        switch kind {
+        case .cache: "arrow.triangle.2.circlepath"
+        case .oldDownload: "arrow.down.circle"
+        case .largeOld: "clock.arrow.circlepath"
+        }
+    }
+
+    private func reason(_ kind: DiskAdvice.Kind) -> String {
+        switch kind {
+        case .cache: DkStr.adviceKindCache
+        case .oldDownload: DkStr.adviceKindOldDownload
+        case .largeOld: DkStr.adviceKindLargeOld
+        }
     }
 }

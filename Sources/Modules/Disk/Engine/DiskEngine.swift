@@ -64,7 +64,9 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
             let free = self.freeBytes(forPathOn: path)
             return ScanResult(root: DiskEntry(tree, depth: 6), freeBytes: free,
                               filesScanned: counter.value,
-                              seconds: Date().timeIntervalSince(started))
+                              seconds: Date().timeIntervalSince(started),
+                              advice: DiskAdvisor.advise(root: tree,
+                                                         home: NSHomeDirectory()))
         }
         scannerBox.set(nil)
         if let result {

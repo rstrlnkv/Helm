@@ -11,13 +11,16 @@ public final class DiskNode: @unchecked Sendable {
     public internal(set) var children: [DiskNode]
     /// Set when unreadable (no permission): counted at zero, shown flagged.
     public internal(set) var noAccess = false
+    /// Modification time as epoch seconds; 0 when the scanner had no date.
+    public let modified: TimeInterval
 
     public init(name: String, path: String, bytes: Int, isDirectory: Bool,
-                children: [DiskNode] = []) {
+                children: [DiskNode] = [], modified: TimeInterval = 0) {
         self.name = name
         self.path = path
         self.bytes = bytes
         self.isDirectory = isDirectory
         self.children = children
+        self.modified = modified
     }
 }
