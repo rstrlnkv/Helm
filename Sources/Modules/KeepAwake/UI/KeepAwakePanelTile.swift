@@ -49,14 +49,15 @@ public struct KeepAwakePanelTile: View {
                     if h > 0 { moreHeight = h }
                 }
                 .frame(height: showMore ? moreHeight : 0, alignment: .top)
-                // Composite before fading. Animating `.opacity` puts the block
-                // in an offscreen layer, and hierarchical colours (.secondary
-                // on the "Automation" heading) resolve differently inside one;
-                // when the layer is dropped at the end of the animation the
-                // colour jumps. A permanent compositing group keeps the
-                // rendering path identical during and after the animation.
-                .compositingGroup()
-                .opacity(showMore ? 1 : 0)
+                // No `.opacity` here on purpose. Fading the block puts it in an
+                // offscreen layer, where hierarchical colours resolve
+                // differently — the "Automation" heading snapped colour when
+                // the layer was dropped at the end of the animation. Forcing a
+                // permanent compositing group fixed that but cost more: system
+                // materials (the divider, switches, bordered buttons) stopped
+                // blending with the card behind them. The height animation
+                // plus clipping is the whole reveal; the content simply slides
+                // out from under the edge, and every colour stays native.
                 .clipped()
                 .allowsHitTesting(showMore)
         }
