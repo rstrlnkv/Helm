@@ -73,6 +73,8 @@ import Module_Island_Engine
             self?.mediaSource?.playPause()
             self?.controller?.model.nowPlayingPlaying.toggle()
         }
+        controller.model.previousTrack = { [weak self] in self?.mediaSource?.previousTrack() }
+        controller.model.nextTrack = { [weak self] in self?.mediaSource?.nextTrack() }
         controller.model.setVolume = { [weak self] level in
             self?.audioSource?.setVolume(level)
             self?.controller?.model.volume = level
@@ -133,9 +135,14 @@ import Module_Island_Engine
                     onEvent: { [weak self] text, symbol in
                         self?.controller?.showEvent(id: "media", text: text, symbol: symbol, ttl: 4.0)
                     },
-                    onState: { [weak self] title, playing in
-                        self?.controller?.model.nowPlayingTitle = title
-                        self?.controller?.model.nowPlayingPlaying = playing
+                    onState: { [weak self] st in
+                        guard let model = self?.controller?.model else { return }
+                        model.nowPlayingTitle = st.title
+                        model.nowPlayingArtist = st.artist
+                        model.nowPlayingPlaying = st.playing
+                        model.nowPlayingPosition = st.position
+                        model.nowPlayingDuration = st.duration
+                        model.nowPlayingArtwork = st.artworkURL
                     })
             }
         } else {
