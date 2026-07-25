@@ -59,13 +59,6 @@ public struct UninstallerSettingsPage: View {
 
     public var body: some View {
         pageBody
-            .helmMetricsHeader {
-                HelmMetricStrip([
-                    .init(loading ? "—" : "\(apps.count)", UnStr.metricApps),
-                    .init("\(checked.count)", UnStr.metricChosen, tint: checked.isEmpty ? nil : .accentColor),
-                    .init(sizeText, UnStr.metricSize),
-                ])
-            }
             .task {
                 apps = await uvm.listApps()
                 loading = false
@@ -74,13 +67,33 @@ public struct UninstallerSettingsPage: View {
 
     private var pageBody: some View {
         VStack(spacing: 0) {
-            Picker("", selection: $tab) {
-                Text(UnStr.tabApps).tag(0)
-                Text(UnStr.tabOrphans).tag(1)
+            // One toolbar row instead of a metric panel, a segmented row and a
+            // search row stacked on top of each other.
+            HStack(spacing: 10) {
+                Picker("", selection: $tab) {
+                    Text(UnStr.tabApps).tag(0)
+                    Text(UnStr.tabOrphans).tag(1)
+                }
+                .pickerStyle(.segmented).labelsHidden()
+                .frame(width: 200)
+                .disabled(step == .review)
+
+                if tab == 0 && step == .pick {
+                    HelmSearchField(text: $search, placeholder: UnStr.searchApps)
+                        .frame(height: 22)
+                }
+                Spacer(minLength: 0)
+                Button {
+                    Task { await refreshApps() }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .rotationEffect(.degrees(loading ? 360 : 0))
+                }
+                .buttonStyle(.borderless)
+                .disabled(loading)
+                .help(UnStr.refreshList)
             }
-            .pickerStyle(.segmented).labelsHidden()
-            .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 8)
-            .disabled(step == .review)
+            .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
 
             Divider()
 
@@ -99,6 +112,19 @@ public struct UninstallerSettingsPage: View {
         }
     }
 
+    /// Counts read as a quiet status line instead of a panel of dials.
+    private var statusLine: String {
+        let count = loading ? "…" : "\(apps.count)"
+        guard !checked.isEmpty else { return UnStr.appsCount(count) }
+        return UnStr.appsCountSelected(count, checked.count, sizeText)
+    }
+
+    private func refreshApps() async {
+        loading = true
+        apps = await uvm.listApps()
+        loading = false
+    }
+
     private var sizeText: String {
         let bytes: Int
         if step == .review {
@@ -114,12 +140,6 @@ public struct UninstallerSettingsPage: View {
 
     private var pickStep: some View {
         VStack(spacing: 0) {
-            HelmSearchField(text: $search, placeholder: UnStr.searchApps)
-                .frame(height: 24)
-                .padding(.horizontal, 20)
-                .padding(.top, 12)     // breathing room under the divider
-                .padding(.bottom, 8)
-
             if loading {
                 Spacer()
                 ProgressView().controlSize(.small)
@@ -137,6 +157,8 @@ public struct UninstallerSettingsPage: View {
             HStack(spacing: 10) {
                 Button(UnStr.selectNone) { checked.removeAll() }
                     .disabled(checked.isEmpty)
+                Text(statusLine)
+                    .font(.caption).foregroundStyle(.secondary)
                 Spacer()
                 if let banner = resultBanner {
                     Text(banner).font(.caption).foregroundStyle(.secondary).lineLimit(1)
