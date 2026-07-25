@@ -29,8 +29,11 @@ import Module_Disk_Engine
     private let client: TransportClient
     private let vm: ModuleViewModel
     private var eventsTask: Task<Void, Never>?
+    private let store = ScanStore()
     /// When the current result landed; drives the cache lifetime.
-    private var completedAt: Date?
+    @Published public private(set) var completedAt: Date?
+    /// True while showing a tree restored from disk rather than just measured.
+    @Published public private(set) var restored = false
 
     /// Scan state must outlive the settings page — switching modules recreates
     /// the page, and losing a minute-long scan to a sidebar click is hostile.
@@ -49,6 +52,34 @@ import Module_Disk_Engine
         // The VM owns the event loop, not the page: partial snapshots keep
         // building the tree even while the user is on another module.
         eventsTask = Task { [weak self] in await self?.observeEvents() }
+        restoreLastScan()
+    }
+
+    /// A whole disk takes a minute to measure. Reopening Helm should not spend
+    /// it again: the last tree is read back from disk and shown at once, with
+    /// its age on the toolbar so nobody mistakes it for a fresh measurement.
+    private func restoreLastScan() {
+        guard let cached = store.load(),
+              Date().timeIntervalSince(cached.savedAt) <= Self.cacheLifetime else { return }
+        result = cached.result
+        completedAt = cached.savedAt
+        restored = true
+        rootTitle = ""
+        focusPath = [cached.result.root]
+        phase = .result
+        recomputeSegments()
+        Task { await resolveRootTitle(for: cached.result.root.path) }
+    }
+
+    private func resolveRootTitle(for path: String) async {
+        if volumes.isEmpty { await loadVolumes() }
+        rootTitle = Self.title(for: path, volumes: volumes)
+    }
+
+    private static func title(for path: String, volumes: [VolumeInfo]) -> String {
+        volumes.first { $0.path == path }?.name
+            ?? ((path as NSString).lastPathComponent.isEmpty ? path
+                : (path as NSString).lastPathComponent)
     }
 
     /// A day-old tree is a guess, not a measurement. Called on page appear.
@@ -68,10 +99,9 @@ import Module_Disk_Engine
 
     public func scan(path: String) async {
         // "/" is a path, not a name; the volume list knows what to call it.
-        rootTitle = volumes.first { $0.path == path }?.name
-            ?? ((path as NSString).lastPathComponent.isEmpty ? path
-                : (path as NSString).lastPathComponent)
+        rootTitle = Self.title(for: path, volumes: volumes)
         navDirection = .none
+        restored = false
         phase = .scanning
         live = true
         tick = nil
@@ -84,6 +114,7 @@ import Module_Disk_Engine
         }
         result = scan
         completedAt = Date()
+        store.save(scan, at: Date())
         // The user may have drilled into a partial tree; find the same spot in
         // the final one instead of yanking them back to the root.
         focusPath = DiskFocus.resolve(paths: focusPath.map(\.path), in: scan.root)
@@ -99,9 +130,11 @@ import Module_Disk_Engine
 
     public func newScan() {
         if live { cancel() }
+        store.clear()
         phase = .start
         result = nil
         completedAt = nil
+        restored = false
         focusPath = []
         segments = []
         basket = []
@@ -168,12 +201,25 @@ import Module_Disk_Engine
         let paths = basket.map(\.path)
         guard !paths.isEmpty else { return }
         let removal: DiskRemoval? = await client.request("trash", encoding: paths)
+        let freed = removal?.freedBytes ?? 0
         banner = DkStr.removedFreed(ByteCountFormatter.string(
-            fromByteCount: Int64(removal?.freedBytes ?? 0), countStyle: .file))
+            fromByteCount: Int64(freed), countStyle: .file))
         basket = []
-        // The tree is stale the moment anything is trashed; rescanning is
-        // honest, and after a scan that took seconds it is cheap enough.
-        if let root = focusPath.first?.path { await scan(path: root) }
+        // Re-walking the disk to learn what we already know — those paths are
+        // gone, and by how much — costs a minute on a full volume. Apply the
+        // deletion to the tree in hand instead.
+        guard let previous = result, let removed = removal?.removed, !removed.isEmpty else { return }
+        let pruned = DiskTreePrune.removing(paths: removed, from: previous.root)
+        let updated = ScanResult(root: pruned, freeBytes: previous.freeBytes + freed,
+                                 filesScanned: previous.filesScanned, seconds: previous.seconds,
+                                 advice: previous.advice.filter { advice in
+                                     !removed.contains { advice.path == $0
+                                         || advice.path.hasPrefix($0 + "/") }
+                                 })
+        result = updated
+        store.save(updated, at: completedAt ?? Date())
+        focusPath = DiskFocus.resolve(paths: focusPath.map(\.path), in: pruned)
+        recomputeSegments()
     }
 
     // MARK: - Events

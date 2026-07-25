@@ -76,4 +76,23 @@ final class DiskScannerTests: XCTestCase {
         XCTAssertEqual(node.modified, past.timeIntervalSince1970, accuracy: 2)
         XCTAssertEqual(node.bytes > 0, true)
     }
+
+    /// The skip set must actually prevent descent — the firmlink fix depends
+    /// on it, and a path-formatting slip made it silently inert once already.
+    func testSkippedDirectoriesAreNotWalked() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("helm-skip-\(UUID().uuidString)")
+        let kept = root.appendingPathComponent("kept")
+        let skipped = root.appendingPathComponent("skipped")
+        try FileManager.default.createDirectory(at: kept, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: skipped, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try Data(count: 300_000).write(to: kept.appendingPathComponent("a.bin"))
+        try Data(count: 900_000).write(to: skipped.appendingPathComponent("b.bin"))
+
+        let tree = try XCTUnwrap(DiskScanner(foldThreshold: 1,
+                                             skip: [skipped.path]).scan(root: root.path))
+        XCTAssertEqual(tree.children.map(\.name), ["kept"])
+        XCTAssertLessThan(tree.bytes, 900_000)
+    }
 }
