@@ -123,6 +123,13 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
         await blocking { self.trashSync(paths) }
     }
 
+    /// Reads Info.plist for a bundle so failures can be tied to the app that
+    /// owns an active system extension.
+    private func bundleID(forAppAt path: String) -> String? {
+        let info = URL(fileURLWithPath: path).appendingPathComponent("Contents/Info.plist")
+        return (NSDictionary(contentsOf: info)?["CFBundleIdentifier"]) as? String
+    }
+
     /// Shared trashing core: sizes are read before trashing; only successfully
     /// trashed items count toward freedBytes.
     private func trashSync(_ paths: [String]) -> UninstallResult {
@@ -134,16 +141,23 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
         for p in paths {
             let url = URL(fileURLWithPath: p)
             let size = fs.size(url)
-            if trash.trash(url) {
+            let outcome = trash.trashItem(url)
+            if outcome.succeeded {
                 trashed.append(p); freed += size
             } else {
                 failed.append(p)
                 let hosts = extensionHosts ?? extensions.activeExtensionHosts()
                 extensionHosts = hosts
-                let blocked = hosts.contains { p.contains($0) }
+                // Match the app's bundle id, not the path: /Applications/X.app
+                // never contains "com.vendor.x".
+                let blocked = p.hasSuffix(".app") && hosts.contains { host in
+                    bundleID(forAppAt: p).map { $0 == host || $0.hasPrefix(host) } ?? false
+                }
                 failures.append(TrashFailureInfo(
                     path: p,
-                    reason: TrashFailure.reason(path: p, hasSystemExtension: blocked).rawValue))
+                    reason: TrashFailure.reason(path: p, errorCode: outcome.errorCode,
+                                                hasSystemExtension: blocked).rawValue,
+                    message: outcome.message))
             }
         }
         return UninstallResult(trashed: trashed, failed: failed,
