@@ -1,4 +1,5 @@
 import SwiftUI
+import HelmUI
 import Module_Disk_Engine
 
 /// The sunburst. Drawn on Canvas because a few hundred arcs as SwiftUI shapes
@@ -8,9 +9,13 @@ struct RingView: View {
     let segments: [RingSegment]
     let focusName: String
     let focusBytes: Int
+    /// True while the scan is still feeding the ring.
+    let growing: Bool
     @Binding var hovered: String?
     var onSelect: (RingSegment) -> Void
     var onBack: () -> Void
+
+    @State private var hoverPoint: CGPoint?
 
     private let geometry = RingGeometry(innerRadius: 0.34, thickness: 0.155, gap: 0.012)
 
@@ -27,17 +32,29 @@ struct RingView: View {
                                            inner: r0, outer: r1,
                                            start: segment.startAngle, end: segment.endAngle)
                         context.fill(path, with: .color(color(for: segment)))
+                        // A hairline of window background between arcs reads as
+                        // engraved separations rather than touching paint.
+                        context.stroke(path, with: .color(Color(nsColor: .windowBackgroundColor)),
+                                       lineWidth: 1)
                     }
                 }
                 centerLabel
                     .frame(width: side * geometry.innerRadius * 1.7)
+
+                if let point = hoverPoint, let tip = tooltipSegment {
+                    tooltip(for: tip)
+                        .position(x: point.x, y: point.y - 26)
+                        .allowsHitTesting(false)
+                }
             }
             .contentShape(Rectangle())
             .onContinuousHover { phase in
                 switch phase {
                 case .active(let point):
+                    hoverPoint = point
                     hovered = segment(at: point, center: center, side: side)?.path
                 case .ended:
+                    hoverPoint = nil
                     hovered = nil
                 }
             }
@@ -50,15 +67,48 @@ struct RingView: View {
                 onSelect(hit)
             }
         }
+        .animation(HelmMotion.interface, value: segments.count)
+    }
+
+    /// The segment under the cursor; free space and the folded bucket get
+    /// their own labels so the tooltip never shows a bare "…".
+    private var tooltipSegment: RingSegment? {
+        guard let hovered else { return nil }
+        return segments.first { $0.path == hovered && !$0.path.isEmpty }
+            ?? segments.first { $0.isFreeSpace && hovered.isEmpty }
+    }
+
+    private func tooltip(for segment: RingSegment) -> some View {
+        HStack(spacing: 6) {
+            Circle().fill(color(for: segment)).frame(width: 7, height: 7)
+            Text(segment.isOther ? DkStr.otherItems : segment.name)
+                .font(.caption)
+                .lineLimit(1)
+            Text(ByteCountFormatter.string(fromByteCount: Int64(segment.bytes), countStyle: .file))
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 9).padding(.vertical, 5)
+        .background(Capsule().fill(.regularMaterial))
+        .overlay(Capsule().strokeBorder(HelmSurface.cardStroke))
+        .fixedSize()
     }
 
     private var centerLabel: some View {
-        VStack(spacing: 2) {
+        VStack(spacing: 3) {
             Text(focusName)
-                .font(.system(size: 13, weight: .medium))
+                .font(.caption)
+                .foregroundStyle(.secondary)
                 .lineLimit(1).truncationMode(.middle)
             Text(ByteCountFormatter.string(fromByteCount: Int64(focusBytes), countStyle: .file))
-                .font(.system(size: 18, weight: .medium, design: .monospaced))
+                .font(.system(size: 19, weight: .medium, design: .monospaced))
+                .contentTransition(.numericText())
+                .animation(HelmMotion.interface, value: focusBytes)
+            if growing {
+                Text(DkStr.scanning + "…")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
         }
         .padding(.horizontal, 8)
     }
@@ -85,23 +135,6 @@ struct RingView: View {
         return path
     }
 
-    // MARK: - Colour
-
-    /// A fixed, tuned palette rather than a hue derived from the path: hashed
-    /// hues produced a harlequin ring where neighbouring wedges clashed and
-    /// nothing read as related. These eight sit in one family, so size
-    /// differences carry the meaning and colour only separates neighbours.
-    private static let palette: [Color] = [
-        Color(hue: 0.58, saturation: 0.52, brightness: 0.82),   // teal
-        Color(hue: 0.62, saturation: 0.45, brightness: 0.74),   // slate blue
-        Color(hue: 0.53, saturation: 0.42, brightness: 0.72),   // sea
-        Color(hue: 0.68, saturation: 0.38, brightness: 0.76),   // periwinkle
-        Color(hue: 0.47, saturation: 0.40, brightness: 0.70),   // moss
-        Color(hue: 0.72, saturation: 0.34, brightness: 0.72),   // lilac
-        Color(hue: 0.09, saturation: 0.45, brightness: 0.80),   // sand
-        Color(hue: 0.02, saturation: 0.42, brightness: 0.76),   // clay
-    ]
-
     /// Depth fades toward the rim, hover lifts; free space, folded slivers and
     /// unreadable folders stay deliberately quiet so real data reads first.
     private func color(for segment: RingSegment) -> Color {
@@ -109,18 +142,9 @@ struct RingView: View {
         if segment.noAccess { return Color.orange.opacity(0.22) }
         if segment.isOther { return Color.primary.opacity(0.10) }
 
-        let base = Self.palette[paletteIndex(for: segment)]
+        let base = DiskPalette.base(for: segment.path)
         let isHovered = hovered == segment.path
-        // Outer rings sit back so the first ring stays the subject.
         let recede = 1.0 - Double(segment.ring) * 0.14
         return base.opacity(isHovered ? 1.0 : recede)
-    }
-
-    /// Stable per-path index so a folder keeps its colour across redraws and
-    /// drill-downs — the chart has to look like the same chart after a click.
-    private func paletteIndex(for segment: RingSegment) -> Int {
-        var hash: UInt64 = 5381
-        for byte in segment.path.utf8 { hash = (hash &* 33) &+ UInt64(byte) }
-        return Int(hash % UInt64(Self.palette.count))
     }
 }
