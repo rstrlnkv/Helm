@@ -63,15 +63,19 @@ public struct HomebrewSettingsPage: View {
     // MARK: - Manager
 
     private var manager: some View {
+        managerBody
+            .helmMetricsHeader {
+                HelmMetricStrip([
+                    .init("\(hb.installed.count)", HbStr.metricPackages),
+                    .init("\(hb.outdated.count)", HbStr.metricOutdated,
+                          tint: hb.outdated.isEmpty ? nil : .orange),
+                    .init("\(hb.installed.filter(\.isCask).count)", HbStr.metricCasks),
+                ])
+            }
+    }
+
+    private var managerBody: some View {
         VStack(spacing: 0) {
-            HelmMetricStrip([
-                .init("\(hb.installed.count)", HbStr.metricPackages),
-                .init("\(hb.outdated.count)", HbStr.metricOutdated,
-                      tint: hb.outdated.isEmpty ? nil : .orange),
-                .init("\(hb.installed.filter(\.isCask).count)", HbStr.metricCasks),
-            ])
-            .padding(.horizontal, 12)
-            .padding(.top, 12)
             Picker("", selection: $segment) {
                 Text(HbStr.segInstalled).tag(0)
                 Text(HbStr.segUpdates).tag(1)
@@ -201,13 +205,16 @@ public struct HomebrewSettingsPage: View {
                         .foregroundStyle(isCask ? .purple : .blue)
                     if let detail { Text(detail).font(.caption2).foregroundStyle(.secondary) }
                 }
-                if let desc {
-                    Text(desc).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-                }
+                // The description arrives from a separate `brew desc` batch.
+                // The line is always present (empty until then) so rows keep
+                // their height and the list doesn't re-flow twice on load.
+                Text(desc ?? " ")
+                    .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer()
             action().controlSize(.small)
         }
+        .frame(height: 38)
         .padding(.vertical, 2)
     }
 

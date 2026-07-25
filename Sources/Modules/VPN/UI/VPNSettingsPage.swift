@@ -21,16 +21,14 @@ public struct VPNSettingsPage: View {
     }
 
     public var body: some View {
-        VStack(spacing: 0) {
-            HelmMetricStrip([
-                .init("\(vm.connections.count)", VPNStr.metricConnections),
-                .init("\(activeCount)", VPNStr.metricActive, tint: activeCount > 0 ? .green : nil),
-                .init("\(vm.autoConnected.count)", VPNStr.metricAutomatic),
-            ])
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
-            vpnForm
-        }
+        vpnForm
+            .helmMetricsHeader {
+                HelmMetricStrip([
+                    .init("\(vm.connections.count)", VPNStr.metricConnections),
+                    .init("\(activeCount)", VPNStr.metricActive, tint: activeCount > 0 ? .green : nil),
+                    .init("\(vm.autoConnected.count)", VPNStr.metricAutomatic),
+                ])
+            }
     }
 
     /// Connections that are up or on their way up.

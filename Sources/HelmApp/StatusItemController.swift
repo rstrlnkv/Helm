@@ -160,6 +160,7 @@ import HelmUI
         showSettings(module: sender.representedObject as? String)
     }
 
+
     @objc func openSettings() {
         settingsWindow.show()
     }
