@@ -15,7 +15,12 @@ import HelmUI
 
     /// One size for every page. Switching pages must never resize the window
     /// under the user's cursor; the size they pick is remembered instead.
-    private static let defaultSize = NSSize(width: 1000, height: 680)
+    /// 1040 was chosen against the densest page (Homebrew: name, kind badge,
+    /// version, description and an action button on one row) — narrower
+    /// crowds it, wider only adds empty gutter.
+    private static let defaultSize = NSSize(width: 1040, height: 700)
+    /// Below this the list rows start truncating names and paths.
+    private static let minSize = NSSize(width: 880, height: 560)
 
     init(host: ModuleHost) {
         let model = SettingsModel(host: host)
@@ -27,10 +32,11 @@ import HelmUI
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.setContentSize(Self.defaultSize)
+        window.contentMinSize = Self.minSize
         window.center()
         window.isReleasedWhenClosed = false
         // Remember whatever size the user settles on.
-        window.setFrameAutosaveName("HelmSettingsWindow")
+        window.setFrameAutosaveName("HelmSettingsWindow.v2")
         self.window = window
         super.init()
         window.delegate = self

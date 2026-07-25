@@ -101,7 +101,7 @@ public struct HomebrewSettingsPage: View {
     }
 
     private var installedList: some View {
-        listOrEmpty(hb.installed, empty: HbStr.noneInstalled) { pkg in
+        listOrEmpty(hb.installed, empty: hb.loadedInstalled ? HbStr.noneInstalled : nil) { pkg in
             pkgRow(name: pkg.name, detail: pkg.version, isCask: pkg.isCask,
                    desc: hb.description(name: pkg.name, isCask: pkg.isCask)) {
                 Button(HbStr.uninstall) { hb.uninstall(pkg) }.disabled(hb.running)
@@ -118,7 +118,7 @@ public struct HomebrewSettingsPage: View {
                 }.padding(8)
                 Divider()
             }
-            listOrEmpty(hb.outdated, empty: HbStr.upToDate) { pkg in
+            listOrEmpty(hb.outdated, empty: hb.loadedOutdated ? HbStr.upToDate : nil) { pkg in
                 pkgRow(name: pkg.name, detail: "\(pkg.installed) → \(pkg.latest)", isCask: pkg.isCask) {
                     Button(HbStr.upgrade) { hb.upgrade(pkg) }.disabled(hb.running)
                 }
@@ -218,11 +218,16 @@ public struct HomebrewSettingsPage: View {
         .padding(.vertical, 2)
     }
 
-    private func listOrEmpty<T: Identifiable, Row: View>(_ items: [T], empty: String,
+    /// `empty` is nil while the first query is still out: "nothing installed"
+    /// must not be shown to someone who is simply waiting for the list.
+    private func listOrEmpty<T: Identifiable, Row: View>(_ items: [T], empty: String?,
                                                          @ViewBuilder row: @escaping (T) -> Row) -> some View {
         Group {
-            if items.isEmpty { HelmCenteredContent { Text(empty).foregroundStyle(.secondary).multilineTextAlignment(.center).padding() } }
-            else {
+            if items.isEmpty, let empty {
+                HelmCenteredContent { Text(empty).foregroundStyle(.secondary).multilineTextAlignment(.center).padding() }
+            } else if items.isEmpty {
+                HelmCenteredContent { ProgressView().controlSize(.small) }
+            } else {
                 List(items) { row($0).listRowSeparator(.hidden) }
                     .listStyle(.inset)
                     .scrollContentBackground(.hidden)

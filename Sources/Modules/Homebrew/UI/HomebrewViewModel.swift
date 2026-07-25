@@ -9,6 +9,9 @@ import Module_Homebrew_Engine
 
     @Published public private(set) var status = BrewStatus(installed: false, brewPath: nil)
     @Published public private(set) var installed: [BrewPackage] = []
+    /// True until the first list has come back, so the UI can tell "loading"
+    /// apart from "genuinely nothing installed".
+    @Published public private(set) var loadedInstalled = false
     @Published public private(set) var outdated: [OutdatedPackage] = []
     @Published public private(set) var searchHits: [SearchHit] = []
     @Published public private(set) var consoleLines: [String] = []
@@ -56,10 +59,15 @@ import Module_Homebrew_Engine
     public func refreshStatus() async { status = await client.request("status") ?? status }
     public func refreshInstalled() async {
         installed = await client.request("listInstalled") ?? []
+        loadedInstalled = true
         await loadDescriptions(formulae: installed.filter { !$0.isCask }.map(\.name),
                                casks: installed.filter(\.isCask).map(\.name))
     }
-    public func refreshOutdated() async { outdated = await client.request("outdated") ?? [] }
+    public func refreshOutdated() async {
+        outdated = await client.request("outdated") ?? []
+        loadedOutdated = true
+    }
+    @Published public private(set) var loadedOutdated = false
     public func search(_ q: String) async {
         searchHits = await client.request("search", payload: Data(q.utf8)) ?? []
         await loadDescriptions(formulae: searchHits.filter { !$0.isCask }.map(\.name),
