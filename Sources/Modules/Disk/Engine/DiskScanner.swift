@@ -41,6 +41,10 @@ public final class DiskScanner: @unchecked Sendable {
                      onPartial: (@Sendable (DiskNode) -> Void)? = nil) -> DiskNode? {
         let builder = TreeBuilder(root: root, foldThreshold: foldThreshold)
         let rootDev = deviceID(of: root)
+        // The Data volume is reachable both directly and through the firmlinks
+        // that make up `/`; its duplicate side is skipped so bytes land where
+        // the user expects them (FirmlinkMap has the why).
+        let skip = FirmlinkMap.skipSet(scanRoot: root)
         var filesSeen = 0
         var bytesSeen = 0
         var lastPath = root
@@ -64,7 +68,8 @@ public final class DiskScanner: @unchecked Sendable {
                     case .entries(let entries):
                         for entry in entries {
                             if entry.isDirectory {
-                                if self.deviceID(of: entry.path).matches(rootDev) {
+                                if !skip.contains(entry.path),
+                                   self.deviceID(of: entry.path).matches(rootDev) {
                                     directories.append(entry.path)
                                 }
                             } else {

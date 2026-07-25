@@ -47,6 +47,7 @@ struct DiskResultView: View {
         List {
             ForEach(dvm.focus?.children ?? []) { child in
                 ChildRow(child: child,
+                         title: dvm.displayName(for: child),
                          fraction: fraction(of: child),
                          hovered: $hovered,
                          basketed: dvm.isBasketed(child),
@@ -199,6 +200,7 @@ private struct BreadcrumbBar: View {
 /// the item's share of the focused folder — the list reads as a bar chart.
 private struct ChildRow: View {
     let child: DiskEntry
+    let title: String
     let fraction: Double
     @Binding var hovered: String?
     let basketed: Bool
@@ -215,7 +217,7 @@ private struct ChildRow: View {
                                         : Color.secondary.opacity(0.5))
                 .frame(width: 8, height: 8)
             VStack(alignment: .leading, spacing: 1) {
-                Text(child.name == "…" ? DkStr.otherItems : child.name)
+                Text(child.name == "…" ? DkStr.otherItems : title)
                     .lineLimit(1).truncationMode(.middle)
                 if child.noAccess {
                     Text(DkStr.noAccess).font(.caption2).foregroundStyle(.orange)

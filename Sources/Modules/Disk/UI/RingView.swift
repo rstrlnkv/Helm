@@ -81,7 +81,8 @@ struct RingView: View {
     private func tooltip(for segment: RingSegment) -> some View {
         HStack(spacing: 6) {
             Circle().fill(color(for: segment)).frame(width: 7, height: 7)
-            Text(segment.isOther ? DkStr.otherItems : segment.name)
+            Text(segment.isOther ? DkStr.otherItems
+                                 : (DiskViewModel.folderName(for: segment.path) ?? segment.name))
                 .font(.caption)
                 .lineLimit(1)
             Text(ByteCountFormatter.string(fromByteCount: Int64(segment.bytes), countStyle: .file))

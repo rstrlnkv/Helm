@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 import HelmUI
 import Module_Disk_Engine
 
@@ -136,9 +137,17 @@ import Module_Disk_Engine
         recomputeSegments()
     }
 
-    /// The name shown for an entry: the root carries the volume's name.
+    /// The name shown for an entry: the scan root carries the volume's name,
+    /// and macOS's own folders are named the way Finder names them.
     public func displayName(for entry: DiskEntry) -> String {
-        entry.path == focusPath.first?.path && !rootTitle.isEmpty ? rootTitle : entry.name
+        if entry.path == focusPath.first?.path, !rootTitle.isEmpty { return rootTitle }
+        return Self.folderName(for: entry.path) ?? entry.name
+    }
+
+    /// Localized name for a macOS folder, or nil when it has none.
+    public static func folderName(for path: String) -> String? {
+        SystemFolderNames.display(path: path, home: NSHomeDirectory(),
+                                  language: AppLanguage.current.rawValue)
     }
 
     // MARK: - Basket
