@@ -157,7 +157,9 @@ public extension View {
     func helmMetricsHeader<Strip: View>(@ViewBuilder _ strip: () -> Strip) -> some View {
         safeAreaInset(edge: .top, spacing: 0) {
             strip()
-                .padding(.horizontal, 16)
+                // 20pt matches the inset macOS gives grouped Form rows, so
+                // every page shares one left and right edge.
+                .padding(.horizontal, 20)
                 .padding(.top, 12)
                 .padding(.bottom, 10)
         }

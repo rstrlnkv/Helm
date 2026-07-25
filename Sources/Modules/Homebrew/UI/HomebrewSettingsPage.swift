@@ -81,7 +81,8 @@ public struct HomebrewSettingsPage: View {
                 Text(HbStr.segUpdates).tag(1)
                 Text(HbStr.segSearch).tag(2)
             }
-            .pickerStyle(.segmented).labelsHidden().padding(12)
+            .pickerStyle(.segmented).labelsHidden()
+            .padding(.horizontal, 20).padding(.vertical, 10)
             .onChange(of: segment) { _, seg in
                 Task {
                     if seg == 0 { await hb.refreshInstalled() }
@@ -231,6 +232,7 @@ public struct HomebrewSettingsPage: View {
                 List(items) { row($0).listRowSeparator(.hidden) }
                     .listStyle(.inset)
                     .scrollContentBackground(.hidden)
+                    .padding(.horizontal, 12)
             }
         }
     }
