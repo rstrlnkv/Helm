@@ -1,0 +1,20 @@
+import SwiftUI
+import HelmContract
+import HelmRuntime
+import HelmUI
+import Module_Disk_Engine
+
+@MainActor public final class DiskDescriptor: ModuleDescriptor {
+    public static let id = ModuleID("disk")
+    public static let metadata = ModuleMetadata(
+        id: id, name: DkStr.moduleName, summary: DkStr.summary,
+        sfSymbol: "chart.pie", permissions: [])
+    public static let isolation: ModuleIsolation = .inProcess
+    public static let category: ModuleCategory = .utilities
+
+    public init() {}
+
+    public func makeEngine(store: NamespacedStore) -> any ModuleEngine { DiskEngine() }
+    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { .utility }
+    public func settingsPage(_ vm: ModuleViewModel) -> AnyView { AnyView(DiskSettingsPage(vm: vm)) }
+}
