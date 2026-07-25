@@ -18,6 +18,43 @@ import Module_Island_Engine
     func clear() { store.clear() }
 }
 
+/// Compact shelf access inside the controls pill: tiny draggable icons so
+/// parked files stay reachable without the big drop zone.
+struct IslandShelfChips: View {
+    @ObservedObject var shelf: ShelfViewModel
+
+    var body: some View {
+        if !shelf.items.isEmpty {
+            Divider().frame(height: 14)
+            HStack(spacing: 4) {
+                ForEach(shelf.items.prefix(5)) { item in
+                    Group {
+                        if let url = item.url {
+                            Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
+                                .resizable()
+                        } else {
+                            Image(systemName: "questionmark.square.dashed")
+                                .resizable()
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .frame(width: 18, height: 18)
+                    .onDrag {
+                        guard let url = item.url else { return NSItemProvider() }
+                        return NSItemProvider(contentsOf: url) ?? NSItemProvider()
+                    }
+                    .help(item.name)
+                }
+                if shelf.items.count > 5 {
+                    Text("+\(shelf.items.count - 5)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+}
+
 /// The shelf inside the expanded island: drop zone + item grid; items drag out
 /// with standard file semantics (the destination decides copy vs move).
 struct IslandShelfView: View {

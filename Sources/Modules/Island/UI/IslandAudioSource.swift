@@ -7,7 +7,7 @@ import Foundation
 /// the main queue; events flow through the island's TTL mechanism.
 final class IslandAudioSource: @unchecked Sendable {
     private let onDeviceEvent: @MainActor (String, String) -> Void
-    private let onVolumeEvent: @MainActor (String, String) -> Void
+    private let onVolumeEvent: @MainActor (Float) -> Void
     private var device = AudioObjectID(kAudioObjectUnknown)
     private var deviceBlock: AudioObjectPropertyListenerBlock?
     private var volumeBlock: AudioObjectPropertyListenerBlock?
@@ -20,6 +20,12 @@ final class IslandAudioSource: @unchecked Sendable {
             mScope: kAudioObjectPropertyScopeGlobal,
             mElement: kAudioObjectPropertyElementMain)
     }
+    private static func makeMuteAddress() -> AudioObjectPropertyAddress {
+        AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyMute,
+            mScope: kAudioObjectPropertyScopeOutput,
+            mElement: kAudioObjectPropertyElementMain)
+    }
     private static func makeVolumeAddress() -> AudioObjectPropertyAddress {
         AudioObjectPropertyAddress(
             mSelector: kAudioHardwareServiceDeviceProperty_VirtualMainVolume,
@@ -28,7 +34,7 @@ final class IslandAudioSource: @unchecked Sendable {
     }
 
     init(onDeviceEvent: @escaping @MainActor (String, String) -> Void,
-         onVolumeEvent: @escaping @MainActor (String, String) -> Void) {
+         onVolumeEvent: @escaping @MainActor (Float) -> Void) {
         self.onDeviceEvent = onDeviceEvent
         self.onVolumeEvent = onVolumeEvent
 
@@ -94,9 +100,54 @@ final class IslandAudioSource: @unchecked Sendable {
         var volAddr = Self.makeVolumeAddress()
         guard AudioObjectGetPropertyData(device, &volAddr, 0, nil, &size, &volume) == noErr
         else { return }
-        let percent = Int((volume * 100).rounded())
-        let symbol = percent == 0 ? "speaker.slash" : percent < 50 ? "speaker.wave.1" : "speaker.wave.2"
-        Task { @MainActor in self.onVolumeEvent("\(percent)%", symbol) }
+        let level = volume
+        Task { @MainActor in self.onVolumeEvent(level) }
+    }
+
+    // MARK: - External control (slider / intercepted media keys)
+
+    var volumeControlAvailable: Bool {
+        var volAddr = Self.makeVolumeAddress()
+        return device != kAudioObjectUnknown && AudioObjectHasProperty(device, &volAddr)
+    }
+
+    func currentVolume() -> Float? {
+        guard device != kAudioObjectUnknown else { return nil }
+        var volume: Float32 = 0
+        var size = UInt32(MemoryLayout<Float32>.size)
+        var volAddr = Self.makeVolumeAddress()
+        guard AudioObjectGetPropertyData(device, &volAddr, 0, nil, &size, &volume) == noErr
+        else { return nil }
+        return volume
+    }
+
+    func setVolume(_ value: Float) {
+        guard device != kAudioObjectUnknown else { return }
+        var volume = Float32(min(max(value, 0), 1))
+        var volAddr = Self.makeVolumeAddress()
+        AudioObjectSetPropertyData(device, &volAddr, 0, nil,
+                                   UInt32(MemoryLayout<Float32>.size), &volume)
+        if volume > 0 { setMuted(false) }
+    }
+
+    func isMuted() -> Bool {
+        guard device != kAudioObjectUnknown else { return false }
+        var muted: UInt32 = 0
+        var size = UInt32(MemoryLayout<UInt32>.size)
+        var addr = Self.makeMuteAddress()
+        guard AudioObjectHasProperty(device, &addr),
+              AudioObjectGetPropertyData(device, &addr, 0, nil, &size, &muted) == noErr
+        else { return false }
+        return muted != 0
+    }
+
+    func setMuted(_ muted: Bool) {
+        guard device != kAudioObjectUnknown else { return }
+        var value: UInt32 = muted ? 1 : 0
+        var addr = Self.makeMuteAddress()
+        guard AudioObjectHasProperty(device, &addr) else { return }
+        AudioObjectSetPropertyData(device, &addr, 0, nil,
+                                   UInt32(MemoryLayout<UInt32>.size), &value)
     }
 
     // MARK: - CoreAudio helpers
