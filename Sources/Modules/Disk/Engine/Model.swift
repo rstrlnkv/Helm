@@ -38,10 +38,14 @@ public struct ScanResult: Codable, Equatable, Sendable {
     public let freeBytes: Int
     public let filesScanned: Int
     public let seconds: Double
+    /// Reclaim suggestions; computed once, on the final result only.
+    public let advice: [DiskAdvice]
 
-    public init(root: DiskEntry, freeBytes: Int, filesScanned: Int, seconds: Double) {
+    public init(root: DiskEntry, freeBytes: Int, filesScanned: Int, seconds: Double,
+                advice: [DiskAdvice] = []) {
         self.root = root; self.freeBytes = freeBytes
         self.filesScanned = filesScanned; self.seconds = seconds
+        self.advice = advice
     }
 }
 
