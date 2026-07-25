@@ -5,10 +5,11 @@ import Module_VPN_UI
 import Module_Uninstaller_UI
 import Module_Homebrew_UI
 import Module_Leftovers_UI
+import Module_Disk_UI
 
 /// All compiled-in module descriptors. Add future modules here.
 @MainActor enum ModuleRegistry {
-    static let all: [any ModuleDescriptor] = [KeepAwakeDescriptor(), VPNDescriptor(), UninstallerDescriptor(), HomebrewDescriptor(), LeftoversDescriptor()]
+    static let all: [any ModuleDescriptor] = [KeepAwakeDescriptor(), VPNDescriptor(), UninstallerDescriptor(), HomebrewDescriptor(), LeftoversDescriptor(), DiskDescriptor()]
 }
 
 extension ModuleDescriptor {
