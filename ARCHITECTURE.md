@@ -160,6 +160,18 @@ much as a taste one:
 Steady rotation (the About bezel during an update check) stays linear: motion
 with no destination is the one place a linear curve is right.
 
+Two rules earned by the panel, both about *what draws where* rather than timing:
+
+- **Composite before fading.** Animating `.opacity` puts a subtree in an
+  offscreen layer, and hierarchical colours (`.secondary`, `.tertiary`) resolve
+  differently inside one. Dropping the layer at the end of the animation makes
+  those colours jump. `.compositingGroup()` ahead of `.opacity` keeps the
+  rendering path identical during and after.
+- **Never reveal with `if`.** Removing rows from the hierarchy collapses the
+  card's background instantly while the disappearing rows keep drawing over
+  whatever sits below. Keep the content mounted, animate a measured height, and
+  `.clipped()` — then the block's edge always contains its content.
+
 ## Design language (HelmUI/DesignSystem/HelmSurfaces.swift)
 
 Every screen speaks the same visual language, derived from the app's own

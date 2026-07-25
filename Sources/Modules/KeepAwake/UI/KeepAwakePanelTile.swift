@@ -49,6 +49,13 @@ public struct KeepAwakePanelTile: View {
                     if h > 0 { moreHeight = h }
                 }
                 .frame(height: showMore ? moreHeight : 0, alignment: .top)
+                // Composite before fading. Animating `.opacity` puts the block
+                // in an offscreen layer, and hierarchical colours (.secondary
+                // on the "Automation" heading) resolve differently inside one;
+                // when the layer is dropped at the end of the animation the
+                // colour jumps. A permanent compositing group keeps the
+                // rendering path identical during and after the animation.
+                .compositingGroup()
                 .opacity(showMore ? 1 : 0)
                 .clipped()
                 .allowsHitTesting(showMore)

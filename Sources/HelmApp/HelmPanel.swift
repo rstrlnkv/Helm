@@ -291,19 +291,26 @@ private struct UtilitiesSection: View {
             .buttonStyle(.plain)
             .accessibilityLabel(AppStr.utilities)
 
-            if expanded {
-                VStack(spacing: 2) {
-                    ForEach(Array(modules.enumerated()), id: \.element.descriptor.idRaw) { index, live in
-                        utilityRow(live)
-                            // Fade only, cascading: `.move(edge:)` made rows fly in
-                            // over the header. The card's height growth (animated by
-                            // the enclosing withAnimation) is what reveals them.
-                            .transition(.opacity.animation(
-                                HelmMotion.contentFade.delay(Double(index) * 0.06)))
-                    }
+            // Measured height rather than `if expanded`: with the rows removed
+            // from the hierarchy the card's background collapsed instantly
+            // while the disappearing rows kept drawing over whatever sat
+            // below. Keeping them mounted and clipping to an animated height
+            // means the block's edge always contains its content — the same
+            // pattern Keep Awake's inline block uses.
+            VStack(spacing: 2) {
+                ForEach(modules, id: \.descriptor.idRaw) { live in
+                    utilityRow(live)
                 }
-                .padding(.top, 8)
             }
+            .padding(.top, 8)
+            .onGeometryChange(for: CGFloat.self, of: \.size.height) { height in
+                if height > 0 { rowsHeight = height }
+            }
+            .frame(height: expanded ? rowsHeight : 0, alignment: .top)
+            .compositingGroup()
+            .opacity(expanded ? 1 : 0)
+            .clipped()
+            .allowsHitTesting(expanded)
         }
         .helmPanelCard()
     }
