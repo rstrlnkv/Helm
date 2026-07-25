@@ -96,9 +96,9 @@ public struct WorkspaceRunningApps: RunningAppsPort {
     public func isRunning(bundleID: String) -> Bool {
         !NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).isEmpty
     }
-    public func quit(bundleID: String) {
+    public func quit(bundleID: String, force: Bool) {
         for app in NSRunningApplication.runningApplications(withBundleIdentifier: bundleID) {
-            app.terminate()
+            if force { app.forceTerminate() } else { app.terminate() }
         }
     }
 }

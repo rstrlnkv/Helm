@@ -47,4 +47,7 @@ enum VPNStr {
         case .unknown: return L("Unknown", [.ru: "Неизвестно", .es: "Desconocido", .fr: "Inconnu", .de: "Unbekannt", .ja: "不明", .zh: "未知", .pt: "Desconhecido"])
         }
     }
+    static var metricConnections: String { L("CONNECTIONS", [.ru: "ПОДКЛЮЧЕНИЯ", .es: "CONEXIONES", .fr: "CONNEXIONS", .de: "VERBINDUNGEN", .ja: "接続", .zh: "连接", .pt: "CONEXÕES"]) }
+    static var metricActive: String { L("ACTIVE", [.ru: "АКТИВНО", .es: "ACTIVAS", .fr: "ACTIVES", .de: "AKTIV", .ja: "使用中", .zh: "已连接", .pt: "ATIVAS"]) }
+    static var metricAutomatic: String { L("AUTOMATIC", [.ru: "АВТО", .es: "AUTO", .fr: "AUTO", .de: "AUTO", .ja: "自動", .zh: "自动", .pt: "AUTO"]) }
 }

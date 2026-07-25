@@ -62,6 +62,7 @@ import HelmRuntime
                 installState = .installing
                 try Installer.installZip(at: tmp, expectedVersion: rel.version)  // terminates on success
             } catch {
+                HelmLog.shared.error("update", "install failed: \(error.localizedDescription)")
                 installState = .failed
             }
         }
@@ -107,11 +108,14 @@ import HelmRuntime
                                            currentVersion: currentVersion, channel: channel)
             switch outcome {
             case .upToDate:
+                HelmLog.shared.info("update", "up to date on \(channel.rawValue)")
                 available = nil
                 if manual { lastMessage = "up-to-date" }
             case .error:
+                HelmLog.shared.warn("update", "check failed (HTTP \(http.statusCode), \(channel.rawValue))")
                 if manual { lastMessage = "error" }
             case .available(let r):
+                HelmLog.shared.info("update", "available \(r.version) on \(channel.rawValue)")
                 guard let page = URL(string: r.pageURL) else {
                     if manual { lastMessage = "error" }
                     return

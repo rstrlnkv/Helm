@@ -1,5 +1,6 @@
 import AppKit
 import HelmContract
+import HelmRuntime
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
     let host = ModuleHost.shared
@@ -21,13 +22,16 @@ import HelmContract
         }
         HotkeyManager.shared.start()
 
+        // Dev builds always log: the file is the evidence we triage before a
+        // build graduates to the stable channel.
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
+        HelmLog.shared.start(version: version, override: AppSettings.loggingOverride)
+        HelmLog.shared.info("app", "modules: \(ModuleRegistry.all.map(\.idRaw).joined(separator: ", "))")
+
         UpdateService.shared.checkOnLaunch()
-
-        if ProcessInfo.processInfo.environment["HELM_DEBUG_SETTINGS"] == "1" {
-            Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
-                Task { @MainActor in self.statusController.showAboutForDebug() }
-            }
-        }
-
     }
+    func applicationWillTerminate(_ notification: Notification) {
+        HelmLog.shared.info("app", "terminating")
+    }
+
 }

@@ -68,11 +68,6 @@ import HelmUI
         window.makeKeyAndOrderFront(nil)
     }
 
-    /// Debug harness entry point (env-gated in AppDelegate).
-    func showAboutForDebug() {
-        model.selection = .about
-        show()
-    }
 
     func windowWillClose(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -220,19 +215,10 @@ private struct ModuleDetailView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 12) {
-                Image(systemName: descriptor.moduleMetadata.sfSymbol)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 40, height: 40)
-                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(categoryColor(descriptor.moduleCategory)))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(descriptor.moduleMetadata.name).font(.title2.bold())
-                    Text(descriptor.moduleMetadata.summary)
-                        .font(.callout).foregroundStyle(.secondary)
-                }
-                Spacer()
+            HelmPageHeader(symbol: descriptor.moduleMetadata.sfSymbol,
+                           tint: categoryColor(descriptor.moduleCategory),
+                           title: descriptor.moduleMetadata.name,
+                           subtitle: descriptor.moduleMetadata.summary) {
                 Toggle("", isOn: Binding(
                     get: { host.isEnabled(descriptor) },
                     set: { host.setEnabled(descriptor, $0) }
@@ -240,7 +226,6 @@ private struct ModuleDetailView: View {
                 .toggleStyle(.switch)
                 .labelsHidden()
             }
-            .padding(20)
             Divider()
             if let live = host.liveModule(id) {
                 descriptor.settingsPage(live.vm)
@@ -264,12 +249,52 @@ private struct MenuBarSettingsView: View {
     @State private var launchAtLogin: Bool = LoginItem.isEnabled
     @State private var showSettingsButton = AppSettings.showSettingsButton
     @State private var showQuitButton = AppSettings.showQuitButton
+    @State private var loggingOn = LogPolicy.isEnabled(
+        version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0",
+        override: AppSettings.loggingOverride)
+
+    private var isDevBuild: Bool {
+        (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "").contains("-dev")
+    }
 
     var body: some View {
+        VStack(spacing: 0) {
+            HelmPageHeader(symbol: "gearshape", tint: .gray,
+                           title: AppStr.settingsPane, subtitle: AppStr.settingsPaneSummary)
+            Divider()
+            settingsForm
+        }
+    }
+
+    private var settingsForm: some View {
         Form {
             Section(AppStr.general) {
                 Toggle(AppStr.launchAtLogin, isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, v in LoginItem.setEnabled(v) }
+            }
+            Section(AppStr.diagnostics) {
+                Toggle(AppStr.writeLog, isOn: $loggingOn)
+                    .onChange(of: loggingOn) { _, v in
+                        AppSettings.loggingOverride = v
+                        HelmLog.shared.setEnabled(v)
+                    }
+                Text(isDevBuild ? AppStr.logNoteDev : AppStr.logNoteStable)
+                    .font(.caption).foregroundStyle(.secondary)
+                HStack(spacing: 10) {
+                    Button {
+                        NSWorkspace.shared.activateFileViewerSelecting([HelmLog.fileURL])
+                    } label: {
+                        Label(AppStr.revealLog, systemImage: "doc.text.magnifyingglass")
+                    }
+                    Button {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(HelmLog.shared.currentText(), forType: .string)
+                    } label: {
+                        Label(AppStr.copyLog, systemImage: "doc.on.doc")
+                    }
+                    Button(AppStr.clearLog) { HelmLog.shared.clear() }
+                }
+                .controlSize(.small)
             }
             Section(AppStr.panel) {
                 Toggle(AppStr.showSettingsButton, isOn: $showSettingsButton)
@@ -367,7 +392,7 @@ private struct AboutHelmView: View {
                 // means work, not decoration.
                 HelmBezel(active: updater.checking)
                     .frame(width: 172, height: 172)
-                Image(nsImage: NSApplication.shared.applicationIconImage)
+                Image(nsImage: AppIconImage.dark)
                     .resizable()
                     .frame(width: 92, height: 92)
             }
@@ -601,12 +626,10 @@ private struct WhatsNewView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text(AppStr.whatsNew).font(.headline)
-                Spacer()
+            HelmPageHeader(symbol: "sparkles", tint: .indigo,
+                           title: AppStr.whatsNew, subtitle: AppStr.whatsNewSummary) {
                 Button(AppStr.close, action: onClose)
             }
-            .padding()
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {

@@ -3,6 +3,7 @@
 
 import Foundation
 import HelmContract
+import HelmRuntime
 
 /// Orchestrates VPN connect/disconnect/toggle (via `scutil --nc`) and per-app
 /// auto-connect (VPNAutoConnectCore) against the injected ports. `activate()`/
@@ -81,6 +82,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     }
 
     public func connect(_ name: String, auto: Bool = false) {
+        HelmLog.shared.info("vpn", "connect \(name)\(auto ? " (auto)" : "")")
         if auto { autoConnected.insert(name) }
         var args = ["--nc", "start", name]
         if let creds = credentials?.credentials(for: name), creds.secret?.isEmpty == false {
@@ -94,6 +96,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     }
 
     public func disconnect(_ name: String) {
+        HelmLog.shared.info("vpn", "disconnect \(name)")
         autoConnected.remove(name)
         _ = runner.run(["--nc", "stop", name])
         emitState()
@@ -129,6 +132,12 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             if Self.needsPoll(self.connections), self.pollAttempts < self.maxPollAttempts {
                 self.pollAttempts += 1
                 self.pollUntilSettled()
+            } else if Self.needsPoll(self.connections) {
+                HelmLog.shared.warn("vpn", "still transitioning after \(self.pollAttempts) polls: "
+                    + self.connections.map { "\($0.name)=\($0.status)" }.joined(separator: ", "))
+            } else {
+                HelmLog.shared.info("vpn", "settled: "
+                    + self.connections.map { "\($0.name)=\($0.status)" }.joined(separator: ", "))
             }
         }
     }

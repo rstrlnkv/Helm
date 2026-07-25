@@ -27,16 +27,29 @@ private final class FakeTrash: TrashPort, @unchecked Sendable {
         trashed.append(url.path); return true
     }
 }
-private struct FakeRunning: RunningAppsPort {
+private final class FakeRunning: RunningAppsPort, @unchecked Sendable {
     let running: Set<String>
+    /// Records (bundleID, force) so tests can assert how an app was quit.
+    private(set) var quits: [(String, Bool)] = []
     init(running: [String]) { self.running = Set(running) }
     func isRunning(bundleID: String) -> Bool { running.contains(bundleID) }
-    func quit(bundleID: String) {}
+    func quit(bundleID: String, force: Bool) { quits.append((bundleID, force)) }
 }
 
 // MARK: - Tests
 
 final class UninstallerEngineTests: XCTestCase {
+    /// A running app must be force-quit only when the caller asks for it.
+    func test_quit_passes_force_flag_to_the_port() async {
+        let running = FakeRunning(running: ["com.test.app"])
+        let e = UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
+                                  apps: FakeApps(), fs: FakeFS(existing: [:]),
+                                  trash: FakeTrash(), running: running)
+        e.quit(bundleID: "com.test.app")
+        e.quit(bundleID: "com.test.app", force: true)
+        XCTAssertEqual(running.quits.map(\.1), [false, true])
+    }
+
     private func engine(fs: FakeFS, trash: FakeTrash = FakeTrash(), running: [String] = []) -> UninstallerEngine {
         UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
                           apps: FakeApps(), fs: fs, trash: trash,
