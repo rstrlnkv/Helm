@@ -8,6 +8,17 @@ public enum StaleKind: String, Codable, Sendable, CaseIterable {
     case plugin           // QuickLook, PreferencePanes, Internet Plug-Ins, Audio
 }
 
+/// Why an item appears in the list. Everything found is shown — hiding what
+/// is in use leaves the user trusting a list they cannot check.
+public enum ItemStatus: String, Codable, Sendable, Equatable {
+    /// The owner is gone: safe to remove.
+    case orphaned
+    /// Belongs to installed software, or points at a file that exists.
+    case inUse
+    /// Apple's, shared plumbing, or a system location: never removable.
+    case protectedItem
+}
+
 public struct StaleItem: Codable, Equatable, Sendable, Identifiable {
     public var id: String { path }
     public let path: String
@@ -18,14 +29,20 @@ public struct StaleItem: Codable, Equatable, Sendable, Identifiable {
     public let missingTarget: String?
     /// Loaded at login — worth flagging, since removing it changes behaviour.
     public let runAtLoad: Bool
+    public let status: ItemStatus
+
+    /// Only orphans may be trashed; the rest are shown for context.
+    public var removable: Bool { status == .orphaned }
 
     public init(path: String, identifier: String, kind: StaleKind, sizeBytes: Int,
-                missingTarget: String? = nil, runAtLoad: Bool = false) {
+                missingTarget: String? = nil, runAtLoad: Bool = false,
+                status: ItemStatus = .orphaned) {
         self.path = path
         self.identifier = identifier
         self.kind = kind
         self.sizeBytes = sizeBytes
         self.missingTarget = missingTarget
         self.runAtLoad = runAtLoad
+        self.status = status
     }
 }

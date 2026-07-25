@@ -7,12 +7,20 @@ import Module_Leftovers_Engine
     @Published public private(set) var scanning = false
     @Published public private(set) var scanned = false
     @Published public var selected: Set<String> = []
+    /// Leftovers only by default: the full list is context, not a to-do list.
+    @Published public var showAll = false
     @Published public private(set) var banner: String?
     @Published public private(set) var failures: [TrashFailureDetail] = []
 
     private let client: TransportClient
 
     public init(vm: ModuleViewModel) { client = TransportClient(vm.transport) }
+
+    public var visibleItems: [StaleItem] {
+        showAll ? items : items.filter(\.removable)
+    }
+
+    public var leftoverCount: Int { items.filter(\.removable).count }
 
     public func scan() async {
         scanning = true
