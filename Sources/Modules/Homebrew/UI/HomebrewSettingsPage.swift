@@ -129,12 +129,12 @@ public struct HomebrewSettingsPage: View {
 
     private var searchView: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField(HbStr.searchPlaceholder, text: $query)
-                    .textFieldStyle(.plain)
-                    .onSubmit { Task { await hb.search(query) } }
-            }.padding(10)
+            HelmSearchField(text: $query, placeholder: HbStr.searchPlaceholder,
+                            onSubmit: { Task { await hb.search(query) } })
+                .frame(height: 24)
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+                .padding(.bottom, 10)
             Divider()
             if query.isEmpty && hb.searchHits.isEmpty {
                 HelmCenteredContent { Text(HbStr.typeToSearch).foregroundStyle(.secondary) }

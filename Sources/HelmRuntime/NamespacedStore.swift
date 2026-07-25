@@ -53,3 +53,8 @@ public final class NamespacedStore {
     public func string(_ key: String, default d: String) -> String { backing.object(forKey: k(key)) as? String ?? d }
     public func stringArray(_ key: String) -> [String] { backing.object(forKey: k(key)) as? [String] ?? [] }
 }
+
+public extension Notification.Name {
+    /// Posted when the user reorders modules, so the panel rebuilds.
+    static let helmModuleOrderChanged = Notification.Name("helmModuleOrderChanged")
+}

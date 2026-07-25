@@ -22,6 +22,10 @@ mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 
 cp "$REPO_ROOT/.build/release/HelmApp" "$MACOS_DIR/HelmApp"
 cp "$REPO_ROOT/Resources/HelmApp/Info.plist" "$CONTENTS_DIR/Info.plist"
+
+# The ring artwork the icon is built from: the in-app mark draws the same
+# shape, so editing the icon in Icon Composer updates the app too.
+cp "$REPO_ROOT/Resources/Icon/Helm.icon/Assets/helm-ring.svg" "$RESOURCES_DIR/helm-ring.svg"
 printf 'APPL????' > "$CONTENTS_DIR/PkgInfo"
 
 # Build number = git commit count, so About shows a real, increasing build.

@@ -28,6 +28,11 @@ import HelmRuntime
         HelmLog.shared.start(version: version, override: AppSettings.loggingOverride)
         HelmLog.shared.info("app", "modules: \(ModuleRegistry.all.map(\.idRaw).joined(separator: ", "))")
 
+        // First launch: find out what macOS is withholding before a removal
+        // silently leaves files behind.
+        PermissionAudit.runOnFirstLaunch()
+
+
         UpdateService.shared.checkOnLaunch()
     }
     func applicationWillTerminate(_ notification: Notification) {

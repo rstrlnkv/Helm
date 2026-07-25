@@ -19,6 +19,14 @@ public protocol TrashPort: Sendable {
     func trash(_ url: URL) -> Bool
 }
 
+/// System extensions block their host app from being moved; the UI needs to
+/// name that reason instead of reporting a bare failure.
+public protocol SystemExtensionPort: Sendable {
+    /// Bundle ids that currently have an activated system extension.
+    func activeExtensionHosts() -> Set<String>
+    func installedExtensions() -> [SystemExtensionInfo]
+}
+
 public protocol RunningAppsPort: Sendable {
     func isRunning(bundleID: String) -> Bool
     /// `force` skips the app's save/confirm dialogs — needed when the user
@@ -28,4 +36,11 @@ public protocol RunningAppsPort: Sendable {
 
 public extension RunningAppsPort {
     func quit(bundleID: String) { quit(bundleID: bundleID, force: false) }
+}
+
+/// Default when no lister is injected (tests, previews).
+public struct NoSystemExtensions: SystemExtensionPort {
+    public init() {}
+    public func activeExtensionHosts() -> Set<String> { [] }
+    public func installedExtensions() -> [SystemExtensionInfo] { [] }
 }

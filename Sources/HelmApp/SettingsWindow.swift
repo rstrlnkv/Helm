@@ -4,6 +4,7 @@ import SwiftUI
 import HelmRuntime
 import HelmContract
 import HelmUI
+import Module_Uninstaller_Engine
 
 /// System Settings-style settings window built on AppKit `NSSplitViewController`
 /// so the sidebar is a full-height vibrant source list (traffic lights float
@@ -244,6 +245,9 @@ private struct MenuBarSettingsView: View {
     @State private var launchAtLogin: Bool = LoginItem.isEnabled
     @State private var showSettingsButton = AppSettings.showSettingsButton
     @State private var showQuitButton = AppSettings.showQuitButton
+    @State private var orderedModules: [String] = ModuleHost.shared.orderedModuleIDs
+    @State private var diskAccess: PermissionState = .denied
+    @State private var extensions: [SystemExtensionInfo] = []
     @State private var loggingOn = LogPolicy.isEnabled(
         version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0",
         override: AppSettings.loggingOverride)
@@ -261,11 +265,85 @@ private struct MenuBarSettingsView: View {
         }
     }
 
+    private func permissionRow(_ title: String, detail: String, granted: Bool,
+                               action: @escaping () -> Void) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: granted ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                .foregroundStyle(granted ? .green : .orange)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                Text(detail).font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer()
+            if !granted {
+                Button(AppStr.grant, action: action).controlSize(.small)
+            }
+        }
+    }
+
     private var settingsForm: some View {
         Form {
             Section(AppStr.general) {
                 Toggle(AppStr.launchAtLogin, isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, v in LoginItem.setEnabled(v) }
+            }
+            Section(AppStr.moduleOrderSection) {
+                Text(AppStr.moduleOrderNote)
+                    .font(.caption).foregroundStyle(.secondary)
+                ForEach(orderedModules, id: \.self) { id in
+                    if let descriptor = ModuleRegistry.all.first(where: { $0.idRaw == id }) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "line.3.horizontal")
+                                .foregroundStyle(.tertiary)
+                            Image(systemName: descriptor.moduleMetadata.sfSymbol)
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .frame(width: 20, height: 20)
+                                .background(RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                    .fill(descriptor.moduleCategory.tint))
+                            Text(descriptor.moduleMetadata.name)
+                            Spacer()
+                        }
+                    }
+                }
+                .onMove { source, destination in
+                    orderedModules = ModuleOrder.move(orderedModules, from: source, to: destination)
+                    AppSettings.moduleOrder = orderedModules
+                }
+            }
+            Section(AppStr.permissions) {
+                permissionRow(AppStr.fullDiskAccess,
+                              detail: AppStr.fullDiskAccessWhy,
+                              granted: diskAccess == .granted) {
+                    PermissionCheck.openFullDiskAccessSettings()
+                }
+                HStack {
+                    Text(AppStr.systemExtensionsTitle)
+                    Spacer()
+                    if extensions.isEmpty {
+                        Text(AppStr.noExtensions).foregroundStyle(.secondary)
+                    } else {
+                        Text(AppStr.extensionCount(extensions.count)).foregroundStyle(.secondary)
+                    }
+                    Button(AppStr.manage) { PermissionCheck.openExtensionSettings() }
+                        .controlSize(.small)
+                }
+                ForEach(extensions) { ext in
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(ext.enabled ? Color.green : Color.orange)
+                            .frame(width: 7, height: 7)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(ext.name).font(.callout)
+                            Text(ext.identifier)
+                                .font(.caption).foregroundStyle(.secondary)
+                                .lineLimit(1).truncationMode(.middle)
+                        }
+                        Spacer()
+                        Text(ext.state).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
             }
             Section(AppStr.diagnostics) {
                 Toggle(AppStr.writeLog, isOn: $loggingOn)
@@ -313,6 +391,10 @@ private struct MenuBarSettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .task {
+            diskAccess = PermissionCheck.currentFullDiskAccess()
+            extensions = await SystemExtensionQuery.installed()
+        }
     }
 
     private var currentStyle: MenuBarIconStyle {
