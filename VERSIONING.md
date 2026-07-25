@@ -34,3 +34,21 @@ Release flow:
 Always attach the **`.zip`** — the in-app updater downloads it for silent install
 (`Installer`); the `.dmg` is the manual/drag-install path. A release without a zip
 asset falls back to opening the release page.
+
+## Dev channel
+
+Experimental builds ship as GitHub **prereleases** tagged
+`vX.Y.Z-dev.N` (`v0.7.0-dev.1`, `-dev.2`, …). They never change the stable
+numbering: the eventual `vX.Y.Z` release supersedes every `-dev.N` before it.
+
+```bash
+bash Scripts/package-app.sh && bash Scripts/make-dmg.sh && bash Scripts/make-zip.sh
+gh release create v0.7.0-dev.1 build/Helm-0.7.0-dev.1.dmg build/Helm-0.7.0-dev.1.zip \
+  --prerelease --title "Helm 0.7.0-dev.1" --notes "…"
+```
+
+In the app, About → Update channel switches between **Stable** (reads
+`releases/latest`, prereleases invisible) and **Dev** (reads the releases list
+and takes the newest entry, prereleases included). Switching re-checks at once.
+Version ordering lives in `UpdateVersion`: `0.7.0` > `0.7.0-dev.2` >
+`0.7.0-dev.1` > `0.6.1`.
