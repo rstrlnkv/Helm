@@ -246,6 +246,7 @@ private struct MenuBarSettingsView: View {
     @State private var showSettingsButton = AppSettings.showSettingsButton
     @State private var showQuitButton = AppSettings.showQuitButton
     @State private var orderedModules: [String] = ModuleHost.shared.orderedModuleIDs
+    @State private var dragging: String?
     @State private var diskAccess: PermissionState = .denied
     private let adHocBuild = PermissionCheck.isAdHocSigned()
     @State private var extensions: [SystemExtensionInfo] = []
@@ -292,11 +293,13 @@ private struct MenuBarSettingsView: View {
             Section(AppStr.moduleOrderSection) {
                 Text(AppStr.moduleOrderNote)
                     .font(.caption).foregroundStyle(.secondary)
+                // `.onMove` only works inside an editable List; in a Form it is
+                // inert, so rows carry their own drag and drop.
                 ForEach(orderedModules, id: \.self) { id in
                     if let descriptor = ModuleRegistry.all.first(where: { $0.idRaw == id }) {
                         HStack(spacing: 10) {
                             Image(systemName: "line.3.horizontal")
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(dragging == id ? .secondary : .tertiary)
                             Image(systemName: descriptor.moduleMetadata.sfSymbol)
                                 .font(.system(size: 11, weight: .semibold))
                                 .foregroundStyle(.white)
@@ -306,11 +309,17 @@ private struct MenuBarSettingsView: View {
                             Text(descriptor.moduleMetadata.name)
                             Spacer()
                         }
+                        .contentShape(Rectangle())
+                        .opacity(dragging == id ? 0.4 : 1)
+                        .onDrag {
+                            dragging = id
+                            return NSItemProvider(object: id as NSString)
+                        }
+                        .onDrop(of: [.text], delegate: ModuleDropDelegate(
+                            item: id,
+                            order: $orderedModules,
+                            dragging: $dragging))
                     }
-                }
-                .onMove { source, destination in
-                    orderedModules = ModuleOrder.move(orderedModules, from: source, to: destination)
-                    AppSettings.moduleOrder = orderedModules
                 }
             }
             Section(AppStr.permissions) {
@@ -402,6 +411,32 @@ private struct MenuBarSettingsView: View {
 
     private var currentStyle: MenuBarIconStyle {
         MenuBarIconStyle(rawValue: style) ?? .ring
+    }
+}
+
+/// Reorders on hover while a row is being dragged, and persists on drop —
+/// the pattern SwiftUI lists use, done by hand because Form has no edit mode.
+private struct ModuleDropDelegate: DropDelegate {
+    let item: String
+    @Binding var order: [String]
+    @Binding var dragging: String?
+
+    func dropEntered(info: DropInfo) {
+        guard let dragging, dragging != item,
+              let from = order.firstIndex(of: dragging),
+              let to = order.firstIndex(of: item) else { return }
+        withAnimation(.easeInOut(duration: 0.18)) {
+            order = ModuleOrder.move(order, from: IndexSet(integer: from),
+                                     to: to > from ? to + 1 : to)
+        }
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
+
+    func performDrop(info: DropInfo) -> Bool {
+        AppSettings.moduleOrder = order
+        dragging = nil
+        return true
     }
 }
 
