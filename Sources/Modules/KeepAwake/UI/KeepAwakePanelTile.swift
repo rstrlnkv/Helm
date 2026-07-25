@@ -198,7 +198,15 @@ public struct KeepAwakePanelTile: View {
             }
 
             Text(KAStr.automation)
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption)
+                // A literal colour, not `.secondary`. Hierarchical styles are
+                // resolved against the rendering context, and this block gets
+                // its own layer while its height animates (that is what
+                // `.clipped()` needs). When the layer goes away at the end of
+                // the animation the style resolves again — visibly, as a blink.
+                // primary-with-alpha tracks light and dark on its own and does
+                // not depend on the layer.
+                .foregroundStyle(Color.primary.opacity(0.55))
                 .padding(.top, 2)
 
             settingRow(KAStr.onExternalDisplay) {
