@@ -18,9 +18,12 @@ import HelmUI
     /// 1040 was chosen against the densest page (Homebrew: name, kind badge,
     /// version, description and an action button on one row) — narrower
     /// crowds it, wider only adds empty gutter.
-    private static let defaultSize = NSSize(width: 1040, height: 700)
+    /// Measured against the densest page (a Homebrew row carries name, kind
+    /// badge, version, description and an action button): at 940 the longest
+    /// descriptions still fit on one line with no idle gutter to spare.
+    private static let defaultSize = NSSize(width: 940, height: 660)
     /// Below this the list rows start truncating names and paths.
-    private static let minSize = NSSize(width: 880, height: 560)
+    private static let minSize = NSSize(width: 860, height: 540)
 
     init(host: ModuleHost) {
         let model = SettingsModel(host: host)
@@ -36,7 +39,7 @@ import HelmUI
         window.center()
         window.isReleasedWhenClosed = false
         // Remember whatever size the user settles on.
-        window.setFrameAutosaveName("HelmSettingsWindow.v2")
+        window.setFrameAutosaveName("HelmSettingsWindow.v3")
         self.window = window
         super.init()
         window.delegate = self
@@ -191,6 +194,10 @@ private struct SettingsDetail: View {
         case .module(let id):
             if let descriptor = ModuleRegistry.all.first(where: { $0.idRaw == id }) {
                 ModuleDetailView(host: model.host, descriptor: descriptor, id: id)
+            } else {
+                // A selection can outlive its module (removed build, stale
+                // state). Falling back beats showing an empty pane.
+                MenuBarSettingsView()
             }
         }
     }
