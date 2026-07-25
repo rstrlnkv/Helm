@@ -78,7 +78,7 @@ public struct UninstallerSettingsPage: View {
                 Text(UnStr.tabOrphans).tag(1)
             }
             .pickerStyle(.segmented).labelsHidden()
-            .padding(.horizontal, 12).padding(.top, 12).padding(.bottom, 8)
+            .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 8)
             .disabled(step == .review)
 
             Divider()
@@ -120,8 +120,8 @@ public struct UninstallerSettingsPage: View {
             }
             .padding(8)
             .helmCard(padding: 8)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 8)
 
             if loading {
                 Spacer()
@@ -134,6 +134,7 @@ public struct UninstallerSettingsPage: View {
                     }
                 }
                 .listStyle(.inset)
+                .padding(.horizontal, 12)
             }
             Divider()
             HStack(spacing: 10) {
@@ -158,7 +159,7 @@ public struct UninstallerSettingsPage: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(checked.isEmpty || scanning)
             }
-            .padding(12)
+            .padding(.horizontal, 20).padding(.vertical, 12)
         }
     }
 
@@ -214,6 +215,7 @@ public struct UninstallerSettingsPage: View {
                 }
             }
             .listStyle(.inset)
+            .padding(.horizontal, 12)
 
             Divider()
 
@@ -261,7 +263,7 @@ public struct UninstallerSettingsPage: View {
                 .disabled(busy || !ready)
                 .help(ready ? "" : UnStr.blockedByRunning)
             }
-            .padding(12)
+            .padding(.horizontal, 20).padding(.vertical, 12)
         }
     }
 
