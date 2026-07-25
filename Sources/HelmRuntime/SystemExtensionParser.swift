@@ -54,3 +54,27 @@ public enum SystemExtensionParser {
         })
     }
 }
+
+/// The one place that shells out to `systemextensionsctl` — every consumer
+/// (uninstaller, leftovers scanner, the settings audit) parses the same list.
+public enum SystemExtensionCLI {
+    public static func listOutput() -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/systemextensionsctl")
+        process.arguments = ["list"]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+        guard (try? process.run()) != nil else { return "" }
+        process.waitUntilExit()
+        return String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+    }
+
+    public static func installed() -> [SystemExtensionInfo] {
+        SystemExtensionParser.parse(listOutput())
+    }
+
+    public static func hostIdentifiers() -> Set<String> {
+        SystemExtensionParser.hostIdentifiers(listOutput())
+    }
+}

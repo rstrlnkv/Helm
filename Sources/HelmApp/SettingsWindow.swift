@@ -4,7 +4,6 @@ import SwiftUI
 import HelmRuntime
 import HelmContract
 import HelmUI
-import Module_Uninstaller_Engine
 
 /// System Settings-style settings window built on AppKit `NSSplitViewController`
 /// so the sidebar is a full-height vibrant source list (traffic lights float
@@ -100,6 +99,13 @@ final class SettingsSplitViewController: NSSplitViewController {
         // fade; dropping the safe area and reserving a fixed strip in the view
         // keeps the first row clear with no fade and no double inset.
         sidebar.safeAreaRegions = []
+        // The window's size belongs to the user. By default NSHostingController
+        // feeds SwiftUI's ideal size into auto layout, and any pane whose ideal
+        // height is unbounded (Spacer-centred empty states, plain VStacks
+        // without a Form) grows the WINDOW to the full screen. Turning the
+        // sizing options off makes every pane fill whatever the window gives
+        // it and never the other way around.
+        sidebar.sizingOptions = []
         let sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebar)
         sidebarItem.canCollapse = false
         sidebarItem.minimumThickness = 250
@@ -110,6 +116,7 @@ final class SettingsSplitViewController: NSSplitViewController {
         // detail pane by the title-bar height, leaving a dead gap above the
         // module header. The pane draws its own top padding, so drop the inset.
         detail.safeAreaRegions = []
+        detail.sizingOptions = []
         let detailItem = NSSplitViewItem(viewController: detail)
         detailItem.minimumThickness = 420
 

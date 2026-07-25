@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import HelmRuntime
 
 public struct FileSystemLeftovers: LeftoversFilePort {
     public init() {}
@@ -80,28 +81,11 @@ public struct WorkspaceInstalledApps: InstalledAppsPort {
     }
 }
 
-/// Extensions currently activated, so one that is merely idle is not mistaken
-/// for an orphan.
+/// Extensions currently activated, via the shared tested parser — this file
+/// used to carry its own ad-hoc line splitter.
 public struct ActiveExtensions: ExtensionsPort {
     public init() {}
-
     public func activeExtensionIdentifiers() -> Set<String> {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/systemextensionsctl")
-        process.arguments = ["list"]
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = Pipe()
-        guard (try? process.run()) != nil else { return [] }
-        process.waitUntilExit()
-        let text = String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
-        var ids: Set<String> = []
-        for line in text.split(separator: "\n") where line.contains("activated") {
-            let columns = line.components(separatedBy: "\t")
-            guard columns.count >= 4 else { continue }
-            let field = columns[3].trimmingCharacters(in: .whitespaces)
-            if let id = field.components(separatedBy: " ").first, id.contains(".") { ids.insert(id) }
-        }
-        return ids
+        Set(SystemExtensionCLI.installed().map(\.identifier))
     }
 }
