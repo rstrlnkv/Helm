@@ -1,5 +1,5 @@
 import XCTest
-@testable import Module_Uninstaller_Engine
+@testable import HelmRuntime
 
 final class SystemExtensionParserTests: XCTestCase {
     /// Verbatim `systemextensionsctl list` output from a real machine.

@@ -1,14 +1,13 @@
 import Foundation
-import Module_Uninstaller_Engine
+import HelmRuntime
 
-/// The settings screen lists system extensions whether or not the Uninstaller
-/// module is enabled, so it reads them directly rather than over the module's
-/// transport. Runs off the main thread: the lookup shells out.
+/// Settings lists system extensions whether or not any module is enabled, so
+/// it reads them via the shared CLI. Off the main thread: the lookup shells out.
 enum SystemExtensionQuery {
     static func installed() async -> [SystemExtensionInfo] {
         await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
-                continuation.resume(returning: SystemExtensionLister().installedExtensions())
+                continuation.resume(returning: SystemExtensionCLI.installed())
             }
         }
     }
