@@ -56,4 +56,13 @@ final class TreeBuilderTests: XCTestCase {
         XCTAssertEqual(root.children.first?.name, "x")
         XCTAssertEqual(root.children.first?.children.first?.name, "y")
     }
+
+    /// The bucket under "/" must be "/…", not "//…": doubled slashes break
+    /// every path comparison downstream.
+    func testFoldedBucketAtRootHasASingleSlash() {
+        let builder = TreeBuilder(root: "/", foldThreshold: 1_000)
+        builder.addFile(path: "/tiny.bin", bytes: 10, fileID: 1)
+        let bucket = builder.build().children.first { $0.name == "…" }
+        XCTAssertEqual(bucket?.path, "/…")
+    }
 }

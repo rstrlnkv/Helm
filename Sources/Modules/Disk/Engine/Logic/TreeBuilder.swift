@@ -55,7 +55,8 @@ public final class TreeBuilder: @unchecked Sendable {
         if let bucket = parent.children.first(where: { $0.name == "…" && !$0.isDirectory }) {
             return bucket
         }
-        let bucket = DiskNode(name: "…", path: parent.path + "/…", bytes: 0, isDirectory: false)
+        let bucket = DiskNode(name: "…", path: ScanPath.child(of: parent.path, name: "…"),
+                              bytes: 0, isDirectory: false)
         parent.children.append(bucket)
         return bucket
     }
