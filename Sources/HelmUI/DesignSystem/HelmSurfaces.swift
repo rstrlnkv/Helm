@@ -137,9 +137,29 @@ public struct HelmMetricStrip: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
+        // A system material so page content reads as blurred underneath when
+        // it scrolls past, the way macOS treats floating panels.
         .background(
             RoundedRectangle(cornerRadius: HelmSurface.cardRadius, style: .continuous)
-                .fill(HelmSurface.cardFill)
+                .fill(.regularMaterial)
         )
+        .overlay(
+            RoundedRectangle(cornerRadius: HelmSurface.cardRadius, style: .continuous)
+                .strokeBorder(HelmSurface.cardStroke)
+        )
+    }
+}
+
+public extension View {
+    /// Pins an instrument strip above a scrolling page: the panel floats with
+    /// margins, and the content below gets matching inset so nothing is ever
+    /// cut off flush against it.
+    func helmMetricsHeader<Strip: View>(@ViewBuilder _ strip: () -> Strip) -> some View {
+        safeAreaInset(edge: .top, spacing: 0) {
+            strip()
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 10)
+        }
     }
 }

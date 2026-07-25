@@ -57,15 +57,22 @@ public struct UninstallerSettingsPage: View {
     }
 
     public var body: some View {
-        VStack(spacing: 0) {
-            HelmMetricStrip([
-                .init(loading ? "—" : "\(apps.count)", UnStr.metricApps),
-                .init("\(checked.count)", UnStr.metricChosen, tint: checked.isEmpty ? nil : .accentColor),
-                .init(sizeText, UnStr.metricSize),
-            ])
-            .padding(.horizontal, 12)
-            .padding(.top, 12)
+        pageBody
+            .helmMetricsHeader {
+                HelmMetricStrip([
+                    .init(loading ? "—" : "\(apps.count)", UnStr.metricApps),
+                    .init("\(checked.count)", UnStr.metricChosen, tint: checked.isEmpty ? nil : .accentColor),
+                    .init(sizeText, UnStr.metricSize),
+                ])
+            }
+            .task {
+                apps = await uvm.listApps()
+                loading = false
+            }
+    }
 
+    private var pageBody: some View {
+        VStack(spacing: 0) {
             Picker("", selection: $tab) {
                 Text(UnStr.tabApps).tag(0)
                 Text(UnStr.tabOrphans).tag(1)
@@ -84,10 +91,6 @@ public struct UninstallerSettingsPage: View {
             } else {
                 OrphansView(uvm: uvm)
             }
-        }
-        .task {
-            apps = await uvm.listApps()
-            loading = false
         }
     }
 
@@ -160,27 +163,35 @@ public struct UninstallerSettingsPage: View {
     }
 
     private func appRow(_ app: InstalledApp) -> some View {
-        Toggle(isOn: Binding(
-            get: { checked.contains(app.bundleID) },
-            set: { on in
-                if on { checked.insert(app.bundleID) } else { checked.remove(app.bundleID) }
-            }
-        )) {
-            HStack(spacing: 10) {
-                Image(nsImage: AppIconCache.icon(forFile: app.path))
-                    .resizable().frame(width: 28, height: 28)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(app.name).lineLimit(1)
-                    Text(app.path)
-                        .font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                        .truncationMode(.middle)
+        // The checkbox is its own control centred against the row, so it lines
+        // up with the icon and the name instead of hanging above them.
+        HStack(spacing: 10) {
+            Toggle("", isOn: Binding(
+                get: { checked.contains(app.bundleID) },
+                set: { on in
+                    if on { checked.insert(app.bundleID) } else { checked.remove(app.bundleID) }
                 }
-                Spacer()
-                Text(ByteCountFormatter.string(fromByteCount: Int64(app.sizeBytes), countStyle: .file))
-                    .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+            ))
+            .toggleStyle(.checkbox)
+            .labelsHidden()
+            Image(nsImage: AppIconCache.icon(forFile: app.path))
+                .resizable().frame(width: 28, height: 28)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(app.name).lineLimit(1)
+                Text(app.path)
+                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    .truncationMode(.middle)
             }
+            Spacer()
+            Text(ByteCountFormatter.string(fromByteCount: Int64(app.sizeBytes), countStyle: .file))
+                .font(.caption).foregroundStyle(.secondary).monospacedDigit()
         }
-        .toggleStyle(.checkbox)
+        .frame(height: 34)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if checked.contains(app.bundleID) { checked.remove(app.bundleID) }
+            else { checked.insert(app.bundleID) }
+        }
     }
 
     // MARK: - Step 2: review the files, grouped per app
@@ -272,26 +283,27 @@ public struct UninstallerSettingsPage: View {
     }
 
     private func leftoverRow(_ leftover: Leftover) -> some View {
-        Toggle(isOn: Binding(
-            get: { selectedLeftovers.contains(leftover.path) },
-            set: { on in
-                if on { selectedLeftovers.insert(leftover.path) }
-                else { selectedLeftovers.remove(leftover.path) }
-            }
-        )) {
-            HStack(spacing: 8) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text((leftover.path as NSString).lastPathComponent).lineLimit(1)
-                    Text(leftover.path)
-                        .font(.caption).foregroundStyle(.secondary)
-                        .lineLimit(1).truncationMode(.middle)
+        HStack(spacing: 10) {
+            Toggle("", isOn: Binding(
+                get: { selectedLeftovers.contains(leftover.path) },
+                set: { on in
+                    if on { selectedLeftovers.insert(leftover.path) }
+                    else { selectedLeftovers.remove(leftover.path) }
                 }
-                Spacer()
-                Text(ByteCountFormatter.string(fromByteCount: Int64(leftover.sizeBytes), countStyle: .file))
-                    .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+            ))
+            .toggleStyle(.checkbox)
+            .labelsHidden()
+            VStack(alignment: .leading, spacing: 1) {
+                Text((leftover.path as NSString).lastPathComponent).lineLimit(1)
+                Text(leftover.path)
+                    .font(.caption).foregroundStyle(.secondary)
+                    .lineLimit(1).truncationMode(.middle)
             }
+            Spacer()
+            Text(ByteCountFormatter.string(fromByteCount: Int64(leftover.sizeBytes), countStyle: .file))
+                .font(.caption).foregroundStyle(.secondary).monospacedDigit()
         }
-        .toggleStyle(.checkbox)
+        .frame(height: 32)
     }
 
     // MARK: - Actions
