@@ -116,7 +116,7 @@ private struct BreadcrumbBar: View {
                             .font(.system(size: 11, design: .monospaced))
                             .foregroundStyle(.secondary)
                     }
-                    Button(DkStr.cancel) { dvm.cancel() }
+                    Button(DkStr.stop) { dvm.cancel() }
                         .controlSize(.small)
                 }
             } else if dvm.restored, let savedAt = dvm.completedAt {
@@ -126,7 +126,7 @@ private struct BreadcrumbBar: View {
                     .font(.caption).foregroundStyle(.tertiary)
             } else if let result = dvm.result {
                 Text(DkStr.scannedIn(result.filesScanned,
-                                     String(format: "%.1fs", result.seconds)))
+                                     String(format: "%.1f", result.seconds)))
                     .font(.caption).foregroundStyle(.tertiary)
             }
 
@@ -143,7 +143,7 @@ private struct BreadcrumbBar: View {
                 }
             }
 
-            Button(dvm.restored ? DkStr.rescan : DkStr.newScan) { dvm.newScan() }
+            Button(DkStr.scanAgain) { dvm.newScan() }
                 .controlSize(.small)
         }
         .padding(.horizontal, 16).padding(.vertical, 9)
@@ -237,7 +237,7 @@ private struct ChildRow: View {
                 }
             }
             Spacer()
-            Text(ByteCountFormatter.string(fromByteCount: Int64(child.bytes), countStyle: .file))
+            Text(Bytes(child.bytes))
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(.secondary)
             if removable {
@@ -317,7 +317,7 @@ private struct AdviceList: View {
                     .foregroundStyle(Color.primary.opacity(0.55))
             }
             Spacer()
-            Text(ByteCountFormatter.string(fromByteCount: Int64(item.bytes), countStyle: .file))
+            Text(Bytes(item.bytes))
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(.secondary)
             Button {

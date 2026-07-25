@@ -202,8 +202,7 @@ import Module_Disk_Engine
         guard !paths.isEmpty else { return }
         let removal: DiskRemoval? = await client.request("trash", encoding: paths)
         let freed = removal?.freedBytes ?? 0
-        banner = DkStr.removedFreed(ByteCountFormatter.string(
-            fromByteCount: Int64(freed), countStyle: .file))
+        banner = DkStr.removedFreed(Bytes(freed))
         basket = []
         // Re-walking the disk to learn what we already know — those paths are
         // gone, and by how much — costs a minute on a full volume. Apply the

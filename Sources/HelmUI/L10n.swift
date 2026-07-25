@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 /// Supported UI languages. English is the base (source strings live at the call
 /// site); the others come from per-string tables.
@@ -22,4 +23,10 @@ public func L(_ english: String, _ table: [AppLanguage: String] = [:]) -> String
     let lang = AppLanguage.current
     if lang == .en { return english }
     return table[lang] ?? english
+}
+
+/// A size in the user's language: "432,95 ГБ", "1.5 GB". One formatter for
+/// every screen — see `HelmBytes` for why that had to be said out loud.
+public func Bytes(_ count: Int) -> String {
+    HelmBytes.string(count, language: AppLanguage.current.rawValue)
 }
