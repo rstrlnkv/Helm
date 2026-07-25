@@ -22,9 +22,14 @@ private final class FakeTrash: TrashPort, @unchecked Sendable {
     var trashed: [String] = []
     let failing: Set<String>
     init(failing: [String] = []) { self.failing = Set(failing) }
-    func trash(_ url: URL) -> Bool {
-        if failing.contains(url.path) { return false }
-        trashed.append(url.path); return true
+    func trashItem(_ url: URL) -> TrashOutcome {
+        if failing.contains(url.path) {
+            // 513 = NSFileWriteNoPermissionError, what macOS returns for a
+            // protected container.
+            return TrashOutcome(succeeded: false, errorCode: 513, message: "denied")
+        }
+        trashed.append(url.path)
+        return .success
     }
 }
 private final class FakeRunning: RunningAppsPort, @unchecked Sendable {

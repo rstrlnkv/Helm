@@ -43,8 +43,10 @@ public struct TrashFailureInfo: Codable, Equatable, Sendable, Identifiable {
     public let path: String
     /// Raw value of `TrashFailure.Reason`.
     public let reason: String
-    public init(path: String, reason: String) {
-        self.path = path; self.reason = reason
+    /// What macOS said, verbatim — dev builds surface it for triage.
+    public let message: String
+    public init(path: String, reason: String, message: String = "") {
+        self.path = path; self.reason = reason; self.message = message
     }
 }
 

@@ -83,8 +83,15 @@ public struct FMFileSystem: FileSystemPort {
 
 public struct FMTrash: TrashPort {
     public init() {}
-    public func trash(_ url: URL) -> Bool {
-        (try? FileManager.default.trashItem(at: url, resultingItemURL: nil)) != nil
+    public func trashItem(_ url: URL) -> TrashOutcome {
+        do {
+            try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+            return .success
+        } catch {
+            let ns = error as NSError
+            return TrashOutcome(succeeded: false, errorCode: ns.code,
+                                message: ns.localizedDescription)
+        }
     }
 }
 
