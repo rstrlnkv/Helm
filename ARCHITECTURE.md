@@ -171,6 +171,12 @@ Two rules earned by the panel, both about *what draws where* rather than timing:
   behind them and visibly wash out. The reveal needs no fade at all: animate
   the measured height and `.clipped()`, and the content slides out from under
   the edge with every colour native.
+- **Literal colours inside animated blocks.** `.clipped()` needs a layer of its
+  own while the height animates, and hierarchical styles (`.secondary`,
+  `.tertiary`) are resolved against the rendering context — so they resolve
+  again when that layer goes away, which reads as a blink at the end of the
+  reveal. Inside such a block use `Color.primary.opacity(…)`, which tracks
+  light and dark by itself and does not care about layers.
 - **Never reveal with `if`.** Removing rows from the hierarchy collapses the
   card's background instantly while the disappearing rows keep drawing over
   whatever sits below. Keep the content mounted, animate a measured height, and
