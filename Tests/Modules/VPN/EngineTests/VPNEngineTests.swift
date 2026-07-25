@@ -75,4 +75,17 @@ final class VPNEngineTests: XCTestCase {
 
         XCTAssertTrue(runner.issued.contains(["--nc", "stop", "A"]))
     }
+
+    // MARK: - Settle polling (spinner stuck in .connecting)
+
+    func test_needsPoll_true_while_transitioning() {
+        XCTAssertTrue(VPNEngine.needsPoll([VPNConnection(id: "1", name: "A", status: .connecting, kind: nil)]))
+        XCTAssertTrue(VPNEngine.needsPoll([VPNConnection(id: "1", name: "A", status: .disconnecting, kind: nil)]))
+    }
+
+    func test_needsPoll_false_when_settled() {
+        XCTAssertFalse(VPNEngine.needsPoll([VPNConnection(id: "1", name: "A", status: .connected, kind: nil),
+                                            VPNConnection(id: "2", name: "B", status: .disconnected, kind: nil)]))
+        XCTAssertFalse(VPNEngine.needsPoll([]))
+    }
 }
