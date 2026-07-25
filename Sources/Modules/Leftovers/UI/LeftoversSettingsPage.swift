@@ -137,7 +137,7 @@ public struct LeftoversSettingsPage: View {
                 }
             }
             Spacer()
-            Text(ByteCountFormatter.string(fromByteCount: Int64(item.sizeBytes), countStyle: .file))
+            Text(Bytes(item.sizeBytes))
                 .font(.caption).foregroundStyle(.secondary).monospacedDigit()
             Button {
                 NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: item.path)])
@@ -172,8 +172,7 @@ public struct LeftoversSettingsPage: View {
                 .disabled(lvm.selected.isEmpty)
             if !lvm.items.isEmpty {
                 Text(LfStr.foundCount(lvm.leftoverCount,
-                                      ByteCountFormatter.string(fromByteCount: Int64(selectedBytes),
-                                                                countStyle: .file)))
+                                      Bytes(selectedBytes)))
                     .font(.caption).foregroundStyle(.secondary)
             }
             Spacer()

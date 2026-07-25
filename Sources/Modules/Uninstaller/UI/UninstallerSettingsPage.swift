@@ -133,7 +133,7 @@ public struct UninstallerSettingsPage: View {
             bytes = apps.filter { checked.contains($0.bundleID) }.reduce(0) { $0 + $1.sizeBytes }
         }
         guard bytes > 0 else { return "—" }
-        return ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)
+        return Bytes(bytes)
     }
 
     // MARK: - Step 1: pick apps
@@ -203,7 +203,7 @@ public struct UninstallerSettingsPage: View {
                     .truncationMode(.middle)
             }
             Spacer()
-            Text(ByteCountFormatter.string(fromByteCount: Int64(app.sizeBytes), countStyle: .file))
+            Text(Bytes(app.sizeBytes))
                 .font(.caption).foregroundStyle(.secondary).monospacedDigit()
         }
         .frame(height: 34)
@@ -365,7 +365,7 @@ public struct UninstallerSettingsPage: View {
                     .background(Capsule().fill(Color.orange.opacity(0.25)))
             }
             Spacer()
-            Text(ByteCountFormatter.string(fromByteCount: Int64(group.app.sizeBytes), countStyle: .file))
+            Text(Bytes(group.app.sizeBytes))
                 .font(.caption).foregroundStyle(.secondary).monospacedDigit()
         }
     }
@@ -388,7 +388,7 @@ public struct UninstallerSettingsPage: View {
                     .lineLimit(1).truncationMode(.middle)
             }
             Spacer()
-            Text(ByteCountFormatter.string(fromByteCount: Int64(leftover.sizeBytes), countStyle: .file))
+            Text(Bytes(leftover.sizeBytes))
                 .font(.caption).foregroundStyle(.secondary).monospacedDigit()
         }
         .frame(height: 32)
@@ -434,7 +434,7 @@ public struct UninstallerSettingsPage: View {
         HelmLog.shared.info("uninstaller", "trashing \(paths.count) paths")
         let result = await uvm.trashPaths(paths)
 
-        let freed = ByteCountFormatter.string(fromByteCount: Int64(result?.freedBytes ?? 0), countStyle: .file)
+        let freed = Bytes(result?.freedBytes ?? 0)
         if let failed = result?.failed, !failed.isEmpty {
             HelmLog.shared.warn("uninstaller", "failed to trash: \(failed.joined(separator: ", "))")
             resultBanner = UnStr.removedWithFailures(freed, failed.count)

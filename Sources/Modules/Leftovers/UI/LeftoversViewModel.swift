@@ -37,8 +37,7 @@ import Module_Leftovers_Engine
         guard !paths.isEmpty else { return }
         let result: LeftoversRemoval? = await client.request("trash", encoding: paths)
         failures = result?.failed ?? []
-        banner = LfStr.removedFreed(ByteCountFormatter.string(
-            fromByteCount: Int64(result?.freedBytes ?? 0), countStyle: .file))
+        banner = LfStr.removedFreed(Bytes(result?.freedBytes ?? 0))
         await scan()
     }
 }

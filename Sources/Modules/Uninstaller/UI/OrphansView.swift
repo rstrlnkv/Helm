@@ -56,7 +56,7 @@ struct OrphansView: View {
                             Toggle(isOn: binding(for: item.path)) {
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(item.path).font(.caption).lineLimit(1).truncationMode(.middle)
-                                    Text("\(UnStr.kind(item.kind)) · \(ByteFormat.string(item.sizeBytes))")
+                                    Text("\(UnStr.kind(item.kind)) · \(Bytes(item.sizeBytes))")
                                         .font(.caption2).foregroundStyle(.secondary)
                                 }
                             }
@@ -68,7 +68,7 @@ struct OrphansView: View {
                         HStack {
                             Text(group.bundleID).font(.callout.weight(.medium))
                             Spacer()
-                            Text(ByteFormat.string(group.totalBytes)).font(.caption).foregroundStyle(.secondary)
+                            Text(Bytes(group.totalBytes)).font(.caption).foregroundStyle(.secondary)
                         }
                     }
                 }
@@ -86,19 +86,19 @@ struct OrphansView: View {
             Button(UnStr.rescan) { Task { await scan() } }.disabled(busy)
             // One toggle covers both: "select all" flips to "deselect all" when
             // everything is already checked (default after a scan).
-            Button(allSelected ? UnStr.deselectAll : UnStr.selectAll) {
+            Button(allSelected ? UnStr.selectNone : UnStr.selectAll) {
                 selected = allSelected ? [] : Set(allPaths)
             }
             .disabled(busy)
             Spacer()
-            Text(UnStr.selectedSummary(selected.count, ByteFormat.string(selectedBytes)))
+            Text(UnStr.selectedSummary(selected.count, Bytes(selectedBytes)))
                 .font(.caption).foregroundStyle(.secondary)
             Button(UnStr.moveToTrash) { confirming = true }
                 .buttonStyle(.borderedProminent)
                 .disabled(selected.isEmpty || busy)
         }
         .padding(10)
-        .confirmationDialog(UnStr.confirmTrash(selected.count, ByteFormat.string(selectedBytes)),
+        .confirmationDialog(UnStr.confirmTrash(selected.count, Bytes(selectedBytes)),
                             isPresented: $confirming, titleVisibility: .visible) {
             Button(UnStr.moveToTrash, role: .destructive) { Task { await trashSelected() } }
             Button(UnStr.cancel, role: .cancel) {}
@@ -120,7 +120,7 @@ struct OrphansView: View {
         let result = await uvm.trashPaths(Array(selected))
         busy = false
         if let result {
-            banner = UnStr.freed(ByteFormat.string(result.freedBytes))
+            banner = UnStr.freed(Bytes(result.freedBytes))
             await scan()
         }
     }

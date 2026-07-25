@@ -8,17 +8,16 @@ enum KAStr {
                          .de: "Wach halten", .ja: "スリープ防止", .zh: "保持唤醒", .pt: "Manter ativo"])
     }
     static var summary: String {
-        L("Prevent your Mac from sleeping.",
-          [.ru: "Не давать Mac уходить в сон.", .es: "Evita que tu Mac se suspenda.",
-           .fr: "Empêche votre Mac de se mettre en veille.", .de: "Verhindert den Ruhezustand des Macs.",
-           .ja: "Mac がスリープするのを防ぎます。", .zh: "防止 Mac 进入睡眠。",
-           .pt: "Impede que o Mac entre em repouso."])
+        L("Keep the Mac from falling asleep.",
+          [.ru: "Не давать Mac засыпать.", .es: "Evitar que el Mac se duerma.",
+           .fr: "Empêcher le Mac de s’endormir.", .de: "Den Mac wach halten.",
+           .ja: "Mac をスリープさせない。", .zh: "阻止 Mac 进入睡眠。",
+           .pt: "Impedir que o Mac durma."])
     }
     /// Window title: no ellipsis — that belongs to the menu entry that opens it.
     static var customTimeTitle: String { L("Custom duration", [.ru: "Своё время", .es: "Duración personalizada", .fr: "Durée personnalisée", .de: "Eigene Dauer", .ja: "カスタム時間", .zh: "自定义时长", .pt: "Duração personalizada"]) }
     static var customTime: String { L("Custom…", [.ru: "Своё время…", .es: "Personalizado…", .fr: "Personnalisé…", .de: "Eigene Zeit…", .ja: "カスタム…", .zh: "自定义…", .pt: "Personalizado…"]) }
     static var done: String { L("Done", [.ru: "Готово", .es: "Listo", .fr: "OK", .de: "Fertig", .ja: "完了", .zh: "完成", .pt: "OK"]) }
-    static var customTimer: String { L("Custom timer", [.ru: "Свой таймер", .es: "Temporizador propio", .fr: "Minuteur personnalisé", .de: "Eigener Timer", .ja: "カスタムタイマー", .zh: "自定义计时", .pt: "Timer personalizado"]) }
     /// Short forms used under the "Automatically" heading, where the context is
     /// already given by the group title.
     static var onExternalDisplay: String { L("With an external display", [.ru: "При внешнем дисплее", .es: "Con pantalla externa", .fr: "Avec un écran externe", .de: "Mit externem Bildschirm", .ja: "外部ディスプレイ接続時", .zh: "连接外接显示器时", .pt: "Com tela externa"]) }
@@ -76,7 +75,7 @@ enum KAStr {
     static var twoHours: String { L("2 hours", [.ru: "2 часа", .es: "2 horas", .fr: "2 heures", .de: "2 Stunden", .ja: "2 時間", .zh: "2 小时", .pt: "2 horas"]) }
     static var indefinite: String { L("Indefinite", [.ru: "Бессрочно", .es: "Indefinido", .fr: "Illimité", .de: "Unbegrenzt", .ja: "無期限", .zh: "无限期", .pt: "Indefinido"]) }
     static var globalShortcut: String { L("Global shortcut", [.ru: "Глобальный хоткей", .es: "Atajo global", .fr: "Raccourci global", .de: "Globaler Kurzbefehl", .ja: "グローバルショートカット", .zh: "全局快捷键", .pt: "Atalho global"]) }
-    static var toggleAction: String { L("Toggle Keep Awake", [.ru: "Вкл/выкл «Не давать спать»", .es: "Alternar Mantener activo", .fr: "Activer/désactiver Rester éveillé", .de: "Wach halten umschalten", .ja: "スリープ防止の切り替え", .zh: "切换保持唤醒", .pt: "Alternar Manter ativo"]) }
+    static var toggleAction: String { L("Toggle Keep Awake", [.ru: "Включить или выключить «Не спать»", .es: "Activar o desactivar Mantener activo", .fr: "Activer ou désactiver Rester éveillé", .de: "Wachhalten ein-/ausschalten", .ja: "「スリープ防止」を切り替え", .zh: "开关「保持唤醒」", .pt: "Ativar ou desativar Manter acordado"]) }
     static var pressKeys: String { L("Press keys…", [.ru: "Нажмите клавиши…", .es: "Pulsa las teclas…", .fr: "Appuyez sur les touches…", .de: "Tasten drücken…", .ja: "キーを押してください…", .zh: "请按下按键…", .pt: "Pressione as teclas…"]) }
     static var none: String { L("None", [.ru: "Нет", .es: "Ninguno", .fr: "Aucun", .de: "Keiner", .ja: "なし", .zh: "无", .pt: "Nenhum"]) }
     static var record: String { L("Record", [.ru: "Задать", .es: "Grabar", .fr: "Enregistrer", .de: "Aufnehmen", .ja: "記録", .zh: "录制", .pt: "Gravar"]) }
