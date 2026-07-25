@@ -55,9 +55,12 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
 
     private func scanSync(bundleID: String, appPath: String, appName: String) -> ScanResult {
         var leftovers: [Leftover] = []
+        // Prefix globs overlap the exact candidates they generalise; the same
+        // directory must not be listed (or trashed) twice.
+        var seenPaths: Set<String> = []
         for c in LeftoverMatcher.candidates(bundleID: bundleID, appName: appName, library: library) {
             let urls: [URL] = c.isGlob ? fs.glob(c.url) : (fs.exists(c.url) ? [c.url] : [])
-            for u in urls {
+            for u in urls where seenPaths.insert(u.path).inserted {
                 leftovers.append(Leftover(path: u.path, kind: c.kind,
                                           sizeBytes: fs.size(u), matchedByName: c.matchedByName))
             }
@@ -144,6 +147,10 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
             let outcome = trash.trashItem(url)
             if outcome.succeeded {
                 trashed.append(p); freed += size
+            } else if outcome.errorCode == NSFileNoSuchFileError, !fs.exists(url) {
+                // Already gone (a duplicate path, or removed meanwhile): there
+                // is nothing for the user to act on, so it is not a failure.
+                continue
             } else {
                 failed.append(p)
                 let hosts = extensionHosts ?? extensions.activeExtensionHosts()

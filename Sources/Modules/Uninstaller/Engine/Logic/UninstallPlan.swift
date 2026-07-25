@@ -34,21 +34,30 @@ public enum UninstallPlan {
     }
 
     /// Bundles always go; leftovers only when ticked on the review screen.
+    /// Deduplicated in order: a prefix glob and an exact candidate can resolve
+    /// to the same directory, and trashing it twice makes the second attempt
+    /// fail with "doesn't exist" — a failure the user can do nothing about.
     public static func paths(_ groups: [UninstallGroup], selectedLeftovers: Set<String>) -> [String] {
-        groups.flatMap { group in
-            [group.app.path] + group.leftovers.map(\.path).filter { selectedLeftovers.contains($0) }
+        var seen: Set<String> = []
+        return groups.flatMap { group in
+            ([group.app.path] + group.leftovers.map(\.path).filter { selectedLeftovers.contains($0) })
+                .filter { seen.insert($0).inserted }
         }
     }
 
     public static func totalBytes(_ groups: [UninstallGroup], selectedLeftovers: Set<String>) -> Int {
-        groups.reduce(0) { sum, group in
-            sum + group.app.sizeBytes
-                + group.leftovers.filter { selectedLeftovers.contains($0.path) }
-                    .reduce(0) { $0 + $1.sizeBytes }
+        var seen: Set<String> = []
+        return groups.reduce(0) { sum, group in
+            var subtotal = seen.insert(group.app.path).inserted ? group.app.sizeBytes : 0
+            for leftover in group.leftovers where selectedLeftovers.contains(leftover.path) {
+                if seen.insert(leftover.path).inserted { subtotal += leftover.sizeBytes }
+            }
+            return sum + subtotal
         }
     }
 
     public static func allLeftoverPaths(_ groups: [UninstallGroup]) -> [String] {
-        groups.flatMap { $0.leftovers.map(\.path) }
+        var seen: Set<String> = []
+        return groups.flatMap { $0.leftovers.map(\.path) }.filter { seen.insert($0).inserted }
     }
 }

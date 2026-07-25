@@ -277,11 +277,8 @@ public struct UninstallerSettingsPage: View {
                                 Text((failure.path as NSString).lastPathComponent)
                                     .lineLimit(1)
                                 Spacer()
-                                Button(UnStr.showInFinder) {
-                                    NSWorkspace.shared.activateFileViewerSelecting(
-                                        [URL(fileURLWithPath: failure.path)])
-                                }
-                                .controlSize(.small)
+                                Button(UnStr.showInFinder) { reveal(failure.path) }
+                                    .controlSize(.small)
                             }
                             Text(failure.path)
                                 .font(.caption).foregroundStyle(.secondary)
@@ -319,6 +316,19 @@ public struct UninstallerSettingsPage: View {
             }
             .padding(.horizontal, 20).padding(.vertical, 12)
         }
+    }
+
+    /// Selecting a file Finder cannot see does nothing at all, so fall back to
+    /// opening the enclosing folder — and bring Finder forward either way.
+    private func reveal(_ path: String) {
+        let url = URL(fileURLWithPath: path)
+        if FileManager.default.fileExists(atPath: path) {
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+        } else {
+            NSWorkspace.shared.open(url.deletingLastPathComponent())
+        }
+        NSRunningApplication.runningApplications(
+            withBundleIdentifier: "com.apple.finder").first?.activate()
     }
 
     private func groupHeader(_ group: UninstallGroup) -> some View {
