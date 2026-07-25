@@ -162,11 +162,15 @@ with no destination is the one place a linear curve is right.
 
 Two rules earned by the panel, both about *what draws where* rather than timing:
 
-- **Composite before fading.** Animating `.opacity` puts a subtree in an
-  offscreen layer, and hierarchical colours (`.secondary`, `.tertiary`) resolve
-  differently inside one. Dropping the layer at the end of the animation makes
-  those colours jump. `.compositingGroup()` ahead of `.opacity` keeps the
-  rendering path identical during and after.
+- **Don't fade a reveal — grow it.** Animating `.opacity` puts the subtree in
+  an offscreen layer, where hierarchical colours resolve differently; dropping
+  that layer at the end of the animation makes them jump (the "Automation"
+  heading did exactly this). `.compositingGroup()` stops the jump but costs
+  more than it fixes: inside a permanent layer, system materials — dividers,
+  switches, bordered buttons, coloured symbols — stop blending with the card
+  behind them and visibly wash out. The reveal needs no fade at all: animate
+  the measured height and `.clipped()`, and the content slides out from under
+  the edge with every colour native.
 - **Never reveal with `if`.** Removing rows from the hierarchy collapses the
   card's background instantly while the disappearing rows keep drawing over
   whatever sits below. Keep the content mounted, animate a measured height, and

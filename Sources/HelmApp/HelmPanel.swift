@@ -307,8 +307,8 @@ private struct UtilitiesSection: View {
                 if height > 0 { rowsHeight = height }
             }
             .frame(height: expanded ? rowsHeight : 0, alignment: .top)
-            .compositingGroup()
-            .opacity(expanded ? 1 : 0)
+            // Height + clipping only: fading would isolate these rows in their
+            // own layer and their materials would stop blending with the card.
             .clipped()
             .allowsHitTesting(expanded)
         }
