@@ -48,24 +48,13 @@ let package = Package(
             dependencies: ["HelmContract", "HelmUI", "Module_Homebrew_Engine"],
             path: "Sources/Modules/Homebrew/UI"
         ),
-        .target(
-            name: "Module_Island_Engine",
-            dependencies: ["HelmContract", "HelmRuntime"],
-            path: "Sources/Modules/Island/Engine"
-        ),
-        .target(
-            name: "Module_Island_UI",
-            dependencies: ["HelmContract", "HelmUI", "Module_Island_Engine"],
-            path: "Sources/Modules/Island/UI"
-        ),
         .executableTarget(
             name: "HelmApp",
             dependencies: ["HelmContract", "HelmRuntime", "HelmUI",
                            "Module_KeepAwake_Engine", "Module_KeepAwake_UI",
                            "Module_VPN_Engine", "Module_VPN_UI",
                            "Module_Uninstaller_Engine", "Module_Uninstaller_UI",
-                           "Module_Homebrew_Engine", "Module_Homebrew_UI",
-                           "Module_Island_Engine", "Module_Island_UI"]
+                           "Module_Homebrew_Engine", "Module_Homebrew_UI"]
         ),
         .testTarget(name: "HelmContractTests", dependencies: ["HelmContract"]),
         .testTarget(name: "HelmRuntimeTests", dependencies: ["HelmRuntime"]),
@@ -88,11 +77,6 @@ let package = Package(
             name: "Module_Homebrew_EngineTests",
             dependencies: ["Module_Homebrew_Engine"],
             path: "Tests/Modules/Homebrew/EngineTests"
-        ),
-        .testTarget(
-            name: "Module_Island_EngineTests",
-            dependencies: ["Module_Island_Engine"],
-            path: "Tests/Modules/Island/EngineTests"
         ),
     ]
 )
