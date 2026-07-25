@@ -272,7 +272,7 @@ private struct UtilitiesSection: View {
     var body: some View {
         VStack(spacing: 0) {
             Button {
-                withAnimation(.easeInOut(duration: 0.24)) { expanded.toggle() }
+                withAnimation(HelmMotion.disclosure) { expanded.toggle() }
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "wrench.and.screwdriver")
@@ -299,7 +299,7 @@ private struct UtilitiesSection: View {
                             // over the header. The card's height growth (animated by
                             // the enclosing withAnimation) is what reveals them.
                             .transition(.opacity.animation(
-                                .easeOut(duration: 0.18).delay(Double(index) * 0.06)))
+                                HelmMotion.contentFade.delay(Double(index) * 0.06)))
                     }
                 }
                 .padding(.top, 8)

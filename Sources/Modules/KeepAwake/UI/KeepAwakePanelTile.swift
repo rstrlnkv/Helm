@@ -129,7 +129,7 @@ public struct KeepAwakePanelTile: View {
 
     private var morePill: some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.24)) { showMore.toggle() }
+            withAnimation(HelmMotion.disclosure) { showMore.toggle() }
         } label: {
             pillLabel(Image(systemName: "ellipsis"), active: showMore)
         }
@@ -183,7 +183,7 @@ public struct KeepAwakePanelTile: View {
 
                     Button(KAStr.start) {
                         vm.send("start", payload: startPayload(customMinutes))
-                        withAnimation(.easeInOut(duration: 0.24)) { showMore = false }
+                        withAnimation(HelmMotion.disclosure) { showMore = false }
                     }
                     .controlSize(.small)
                 }

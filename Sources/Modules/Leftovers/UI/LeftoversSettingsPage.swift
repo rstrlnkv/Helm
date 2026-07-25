@@ -31,6 +31,8 @@ public struct LeftoversSettingsPage: View {
             Divider()
             actionBar
         }
+        .animation(HelmMotion.interface, value: lvm.items.count)
+        .animation(HelmMotion.interface, value: lvm.showAll)
     }
 
     private var toolbar: some View {
@@ -92,6 +94,7 @@ public struct LeftoversSettingsPage: View {
             }
             .listStyle(.inset)
             .padding(.horizontal, 12)
+            .transition(.opacity)
         }
     }
 

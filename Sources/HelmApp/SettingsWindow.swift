@@ -271,7 +271,7 @@ private struct MenuBarSettingsView: View {
         guard let index = orderedModules.firstIndex(of: id) else { return }
         let target = index + offset
         guard orderedModules.indices.contains(target) else { return }
-        withAnimation(.easeInOut(duration: 0.18)) {
+        withAnimation(HelmMotion.interface) {
             orderedModules = ModuleOrder.move(orderedModules, from: IndexSet(integer: index),
                                               to: offset > 0 ? target + 1 : target)
         }
@@ -433,7 +433,7 @@ private struct ModuleDropDelegate: DropDelegate {
         guard let dragging, dragging != item,
               let from = order.firstIndex(of: dragging),
               let to = order.firstIndex(of: item) else { return }
-        withAnimation(.easeInOut(duration: 0.18)) {
+        withAnimation(HelmMotion.interface) {
             order = ModuleOrder.move(order, from: IndexSet(integer: from),
                                      to: to > from ? to + 1 : to)
         }
@@ -730,11 +730,11 @@ private struct HelmBezel: View {
         .rotationEffect(.degrees(angle))
         .onChange(of: active) { _, running in
             if running {
-                withAnimation(.linear(duration: 6).repeatForever(autoreverses: false)) {
+                withAnimation(HelmMotion.steadyRotation(seconds: 6)) {
                     angle += 360
                 }
             } else {
-                withAnimation(.easeOut(duration: 0.4)) { angle = 0 }
+                withAnimation(HelmMotion.interface) { angle = 0 }
             }
         }
         .accessibilityHidden(true)

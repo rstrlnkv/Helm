@@ -140,6 +140,26 @@ pure reasoning missed.
 Design records for the larger modules live in `docs/superpowers/specs/`, the
 step-by-step build plans in `docs/superpowers/plans/`.
 
+## Motion (HelmUI/DesignSystem/HelmMotion.swift)
+
+Springs, not ease curves — an eased move reads as "smoothed", a spring reads
+as physical. Four tokens, and the choice between them is a safety decision as
+much as a taste one:
+
+- `disclosure` (`.smooth`, zero bounce) — anything whose height is measured and
+  clipped: the panel's utilities accordion, Keep Awake's ⋯ block. A bouncy
+  spring overshoots, and an overshooting height clips its own content for a
+  frame; that is the panel glitch class described below. Verified in slow
+  motion after switching.
+- `interface` (`.snappy`) — reordering rows, filters, selection moves.
+- `emphasis` (`.spring(0.42, 0.78)`) — shape morphs (a pill growing into a
+  card). Currently unused; it is what the notch module used.
+- `contentFade` (short ease-out) — content appearing inside a container that is
+  already animating. Two springs against each other read as wobble.
+
+Steady rotation (the About bezel during an update check) stays linear: motion
+with no destination is the one place a linear curve is right.
+
 ## Design language (HelmUI/DesignSystem/HelmSurfaces.swift)
 
 Every screen speaks the same visual language, derived from the app's own
