@@ -267,6 +267,17 @@ private struct MenuBarSettingsView: View {
         }
     }
 
+    private func move(_ id: String, by offset: Int) {
+        guard let index = orderedModules.firstIndex(of: id) else { return }
+        let target = index + offset
+        guard orderedModules.indices.contains(target) else { return }
+        withAnimation(.easeInOut(duration: 0.18)) {
+            orderedModules = ModuleOrder.move(orderedModules, from: IndexSet(integer: index),
+                                              to: offset > 0 ? target + 1 : target)
+        }
+        AppSettings.moduleOrder = orderedModules
+    }
+
     private func permissionRow(_ title: String, detail: String, granted: Bool,
                                action: @escaping () -> Void) -> some View {
         HStack(alignment: .top, spacing: 10) {
@@ -308,6 +319,18 @@ private struct MenuBarSettingsView: View {
                                     .fill(descriptor.moduleCategory.tint))
                             Text(descriptor.moduleMetadata.name)
                             Spacer()
+                            // Dragging is fiddly inside a Form; the arrows are
+                            // the reliable path and keyboard-reachable.
+                            Button {
+                                move(id, by: -1)
+                            } label: { Image(systemName: "chevron.up") }
+                            .buttonStyle(.borderless)
+                            .disabled(orderedModules.first == id)
+                            Button {
+                                move(id, by: 1)
+                            } label: { Image(systemName: "chevron.down") }
+                            .buttonStyle(.borderless)
+                            .disabled(orderedModules.last == id)
                         }
                         .contentShape(Rectangle())
                         .opacity(dragging == id ? 0.4 : 1)
@@ -315,10 +338,13 @@ private struct MenuBarSettingsView: View {
                             dragging = id
                             return NSItemProvider(object: id as NSString)
                         }
-                        .onDrop(of: [.text], delegate: ModuleDropDelegate(
-                            item: id,
-                            order: $orderedModules,
-                            dragging: $dragging))
+                        // NSItemProvider(object: NSString) registers
+                        // public.utf8-plain-text; accepting only `.text` meant
+                        // the drop was never offered and nothing moved.
+                        .onDrop(of: [.utf8PlainText, .plainText, .text],
+                                delegate: ModuleDropDelegate(item: id,
+                                                             order: $orderedModules,
+                                                             dragging: $dragging))
                     }
                 }
             }
@@ -333,28 +359,10 @@ private struct MenuBarSettingsView: View {
                 HStack {
                     Text(AppStr.systemExtensionsTitle)
                     Spacer()
-                    if extensions.isEmpty {
-                        Text(AppStr.noExtensions).foregroundStyle(.secondary)
-                    } else {
-                        Text(AppStr.extensionCount(extensions.count)).foregroundStyle(.secondary)
-                    }
+                    Text(extensions.isEmpty ? AppStr.noExtensions : AppStr.extensionCount(extensions.count))
+                        .foregroundStyle(.secondary)
                     Button(AppStr.manage) { PermissionCheck.openExtensionSettings() }
                         .controlSize(.small)
-                }
-                ForEach(extensions) { ext in
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(ext.enabled ? Color.green : Color.orange)
-                            .frame(width: 7, height: 7)
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(ext.name).font(.callout)
-                            Text(ext.identifier)
-                                .font(.caption).foregroundStyle(.secondary)
-                                .lineLimit(1).truncationMode(.middle)
-                        }
-                        Spacer()
-                        Text(ext.state).font(.caption).foregroundStyle(.secondary)
-                    }
                 }
             }
             Section(AppStr.diagnostics) {
