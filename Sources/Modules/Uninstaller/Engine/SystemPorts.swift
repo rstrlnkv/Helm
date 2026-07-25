@@ -66,11 +66,10 @@ public struct FMFileSystem: FileSystemPort {
     public func glob(_ pattern: URL) -> [URL] {
         let dir = pattern.deletingLastPathComponent()
         let pat = pattern.lastPathComponent
-        guard let star = pat.firstIndex(of: "*") else { return exists(pattern) ? [pattern] : [] }
-        let prefix = String(pat[..<star]), suffix = String(pat[pat.index(after: star)...])
+        guard pat.contains("*") else { return exists(pattern) ? [pattern] : [] }
         guard let items = try? FileManager.default.contentsOfDirectory(atPath: dir.path) else { return [] }
         return items
-            .filter { $0.count >= prefix.count + suffix.count && $0.hasPrefix(prefix) && $0.hasSuffix(suffix) }
+            .filter { GlobMatch.matches($0, pattern: pat) }
             .map { dir.appendingPathComponent($0) }
     }
 
@@ -112,5 +111,32 @@ public struct UninstallerSystemPorts {
     public let apps: AppLister
     public init(home: URL) {
         self.apps = WorkspaceAppLister(home: home, fs: FMFileSystem())
+    }
+}
+
+
+/// Reads `systemextensionsctl list`; there is no public API for this, and the
+/// tool ships with every macOS install. Parsing lives in SystemExtensionParser.
+public struct SystemExtensionLister: SystemExtensionPort {
+    public init() {}
+
+    private func listOutput() -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/systemextensionsctl")
+        process.arguments = ["list"]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+        guard (try? process.run()) != nil else { return "" }
+        process.waitUntilExit()
+        return String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+    }
+
+    public func activeExtensionHosts() -> Set<String> {
+        SystemExtensionParser.hostIdentifiers(listOutput())
+    }
+
+    public func installedExtensions() -> [SystemExtensionInfo] {
+        SystemExtensionParser.parse(listOutput())
     }
 }

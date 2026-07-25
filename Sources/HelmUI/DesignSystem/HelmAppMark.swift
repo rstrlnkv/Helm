@@ -1,14 +1,17 @@
+import AppKit
 import SwiftUI
 
-/// Helm's mark, drawn rather than taken from the app icon.
+/// Helm's mark, built from the very artwork the app icon is built from:
+/// `helm-ring.svg` out of `Helm.icon`, drawn on the slab colour that variant
+/// uses. macOS 26 resolves `.icon` variants at the system level — the app can
+/// only ever read back the one matching the current appearance — so the mark
+/// is composed here from the same source instead, which also lets it sit in
+/// deliberate contrast to its window: the dark variant in light mode, the
+/// light variant in dark mode.
 ///
-/// macOS 26 resolves `.icon` asset variants at the system level: whatever the
-/// current appearance is, `applicationIconImage` and the asset catalog both
-/// hand back that one variant, and no drawing-appearance override changes it.
-/// Since the mark is simple — a glass slab and a ring — drawing it directly is
-/// the only way to control which variant appears, and it lets the mark sit in
-/// deliberate contrast to the window it lives in: the dark slab in light mode,
-/// the light slab in dark mode.
+/// Colours come from `icon.json`: the ring is black in the light variant and
+/// white in the dark one, at 80% opacity, scaled 1.11; the light slab is a
+/// near-white vertical gradient.
 public struct HelmAppMark: View {
     let size: CGFloat
     @Environment(\.colorScheme) private var scheme
@@ -16,7 +19,14 @@ public struct HelmAppMark: View {
     public init(size: CGFloat = 96) { self.size = size }
 
     /// Inverted on purpose: light window → dark mark, dark window → light mark.
-    private var darkSlab: Bool { scheme == .light }
+    private var darkVariant: Bool { scheme == .light }
+
+    private static let ring: NSImage? = {
+        guard let url = Bundle.main.url(forResource: "helm-ring", withExtension: "svg"),
+              let image = NSImage(contentsOf: url) else { return nil }
+        image.isTemplate = true
+        return image
+    }()
 
     public var body: some View {
         ZStack {
@@ -24,32 +34,40 @@ public struct HelmAppMark: View {
                 .fill(slabFill)
                 .overlay(
                     RoundedRectangle(cornerRadius: size * 0.225, style: .continuous)
-                        .strokeBorder(darkSlab ? Color.white.opacity(0.10) : Color.black.opacity(0.06),
+                        .strokeBorder(darkVariant ? Color.white.opacity(0.10) : Color.black.opacity(0.06),
                                       lineWidth: max(size * 0.006, 0.5))
                 )
-                .shadow(color: .black.opacity(darkSlab ? 0.45 : 0.18),
+                .shadow(color: .black.opacity(darkVariant ? 0.45 : 0.18),
                         radius: size * 0.06, x: 0, y: size * 0.03)
-            Circle()
-                .strokeBorder(ringFill, lineWidth: size * 0.125)
-                .frame(width: size * 0.60, height: size * 0.60)
+            ringView
         }
         .frame(width: size, height: size)
         .accessibilityHidden(true)
     }
 
-    private var slabFill: LinearGradient {
-        darkSlab
-            ? LinearGradient(colors: [Color(white: 0.17), Color(white: 0.07)],
-                             startPoint: .top, endPoint: .bottom)
-            : LinearGradient(colors: [Color(white: 1.0), Color(white: 0.93)],
-                             startPoint: .top, endPoint: .bottom)
+    @ViewBuilder private var ringView: some View {
+        if let ring = Self.ring {
+            Image(nsImage: ring)
+                .resizable()
+                .renderingMode(.template)
+                .foregroundStyle(ringColor)
+                .opacity(0.8)
+                .frame(width: size * 1.11, height: size * 1.11)
+        } else {
+            // Same geometry as the SVG (r=300, stroke 96 on a 1024 canvas).
+            Circle()
+                .strokeBorder(ringColor.opacity(0.8), lineWidth: size * 1.11 * (96.0 / 1024.0))
+                .frame(width: size * 1.11 * (600.0 / 1024.0), height: size * 1.11 * (600.0 / 1024.0))
+        }
     }
 
-    private var ringFill: LinearGradient {
-        darkSlab
-            ? LinearGradient(colors: [Color(white: 0.97), Color(white: 0.55)],
+    private var ringColor: Color { darkVariant ? .white : .black }
+
+    private var slabFill: LinearGradient {
+        darkVariant
+            ? LinearGradient(colors: [Color(white: 0.16), Color(white: 0.06)],
                              startPoint: .top, endPoint: .bottom)
-            : LinearGradient(colors: [Color(white: 0.18), Color(white: 0.55)],
-                             startPoint: .top, endPoint: .bottom)
+            : LinearGradient(colors: [Color(white: 1.0), Color(white: 0.985)],
+                             startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.7))
     }
 }

@@ -37,12 +37,26 @@ public struct ScanResult: Codable, Equatable, Sendable {
     }
 }
 
+/// Why one path could not be moved, so the UI can say something actionable.
+public struct TrashFailureInfo: Codable, Equatable, Sendable, Identifiable {
+    public var id: String { path }
+    public let path: String
+    /// Raw value of `TrashFailure.Reason`.
+    public let reason: String
+    public init(path: String, reason: String) {
+        self.path = path; self.reason = reason
+    }
+}
+
 public struct UninstallResult: Codable, Equatable, Sendable {
     public let trashed: [String]
     public let failed: [String]
     public let freedBytes: Int
-    public init(trashed: [String], failed: [String], freedBytes: Int) {
+    public let failures: [TrashFailureInfo]
+    public init(trashed: [String], failed: [String], freedBytes: Int,
+                failures: [TrashFailureInfo] = []) {
         self.trashed = trashed; self.failed = failed; self.freedBytes = freedBytes
+        self.failures = failures
     }
 }
 

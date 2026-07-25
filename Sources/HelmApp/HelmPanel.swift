@@ -141,6 +141,8 @@ private struct HelmPanelContent: View {
     @State private var utilitiesExpanded = false
     @State private var showSettingsButton = AppSettings.showSettingsButton
     @State private var showQuitButton = AppSettings.showQuitButton
+    /// Bumped when the user reorders modules so the panel rebuilds its rows.
+    @State private var orderTick = 0
 
     /// Optional shortcuts; both actions also live in the status item's
     /// right-click menu, so they stay off by default. Rendered as a card row so
@@ -196,6 +198,7 @@ private struct HelmPanelContent: View {
     var body: some View {
         VStack(spacing: 0) {
             card
+                .id(orderTick)
             // Transparent filler: the window spans a strip, so a click below the
             // card should dismiss (a menu behaves the same way).
             Color.clear
@@ -205,6 +208,9 @@ private struct HelmPanelContent: View {
                 }
         }
         .frame(maxHeight: .infinity, alignment: .top)
+        .onReceive(NotificationCenter.default.publisher(for: .helmModuleOrderChanged)) { _ in
+            orderTick &+= 1
+        }
     }
 
     private var card: some View {

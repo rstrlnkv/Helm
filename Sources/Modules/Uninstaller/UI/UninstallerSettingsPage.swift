@@ -38,6 +38,7 @@ public struct UninstallerSettingsPage: View {
     @State private var busy = false
     @State private var forceQuit = false
     @State private var resultBanner: String?
+    @State private var failures: [TrashFailureInfo] = []
 
     /// 0 = installed apps, 1 = leftovers from apps that are already gone.
     @State private var tab = 0
@@ -84,9 +85,13 @@ public struct UninstallerSettingsPage: View {
             Divider()
 
             if tab == 0 {
-                switch step {
-                case .pick: pickStep
-                case .review: reviewStep
+                if !failures.isEmpty {
+                    failureReport
+                } else {
+                    switch step {
+                    case .pick: pickStep
+                    case .review: reviewStep
+                    }
                 }
             } else {
                 OrphansView(uvm: uvm)
@@ -109,19 +114,11 @@ public struct UninstallerSettingsPage: View {
 
     private var pickStep: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField(UnStr.searchApps, text: $search)
-                    .textFieldStyle(.plain)
-                if !search.isEmpty {
-                    Button { search = "" } label: { Image(systemName: "xmark.circle.fill") }
-                        .buttonStyle(.plain).foregroundStyle(.secondary)
-                }
-            }
-            .padding(8)
-            .helmCard(padding: 8)
-            .padding(.horizontal, 20)
-            .padding(.bottom, 8)
+            HelmSearchField(text: $search, placeholder: UnStr.searchApps)
+                .frame(height: 24)
+                .padding(.horizontal, 20)
+                .padding(.top, 12)     // breathing room under the divider
+                .padding(.bottom, 8)
 
             if loading {
                 Spacer()
@@ -267,6 +264,56 @@ public struct UninstallerSettingsPage: View {
         }
     }
 
+    /// What stayed behind, why, and what to do about it.
+    private var failureReport: some View {
+        VStack(spacing: 0) {
+            List {
+                Section {
+                    ForEach(failures, id: \.path) { failure in
+                        VStack(alignment: .leading, spacing: 3) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundStyle(.orange)
+                                Text((failure.path as NSString).lastPathComponent)
+                                    .lineLimit(1)
+                                Spacer()
+                                Button(UnStr.showInFinder) {
+                                    NSWorkspace.shared.activateFileViewerSelecting(
+                                        [URL(fileURLWithPath: failure.path)])
+                                }
+                                .controlSize(.small)
+                            }
+                            Text(failure.path)
+                                .font(.caption).foregroundStyle(.secondary)
+                                .lineLimit(1).truncationMode(.middle)
+                            Text(UnStr.failureReason(failure.reason))
+                                .font(.caption).foregroundStyle(.orange)
+                        }
+                        .padding(.vertical, 3)
+                    }
+                } header: {
+                    Text(UnStr.couldNotRemove(failures.count))
+                }
+            }
+            .listStyle(.inset)
+            .padding(.horizontal, 12)
+
+            Divider()
+            HStack(spacing: 10) {
+                if failures.contains(where: { $0.reason == TrashFailure.Reason.needsFullDiskAccess.rawValue }) {
+                    Button(UnStr.openDiskAccess) { PermissionCheck.openFullDiskAccessSettings() }
+                }
+                if failures.contains(where: { $0.reason == TrashFailure.Reason.activeSystemExtension.rawValue }) {
+                    Button(UnStr.openExtensions) { PermissionCheck.openExtensionSettings() }
+                }
+                Spacer()
+                Button(UnStr.done) { failures = [] }
+                    .buttonStyle(.borderedProminent)
+            }
+            .padding(.horizontal, 20).padding(.vertical, 12)
+        }
+    }
+
     private func groupHeader(_ group: UninstallGroup) -> some View {
         HStack(spacing: 8) {
             Image(nsImage: AppIconCache.icon(forFile: group.app.path))
@@ -352,8 +399,12 @@ public struct UninstallerSettingsPage: View {
         if let failed = result?.failed, !failed.isEmpty {
             HelmLog.shared.warn("uninstaller", "failed to trash: \(failed.joined(separator: ", "))")
             resultBanner = UnStr.removedWithFailures(freed, failed.count)
+            // Leftovers that stayed put are the whole point of the module, so
+            // they get a screen of their own rather than a line to overlook.
+            failures = result?.failures ?? failed.map { TrashFailureInfo(path: $0, reason: "unknown") }
         } else {
             resultBanner = UnStr.removedFreed(freed)
+            failures = []
         }
 
         checked.removeAll()
