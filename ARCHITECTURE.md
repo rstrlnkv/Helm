@@ -139,33 +139,3 @@ pure reasoning missed.
 
 Design records for the larger modules live in `docs/superpowers/specs/`, the
 step-by-step build plans in `docs/superpowers/plans/`.
-
-## Island window (module `island`)
-
-Two windows, both static-frame (the panel rules apply here too):
-
-- **Sensor** — permanent invisible panel strictly over the notch rect
-  (`NotchMetrics.notchRect`): hover tracking + `NSDraggingDestination`.
-  Clicks are safe because nothing clickable lives in the notch strip.
-- **Island** — `NotchMetrics.windowRect` (notch + margins, 360pt down),
-  ordered in only while the state machine is not `.hidden`, so an idle island
-  never swallows clicks; `makeKey()` on expand. All motion is SwiftUI inside
-  the static frame; the opaque black card needs an explicit
-  `.compositingGroup()` before its background or it renders translucent.
-- **macOS 26 gotcha:** dwelling with a drag at the top screen edge triggers
-  Mission Control. Primary drag-in is therefore a global monitor
-  (`IslandDragMonitor`: drag-pasteboard changeCount + mouse events) that
-  reveals a drop zone *below* the menu bar the moment a drag starts; the
-  notch-strip destination is a secondary path.
-- **Hover flicker rule:** the sensor window sits one level ABOVE the island
-  window; otherwise ordering the island in occludes the sensor's tracking
-  area → exited → collapse → loop. The card also reports its own hover into
-  the same machine so the cursor can travel from the notch into the content.
-- Two expanded modes: `.controls` (hover) — horizontal pill only (now playing,
-  volume slider, shelf chips); `.shelf` — vertical drop card, shown only while
-  a drag is in flight or right after a drop (pinned). `IslandHIDTap`
-  (CGEventTap, Accessibility) can consume the volume keys so the island
-  replaces the system HUD.
-- Event sources (power / CoreAudio / AppleScript now-playing) call
-  `showEvent(id:text:symbol:ttl:)`; `IslandStateMachine` (pure, tested) folds
-  hover/drag/events into hidden→peek→expanded with an explicit grace window.
