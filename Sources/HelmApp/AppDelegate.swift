@@ -23,5 +23,11 @@ import HelmContract
 
         UpdateService.shared.checkOnLaunch()
 
+        if ProcessInfo.processInfo.environment["HELM_DEBUG_SETTINGS"] == "1" {
+            Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
+                Task { @MainActor in self.statusController.showAboutForDebug() }
+            }
+        }
+
     }
 }
