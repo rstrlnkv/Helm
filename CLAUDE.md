@@ -17,14 +17,25 @@ xattr -dr com.apple.quarantine /Applications/Helm.app && open /Applications/Helm
 
 ## Rules of the house
 
+- **Everything ships to the dev channel first** (`vX.Y.Z-dev.N`, prerelease),
+  is triaged against `~/Library/Logs/Helm/helm.log`, and goes stable only at
+  zero known problems. Flow and commands: [VERSIONING.md](VERSIONING.md).
+  Releases attach **both** dmg and zip; the zip feeds the silent updater.
 - New module = descriptor + engine targets following the existing pattern
   (see ARCHITECTURE.md), registered in `ModuleRegistry.all`. Pure logic in
-  `Engine/Logic/` with tests first.
+  `Engine/Logic/` with tests first. Shared plumbing (log, permissions,
+  system-extension parsing, module order) lives in `HelmRuntime` — check there
+  before writing a helper inside a module.
 - Every user-visible string goes through `L()` with all eight languages.
-- Release flow and version-bump rules: [VERSIONING.md](VERSIONING.md).
-  Releases attach **both** dmg and zip; the zip feeds the silent updater.
+- Animations come from `HelmMotion` tokens, never inline curves. Reveals grow
+  (measured height + `.clipped()`), never fade; literal colours inside
+  animated blocks (ARCHITECTURE.md § Motion has the why).
 - The in-app changelog is `Sources/HelmApp/ChangelogData.swift` (localized,
-  badged); `CHANGELOG.md` is the canonical English record. Update both.
-- UI changes to the panel/settings: verify visually with the env-gated
-  screenshot harness described in ARCHITECTURE.md (§ Dev loop) — do not ask
-  the user to be the test loop; remove the harness before committing.
+  badged, **user-facing — no fix minutiae**); `CHANGELOG.md` is the canonical
+  English record. Update both.
+- UI changes: verify visually with an env-gated screenshot harness
+  (`HELM_DEBUG_*` in AppDelegate; ARCHITECTURE.md § Dev loop) — do not ask the
+  user to be the test loop; `grep -r HELM_DEBUG Sources/` must be clean before
+  committing. When a visual bug is subtle, measure pixels across frames
+  instead of judging by eye.
+- Commit messages with quotes/parens: write to a scratchpad file, `git commit -F`.

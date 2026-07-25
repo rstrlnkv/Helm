@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import HelmRuntime
 
 // MARK: - App listing
 
@@ -122,28 +123,9 @@ public struct UninstallerSystemPorts {
 }
 
 
-/// Reads `systemextensionsctl list`; there is no public API for this, and the
-/// tool ships with every macOS install. Parsing lives in SystemExtensionParser.
+/// Both uninstaller checks go through the shared CLI in HelmRuntime.
 public struct SystemExtensionLister: SystemExtensionPort {
     public init() {}
-
-    private func listOutput() -> String {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/systemextensionsctl")
-        process.arguments = ["list"]
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = Pipe()
-        guard (try? process.run()) != nil else { return "" }
-        process.waitUntilExit()
-        return String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
-    }
-
-    public func activeExtensionHosts() -> Set<String> {
-        SystemExtensionParser.hostIdentifiers(listOutput())
-    }
-
-    public func installedExtensions() -> [SystemExtensionInfo] {
-        SystemExtensionParser.parse(listOutput())
-    }
+    public func activeExtensionHosts() -> Set<String> { SystemExtensionCLI.hostIdentifiers() }
+    public func installedExtensions() -> [SystemExtensionInfo] { SystemExtensionCLI.installed() }
 }

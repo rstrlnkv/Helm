@@ -94,9 +94,46 @@ grows: it opens pre-scrolled).
 AppKit `NSSplitViewController`; sidebar is the vibrant source list. Both panes
 own their top strip (`safeAreaRegions = []` + fixed spacer) — otherwise
 content scrolls under the floating traffic lights and picks up the system
-scroll-edge fade. The window grows to 1100×740 for `.utilities` modules and
-returns to 820×580 elsewhere. `show(selecting:)` opens directly on a module's
-page (used by panel utility rows and the status-item menu).
+scroll-edge fade.
+
+**The window's size belongs to the user — `sizingOptions = []` on both
+hosting controllers.** By default `NSHostingController` feeds SwiftUI's ideal
+size into auto layout, and any pane whose ideal height is unbounded (a
+Spacer-centred empty state, a plain VStack outside a Form) silently grows the
+window to the full screen. With sizing options off, panes fill whatever the
+window gives them and never the reverse. One default size for every page
+(940×660, measured against the densest row), `contentMinSize` 860×540, frame
+autosaved. Never resize the window per page — switching pages must not move
+it under the cursor.
+
+`show(selecting:)` opens directly on a module's page (used by panel utility
+rows and the status-item menu).
+
+## Permissions
+
+`PermissionCheck` (HelmRuntime) probes Full Disk Access by READING protected
+files (`Safari/Bookmarks.plist`, `Messages/chat.db`, several fallbacks —
+`TCC.db` does not exist on macOS 26). A write probe is wrong: creating files
+in `~/Library/Containers` is refused even when access IS granted.
+
+**Ad-hoc signing gotcha:** these builds have no Team ID, so macOS ties a
+granted permission to the exact binary. Every rebuild invalidates the grant
+while the checkbox in System Settings stays ticked. The Permissions section
+says this to the user; the real fix is Developer ID signing (needs a paid
+Apple account — user's call). `TrashFailure` classifies removal failures from
+the actual Cocoa error code, never by guessing from the path shape.
+
+`SystemExtensionParser` + `SystemExtensionCLI` (HelmRuntime) are the single
+source for `systemextensionsctl list` — the uninstaller, the leftovers
+scanner and the Settings audit all parse through them.
+
+## Diagnostics log
+
+`HelmLog` (HelmRuntime) writes `~/Library/Logs/Helm/helm.log`, one line per
+event, 2 MB rollover. `LogPolicy` keys off the `-dev` version suffix: every
+dev build logs, stable builds stay silent unless the Diagnostics switch is on.
+The release process depends on this file: dev builds are triaged against it,
+and a build graduates to stable only at zero known problems (VERSIONING.md).
 
 ## Updater
 
@@ -192,10 +229,11 @@ subject (Helm = the wheel you steer by):
 - `HelmIconPlate` — the symbol on its category tint, lit from behind by a soft
   radial glow. Also used standalone in empty states.
 - `HelmMetricStrip` — instrument readout: monospaced figures over small-caps
-  labels, split by hairlines. Each screen shows the numbers that matter there
-  (About: version/build/modules; Homebrew: packages/updates/casks; Uninstaller:
-  apps/leftovers/size; VPN: connections/active/automatic; Keep Awake:
-  state/timer/automations).
+  labels, split by hairlines. **Form screens only** (About, Keep Awake, VPN):
+  there the dials read as state. List screens (Uninstaller, Homebrew,
+  Login Items) deliberately do NOT use it — their chrome is one toolbar row
+  (segments · search · refresh) and the counts live as a quiet status line in
+  the bottom bar, which costs no vertical space.
 - `.helmCard()` — the one card treatment: `primary.opacity(0.05)` fill,
   `primary.opacity(0.08)` hairline border, 12pt continuous corners.
 - The About page's bezel around the app icon rotates **only** while an update
