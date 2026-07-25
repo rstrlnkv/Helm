@@ -19,6 +19,7 @@ import Module_Island_Engine
     private var powerSource: IslandPowerSource?
     private var audioSource: IslandAudioSource?
     private var mediaSource: IslandMediaSource?
+    private var hidTap: IslandHIDTap?
     private var store: NamespacedStore?
 
     public init() {}
@@ -51,12 +52,12 @@ import Module_Island_Engine
         let shelfVM = ShelfViewModel(store: shelfStore)
         self.shelf = shelfVM
 
-        var content: ((IslandModel) -> AnyView)?
-        content = { model in
+        let content: (IslandModel) -> AnyView = { model in
             AnyView(IslandShelfView(shelf: shelfVM, model: model,
                                     onDropped: { [weak self] in self?.controller?.apply(.dropped) }))
         }
-        guard let controller = IslandWindowController(makeContent: content!) else { return }
+        let chips: (IslandModel) -> AnyView = { _ in AnyView(IslandShelfChips(shelf: shelfVM)) }
+        guard let controller = IslandWindowController(makeContent: content, makeChips: chips) else { return }
         self.controller = controller
         controller.onDrop = { [weak shelfVM] urls in shelfVM?.add(urls) }
 
@@ -68,6 +69,14 @@ import Module_Island_Engine
                 onDragEnded: { [weak self] in self?.controller?.apply(.dragExited) })
         }
         controller.hoverEnabled = store.bool("hoverToOpen", default: true)
+        controller.model.playPause = { [weak self] in
+            self?.mediaSource?.playPause()
+            self?.controller?.model.nowPlayingPlaying.toggle()
+        }
+        controller.model.setVolume = { [weak self] level in
+            self?.audioSource?.setVolume(level)
+            self?.controller?.model.volume = level
+        }
 
         syncSources(store)
 
@@ -87,6 +96,7 @@ import Module_Island_Engine
         powerSource = nil
         audioSource?.stop(); audioSource = nil
         mediaSource?.stop(); mediaSource = nil
+        hidTap?.stop(); hidTap = nil
         NotificationCenter.default.removeObserver(self, name: .helmStoreChanged, object: nil)
     }
 
@@ -107,21 +117,54 @@ import Module_Island_Engine
                     onDeviceEvent: { [weak self] text, symbol in
                         self?.controller?.showEvent(id: "audio-device", text: text, symbol: symbol, ttl: 3.0)
                     },
-                    onVolumeEvent: { [weak self] text, symbol in
-                        self?.controller?.showEvent(id: "volume", text: text, symbol: symbol, ttl: 1.6)
+                    onVolumeEvent: { [weak self] level in
+                        self?.controller?.showVolume(level)
                     })
+                controller?.model.volumeAvailable = audioSource?.volumeControlAvailable ?? false
+                if let v = audioSource?.currentVolume() { controller?.model.volume = v }
             }
         } else {
             audioSource?.stop(); audioSource = nil
+            controller?.model.volumeAvailable = false
         }
         if store.bool("mediaEvents", default: true) {
             if mediaSource == nil {
-                mediaSource = IslandMediaSource { [weak self] text, symbol in
-                    self?.controller?.showEvent(id: "media", text: text, symbol: symbol, ttl: 4.0)
-                }
+                mediaSource = IslandMediaSource(
+                    onEvent: { [weak self] text, symbol in
+                        self?.controller?.showEvent(id: "media", text: text, symbol: symbol, ttl: 4.0)
+                    },
+                    onState: { [weak self] title, playing in
+                        self?.controller?.model.nowPlayingTitle = title
+                        self?.controller?.model.nowPlayingPlaying = playing
+                    })
             }
         } else {
             mediaSource?.stop(); mediaSource = nil
+            controller?.model.nowPlayingTitle = nil
+        }
+        // Replace the system volume HUD: consume the volume keys, apply the
+        // change ourselves, show the island's bar instead. Needs Accessibility.
+        if store.bool("replaceVolumeHUD", default: false), audioSource != nil {
+            if hidTap == nil, IslandHIDTap.ensureAccessibility(prompt: false) {
+                hidTap = IslandHIDTap { [weak self] key in self?.volumeKey(key) }
+            }
+        } else {
+            hidTap?.stop(); hidTap = nil
+        }
+    }
+
+    private func volumeKey(_ key: IslandHIDTap.Key) {
+        guard let audio = audioSource else { return }
+        switch key {
+        case .mute:
+            let muted = !audio.isMuted()
+            audio.setMuted(muted)
+            controller?.showVolume(muted ? 0 : (audio.currentVolume() ?? 0))
+        case .volumeUp, .volumeDown:
+            let step: Float = key == .volumeUp ? 1.0 / 16 : -1.0 / 16
+            let level = min(max((audio.currentVolume() ?? 0) + step, 0), 1)
+            audio.setVolume(level)
+            controller?.showVolume(level)
         }
     }
 
@@ -153,6 +196,7 @@ struct IslandSettingsPage: View {
     @State private var powerEvents = true
     @State private var audioEvents = true
     @State private var mediaEvents = true
+    @State private var replaceVolumeHUD = false
 
     var body: some View {
         Form {
@@ -180,6 +224,16 @@ struct IslandSettingsPage: View {
                     .onChange(of: audioEvents) { _, v in store.set(v, for: "audioEvents") }
                 Toggle(IsStr.mediaEvents, isOn: $mediaEvents)
                     .onChange(of: mediaEvents) { _, v in store.set(v, for: "mediaEvents") }
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle(IsStr.replaceHUD, isOn: $replaceVolumeHUD)
+                        .onChange(of: replaceVolumeHUD) { _, v in
+                            if v { _ = IslandHIDTap.ensureAccessibility(prompt: true) }
+                            store.set(v, for: "replaceVolumeHUD")
+                        }
+                    Text(IsStr.replaceHUDNote)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         .formStyle(.grouped)
@@ -189,6 +243,7 @@ struct IslandSettingsPage: View {
             powerEvents = store.bool("powerEvents", default: true)
             audioEvents = store.bool("audioEvents", default: true)
             mediaEvents = store.bool("mediaEvents", default: true)
+            replaceVolumeHUD = store.bool("replaceVolumeHUD", default: false)
         }
     }
 }
