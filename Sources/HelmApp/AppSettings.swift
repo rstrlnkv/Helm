@@ -11,6 +11,19 @@ extension Notification.Name {
 @MainActor enum AppSettings {
     static let store = NamespacedStore(namespace: "app", backing: UserDefaults.standard)
 
+    /// nil = follow the build type (dev builds log, stable builds don't);
+    /// true/false = the user overrode it in Diagnostics.
+    static var loggingOverride: Bool? {
+        get {
+            // -1 = follow the build type, 0/1 = explicit user choice.
+            let raw = store.int("loggingOverride", default: -1)
+            return raw < 0 ? nil : raw == 1
+        }
+        set {
+            store.set(newValue.map { $0 ? 1 : 0 } ?? -1, for: "loggingOverride")
+        }
+    }
+
     static var menuBarIconStyle: String {
         get { store.string("menuBarIconStyle", default: "ring") }
         set {

@@ -42,6 +42,7 @@ import HelmUI
     }
 
     private func enable(_ d: any ModuleDescriptor) {
+        HelmLog.shared.info("host", "enable \(type(of: d).id.rawValue)")
         let s = store(for: d)
         let engine = d.makeEngine(store: s)
         engine.activate()
@@ -50,6 +51,7 @@ import HelmUI
     }
 
     private func disable(_ d: any ModuleDescriptor) {
+        HelmLog.shared.info("host", "disable \(type(of: d).id.rawValue)")
         let key = type(of: d).id.rawValue
         live[key]?.engine.deactivate()
         live[key] = nil

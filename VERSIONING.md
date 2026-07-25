@@ -35,6 +35,22 @@ Always attach the **`.zip`** — the in-app updater downloads it for silent inst
 (`Installer`); the `.dmg` is the manual/drag-install path. A release without a zip
 asset falls back to opening the release page.
 
+## Release flow (since 0.7.0)
+
+**Everything ships to the dev channel first.** Cut a `vX.Y.Z-dev.N`
+prerelease, run it, and triage against the log it writes (dev builds always
+log — see Diagnostics below). Only when the bug and problem count is **zero**
+does the same code go out as the stable `vX.Y.Z` release. Never publish to
+stable without a dev round.
+
+## Diagnostics log
+
+Dev builds enable `HelmLog` automatically (`LogPolicy.isEnabled` keys off the
+`-dev` suffix in the version). It writes one line per event to
+`~/Library/Logs/Helm/helm.log`, rolls over at 2 MB, and is reachable from
+Settings → Diagnostics (show in Finder, copy, clear). Stable builds stay
+silent unless the user turns the switch on.
+
 ## Dev channel
 
 Experimental builds ship as GitHub **prereleases** tagged

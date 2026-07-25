@@ -1,5 +1,6 @@
 import Foundation
 import HelmContract
+import HelmRuntime
 
 /// Orchestrates app listing, leftover scanning, and trashing against side-effecting
 /// ports. Request/response over `transport.send` (the handler's returned `Data` is
@@ -74,7 +75,7 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
         }
     }
 
-    public func quit(bundleID: String) { running.quit(bundleID: bundleID) }
+    public func quit(bundleID: String, force: Bool = false) { running.quit(bundleID: bundleID, force: force) }
 
     /// Directories whose bundle-id-named entries belong to a single app, so a
     /// leftover there identifies the app that owned it.
@@ -135,14 +136,17 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
 
     private struct ScanReq: Codable { let bundleID: String; let appPath: String; let appName: String }
     private struct UninstallReq: Codable { let appPath: String; let paths: [String] }
-    private struct QuitReq: Codable { let bundleID: String }
+    private struct QuitReq: Codable { let bundleID: String; let force: Bool? }
 
     private func wireTransport() {
         localTransport.setHandler { [weak self] cmd in
             guard let self else { return Data() }
             switch cmd.name {
             case "listApps":
-                return (try? JSONEncoder().encode(await self.listApps())) ?? Data()
+                HelmLog.shared.info("uninstaller", "engine listApps start")
+                let list = await self.listApps()
+                HelmLog.shared.info("uninstaller", "engine listApps done: \(list.count)")
+                return (try? JSONEncoder().encode(list)) ?? Data()
             case "scan":
                 guard let r = try? JSONDecoder().decode(ScanReq.self, from: cmd.payload) else { return Data() }
                 let res = try await self.scan(bundleID: r.bundleID, appPath: r.appPath, appName: r.appName)
@@ -157,7 +161,9 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
                 guard let paths = try? JSONDecoder().decode([String].self, from: cmd.payload) else { return Data() }
                 return (try? JSONEncoder().encode(await self.trashPaths(paths))) ?? Data()
             case "quit":
-                if let r = try? JSONDecoder().decode(QuitReq.self, from: cmd.payload) { self.quit(bundleID: r.bundleID) }
+                if let r = try? JSONDecoder().decode(QuitReq.self, from: cmd.payload) {
+                    self.quit(bundleID: r.bundleID, force: r.force ?? false)
+                }
                 return Data()
             default:
                 return Data()

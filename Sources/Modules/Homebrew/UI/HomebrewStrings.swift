@@ -32,4 +32,7 @@ enum HbStr {
     static var clear: String { L("Clear", [.ru: "Очистить", .es: "Borrar", .fr: "Effacer", .de: "Löschen", .ja: "クリア", .zh: "清除", .pt: "Limpar"]) }
     static var panelHint: String { L("Manage Homebrew in Settings.", [.ru: "Управление Homebrew — в настройках.", .es: "Gestiona Homebrew en Ajustes.", .fr: "Gérez Homebrew dans Réglages.", .de: "Verwalte Homebrew in den Einstellungen.", .ja: "Homebrew の管理は設定で行います。", .zh: "在设置中管理 Homebrew。", .pt: "Gerencie o Homebrew nos Ajustes."]) }
     static var openInSettings: String { L("Open in Settings", [.ru: "Открыть в настройках", .es: "Abrir en Ajustes", .fr: "Ouvrir dans Réglages", .de: "In Einstellungen öffnen", .ja: "設定で開く", .zh: "在设置中打开", .pt: "Abrir nos Ajustes"]) }
+    static var metricPackages: String { L("PACKAGES", [.ru: "ПАКЕТЫ", .es: "PAQUETES", .fr: "PAQUETS", .de: "PAKETE", .ja: "パッケージ", .zh: "软件包", .pt: "PACOTES"]) }
+    static var metricOutdated: String { L("UPDATES", [.ru: "ОБНОВЛЕНИЯ", .es: "ACTUALIZAR", .fr: "MISES À JOUR", .de: "UPDATES", .ja: "更新", .zh: "可更新", .pt: "ATUALIZAR"]) }
+    static var metricCasks: String { L("CASKS", [.ru: "CASK", .es: "CASKS", .fr: "CASKS", .de: "CASKS", .ja: "CASK", .zh: "CASK", .pt: "CASKS"]) }
 }

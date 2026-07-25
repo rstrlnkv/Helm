@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import HelmUI
+import HelmRuntime
 import Module_Uninstaller_Engine
 
 extension InstalledApp: Identifiable { public var id: String { bundleID } }
@@ -18,20 +19,28 @@ private enum AppIconCache {
     }
 }
 
+/// Two steps, AppCleaner-style: tick the apps to remove, then review the files
+/// found for each of them before anything goes to the Trash. A running app is
+/// never removed silently — it is quit first, and only if the user says so.
 public struct UninstallerSettingsPage: View {
     @StateObject private var uvm: UninstallerViewModel
 
+    private enum Step: Equatable { case pick, review }
+
+    @State private var step: Step = .pick
     @State private var apps: [InstalledApp] = []
     @State private var loading = true
     @State private var search = ""
-    @State private var selectedID: String?
-    @State private var scan: ScanResult?
+    @State private var checked: Set<String> = []          // bundle ids
+    @State private var groups: [UninstallGroup] = []
+    @State private var selectedLeftovers: Set<String> = []
     @State private var scanning = false
-    @State private var selectedPaths: Set<String> = []
     @State private var busy = false
-    @State private var confirming = false
-    @State private var confirmingRunning = false
+    @State private var forceQuit = false
     @State private var resultBanner: String?
+
+    /// 0 = installed apps, 1 = leftovers from apps that are already gone.
+    @State private var tab = 0
 
     public init(vm: ModuleViewModel) {
         _uvm = StateObject(wrappedValue: UninstallerViewModel(vm: vm))
@@ -41,203 +50,303 @@ public struct UninstallerSettingsPage: View {
         guard !search.isEmpty else { return apps }
         return apps.filter { $0.name.localizedCaseInsensitiveContains(search) }
     }
-    private var selectedApp: InstalledApp? { apps.first { $0.bundleID == selectedID } }
 
-    /// 0 = installed apps, 1 = leftovers from apps that are already gone.
-    @State private var tab = 0
+    private var runningNames: [String] {
+        if case .needsQuit(let names) = UninstallPlan.readiness(groups, forceQuit: false) { return names }
+        return []
+    }
 
     public var body: some View {
         VStack(spacing: 0) {
+            HelmMetricStrip([
+                .init(loading ? "—" : "\(apps.count)", UnStr.metricApps),
+                .init("\(checked.count)", UnStr.metricChosen, tint: checked.isEmpty ? nil : .accentColor),
+                .init(sizeText, UnStr.metricSize),
+            ])
+            .padding(.horizontal, 12)
+            .padding(.top, 12)
+
             Picker("", selection: $tab) {
                 Text(UnStr.tabApps).tag(0)
                 Text(UnStr.tabOrphans).tag(1)
             }
             .pickerStyle(.segmented).labelsHidden()
             .padding(.horizontal, 12).padding(.top, 12).padding(.bottom, 8)
+            .disabled(step == .review)
+
             Divider()
+
             if tab == 0 {
-                HStack(spacing: 0) {
-                    appList.frame(width: 260)
-                    Divider()
-                    detail.frame(maxWidth: .infinity, maxHeight: .infinity)
+                switch step {
+                case .pick: pickStep
+                case .review: reviewStep
                 }
             } else {
                 OrphansView(uvm: uvm)
             }
         }
-        .task { await reload() }
+        .task {
+            apps = await uvm.listApps()
+            loading = false
+        }
     }
 
-    // MARK: - Left: app list
+    private var sizeText: String {
+        let bytes: Int
+        if step == .review {
+            bytes = UninstallPlan.totalBytes(groups, selectedLeftovers: selectedLeftovers)
+        } else {
+            bytes = apps.filter { checked.contains($0.bundleID) }.reduce(0) { $0 + $1.sizeBytes }
+        }
+        guard bytes > 0 else { return "—" }
+        return ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)
+    }
 
-    private var appList: some View {
+    // MARK: - Step 1: pick apps
+
+    private var pickStep: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 6) {
+            HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField(UnStr.searchApps, text: $search).textFieldStyle(.plain)
+                TextField(UnStr.searchApps, text: $search)
+                    .textFieldStyle(.plain)
+                if !search.isEmpty {
+                    Button { search = "" } label: { Image(systemName: "xmark.circle.fill") }
+                        .buttonStyle(.plain).foregroundStyle(.secondary)
+                }
             }
             .padding(8)
-            Divider()
+            .helmCard(padding: 8)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+
             if loading {
-                Spacer(); ProgressView().controlSize(.small); Text(UnStr.loadingApps).font(.caption).foregroundStyle(.secondary); Spacer()
+                Spacer()
+                ProgressView().controlSize(.small)
+                Spacer()
             } else {
-                // macOS 26-style content list: inset rows with the automatic
-                // rounded selection, no separators, background blending into the
-                // pane (the vibrant .sidebar material belongs to the real sidebar).
-                List(filtered, selection: $selectedID) { app in
-                    HStack(spacing: 10) {
-                        Image(nsImage: AppIconCache.icon(forFile: app.path))
-                            .resizable().frame(width: 30, height: 30)
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(app.name).lineLimit(1)
-                            Text(ByteFormat.string(app.sizeBytes)).font(.caption).foregroundStyle(.secondary)
-                        }
+                List {
+                    ForEach(filtered) { app in
+                        appRow(app)
                     }
-                    .padding(.vertical, 3)
-                    .tag(app.bundleID)
-                    .listRowSeparator(.hidden)
                 }
                 .listStyle(.inset)
-                .scrollContentBackground(.hidden)
-            }
-        }
-        .onChange(of: selectedID) { _, _ in Task { await runScan() } }
-    }
-
-    // MARK: - Right: scan detail
-
-    @ViewBuilder private var detail: some View {
-        if selectedApp == nil {
-            HelmCenteredContent { Text(UnStr.pickApp).foregroundStyle(.secondary).multilineTextAlignment(.center).padding() }
-        } else if scanning {
-            HelmCenteredContent { ProgressView(); Text(UnStr.scanning).font(.caption).foregroundStyle(.secondary) }
-        } else if let scan {
-            scanView(scan)
-        }
-    }
-
-    private func scanView(_ scan: ScanResult) -> some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    // The app bundle — always removed.
-                    row(icon: AppIconCache.icon(forFile: scan.appPath),
-                        title: selectedApp?.name ?? scan.bundleID,
-                        subtitle: UnStr.theApp, size: scan.appSizeBytes,
-                        checked: .constant(true), locked: true, byName: false)
-
-                    if scan.leftovers.isEmpty {
-                        Text(UnStr.nothingFound).font(.callout).foregroundStyle(.secondary)
-                    } else {
-                        ForEach(LeftoverKind.allCases, id: \.self) { kind in
-                            let items = scan.leftovers.filter { $0.kind == kind }
-                            if !items.isEmpty {
-                                Text(UnStr.kind(kind)).font(.caption.bold()).foregroundStyle(.secondary)
-                                ForEach(items, id: \.path) { lo in
-                                    row(icon: nil, title: (lo.path as NSString).lastPathComponent,
-                                        subtitle: lo.path, size: lo.sizeBytes,
-                                        checked: binding(for: lo.path), locked: false, byName: lo.matchedByName)
-                                }
-                            }
-                        }
-                    }
-                }
-                .padding(16)
             }
             Divider()
-            footer(scan)
-        }
-    }
-
-    private func footer(_ scan: ScanResult) -> some View {
-        HStack {
-            if let resultBanner {
-                Label(resultBanner, systemImage: "checkmark.circle.fill").foregroundStyle(.green)
-            } else {
-                Text(ByteFormat.string(selectedTotalSize(scan))).foregroundStyle(.secondary)
-            }
-            Spacer()
-            Button {
-                if scan.runningNow { confirmingRunning = true } else { confirming = true }
-            } label: {
-                if busy { ProgressView().controlSize(.small) } else { Text(UnStr.moveToTrash) }
-            }
-            .buttonStyle(.borderedProminent).tint(.red)
-            .disabled(busy)
-        }
-        .padding(12)
-        .confirmationDialog(UnStr.confirmTrash(selectedCount(scan), ByteFormat.string(selectedTotalSize(scan))),
-                            isPresented: $confirming, titleVisibility: .visible) {
-            Button(UnStr.moveToTrash, role: .destructive) { Task { await performUninstall(scan, quitFirst: false) } }
-            Button(UnStr.cancel, role: .cancel) {}
-        }
-        .confirmationDialog(UnStr.appRunningTitle, isPresented: $confirmingRunning, titleVisibility: .visible) {
-            Button(UnStr.quitAndRemove, role: .destructive) { Task { await performUninstall(scan, quitFirst: true) } }
-            Button(UnStr.cancel, role: .cancel) {}
-        }
-    }
-
-    // MARK: - Row
-
-    private func row(icon: NSImage?, title: String, subtitle: String, size: Int,
-                     checked: Binding<Bool>, locked: Bool, byName: Bool) -> some View {
-        HStack(spacing: 10) {
-            Toggle("", isOn: checked).labelsHidden().disabled(locked)
-            if let icon { Image(nsImage: icon).resizable().frame(width: 20, height: 20) }
-            VStack(alignment: .leading, spacing: 1) {
-                HStack(spacing: 6) {
-                    Text(title).lineLimit(1)
-                    if byName {
-                        Text(UnStr.byName).font(.caption2)
-                            .padding(.horizontal, 5).padding(.vertical, 1)
-                            .background(Capsule().fill(Color.orange.opacity(0.2)))
-                            .foregroundStyle(.orange)
+            HStack(spacing: 10) {
+                Button(UnStr.selectNone) { checked.removeAll() }
+                    .disabled(checked.isEmpty)
+                Spacer()
+                if let banner = resultBanner {
+                    Text(banner).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                }
+                Button {
+                    Task { await prepareReview() }
+                } label: {
+                    if scanning {
+                        HStack(spacing: 6) {
+                            ProgressView().controlSize(.small)
+                            Text(UnStr.scanning)
+                        }
+                    } else {
+                        Text(UnStr.reviewCount(checked.count))
                     }
                 }
-                Text(subtitle).font(.caption2).foregroundStyle(.tertiary).lineLimit(1).truncationMode(.middle)
+                .buttonStyle(.borderedProminent)
+                .disabled(checked.isEmpty || scanning)
+            }
+            .padding(12)
+        }
+    }
+
+    private func appRow(_ app: InstalledApp) -> some View {
+        Toggle(isOn: Binding(
+            get: { checked.contains(app.bundleID) },
+            set: { on in
+                if on { checked.insert(app.bundleID) } else { checked.remove(app.bundleID) }
+            }
+        )) {
+            HStack(spacing: 10) {
+                Image(nsImage: AppIconCache.icon(forFile: app.path))
+                    .resizable().frame(width: 28, height: 28)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(app.name).lineLimit(1)
+                    Text(app.path)
+                        .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                Spacer()
+                Text(ByteCountFormatter.string(fromByteCount: Int64(app.sizeBytes), countStyle: .file))
+                    .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+            }
+        }
+        .toggleStyle(.checkbox)
+    }
+
+    // MARK: - Step 2: review the files, grouped per app
+
+    private var reviewStep: some View {
+        VStack(spacing: 0) {
+            List {
+                ForEach(groups, id: \.id) { group in
+                    Section {
+                        if group.leftovers.isEmpty {
+                            Text(UnStr.noLeftoversForApp)
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        ForEach(group.leftovers, id: \.path) { leftover in
+                            leftoverRow(leftover)
+                        }
+                    } header: {
+                        groupHeader(group)
+                    }
+                }
+            }
+            .listStyle(.inset)
+
+            Divider()
+
+            if !runningNames.isEmpty {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(UnStr.runningWarning(runningNames.joined(separator: ", ")))
+                            .font(.callout)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Toggle(UnStr.forceQuitAndRemove, isOn: $forceQuit)
+                            .font(.callout)
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 12).padding(.vertical, 10)
+                .background(Color.orange.opacity(0.10))
+            }
+
+            HStack(spacing: 10) {
+                Button(UnStr.back) {
+                    step = .pick
+                    forceQuit = false
+                }
+                Spacer()
+                Text(UnStr.willFree(sizeText)).font(.caption).foregroundStyle(.secondary)
+                // A blocked action must also LOOK blocked: a prominent blue
+                // button that silently does nothing invites repeated clicks.
+                let ready = UninstallPlan.readiness(groups, forceQuit: forceQuit) == .ready
+                Button {
+                    Task { await removeSelection() }
+                } label: {
+                    if busy {
+                        HStack(spacing: 6) {
+                            ProgressView().controlSize(.small)
+                            Text(UnStr.removing)
+                        }
+                    } else {
+                        Text(UnStr.moveToTrash)
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(ready ? Color.accentColor : Color.gray)
+                .opacity(ready ? 1 : 0.55)
+                .disabled(busy || !ready)
+                .help(ready ? "" : UnStr.blockedByRunning)
+            }
+            .padding(12)
+        }
+    }
+
+    private func groupHeader(_ group: UninstallGroup) -> some View {
+        HStack(spacing: 8) {
+            Image(nsImage: AppIconCache.icon(forFile: group.app.path))
+                .resizable().frame(width: 18, height: 18)
+            Text(group.app.name).font(.callout.weight(.semibold))
+            if group.running {
+                Text(UnStr.runningBadge)
+                    .font(.caption2.weight(.semibold))
+                    .padding(.horizontal, 6).padding(.vertical, 2)
+                    .background(Capsule().fill(Color.orange.opacity(0.25)))
             }
             Spacer()
-            Text(ByteFormat.string(size)).font(.caption).foregroundStyle(.secondary)
+            Text(ByteCountFormatter.string(fromByteCount: Int64(group.app.sizeBytes), countStyle: .file))
+                .font(.caption).foregroundStyle(.secondary).monospacedDigit()
         }
     }
 
-    // MARK: - Helpers
+    private func leftoverRow(_ leftover: Leftover) -> some View {
+        Toggle(isOn: Binding(
+            get: { selectedLeftovers.contains(leftover.path) },
+            set: { on in
+                if on { selectedLeftovers.insert(leftover.path) }
+                else { selectedLeftovers.remove(leftover.path) }
+            }
+        )) {
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text((leftover.path as NSString).lastPathComponent).lineLimit(1)
+                    Text(leftover.path)
+                        .font(.caption).foregroundStyle(.secondary)
+                        .lineLimit(1).truncationMode(.middle)
+                }
+                Spacer()
+                Text(ByteCountFormatter.string(fromByteCount: Int64(leftover.sizeBytes), countStyle: .file))
+                    .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+            }
+        }
+        .toggleStyle(.checkbox)
+    }
 
-    private func binding(for path: String) -> Binding<Bool> {
-        Binding(get: { selectedPaths.contains(path) },
-                set: { if $0 { selectedPaths.insert(path) } else { selectedPaths.remove(path) } })
-    }
-    private func selectedCount(_ scan: ScanResult) -> Int { 1 + selectedPaths.count }
-    private func selectedTotalSize(_ scan: ScanResult) -> Int {
-        scan.appSizeBytes + scan.leftovers.filter { selectedPaths.contains($0.path) }.reduce(0) { $0 + $1.sizeBytes }
-    }
+    // MARK: - Actions
 
-    private func reload() async {
-        loading = true
-        apps = await uvm.listApps()
-        loading = false
-    }
-    private func runScan() async {
+    private func prepareReview() async {
+        scanning = true
         resultBanner = nil
-        guard let app = selectedApp else { scan = nil; return }
-        scanning = true; scan = nil
-        let r = await uvm.scan(app)
-        scan = r
-        selectedPaths = Set(r?.leftovers.map(\.path) ?? [])
-        scanning = false
+        defer { scanning = false }
+        var built: [UninstallGroup] = []
+        for app in apps where checked.contains(app.bundleID) {
+            let scan = await uvm.scan(app)
+            built.append(UninstallGroup(app: app,
+                                        leftovers: scan?.leftovers ?? [],
+                                        running: scan?.runningNow ?? false))
+        }
+        groups = built
+        selectedLeftovers = Set(UninstallPlan.allLeftoverPaths(built))
+        forceQuit = false
+        HelmLog.shared.info("uninstaller",
+                            "review \(built.count) apps, \(selectedLeftovers.count) leftovers, running: "
+                            + built.filter(\.running).map(\.app.name).joined(separator: ","))
+        step = .review
     }
-    private func performUninstall(_ scan: ScanResult, quitFirst: Bool) async {
+
+    private func removeSelection() async {
+        guard UninstallPlan.readiness(groups, forceQuit: forceQuit) == .ready else { return }
         busy = true
-        if quitFirst {
-            await uvm.quit(bundleID: scan.bundleID)
+        defer { busy = false }
+
+        if forceQuit {
+            for group in groups where group.running {
+                HelmLog.shared.info("uninstaller", "force quit \(group.app.bundleID)")
+                await uvm.quit(bundleID: group.app.bundleID, force: true)
+            }
+            // Let the apps disappear before their bundles move.
             try? await Task.sleep(nanoseconds: 800_000_000)
         }
-        let r = await uvm.uninstall(appPath: scan.appPath, paths: Array(selectedPaths))
-        busy = false
-        if let r {
-            resultBanner = UnStr.freed(ByteFormat.string(r.freedBytes))
+
+        let paths = UninstallPlan.paths(groups, selectedLeftovers: selectedLeftovers)
+        HelmLog.shared.info("uninstaller", "trashing \(paths.count) paths")
+        let result = await uvm.trashPaths(paths)
+
+        let freed = ByteCountFormatter.string(fromByteCount: Int64(result?.freedBytes ?? 0), countStyle: .file)
+        if let failed = result?.failed, !failed.isEmpty {
+            HelmLog.shared.warn("uninstaller", "failed to trash: \(failed.joined(separator: ", "))")
+            resultBanner = UnStr.removedWithFailures(freed, failed.count)
+        } else {
+            resultBanner = UnStr.removedFreed(freed)
         }
-        await reload()
-        selectedID = nil; self.scan = nil
+
+        checked.removeAll()
+        groups = []
+        selectedLeftovers = []
+        forceQuit = false
+        step = .pick
+        apps = await uvm.listApps()
     }
 }

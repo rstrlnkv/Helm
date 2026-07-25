@@ -21,5 +21,11 @@ public protocol TrashPort: Sendable {
 
 public protocol RunningAppsPort: Sendable {
     func isRunning(bundleID: String) -> Bool
-    func quit(bundleID: String)
+    /// `force` skips the app's save/confirm dialogs — needed when the user
+    /// chose to remove an app that is still running.
+    func quit(bundleID: String, force: Bool)
+}
+
+public extension RunningAppsPort {
+    func quit(bundleID: String) { quit(bundleID: bundleID, force: false) }
 }
