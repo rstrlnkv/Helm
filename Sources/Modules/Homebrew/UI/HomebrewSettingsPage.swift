@@ -62,33 +62,47 @@ public struct HomebrewSettingsPage: View {
 
     // MARK: - Manager
 
-    private var manager: some View {
-        managerBody
-            .helmMetricsHeader {
-                HelmMetricStrip([
-                    .init("\(hb.installed.count)", HbStr.metricPackages),
-                    .init("\(hb.outdated.count)", HbStr.metricOutdated,
-                          tint: hb.outdated.isEmpty ? nil : .orange),
-                    .init("\(hb.installed.filter(\.isCask).count)", HbStr.metricCasks),
-                ])
-            }
+    private var manager: some View { managerBody }
+
+    /// Counts as a quiet status line rather than a panel of dials.
+    private var statusLine: String {
+        HbStr.packagesStatus(hb.installed.count,
+                             hb.outdated.count,
+                             hb.installed.filter(\.isCask).count)
     }
 
     private var managerBody: some View {
         VStack(spacing: 0) {
-            Picker("", selection: $segment) {
-                Text(HbStr.segInstalled).tag(0)
-                Text(HbStr.segUpdates).tag(1)
-                Text(HbStr.segSearch).tag(2)
-            }
-            .pickerStyle(.segmented).labelsHidden()
-            .padding(.horizontal, 20).padding(.vertical, 10)
-            .onChange(of: segment) { _, seg in
-                Task {
-                    if seg == 0 { await hb.refreshInstalled() }
-                    else if seg == 1 { await hb.refreshOutdated() }
+            HStack(spacing: 10) {
+                Picker("", selection: $segment) {
+                    Text(HbStr.segInstalled).tag(0)
+                    Text(HbStr.segUpdates).tag(1)
+                    Text(HbStr.segSearch).tag(2)
                 }
+                .pickerStyle(.segmented).labelsHidden()
+                .frame(width: 300)
+                .onChange(of: segment) { _, seg in
+                    Task {
+                        if seg == 0 { await hb.refreshInstalled() }
+                        else if seg == 1 { await hb.refreshOutdated() }
+                    }
+                }
+                Spacer(minLength: 0)
+                Text(statusLine)
+                    .font(.caption).foregroundStyle(.secondary)
+                Button {
+                    Task {
+                        if segment == 1 { await hb.refreshOutdated() }
+                        else { await hb.refreshInstalled() }
+                    }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .buttonStyle(.borderless)
+                .disabled(hb.running)
+                .help(HbStr.refreshList)
             }
+            .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
             Divider()
             Group {
                 switch segment {

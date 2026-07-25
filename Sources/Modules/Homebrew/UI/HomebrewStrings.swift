@@ -35,4 +35,6 @@ enum HbStr {
     static var metricPackages: String { L("PACKAGES", [.ru: "ПАКЕТЫ", .es: "PAQUETES", .fr: "PAQUETS", .de: "PAKETE", .ja: "パッケージ", .zh: "软件包", .pt: "PACOTES"]) }
     static var metricOutdated: String { L("UPDATES", [.ru: "ОБНОВЛЕНИЯ", .es: "ACTUALIZAR", .fr: "MISES À JOUR", .de: "UPDATES", .ja: "更新", .zh: "可更新", .pt: "ATUALIZAR"]) }
     static var metricCasks: String { L("CASKS", [.ru: "CASK", .es: "CASKS", .fr: "CASKS", .de: "CASKS", .ja: "CASK", .zh: "CASK", .pt: "CASKS"]) }
+    static var refreshList: String { L("Refresh", [.ru: "Обновить", .es: "Actualizar", .fr: "Actualiser", .de: "Aktualisieren", .ja: "更新", .zh: "刷新", .pt: "Atualizar"]) }
+    static func packagesStatus(_ total: Int, _ outdated: Int, _ casks: Int) -> String { L("\(total) packages · \(outdated) updates · \(casks) casks", [.ru: "Пакетов: \(total) · обновлений: \(outdated) · cask: \(casks)", .es: "\(total) paquetes · \(outdated) actualizaciones · \(casks) casks", .fr: "\(total) paquets · \(outdated) mises à jour · \(casks) casks", .de: "\(total) Pakete · \(outdated) Updates · \(casks) Casks", .ja: "パッケージ \(total)・更新 \(outdated)・cask \(casks)", .zh: "\(total) 个包 · \(outdated) 个更新 · \(casks) 个 cask", .pt: "\(total) pacotes · \(outdated) atualizações · \(casks) casks"]) }
 }
