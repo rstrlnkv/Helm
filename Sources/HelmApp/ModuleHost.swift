@@ -59,8 +59,17 @@ import HelmUI
 
     func liveModule(_ id: String) -> Live? { live[id] }
 
-    /// `live` entries ordered to match `ModuleRegistry.all`.
+    /// `live` entries in the user's chosen order (Settings → Panel), falling
+    /// back to registry order for modules they never arranged.
     var enabledModules: [Live] {
-        ModuleRegistry.all.compactMap { live[type(of: $0).id.rawValue] }
+        let registry = ModuleRegistry.all.map { type(of: $0).id.rawValue }
+        return ModuleOrder.apply(saved: AppSettings.moduleOrder, to: registry)
+            .compactMap { live[$0] }
+    }
+
+    /// Every module id in the user's order — the settings list reorders this.
+    var orderedModuleIDs: [String] {
+        ModuleOrder.apply(saved: AppSettings.moduleOrder,
+                          to: ModuleRegistry.all.map { type(of: $0).id.rawValue })
     }
 }

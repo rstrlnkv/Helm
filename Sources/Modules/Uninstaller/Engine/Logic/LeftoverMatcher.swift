@@ -22,10 +22,16 @@ public enum LeftoverMatcher {
         add(u("Application Support", id), .appSupport)
         add(u("Application Support", name), .appSupport, name: true)
         add(u("Caches", id), .caches)
+        // Helpers and extensions get their own containers named after the app's
+        // id plus a suffix (…tool.helper, …tool.packet-extension-mac); matching
+        // the exact id alone leaves them behind.
+        add(u("Caches").appendingPathComponent("\(id)*"), .caches, glob: true)
         add(u("Preferences", "\(id).plist"), .preferences)
         add(u("Preferences", "ByHost").appendingPathComponent("\(id)*.plist"), .preferences, glob: true)
         add(u("Containers", id), .containers)
+        add(u("Containers").appendingPathComponent("\(id)*"), .containers, glob: true)
         add(u("Group Containers").appendingPathComponent("*.\(id)"), .groupContainers, glob: true)
+        add(u("Group Containers").appendingPathComponent("*\(id)*"), .groupContainers, glob: true)
         add(u("Saved Application State", "\(id).savedState"), .savedState)
         add(u("Logs", id), .logs)
         add(u("Logs", name), .logs, name: true)
@@ -34,6 +40,7 @@ public enum LeftoverMatcher {
         add(u("WebKit", id), .webKit)
         add(u("Cookies", "\(id).binarycookies"), .cookies)
         add(u("Application Scripts", id), .appScripts)
+        add(u("Application Scripts").appendingPathComponent("\(id)*"), .appScripts, glob: true)
         add(u("LaunchAgents").appendingPathComponent("\(id)*.plist"), .launchAgent, glob: true)
         return out
     }

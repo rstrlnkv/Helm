@@ -29,6 +29,10 @@ import Module_Uninstaller_Engine
     }
 
     /// Leftovers whose owning app is gone, grouped by bundle id.
+    public func systemExtensions() async -> [SystemExtensionInfo] {
+        await client.request("systemExtensions") ?? []
+    }
+
     public func scanOrphans() async -> [OrphanGroup] {
         await client.request("scanOrphans") ?? []
     }

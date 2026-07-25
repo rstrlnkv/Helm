@@ -18,7 +18,8 @@ import Module_Uninstaller_Engine
         let home = FileManager.default.homeDirectoryForCurrentUser
         let ports = UninstallerSystemPorts(home: home)
         return UninstallerEngine(home: home, apps: ports.apps, fs: ports.fs,
-                                 trash: ports.trash, running: ports.running)
+                                 trash: ports.trash, running: ports.running,
+                                 extensions: SystemExtensionLister())
     }
 
     public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { .utility }

@@ -11,16 +11,20 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
     private let fs: FileSystemPort
     private let trash: TrashPort
     private let running: RunningAppsPort
+    private let extensions: SystemExtensionPort
     private let localTransport: LocalTransport
     public let transport: EngineTransport
 
     public init(home: URL, apps: AppLister, fs: FileSystemPort, trash: TrashPort,
-                running: RunningAppsPort, transport: LocalTransport = LocalTransport()) {
+                running: RunningAppsPort,
+                extensions: SystemExtensionPort = NoSystemExtensions(),
+                transport: LocalTransport = LocalTransport()) {
         self.home = home
         self.apps = apps
         self.fs = fs
         self.trash = trash
         self.running = running
+        self.extensions = extensions
         self.localTransport = transport
         self.transport = transport
         wireTransport()
@@ -123,13 +127,27 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
     /// trashed items count toward freedBytes.
     private func trashSync(_ paths: [String]) -> UninstallResult {
         var trashed: [String] = [], failed: [String] = []
+        var failures: [TrashFailureInfo] = []
         var freed = 0
+        // Only queried when something actually fails — the lookup shells out.
+        var extensionHosts: Set<String>?
         for p in paths {
             let url = URL(fileURLWithPath: p)
             let size = fs.size(url)
-            if trash.trash(url) { trashed.append(p); freed += size } else { failed.append(p) }
+            if trash.trash(url) {
+                trashed.append(p); freed += size
+            } else {
+                failed.append(p)
+                let hosts = extensionHosts ?? extensions.activeExtensionHosts()
+                extensionHosts = hosts
+                let blocked = hosts.contains { p.contains($0) }
+                failures.append(TrashFailureInfo(
+                    path: p,
+                    reason: TrashFailure.reason(path: p, hasSystemExtension: blocked).rawValue))
+            }
         }
-        return UninstallResult(trashed: trashed, failed: failed, freedBytes: freed)
+        return UninstallResult(trashed: trashed, failed: failed,
+                               freedBytes: freed, failures: failures)
     }
 
     // MARK: - Transport (request/response)
@@ -155,6 +173,9 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
                 guard let r = try? JSONDecoder().decode(UninstallReq.self, from: cmd.payload) else { return Data() }
                 let res = try await self.uninstall(appPath: r.appPath, paths: r.paths)
                 return (try? JSONEncoder().encode(res)) ?? Data()
+            case "systemExtensions":
+                let list = await self.blocking { self.extensions.installedExtensions() }
+                return (try? JSONEncoder().encode(list)) ?? Data()
             case "scanOrphans":
                 return (try? JSONEncoder().encode(await self.scanOrphans())) ?? Data()
             case "trashPaths":
