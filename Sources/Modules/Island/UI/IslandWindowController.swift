@@ -16,14 +16,22 @@ import Module_Island_Engine
     @Published public internal(set) var eventIsVolume = false
     @Published public internal(set) var volume: Float = 0.5
     @Published public internal(set) var volumeAvailable = false
+    public enum Stage: Equatable { case compact, full }
+    @Published public internal(set) var stage: Stage = .compact
     @Published public internal(set) var nowPlayingTitle: String?
+    @Published public internal(set) var nowPlayingArtist: String?
     @Published public internal(set) var nowPlayingPlaying = false
+    @Published public internal(set) var nowPlayingPosition: Double = 0
+    @Published public internal(set) var nowPlayingDuration: Double = 0
+    @Published public internal(set) var nowPlayingArtwork: URL?
     public internal(set) var dismiss: () -> Void = {}
     /// Card hover feeds the same machine as the notch sensor, so moving the
     /// cursor from the notch down into the card keeps the island open.
     public internal(set) var hover: (Bool) -> Void = { _ in }
     public var setVolume: (Float) -> Void = { _ in }
     public var playPause: () -> Void = {}
+    public var previousTrack: () -> Void = {}
+    public var nextTrack: () -> Void = {}
 }
 
 /// The island shell. Two windows, per the spec's click-safety rule:
@@ -47,6 +55,7 @@ import Module_Island_Engine
     /// Mirrors of the machine's drag/pin flags to derive the content mode.
     private var dragFlag = false
     private var pinFlag = false
+    private var dwellTimer: Timer?
 
     public init?(makeContent: ((IslandModel) -> AnyView)? = nil,
                  makeChips: ((IslandModel) -> AnyView)? = nil) {
@@ -130,6 +139,7 @@ import Module_Island_Engine
 
     public func teardown() {
         graceTimer?.invalidate()
+        dwellTimer?.invalidate()
         eventTimers.values.forEach { $0.invalidate() }
         eventTimers.removeAll()
         island.orderOut(nil)
@@ -144,8 +154,15 @@ import Module_Island_Engine
 
     public func apply(_ input: IslandStateMachine.Input) {
         switch input {
-        case .hoverExited, .dragExited: armGrace()
-        case .hoverEntered, .dragEntered: graceTimer?.invalidate(); graceTimer = nil
+        case .hoverExited, .dragExited:
+            armGrace()
+        case .hoverEntered:
+            graceTimer?.invalidate(); graceTimer = nil
+            // Fluid staging: land on the compact ears pill first; a settled
+            // cursor grows it into the full card.
+            if machine.state == .hidden { model.stage = .compact; armDwell() }
+        case .dragEntered:
+            graceTimer?.invalidate(); graceTimer = nil
         default: break
         }
         machine.apply(input)
@@ -157,8 +174,13 @@ import Module_Island_Engine
         default: break
         }
         // Shelf only while a file drag is in flight or right after a drop;
-        // plain hover opens the horizontal controls pill.
+        // plain hover opens the horizontal pill.
         model.mode = (dragFlag || pinFlag) ? .shelf : .controls
+        if model.mode == .shelf { model.stage = .full }
+        if machine.state == .hidden {
+            dwellTimer?.invalidate(); dwellTimer = nil
+            model.stage = .compact
+        }
         model.state = machine.state
         syncWindows()
     }
@@ -168,6 +190,16 @@ import Module_Island_Engine
         model.volume = level
         model.eventIsVolume = true
         showEvent(id: "volume", text: nil, symbol: nil, ttl: ttl)
+    }
+
+    private func armDwell() {
+        dwellTimer?.invalidate()
+        dwellTimer = Timer.scheduledTimer(withTimeInterval: 0.55, repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, self.machine.state == .expanded else { return }
+                self.model.stage = .full
+            }
+        }
     }
 
     private func armGrace() {
