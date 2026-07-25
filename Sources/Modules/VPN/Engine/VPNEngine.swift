@@ -104,12 +104,32 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         connections.first(where: { $0.name == name })?.status ?? .unknown
     }
 
+    /// True while any connection is still transitioning — the UI shows a
+    /// spinner for these, so state must be re-polled until it settles.
+    static func needsPoll(_ connections: [VPNConnection]) -> Bool {
+        connections.contains { $0.status == .connecting || $0.status == .disconnecting }
+    }
+
+    private var pollAttempts = 0
+    private let maxPollAttempts = 25   // ~17s at 0.7s — covers slow IKEv2 handshakes
+
     private func scheduleRefresh() {
-        // Give the transition a beat, then re-read. Tests use a synchronous
-        // runner and assert on issued commands, not on this async refresh.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
-            self?.refresh()
-            self?.emitState()
+        pollAttempts = 0
+        pollUntilSettled()
+    }
+
+    /// A single 0.6s re-read used to leave the spinner stuck when the real
+    /// handshake outlived it; keep polling while a transition is in flight.
+    /// Tests use a synchronous runner and assert on issued commands, not on
+    /// this async refresh.
+    private func pollUntilSettled() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { [weak self] in
+            guard let self else { return }
+            self.refresh()
+            if Self.needsPoll(self.connections), self.pollAttempts < self.maxPollAttempts {
+                self.pollAttempts += 1
+                self.pollUntilSettled()
+            }
         }
     }
 
