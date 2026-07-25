@@ -68,4 +68,34 @@ final class UninstallPlanTests: XCTestCase {
                       group("Beta", running: false, leftovers: [leftover("/L2", 2), leftover("/L3", 3)])]
         XCTAssertEqual(UninstallPlan.allLeftoverPaths(groups), ["/L1", "/L2", "/L3"])
     }
+
+    /// Prefix globs and exact paths can resolve to the same directory. Trashing
+    /// it twice made macOS report "doesn't exist" for the second attempt, which
+    /// surfaced as a failure the user could do nothing about.
+    func testPathsAreDeduplicated() {
+        let leftover = Leftover(path: "/L/Containers/com.a.b", kind: .containers,
+                                sizeBytes: 10, matchedByName: false)
+        let duplicate = Leftover(path: "/L/Containers/com.a.b", kind: .caches,
+                                 sizeBytes: 10, matchedByName: false)
+        let g = UninstallGroup(app: app("Alpha", "com.a.b"),
+                               leftovers: [leftover, duplicate], running: false)
+        XCTAssertEqual(UninstallPlan.paths([g], selectedLeftovers: ["/L/Containers/com.a.b"]),
+                       ["/Applications/Alpha.app", "/L/Containers/com.a.b"])
+    }
+
+    func testSizeCountsADuplicatedPathOnce() {
+        let leftover = Leftover(path: "/L/x", kind: .containers, sizeBytes: 10, matchedByName: false)
+        let duplicate = Leftover(path: "/L/x", kind: .caches, sizeBytes: 10, matchedByName: false)
+        let g = UninstallGroup(app: app("Alpha", "com.a.b", size: 100),
+                               leftovers: [leftover, duplicate], running: false)
+        XCTAssertEqual(UninstallPlan.totalBytes([g], selectedLeftovers: ["/L/x"]), 110)
+    }
+
+    func testTwoAppsSharingALeftoverTrashItOnce() {
+        let shared = Leftover(path: "/L/shared", kind: .caches, sizeBytes: 5, matchedByName: false)
+        let a = UninstallGroup(app: app("Alpha", "com.a"), leftovers: [shared], running: false)
+        let b = UninstallGroup(app: app("Beta", "com.b"), leftovers: [shared], running: false)
+        XCTAssertEqual(UninstallPlan.paths([a, b], selectedLeftovers: ["/L/shared"]),
+                       ["/Applications/Alpha.app", "/L/shared", "/Applications/Beta.app"])
+    }
 }
