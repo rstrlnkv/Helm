@@ -16,6 +16,9 @@ import HelmUI
     private lazy var panel = HelmPanel(host: host)
     private lazy var settingsWindow = SettingsWindow(host: host)
 
+    /// Debug harness entry point (env-gated in AppDelegate).
+    func showAboutForDebug() { settingsWindow.showAboutForDebug() }
+
     init(host: ModuleHost) {
         self.host = host
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)

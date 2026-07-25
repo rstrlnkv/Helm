@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import SwiftUI
+import HelmRuntime
 import HelmContract
 import HelmUI
 
@@ -65,6 +66,12 @@ import HelmUI
         NSApp.setActivationPolicy(.regular)
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)
+    }
+
+    /// Debug harness entry point (env-gated in AppDelegate).
+    func showAboutForDebug() {
+        model.selection = .about
+        show()
     }
 
     func windowWillClose(_ notification: Notification) {
@@ -295,6 +302,7 @@ private struct MenuBarSettingsView: View {
 
 private struct AboutHelmView: View {
     @State private var showWhatsNew = false
+    @State private var channel = UpdateService.channel
     @ObservedObject private var updater = UpdateService.shared
     private var version: String {
         let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0"
@@ -331,6 +339,7 @@ private struct AboutHelmView: View {
                 .font(.caption).foregroundStyle(.tertiary)
             updateArea
                 .font(.callout)
+            channelPicker
             HStack(spacing: 16) {
                 Button(AppStr.whatsNew) { showWhatsNew = true }
                 if let url = URL(string: "https://github.com/rstrlnkv/Helm") {
@@ -345,6 +354,25 @@ private struct AboutHelmView: View {
         .padding(28)
         .sheet(isPresented: $showWhatsNew) {
             WhatsNewView(onClose: { showWhatsNew = false })
+        }
+    }
+
+    /// Update channel: stable releases only, or dev prereleases too.
+    private var channelPicker: some View {
+        VStack(spacing: 4) {
+            Picker(AppStr.updateChannel, selection: $channel) {
+                Text(AppStr.channelStable).tag(UpdateCheck.Channel.stable)
+                Text(AppStr.channelDev).tag(UpdateCheck.Channel.dev)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(width: 240)
+            .onChange(of: channel) { _, newValue in updater.setChannel(newValue) }
+            Text(channel == .dev ? AppStr.channelDevNote : AppStr.channelStableNote)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 320)
         }
     }
 

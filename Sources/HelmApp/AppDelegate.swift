@@ -22,5 +22,6 @@ import HelmContract
         HotkeyManager.shared.start()
 
         UpdateService.shared.checkOnLaunch()
+
     }
 }

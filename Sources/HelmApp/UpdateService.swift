@@ -67,11 +67,30 @@ import HelmRuntime
         }
     }
 
+    /// Update channel, persisted app-wide (not a module setting).
+    static var channel: UpdateCheck.Channel {
+        get {
+            UpdateCheck.Channel(rawValue: UserDefaults.standard.string(forKey: "updateChannel") ?? "")
+                ?? .stable
+        }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: "updateChannel") }
+    }
+
+    /// Switching channels re-checks immediately: a dev opt-in should surface a
+    /// prerelease at once, and opting back out must drop a prerelease offer.
+    func setChannel(_ channel: UpdateCheck.Channel) {
+        guard channel != Self.channel else { return }
+        Self.channel = channel
+        available = nil
+        checkNow()
+    }
+
     private func performCheck(manual: Bool) async {
         if manual { checking = true; lastMessage = nil }
         defer { checking = false }
 
-        var req = URLRequest(url: URL(string: "https://api.github.com/repos/\(repo)/releases/latest")!)
+        let channel = Self.channel
+        var req = URLRequest(url: URL(string: channel.endpoint(repo: repo))!)
         req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         req.setValue("Helm", forHTTPHeaderField: "User-Agent")
         req.timeoutInterval = 15
@@ -80,8 +99,13 @@ import HelmRuntime
             let (data, resp) = try await URLSession.shared.data(for: req)
             guard let http = resp as? HTTPURLResponse else { return }
             // What the response MEANS is decided by the unit-tested core.
-            switch UpdateCheck.evaluate(statusCode: http.statusCode, data: data,
-                                        currentVersion: currentVersion) {
+            // Stable reads a single release; dev reads the list of releases.
+            let outcome = channel == .stable
+                ? UpdateCheck.evaluate(statusCode: http.statusCode, data: data,
+                                       currentVersion: currentVersion)
+                : UpdateCheck.evaluateList(statusCode: http.statusCode, data: data,
+                                           currentVersion: currentVersion, channel: channel)
+            switch outcome {
             case .upToDate:
                 available = nil
                 if manual { lastMessage = "up-to-date" }
