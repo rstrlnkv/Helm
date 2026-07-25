@@ -58,6 +58,16 @@ let package = Package(
             dependencies: ["HelmContract", "HelmUI", "Module_Leftovers_Engine"],
             path: "Sources/Modules/Leftovers/UI"
         ),
+        .target(
+            name: "Module_Disk_Engine",
+            dependencies: ["HelmContract", "HelmRuntime"],
+            path: "Sources/Modules/Disk/Engine"
+        ),
+        .target(
+            name: "Module_Disk_UI",
+            dependencies: ["HelmContract", "HelmUI", "Module_Disk_Engine"],
+            path: "Sources/Modules/Disk/UI"
+        ),
         .executableTarget(
             name: "HelmApp",
             dependencies: ["HelmContract", "HelmRuntime", "HelmUI",
@@ -65,7 +75,8 @@ let package = Package(
                            "Module_VPN_Engine", "Module_VPN_UI",
                            "Module_Uninstaller_Engine", "Module_Uninstaller_UI",
                            "Module_Homebrew_Engine", "Module_Homebrew_UI",
-                           "Module_Leftovers_Engine", "Module_Leftovers_UI"]
+                           "Module_Leftovers_Engine", "Module_Leftovers_UI",
+                           "Module_Disk_Engine", "Module_Disk_UI"]
         ),
         .testTarget(name: "HelmContractTests", dependencies: ["HelmContract"]),
         .testTarget(name: "HelmRuntimeTests", dependencies: ["HelmRuntime"]),
@@ -83,6 +94,11 @@ let package = Package(
             name: "Module_Uninstaller_EngineTests",
             dependencies: ["Module_Uninstaller_Engine"],
             path: "Tests/Modules/Uninstaller/EngineTests"
+        ),
+        .testTarget(
+            name: "Module_Disk_EngineTests",
+            dependencies: ["Module_Disk_Engine"],
+            path: "Tests/Modules/Disk/EngineTests"
         ),
         .testTarget(
             name: "Module_Leftovers_EngineTests",
