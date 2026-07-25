@@ -56,17 +56,15 @@ public struct KeepAwakeSettingsPage: View {
     }
 
     public var body: some View {
-        VStack(spacing: 0) {
-            HelmMetricStrip([
-                .init(vm.isActive ? KAStr.metricOn : KAStr.metricOff, KAStr.metricState,
-                      tint: vm.isActive ? .green : nil),
-                .init(remainingText, KAStr.metricTimer, tint: vm.endDate != nil ? .orange : nil),
-                .init("\(vm.activeConditions.count)", KAStr.metricRules),
-            ])
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
-            keepAwakeForm
-        }
+        keepAwakeForm
+            .helmMetricsHeader {
+                HelmMetricStrip([
+                    .init(vm.isActive ? KAStr.metricOn : KAStr.metricOff, KAStr.metricState,
+                          tint: vm.isActive ? .green : nil),
+                    .init(remainingText, KAStr.metricTimer, tint: vm.endDate != nil ? .orange : nil),
+                    .init("\(vm.activeConditions.count)", KAStr.metricRules),
+                ])
+            }
     }
 
     /// mm:ss left on the timer, or an em dash when no timer is running.
