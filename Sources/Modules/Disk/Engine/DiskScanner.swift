@@ -59,7 +59,7 @@ public final class DiskScanner: @unchecked Sendable {
                 case .entries(let entries):
                     for entry in entries {
                         if entry.isDirectory {
-                            if self.deviceID(of: entry.path) == rootDev {
+                            if self.deviceID(of: entry.path).matches(rootDev) {
                                 directories.append(entry.path)
                             }
                         } else {
@@ -152,6 +152,21 @@ public final class DiskScanner: @unchecked Sendable {
 
     // MARK: - getattrlistbulk
 
+    /// A device identifier that never traps: no unsigned conversion, and an
+    /// explicit "unknown" for paths that cannot be stat'ed.
+    struct DeviceID: Equatable {
+        let raw: dev_t
+        let known: Bool
+
+        init(raw: dev_t) { self.raw = raw; self.known = true }
+        private init() { self.raw = 0; self.known = false }
+        static let unknown = DeviceID()
+
+        /// An unknown device is never assumed to match: better to skip a
+        /// directory than to wander onto another filesystem.
+        func matches(_ other: DeviceID) -> Bool { known && other.known && raw == other.raw }
+    }
+
     private struct Entry {
         let path: String
         let isDirectory: Bool
@@ -164,10 +179,15 @@ public final class DiskScanner: @unchecked Sendable {
         case denied
     }
 
-    private func deviceID(of path: String) -> UInt64 {
+    /// `dev_t` is SIGNED, and synthetic volumes (Preboot, VM, network mounts)
+    /// report negative ids. Converting one to an unsigned type traps at
+    /// runtime — that is what crashed a whole-disk scan while a home-directory
+    /// scan, whose ids happen to be positive, passed. No conversion: compare
+    /// the value the kernel gave us.
+    private func deviceID(of path: String) -> DeviceID {
         var st = stat()
-        guard stat(path, &st) == 0 else { return 0 }
-        return UInt64(st.st_dev)
+        guard stat(path, &st) == 0 else { return .unknown }
+        return DeviceID(raw: st.st_dev)
     }
 
     private func readDirectory(_ path: String) -> ReadOutcome {
