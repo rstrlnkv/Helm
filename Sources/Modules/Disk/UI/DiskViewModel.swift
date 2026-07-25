@@ -17,15 +17,45 @@ import Module_Disk_Engine
     @Published public private(set) var segments: [RingSegment] = []
     /// True while partial snapshots are still feeding the ring.
     @Published public private(set) var live = false
+    /// Which way the last navigation went — the ring's transition mirrors it.
+    public enum NavDirection { case down, up, none }
+    @Published public private(set) var navDirection: NavDirection = .none
+    /// The scan root's human name: "Macintosh HD", not "/".
+    @Published public private(set) var rootTitle = ""
     @Published public var basket: [DiskEntry] = []
     @Published public private(set) var banner: String?
 
     private let client: TransportClient
     private let vm: ModuleViewModel
+    private var eventsTask: Task<Void, Never>?
+    /// When the current result landed; drives the cache lifetime.
+    private var completedAt: Date?
+
+    /// Scan state must outlive the settings page — switching modules recreates
+    /// the page, and losing a minute-long scan to a sidebar click is hostile.
+    /// One instance for the app's lifetime; the page observes it.
+    private static var cached: DiskViewModel?
+    public static func shared(vm: ModuleViewModel) -> DiskViewModel {
+        if let cached { return cached }
+        let created = DiskViewModel(vm: vm)
+        cached = created
+        return created
+    }
 
     public init(vm: ModuleViewModel) {
         self.vm = vm
         client = TransportClient(vm.transport)
+        // The VM owns the event loop, not the page: partial snapshots keep
+        // building the tree even while the user is on another module.
+        eventsTask = Task { [weak self] in await self?.observeEvents() }
+    }
+
+    /// A day-old tree is a guess, not a measurement. Called on page appear.
+    public static let cacheLifetime: TimeInterval = 86_400
+    public func expireIfStale(now: Date = Date()) {
+        guard phase == .result, !live, let completedAt,
+              now.timeIntervalSince(completedAt) > Self.cacheLifetime else { return }
+        newScan()
     }
 
     public var focus: DiskEntry? { focusPath.last }
@@ -36,6 +66,11 @@ import Module_Disk_Engine
     }
 
     public func scan(path: String) async {
+        // "/" is a path, not a name; the volume list knows what to call it.
+        rootTitle = volumes.first { $0.path == path }?.name
+            ?? ((path as NSString).lastPathComponent.isEmpty ? path
+                : (path as NSString).lastPathComponent)
+        navDirection = .none
         phase = .scanning
         live = true
         tick = nil
@@ -47,6 +82,7 @@ import Module_Disk_Engine
             return
         }
         result = scan
+        completedAt = Date()
         // The user may have drilled into a partial tree; find the same spot in
         // the final one instead of yanking them back to the root.
         focusPath = DiskFocus.resolve(paths: focusPath.map(\.path), in: scan.root)
@@ -63,26 +99,46 @@ import Module_Disk_Engine
     public func newScan() {
         if live { cancel() }
         phase = .start
+        result = nil
+        completedAt = nil
+        focusPath = []
+        segments = []
+        basket = []
+        banner = nil
         Task { await loadVolumes() }
+    }
+
+    /// Advice entries ready for the basket.
+    public func entry(for advice: DiskAdvice) -> DiskEntry {
+        DiskEntry(name: advice.name, path: advice.path, bytes: advice.bytes,
+                  isDirectory: false, noAccess: false, children: [])
     }
 
     public func drill(into path: String) {
         guard let child = focus?.children.first(where: { $0.path == path }),
               child.isDirectory, !child.children.isEmpty else { return }
+        navDirection = .down
         focusPath.append(child)
         recomputeSegments()
     }
 
     public func back() {
         guard focusPath.count > 1 else { return }
+        navDirection = .up
         focusPath.removeLast()
         recomputeSegments()
     }
 
     public func jump(to index: Int) {
-        guard focusPath.indices.contains(index) else { return }
+        guard focusPath.indices.contains(index), index < focusPath.count - 1 else { return }
+        navDirection = .up
         focusPath = Array(focusPath.prefix(index + 1))
         recomputeSegments()
+    }
+
+    /// The name shown for an entry: the root carries the volume's name.
+    public func displayName(for entry: DiskEntry) -> String {
+        entry.path == focusPath.first?.path && !rootTitle.isEmpty ? rootTitle : entry.name
     }
 
     // MARK: - Basket
@@ -113,7 +169,7 @@ import Module_Disk_Engine
 
     // MARK: - Events
 
-    public func observeEvents() async {
+    private func observeEvents() async {
         for await event in vm.transport.events {
             switch event.name {
             case "progress":

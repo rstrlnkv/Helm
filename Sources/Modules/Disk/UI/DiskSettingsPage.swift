@@ -7,12 +7,12 @@ import Module_Disk_Engine
 /// Result rendering lives in DiskResultView; this page owns the states and
 /// the basket bar.
 public struct DiskSettingsPage: View {
-    @StateObject private var dvm: DiskViewModel
+    @ObservedObject private var dvm: DiskViewModel
     @State private var hovered: String?
     @State private var confirming = false
 
     public init(vm: ModuleViewModel) {
-        _dvm = StateObject(wrappedValue: DiskViewModel(vm: vm))
+        dvm = DiskViewModel.shared(vm: vm)
     }
 
     public var body: some View {
@@ -28,9 +28,9 @@ public struct DiskSettingsPage: View {
             }
         }
         .task {
+            dvm.expireIfStale()
             await dvm.loadVolumes()
         }
-        .task { await dvm.observeEvents() }
         .animation(HelmMotion.interface, value: dvm.phase)
         .confirmationDialog(DkStr.confirmTrash(dvm.basket.count, formatted(dvm.basketBytes)),
                             isPresented: $confirming, titleVisibility: .visible) {

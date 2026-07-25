@@ -58,4 +58,22 @@ final class DiskScannerTests: XCTestCase {
         XCTAssertEqual(last.filesSeen, 3)
         XCTAssertGreaterThanOrEqual(last.bytesSeen, 210_000)
     }
+
+    /// MODTIME sits between OBJTYPE and FILEID in attribute-bit order; a
+    /// misparse here silently corrupts every field after it.
+    func testScannerReadsModificationDates() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("helm-mtime-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let file = dir.appendingPathComponent("old.bin")
+        try Data(count: 200_000).write(to: file)
+        let past = Date(timeIntervalSinceNow: -400 * 86_400)
+        try FileManager.default.setAttributes([.modificationDate: past], ofItemAtPath: file.path)
+
+        let root = try XCTUnwrap(DiskScanner(foldThreshold: 1).scan(root: dir.path))
+        let node = try XCTUnwrap(root.children.first { $0.name == "old.bin" })
+        XCTAssertEqual(node.modified, past.timeIntervalSince1970, accuracy: 2)
+        XCTAssertEqual(node.bytes > 0, true)
+    }
 }
