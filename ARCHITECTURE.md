@@ -157,6 +157,26 @@ Code-based: `L("English", [.ru: …, …])` in `HelmUI/L10n.swift`; per-area str
 enums (`AppStr`, `KAStr`, `VPNStr`, `UnStr`, `HbStr`). Every user-visible
 string carries all eight languages. No .strings files.
 
+## Disk scanning on APFS volume groups
+
+`/` is the read-only System volume with the Data volume's directories
+firmlinked in, and **both mounts report the same `dev_t`** — a device check
+cannot tell them apart. Every user file is therefore reachable twice
+(`/Users/…` and `/System/Volumes/Data/Users/…`), and a parallel walk charges
+the bytes to whichever path a worker reached first. Symptom: "System" holding
+327 GB while "Users" showed 1.5 MB, differing between runs.
+
+`FirmlinkMap` reads macOS's own table at `/usr/share/firmlinks` and skips the
+Data-side duplicates. Do not "fix" this by skipping the whole
+`/System/Volumes/Data` mount: directories with no firmlink live only there
+(the Spotlight index, `macOS Install Data`) and would vanish from the total.
+`dev_t` is signed — see `DeviceID`; never convert it to an unsigned type.
+
+Folder names shown to the user come from `SystemFolderNames` (HelmRuntime),
+which reads macOS's SystemFolderLocalizations table so `/Applications` reads
+"Программы" like it does in Finder. Eligibility is decided by path, never by
+name: a project folder called "Documents" keeps its name.
+
 ## Dev loop
 
 ```bash
