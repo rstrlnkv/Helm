@@ -104,7 +104,7 @@ public struct DiskSettingsPage: View {
             Spacer()
             ProgressView().controlSize(.large)
             Text(DkStr.scanning).font(.headline)
-            Button(DkStr.cancel) { dvm.cancel() }
+            Button(DkStr.stop) { dvm.cancel() }
             Spacer()
         }
         .frame(maxWidth: .infinity)
@@ -132,7 +132,7 @@ public struct DiskSettingsPage: View {
     // MARK: - Helpers
 
     private func formatted(_ bytes: Int) -> String {
-        ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)
+        Bytes(bytes)
     }
 
     private func chooseFolder() {

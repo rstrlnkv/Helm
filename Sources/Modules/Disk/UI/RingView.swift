@@ -85,7 +85,7 @@ struct RingView: View {
                                  : (DiskViewModel.folderName(for: segment.path) ?? segment.name))
                 .font(.caption)
                 .lineLimit(1)
-            Text(ByteCountFormatter.string(fromByteCount: Int64(segment.bytes), countStyle: .file))
+            Text(Bytes(segment.bytes))
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(.secondary)
         }
@@ -101,7 +101,7 @@ struct RingView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1).truncationMode(.middle)
-            Text(ByteCountFormatter.string(fromByteCount: Int64(focusBytes), countStyle: .file))
+            Text(Bytes(focusBytes))
                 .font(.system(size: 19, weight: .medium, design: .monospaced))
                 .contentTransition(.numericText())
                 .animation(HelmMotion.interface, value: focusBytes)
