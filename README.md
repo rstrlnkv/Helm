@@ -11,7 +11,6 @@ in the spirit of PowerToys.
 | **VPN** | Connect/disconnect system VPNs, per-app auto-connect rules, silent L2TP/IPSec connect. |
 | **App Uninstaller** | Remove apps together with their leftovers (caches, preferences, containers, …) — everything goes to the Trash. A Leftovers tab finds files from apps that are already gone. |
 | **Homebrew** | Installed formulae/casks with descriptions, updates (per-package and all), search & install, live console for long operations, in-app Homebrew installer. |
-| **Island** | A Dynamic Island around the notch: invisible at rest, opens on hover or as soon as a file drag starts. File shelf (park files, drag out later, survives restarts) plus events — volume, audio-device switches, charger, now playing (Music/Spotify). |
 
 Everything is localized in eight languages: English, 中文, Español, Français,
 Deutsch, 日本語, Русский, Português.
