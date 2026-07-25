@@ -15,8 +15,13 @@ public final class DiskScanner: @unchecked Sendable {
     private var cancelled = false
     private let lock = NSLock()
 
-    public init(foldThreshold: Int = 32 * 1024) {
+    /// `skip` is injected only by tests; production reads the live firmlink
+    /// table for the scan root.
+    private let injectedSkip: Set<String>?
+
+    public init(foldThreshold: Int = 32 * 1024, skip: Set<String>? = nil) {
         self.foldThreshold = foldThreshold
+        self.injectedSkip = skip
     }
 
     public func cancel() {
@@ -44,7 +49,7 @@ public final class DiskScanner: @unchecked Sendable {
         // The Data volume is reachable both directly and through the firmlinks
         // that make up `/`; its duplicate side is skipped so bytes land where
         // the user expects them (FirmlinkMap has the why).
-        let skip = FirmlinkMap.skipSet(scanRoot: root)
+        let skip = injectedSkip ?? FirmlinkMap.skipSet(scanRoot: root)
         var filesSeen = 0
         var bytesSeen = 0
         var lastPath = root
@@ -329,7 +334,8 @@ public final class DiskScanner: @unchecked Sendable {
                 }
 
                 if !name.isEmpty {
-                    out.append(Entry(path: path + "/" + name, isDirectory: isDirectory,
+                    out.append(Entry(path: ScanPath.child(of: path, name: name),
+                                     isDirectory: isDirectory,
                                      allocatedBytes: allocated, fileID: fileID,
                                      modified: modified))
                 }

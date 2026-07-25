@@ -88,6 +88,12 @@ private struct BreadcrumbBar: View {
     @ObservedObject var dvm: DiskViewModel
     @State private var showingAdvice = false
 
+    static let ageFormatter: RelativeDateTimeFormatter = {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return formatter
+    }()
+
     var body: some View {
         HStack(spacing: 8) {
             Button {
@@ -113,6 +119,11 @@ private struct BreadcrumbBar: View {
                     Button(DkStr.cancel) { dvm.cancel() }
                         .controlSize(.small)
                 }
+            } else if dvm.restored, let savedAt = dvm.completedAt {
+                // A restored tree is a memory, not a measurement: say when.
+                Text(DkStr.measured(Self.ageFormatter.localizedString(for: savedAt,
+                                                                     relativeTo: Date())))
+                    .font(.caption).foregroundStyle(.tertiary)
             } else if let result = dvm.result {
                 Text(DkStr.scannedIn(result.filesScanned,
                                      String(format: "%.1fs", result.seconds)))
@@ -132,7 +143,7 @@ private struct BreadcrumbBar: View {
                 }
             }
 
-            Button(DkStr.newScan) { dvm.newScan() }
+            Button(dvm.restored ? DkStr.rescan : DkStr.newScan) { dvm.newScan() }
                 .controlSize(.small)
         }
         .padding(.horizontal, 16).padding(.vertical, 9)

@@ -17,11 +17,22 @@ final class WholeVolumeScan: XCTestCase {
                          Double(child.bytes) / 1_073_741_824))
         }
 
-        // The firmlink regression: /Users holds the user's data, and /System
-        // must not be inflated by a second walk of the Data volume.
-        let users = tree?.children.first { $0.name == "Users" }?.bytes ?? 0
-        let system = tree?.children.first { $0.name == "System" }?.bytes ?? 0
-        XCTAssertGreaterThan(users, system,
-                             "Users lost its bytes to a duplicate walk of the Data volume")
+        // Which side of a duplicate path wins is a race, so asserting on sizes
+        // can pass by luck — it did. Assert on structure instead: the Data-side
+        // copies must be absent from the tree, and no path may carry the
+        // doubled slash that made the skip set inert.
+        var stack = [tree].compactMap { $0 }
+        var doubled: String?
+        var duplicate: String?
+        while let node = stack.popLast() {
+            if node.path.hasPrefix("//") { doubled = node.path }
+            if node.path.hasPrefix("/System/Volumes/Data/Users")
+                || node.path.hasPrefix("/System/Volumes/Data/Applications") {
+                duplicate = node.path
+            }
+            stack.append(contentsOf: node.children)
+        }
+        XCTAssertNil(doubled, "path join produced a doubled slash")
+        XCTAssertNil(duplicate, "the Data volume was walked a second time")
     }
 }

@@ -167,7 +167,12 @@ the bytes to whichever path a worker reached first. Symptom: "System" holding
 327 GB while "Users" showed 1.5 MB, differing between runs.
 
 `FirmlinkMap` reads macOS's own table at `/usr/share/firmlinks` and skips the
-Data-side duplicates. Do not "fix" this by skipping the whole
+Data-side duplicates — and it only works if paths are joined through
+`ScanPath.child`: `"/" + "/" + "System"` yields `"//System"`, every descendant
+inherits the doubled slash, and the skip set silently stops matching in the one
+case it exists for. Assert on tree *structure*, never on sizes, when testing
+this: which side of a duplicate path wins is a race, so a size assertion passes
+by luck (it did, once). Do not "fix" this by skipping the whole
 `/System/Volumes/Data` mount: directories with no firmlink live only there
 (the Spotlight index, `macOS Install Data`) and would vanish from the total.
 `dev_t` is signed — see `DeviceID`; never convert it to an unsigned type.
