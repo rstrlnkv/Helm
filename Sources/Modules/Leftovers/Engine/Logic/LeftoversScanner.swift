@@ -39,19 +39,16 @@ public struct LeftoversScanner: Sendable {
         return sources.flatMap { directory, kind in
             files.children(of: directory)
                 .filter { $0.pathExtension == "plist" }
-                .compactMap { url -> StaleItem? in
+                .map { url -> StaleItem in
                     let info = LaunchAgentReader.read(plist: files.readPlist(url)?.raw ?? [:], path: url.path)
-                    // Still activated as a system extension → in use.
-                    guard !activeExtensions.contains(info.identifier) else { return nil }
-                    // A job whose executable is still there is doing its work.
-                    if let program = info.program, files.exists(program) { return nil }
-                    guard StaleItemRules.isRemovable(identifier: info.identifier, path: url.path,
-                                                     ownerInstalled: owner(of: info.identifier,
-                                                                           in: installed),
-                                                     installedIDs: installed) else { return nil }
+                    let targetAlive = info.program.map(files.exists) ?? false
+                    let status = self.status(identifier: info.identifier, path: url.path,
+                                             installed: installed,
+                                             inUse: targetAlive || activeExtensions.contains(info.identifier))
                     return StaleItem(path: url.path, identifier: info.identifier, kind: kind,
                                      sizeBytes: files.size(url),
-                                     missingTarget: info.program, runAtLoad: info.runAtLoad)
+                                     missingTarget: targetAlive ? nil : info.program,
+                                     runAtLoad: info.runAtLoad, status: status)
                 }
         }
     }
@@ -62,13 +59,12 @@ public struct LeftoversScanner: Sendable {
         let directory = home.appendingPathComponent("Library/Preferences")
         return files.children(of: directory)
             .filter { $0.pathExtension == "plist" }
-            .compactMap { url in
+            .map { url in
                 let identifier = url.deletingPathExtension().lastPathComponent
-                guard StaleItemRules.isRemovable(identifier: identifier, path: url.path,
-                                                 ownerInstalled: owner(of: identifier, in: installed),
-                                                 installedIDs: installed) else { return nil }
                 return StaleItem(path: url.path, identifier: identifier,
-                                 kind: .preference, sizeBytes: files.size(url))
+                                 kind: .preference, sizeBytes: files.size(url),
+                                 status: status(identifier: identifier, path: url.path,
+                                                installed: installed, inUse: false))
             }
     }
 
@@ -84,13 +80,25 @@ public struct LeftoversScanner: Sendable {
             files.children(of: directory).compactMap { url -> StaleItem? in
                 let info = files.readPlist(url.appendingPathComponent("Contents/Info.plist"))
                 guard let identifier = info?.raw["CFBundleIdentifier"] as? String else { return nil }
-                guard StaleItemRules.isRemovable(identifier: identifier, path: url.path,
-                                                 ownerInstalled: owner(of: identifier, in: installed),
-                                                 installedIDs: installed) else { return nil }
                 return StaleItem(path: url.path, identifier: identifier,
-                                 kind: .plugin, sizeBytes: files.size(url))
+                                 kind: .plugin, sizeBytes: files.size(url),
+                                 status: status(identifier: identifier, path: url.path,
+                                                installed: installed, inUse: false))
             }
         }
+    }
+
+    /// Removable only when the safety rules allow it; otherwise the item is
+    /// either in use (an owner exists, or its target is alive) or protected.
+    private func status(identifier: String, path: String,
+                        installed: Set<String>, inUse: Bool) -> ItemStatus {
+        let ownerInstalled = owner(of: identifier, in: installed)
+        if StaleItemRules.isRemovable(identifier: identifier, path: path,
+                                      ownerInstalled: ownerInstalled || inUse,
+                                      installedIDs: installed) {
+            return .orphaned
+        }
+        return (ownerInstalled || inUse) ? .inUse : .protectedItem
     }
 
     /// An item belongs to an installed app when its id matches one, or extends

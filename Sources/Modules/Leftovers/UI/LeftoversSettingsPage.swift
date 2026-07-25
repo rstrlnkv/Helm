@@ -14,7 +14,7 @@ public struct LeftoversSettingsPage: View {
 
     private var grouped: [(kind: StaleKind, items: [StaleItem])] {
         StaleKind.allCases.compactMap { kind in
-            let items = lvm.items.filter { $0.kind == kind }
+            let items = lvm.visibleItems.filter { $0.kind == kind }
             return items.isEmpty ? nil : (kind, items)
         }
     }
@@ -39,6 +39,14 @@ public struct LeftoversSettingsPage: View {
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 8)
+            if !lvm.items.isEmpty {
+                Picker("", selection: $lvm.showAll) {
+                    Text(LfStr.filterLeftovers).tag(false)
+                    Text(LfStr.filterAll).tag(true)
+                }
+                .pickerStyle(.segmented).labelsHidden()
+                .frame(width: 180)
+            }
             Button {
                 Task { await lvm.scan() }
             } label: {
@@ -69,7 +77,9 @@ public struct LeftoversSettingsPage: View {
                     .frame(maxWidth: 360)
                 Spacer()
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // A bounded minimum: enough to centre the message, without the
+            // unbounded height that made the window grow to fill the screen.
+            .frame(maxWidth: .infinity, minHeight: 260)
         } else {
             List {
                 ForEach(grouped, id: \.kind) { group in
@@ -87,18 +97,26 @@ public struct LeftoversSettingsPage: View {
 
     private func row(_ item: StaleItem) -> some View {
         HStack(spacing: 10) {
-            Toggle("", isOn: Binding(
-                get: { lvm.selected.contains(item.path) },
-                set: { on in
-                    if on { lvm.selected.insert(item.path) } else { lvm.selected.remove(item.path) }
-                }
-            ))
-            .toggleStyle(.checkbox)
-            .labelsHidden()
+            if item.removable {
+                Toggle("", isOn: Binding(
+                    get: { lvm.selected.contains(item.path) },
+                    set: { on in
+                        if on { lvm.selected.insert(item.path) } else { lvm.selected.remove(item.path) }
+                    }
+                ))
+                .toggleStyle(.checkbox)
+                .labelsHidden()
+            } else {
+                // Keeps rows aligned where there is nothing to tick.
+                Color.clear.frame(width: 14, height: 14)
+            }
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text(item.identifier).lineLimit(1)
+                    Text(item.identifier)
+                        .lineLimit(1)
+                        .foregroundStyle(item.removable ? .primary : .secondary)
+                    statusBadge(item.status)
                     if item.runAtLoad {
                         Text(LfStr.runsAtLogin)
                             .font(.caption2)
@@ -128,14 +146,29 @@ public struct LeftoversSettingsPage: View {
         .padding(.vertical, 2)
     }
 
+    private func statusBadge(_ status: ItemStatus) -> some View {
+        let (text, color): (String, Color) = switch status {
+        case .orphaned: (LfStr.statusOrphaned, .orange)
+        case .inUse: (LfStr.statusInUse, .green)
+        case .protectedItem: (LfStr.statusProtected, .secondary)
+        }
+        return Text(text)
+            .font(.caption2)
+            .padding(.horizontal, 5).padding(.vertical, 1)
+            .background(Capsule().fill(color.opacity(0.20)))
+            .foregroundStyle(color)
+    }
+
     private var actionBar: some View {
         HStack(spacing: 10) {
-            Button(LfStr.selectAll) { lvm.selected = Set(lvm.items.map(\.path)) }
-                .disabled(lvm.items.isEmpty)
+            Button(LfStr.selectAll) {
+                lvm.selected = Set(lvm.items.filter(\.removable).map(\.path))
+            }
+            .disabled(lvm.leftoverCount == 0)
             Button(LfStr.deselectAll) { lvm.selected.removeAll() }
                 .disabled(lvm.selected.isEmpty)
             if !lvm.items.isEmpty {
-                Text(LfStr.foundCount(lvm.items.count,
+                Text(LfStr.foundCount(lvm.leftoverCount,
                                       ByteCountFormatter.string(fromByteCount: Int64(selectedBytes),
                                                                 countStyle: .file)))
                     .font(.caption).foregroundStyle(.secondary)
