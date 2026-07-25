@@ -30,63 +30,112 @@ public final class DiskScanner: @unchecked Sendable {
 
     /// Synchronous; run it via the module's `blocking` bridge.
     ///
-    /// Directories are walked by a small pool of threads: a single-threaded
-    /// walk measured 4.7k files/s on a real home directory (63 s for 296k
-    /// files), which is not a usable wait. The work is syscall-bound, so
-    /// parallel readers scale nearly linearly. Tree building stays on this
-    /// thread — workers hand back batches, so TreeBuilder needs no locking.
+    /// Directories are walked by a small pool of threads (a single-threaded
+    /// walk measured 4.7k files/s — 63 s on a real home directory). Tree
+    /// building stays on THIS thread, consuming worker batches as they land,
+    /// so TreeBuilder needs no locking — and because the tree exists while the
+    /// walk runs, `onPartial` can hand the UI snapshots for a ring that grows
+    /// live instead of a spinner.
     public func scan(root: String,
-                     onProgress: (@Sendable (ScanProgress) -> Void)? = nil) -> DiskNode? {
+                     onProgress: (@Sendable (ScanProgress) -> Void)? = nil,
+                     onPartial: (@Sendable (DiskNode) -> Void)? = nil) -> DiskNode? {
         let builder = TreeBuilder(root: root, foldThreshold: foldThreshold)
         let rootDev = deviceID(of: root)
         var filesSeen = 0
         var bytesSeen = 0
+        var lastPath = root
 
         let queue = WorkQueue(initial: [root])
         let workerCount = max(1, min(ProcessInfo.processInfo.activeProcessorCount, 8))
-        let results = ResultBox()
+        let channel = BatchChannel()
 
-        DispatchQueue.concurrentPerform(iterations: workerCount) { _ in
-            while let dir = queue.next() {
-                if self.isCancelled { queue.finish(); return }
-                var files: [Entry] = []
-                var directories: [String] = []
-                var denied: [String] = []
+        let group = DispatchGroup()
+        DispatchQueue.global(qos: .userInitiated).async(group: group) {
+            DispatchQueue.concurrentPerform(iterations: workerCount) { _ in
+                while let dir = queue.next() {
+                    if self.isCancelled { queue.finish(); return }
+                    var files: [Entry] = []
+                    var directories: [String] = []
+                    var denied: [String] = []
 
-                switch self.readDirectory(dir) {
-                case .denied:
-                    denied.append(dir)
-                case .entries(let entries):
-                    for entry in entries {
-                        if entry.isDirectory {
-                            if self.deviceID(of: entry.path).matches(rootDev) {
-                                directories.append(entry.path)
+                    switch self.readDirectory(dir) {
+                    case .denied:
+                        denied.append(dir)
+                    case .entries(let entries):
+                        for entry in entries {
+                            if entry.isDirectory {
+                                if self.deviceID(of: entry.path).matches(rootDev) {
+                                    directories.append(entry.path)
+                                }
+                            } else {
+                                files.append(entry)
                             }
-                        } else {
-                            files.append(entry)
                         }
                     }
+                    queue.add(directories)
+                    channel.push(files: files, denied: denied)
+                    queue.completed()
                 }
-                queue.add(directories)
-                results.append(files: files, denied: denied)
-                queue.completed()
+            }
+            channel.close()
+        }
+
+        var lastEmit = Date()
+        while let batch = channel.pop() {
+            for path in batch.denied { builder.markNoAccess(path: path) }
+            for entry in batch.files {
+                builder.addFile(path: entry.path, bytes: entry.allocatedBytes, fileID: entry.fileID)
+                filesSeen += 1
+                bytesSeen += entry.allocatedBytes
+                lastPath = entry.path
+            }
+            let now = Date()
+            if now.timeIntervalSince(lastEmit) > 0.35 {
+                lastEmit = now
+                onProgress?(ScanProgress(filesSeen: filesSeen, bytesSeen: bytesSeen,
+                                         currentPath: lastPath))
+                // The builder thread owns the tree, so snapshotting here races
+                // with nothing.
+                onPartial?(builder.build())
             }
         }
+        group.wait()
 
         if isCancelled { return nil }
-
-        for path in results.denied { builder.markNoAccess(path: path) }
-        for entry in results.files {
-            builder.addFile(path: entry.path, bytes: entry.allocatedBytes, fileID: entry.fileID)
-            filesSeen += 1
-            bytesSeen += entry.allocatedBytes
-            if filesSeen % 8192 == 0 {
-                onProgress?(ScanProgress(filesSeen: filesSeen, bytesSeen: bytesSeen,
-                                         currentPath: entry.path))
-            }
-        }
         onProgress?(ScanProgress(filesSeen: filesSeen, bytesSeen: bytesSeen, currentPath: root))
         return builder.build()
+    }
+
+    /// Producer–consumer hand-off between walk workers and the builder thread.
+    private final class BatchChannel: @unchecked Sendable {
+        struct Batch { let files: [Entry]; let denied: [String] }
+
+        private let condition = NSCondition()
+        private var batches: [Batch] = []
+        private var closed = false
+
+        func push(files: [Entry], denied: [String]) {
+            guard !files.isEmpty || !denied.isEmpty else { return }
+            condition.lock()
+            batches.append(Batch(files: files, denied: denied))
+            condition.signal()
+            condition.unlock()
+        }
+
+        func close() {
+            condition.lock()
+            closed = true
+            condition.broadcast()
+            condition.unlock()
+        }
+
+        /// nil once the walk is done and everything has been drained.
+        func pop() -> Batch? {
+            condition.lock()
+            defer { condition.unlock() }
+            while batches.isEmpty && !closed { condition.wait() }
+            return batches.isEmpty ? nil : batches.removeFirst()
+        }
     }
 
     /// Shared directory queue. Workers block while others still have work, so

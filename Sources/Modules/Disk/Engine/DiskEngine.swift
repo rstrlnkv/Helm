@@ -41,6 +41,7 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
         let started = Date()
 
         let counter = FileCounter()
+        let freeNow = freeBytes(forPathOn: path)
         let result: ScanResult? = await blocking {
             guard let tree = scanner.scan(root: path, onProgress: { progress in
                 counter.value = progress.filesSeen
@@ -49,6 +50,15 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
                     ScanTick(files: progress.filesSeen, bytes: progress.bytesSeen,
                              path: progress.currentPath)) {
                     self.localTransport.emit(EngineEvent(name: "progress", payload: data))
+                }
+            }, onPartial: { partialTree in
+                // A shallow snapshot every ~0.35s: the ring grows while the
+                // walk is still running.
+                let snapshot = ScanResult(root: DiskEntry(partialTree, depth: 4),
+                                          freeBytes: freeNow,
+                                          filesScanned: counter.value, seconds: 0)
+                if let data = try? JSONEncoder().encode(snapshot) {
+                    self.localTransport.emit(EngineEvent(name: "partial", payload: data))
                 }
             }) else { return nil }
             let free = self.freeBytes(forPathOn: path)
