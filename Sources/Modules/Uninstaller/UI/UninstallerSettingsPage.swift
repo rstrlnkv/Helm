@@ -288,6 +288,13 @@ public struct UninstallerSettingsPage: View {
                                 .lineLimit(1).truncationMode(.middle)
                             Text(UnStr.failureReason(failure.reason))
                                 .font(.caption).foregroundStyle(.orange)
+                            if !failure.message.isEmpty {
+                                // macOS's own words: the classification is a
+                                // summary, this is the evidence behind it.
+                                Text(failure.message)
+                                    .font(.caption2).foregroundStyle(.tertiary)
+                                    .lineLimit(2)
+                            }
                         }
                         .padding(.vertical, 3)
                     }

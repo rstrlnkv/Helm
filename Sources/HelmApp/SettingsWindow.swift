@@ -247,6 +247,7 @@ private struct MenuBarSettingsView: View {
     @State private var showQuitButton = AppSettings.showQuitButton
     @State private var orderedModules: [String] = ModuleHost.shared.orderedModuleIDs
     @State private var diskAccess: PermissionState = .denied
+    private let adHocBuild = PermissionCheck.isAdHocSigned()
     @State private var extensions: [SystemExtensionInfo] = []
     @State private var loggingOn = LogPolicy.isEnabled(
         version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0",
@@ -314,7 +315,9 @@ private struct MenuBarSettingsView: View {
             }
             Section(AppStr.permissions) {
                 permissionRow(AppStr.fullDiskAccess,
-                              detail: AppStr.fullDiskAccessWhy,
+                              detail: diskAccess == .denied && adHocBuild
+                                  ? AppStr.fullDiskAccessAdHoc
+                                  : AppStr.fullDiskAccessWhy,
                               granted: diskAccess == .granted) {
                     PermissionCheck.openFullDiskAccessSettings()
                 }

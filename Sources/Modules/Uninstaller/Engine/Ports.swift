@@ -15,8 +15,29 @@ public protocol FileSystemPort: Sendable {
     func children(of url: URL) -> [URL]
 }
 
+public struct TrashOutcome: Sendable, Equatable {
+    public let succeeded: Bool
+    /// Cocoa error code when it failed (0 when it succeeded or was unknown).
+    public let errorCode: Int
+    public let message: String
+
+    public init(succeeded: Bool, errorCode: Int = 0, message: String = "") {
+        self.succeeded = succeeded
+        self.errorCode = errorCode
+        self.message = message
+    }
+
+    public static let success = TrashOutcome(succeeded: true)
+}
+
 public protocol TrashPort: Sendable {
-    func trash(_ url: URL) -> Bool
+    /// Reports what macOS actually said: classifying failures by guessing from
+    /// the path told users to grant access they already had.
+    func trashItem(_ url: URL) -> TrashOutcome
+}
+
+public extension TrashPort {
+    func trash(_ url: URL) -> Bool { trashItem(url).succeeded }
 }
 
 /// System extensions block their host app from being moved; the UI needs to
