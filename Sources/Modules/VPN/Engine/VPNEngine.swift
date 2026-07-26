@@ -85,6 +85,12 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         HelmLog.shared.info("vpn", "connect \(Redact.vpn(name))\(auto ? " (auto)" : "")")
         if auto { autoConnected.insert(name) }
         var args = ["--nc", "start", name]
+        // Known limitation: scutil takes the shared secret only as an argument,
+        // and process arguments are readable by every process running as this
+        // user while scutil lives (a fraction of a second, but not zero). There
+        // is no stdin form — `nc` is not a command scutil's interactive mode
+        // accepts. Closing this means driving NEVPNManager/NEConfiguration
+        // instead of the tool, which is a rewrite of this path, not a patch.
         if let creds = credentials?.credentials(for: name), creds.secret?.isEmpty == false {
             if let u = creds.user, !u.isEmpty { args += ["--user", u] }
             if let p = creds.password, !p.isEmpty { args += ["--password", p] }

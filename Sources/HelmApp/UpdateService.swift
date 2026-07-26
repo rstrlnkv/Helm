@@ -59,6 +59,23 @@ import HelmRuntime
                 req.setValue("Helm", forHTTPHeaderField: "User-Agent")
                 let (tmp, resp) = try await URLSession.shared.download(for: req)
                 guard (resp as? HTTPURLResponse)?.statusCode == 200 else { installState = .failed; return }
+                // Nothing is swapped in silently without the digest the release
+                // published for this exact asset. No digest, or the wrong one,
+                // and the user gets the release page instead — the updater
+                // strips quarantine and the app is ad-hoc signed, so this check
+                // is the only thing that looks at what actually arrived.
+                let asset = zip.lastPathComponent
+                guard let expected = ReleaseDigest.parse(notes: rel.notes, asset: asset) else {
+                    HelmLog.shared.warn("update", "no published digest for \(asset) — manual install")
+                    installState = .idle
+                    NSWorkspace.shared.open(rel.pageURL)
+                    return
+                }
+                guard ReleaseDigest.matches(fileAt: tmp, expected: expected) else {
+                    HelmLog.shared.error("update", "digest mismatch for \(asset) — refusing to install")
+                    installState = .failed
+                    return
+                }
                 installState = .installing
                 try Installer.installZip(at: tmp, expectedVersion: rel.version)  // terminates on success
             } catch {
