@@ -575,9 +575,15 @@ private struct AboutHelmView: View {
             }
             .frame(height: 186)
             VStack(spacing: 5) {
-                Text("Helm")
-                    .font(.system(size: 34, weight: .semibold))
-                    .tracking(-0.4)
+                // The badge sits on the wordmark, not on the version number:
+                // it is a statement about the program, and it stays until 1.0.
+                HStack(alignment: .top, spacing: 7) {
+                    Text("Helm")
+                        .font(.system(size: 34, weight: .semibold))
+                        .tracking(-0.4)
+                    HelmBadge(AppStr.betaBadge, tint: .orange)
+                        .padding(.top, 8)
+                }
                 Text(AppStr.tagline)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -611,7 +617,7 @@ private struct AboutHelmView: View {
                         .font(.callout)
                     Spacer()
                     Picker(AppStr.updateChannel, selection: $channel) {
-                        Text(AppStr.channelStable).tag(UpdateCheck.Channel.stable)
+                        Text(AppStr.channelBeta).tag(UpdateCheck.Channel.beta)
                         Text(AppStr.channelDev).tag(UpdateCheck.Channel.dev)
                     }
                     .pickerStyle(.segmented)
@@ -619,7 +625,7 @@ private struct AboutHelmView: View {
                     .frame(width: 170)
                     .onChange(of: channel) { _, newValue in updater.setChannel(newValue) }
                 }
-                Text(channel == .dev ? AppStr.channelDevNote : AppStr.channelStableNote)
+                Text(channel == .dev ? AppStr.channelDevNote : AppStr.channelBetaNote)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

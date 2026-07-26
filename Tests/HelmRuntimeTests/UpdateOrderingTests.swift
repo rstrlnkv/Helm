@@ -119,7 +119,7 @@ final class UpdateListOrderTests: XCTestCase {
     func testStableIsNotOfferedThePrereleaseEvenWhenItIsHighest() {
         let json = "[" + release("v0.8.0-dev.1") + "," + release("v0.7.0", prerelease: false) + "]"
         let outcome = UpdateCheck.evaluateList(statusCode: 200, data: Data(json.utf8),
-                                               currentVersion: "0.6.1", channel: .stable)
+                                               currentVersion: "0.6.1", channel: .beta)
         guard case .available(let r) = outcome else { return XCTFail("\(outcome)") }
         XCTAssertEqual(r.version, "v0.7.0")
     }
