@@ -62,8 +62,10 @@ final class FlagAssetTests: XCTestCase {
         for points in [CGFloat(9), 11, 13, 15, 18] {
             let badge = BadgeImage.make(label: "JP", flag: nil, region: "JP",
                                         style: .flagDrawn, points: points)
-            XCTAssertEqual(badge.size.width, points, accuracy: 0.01)
             XCTAssertEqual(badge.size.height, points, accuracy: 0.01)
+            // 4:3, the ratio the source set is drawn in — scaling a flag to
+            // some other ratio is redrawing it.
+            XCTAssertEqual(badge.size.width, (points * 4 / 3).rounded(), accuracy: 0.01)
         }
     }
 
@@ -74,15 +76,32 @@ final class FlagAssetTests: XCTestCase {
                                     style: .flagDrawn, points: 15)
         XCTAssertGreaterThan(badge.size.width, 0)
         XCTAssertGreaterThan(badge.size.height, 0)
-        // Letters are wider than they are tall in this frame; a flag is square.
         XCTAssertNotEqual(badge.size.width, badge.size.height)
+    }
+
+    /// China's stars are a `<defs>` path referenced with `<use xlink:href>`,
+    /// which `NSImage`'s SVG support does not resolve — it drew a plain red
+    /// rectangle and reported success. The shipped PNGs are rendered through
+    /// WebKit for that reason; this is the test that notices if that ever
+    /// silently regresses.
+    func testChinaHasItsStars() throws {
+        let art = try XCTUnwrap(FlagAsset.image(region: "CN"))
+        let rep = try XCTUnwrap(NSBitmapImageRep(data: try XCTUnwrap(art.tiffRepresentation)))
+        var yellow = 0
+        for x in stride(from: 0, to: rep.pixelsWide, by: 2) {
+            for y in stride(from: 0, to: rep.pixelsHigh, by: 2) {
+                guard let c = rep.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { continue }
+                if c.redComponent > 0.8, c.greenComponent > 0.7, c.blueComponent < 0.4 { yellow += 1 }
+            }
+        }
+        XCTAssertGreaterThan(yellow, 20, "the stars did not render — a flat red flag")
     }
 
     func testTheBadgeHasPixelsInIt() throws {
         let badge = BadgeImage.make(label: "RU", flag: nil, region: "RU",
                                     style: .flagDrawn, points: 18)
         let rep = try XCTUnwrap(NSBitmapImageRep(
-            bitmapDataPlanes: nil, pixelsWide: 36, pixelsHigh: 36,
+            bitmapDataPlanes: nil, pixelsWide: 48, pixelsHigh: 36,
             bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
             colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
         rep.size = badge.size
@@ -91,7 +110,7 @@ final class FlagAssetTests: XCTestCase {
         badge.draw(in: NSRect(origin: .zero, size: badge.size))
         NSGraphicsContext.restoreGraphicsState()
         // The centre of the Russian flag is blue, and opaque.
-        let centre = try XCTUnwrap(rep.colorAt(x: 18, y: 18)?.usingColorSpace(.deviceRGB))
+        let centre = try XCTUnwrap(rep.colorAt(x: 24, y: 18)?.usingColorSpace(.deviceRGB))
         XCTAssertEqual(centre.alphaComponent, 1, accuracy: 0.05)
         XCTAssertGreaterThan(centre.blueComponent, centre.redComponent)
     }
