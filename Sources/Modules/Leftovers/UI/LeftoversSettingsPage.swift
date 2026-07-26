@@ -9,6 +9,7 @@ import Module_Leftovers_Engine
 public struct LeftoversSettingsPage: View {
     @StateObject private var lvm: LeftoversViewModel
     @State private var diskAccess: PermissionState = .granted
+    @State private var pendingDeletion: StaleItem?
 
     public init(vm: ModuleViewModel) {
         _lvm = StateObject(wrappedValue: LeftoversViewModel(vm: vm))
@@ -39,6 +40,16 @@ public struct LeftoversSettingsPage: View {
             actionBar
         }
         .task { diskAccess = PermissionCheck.currentFullDiskAccess() }
+        .confirmationDialog(pendingDeletion.map { LfStr.confirmDeleteInUse($0.identifier) } ?? "",
+                            isPresented: Binding(get: { pendingDeletion != nil },
+                                                 set: { if !$0 { pendingDeletion = nil } }),
+                            titleVisibility: .visible) {
+            Button(LfStr.removeSelected, role: .destructive) {
+                if let item = pendingDeletion { Task { await lvm.remove(item) } }
+                pendingDeletion = nil
+            }
+            Button(LfStr.cancelAction, role: .cancel) { pendingDeletion = nil }
+        }
         .animation(HelmMotion.interface, value: lvm.items.count)
         .animation(HelmMotion.interface, value: lvm.showAll)
     }
@@ -167,7 +178,7 @@ public struct LeftoversSettingsPage: View {
                 }
             }
             Spacer()
-            if item.canToggle {
+            if item.actions.contains(.turnOff) {
                 // Not everything here is rubbish to delete — most of it is
                 // working software the user may simply want quiet.
                 Button(item.disabled ? LfStr.enable : LfStr.disable) {
@@ -175,20 +186,36 @@ public struct LeftoversSettingsPage: View {
                 }
                 .controlSize(.small)
             }
-            if item.kind == .systemExtension {
-                // Not a file: macOS removes an extension with its app, or the
-                // user turns it off here.
+            if item.actions.contains(.systemSettings) {
+                // Not a file: macOS removes an extension with its app, and SIP
+                // stops anyone else from uninstalling it.
                 Button(LfStr.manageExtensions) { PermissionCheck.openExtensionSettings() }
                     .controlSize(.small)
             } else {
                 Text(Bytes(item.sizeBytes))
                     .font(.caption).foregroundStyle(.secondary).monospacedDigit()
-                Button {
-                    NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: item.path)])
+                Menu {
+                    Button(LfStr.reveal) {
+                        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: item.path)])
+                    }
+                    if item.actions.contains(.delete) {
+                        Button(LfStr.deleteItem, role: .destructive) {
+                            if LeftoverActions.needsConfirmation(item) {
+                                pendingDeletion = item
+                            } else {
+                                Task { await lvm.remove(item) }
+                            }
+                        }
+                    } else {
+                        // Say why rather than hide it: the row looks broken
+                        // otherwise, and the reason is not the user's fault.
+                        Text(LfStr.needsAdmin)
+                    }
                 } label: {
-                    Image(systemName: "doc.text.magnifyingglass")
+                    Image(systemName: "ellipsis.circle")
                 }
-                .buttonStyle(.borderless)
+                .menuStyle(.borderlessButton)
+                .fixedSize()
             }
         }
         .padding(.vertical, 2)

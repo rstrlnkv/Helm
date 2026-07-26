@@ -30,12 +30,20 @@ public enum OrphanDetector {
     }
 
     /// True when `name` is a bundle-id-shaped entry whose app isn't installed.
-    public static func isOrphan(name: String, installedBundleIDs: Set<String>) -> Bool {
+    ///
+    /// `knownToSystem` asks LaunchServices, and it is not optional politeness:
+    /// a directory listing of /Applications misses everything one folder down
+    /// (Adobe Acrobat DC/, Microsoft Office/) and every helper nested inside
+    /// another bundle. Both were being offered for deletion while their apps
+    /// were installed and running.
+    public static func isOrphan(name: String, installedBundleIDs: Set<String>,
+                                knownToSystem: (String) -> Bool = { _ in false }) -> Bool {
         guard looksLikeBundleID(name) else { return false }
         let id = bundleID(from: name)
         guard !skippedPrefixes.contains(where: { id.hasPrefix($0) }) else { return false }
         // ByHost prefs carry a UUID tail (com.acme.tool.<UUID>); match on prefix too.
         if installedBundleIDs.contains(id) { return false }
-        return !installedBundleIDs.contains { id.hasPrefix($0 + ".") }
+        if installedBundleIDs.contains(where: { id.hasPrefix($0 + ".") }) { return false }
+        return !knownToSystem(id)
     }
 }

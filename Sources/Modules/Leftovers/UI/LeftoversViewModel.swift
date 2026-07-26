@@ -49,6 +49,14 @@ import Module_Leftovers_Engine
         await scan()
     }
 
+    /// Deletes one item, in use or not — the row asks first when it matters.
+    public func remove(_ item: StaleItem) async {
+        let result: LeftoversRemoval? = await client.request("trash", encoding: [item.path])
+        failures = result?.failed ?? []
+        banner = LfStr.removedFreed(Bytes(result?.freedBytes ?? 0))
+        await scan()
+    }
+
     public func removeSelected() async {
         let paths = items.map(\.path).filter { selected.contains($0) }
         guard !paths.isEmpty else { return }

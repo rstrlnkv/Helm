@@ -32,15 +32,20 @@ public struct StaleItem: Codable, Equatable, Sendable, Identifiable {
     public let status: ItemStatus
     /// Switched off through launchd's own disabled list, not deleted.
     public let disabled: Bool
+    /// Whether Helm can move this file without an admin password.
+    public let writable: Bool
 
-    /// Only orphans may be trashed, and never a system extension: those are
-    /// not files Helm can move — macOS removes them with their app or from
-    /// System Settings. Offering a checkbox would promise what we cannot do.
-    public var removable: Bool { status == .orphaned && kind != .systemExtension }
+    /// What the checkbox offers: clearing leftovers in bulk. Anything in use
+    /// is deleted one at a time, through the row's own menu, so a careless
+    /// "select all" can never take out working software.
+    public var removable: Bool {
+        status == .orphaned && kind != .systemExtension && writable
+    }
 
     public init(path: String, identifier: String, kind: StaleKind, sizeBytes: Int,
                 missingTarget: String? = nil, runAtLoad: Bool = false,
-                status: ItemStatus = .orphaned, disabled: Bool = false) {
+                status: ItemStatus = .orphaned, disabled: Bool = false,
+                writable: Bool = true) {
         self.path = path
         self.identifier = identifier
         self.kind = kind
@@ -49,6 +54,11 @@ public struct StaleItem: Codable, Equatable, Sendable, Identifiable {
         self.runAtLoad = runAtLoad
         self.status = status
         self.disabled = disabled
+        self.writable = writable
+    }
+
+    public var actions: Set<LeftoverAction> {
+        LeftoverActions.available(for: self, writable: writable)
     }
 
     /// Whether Helm can switch this one off without a password.

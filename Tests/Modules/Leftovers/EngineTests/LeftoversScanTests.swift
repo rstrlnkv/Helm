@@ -3,6 +3,9 @@ import HelmRuntime
 @testable import Module_Leftovers_Engine
 
 private struct FakeFiles: LeftoversFilePort {
+    var writable = true
+    func isWritable(_ url: URL) -> Bool { writable }
+
     var listing: [String: [String]] = [:]
     var existing: Set<String> = []
     var plists: [String: PlistData] = [:]

@@ -8,6 +8,11 @@ features, PATCH = fixes.
 ## [0.7.1] — 2026-07-26
 
 ### Added
+- Each item in Login Items & Extensions offers what the system actually allows:
+  turn off (any non-Apple agent), delete (only where the folder is writable —
+  the user's own Library, not /Library), reveal, or a link to System Settings
+  for extensions. Deleting something in use asks first and says the app may
+  recreate it.
 - Login items can be turned off rather than only deleted, through launchd's own
   disabled list (`launchctl disable gui/<uid>`) — no files are moved, the state
   survives reboots, needs no admin, and System Settings shows the same thing.
@@ -33,6 +38,12 @@ features, PATCH = fixes.
   replaced, and the About page's now-unused opener.
 
 ### Fixed
+- The Uninstaller's leftovers scan listed the files of installed apps, with
+  everything pre-selected. It decided "installed" from a listing of
+  /Applications, which sees neither apps one folder down (Adobe Acrobat DC/)
+  nor helpers nested inside other bundles (OneDrive.app carries the SharePoint
+  helper). It now asks LaunchServices, and nothing is pre-selected: on this
+  machine 112 entries belonged to apps the system does find.
 - Keep Awake's status strip was static: the page held its view model in a plain
   property, so SwiftUI never saw the published state change and the figures
   froze at whatever they were when the page opened.
