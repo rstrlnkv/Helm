@@ -132,7 +132,9 @@ import HelmUI
         // Jump straight to a module's page instead of opening Settings and
         // hunting for it in the sidebar.
         menu.addItem(.separator())
-        for descriptor in ModuleRegistry.all {
+        for descriptor in host.orderedModuleIDs.compactMap({ id in
+            ModuleRegistry.all.first { $0.idRaw == id }
+        }) {
             let item = NSMenuItem(title: descriptor.moduleMetadata.name,
                                   action: #selector(openModuleSettings(_:)), keyEquivalent: "")
             item.target = self

@@ -76,7 +76,18 @@ enum SettingsSelection: Hashable {
 @MainActor final class SettingsModel: ObservableObject {
     let host: ModuleHost
     @Published var selection: SettingsSelection? = .general
-    init(host: ModuleHost) { self.host = host }
+    /// Bumped when the module order changes, so the sidebar redraws with it —
+    /// the order is read from settings, which SwiftUI cannot observe.
+    @Published private(set) var orderRevision = 0
+    init(host: ModuleHost) {
+        self.host = host
+        // The model lives as long as the settings window, so the observation
+        // needs no teardown — and a deinit cannot touch main-actor state.
+        NotificationCenter.default.addObserver(
+            forName: .helmModuleOrderChanged, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.orderRevision += 1 }
+        }
+    }
 }
 
 // MARK: - Split controller
@@ -148,7 +159,7 @@ private struct SettingsSidebar: View {
                     .tag(SettingsSelection.general)
             }
             ForEach(ModuleCategory.allCases, id: \.self) { category in
-                let modules = ModuleRegistry.all.filter { $0.moduleCategory == category }
+                let modules = orderedModules(in: category)
                 if !modules.isEmpty {
                     Section(AppStr.categoryName(category)) {
                         ForEach(modules, id: \.idRaw) { descriptor in
@@ -167,6 +178,17 @@ private struct SettingsSidebar: View {
         }
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)   // let the AppKit sidebar material show
+    }
+
+    /// The user's order, applied inside a category. The stored order is one
+    /// flat list; the sidebar shows groups, so each group is sorted by the same
+    /// list and modules the user never dragged stay in registry order.
+    private func orderedModules(in category: ModuleCategory) -> [any ModuleDescriptor] {
+        _ = model.orderRevision                       // redraw when it changes
+        let inCategory = ModuleRegistry.all.filter { $0.moduleCategory == category }
+        let ordered = ModuleOrder.apply(saved: AppSettings.moduleOrder,
+                                        to: inCategory.map(\.idRaw))
+        return ordered.compactMap { id in inCategory.first { $0.idRaw == id } }
     }
 
     private func sidebarRow(_ title: String, _ symbol: String, _ color: Color) -> some View {
@@ -271,6 +293,10 @@ private struct MenuBarSettingsView: View {
                            title: AppStr.settingsPane, subtitle: AppStr.settingsPaneSummary)
             Divider()
             settingsForm
+        }
+        .onAppear {
+            orderedModules = ModuleHost.shared.orderedModuleIDs
+            dragging = nil
         }
     }
 
@@ -444,9 +470,15 @@ private struct ModuleDropDelegate: DropDelegate {
             order = ModuleOrder.move(order, from: IndexSet(integer: from),
                                      to: to > from ? to + 1 : to)
         }
+        // Persist as it moves. A drag released outside the list never reaches
+        // `performDrop`, and saving only there left the list showing an order
+        // the panel and sidebar knew nothing about.
+        AppSettings.moduleOrder = order
     }
 
     func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
+
+    func dropExited(info: DropInfo) { dragging = nil }
 
     func performDrop(info: DropInfo) -> Bool {
         AppSettings.moduleOrder = order
