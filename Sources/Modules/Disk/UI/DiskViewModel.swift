@@ -42,7 +42,14 @@ import Module_Disk_Engine
     /// One instance for the app's lifetime; the page observes it.
     private static var cached: DiskViewModel?
     public static func shared(vm: ModuleViewModel) -> DiskViewModel {
-        if let cached { return cached }
+        // Keyed to the view model it was built against, not merely "exists".
+        // Turning the module off deallocates the engine; the LocalTransport
+        // held here survives, and its handler — captured weakly — answers every
+        // request with empty Data from then on. `ModuleHost.enable` makes a new
+        // view model, so this is the signal that the old one is talking to a
+        // corpse: without it the page came back to a volume list that was
+        // silently always empty, with no error, until the app restarted.
+        if let cached, cached.vm === vm { return cached }
         let created = DiskViewModel(vm: vm)
         cached = created
         return created

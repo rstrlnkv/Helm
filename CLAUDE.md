@@ -25,9 +25,20 @@ xattr -dr com.apple.quarantine /Applications/Helm.app && open /Applications/Helm
   Releases attach **both** dmg and zip; the zip feeds the silent updater.
 - New module = descriptor + engine targets following the existing pattern
   (see ARCHITECTURE.md), registered in `ModuleRegistry.all`. Pure logic in
-  `Engine/Logic/` with tests first. Shared plumbing (log, permissions,
-  system-extension parsing, module order) lives in `HelmRuntime` — check there
-  before writing a helper inside a module.
+  `Engine/Logic/` with tests first. Shared plumbing lives in `HelmRuntime` —
+  log + redaction, permissions + `TrashFailure`, removal scope, release digest,
+  system-extension parsing, module order — check there before writing a helper
+  inside a module.
+- **The engine has the last word on deletion.** Anything that trashes paths goes
+  through `RemovableScope.partition` inside the engine, not only through the view
+  model that built the plan; refusals come back as
+  `TrashFailure.Reason.outOfScope`, never dropped (ARCHITECTURE.md § Removal scope).
+- **The log carries no names.** VPN names and app names go through `Redact.vpn` /
+  `Redact.app`, paths through `Redact.path`. Counts and outcomes are free.
+- **A release without its digest does not install.** The notes must carry the
+  `sha256 <asset> <hex>` line `make-zip.sh` prints, or the updater opens the
+  release page instead (VERSIONING.md).
+- Pills are `HelmBadge`, cards are `.helmCard()` — one of each, no local variants.
 - Every user-visible string goes through `L()` with all eight languages.
 - Animations come from `HelmMotion` tokens, never inline curves. Reveals grow
   (measured height + `.clipped()`), never fade; literal colours inside

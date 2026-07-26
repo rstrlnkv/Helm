@@ -39,6 +39,10 @@ public enum OrphanDetector {
     public static func isOrphan(name: String, installedBundleIDs: Set<String>,
                                 knownToSystem: (String) -> Bool = { _ in false }) -> Bool {
         guard looksLikeBundleID(name) else { return false }
+        // A leading dot survives the split — ".com.apple.finder.plist" still has
+        // three components — and then makes every `hasPrefix` test below miss,
+        // so Apple's own preferences came back as orphans.
+        guard !name.hasPrefix(".") else { return false }
         let id = bundleID(from: name)
         guard !skippedPrefixes.contains(where: { id.hasPrefix($0) }) else { return false }
         // ByHost prefs carry a UUID tail (com.acme.tool.<UUID>); match on prefix too.

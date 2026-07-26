@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 import HelmContract
 
 /// Manages Homebrew via the `brew` CLI. Fast queries answer over `transport.send`
@@ -125,13 +126,6 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         runOp(label: "upgrade all", launch: brew, args: ["upgrade"])
     }
 
-    /// Account names sudo-adjacent shells will take, and nothing else.
-    static func isPlausibleAccountName(_ name: String) -> Bool {
-        !name.isEmpty && name.count <= 64 && name.allSatisfy {
-            $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "." || $0 == "_" || $0 == "-")
-        }
-    }
-
     /// Install Homebrew itself: pre-create /opt/homebrew owned by the user via one
     /// native admin prompt, then run the official installer non-interactively.
     public func installBrew() {
@@ -140,7 +134,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         // `user` is NSUserName(), which on a managed Mac is whatever the
         // directory says; this string is evaluated by a root shell. Single
         // quotes stop expansion, and the name is checked before it gets there.
-        guard Self.isPlausibleAccountName(user) else {
+        guard AccountName.isPlausible(user) else {
             endBusy()
             emitState(OpState(phase: .failed, label: "install Homebrew", exitCode: 1))
             emitLog("Unsupported account name.")

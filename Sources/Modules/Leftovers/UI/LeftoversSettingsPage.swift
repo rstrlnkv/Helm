@@ -134,7 +134,7 @@ public struct LeftoversSettingsPage: View {
     private func row(_ item: StaleItem) -> some View {
         HStack(spacing: 10) {
             if item.removable {
-                Toggle("", isOn: Binding(
+                Toggle(item.identifier, isOn: Binding(
                     get: { lvm.selected.contains(item.path) },
                     set: { on in
                         if on { lvm.selected.insert(item.path) } else { lvm.selected.remove(item.path) }

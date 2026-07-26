@@ -19,6 +19,11 @@ public enum DiskSafety {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         guard path != home, !path.hasPrefix("/Volumes/") || path.split(separator: "/").count > 2
         else { return false }
+        // Never a top-level directory of the boot volume either. The named list
+        // above cannot keep up: scan `/`, click the second-largest arc, and
+        // `/Users` went into the basket. Nothing at the root of a volume is a
+        // file someone means to delete — their contents still are.
+        guard path.split(separator: "/").count > 1 else { return false }
         return true
     }
 }

@@ -314,7 +314,7 @@ private struct AdviceList: View {
                 Text(item.name).lineLimit(1).truncationMode(.middle)
                 Text(reason(item.kind))
                     .font(.caption2)
-                    .foregroundStyle(Color.primary.opacity(0.55))
+                    .foregroundStyle(Color.primary.opacity(0.70))
             }
             Spacer()
             Text(Bytes(item.bytes))

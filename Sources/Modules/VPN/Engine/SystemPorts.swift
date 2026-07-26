@@ -83,9 +83,14 @@ public final class KeychainCredentials: VPNCredentialsPort {
     private static func purgeItemsWithTheOldAccessList() {
         let key = "module.vpn.credentialCachePurged"
         guard !UserDefaults.standard.bool(forKey: key) else { return }
-        UserDefaults.standard.set(true, forKey: key)
         let status = SecItemDelete([kSecClass as String: kSecClassGenericPassword,
                                     kSecAttrService as String: "com.helm.vpn"] as CFDictionary)
+        // Only once it is actually gone. Helm starts at login, when the keychain
+        // can still be locked (`errSecInteractionNotAllowed`); marking the purge
+        // done first would leave the readable-by-anything item in place forever,
+        // which is the one thing this exists to prevent.
+        guard status == errSecSuccess || status == errSecItemNotFound else { return }
+        UserDefaults.standard.set(true, forKey: key)
         if status == errSecSuccess {
             HelmLog.shared.info("vpn", "cleared the old credential cache")
         }

@@ -16,19 +16,26 @@ Rules:
 - **Every release bumps the version.** The updater compares versions with
   `UpdateVersion.isNewer`; two releases sharing a version means clients never see the
   update. No bump → no release.
-- **No pre-release tags for now.** `UpdateVersion.parse` strips non-numeric parts, so
-  `v0.3.0-beta.1` parses equal to `0.3.0` and the updater can't tell them apart. Ship
-  plain `vX.Y.Z`. If betas are ever needed, teach the parser pre-release precedence first.
+- **Pre-release tags are the `-dev.N` lane and nothing else.** `UpdateVersion.parse`
+  drops everything from the `-` on, and `prereleaseOrdinal` supplies the tiebreak: a
+  prerelease sorts below its own release and above every earlier version
+  (`0.7.0` > `0.7.0-dev.2` > `0.7.0-dev.1` > `0.6.1`). The ordinal is the trailing
+  number of the suffix, so `-dev.2` and `-beta.2` compare equal — use one suffix, `-dev`.
 - The number lives in `Resources/HelmApp/Info.plist` → `CFBundleShortVersionString`.
   `CFBundleVersion` (build number) is set automatically from the git commit count
   by `Scripts/package-app.sh` — never edit it by hand.
-- One release = one `CHANGELOG.md` section + one git tag `vX.Y.Z` + one `.dmg`
-  attached to the GitHub release.
+- One release = one `CHANGELOG.md` section + one git tag `vX.Y.Z` + **both** `.dmg`
+  and `.zip` attached, and the `sha256` line for each in the notes.
 
 Release flow:
 1. Bump `CFBundleShortVersionString` per the table.
 2. Add a `## [X.Y.Z] — YYYY-MM-DD` section to `CHANGELOG.md`.
 3. `bash Scripts/package-app.sh && bash Scripts/make-dmg.sh && bash Scripts/make-zip.sh`
+
+   Both packaging scripts read the **signed** bundle from `$TMPDIR/helm-package` and
+   re-run `codesign --verify --deep --strict` before packaging — they exit non-zero
+   rather than ship a bundle whose seal the sync folder broke. They never touch
+   `build/Helm.app`, which is a copy for inspection only (ARCHITECTURE.md § Dev loop).
 4. `git push` — **before** creating the release, or the tag lands on the old
    remote HEAD.
 5. `gh release create vX.Y.Z build/Helm-X.Y.Z.dmg build/Helm-X.Y.Z.zip --title "Helm X.Y.Z" --notes "…"`
@@ -47,6 +54,20 @@ page opens instead and the user decides.
 Always attach the **`.zip`** — the in-app updater downloads it for silent install
 (`Installer`); the `.dmg` is the manual/drag-install path. A release without a zip
 asset falls back to opening the release page.
+
+## Rollback
+
+There isn't one, and the shape of the updater is why: `UpdateVersion.isNewer` requires
+a strictly greater version, so nothing published can pull a user *back* to an earlier
+build. Two consequences worth knowing before shipping a bad one:
+
+- To undo a dev build, publish the next one — `vX.Y.Z-dev.N+1` carrying the reverted
+  code, with its digest lines. Never delete or re-tag a release people may have
+  downloaded.
+- A user on a prerelease who switches to Stable sees `latest`, which is the last
+  stable tag — lower than what they are running, so Helm reports up-to-date and they
+  stay on the prerelease until the next stable release passes it. That is by design;
+  say so if someone asks why the switch appears to do nothing.
 
 ## Release flow (since 0.7.0)
 

@@ -36,7 +36,9 @@ import HelmRuntime
         let last = AppSettings.store.int("lastUpdateCheck", default: 0)
         let now = Int(Date().timeIntervalSince1970)
         guard now - last > 24 * 3600 else { return }
-        AppSettings.store.set(now, for: "lastUpdateCheck")
+        // The stamp is written by `performCheck` once it has an answer. Written
+        // here it recorded the attempt, so a launch with no network still said
+        // "checked just now" — and a manual check never moved the date at all.
         Task { await performCheck(manual: false) }
     }
 
@@ -67,7 +69,11 @@ import HelmRuntime
                 let asset = zip.lastPathComponent
                 guard let expected = ReleaseDigest.parse(notes: rel.notes, asset: asset) else {
                     HelmLog.shared.warn("update", "no published digest for \(asset) — manual install")
+                    // The browser opening on its own, with the row still saying
+                    // "update available", reads as the button having done
+                    // nothing. Say why before the window goes away.
                     installState = .idle
+                    lastMessage = "manual-install"
                     NSWorkspace.shared.open(rel.pageURL)
                     return
                 }
@@ -123,6 +129,10 @@ import HelmRuntime
                                        currentVersion: currentVersion)
                 : UpdateCheck.evaluateList(statusCode: http.statusCode, data: data,
                                            currentVersion: currentVersion, channel: channel)
+            // An answer, of either kind, is what "last checked" means.
+            if case .error = outcome {} else {
+                AppSettings.store.set(Int(Date().timeIntervalSince1970), for: "lastUpdateCheck")
+            }
             switch outcome {
             case .upToDate:
                 HelmLog.shared.info("update", "up to date on \(channel.rawValue)")

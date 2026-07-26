@@ -31,6 +31,13 @@ public enum LeftoverMatcher {
     static func usable(_ token: String) -> Bool {
         !token.isEmpty && token != "." && token != ".."
             && !token.contains("/") && !token.contains("\0")
+            // A `*` in the token is the empty-id defect wearing a different
+            // hat: every glob below is built by pasting the token next to a
+            // `*`, so an id of "*" yields `**` and `*.*`, which match every
+            // sibling in Caches, Containers, Group Containers and every
+            // LaunchAgent on the machine — pre-ticked, because a glob is never
+            // `matchedByName`. The plist that supplies the id is the app's own.
+            && !token.contains("*") && !token.contains("?")
     }
 
     public static func candidates(bundleID id: String, appName name: String, library lib: URL) -> [Candidate] {

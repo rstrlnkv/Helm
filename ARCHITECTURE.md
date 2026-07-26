@@ -7,7 +7,10 @@ Swift 6 / SwiftPM, AppKit + SwiftUI, macOS 26+, zero external dependencies.
 ```
 HelmContract   protocols + wire types: ModuleEngine, EngineTransport,
                EngineCommand/Event, StatusAppearance, LocalTransport
-HelmRuntime    NamespacedStore, UpdateVersion, UpdateCheck (pure logic)
+HelmRuntime    shared plumbing, no UI: NamespacedStore, UpdateVersion/UpdateCheck,
+               ReleaseDigest, HelmLog + Redact, PermissionCheck + TrashFailure,
+               RemovableScope, SystemExtensionParser, SystemFolderNames,
+               ModuleOrder, Plural, HelmBytes
 HelmUI         design system (RingIcon, IconPickers, panel cards,
                HelmCenteredContent), L() localization, ModuleViewModel,
                TransportClient, ModuleDescriptor protocol
@@ -135,6 +138,39 @@ dev build logs, stable builds stay silent unless the Diagnostics switch is on.
 The release process depends on this file: dev builds are triaged against it,
 and a build graduates to stable only at zero known problems (VERSIONING.md).
 
+**What must not reach the file.** A VPN connection name announces an employer or
+a provider; an absolute path carries the account name; a bundle id names a
+person's habits. `Redact` (HelmRuntime) is what goes in instead: `Redact.path`
+rewrites the home prefix to `~`, `Redact.vpn`/`Redact.app` give a short stable
+tag (`vpn#3f9a`). FNV-1a rather than `Hasher`, which is seeded per process —
+yesterday's session would not compare with today's, and comparing across
+restarts is exactly what triage does. Log counts and outcomes freely; run any
+name or path through `Redact` first.
+
+## Removal scope
+
+A view model builds the plan; a view model is not allowed to be the last word on
+what gets trashed. The engine takes a list of strings and deletes them, so any
+defect upstream that produces a bad string produces a deleted folder — an empty
+bundle id once collapsed every glob to `*`, and an empty display name claimed
+`~/Library/Application Support` itself.
+
+`RemovableScope` (HelmRuntime) is the gate inside `LeftoversEngine.trash` and
+`UninstallerEngine.trashSync`. The rule is positional, not a blocklist: a path is
+removable only if it sits strictly inside a folder an app is allowed to leave
+things in (`~/Library`, `/Library/LaunchAgents`, `/Applications`, …), minus
+`/System`, `/Library/Apple` and `/Applications/Utilities`. Anything else —
+`~/Documents`, a home directory, a volume root — is refused whether or not
+anyone thought to name it. A `.app` bundle is removable wherever it lives
+(people keep apps in `~/Downloads`, on external volumes, in Setapp's folder) as
+long as it is not a top-level directory. Paths are `standardizedFileURL`-resolved
+first: `..` is invisible to a prefix test and not to the filesystem.
+
+Refusals are reported, never dropped: they come back as
+`TrashFailure.Reason.outOfScope`, which is Helm refusing, not macOS — nothing was
+attempted. The disk module learned this first and re-checks
+`DiskSafety.isRemovable` inside its own engine; this is the same discipline.
+
 ## Updater
 
 `UpdateService` (networking + published state) → `UpdateCheck.evaluate`
@@ -144,6 +180,17 @@ carries no quarantine), `ditto -x`, then a detached script waits for the
 process to exit, swaps `/Applications/Helm.app`, relaunches, and removes every
 temp artifact including itself. Works under ad-hoc signing. Releases must
 attach the zip or the updater falls back to opening the release page.
+
+**Nothing installs silently without a published digest.** The updater strips
+quarantine on purpose and the app is ad-hoc signed, so `codesign --verify`
+proves nothing — any ad-hoc signature passes, and TLS protects the transport,
+not the contents. So the release notes carry `sha256 <asset> <64 hex>`, and
+`ReleaseDigest.parse`/`matches` (HelmRuntime) checks the downloaded file against
+it: no digest for this exact asset name → the release page opens, the row says
+why, and the user decides; a digest that disagrees → the install is refused
+outright. `Installer.installZip(at:expectedVersion:)` then re-reads the unpacked
+bundle's `CFBundleShortVersionString`, so a mislabelled asset cannot be swapped
+in either. `make-zip.sh` and `make-dmg.sh` print the line to paste.
 
 ## Changelog
 
@@ -185,11 +232,24 @@ name: a project folder called "Documents" keeps its name.
 ## Dev loop
 
 ```bash
-swift test                              # fast, pure-logic suites
-bash Scripts/package-app.sh             # rebuild bundle
-rm -rf /Applications/Helm.app && cp -R build/Helm.app /Applications/Helm.app
+swift test                              # 411 unit tests, pure logic, seconds
+bash Scripts/package-app.sh             # build + sign → $TMPDIR/helm-package/Helm.app
+rm -rf /Applications/Helm.app
+ditto "$TMPDIR/helm-package/Helm.app" /Applications/Helm.app
+codesign --verify --deep --strict /Applications/Helm.app   # must pass
 xattr -dr com.apple.quarantine /Applications/Helm.app && open /Applications/Helm.app
 ```
+
+**Sign outside the checkout.** This repo lives under `~/Documents`, which a file
+provider syncs, and the provider stamps `com.apple.FinderInfo` onto the
+directories it manages faster than `xattr -c` strips it. `codesign` refuses a
+bundle carrying it ("resource fork, Finder information, or similar detritus not
+allowed"), so signing in place succeeds or fails by luck. An unsigned bundle has
+no cdhash for TCC to hang Full Disk Access on — which is why the permission kept
+coming loose after every rebuild. `package-app.sh` assembles and signs in
+`$TMPDIR/helm-package` (not synced) and verifies the seal there; the copy it
+leaves in `build/` is for inspection and must never be installed or packaged
+from.
 
 **Visual self-verification** (the app is an accessory; automation tools can't
 click its status item): add a temporary env-gated harness in `AppDelegate`
@@ -222,8 +282,8 @@ container for free, in both appearances.
 ## Motion (HelmUI/DesignSystem/HelmMotion.swift)
 
 Springs, not ease curves — an eased move reads as "smoothed", a spring reads
-as physical. Four tokens, and the choice between them is a safety decision as
-much as a taste one:
+as physical. Three tokens plus one steady-rotation helper, and the choice
+between them is a safety decision as much as a taste one:
 
 - `disclosure` (`.smooth`, zero bounce) — anything whose height is measured and
   clipped: the panel's utilities accordion, Keep Awake's ⋯ block. A bouncy
@@ -280,9 +340,17 @@ subject (Helm = the wheel you steer by):
   in both themes, and the card must sit there too.
 - The About page's bezel around the app icon rotates **only** while an update
   check is in flight — motion means work, never decoration.
-- `AppIconImage.dark` draws the app icon forced into `.darkAqua`: AppKit
-  resolves icon variants at draw time, and the light variant's white slab reads
-  as a hole inside Helm's surfaces.
+- `HelmAppMark` draws Helm's mark from `helm-ring.svg` — the same artwork the
+  app icon is built from — rather than reading the icon back. macOS 26 resolves
+  `.icon` variants at the system level, so the app can only ever get the variant
+  matching the current appearance, and the light variant's white slab reads as a
+  hole inside Helm's surfaces. Composing it here also lets the mark sit in
+  deliberate contrast to its window. `package-app.sh` copies the svg in for this.
+- `HelmBadge` — the one pill: a short word, `caption2`, fill at
+  `tint.opacity(0.20)`, text at `Color.primary.opacity(0.85)`. The tint colours
+  the fill and nothing else. There were seven hand-rolled variants, two of them
+  30 px apart in the same row, one drawing orange text on orange (about 1.7:1 at
+  11 pt); contrast is not something a caller should be able to get wrong.
 
 The menu-bar panel deliberately does NOT follow this: it is a transient
 surface with its own hard-won layout rules (see the panel section above).
