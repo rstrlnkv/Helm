@@ -97,7 +97,9 @@ public struct HelmPageHeader<Trailing: View>: View {
             Spacer(minLength: 12)
             trailing
         }
-        .padding(.horizontal, 22)
+        // 20, matching the inset a grouped Form uses at every width
+        // now that the form is capped — see the settings pages.
+        .padding(.horizontal, 20)
         .padding(.vertical, 18)
     }
 }
@@ -105,6 +107,16 @@ public struct HelmPageHeader<Trailing: View>: View {
 /// Instrument readout: monospaced figures over small-caps labels, split by
 /// hairlines — the About page's version/build/modules row, generalized.
 public struct HelmMetricStrip: View {
+    /// Keeps a tint readable on a light background without inventing a palette:
+    /// the system colours are chosen for dark, and the light theme is where
+    /// they fail.
+    @Environment(\.colorScheme) private var colorScheme
+
+    private func legible(_ tint: Color) -> Color {
+        guard colorScheme == .light else { return tint }
+        return Color(nsColor: NSColor(tint).blended(withFraction: 0.30, of: .black) ?? NSColor(tint))
+    }
+
     public struct Metric: Identifiable {
         /// The label, not a fresh UUID: metrics are rebuilt inline from view
         /// model state, and a new identity on every publish made `ForEach` tear
@@ -136,11 +148,18 @@ public struct HelmMetricStrip: View {
                 VStack(spacing: 3) {
                     Text(metric.value)
                         .font(.system(size: 16, weight: .medium, design: .monospaced))
-                        .foregroundStyle(metric.tint ?? .primary)
+                        // A system tint is built for a dark background: the same
+                        // green measured 7.67:1 in dark and 2.03:1 in light.
+                        // Darkened in light appearance so the figure is legible
+                        // in both, rather than legible in one.
+                        .foregroundStyle(metric.tint.map(legible) ?? .primary)
                     Text(metric.label)
                         .font(.system(size: 9, weight: .semibold))
                         .tracking(0.7)
-                        .foregroundStyle(.tertiary)
+                        // `.tertiary` at 9 pt measured 1.87:1 light and 2.26:1
+                        // dark — below every threshold, on a strip that appears
+                        // on every module page.
+                        .foregroundStyle(Color.primary.opacity(0.6))
                 }
                 .frame(maxWidth: .infinity)
             }

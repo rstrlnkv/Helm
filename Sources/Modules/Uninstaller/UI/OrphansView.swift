@@ -53,14 +53,14 @@ struct OrphansView: View {
             HelmCenteredContent { ProgressView(); Text(UnStr.scanningOrphans).font(.caption).foregroundStyle(.secondary) }
         } else if !scanned {
             HelmCenteredContent {
-                Image(systemName: "clock.arrow.circlepath").font(.system(size: 30)).foregroundStyle(.secondary)
+                HelmIconPlate(symbol: "clock.arrow.circlepath", tint: .orange, size: 56)
                 Text(UnStr.orphansIntro).multilineTextAlignment(.center).foregroundStyle(.secondary)
                     .frame(maxWidth: 380)
                 Button(UnStr.scanOrphans) { Task { await scan() } }.buttonStyle(.borderedProminent)
             }
         } else if groups.isEmpty {
             HelmCenteredContent {
-                Image(systemName: "checkmark.circle").font(.system(size: 30)).foregroundStyle(.green)
+                HelmIconPlate(symbol: "checkmark.circle", tint: .green, size: 56)
                 Text(UnStr.noOrphans).foregroundStyle(.secondary)
                 Button(UnStr.rescan) { Task { await scan() } }
             }
