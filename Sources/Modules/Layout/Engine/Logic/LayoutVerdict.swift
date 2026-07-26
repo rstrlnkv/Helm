@@ -29,7 +29,10 @@ public enum LayoutVerdict {
         guard !word.contains(where: \.isNumber) else { return .leave }
         guard !looksLikeAddress(word) else { return .leave }
         guard !isAcronym(word) else { return .leave }
-        guard !exceptions.contains(word.lowercased()) else { return .leave }
+        // Both forms: somebody tired of "минск" appearing will type the word
+        // they keep seeing, which is the translated one, not what they typed.
+        guard !exceptions.contains(word.lowercased()),
+              !exceptions.contains(translated.lowercased()) else { return .leave }
         return .convert(translated)
     }
 

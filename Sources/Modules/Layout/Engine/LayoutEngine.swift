@@ -21,6 +21,11 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// on a concurrency pool; both touch everything below.
     private let lock = NSLock()
     private var buffer = TypingBuffer()
+    /// The word that most recently ended, kept so "convert the last word" has
+    /// something to work with: the shortcut is itself a chord, and a chord ends
+    /// the word before the Carbon handler for it ever runs.
+    private var lastCompleted: TypingBuffer.Completion?
+    private var activeObserver: NSObjectProtocol?
     private var undo: UndoRecord?
     private var scope: AppScope
     private var exceptions: Exceptions
@@ -31,6 +36,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// Whether the tap is live. Without the grant `start` returns false, and
     /// that answer is what the settings page shows.
     private var tapped = false
+    private var starting = false
     /// Set while performing a conversion, so the keystrokes it sends are not
     /// read back as typing. The marker on the events is the first line of
     /// defence; this is the second, for anything the marker misses.
@@ -67,14 +73,14 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     // MARK: - Module lifecycle
 
     public func activate() {
-        running = true
+        lock.lock(); running = true; lock.unlock()
         startTap()
         // Permission is usually granted while Helm is already running — the
         // note in settings sends people to System Settings and they come back.
         // Without this the tap stayed dead until the next launch, which is the
         // same "switch that looks like it works" defect the note exists to
         // prevent.
-        NotificationCenter.default.addObserver(
+        activeObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
         ) { [weak self] _ in
             guard let self else { return }
@@ -86,11 +92,15 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// Idempotent: starts the tap only while it is not already running, so
     /// coming back to the app a hundred times costs nothing.
     private func startTap() {
+        // Claimed inside the lock, not merely checked: two starts would build
+        // two taps and leave the first one enabled on the run loop, doubling
+        // every keystroke.
         lock.lock()
-        guard running, !tapped else { lock.unlock(); return }
+        guard running, !tapped, !starting else { lock.unlock(); return }
+        starting = true
         lock.unlock()
         let started = tap.start { [weak self] event in self?.handle(event) }
-        lock.lock(); tapped = started; lock.unlock()
+        lock.lock(); tapped = started; starting = false; lock.unlock()
         if started {
             HelmLog.shared.info("layout", "watching for mislayout words")
         } else {
@@ -100,6 +110,10 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     }
 
     public func deactivate() {
+        // Block observers do not remove themselves, and turning the module off
+        // and on again would stack another one each time.
+        if let activeObserver { NotificationCenter.default.removeObserver(activeObserver) }
+        activeObserver = nil
         tap.stop()
         lock.lock(); running = false; tapped = false; buffer.clear(); undo = nil; lock.unlock()
         emitState()
@@ -108,16 +122,28 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     // MARK: - The pipeline
 
     private func handle(_ event: TypingBuffer.Event) {
+        // The cheap half of the secure check, on every key rather than at the
+        // word boundary: a password typed without spaces would otherwise sit in
+        // the buffer until the next one. No AX call here — this is one syscall.
+        if secure.isSecureInput() {
+            lock.lock(); buffer.clear(); undo = nil; lock.unlock()
+            return
+        }
         lock.lock()
         guard !performing else { lock.unlock(); return }
-        // Anything that could have moved the caret ends the chance to undo.
-        if case .character = event {} else { undo?.invalidate() }
+        // Anything at all ends the chance to undo — including typing, which
+        // this used to exclude. An undo is a blind edit of a fixed length: type
+        // "abc" after a conversion and undoing deletes seven characters from
+        // "привет abc", leaving "при" and then inserting the original. That is
+        // the "eats somebody's text" case `UndoRecord` exists to prevent.
+        undo?.invalidate()
         let finished = buffer.accept(event)
         let auto = automatic
         let confirms = triggers.converts(event)
         lock.unlock()
         // Ended and meant are different things: leaving the word by clicking or
         // moving the caret ends it without asking for a conversion.
+        if let finished { lock.lock(); lastCompleted = finished; lock.unlock() }
         guard auto, confirms, let completed = finished else { return }
         convert(completed.word, trailing: completed.ending, force: false)
     }
@@ -156,7 +182,13 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
 
         guard let plan = SwitchPlan.make(replacing: word, with: replacement,
                                          trailing: trailing) else { return }
-        perform(plan)
+        // The port's own contract says a refusal means the text was not
+        // replaced. Switching the input source, recording an undo and counting
+        // a success on top of that would be the app claiming work it did not do.
+        guard perform(plan) else {
+            HelmLog.shared.warn("layout", "the app refused the replacement")
+            return
+        }
         sources.select(to)
         lock.lock()
         undo = UndoRecord(event: ConversionEvent(before: word, after: replacement,
@@ -184,10 +216,16 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// Converts whatever is in the buffer right now, whatever the dictionary
     /// thinks — the hotkey path.
     public func convertLastWord() {
-        lock.lock(); let word = buffer.word; lock.unlock()
-        guard !word.isEmpty else { return }
-        // Mid-word: nothing has ended it, so there is nothing extra to delete.
-        convert(word, trailing: nil, force: true)
+        lock.lock()
+        let live = buffer.word
+        let previous = lastCompleted
+        lock.unlock()
+        if !live.isEmpty {
+            // Mid-word: nothing ended it, so there is nothing extra to delete.
+            convert(live, trailing: nil, force: true)
+        } else if let previous {
+            convert(previous.word, trailing: previous.ending, force: true)
+        }
     }
 
     /// Re-reads what the settings page wrote. The page owns the store; the
@@ -206,10 +244,12 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         emitState()
     }
 
-    private func perform(_ plan: SwitchPlan) {
+    @discardableResult
+    private func perform(_ plan: SwitchPlan) -> Bool {
         lock.lock(); performing = true; lock.unlock()
-        _ = typing.perform(plan)
-        lock.lock(); performing = false; buffer.clear(); lock.unlock()
+        let done = typing.perform(plan)
+        lock.lock(); performing = false; buffer.clear(); lastCompleted = nil; lock.unlock()
+        return done
     }
 
     // MARK: - Transport
@@ -228,9 +268,13 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     }
 
     private func emitState() {
+        // Outside the lock: `isSecure` reaches the accessibility server, and a
+        // hung app there blocks for the messenger's timeout. Holding the lock
+        // across it would freeze the tap callback — which runs on main.
+        let suspended = secure.isSecure()
         lock.lock()
         let state = LayoutState(enabled: tapped, automatic: automatic,
-                                suspended: secure.isSecure(),
+                                suspended: suspended,
                                 lastConversion: undo?.event,
                                 conversionsToday: conversions)
         lock.unlock()
