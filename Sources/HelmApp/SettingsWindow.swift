@@ -274,7 +274,6 @@ private struct MenuBarSettingsView: View {
     @State private var diskAccess: PermissionState = .denied
     @State private var accessibility: PermissionState = .granted
     private let adHocBuild = PermissionCheck.isAdHocSigned()
-    @State private var extensions: [SystemExtensionInfo] = []
     @State private var loggingOn = LogPolicy.isEnabled(
         version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0",
         override: AppSettings.loggingOverride)
@@ -409,14 +408,6 @@ private struct MenuBarSettingsView: View {
                                       : AppStr.permissionWhy(need),
                                   granted: granted) { need.openSettings() }
                 }
-                HStack {
-                    Text(AppStr.systemExtensionsTitle)
-                    Spacer()
-                    Text(extensions.isEmpty ? AppStr.noExtensions : AppStr.extensionCount(extensions.count))
-                        .foregroundStyle(.secondary)
-                    Button(AppStr.manage) { PermissionCheck.openExtensionSettings() }
-                        .controlSize(.small)
-                }
             }
             Section(AppStr.diagnostics) {
                 Toggle(AppStr.writeLog, isOn: $loggingOn)
@@ -447,7 +438,6 @@ private struct MenuBarSettingsView: View {
         .task {
             diskAccess = PermissionCheck.currentFullDiskAccess()
             accessibility = PermissionCheck.currentAccessibility()
-            extensions = await SystemExtensionQuery.installed()
         }
     }
 

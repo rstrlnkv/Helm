@@ -25,7 +25,26 @@ public struct LeftoversScanner: Sendable {
         out += launchItems(installed: installed, activeExtensions: activeExtensions)
         out += preferences(installed: installed)
         out += plugins(installed: installed)
+        out += systemExtensions(installed: installed)
         return out.sorted { $0.identifier < $1.identifier }
+    }
+
+    // MARK: - System extensions
+
+    /// Extensions are not files Helm can move: macOS removes them with the app
+    /// that installed them, or from System Settings. They are listed so the
+    /// user can see what loads and where it came from, never as something to
+    /// tick — hence `.inUse`/`.protectedItem`, never `.orphaned`… except when
+    /// the host app is gone, which is exactly what the user wants to know.
+    private func systemExtensions(installed: Set<String>) -> [StaleItem] {
+        extensions.installedExtensions().map { info in
+            let host = StaleItemRules.hostIdentifier(of: info.identifier)
+            let hostPresent = installed.contains { $0 == host || info.identifier.hasPrefix($0) }
+            return StaleItem(path: info.identifier, identifier: info.identifier,
+                             kind: .systemExtension, sizeBytes: 0,
+                             runAtLoad: info.enabled,
+                             status: hostPresent ? .inUse : .orphaned)
+        }
     }
 
     // MARK: - Launch agents and daemons

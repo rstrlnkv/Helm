@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 /// A property list crossing a concurrency boundary. `[String: Any]` cannot be
 /// Sendable, and the contents are read-only here, so the box carries them.
@@ -35,4 +36,6 @@ public protocol InstalledAppsPort: Sendable {
 /// apart from one that is simply not running.
 public protocol ExtensionsPort: Sendable {
     func activeExtensionIdentifiers() -> Set<String>
+    /// The full list, so the module can name them instead of counting them.
+    func installedExtensions() -> [SystemExtensionInfo]
 }

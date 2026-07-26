@@ -18,4 +18,30 @@ final class VPNRulesTests: XCTestCase {
         let conns = [VPNConnection(id: "1", name: "A", status: .disconnected, kind: nil)]
         XCTAssertEqual(VPNRules.valid(rules, against: conns).keys.sorted(), ["com.x"])
     }
+
+    // MARK: - The four states one control offers
+
+    func testTimingReadsBackFromTheFlags() {
+        XCTAssertEqual(VPNAppRule(vpnName: "v").timing, .launchAndQuit)
+        XCTAssertEqual(VPNAppRule(vpnName: "v", disconnectOnQuit: false).timing, .launchOnly)
+        XCTAssertEqual(VPNAppRule(vpnName: "v", connectOnLaunch: false).timing, .quitOnly)
+        XCTAssertEqual(VPNAppRule(vpnName: "v", connectOnLaunch: false,
+                                  disconnectOnQuit: false).timing, .off)
+    }
+
+    func testSettingATimingRoundTrips() {
+        for timing in VPNAppRule.Timing.allCases {
+            var rule = VPNAppRule(vpnName: "v")
+            rule.set(timing)
+            XCTAssertEqual(rule.timing, timing)
+        }
+    }
+
+    /// "Off" must clear both, so a rule cannot half-fire.
+    func testOffClearsBoth() {
+        var rule = VPNAppRule(vpnName: "v")
+        rule.set(.off)
+        XCTAssertFalse(rule.connectOnLaunch)
+        XCTAssertFalse(rule.disconnectOnQuit)
+    }
 }
