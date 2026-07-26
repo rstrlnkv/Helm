@@ -157,23 +157,19 @@ public final class ScreenParamsObserver: DisplayObserverPort {
 public final class WorkspaceAppPort: AppRunningPort {
     public init() {}
 
-    public func runningBundleIDs() -> Set<String> {
-        Set(NSWorkspace.shared.runningApplications.compactMap { $0.bundleIdentifier })
-    }
+    /// Through `RunningApps` for the same reason the VPN port is: this one is
+    /// only ever reached from the main thread today, and "only ever, today" is
+    /// exactly what was true of the other one.
+    public func runningBundleIDs() -> Set<String> { RunningApps.shared.bundleIDs() }
 
     public func startObserving(_ onChange: @escaping @Sendable () -> Void) {
         let center = NSWorkspace.shared.notificationCenter
-        center.addObserver(
-            forName: NSWorkspace.didLaunchApplicationNotification,
-            object: nil,
-            queue: .main
-        ) { _ in onChange() }
-
-        center.addObserver(
-            forName: NSWorkspace.didTerminateApplicationNotification,
-            object: nil,
-            queue: .main
-        ) { _ in onChange() }
+        for name in [NSWorkspace.didLaunchApplicationNotification,
+                     NSWorkspace.didTerminateApplicationNotification] {
+            center.addObserver(forName: name, object: nil, queue: .main) { _ in
+                RunningApps.shared.refreshOnMain(then: onChange)
+            }
+        }
     }
 }
 
