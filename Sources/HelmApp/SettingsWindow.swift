@@ -438,6 +438,13 @@ private struct MenuBarSettingsView: View {
             }
                                                         }
         .formStyle(.grouped)
+        // A grouped Form caps its content at 704 pt and centres it, so past a
+        // 994 pt window its leading edge walks away from everything Helm draws
+        // itself — measured at 36 pt on a 1070 pt window, 181 pt on 1360.
+        // Capping it at 704 + 2×20 keeps the system on the branch where the
+        // inset is a constant 20, which is what the page header uses.
+        .frame(maxWidth: 744, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .onReceive(NotificationCenter.default.publisher(
             for: NSApplication.didBecomeActiveNotification)) { _ in
             // The user grants in System Settings and comes back; the row has
@@ -785,7 +792,8 @@ private struct WhatsNewView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding()
+                // Matches the header plate above it, which sits at 20.
+                .padding(.horizontal, 20).padding(.vertical, 16)
             }
         }
         .frame(width: 520, height: 460)
@@ -795,7 +803,10 @@ private struct WhatsNewView: View {
         // The one pill. This was the last hand-rolled one, and the worst:
         // orange text on orange fill at 11 pt is about 1.6:1, on the screen
         // every user sees right after an update.
-        HelmBadge(kind.label, tint: kind.color).frame(width: 44)
+        HelmBadge(kind.label, tint: kind.color)
+            // Fixed width wrapped half the languages onto a second line.
+            .fixedSize()
+            .frame(minWidth: 44, alignment: .leading)
     }
 
 }

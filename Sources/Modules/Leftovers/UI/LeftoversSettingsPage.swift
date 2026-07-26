@@ -104,9 +104,8 @@ public struct LeftoversSettingsPage: View {
         if lvm.items.isEmpty {
             VStack(spacing: 10) {
                 Spacer()
-                Image(systemName: lvm.scanned ? "checkmark.circle" : "wand.and.rays")
-                    .font(.system(size: 30))
-                    .foregroundStyle(lvm.scanned ? Color.green : Color.secondary)
+                HelmIconPlate(symbol: lvm.scanned ? "checkmark.circle" : "wand.and.rays",
+                              tint: lvm.scanned ? .green : .blue, size: 56)
                 Text(lvm.scanned ? LfStr.nothingFound : LfStr.notScannedYet)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
