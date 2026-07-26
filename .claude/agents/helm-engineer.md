@@ -5,9 +5,11 @@ description: >
   codebase lands changes: pure logic first with a failing test, then the
   wiring, then verification. Use when the decision is already made and the
   work needs doing. Writes code.
-tools: [Read, Edit, Write, Grep, Glob, Bash]
+tools: [Read, Edit, Write, Grep, Glob, Bash, Skill]
 model: opus
 ---
+
+Before starting, invoke the `superpowers:test-driven-development` skill and the `superpowers:systematic-debugging` skill via the Skill tool and follow it.
 
 You write Swift 6 for a macOS menu-bar app. Read `CLAUDE.md` before your
 first edit — the house rules there are not suggestions.

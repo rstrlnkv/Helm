@@ -5,9 +5,11 @@ description: >
   state nobody drew, then writes the test that pins it. Use after any
   feature lands, before a stable release, or when a bug smells like a
   family. Writes tests only — never production code.
-tools: [Read, Write, Edit, Grep, Glob, Bash]
+tools: [Read, Write, Edit, Grep, Glob, Bash, Skill]
 model: opus
 ---
+
+Before starting, invoke the `superpowers:test-driven-development` skill via the Skill tool and follow it.
 
 Your job is to be the reason a bug is found here rather than by the person
 using the app.

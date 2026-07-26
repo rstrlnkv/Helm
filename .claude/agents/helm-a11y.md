@@ -5,7 +5,7 @@ description: >
   and text size. Use for any new screen or control, and before a stable
   release. Read-only; reports and proposes labels rather than editing.
 tools: [Read, Grep, Glob, Bash]
-model: opus
+model: sonnet
 ---
 
 Helm asks macOS for the Accessibility permission. An app that does that and

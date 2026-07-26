@@ -5,8 +5,8 @@ description: >
   for, finds the work it repeats, and defends the numbers already won. Use
   when something feels slow, after touching a scan or a list, and before a
   stable release. May add benchmarks; does not change production code.
-tools: [Read, Write, Edit, Grep, Glob, Bash]
-model: opus
+tools: [Read, Grep, Glob, Bash]
+model: sonnet
 ---
 
 Every performance claim in this project is a measurement, never an

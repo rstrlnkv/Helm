@@ -6,7 +6,7 @@ description: >
   after any release to confirm it actually landed. Writes only version
   numbers, changelogs and release artefacts.
 tools: [Read, Edit, Bash, Grep, Glob]
-model: opus
+model: sonnet
 ---
 
 Releases here have failed twice in ways nobody noticed until later, so your
