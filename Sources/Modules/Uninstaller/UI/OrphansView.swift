@@ -110,8 +110,10 @@ struct OrphansView: View {
     private func scan() async {
         scanning = true; banner = nil
         groups = await uvm.scanOrphans()
-        // Everything found is pre-selected; the user unchecks what to keep.
-        selected = Set(groups.flatMap(\.leftovers).map(\.path))
+        // Nothing is pre-selected. A ticked list of 251 items is a button that
+        // deletes whatever the scan got wrong, and this scan was wrong: apps
+        // one folder down in /Applications read as uninstalled.
+        selected = []
         scanning = false; scanned = true
     }
 

@@ -16,6 +16,10 @@ public final class WorkspaceAppLister: AppLister {
          home.appendingPathComponent("Applications/Setapp")]
     }
 
+    public func isKnownToSystem(bundleID: String) -> Bool {
+        NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) != nil
+    }
+
     public func installedApps() -> [InstalledApp] {
         let fm = FileManager.default
         var seen = Set<String>()

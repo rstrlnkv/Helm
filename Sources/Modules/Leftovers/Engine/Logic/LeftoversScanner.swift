@@ -71,7 +71,8 @@ public struct LeftoversScanner: Sendable {
                                      sizeBytes: files.size(url),
                                      missingTarget: targetAlive ? nil : info.program,
                                      runAtLoad: info.runAtLoad, status: status,
-                                     disabled: disabled.contains(info.identifier))
+                                     disabled: disabled.contains(info.identifier),
+                                     writable: files.isWritable(url))
                 }
         }
     }
