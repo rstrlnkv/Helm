@@ -8,6 +8,56 @@ features, PATCH = fixes.
 ## [0.7.1] — 2026-07-26
 
 ### Fixed
+- `DiskSafety` allowed every top-level directory of the boot volume, so a scan
+  of `/` put `/Users` one click from the Trash. Nothing at the root of a volume
+  is a file anyone means to delete; its contents still are.
+- A `*` in `CFBundleIdentifier` turned every leftover glob into a
+  match-everything pattern, and a glob is never `matchedByName`, so the results
+  arrived pre-ticked: one app could offer up every container in `~/Library`. The
+  empty-id case was closed earlier; this closes the class.
+- A leading dot carried Apple's own domains past the skip list —
+  `.com.apple.finder.plist` still splits into three components and then matches
+  no prefix test.
+- `RemovableScope` allowed the shared `~/Library` folders themselves. The gate
+  that exists to survive a defect upstream must not be looser than the code it
+  guards.
+- `DiskEngine` dropped a refused path into neither list and then announced
+  "Removed — N freed" over a file still sitting there.
+- An extension's host was matched by prefix without a separator, so an installed
+  `com.acme` marked `com.acmecorp.vpn.ext` as in use — and an empty id in the
+  installed set marked every extension on the machine as in use.
+- `LaunchAgentReader` cut `.plist` wherever it appeared:
+  `com.vendor.plistwatcher.plist` became `com.vendorwatcher`, an identifier that
+  matched no installed app and that `launchctl disable` would aim elsewhere.
+- `make-dmg.sh` staged through `build/`, inside the synced checkout, so the dmg
+  shipped a bundle `codesign` rejects while the zip beside it was fine. It
+  stages in `TMPDIR` and verifies the seal before packing.
+- `isSudoersInstalled` read a file installed 0440 root:wheel and so answered
+  "not installed" every time: the admin prompt returned every session, and the
+  removal added alongside it could never run.
+- The sudoers rule staged at a fixed path, and the privileged read happens after
+  the password prompt — an unbounded window for anything already running as this
+  user to rewrite it. Each attempt gets its own 0700 directory.
+- The VPN credential purge marked itself done before doing anything; at login the
+  keychain can still be locked, which would have left the readable item forever.
+- `helm.log` still held every line written before redaction existed, next to a
+  button whose purpose is pasting it into a bug report. Discarded once.
+- Turning the Disk module off and on left its cached view model talking to a
+  deallocated engine: every request answered empty, with no error, until restart.
+- A rescan cleared the whole selection, so switching one login item off threw
+  away every other tick.
+- "Last checked" was stamped before the check ran, and a manual check never moved
+  it at all.
+- Keep Awake counted `manual` and `timer` among the automatic rules, and the
+  countdown on the settings page had no tick of its own.
+- The menu-bar button had no accessibility label — the only entrance to the app
+  was an unnamed button among twenty others.
+- Reduce Motion was honoured nowhere, including a bezel that rotates forever.
+- The last hand-rolled badge sat on the screen shown after every update, drawing
+  orange text on orange fill at about 1.6:1.
+- Full Disk Access and Accessibility are named as macOS 26 names them in ru, de,
+  es and zh: Helm was sending people to look for a row that does not exist.
+- Eight German strings had slipped into "Sie"; macOS speaks du.
 - The leftovers matcher pasted a bundle id or display name straight onto a
   shared `~/Library` folder. An empty `CFBundleDisplayName` — a free-form plist
   string — therefore claimed `Application Support` itself, an empty id collapsed
