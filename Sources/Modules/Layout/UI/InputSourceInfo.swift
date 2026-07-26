@@ -30,10 +30,11 @@ struct InputSourceInfo {
         guard let id = string(source, kTISPropertyInputSourceID) else { return nil }
         let name = string(source, kTISPropertyLocalizedName) ?? id
         let language = languages(source).first ?? ""
-        // The region comes from the tag when it carries one ("en-GB"), and
-        // otherwise from the layout's own name, which is where "British" and
-        // "U.S." live. No region means no flag, deliberately.
-        let region = Locale(identifier: language).region?.identifier
+        // From the layout's name first. `Locale("en").region` is nil — the tag
+        // for a plain US layout names no country at all — so asking the tag
+        // first left every flag style falling back to letters on an ordinary
+        // Mac, which is to say the feature did not work at all.
+        let region = LanguageBadge.region(sourceID: id, language: language)
         return InputSourceInfo(id: id, name: name,
                                badge: LanguageBadge.label(language: language, region: region),
                                emojiFlag: LanguageBadge.emojiFlag(region: region),

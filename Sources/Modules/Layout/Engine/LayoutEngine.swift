@@ -121,7 +121,10 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         if let activeObserver { NotificationCenter.default.removeObserver(activeObserver) }
         activeObserver = nil
         tap.stop()
-        lock.lock(); running = false; tapped = false; buffer.clear(); undo = nil; lock.unlock()
+        lock.lock()
+        running = false; tapped = false
+        buffer.clear(); undo = nil; lastCompleted = nil   // the third place a word lives
+        lock.unlock()
         emitState()
     }
 
@@ -137,19 +140,32 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         }
         lock.lock()
         guard !performing else { lock.unlock(); return }
-        // Anything at all ends the chance to undo — including typing, which
-        // this used to exclude. An undo is a blind edit of a fixed length: type
-        // "abc" after a conversion and undoing deletes seven characters from
-        // "привет abc", leaving "при" and then inserting the original. That is
-        // the "eats somebody's text" case `UndoRecord` exists to prevent.
-        undo?.invalidate()
+        // Typing, clicking and leaving end the chance to undo: an undo is a
+        // blind edit of a fixed length, and "привет abc" undone becomes
+        // "приghbdtn ". A chord is the exception, and not a convenient one —
+        // the undo shortcut *is* a chord, it reaches the tap before Carbon
+        // delivers it, and treating it like the rest meant the shortcut
+        // destroyed its own precondition and could never fire once.
+        switch event {
+        case .navigation: undo?.soften()
+        default: undo?.invalidate()
+        }
         let finished = buffer.accept(event)
         let auto = automatic
         let confirms = triggers.converts(event)
         lock.unlock()
         // Ended and meant are different things: leaving the word by clicking or
         // moving the caret ends it without asking for a conversion.
-        if let finished { lock.lock(); lastCompleted = finished; lock.unlock() }
+        // A click or a focus change means the person went somewhere else, and
+        // converting then types six backspaces into wherever the caret is now —
+        // possibly an hour later. A chord does not: the shortcut itself is one,
+        // and it must not destroy its own input.
+        switch event {
+        case .click, .focusChange:
+            lock.lock(); lastCompleted = nil; lock.unlock()
+        default:
+            if let finished { lock.lock(); lastCompleted = finished; lock.unlock() }
+        }
         guard auto, confirms, let completed = finished else { return }
         convert(completed.word, trailing: completed.ending, force: false)
     }
@@ -246,9 +262,9 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         exceptions = Exceptions(words: settings.stringArray("exceptions"))
         scope = AppScope(rules: rules)
         audible = settings.bool("audible", default: false)
-        triggers = ConversionTriggers(onSpace: settings.bool("onSpace", default: true),
-                                      onReturn: settings.bool("onReturn", default: true),
-                                      onPunctuation: settings.bool("onPunctuation", default: true))
+        triggers = ConversionTriggers(onSpace: settings.bool("onSpace", default: ConversionTriggers.default.onSpace),
+                                      onReturn: settings.bool("onReturn", default: ConversionTriggers.default.onReturn),
+                                      onPunctuation: settings.bool("onPunctuation", default: ConversionTriggers.default.onPunctuation))
         lock.unlock()
         emitState()
     }

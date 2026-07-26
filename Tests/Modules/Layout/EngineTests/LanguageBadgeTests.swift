@@ -52,7 +52,7 @@ extension LanguageBadgeTests {
     /// than a crash or a blank menu bar.
     func testAnUnknownStyleFallsBackToLetters() {
         for raw in [nil, "", "Filled", "flag"] {
-            XCTAssertEqual(BadgeStyle.from(raw), .plain, String(describing: raw))
+            XCTAssertEqual(BadgeStyle.from(raw), .default, String(describing: raw))
         }
         for style in BadgeStyle.allCases {
             XCTAssertEqual(BadgeStyle.from(style.rawValue), style)
@@ -65,5 +65,42 @@ extension LanguageBadgeTests {
         for style in [BadgeStyle.plain, .filled, .outlined] {
             XCTAssertFalse(style.needsRegion)
         }
+    }
+}
+
+/// Every layout should reach a flag, or the indicator is flags for some rows
+/// and letters for others — which reads as a bug, not a choice.
+extension LanguageBadgeTests {
+    func testTheLayoutNameDecidesTheCountry() {
+        XCTAssertEqual(LanguageBadge.region(sourceID: "com.apple.keylayout.ABC",
+                                            language: "en"), "US")
+        XCTAssertEqual(LanguageBadge.region(sourceID: "com.apple.keylayout.British",
+                                            language: "en"), "GB")
+        XCTAssertEqual(LanguageBadge.region(sourceID: "com.apple.keylayout.Russian-PC",
+                                            language: "ru"), "RU")
+        XCTAssertEqual(LanguageBadge.region(sourceID: "com.apple.keylayout.German-DIN-2137",
+                                            language: "de"), "DE")
+    }
+
+    /// "ABC" and "British" are both English: the language tag alone cannot tell
+    /// them apart, which is why the layout name is asked first.
+    func testTheLanguageTagAloneWouldNotDoIt() {
+        XCTAssertNotEqual(LanguageBadge.region(sourceID: "com.apple.keylayout.ABC", language: "en"),
+                          LanguageBadge.region(sourceID: "com.apple.keylayout.British",
+                                               language: "en"))
+    }
+
+    /// A layout Helm has never heard of still gets a country when its tag
+    /// carries one.
+    func testAnUnknownLayoutFallsBackToTheTag() {
+        XCTAssertEqual(LanguageBadge.region(sourceID: "com.example.keylayout.Whatever",
+                                            language: "fr-CA"), "CA")
+        XCTAssertNil(LanguageBadge.region(sourceID: "com.example.keylayout.Whatever",
+                                          language: "eo"))
+    }
+
+    /// And when there is genuinely no country, letters — rather than a blank.
+    func testNoCountryStillHasALabel() {
+        XCTAssertFalse(LanguageBadge.label(language: "eo", region: nil).isEmpty)
     }
 }

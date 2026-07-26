@@ -39,9 +39,9 @@ import Module_Layout_Engine
                             exceptions: store.stringArray("exceptions"),
                             automatic: store.bool("automatic", default: true),
                             triggers: ConversionTriggers(
-                                onSpace: store.bool("onSpace", default: true),
-                                onReturn: store.bool("onReturn", default: true),
-                                onPunctuation: store.bool("onPunctuation", default: true)),
+                                onSpace: store.bool("onSpace", default: ConversionTriggers.default.onSpace),
+                                onReturn: store.bool("onReturn", default: ConversionTriggers.default.onReturn),
+                                onPunctuation: store.bool("onPunctuation", default: ConversionTriggers.default.onPunctuation)),
                             audible: store.bool("audible", default: false),
                             settings: store)
     }
