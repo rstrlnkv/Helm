@@ -85,6 +85,10 @@ public struct WorkspaceInstalledApps: InstalledAppsPort {
 /// used to carry its own ad-hoc line splitter.
 public struct ActiveExtensions: ExtensionsPort {
     public init() {}
+    public func installedExtensions() -> [SystemExtensionInfo] {
+        SystemExtensionCLI.installed()
+    }
+
     public func activeExtensionIdentifiers() -> Set<String> {
         Set(SystemExtensionCLI.installed().map(\.identifier))
     }

@@ -28,11 +28,13 @@ enum VPNStr {
     static var perAppHint: String {
         L("Add an app to automatically connect a VPN while that app is running.", [.ru: "Добавьте приложение, чтобы VPN подключался, пока оно запущено.", .es: "Añade una app para conectar una VPN mientras esté en ejecución.", .fr: "Ajoutez une app pour connecter un VPN pendant son exécution.", .de: "Fügen Sie eine App hinzu, um ein VPN zu verbinden, während sie läuft.", .ja: "アプリを追加すると、その実行中に VPN が接続されます。", .zh: "添加一个应用，使其运行时自动连接 VPN。", .pt: "Adicione um app para conectar uma VPN enquanto ele estiver em execução."])
     }
-    static var connectOnLaunch: String {
-        L("Connect when it launches", [.ru: "Подключать при запуске", .es: "Conectar al abrir", .fr: "Connecter au lancement", .de: "Beim Start verbinden", .ja: "起動時に接続", .zh: "启动时连接", .pt: "Conectar ao abrir"])
-    }
-    static var disconnectOnQuit: String {
-        L("Disconnect when it quits", [.ru: "Отключать при выходе", .es: "Desconectar al cerrar", .fr: "Déconnecter à la fermeture", .de: "Beim Beenden trennen", .ja: "終了時に切断", .zh: "退出时断开", .pt: "Desconectar ao sair"])
+    static func ruleTiming(_ timing: VPNAppRule.Timing) -> String {
+        switch timing {
+        case .launchAndQuit: return L("On launch and quit", [.ru: "При запуске и выходе", .es: "Al abrir y cerrar", .fr: "À l’ouverture et à la fermeture", .de: "Beim Start und Beenden", .ja: "起動時と終了時", .zh: "启动与退出时", .pt: "Ao abrir e fechar"])
+        case .launchOnly: return L("On launch only", [.ru: "Только при запуске", .es: "Solo al abrir", .fr: "À l’ouverture seulement", .de: "Nur beim Start", .ja: "起動時のみ", .zh: "仅启动时", .pt: "Só ao abrir"])
+        case .quitOnly: return L("On quit only", [.ru: "Только при выходе", .es: "Solo al cerrar", .fr: "À la fermeture seulement", .de: "Nur beim Beenden", .ja: "終了時のみ", .zh: "仅退出时", .pt: "Só ao fechar"])
+        case .off: return L("Off", [.ru: "Выключено", .es: "Desactivado", .fr: "Désactivé", .de: "Aus", .ja: "オフ", .zh: "关闭", .pt: "Desligado"])
+        }
     }
     static var addApp: String {
         L("Add app…", [.ru: "Добавить приложение…", .es: "Añadir app…", .fr: "Ajouter une app…", .de: "App hinzufügen…", .ja: "アプリを追加…", .zh: "添加应用…", .pt: "Adicionar app…"])

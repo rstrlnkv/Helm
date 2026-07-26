@@ -1,4 +1,5 @@
 import HelmUI
+import Module_KeepAwake_Engine
 
 /// Localized strings for the Keep Awake module UI. English is the base; the
 /// tables carry zh/es/fr/de/ja/ru/pt.
@@ -66,8 +67,15 @@ enum KAStr {
     static var withExternalDisplay: String { L("Keep awake with external display", [.ru: "Не спать при внешнем дисплее", .es: "Mantener activo con pantalla externa", .fr: "Rester éveillé avec un écran externe", .de: "Mit externem Bildschirm wach halten", .ja: "外部ディスプレイ接続中はスリープ防止", .zh: "连接外接显示器时保持唤醒", .pt: "Manter ativo com tela externa"]) }
     static var whileOnPower: String { L("Keep awake while on power", [.ru: "Не спать при питании", .es: "Mantener activo con corriente", .fr: "Rester éveillé sur secteur", .de: "Am Netzstrom wach halten", .ja: "電源接続中はスリープ防止", .zh: "接通电源时保持唤醒", .pt: "Manter ativo na tomada"]) }
     static var appsSection: String { L("Apps that keep the Mac awake", [.ru: "Приложения, не дающие спать", .es: "Apps que mantienen activo el Mac", .fr: "Apps qui gardent le Mac éveillé", .de: "Apps, die den Mac wach halten", .ja: "Mac を起動させ続けるアプリ", .zh: "保持 Mac 唤醒的应用", .pt: "Apps que mantêm o Mac ativo"]) }
-    static var onlyWithExternalDisplay: String { L("Only with an external display", [.ru: "Только при внешнем дисплее", .es: "Solo con pantalla externa", .fr: "Seulement avec un écran externe", .de: "Nur mit externem Bildschirm", .ja: "外部ディスプレイ接続時のみ", .zh: "仅在连接外接显示器时", .pt: "Só com tela externa"]) }
-    static var onlyOnPower: String { L("Only on power", [.ru: "Только при питании", .es: "Solo con corriente", .fr: "Seulement sur secteur", .de: "Nur am Netzstrom", .ja: "電源接続時のみ", .zh: "仅在接通电源时", .pt: "Só na tomada"]) }
+    static func triggerCondition(_ condition: AppTrigger.Condition) -> String {
+        switch condition {
+        case .always: return L("Always", [.ru: "Всегда", .es: "Siempre", .fr: "Toujours", .de: "Immer", .ja: "常に", .zh: "始终", .pt: "Sempre"])
+        case .externalDisplay: return L("With an external display", [.ru: "При внешнем дисплее", .es: "Con pantalla externa", .fr: "Avec un écran externe", .de: "Mit externem Bildschirm", .ja: "外部ディスプレイ接続時", .zh: "连接外接显示器时", .pt: "Com tela externa"])
+        case .power: return L("On power", [.ru: "При питании", .es: "Con corriente", .fr: "Sur secteur", .de: "Am Netzstrom", .ja: "電源接続時", .zh: "接通电源时", .pt: "Na tomada"])
+        case .displayAndPower: return L("Display and power", [.ru: "При дисплее и питании", .es: "Pantalla y corriente", .fr: "Écran et secteur", .de: "Bildschirm und Netzstrom", .ja: "ディスプレイと電源", .zh: "显示器与电源", .pt: "Tela e tomada"])
+        }
+    }
+    static var noAppsYet: String { L("No apps yet.", [.ru: "Приложений пока нет.", .es: "Aún no hay apps.", .fr: "Aucune app pour l’instant.", .de: "Noch keine Apps.", .ja: "アプリはまだありません。", .zh: "还没有应用。", .pt: "Ainda sem apps."]) }
     static var behavior: String { L("Behavior", [.ru: "Поведение", .es: "Comportamiento", .fr: "Comportement", .de: "Verhalten", .ja: "動作", .zh: "行为", .pt: "Comportamento"]) }
     static var keepDisplayOn: String { L("Keep display on", [.ru: "Держать дисплей включённым", .es: "Mantener la pantalla encendida", .fr: "Garder l’écran allumé", .de: "Bildschirm anlassen", .ja: "ディスプレイを点灯したまま", .zh: "保持显示器常亮", .pt: "Manter a tela ligada"]) }
     static var movePointer: String { L("Move pointer periodically", [.ru: "Периодически двигать указателем", .es: "Mover el puntero periódicamente", .fr: "Déplacer le pointeur régulièrement", .de: "Zeiger regelmäßig bewegen", .ja: "定期的にポインタを動かす", .zh: "定期移动指针", .pt: "Mover o ponteiro periodicamente"]) }

@@ -80,4 +80,29 @@ final class AppTriggerTests: XCTestCase {
         XCTAssertEqual(migrated, [AppTrigger(bundleID: "a"), AppTrigger(bundleID: "b")])
         XCTAssertFalse(migrated.contains { $0.needsExternalDisplay || $0.needsPower })
     }
+
+    // MARK: - The four states one control offers
+
+    func testConditionReadsBackFromTheFlags() {
+        XCTAssertEqual(plain.condition, .always)
+        XCTAssertEqual(needsDisplay.condition, .externalDisplay)
+        XCTAssertEqual(needsPower.condition, .power)
+        XCTAssertEqual(needsBoth.condition, .displayAndPower)
+    }
+
+    func testSettingAConditionRoundTrips() {
+        for condition in AppTrigger.Condition.allCases {
+            var trigger = AppTrigger(bundleID: "x")
+            trigger.set(condition)
+            XCTAssertEqual(trigger.condition, condition)
+        }
+    }
+
+    /// Choosing "always" must clear both qualifiers, not leave one behind.
+    func testAlwaysClearsEveryQualifier() {
+        var trigger = needsBoth
+        trigger.set(.always)
+        XCTAssertFalse(trigger.needsExternalDisplay)
+        XCTAssertFalse(trigger.needsPower)
+    }
 }

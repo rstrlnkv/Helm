@@ -1,4 +1,5 @@
 import XCTest
+import HelmRuntime
 @testable import Module_Leftovers_Engine
 
 private struct FakeFiles: LeftoversFilePort {
@@ -21,7 +22,9 @@ private struct FakeApps: InstalledAppsPort {
 
 private struct FakeExtensions: ExtensionsPort {
     var ids: Set<String> = []
+    var installed: [SystemExtensionInfo] = []
     func activeExtensionIdentifiers() -> Set<String> { ids }
+    func installedExtensions() -> [SystemExtensionInfo] { installed }
 }
 
 final class LeftoversScanTests: XCTestCase {
@@ -123,5 +126,50 @@ final class LeftoversScanTests: XCTestCase {
         scannerFiles.listing["/Users/x/Library/LaunchAgents"] = []
         let items = scanner(files: scannerFiles, installed: [], extensions: active).scan()
         XCTAssertTrue(items.filter(\.removable).isEmpty, "an activated extension must not be offered")
+    }
+
+    // MARK: - System extensions
+
+    /// The module is called "Login Items & Extensions", and system extensions
+    /// were the one thing it never listed: they showed up only as a count on
+    /// another page, with no names.
+    func testInstalledExtensionsAreListed() {
+        let extensions = FakeExtensions(ids: ["com.acme.app.network"], installed: [
+            SystemExtensionInfo(identifier: "com.acme.app.network", teamID: "T1",
+                                name: "Acme Network", version: "1.0",
+                                state: "activated enabled", enabled: true),
+        ])
+        let items = scanner(files: FakeFiles(), installed: ["com.acme.app"],
+                            extensions: extensions).scan()
+        let extensionItems = items.filter { $0.kind == .systemExtension }
+        XCTAssertEqual(extensionItems.count, 1)
+        XCTAssertEqual(extensionItems.first?.identifier, "com.acme.app.network")
+    }
+
+    /// An extension whose host app is installed is in use; one whose host is
+    /// gone is a leftover the user may want to clear in System Settings.
+    func testExtensionStatusFollowsItsHostApp() {
+        let info = SystemExtensionInfo(identifier: "com.acme.app.network", teamID: "T1",
+                                       name: "Acme Network", version: "1.0",
+                                       state: "activated enabled", enabled: true)
+        let live = scanner(files: FakeFiles(), installed: ["com.acme.app"],
+                           extensions: FakeExtensions(installed: [info])).scan()
+        XCTAssertEqual(live.first { $0.kind == .systemExtension }?.status, .inUse)
+
+        let orphan = scanner(files: FakeFiles(), installed: [],
+                             extensions: FakeExtensions(installed: [info])).scan()
+        XCTAssertEqual(orphan.first { $0.kind == .systemExtension }?.status, .orphaned)
+    }
+
+    /// Helm cannot delete an extension by moving a file — that is done in
+    /// System Settings — so it must never offer a checkbox for one.
+    func testExtensionsAreNeverSelectable() {
+        let info = SystemExtensionInfo(identifier: "com.acme.app.network", teamID: "T1",
+                                       name: "Acme Network", version: "1.0",
+                                       state: "activated enabled", enabled: true)
+        let items = scanner(files: FakeFiles(), installed: [],
+                            extensions: FakeExtensions(installed: [info])).scan()
+        let ext = items.first { $0.kind == .systemExtension }
+        XCTAssertEqual(ext?.removable, false)
     }
 }

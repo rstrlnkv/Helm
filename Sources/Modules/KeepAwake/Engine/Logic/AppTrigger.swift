@@ -15,6 +15,28 @@ public struct AppTrigger: Codable, Equatable, Sendable, Identifiable {
         self.needsPower = needsPower
     }
 
+    /// The four states the two flags can express, named the way the row reads.
+    /// One control instead of two switches: "only with a display" and "only on
+    /// power" together mean both must hold, which two independent toggles do
+    /// not say out loud.
+    public enum Condition: String, CaseIterable, Sendable {
+        case always, externalDisplay, power, displayAndPower
+    }
+
+    public var condition: Condition {
+        switch (needsExternalDisplay, needsPower) {
+        case (false, false): .always
+        case (true, false): .externalDisplay
+        case (false, true): .power
+        case (true, true): .displayAndPower
+        }
+    }
+
+    public mutating func set(_ condition: Condition) {
+        needsExternalDisplay = condition == .externalDisplay || condition == .displayAndPower
+        needsPower = condition == .power || condition == .displayAndPower
+    }
+
     func isSatisfied(running: Set<String>, externalDisplay: Bool, onPower: Bool) -> Bool {
         guard running.contains(bundleID) else { return false }
         if needsExternalDisplay && !externalDisplay { return false }

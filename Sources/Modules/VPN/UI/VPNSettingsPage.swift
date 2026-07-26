@@ -130,35 +130,51 @@ public struct VPNSettingsPage: View {
         .disabled(vm.connections.isEmpty)
     }
 
+    /// One line per app: which VPN, and when the rule fires. The two switches
+    /// this replaces were not independent settings — "neither" is a rule that
+    /// does nothing, which the menu can name.
     private func appRuleRow(_ bundleID: String) -> some View {
         let info = AppInfo.resolve(bundleID)
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                Image(nsImage: info.icon)
-                    .resizable().frame(width: 24, height: 24)
-                Text(info.name).font(.headline)
-                Spacer()
-                Picker("", selection: vpnNameBinding(bundleID)) {
-                    ForEach(vm.connections.map(\.name), id: \.self) { name in
-                        Text(name).tag(name)
-                    }
+        return HStack(spacing: 10) {
+            Image(nsImage: info.icon)
+                .resizable().frame(width: 22, height: 22)
+            Text(info.name)
+                .lineLimit(1)
+            Spacer(minLength: 12)
+            Picker("", selection: vpnNameBinding(bundleID)) {
+                ForEach(vm.connections.map(\.name), id: \.self) { name in
+                    Text(name).tag(name)
                 }
-                .labelsHidden()
-                .frame(maxWidth: 160)
-                Button {
-                    rules.removeValue(forKey: bundleID)
-                    persist()
-                } label: {
-                    Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
             }
-            Toggle(VPNStr.connectOnLaunch, isOn: connectOnLaunchBinding(bundleID))
-                .controlSize(.small)
-            Toggle(VPNStr.disconnectOnQuit, isOn: disconnectOnQuitBinding(bundleID))
-                .controlSize(.small)
+            .labelsHidden()
+            .fixedSize()
+            Picker("", selection: timingBinding(bundleID)) {
+                ForEach(VPNAppRule.Timing.allCases, id: \.self) { timing in
+                    Text(VPNStr.ruleTiming(timing)).tag(timing)
+                }
+            }
+            .labelsHidden()
+            .fixedSize()
+            Button {
+                rules.removeValue(forKey: bundleID)
+                persist()
+            } label: {
+                Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 5)
+    }
+
+    private func timingBinding(_ bundleID: String) -> Binding<VPNAppRule.Timing> {
+        Binding(
+            get: { rules[bundleID]?.timing ?? .launchAndQuit },
+            set: { newValue in
+                guard var rule = rules[bundleID] else { return }
+                rule.set(newValue)
+                rules[bundleID] = rule
+                persist()
+            })
     }
 
     private func vpnNameBinding(_ bundleID: String) -> Binding<String> {
@@ -167,28 +183,6 @@ public struct VPNSettingsPage: View {
             set: { newValue in
                 var rule = rules[bundleID] ?? VPNAppRule(vpnName: newValue)
                 rule.vpnName = newValue
-                rules[bundleID] = rule
-                persist()
-            })
-    }
-
-    private func connectOnLaunchBinding(_ bundleID: String) -> Binding<Bool> {
-        Binding(
-            get: { rules[bundleID]?.connectOnLaunch ?? true },
-            set: { newValue in
-                var rule = rules[bundleID] ?? VPNAppRule(vpnName: vm.connections.first?.name ?? "")
-                rule.connectOnLaunch = newValue
-                rules[bundleID] = rule
-                persist()
-            })
-    }
-
-    private func disconnectOnQuitBinding(_ bundleID: String) -> Binding<Bool> {
-        Binding(
-            get: { rules[bundleID]?.disconnectOnQuit ?? true },
-            set: { newValue in
-                var rule = rules[bundleID] ?? VPNAppRule(vpnName: vm.connections.first?.name ?? "")
-                rule.disconnectOnQuit = newValue
                 rules[bundleID] = rule
                 persist()
             })

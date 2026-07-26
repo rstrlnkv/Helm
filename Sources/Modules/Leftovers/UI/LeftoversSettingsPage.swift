@@ -135,9 +135,11 @@ public struct LeftoversSettingsPage: View {
                             .background(Capsule().fill(Color.orange.opacity(0.22)))
                     }
                 }
-                Text(item.path)
-                    .font(.caption).foregroundStyle(.secondary)
-                    .lineLimit(1).truncationMode(.middle)
+                if item.kind != .systemExtension {
+                    Text(item.path)
+                        .font(.caption).foregroundStyle(.secondary)
+                        .lineLimit(1).truncationMode(.middle)
+                }
                 if let target = item.missingTarget {
                     Text(LfStr.missingTarget(target))
                         .font(.caption2).foregroundStyle(.tertiary)
@@ -145,14 +147,21 @@ public struct LeftoversSettingsPage: View {
                 }
             }
             Spacer()
-            Text(Bytes(item.sizeBytes))
-                .font(.caption).foregroundStyle(.secondary).monospacedDigit()
-            Button {
-                NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: item.path)])
-            } label: {
-                Image(systemName: "doc.text.magnifyingglass")
+            if item.kind == .systemExtension {
+                // Not a file: macOS removes an extension with its app, or the
+                // user turns it off here.
+                Button(LfStr.manageExtensions) { PermissionCheck.openExtensionSettings() }
+                    .controlSize(.small)
+            } else {
+                Text(Bytes(item.sizeBytes))
+                    .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                Button {
+                    NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: item.path)])
+                } label: {
+                    Image(systemName: "doc.text.magnifyingglass")
+                }
+                .buttonStyle(.borderless)
             }
-            .buttonStyle(.borderless)
         }
         .padding(.vertical, 2)
     }

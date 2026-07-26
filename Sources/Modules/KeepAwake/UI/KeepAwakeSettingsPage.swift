@@ -209,47 +209,56 @@ public struct KeepAwakeSettingsPage: View {
     // MARK: - App picker
 
     private var appTriggersEditor: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 0) {
+            if appTriggers.isEmpty {
+                Text(KAStr.noAppsYet)
+                    .font(.callout).foregroundStyle(.secondary)
+                    .padding(.bottom, 8)
+            }
+            // One row per app: icon, name, when it applies, and the remove
+            // button. The condition is a single menu because the two flags are
+            // not independent choices — "display and power" means both.
             ForEach(Array(appTriggers.enumerated()), id: \.element.bundleID) { index, trigger in
                 let info = AppInfo.resolve(trigger.bundleID)
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 10) {
-                        Image(nsImage: info.icon)
-                            .resizable().frame(width: 20, height: 20)
-                        Text(info.name)
-                        Spacer()
-                        Button {
-                            appTriggers.remove(at: index)
-                            saveTriggers()
-                        } label: {
-                            Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
+                HStack(spacing: 10) {
+                    Image(nsImage: info.icon)
+                        .resizable().frame(width: 22, height: 22)
+                    Text(info.name)
+                        .lineLimit(1)
+                    Spacer(minLength: 12)
+                    Picker("", selection: conditionBinding(index)) {
+                        ForEach(AppTrigger.Condition.allCases, id: \.self) { condition in
+                            Text(KAStr.triggerCondition(condition)).tag(condition)
                         }
-                        .buttonStyle(.plain)
                     }
-                    // Narrowing is optional: with both off the app holds the
-                    // Mac awake whenever it runs, which is what it did before.
-                    Toggle(KAStr.onlyWithExternalDisplay,
-                           isOn: binding(index, \.needsExternalDisplay))
-                        .font(.callout)
-                    Toggle(KAStr.onlyOnPower, isOn: binding(index, \.needsPower))
-                        .font(.callout)
+                    .labelsHidden()
+                    .fixedSize()
+                    Button {
+                        appTriggers.remove(at: index)
+                        saveTriggers()
+                    } label: {
+                        Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
                 }
+                .padding(.vertical, 5)
+                if index < appTriggers.count - 1 { Divider() }
             }
             Button {
                 pickApp()
             } label: {
                 Label(KAStr.addApp, systemImage: "plus")
             }
+            .padding(.top, appTriggers.isEmpty ? 0 : 8)
         }
     }
 
-    private func binding(_ index: Int,
-                         _ path: WritableKeyPath<AppTrigger, Bool>) -> Binding<Bool> {
+    private func conditionBinding(_ index: Int) -> Binding<AppTrigger.Condition> {
         Binding(
-            get: { appTriggers.indices.contains(index) ? appTriggers[index][keyPath: path] : false },
+            get: { appTriggers.indices.contains(index) ? appTriggers[index].condition : .always },
             set: { newValue in
                 guard appTriggers.indices.contains(index) else { return }
-                appTriggers[index][keyPath: path] = newValue
+                appTriggers[index].set(newValue)
                 saveTriggers()
             })
     }
