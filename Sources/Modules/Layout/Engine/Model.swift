@@ -11,11 +11,16 @@ public struct ConversionEvent: Codable, Equatable, Sendable {
     public let after: String
     /// Bundle id of the app it happened in, so an undo cannot land elsewhere.
     public let app: String
+    /// The character that ended the word — it was deleted and retyped with the
+    /// replacement, so undoing has to do the same or it eats one character too
+    /// few. Empty when the conversion came from the hotkey mid-word.
+    public let trailing: String
 
-    public init(before: String, after: String, app: String) {
+    public init(before: String, after: String, app: String, trailing: String = "") {
         self.before = before
         self.after = after
         self.app = app
+        self.trailing = trailing
     }
 }
 
