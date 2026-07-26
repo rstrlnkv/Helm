@@ -202,6 +202,13 @@ public struct KeepAwakeSettingsPage: View {
             }
         }
         .formStyle(.grouped)
+        // A grouped Form caps its content at 704 pt and centres it, so past a
+        // 994 pt window its leading edge walks away from everything Helm draws
+        // itself — measured at 36 pt on a 1070 pt window, 181 pt on 1360.
+        // Capping it at 704 + 2×20 keeps the system on the branch where the
+        // inset is a constant 20, which is what the page header uses.
+        .frame(maxWidth: 744, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
         // The panel's ⋯ block writes the same keys; without this the page shows
         // stale values when both are open (the reverse direction already works).
         .onReceive(NotificationCenter.default.publisher(for: .helmStoreChanged)) { note in

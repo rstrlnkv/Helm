@@ -131,6 +131,10 @@ public struct HomebrewSettingsPage: View {
                     .font(.caption).foregroundStyle(.secondary)
                 Spacer()
             }
+            // A caption is shorter than a button: without this the bar was
+            // 38 pt where the other two list screens are 49, and the content
+            // jumped when switching between them.
+            .frame(minHeight: 25)
             .padding(.horizontal, 20).padding(.vertical, 12)
         }
     }
@@ -236,8 +240,9 @@ public struct HomebrewSettingsPage: View {
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 6) {
                     Text(name).lineLimit(1)
-                    HelmBadge(isCask ? HbStr.cask : HbStr.formula,
-                              tint: isCask ? .purple : .blue)
+                    // Only when it says something: 46 of 47 rows were
+                    // "formula", and a label with one value is an ornament.
+                    if isCask { HelmBadge(HbStr.cask, tint: .purple) }
                     if let detail { Text(detail).font(.caption2).foregroundStyle(.secondary) }
                 }
                 // The description arrives from a separate `brew desc` batch.
