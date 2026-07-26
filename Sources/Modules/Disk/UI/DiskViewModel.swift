@@ -19,8 +19,10 @@ import Module_Disk_Engine
     /// True while partial snapshots are still feeding the ring.
     @Published public private(set) var live = false
     /// Which way the last navigation went — the ring's transition mirrors it.
-    public enum NavDirection { case down, up, none }
-    @Published public private(set) var navDirection: NavDirection = .none
+    /// The path we just came up out of, so the ring can fold back into the
+    /// wedge that represents it instead of cross-fading. Cleared once the ring
+    /// has consumed it.
+    @Published public var foldingBackFrom: String?
     /// The scan root's human name: "Macintosh HD", not "/".
     @Published public private(set) var rootTitle = ""
     @Published public var basket: [DiskEntry] = []
@@ -112,7 +114,6 @@ import Module_Disk_Engine
     public func scan(path: String) async {
         // "/" is a path, not a name; the volume list knows what to call it.
         rootTitle = Self.title(for: path, volumes: volumes)
-        navDirection = .none
         restored = false
         phase = .scanning
         live = true
@@ -163,21 +164,22 @@ import Module_Disk_Engine
     public func drill(into path: String) {
         guard let child = focus?.children.first(where: { $0.path == path }),
               child.isDirectory, !child.children.isEmpty else { return }
-        navDirection = .down
         focusPath.append(child)
         recomputeSegments()
     }
 
     public func back() {
         guard focusPath.count > 1 else { return }
-        navDirection = .up
+        foldingBackFrom = focusPath.last?.path
         focusPath.removeLast()
         recomputeSegments()
     }
 
     public func jump(to index: Int) {
         guard focusPath.indices.contains(index), index < focusPath.count - 1 else { return }
-        navDirection = .up
+        // Only a single step folds back into its wedge; jumping several levels
+        // has no one wedge to fold into.
+        foldingBackFrom = index == focusPath.count - 2 ? focusPath.last?.path : nil
         focusPath = Array(focusPath.prefix(index + 1))
         recomputeSegments()
     }

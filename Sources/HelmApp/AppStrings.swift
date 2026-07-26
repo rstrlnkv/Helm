@@ -56,6 +56,16 @@ enum AppStr {
     static var metricBuild: String { L("BUILD", [.ru: "СБОРКА", .es: "COMPILACIÓN", .fr: "BUILD", .de: "BUILD", .ja: "ビルド", .zh: "构建", .pt: "BUILD"]) }
     static var metricModules: String { L("MODULES", [.ru: "МОДУЛИ", .es: "MÓDULOS", .fr: "MODULES", .de: "MODULE", .ja: "モジュール", .zh: "模块", .pt: "MÓDULOS"]) }
     static var checkNow: String { L("Check", [.ru: "Проверить", .es: "Buscar", .fr: "Vérifier", .de: "Prüfen", .ja: "確認", .zh: "检查", .pt: "Verificar"]) }
+    static var appearance: String { L("Appearance", [.ru: "Оформление", .es: "Aspecto", .fr: "Apparence", .de: "Erscheinungsbild", .ja: "外観", .zh: "外观", .pt: "Aparência"]) }
+    /// Named the way System Settings names them, so the choice reads the same
+    /// in both places.
+    static func appearanceName(_ choice: AppAppearance) -> String {
+        switch choice {
+        case .system: return L("Auto", [.ru: "Авто", .es: "Automático", .fr: "Auto", .de: "Automatisch", .ja: "自動", .zh: "自动", .pt: "Automático"])
+        case .light: return L("Light", [.ru: "Светлое", .es: "Claro", .fr: "Clair", .de: "Hell", .ja: "ライト", .zh: "浅色", .pt: "Claro"])
+        case .dark: return L("Dark", [.ru: "Тёмное", .es: "Oscuro", .fr: "Sombre", .de: "Dunkel", .ja: "ダーク", .zh: "深色", .pt: "Escuro"])
+        }
+    }
     static var retry: String { L("Try again", [.ru: "Повторить", .es: "Reintentar", .fr: "Réessayer", .de: "Erneut versuchen", .ja: "再試行", .zh: "重试", .pt: "Tentar de novo"]) }
     /// Shown when a release publishes no digest for its asset: the updater
     /// refuses to swap a bundle it cannot check, and hands the user the page.

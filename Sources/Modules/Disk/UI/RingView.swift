@@ -14,8 +14,17 @@ struct RingView: View {
     @Binding var hovered: String?
     var onSelect: (RingSegment) -> Void
     var onBack: () -> Void
+    /// Path of the child just left, when arriving from below; the ring folds
+    /// back into its wedge instead of cross-fading.
+    var foldingBackFrom: String?
+    var onFoldConsumed: () -> Void
 
     @State private var hoverPoint: CGPoint?
+    /// The wedge currently opening (or closing), and how far along it is.
+    /// Non-nil only while the animation runs; hit-testing is suspended then, so
+    /// a second click cannot start a second unfold on top of the first.
+    @State private var pivot: RingSegment?
+    @State private var unfold: Double = 0
 
     private let geometry = RingGeometry(innerRadius: 0.34, thickness: 0.155, gap: 0.012)
 
@@ -25,19 +34,9 @@ struct RingView: View {
             let center = CGPoint(x: proxy.size.width / 2, y: proxy.size.height / 2)
 
             ZStack {
-                Canvas { context, _ in
-                    for segment in segments {
-                        let (r0, r1) = geometry.radialRange(ring: segment.ring)
-                        let path = arcPath(center: center, side: side,
-                                           inner: r0, outer: r1,
-                                           start: segment.startAngle, end: segment.endAngle)
-                        context.fill(path, with: .color(color(for: segment)))
-                        // A hairline of window background between arcs reads as
-                        // engraved separations rather than touching paint.
-                        context.stroke(path, with: .color(Color(nsColor: .windowBackgroundColor)),
-                                       lineWidth: 1)
-                    }
-                }
+                RingCanvas(segments: segments, pivot: pivot, progress: unfold,
+                           geometry: geometry, center: center, side: side,
+                           color: color(for:))
                 centerLabel
                     .frame(width: side * geometry.innerRadius * 1.7)
 
@@ -59,15 +58,39 @@ struct RingView: View {
                 }
             }
             .onTapGesture { point in
+                guard pivot == nil else { return }   // an unfold is already running
                 guard let hit = segment(at: point, center: center, side: side) else {
                     onBack()          // the hole in the middle goes up a level
                     return
                 }
                 guard hit.isDirectory, !hit.isOther, !hit.isFreeSpace else { return }
-                onSelect(hit)
+                open(hit)
             }
         }
         .animation(HelmMotion.interface, value: segments.count)
+        // Arriving back at the parent: run the same transform backwards, so the
+        // ring narrows into the wedge it came out of.
+        .onChange(of: foldingBackFrom) { _, path in
+            guard let path, let wedge = segments.first(where: { $0.path == path }) else { return }
+            pivot = wedge
+            unfold = 1
+            onFoldConsumed()
+            withAnimation(HelmMotion.emphasis) { unfold = 0 } completion: { pivot = nil }
+        }
+    }
+
+    /// Opens a wedge: it widens until it is the whole ring, and only then does
+    /// the drill land — so the ring the user ends up looking at is the one they
+    /// watched grow, rather than a different ring that faded in.
+    private func open(_ hit: RingSegment) {
+        pivot = hit
+        withAnimation(HelmMotion.emphasis) {
+            unfold = 1
+        } completion: {
+            onSelect(hit)
+            unfold = 0
+            pivot = nil
+        }
     }
 
     /// The segment under the cursor; free space and the folded bucket get
@@ -124,18 +147,6 @@ struct RingView: View {
                                   angle: angle, radius: radius)
     }
 
-    private func arcPath(center: CGPoint, side: CGFloat, inner: Double, outer: Double,
-                         start: Double, end: Double) -> Path {
-        let half = side / 2
-        var path = Path()
-        path.addArc(center: center, radius: half * outer,
-                    startAngle: .radians(start), endAngle: .radians(end), clockwise: false)
-        path.addArc(center: center, radius: half * inner,
-                    startAngle: .radians(end), endAngle: .radians(start), clockwise: true)
-        path.closeSubpath()
-        return path
-    }
-
     /// Depth fades toward the rim, hover lifts; free space, folded slivers and
     /// unreadable folders stay deliberately quiet so real data reads first.
     private func color(for segment: RingSegment) -> Color {
@@ -147,5 +158,79 @@ struct RingView: View {
         let isHovered = hovered == segment.path
         let recede = 1.0 - Double(segment.ring) * 0.14
         return base.opacity(isHovered ? 1.0 : recede)
+    }
+}
+
+/// One wedge of the sunburst, as a path. Free rather than a method: the ring
+/// and its animatable canvas both draw with it.
+func helmArcPath(center: CGPoint, side: CGFloat, inner: Double, outer: Double,
+                 start: Double, end: Double) -> Path {
+    let half = side / 2
+    var path = Path()
+    path.addArc(center: center, radius: half * outer,
+                startAngle: .radians(start), endAngle: .radians(end), clockwise: false)
+    path.addArc(center: center, radius: half * inner,
+                startAngle: .radians(end), endAngle: .radians(start), clockwise: true)
+    path.closeSubpath()
+    return path
+}
+
+/// The arcs themselves.
+///
+/// `Animatable` on a `View`: a `Canvas` redraws when its inputs change, but
+/// nothing interpolates a plain `Double` for it. Declaring `animatableData`
+/// makes SwiftUI drive `progress` frame by frame and re-render the body each
+/// time, which is what turns the transform in `RingUnfold` into motion.
+private struct RingCanvas: View, @MainActor Animatable {
+    let segments: [RingSegment]
+    let pivot: RingSegment?
+    var progress: Double
+    let geometry: RingGeometry
+    let center: CGPoint
+    let side: CGFloat
+    let color: (RingSegment) -> Color
+
+    var animatableData: Double {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    var body: some View {
+        Canvas { context, _ in
+            for segment in segments {
+                guard let arc = arc(for: segment) else { continue }
+                context.opacity = arc.opacity
+                context.fill(arc.path, with: .color(color(segment)))
+                // A hairline of window background between arcs reads as
+                // engraved separations rather than touching paint.
+                context.stroke(arc.path, with: .color(Color(nsColor: .windowBackgroundColor)),
+                               lineWidth: 1)
+            }
+        }
+    }
+
+    private func arc(for segment: RingSegment) -> (path: Path, opacity: Double)? {
+        guard let pivot, progress > 0 else {
+            let (r0, r1) = geometry.radialRange(ring: segment.ring)
+            return (helmArcPath(center: center, side: side, inner: r0, outer: r1,
+                            start: segment.startAngle, end: segment.endAngle), 1)
+        }
+        let span = pivot.endAngle - pivot.startAngle
+        let start = RingUnfold.angle(segment.startAngle, pivotStart: pivot.startAngle,
+                                     span: span, progress: progress)
+        let end = RingUnfold.angle(segment.endAngle, pivotStart: pivot.startAngle,
+                                   span: span, progress: progress)
+        guard RingUnfold.isVisible(start: start, end: end) else { return nil }
+
+        let isPivot = segment.path == pivot.path
+        let isDescendant = !pivot.path.isEmpty && segment.path.hasPrefix(pivot.path + "/")
+        let opacity = RingUnfold.opacity(isPivot: isPivot, isDescendant: isDescendant,
+                                         progress: progress)
+        guard opacity > 0.001 else { return nil }
+
+        let ring = RingUnfold.ring(segment.ring, isDescendant: isDescendant, progress: progress)
+        let (r0, r1) = geometry.radialRange(ring: ring)
+        return (helmArcPath(center: center, side: side, inner: r0, outer: r1,
+                        start: start, end: end), opacity)
     }
 }
