@@ -232,9 +232,7 @@ much as a taste one:
   motion after switching.
 - `interface` (`.snappy`) — reordering rows, filters, selection moves.
 - `emphasis` (`.spring(0.42, 0.78)`) — shape morphs (a pill growing into a
-  card). Currently unused; it is what the notch module used.
-- `contentFade` (short ease-out) — content appearing inside a container that is
-  already animating. Two springs against each other read as wobble.
+  card). Used throughout `DiskResultView`.
 
 Steady rotation (the About bezel during an update check) stays linear: motion
 with no destination is the one place a linear curve is right.
@@ -276,8 +274,10 @@ subject (Helm = the wheel you steer by):
   Login Items) deliberately do NOT use it — their chrome is one toolbar row
   (segments · search · refresh) and the counts live as a quiet status line in
   the bottom bar, which costs no vertical space.
-- `.helmCard()` — the one card treatment: `primary.opacity(0.05)` fill,
-  `primary.opacity(0.08)` hairline border, 12pt continuous corners.
+- `.helmCard()` — the one card treatment: `primary.opacity(0.035)` fill, **no
+  border**, 12pt continuous corners. The fill is measured against a real `Form`
+  section on the same background: the system's section sits 7 L from the panel
+  in both themes, and the card must sit there too.
 - The About page's bezel around the app icon rotates **only** while an update
   check is in flight — motion means work, never decoration.
 - `AppIconImage.dark` draws the app icon forced into `.darkAqua`: AppKit
