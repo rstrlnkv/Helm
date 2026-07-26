@@ -89,7 +89,14 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
         await blocking {
             var removed: [String] = [], failed: [String] = []
             var freed = 0
-            for path in Set(paths) where DiskSafety.isRemovable(path) {
+            // Refused, not dropped. Filtering the loop meant a path the gate
+            // rejected reached neither list, and the page then announced
+            // "Removed — N freed" over a file still sitting there. Leftovers and
+            // Uninstaller already report their refusals; this was the last one.
+            let unique = Set(paths)
+            let allowed = unique.filter { DiskSafety.isRemovable($0) }
+            failed.append(contentsOf: unique.subtracting(allowed))
+            for path in allowed {
                 let url = URL(fileURLWithPath: path)
                 let size = (try? url.resourceValues(forKeys: [.totalFileAllocatedSizeKey]))?
                     .totalFileAllocatedSize ?? 0

@@ -49,8 +49,10 @@ import Module_Leftovers_Engine
         defer { scanning = false }
         items = await client.request("scan") ?? []
         // Nothing is ticked by default: these files are load-bearing, so the
-        // user chooses each one.
-        selected = []
+        // user chooses each one. But a rescan is not a fresh start — switching
+        // one row off rescans, and clearing the set threw away every other tick
+        // the user had made, with no warning and no way back.
+        if scanned { dropHiddenSelections() } else { selected = [] }
         scanned = true
     }
 

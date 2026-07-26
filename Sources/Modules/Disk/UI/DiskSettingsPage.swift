@@ -45,8 +45,12 @@ public struct DiskSettingsPage: View {
         } message: {
             // Paths, not names: the ring shows localized folder names, so
             // "Library" in this list could equally be /Library or ~/Library —
-            // and one of those is the system's.
-            Text(dvm.basket.prefix(4).map { Redact.path($0.path) }.joined(separator: "\n")
+            // and one of those is the system's. Abbreviated by AppKit, not by
+            // `Redact` — that one exists for the log, and if it is ever made to
+            // hash a component this dialog would start asking about `app#3f9a`.
+            Text(dvm.basket.prefix(4)
+                    .map { ($0.path as NSString).abbreviatingWithTildeInPath }
+                    .joined(separator: "\n")
                  + (dvm.basket.count > 4 ? "\n…" : ""))
         }
     }

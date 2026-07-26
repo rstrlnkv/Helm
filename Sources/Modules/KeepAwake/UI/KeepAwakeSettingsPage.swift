@@ -76,12 +76,23 @@ public struct KeepAwakeSettingsPage: View {
     private var keepAwakeForm: some View {
         Form {
             Section {
+                // A countdown needs a tick of its own: the engine emits state on
+                // change, not once a second, so this figure sat at whatever it
+                // read when the page opened. The panel tile solves it the same
+                // way.
+                TimelineView(.periodic(from: .now, by: 1)) { _ in
                 HelmMetricStrip([
                     .init(vm.isActive ? KAStr.metricOn : KAStr.metricOff, KAStr.metricState,
                           tint: vm.isActive ? .green : nil),
                     .init(remainingText, KAStr.metricTimer, tint: vm.endDate != nil ? .orange : nil),
-                    .init("\(vm.activeConditions.count)", KAStr.metricRules),
+                    // Only the automatic reasons. `activeConditions` also
+                    // carries `manual` and `timer`, so turning Keep Awake on by
+                    // hand — with no rule configured at all — used to report
+                    // "AUTOMATIC 1". The panel already counts it this way.
+                    .init("\(vm.activeConditions.intersection(["externalDisplay", "power", "app"]).count)",
+                          KAStr.metricRules),
                 ])
+                }
             }
 
             Section(KAStr.automation) {
@@ -102,7 +113,7 @@ public struct KeepAwakeSettingsPage: View {
                             .disabled(!batteryGuardEnabled)
                             .onChange(of: batteryGuardPercent) { _, v in write(v, "batteryGuardPercent") }
                             .fixedSize()
-                        Toggle("", isOn: $batteryGuardEnabled)
+                        Toggle(KAStr.turnOffLowBattery, isOn: $batteryGuardEnabled)
                             .labelsHidden()
                             .onChange(of: batteryGuardEnabled) { _, v in write(v, "batteryGuardEnabled") }
                     }
@@ -125,7 +136,7 @@ public struct KeepAwakeSettingsPage: View {
                             .disabled(!jiggleEnabled)
                             .onChange(of: jiggleIntervalMinutes) { _, v in write(v, "jiggleIntervalMinutes") }
                             .fixedSize()
-                        Toggle("", isOn: $jiggleEnabled)
+                        Toggle(KAStr.movePointer, isOn: $jiggleEnabled)
                             .labelsHidden()
                             .onChange(of: jiggleEnabled) { _, v in write(v, "jiggleEnabled") }
                     }

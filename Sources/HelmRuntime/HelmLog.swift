@@ -63,8 +63,26 @@ public final class HelmLog: @unchecked Sendable {
     public func start(version: String, override: Bool?) {
         let on = LogPolicy.isEnabled(version: version, override: override)
         queue.async { self.enabled = on }
+        discardPreRedactionLog()
         guard on else { return }
         write(.info, "app", "Helm \(version) started")
+    }
+
+    /// Throws away a log written before `Redact` existed.
+    ///
+    /// Adding redaction stopped new lines from naming VPN connections, apps and
+    /// home paths; it did nothing about the ones already on disk, and there is
+    /// a "Copy log" button whose whole purpose is pasting that file into a bug
+    /// report. Two megabytes of rollover could take weeks to clear it. Once.
+    private func discardPreRedactionLog() {
+        let key = "module.app.logRedactionReset"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        UserDefaults.standard.set(true, forKey: key)
+        queue.async {
+            let fm = FileManager.default
+            try? fm.removeItem(at: Self.fileURL)
+            try? fm.removeItem(at: Self.directory.appendingPathComponent("helm.log.1"))
+        }
     }
 
     public func setEnabled(_ on: Bool) {
@@ -106,6 +124,11 @@ public final class HelmLog: @unchecked Sendable {
         if !fm.fileExists(atPath: Self.directory.path) {
             try? fm.createDirectory(at: Self.directory, withIntermediateDirectories: true)
         }
+        // 0700 explicitly, and on every append: the folder may predate this
+        // rule, and `attributes:` above would only cover a folder created here.
+        // The log is diagnostic, not public — no other account needs to read it.
+        try? fm.setAttributes([.posixPermissions: 0o700],
+                              ofItemAtPath: Self.directory.path)
         guard let data = text.data(using: .utf8) else { return }
         if let handle = try? FileHandle(forWritingTo: url) {
             defer { try? handle.close() }

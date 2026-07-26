@@ -26,6 +26,11 @@ import HelmUI
             button.target = self
             button.action = #selector(statusItemClicked(_:))
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+            // The menu-bar button is the only entrance to Helm, and an image
+            // with no description is an unnamed button among twenty others:
+            // VoiceOver could not find the app at all.
+            button.setAccessibilityLabel("Helm")
+            button.toolTip = "Helm"
         }
 
         hostCancellable = host.$live

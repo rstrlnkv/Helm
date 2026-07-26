@@ -29,6 +29,10 @@ public final class ScanStore: @unchecked Sendable {
             try FileManager.default.createDirectory(
                 at: directory, withIntermediateDirectories: true,
                 attributes: [.posixPermissions: 0o700])
+            // `attributes:` only applies to directories this call creates, and
+            // anyone who ran an earlier build already has one at 0755.
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700],
+                                                   ofItemAtPath: directory.path)
             let data = try JSONEncoder().encode(Cached(result: result, savedAt: date))
             try data.write(to: fileURL, options: .atomic)
         } catch {

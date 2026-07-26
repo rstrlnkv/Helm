@@ -239,7 +239,7 @@ private struct ModuleDetailView: View {
                            tint: categoryColor(descriptor.moduleCategory),
                            title: descriptor.moduleMetadata.name,
                            subtitle: descriptor.moduleMetadata.summary) {
-                Toggle("", isOn: Binding(
+                Toggle(descriptor.moduleMetadata.name, isOn: Binding(
                     get: { host.isEnabled(descriptor) },
                     set: { host.setEnabled(descriptor, $0) }
                 ))
@@ -657,6 +657,12 @@ private struct AboutHelmView: View {
                         .controlSize(.large)
                         .frame(maxWidth: .infinity)
                 }
+            } else if updater.lastMessage == "manual-install" {
+                HStack(spacing: 10) {
+                    statusIcon("exclamationmark.triangle.fill", .orange)
+                    Text(AppStr.updateManualInstall).lineLimit(2)
+                    Spacer()
+                }
             } else if updater.lastMessage == "error" {
                 HStack(spacing: 10) {
                     statusIcon("exclamationmark.triangle.fill", .orange)
@@ -786,11 +792,10 @@ private struct WhatsNewView: View {
     }
 
     private func badge(_ kind: ChangeKind) -> some View {
-        Text(kind.label)
-            .font(.caption2.weight(.bold))
-            .padding(.horizontal, 6).padding(.vertical, 2)
-            .background(Capsule().fill(kind.color.opacity(0.2)))
-            .foregroundStyle(kind.color)
-            .frame(width: 44)
+        // The one pill. This was the last hand-rolled one, and the worst:
+        // orange text on orange fill at 11 pt is about 1.6:1, on the screen
+        // every user sees right after an update.
+        HelmBadge(kind.label, tint: kind.color).frame(width: 44)
     }
+
 }
