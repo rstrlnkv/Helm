@@ -51,6 +51,9 @@ public struct ConversionTriggers: Equatable, Sendable {
     /// `~/ghbdtn/x` became `~/привет/x`. Those endings finish the word and
     /// confirm nothing; only real punctuation does.
     private func confirms(_ character: Character) -> Bool {
-        ".,!?;:»)]}\"'".contains(character)
+        // The curly ones too: macOS substitutes them as you type, so a
+        // sentence ending in a typed quote arrives here as “ ” ‘ ’ and used to
+        // confirm nothing at all.
+        ".,!?;:»)]}\"'“”‘’…«(".contains(character)
     }
 }

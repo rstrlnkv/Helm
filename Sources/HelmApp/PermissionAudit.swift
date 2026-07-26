@@ -50,7 +50,10 @@ import HelmUI
     /// them without reading.
     private static func present(_ missing: [PermissionNeed]) {
         let alert = NSAlert()
-        alert.messageText = AppStr.permissionAuditTitle
+        // Named for the situation, not for one permission: the sheet is shown
+        // for whichever ones lapsed, and titling it after Full Disk Access read
+        // as nonsense when the missing one was Accessibility.
+        alert.messageText = AppStr.permissionsChanged
         alert.informativeText = missing.map(AppStr.permissionReason).joined(separator: "\n\n")
         for need in missing { alert.addButton(withTitle: AppStr.openPane(need)) }
         alert.addButton(withTitle: AppStr.later)

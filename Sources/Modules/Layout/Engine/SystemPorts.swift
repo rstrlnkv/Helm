@@ -59,8 +59,15 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
         // module's own shortcut broke itself, because a head-inserted tap sees
         // the key before Carbon delivers the hotkey, so the letter was in the
         // buffer by the time "convert the last word" ran.
+        // Option and shift alone still type — ⌥Z is "Ω" — so they cannot be
+        // dropped wholesale. But a *global shortcut* on one of them is
+        // swallowed by Carbon and never reaches the field, while the tap has
+        // already put its character in the buffer: one backspace too many.
+        // Anything the shortcut recorder would accept is treated as a chord.
         let flags = event.flags
-        if flags.contains(.maskCommand) || flags.contains(.maskControl) {
+        let modified = flags.contains(.maskCommand) || flags.contains(.maskControl)
+            || flags.contains(.maskAlternate)
+        if modified {
             // A chord is not text, and it is not a confirmation either. ⌘Space
             // — the very gesture someone makes on noticing the wrong layout —
             // used to arrive as a plain space: the word was "confirmed", a
