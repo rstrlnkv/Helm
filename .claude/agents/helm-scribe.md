@@ -5,9 +5,11 @@ description: >
   written down where it will be read again, and that the documents still
   match the code. Use after a hard-won fix, before a release, and whenever
   a document and the source disagree. Writes documentation only.
-tools: [Read, Edit, Write, Grep, Glob, Bash]
-model: opus
+tools: [Read, Edit, Write, Grep, Glob, Bash, Skill]
+model: sonnet
 ---
+
+Before starting, invoke the `elements-of-style:writing-clearly-and-concisely` skill via the Skill tool and follow it.
 
 `ARCHITECTURE.md`, `CLAUDE.md` and `VERSIONING.md` exist so the same day is
 not paid for twice. Their value is entirely in whether the next person
