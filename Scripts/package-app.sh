@@ -8,7 +8,17 @@ cd "$REPO_ROOT"
 
 APP_NAME="Helm.app"
 BUILD_DIR="$REPO_ROOT/build"
-APP_DIR="$BUILD_DIR/$APP_NAME"
+# The bundle is assembled and signed OUTSIDE the repo.
+#
+# This checkout lives under ~/Documents, which a file provider syncs, and the
+# provider stamps com.apple.FinderInfo onto directories it manages faster than
+# `xattr -c` removes it. codesign refuses a bundle carrying it ("resource fork,
+# Finder information, or similar detritus not allowed"), so signing in place
+# here succeeds or fails by luck — and an unsigned bundle has no cdhash for TCC
+# to hang Full Disk Access on, which is why the permission kept coming loose.
+# TMPDIR (/var/folders/…) is not synced, so the seal survives there.
+STAGE_DIR="${TMPDIR:-/tmp}/helm-package"
+APP_DIR="$STAGE_DIR/$APP_NAME"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
@@ -18,7 +28,7 @@ swift build -c release
 
 echo "==> Assembling $APP_DIR (idempotent)"
 rm -rf "$APP_DIR"
-mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
+mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$BUILD_DIR"
 
 cp "$REPO_ROOT/.build/release/HelmApp" "$MACOS_DIR/HelmApp"
 cp "$REPO_ROOT/Resources/HelmApp/Info.plist" "$CONTENTS_DIR/Info.plist"
@@ -46,17 +56,18 @@ xcrun actool "$REPO_ROOT/Resources/Icon/Helm.icon" \
 cp "$ICONOUT/Assets.car" "$RESOURCES_DIR/Assets.car"
 cp "$ICONOUT/Helm.icns" "$RESOURCES_DIR/Helm.icns"
 
-echo "==> Stripping extended attributes"
-xattr -cr "$APP_DIR"
-
 echo "==> Ad-hoc signing"
-# Extended attributes (com.apple.FinderInfo lands on the bundle root through
-# ordinary Finder/ditto traffic) make codesign refuse the bundle with "resource
-# fork, Finder information, or similar detritus not allowed" — and an unsigned
-# bundle has no cdhash for TCC to bind Full Disk Access to.
 xattr -cr "$APP_DIR"
 codesign --force --deep --sign - "$APP_DIR"
+# Verified here, where the signature is intact. This check was missing: signing
+# reported success for months while producing a bundle codesign rejects.
 codesign --verify --deep --strict "$APP_DIR"
+echo "==> Signature verified"
+
+# A copy in the repo for convenience only. It cannot be verified or installed
+# from — the file provider re-stamps its root the moment it lands.
+ditto "$APP_DIR" "$BUILD_DIR/$APP_NAME"
 
 echo "==> Done"
-echo "App path: $APP_DIR"
+echo "Signed app (install and package from here): $APP_DIR"
+echo "Convenience copy (do not install):          $BUILD_DIR/$APP_NAME"
