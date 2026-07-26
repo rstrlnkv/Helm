@@ -8,6 +8,44 @@ features, PATCH = fixes.
 ## [0.7.1] — 2026-07-26
 
 ### Fixed
+- The leftovers matcher pasted a bundle id or display name straight onto a
+  shared `~/Library` folder. An empty `CFBundleDisplayName` — a free-form plist
+  string — therefore claimed `Application Support` itself, an empty id collapsed
+  every glob to `*`, and a name carrying `..` walked out of the folder entirely;
+  all three arrived pre-ticked next to a Trash button. Candidates are now
+  refused unless they sit strictly inside their own kind folder, and both
+  engines re-check the scope before removing anything, rather than trusting the
+  view model that built the list.
+- Leftovers matched by display name are no longer pre-selected and carry a "by
+  name" badge; a guess costs a click to accept instead of a click to refuse.
+- The Keep Awake clamshell rule was written into `/etc/sudoers.d` through an
+  AppleScript-quoted shell string built from the account name, was never checked
+  with `visudo`, and was never removed. It is now staged from Swift, validated,
+  installed with `install(1)`, and taken back out when the option is switched
+  off.
+- `helm.log` recorded VPN connection names, app names and absolute home paths.
+  It uses stable short tags and `~`-relative paths now.
+- Quitting an app disconnected whatever VPN its rule pointed at *now*, so a quit
+  with no matching launch, a repeated quit, or a rule remapped under a running
+  app tore down a connection Helm never raised.
+- `brew search` no longer prints its `==> Casks` header, so every cask was
+  labelled a formula and installed without `--cask`. Helm asks one kind at a
+  time.
+- An extension host was matched by prefix without a separator, blaming
+  `at.obdev.littlesnitch`'s extension on `at.obdev.littlesnitchmini` and hiding
+  the real reason.
+- An incomplete IOKit power dictionary was reported as 0%, which the battery
+  guard read as a critical charge and used to end the Keep Awake session.
+- `package-app.sh` signed the bundle inside the repo, where a file provider
+  re-stamps `com.apple.FinderInfo` faster than `xattr -c` clears it: signing
+  succeeded or failed by luck, and an unsigned bundle has no cdhash for TCC to
+  bind Full Disk Access to. The bundle is now assembled and signed outside the
+  synced tree, and the signature is verified before the script reports success.
+- The Homebrew installer ran as `eval "$(curl …)"`, which exits 0 on a failed
+  download and reported a successful install of nothing.
+- The disk confirmation listed localized folder names, which cannot tell
+  `/Library` from `~/Library`; it lists paths. The scan cache directory is
+  created 0700.
 - Three screens announced "Removed — N freed" whether or not macOS had refused,
   and threw the failure list away. `HelmRemovalOutcome` names what stayed and
   why, with a way to reveal it and to grant the missing permission.

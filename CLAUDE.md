@@ -8,10 +8,12 @@ long debugging sessions and are easy to re-break.
 
 ```bash
 swift test                              # full unit suite, seconds
-bash Scripts/package-app.sh             # build → build/Helm.app
-# install + relaunch locally:
+bash Scripts/package-app.sh             # build + sign → $TMPDIR/helm-package/Helm.app
+# install + relaunch locally (from the SIGNED copy, never from build/):
 pkill -f 'MacOS/HelmApp'; bash Scripts/package-app.sh
-rm -rf /Applications/Helm.app && cp -R build/Helm.app /Applications/Helm.app
+rm -rf /Applications/Helm.app
+ditto "$TMPDIR/helm-package/Helm.app" /Applications/Helm.app
+codesign --verify --deep --strict /Applications/Helm.app   # must pass, or TCC drops grants
 xattr -dr com.apple.quarantine /Applications/Helm.app && open /Applications/Helm.app
 ```
 
