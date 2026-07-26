@@ -14,15 +14,22 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
     private var handler: (@Sendable (TypingBuffer.Event) -> Void)?
+    private var modifierHandler: (@Sendable (ModifierTap.Input) -> Void)?
 
     public init() {}
 
-    public func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void) -> Bool {
+    public func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
+                      onModifier: @escaping @Sendable (ModifierTap.Input) -> Void) -> Bool {
         // Non-prompting: the module says so in its own settings rather than
         // throwing a system dialog at someone who has not asked for one.
         guard AXIsProcessTrusted() else { return false }
         handler = onEvent
-        let mask = (1 << CGEventType.keyDown.rawValue) | (1 << CGEventType.leftMouseDown.rawValue)
+        modifierHandler = onModifier
+        // flagsChanged as well: a key bound on its own is recognised from the
+        // press and the release, and neither is a keyDown.
+        let mask = (1 << CGEventType.keyDown.rawValue)
+            | (1 << CGEventType.leftMouseDown.rawValue)
+            | (1 << CGEventType.flagsChanged.rawValue)
         // Listen-only: the tap reports keys and can neither delay nor swallow
         // them, so nothing Helm does here can freeze somebody's typing.
         guard let tap = CGEvent.tapCreate(
@@ -48,10 +55,30 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
         tap = nil
         source = nil
         handler = nil
+        modifierHandler = nil
+    }
+
+    /// A modifier changed. Which physical key it was comes from the key code;
+    /// whether it went down or up comes from its own device-dependent bit,
+    /// because `.maskCommand` cannot tell the two Command keys apart and would
+    /// read a release as a press whenever the other one is held.
+    private func deliverModifier(_ event: CGEvent) {
+        guard let handler = modifierHandler else { return }
+        let code = event.getIntegerValueField(.keyboardEventKeycode)
+        let at = ProcessInfo.processInfo.systemUptime
+        let mask = TapKey.allCases.first { $0.keyCode == code }?.deviceMask
+        // A key with no mask of ours is still a modifier, and still spoils a
+        // tap in progress — it is reported as a press and a release of itself.
+        let down = mask.map { event.flags.rawValue & $0 != 0 } ?? false
+        handler(down ? .down(code, at: at) : .up(code, at: at))
     }
 
     private func deliver(_ event: CGEvent) {
         guard event.getIntegerValueField(.eventSourceUserData) != helmEventMarker else { return }
+        if event.type == .flagsChanged { deliverModifier(event); return }
+        // Everything that is not a modifier proves a held modifier is being
+        // used as one, so the tap machine hears about it before the buffer does.
+        modifierHandler?(.otherInput)
         if event.type == .leftMouseDown { handler?(.click); return }
 
         // A command or control chord is not text. Without this, ⌘S appended an

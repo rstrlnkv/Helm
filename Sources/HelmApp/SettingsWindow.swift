@@ -452,7 +452,7 @@ private struct MenuBarSettingsView: View {
         // itself — measured at 36 pt on a 1070 pt window, 181 pt on 1360.
         // Capping it at 704 + 2×20 keeps the system on the branch where the
         // inset is a constant 20, which is what the page header uses.
-        .frame(maxWidth: 744, alignment: .leading)
+        .helmSettingsColumn()
         .frame(maxWidth: .infinity, alignment: .leading)
         .onReceive(NotificationCenter.default.publisher(
             for: NSApplication.didBecomeActiveNotification)) { _ in
@@ -622,7 +622,10 @@ private struct AboutHelmView: View {
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
-                    .frame(width: 170)
+                    // Its ideal width, not a reservation: at a fixed 170 the
+                    // control drew itself narrower and centred, leaving its
+                    // trailing edge short of the Check button directly above.
+                    .fixedSize()
                     .onChange(of: channel) { _, newValue in updater.setChannel(newValue) }
                 }
                 Text(channel == .dev ? AppStr.channelDevNote : AppStr.channelBetaNote)

@@ -5,7 +5,14 @@ import Foundation
 public protocol KeyTapPort: AnyObject, Sendable {
     /// Starts a listen-only tap. Returns false when Accessibility has not been
     /// granted — the caller must say so rather than appear to work.
-    func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void) -> Bool
+    ///
+    /// `onModifier` carries the modifier presses and releases that a bound
+    /// single key is recognised from. They are a separate stream because they
+    /// are not typing: a modifier that types nothing must never reach the
+    /// buffer, and the tap that watches for one must still see the keys that
+    /// prove it was used as a modifier.
+    func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
+               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void) -> Bool
     func stop()
 }
 

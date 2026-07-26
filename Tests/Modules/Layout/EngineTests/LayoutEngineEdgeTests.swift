@@ -39,9 +39,17 @@ private struct EdgeSpell: SpellPort {
 
 private final class EdgeTap: KeyTapPort, @unchecked Sendable {
     var handler: (@Sendable (TypingBuffer.Event) -> Void)?
-    func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void) -> Bool {
+    var modifiers: (@Sendable (ModifierTap.Input) -> Void)?
+    func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
+               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void) -> Bool {
         handler = onEvent
+        modifiers = onModifier
         return true
+    }
+    /// One clean press and release of the bound key.
+    func tapKey(_ code: Int64, at: TimeInterval = 0) {
+        modifiers?(.down(code, at: at))
+        modifiers?(.up(code, at: at + 0.05))
     }
     func stop() { handler = nil }
     func type(_ text: String) { for character in text { handler?(.character(character)) } }

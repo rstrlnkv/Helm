@@ -65,6 +65,31 @@ public struct HelmIconPlate: View {
 
 /// A screen's masthead: icon plate, title, one line of what the screen is for,
 /// and whatever control belongs at the far end (usually the on/off switch).
+/// The width of a settings page's content, and where it sits.
+///
+/// A grouped `Form` on macOS caps its own content at about 704 pt and centres
+/// what is left over. Measured on a 950 pt page: uncapped, the card came out
+/// 684 pt wide starting 383 pt from the left, so its leading edge walked away
+/// from the header as the window grew. Capping the form and pinning it left
+/// fixed the drift and left the whole surplus as one empty band down the right
+/// side of the window, which reads as a page that failed to lay out.
+///
+/// The column cannot be made wider — that limit is the form style's, not ours.
+/// So it is centred, with the header centred on the same column, and the page
+/// reads as one deliberate column rather than as content stuck to one edge.
+/// This is what System Settings does with its own window.
+public extension View {
+    func helmSettingsColumn() -> some View {
+        frame(maxWidth: HelmLayout.settingsColumn)
+            .frame(maxWidth: .infinity)
+    }
+}
+
+public enum HelmLayout {
+    /// 704 of content plus the form's own 20 pt inset on each side.
+    public static let settingsColumn: CGFloat = 744
+}
+
 public struct HelmPageHeader<Trailing: View>: View {
     let symbol: String
     let tint: Color
@@ -97,10 +122,12 @@ public struct HelmPageHeader<Trailing: View>: View {
             Spacer(minLength: 12)
             trailing
         }
-        // 20, matching the inset a grouped Form uses at every width
-        // now that the form is capped — see the settings pages.
+        // 20, matching the inset a grouped Form uses at every width.
         .padding(.horizontal, 20)
         .padding(.vertical, 18)
+        // On the same column as the form below it, so the title starts where
+        // the first card starts however wide the window is.
+        .helmSettingsColumn()
     }
 }
 

@@ -33,6 +33,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     private var automatic: Bool
     private var triggers: ConversionTriggers
     private var audible: Bool
+    /// The single key bound to "fix / put it back", if any.
+    private var tapKey = ModifierTap(key: .off)
     private var conversions = 0
     private var running = false
     /// Whether the tap is live. Without the grant `start` returns false, and
@@ -105,7 +107,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         guard running, !tapped, !starting else { lock.unlock(); return }
         starting = true
         lock.unlock()
-        let started = tap.start { [weak self] event in self?.handle(event) }
+        let started = tap.start({ [weak self] event in self?.handle(event) },
+                                onModifier: { [weak self] input in self?.handleModifier(input) })
         lock.lock(); tapped = started; starting = false; lock.unlock()
         if started {
             HelmLog.shared.info("layout", "watching for mislayout words")
@@ -225,6 +228,27 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         emitState()
     }
 
+    /// One key, pressed and released on its own, does both jobs in turn.
+    ///
+    /// Two shortcuts for "fix this word" and "no, put it back" are two things
+    /// to remember for one thought. So the key answers with whichever of them
+    /// makes sense: if the last change is still undoable here, undo it;
+    /// otherwise convert. Tapping twice therefore converts and converts back,
+    /// which is the behaviour anyone who has used Punto Switcher expects, and
+    /// the same key keeps working as a modifier because a tap is only a tap
+    /// when nothing else was pressed with it.
+    private func handleModifier(_ input: ModifierTap.Input) {
+        lock.lock()
+        let fired = tapKey.feed(input)
+        lock.unlock()
+        guard fired else { return }
+        let bundleID = secure.frontmostBundleID()
+        lock.lock()
+        let undoable = undo?.canUndo(in: bundleID) ?? false
+        lock.unlock()
+        if undoable { undoLast() } else { convertLastWord() }
+    }
+
     /// Puts the last conversion back, if the caret can still be where it was.
     public func undoLast() {
         let bundleID = secure.frontmostBundleID()
@@ -262,6 +286,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         exceptions = Exceptions(words: settings.stringArray("exceptions"))
         scope = AppScope(rules: rules)
         audible = settings.bool("audible", default: false)
+        tapKey = ModifierTap(key: TapKey.from(settings.string("tapKey", default: TapKey.off.rawValue)))
         triggers = ConversionTriggers(onSpace: settings.bool("onSpace", default: ConversionTriggers.default.onSpace),
                                       onReturn: settings.bool("onReturn", default: ConversionTriggers.default.onReturn),
                                       onPunctuation: settings.bool("onPunctuation", default: ConversionTriggers.default.onPunctuation))
