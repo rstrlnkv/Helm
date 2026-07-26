@@ -11,6 +11,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     private let translation: TranslationPort
     private let spell: SpellPort
     private let secure: SecureContextPort
+    /// Absent in tests, where the values are injected directly.
+    private let settings: NamespacedStore?
     private let localTransport: LocalTransport
     public let transport: EngineTransport
 
@@ -22,6 +24,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     private var scope: AppScope
     private var exceptions: Exceptions
     private var automatic: Bool
+    private var triggers: ConversionTriggers
     private var conversions = 0
     /// Set while performing a conversion, so the keystrokes it sends are not
     /// read back as typing. The marker on the events is the first line of
@@ -37,6 +40,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                 rules: [String: Bool] = [:],
                 exceptions: [String] = [],
                 automatic: Bool = true,
+                triggers: ConversionTriggers = .default,
+                settings: NamespacedStore? = nil,
                 transport: LocalTransport = LocalTransport()) {
         self.tap = tap
         self.typing = typing
@@ -47,6 +52,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         self.scope = AppScope(rules: rules)
         self.exceptions = Exceptions(words: exceptions)
         self.automatic = automatic
+        self.triggers = triggers
+        self.settings = settings
         self.localTransport = transport
         self.transport = transport
         wireTransport()
@@ -74,8 +81,11 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         if case .character = event {} else { undo?.invalidate() }
         let finished = buffer.accept(event)
         let auto = automatic
+        let confirms = triggers.converts(event)
         lock.unlock()
-        guard auto, let word = finished else { return }
+        // Ended and meant are different things: leaving the word by clicking or
+        // moving the caret ends it without asking for a conversion.
+        guard auto, confirms, let word = finished else { return }
         convert(word, force: false)
     }
 
@@ -143,6 +153,22 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         convert(word, force: true)
     }
 
+    /// Re-reads what the settings page wrote. The page owns the store; the
+    /// engine owns the behaviour, and this is the one line between them.
+    private func reloadSettings() {
+        guard let settings else { return }
+        let rules = settings.boolTable("appRules")
+        lock.lock()
+        automatic = settings.bool("automatic", default: true)
+        exceptions = Exceptions(words: settings.stringArray("exceptions"))
+        scope = AppScope(rules: rules)
+        triggers = ConversionTriggers(onSpace: settings.bool("onSpace", default: true),
+                                      onReturn: settings.bool("onReturn", default: true),
+                                      onPunctuation: settings.bool("onPunctuation", default: true))
+        lock.unlock()
+        emitState()
+    }
+
     private func perform(_ plan: SwitchPlan) {
         lock.lock(); performing = true; lock.unlock()
         _ = typing.perform(plan)
@@ -157,6 +183,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             switch command.name {
             case "undoLastConversion": self.undoLast()
             case "convertLastWord": self.convertLastWord()
+            case "settingsChanged": self.reloadSettings()
             default: break
             }
             return Data()

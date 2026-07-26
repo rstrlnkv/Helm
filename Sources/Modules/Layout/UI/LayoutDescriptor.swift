@@ -24,9 +24,14 @@ import Module_Layout_Engine
                             translation: UCTranslation(),
                             spell: SystemSpell(),
                             secure: AXSecureContext(),
-                            rules: [:],
+                            rules: store.boolTable("appRules"),
                             exceptions: store.stringArray("exceptions"),
-                            automatic: store.bool("automatic", default: true))
+                            automatic: store.bool("automatic", default: true),
+                            triggers: ConversionTriggers(
+                                onSpace: store.bool("onSpace", default: true),
+                                onReturn: store.bool("onReturn", default: true),
+                                onPunctuation: store.bool("onPunctuation", default: true)),
+                            settings: store)
     }
 
     public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { .utility }

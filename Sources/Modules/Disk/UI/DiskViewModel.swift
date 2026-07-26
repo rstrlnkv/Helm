@@ -161,10 +161,16 @@ import Module_Disk_Engine
                   isDirectory: false, noAccess: false, children: [])
     }
 
+    /// Opens a folder anywhere in the drawn rings, not only the innermost one.
+    ///
+    /// The ring paints three levels at once, and this used to accept a direct
+    /// child only — so every arc past the first ring highlighted on hover and
+    /// then did nothing. The whole chain is appended, so jumping two levels
+    /// still leaves breadcrumbs that describe where you are.
     public func drill(into path: String) {
-        guard let child = focus?.children.first(where: { $0.path == path }),
-              child.isDirectory, !child.children.isEmpty else { return }
-        focusPath.append(child)
+        guard let focus, let last = DiskFocus.chain(from: focus, to: path).last,
+              last.isDirectory, !last.children.isEmpty else { return }
+        focusPath.append(contentsOf: DiskFocus.chain(from: focus, to: path))
         recomputeSegments()
     }
 
