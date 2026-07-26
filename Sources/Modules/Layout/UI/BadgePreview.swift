@@ -13,6 +13,10 @@ import SwiftUI
 struct BadgePreview: View {
     let style: BadgeStyle
     let size: MenuBarIconSize
+    /// The badges are AppKit bitmaps drawing with `labelColor`; inside a
+    /// SwiftUI body nothing sets the appearance those resolve against, so in a
+    /// light window the letters came out white on white.
+    @Environment(\.colorScheme) private var scheme
 
     private var sources: [InputSourceInfo] { InputSourceInfo.all() }
 
@@ -26,11 +30,13 @@ struct BadgePreview: View {
                     HStack(spacing: 7) {
                         // The real image, not an impression of it: the whole
                         // point is that this cannot disagree with the menu bar.
-                        Image(nsImage: BadgeImage.make(label: source.badge,
-                                                       flag: source.emojiFlag,
-                                                       art: source.art,
-                                                       style: style,
-                                                       points: size.points))
+                        Image(nsImage: HelmAppearance.rasterize(
+                            BadgeImage.make(label: source.badge,
+                                            flag: source.emojiFlag,
+                                            art: source.art,
+                                            style: style,
+                                            points: size.points),
+                            scheme: scheme))
                             .frame(width: 26, alignment: .center)
                             .accessibilityHidden(true)
                         Text(source.name)

@@ -68,6 +68,14 @@ features, PATCH = fixes.
   Record, which means audio recording in four.
 
 ### Fixed
+- **The icon shape and size previews were invisible in the light theme.** They
+  are `NSImage`s drawn with `lockFocus`, which bakes `labelColor` against
+  whatever `NSAppearance.current` happened to be — and inside a SwiftUI body
+  nothing sets that, so a light window got white glyphs on a white card. The
+  neutral ones are drawn as templates and tinted by `foregroundStyle` now; the
+  keyboard badge previews, which have the same shape of defect through a lazy
+  drawing handler, are rasterized in the view's appearance via a new
+  `HelmAppearance` helper.
 - **An unreadable file could be reported as a duplicate.** Hashing broke out of
   its read loop on failure and returned the digest of whatever it had — for a
   first-slice failure, the digest of nothing, which is identical for every such
