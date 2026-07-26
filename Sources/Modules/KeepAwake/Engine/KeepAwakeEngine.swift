@@ -329,6 +329,12 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     private func wireTransport() {
         localTransport.setHandler { [weak self] cmd in
             guard let self else { return Data() }
+            // On main, like every other writer here. The display, power and
+            // application observers all deliver on the main thread; commands
+            // arrived on a concurrency pool, so `isActive`, `activeConditions`
+            // and the timer dates were written from two threads with no lock —
+            // and the class carried `@unchecked Sendable` without saying why.
+            await MainActor.run {
             switch cmd.name {
             case "toggle":
                 self.toggleSession()
@@ -344,6 +350,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                 self.releaseSudoersIfUnneeded()
             default:
                 break
+            }
             }
             return Data()
         }

@@ -34,7 +34,12 @@ public final class LocalTransport: EngineTransport, @unchecked Sendable {
         }
     }
 
-    public func setHandler(_ h: @escaping Handler) { handler = h }
+    public func setHandler(_ h: @escaping Handler) {
+        // Under the same lock as everything else here. It is set once during
+        // `init` today, but it was the single unguarded field in a class whose
+        // own comment explains why it needs a lock.
+        lock.lock(); handler = h; lock.unlock()
+    }
 
     public func emit(_ e: EngineEvent) {
         lock.lock(); lastEvent = e; let conts = Array(subscribers.values); lock.unlock()

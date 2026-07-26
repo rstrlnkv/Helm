@@ -71,6 +71,7 @@ public struct HelmRemovalOutcome: View {
                             Image(systemName: "doc.text.magnifyingglass")
                         }
                         .buttonStyle(.borderless)
+                        .accessibilityLabel(HelmA11y.showInFinder)
                         .controlSize(.small)
                     }
                 }

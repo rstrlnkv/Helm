@@ -209,6 +209,7 @@ public struct LeftoversSettingsPage: View {
                     Image(systemName: "ellipsis.circle")
                 }
                 .menuStyle(.borderlessButton)
+                .accessibilityLabel(HelmA11y.moreActions)
                 .fixedSize()
             }
         }

@@ -267,6 +267,7 @@ public struct KeepAwakeSettingsPage: View {
                         Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(HelmA11y.remove)
                 }
         }
         Button {

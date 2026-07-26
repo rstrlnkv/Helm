@@ -311,6 +311,8 @@ private struct UtilitiesSection: View {
             // own layer and their materials would stop blending with the card.
             .clipped()
             .allowsHitTesting(expanded)
+        // `.clipped()` hides it from the eye, not from the accessibility tree.
+        .accessibilityHidden(!expanded)
         }
         .helmPanelCard()
     }
