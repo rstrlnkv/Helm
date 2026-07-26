@@ -44,4 +44,19 @@ final class VPNRulesTests: XCTestCase {
         XCTAssertFalse(rule.connectOnLaunch)
         XCTAssertFalse(rule.disconnectOnQuit)
     }
+
+    // MARK: - Rules whose VPN is gone
+
+    func testARuleNamingAMissingVPNIsReportedNotJustDropped() {
+        let rules = ["com.acme": VPNAppRule(vpnName: "Old VPN")]
+        let connections = [VPNConnection(id: "1", name: "New VPN", status: .disconnected, kind: "L2TP")]
+        XCTAssertTrue(VPNRules.valid(rules, against: connections).isEmpty)
+        XCTAssertEqual(Array(VPNRules.orphaned(rules, against: connections).keys), ["com.acme"])
+    }
+
+    func testNothingIsOrphanedWhileTheVPNExists() {
+        let rules = ["com.acme": VPNAppRule(vpnName: "NBCom VPN")]
+        let connections = [VPNConnection(id: "1", name: "NBCom VPN", status: .connected, kind: "L2TP")]
+        XCTAssertTrue(VPNRules.orphaned(rules, against: connections).isEmpty)
+    }
 }

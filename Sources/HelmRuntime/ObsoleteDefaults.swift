@@ -11,6 +11,11 @@ public enum ObsoleteDefaults {
     public static let retired = [
         // The panel's grid layout was removed; the list is the only layout.
         "module.app.panelLayout",
+        // The Island module was reverted; its settings outlived it.
+        "module.island.enabled",
+        "module.island.shelfBookmarks",
+        // Replaced by permissionAuditVersion, which re-arms after an update.
+        "module.app.permissionAuditShown",
     ]
 
     public static func purge(from store: KeyValueStore) {

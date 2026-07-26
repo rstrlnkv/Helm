@@ -62,7 +62,8 @@ public struct KeepAwakeSettingsPage: View {
 
     public var body: some View {
         keepAwakeForm
-            .task { accessibility = PermissionCheck.currentAccessibility() }
+            .helmOnAppActive { accessibility = PermissionCheck.currentAccessibility() }
+        .task { accessibility = PermissionCheck.currentAccessibility() }
     }
 
     /// mm:ss left on the timer, or an em dash when no timer is running.

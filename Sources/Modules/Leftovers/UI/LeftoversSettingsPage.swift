@@ -23,7 +23,7 @@ public struct LeftoversSettingsPage: View {
     }
 
     private var selectedBytes: Int {
-        lvm.items.filter { lvm.selected.contains($0.path) }.reduce(0) { $0 + $1.sizeBytes }
+        lvm.visibleItems.filter { lvm.selected.contains($0.path) }.reduce(0) { $0 + $1.sizeBytes }
     }
 
     public var body: some View {
@@ -39,6 +39,7 @@ public struct LeftoversSettingsPage: View {
             Divider()
             actionBar
         }
+        .helmOnAppActive { diskAccess = PermissionCheck.currentFullDiskAccess() }
         .task { diskAccess = PermissionCheck.currentFullDiskAccess() }
         .confirmationDialog(pendingDeletion.map { LfStr.confirmDeleteInUse($0.identifier) } ?? "",
                             isPresented: Binding(get: { pendingDeletion != nil },
@@ -67,6 +68,7 @@ public struct LeftoversSettingsPage: View {
                             get: { !lvm.hiddenKinds.contains(kind) },
                             set: { on in
                                 if on { lvm.hiddenKinds.remove(kind) } else { lvm.hiddenKinds.insert(kind) }
+                                lvm.dropHiddenSelections()
                             }))
                     }
                 } label: {
@@ -237,7 +239,7 @@ public struct LeftoversSettingsPage: View {
     private var actionBar: some View {
         HStack(spacing: 10) {
             Button(LfStr.selectAll) {
-                lvm.selected = Set(lvm.items.filter(\.removable).map(\.path))
+                lvm.selected = lvm.selectablePaths
             }
             .disabled(lvm.leftoverCount == 0)
             Button(LfStr.deselectAll) { lvm.selected.removeAll() }
@@ -249,7 +251,14 @@ public struct LeftoversSettingsPage: View {
             }
             Spacer()
             if let banner = lvm.banner {
-                Text(banner).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                // The outcome, not a slogan: what stayed behind is named.
+                HelmRemovalOutcome(
+                    succeededText: banner,
+                    failures: lvm.failures.map {
+                        HelmRemovalFailure(path: $0.path, reason: $0.message)
+                    },
+                    needsFullDiskAccess: diskAccess == .denied)
+                    .frame(maxWidth: 420, alignment: .leading)
             }
             Button(LfStr.removeSelected) { Task { await lvm.removeSelected() } }
                 .buttonStyle(.borderedProminent)

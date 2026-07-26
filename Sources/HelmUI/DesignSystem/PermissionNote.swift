@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import HelmRuntime
 
 /// The one way Helm says "this needs a permission you have not given".
@@ -34,5 +35,14 @@ public struct HelmPermissionNote: View {
     private static var grant: String {
         L("Grant…", [.ru: "Выдать…", .es: "Conceder…", .fr: "Accorder…", .de: "Erteilen…",
                      .ja: "許可…", .zh: "授予…", .pt: "Conceder…"])
+    }
+}
+
+public extension View {
+    /// Runs when Helm comes back to the front — the moment to re-read anything
+    /// the user may have changed in System Settings while away.
+    func helmOnAppActive(_ action: @escaping () -> Void) -> some View {
+        onReceive(NotificationCenter.default.publisher(
+            for: NSApplication.didBecomeActiveNotification)) { _ in action() }
     }
 }

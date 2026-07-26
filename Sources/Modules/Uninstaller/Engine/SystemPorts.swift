@@ -16,6 +16,20 @@ public final class WorkspaceAppLister: AppLister {
          home.appendingPathComponent("Applications/Setapp")]
     }
 
+    public func installedBundleIDs() -> Set<String> {
+        var ids: Set<String> = []
+        for dir in searchDirs {
+            guard let items = try? FileManager.default.contentsOfDirectory(
+                at: dir, includingPropertiesForKeys: nil) else { continue }
+            for app in items where app.pathExtension == "app" {
+                let info = app.appendingPathComponent("Contents/Info.plist")
+                if let id = NSDictionary(contentsOf: info)?["CFBundleIdentifier"] as? String,
+                   !id.isEmpty { ids.insert(id) }
+            }
+        }
+        return ids
+    }
+
     public func isKnownToSystem(bundleID: String) -> Bool {
         NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) != nil
     }

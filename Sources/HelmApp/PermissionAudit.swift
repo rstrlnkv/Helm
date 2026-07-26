@@ -6,7 +6,8 @@ import Module_Uninstaller_Engine
 /// Discovered the hard way: without Full Disk Access an uninstall silently
 /// leaves app containers on disk.
 @MainActor enum PermissionAudit {
-    private static let seenKey = "permissionAuditShown"
+    /// Holds the version that last showed the notice, not a bare flag.
+    private static let seenKey = "permissionAuditVersion"
 
     static func runOnFirstLaunch() {
         Task {
@@ -17,9 +18,13 @@ import Module_Uninstaller_Engine
             HelmLog.shared.info("permissions",
                                 "full disk access: \(access.rawValue), "
                                 + "accessibility: \(PermissionCheck.currentAccessibility().rawValue)")
-            guard !AppSettings.store.bool(seenKey, default: false) else { return }
-            AppSettings.store.set(true, for: seenKey)
+            // Re-arm on every build: an ad-hoc signature ties the grant to
+            // one exact binary, so an update silently revokes it while the
+            // checkbox stays ticked. Warning once per version, not once ever.
+            let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+            guard AppSettings.store.string(seenKey, default: "") != version else { return }
             guard access == .denied else { return }
+            AppSettings.store.set(version, for: seenKey)
             present()
         }
     }
