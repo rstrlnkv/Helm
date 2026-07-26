@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import HelmRuntime
 import HelmUI
 import Module_Leftovers_Engine
 
@@ -7,6 +8,7 @@ import Module_Leftovers_Engine
 /// macOS loads, so each one is a deliberate choice.
 public struct LeftoversSettingsPage: View {
     @StateObject private var lvm: LeftoversViewModel
+    @State private var diskAccess: PermissionState = .granted
 
     public init(vm: ModuleViewModel) {
         _lvm = StateObject(wrappedValue: LeftoversViewModel(vm: vm))
@@ -27,10 +29,16 @@ public struct LeftoversSettingsPage: View {
         VStack(spacing: 0) {
             toolbar
             Divider()
+            if diskAccess == .denied {
+                HelmPermissionNote(need: .fullDiskAccess, text: LfStr.removalNeedsAccess)
+                    .padding(.horizontal, 16).padding(.vertical, 8)
+                Divider()
+            }
             content
             Divider()
             actionBar
         }
+        .task { diskAccess = PermissionCheck.currentFullDiskAccess() }
         .animation(HelmMotion.interface, value: lvm.items.count)
         .animation(HelmMotion.interface, value: lvm.showAll)
     }

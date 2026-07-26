@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import HelmRuntime
 import HelmUI
 import Module_Disk_Engine
 
@@ -9,6 +10,7 @@ import Module_Disk_Engine
 public struct DiskSettingsPage: View {
     @ObservedObject private var dvm: DiskViewModel
     @State private var hovered: String?
+    @State private var diskAccess: PermissionState = .granted
     @State private var confirming = false
 
     public init(vm: ModuleViewModel) {
@@ -29,6 +31,7 @@ public struct DiskSettingsPage: View {
         }
         .task {
             dvm.expireIfStale()
+            diskAccess = PermissionCheck.currentFullDiskAccess()
             await dvm.loadVolumes()
         }
         .animation(HelmMotion.interface, value: dvm.phase)
@@ -49,6 +52,10 @@ public struct DiskSettingsPage: View {
                 Text(DkStr.startHint)
                     .font(.callout).foregroundStyle(.secondary)
                     .padding(.top, 4)
+                if diskAccess == .denied {
+                    HelmPermissionNote(need: .fullDiskAccess, text: DkStr.scanNeedsAccess)
+                        .helmCard()
+                }
                 ForEach(dvm.volumes) { volume in
                     volumeCard(volume)
                 }

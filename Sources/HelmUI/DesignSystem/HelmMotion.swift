@@ -23,9 +23,6 @@ public enum HelmMotion {
     /// card. Bouncy enough to read as fluid.
     public static let emphasis = Animation.spring(response: 0.42, dampingFraction: 0.78)
 
-    /// Content appearing inside a container that is already moving. Kept as a
-    /// short fade: two springs running against each other read as wobble.
-    public static let contentFade = Animation.easeOut(duration: 0.16)
 
     /// Steady rotation (the About page's bezel while a check runs) — the one
     /// place a linear curve is correct, because the motion has no destination.

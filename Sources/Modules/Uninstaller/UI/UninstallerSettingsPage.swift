@@ -27,6 +27,7 @@ public struct UninstallerSettingsPage: View {
 
     private enum Step: Equatable { case pick, review }
 
+    @State private var diskAccess: PermissionState = .granted
     @State private var step: Step = .pick
     @State private var apps: [InstalledApp] = []
     @State private var loading = true
@@ -60,6 +61,7 @@ public struct UninstallerSettingsPage: View {
     public var body: some View {
         pageBody
             .task {
+                diskAccess = PermissionCheck.currentFullDiskAccess()
                 apps = await uvm.listApps()
                 loading = false
             }
@@ -218,6 +220,11 @@ public struct UninstallerSettingsPage: View {
 
     private var reviewStep: some View {
         VStack(spacing: 0) {
+            if diskAccess == .denied {
+                HelmPermissionNote(need: .fullDiskAccess, text: UnStr.removalNeedsAccess)
+                    .padding(.horizontal, 16).padding(.vertical, 8)
+                Divider()
+            }
             List {
                 ForEach(groups, id: \.id) { group in
                     Section {

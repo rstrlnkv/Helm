@@ -20,15 +20,3 @@ public struct HelmCenteredContent<Content: View>: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
-
-public extension View {
-    /// Convenience for the common "one secondary line, centred" empty state.
-    static func helmCenteredMessage(_ text: String) -> some View {
-        HelmCenteredContent {
-            Text(text)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding()
-        }
-    }
-}

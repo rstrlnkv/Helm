@@ -3,6 +3,7 @@ import AppKit
 import Carbon.HIToolbox
 import HelmRuntime
 import HelmUI
+import Module_KeepAwake_Engine
 
 /// Settings page for the Keep Awake module. The `NamespacedStore` isn't
 /// observable, so values are seeded into local `@State` and written through
@@ -14,7 +15,7 @@ public struct KeepAwakeSettingsPage: View {
     @State private var accessibility: PermissionState = .granted
     @State private var autoExternalDisplay: Bool
     @State private var autoPower: Bool
-    @State private var autoApps: [String]
+    @State private var appTriggers: [AppTrigger]
 
     @State private var keepDisplayOn: Bool
     @State private var jiggleEnabled: Bool
@@ -40,7 +41,7 @@ public struct KeepAwakeSettingsPage: View {
         _recorder = StateObject(wrappedValue: HotkeyRecorder(store: store))
         _autoExternalDisplay = State(initialValue: store.bool("autoExternalDisplay", default: false))
         _autoPower = State(initialValue: store.bool("autoPower", default: false))
-        _autoApps = State(initialValue: store.stringArray("autoApps"))
+        _appTriggers = State(initialValue: KeepAwakeSettings(store: store).appTriggers)
         _keepDisplayOn = State(initialValue: store.bool("keepDisplayOn", default: false))
         _jiggleEnabled = State(initialValue: store.bool("jiggleEnabled", default: false))
         _jiggleIntervalMinutes = State(initialValue: max(1, store.int("jiggleIntervalMinutes", default: 5)))
@@ -88,11 +89,20 @@ public struct KeepAwakeSettingsPage: View {
                     .onChange(of: clamshellEnabled) { _, v in write(v, "clamshellEnabled") }
                 Text(KAStr.adminNote)
                     .font(.caption).foregroundStyle(.secondary)
-                Toggle(KAStr.turnOffLowBattery, isOn: $batteryGuardEnabled)
-                    .onChange(of: batteryGuardEnabled) { _, v in write(v, "batteryGuardEnabled") }
-                Stepper(KAStr.belowPercent(batteryGuardPercent), value: $batteryGuardPercent, in: 5...50, step: 5)
-                    .disabled(!batteryGuardEnabled)
-                    .onChange(of: batteryGuardPercent) { _, v in write(v, "batteryGuardPercent") }
+                // The threshold only means anything with the rule on, so it
+                // shares the row instead of floating below it.
+                LabeledContent(KAStr.turnOffLowBattery) {
+                    HStack(spacing: 10) {
+                        Stepper(KAStr.belowPercent(batteryGuardPercent),
+                                value: $batteryGuardPercent, in: 5...50, step: 5)
+                            .disabled(!batteryGuardEnabled)
+                            .onChange(of: batteryGuardPercent) { _, v in write(v, "batteryGuardPercent") }
+                            .fixedSize()
+                        Toggle("", isOn: $batteryGuardEnabled)
+                            .labelsHidden()
+                            .onChange(of: batteryGuardEnabled) { _, v in write(v, "batteryGuardEnabled") }
+                    }
+                }
             }
 
             Section(KAStr.appsSection) {
@@ -120,15 +130,8 @@ public struct KeepAwakeSettingsPage: View {
                 // without this grant the switch above is on and nothing moves.
                 // Say so where the switch is, not only in the app's settings.
                 if jiggleEnabled, accessibility == .denied {
-                    HStack(spacing: 8) {
-                        Image(systemName: "exclamationmark.circle.fill")
-                            .foregroundStyle(.orange)
-                        Text(KAStr.pointerNeedsAccessibility)
-                            .font(.caption).foregroundStyle(Color.primary.opacity(0.7))
-                        Spacer()
-                        Button(KAStr.grantAccess) { PermissionCheck.openAccessibilitySettings() }
-                            .controlSize(.small)
-                    }
+                    HelmPermissionNote(need: .accessibility,
+                                       text: KAStr.pointerNeedsAccessibility)
                 }
                 Picker(KAStr.defaultDuration, selection: $defaultDurationMinutes) {
                     Text(KAStr.min15).tag(15)
@@ -206,21 +209,30 @@ public struct KeepAwakeSettingsPage: View {
     // MARK: - App picker
 
     private var appTriggersEditor: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ForEach(autoApps, id: \.self) { bundleID in
-                let info = AppInfo.resolve(bundleID)
-                HStack(spacing: 10) {
-                    Image(nsImage: info.icon)
-                        .resizable().frame(width: 20, height: 20)
-                    Text(info.name)
-                    Spacer()
-                    Button {
-                        autoApps.removeAll { $0 == bundleID }
-                        write(autoApps, "autoApps")
-                    } label: {
-                        Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 10) {
+            ForEach(Array(appTriggers.enumerated()), id: \.element.bundleID) { index, trigger in
+                let info = AppInfo.resolve(trigger.bundleID)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 10) {
+                        Image(nsImage: info.icon)
+                            .resizable().frame(width: 20, height: 20)
+                        Text(info.name)
+                        Spacer()
+                        Button {
+                            appTriggers.remove(at: index)
+                            saveTriggers()
+                        } label: {
+                            Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
+                    // Narrowing is optional: with both off the app holds the
+                    // Mac awake whenever it runs, which is what it did before.
+                    Toggle(KAStr.onlyWithExternalDisplay,
+                           isOn: binding(index, \.needsExternalDisplay))
+                        .font(.callout)
+                    Toggle(KAStr.onlyOnPower, isOn: binding(index, \.needsPower))
+                        .font(.callout)
                 }
             }
             Button {
@@ -231,13 +243,29 @@ public struct KeepAwakeSettingsPage: View {
         }
     }
 
+    private func binding(_ index: Int,
+                         _ path: WritableKeyPath<AppTrigger, Bool>) -> Binding<Bool> {
+        Binding(
+            get: { appTriggers.indices.contains(index) ? appTriggers[index][keyPath: path] : false },
+            set: { newValue in
+                guard appTriggers.indices.contains(index) else { return }
+                appTriggers[index][keyPath: path] = newValue
+                saveTriggers()
+            })
+    }
+
+    private func saveTriggers() {
+        write(AppTriggerRules.encode(appTriggers), "autoAppRules")
+    }
+
     private func pickApp() {
         var added = false
-        for bundleID in AppPicker.choose() where !autoApps.contains(bundleID) {
-            autoApps.append(bundleID)
+        for bundleID in AppPicker.choose()
+        where !appTriggers.contains(where: { $0.bundleID == bundleID }) {
+            appTriggers.append(AppTrigger(bundleID: bundleID))
             added = true
         }
-        if added { write(autoApps, "autoApps") }
+        if added { saveTriggers() }
     }
 
     // MARK: - Color swatches

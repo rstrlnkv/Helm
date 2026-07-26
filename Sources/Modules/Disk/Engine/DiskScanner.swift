@@ -196,19 +196,6 @@ public final class DiskScanner: @unchecked Sendable {
         }
     }
 
-    private final class ResultBox: @unchecked Sendable {
-        private let lock = NSLock()
-        private(set) var files: [Entry] = []
-        private(set) var denied: [String] = []
-
-        func append(files newFiles: [Entry], denied newDenied: [String]) {
-            guard !newFiles.isEmpty || !newDenied.isEmpty else { return }
-            lock.lock()
-            files.append(contentsOf: newFiles)
-            denied.append(contentsOf: newDenied)
-            lock.unlock()
-        }
-    }
 
     // MARK: - getattrlistbulk
 
