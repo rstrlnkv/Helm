@@ -7,6 +7,29 @@ features, PATCH = fixes.
 
 ## [0.7.1] — 2026-07-26
 
+### Fixed
+- Three screens announced "Removed — N freed" whether or not macOS had refused,
+  and threw the failure list away. `HelmRemovalOutcome` names what stayed and
+  why, with a way to reveal it and to grant the missing permission.
+- "Select all" in Login Items & Extensions ticked rows hidden by the filter,
+  and the counter counted them too; both now follow what is on screen, and
+  hiding a kind drops its selections.
+- The Disk Space basket was a count with no list: its contents can be opened
+  and cleared item by item, and the confirmation names what it is about to
+  remove.
+- Homebrew removed a package — a whole app, for a cask — on a single click.
+  It asks first, like every other destructive action in Helm.
+- The permission notice was shown once ever: the "already shown" flag was set
+  before the check, so a first launch that happened to have access silenced it
+  for good. It is keyed to the version now, which is what an ad-hoc build
+  needs, and every page re-reads permissions when Helm returns to the front.
+- A VPN rule naming a connection that no longer exists says so instead of
+  silently never firing.
+- The icon menu listed disabled modules, whose pages only say they are disabled.
+- Opening the Uninstaller sized every installed bundle — nine seconds of disk
+  walking on this Mac — and the leftovers scan paid it again for data it threw
+  away; it asks for bundle ids only.
+
 ### Added
 - Each item in Login Items & Extensions offers what the system actually allows:
   turn off (any non-Apple agent), delete (only where the folder is writable —
