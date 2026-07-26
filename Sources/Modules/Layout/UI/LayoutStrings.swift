@@ -1,7 +1,9 @@
 import HelmUI
 
 enum LyStr {
-    static var moduleName: String { L("Layout", [.ru: "Раскладка", .es: "Distribución", .fr: "Disposition", .de: "Belegung", .ja: "キーボード配列", .zh: "键盘布局", .pt: "Layout"]) }
+    /// Broader than "layout" on purpose: the module id stays `layout`, but the
+    /// name has room for whatever else belongs to the keyboard later.
+    static var moduleName: String { L("Keyboard", [.ru: "Клавиатура", .es: "Teclado", .fr: "Clavier", .de: "Tastatur", .ja: "キーボード", .zh: "键盘", .pt: "Teclado"]) }
     static var summary: String { L("Fixes words typed in the wrong keyboard layout.", [.ru: "Исправляет слова, набранные не в той раскладке.", .es: "Corrige palabras escritas en la distribución equivocada.", .fr: "Corrige les mots tapés dans la mauvaise disposition.", .de: "Korrigiert Wörter, die in der falschen Belegung getippt wurden.", .ja: "誤った配列で入力した単語を修正します。", .zh: "修正用错误键盘布局输入的单词。", .pt: "Corrige palavras digitadas no layout errado."]) }
     static var automatic: String { L("Fix as I type", [.ru: "Исправлять по ходу набора", .es: "Corregir mientras escribo", .fr: "Corriger pendant la saisie", .de: "Beim Tippen korrigieren", .ja: "入力しながら修正", .zh: "输入时自动修正", .pt: "Corrigir enquanto digito"]) }
     static var automaticNote: String { L("A word is only changed when it is not a word as typed and is one once swapped. Anything valid is left alone.", [.ru: "Слово меняется, только если как набрано оно не слово, а после перекладки — слово. Всё осмысленное остаётся как есть.", .es: "Una palabra solo cambia si no es palabra tal como se escribió y sí lo es al convertirla. Lo válido no se toca.", .fr: "Un mot n’est changé que s’il n’en est pas un tel quel et en devient un une fois converti. Ce qui est valide reste.", .de: "Ein Wort wird nur geändert, wenn es so getippt keines ist und nach dem Tausch eines wird. Gültiges bleibt.", .ja: "入力どおりでは単語でなく、変換すると単語になる場合のみ置き換えます。正しいものはそのままです。", .zh: "只有当按原样不是单词、转换后才是单词时才替换。有效的内容不会被改动。", .pt: "Uma palavra só muda se não for palavra como digitada e passar a ser após a troca. O que é válido fica."]) }
