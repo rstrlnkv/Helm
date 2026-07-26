@@ -194,7 +194,15 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         settings.autoPower && (power.snapshot().map { !$0.onBattery } ?? false)
     }
     private func appCondition() -> Bool {
-        !settings.autoApps.isEmpty && !Set(settings.autoApps).isDisjoint(with: apps.runningBundleIDs())
+        let rules = settings.appTriggers
+        guard !rules.isEmpty else { return false }
+        // A rule may be narrowed to "only at the desk" or "only plugged in",
+        // so the same inputs the other conditions use are passed in.
+        return AppTriggerRules.isHolding(
+            rules,
+            running: Set(apps.runningBundleIDs()),
+            externalDisplay: ExternalDisplaySupport.hasExternal(builtInFlags: displayInfo.builtInFlags()),
+            onPower: power.snapshot().map { !$0.onBattery } ?? false)
     }
     private func currentAutoConditionHolds() -> Bool {
         externalDisplayCondition() || powerCondition() || appCondition()

@@ -47,8 +47,4 @@ public enum StaleItemRules {
         guard let vendor = vendorPrefix(identifier) else { return false }
         return installedIDs.contains { $0.hasPrefix(vendor) }
     }
-
-    static func isApple(_ identifier: String) -> Bool {
-        identifier.hasPrefix("com.apple.") || identifier == "com.apple"
-    }
 }

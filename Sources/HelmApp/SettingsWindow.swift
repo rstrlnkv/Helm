@@ -46,11 +46,6 @@ import HelmUI
     }
 
 
-    func showAbout() {
-        model.selection = .about
-        show()
-    }
-
     /// `selecting` opens the window on that module's page (used by panel utility rows).
     func show(selecting moduleID: String? = nil) {
         if let moduleID { model.selection = .module(moduleID) }
@@ -403,17 +398,16 @@ private struct MenuBarSettingsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section(AppStr.permissions) {
-                permissionRow(AppStr.fullDiskAccess,
-                              detail: diskAccess == .denied && adHocBuild
-                                  ? AppStr.fullDiskAccessAdHoc
-                                  : AppStr.fullDiskAccessWhy,
-                              granted: diskAccess == .granted) {
-                    PermissionCheck.openFullDiskAccessSettings()
-                }
-                permissionRow(AppStr.accessibility,
-                              detail: AppStr.accessibilityWhy,
-                              granted: accessibility == .granted) {
-                    PermissionCheck.openAccessibilitySettings()
+                // Driven by the table, so a new permission shows up here
+                // without anyone remembering to add a row.
+                ForEach(PermissionNeed.allCases, id: \.self) { need in
+                    let granted = need.state(accessibility: accessibility,
+                                             fullDisk: diskAccess) == .granted
+                    permissionRow(AppStr.permissionTitle(need),
+                                  detail: need == .fullDiskAccess && !granted && adHocBuild
+                                      ? AppStr.fullDiskAccessAdHoc
+                                      : AppStr.permissionWhy(need),
+                                  granted: granted) { need.openSettings() }
                 }
                 HStack {
                     Text(AppStr.systemExtensionsTitle)

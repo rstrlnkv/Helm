@@ -7,6 +7,22 @@ features, PATCH = fixes.
 
 ## [0.7.1] — 2026-07-26
 
+### Added
+- Keep Awake's per-app rules take conditions: an app can hold the Mac awake
+  always, or only with an external display, only on power, or both. Existing
+  app lists migrate to unconditional rules.
+- `PermissionNeed` maps each gated feature to the grant it needs. The settings
+  section is generated from it, and Disk Space, App Uninstaller and Login Items
+  & Extensions warn in place when Full Disk Access is missing, the way Keep
+  Awake does for the pointer nudge.
+
+### Removed
+- `module.app.panelLayout`, left in defaults by the removed grid layout, is
+  purged at launch.
+- Dead code: an unused centred-message modifier, the `contentFade` motion token,
+  the scanner's superseded ResultBox, an Apple-bundle check the vendor rule
+  replaced, and the About page's now-unused opener.
+
 ### Fixed
 - Accessibility is now listed among the permissions, and Keep Awake flags it at
   the pointer-nudge setting. macOS drops synthetic mouse events from an
