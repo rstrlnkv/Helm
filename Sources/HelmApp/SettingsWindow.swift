@@ -353,11 +353,13 @@ private struct MenuBarSettingsView: View {
                                 move(id, by: -1)
                             } label: { Image(systemName: "chevron.up") }
                             .buttonStyle(.borderless)
+                            .accessibilityLabel(HelmA11y.moveUp)
                             .disabled(orderedModules.first == id)
                             Button {
                                 move(id, by: 1)
                             } label: { Image(systemName: "chevron.down") }
                             .buttonStyle(.borderless)
+                            .accessibilityLabel(HelmA11y.moveDown)
                             .disabled(orderedModules.last == id)
                         }
                         .contentShape(Rectangle())

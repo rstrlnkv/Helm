@@ -175,10 +175,12 @@ public struct VPNSettingsPage: View {
                 Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(HelmA11y.remove)
         }
         if missing, let name = rules[bundleID]?.vpnName {
             HStack(spacing: 6) {
                 Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.orange)
+                    .accessibilityHidden(true)   // the text beside it says it
                 Text(VPNStr.ruleVPNMissing(name))
                     .font(.caption)
                     .foregroundStyle(Color.primary.opacity(0.7))
