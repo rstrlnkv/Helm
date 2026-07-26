@@ -101,8 +101,6 @@ public struct HomebrewSettingsPage: View {
                     }
                 }
                 Spacer(minLength: 0)
-                Text(statusLine)
-                    .font(.caption).foregroundStyle(.secondary)
                 Button {
                     Task {
                         if segment == 1 { await hb.refreshOutdated() }
@@ -125,6 +123,15 @@ public struct HomebrewSettingsPage: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Counts belong in a quiet bottom bar, like the other list screens;
+            // the toolbar is for what you can do, not for what there is.
+            Divider()
+            HStack {
+                Text(statusLine)
+                    .font(.caption).foregroundStyle(.secondary)
+                Spacer()
+            }
+            .padding(.horizontal, 20).padding(.vertical, 12)
         }
     }
 
@@ -160,7 +167,7 @@ public struct HomebrewSettingsPage: View {
         VStack(spacing: 0) {
             HelmSearchField(text: $query, placeholder: HbStr.searchPlaceholder,
                             onSubmit: { Task { await hb.search(query) } })
-                .frame(height: 24)
+                .frame(height: 22)
                 .padding(.horizontal, 20)
                 .padding(.top, 12)
                 .padding(.bottom, 10)
@@ -198,7 +205,7 @@ public struct HomebrewSettingsPage: View {
                     }
                 }
                 .onChange(of: hb.consoleLines.count) { _, _ in
-                    withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
+                    withAnimation(HelmMotion.interface) { proxy.scrollTo("bottom", anchor: .bottom) }
                 }
             }
             .frame(height: 160)
@@ -229,10 +236,8 @@ public struct HomebrewSettingsPage: View {
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 6) {
                     Text(name).lineLimit(1)
-                    Text(isCask ? HbStr.cask : HbStr.formula).font(.caption2)
-                        .padding(.horizontal, 5).padding(.vertical, 1)
-                        .background(Capsule().fill(isCask ? Color.purple.opacity(0.2) : Color.blue.opacity(0.2)))
-                        .foregroundStyle(isCask ? .purple : .blue)
+                    HelmBadge(isCask ? HbStr.cask : HbStr.formula,
+                              tint: isCask ? .purple : .blue)
                     if let detail { Text(detail).font(.caption2).foregroundStyle(.secondary) }
                 }
                 // The description arrives from a separate `brew desc` batch.
@@ -244,8 +249,7 @@ public struct HomebrewSettingsPage: View {
             Spacer()
             action().controlSize(.small)
         }
-        .frame(height: 38)
-        .padding(.vertical, 2)
+        .frame(height: 34)
     }
 
     /// `empty` is nil while the first query is still out: "nothing installed"
@@ -258,7 +262,7 @@ public struct HomebrewSettingsPage: View {
             } else if items.isEmpty {
                 HelmCenteredContent { ProgressView().controlSize(.small) }
             } else {
-                List(items) { row($0).listRowSeparator(.hidden) }
+                List(items) { row($0) }
                     .listStyle(.inset)
                     .scrollContentBackground(.hidden)
                     .padding(.horizontal, 12)

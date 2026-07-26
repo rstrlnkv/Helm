@@ -212,13 +212,18 @@ public struct KeepAwakeSettingsPage: View {
 
     // MARK: - App picker
 
+    /// Rows handed to the `Section` one by one, not wrapped in a `VStack`.
+    ///
+    /// The wrapper made this the only per-app list in Helm without the system's
+    /// row padding and hairlines: measured against the identical list in VPN it
+    /// came out 13 pt shorter with no separators at all. The form draws both,
+    /// and draws them the way every other section is drawn.
+    @ViewBuilder
     private var appTriggersEditor: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if appTriggers.isEmpty {
-                Text(KAStr.noAppsYet)
-                    .font(.callout).foregroundStyle(.secondary)
-                    .padding(.bottom, 8)
-            }
+        if appTriggers.isEmpty {
+            Text(KAStr.noAppsYet)
+                .font(.callout).foregroundStyle(.secondary)
+        }
             // One row per app: icon, name, when it applies, and the remove
             // button. The condition is a single menu because the two flags are
             // not independent choices — "display and power" means both.
@@ -245,15 +250,11 @@ public struct KeepAwakeSettingsPage: View {
                     }
                     .buttonStyle(.plain)
                 }
-                .padding(.vertical, 5)
-                if index < appTriggers.count - 1 { Divider() }
-            }
-            Button {
-                pickApp()
-            } label: {
-                Label(KAStr.addApp, systemImage: "plus")
-            }
-            .padding(.top, appTriggers.isEmpty ? 0 : 8)
+        }
+        Button {
+            pickApp()
+        } label: {
+            Label(KAStr.addApp, systemImage: "plus")
         }
     }
 

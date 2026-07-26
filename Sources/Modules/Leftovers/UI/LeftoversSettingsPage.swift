@@ -128,7 +128,6 @@ public struct LeftoversSettingsPage: View {
             }
             .listStyle(.inset)
             .padding(.horizontal, 12)
-            .transition(.opacity)
         }
     }
 
@@ -154,18 +153,12 @@ public struct LeftoversSettingsPage: View {
                         .lineLimit(1)
                         .foregroundStyle(item.removable ? .primary : .secondary)
                     if item.disabled {
-                        Text(LfStr.statusDisabled)
-                            .font(.caption2)
-                            .padding(.horizontal, 5).padding(.vertical, 1)
-                            .background(Capsule().fill(Color.secondary.opacity(0.22)))
+                        HelmBadge(LfStr.statusDisabled)
                     } else {
                         statusBadge(item.status)
                     }
                     if item.runAtLoad {
-                        Text(LfStr.runsAtLogin)
-                            .font(.caption2)
-                            .padding(.horizontal, 5).padding(.vertical, 1)
-                            .background(Capsule().fill(Color.orange.opacity(0.22)))
+                        HelmBadge(LfStr.runsAtLogin, tint: .orange)
                     }
                 }
                 if item.kind != .systemExtension {
@@ -229,11 +222,7 @@ public struct LeftoversSettingsPage: View {
         case .inUse: (LfStr.statusInUse, .green)
         case .protectedItem: (LfStr.statusProtected, .secondary)
         }
-        return Text(text)
-            .font(.caption2)
-            .padding(.horizontal, 5).padding(.vertical, 1)
-            .background(Capsule().fill(color.opacity(0.20)))
-            .foregroundStyle(color)
+        return HelmBadge(text, tint: color)
     }
 
     private var actionBar: some View {

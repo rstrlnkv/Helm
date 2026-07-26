@@ -39,7 +39,12 @@ struct OrphansView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             content
-            if !groups.isEmpty { footer }
+            // Always present, like every other bottom bar in Helm: showing it
+            // only after a scan moved the whole screen by its height and took
+            // the hairline with it. The buttons are already disabled when there
+            // is nothing to act on.
+            Divider()
+            footer
         }
     }
 
@@ -48,14 +53,14 @@ struct OrphansView: View {
             HelmCenteredContent { ProgressView(); Text(UnStr.scanningOrphans).font(.caption).foregroundStyle(.secondary) }
         } else if !scanned {
             HelmCenteredContent {
-                Image(systemName: "clock.arrow.circlepath").font(.system(size: 34)).foregroundStyle(.secondary)
+                Image(systemName: "clock.arrow.circlepath").font(.system(size: 30)).foregroundStyle(.secondary)
                 Text(UnStr.orphansIntro).multilineTextAlignment(.center).foregroundStyle(.secondary)
                     .frame(maxWidth: 380)
                 Button(UnStr.scanOrphans) { Task { await scan() } }.buttonStyle(.borderedProminent)
             }
         } else if groups.isEmpty {
             HelmCenteredContent {
-                Image(systemName: "checkmark.circle").font(.system(size: 34)).foregroundStyle(.green)
+                Image(systemName: "checkmark.circle").font(.system(size: 30)).foregroundStyle(.green)
                 Text(UnStr.noOrphans).foregroundStyle(.secondary)
                 Button(UnStr.rescan) { Task { await scan() } }
             }
@@ -108,7 +113,7 @@ struct OrphansView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(selected.isEmpty || busy)
         }
-        .padding(10)
+        .padding(.horizontal, 20).padding(.vertical, 12)
         .confirmationDialog(UnStr.confirmTrash(selected.count, Bytes(selectedBytes)),
                             isPresented: $confirming, titleVisibility: .visible) {
             Button(UnStr.moveToTrash, role: .destructive) { Task { await trashSelected() } }

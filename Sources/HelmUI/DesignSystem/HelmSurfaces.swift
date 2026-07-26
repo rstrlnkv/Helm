@@ -4,7 +4,10 @@ import SwiftUI
 /// a glowing icon plate, instrument-style figures, and one card treatment.
 public enum HelmSurface {
     public static let cardRadius: CGFloat = 12
-    public static let cardFill = Color.primary.opacity(0.05)
+    /// Measured against a real `Form` section on the same background: at 0.05
+    /// the card sat 10 L from the panel where the system's section sits 7, in
+    /// both themes — a heavier card claiming to be the same surface.
+    public static let cardFill = Color.primary.opacity(0.035)
     public static let hairline = Color.primary.opacity(0.10)
     /// For things that float *over* content — a tooltip following the cursor.
     /// Cards sit in the page and take no border (see `helmCard`); a floating
