@@ -68,6 +68,16 @@ let package = Package(
             dependencies: ["HelmContract", "HelmUI", "Module_Disk_Engine"],
             path: "Sources/Modules/Disk/UI"
         ),
+        .target(
+            name: "Module_Layout_Engine",
+            dependencies: ["HelmContract", "HelmRuntime"],
+            path: "Sources/Modules/Layout/Engine"
+        ),
+        .target(
+            name: "Module_Layout_UI",
+            dependencies: ["HelmContract", "HelmUI", "Module_Layout_Engine"],
+            path: "Sources/Modules/Layout/UI"
+        ),
         .executableTarget(
             name: "HelmApp",
             // The UI targets only: the host talks to a module through its
@@ -80,7 +90,13 @@ let package = Package(
                            "Module_Uninstaller_UI",
                            "Module_Homebrew_UI",
                            "Module_Leftovers_UI",
-                           "Module_Disk_UI"]
+                           "Module_Disk_UI",
+                           "Module_Layout_UI"]
+        ),
+        .testTarget(
+            name: "Module_Layout_EngineTests",
+            dependencies: ["Module_Layout_Engine"],
+            path: "Tests/Modules/Layout/EngineTests"
         ),
         .testTarget(name: "HelmContractTests", dependencies: ["HelmContract"]),
         .testTarget(name: "HelmRuntimeTests", dependencies: ["HelmRuntime"]),
