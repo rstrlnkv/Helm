@@ -29,7 +29,20 @@ Release flow:
 1. Bump `CFBundleShortVersionString` per the table.
 2. Add a `## [X.Y.Z] — YYYY-MM-DD` section to `CHANGELOG.md`.
 3. `bash Scripts/package-app.sh && bash Scripts/make-dmg.sh && bash Scripts/make-zip.sh`
-4. `gh release create vX.Y.Z build/Helm-X.Y.Z.dmg build/Helm-X.Y.Z.zip --title "Helm X.Y.Z" --notes "…"`
+4. `git push` — **before** creating the release, or the tag lands on the old
+   remote HEAD.
+5. `gh release create vX.Y.Z build/Helm-X.Y.Z.dmg build/Helm-X.Y.Z.zip --title "Helm X.Y.Z" --notes "…"`
+
+**The notes must carry the digest lines** `make-zip.sh` and `make-dmg.sh` print:
+
+```
+sha256 Helm-X.Y.Z.zip <64 hex>
+```
+
+The updater strips quarantine and the app is ad-hoc signed, so nothing about the
+downloaded file is verified by macOS. `ReleaseDigest` is the only check there is:
+without a matching line the update is not installed silently at all — the release
+page opens instead and the user decides.
 
 Always attach the **`.zip`** — the in-app updater downloads it for silent install
 (`Installer`); the `.dmg` is the manual/drag-install path. A release without a zip
