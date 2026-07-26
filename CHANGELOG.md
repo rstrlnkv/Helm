@@ -8,6 +8,12 @@ features, PATCH = fixes.
 ## [0.7.1] — 2026-07-26
 
 ### Added
+- Login items can be turned off rather than only deleted, through launchd's own
+  disabled list (`launchctl disable gui/<uid>`) — no files are moved, the state
+  survives reboots, needs no admin, and System Settings shows the same thing.
+  Offered only for user-domain agents that are not Apple's.
+- A kind filter in Login Items & Extensions, so system extensions (or anything
+  else) can be hidden while reviewing.
 - Login Items & Extensions lists system extensions themselves, with the status
   their host app implies. They are never selectable: Helm cannot remove an
   extension by moving a file, so the row opens the system pane instead.
@@ -27,6 +33,11 @@ features, PATCH = fixes.
   replaced, and the About page's now-unused opener.
 
 ### Fixed
+- Keep Awake's status strip was static: the page held its view model in a plain
+  property, so SwiftUI never saw the published state change and the figures
+  froze at whatever they were when the page opened.
+- "Leftovers" filters by status rather than by what Helm can delete, so an
+  extension whose app is gone appears there too.
 - Accessibility is now listed among the permissions, and Keep Awake flags it at
   the pointer-nudge setting. macOS drops synthetic mouse events from an
   untrusted app, so that switch could be on while nothing moved, with nothing

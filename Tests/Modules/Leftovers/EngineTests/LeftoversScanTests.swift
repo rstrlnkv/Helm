@@ -25,6 +25,9 @@ private struct FakeExtensions: ExtensionsPort {
     var installed: [SystemExtensionInfo] = []
     func activeExtensionIdentifiers() -> Set<String> { ids }
     func installedExtensions() -> [SystemExtensionInfo] { installed }
+    var disabled: Set<String> = []
+    func disabledLabels() -> Set<String> { disabled }
+    func setDisabled(_ disabled: Bool, label: String) {}
 }
 
 final class LeftoversScanTests: XCTestCase {

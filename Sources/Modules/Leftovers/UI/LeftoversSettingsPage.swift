@@ -50,6 +50,19 @@ public struct LeftoversSettingsPage: View {
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 8)
             if !lvm.items.isEmpty {
+                Menu {
+                    ForEach(StaleKind.allCases, id: \.self) { kind in
+                        Toggle(LfStr.kindName(kind.rawValue), isOn: Binding(
+                            get: { !lvm.hiddenKinds.contains(kind) },
+                            set: { on in
+                                if on { lvm.hiddenKinds.remove(kind) } else { lvm.hiddenKinds.insert(kind) }
+                            }))
+                    }
+                } label: {
+                    Label(LfStr.filter, systemImage: "line.3.horizontal.decrease")
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
                 Picker("", selection: $lvm.showAll) {
                     Text(LfStr.filterLeftovers).tag(false)
                     Text(LfStr.filterAll).tag(true)
@@ -127,7 +140,14 @@ public struct LeftoversSettingsPage: View {
                     Text(item.identifier)
                         .lineLimit(1)
                         .foregroundStyle(item.removable ? .primary : .secondary)
-                    statusBadge(item.status)
+                    if item.disabled {
+                        Text(LfStr.statusDisabled)
+                            .font(.caption2)
+                            .padding(.horizontal, 5).padding(.vertical, 1)
+                            .background(Capsule().fill(Color.secondary.opacity(0.22)))
+                    } else {
+                        statusBadge(item.status)
+                    }
                     if item.runAtLoad {
                         Text(LfStr.runsAtLogin)
                             .font(.caption2)
@@ -147,6 +167,14 @@ public struct LeftoversSettingsPage: View {
                 }
             }
             Spacer()
+            if item.canToggle {
+                // Not everything here is rubbish to delete — most of it is
+                // working software the user may simply want quiet.
+                Button(item.disabled ? LfStr.enable : LfStr.disable) {
+                    Task { await lvm.setDisabled(!item.disabled, item: item) }
+                }
+                .controlSize(.small)
+            }
             if item.kind == .systemExtension {
                 // Not a file: macOS removes an extension with its app, or the
                 // user turns it off here.

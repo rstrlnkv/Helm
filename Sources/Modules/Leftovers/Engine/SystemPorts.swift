@@ -89,6 +89,31 @@ public struct ActiveExtensions: ExtensionsPort {
         SystemExtensionCLI.installed()
     }
 
+    public func disabledLabels() -> Set<String> {
+        LaunchctlDisabled.parse(run(["print-disabled", "gui/\(getuid())"]))
+    }
+
+    public func setDisabled(_ disabled: Bool, label: String) {
+        let domain = "gui/\(getuid())"
+        _ = run([disabled ? "disable" : "enable", "\(domain)/\(label)"])
+        // `disable` only stops it from loading next time; boot it out so the
+        // switch means something now. Failure is fine — it may not be running.
+        _ = run([disabled ? "bootout" : "kickstart", "\(domain)/\(label)"])
+    }
+
+    private func run(_ arguments: [String]) -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/launchctl")
+        process.arguments = arguments
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+        guard (try? process.run()) != nil else { return "" }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        return String(decoding: data, as: UTF8.self)
+    }
+
     public func activeExtensionIdentifiers() -> Set<String> {
         Set(SystemExtensionCLI.installed().map(\.identifier))
     }

@@ -18,5 +18,13 @@ final class LiveExtensionScan: XCTestCase {
         }
         // Whatever is installed, Helm must never offer to trash one.
         XCTAssertFalse(extensions.contains(where: \.removable))
+
+        let all = scanner.scan()
+        let toggleable = all.filter(\.canToggle)
+        let off = all.filter(\.disabled)
+        print("login items Helm can switch: \(toggleable.count), currently off: \(off.count)")
+        for item in off { print("  off: \(item.identifier)") }
+        // Anything switchable must have a label to switch.
+        XCTAssertFalse(toggleable.contains { $0.identifier.isEmpty })
     }
 }

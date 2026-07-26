@@ -9,12 +9,15 @@ import Module_Uninstaller_Engine
     private static let seenKey = "permissionAuditShown"
 
     static func runOnFirstLaunch() {
-        guard !AppSettings.store.bool(seenKey, default: false) else { return }
         Task {
             let access = PermissionCheck.currentFullDiskAccess()
-            let extensions = await SystemExtensionQuery.installed()
+            // Logged every launch, not only the first: "it was granted
+            // yesterday and is denied today" is the shape of the ad-hoc
+            // signing problem, and only a line per launch shows it.
             HelmLog.shared.info("permissions",
-                                "full disk access: \(access.rawValue), system extensions: \(extensions.count)")
+                                "full disk access: \(access.rawValue), "
+                                + "accessibility: \(PermissionCheck.currentAccessibility().rawValue)")
+            guard !AppSettings.store.bool(seenKey, default: false) else { return }
             AppSettings.store.set(true, for: seenKey)
             guard access == .denied else { return }
             present()
