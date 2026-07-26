@@ -4,18 +4,21 @@ import XCTest
 /// A file whose identity could not be read is unknown, and unknown must never
 /// match — the rule `DiskScanner.DeviceID.unknown` already lives by.
 ///
-/// The trap: `DuplicateScanner.inode(of:)` returns 0 when `lstat` fails, and
+/// The trap: fileID 0 is the "could not be read" sentinel, and
 /// `Duplicates.sizeGroups` collapses equal `fileID`s as "one file wearing two
-/// names". Two *different* files that both failed `lstat` therefore share
-/// fileID 0 and are collapsed into one — silently removed from the duplicate
-/// search, with no refusal and no report. Worse, the collapse is keyed on the
-/// id alone, across all sizes, so a 5 MB unknown swallows a 7 MB unknown that
-/// had a genuine 7 MB twin.
+/// names". As first shipped, two *different* files that both failed `lstat`
+/// shared fileID 0 and were collapsed into one — silently removed from the
+/// duplicate search, with no refusal and no report. Worse, the collapse was
+/// keyed on the id alone, across all sizes, so a 5 MB unknown swallowed a
+/// 7 MB unknown that had a genuine 7 MB twin. The scanner now skips files it
+/// cannot stat and stays on one device, but the logic must hold on its own:
+/// whoever feeds it a 0 must not lose a file for it.
 ///
-/// (The sibling not pinned here because a test cannot conjure a second
-/// filesystem: the id also carries no device, so two files on different
-/// volumes sharing an inode *number* collapse the same way — `DeviceIDTests`
-/// is the record of this exact family.)
+/// (The cross-volume sibling is not pinned here because a test cannot
+/// conjure a second filesystem: an id carries no device, so two files on
+/// different volumes sharing an inode *number* would collapse the same way
+/// if the walk ever left the root's volume again — `DeviceIDTests` is the
+/// record of this exact family.)
 final class DuplicateIdentityTests: XCTestCase {
 
     private func file(_ path: String, bytes: Int, id: UInt64) -> FileFacts {
