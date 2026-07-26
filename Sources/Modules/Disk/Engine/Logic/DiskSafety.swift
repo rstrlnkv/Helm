@@ -9,14 +9,17 @@ public enum DiskSafety {
         "/Volumes/Recovery", "/cores", "/opt/homebrew/Cellar",
     ]
 
+    private static let homePath = FileManager.default.homeDirectoryForCurrentUser.path
+
     public static func isRemovable(_ path: String) -> Bool {
         guard path.hasPrefix("/"), path != "/" else { return false }
         // A folded "…" bucket is an aggregate, not a real path.
         guard !path.hasSuffix("/…") else { return false }
         guard !protectedPrefixes.contains(where: { path == $0 || path.hasPrefix($0 + "/") })
         else { return false }
-        // Never the user's whole home or a volume root.
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        // Never the user's whole home or a volume root. Resolved once — this
+        // runs per row on every frame the disk list redraws.
+        let home = homePath
         guard path != home, !path.hasPrefix("/Volumes/") || path.split(separator: "/").count > 2
         else { return false }
         // Never a top-level directory of the boot volume either. The named list

@@ -49,11 +49,27 @@ public final class WorkspaceAppLister: AppLister {
                 let name = (dict?["CFBundleDisplayName"] as? String)
                     ?? (dict?["CFBundleName"] as? String)
                     ?? app.deletingPathExtension().lastPathComponent
+                // Size 0: `appSizes()` fills these in afterwards, so the list
+                // appears at once instead of after a walk of every bundle.
                 out.append(InstalledApp(name: name, bundleID: bundleID,
-                                        path: app.path, sizeBytes: fs.size(app)))
+                                        path: app.path, sizeBytes: 0))
             }
         }
         return out.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    /// Measured in parallel: the walks are independent, and one slow bundle
+    /// (Xcode, 3.2 s here) otherwise holds up the other thirty-eight.
+    public func appSizes(_ apps: [InstalledApp]) -> [String: Int] {
+        let fs = self.fs
+        var sizes: [String: Int] = [:]
+        let lock = NSLock()
+        DispatchQueue.concurrentPerform(iterations: apps.count) { index in
+            let app = apps[index]
+            let size = fs.size(URL(fileURLWithPath: app.path))
+            lock.lock(); sizes[app.bundleID] = size; lock.unlock()
+        }
+        return sizes
     }
 }
 

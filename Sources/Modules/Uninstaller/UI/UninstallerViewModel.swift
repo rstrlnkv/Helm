@@ -20,6 +20,12 @@ import Module_Uninstaller_Engine
         return apps
     }
 
+    /// Sizes arrive after the list: measuring a bundle walks every file inside
+    /// it, and the names are what the user is looking at first.
+    public func appSizes() async -> [String: Int] {
+        await client.request("appSizes") ?? [:]
+    }
+
     public func scan(_ app: InstalledApp) async -> ScanResult? {
         await client.request("scan", encoding: ScanReq(bundleID: app.bundleID, appPath: app.path, appName: app.name))
     }

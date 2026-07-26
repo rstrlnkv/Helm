@@ -20,6 +20,7 @@ private struct FakeApps: AppLister {
     func isKnownToSystem(bundleID: String) -> Bool { known.contains(bundleID) }
     var apps: [InstalledApp] = []
     func installedApps() -> [InstalledApp] { apps }
+    func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
 }
 private final class FakeTrash: TrashPort, @unchecked Sendable {
     var trashed: [String] = []

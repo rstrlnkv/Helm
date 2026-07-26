@@ -33,6 +33,7 @@ private struct AnyFS: FileSystemPort {
 }
 private struct NoLister: AppLister {
     func installedApps() -> [InstalledApp] { [] }
+    func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
     func installedBundleIDs() -> Set<String> { [] }
     func isKnownToSystem(bundleID: String) -> Bool { false }
 }

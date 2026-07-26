@@ -12,17 +12,11 @@ import Security
 /// this file — the rest of the engine target stays free of any shell dependency
 /// so the core logic (Ports.swift, VPNEngine, etc.) can be unit-tested with
 /// fakes instead.
+/// Kept as a name; the body is `HelmProcess`, which every module shares.
 enum Shell {
-    struct Result { let status: Int32; let output: String }
-
     @discardableResult
-    static func run(_ path: String, _ args: [String]) -> Result {
-        let p = Process(); p.executableURL = URL(fileURLWithPath: path); p.arguments = args
-        let pipe = Pipe(); p.standardOutput = pipe; p.standardError = Pipe()
-        do { try p.run() } catch { return Result(status: -1, output: "") }
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        p.waitUntilExit()
-        return Result(status: p.terminationStatus, output: String(data: data, encoding: .utf8) ?? "")
+    static func run(_ path: String, _ args: [String]) -> HelmProcess.Result {
+        HelmProcess.run(path, args)
     }
 }
 

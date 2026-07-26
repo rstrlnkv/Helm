@@ -52,13 +52,34 @@ public enum HelmBytes {
     /// The separator follows Helm's own language, not the system locale: the
     /// app lets the user pick a language, and "1.5 ГБ" would be neither.
     private static func number(_ value: Double, decimals: Int, language: String) -> String {
-        let formatter = NumberFormatter()
-        formatter.locale = Locale(identifier: language)
-        formatter.numberStyle = .decimal
-        formatter.usesGroupingSeparator = false
-        formatter.minimumFractionDigits = 0      // 1,50 GB reads as noise
-        formatter.maximumFractionDigits = decimals
+        let formatter = formatters.formatter(language: language, decimals: decimals)
         return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.0f", value)
+    }
+
+    /// Built once per language-and-precision pair. Constructing a
+    /// `NumberFormatter` costs about fourteen microseconds, which was almost
+    /// all of what it cost to render a file size — and a list renders two
+    /// hundred of them on every frame the pointer moves over it.
+    private static let formatters = FormatterCache()
+
+    private final class FormatterCache: @unchecked Sendable {
+        private let lock = NSLock()
+        private var cache: [String: NumberFormatter] = [:]
+
+        func formatter(language: String, decimals: Int) -> NumberFormatter {
+            let key = "\(language)#\(decimals)"
+            lock.lock()
+            defer { lock.unlock() }
+            if let existing = cache[key] { return existing }
+            let formatter = NumberFormatter()
+            formatter.locale = Locale(identifier: language)
+            formatter.numberStyle = .decimal
+            formatter.usesGroupingSeparator = false
+            formatter.minimumFractionDigits = 0      // 1,50 GB reads as noise
+            formatter.maximumFractionDigits = decimals
+            cache[key] = formatter
+            return formatter
+        }
     }
 
     /// Longest suffixes first so "bytes" is matched before "byte".

@@ -61,15 +61,18 @@ import Module_Disk_Engine
         // The VM owns the event loop, not the page: partial snapshots keep
         // building the tree even while the user is on another module.
         eventsTask = Task { [weak self] in await self?.observeEvents() }
-        restoreLastScan()
+        Task { [weak self] in await self?.restoreLastScan() }
     }
 
     /// A whole disk takes a minute to measure. Reopening Helm should not spend
     /// it again: the last tree is read back from disk and shown at once, with
     /// its age on the toolbar so nobody mistakes it for a fresh measurement.
-    private func restoreLastScan() {
-        guard let cached = store.load(),
+    private func restoreLastScan() async {
+        guard let cached = await store.loadDetached(),
               Date().timeIntervalSince(cached.savedAt) <= Self.cacheLifetime else { return }
+        // A scan may have started while the file was being read; the fresh one
+        // wins.
+        guard phase == .start else { return }
         result = cached.result
         completedAt = cached.savedAt
         restored = true
@@ -123,7 +126,7 @@ import Module_Disk_Engine
         }
         result = scan
         completedAt = Date()
-        store.save(scan, at: Date())
+        store.saveDetached(scan, at: Date())
         // The user may have drilled into a partial tree; find the same spot in
         // the final one instead of yanking them back to the root.
         focusPath = DiskFocus.resolve(paths: focusPath.map(\.path), in: scan.root)
@@ -226,7 +229,7 @@ import Module_Disk_Engine
                                          || advice.path.hasPrefix($0 + "/") }
                                  })
         result = updated
-        store.save(updated, at: completedAt ?? Date())
+        store.saveDetached(updated, at: completedAt ?? Date())
         focusPath = DiskFocus.resolve(paths: focusPath.map(\.path), in: pruned)
         recomputeSegments()
     }
