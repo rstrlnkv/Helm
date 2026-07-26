@@ -29,6 +29,7 @@ import HelmUI
     }
 
     func bootstrap() {
+        ObsoleteDefaults.purge(from: UserDefaults.standard)
         for d in ModuleRegistry.all where isEnabled(d) { enable(d) }
     }
 

@@ -1,3 +1,4 @@
+import HelmRuntime
 import HelmUI
 
 /// Localized strings for the app shell (settings window chrome).
@@ -23,9 +24,22 @@ enum AppStr {
     static var later: String { L("Later", [.ru: "Позже", .es: "Más tarde", .fr: "Plus tard", .de: "Später", .ja: "後で", .zh: "稍后", .pt: "Depois"]) }
     static var permissions: String { L("Permissions", [.ru: "Разрешения", .es: "Permisos", .fr: "Autorisations", .de: "Berechtigungen", .ja: "アクセス権", .zh: "权限", .pt: "Permissões"]) }
     static var fullDiskAccess: String { L("Full Disk Access", [.ru: "Полный доступ к диску", .es: "Acceso a disco completo", .fr: "Accès complet au disque", .de: "Vollständiger Festplattenzugriff", .ja: "フルディスクアクセス", .zh: "完全磁盘访问", .pt: "Acesso Total ao Disco"]) }
-    static var fullDiskAccessWhy: String { L("Needed to remove app containers when uninstalling. Without it those files stay behind.", [.ru: "Нужен, чтобы удалять контейнеры приложений. Без него эти файлы остаются на диске.", .es: "Necesario para eliminar los contenedores de apps al desinstalar. Sin él esos archivos permanecen.", .fr: "Nécessaire pour supprimer les conteneurs d’apps lors de la désinstallation. Sans lui, ces fichiers restent.", .de: "Nötig, um App-Container beim Deinstallieren zu entfernen. Ohne ihn bleiben diese Dateien zurück.", .ja: "アンインストール時にアプリのコンテナを削除するために必要です。ないと残ります。", .zh: "卸载时删除应用容器所需。没有它这些文件会残留。", .pt: "Necessário para remover contêineres de apps ao desinstalar. Sem ele, esses arquivos permanecem."]) }
+    static var fullDiskAccessWhy: String { L("Needed to remove app containers and to read every folder when scanning the disk.", [.ru: "Нужен, чтобы удалять контейнеры программ и видеть все папки при сканировании диска.", .es: "Necesario para eliminar contenedores de apps y leer todas las carpetas al escanear el disco.", .fr: "Nécessaire pour supprimer les conteneurs d’apps et lire tous les dossiers lors de l’analyse du disque.", .de: "Nötig, um App-Container zu entfernen und beim Scannen alle Ordner zu lesen.", .ja: "アプリのコンテナ削除と、ディスクスキャン時に全フォルダを読むために必要です。", .zh: "用于删除应用容器，以及扫描磁盘时读取所有文件夹。", .pt: "Necessário para remover contêineres de apps e ler todas as pastas ao escanear o disco."]) }
     static var fullDiskAccessAdHoc: String { L("Access is tied to one exact copy of Helm, so grant it again after every update: remove Helm with “−”, then add it with “+”.", [.ru: "Доступ привязан к конкретной копии Helm, поэтому после каждого обновления выдайте его заново: удалите Helm кнопкой «−» и добавьте кнопкой «+».", .es: "El acceso se vincula a una copia exacta de Helm: concédelo de nuevo tras cada actualización — quita Helm con «−» y añádelo con «+».", .fr: "L’accès est lié à une copie précise de Helm : accordez-le de nouveau après chaque mise à jour — retirez Helm avec « − », puis ajoutez-le avec « + ».", .de: "Der Zugriff gilt für genau eine Kopie von Helm: nach jedem Update neu erteilen — Helm mit „−“ entfernen, mit „+“ hinzufügen.", .ja: "アクセス権は Helm の特定のコピーに紐づきます。更新のたびに再設定してください：「−」で削除し「+」で追加。", .zh: "权限绑定到 Helm 的具体副本，每次更新后需重新授予：用「−」移除，再用「+」添加。", .pt: "O acesso é vinculado a uma cópia exata do Helm: conceda de novo após cada atualização — remova com “−” e adicione com “+”."]) }
     static var grant: String { L("Grant…", [.ru: "Выдать…", .es: "Conceder…", .fr: "Accorder…", .de: "Erteilen…", .ja: "許可…", .zh: "授予…", .pt: "Conceder…"]) }
+    /// The localized face of `PermissionNeed`; the runtime carries English.
+    static func permissionTitle(_ need: PermissionNeed) -> String {
+        switch need {
+        case .fullDiskAccess: return fullDiskAccess
+        case .accessibility: return accessibility
+        }
+    }
+    static func permissionWhy(_ need: PermissionNeed) -> String {
+        switch need {
+        case .fullDiskAccess: return fullDiskAccessWhy
+        case .accessibility: return accessibilityWhy
+        }
+    }
     static var accessibility: String { L("Accessibility", [.ru: "Универсальный доступ", .es: "Accesibilidad", .fr: "Accessibilité", .de: "Bedienungshilfen", .ja: "アクセシビリティ", .zh: "辅助功能", .pt: "Acessibilidade"]) }
     static var accessibilityWhy: String { L("Needed for Keep Awake to nudge the pointer. Without it that setting does nothing.", [.ru: "Нужен, чтобы «Не спать» двигал указатель. Без него эта настройка не работает.", .es: "Necesario para que Mantener activo mueva el puntero. Sin él ese ajuste no hace nada.", .fr: "Nécessaire pour que Rester éveillé bouge le pointeur. Sans lui, ce réglage ne fait rien.", .de: "Nötig, damit Wachhalten den Zeiger bewegt. Ohne die Freigabe bleibt die Einstellung wirkungslos.", .ja: "「スリープ防止」がポインタを動かすために必要です。許可がないとこの設定は機能しません。", .zh: "「保持唤醒」移动指针需要此权限。未授予时该设置不起作用。", .pt: "Necessário para o Manter acordado mover o ponteiro. Sem ele, esse ajuste não faz nada."]) }
     static var systemExtensionsTitle: String { L("System extensions", [.ru: "Системные расширения", .es: "Extensiones del sistema", .fr: "Extensions système", .de: "Systemerweiterungen", .ja: "システム機能拡張", .zh: "系统扩展", .pt: "Extensões do sistema"]) }
