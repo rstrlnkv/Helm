@@ -18,6 +18,7 @@ public struct LayoutSettingsPage: View {
     @State private var indicator: Bool
     @State private var badgeStyle: BadgeStyle
     @State private var badgeSize: MenuBarIconSize
+    @State private var tapKey: TapKey
     @State private var showingIntro = false
     @StateObject private var convertKey: HelmHotkeyRecorder
     @StateObject private var undoKey: HelmHotkeyRecorder
@@ -37,6 +38,7 @@ public struct LayoutSettingsPage: View {
             BadgeStyle.from(store.string("badgeStyle", default: BadgeStyle.default.rawValue)))
         _badgeSize = State(initialValue:
             MenuBarIconSize(rawValue: store.string("badgeSize", default: "small")) ?? .small)
+        _tapKey = State(initialValue: TapKey.from(store.string("tapKey", default: TapKey.off.rawValue)))
         _convertKey = StateObject(wrappedValue:
             HelmHotkeyRecorder(store: store, prefix: "convertHotkey"))
         _undoKey = StateObject(wrappedValue:
@@ -55,10 +57,7 @@ public struct LayoutSettingsPage: View {
             appsSection
         }
         .formStyle(.grouped)
-        // A grouped Form caps its content at 704 pt and centres it; capping it
-        // keeps the system on its constant-20 branch, matching the page header.
-        .frame(maxWidth: 744, alignment: .leading)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .helmSettingsColumn()
         .helmOnAppActive { accessibility = PermissionCheck.currentAccessibility() }
         .task {
             accessibility = PermissionCheck.currentAccessibility()
@@ -151,6 +150,15 @@ public struct LayoutSettingsPage: View {
 
     private var shortcutsSection: some View {
         Section(LyStr.shortcuts) {
+            Picker(LyStr.tapKey, selection: $tapKey) {
+                ForEach(TapKey.allCases, id: \.self) { key in
+                    Text(LyStr.tapKeyName(key)).tag(key)
+                }
+            }
+            .onChange(of: tapKey) { _, value in write(value.rawValue, "tapKey") }
+            Text(LyStr.tapKeyHint)
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             // Both are explicit requests, for the two cases the automatic rules
             // cannot cover: a word they declined, and a word they should have.
             HelmHotkeyRow(LyStr.convertAction, recorder: convertKey,
