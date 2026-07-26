@@ -14,6 +14,7 @@ import Module_Layout_Engine
     private var item: NSStatusItem?
     private let store: NamespacedStore
     private var observer: NSObjectProtocol?
+    private var themeObserver: NSObjectProtocol?
 
     init(store: NamespacedStore) {
         self.store = store
@@ -40,11 +41,22 @@ import Module_Layout_Engine
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.redraw() }
         }
+        // The outline is one colour in dark and another in light, and the
+        // image caches its rendering: without this the flag keeps the outline
+        // of the theme it was drawn in until the next layout switch.
+        themeObserver = DistributedNotificationCenter.default().addObserver(
+            forName: NSNotification.Name("AppleInterfaceThemeChangedNotification"),
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.redraw() }
+        }
     }
 
     private func teardown() {
         if let observer { DistributedNotificationCenter.default().removeObserver(observer) }
+        if let themeObserver { DistributedNotificationCenter.default().removeObserver(themeObserver) }
         observer = nil
+        themeObserver = nil
         if let item { NSStatusBar.system.removeStatusItem(item) }
         item = nil
     }
@@ -55,7 +67,7 @@ import Module_Layout_Engine
         let size = MenuBarIconSize(rawValue: store.string("badgeSize", default: "small")) ?? .small
         let source = InputSourceInfo.current()
         button.image = BadgeImage.make(label: source.badge, flag: source.emojiFlag,
-                                       stripes: source.stripes, style: style,
+                                       art: source.art, style: style,
                                        points: size.points)
         button.image?.isTemplate = (style == .plain)
         button.toolTip = source.name

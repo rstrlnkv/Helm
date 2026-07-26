@@ -38,27 +38,11 @@ final class LanguageBadgeShapeTests: XCTestCase {
         XCTAssertEqual(LanguageBadge.label(language: "ru", region: nil), "РУ")
     }
 
-    /// The stripes are handed to a six-hex-digit parser that reports nothing on
-    /// a value it cannot read — it just fills black. A typo in the table would
-    /// ship as a black band on somebody's flag, and no test would notice.
-    func testEveryDrawnFlagIsMadeOfReadableColours() {
-        for region in ["RU", "DE", "FR", "IT", "NL", "UA", "PL", "AT", "ES", "BE", "IE", "SE"] {
-            guard let stripes = LanguageBadge.stripes(region: region) else {
-                return XCTFail("\(region) left the table")
-            }
-            XCTAssertTrue((2...3).contains(stripes.colors.count), region)
-            for hex in stripes.colors {
-                XCTAssertEqual(hex.count, 6, "\(region): \"\(hex)\" is not six hex digits")
-                XCTAssertTrue(hex.allSatisfy { $0.isHexDigit }, "\(region): \"\(hex)\"")
-            }
-        }
-    }
-
     /// The two flag styles are offered for the same layout, so a country that
     /// can be drawn must also be one that can be spelled with regional
     /// indicators — otherwise one style shows a flag and the other letters.
     func testADrawnFlagAlwaysHasAnEmojiToo() {
-        for region in ["RU", "DE", "FR", "IT", "NL", "UA", "PL", "AT", "ES", "BE", "IE", "SE"] {
+        for region in FlagArt.drawnRegions {
             XCTAssertNotNil(LanguageBadge.emojiFlag(region: region), region)
         }
     }

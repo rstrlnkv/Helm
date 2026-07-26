@@ -13,9 +13,15 @@ features, PATCH = fixes.
   letters outlined, an emoji flag or a drawn one, at the same sizes the app icon
   uses, and a menu that lists the installed layouts. Off by default, because
   macOS still shows its own. A flag appears only where the input source itself
-  names a region — a language is not a country — and drawn flags come from a
-  short table of plain-band flags, with letters as the answer for everything
-  else.
+  names a region — a language is not a country.
+- Twenty-seven drawn flags, laid out in device pixels rather than points, so no
+  band edge lands mid-pixel. The model carries each flag's construction (bands
+  with proportions, Nordic cross, Swiss cross, disc, hoist triangle) rather than
+  a list of colours, and three rules decide membership: nothing invented or
+  dropped, no two flags alike, and no feature under two device pixels at the
+  smallest size. Between them those send the US and GB layouts to letters —
+  which is what macOS shows for them too. Letters now sit in the same rounded
+  frame the flags use, and Settings previews every installed layout.
 - An optional sound when a word is fixed, and a "never this word" button beside
   the last change.
 - **Layout** — a seventh module. It notices a word typed in the wrong keyboard
@@ -34,6 +40,16 @@ features, PATCH = fixes.
   translation goes through `UCKeyTranslate` against the layouts actually
   installed; and Helm's own events carry a marker and are dropped on the way in,
   or the tap reads its replacement back as typing forever.
+
+### Changed
+- The slower update channel is Beta, not Stable: Helm is before 1.0 and nothing
+  shipped has earned the word. The About page carries a BETA badge for the same
+  reason, and a stored `"stable"` preference reads as beta rather than resetting.
+- Wording pass across the keyboard module after a localization review: the
+  triggers say which key they mean, the badge styles describe the badge rather
+  than the letters, the state metric answers on one scale in all eight languages
+  (it read "yes" in three of them), and the shortcut button says Set rather than
+  Record, which means audio recording in four.
 
 ### Fixed
 - After an update, Helm checks every permission its enabled modules declare
