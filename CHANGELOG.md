@@ -8,6 +8,22 @@ features, PATCH = fixes.
 ## [0.7.1] — 2026-07-26
 
 ### Added
+- **Layout** — a seventh module. It notices a word typed in the wrong keyboard
+  layout, rewrites it and moves the input source with it, and it can be undone.
+  A word is only converted when it is not a word as typed **and** is one once
+  swapped; a word that is valid as typed is never touched. Terminals and
+  password managers are refused before the dictionary is consulted, secure input
+  suspends it, and nothing typed reaches the log or the disk. Needs
+  Accessibility, and says so where it is switched on rather than appearing to
+  work.
+
+  Four methods studied from open-source implementations (no code taken), each in
+  one place: the tap is listen-only so it can neither delay nor swallow a
+  keystroke; replacement is synthesised Unicode rather than the clipboard, which
+  fails in Electron and VS Code and destroys what the user had copied;
+  translation goes through `UCKeyTranslate` against the layouts actually
+  installed; and Helm's own events carry a marker and are dropped on the way in,
+  or the tap reads its replacement back as typing forever.
 - **A duplicate finder inside Disk** — the second look. It walks the folder the
   ring is focused on, nominates candidates by size (1 MB floor), thins them
   with a 128 KB prefix hash and confirms with a full SHA-256, so distinct
@@ -23,7 +39,7 @@ features, PATCH = fixes.
   progress is throttled to 0.35 s the way the disk scan's partials are.
 - The keyboard module can put its own input-source indicator in the menu bar,
   with the choices the system's one does not offer: letters, letters filled,
-  letters outlined, an emoji flag or a drawn one, at the same sizes the app icon
+  letters outlined, or a flag, at the same sizes the app icon
   uses, and a menu that lists the installed layouts. Off by default, because
   macOS still shows its own. A flag appears only where the input source itself
   names a region — a language is not a country.
@@ -41,24 +57,16 @@ features, PATCH = fixes.
   copies SwiftPM resource bundles into the app and fails loudly if there are
   none: without them `Bundle.module` finds nothing and every flag would
   quietly become letters.
+- **One key for both fixes.** Right ⌘, ⌥, ⌃ or ⇧, pressed and released on its
+  own: the first tap fixes the last word, the next puts it back. Two shortcuts
+  for "fix this" and "no, put it back" are two things to remember for one
+  thought. The key keeps working as a modifier — a tap only counts when nothing
+  else happened with it, so ⌘S is still ⌘S, holding it is not a tap, and a
+  second modifier before or after cancels it. Only right-hand keys are offered,
+  so the twin on the other side is untouched whatever you bind. Off by default;
+  the two separate shortcuts are still there for anyone who prefers them.
 - An optional sound when a word is fixed, and a "never this word" button beside
   the last change.
-- **Layout** — a seventh module. It notices a word typed in the wrong keyboard
-  layout, rewrites it and moves the input source with it, and it can be undone.
-  A word is only converted when it is not a word as typed **and** is one once
-  swapped; a word that is valid as typed is never touched. Terminals and
-  password managers are refused before the dictionary is consulted, secure input
-  suspends it, and nothing typed reaches the log or the disk. Needs
-  Accessibility, and says so where it is switched on rather than appearing to
-  work.
-
-  Four methods studied from open-source implementations (no code taken), each in
-  one place: the tap is listen-only so it can neither delay nor swallow a
-  keystroke; replacement is synthesised Unicode rather than the clipboard, which
-  fails in Electron and VS Code and destroys what the user had copied;
-  translation goes through `UCKeyTranslate` against the layouts actually
-  installed; and Helm's own events carry a marker and are dropped on the way in,
-  or the tap reads its replacement back as typing forever.
 
 ### Changed
 - The slower update channel is Beta, not Stable: Helm is before 1.0 and nothing
