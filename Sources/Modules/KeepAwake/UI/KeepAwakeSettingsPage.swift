@@ -57,14 +57,6 @@ public struct KeepAwakeSettingsPage: View {
 
     public var body: some View {
         keepAwakeForm
-            .helmMetricsHeader {
-                HelmMetricStrip([
-                    .init(vm.isActive ? KAStr.metricOn : KAStr.metricOff, KAStr.metricState,
-                          tint: vm.isActive ? .green : nil),
-                    .init(remainingText, KAStr.metricTimer, tint: vm.endDate != nil ? .orange : nil),
-                    .init("\(vm.activeConditions.count)", KAStr.metricRules),
-                ])
-            }
     }
 
     /// mm:ss left on the timer, or an em dash when no timer is running.
@@ -76,6 +68,15 @@ public struct KeepAwakeSettingsPage: View {
 
     private var keepAwakeForm: some View {
         Form {
+            Section {
+                HelmMetricStrip([
+                    .init(vm.isActive ? KAStr.metricOn : KAStr.metricOff, KAStr.metricState,
+                          tint: vm.isActive ? .green : nil),
+                    .init(remainingText, KAStr.metricTimer, tint: vm.endDate != nil ? .orange : nil),
+                    .init("\(vm.activeConditions.count)", KAStr.metricRules),
+                ])
+            }
+
             Section(KAStr.automation) {
                 Toggle(KAStr.withExternalDisplay, isOn: $autoExternalDisplay)
                     .onChange(of: autoExternalDisplay) { _, v in write(v, "autoExternalDisplay") }

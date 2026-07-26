@@ -539,37 +539,12 @@ private struct AboutHelmView: View {
     // MARK: - Instrument row
 
     private var instrumentRow: some View {
-        HStack(spacing: 0) {
-            instrument(shortVersion, AppStr.metricVersion)
-            instrumentDivider
-            instrument(buildNumber, AppStr.metricBuild)
-            instrumentDivider
-            instrument("\(moduleCount)", AppStr.metricModules)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.primary.opacity(0.05))
-        )
-    }
-
-    private func instrument(_ value: String, _ label: String) -> some View {
-        VStack(spacing: 3) {
-            Text(value)
-                .font(.system(size: 16, weight: .medium, design: .monospaced))
-            Text(label)
-                .font(.system(size: 9, weight: .semibold))
-                .tracking(0.7)
-                .foregroundStyle(.tertiary)
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    private var instrumentDivider: some View {
-        Rectangle()
-            .fill(Color.primary.opacity(0.10))
-            .frame(width: 1, height: 26)
+        HelmMetricStrip([
+            .init(shortVersion, AppStr.metricVersion),
+            .init(buildNumber, AppStr.metricBuild),
+            .init("\(moduleCount)", AppStr.metricModules),
+        ])
+        .helmCard(padding: 12)
     }
 
     // MARK: - Update card
@@ -602,14 +577,7 @@ private struct AboutHelmView: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
         }
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.primary.opacity(0.05))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.08))
-        )
+        .helmCard(padding: 0)
     }
 
     @ViewBuilder
