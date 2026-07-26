@@ -8,6 +8,34 @@ features, PATCH = fixes.
 ## [0.7.1] — 2026-07-26
 
 ### Fixed
+- Opening App Uninstaller took 4.0 s warm and 9.4 s cold, on every visit,
+  because listing apps measured each bundle — a full walk per app, 3.2 s for
+  Xcode alone. Listing without sizes is 10 ms; the sizes arrive behind the list,
+  measured concurrently. `ScanResult.appSizeBytes` walked every bundle a second
+  time at a median 49 ms each and was never read by anything.
+- Five `Process` wrappers become one. `waitUntilExit()` polls a run loop in
+  50 ms steps, so every shell call paid about 67 ms whether or not the child had
+  finished — 70.6 ms for `/usr/bin/true` against 1.3 ms for a bare spawn. Two of
+  the five also waited before reading the pipe, which deadlocks on any output
+  past the buffer.
+- The leftovers scan launched `systemextensionsctl` twice and parsed the same
+  output twice: ~313 ms → ~110 ms.
+- The disk cache is 7 MB and 42 000 nodes — 95 ms to decode, 81 ms to encode,
+  both on the main actor. Both are detached now.
+- `AppLanguage.current` read CFPreferences on every call and every string
+  property is computed, so hovering a 200-row list hit it hundreds of times per
+  frame; `HelmBytes` built a fresh `NumberFormatter` per size (14 µs of 16);
+  `DiskSafety` asked for the home directory once per row per frame.
+- A grouped `Form` caps its content at 704 pt and centres it, so above a 994 pt
+  window its leading edge walked away from everything Helm draws itself — 36 pt
+  at 1070, 181 pt at 1360 — while switching to a list screen shifted the content
+  103 pt sideways. The forms are capped so the system stays on its constant-20
+  branch, and the page header matches it.
+- The "What's New" badge had a fixed width that wrapped half the languages onto
+  a second line; the metric strip's captions measured 1.87:1 and a tinted figure
+  2.03:1 in light appearance; Homebrew's bottom bar was 11 pt shorter than the
+  two screens beside it; two of three empty states drew a bare glyph instead of
+  `HelmIconPlate`; Homebrew marked 46 of 47 rows "formula".
 - `DiskSafety` allowed every top-level directory of the boot volume, so a scan
   of `/` put `/Users` one click from the Trash. Nothing at the root of a volume
   is a file anyone means to delete; its contents still are.
