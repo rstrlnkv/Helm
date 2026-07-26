@@ -177,6 +177,30 @@ Nothing typed is written down: no key content in the log, no buffer on disk, and
 the buffer is cleared when secure input turns on. The log records that a
 conversion happened and in which app (redacted), never what was converted.
 
+## Running applications — read before touching
+
+`NSWorkspace.runningApplications` is main-thread-only, and reading it anywhere
+else does not return stale data — it crashes the process. AppKit keeps the list
+in a mutable array behind `NSWorkspaceApplicationKVOHelper`; `-applications`
+copies that array under a lock while the main thread mutates it as programs
+launch and quit. The VPN engine read it from its own serial queue for four
+releases and took the whole app down the moment the two overlapped:
+
+```
+Thread 0  -[NSWorkspaceApplicationKVOHelper removeApplication:]   ← mutating
+Thread 9  -[NSWorkspaceApplicationKVOHelper applications]         ← copying
+          __NSArrayM_copy → _cow_copy → EXC_BAD_ACCESS at 0x0
+```
+
+So nothing reads it directly. `RunningApps` (HelmRuntime) refreshes on the main
+thread — from the KVO callback and the workspace notifications, which arrive
+there already — and every other thread reads the snapshot. `refresh()` off the
+main thread refuses rather than asserting its way to the same crash.
+
+There is no safe way to offer "the live list, right now, from a background
+queue", so `RunningApps` does not offer one. A caller off the main thread wants
+a set of bundle identifiers as of a moment ago, which is what it gets.
+
 ## Removal scope
 
 A view model builds the plan; a view model is not allowed to be the last word on
