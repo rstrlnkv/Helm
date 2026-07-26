@@ -11,6 +11,7 @@ public struct KeepAwakeSettingsPage: View {
     private let vm: ModuleViewModel
     private let store: NamespacedStore
 
+    @State private var accessibility: PermissionState = .granted
     @State private var autoExternalDisplay: Bool
     @State private var autoPower: Bool
     @State private var autoApps: [String]
@@ -57,6 +58,7 @@ public struct KeepAwakeSettingsPage: View {
 
     public var body: some View {
         keepAwakeForm
+            .task { accessibility = PermissionCheck.currentAccessibility() }
     }
 
     /// mm:ss left on the timer, or an em dash when no timer is running.
@@ -82,6 +84,15 @@ public struct KeepAwakeSettingsPage: View {
                     .onChange(of: autoExternalDisplay) { _, v in write(v, "autoExternalDisplay") }
                 Toggle(KAStr.whileOnPower, isOn: $autoPower)
                     .onChange(of: autoPower) { _, v in write(v, "autoPower") }
+                Toggle(KAStr.keepAwakeLidClosed, isOn: $clamshellEnabled)
+                    .onChange(of: clamshellEnabled) { _, v in write(v, "clamshellEnabled") }
+                Text(KAStr.adminNote)
+                    .font(.caption).foregroundStyle(.secondary)
+                Toggle(KAStr.turnOffLowBattery, isOn: $batteryGuardEnabled)
+                    .onChange(of: batteryGuardEnabled) { _, v in write(v, "batteryGuardEnabled") }
+                Stepper(KAStr.belowPercent(batteryGuardPercent), value: $batteryGuardPercent, in: 5...50, step: 5)
+                    .disabled(!batteryGuardEnabled)
+                    .onChange(of: batteryGuardPercent) { _, v in write(v, "batteryGuardPercent") }
             }
 
             Section(KAStr.appsSection) {
@@ -105,6 +116,20 @@ public struct KeepAwakeSettingsPage: View {
                             .onChange(of: jiggleEnabled) { _, v in write(v, "jiggleEnabled") }
                     }
                 }
+                // macOS drops synthetic mouse events from an untrusted app, so
+                // without this grant the switch above is on and nothing moves.
+                // Say so where the switch is, not only in the app's settings.
+                if jiggleEnabled, accessibility == .denied {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.circle.fill")
+                            .foregroundStyle(.orange)
+                        Text(KAStr.pointerNeedsAccessibility)
+                            .font(.caption).foregroundStyle(Color.primary.opacity(0.7))
+                        Spacer()
+                        Button(KAStr.grantAccess) { PermissionCheck.openAccessibilitySettings() }
+                            .controlSize(.small)
+                    }
+                }
                 Picker(KAStr.defaultDuration, selection: $defaultDurationMinutes) {
                     Text(KAStr.min15).tag(15)
                     Text(KAStr.oneHour).tag(60)
@@ -112,43 +137,6 @@ public struct KeepAwakeSettingsPage: View {
                     Text(KAStr.indefinite).tag(0)
                 }
                 .onChange(of: defaultDurationMinutes) { _, v in write(v, "defaultDurationMinutes") }
-            }
-
-            Section(KAStr.globalShortcut) {
-                HStack(spacing: 10) {
-                    Text(KAStr.toggleAction)
-                    Spacer()
-                    if recorder.recording {
-                        Text(KAStr.pressKeys).foregroundStyle(.secondary)
-                    } else if !recorder.label.isEmpty {
-                        Text(recorder.label).font(.body.monospaced())
-                    } else {
-                        Text(KAStr.none).foregroundStyle(.secondary)
-                    }
-                    Button(recorder.recording ? KAStr.cancel : KAStr.record) {
-                        recorder.recording ? recorder.stop() : recorder.startRecording()
-                    }
-                    .controlSize(.small)
-                    if !recorder.label.isEmpty && !recorder.recording {
-                        Button(KAStr.clear) { recorder.clear() }
-                            .controlSize(.small)
-                    }
-                }
-            }
-
-            Section(KAStr.closedLid) {
-                Toggle(KAStr.keepAwakeLidClosed, isOn: $clamshellEnabled)
-                    .onChange(of: clamshellEnabled) { _, v in write(v, "clamshellEnabled") }
-                Text(KAStr.adminNote)
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-
-            Section(KAStr.battery) {
-                Toggle(KAStr.turnOffLowBattery, isOn: $batteryGuardEnabled)
-                    .onChange(of: batteryGuardEnabled) { _, v in write(v, "batteryGuardEnabled") }
-                Stepper(KAStr.belowPercent(batteryGuardPercent), value: $batteryGuardPercent, in: 5...50, step: 5)
-                    .disabled(!batteryGuardEnabled)
-                    .onChange(of: batteryGuardPercent) { _, v in write(v, "batteryGuardPercent") }
             }
 
             Section(KAStr.menuBarIcon) {
@@ -173,6 +161,27 @@ public struct KeepAwakeSettingsPage: View {
                 LabeledContent(KAStr.timerColor) { timerColorSwatches }
             }
 
+            Section(KAStr.globalShortcut) {
+                HStack(spacing: 10) {
+                    Text(KAStr.toggleAction)
+                    Spacer()
+                    if recorder.recording {
+                        Text(KAStr.pressKeys).foregroundStyle(.secondary)
+                    } else if !recorder.label.isEmpty {
+                        Text(recorder.label).font(.body.monospaced())
+                    } else {
+                        Text(KAStr.none).foregroundStyle(.secondary)
+                    }
+                    Button(recorder.recording ? KAStr.cancel : KAStr.record) {
+                        recorder.recording ? recorder.stop() : recorder.startRecording()
+                    }
+                    .controlSize(.small)
+                    if !recorder.label.isEmpty && !recorder.recording {
+                        Button(KAStr.clear) { recorder.clear() }
+                            .controlSize(.small)
+                    }
+                }
+            }
         }
         .formStyle(.grouped)
         // The panel's ⋯ block writes the same keys; without this the page shows

@@ -277,6 +277,7 @@ private struct MenuBarSettingsView: View {
     @State private var orderedModules: [String] = ModuleHost.shared.orderedModuleIDs
     @State private var dragging: String?
     @State private var diskAccess: PermissionState = .denied
+    @State private var accessibility: PermissionState = .granted
     private let adHocBuild = PermissionCheck.isAdHocSigned()
     @State private var extensions: [SystemExtensionInfo] = []
     @State private var loggingOn = LogPolicy.isEnabled(
@@ -381,6 +382,26 @@ private struct MenuBarSettingsView: View {
                     }
                 }
             }
+            Section(AppStr.menuBar) {
+                LabeledContent(AppStr.iconShape) {
+                    IconShapePicker(selection: $style)
+                        .onChange(of: style) { _, v in AppSettings.menuBarIconStyle = v }
+                }
+                LabeledContent(AppStr.iconSize) {
+                    IconSizePicker(selection: $size, style: currentStyle)
+                        .onChange(of: size) { _, v in AppSettings.menuBarIconSize = v }
+                }
+                Text(AppStr.menuBarNote)
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section(AppStr.panel) {
+                Toggle(AppStr.showSettingsButton, isOn: $showSettingsButton)
+                    .onChange(of: showSettingsButton) { _, v in AppSettings.showSettingsButton = v }
+                Toggle(AppStr.showQuitButton, isOn: $showQuitButton)
+                    .onChange(of: showQuitButton) { _, v in AppSettings.showQuitButton = v }
+                Text(AppStr.panelButtonsNote)
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Section(AppStr.permissions) {
                 permissionRow(AppStr.fullDiskAccess,
                               detail: diskAccess == .denied && adHocBuild
@@ -388,6 +409,11 @@ private struct MenuBarSettingsView: View {
                                   : AppStr.fullDiskAccessWhy,
                               granted: diskAccess == .granted) {
                     PermissionCheck.openFullDiskAccessSettings()
+                }
+                permissionRow(AppStr.accessibility,
+                              detail: AppStr.accessibilityWhy,
+                              granted: accessibility == .granted) {
+                    PermissionCheck.openAccessibilitySettings()
                 }
                 HStack {
                     Text(AppStr.systemExtensionsTitle)
@@ -422,30 +448,11 @@ private struct MenuBarSettingsView: View {
                 }
                 .controlSize(.small)
             }
-            Section(AppStr.panel) {
-                Toggle(AppStr.showSettingsButton, isOn: $showSettingsButton)
-                    .onChange(of: showSettingsButton) { _, v in AppSettings.showSettingsButton = v }
-                Toggle(AppStr.showQuitButton, isOn: $showQuitButton)
-                    .onChange(of: showQuitButton) { _, v in AppSettings.showQuitButton = v }
-                Text(AppStr.panelButtonsNote)
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            Section(AppStr.menuBar) {
-                LabeledContent(AppStr.iconShape) {
-                    IconShapePicker(selection: $style)
-                        .onChange(of: style) { _, v in AppSettings.menuBarIconStyle = v }
-                }
-                LabeledContent(AppStr.iconSize) {
-                    IconSizePicker(selection: $size, style: currentStyle)
-                        .onChange(of: size) { _, v in AppSettings.menuBarIconSize = v }
-                }
-                Text(AppStr.menuBarNote)
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-        }
+                                                        }
         .formStyle(.grouped)
         .task {
             diskAccess = PermissionCheck.currentFullDiskAccess()
+            accessibility = PermissionCheck.currentAccessibility()
             extensions = await SystemExtensionQuery.installed()
         }
     }

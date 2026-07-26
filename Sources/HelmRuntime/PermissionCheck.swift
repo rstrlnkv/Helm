@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 import Foundation
 import Security
 
@@ -56,6 +57,16 @@ public enum PermissionCheck {
         }
         return state(canReadProtectedPath: readable)
     }
+
+    /// Accessibility. Keep Awake's pointer nudge posts a synthetic mouse event,
+    /// and macOS drops those on the floor without this grant — the setting
+    /// would look enabled and quietly do nothing.
+    ///
+    /// The non-prompting check on purpose: a settings page that reads a status
+    /// must not throw a system dialog at the user for looking at it.
+    public static func currentAccessibility() -> PermissionState {
+        AXIsProcessTrusted() ? .granted : .denied
+    }
 }
 
 public extension PermissionCheck {
@@ -63,6 +74,10 @@ public extension PermissionCheck {
     /// to send someone to a privacy setting.
     static func openFullDiskAccessSettings() {
         open("x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_AllFiles")
+    }
+
+    static func openAccessibilitySettings() {
+        open("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
     }
 
     static func openExtensionSettings() {
