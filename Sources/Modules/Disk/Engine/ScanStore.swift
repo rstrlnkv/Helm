@@ -46,5 +46,24 @@ public final class ScanStore: @unchecked Sendable {
         return try? JSONDecoder().decode(Cached.self, from: data)
     }
 
+    /// The same read, off whatever actor asked for it.
+    ///
+    /// The file is a full index of the volume — measured here at 7 MB and
+    /// 42 000 nodes, which is 95 ms to decode and 81 ms to encode. Both used to
+    /// happen on the main actor, so opening Disk Space froze for a tenth of a
+    /// second and every scan and every basket emptying froze again.
+    public func loadDetached() async -> Cached? {
+        let url = fileURL
+        return await Task.detached(priority: .userInitiated) {
+            guard let data = try? Data(contentsOf: url) else { return nil }
+            return try? JSONDecoder().decode(Cached.self, from: data)
+        }.value
+    }
+
+    public func saveDetached(_ result: ScanResult, at date: Date = Date()) {
+        let store = self
+        Task.detached(priority: .utility) { store.save(result, at: date) }
+    }
+
     public func clear() { try? FileManager.default.removeItem(at: fileURL) }
 }

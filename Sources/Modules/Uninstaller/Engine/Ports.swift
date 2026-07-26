@@ -2,8 +2,12 @@ import Foundation
 import HelmRuntime
 
 public protocol AppLister: Sendable {
-    /// Apps from /Applications, ~/Applications, and any Setapp folder.
+    /// Apps from /Applications, ~/Applications, and any Setapp folder, with
+    /// `sizeBytes` left at zero — see `appSizes`.
     func installedApps() -> [InstalledApp]
+    /// Bundle id → size on disk. Separate because measuring a bundle walks
+    /// every file in it: the list is worth showing before the numbers arrive.
+    func appSizes(_ apps: [InstalledApp]) -> [String: Int]
     /// Just the ids. Sizing a bundle means walking every file inside it, and
     /// the leftovers scan only ever asks "is this app still here?" — it threw
     /// the sizes away after paying nine seconds for them.

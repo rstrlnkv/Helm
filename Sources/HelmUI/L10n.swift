@@ -7,12 +7,46 @@ public enum AppLanguage: String, CaseIterable, Sendable {
     case en, zh, es, fr, de, ja, ru, pt
 
     /// Best match from the user's preferred languages, else English.
-    public static var current: AppLanguage {
-        for code in Locale.preferredLanguages {
-            let base = code.prefix(2).lowercased()
-            if let lang = AppLanguage(rawValue: String(base)) { return lang }
+    ///
+    /// Cached: this is read by every `L()` and every `Bytes()`, and every one of
+    /// Helm's 238 string properties is computed, so a hovered list of 200 rows
+    /// hit `Locale.preferredLanguages` — a CFPreferences read — a few hundred
+    /// times per frame. The cache is dropped when the system's locale changes,
+    /// which is the only thing that can change the answer.
+    public static var current: AppLanguage { cache.value }
+
+    private static let cache = LanguageCache()
+
+    private final class LanguageCache: @unchecked Sendable {
+        private let lock = NSLock()
+        private var cached: AppLanguage?
+
+        init() {
+            NotificationCenter.default.addObserver(
+                forName: NSLocale.currentLocaleDidChangeNotification,
+                object: nil, queue: nil
+            ) { [weak self] _ in
+                guard let self else { return }
+                self.lock.lock(); self.cached = nil; self.lock.unlock()
+            }
         }
-        return .en
+
+        var value: AppLanguage {
+            lock.lock()
+            defer { lock.unlock() }
+            if let cached { return cached }
+            let resolved = Self.resolve()
+            cached = resolved
+            return resolved
+        }
+
+        private static func resolve() -> AppLanguage {
+            for code in Locale.preferredLanguages {
+                let base = code.prefix(2).lowercased()
+                if let lang = AppLanguage(rawValue: String(base)) { return lang }
+            }
+            return .en
+        }
     }
 }
 

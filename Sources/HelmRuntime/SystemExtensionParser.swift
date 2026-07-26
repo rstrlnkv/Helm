@@ -59,15 +59,9 @@ public enum SystemExtensionParser {
 /// (uninstaller, leftovers scanner, the settings audit) parses the same list.
 public enum SystemExtensionCLI {
     public static func listOutput() -> String {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/systemextensionsctl")
-        process.arguments = ["list"]
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = Pipe()
-        guard (try? process.run()) != nil else { return "" }
-        process.waitUntilExit()
-        return String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+        // This used to wait before reading, which is the deadlock order, and
+        // paid 67 ms in the run-loop poll on every call.
+        HelmProcess.run("/usr/bin/systemextensionsctl", ["list"]).output
     }
 
     public static func installed() -> [SystemExtensionInfo] {
