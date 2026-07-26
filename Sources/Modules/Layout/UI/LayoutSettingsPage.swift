@@ -18,6 +18,7 @@ public struct LayoutSettingsPage: View {
     @State private var indicator: Bool
     @State private var badgeStyle: BadgeStyle
     @State private var badgeSize: MenuBarIconSize
+    @State private var showingIntro = false
     @StateObject private var convertKey: HelmHotkeyRecorder
     @StateObject private var undoKey: HelmHotkeyRecorder
 
@@ -48,6 +49,7 @@ public struct LayoutSettingsPage: View {
             behaviourSection
             triggersSection
             shortcutsSection
+            tryItSection
             exceptionsSection
             indicatorSection
             appsSection
@@ -58,7 +60,18 @@ public struct LayoutSettingsPage: View {
         .frame(maxWidth: 744, alignment: .leading)
         .frame(maxWidth: .infinity, alignment: .leading)
         .helmOnAppActive { accessibility = PermissionCheck.currentAccessibility() }
-        .task { accessibility = PermissionCheck.currentAccessibility() }
+        .task {
+            accessibility = PermissionCheck.currentAccessibility()
+            // Once, and to the person who came looking for the module — rather
+            // than in a queue of notices at first launch that nobody reads.
+            if !store.bool("introSeen", default: false) { showingIntro = true }
+        }
+        .sheet(isPresented: $showingIntro) {
+            LayoutIntro {
+                store.set(true, for: "introSeen")
+                showingIntro = false
+            }
+        }
     }
 
     /// Three states, not two: watching, paused by secure input, and not
@@ -145,6 +158,11 @@ public struct LayoutSettingsPage: View {
             HelmHotkeyRow(LyStr.undoAction, recorder: undoKey,
                           taken: HotkeyStatus.isTaken("layout.undo"))
         }
+    }
+
+    /// A place to try it without risking anything that was being written.
+    private var tryItSection: some View {
+        Section(LyStr.tryIt) { LayoutTestField() }
     }
 
     private var exceptionsSection: some View {
