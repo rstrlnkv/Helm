@@ -8,6 +8,8 @@ import HelmRuntime
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        // Before the status item and the panel exist, so nothing is drawn twice.
+        AppSettings.applyAppearance()
         host.bootstrap()
         statusController = StatusItemController(host: host)
         // Accessory apps launched without activation can fail to render their

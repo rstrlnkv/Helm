@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import HelmRuntime
 import HelmUI
@@ -10,6 +11,22 @@ extension Notification.Name {
 /// App-level (not per-module) settings, e.g. the menu-bar icon shape.
 @MainActor enum AppSettings {
     static let store = NamespacedStore(namespace: "app", backing: UserDefaults.standard)
+
+    /// Light, dark, or the system's choice. Applied to `NSApp`, which covers
+    /// every window Helm owns, including the menu-bar panel.
+    static var appearance: AppAppearance {
+        get { AppAppearance.from(store.string("appearance", default: AppAppearance.system.rawValue)) }
+        set {
+            store.set(newValue.rawValue, for: "appearance")
+            applyAppearance()
+        }
+    }
+
+    static func applyAppearance() {
+        NSApp.appearance = appearance.appearanceName.flatMap {
+            NSAppearance(named: NSAppearance.Name($0))
+        }
+    }
 
     /// nil = follow the build type (dev builds log, stable builds don't);
     /// true/false = the user overrode it in Diagnostics.

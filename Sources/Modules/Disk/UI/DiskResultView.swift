@@ -15,22 +15,24 @@ struct DiskResultView: View {
             Divider()
             HStack(spacing: 0) {
                 // The ring swaps with a zoom that mirrors the navigation:
-                // drilling in blooms the new ring outward, going back settles
-                // it inward — the chart reads as a camera move, not a redraw.
+                // The ring is never replaced: clicking a wedge widens it until
+                // it is the whole circle and only then drills, and coming back
+                // runs the same transform backwards. A cross-fade between two
+                // rings said "something changed"; this says "you are inside
+                // this one".
                 ZStack {
                     RingView(segments: dvm.segments,
                              focusName: dvm.focus.map(dvm.displayName(for:)) ?? "",
                              focusBytes: dvm.focus?.bytes ?? 0,
                              growing: dvm.live,
                              hovered: $hovered,
-                             onSelect: { segment in
-                                 withAnimation(HelmMotion.emphasis) { dvm.drill(into: segment.path) }
-                             },
-                             onBack: {
-                                 withAnimation(HelmMotion.emphasis) { dvm.back() }
-                             })
-                        .id(dvm.focus?.path)
-                        .transition(ringTransition)
+                             // No animation here: the ring has already opened
+                             // the wedge by the time this runs, and the drill is
+                             // what lands underneath it.
+                             onSelect: { segment in dvm.drill(into: segment.path) },
+                             onBack: { dvm.back() },
+                             foldingBackFrom: dvm.foldingBackFrom,
+                             onFoldConsumed: { dvm.foldingBackFrom = nil })
                 }
                 .frame(minWidth: 300, idealWidth: 360, maxWidth: 380)
                 .aspectRatio(1, contentMode: .fit)
@@ -58,19 +60,6 @@ struct DiskResultView: View {
             }
         }
         .listStyle(.inset)
-    }
-
-    private var ringTransition: AnyTransition {
-        switch dvm.navDirection {
-        case .down:
-            .asymmetric(insertion: .scale(scale: 0.62).combined(with: .opacity),
-                        removal: .scale(scale: 1.35).combined(with: .opacity))
-        case .up:
-            .asymmetric(insertion: .scale(scale: 1.35).combined(with: .opacity),
-                        removal: .scale(scale: 0.62).combined(with: .opacity))
-        case .none:
-            .opacity
-        }
     }
 
     private func fraction(of child: DiskEntry) -> Double {

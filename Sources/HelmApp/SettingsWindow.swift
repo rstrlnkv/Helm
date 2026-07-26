@@ -267,6 +267,7 @@ private struct MenuBarSettingsView: View {
     @State private var style: String = AppSettings.menuBarIconStyle
     @State private var size: String = AppSettings.menuBarIconSize
     @State private var launchAtLogin: Bool = LoginItem.isEnabled
+    @State private var appearance: AppAppearance = AppSettings.appearance
     @State private var showSettingsButton = AppSettings.showSettingsButton
     @State private var showQuitButton = AppSettings.showQuitButton
     @State private var orderedModules: [String] = ModuleHost.shared.orderedModuleIDs
@@ -328,6 +329,12 @@ private struct MenuBarSettingsView: View {
             Section(AppStr.general) {
                 Toggle(AppStr.launchAtLogin, isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, v in LoginItem.setEnabled(v) }
+                Picker(AppStr.appearance, selection: $appearance) {
+                    ForEach(AppAppearance.allCases, id: \.self) { choice in
+                        Text(AppStr.appearanceName(choice)).tag(choice)
+                    }
+                }
+                .onChange(of: appearance) { _, choice in AppSettings.appearance = choice }
             }
             Section(AppStr.moduleOrderSection) {
                 Text(AppStr.moduleOrderNote)

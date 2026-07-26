@@ -32,7 +32,13 @@ public struct RingGeometry: Sendable, Equatable {
 
     /// [start, end) radius of a ring index.
     public func radialRange(ring: Int) -> (Double, Double) {
-        let start = innerRadius + Double(ring) * (thickness + gap)
+        radialRange(ring: Double(ring))
+    }
+
+    /// Fractional rings exist only part-way through an unfold, while a wedge's
+    /// children slide inward to the ring they will occupy once it lands.
+    public func radialRange(ring: Double) -> (Double, Double) {
+        let start = innerRadius + ring * (thickness + gap)
         return (start, start + thickness)
     }
 }
