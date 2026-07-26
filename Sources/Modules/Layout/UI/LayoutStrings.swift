@@ -1,4 +1,5 @@
 import HelmUI
+import Module_Layout_Engine
 
 enum LyStr {
     /// Broader than "layout" on purpose: the module id stays `layout`, but the
@@ -31,6 +32,23 @@ enum LyStr {
     static var notWatching: String { L("Not watching", [.ru: "Не следит", .es: "Sin vigilar", .fr: "Inactif", .de: "Beobachtet nicht", .ja: "監視していません", .zh: "未监视", .pt: "Sem monitorar"]) }
     static var paused: String { L("Paused", [.ru: "Пауза", .es: "Pausa", .fr: "Pause", .de: "Pause", .ja: "一時停止", .zh: "暂停", .pt: "Pausa"]) }
     static var lastChange: String { L("Last change", [.ru: "Последняя замена", .es: "Último cambio", .fr: "Dernier changement", .de: "Letzte Änderung", .ja: "直近の変更", .zh: "最近一次修改", .pt: "Última alteração"]) }
+    static var indicator: String { L("Language indicator", [.ru: "Индикатор языка", .es: "Indicador de idioma", .fr: "Indicateur de langue", .de: "Sprachanzeige", .ja: "入力ソース表示", .zh: "语言指示器", .pt: "Indicador de idioma"]) }
+    static var indicatorHint: String { L("Helm's own copy of the menu-bar indicator, with the choices the system's one does not offer. macOS shows its own — turn that one off in Keyboard settings, or you get two.", [.ru: "Своя копия индикатора в строке меню — с настройками, которых нет у системного. Системный никуда не девается: выключите его в настройках клавиатуры, иначе их будет два.", .es: "Una copia propia del indicador con las opciones que el del sistema no ofrece. El del sistema sigue ahí: desactívalo en Ajustes de teclado o tendrás dos.", .fr: "Une copie de l’indicateur avec les choix que celui du système n’offre pas. Celui du système reste : désactivez-le dans les réglages du clavier, sinon vous en aurez deux.", .de: "Eine eigene Kopie der Anzeige, mit den Optionen, die die des Systems nicht bietet. Die des Systems bleibt: Schalte sie in den Tastatur-Einstellungen aus, sonst hast du zwei.", .ja: "システムの入力ソース表示を、設定できる形で複製したものです。システム側は残るので、キーボード設定でオフにしないと2つ並びます。", .zh: "菜单栏指示器的自有副本，带有系统版本没有的选项。系统的那个仍在：请在键盘设置中关闭，否则会有两个。", .pt: "Uma cópia própria do indicador, com as opções que o do sistema não oferece. O do sistema continua: desative-o nos Ajustes de teclado, ou você terá dois."]) }
+    static var badgeStyle: String { L("Style", [.ru: "Вид", .es: "Estilo", .fr: "Style", .de: "Stil", .ja: "スタイル", .zh: "样式", .pt: "Estilo"]) }
+    static var badgeSize: String { L("Size", [.ru: "Размер", .es: "Tamaño", .fr: "Taille", .de: "Größe", .ja: "サイズ", .zh: "大小", .pt: "Tamanho"]) }
+    static func badgeStyleName(_ style: BadgeStyle) -> String {
+        switch style {
+        case .plain: return L("Letters", [.ru: "Буквы", .es: "Letras", .fr: "Lettres", .de: "Buchstaben", .ja: "文字", .zh: "字母", .pt: "Letras"])
+        case .filled: return L("Letters, filled", [.ru: "Буквы с заливкой", .es: "Letras con relleno", .fr: "Lettres pleines", .de: "Buchstaben, gefüllt", .ja: "文字（塗り）", .zh: "字母（填充）", .pt: "Letras preenchidas"])
+        case .outlined: return L("Letters, outlined", [.ru: "Буквы в контуре", .es: "Letras con contorno", .fr: "Lettres encadrées", .de: "Buchstaben, umrandet", .ja: "文字（枠線）", .zh: "字母（描边）", .pt: "Letras com contorno"])
+        case .flagEmoji: return L("Flag, emoji", [.ru: "Флаг, эмодзи", .es: "Bandera, emoji", .fr: "Drapeau, emoji", .de: "Flagge, Emoji", .ja: "旗（絵文字）", .zh: "旗帜（表情）", .pt: "Bandeira, emoji"])
+        case .flagDrawn: return L("Flag, drawn", [.ru: "Флаг, рисованный", .es: "Bandera, dibujada", .fr: "Drapeau, dessiné", .de: "Flagge, gezeichnet", .ja: "旗（描画）", .zh: "旗帜（绘制）", .pt: "Bandeira, desenhada"])
+        }
+    }
+    static var flagNote: String { L("A layout with no country keeps its letters: a language is not a country, and guessing one is not Helm's place.", [.ru: "Раскладка без страны остаётся буквами: язык — не страна, и угадывать её Helm не станет.", .es: "Una distribución sin país conserva sus letras: un idioma no es un país, y adivinarlo no le toca a Helm.", .fr: "Une disposition sans pays garde ses lettres : une langue n’est pas un pays, et le deviner n’appartient pas à Helm.", .de: "Eine Belegung ohne Land behält ihre Buchstaben: Eine Sprache ist kein Land, und das zu raten steht Helm nicht zu.", .ja: "国が定まらない配列は文字のままです。言語は国ではなく、それを推測するのは Helm の役目ではありません。", .zh: "没有国家归属的布局保持字母显示：语言不等于国家，替它猜测不是 Helm 该做的事。", .pt: "Um layout sem país mantém as letras: um idioma não é um país, e adivinhá-lo não cabe ao Helm."]) }
+    static var openKeyboardSettings: String { L("Open Keyboard settings…", [.ru: "Открыть настройки клавиатуры…", .es: "Abrir Ajustes de teclado…", .fr: "Ouvrir les réglages du clavier…", .de: "Tastatur-Einstellungen öffnen…", .ja: "キーボード設定を開く…", .zh: "打开键盘设置…", .pt: "Abrir Ajustes de teclado…"]) }
+    static var neverThisWord: String { L("Never this word", [.ru: "Не менять это слово", .es: "Nunca esta palabra", .fr: "Jamais ce mot", .de: "Dieses Wort nie", .ja: "この単語は変更しない", .zh: "从不改这个词", .pt: "Nunca esta palavra"]) }
+    static var audible: String { L("Play a sound when a word is fixed", [.ru: "Звук при исправлении слова", .es: "Sonido al corregir una palabra", .fr: "Son lors d’une correction", .de: "Ton bei einer Korrektur", .ja: "修正時に音を鳴らす", .zh: "修正时播放提示音", .pt: "Som ao corrigir uma palavra"]) }
     static var undoHint: String { L("Undo it with the shortcut below, in the app it happened in.", [.ru: "Отменяется горячей клавишей ниже — в том приложении, где произошла замена.", .es: "Se deshace con el atajo de abajo, en la app donde ocurrió.", .fr: "S’annule avec le raccourci ci-dessous, dans l’app où c’est arrivé.", .de: "Mit dem Kurzbefehl unten rückgängig zu machen — in der App, in der es passiert ist.", .ja: "下のショートカットで、置き換えが起きたアプリ内で元に戻せます。", .zh: "用下方快捷键在发生替换的应用中撤销。", .pt: "Desfaça pelo atalho abaixo, no app onde aconteceu."]) }
     static var undo: String { L("Undo", [.ru: "Вернуть", .es: "Deshacer", .fr: "Annuler", .de: "Rückgängig", .ja: "元に戻す", .zh: "撤销", .pt: "Desfazer"]) }
 }

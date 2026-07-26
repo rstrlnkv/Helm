@@ -12,6 +12,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     private let translation: TranslationPort
     private let spell: SpellPort
     private let secure: SecureContextPort
+    private let sound: SoundPort?
     /// Absent in tests, where the values are injected directly.
     private let settings: NamespacedStore?
     private let localTransport: LocalTransport
@@ -31,6 +32,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     private var exceptions: Exceptions
     private var automatic: Bool
     private var triggers: ConversionTriggers
+    private var audible: Bool
     private var conversions = 0
     private var running = false
     /// Whether the tap is live. Without the grant `start` returns false, and
@@ -48,10 +50,12 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                 translation: TranslationPort,
                 spell: SpellPort,
                 secure: SecureContextPort,
+                sound: SoundPort? = nil,
                 rules: [String: Bool] = [:],
                 exceptions: [String] = [],
                 automatic: Bool = true,
                 triggers: ConversionTriggers = .default,
+                audible: Bool = false,
                 settings: NamespacedStore? = nil,
                 transport: LocalTransport = LocalTransport()) {
         self.tap = tap
@@ -60,10 +64,12 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         self.translation = translation
         self.spell = spell
         self.secure = secure
+        self.sound = sound
         self.scope = AppScope(rules: rules)
         self.exceptions = Exceptions(words: exceptions)
         self.automatic = automatic
         self.triggers = triggers
+        self.audible = audible
         self.settings = settings
         self.localTransport = transport
         self.transport = transport
@@ -190,6 +196,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             return
         }
         sources.select(to)
+        lock.lock(); let announce = audible; lock.unlock()
+        if announce { sound?.playSwitch() }
         lock.lock()
         undo = UndoRecord(event: ConversionEvent(before: word, after: replacement,
                                                  app: bundleID,
@@ -237,6 +245,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         automatic = settings.bool("automatic", default: true)
         exceptions = Exceptions(words: settings.stringArray("exceptions"))
         scope = AppScope(rules: rules)
+        audible = settings.bool("audible", default: false)
         triggers = ConversionTriggers(onSpace: settings.bool("onSpace", default: true),
                                       onReturn: settings.bool("onReturn", default: true),
                                       onPunctuation: settings.bool("onPunctuation", default: true))

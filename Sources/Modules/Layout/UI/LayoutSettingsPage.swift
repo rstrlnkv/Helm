@@ -14,6 +14,10 @@ public struct LayoutSettingsPage: View {
     @State private var onReturn: Bool
     @State private var onPunctuation: Bool
     @State private var appRules: [String: Bool]
+    @State private var audible: Bool
+    @State private var indicator: Bool
+    @State private var badgeStyle: BadgeStyle
+    @State private var badgeSize: MenuBarIconSize
     @StateObject private var convertKey: HelmHotkeyRecorder
     @StateObject private var undoKey: HelmHotkeyRecorder
 
@@ -26,6 +30,12 @@ public struct LayoutSettingsPage: View {
         _onReturn = State(initialValue: store.bool("onReturn", default: true))
         _onPunctuation = State(initialValue: store.bool("onPunctuation", default: true))
         _appRules = State(initialValue: store.boolTable("appRules"))
+        _audible = State(initialValue: store.bool("audible", default: false))
+        _indicator = State(initialValue: store.bool("indicator", default: false))
+        _badgeStyle = State(initialValue:
+            BadgeStyle.from(store.string("badgeStyle", default: BadgeStyle.plain.rawValue)))
+        _badgeSize = State(initialValue:
+            MenuBarIconSize(rawValue: store.string("badgeSize", default: "small")) ?? .small)
         _convertKey = StateObject(wrappedValue:
             HelmHotkeyRecorder(store: store, prefix: "convertHotkey"))
         _undoKey = StateObject(wrappedValue:
@@ -39,6 +49,7 @@ public struct LayoutSettingsPage: View {
             triggersSection
             shortcutsSection
             exceptionsSection
+            indicatorSection
             appsSection
         }
         .formStyle(.grouped)
@@ -78,6 +89,8 @@ public struct LayoutSettingsPage: View {
             Text(LyStr.automaticNote)
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            Toggle(LyStr.audible, isOn: $audible)
+                .onChange(of: audible) { _, value in write(value, "audible") }
             // macOS gives a key tap nothing without this grant, so the switch
             // above would be on and silent.
             if accessibility == .denied {
@@ -93,9 +106,16 @@ public struct LayoutSettingsPage: View {
                 // click, the thing that ends the chance to undo. A button that
                 // cannot fire is worse than no button.
                 LabeledContent(LyStr.lastChange) {
-                    Text("\(last.before) → \(last.after)")
-                        .font(.system(size: 12, design: .monospaced))
-                        .lineLimit(1).truncationMode(.middle)
+                    HStack(spacing: 8) {
+                        Text("\(last.before) → \(last.after)")
+                            .font(.system(size: 12, design: .monospaced))
+                            .lineLimit(1).truncationMode(.middle)
+                        // Unlike undoing, this works from anywhere: it changes
+                        // a list, not somebody else's text.
+                        Button(LyStr.neverThisWord) { addException(last.before) }
+                            .controlSize(.small)
+                            .disabled(exceptionsContain(last.before))
+                    }
                 }
                 Text(LyStr.undoHint).font(.caption).foregroundStyle(.secondary)
             }
@@ -177,6 +197,47 @@ public struct LayoutSettingsPage: View {
             .buttonStyle(.plain)
             .accessibilityLabel(HelmA11y.remove)
         }
+    }
+
+    @ViewBuilder private var indicatorSection: some View {
+        Section(LyStr.indicator) {
+            Text(LyStr.indicatorHint)
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Toggle(LyStr.indicator, isOn: $indicator)
+                .onChange(of: indicator) { _, value in write(value, "indicator") }
+            if indicator {
+                Picker(LyStr.badgeStyle, selection: $badgeStyle) {
+                    ForEach(BadgeStyle.allCases, id: \.self) { style in
+                        Text(LyStr.badgeStyleName(style)).tag(style)
+                    }
+                }
+                .onChange(of: badgeStyle) { _, value in write(value.rawValue, "badgeStyle") }
+                if badgeStyle.needsRegion {
+                    Text(LyStr.flagNote)
+                        .font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Picker(LyStr.badgeSize, selection: $badgeSize) {
+                    ForEach(MenuBarIconSize.allCases, id: \.self) { size in
+                        Text(size.label).tag(size)
+                    }
+                }
+                .onChange(of: badgeSize) { _, value in write(value.rawValue, "badgeSize") }
+            }
+        }
+    }
+
+    private func exceptionsContain(_ word: String) -> Bool {
+        Exceptions(words: exceptions.split(separator: "\n").map(String.init)).contains(word)
+    }
+
+    /// Adds the word as typed. The verdict checks both forms, so one entry
+    /// covers the word however it ends up spelled.
+    private func addException(_ word: String) {
+        guard !exceptionsContain(word) else { return }
+        exceptions = exceptions.isEmpty ? word : exceptions + "\n" + word
+        write(exceptions.split(separator: "\n").map(String.init), "exceptions")
     }
 
     private func ruleBinding(_ bundleID: String) -> Binding<Bool> {

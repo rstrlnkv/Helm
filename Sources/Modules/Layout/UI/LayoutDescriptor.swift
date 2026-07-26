@@ -13,17 +13,28 @@ import Module_Layout_Engine
     public static let category: ModuleCategory = .utilities
 
     private var store: NamespacedStore?
+    private var indicator: LanguageIndicator?
 
     public init() {}
 
     public func makeEngine(store: NamespacedStore) -> any ModuleEngine {
         self.store = store
+        // Owned here, not by the host: it is this module's indicator, and it
+        // goes away with the module.
+        let indicator = LanguageIndicator(store: store)
+        self.indicator = indicator
+        indicator.refresh()
+        NotificationCenter.default.addObserver(forName: .helmStoreChanged, object: nil,
+                                               queue: .main) { _ in
+            MainActor.assumeIsolated { indicator.refresh() }
+        }
         return LayoutEngine(tap: CGKeyTap(),
                             typing: SynthesisTyping(),
                             sources: TISLayoutSources(),
                             translation: UCTranslation(),
                             spell: SystemSpell(),
                             secure: AXSecureContext(),
+                            sound: SystemSound(),
                             rules: store.boolTable("appRules"),
                             exceptions: store.stringArray("exceptions"),
                             automatic: store.bool("automatic", default: true),
@@ -31,6 +42,7 @@ import Module_Layout_Engine
                                 onSpace: store.bool("onSpace", default: true),
                                 onReturn: store.bool("onReturn", default: true),
                                 onPunctuation: store.bool("onPunctuation", default: true)),
+                            audible: store.bool("audible", default: false),
                             settings: store)
     }
 
