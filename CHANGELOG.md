@@ -52,6 +52,12 @@ features, PATCH = fixes.
   Record, which means audio recording in four.
 
 ### Fixed
+- **A crash.** `NSWorkspace.runningApplications` is main-thread-only, and the VPN
+  engine read it from its own serial queue. AppKit copies that list under a lock
+  while the main thread mutates it, so an application quitting at the wrong
+  instant took the process down inside `_cow_copy`. `RunningApps` now refreshes
+  on the main thread and every other thread reads a snapshot; Keep Awake's
+  identical read goes through the same door.
 - After an update, Helm checks every permission its enabled modules declare
   rather than only Full Disk Access — which no module declared, because
   `ModulePermission` had no case for it, so the one thing being checked was
