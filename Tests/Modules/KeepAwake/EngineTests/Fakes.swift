@@ -54,6 +54,12 @@ final class FakeClamshell: ClamshellPort {
     var installCompletion: ((Bool) -> Void)?
     func isSudoersInstalled() -> Bool { sudoersInstalled }
     func installSudoers(_ done: @escaping @Sendable (Bool) -> Void) { installCompletion = done }
+    var removeCalls = 0
+    func removeSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
+        removeCalls += 1
+        sudoersInstalled = false
+        done(true)
+    }
     func setDisableSleep(_ on: Bool) -> Bool { disableSleepCalls.append(on); return true }
     func pmsetReport() -> String { pmset }
 }

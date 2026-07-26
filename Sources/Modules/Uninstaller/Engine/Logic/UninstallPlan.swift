@@ -60,4 +60,20 @@ public enum UninstallPlan {
         var seen: Set<String> = []
         return groups.flatMap { $0.leftovers.map(\.path) }.filter { seen.insert($0).inserted }
     }
+
+    /// The leftovers the review screen may arrive with already ticked.
+    ///
+    /// A path found under the app's *bundle id* is that app's, near enough to
+    /// certain. A path found under its *display name* — `Application Support/
+    /// <Name>`, `Logs/<Name>` — is a guess, and names collide: "Mail", "Notes",
+    /// "Player". A guess arriving pre-ticked next to a Trash button means the
+    /// user has to notice it to keep their data; unticked, they have to notice
+    /// it to lose it. Same information, opposite default.
+    public static func defaultSelection(_ groups: [UninstallGroup]) -> [String] {
+        var seen: Set<String> = []
+        return groups.flatMap { $0.leftovers }
+            .filter { !$0.matchedByName }
+            .map(\.path)
+            .filter { seen.insert($0).inserted }
+    }
 }

@@ -1,11 +1,18 @@
 import Foundation
 
-/// Parses `brew search <query>` output. Newer brew groups results under
-/// `==> Formulae` / `==> Casks` headers; older brew prints a flat list (treated
-/// as formulae). Header/blank/"no results" lines are ignored.
+/// Parses `brew search` output. Some versions group results under
+/// `==> Formulae` / `==> Casks` headers; 6.x prints a flat list where nothing in
+/// the text says which kind a name is. So the kind is a parameter — the caller
+/// asks brew one kind at a time and knows the answer before reading a line —
+/// and the headers, where they appear, still override it.
+///
+/// Guessing "flat list means formulae" put `brew install <name>` (no `--cask`)
+/// behind every cask in the results: the CLI tool got installed instead of the
+/// app, and cask descriptions never loaded because they were looked up under
+/// the wrong prefix.
 public enum BrewSearchParser {
-    public static func parse(_ output: String) -> [SearchHit] {
-        var isCask = false
+    public static func parse(_ output: String, kind: Bool = false) -> [SearchHit] {
+        var isCask = kind
         var hits: [SearchHit] = []
         for raw in output.split(separator: "\n", omittingEmptySubsequences: false) {
             let line = raw.trimmingCharacters(in: .whitespaces)

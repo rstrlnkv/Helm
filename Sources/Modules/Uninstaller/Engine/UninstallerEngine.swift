@@ -143,7 +143,18 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
         var freed = 0
         // Only queried when something actually fails — the lookup shells out.
         var extensionHosts: Set<String>?
-        for p in paths {
+        // Same rule as the leftovers engine: the plan is built in a view model,
+        // and a view model is not allowed to be the last word on what gets
+        // deleted. A candidate that escaped its folder stops here.
+        let (allowed, refused) = RemovableScope.partition(paths, home: home.path)
+        for p in refused {
+            HelmLog.shared.warn("uninstaller", "refused out-of-scope path")
+            failed.append(p)
+            failures.append(TrashFailureInfo(path: p,
+                                             reason: TrashFailure.Reason.outOfScope.rawValue,
+                                             message: ""))
+        }
+        for p in allowed {
             let url = URL(fileURLWithPath: p)
             let size = fs.size(url)
             let outcome = trash.trashItem(url)
@@ -159,8 +170,12 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
                 extensionHosts = hosts
                 // Match the app's bundle id, not the path: /Applications/X.app
                 // never contains "com.vendor.x".
+                // The separator matters: "at.obdev.littlesnitchmini" starts with
+                // "at.obdev.littlesnitch" and is a different product. Without the
+                // dot, the user is sent to turn off someone else's extension while
+                // the real reason — no permission — is hidden.
                 let blocked = p.hasSuffix(".app") && hosts.contains { host in
-                    bundleID(forAppAt: p).map { $0 == host || $0.hasPrefix(host) } ?? false
+                    bundleID(forAppAt: p).map { $0 == host || $0.hasPrefix(host + ".") } ?? false
                 }
                 failures.append(TrashFailureInfo(
                     path: p,

@@ -94,6 +94,9 @@ public extension PermissionCheck {
 public enum TrashFailure {
     public enum Reason: String, Sendable, Equatable {
         case needsFullDiskAccess, activeSystemExtension, noPermission, systemRefused
+        /// Helm itself refused: the path is not inside a folder an app may
+        /// leave things in. Not a macOS error — nothing was attempted.
+        case outOfScope
     }
 
     /// Cocoa's "you may not write here" error.

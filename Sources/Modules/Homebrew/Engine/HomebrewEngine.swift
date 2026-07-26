@@ -68,8 +68,14 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     public func search(_ query: String) -> [SearchHit] {
         guard let brew = locator.brewPath(), !query.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
-        let out = runner.run(brew, ["search", query], env: [:]).stdout
-        return BrewSearchParser.parse(out)
+        // One call per kind: brew no longer labels a flat result list, and the
+        // kind decides whether the install is `brew install` or `brew install
+        // --cask`. Ids are already namespaced f:/c:, so a name that exists as
+        // both stays two distinguishable rows.
+        let formulae = runner.run(brew, ["search", "--formula", query], env: [:]).stdout
+        let casks = runner.run(brew, ["search", "--cask", query], env: [:]).stdout
+        return BrewSearchParser.parse(formulae, kind: false)
+             + BrewSearchParser.parse(casks, kind: true)
     }
 
     // MARK: - Long operations
@@ -119,20 +125,40 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         runOp(label: "upgrade all", launch: brew, args: ["upgrade"])
     }
 
+    /// Account names sudo-adjacent shells will take, and nothing else.
+    static func isPlausibleAccountName(_ name: String) -> Bool {
+        !name.isEmpty && name.count <= 64 && name.allSatisfy {
+            $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "." || $0 == "_" || $0 == "-")
+        }
+    }
+
     /// Install Homebrew itself: pre-create /opt/homebrew owned by the user via one
     /// native admin prompt, then run the official installer non-interactively.
     public func installBrew() {
         guard beginBusy() else { emitLog("⚠︎ Another operation is already running."); return }
         emitState(OpState(phase: .running, label: "install Homebrew"))
-        let prep = "mkdir -p /opt/homebrew && chown -R \(user):admin /opt/homebrew"
+        // `user` is NSUserName(), which on a managed Mac is whatever the
+        // directory says; this string is evaluated by a root shell. Single
+        // quotes stop expansion, and the name is checked before it gets there.
+        guard Self.isPlausibleAccountName(user) else {
+            endBusy()
+            emitState(OpState(phase: .failed, label: "install Homebrew", exitCode: 1))
+            emitLog("Unsupported account name.")
+            return
+        }
+        let prep = "mkdir -p /opt/homebrew && chown -R '\(user)':admin /opt/homebrew"
         guard privileged.runAdmin(prep) else {
             endBusy()
             emitState(OpState(phase: .failed, label: "install Homebrew", exitCode: 1))
             emitLog("Administrator authorization was cancelled.")
             return
         }
-        // One shell level: fetch the official installer and run it in this bash.
-        let installer = "eval \"$(/usr/bin/curl -fsSL \(Self.installerURL))\""
+        // Download, then run — not `eval "$(curl …)"`, where a failed download
+        // evaluates the empty string, exits 0, and the module reports a
+        // successful install of nothing.
+        let installer = "set -e; script=$(/usr/bin/mktemp); "
+                      + "/usr/bin/curl -fsSL \(Self.installerURL) -o \"$script\"; "
+                      + "/bin/bash \"$script\"; rc=$?; /bin/rm -f \"$script\"; exit $rc"
         runner.stream("/bin/bash", ["-c", installer], env: ["NONINTERACTIVE": "1"],
                       onLine: { [weak self] line in self?.emitLog(line) },
                       onExit: { [weak self] code in

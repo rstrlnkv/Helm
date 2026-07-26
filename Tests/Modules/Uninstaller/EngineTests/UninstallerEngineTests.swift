@@ -58,6 +58,12 @@ final class UninstallerEngineTests: XCTestCase {
         XCTAssertEqual(running.quits.map(\.1), [false, true])
     }
 
+    /// Leftover paths in the shape the engine will actually see: inside the
+    /// home the engine was given. Bare "/a" is refused by the scope gate, and
+    /// rightly — nothing at the root of the volume is an app's leftover.
+    private let cacheA = "/Users/x/Library/Caches/a"
+    private let cacheB = "/Users/x/Library/Caches/b"
+
     private func engine(fs: FakeFS, trash: FakeTrash = FakeTrash(), running: [String] = []) -> UninstallerEngine {
         UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
                           apps: FakeApps(), fs: fs, trash: trash,
@@ -87,20 +93,20 @@ final class UninstallerEngineTests: XCTestCase {
 
     func testUninstallTrashesSelectedAndSumsFreed() async throws {
         let trash = FakeTrash()
-        let fs = FakeFS(existing: ["/a": 100, "/b": 50, "/Applications/Tool.app": 1000])
+        let fs = FakeFS(existing: [cacheA: 100, cacheB: 50, "/Applications/Tool.app": 1000])
         let r = try await engine(fs: fs, trash: trash)
-            .uninstall(appPath: "/Applications/Tool.app", paths: ["/a", "/b"])
+            .uninstall(appPath: "/Applications/Tool.app", paths: [cacheA, cacheB])
         XCTAssertEqual(r.freedBytes, 1150)
-        XCTAssertEqual(Set(trash.trashed), ["/a", "/b", "/Applications/Tool.app"])
+        XCTAssertEqual(Set(trash.trashed), [cacheA, cacheB, "/Applications/Tool.app"])
         XCTAssertTrue(r.failed.isEmpty)
     }
 
     func testUninstallReportsTrashFailures() async throws {
-        let trash = FakeTrash(failing: ["/b"])
-        let fs = FakeFS(existing: ["/a": 100, "/b": 50, "/Applications/Tool.app": 1000])
+        let trash = FakeTrash(failing: [cacheB])
+        let fs = FakeFS(existing: [cacheA: 100, cacheB: 50, "/Applications/Tool.app": 1000])
         let r = try await engine(fs: fs, trash: trash)
-            .uninstall(appPath: "/Applications/Tool.app", paths: ["/a", "/b"])
-        XCTAssertEqual(r.failed, ["/b"])
+            .uninstall(appPath: "/Applications/Tool.app", paths: [cacheA, cacheB])
+        XCTAssertEqual(r.failed, [cacheB])
         XCTAssertEqual(r.freedBytes, 1100)
     }
 }
@@ -132,13 +138,14 @@ final class UninstallerOrphanScanTests: XCTestCase {
     }
 
     func testTrashPathsSumsFreedAndReportsFailures() async {
-        let trash = FakeTrash(failing: ["/b"])
-        let fs = FakeFS(existing: ["/a": 100, "/b": 50])
+        let a = "/Users/x/Library/Caches/a", b = "/Users/x/Library/Caches/b"
+        let trash = FakeTrash(failing: [b])
+        let fs = FakeFS(existing: [a: 100, b: 50])
         let e = UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
                                   apps: FakeApps(), fs: fs, trash: trash, running: FakeRunning(running: []))
-        let r = await e.trashPaths(["/a", "/b"])
+        let r = await e.trashPaths([a, b])
         XCTAssertEqual(r.freedBytes, 100)
-        XCTAssertEqual(r.failed, ["/b"])
-        XCTAssertEqual(trash.trashed, ["/a"])
+        XCTAssertEqual(r.failed, [b])
+        XCTAssertEqual(trash.trashed, [a])
     }
 }

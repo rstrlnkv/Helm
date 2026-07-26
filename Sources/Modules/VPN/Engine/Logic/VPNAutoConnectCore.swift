@@ -12,24 +12,34 @@ public struct VPNAutoConnectCore {
     public var rules: [String: VPNAppRule]
     /// VPN name → set of running mapped bundleIDs.
     private var running: [String: Set<String>] = [:]
+    /// bundleID → the rule that was in force when it was counted as running.
+    ///
+    /// `rules` is overwritten whenever the settings page saves or a refresh
+    /// renames a connection, so it cannot be trusted to say what a quit should
+    /// undo: the app may have been launched against a different VPN, or against
+    /// no rule at all. Only what is recorded here was actually raised by Helm.
+    private var launched: [String: VPNAppRule] = [:]
 
     public init(rules: [String: VPNAppRule]) { self.rules = rules }
 
     public mutating func appLaunched(_ bundleID: String,
                               connect: (String) -> Void,
                               disconnect: (String) -> Void) {
-        guard let rule = rules[bundleID] else { return }
+        guard let rule = rules[bundleID], launched[bundleID] == nil else { return }
         var set = running[rule.vpnName] ?? []
         let wasEmpty = set.isEmpty
         set.insert(bundleID)
         running[rule.vpnName] = set
+        launched[bundleID] = rule
         if wasEmpty && rule.connectOnLaunch { connect(rule.vpnName) }
     }
 
     public mutating func appTerminated(_ bundleID: String,
                                 connect: (String) -> Void,
                                 disconnect: (String) -> Void) {
-        guard let rule = rules[bundleID] else { return }
+        // No launch on record means Helm did not raise this VPN — the user may
+        // have dialled it up by hand, and a quit must not take it down.
+        guard let rule = launched.removeValue(forKey: bundleID) else { return }
         var set = running[rule.vpnName] ?? []
         set.remove(bundleID)
         running[rule.vpnName] = set

@@ -30,6 +30,18 @@ public struct HomebrewSettingsPage: View {
             await hb.refreshStatus()
             if hb.status.installed { await hb.refreshInstalled() }
         }
+        // Removing a cask removes an application. Every other destructive
+        // action in Helm asks first; this one used to go on a single click.
+        .confirmationDialog(pendingUninstall.map { HbStr.confirmUninstall($0.name) } ?? "",
+                            isPresented: Binding(get: { pendingUninstall != nil },
+                                                 set: { if !$0 { pendingUninstall = nil } }),
+                            titleVisibility: .visible) {
+            Button(HbStr.uninstall, role: .destructive) {
+                if let package = pendingUninstall { hb.uninstall(package) }
+                pendingUninstall = nil
+            }
+            Button(HbStr.cancel, role: .cancel) { pendingUninstall = nil }
+        }
     }
 
     // MARK: - Not installed

@@ -23,7 +23,11 @@ public enum VPNListParser {
         for rawLine in output.split(separator: "\n", omittingEmptySubsequences: true) {
             let line = String(rawLine)
             guard let statusToken = between(line, "(", ")"),
-                  let name = between(line, "\"", "\"") else { continue }
+                  let name = between(line, "\"", "\""),
+                  // An empty quoted name parses fine and then becomes a row with
+                  // no label, whose id falls back to that same empty string —
+                  // a toggle that acts on nothing, or on the wrong connection.
+                  !name.isEmpty else { continue }
             let id = uuidLike(in: line) ?? name
             let kind = between(line, "[", "]") ?? kindBeforeQuote(line)
             result.append(VPNConnection(id: id, name: name,

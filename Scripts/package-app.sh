@@ -50,7 +50,13 @@ echo "==> Stripping extended attributes"
 xattr -cr "$APP_DIR"
 
 echo "==> Ad-hoc signing"
+# Extended attributes (com.apple.FinderInfo lands on the bundle root through
+# ordinary Finder/ditto traffic) make codesign refuse the bundle with "resource
+# fork, Finder information, or similar detritus not allowed" — and an unsigned
+# bundle has no cdhash for TCC to bind Full Disk Access to.
+xattr -cr "$APP_DIR"
 codesign --force --deep --sign - "$APP_DIR"
+codesign --verify --deep --strict "$APP_DIR"
 
 echo "==> Done"
 echo "App path: $APP_DIR"
