@@ -7,14 +7,14 @@ import Module_Disk_Engine
 /// The duplicate search against the one order of events nobody drew: the
 /// answer that arrives after the question was withdrawn.
 ///
-/// `findDuplicates` carries no token tying the response to the request.
-/// `cancelDuplicates` flips `duplicatesRunning` off locally and asks the
-/// engine to stop — but the request task keeps awaiting, and whatever the
-/// transport eventually returns is written straight into `duplicates`. So a
-/// cancelled search's late result resurfaces as if the user had asked; and if
-/// a second search is already running by then, the first one's corpse
-/// overwrites `duplicates` with the wrong folder's groups and clears
-/// `duplicatesRunning` while the second is still in flight.
+/// The trap `duplicateGeneration` exists to close: `cancelDuplicates` flips
+/// `duplicatesRunning` off locally and asks the engine to stop — but the
+/// request task keeps awaiting, and without the generation check whatever
+/// the transport eventually returned was written straight into `duplicates`.
+/// A cancelled search's late result resurfaced as if the user had asked; and
+/// if a second search was already running by then, the first one's corpse
+/// overwrote `duplicates` with the wrong folder's groups and cleared
+/// `duplicatesRunning` while the second was still in flight.
 ///
 /// The transport here is a hand-cranked fake: "duplicates" requests suspend
 /// until the test releases them, so the interleaving is chosen, not raced —
@@ -41,7 +41,6 @@ final class DuplicateSearchRaceTests: XCTestCase {
             lock.lock()
             let next = held.isEmpty ? nil : held.removeFirst()
             lock.unlock()
-            print("PROBE release, had continuation: \(next != nil)")
             next?.resume(returning: (try? JSONEncoder().encode(groups)) ?? Data())
         }
 
@@ -56,12 +55,9 @@ final class DuplicateSearchRaceTests: XCTestCase {
                                         filesScanned: 1, seconds: 0, advice: [])
                 return (try? JSONEncoder().encode(result)) ?? Data()
             case "duplicates":
-                let data: Data = await withCheckedContinuation { continuation in
+                return await withCheckedContinuation { continuation in
                     lock.lock(); held.append(continuation); lock.unlock()
-                    print("PROBE parked duplicates request")
                 }
-                print("PROBE released duplicates request, \(data.count) bytes")
-                return data
             default:
                 return Data()
             }

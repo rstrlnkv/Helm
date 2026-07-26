@@ -78,7 +78,19 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
         let at = ProcessInfo.processInfo.systemUptime
         if let mask = Self.modifierMasks[code] {
             let down = event.flags.rawValue & mask != 0
-            handler(down ? .down(code, at: at) : .up(code, at: at))
+            if down {
+                handler(.down(code, at: at))
+                // A modifier already held when this key went down produced no
+                // event of its own inside the tap's window, so the machine
+                // could not know about it and the chord fired as a tap. The
+                // live flags do know.
+                let others = Self.modifierMasks.values
+                    .filter { $0 != mask }
+                    .contains { event.flags.rawValue & $0 != 0 }
+                if others { handler(.otherInput) }
+            } else {
+                handler(.up(code, at: at))
+            }
         } else {
             // Caps Lock, fn, anything else: not trackable by a bit of its
             // own, but its arrival still proves a chord is being typed.

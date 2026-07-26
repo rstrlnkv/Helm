@@ -50,7 +50,10 @@ public final class DuplicateScanner: @unchecked Sendable {
 
         let candidates = Duplicates.sizeGroups(files, minBytes: Self.minBytes)
         let total = candidates.reduce(0) { $0 + $1.count }
-        let progress = ThrottledProgress(total: total, onProgress: onProgress)
+        // Twice per candidate: the prefix pass, then the full pass for
+        // whatever survives it. Counting each candidate once parked the bar at
+        // 100% for the entire second pass, which is the longer one.
+        let progress = ThrottledProgress(total: total * 2, onProgress: onProgress)
 
         // Size groups are independent by construction, and hashing is where
         // the minutes go: a real home directory measured 70 GB of worst-case
@@ -65,7 +68,8 @@ public final class DuplicateScanner: @unchecked Sendable {
             let byPrefix = Duplicates.refine(candidates[index]) { file in
                 if self.isCancelled { return nil }
                 progress.bump()
-                return Self.hash(file.path, limit: Self.prefixBytes)
+                return Self.hash(file.path, limit: Self.prefixBytes,
+                                 expecting: min(Self.prefixBytes, file.bytes))
             }
             for group in byPrefix {
                 // Files at or under the prefix size are already fully read:
@@ -74,8 +78,9 @@ public final class DuplicateScanner: @unchecked Sendable {
                     if self.isCancelled { return nil }
                     progress.bump()
                     return file.bytes <= Self.prefixBytes
-                        ? Self.hash(file.path, limit: Self.prefixBytes)
-                        : Self.hash(file.path, limit: nil)
+                        ? Self.hash(file.path, limit: Self.prefixBytes,
+                                    expecting: file.bytes)
+                        : Self.hash(file.path, limit: nil, expecting: file.bytes)
                 }) {
                     found.append(DuplicateGroup(bytes: identical.first?.bytes ?? 0,
                                                 paths: identical.map(\.path).sorted()))
@@ -99,6 +104,11 @@ public final class DuplicateScanner: @unchecked Sendable {
         let url = URL(fileURLWithPath: root)
         var rootStat = stat()
         let rootDevice: Int32? = lstat(root, &rootStat) == 0 ? rootStat.st_dev : nil
+        // Walking "/" reaches every user file twice — once as /Users/… and
+        // once as /System/Volumes/Data/Users/…. The inode collapse keeps that
+        // from inventing duplicates, but the second visit is a whole disk of
+        // wasted reads. The same table DiskScanner uses names the twins.
+        let firmlinkSkip = FirmlinkMap.skipSet(scanRoot: root)
         let keys: [URLResourceKey] = [.isRegularFileKey, .isDirectoryKey, .fileSizeKey]
         guard let enumerator = FileManager.default.enumerator(
             at: url, includingPropertiesForKeys: keys,
@@ -118,6 +128,10 @@ public final class DuplicateScanner: @unchecked Sendable {
                 onProgress?(DuplicateProgress(candidates: 0, hashed: seen))
             }
             if values.isDirectory == true {
+                if firmlinkSkip.contains(item.path) {
+                    enumerator.skipDescendants()
+                    continue
+                }
                 var dirStat = stat()
                 if let rootDevice, lstat(item.path, &dirStat) == 0,
                    dirStat.st_dev != rootDevice {
@@ -170,17 +184,31 @@ public final class DuplicateScanner: @unchecked Sendable {
 
     /// SHA-256 of the file's first `limit` bytes, or of all of it. Streamed in
     /// 1 MB slices so a video does not become a Data the size of the video.
-    private static func hash(_ path: String, limit: Int?) -> String? {
+    ///
+    /// `expecting` is how many bytes must actually be hashed for the answer to
+    /// mean anything. Without it, a read that failed on the first slice — an
+    /// iCloud-evicted file, a dying disk, a file truncated between the walk
+    /// and the hash — returned the digest of *nothing*, which is the same
+    /// digest for every such file. Two unreadable files of equal size grouped
+    /// as duplicates and the sheet offered to trash content nobody had read.
+    /// Unknown is not identical: short reads answer nil and leave the running.
+    private static func hash(_ path: String, limit: Int?, expecting: Int) -> String? {
         guard let handle = FileHandle(forReadingAtPath: path) else { return nil }
         defer { try? handle.close() }
         var hasher = SHA256()
         var remaining = limit ?? Int.max
+        var hashed = 0
         while remaining > 0 {
             let slice = min(remaining, 1024 * 1024)
-            guard let data = try? handle.read(upToCount: slice), !data.isEmpty else { break }
+            // A thrown read is a failure; a nil/empty read is honest EOF.
+            let read: Data?
+            do { read = try handle.read(upToCount: slice) } catch { return nil }
+            guard let data = read, !data.isEmpty else { break }
             hasher.update(data: data)
+            hashed += data.count
             remaining -= data.count
         }
+        guard hashed >= expecting else { return nil }
         return hasher.finalize().map { String(format: "%02x", $0) }.joined()
     }
 }
