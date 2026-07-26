@@ -7,6 +7,24 @@ features, PATCH = fixes.
 
 ## [0.7.1] — 2026-07-26
 
+### Added
+- **Layout** — a seventh module. It notices a word typed in the wrong keyboard
+  layout, rewrites it and moves the input source with it, and it can be undone.
+  A word is only converted when it is not a word as typed **and** is one once
+  swapped; a word that is valid as typed is never touched. Terminals and
+  password managers are refused before the dictionary is consulted, secure input
+  suspends it, and nothing typed reaches the log or the disk. Needs
+  Accessibility, and says so where it is switched on rather than appearing to
+  work.
+
+  Four methods studied from open-source implementations (no code taken), each in
+  one place: the tap is listen-only so it can neither delay nor swallow a
+  keystroke; replacement is synthesised Unicode rather than the clipboard, which
+  fails in Electron and VS Code and destroys what the user had copied;
+  translation goes through `UCKeyTranslate` against the layouts actually
+  installed; and Helm's own events carry a marker and are dropped on the way in,
+  or the tap reads its replacement back as typing forever.
+
 ### Fixed
 - `VPNEngine` was the one engine with no background bridge. `scutil` is a
   subprocess, and a connect polls it up to 25 times through
