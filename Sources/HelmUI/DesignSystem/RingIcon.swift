@@ -136,7 +136,12 @@ public enum RingIcon {
     private static func nsColor(tintToken: String?) -> NSColor {
         switch tintToken {
         case nil, "white": return .white
-        // Theme-adaptive neutral for in-app previews: white on dark, black on light.
+        // Theme-adaptive, and a trap in a baked bitmap: `makeGlyph` draws with
+        // `lockFocus`, so this resolves once against whatever appearance was
+        // current — not the one the image is shown in. In-app previews should
+        // ask for `nil` (a template) and tint with `foregroundStyle`, or go
+        // through `HelmAppearance`. Kept for callers that draw at a moment
+        // when the appearance is known to be right.
         case "primary": return .labelColor
         case "red": return .systemRed
         case "orange": return .systemOrange
