@@ -43,7 +43,10 @@ public struct DiskSettingsPage: View {
             }
             Button(DkStr.cancel, role: .cancel) {}
         } message: {
-            Text(dvm.basket.prefix(4).map(\.name).joined(separator: "\n")
+            // Paths, not names: the ring shows localized folder names, so
+            // "Library" in this list could equally be /Library or ~/Library —
+            // and one of those is the system's.
+            Text(dvm.basket.prefix(4).map { Redact.path($0.path) }.joined(separator: "\n")
                  + (dvm.basket.count > 4 ? "\n…" : ""))
         }
     }

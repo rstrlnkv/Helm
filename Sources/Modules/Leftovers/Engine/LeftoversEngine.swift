@@ -36,7 +36,16 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
         await blocking {
             var removed: [String] = [], failed: [TrashFailureDetail] = []
             var freed = 0
-            for path in Set(paths) {
+            // The view model already decides what may be offered; this is the
+            // engine refusing to act on a path outside an app's own folders no
+            // matter who asked. Refusals are reported, never dropped quietly.
+            let (allowed, refused) = RemovableScope.partition(Array(Set(paths)))
+            for path in refused {
+                HelmLog.shared.warn("leftovers", "refused out-of-scope path")
+                failed.append(TrashFailureDetail(path: path,
+                                                 message: TrashFailure.Reason.outOfScope.rawValue))
+            }
+            for path in allowed {
                 let url = URL(fileURLWithPath: path)
                 let size = self.files.size(url)
                 let result = self.files.trash(url)

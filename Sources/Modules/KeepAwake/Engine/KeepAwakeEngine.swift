@@ -282,6 +282,18 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         }
     }
 
+    /// Switching the option off takes the passwordless-sudo rule back out.
+    ///
+    /// The rule is the price of the feature, not of having installed Helm: a
+    /// permanent NOPASSWD line in /etc/sudoers.d for something the user has
+    /// turned off is a grant nobody is holding. Silent on failure — the user
+    /// declined the password prompt, which is an answer, and the rule stays
+    /// until they say otherwise.
+    private func releaseSudoersIfUnneeded() {
+        guard !settings.clamshellEnabled, clamshell.isSudoersInstalled() else { return }
+        clamshell.removeSudoers { _ in }
+    }
+
     private func reallyEngageClamshell() {
         // The sudoers prompt is async; the session may have already ended (or
         // clamshell may have been disabled) by the time the user answers it.
@@ -329,6 +341,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             case "settingsChanged":
                 self.recompute()
                 self.reconcileActiveSettings()
+                self.releaseSudoersIfUnneeded()
             default:
                 break
             }

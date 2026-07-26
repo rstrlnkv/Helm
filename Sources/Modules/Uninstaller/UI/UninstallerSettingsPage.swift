@@ -390,7 +390,17 @@ public struct UninstallerSettingsPage: View {
             .toggleStyle(.checkbox)
             .labelsHidden()
             VStack(alignment: .leading, spacing: 1) {
-                Text((leftover.path as NSString).lastPathComponent).lineLimit(1)
+                HStack(spacing: 6) {
+                    Text((leftover.path as NSString).lastPathComponent).lineLimit(1)
+                    // Says why the box is empty: this one was found by the app's
+                    // name, and names collide.
+                    if leftover.matchedByName {
+                        Text(UnStr.matchedByName)
+                            .font(.caption2)
+                            .padding(.horizontal, 5).padding(.vertical, 1)
+                            .background(Color.primary.opacity(0.08), in: Capsule())
+                    }
+                }
                 Text(leftover.path)
                     .font(.caption).foregroundStyle(.secondary)
                     .lineLimit(1).truncationMode(.middle)
@@ -416,11 +426,11 @@ public struct UninstallerSettingsPage: View {
                                         running: scan?.runningNow ?? false))
         }
         groups = built
-        selectedLeftovers = Set(UninstallPlan.allLeftoverPaths(built))
+        selectedLeftovers = Set(UninstallPlan.defaultSelection(built))
         forceQuit = false
         HelmLog.shared.info("uninstaller",
                             "review \(built.count) apps, \(selectedLeftovers.count) leftovers, running: "
-                            + built.filter(\.running).map(\.app.name).joined(separator: ","))
+                            + built.filter(\.running).map { Redact.app($0.app.name) }.joined(separator: ","))
         step = .review
     }
 
@@ -444,7 +454,7 @@ public struct UninstallerSettingsPage: View {
 
         let freed = Bytes(result?.freedBytes ?? 0)
         if let failed = result?.failed, !failed.isEmpty {
-            HelmLog.shared.warn("uninstaller", "failed to trash: \(failed.joined(separator: ", "))")
+            HelmLog.shared.warn("uninstaller", "failed to trash: \(Redact.paths(failed))")
             resultBanner = UnStr.removedWithFailures(freed, failed.count)
             // Leftovers that stayed put are the whole point of the module, so
             // they get a screen of their own rather than a line to overlook.

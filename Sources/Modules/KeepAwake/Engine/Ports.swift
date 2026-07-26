@@ -29,6 +29,8 @@ public protocol PointerPort: AnyObject {
 public protocol ClamshellPort: AnyObject {
     func isSudoersInstalled() -> Bool
     func installSudoers(_ done: @escaping @Sendable (Bool) -> Void)   // admin prompt once
+    /// Takes the rule back out when the feature is switched off.
+    func removeSudoers(_ done: @escaping @Sendable (Bool) -> Void)
     func setDisableSleep(_ on: Bool) -> Bool                // pmset (passwordless)
     func pmsetReport() -> String
 }

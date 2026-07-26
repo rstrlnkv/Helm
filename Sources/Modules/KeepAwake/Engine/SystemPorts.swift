@@ -1,5 +1,6 @@
 import AppKit
 import CoreGraphics
+import HelmRuntime
 import Foundation
 import IOKit
 import IOKit.pwr_mgt
@@ -122,9 +123,12 @@ public final class IOPSPowerInfo: PowerInfoPort {
         let state = description[kIOPSPowerSourceStateKey] as? String
         let onBattery = state == kIOPSBatteryPowerValue
 
-        let current = description[kIOPSCurrentCapacityKey] as? Int ?? 0
-        let max = description[kIOPSMaxCapacityKey] as? Int ?? 0
-        let percent = max > 0 ? Int((Double(current) / Double(max)) * 100.0) : 0
+        // "I don't know" must not arrive as 0%. BatteryGuard reads a low
+        // reading as a critical battery and ends the session, so an incomplete
+        // IOKit dictionary used to stop Keep Awake for no reason at all.
+        guard let current = description[kIOPSCurrentCapacityKey] as? Int,
+              let max = description[kIOPSMaxCapacityKey] as? Int, max > 0 else { return nil }
+        let percent = Int((Double(current) / Double(max)) * 100.0)
 
         return (onBattery: onBattery, percent: percent)
     }
@@ -277,16 +281,60 @@ public final class PmsetClamshellPort: ClamshellPort {
         return contents.contains("pmset disablesleep")
     }
 
+    /// The account names sudo will take, and nothing else.
+    ///
+    /// `NSUserName()` is not a constant: on a directory-bound or MDM-managed Mac
+    /// it is whatever `dscl` says. It ends up inside a string that a root shell
+    /// evaluates, where a backtick or `$(…)` is code, and inside a file whose
+    /// syntax, if broken, takes sudo down for the whole machine — recoverable
+    /// only from recovery mode. Neither is worth supporting an exotic name for.
+    static func isPlausibleAccountName(_ name: String) -> Bool {
+        !name.isEmpty && name.count <= 64 && name.allSatisfy {
+            $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "." || $0 == "_" || $0 == "-")
+        }
+    }
+
     public func installSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async {
             let user = NSUserName()
-            let rule = "\(user) ALL=(root) NOPASSWD: \(Self.pmsetPath) disablesleep 1, \(Self.pmsetPath) disablesleep 0"
-            // Escape for embedding inside the AppleScript double-quoted shell command string.
-            let escapedRule = rule.replacingOccurrences(of: "\\", with: "\\\\\\\\")
-                .replacingOccurrences(of: "\"", with: "\\\\\\\"")
-            let shellCommand = "echo \\\"\(escapedRule)\\\" > \(Self.sudoersPath) && chmod 440 \(Self.sudoersPath)"
+            guard Self.isPlausibleAccountName(user) else {
+                HelmLog.shared.warn("keepawake", "refusing sudoers rule for an implausible account name")
+                done(false)
+                return
+            }
+            let rule = "\(user) ALL=(root) NOPASSWD: \(Self.pmsetPath) disablesleep 1, "
+                     + "\(Self.pmsetPath) disablesleep 0\n"
+            // The rule is written from Swift and only its *path* is handed to the
+            // privileged shell: nothing derived from the account name is ever
+            // quoted into a command line. The staging file is in this user's
+            // private temporary directory, not /tmp, so no one else can swap it.
+            let staged = FileManager.default.temporaryDirectory
+                .appendingPathComponent("helm-keepawake.sudoers")
+            guard (try? rule.write(to: staged, atomically: true, encoding: .utf8)) != nil else {
+                done(false)
+                return
+            }
+            defer { try? FileManager.default.removeItem(at: staged) }
+            // visudo is the check that a syntax error cannot reach sudoers.d;
+            // install puts it in place with the ownership and mode sudo demands.
+            let shellCommand = "/usr/sbin/visudo -cf '\(staged.path)' "
+                             + "&& /usr/bin/install -m 440 -o root -g wheel "
+                             + "'\(staged.path)' \(Self.sudoersPath)"
             let script = "do shell script \"\(shellCommand)\" with administrator privileges"
 
+            let result = Shell.run("/usr/bin/osascript", ["-e", script])
+            done(result.status == 0)
+        }
+    }
+
+    /// Takes the rule back out. A permanent grant of passwordless root for a
+    /// setting the user has switched off is a grant no one asked to keep — and
+    /// Helm's predecessor left one behind on this very machine.
+    public func removeSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            guard self.isSudoersInstalled() else { done(true); return }
+            let script = "do shell script \"/bin/rm -f \(Self.sudoersPath)\" "
+                       + "with administrator privileges"
             let result = Shell.run("/usr/bin/osascript", ["-e", script])
             done(result.status == 0)
         }
