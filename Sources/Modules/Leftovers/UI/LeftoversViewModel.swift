@@ -16,8 +16,17 @@ import Module_Leftovers_Engine
 
     public init(vm: ModuleViewModel) { client = TransportClient(vm.transport) }
 
+    /// Kinds the user has hidden. System extensions are the common case:
+    /// they are informational, and someone reviewing login items does not
+    /// want them in the way.
+    @Published public var hiddenKinds: Set<StaleKind> = []
+
     public var visibleItems: [StaleItem] {
-        showAll ? items : items.filter(\.removable)
+        // "Leftovers" is a status, not a permission to delete: an extension
+        // whose app is gone belongs here even though clearing it happens in
+        // System Settings.
+        (showAll ? items : items.filter { $0.status == .orphaned })
+            .filter { !hiddenKinds.contains($0.kind) }
     }
 
     public var leftoverCount: Int { items.filter(\.removable).count }
@@ -30,6 +39,14 @@ import Module_Leftovers_Engine
         // user chooses each one.
         selected = []
         scanned = true
+    }
+
+    /// Switches a login item off through launchd, then rescans so the row
+    /// shows what actually happened rather than what we hoped.
+    public func setDisabled(_ disabled: Bool, item: StaleItem) async {
+        await client.send("setDisabled",
+                          encoding: LeftoversToggle(label: item.identifier, disabled: disabled))
+        await scan()
     }
 
     public func removeSelected() async {

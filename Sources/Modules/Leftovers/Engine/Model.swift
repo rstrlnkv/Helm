@@ -30,6 +30,8 @@ public struct StaleItem: Codable, Equatable, Sendable, Identifiable {
     /// Loaded at login — worth flagging, since removing it changes behaviour.
     public let runAtLoad: Bool
     public let status: ItemStatus
+    /// Switched off through launchd's own disabled list, not deleted.
+    public let disabled: Bool
 
     /// Only orphans may be trashed, and never a system extension: those are
     /// not files Helm can move — macOS removes them with their app or from
@@ -38,7 +40,7 @@ public struct StaleItem: Codable, Equatable, Sendable, Identifiable {
 
     public init(path: String, identifier: String, kind: StaleKind, sizeBytes: Int,
                 missingTarget: String? = nil, runAtLoad: Bool = false,
-                status: ItemStatus = .orphaned) {
+                status: ItemStatus = .orphaned, disabled: Bool = false) {
         self.path = path
         self.identifier = identifier
         self.kind = kind
@@ -46,5 +48,20 @@ public struct StaleItem: Codable, Equatable, Sendable, Identifiable {
         self.missingTarget = missingTarget
         self.runAtLoad = runAtLoad
         self.status = status
+        self.disabled = disabled
+    }
+
+    /// Whether Helm can switch this one off without a password.
+    public var canToggle: Bool {
+        LaunchctlDisabled.canToggle(kind: kind, status: status, identifier: identifier)
+    }
+}
+
+/// Which login item to switch, and which way.
+public struct LeftoversToggle: Codable, Sendable {
+    public let label: String
+    public let disabled: Bool
+    public init(label: String, disabled: Bool) {
+        self.label = label; self.disabled = disabled
     }
 }

@@ -38,4 +38,8 @@ public protocol ExtensionsPort: Sendable {
     func activeExtensionIdentifiers() -> Set<String>
     /// The full list, so the module can name them instead of counting them.
     func installedExtensions() -> [SystemExtensionInfo]
+    /// launchd labels the user has switched off.
+    func disabledLabels() -> Set<String>
+    /// Switches a login item off or back on, and stops it now if it is running.
+    func setDisabled(_ disabled: Bool, label: String)
 }

@@ -10,6 +10,7 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
     private let files: LeftoversFilePort
     private let localTransport: LocalTransport
     public let transport: EngineTransport
+    private let extensions: ExtensionsPort
 
     public init(home: URL = FileManager.default.homeDirectoryForCurrentUser,
                 files: LeftoversFilePort = FileSystemLeftovers(),
@@ -17,6 +18,7 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
                 extensions: ExtensionsPort = ActiveExtensions(),
                 transport: LocalTransport = LocalTransport()) {
         self.files = files
+        self.extensions = extensions
         self.scanner = LeftoversScanner(home: home, files: files, apps: apps, extensions: extensions)
         self.localTransport = transport
         self.transport = transport
@@ -61,6 +63,13 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
             switch command.name {
             case "scan":
                 return (try? JSONEncoder().encode(await self.scan())) ?? Data()
+            case "setDisabled":
+                guard let request = try? JSONDecoder().decode(LeftoversToggle.self,
+                                                              from: command.payload)
+                else { return Data() }
+                await self.blocking { self.extensions.setDisabled(request.disabled,
+                                                                  label: request.label) }
+                return Data()
             case "trash":
                 guard let paths = try? JSONDecoder().decode([String].self, from: command.payload)
                 else { return Data() }
