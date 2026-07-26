@@ -148,14 +148,16 @@ public struct VPNSettingsPage: View {
             Text(info.name)
                 .lineLimit(1)
             Spacer(minLength: 12)
-            Picker("", selection: vpnNameBinding(bundleID)) {
+            // Two nameless pop-ups in one row are indistinguishable to
+            // VoiceOver; each carries what it chooses.
+            Picker("\(info.name) — \(VPNStr.rulePickerVPN)", selection: vpnNameBinding(bundleID)) {
                 ForEach(vm.connections.map(\.name), id: \.self) { name in
                     Text(name).tag(name)
                 }
             }
             .labelsHidden()
             .fixedSize()
-            Picker("", selection: timingBinding(bundleID)) {
+            Picker("\(info.name) — \(VPNStr.rulePickerWhen)", selection: timingBinding(bundleID)) {
                 ForEach(VPNAppRule.Timing.allCases, id: \.self) { timing in
                     Text(VPNStr.ruleTiming(timing)).tag(timing)
                 }

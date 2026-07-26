@@ -11,7 +11,12 @@ public enum DiskSafety {
 
     private static let homePath = FileManager.default.homeDirectoryForCurrentUser.path
 
-    public static func isRemovable(_ path: String) -> Bool {
+    public static func isRemovable(_ rawPath: String) -> Bool {
+        // Judge the resolved path, not the spelling. "/Users/me/Documents/.."
+        // is the home directory however it is written, and every check below
+        // is a string test — RemovableScope standardizes for exactly this
+        // reason, and this gate is the disk module's last word on deletion.
+        let path = (rawPath as NSString).standardizingPath
         guard path.hasPrefix("/"), path != "/" else { return false }
         // A folded "…" bucket is an aggregate, not a real path.
         guard !path.hasSuffix("/…") else { return false }

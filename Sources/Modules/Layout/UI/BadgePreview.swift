@@ -32,6 +32,7 @@ struct BadgePreview: View {
                                                        style: style,
                                                        points: size.points))
                             .frame(width: 26, alignment: .center)
+                            .accessibilityHidden(true)
                         Text(source.name)
                             .font(.caption)
                             .lineLimit(1)

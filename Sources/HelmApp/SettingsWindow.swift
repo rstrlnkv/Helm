@@ -583,7 +583,9 @@ private struct AboutHelmView: View {
                         .tracking(-0.4)
                     HelmBadge(AppStr.betaBadge, tint: .orange)
                         .padding(.top, 8)
+                        .help(AppStr.channelBetaNote)
                 }
+                .accessibilityElement(children: .combine)
                 Text(AppStr.tagline)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)

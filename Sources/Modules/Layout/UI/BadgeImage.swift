@@ -214,7 +214,9 @@ enum BadgeImage {
             let r = canvas.height * 0.32
             let box = canvas.rect(canvas.width / 2 - r, canvas.height / 2 - r, r * 2, r * 2)
             NSGraphicsContext.current?.saveGraphicsState()
-            NSBezierPath(ovalIn: box).setClip()
+            // addClip intersects; setClip REPLACES, which would throw away the
+            // badge's corner rounding for everything painted afterwards.
+            NSBezierPath(ovalIn: box).addClip()
             // Red above, blue below — the S-curve is below badge size.
             fill("CD2E3A", canvas.rect(0, (canvas.height / 2).rounded(),
                                        canvas.width, canvas.height))
@@ -366,7 +368,9 @@ enum BadgeImage {
     /// saltire, which is half a pixel at badge size.
     private static func unionJack(field: String, in rect: NSRect, canvas: Canvas) {
         NSGraphicsContext.current?.saveGraphicsState()
-        NSBezierPath(rect: rect).setClip()
+        // Intersect, never replace: setClip here squared off the badge's
+        // corners, so GB and AU were the two flags with different corners.
+        NSBezierPath(rect: rect).addClip()
         NSColor(hex: field).setFill()
         rect.fill()
         let h = rect.height

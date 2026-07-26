@@ -137,6 +137,8 @@ private struct BreadcrumbBar: View {
                 }
                 .controlSize(.small)
                 .help(DkStr.adviceHint)
+                .accessibilityLabel(DkStr.advice)
+                .accessibilityValue("\(advice.count)")
                 .popover(isPresented: $showingAdvice, arrowEdge: .bottom) {
                     AdviceList(dvm: dvm, advice: advice)
                 }
@@ -146,11 +148,10 @@ private struct BreadcrumbBar: View {
                 Button {
                     showingDuplicates = true
                 } label: {
-                    Image(systemName: "doc.on.doc")
+                    Label(DkStr.duplicates, systemImage: "doc.on.doc")
                 }
                 .controlSize(.small)
                 .help(DkStr.duplicatesHint)
-                .accessibilityLabel(DkStr.duplicates)
             }
 
             Button(DkStr.scanAgain) { dvm.newScan() }
@@ -265,6 +266,7 @@ private struct ChildRow: View {
                 }
                 .buttonStyle(.borderless)
                 .help(DkStr.addToBasket)
+                .accessibilityLabel(DkStr.addToBasket)
             }
         }
         .padding(.vertical, 3)
@@ -346,6 +348,7 @@ private struct AdviceList: View {
             }
             .buttonStyle(.borderless)
             .help(DkStr.addToBasket)
+            .accessibilityLabel(DkStr.addToBasket)
         }
         .padding(.vertical, 5).padding(.horizontal, 8)
         .contextMenu {

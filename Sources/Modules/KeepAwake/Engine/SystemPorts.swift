@@ -155,7 +155,16 @@ public final class ScreenParamsObserver: DisplayObserverPort {
 // MARK: - WorkspaceAppPort
 
 public final class WorkspaceAppPort: AppRunningPort {
+    /// Held so the observers can be taken back out. Without this, switching
+    /// the module off and on stacked another pair each time — the same defect
+    /// `LayoutEngine.deactivate` documents.
+    private var tokens: [NSObjectProtocol] = []
+
     public init() {}
+
+    deinit {
+        for token in tokens { NSWorkspace.shared.notificationCenter.removeObserver(token) }
+    }
 
     /// Through `RunningApps` for the same reason the VPN port is: this one is
     /// only ever reached from the main thread today, and "only ever, today" is
@@ -164,8 +173,9 @@ public final class WorkspaceAppPort: AppRunningPort {
 
     public func startObserving(_ onChange: @escaping @Sendable () -> Void) {
         let center = NSWorkspace.shared.notificationCenter
-        for name in [NSWorkspace.didLaunchApplicationNotification,
-                     NSWorkspace.didTerminateApplicationNotification] {
+        for token in tokens { center.removeObserver(token) }
+        tokens = [NSWorkspace.didLaunchApplicationNotification,
+                  NSWorkspace.didTerminateApplicationNotification].map { name in
             center.addObserver(forName: name, object: nil, queue: .main) { _ in
                 RunningApps.shared.refreshOnMain(then: onChange)
             }

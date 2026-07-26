@@ -192,6 +192,9 @@ public struct HelmMetricStrip: View {
                         // on every module page.
                         .foregroundStyle(Color.primary.opacity(0.6))
                 }
+                // "Running, State" as one VoiceOver stop, not two in
+                // value-then-label order.
+                .accessibilityElement(children: .combine)
                 .frame(maxWidth: .infinity)
             }
         }

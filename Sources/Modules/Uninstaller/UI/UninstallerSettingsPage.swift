@@ -96,6 +96,7 @@ public struct UninstallerSettingsPage: View {
                 .buttonStyle(.borderless)
                 .disabled(loading)
                 .help(UnStr.refreshList)
+            .accessibilityLabel(UnStr.refreshList)
             }
             .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
 
