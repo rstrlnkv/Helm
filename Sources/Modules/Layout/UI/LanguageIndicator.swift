@@ -67,7 +67,7 @@ import Module_Layout_Engine
         let size = MenuBarIconSize(rawValue: store.string("badgeSize", default: "small")) ?? .small
         let source = InputSourceInfo.current()
         button.image = BadgeImage.make(label: source.badge, flag: source.emojiFlag,
-                                       art: source.art, style: style,
+                                       region: source.region, style: style,
                                        points: size.points)
         button.image?.isTemplate = (style == .plain)
         button.toolTip = source.name

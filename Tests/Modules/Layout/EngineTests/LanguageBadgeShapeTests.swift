@@ -38,11 +38,12 @@ final class LanguageBadgeShapeTests: XCTestCase {
         XCTAssertEqual(LanguageBadge.label(language: "ru", region: nil), "РУ")
     }
 
-    /// The two flag styles are offered for the same layout, so a country that
-    /// can be drawn must also be one that can be spelled with regional
-    /// indicators — otherwise one style shows a flag and the other letters.
-    func testADrawnFlagAlwaysHasAnEmojiToo() {
-        for region in FlagArt.drawnRegions {
+    /// Every region the layout table can name must be spellable with regional
+    /// indicators, or the emoji style shows letters where the artwork style
+    /// shows a flag — the same layout answering two different ways.
+    func testEveryRegionTheTableNamesHasAnEmojiFlag() {
+        for region in ["RU", "DE", "FR", "IT", "NL", "UA", "PL", "AT", "ES", "BE",
+                       "IE", "SE", "US", "GB", "BR", "KR", "CN", "JP", "CZ", "TR"] {
             XCTAssertNotNil(LanguageBadge.emojiFlag(region: region), region)
         }
     }

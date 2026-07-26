@@ -8,7 +8,7 @@ struct InputSourceInfo {
     let name: String
     let badge: String
     let emojiFlag: String?
-    let art: FlagArt?
+    let region: String?
 
     static func all() -> [InputSourceInfo] {
         guard let list = TISCreateInputSourceList(nil, false)?.takeRetainedValue()
@@ -21,7 +21,7 @@ struct InputSourceInfo {
     static func current() -> InputSourceInfo {
         guard let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
               let info = make(from: source) else {
-            return InputSourceInfo(id: "", name: "", badge: "?", emojiFlag: nil, art: nil)
+            return InputSourceInfo(id: "", name: "", badge: "?", emojiFlag: nil, region: nil)
         }
         return info
     }
@@ -38,7 +38,7 @@ struct InputSourceInfo {
         return InputSourceInfo(id: id, name: name,
                                badge: LanguageBadge.label(language: language, region: region),
                                emojiFlag: LanguageBadge.emojiFlag(region: region),
-                               art: FlagArt.flag(region: region))
+                               region: region)
     }
 
     private static func languages(_ source: TISInputSource) -> [String] {

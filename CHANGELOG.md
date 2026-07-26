@@ -27,17 +27,18 @@ features, PATCH = fixes.
   uses, and a menu that lists the installed layouts. Off by default, because
   macOS still shows its own. A flag appears only where the input source itself
   names a region — a language is not a country.
-- A drawn flag for every layout — all fifty regions the layout table can
-  produce, the US and UK included — laid out in device pixels rather than
-  points, so no band edge lands mid-pixel. The model carries each flag's
-  construction (bands with proportions, Nordic cross, canton with stripes,
-  Union Jack, crescent, star, taegeuk, rhombus, emblems for the crests) rather
-  than a list of colours. At badge size a flag is a recognition mark, not
-  cloth: the US canton has no stars and seven stripes stand for thirteen, a
-  crest becomes a plain shape, the Jack loses the counterchange of its
-  saltire — each simplification keeps the silhouette that makes the flag
-  recognisable at fifteen pixels. No outline around them; the rounded corners
-  are the only frame. Settings previews every installed layout.
+- **A real flag for every layout.** Helm drew them itself for a while — a
+  table of bands, crosses, cantons and emblems — and it reached fifty regions
+  before the model ran out: an eagle, an armillary sphere and a set of
+  trigrams are not shapes a table holds, and half a dozen flags were
+  approximations because of it. The artwork is now the EmojiOne v2.2.7 emoji
+  under CC BY 4.0 (`NOTICE.md`, credited on the About page): round rather than
+  3:2, which reads better small because a circle has no thin edge band to
+  lose. Measured at 9, 13 and 18 pt: every region legible, crests intact. A
+  layout that names no country still keeps its letters in a frame.
+  `package-app.sh` now copies SwiftPM resource bundles into the app and fails
+  loudly if there are none — without them `Bundle.module` finds nothing and
+  every flag would quietly become letters.
 - An optional sound when a word is fixed, and a "never this word" button beside
   the last change.
 - **Layout** — a seventh module. It notices a word typed in the wrong keyboard

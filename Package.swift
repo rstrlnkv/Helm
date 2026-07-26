@@ -76,7 +76,9 @@ let package = Package(
         .target(
             name: "Module_Layout_UI",
             dependencies: ["HelmContract", "HelmUI", "Module_Layout_Engine"],
-            path: "Sources/Modules/Layout/UI"
+            path: "Sources/Modules/Layout/UI",
+            // EmojiOne v2.2.7 flag artwork, CC-BY 4.0 — see NOTICE.md.
+            resources: [.copy("Flags")]
         ),
         .executableTarget(
             name: "HelmApp",
