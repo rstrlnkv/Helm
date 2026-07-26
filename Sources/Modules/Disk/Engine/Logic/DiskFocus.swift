@@ -13,4 +13,24 @@ public enum DiskFocus {
         }
         return out
     }
+
+    /// The chain from `focus` down to `path`, excluding the focus itself.
+    ///
+    /// The ring draws three levels at once, so a click can land on a grandchild
+    /// — and drilling used to accept only a direct child, which meant those
+    /// outer arcs were painted, hoverable, and did nothing. Returning the whole
+    /// chain keeps the breadcrumbs honest: jumping two levels still passes
+    /// through the level in between.
+    public static func chain(from focus: DiskEntry, to path: String) -> [DiskEntry] {
+        guard path != focus.path else { return [] }
+        for child in focus.children {
+            if child.path == path { return [child] }
+            // A prefix test alone would follow "/a/bc" into "/a/b"; the
+            // separator is what makes it a descendant rather than a namesake.
+            guard path.hasPrefix(child.path + "/") else { continue }
+            let rest = chain(from: child, to: path)
+            if !rest.isEmpty { return [child] + rest }
+        }
+        return []
+    }
 }
