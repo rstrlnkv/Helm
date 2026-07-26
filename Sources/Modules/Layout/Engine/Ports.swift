@@ -35,6 +35,13 @@ public protocol SpellPort: Sendable {
     func isWord(_ word: String, sourceID: String) -> Bool?
 }
 
+public protocol SoundPort: Sendable {
+    /// Played when a conversion lands, if the user asked for it. A correction
+    /// happens where the eyes already are, so the sound is for the times they
+    /// are not — and it is off unless asked for.
+    func playSwitch()
+}
+
 public protocol SecureContextPort: Sendable {
     /// The cheap half — one syscall, no accessibility round-trip — so it can be
     /// asked on every keystroke rather than once per word.

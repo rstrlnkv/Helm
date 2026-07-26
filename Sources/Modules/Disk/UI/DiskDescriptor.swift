@@ -8,7 +8,7 @@ import Module_Disk_Engine
     public static let id = ModuleID("disk")
     public static let metadata = ModuleMetadata(
         id: id, name: DkStr.moduleName, summary: DkStr.summary,
-        sfSymbol: "chart.pie", permissions: [])
+        sfSymbol: "chart.pie", permissions: [.fullDisk])
     public static let isolation: ModuleIsolation = .inProcess
     public static let category: ModuleCategory = .utilities
 

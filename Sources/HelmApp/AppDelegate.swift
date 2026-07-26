@@ -50,7 +50,8 @@ import HelmRuntime
 
         // First launch: find out what macOS is withholding before a removal
         // silently leaves files behind.
-        PermissionAudit.runOnFirstLaunch()
+        PermissionAudit.host = host
+        PermissionAudit.run()
         HelmLog.shared.info("permissions", "full disk access probe: \(PermissionCheck.currentFullDiskAccess().rawValue)")
 
 

@@ -66,6 +66,26 @@ enum AppStr {
         case .dark: return L("Dark", [.ru: "Тёмное", .es: "Oscuro", .fr: "Sombre", .de: "Dunkel", .ja: "ダーク", .zh: "深色", .pt: "Escuro"])
         }
     }
+    /// Why Helm wants a permission, named per permission. An unexplained
+    /// request is one people deny.
+    static func permissionReason(_ need: PermissionNeed) -> String {
+        switch need {
+        case .fullDiskAccess:
+            return L("Full disk access is off. Without it the disk scan cannot read every folder, and removing an app leaves its containers behind.", [.ru: "Доступ к диску выключен. Без него скан диска не видит часть папок, а при удалении программы её контейнеры остаются.", .es: "El acceso al disco está desactivado. Sin él el escaneo no ve todas las carpetas y al desinstalar quedan los contenedores.", .fr: "L’accès au disque est désactivé. Sans lui l’analyse ne voit pas tous les dossiers, et la désinstallation laisse les conteneurs.", .de: "Der Festplattenzugriff ist aus. Ohne ihn sieht die Analyse nicht alle Ordner, und beim Entfernen bleiben Container liegen.", .ja: "ディスクへのアクセスがオフです。すべてのフォルダを読めず、アプリ削除時にコンテナが残ります。", .zh: "磁盘访问已关闭。扫描无法读取全部文件夹，卸载应用时容器会残留。", .pt: "O acesso ao disco está desligado. Sem ele a varredura não lê todas as pastas e a remoção deixa contêineres."])
+        case .accessibility:
+            return L("Accessibility is off. Without it Helm cannot see what you type, so keyboard corrections and the pointer nudge do nothing.", [.ru: "Универсальный доступ выключен. Без него Helm не видит набранное — исправление раскладки и движение указателя не работают.", .es: "La accesibilidad está desactivada. Sin ella Helm no ve lo que escribes: ni corrección de teclado ni movimiento del puntero.", .fr: "L’accessibilité est désactivée. Sans elle Helm ne voit pas ce que vous tapez : ni correction clavier ni mouvement du pointeur.", .de: "Die Bedienungshilfen sind aus. Ohne sie sieht Helm nicht, was du tippst — Tastaturkorrektur und Zeigerbewegung bleiben wirkungslos.", .ja: "アクセシビリティがオフです。入力内容を読み取れず、キーボード修正もポインタ移動も動作しません。", .zh: "辅助功能已关闭。Helm 无法读取输入，键盘修正与指针移动都不起作用。", .pt: "A acessibilidade está desligada. O Helm não vê o que você digita: correção de teclado e movimento do ponteiro não funcionam."])
+        }
+    }
+
+    static func openPane(_ need: PermissionNeed) -> String {
+        switch need {
+        case .fullDiskAccess: return openDiskAccessPane
+        case .accessibility: return openAccessibilityPane
+        }
+    }
+
+    static var openDiskAccessPane: String { L("Open disk access…", [.ru: "Открыть «Доступ к диску»…", .es: "Abrir Acceso total al disco…", .fr: "Ouvrir Accès complet au disque…", .de: "Festplattenvollzugriff öffnen…", .ja: "フルディスクアクセスを開く…", .zh: "打开完全磁盘访问权限…", .pt: "Abrir Acesso Total ao Disco…"]) }
+    static var openAccessibilityPane: String { L("Open accessibility…", [.ru: "Открыть «Универсальный доступ»…", .es: "Abrir Accesibilidad…", .fr: "Ouvrir Accessibilité…", .de: "Bedienungshilfen öffnen…", .ja: "アクセシビリティを開く…", .zh: "打开无障碍…", .pt: "Abrir Acessibilidade…"]) }
     static var retry: String { L("Try again", [.ru: "Повторить", .es: "Reintentar", .fr: "Réessayer", .de: "Erneut versuchen", .ja: "再試行", .zh: "重试", .pt: "Tentar de novo"]) }
     /// Shown when a release publishes no digest for its asset: the updater
     /// refuses to swap a bundle it cannot check, and hands the user the page.
