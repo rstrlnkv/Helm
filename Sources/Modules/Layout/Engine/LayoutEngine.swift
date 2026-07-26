@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import HelmContract
 import HelmRuntime
@@ -26,6 +27,10 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     private var automatic: Bool
     private var triggers: ConversionTriggers
     private var conversions = 0
+    private var running = false
+    /// Whether the tap is live. Without the grant `start` returns false, and
+    /// that answer is what the settings page shows.
+    private var tapped = false
     /// Set while performing a conversion, so the keystrokes it sends are not
     /// read back as typing. The marker on the events is the first line of
     /// defence; this is the second, for anything the marker misses.
@@ -62,13 +67,41 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     // MARK: - Module lifecycle
 
     public func activate() {
-        _ = tap.start { [weak self] event in self?.handle(event) }
+        running = true
+        startTap()
+        // Permission is usually granted while Helm is already running — the
+        // note in settings sends people to System Settings and they come back.
+        // Without this the tap stayed dead until the next launch, which is the
+        // same "switch that looks like it works" defect the note exists to
+        // prevent.
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            MainActor.assumeIsolated { self.startTap() }
+        }
+        emitState()
+    }
+
+    /// Idempotent: starts the tap only while it is not already running, so
+    /// coming back to the app a hundred times costs nothing.
+    private func startTap() {
+        lock.lock()
+        guard running, !tapped else { lock.unlock(); return }
+        lock.unlock()
+        let started = tap.start { [weak self] event in self?.handle(event) }
+        lock.lock(); tapped = started; lock.unlock()
+        if started {
+            HelmLog.shared.info("layout", "watching for mislayout words")
+        } else {
+            HelmLog.shared.warn("layout", "no accessibility grant — not watching")
+        }
         emitState()
     }
 
     public func deactivate() {
         tap.stop()
-        lock.lock(); buffer.clear(); undo = nil; lock.unlock()
+        lock.lock(); running = false; tapped = false; buffer.clear(); undo = nil; lock.unlock()
         emitState()
     }
 
@@ -192,7 +225,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
 
     private func emitState() {
         lock.lock()
-        let state = LayoutState(enabled: true, automatic: automatic,
+        let state = LayoutState(enabled: tapped, automatic: automatic,
                                 suspended: secure.isSecure(),
                                 lastConversion: undo?.event,
                                 conversionsToday: conversions)

@@ -10,6 +10,11 @@ import HelmRuntime
         NSApp.setActivationPolicy(.accessory)
         // Before the status item and the panel exist, so nothing is drawn twice.
         AppSettings.applyAppearance()
+        // Dev builds always log: the file is the evidence we triage before a
+        // build graduates to the stable channel.
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
+        HelmLog.shared.start(version: version, override: AppSettings.loggingOverride)
+
         host.bootstrap()
         statusController = StatusItemController(host: host)
         // Accessory apps launched without activation can fail to render their
@@ -41,10 +46,6 @@ import HelmRuntime
             action: send("undoLastConversion", to: "layout"))
         HotkeyManager.shared.start()
 
-        // Dev builds always log: the file is the evidence we triage before a
-        // build graduates to the stable channel.
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
-        HelmLog.shared.start(version: version, override: AppSettings.loggingOverride)
         HelmLog.shared.info("app", "modules: \(ModuleRegistry.all.map(\.idRaw).joined(separator: ", "))")
 
         // First launch: find out what macOS is withholding before a removal
