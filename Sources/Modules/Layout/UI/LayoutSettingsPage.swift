@@ -50,11 +50,22 @@ public struct LayoutSettingsPage: View {
         .task { accessibility = PermissionCheck.currentAccessibility() }
     }
 
+    /// Three states, not two: watching, paused by secure input, and not
+    /// watching at all because the grant is missing.
+    private var stateLabel: String {
+        if !lvm.state.enabled { return LyStr.notWatching }
+        return lvm.state.suspended ? LyStr.paused : LyStr.on
+    }
+
+    private var stateTint: Color {
+        if !lvm.state.enabled { return .orange }
+        return lvm.state.suspended ? .orange : .green
+    }
+
     private var stateSection: some View {
         Section {
             HelmMetricStrip([
-                .init(lvm.state.suspended ? LyStr.paused : LyStr.on, LyStr.metricState,
-                      tint: lvm.state.suspended ? .orange : .green),
+                .init(stateLabel, LyStr.metricState, tint: stateTint),
                 .init("\(lvm.state.conversionsToday)", LyStr.metricToday),
             ])
         }
