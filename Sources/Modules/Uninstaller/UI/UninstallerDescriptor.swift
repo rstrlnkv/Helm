@@ -8,7 +8,7 @@ import Module_Uninstaller_Engine
     public static let id = ModuleID("uninstaller")
     public static let metadata = ModuleMetadata(
         id: id, name: UnStr.moduleName, summary: UnStr.summary,
-        sfSymbol: "trash", permissions: [])
+        sfSymbol: "trash", permissions: [.fullDisk])
     public static let isolation: ModuleIsolation = .inProcess
     public static let category: ModuleCategory = .utilities
 

@@ -287,6 +287,16 @@ public struct SystemSpell: SpellPort {
 
 // MARK: - Secure context
 
+/// The system's own alert sound, not one of ours: it is already at the volume
+/// the user chose for such things, and it stops when they mute alerts.
+public struct SystemSound: SoundPort {
+    private let name: String
+
+    public init(name: String = "Tink") { self.name = name }
+
+    public func playSwitch() { NSSound(named: name)?.play() }
+}
+
 public struct AXSecureContext: SecureContextPort {
     public init() {}
 

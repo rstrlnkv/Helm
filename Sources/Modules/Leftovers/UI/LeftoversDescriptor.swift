@@ -8,7 +8,7 @@ import Module_Leftovers_Engine
     public static let id = ModuleID("leftovers")
     public static let metadata = ModuleMetadata(
         id: id, name: LfStr.moduleName, summary: LfStr.summary,
-        sfSymbol: "wand.and.rays", permissions: [])
+        sfSymbol: "wand.and.rays", permissions: [.fullDisk])
     public static let isolation: ModuleIsolation = .inProcess
     public static let category: ModuleCategory = .utilities
 
