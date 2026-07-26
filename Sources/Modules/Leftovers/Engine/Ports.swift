@@ -9,6 +9,9 @@ public struct PlistData: @unchecked Sendable {
 }
 
 public protocol LeftoversFilePort: Sendable {
+    /// Whether the item's own folder can be written — i.e. whether Helm can
+    /// move the file to the Trash without an admin password.
+    func isWritable(_ url: URL) -> Bool
     func children(of url: URL) -> [URL]
     func exists(_ path: String) -> Bool
     func size(_ url: URL) -> Int

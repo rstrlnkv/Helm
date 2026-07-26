@@ -15,6 +15,8 @@ private struct FakeFS: FileSystemPort {
     }
 }
 private struct FakeApps: AppLister {
+    var known: Set<String> = []
+    func isKnownToSystem(bundleID: String) -> Bool { known.contains(bundleID) }
     var apps: [InstalledApp] = []
     func installedApps() -> [InstalledApp] { apps }
 }

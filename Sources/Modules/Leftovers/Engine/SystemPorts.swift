@@ -3,6 +3,10 @@ import Foundation
 import HelmRuntime
 
 public struct FileSystemLeftovers: LeftoversFilePort {
+    public func isWritable(_ url: URL) -> Bool {
+        FileManager.default.isWritableFile(atPath: url.deletingLastPathComponent().path)
+    }
+
     public init() {}
 
     public func children(of url: URL) -> [URL] {

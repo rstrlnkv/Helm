@@ -4,6 +4,10 @@ import HelmRuntime
 public protocol AppLister: Sendable {
     /// Apps from /Applications, ~/Applications, and any Setapp folder.
     func installedApps() -> [InstalledApp]
+    /// Does the system know an app with this bundle id, wherever it lives?
+    /// LaunchServices sees apps one folder down and helpers nested inside
+    /// other bundles; a directory listing sees neither.
+    func isKnownToSystem(bundleID: String) -> Bool
 }
 
 public protocol FileSystemPort: Sendable {

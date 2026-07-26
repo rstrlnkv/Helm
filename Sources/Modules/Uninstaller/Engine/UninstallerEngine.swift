@@ -110,7 +110,9 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
         for (dir, kind) in Self.orphanScanDirs {
             for url in fs.children(of: library.appendingPathComponent(dir)) {
                 let name = url.lastPathComponent
-                guard OrphanDetector.isOrphan(name: name, installedBundleIDs: installedIDs) else { continue }
+                guard OrphanDetector.isOrphan(name: name, installedBundleIDs: installedIDs,
+                                              knownToSystem: { self.apps.isKnownToSystem(bundleID: $0) })
+                else { continue }
                 let id = OrphanDetector.bundleID(from: name)
                 byID[id, default: []].append(
                     Leftover(path: url.path, kind: kind, sizeBytes: fs.size(url), matchedByName: false))
