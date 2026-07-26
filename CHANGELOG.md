@@ -8,6 +8,16 @@ features, PATCH = fixes.
 ## [0.7.1] — 2026-07-26
 
 ### Added
+- The keyboard module can put its own input-source indicator in the menu bar,
+  with the choices the system's one does not offer: letters, letters filled,
+  letters outlined, an emoji flag or a drawn one, at the same sizes the app icon
+  uses, and a menu that lists the installed layouts. Off by default, because
+  macOS still shows its own. A flag appears only where the input source itself
+  names a region — a language is not a country — and drawn flags come from a
+  short table of plain-band flags, with letters as the answer for everything
+  else.
+- An optional sound when a word is fixed, and a "never this word" button beside
+  the last change.
 - **Layout** — a seventh module. It notices a word typed in the wrong keyboard
   layout, rewrites it and moves the input source with it, and it can be undone.
   A word is only converted when it is not a word as typed **and** is one once
@@ -26,6 +36,11 @@ features, PATCH = fixes.
   or the tap reads its replacement back as typing forever.
 
 ### Fixed
+- After an update, Helm checks every permission its enabled modules declare
+  rather than only Full Disk Access — which no module declared, because
+  `ModulePermission` had no case for it, so the one thing being checked was
+  attributed to nobody. Each thing that stopped working is named, with a button
+  to the pane that fixes it.
 - `VPNEngine` was the one engine with no background bridge. `scutil` is a
   subprocess, and a connect polls it up to 25 times through
   `DispatchQueue.main.asyncAfter`, so one connect could stall the main thread
