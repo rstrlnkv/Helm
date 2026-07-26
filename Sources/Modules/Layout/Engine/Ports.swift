@@ -36,8 +36,11 @@ public protocol SpellPort: Sendable {
 }
 
 public protocol SecureContextPort: Sendable {
+    /// The cheap half — one syscall, no accessibility round-trip — so it can be
+    /// asked on every keystroke rather than once per word.
+    func isSecureInput() -> Bool
     /// True while the system has secure input on, or the focused element is a
-    /// password field.
+    /// password field. Reaches the accessibility server, so never on every key.
     func isSecure() -> Bool
     /// Bundle id of the frontmost app; empty when there is none.
     func frontmostBundleID() -> String

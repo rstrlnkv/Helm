@@ -54,6 +54,27 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
         guard event.getIntegerValueField(.eventSourceUserData) != helmEventMarker else { return }
         if event.type == .leftMouseDown { handler?(.click); return }
 
+        // A command or control chord is not text. Without this, ⌘S appended an
+        // "s" to the word and the next space converted the result — and the
+        // module's own shortcut broke itself, because a head-inserted tap sees
+        // the key before Carbon delivers the hotkey, so the letter was in the
+        // buffer by the time "convert the last word" ran.
+        let flags = event.flags
+        if flags.contains(.maskCommand) || flags.contains(.maskControl) {
+            // A chord is not text, and it is not a confirmation either. ⌘Space
+            // — the very gesture someone makes on noticing the wrong layout —
+            // used to arrive as a plain space: the word was "confirmed", a
+            // backspace was budgeted for a space that never reached the field,
+            // and the character to its left was eaten. ⌘S appended an "s". ⌘V
+            // changed the text underneath without saying what it now holds.
+            //
+            // `.navigation` covers all of it: the word ends, nothing is
+            // confirmed, and the buffer stops describing a field it no longer
+            // matches.
+            handler?(.navigation)
+            return
+        }
+
         switch Int(event.getIntegerValueField(.keyboardEventKeycode)) {
         case kVK_Delete: handler?(.backspace)
         case kVK_Space: handler?(.space)
@@ -170,10 +191,14 @@ public struct UCTranslation: TranslationPort {
               let toTable = Self.characterTable(to) else { return nil }
         var out = ""
         for character in word {
-            let lower = Character(character.lowercased())
-            guard let code = fromTable.first(where: { $0.value == lower })?.key,
+            // `Character(_:)` traps on a string that is not one grapheme, and
+            // uppercasing is not one-to-one: "ß".uppercased() is "SS". A crash
+            // inside a keyboard hook takes the whole app down, so the string
+            // form is appended as it comes.
+            guard let lower = character.lowercased().first,
+                  let code = fromTable.first(where: { $0.value == lower })?.key,
                   let mapped = toTable[code] else { return nil }
-            out.append(character.isUppercase ? Character(mapped.uppercased()) : mapped)
+            out.append(character.isUppercase ? mapped.uppercased() : String(mapped))
         }
         return out
     }
@@ -198,7 +223,10 @@ public struct UCTranslation: TranslationPort {
     }
 
     private static func characterTable(_ sourceID: String) -> [UInt16: Character]? {
-        cache.table(sourceID) { buildTable(sourceID) }
+        // The keyboard type is baked into the table by `UCKeyTranslate`, so it
+        // belongs in the key: plugging in an ISO keyboard where an ANSI one was
+        // leaves every cached table describing the wrong hardware.
+        cache.table("\(sourceID)#\(LMGetKbdType())") { buildTable(sourceID) }
     }
 
     private static func buildTable(_ sourceID: String) -> [UInt16: Character]? {
@@ -262,10 +290,12 @@ public struct SystemSpell: SpellPort {
 public struct AXSecureContext: SecureContextPort {
     public init() {}
 
+    public func isSecureInput() -> Bool { IsSecureEventInputEnabled() }
+
     public func isSecure() -> Bool {
         // System-wide secure input: the tap gets nothing anyway, and saying so
         // is what lets the UI explain the silence.
-        if IsSecureEventInputEnabled() { return true }
+        if isSecureInput() { return true }
         let system = AXUIElementCreateSystemWide()
         var focused: CFTypeRef?
         guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString,

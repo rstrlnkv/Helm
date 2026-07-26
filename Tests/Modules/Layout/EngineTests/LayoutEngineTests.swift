@@ -4,12 +4,14 @@ import HelmContract
 
 private final class FakeTyping: TypingPort, @unchecked Sendable {
     var performed: [SwitchPlan] = []
-    func perform(_ plan: SwitchPlan) -> Bool { performed.append(plan); return true }
+    var succeeds = true
+    func perform(_ plan: SwitchPlan) -> Bool { performed.append(plan); return succeeds }
 }
 
 private final class FakeSecure: SecureContextPort, @unchecked Sendable {
     var secure = false
     var bundle = "com.apple.Notes"
+    func isSecureInput() -> Bool { secure }
     func isSecure() -> Bool { secure }
     func frontmostBundleID() -> String { bundle }
 }
@@ -157,5 +159,53 @@ final class LayoutEngineTests: XCTestCase {
         tap.space()
         XCTAssertEqual(typing.performed.count, 1, "the buffer was cleared, not re-converted")
         withExtendedLifetime(engine) {}
+    }
+}
+
+/// The cases the review pass named, each one a way to corrupt somebody's text.
+extension LayoutEngineTests {
+    /// Typing after a conversion moves the caret past it. Undoing then deletes
+    /// a fixed number of characters from a different place: `привет vjq` became
+    /// `приghbdtn `.
+    func testTypingAfterAConversionCancelsTheUndo() {
+        let engine = engine()
+        tap.type("ghbdtn"); tap.space()
+        let afterConversion = typing.performed.count
+        tap.type("vjq")
+        engine.undoLast()
+        XCTAssertEqual(typing.performed.count, afterConversion,
+                       "the caret has moved on; undo must refuse")
+    }
+
+    /// A command chord is not text and not a confirmation. ⌘Space — the gesture
+    /// someone makes on noticing the wrong layout — used to arrive as a plain
+    /// space and budget a backspace for a character that never reached the
+    /// field, eating the one to its left.
+    func testACommandChordEndsTheWordWithoutConverting() {
+        let engine = engine()
+        tap.type("ghbdtn")
+        tap.handler?(.navigation)      // what a chord now delivers
+        XCTAssertTrue(typing.performed.isEmpty)
+
+        // …and the word it ended is still available to the shortcut, which is
+        // itself a chord and would otherwise destroy its own input.
+        engine.convertLastWord()
+        XCTAssertEqual(typing.performed.first?.insert, "привет")
+    }
+
+    /// The port says it failed; claiming a conversion on top of that would be
+    /// the app reporting work it did not do.
+    func testARefusedReplacementIsNotCountedAsOne() {
+        typing = FakeTyping(); secure = FakeSecure(); tap = FakeTap(); sources = FakeSources()
+        typing.succeeds = false
+        let engine = LayoutEngine(
+            tap: tap, typing: typing, sources: sources,
+            translation: FakeTranslation(table: ["ghbdtn": "привет"]),
+            spell: FakeSpell(valid: ["привет"]), secure: secure)
+        engine.activate()
+        tap.type("ghbdtn"); tap.space()
+        XCTAssertTrue(sources.selected.isEmpty, "the input source must not follow a failure")
+        engine.undoLast()
+        XCTAssertEqual(typing.performed.count, 1, "nothing was recorded to undo")
     }
 }

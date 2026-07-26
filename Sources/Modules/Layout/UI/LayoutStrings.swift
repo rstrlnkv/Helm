@@ -31,5 +31,6 @@ enum LyStr {
     static var notWatching: String { L("Not watching", [.ru: "Не следит", .es: "Sin vigilar", .fr: "Inactif", .de: "Beobachtet nicht", .ja: "監視していません", .zh: "未监视", .pt: "Sem monitorar"]) }
     static var paused: String { L("Paused", [.ru: "Пауза", .es: "Pausa", .fr: "Pause", .de: "Pause", .ja: "一時停止", .zh: "暂停", .pt: "Pausa"]) }
     static var lastChange: String { L("Last change", [.ru: "Последняя замена", .es: "Último cambio", .fr: "Dernier changement", .de: "Letzte Änderung", .ja: "直近の変更", .zh: "最近一次修改", .pt: "Última alteração"]) }
+    static var undoHint: String { L("Undo it with the shortcut below, in the app it happened in.", [.ru: "Отменяется горячей клавишей ниже — в том приложении, где произошла замена.", .es: "Se deshace con el atajo de abajo, en la app donde ocurrió.", .fr: "S’annule avec le raccourci ci-dessous, dans l’app où c’est arrivé.", .de: "Mit dem Kurzbefehl unten rückgängig zu machen — in der App, in der es passiert ist.", .ja: "下のショートカットで、置き換えが起きたアプリ内で元に戻せます。", .zh: "用下方快捷键在发生替换的应用中撤销。", .pt: "Desfaça pelo atalho abaixo, no app onde aconteceu."]) }
     static var undo: String { L("Undo", [.ru: "Вернуть", .es: "Deshacer", .fr: "Annuler", .de: "Rückgängig", .ja: "元に戻す", .zh: "撤销", .pt: "Desfazer"]) }
 }
