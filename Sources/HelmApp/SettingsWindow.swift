@@ -544,10 +544,18 @@ private struct AboutHelmView: View {
             .controlSize(.large)
             .padding(.top, 14)
             Spacer(minLength: 18)
-            Text("© 2026 Helm · GPL-3.0")
-                .padding(.top, 6)
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
+            VStack(spacing: 3) {
+                Text("© 2026 Helm · GPL-3.0")
+                // CC BY 4.0 asks for attribution where the work is used, and
+                // the flags are used in the menu bar — this is the page that
+                // can carry it.
+                Link(AppStr.flagCredit,
+                     destination: URL(string: "https://creativecommons.org/licenses/by/4.0/")!)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.top, 6)
+            .font(.caption2)
+            .foregroundStyle(.tertiary)
         }
         .frame(width: Self.column)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
