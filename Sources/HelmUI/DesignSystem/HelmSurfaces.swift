@@ -5,22 +5,26 @@ import SwiftUI
 public enum HelmSurface {
     public static let cardRadius: CGFloat = 12
     public static let cardFill = Color.primary.opacity(0.05)
-    public static let cardStroke = Color.primary.opacity(0.08)
     public static let hairline = Color.primary.opacity(0.10)
+    /// For things that float *over* content — a tooltip following the cursor.
+    /// Cards sit in the page and take no border (see `helmCard`); a floating
+    /// element needs an edge to separate it from whatever it covers.
+    public static let floatingEdge = Color.primary.opacity(0.08)
 }
 
 public extension View {
-    /// The card used across Helm: soft fill, hairline edge, continuous corners.
+    /// The one card in Helm: soft fill, continuous corners, no border.
+    ///
+    /// No border on purpose. Half of Helm's containers are macOS grouped-Form
+    /// sections, which the system draws as a plain fill and which we cannot
+    /// restyle — so an outlined card of our own would read as a different kind
+    /// of box on the next page over. The system's treatment is the anchor.
     func helmCard(padding: CGFloat = 14) -> some View {
         self
             .padding(padding)
             .background(
                 RoundedRectangle(cornerRadius: HelmSurface.cardRadius, style: .continuous)
                     .fill(HelmSurface.cardFill)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: HelmSurface.cardRadius, style: .continuous)
-                    .strokeBorder(HelmSurface.cardStroke)
             )
     }
 }
@@ -136,32 +140,6 @@ public struct HelmMetricStrip: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        // A system material so page content reads as blurred underneath when
-        // it scrolls past, the way macOS treats floating panels.
-        .background(
-            RoundedRectangle(cornerRadius: HelmSurface.cardRadius, style: .continuous)
-                .fill(.regularMaterial)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: HelmSurface.cardRadius, style: .continuous)
-                .strokeBorder(HelmSurface.cardStroke)
-        )
-    }
-}
-
-public extension View {
-    /// Pins an instrument strip above a scrolling page: the panel floats with
-    /// margins, and the content below gets matching inset so nothing is ever
-    /// cut off flush against it.
-    func helmMetricsHeader<Strip: View>(@ViewBuilder _ strip: () -> Strip) -> some View {
-        safeAreaInset(edge: .top, spacing: 0) {
-            strip()
-                // 20pt matches the inset macOS gives grouped Form rows, so
-                // every page shares one left and right edge.
-                .padding(.horizontal, 20)
-                .padding(.top, 12)
-                .padding(.bottom, 10)
-        }
+        .padding(.vertical, 4)
     }
 }

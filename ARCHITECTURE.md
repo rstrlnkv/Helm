@@ -202,6 +202,23 @@ pure reasoning missed.
 Design records for the larger modules live in `docs/superpowers/specs/`, the
 step-by-step build plans in `docs/superpowers/plans/`.
 
+## Surfaces (HelmUI/DesignSystem/HelmSurfaces.swift)
+
+**One container, and it has no border.** Half of Helm's pages are macOS
+grouped `Form` sections, which the system draws as a plain fill and which we
+cannot restyle. An outlined card of our own therefore reads as a different kind
+of box on the next page over — which is exactly what happened: the About page
+carried one bordered card and one unbordered one, side by side. `helmCard()` is
+the only card; it matches the system's treatment. `HelmSurface.floatingEdge`
+exists for things that float *over* content (the disk tooltip), which do need an
+edge.
+
+**Metric strips live inside the form, not above it.** They used to be pinned
+with `safeAreaInset` at the window's own 20pt margin while the content below sat
+at the system's much wider form insets — so the strip visibly overhung the rows
+it summarized. As the form's first `Section` it inherits the system's width and
+container for free, in both appearances.
+
 ## Motion (HelmUI/DesignSystem/HelmMotion.swift)
 
 Springs, not ease curves — an eased move reads as "smoothed", a spring reads
