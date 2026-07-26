@@ -9,6 +9,38 @@ import HelmRuntime
 /// auto-connect (VPNAutoConnectCore) against the injected ports. `activate()`/
 /// `deactivate()` are the MODULE lifecycle (host enables/disables the module);
 /// they also start/stop the auto-connect app observation.
+/// Where the engine does work that blocks.
+///
+/// `scutil` is a subprocess: on this machine a single `--nc list` measured
+/// 16 ms, and a connect polls it up to 25 times. All of that used to run on the
+/// main thread — through `DispatchQueue.main.asyncAfter` for the poll, and
+/// through AppKit's own running-applications notification for auto-connect,
+/// which also reaches a synchronous keychain read that can put a modal panel on
+/// screen. Tests drive the engine synchronously and assert on the commands it
+/// issued, so they run it `.inline`; the app runs it `.background`.
+public enum VPNWorkQueue: Sendable {
+    case background
+    case inline
+
+    fileprivate func run(_ block: @escaping @Sendable () -> Void) {
+        switch self {
+        case .inline: block()
+        case .background: Self.queue.async(execute: block)
+        }
+    }
+
+    fileprivate func run(after seconds: Double, _ block: @escaping @Sendable () -> Void) {
+        switch self {
+        case .inline: block()
+        case .background: Self.queue.asyncAfter(deadline: .now() + seconds, execute: block)
+        }
+    }
+
+    /// Serial: the engine's state is guarded by a lock, but the commands it
+    /// sends to `scutil` still have to arrive in the order they were asked for.
+    private static let queue = DispatchQueue(label: "helm.vpn", qos: .userInitiated)
+}
+
 public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     private let settings: VPNSettings
     private let runner: VPNRunnerPort
@@ -17,18 +49,32 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     private let localTransport: LocalTransport
     public let transport: EngineTransport
 
-    public private(set) var connections: [VPNConnection] = []
-    public private(set) var autoConnected: Set<String> = []
+    /// Written from the work queue and read from the UI, hence the lock — the
+    /// class was `@unchecked Sendable` with no synchronisation at all, and an
+    /// array written from two threads is not a race you get a warning for.
+    private let lock = NSLock()
+    private var _connections: [VPNConnection] = []
+    private var _autoConnected: Set<String> = []
+
+    public var connections: [VPNConnection] {
+        lock.lock(); defer { lock.unlock() }; return _connections
+    }
+    public var autoConnected: Set<String> {
+        lock.lock(); defer { lock.unlock() }; return _autoConnected
+    }
 
     private var core = VPNAutoConnectCore(rules: [:])
     private var knownBundleIDs: Set<String> = []
     private var running = false
+    private let work: VPNWorkQueue
 
     public init(settings: VPNSettings,
                 runner: VPNRunnerPort,
                 credentials: VPNCredentialsPort? = nil,
                 apps: AppObserverPort,
-                transport: LocalTransport = LocalTransport()) {
+                transport: LocalTransport = LocalTransport(),
+                work: VPNWorkQueue = .background) {
+        self.work = work
         self.settings = settings
         self.runner = runner
         self.credentials = credentials
@@ -42,7 +88,9 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
 
     public func activate() {
         running = true
-        reloadRules()
+        // Off the main thread: this runs from `ModuleHost.enable` at launch and
+        // shells out to scutil before the window is even on screen.
+        work.run { [weak self] in self?.reloadRulesNow() }
         knownBundleIDs = apps.runningBundleIDs()
         for id in knownBundleIDs {
             core.appLaunched(id,
@@ -59,7 +107,13 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     // MARK: - VPN control
 
     public func refresh() {
-        connections = VPNListParser.parseList(runner.run(["--nc", "list"]))
+        work.run { [weak self] in self?.refreshNow() }
+    }
+
+    /// The blocking half, always on the work queue.
+    private func refreshNow() {
+        let parsed = VPNListParser.parseList(runner.run(["--nc", "list"]))
+        lock.lock(); _connections = parsed; lock.unlock()
         emitState()
     }
 
@@ -71,7 +125,11 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     }
 
     public func toggleDefault() {
-        refresh()
+        work.run { [weak self] in self?.toggleDefaultNow() }
+    }
+
+    private func toggleDefaultNow() {
+        refreshNow()
         guard let target = defaultConnection else { return }
         settings.setLastUsed(target.name)
         if target.status == .connected || target.status == .connecting {
@@ -82,8 +140,12 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     }
 
     public func connect(_ name: String, auto: Bool = false) {
+        work.run { [weak self] in self?.connectNow(name, auto: auto) }
+    }
+
+    private func connectNow(_ name: String, auto: Bool) {
         HelmLog.shared.info("vpn", "connect \(Redact.vpn(name))\(auto ? " (auto)" : "")")
-        if auto { autoConnected.insert(name) }
+        if auto { lock.lock(); _autoConnected.insert(name); lock.unlock() }
         var args = ["--nc", "start", name]
         // Known limitation: scutil takes the shared secret only as an argument,
         // and process arguments are readable by every process running as this
@@ -102,8 +164,12 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     }
 
     public func disconnect(_ name: String) {
+        work.run { [weak self] in self?.disconnectNow(name) }
+    }
+
+    private func disconnectNow(_ name: String) {
         HelmLog.shared.info("vpn", "disconnect \(Redact.vpn(name))")
-        autoConnected.remove(name)
+        lock.lock(); _autoConnected.remove(name); lock.unlock()
         _ = runner.run(["--nc", "stop", name])
         emitState()
         scheduleRefresh()
@@ -132,9 +198,9 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// Tests use a synchronous runner and assert on issued commands, not on
     /// this async refresh.
     private func pollUntilSettled() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { [weak self] in
+        work.run(after: 0.7) { [weak self] in
             guard let self else { return }
-            self.refresh()
+            self.refreshNow()
             if Self.needsPoll(self.connections), self.pollAttempts < self.maxPollAttempts {
                 self.pollAttempts += 1
                 self.pollUntilSettled()
@@ -153,11 +219,19 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     // MARK: - Auto-connect
 
     public func reloadRules() {
-        refresh()
+        work.run { [weak self] in self?.reloadRulesNow() }
+    }
+
+    private func reloadRulesNow() {
+        refreshNow()
         core.rules = VPNRules.valid(VPNRules.decode(settings.rulesJSON), against: connections)
     }
 
     private func appsChanged() {
+        work.run { [weak self] in self?.appsChangedNow() }
+    }
+
+    private func appsChangedNow() {
         guard running else { return }
         let now = apps.runningBundleIDs()
         let launched = now.subtracting(knownBundleIDs)

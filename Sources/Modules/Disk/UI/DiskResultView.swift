@@ -103,6 +103,7 @@ private struct BreadcrumbBar: View {
             }
             .disabled(dvm.focusPath.count <= 1)
             .help(DkStr.back)
+            .accessibilityLabel(DkStr.back)
 
             crumbs
 
@@ -170,6 +171,7 @@ private struct BreadcrumbBar: View {
                 Image(systemName: "ellipsis")
             }
             .menuStyle(.borderlessButton)
+            .accessibilityLabel(HelmA11y.moreActions)
             .fixedSize()
             ForEach(Array(path.enumerated().suffix(2)), id: \.element.path) { index, entry in
                 crumb(entry, index: index, isLast: index == path.count - 1)

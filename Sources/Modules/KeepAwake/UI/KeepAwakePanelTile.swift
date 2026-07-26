@@ -60,6 +60,9 @@ public struct KeepAwakePanelTile: View {
                 // out from under the edge, and every colour stays native.
                 .clipped()
                 .allowsHitTesting(showMore)
+                // Clipped is not hidden: VoiceOver read the whole automation
+                // block while it was collapsed.
+                .accessibilityHidden(!showMore)
         }
         .helmPanelCard()
         // The store isn't observable, so these mirrored values would otherwise
