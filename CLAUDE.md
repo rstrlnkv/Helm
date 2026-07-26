@@ -20,8 +20,8 @@ xattr -dr com.apple.quarantine /Applications/Helm.app && open /Applications/Helm
 ## Rules of the house
 
 - **Everything ships to the dev channel first** (`vX.Y.Z-dev.N`, prerelease),
-  is triaged against `~/Library/Logs/Helm/helm.log`, and goes stable only at
-  zero known problems. Flow and commands: [VERSIONING.md](VERSIONING.md).
+  is triaged against `~/Library/Logs/Helm/helm.log`, and reaches the **beta**
+  channel only at zero known problems. Flow and commands: [VERSIONING.md](VERSIONING.md).
   Releases attach **both** dmg and zip; the zip feeds the silent updater.
 - New module = descriptor + engine targets following the existing pattern
   (see ARCHITECTURE.md), registered in `ModuleRegistry.all`. Pure logic in

@@ -134,9 +134,10 @@ scanner and the Settings audit all parse through them.
 
 `HelmLog` (HelmRuntime) writes `~/Library/Logs/Helm/helm.log`, one line per
 event, 2 MB rollover. `LogPolicy` keys off the `-dev` version suffix: every
-dev build logs, stable builds stay silent unless the Diagnostics switch is on.
+dev build logs, beta builds stay silent unless the Diagnostics switch is on.
 The release process depends on this file: dev builds are triaged against it,
-and a build graduates to stable only at zero known problems (VERSIONING.md).
+and a build graduates to the beta channel only at zero known problems
+(VERSIONING.md).
 
 **What must not reach the file.** A VPN connection name announces an employer or
 a provider; an absolute path carries the account name; a bundle id names a
