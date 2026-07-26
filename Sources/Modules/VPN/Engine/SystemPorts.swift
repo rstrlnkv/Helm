@@ -38,15 +38,19 @@ public final class WorkspaceAppObserver: AppObserverPort {
 
     public init() {}
 
-    public func runningBundleIDs() -> Set<String> {
-        Set(NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier))
-    }
+    /// Through `RunningApps`, never straight to AppKit: the engine calls this
+    /// from its own serial queue, and reading the live list from there
+    /// segfaulted the app whenever a program quit at the wrong moment.
+    public func runningBundleIDs() -> Set<String> { RunningApps.shared.bundleIDs() }
 
     public func startObserving(_ onChange: @escaping @Sendable () -> Void) {
         // No .initial: the engine seeds already-running apps itself, so firing
         // on registration would just cause a redundant full app-list scan.
         observation = NSWorkspace.shared.observe(\.runningApplications) { _, _ in
-            onChange()
+            // KVO arrives on the thread that changed the list — the main one.
+            // The snapshot is taken here, while it is safe to read, so that the
+            // engine's queue has something correct to read a moment later.
+            RunningApps.shared.refreshOnMain(then: onChange)
         }
     }
 }
