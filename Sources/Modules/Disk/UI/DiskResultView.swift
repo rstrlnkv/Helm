@@ -94,7 +94,15 @@ private struct BreadcrumbBar: View {
             .help(DkStr.back)
             .accessibilityLabel(DkStr.back)
 
-            crumbs
+            // `fixedSize` on the group, not on each crumb: a `frame(maxWidth:)`
+            // is a range, and in an HStack with room to spare every crumb took
+            // its whole maximum — 140 pt for a name eight characters long. The
+            // bar came out as four names evenly spread across the window with
+            // gaps between them, which reads as a layout fault rather than as
+            // a path. Asking the group for its ideal width makes each maximum
+            // behave as the ceiling it was meant to be.
+            HStack(spacing: 8) { crumbs }
+                .fixedSize()
 
             Spacer(minLength: 12)
 
@@ -175,7 +183,7 @@ private struct BreadcrumbBar: View {
             Text(dvm.displayName(for: entry))
                 .font(.callout.weight(.semibold))
                 .lineLimit(1).truncationMode(.middle)
-                .frame(maxWidth: 180)
+                .frame(maxWidth: 180, alignment: .leading)
         } else {
             Button {
                 withAnimation(HelmMotion.emphasis) { dvm.jump(to: index) }

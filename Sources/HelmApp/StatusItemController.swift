@@ -182,6 +182,7 @@ import HelmUI
         settingsWindow.show(selecting: moduleID)
     }
 
+
     @objc private func quit() {
         NSApp.terminate(nil)
     }
