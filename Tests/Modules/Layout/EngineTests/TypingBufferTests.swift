@@ -20,7 +20,7 @@ final class TypingBufferTests: XCTestCase {
                          .navigation, .click, .focusChange] {
             var buffer = TypingBuffer()
             for character in "ghbdtn" { _ = buffer.accept(.character(character)) }
-            XCTAssertEqual(buffer.accept(boundary), "ghbdtn", "\(boundary)")
+            XCTAssertEqual(buffer.accept(boundary)?.word, "ghbdtn", "\(boundary)")
             XCTAssertEqual(buffer.word, "")
         }
     }
@@ -47,6 +47,21 @@ final class TypingBufferTests: XCTestCase {
         var buffer = feed([.character("x")])
         _ = buffer.accept(.focusChange)
         XCTAssertEqual(buffer.word, "")
+    }
+
+    /// The character that ended the word is reported with it: it is already in
+    /// the field, and a replacement that ignores it deletes one too few.
+    func testTheEndingCharacterComesBackWithTheWord() {
+        var buffer = TypingBuffer()
+        for character in "abc" { _ = buffer.accept(.character(character)) }
+        XCTAssertEqual(buffer.accept(.space)?.ending, " ")
+
+        for character in "abc" { _ = buffer.accept(.character(character)) }
+        XCTAssertEqual(buffer.accept(.punctuation("!"))?.ending, "!")
+
+        // Leaving types nothing, so there is nothing extra to delete.
+        for character in "abc" { _ = buffer.accept(.character(character)) }
+        XCTAssertNil(buffer.accept(.click)?.ending)
     }
 
     /// A tap that never sees a boundary must not become a leak.

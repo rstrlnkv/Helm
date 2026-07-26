@@ -18,6 +18,7 @@ public struct UndoRecord: Equatable, Sendable {
     public mutating func invalidate() { valid = false }
 
     public func reversePlan() -> SwitchPlan? {
-        SwitchPlan.make(replacing: event.after, with: event.before)
+        SwitchPlan.make(replacing: event.after, with: event.before,
+                        trailing: event.trailing.first)
     }
 }
