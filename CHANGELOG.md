@@ -14,14 +14,17 @@ features, PATCH = fixes.
   uses, and a menu that lists the installed layouts. Off by default, because
   macOS still shows its own. A flag appears only where the input source itself
   names a region — a language is not a country.
-- Twenty-seven drawn flags, laid out in device pixels rather than points, so no
-  band edge lands mid-pixel. The model carries each flag's construction (bands
-  with proportions, Nordic cross, Swiss cross, disc, hoist triangle) rather than
-  a list of colours, and three rules decide membership: nothing invented or
-  dropped, no two flags alike, and no feature under two device pixels at the
-  smallest size. Between them those send the US and GB layouts to letters —
-  which is what macOS shows for them too. Letters now sit in the same rounded
-  frame the flags use, and Settings previews every installed layout.
+- A drawn flag for every layout — all fifty regions the layout table can
+  produce, the US and UK included — laid out in device pixels rather than
+  points, so no band edge lands mid-pixel. The model carries each flag's
+  construction (bands with proportions, Nordic cross, canton with stripes,
+  Union Jack, crescent, star, taegeuk, rhombus, emblems for the crests) rather
+  than a list of colours. At badge size a flag is a recognition mark, not
+  cloth: the US canton has no stars and seven stripes stand for thirteen, a
+  crest becomes a plain shape, the Jack loses the counterchange of its
+  saltire — each simplification keeps the silhouette that makes the flag
+  recognisable at fifteen pixels. No outline around them; the rounded corners
+  are the only frame. Settings previews every installed layout.
 - An optional sound when a word is fixed, and a "never this word" button beside
   the last change.
 - **Layout** — a seventh module. It notices a word typed in the wrong keyboard

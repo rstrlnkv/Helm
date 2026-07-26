@@ -12,9 +12,9 @@ import Module_Layout_Engine
 /// fell. At eleven points the Dutch flag is 22 pixels tall and divides into
 /// three bands of 7.33, so two rows came out as blends — a pink line through
 /// the white band, both of them 78% opaque, which meant the menu bar showed
-/// through the middle of the flag. The same mistake made the outline two
-/// physical pixels instead of one, and that outline ate a third of Russia's
-/// white band at the smallest size.
+/// through the middle of the flag. The same mistake once made an outline two
+/// physical pixels instead of one; the outline is gone entirely now — the
+/// corner rounding is the only frame.
 enum BadgeImage {
     static func make(label: String, flag: String?, art: FlagArt?,
                      style: BadgeStyle, points: CGFloat) -> NSImage {
@@ -114,12 +114,12 @@ enum BadgeImage {
     static func drawn(_ art: FlagArt, points: CGFloat, scale: CGFloat) -> NSImage {
         let canvas = Canvas(points: points, scale: scale)
         return NSImage(size: canvas.size, flipped: false) { rect in
+            // No outline: the flags stand on their colours, with the corner
+            // rounding as the only frame. The heavy theme-aware stroke tried
+            // before read as a border around a control rather than as a flag.
             let radius = canvas.radius / canvas.scale
-            NSGraphicsContext.current?.saveGraphicsState()
             NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius).setClip()
             paint(art, in: canvas)
-            NSGraphicsContext.current?.restoreGraphicsState()
-            outline(rect, radius: radius, scale: canvas.scale)
             return true
         }
     }
@@ -148,6 +148,93 @@ enum BadgeImage {
             NSBezierPath(ovalIn: canvas.rect(((canvas.width - diameter) / 2).rounded(),
                                              ((canvas.height - diameter) / 2).rounded(),
                                              diameter, diameter)).fill()
+        case let .bandsEmblem(colors, weights, vertical, emblem):
+            bands(colors, weights, vertical: vertical, in: canvas)
+            draw(emblem, in: canvas)
+        case let .centeredCross(field, cross):
+            fill(field, canvas.rect(0, 0, canvas.width, canvas.height))
+            let arm = max((canvas.height * 0.20).rounded(), 2)
+            let midX = (canvas.width / 2).rounded(), midY = (canvas.height / 2).rounded()
+            fill(cross, canvas.rect(0, midY - (arm / 2).rounded(), canvas.width, arm))
+            fill(cross, canvas.rect(midX - (arm / 2).rounded(), 0, arm, canvas.height))
+        case let .stripesCanton(stripes, canton, emblem):
+            bands(stripes, Array(repeating: 1, count: stripes.count),
+                  vertical: false, in: canvas)
+            // The canton: upper hoist corner, two fifths of the width, and in
+            // height a whole number of stripes so its bottom edge lands on a
+            // stripe boundary instead of cutting one in half.
+            let stripe = canvas.height / CGFloat(stripes.count)
+            // A single "stripe" is a plain field (Taiwan): the canton takes
+            // the usual upper quarter rather than the whole height.
+            let cantonH = stripes.count > 1
+                ? (stripe * CGFloat((stripes.count + 1) / 2)).rounded()
+                : (canvas.height / 2).rounded()
+            let cantonW = (canvas.width * 0.4).rounded()
+            let cantonRect = canvas.rect(0, canvas.height - cantonH, cantonW, cantonH)
+            fill(canton, cantonRect)
+            if let emblem {
+                draw(emblem, in: canvas,
+                     cx: cantonW / 2, cy: canvas.height - cantonH / 2)
+            }
+        case let .unionJack(field):
+            unionJack(field: field, in: canvas.rect(0, 0, canvas.width, canvas.height),
+                      canvas: canvas)
+        case let .jackCanton(field):
+            fill(field, canvas.rect(0, 0, canvas.width, canvas.height))
+            unionJack(field: field,
+                      in: canvas.rect(0, (canvas.height / 2).rounded(),
+                                      (canvas.width / 2).rounded(),
+                                      canvas.height - (canvas.height / 2).rounded()),
+                      canvas: canvas)
+        case let .crescentStar(field, mark):
+            fill(field, canvas.rect(0, 0, canvas.width, canvas.height))
+            // The crescent is two discs: the mark's, then the field's laid
+            // over it, offset towards the fly.
+            let r = canvas.height * 0.30
+            let cx = canvas.width * 0.38, cy = canvas.height / 2
+            NSColor(hex: mark).setFill()
+            NSBezierPath(ovalIn: canvas.rect(cx - r, cy - r, r * 2, r * 2)).fill()
+            NSColor(hex: field).setFill()
+            let inset = r * 0.28
+            NSBezierPath(ovalIn: canvas.rect(cx - r + inset * 1.6, cy - r + inset * 0.8,
+                                             (r - inset) * 2, (r - inset) * 2)).fill()
+            star5(hex: mark, cx: canvas.width * 0.66, cy: cy,
+                  radius: canvas.height * 0.14, canvas: canvas)
+        case let .star(field, star, atHoist):
+            fill(field, canvas.rect(0, 0, canvas.width, canvas.height))
+            if atHoist {
+                star5(hex: star, cx: canvas.width * 0.22, cy: canvas.height * 0.68,
+                      radius: canvas.height * 0.22, canvas: canvas)
+            } else {
+                star5(hex: star, cx: canvas.width / 2, cy: canvas.height / 2,
+                      radius: canvas.height * 0.30, canvas: canvas)
+            }
+        case let .taegeuk(field):
+            fill(field, canvas.rect(0, 0, canvas.width, canvas.height))
+            let r = canvas.height * 0.32
+            let box = canvas.rect(canvas.width / 2 - r, canvas.height / 2 - r, r * 2, r * 2)
+            NSGraphicsContext.current?.saveGraphicsState()
+            NSBezierPath(ovalIn: box).setClip()
+            // Red above, blue below — the S-curve is below badge size.
+            fill("CD2E3A", canvas.rect(0, (canvas.height / 2).rounded(),
+                                       canvas.width, canvas.height))
+            fill("0047A0", canvas.rect(0, 0, canvas.width, (canvas.height / 2).rounded()))
+            NSGraphicsContext.current?.restoreGraphicsState()
+        case let .rhombusDisc(field, rhombus, disc):
+            fill(field, canvas.rect(0, 0, canvas.width, canvas.height))
+            let path = NSBezierPath()
+            let inX = canvas.width * 0.10, inY = canvas.height * 0.10
+            path.move(to: canvas.point(canvas.width / 2, canvas.height - inY))
+            path.line(to: canvas.point(canvas.width - inX, canvas.height / 2))
+            path.line(to: canvas.point(canvas.width / 2, inY))
+            path.line(to: canvas.point(inX, canvas.height / 2))
+            path.close()
+            NSColor(hex: rhombus).setFill()
+            path.fill()
+            let r = canvas.height * 0.22
+            NSColor(hex: disc).setFill()
+            NSBezierPath(ovalIn: canvas.rect(canvas.width / 2 - r, canvas.height / 2 - r,
+                                             r * 2, r * 2)).fill()
         case let .hoistTriangle(top, bottom, triangle):
             let half = (canvas.height / 2).rounded()
             fill(bottom, canvas.rect(0, 0, canvas.width, half))
@@ -208,32 +295,109 @@ enum BadgeImage {
         }
     }
 
+    /// The crest, star or leaf reduced to a shape. Coordinates arrive as
+    /// fractions of the canvas; `cx`/`cy` override them when a caller places
+    /// the emblem itself (the canton does).
+    private static func draw(_ emblem: FlagArt.Emblem, in canvas: Canvas,
+                             cx: CGFloat? = nil, cy: CGFloat? = nil) {
+        let x = cx ?? canvas.width * CGFloat(emblem.x)
+        // Emblem y counts from the top, the canvas from the bottom.
+        let y = cy ?? canvas.height * (1 - CGFloat(emblem.y))
+        let d = canvas.height * CGFloat(emblem.size)
+        let colour = NSColor(hex: emblem.hex)
+        switch emblem.shape {
+        case .disc:
+            colour.setFill()
+            NSBezierPath(ovalIn: canvas.rect(x - d / 2, y - d / 2, d, d)).fill()
+        case .star5:
+            star5(hex: emblem.hex, cx: x, cy: y, radius: d / 2, canvas: canvas)
+        case .star6:
+            // A hexagram is two triangles; at badge size that is exactly what
+            // is drawn.
+            colour.setFill()
+            for flip in [CGFloat(1), -1] {
+                let path = NSBezierPath()
+                path.move(to: canvas.point(x, y + flip * d / 2))
+                path.line(to: canvas.point(x + d * 0.43, y - flip * d * 0.25))
+                path.line(to: canvas.point(x - d * 0.43, y - flip * d * 0.25))
+                path.close()
+                path.fill()
+            }
+        case .cross:
+            let arm = max((d * 0.4).rounded(), 2)
+            fill(emblem.hex, canvas.rect(x - d / 2, y - (arm / 2).rounded(), d, arm))
+            fill(emblem.hex, canvas.rect(x - (arm / 2).rounded(), y - d / 2, arm, d))
+        case .shield:
+            // A rectangle coming to a point: the silhouette every crest in the
+            // table shares once the detail is gone.
+            let w = d * 0.72
+            let path = NSBezierPath()
+            path.move(to: canvas.point(x - w / 2, y + d / 2))
+            path.line(to: canvas.point(x + w / 2, y + d / 2))
+            path.line(to: canvas.point(x + w / 2, y - d * 0.15))
+            path.line(to: canvas.point(x, y - d / 2))
+            path.line(to: canvas.point(x - w / 2, y - d * 0.15))
+            path.close()
+            colour.setFill()
+            path.fill()
+        case .vstripe:
+            let w = max((canvas.width * CGFloat(emblem.size)).rounded(), 2)
+            fill(emblem.hex, canvas.rect((x - w / 2).rounded(), 0, w, canvas.height))
+        }
+    }
+
+    private static func star5(hex: String, cx: CGFloat, cy: CGFloat,
+                              radius: CGFloat, canvas: Canvas) {
+        let path = NSBezierPath()
+        let inner = radius * 0.42
+        for i in 0..<10 {
+            let angle = CGFloat(i) * .pi / 5 + .pi / 2   // a point straight up
+            let r = i.isMultiple(of: 2) ? radius : inner
+            let point = canvas.point(cx + cos(angle) * r, cy + sin(angle) * r)
+            i == 0 ? path.move(to: point) : path.line(to: point)
+        }
+        path.close()
+        NSColor(hex: hex).setFill()
+        path.fill()
+    }
+
+    /// The Jack, into whatever rectangle it is asked for — the whole badge for
+    /// GB, the canton for Australia. Drawn without the counterchange of the
+    /// saltire, which is half a pixel at badge size.
+    private static func unionJack(field: String, in rect: NSRect, canvas: Canvas) {
+        NSGraphicsContext.current?.saveGraphicsState()
+        NSBezierPath(rect: rect).setClip()
+        NSColor(hex: field).setFill()
+        rect.fill()
+        let h = rect.height
+        // Diagonals as stroked lines, white under red.
+        for (hex, width) in [("FFFFFF", h * 0.24), ("C8102E", h * 0.10)] {
+            NSColor(hex: hex).setStroke()
+            for (from, to) in [((rect.minX, rect.minY), (rect.maxX, rect.maxY)),
+                               ((rect.minX, rect.maxY), (rect.maxX, rect.minY))] {
+                let path = NSBezierPath()
+                path.move(to: NSPoint(x: from.0, y: from.1))
+                path.line(to: NSPoint(x: to.0, y: to.1))
+                path.lineWidth = width
+                path.stroke()
+            }
+        }
+        // The cross, white under red, over the saltire.
+        for (hex, width) in [("FFFFFF", h * 0.33), ("C8102E", h * 0.20)] {
+            NSColor(hex: hex).setFill()
+            NSRect(x: rect.midX - width / 2, y: rect.minY,
+                   width: width, height: rect.height).fill()
+            NSRect(x: rect.minX, y: rect.midY - width / 2,
+                   width: rect.width, height: width).fill()
+        }
+        NSGraphicsContext.current?.restoreGraphicsState()
+    }
+
     private static func fill(_ hex: String, _ rect: NSRect) {
         NSColor(hex: hex).setFill()
         rect.fill()
     }
 
-    /// One device pixel, drawn inside the shape.
-    ///
-    /// It goes on every flag, not only the ones with a pale edge: it gives the
-    /// set one silhouette, and matches the frame macOS draws around its own
-    /// indicator. The alpha is high because the menu bar is translucent — its
-    /// luminance measured ten to one across a single dark-mode screenshot,
-    /// depending on the wallpaper behind it — so the previous 25% outline came
-    /// to 1.8:1 against a white band and was, in effect, not there. Being
-    /// resolved inside the drawing block means it follows the current theme.
-    private static func outline(_ rect: NSRect, radius: CGFloat, scale: CGFloat) {
-        let dark = NSAppearance.currentDrawing()
-            .bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-        let colour = dark ? NSColor.white.withAlphaComponent(0.55)
-                          : NSColor.black.withAlphaComponent(0.50)
-        colour.setStroke()
-        let hairline = 1 / scale
-        let path = NSBezierPath(roundedRect: rect.insetBy(dx: hairline / 2, dy: hairline / 2),
-                                xRadius: radius, yRadius: radius)
-        path.lineWidth = hairline
-        path.stroke()
-    }
 }
 
 private extension NSColor {
