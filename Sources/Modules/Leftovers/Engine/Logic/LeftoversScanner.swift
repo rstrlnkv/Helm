@@ -21,8 +21,10 @@ public struct LeftoversScanner: Sendable {
     public func scan() -> [StaleItem] {
         let installed = apps.installedBundleIDs()
         let activeExtensions = extensions.activeExtensionIdentifiers()
+        let disabled = extensions.disabledLabels()
         var out: [StaleItem] = []
-        out += launchItems(installed: installed, activeExtensions: activeExtensions)
+        out += launchItems(installed: installed, activeExtensions: activeExtensions,
+                           disabled: disabled)
         out += preferences(installed: installed)
         out += plugins(installed: installed)
         out += systemExtensions(installed: installed)
@@ -49,7 +51,8 @@ public struct LeftoversScanner: Sendable {
 
     // MARK: - Launch agents and daemons
 
-    private func launchItems(installed: Set<String>, activeExtensions: Set<String>) -> [StaleItem] {
+    private func launchItems(installed: Set<String>, activeExtensions: Set<String>,
+                             disabled: Set<String>) -> [StaleItem] {
         let sources: [(URL, StaleKind)] = [
             (home.appendingPathComponent("Library/LaunchAgents"), .launchAgent),
             (URL(fileURLWithPath: "/Library/LaunchAgents"), .launchAgent),
@@ -67,7 +70,8 @@ public struct LeftoversScanner: Sendable {
                     return StaleItem(path: url.path, identifier: info.identifier, kind: kind,
                                      sizeBytes: files.size(url),
                                      missingTarget: targetAlive ? nil : info.program,
-                                     runAtLoad: info.runAtLoad, status: status)
+                                     runAtLoad: info.runAtLoad, status: status,
+                                     disabled: disabled.contains(info.identifier))
                 }
         }
     }

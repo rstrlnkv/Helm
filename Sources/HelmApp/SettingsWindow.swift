@@ -403,7 +403,10 @@ private struct MenuBarSettingsView: View {
                     let granted = need.state(accessibility: accessibility,
                                              fullDisk: diskAccess) == .granted
                     permissionRow(AppStr.permissionTitle(need),
-                                  detail: need == .fullDiskAccess && !granted && adHocBuild
+                                  // The ad-hoc caveat applies to every grant:
+                                  // macOS ties them to the exact binary, so a
+                                  // new build is a different app to it.
+                                  detail: !granted && adHocBuild
                                       ? AppStr.fullDiskAccessAdHoc
                                       : AppStr.permissionWhy(need),
                                   granted: granted) { need.openSettings() }

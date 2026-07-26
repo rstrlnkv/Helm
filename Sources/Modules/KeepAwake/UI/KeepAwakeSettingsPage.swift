@@ -9,7 +9,10 @@ import Module_KeepAwake_Engine
 /// observable, so values are seeded into local `@State` and written through
 /// on every change, notifying the engine via `settingsChanged`.
 public struct KeepAwakeSettingsPage: View {
-    private let vm: ModuleViewModel
+    // Observed, not held: the state strip reads isActive and the live
+    // conditions, and a plain `let` means SwiftUI never hears them change —
+    // the figures froze at whatever they were when the page opened.
+    @ObservedObject private var vm: ModuleViewModel
     private let store: NamespacedStore
 
     @State private var accessibility: PermissionState = .granted
