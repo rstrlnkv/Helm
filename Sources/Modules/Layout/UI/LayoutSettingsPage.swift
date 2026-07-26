@@ -242,6 +242,7 @@ public struct LayoutSettingsPage: View {
                     }
                 }
                 .onChange(of: badgeSize) { _, value in write(value.rawValue, "badgeSize") }
+                BadgePreview(style: badgeStyle, size: badgeSize)
             }
         }
     }

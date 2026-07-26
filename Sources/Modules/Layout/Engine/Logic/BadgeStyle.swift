@@ -13,7 +13,7 @@ public enum BadgeStyle: String, CaseIterable, Sendable {
     /// A flag is the default: it is what people recognise without reading, and
     /// letters are the alternative for anyone who prefers them — or for a
     /// layout with no country to name.
-    public static let `default` = BadgeStyle.flagEmoji
+    public static let `default` = BadgeStyle.flagDrawn
 
     public static func from(_ raw: String?) -> BadgeStyle {
         guard let raw, let value = BadgeStyle(rawValue: raw) else { return .default }
