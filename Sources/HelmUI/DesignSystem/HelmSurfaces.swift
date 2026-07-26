@@ -106,7 +106,10 @@ public struct HelmPageHeader<Trailing: View>: View {
 /// hairlines — the About page's version/build/modules row, generalized.
 public struct HelmMetricStrip: View {
     public struct Metric: Identifiable {
-        public let id = UUID()
+        /// The label, not a fresh UUID: metrics are rebuilt inline from view
+        /// model state, and a new identity on every publish made `ForEach` tear
+        /// down and re-create every cell instead of updating it.
+        public var id: String { label }
         public let value: String
         public let label: String
         public let tint: Color?

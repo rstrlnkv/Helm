@@ -274,30 +274,18 @@ public final class PmsetClamshellPort: ClamshellPort {
         return result.status == 0
     }
 
+    /// Existence, not contents: the file is installed 0440 root:wheel, so
+    /// reading it as the user always fails. Answering "not installed" every time
+    /// meant the admin prompt came back every session, and the removal added
+    /// alongside it could never run at all.
     public func isSudoersInstalled() -> Bool {
-        guard let contents = try? String(contentsOfFile: Self.sudoersPath, encoding: .utf8) else {
-            return false
-        }
-        return contents.contains("pmset disablesleep")
-    }
-
-    /// The account names sudo will take, and nothing else.
-    ///
-    /// `NSUserName()` is not a constant: on a directory-bound or MDM-managed Mac
-    /// it is whatever `dscl` says. It ends up inside a string that a root shell
-    /// evaluates, where a backtick or `$(…)` is code, and inside a file whose
-    /// syntax, if broken, takes sudo down for the whole machine — recoverable
-    /// only from recovery mode. Neither is worth supporting an exotic name for.
-    static func isPlausibleAccountName(_ name: String) -> Bool {
-        !name.isEmpty && name.count <= 64 && name.allSatisfy {
-            $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "." || $0 == "_" || $0 == "-")
-        }
+        FileManager.default.fileExists(atPath: Self.sudoersPath)
     }
 
     public func installSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async {
             let user = NSUserName()
-            guard Self.isPlausibleAccountName(user) else {
+            guard AccountName.isPlausible(user) else {
                 HelmLog.shared.warn("keepawake", "refusing sudoers rule for an implausible account name")
                 done(false)
                 return
@@ -308,8 +296,21 @@ public final class PmsetClamshellPort: ClamshellPort {
             // privileged shell: nothing derived from the account name is ever
             // quoted into a command line. The staging file is in this user's
             // private temporary directory, not /tmp, so no one else can swap it.
-            let staged = FileManager.default.temporaryDirectory
-                .appendingPathComponent("helm-keepawake.sudoers")
+            // A fresh directory per attempt, not a fixed name. The privileged
+            // read happens after the password prompt, so with a predictable
+            // path anything already running as this user has an unbounded
+            // window to rewrite the rule it is about to install as root.
+            // $TMPDIR is 0700, which stops other users; this stops the rest.
+            let stagingDirectory = FileManager.default.temporaryDirectory
+                .appendingPathComponent("helm-sudoers-\(UUID().uuidString)")
+            guard (try? FileManager.default.createDirectory(
+                at: stagingDirectory, withIntermediateDirectories: false,
+                attributes: [.posixPermissions: 0o700])) != nil else {
+                done(false)
+                return
+            }
+            defer { try? FileManager.default.removeItem(at: stagingDirectory) }
+            let staged = stagingDirectory.appendingPathComponent("helm-keepawake.sudoers")
             guard (try? rule.write(to: staged, atomically: true, encoding: .utf8)) != nil else {
                 done(false)
                 return

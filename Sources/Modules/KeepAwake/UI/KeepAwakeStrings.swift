@@ -1,4 +1,5 @@
 import HelmUI
+import HelmRuntime
 import Module_KeepAwake_Engine
 
 /// Localized strings for the Keep Awake module UI. English is the base; the
@@ -79,12 +80,24 @@ enum KAStr {
     static var behavior: String { L("Behavior", [.ru: "Поведение", .es: "Comportamiento", .fr: "Comportement", .de: "Verhalten", .ja: "動作", .zh: "行为", .pt: "Comportamento"]) }
     static var keepDisplayOn: String { L("Keep display on", [.ru: "Держать дисплей включённым", .es: "Mantener la pantalla encendida", .fr: "Garder l’écran allumé", .de: "Bildschirm anlassen", .ja: "ディスプレイを点灯したまま", .zh: "保持显示器常亮", .pt: "Manter a tela ligada"]) }
     static var movePointer: String { L("Move pointer periodically", [.ru: "Периодически двигать указателем", .es: "Mover el puntero periódicamente", .fr: "Déplacer le pointeur régulièrement", .de: "Zeiger regelmäßig bewegen", .ja: "定期的にポインタを動かす", .zh: "定期移动指针", .pt: "Mover o ponteiro periodicamente"]) }
-    static func everyMinutes(_ n: Int) -> String { L("Every \(n) min", [.ru: "Каждые \(n) мин", .es: "Cada \(n) min", .fr: "Toutes les \(n) min", .de: "Alle \(n) Min.", .ja: "\(n) 分ごと", .zh: "每 \(n) 分钟", .pt: "A cada \(n) min"]) }
+    /// "Каждые 1 мин" is wrong, and the stepper starts at 1: the Russian
+    /// quantifier agrees with the last digit, with the 11–14 exception
+    /// `Plural.russian` already knows.
+    static func everyMinutes(_ n: Int) -> String {
+        let ru = "Кажд" + Plural.russian(n, "ую", "ые", "ые") + " \(n) мин"
+        return L(n == 1 ? "Every minute" : "Every \(n) min",
+                 [.ru: ru,
+                  .es: n == 1 ? "Cada minuto" : "Cada \(n) min",
+                  .fr: n == 1 ? "Chaque minute" : "Toutes les \(n) min",
+                  .de: n == 1 ? "Jede Minute" : "Alle \(n) Min.",
+                  .ja: "\(n)分ごと", .zh: "每 \(n) 分钟",
+                  .pt: n == 1 ? "A cada minuto" : "A cada \(n) min"])
+    }
     static var defaultDuration: String { L("Default duration", [.ru: "Длительность по умолчанию", .es: "Duración por defecto", .fr: "Durée par défaut", .de: "Standarddauer", .ja: "デフォルトの継続時間", .zh: "默认时长", .pt: "Duração padrão"]) }
     static var oneHour: String { L("1 hour", [.ru: "1 час", .es: "1 hora", .fr: "1 heure", .de: "1 Stunde", .ja: "1 時間", .zh: "1 小时", .pt: "1 hora"]) }
     static var twoHours: String { L("2 hours", [.ru: "2 часа", .es: "2 horas", .fr: "2 heures", .de: "2 Stunden", .ja: "2 時間", .zh: "2 小时", .pt: "2 horas"]) }
     static var indefinite: String { L("Indefinite", [.ru: "Бессрочно", .es: "Indefinido", .fr: "Illimité", .de: "Unbegrenzt", .ja: "無期限", .zh: "无限期", .pt: "Indefinido"]) }
-    static var pointerNeedsAccessibility: String { L("Needs Accessibility, or the pointer will not move.", [.ru: "Нужен «Универсальный доступ», иначе указатель не двинется.", .es: "Requiere Accesibilidad; si no, el puntero no se moverá.", .fr: "Nécessite l’Accessibilité, sinon le pointeur ne bougera pas.", .de: "Benötigt Bedienungshilfen, sonst bewegt sich der Zeiger nicht.", .ja: "アクセシビリティの許可が必要です。ないとポインタは動きません。", .zh: "需要辅助功能权限，否则指针不会移动。", .pt: "Precisa de Acessibilidade, senão o ponteiro não se move."]) }
+    static var pointerNeedsAccessibility: String { L("Needs Accessibility, or the pointer will not move.", [.ru: "Нужен «Универсальный доступ», иначе указатель не двинется.", .es: "Requiere Accesibilidad; si no, el puntero no se moverá.", .fr: "Nécessite l’Accessibilité, sinon le pointeur ne bougera pas.", .de: "Benötigt Bedienungshilfen, sonst bewegt sich der Zeiger nicht.", .ja: "アクセシビリティの許可が必要です。ないとポインタは動きません。", .zh: "需要无障碍权限，否则指针不会移动。", .pt: "Precisa de Acessibilidade, senão o ponteiro não se move."]) }
     static var grantAccess: String { L("Grant…", [.ru: "Выдать…", .es: "Conceder…", .fr: "Accorder…", .de: "Erteilen…", .ja: "許可…", .zh: "授予…", .pt: "Conceder…"]) }
     static var globalShortcut: String { L("Global shortcut", [.ru: "Глобальный хоткей", .es: "Atajo global", .fr: "Raccourci global", .de: "Globaler Kurzbefehl", .ja: "グローバルショートカット", .zh: "全局快捷键", .pt: "Atalho global"]) }
     static var toggleAction: String { L("Toggle Keep Awake", [.ru: "Включить или выключить «Не спать»", .es: "Activar o desactivar Mantener activo", .fr: "Activer ou désactiver Rester éveillé", .de: "Wachhalten ein-/ausschalten", .ja: "「スリープ防止」を切り替え", .zh: "开关「保持唤醒」", .pt: "Ativar ou desativar Manter acordado"]) }

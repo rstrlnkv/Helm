@@ -189,7 +189,11 @@ public struct UninstallerSettingsPage: View {
         // The checkbox is its own control centred against the row, so it lines
         // up with the icon and the name instead of hanging above them.
         HStack(spacing: 10) {
-            Toggle("", isOn: Binding(
+            // Named, though the label stays hidden: `.labelsHidden()` hides a
+            // label visually and keeps it for VoiceOver, but an empty string
+            // leaves nothing to keep — a list of 250 rows read as "checkbox,
+            // unchecked" 250 times.
+            Toggle(app.name, isOn: Binding(
                 get: { checked.contains(app.bundleID) },
                 set: { on in
                     if on { checked.insert(app.bundleID) } else { checked.remove(app.bundleID) }
@@ -377,7 +381,7 @@ public struct UninstallerSettingsPage: View {
 
     private func leftoverRow(_ leftover: Leftover) -> some View {
         HStack(spacing: 10) {
-            Toggle("", isOn: Binding(
+            Toggle((leftover.path as NSString).lastPathComponent, isOn: Binding(
                 get: { selectedLeftovers.contains(leftover.path) },
                 set: { on in
                     if on { selectedLeftovers.insert(leftover.path) }
@@ -435,7 +439,7 @@ public struct UninstallerSettingsPage: View {
 
         if forceQuit {
             for group in groups where group.running {
-                HelmLog.shared.info("uninstaller", "force quit \(group.app.bundleID)")
+                HelmLog.shared.info("uninstaller", "force quit \(Redact.app(group.app.bundleID))")
                 await uvm.quit(bundleID: group.app.bundleID, force: true)
             }
             // Let the apps disappear before their bundles move.

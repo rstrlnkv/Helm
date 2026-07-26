@@ -17,7 +17,10 @@ codesign --verify --deep --strict "$APP_DIR" || {
 # Version drives the dmg filename (matches the GitHub release tag vX.Y.Z).
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_DIR/Contents/Info.plist")"
 DMG="$REPO_ROOT/build/Helm-$VERSION.dmg"
-STAGE="$REPO_ROOT/build/dmg-stage"
+# Outside the checkout, for the same reason package-app.sh signs there: a
+# bundle that passes through the synced folder comes out carrying
+# com.apple.FinderInfo, and the dmg would ship a bundle codesign rejects.
+STAGE="${TMPDIR:-/tmp}/helm-dmg-stage"
 
 echo "==> Staging"
 rm -rf "$STAGE" "$DMG"
@@ -25,6 +28,8 @@ mkdir -p "$STAGE"
 # ditto, not cp -R: it carries the signature and adds nothing of its own.
 ditto "$APP_DIR" "$STAGE/Helm.app"
 ln -s /Applications "$STAGE/Applications"   # drag-to-install target
+# The seal must still be intact in what actually gets packed.
+codesign --verify --deep --strict "$STAGE/Helm.app"
 
 echo "==> Building $DMG"
 hdiutil create -volname "Helm $VERSION" \

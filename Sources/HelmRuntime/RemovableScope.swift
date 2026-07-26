@@ -59,6 +59,16 @@ public enum RemovableScope {
         // list above plus "not a top-level directory", not a fixed location.
         if resolved.hasSuffix(".app"),
            resolved.dropFirst().split(separator: "/").count >= 2 { return true }
+        // `~/Library`'s own children are the shared folders — `Caches`,
+        // `Application Support`, `Containers` — and an app owns something
+        // *inside* one of them, never one of them. So that root needs two
+        // components, the same depth `LeftoverMatcher` requires: the gate that
+        // exists to survive a defect upstream must not be looser than the code
+        // it is guarding. Every other root already names the shared folder, and
+        // its children are the per-app files themselves.
+        if resolved.hasPrefix(home + "/Library/") {
+            return resolved.dropFirst(home.count + "/Library/".count).contains("/")
+        }
         return roots(home: home).contains { resolved.hasPrefix($0 + "/") }
     }
 

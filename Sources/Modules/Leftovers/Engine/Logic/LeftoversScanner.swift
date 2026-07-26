@@ -41,7 +41,13 @@ public struct LeftoversScanner: Sendable {
     private func systemExtensions(installed: Set<String>) -> [StaleItem] {
         extensions.installedExtensions().map { info in
             let host = StaleItemRules.hostIdentifier(of: info.identifier)
-            let hostPresent = installed.contains { $0 == host || info.identifier.hasPrefix($0) }
+            // The separator, as in UninstallerEngine and `owner(of:)`:
+            // "com.acmecorp.vpn.ext" is not owned by an installed "com.acme",
+            // and an empty id in the installed set is a prefix of everything —
+            // it used to mark every extension on the machine as in use.
+            let hostPresent = installed.contains {
+                !$0.isEmpty && ($0 == host || info.identifier.hasPrefix($0 + "."))
+            }
             return StaleItem(path: info.identifier, identifier: info.identifier,
                              kind: .systemExtension, sizeBytes: 0,
                              runAtLoad: info.enabled,

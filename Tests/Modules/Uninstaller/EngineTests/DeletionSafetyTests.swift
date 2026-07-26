@@ -42,6 +42,27 @@ final class DeletionSafetyTests: XCTestCase {
         }
     }
 
+    /// The skip list is read against the id exactly as it comes off disk, so a
+    /// leading dot walks straight past it: `.com.apple.finder.plist` still
+    /// splits into three reverse-DNS components, still fails
+    /// `hasPrefix("com.apple.")`, and arrives on the review screen as an
+    /// orphan — inside `~/Library`, where `RemovableScope` allows the trash.
+    /// `StaleItemRules` refuses a leading dot outright; this is the sibling
+    /// rule that does not.
+    func testALeadingDotDoesNotSmuggleAnAppleDomainPast() {
+        for name in [".com.apple.finder.plist", ".com.apple.dock.savedState"] {
+            XCTAssertFalse(orphan(name), "\(name) is Apple's, dot or no dot")
+        }
+    }
+
+    /// A hidden file is not a bundle-id-shaped entry belonging to an app: the
+    /// id derived from it carries the dot, matches no installed bundle id, and
+    /// so can never be recognised as owned. Whatever it is, it is not evidence
+    /// that its owner is gone.
+    func testHiddenEntriesAreNotOrphanCandidates() {
+        XCTAssertFalse(orphan(".com.vendor.tool.plist"))
+    }
+
     /// A name crafted to look like a path must not turn into one.
     func testTraversalShapedNamesAreNotFollowed() {
         for name in ["../../etc.passwd.plist", "com.acme/../../../System"] {

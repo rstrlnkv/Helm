@@ -26,7 +26,7 @@ enum VPNStr {
         L("Per-app automation", [.ru: "Автоматизация по приложению", .es: "Automatización por app", .fr: "Automatisation par app", .de: "App-basierte Automatisierung", .ja: "アプリ別の自動化", .zh: "按应用自动化", .pt: "Automação por app"])
     }
     static var perAppHint: String {
-        L("Add an app to automatically connect a VPN while that app is running.", [.ru: "Добавьте приложение, чтобы VPN подключался, пока оно запущено.", .es: "Añade una app para conectar una VPN mientras esté en ejecución.", .fr: "Ajoutez une app pour connecter un VPN pendant son exécution.", .de: "Fügen Sie eine App hinzu, um ein VPN zu verbinden, während sie läuft.", .ja: "アプリを追加すると、その実行中に VPN が接続されます。", .zh: "添加一个应用，使其运行时自动连接 VPN。", .pt: "Adicione um app para conectar uma VPN enquanto ele estiver em execução."])
+        L("Add an app to automatically connect a VPN while that app is running.", [.ru: "Добавьте приложение, чтобы VPN подключался, пока оно запущено.", .es: "Añade una app para conectar una VPN mientras esté en ejecución.", .fr: "Ajoutez une app pour connecter un VPN pendant son exécution.", .de: "Füge eine App hinzu, um ein VPN zu verbinden, während sie läuft.", .ja: "アプリを追加すると、その実行中に VPN が接続されます。", .zh: "添加一个应用，使其运行时自动连接 VPN。", .pt: "Adicione um app para conectar uma VPN enquanto ele estiver em execução."])
     }
     static func ruleTiming(_ timing: VPNAppRule.Timing) -> String {
         switch timing {

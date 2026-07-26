@@ -36,7 +36,7 @@ public struct HelmRemovalOutcome: View {
         if failures.isEmpty {
             Text(succeededText)
                 .font(.caption)
-                .foregroundStyle(Color.primary.opacity(0.55))
+                .foregroundStyle(Color.primary.opacity(0.70))
         } else {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
@@ -61,7 +61,7 @@ public struct HelmRemovalOutcome: View {
                         Text("·").font(.caption2).foregroundStyle(.tertiary)
                         Text(failure.reason)
                             .font(.caption2)
-                            .foregroundStyle(Color.primary.opacity(0.55))
+                            .foregroundStyle(Color.primary.opacity(0.70))
                             .lineLimit(1)
                         Spacer(minLength: 4)
                         Button {
@@ -77,7 +77,7 @@ public struct HelmRemovalOutcome: View {
                 if failures.count > 4 {
                     Text(Self.more(failures.count - 4))
                         .font(.caption2)
-                        .foregroundStyle(Color.primary.opacity(0.55))
+                        .foregroundStyle(Color.primary.opacity(0.70))
                 }
             }
         }

@@ -206,7 +206,7 @@ public struct KeepAwakePanelTile: View {
                 // the animation the style resolves again — visibly, as a blink.
                 // primary-with-alpha tracks light and dark on its own and does
                 // not depend on the layer.
-                .foregroundStyle(Color.primary.opacity(0.55))
+                .foregroundStyle(Color.primary.opacity(0.70))
                 .padding(.top, 2)
 
             settingRow(KAStr.onExternalDisplay) {
