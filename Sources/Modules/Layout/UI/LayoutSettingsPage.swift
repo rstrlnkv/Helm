@@ -26,14 +26,14 @@ public struct LayoutSettingsPage: View {
         self.store = store
         _automatic = State(initialValue: store.bool("automatic", default: true))
         _exceptions = State(initialValue: store.stringArray("exceptions").joined(separator: "\n"))
-        _onSpace = State(initialValue: store.bool("onSpace", default: true))
-        _onReturn = State(initialValue: store.bool("onReturn", default: true))
-        _onPunctuation = State(initialValue: store.bool("onPunctuation", default: true))
+        _onSpace = State(initialValue: store.bool("onSpace", default: ConversionTriggers.default.onSpace))
+        _onReturn = State(initialValue: store.bool("onReturn", default: ConversionTriggers.default.onReturn))
+        _onPunctuation = State(initialValue: store.bool("onPunctuation", default: ConversionTriggers.default.onPunctuation))
         _appRules = State(initialValue: store.boolTable("appRules"))
         _audible = State(initialValue: store.bool("audible", default: false))
         _indicator = State(initialValue: store.bool("indicator", default: false))
         _badgeStyle = State(initialValue:
-            BadgeStyle.from(store.string("badgeStyle", default: BadgeStyle.plain.rawValue)))
+            BadgeStyle.from(store.string("badgeStyle", default: BadgeStyle.default.rawValue)))
         _badgeSize = State(initialValue:
             MenuBarIconSize(rawValue: store.string("badgeSize", default: "small")) ?? .small)
         _convertKey = StateObject(wrappedValue:

@@ -25,6 +25,8 @@ public struct TypingBuffer {
     public static let maxLength = 64
 
     private var characters: [Character] = []
+    /// True once something was typed that the buffer could not hold.
+    private var overflowed = false
 
     public init() {}
 
@@ -48,17 +50,23 @@ public struct TypingBuffer {
     public mutating func accept(_ event: Event) -> Completion? {
         switch event {
         case .character(let character):
-            guard characters.count < Self.maxLength else { return nil }
+            guard characters.count < Self.maxLength else {
+                // Past the limit the buffer no longer describes the field, and
+                // a plan built from a prefix deletes fewer characters than were
+                // typed — leaving the head of the word in front of the
+                // replacement. Poisoned until the next boundary.
+                overflowed = true
+                return nil
+            }
             characters.append(character)
             return nil
         case .backspace:
             if !characters.isEmpty { characters.removeLast() }
             return nil
         case .space, .newline, .punctuation, .navigation, .click, .focusChange:
-            guard !characters.isEmpty else { return nil }
-            let finished = String(characters)
-            characters.removeAll()
-            return Completion(word: finished, ending: Self.ending(of: event))
+            defer { characters.removeAll(); overflowed = false }
+            guard !characters.isEmpty, !overflowed else { return nil }
+            return Completion(word: String(characters), ending: Self.ending(of: event))
         }
     }
 
@@ -72,5 +80,5 @@ public struct TypingBuffer {
         }
     }
 
-    public mutating func clear() { characters.removeAll() }
+    public mutating func clear() { characters.removeAll(); overflowed = false }
 }
