@@ -230,7 +230,7 @@ public struct KeepAwakeSettingsPage: View {
                     Text(info.name)
                         .lineLimit(1)
                     Spacer(minLength: 12)
-                    Picker("", selection: conditionBinding(index)) {
+                    Picker(info.name, selection: conditionBinding(index)) {
                         ForEach(AppTrigger.Condition.allCases, id: \.self) { condition in
                             Text(KAStr.triggerCondition(condition)).tag(condition)
                         }

@@ -138,7 +138,10 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // word boundary: a password typed without spaces would otherwise sit in
         // the buffer until the next one. No AX call here — this is one syscall.
         if secure.isSecureInput() {
-            lock.lock(); buffer.clear(); undo = nil; lock.unlock()
+            // All three places a word lives, as in deactivate: a retained
+            // lastCompleted could later be typed back by the hotkey into
+            // whatever field happens to be focused.
+            lock.lock(); buffer.clear(); undo = nil; lastCompleted = nil; lock.unlock()
             return
         }
         lock.lock()

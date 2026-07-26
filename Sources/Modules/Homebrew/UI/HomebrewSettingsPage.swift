@@ -112,6 +112,7 @@ public struct HomebrewSettingsPage: View {
                 .buttonStyle(.borderless)
                 .disabled(hb.running)
                 .help(HbStr.refreshList)
+            .accessibilityLabel(HbStr.refreshList)
             }
             .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
             Divider()

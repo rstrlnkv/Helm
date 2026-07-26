@@ -145,6 +145,7 @@ public struct KeepAwakePanelTile: View {
             pillLabel(Image(systemName: "ellipsis"), active: showMore)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(HelmA11y.moreActions)
     }
 
     private func pillLabel(_ content: some View, active: Bool = false) -> some View {
@@ -212,13 +213,18 @@ public struct KeepAwakePanelTile: View {
                 .foregroundStyle(Color.primary.opacity(0.70))
                 .padding(.top, 2)
 
+            // The row's visible Text is a sibling, not the toggle's label, so
+            // the title goes into the Toggle itself and labelsHidden keeps it
+            // for VoiceOver only.
             settingRow(KAStr.onExternalDisplay) {
-                Toggle("", isOn: $autoExternalDisplay)
+                Toggle(KAStr.onExternalDisplay, isOn: $autoExternalDisplay)
+                    .labelsHidden()
                     .onChange(of: autoExternalDisplay) { _, v in writeSetting(v, "autoExternalDisplay") }
             }
 
             settingRow(KAStr.onPower) {
-                Toggle("", isOn: $autoPower)
+                Toggle(KAStr.onPower, isOn: $autoPower)
+                    .labelsHidden()
                     .onChange(of: autoPower) { _, v in writeSetting(v, "autoPower") }
             }
         }

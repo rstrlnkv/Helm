@@ -46,12 +46,20 @@ public enum Duplicates {
     /// with hard-linked twins collapsed to one representative first.
     public static func sizeGroups(_ files: [FileFacts], minBytes: Int) -> [[FileFacts]] {
         var byID: [UInt64: FileFacts] = [:]
+        // fileID 0 means the inode could not be read. Unknown is not "the
+        // same": collapsing all unknowns into one representative would hide
+        // real duplicates behind a stat failure.
+        var unknowable: [FileFacts] = []
         for file in files where file.bytes >= minBytes {
-            // One entry per inode: the first path stands for the file.
-            if byID[file.fileID] == nil { byID[file.fileID] = file }
+            if file.fileID == 0 {
+                unknowable.append(file)
+            } else if byID[file.fileID] == nil {
+                // One entry per inode: the first path stands for the file.
+                byID[file.fileID] = file
+            }
         }
         var bySize: [Int: [FileFacts]] = [:]
-        for file in byID.values {
+        for file in byID.values + unknowable {
             bySize[file.bytes, default: []].append(file)
         }
         return bySize.values.filter { $0.count > 1 }

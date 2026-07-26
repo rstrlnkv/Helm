@@ -44,9 +44,11 @@ public final class RunningApps: @unchecked Sendable {
     /// already there (a KVO callback, a workspace notification) should call
     /// this so the snapshot is current before they hand control onwards.
     ///
-    /// Off the main thread it refuses and returns the snapshot unchanged. This
-    /// type exists because reading the live list from the wrong thread killed
-    /// the process; it will not do that itself, even to report a mistake.
+    /// Off the main thread it refuses and returns the snapshot unchanged —
+    /// this type exists because reading the live list from the wrong thread
+    /// killed the process, and shipping code will not repeat that even to
+    /// report a mistake. Debug and test builds do trap, deliberately: a
+    /// wrong-thread caller should be found here rather than in a crash log.
     @discardableResult
     public func refresh() -> Set<String> {
         guard Thread.isMainThread else {

@@ -71,6 +71,9 @@ import Module_Layout_Engine
                                        points: size.points)
         button.image?.isTemplate = (style == .plain)
         button.toolTip = source.name
+        // The label says what the control is; the value says the one fact it
+        // exists to show. Set here, not in build(), so it tracks every switch.
+        button.setAccessibilityValue(source.name)
     }
 
     // MARK: - Menu

@@ -16,7 +16,11 @@ features, PATCH = fixes.
   never offered. One copy per group is marked as staying; extras go to the
   basket and deletion runs through the engine's removal scope like every
   other Disk deletion. Cancelling returns no answer rather than a partial
-  one presented as complete.
+  one presented as complete. Hashing runs across size groups in parallel —
+  a real home directory measures ~70 GB of worst-case full-hash volume, which
+  single-threaded is the difference between a moment and a wait — the walk
+  stays on the root's volume rather than descending into mounted drives, and
+  progress is throttled to 0.35 s the way the disk scan's partials are.
 - The keyboard module can put its own input-source indicator in the menu bar,
   with the choices the system's one does not offer: letters, letters filled,
   letters outlined, an emoji flag or a drawn one, at the same sizes the app icon
@@ -64,6 +68,21 @@ features, PATCH = fixes.
   Record, which means audio recording in four.
 
 ### Fixed
+- **Corner rounding was thrown away by two flags.** `setClip()` replaces the
+  clip instead of intersecting it, so the Union Jack and the taegeuk squared
+  off the badge — GB and AU were the two flags in the set with different
+  corners. Found by a pixel test that reads the corners; the existing opacity
+  test sampled the middle column, where every flag is opaque by design.
+- **A `..` in a path walked straight through the deletion gate.**
+  `DiskSafety.isRemovable` ran string prefix tests on the raw path, so
+  `~/Documents/..` was not the home directory as a string while `trashItem`
+  resolves it to exactly that. It standardizes the path first now, as
+  `RemovableScope` already did for the other modules.
+- Layout cleared two of the three places a word lives when secure input turned
+  on. The third could later be typed back by the shortcut into whatever field
+  was focused.
+- Keep Awake dropped its workspace observer tokens, so switching the module off
+  and on stacked another pair of callbacks each time.
 - **A crash.** `NSWorkspace.runningApplications` is main-thread-only, and the VPN
   engine read it from its own serial queue. AppKit copies that list under a lock
   while the main thread mutates it, so an application quitting at the wrong

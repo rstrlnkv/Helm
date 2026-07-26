@@ -28,6 +28,8 @@ enum VPNStr {
     static var perAppHint: String {
         L("Add an app to automatically connect a VPN while that app is running.", [.ru: "Добавьте приложение, чтобы VPN подключался, пока оно запущено.", .es: "Añade una app para conectar una VPN mientras esté en ejecución.", .fr: "Ajoutez une app pour connecter un VPN pendant son exécution.", .de: "Füge eine App hinzu, um ein VPN zu verbinden, während sie läuft.", .ja: "アプリを追加すると、その実行中に VPN が接続されます。", .zh: "添加一个应用，使其运行时自动连接 VPN。", .pt: "Adicione um app para conectar uma VPN enquanto ele estiver em execução."])
     }
+    static var rulePickerVPN: String { L("VPN", [.ru: "VPN", .es: "VPN", .fr: "VPN", .de: "VPN", .ja: "VPN", .zh: "VPN", .pt: "VPN"]) }
+    static var rulePickerWhen: String { L("When", [.ru: "Когда", .es: "Cuándo", .fr: "Quand", .de: "Wann", .ja: "タイミング", .zh: "时机", .pt: "Quando"]) }
     static func ruleTiming(_ timing: VPNAppRule.Timing) -> String {
         switch timing {
         case .launchAndQuit: return L("On launch and quit", [.ru: "При запуске и выходе", .es: "Al abrir y cerrar", .fr: "À l’ouverture et à la fermeture", .de: "Beim Start und Beenden", .ja: "起動時と終了時", .zh: "启动与退出时", .pt: "Ao abrir e fechar"])

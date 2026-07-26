@@ -127,3 +127,17 @@ final class DuplicatesTests: XCTestCase {
         XCTAssertEqual(groups[0].paths, ["/a", "/z"])
     }
 }
+
+extension DuplicatesTests {
+    /// fileID 0 is "could not stat", and unknown is not "the same file":
+    /// collapsing unknowns as if hard-linked hid real duplicates behind a
+    /// stat failure.
+    func testUnknownInodesAreNeverCollapsed() {
+        let groups = Duplicates.sizeGroups([
+            FileFacts(path: "/a", bytes: 5_000_000, fileID: 0),
+            FileFacts(path: "/b", bytes: 5_000_000, fileID: 0),
+        ], minBytes: 1_000_000)
+        XCTAssertEqual(groups.count, 1)
+        XCTAssertEqual(groups[0].count, 2)
+    }
+}
