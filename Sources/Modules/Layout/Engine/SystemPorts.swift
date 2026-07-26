@@ -62,15 +62,28 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
     /// whether it went down or up comes from its own device-dependent bit,
     /// because `.maskCommand` cannot tell the two Command keys apart and would
     /// read a release as a press whenever the other one is held.
+    /// Device-dependent flag bits for every modifier key, both sides. The
+    /// bindable right-side keys carry theirs in `TapKey`; the left-side bits
+    /// live here because a left modifier must still *spoil* a tap — without
+    /// them a left press arrived as a release, was never entered into the
+    /// chord set, and left-⇧ right-⌘ fired the gesture mid-shortcut.
+    private static let modifierMasks: [Int64: UInt64] = [
+        54: 0x000010, 61: 0x000040, 62: 0x002000, 60: 0x000004,   // right ⌘ ⌥ ⌃ ⇧
+        55: 0x000008, 58: 0x000020, 59: 0x000001, 56: 0x000002,   // left  ⌘ ⌥ ⌃ ⇧
+    ]
+
     private func deliverModifier(_ event: CGEvent) {
         guard let handler = modifierHandler else { return }
         let code = event.getIntegerValueField(.keyboardEventKeycode)
         let at = ProcessInfo.processInfo.systemUptime
-        let mask = TapKey.allCases.first { $0.keyCode == code }?.deviceMask
-        // A key with no mask of ours is still a modifier, and still spoils a
-        // tap in progress — it is reported as a press and a release of itself.
-        let down = mask.map { event.flags.rawValue & $0 != 0 } ?? false
-        handler(down ? .down(code, at: at) : .up(code, at: at))
+        if let mask = Self.modifierMasks[code] {
+            let down = event.flags.rawValue & mask != 0
+            handler(down ? .down(code, at: at) : .up(code, at: at))
+        } else {
+            // Caps Lock, fn, anything else: not trackable by a bit of its
+            // own, but its arrival still proves a chord is being typed.
+            handler(.otherInput)
+        }
     }
 
     private func deliver(_ event: CGEvent) {

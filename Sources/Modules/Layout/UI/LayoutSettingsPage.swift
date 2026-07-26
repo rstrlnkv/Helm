@@ -150,6 +150,14 @@ public struct LayoutSettingsPage: View {
 
     private var shortcutsSection: some View {
         Section(LyStr.shortcuts) {
+            // Both are explicit requests, for the two cases the automatic rules
+            // cannot cover: a word they declined, and a word they should have.
+            // They come first: the one-key option below says "both", and
+            // "both" should name things the reader has already met.
+            HelmHotkeyRow(LyStr.convertAction, recorder: convertKey,
+                          taken: HotkeyStatus.isTaken("layout.convert"))
+            HelmHotkeyRow(LyStr.undoAction, recorder: undoKey,
+                          taken: HotkeyStatus.isTaken("layout.undo"))
             Picker(LyStr.tapKey, selection: $tapKey) {
                 ForEach(TapKey.allCases, id: \.self) { key in
                     Text(LyStr.tapKeyName(key)).tag(key)
@@ -159,12 +167,6 @@ public struct LayoutSettingsPage: View {
             Text(LyStr.tapKeyHint)
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            // Both are explicit requests, for the two cases the automatic rules
-            // cannot cover: a word they declined, and a word they should have.
-            HelmHotkeyRow(LyStr.convertAction, recorder: convertKey,
-                          taken: HotkeyStatus.isTaken("layout.convert"))
-            HelmHotkeyRow(LyStr.undoAction, recorder: undoKey,
-                          taken: HotkeyStatus.isTaken("layout.undo"))
         }
     }
 
@@ -208,7 +210,9 @@ public struct LayoutSettingsPage: View {
                 .accessibilityHidden(true)
             Text(info.name).lineLimit(1)
             Spacer(minLength: 12)
-            Picker("", selection: ruleBinding(bundleID)) {
+            // The picker carries the app's name: "Off, pop-up button" answers
+            // nothing when there are five of these in a list.
+            Picker(info.name, selection: ruleBinding(bundleID)) {
                 Text(LyStr.ruleOff).tag(false)
                 Text(LyStr.ruleOn).tag(true)
             }

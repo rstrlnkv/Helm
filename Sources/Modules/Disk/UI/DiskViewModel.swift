@@ -33,6 +33,8 @@ import Module_Disk_Engine
     @Published public private(set) var duplicates: [DuplicateGroup]?
     @Published public private(set) var duplicatesRunning = false
     @Published public private(set) var duplicateProgress: DuplicateProgress?
+    /// Bumped whenever the current search stops being the one we want.
+    private var duplicateGeneration = 0
     @Published public private(set) var banner: String?
     /// Paths macOS refused. Announcing only what was freed hides these.
     @Published public private(set) var failures: [String] = []
@@ -315,10 +317,16 @@ import Module_Disk_Engine
         duplicatesRunning = true
         duplicateProgress = nil
         duplicates = nil
+        duplicateGeneration += 1
+        let generation = duplicateGeneration
         let path = focus.path
         Task {
             let groups: [DuplicateGroup]? =
                 await client.request("duplicates", encoding: ["path": path])
+            // Only the search the sheet is still waiting for may answer: a
+            // result landing after a cancel would resurrect itself, and two
+            // in-flight searches would race over one published value.
+            guard generation == duplicateGeneration else { return }
             // Cancelled comes back nil; the sheet closes rather than showing
             // "no duplicates", which would be a claim nobody verified.
             duplicates = groups
@@ -327,6 +335,7 @@ import Module_Disk_Engine
     }
 
     public func cancelDuplicates() {
+        duplicateGeneration += 1
         Task { await client.send("cancelDuplicates", encoding: [String]()) }
         duplicatesRunning = false
         duplicateProgress = nil
@@ -334,6 +343,7 @@ import Module_Disk_Engine
 
     /// Leaving the sheet forgets the answer: the folder may change under it.
     public func clearDuplicates() {
+        duplicateGeneration += 1
         duplicates = nil
         duplicateProgress = nil
     }

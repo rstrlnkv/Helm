@@ -102,6 +102,10 @@ let package = Package(
             name: "Module_Layout_UITests",
             dependencies: ["Module_Layout_UI"],
             path: "Tests/Modules/Layout/UITests"),
+        .testTarget(
+            name: "Module_Disk_UITests",
+            dependencies: ["Module_Disk_UI"],
+            path: "Tests/Modules/Disk/UITests"),
         .testTarget(name: "HelmContractTests", dependencies: ["HelmContract"]),
         .testTarget(name: "HelmRuntimeTests", dependencies: ["HelmRuntime"]),
         .testTarget(

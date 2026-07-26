@@ -19,7 +19,10 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
     }
 
     public func activate() {}
-    public func deactivate() { cancel() }
+    public func deactivate() {
+        cancel()
+        duplicateBox.current?.cancel()
+    }
 
     public func volumes() -> [VolumeInfo] {
         let keys: [URLResourceKey] = [.volumeNameKey, .volumeTotalCapacityKey,
@@ -122,6 +125,9 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
     /// The second look: identical files under one folder. Serialized through
     /// the same box discipline as the scanner so "cancel" reaches it.
     public func duplicates(under path: String) async -> [DuplicateGroup]? {
+        // A new search supersedes any still running: the engine does not rely
+        // on the view model's guard for that.
+        duplicateBox.current?.cancel()
         let finder = DuplicateScanner()
         duplicateBox.set(finder)
         let groups: [DuplicateGroup]? = await blocking {

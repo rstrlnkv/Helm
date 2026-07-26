@@ -45,62 +45,125 @@ public final class DuplicateScanner: @unchecked Sendable {
     public func find(under root: String,
                      onProgress: (@Sendable (DuplicateProgress) -> Void)? = nil)
     -> [DuplicateGroup]? {
-        let files = walk(root)
+        let files = walk(root, onProgress: onProgress)
         if isCancelled { return nil }
 
         let candidates = Duplicates.sizeGroups(files, minBytes: Self.minBytes)
         let total = candidates.reduce(0) { $0 + $1.count }
-        var hashed = 0
+        let progress = ThrottledProgress(total: total, onProgress: onProgress)
 
-        func counted(_ digest: @escaping (FileFacts) -> String?) -> (FileFacts) -> String? {
-            { file in
+        // Size groups are independent by construction, and hashing is where
+        // the minutes go: a real home directory measured 70 GB of worst-case
+        // full-hash volume, which single-threaded is the difference between
+        // "a moment" and "go make tea". One group per iteration; the buckets
+        // keep results ordered without the workers sharing an array.
+        var buckets = [[DuplicateGroup]](repeating: [], count: candidates.count)
+        let bucketLock = NSLock()
+        DispatchQueue.concurrentPerform(iterations: candidates.count) { index in
+            if self.isCancelled { return }
+            var found: [DuplicateGroup] = []
+            let byPrefix = Duplicates.refine(candidates[index]) { file in
                 if self.isCancelled { return nil }
-                hashed += 1
-                onProgress?(DuplicateProgress(candidates: total, hashed: min(hashed, total)))
-                return digest(file)
+                progress.bump()
+                return Self.hash(file.path, limit: Self.prefixBytes)
             }
+            for group in byPrefix {
+                // Files at or under the prefix size are already fully read:
+                // their prefix hash IS their full hash.
+                for identical in Duplicates.refine(group, by: { file in
+                    if self.isCancelled { return nil }
+                    progress.bump()
+                    return file.bytes <= Self.prefixBytes
+                        ? Self.hash(file.path, limit: Self.prefixBytes)
+                        : Self.hash(file.path, limit: nil)
+                }) {
+                    found.append(DuplicateGroup(bytes: identical.first?.bytes ?? 0,
+                                                paths: identical.map(\.path).sorted()))
+                }
+            }
+            bucketLock.lock(); buckets[index] = found; bucketLock.unlock()
         }
-
-        let groups = Duplicates.groups(
-            files: files, minBytes: Self.minBytes,
-            partial: counted { Self.hash($0.path, limit: Self.prefixBytes) },
-            // Files at or under the prefix size are already fully read: their
-            // prefix hash IS their full hash, so the second pass is free.
-            full: counted { $0.bytes <= Self.prefixBytes
-                ? Self.hash($0.path, limit: Self.prefixBytes)
-                : Self.hash($0.path, limit: nil) })
-        return isCancelled ? nil : groups
+        if isCancelled { return nil }
+        return buckets.flatMap { $0 }.sorted { $0.wasted > $1.wasted }
     }
 
     // MARK: - The walk
 
     /// Every regular file under the root, with size and inode. Symlinks are
-    /// not followed and package interiors are not entered — offering half of
-    /// an .app bundle as "a duplicate" invites breaking the app.
-    private func walk(_ root: String) -> [FileFacts] {
+    /// not followed, package interiors are not entered — offering half of an
+    /// .app bundle as "a duplicate" invites breaking the app — and the walk
+    /// stays on the root's volume: descending into a mounted backup drive
+    /// means reading gigabytes over whatever bus it hangs from.
+    private func walk(_ root: String,
+                      onProgress: (@Sendable (DuplicateProgress) -> Void)?) -> [FileFacts] {
         let url = URL(fileURLWithPath: root)
-        let keys: [URLResourceKey] = [.isRegularFileKey, .fileSizeKey,
-                                      .fileResourceIdentifierKey, .isPackageKey]
+        var rootStat = stat()
+        let rootDevice: Int32? = lstat(root, &rootStat) == 0 ? rootStat.st_dev : nil
+        let keys: [URLResourceKey] = [.isRegularFileKey, .isDirectoryKey, .fileSizeKey]
         guard let enumerator = FileManager.default.enumerator(
             at: url, includingPropertiesForKeys: keys,
             options: [.skipsPackageDescendants]) else { return [] }
 
         var files: [FileFacts] = []
+        var seen = 0
+        var lastEmit = Date.distantPast
         for case let item as URL in enumerator {
             if isCancelled { return files }
-            guard let values = try? item.resourceValues(forKeys: Set(keys)),
-                  values.isRegularFile == true,
+            guard let values = try? item.resourceValues(forKeys: Set(keys)) else { continue }
+            seen += 1
+            // The walk is silent work; without a tick the sheet sits inert
+            // for the seconds a big folder takes, which reads as a hang.
+            if Date().timeIntervalSince(lastEmit) > 0.35 {
+                lastEmit = Date()
+                onProgress?(DuplicateProgress(candidates: 0, hashed: seen))
+            }
+            if values.isDirectory == true {
+                var dirStat = stat()
+                if let rootDevice, lstat(item.path, &dirStat) == 0,
+                   dirStat.st_dev != rootDevice {
+                    enumerator.skipDescendants()
+                }
+                continue
+            }
+            guard values.isRegularFile == true,
                   let size = values.fileSize, size >= Self.minBytes else { continue }
+            var status = stat()
+            guard lstat(item.path, &status) == 0 else { continue }
+            if let rootDevice, status.st_dev != rootDevice { continue }
             files.append(FileFacts(path: item.path, bytes: size,
-                                   fileID: inode(of: item.path)))
+                                   fileID: UInt64(status.st_ino)))
         }
         return files
     }
 
-    private func inode(of path: String) -> UInt64 {
-        var status = stat()
-        guard lstat(path, &status) == 0 else { return 0 }
-        return UInt64(status.st_ino)
+    // MARK: - Progress
+
+    /// Hash-rate progress, throttled the way DiskScanner throttles partials:
+    /// pass one alone measured 7.6k events against the ~3/s a person can
+    /// read, and every one of them crossed the transport to a main-actor
+    /// publish.
+    private final class ThrottledProgress: @unchecked Sendable {
+        private let total: Int
+        private let onProgress: (@Sendable (DuplicateProgress) -> Void)?
+        private let lock = NSLock()
+        private var count = 0
+        private var lastEmit = Date.distantPast
+
+        init(total: Int, onProgress: (@Sendable (DuplicateProgress) -> Void)?) {
+            self.total = total
+            self.onProgress = onProgress
+        }
+
+        func bump() {
+            lock.lock()
+            count += 1
+            let now = Date()
+            let due = now.timeIntervalSince(lastEmit) > 0.35
+            if due { lastEmit = now }
+            let snapshot = min(count, total)
+            lock.unlock()
+            if due { onProgress?(DuplicateProgress(candidates: total, hashed: snapshot)) }
+        }
     }
 
     // MARK: - Hashing
