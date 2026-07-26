@@ -68,6 +68,19 @@ features, PATCH = fixes.
   Record, which means audio recording in four.
 
 ### Fixed
+- **An unreadable file could be reported as a duplicate.** Hashing broke out of
+  its read loop on failure and returned the digest of whatever it had — for a
+  first-slice failure, the digest of nothing, which is identical for every such
+  file. Two same-size unreadable files (iCloud-evicted, a dying disk, truncated
+  between the walk and the hash) grouped as duplicates and the sheet offered to
+  trash content nobody had read. Short reads answer nothing now and leave the
+  running, which is what the module claims everywhere else.
+- A modifier already held when the bound key went down produced no event inside
+  the tap's window, so the machine could not know about it and a chord fired as
+  a tap. The plumbing reads the live flags at press time.
+- The VPN engine seeded its running-app state on the calling thread while the
+  reload it had just enqueued wrote the same object on its work queue — the
+  same unsynchronised shape as the crash `RunningApps` was written for.
 - **Corner rounding was thrown away by two flags.** `setClip()` replaces the
   clip instead of intersecting it, so the Union Jack and the taegeuk squared
   off the badge — GB and AU were the two flags in the set with different

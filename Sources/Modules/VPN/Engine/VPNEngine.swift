@@ -88,14 +88,26 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
 
     public func activate() {
         running = true
-        // Off the main thread: this runs from `ModuleHost.enable` at launch and
-        // shells out to scutil before the window is even on screen.
-        work.run { [weak self] in self?.reloadRulesNow() }
-        knownBundleIDs = apps.runningBundleIDs()
-        for id in knownBundleIDs {
-            core.appLaunched(id,
-                              connect: { [weak self] in self?.connect($0, auto: true) },
-                              disconnect: { _ in })
+        // Read where reading is safe: `RunningApps` answers live only on the
+        // main thread, and this runs from `ModuleHost.enable`.
+        let launched = apps.runningBundleIDs()
+        // Everything that touches `core` goes on the one serial queue that
+        // owns it. Seeding used to run on the caller's thread while the
+        // just-enqueued reload wrote `core.rules` on the work queue, with
+        // nothing synchronising the two — the same shape as the crash that
+        // `RunningApps` was written for.
+        //
+        // Off the main thread also because this shells out to scutil at
+        // launch, before the window is on screen.
+        work.run { [weak self] in
+            guard let self else { return }
+            self.reloadRulesNow()
+            self.knownBundleIDs = launched
+            for id in launched {
+                self.core.appLaunched(id,
+                                      connect: { [weak self] in self?.connect($0, auto: true) },
+                                      disconnect: { _ in })
+            }
         }
         apps.startObserving { [weak self] in self?.appsChanged() }
     }

@@ -7,13 +7,13 @@ import Module_Layout_Engine
 ///
 /// The trap: `drawn(_:points:scale:)` sets the rounded-rect clip with
 /// `setClip()`, and `setClip()` *replaces* the clip rather than intersecting
-/// it. Any construction that later calls `setClip()` again — the Union Jack
-/// clips to its own rectangle, the taegeuk to its disc — throws the corner
-/// rounding away for everything it paints afterwards. GB paints its field
-/// square into all four corners; AU paints the canton square into the
-/// top-left one. Every other flag rounds, so the two stand out in the menu
-/// bar as the badges with different corners — the one thing an indicator
-/// family must not do.
+/// it. Any construction that clips again inside it — the Union Jack to its
+/// own rectangle, the taegeuk to its disc — must use `addClip()`, or it
+/// throws the corner rounding away for everything it paints afterwards. As
+/// first shipped, GB painted its field square into all four corners and AU
+/// its canton into the top-left one, while every other flag rounded — badges
+/// with different corners in one menu bar, the one thing an indicator family
+/// must not do.
 ///
 /// The existing opacity test samples the *middle* column, where every flag is
 /// opaque by design, so it cannot see this. These read the corners.
