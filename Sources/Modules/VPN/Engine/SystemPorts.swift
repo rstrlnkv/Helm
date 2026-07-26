@@ -3,6 +3,8 @@
 
 import AppKit
 import Foundation
+import HelmRuntime
+import Security
 
 // MARK: - Shell
 
@@ -71,7 +73,23 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// Service used for Helm's own cached copy of a VPN's credentials.
     private let helmVPNKeychainService = "com.helm.vpn"
 
-    public init() {}
+    public init() { Self.purgeItemsWithTheOldAccessList() }
+
+    /// Items written by the previous implementation carry an access list that
+    /// lets `/usr/bin/security` read them with no prompt — anything running as
+    /// this user could take the secret. Updating them in place would keep that
+    /// list, so they are removed once; the next connect re-reads the System
+    /// keychain (one prompt) and re-caches them properly.
+    private static func purgeItemsWithTheOldAccessList() {
+        let key = "module.vpn.credentialCachePurged"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        UserDefaults.standard.set(true, forKey: key)
+        let status = SecItemDelete([kSecClass as String: kSecClassGenericPassword,
+                                    kSecAttrService as String: "com.helm.vpn"] as CFDictionary)
+        if status == errSecSuccess {
+            HelmLog.shared.info("vpn", "cleared the old credential cache")
+        }
+    }
 
     public func credentials(for name: String) -> VPNCredentials? {
         let show = Shell.run("/usr/sbin/scutil", ["--nc", "show", name]).output
@@ -99,17 +117,45 @@ public final class KeychainCredentials: VPNCredentialsPort {
         return VPNCredentials(user: authName, password: password, secret: secret)
     }
 
-    private func helmCacheRead(_ account: String) -> String? {
-        Self.keychainSecret(service: helmVPNKeychainService, account: account, keychain: nil)
+    private func query(_ account: String) -> [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword,
+         kSecAttrService as String: helmVPNKeychainService,
+         kSecAttrAccount as String: account]
     }
 
+    private func helmCacheRead(_ account: String) -> String? {
+        var q = query(account)
+        q[kSecReturnData as String] = true
+        q[kSecMatchLimit as String] = kSecMatchLimitOne
+        var item: CFTypeRef?
+        guard SecItemCopyMatching(q as CFDictionary, &item) == errSecSuccess,
+              let data = item as? Data else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    /// Written through the keychain API, not the `security` tool.
+    ///
+    /// The tool needed the secret as a command-line argument — process
+    /// arguments are readable by every process running as this user for as long
+    /// as the process lives — and it was given `-T /usr/bin/security`, which
+    /// meant `security find-generic-password -w -s com.helm.vpn` handed the
+    /// secret to any script with no prompt at all. That is a lower bar than the
+    /// System keychain this cache exists to avoid re-reading.
+    ///
+    /// `SecItemAdd` gives the item an access list containing only the app that
+    /// created it, and the value never appears in an argument list. Delete
+    /// before add, so an item left behind by the old path loses its access list
+    /// rather than keeping it through an update.
     private func helmCacheWrite(_ account: String, _ value: String) {
-        // -U updates in place; -T trusts the security tool so later reads via the
-        // same tool don't prompt. Stored in the user's (default) login keychain.
-        _ = Shell.run("/usr/bin/security",
-                      ["add-generic-password", "-U",
-                       "-s", helmVPNKeychainService, "-a", account,
-                       "-T", "/usr/bin/security", "-w", value])
+        var attributes = query(account)
+        SecItemDelete(attributes as CFDictionary)
+        attributes[kSecValueData as String] = Data(value.utf8)
+        // The secret is useless on another Mac and pointless while locked.
+        attributes[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        let status = SecItemAdd(attributes as CFDictionary, nil)
+        if status != errSecSuccess {
+            HelmLog.shared.warn("vpn", "could not cache credentials (OSStatus \(status))")
+        }
     }
 
     /// The value of a `Field : value` line in `scutil --nc show` output.
