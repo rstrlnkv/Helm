@@ -36,22 +36,27 @@ final class FlagArtTests: XCTestCase {
         }
     }
 
-    // MARK: - The regions kept out, and why
+    // MARK: - Everything in the layout table draws
 
-    func testFlagsNeedingACrestOrCantonAreNotDrawn() {
-        for region in ["US", "GB", "BR", "PT", "GR", "KR", "CN", "TR", "IL"] {
-            XCTAssertNil(FlagArt.flag(region: region),
-                         "\(region) cannot be drawn honestly at badge size")
+    /// The first cut sent half the table to letters on strictness grounds,
+    /// and the first thing noticed in use was that the most common layout of
+    /// all had no flag. Every region the layout table can produce draws now —
+    /// simplified where it must be, but drawn.
+    func testEveryRegionInTheLayoutTableDraws() {
+        for region in ["US", "GB", "BR", "PT", "GR", "KR", "CN", "TR", "IL",
+                       "MX", "SK", "SI", "HR", "RS", "AU", "CA", "BY", "GE",
+                       "IR", "KZ", "MK", "TW", "VN"] {
+            XCTAssertNotNil(FlagArt.flag(region: region), region)
         }
     }
 
-    func testFlagsThatWouldCollideAreNotDrawn() {
-        // Each of these is a true flag Helm could draw, and each is another
-        // country's flag once the crest is gone.
-        for region in ["MX", "SK", "SI", "HR", "RS"] {
-            XCTAssertNil(FlagArt.flag(region: region),
-                         "\(region) would be indistinguishable from a flag already drawn")
-        }
+    /// The three white-blue-red tricolours and Croatia are told apart by the
+    /// crest's colour and place — which is what tells them apart in cloth.
+    func testTheSlavicTricoloursDiffer() {
+        let regions = ["RU", "SK", "SI", "RS", "HR"]
+        let flags = regions.compactMap { FlagArt.flag(region: $0) }
+        XCTAssertEqual(flags.count, regions.count)
+        XCTAssertEqual(Set(flags).count, regions.count, "two of \(regions) draw alike")
     }
 
     func testUnknownAndMissingRegions() {
@@ -77,10 +82,15 @@ final class FlagArtTests: XCTestCase {
 
     func testEveryBandHasAWeightAndEveryWeightIsPositive() {
         for region in FlagArt.drawnRegions {
-            guard case let .bands(colors, weights, _) = FlagArt.flag(region: region) else { continue }
-            XCTAssertEqual(colors.count, weights.count, "\(region)")
-            XCTAssertFalse(colors.isEmpty, "\(region)")
-            XCTAssertTrue(weights.allSatisfy { $0 > 0 }, "\(region)")
+            let pair: ([String], [Int])
+            switch FlagArt.flag(region: region) {
+            case let .bands(colors, weights, _): pair = (colors, weights)
+            case let .bandsEmblem(colors, weights, _, _): pair = (colors, weights)
+            default: continue
+            }
+            XCTAssertEqual(pair.0.count, pair.1.count, "\(region)")
+            XCTAssertFalse(pair.0.isEmpty, "\(region)")
+            XCTAssertTrue(pair.1.allSatisfy { $0 > 0 }, "\(region)")
         }
     }
 
@@ -110,10 +120,19 @@ private extension FlagArt {
     var colours: [String] {
         switch self {
         case let .bands(colors, _, _): return colors
+        case let .bandsEmblem(colors, _, _, emblem): return colors + [emblem.hex]
         case let .nordic(field, cross, border): return [field, cross] + (border.map { [$0] } ?? [])
-        case let .swissCross(field, cross): return [field, cross]
+        case let .swissCross(field, cross), let .centeredCross(field, cross):
+            return [field, cross]
         case let .disc(field, disc): return [field, disc]
         case let .hoistTriangle(top, bottom, triangle): return [top, bottom, triangle]
+        case let .stripesCanton(stripes, canton, emblem):
+            return stripes + [canton] + (emblem.map { [$0.hex] } ?? [])
+        case let .unionJack(field), let .jackCanton(field), let .taegeuk(field):
+            return [field]
+        case let .crescentStar(field, mark): return [field, mark]
+        case let .star(field, star, _): return [field, star]
+        case let .rhombusDisc(field, rhombus, disc): return [field, rhombus, disc]
         }
     }
 }

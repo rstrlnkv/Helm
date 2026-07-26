@@ -8,10 +8,9 @@ import Module_Layout_Engine
 ///
 /// The faults were: bands whose edges fell mid-pixel, which produced a blended
 /// row that was also partly transparent — the menu bar showed through the
-/// middle of the flag; and an outline given in points, which is two physical
-/// pixels on a Retina screen and ate a third of Russia's white band at the
-/// smallest size. Both are invisible in a screenshot at 1× and obvious in the
-/// numbers.
+/// middle of the flag; and an outline (since removed entirely) that was two
+/// physical pixels on a Retina screen. Both are invisible in a screenshot at
+/// 1× and obvious in the numbers.
 final class BadgeImageTests: XCTestCase {
 
     /// Renders at a fixed scale and reads the raw pixels, in device pixels.
@@ -73,9 +72,7 @@ final class BadgeImageTests: XCTestCase {
             for (region, art) in cases {
                 guard case let .bands(colors, _, _) = art else { continue }
                 let allowed = colors.map(rgb)
-                // The outline covers the first and last row by design.
-                for (row, colour) in column(art, points: points).enumerated().dropFirst()
-                where row < Int((points * 2).rounded()) - 1 {
+                for (row, colour) in column(art, points: points).enumerated() {
                     XCTAssertTrue(allowed.contains { near($0, colour) },
                                   "\(region) at \(points) pt, row \(row) is \(hex(colour)), "
                                   + "which is not one of \(colors)")
@@ -106,17 +103,40 @@ final class BadgeImageTests: XCTestCase {
         }
     }
 
-    // MARK: - The outline is one pixel
+    // MARK: - The new constructions
 
-    /// One device pixel, not one point. At 9 pt the flag is 18 px tall and a
-    /// band is 6; a two-pixel outline took a third of it.
-    func testTheOutlineCostsOneRowAtEachEnd() {
-        let art = FlagArt.flag(region: "RU")!
-        let rows = column(art, points: 9)
-        XCTAssertEqual(rows.count, 18)
-        let white = rows.filter { near(rgb("FFFFFF"), $0) }.count
-        // Six rows of white, less the single outline row over it.
-        XCTAssertGreaterThanOrEqual(white, 5, "the outline is eating the band")
+    /// The US flag: canton in the top hoist corner, stripes below and beside
+    /// it. The first cut had no US flag at all — the most common layout of
+    /// any Mac — which is what a user notices before any rendering nicety.
+    func testTheUSHasACantonAndStripes() {
+        let (rep, width, height) = pixels(FlagArt.flag(region: "US")!, points: 18)
+        XCTAssertTrue(near(rgb("3C3B6E"), rep.colorAt(x: 3, y: 3)!),
+                      "the canton corner is not canton blue")
+        XCTAssertTrue(near(rgb("B22234"), rep.colorAt(x: 3, y: height - 2)!),
+                      "the bottom stripe is not red")
+        XCTAssertTrue(near(rgb("B22234"), rep.colorAt(x: width - 3, y: 2)!),
+                      "the top stripe beside the canton is not red")
+        // Rows below the canton must alternate — count the distinct colours
+        // down the fly-side column.
+        let flyColumn = (0..<height).compactMap { rep.colorAt(x: width - 3, y: $0) }
+        let reds = flyColumn.filter { near(rgb("B22234"), $0) }.count
+        let whites = flyColumn.filter { near(rgb("FFFFFF"), $0) }.count
+        XCTAssertEqual(reds + whites, flyColumn.count, "a third colour on the fly side")
+        XCTAssertGreaterThan(reds, 0)
+        XCTAssertGreaterThan(whites, 0)
+    }
+
+    /// Vietnam's star is in the middle of the field; China's is at the hoist.
+    func testTheStarsLandWhereTheyBelong() {
+        let (vnRep, vnW, vnH) = pixels(FlagArt.flag(region: "VN")!, points: 18)
+        XCTAssertTrue(near(rgb("FFFF00"), vnRep.colorAt(x: vnW / 2, y: vnH / 2)!),
+                      "Vietnam's centre is not star yellow")
+        let (cnRep, cnW, cnH) = pixels(FlagArt.flag(region: "CN")!, points: 18)
+        XCTAssertTrue(near(rgb("FFFF00"), cnRep.colorAt(x: Int(Double(cnW) * 0.22),
+                                                        y: Int(Double(cnH) * 0.32))!),
+                      "China's hoist has no star")
+        XCTAssertTrue(near(rgb("EE1C25"), cnRep.colorAt(x: cnW / 2, y: cnH / 2)!),
+                      "China's centre should be plain field")
     }
 
     // MARK: - Size and shape
