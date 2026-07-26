@@ -4,6 +4,10 @@ import HelmRuntime
 public protocol AppLister: Sendable {
     /// Apps from /Applications, ~/Applications, and any Setapp folder.
     func installedApps() -> [InstalledApp]
+    /// Just the ids. Sizing a bundle means walking every file inside it, and
+    /// the leftovers scan only ever asks "is this app still here?" — it threw
+    /// the sizes away after paying nine seconds for them.
+    func installedBundleIDs() -> Set<String>
     /// Does the system know an app with this bundle id, wherever it lives?
     /// LaunchServices sees apps one folder down and helpers nested inside
     /// other bundles; a directory listing sees neither.

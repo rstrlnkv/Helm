@@ -65,4 +65,13 @@ public enum VPNRules {
         let names = Set(connections.map(\.name))
         return rules.filter { names.contains($0.value.vpnName) }
     }
+
+    /// Rules naming a VPN the system no longer has. They stop firing the
+    /// moment a connection is renamed or removed, and dropping them quietly
+    /// is how someone ends up trusting automation that has not run for weeks.
+    public static func orphaned(_ rules: [String: VPNAppRule],
+                                against connections: [VPNConnection]) -> [String: VPNAppRule] {
+        let names = Set(connections.map(\.name))
+        return rules.filter { !names.contains($0.value.vpnName) }
+    }
 }

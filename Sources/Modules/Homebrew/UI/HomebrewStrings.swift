@@ -14,6 +14,8 @@ enum HbStr {
 
     static var searchPlaceholder: String { L("Search packages", [.ru: "Поиск пакетов", .es: "Buscar paquetes", .fr: "Rechercher des paquets", .de: "Pakete suchen", .ja: "パッケージを検索", .zh: "搜索软件包", .pt: "Buscar pacotes"]) }
     static var install: String { L("Install", [.ru: "Установить", .es: "Instalar", .fr: "Installer", .de: "Installieren", .ja: "インストール", .zh: "安装", .pt: "Instalar"]) }
+    static func confirmUninstall(_ name: String) -> String { L("Uninstall \(name)?", [.ru: "Удалить \(name)?", .es: "¿Desinstalar \(name)?", .fr: "Désinstaller \(name) ?", .de: "\(name) deinstallieren?", .ja: "\(name) をアンインストールしますか？", .zh: "卸载 \(name)？", .pt: "Desinstalar \(name)?"]) }
+    static var cancel: String { L("Cancel", [.ru: "Отмена", .es: "Cancelar", .fr: "Annuler", .de: "Abbrechen", .ja: "キャンセル", .zh: "取消", .pt: "Cancelar"]) }
     static var uninstall: String { L("Uninstall", [.ru: "Удалить", .es: "Desinstalar", .fr: "Désinstaller", .de: "Deinstallieren", .ja: "アンインストール", .zh: "卸载", .pt: "Desinstalar"]) }
     static var upgrade: String { L("Upgrade", [.ru: "Обновить", .es: "Actualizar", .fr: "Mettre à jour", .de: "Aktualisieren", .ja: "更新", .zh: "升级", .pt: "Atualizar"]) }
     static var upgradeAll: String { L("Upgrade all", [.ru: "Обновить всё", .es: "Actualizar todo", .fr: "Tout mettre à jour", .de: "Alle aktualisieren", .ja: "すべて更新", .zh: "全部升级", .pt: "Atualizar tudo"]) }

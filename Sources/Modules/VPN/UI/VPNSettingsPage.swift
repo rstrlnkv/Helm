@@ -135,7 +135,13 @@ public struct VPNSettingsPage: View {
     /// does nothing, which the menu can name.
     private func appRuleRow(_ bundleID: String) -> some View {
         let info = AppInfo.resolve(bundleID)
-        return HStack(spacing: 10) {
+        // A renamed or deleted VPN silently disables its rules; the row said
+        // nothing and the picker simply showed blank.
+        let missing = rules[bundleID].map { rule in
+            !vm.connections.contains { $0.name == rule.vpnName }
+        } ?? false
+        return VStack(alignment: .leading, spacing: 4) {
+        HStack(spacing: 10) {
             Image(nsImage: info.icon)
                 .resizable().frame(width: 22, height: 22)
             Text(info.name)
@@ -162,6 +168,15 @@ public struct VPNSettingsPage: View {
                 Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
+        }
+        if missing, let name = rules[bundleID]?.vpnName {
+            HStack(spacing: 6) {
+                Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.orange)
+                Text(VPNStr.ruleVPNMissing(name))
+                    .font(.caption)
+                    .foregroundStyle(Color.primary.opacity(0.7))
+            }
+        }
         }
         .padding(.vertical, 5)
     }

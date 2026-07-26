@@ -8,6 +8,7 @@ extension SearchHit: Identifiable { public var id: String { (isCask ? "c:" : "f:
 
 public struct HomebrewSettingsPage: View {
     @StateObject private var hb: HomebrewViewModel
+    @State private var pendingUninstall: BrewPackage?
     @State private var segment = 0
     @State private var query = ""
 
@@ -119,7 +120,9 @@ public struct HomebrewSettingsPage: View {
         listOrEmpty(hb.installed, empty: hb.loadedInstalled ? HbStr.noneInstalled : nil) { pkg in
             pkgRow(name: pkg.name, detail: pkg.version, isCask: pkg.isCask,
                    desc: hb.description(name: pkg.name, isCask: pkg.isCask)) {
-                Button(HbStr.uninstall) { hb.uninstall(pkg) }.disabled(hb.running)
+                // Every other destructive action in Helm asks first; this one
+                // removed a cask — an app — on a single click.
+                Button(HbStr.uninstall) { pendingUninstall = pkg }.disabled(hb.running)
             }
         }
     }

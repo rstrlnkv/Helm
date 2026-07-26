@@ -30,4 +30,14 @@ final class ObsoleteDefaultsTests: XCTestCase {
             XCTAssertTrue(key.hasPrefix("module."), "\(key) is not namespaced")
         }
     }
+
+    /// The Island module was rolled back, and its settings stayed behind.
+    func testIslandKeysAreRetired() {
+        let store = InMemoryKeyValueStore()
+        store.set(true, forKey: "module.island.enabled")
+        store.set(["a"], forKey: "module.island.shelfBookmarks")
+        ObsoleteDefaults.purge(from: store)
+        XCTAssertNil(store.object(forKey: "module.island.enabled"))
+        XCTAssertNil(store.object(forKey: "module.island.shelfBookmarks"))
+    }
 }

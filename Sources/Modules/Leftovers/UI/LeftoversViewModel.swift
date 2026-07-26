@@ -29,7 +29,20 @@ import Module_Leftovers_Engine
             .filter { !hiddenKinds.contains($0.kind) }
     }
 
-    public var leftoverCount: Int { items.filter(\.removable).count }
+    /// Counted over what the list actually shows. Counting the whole scan
+    /// while the list is filtered made "Выбрать все" tick rows nobody could
+    /// see — and then delete them.
+    public var leftoverCount: Int { visibleItems.filter(\.removable).count }
+
+    /// Everything the user could tick right now.
+    public var selectablePaths: Set<String> {
+        Set(visibleItems.filter(\.removable).map(\.path))
+    }
+
+    /// A hidden row must not stay ticked from before it was hidden.
+    public func dropHiddenSelections() {
+        selected.formIntersection(selectablePaths)
+    }
 
     public func scan() async {
         scanning = true

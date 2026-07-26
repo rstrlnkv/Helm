@@ -25,6 +25,8 @@ import Module_Disk_Engine
     @Published public private(set) var rootTitle = ""
     @Published public var basket: [DiskEntry] = []
     @Published public private(set) var banner: String?
+    /// Paths macOS refused. Announcing only what was freed hides these.
+    @Published public private(set) var failures: [String] = []
 
     private let client: TransportClient
     private let vm: ModuleViewModel
@@ -202,6 +204,7 @@ import Module_Disk_Engine
         guard !paths.isEmpty else { return }
         let removal: DiskRemoval? = await client.request("trash", encoding: paths)
         let freed = removal?.freedBytes ?? 0
+        failures = removal?.failed ?? []
         banner = DkStr.removedFreed(Bytes(freed))
         basket = []
         // Re-walking the disk to learn what we already know — those paths are

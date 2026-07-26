@@ -132,9 +132,12 @@ import HelmUI
         // Jump straight to a module's page instead of opening Settings and
         // hunting for it in the sidebar.
         menu.addItem(.separator())
-        for descriptor in host.orderedModuleIDs.compactMap({ id in
-            ModuleRegistry.all.first { $0.idRaw == id }
-        }) {
+        // Only what is actually running: opening a disabled module's page just
+        // to be told it is disabled is a dead end. The panel already did this.
+        let live = Set(host.enabledModules.map { type(of: $0.descriptor).id.rawValue })
+        for descriptor in host.orderedModuleIDs
+            .filter({ live.contains($0) })
+            .compactMap({ id in ModuleRegistry.all.first { $0.idRaw == id } }) {
             let item = NSMenuItem(title: descriptor.moduleMetadata.name,
                                   action: #selector(openModuleSettings(_:)), keyEquivalent: "")
             item.target = self
