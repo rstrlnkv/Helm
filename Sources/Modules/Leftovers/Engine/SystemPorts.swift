@@ -110,16 +110,7 @@ public struct ActiveExtensions: ExtensionsPort {
     }
 
     private func run(_ arguments: [String]) -> String {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/launchctl")
-        process.arguments = arguments
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = Pipe()
-        guard (try? process.run()) != nil else { return "" }
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        return String(decoding: data, as: UTF8.self)
+        HelmProcess.run("/bin/launchctl", arguments).output
     }
 
     public func activeExtensionIdentifiers() -> Set<String> {

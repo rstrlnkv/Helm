@@ -49,6 +49,11 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
         await blocking { self.apps.installedApps() }
     }
 
+    /// Sizes for the list already on screen.
+    public func appSizes() async -> [String: Int] {
+        await blocking { self.apps.appSizes(self.apps.installedApps()) }
+    }
+
     public func scan(bundleID: String, appPath: String, appName: String) async throws -> ScanResult {
         await blocking { self.scanSync(bundleID: bundleID, appPath: appPath, appName: appName) }
     }
@@ -67,7 +72,11 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
         }
         leftovers.sort { $0.sizeBytes > $1.sizeBytes }
         return ScanResult(bundleID: bundleID, appPath: appPath,
-                          appSizeBytes: fs.size(URL(fileURLWithPath: appPath)),
+                          // Zero, deliberately: nothing reads this, and filling it walked the
+                          // whole bundle again — a median of 49 ms per app, 3.2 s for Xcode,
+                          // while the user waits for the review screen. The size shown there
+                          // comes from `InstalledApp`, which already has it.
+                          appSizeBytes: 0,
                           leftovers: leftovers,
                           runningNow: running.isRunning(bundleID: bundleID))
     }
@@ -203,6 +212,9 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
                 let list = await self.listApps()
                 HelmLog.shared.info("uninstaller", "engine listApps done: \(list.count)")
                 return (try? JSONEncoder().encode(list)) ?? Data()
+            case "appSizes":
+                let sizes = await self.appSizes()
+                return (try? JSONEncoder().encode(sizes)) ?? Data()
             case "scan":
                 guard let r = try? JSONDecoder().decode(ScanReq.self, from: cmd.payload) else { return Data() }
                 let res = try await self.scan(bundleID: r.bundleID, appPath: r.appPath, appName: r.appName)

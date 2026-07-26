@@ -16,6 +16,7 @@ private struct NoApps: AppLister {
     func installedBundleIDs() -> Set<String> { [] }
     func isKnownToSystem(bundleID: String) -> Bool { false }
     func installedApps() -> [InstalledApp] { [] }
+    func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
 }
 private struct NoTrash: TrashPort {
     func trashItem(_ url: URL) -> TrashOutcome { .success }

@@ -8,28 +8,13 @@ import IOKit.ps
 
 // MARK: - Shell
 
-/// Small Process wrapper: runs a binary, waits, and returns exit status + captured stdout.
+/// Kept as a name; the body is `HelmProcess`, shared by every module.
 enum Shell {
     static func run(_ launchPath: String, _ arguments: [String]) -> (status: Int32, stdout: String) {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: launchPath)
-        process.arguments = arguments
-
-        let outPipe = Pipe()
-        process.standardOutput = outPipe
-        process.standardError = Pipe()
-
-        do {
-            try process.run()
-        } catch {
-            return (-1, "")
-        }
-        process.waitUntilExit()
-
-        let data = outPipe.fileHandleForReading.readDataToEndOfFile()
-        let output = String(data: data, encoding: .utf8) ?? ""
-        return (process.terminationStatus, output)
+        let result = HelmProcess.run(launchPath, arguments)
+        return (result.status, result.output)
     }
+
 }
 
 // MARK: - IOKitSleepAssertions
