@@ -26,6 +26,7 @@ enum LyStr {
     static var metricToday: String { L("FIXED", [.ru: "ИСПРАВЛЕНО", .es: "CORREGIDO", .fr: "CORRIGÉ", .de: "KORRIGIERT", .ja: "修正", .zh: "已修正", .pt: "CORRIGIDO"]) }
     static var metricState: String { L("STATE", [.ru: "СОСТОЯНИЕ", .es: "ESTADO", .fr: "ÉTAT", .de: "STATUS", .ja: "状態", .zh: "状态", .pt: "ESTADO"]) }
     static var on: String { L("On", [.ru: "Вкл", .es: "Sí", .fr: "Oui", .de: "An", .ja: "オン", .zh: "开", .pt: "Sim"]) }
+    static var notWatching: String { L("Not watching", [.ru: "Не следит", .es: "Sin vigilar", .fr: "Inactif", .de: "Beobachtet nicht", .ja: "監視していません", .zh: "未监视", .pt: "Sem monitorar"]) }
     static var paused: String { L("Paused", [.ru: "Пауза", .es: "Pausa", .fr: "Pause", .de: "Pause", .ja: "一時停止", .zh: "暂停", .pt: "Pausa"]) }
     static var lastChange: String { L("Last change", [.ru: "Последняя замена", .es: "Último cambio", .fr: "Dernier changement", .de: "Letzte Änderung", .ja: "直近の変更", .zh: "最近一次修改", .pt: "Última alteração"]) }
     static var undo: String { L("Undo", [.ru: "Вернуть", .es: "Deshacer", .fr: "Annuler", .de: "Rückgängig", .ja: "元に戻す", .zh: "撤销", .pt: "Desfazer"]) }
