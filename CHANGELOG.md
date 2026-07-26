@@ -8,6 +8,10 @@ features, PATCH = fixes.
 ## [0.7.1] — 2026-07-26
 
 ### Fixed
+- Accessibility is now listed among the permissions, and Keep Awake flags it at
+  the pointer-nudge setting. macOS drops synthetic mouse events from an
+  untrusted app, so that switch could be on while nothing moved, with nothing
+  in the app saying why.
 - The module order is applied everywhere it should be. The sidebar and the
   icon's menu listed modules in registry order while the panel and the settings
   list used the arranged one; the sidebar now sorts each category by the same
@@ -19,6 +23,13 @@ features, PATCH = fixes.
   reopening the page re-reads it.
 
 ### Changed
+- Settings sections follow how often they are needed: general, module order,
+  menu-bar icon and panel first; permissions and diagnostics last. They used to
+  sit in the reverse order, with troubleshooting above appearance.
+- Keep Awake gathers all four automatic rules — external display, power, closed
+  lid, low battery — into one Automation section; they were spread across three
+  sections with unrelated ones between them. The global shortcut, set once,
+  moved to the end.
 - One container treatment across the app. Helm's own cards dropped their border
   to match the macOS grouped-form sections that make up half the app's
   surfaces — the About page had been showing a bordered card and an unbordered
