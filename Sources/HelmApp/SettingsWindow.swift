@@ -540,7 +540,8 @@ private struct AboutHelmView: View {
 
     private var instrumentRow: some View {
         HelmMetricStrip([
-            .init(shortVersion, AppStr.metricVersion),
+            .init(VersionLabel.split(shortVersion).figure,
+                  VersionLabel.caption(AppStr.metricVersion, for: shortVersion)),
             .init(buildNumber, AppStr.metricBuild),
             .init("\(moduleCount)", AppStr.metricModules),
         ])
