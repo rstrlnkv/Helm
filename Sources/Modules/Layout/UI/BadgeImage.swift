@@ -75,14 +75,14 @@ enum BadgeImage {
 
     // MARK: - Flag artwork
 
-    /// The artwork at the badge's size, square — the set is round, and a
-    /// circle has no thin edge band to lose when it is thirty pixels across.
+    /// The artwork at the badge's size, 4:3 — the ratio the source set is
+    /// drawn in. Scaling a flag to some other ratio is redrawing it.
     ///
     /// Drawn through a fresh image rather than handed over as-is so the badge
     /// carries the size the caller asked for; `NSStatusItem` scales what it is
     /// given, and a 128 pt image in a 15 pt slot is not the same picture.
     private static func drawn(_ art: NSImage, points: CGFloat) -> NSImage {
-        let side = NSSize(width: points, height: points)
+        let side = NSSize(width: (points * 4 / 3).rounded(), height: points)
         return NSImage(size: side, flipped: false) { rect in
             art.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1,
                      respectFlipped: true, hints: [.interpolation: NSImageInterpolation.high])

@@ -53,6 +53,10 @@ if [ "$BUNDLE_COUNT" -eq 0 ]; then
   exit 1
 fi
 
+# The third-party notice travels with the app, not only with the repo: the
+# .app is a distribution too, and MIT asks for the notice in "all copies".
+cp "$REPO_ROOT/NOTICE.md" "$RESOURCES_DIR/NOTICE.md"
+
 printf 'APPL????' > "$CONTENTS_DIR/PkgInfo"
 
 # Build number = git commit count, so About shows a real, increasing build.

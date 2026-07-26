@@ -10,11 +10,11 @@ import Foundation
 /// the counterchange of the Union Jack's saltire. Each of those was drawn as
 /// an approximation or left as letters.
 ///
-/// EmojiOne v2.2.7 has them properly, under CC-BY 4.0 (see NOTICE.md). They
-/// are round rather than rectangular, which is the set's own shape and reads
-/// better small than a 3:2 rectangle does: a circle has no thin edge bands to
-/// lose. Measured at 9, 13 and 18 pt against the drawn set, every region is
-/// legible and the crests survive.
+/// flag-icons has them properly, under MIT (see NOTICE.md), rendered from its
+/// 4:3 SVGs at authoring time — see `Scripts/flags/fetch-flags.sh` for why
+/// they are PNGs and not the SVGs themselves. Measured at 9, 13 and 18 pt
+/// against the drawn set: every region legible, and the crests that used to
+/// be approximations are simply there.
 ///
 /// Images are cached: the menu bar redraws on every layout switch and every
 /// theme change, and decoding a PNG each time is work nobody asked for.

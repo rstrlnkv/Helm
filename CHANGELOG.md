@@ -31,14 +31,16 @@ features, PATCH = fixes.
   table of bands, crosses, cantons and emblems — and it reached fifty regions
   before the model ran out: an eagle, an armillary sphere and a set of
   trigrams are not shapes a table holds, and half a dozen flags were
-  approximations because of it. The artwork is now the EmojiOne v2.2.7 emoji
-  under CC BY 4.0 (`NOTICE.md`, credited on the About page): round rather than
-  3:2, which reads better small because a circle has no thin edge band to
-  lose. Measured at 9, 13 and 18 pt: every region legible, crests intact. A
-  layout that names no country still keeps its letters in a frame.
-  `package-app.sh` now copies SwiftPM resource bundles into the app and fails
-  loudly if there are none — without them `Bundle.module` finds nothing and
-  every flag would quietly become letters.
+  approximations because of it. The artwork now comes from **flag-icons**
+  under the MIT licence (`NOTICE.md`, credited on the About page), rendered
+  from its 4:3 SVGs at authoring time by `Scripts/flags/fetch-flags.sh`.
+  Rendering happens through WebKit, not `NSImage`: `NSImage`'s SVG support
+  does not resolve `<use xlink:href>`, and China's stars are defined that way
+  — CoreSVG drew a plain red rectangle and reported success. A layout that
+  names no country still keeps its letters in a frame. `package-app.sh` now
+  copies SwiftPM resource bundles into the app and fails loudly if there are
+  none: without them `Bundle.module` finds nothing and every flag would
+  quietly become letters.
 - An optional sound when a word is fixed, and a "never this word" button beside
   the last change.
 - **Layout** — a seventh module. It notices a word typed in the wrong keyboard

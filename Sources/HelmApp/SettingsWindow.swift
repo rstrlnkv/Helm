@@ -550,7 +550,7 @@ private struct AboutHelmView: View {
                 // the flags are used in the menu bar — this is the page that
                 // can carry it.
                 Link(AppStr.flagCredit,
-                     destination: URL(string: "https://creativecommons.org/licenses/by/4.0/")!)
+                     destination: URL(string: "https://github.com/lipis/flag-icons")!)
                     .foregroundStyle(.tertiary)
             }
             .padding(.top, 6)
