@@ -53,7 +53,7 @@ final class UpdateChannelSelectionTests: XCTestCase {
         let outcome = UpdateCheck.evaluateList(statusCode: 200,
                                                data: Data(json.utf8),
                                                currentVersion: "0.6.1",
-                                               channel: .stable)
+                                               channel: .beta)
         XCTAssertEqual(outcome, .upToDate)
     }
 
@@ -82,5 +82,24 @@ final class UpdateChannelSelectionTests: XCTestCase {
                                                 currentVersion: "0.6.1", channel: .dev), .upToDate)
         XCTAssertEqual(UpdateCheck.evaluateList(statusCode: 500, data: Data(),
                                                 currentVersion: "0.6.1", channel: .dev), .error)
+    }
+}
+
+/// The channel was called "stable" in 0.7.0 and earlier, and that string is
+/// sitting in the defaults of every installed copy. Reading it must not throw
+/// those users onto the dev channel, and must not silently reset them either.
+final class UpdateChannelMigrationTests: XCTestCase {
+    func testLegacyStableReadsAsBeta() {
+        XCTAssertEqual(UpdateCheck.Channel.stored("stable"), .beta)
+    }
+
+    func testBetaAndDevRoundTrip() {
+        XCTAssertEqual(UpdateCheck.Channel.stored("beta"), .beta)
+        XCTAssertEqual(UpdateCheck.Channel.stored("dev"), .dev)
+    }
+
+    func testUnsetOrUnknownIsTheSaferChannel() {
+        XCTAssertEqual(UpdateCheck.Channel.stored(nil), .beta)
+        XCTAssertEqual(UpdateCheck.Channel.stored("nightly"), .beta)
     }
 }

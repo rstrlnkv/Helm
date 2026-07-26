@@ -135,7 +135,7 @@ public struct HelmHotkeyRow: View {
 
     private static var pressKeys: String { L("Press keys…", [.ru: "Нажмите клавиши…", .es: "Pulsa teclas…", .fr: "Appuyez sur des touches…", .de: "Tasten drücken…", .ja: "キーを押してください…", .zh: "请按下按键…", .pt: "Pressione teclas…"]) }
     private static var none: String { L("None", [.ru: "Нет", .es: "Ninguno", .fr: "Aucun", .de: "Keiner", .ja: "なし", .zh: "无", .pt: "Nenhum"]) }
-    private static var record: String { L("Record", [.ru: "Задать", .es: "Grabar", .fr: "Définir", .de: "Aufnehmen", .ja: "設定", .zh: "录制", .pt: "Gravar"]) }
+    private static var record: String { L("Set", [.ru: "Задать", .es: "Asignar", .fr: "Définir", .de: "Festlegen", .ja: "設定", .zh: "设置", .pt: "Definir"]) }
     private static var cancel: String { L("Cancel", [.ru: "Отмена", .es: "Cancelar", .fr: "Annuler", .de: "Abbrechen", .ja: "キャンセル", .zh: "取消", .pt: "Cancelar"]) }
     private static var clear: String { L("Clear", [.ru: "Убрать", .es: "Quitar", .fr: "Effacer", .de: "Löschen", .ja: "消去", .zh: "清除", .pt: "Limpar"]) }
     private static var takenNote: String { L("Another app already uses this combination, so it does nothing here.", [.ru: "Это сочетание уже занято другой программой, поэтому здесь оно не работает.", .es: "Otra app ya usa esta combinación, así que aquí no hace nada.", .fr: "Une autre app utilise déjà cette combinaison ; ici elle ne fait rien.", .de: "Eine andere App belegt diese Kombination bereits — hier bleibt sie wirkungslos.", .ja: "この組み合わせは他のアプリが使用中で、ここでは動作しません。", .zh: "该组合已被其他应用占用，在这里不会生效。", .pt: "Outro app já usa esta combinação, então aqui ela não faz nada."]) }
