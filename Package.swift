@@ -108,6 +108,7 @@ let package = Package(
             path: "Tests/Modules/Disk/UITests"),
         .testTarget(name: "HelmContractTests", dependencies: ["HelmContract"]),
         .testTarget(name: "HelmRuntimeTests", dependencies: ["HelmRuntime"]),
+        .testTarget(name: "HelmUITests", dependencies: ["HelmUI"]),
         .testTarget(
             name: "Module_KeepAwake_EngineTests",
             dependencies: ["Module_KeepAwake_Engine"],
