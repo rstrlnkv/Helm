@@ -105,7 +105,7 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
     }
 
     private func scanOrphansSync() -> [OrphanGroup] {
-        let installedIDs = Set(apps.installedApps().map(\.bundleID))
+        let installedIDs = apps.installedBundleIDs()
         var byID: [String: [Leftover]] = [:]
         for (dir, kind) in Self.orphanScanDirs {
             for url in fs.children(of: library.appendingPathComponent(dir)) {

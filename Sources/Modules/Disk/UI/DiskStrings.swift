@@ -12,6 +12,8 @@ enum DkStr {
     static var free: String { L("free", [.ru: "свободно", .es: "libre", .fr: "libre", .de: "frei", .ja: "空き", .zh: "可用", .pt: "livre"]) }
     static var basket: String { L("To remove", [.ru: "К удалению", .es: "Para eliminar", .fr: "À supprimer", .de: "Zu entfernen", .ja: "削除予定", .zh: "待删除", .pt: "Para remover"]) }
     static var moveToTrash: String { L("Move to Trash", [.ru: "Переместить в Корзину", .es: "Mover a la Papelera", .fr: "Placer dans la corbeille", .de: "In den Papierkorb", .ja: "ゴミ箱に入れる", .zh: "移到废纸篓", .pt: "Mover para o Lixo"]) }
+    static var basketContents: String { L("Show what is in the basket", [.ru: "Показать, что в корзине", .es: "Ver qué hay en la cesta", .fr: "Voir le contenu du panier", .de: "Inhalt des Korbs zeigen", .ja: "バスケットの中身を表示", .zh: "查看收集篮内容", .pt: "Ver o que está na cesta"]) }
+    static var couldNotMove: String { L("macOS refused", [.ru: "macOS отказал", .es: "macOS lo rechazó", .fr: "macOS a refusé", .de: "macOS hat abgelehnt", .ja: "macOS が拒否", .zh: "macOS 拒绝", .pt: "o macOS recusou"]) }
     static var emptyBasket: String { L("Nothing selected", [.ru: "Ничего не выбрано", .es: "Nada seleccionado", .fr: "Rien de sélectionné", .de: "Nichts ausgewählt", .ja: "未選択", .zh: "未选择任何项", .pt: "Nada selecionado"]) }
     static var addToBasket: String { L("Add", [.ru: "Добавить", .es: "Añadir", .fr: "Ajouter", .de: "Hinzufügen", .ja: "追加", .zh: "添加", .pt: "Adicionar"]) }
     static var systemItem: String { L("System", [.ru: "Системный", .es: "Del sistema", .fr: "Système", .de: "System", .ja: "システム", .zh: "系统", .pt: "Do sistema"]) }

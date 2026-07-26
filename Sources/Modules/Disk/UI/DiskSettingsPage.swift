@@ -29,6 +29,7 @@ public struct DiskSettingsPage: View {
                 basketBar
             }
         }
+        .helmOnAppActive { diskAccess = PermissionCheck.currentFullDiskAccess() }
         .task {
             dvm.expireIfStale()
             diskAccess = PermissionCheck.currentFullDiskAccess()
@@ -41,6 +42,9 @@ public struct DiskSettingsPage: View {
                 Task { await dvm.emptyBasket() }
             }
             Button(DkStr.cancel, role: .cancel) {}
+        } message: {
+            Text(dvm.basket.prefix(4).map(\.name).joined(separator: "\n")
+                 + (dvm.basket.count > 4 ? "\n…" : ""))
         }
     }
 
@@ -122,11 +126,36 @@ public struct DiskSettingsPage: View {
     private var basketBar: some View {
         HStack(spacing: 10) {
             if dvm.basket.isEmpty {
-                Text(dvm.banner ?? DkStr.emptyBasket)
-                    .font(.caption).foregroundStyle(.secondary)
+                if let banner = dvm.banner {
+                    HelmRemovalOutcome(
+                        succeededText: banner,
+                        failures: dvm.failures.map {
+                            HelmRemovalFailure(path: $0, reason: DkStr.couldNotMove)
+                        },
+                        needsFullDiskAccess: diskAccess == .denied)
+                } else {
+                    Text(DkStr.emptyBasket)
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             } else {
-                Text("\(DkStr.basket): \(dvm.basket.count) · " + formatted(dvm.basketBytes))
-                    .font(.system(size: 12, design: .monospaced))
+                // A count is not a list. Everything about to be trashed can be
+                // named here, and removed from the basket without hunting for
+                // its row back in the ring.
+                Menu {
+                    ForEach(dvm.basket) { entry in
+                        Button {
+                            dvm.toggleBasket(entry)
+                        } label: {
+                            Text("\(entry.name)  ·  \(Bytes(entry.bytes))  ✕")
+                        }
+                    }
+                } label: {
+                    Text("\(DkStr.basket): \(dvm.basket.count) · " + formatted(dvm.basketBytes))
+                        .font(.system(size: 12, design: .monospaced))
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .help(DkStr.basketContents)
                 Spacer()
                 Button(DkStr.moveToTrash) { confirming = true }
                     .buttonStyle(.borderedProminent)

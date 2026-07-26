@@ -271,7 +271,7 @@ private struct MenuBarSettingsView: View {
     @State private var showQuitButton = AppSettings.showQuitButton
     @State private var orderedModules: [String] = ModuleHost.shared.orderedModuleIDs
     @State private var dragging: String?
-    @State private var diskAccess: PermissionState = .denied
+    @State private var diskAccess: PermissionState = .granted
     @State private var accessibility: PermissionState = .granted
     private let adHocBuild = PermissionCheck.isAdHocSigned()
     @State private var loggingOn = LogPolicy.isEnabled(
@@ -438,6 +438,13 @@ private struct MenuBarSettingsView: View {
             }
                                                         }
         .formStyle(.grouped)
+        .onReceive(NotificationCenter.default.publisher(
+            for: NSApplication.didBecomeActiveNotification)) { _ in
+            // The user grants in System Settings and comes back; the row has
+            // to notice without being told.
+            diskAccess = PermissionCheck.currentFullDiskAccess()
+            accessibility = PermissionCheck.currentAccessibility()
+        }
         .task {
             diskAccess = PermissionCheck.currentFullDiskAccess()
             accessibility = PermissionCheck.currentAccessibility()

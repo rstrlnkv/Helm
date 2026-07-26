@@ -60,7 +60,8 @@ public struct UninstallerSettingsPage: View {
 
     public var body: some View {
         pageBody
-            .task {
+            .helmOnAppActive { diskAccess = PermissionCheck.currentFullDiskAccess() }
+        .task {
                 diskAccess = PermissionCheck.currentFullDiskAccess()
                 apps = await uvm.listApps()
                 loading = false
