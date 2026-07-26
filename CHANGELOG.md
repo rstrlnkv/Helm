@@ -5,6 +5,17 @@ All notable changes to Helm are documented here. The format is loosely based on
 [VERSIONING.md](VERSIONING.md) — MAJOR = global changes, MINOR = new/polished
 features, PATCH = fixes.
 
+## [0.7.1] — 2026-07-26
+
+### Changed
+- One container treatment across the app. Helm's own cards dropped their border
+  to match the macOS grouped-form sections that make up half the app's
+  surfaces — the About page had been showing a bordered card and an unbordered
+  one side by side.
+- A module's metric strip now sits inside the form as its first section, so it
+  shares the system's width instead of overhanging the rows below it at the
+  window's own margin.
+
 ## [0.7.0] — 2026-07-26
 
 ### Added

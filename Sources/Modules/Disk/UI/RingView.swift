@@ -91,7 +91,7 @@ struct RingView: View {
         }
         .padding(.horizontal, 9).padding(.vertical, 5)
         .background(Capsule().fill(.regularMaterial))
-        .overlay(Capsule().strokeBorder(HelmSurface.cardStroke))
+        .overlay(Capsule().strokeBorder(HelmSurface.floatingEdge))
         .fixedSize()
     }
 
