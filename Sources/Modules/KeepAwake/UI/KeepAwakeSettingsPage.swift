@@ -12,7 +12,7 @@ public struct KeepAwakeSettingsPage: View {
     // Observed, not held: the state strip reads isActive and the live
     // conditions, and a plain `let` means SwiftUI never hears them change —
     // the figures froze at whatever they were when the page opened.
-    @ObservedObject private var vm: ModuleViewModel
+    @ObservedObject private var vm: KeepAwakeViewModel
     private let store: NamespacedStore
 
     @State private var accessibility: PermissionState = .granted
@@ -39,7 +39,7 @@ public struct KeepAwakeSettingsPage: View {
     @StateObject private var recorder: HotkeyRecorder
 
     public init(vm: ModuleViewModel, store: NamespacedStore) {
-        self.vm = vm
+        self.vm = KeepAwakeViewModel.shared(vm: vm)
         self.store = store
         _recorder = StateObject(wrappedValue: HotkeyRecorder(store: store))
         _autoExternalDisplay = State(initialValue: store.bool("autoExternalDisplay", default: false))
@@ -343,7 +343,11 @@ public struct KeepAwakeSettingsPage: View {
                     }
                     .contentShape(Circle())
                     .onTapGesture { pick(palette.rawValue) }
-                    .help(palette.rawValue.capitalized)
+                    .help(palette.label)
+                    .accessibilityElement()
+                    .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+                    .accessibilityLabel(palette.label)
+                    .accessibilityAction { pick(palette.rawValue) }
             }
         }
         .padding(.vertical, 4)
@@ -368,8 +372,17 @@ public struct KeepAwakeSettingsPage: View {
     func startRecording() {
         recording = true
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            self?.capture(event)
-            return nil   // swallow the keystroke while recording
+            guard let self else { return event }
+            // Escape leaves. Without this the monitor swallowed every keystroke
+            // including Escape and Tab, so someone who started recording from
+            // the keyboard could only get out with the mouse — or by assigning
+            // a shortcut they never wanted.
+            if event.keyCode == UInt16(kVK_Escape) {
+                self.stop()
+                return nil
+            }
+            self.capture(event)
+            return nil   // swallow the rest while recording
         }
     }
 

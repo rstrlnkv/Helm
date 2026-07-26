@@ -4,7 +4,7 @@ import HelmUI
 
 /// Compact tile shown in the shared Helm panel.
 public struct KeepAwakePanelTile: View {
-    @ObservedObject private var vm: ModuleViewModel
+    @ObservedObject private var vm: KeepAwakeViewModel
     private let store: NamespacedStore
 
     @State private var customMinutes: Int
@@ -18,7 +18,7 @@ public struct KeepAwakePanelTile: View {
     @State private var autoPower: Bool
 
     public init(vm: ModuleViewModel, store: NamespacedStore) {
-        self.vm = vm
+        self.vm = KeepAwakeViewModel.shared(vm: vm)
         self.store = store
         _autoExternalDisplay = State(initialValue: store.bool("autoExternalDisplay", default: false))
         _autoPower = State(initialValue: store.bool("autoPower", default: false))

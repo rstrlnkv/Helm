@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import HelmContract
 import HelmRuntime
 import HelmUI
@@ -36,8 +37,15 @@ import Module_KeepAwake_Engine
         AnyView(KeepAwakeSettingsPage(vm: vm, store: store ?? NamespacedStore(namespace: "keep-awake", backing: UserDefaults.standard)))
     }
 
+    public func statusChanges(_ vm: ModuleViewModel) -> AnyPublisher<Void, Never>? {
+        KeepAwakeViewModel.shared(vm: vm).objectWillChange
+            .map { _ in () }
+            .eraseToAnyPublisher()
+    }
+
     public func statusAppearance(_ vm: ModuleViewModel) -> StatusAppearance {
-        guard vm.isActive, let store else { return .inactive }
+        let state = KeepAwakeViewModel.shared(vm: vm)
+        guard state.isActive, let store else { return .inactive }
         // Optional per-module active-state glyph: when enabled, the menu bar shows
         // this shape while Keep Awake is active (otherwise it keeps the global shape).
         let iconStyle = store.bool("customActiveIcon", default: false)
@@ -47,8 +55,8 @@ import Module_KeepAwake_Engine
         var progress: Double?
         var title: String?
         var tint = KeepAwakeSettings(store: store).activeTintColor
-        if let end = vm.endDate {
-            if store.bool("ringTimer", default: true), let start = vm.startDate {
+        if let end = state.endDate {
+            if store.bool("ringTimer", default: true), let start = state.startDate {
                 progress = TimerProgress.remainingFraction(now: Date(), start: start, end: end)
             }
             if store.bool("showTimerText", default: false) {

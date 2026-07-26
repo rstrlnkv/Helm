@@ -1,37 +1,21 @@
 import SwiftUI
 import HelmContract
+import Combine
 
+/// What every module's UI is handed: a way to talk to its engine, and nothing
+/// else.
+///
+/// It used to publish five values — `isActive`, `activeConditions`,
+/// `clamshellActive`, `endDate`, `startDate` — and decode a `state` payload of
+/// one specific shape. That shape was Keep Awake's. Every other module got five
+/// properties that stayed at their defaults forever and a task that failed to
+/// decode its own engine's events. A module that needs view state builds its
+/// own, as `VPNDescriptor` and `KeepAwakeDescriptor` do.
 @MainActor public final class ModuleViewModel: ObservableObject {
-    @Published public private(set) var isActive = false
-    @Published public private(set) var activeConditions: Set<String> = []
-    @Published public private(set) var clamshellActive = false
-    @Published public private(set) var endDate: Date?
-    /// Start of the current timed session, for progress rendering.
-    @Published public private(set) var startDate: Date?
-
     public let transport: EngineTransport
 
     public init(transport: EngineTransport) {
         self.transport = transport
-        let events = transport.events
-        Task { [weak self] in
-            for await e in events { await self?.handle(e) }
-        }
-    }
-
-    private struct StatePayload: Codable {
-        let isActive: Bool; let conditions: [String]
-        let clamshellActive: Bool; let endDate: Date?; let startDate: Date?
-    }
-
-    private func handle(_ e: EngineEvent) {
-        guard e.name == "state",
-              let p = try? JSONDecoder().decode(StatePayload.self, from: e.payload) else { return }
-        isActive = p.isActive
-        activeConditions = Set(p.conditions)
-        clamshellActive = p.clamshellActive
-        endDate = p.endDate
-        startDate = p.startDate
     }
 
     /// Fire-and-forget command to the engine.

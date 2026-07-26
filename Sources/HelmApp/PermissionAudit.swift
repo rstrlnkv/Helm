@@ -1,6 +1,5 @@
 import AppKit
 import HelmRuntime
-import Module_Uninstaller_Engine
 
 /// Checks what Helm needs from macOS the first time it runs, and says so once.
 /// Discovered the hard way: without Full Disk Access an uninstall silently

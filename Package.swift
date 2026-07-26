@@ -70,13 +70,17 @@ let package = Package(
         ),
         .executableTarget(
             name: "HelmApp",
+            // The UI targets only: the host talks to a module through its
+            // descriptor and the transport, and each descriptor already depends
+            // on its own engine. A direct edge here is a door past the
+            // transport into an engine's internals.
             dependencies: ["HelmContract", "HelmRuntime", "HelmUI",
-                           "Module_KeepAwake_Engine", "Module_KeepAwake_UI",
-                           "Module_VPN_Engine", "Module_VPN_UI",
-                           "Module_Uninstaller_Engine", "Module_Uninstaller_UI",
-                           "Module_Homebrew_Engine", "Module_Homebrew_UI",
-                           "Module_Leftovers_Engine", "Module_Leftovers_UI",
-                           "Module_Disk_Engine", "Module_Disk_UI"]
+                           "Module_KeepAwake_UI",
+                           "Module_VPN_UI",
+                           "Module_Uninstaller_UI",
+                           "Module_Homebrew_UI",
+                           "Module_Leftovers_UI",
+                           "Module_Disk_UI"]
         ),
         .testTarget(name: "HelmContractTests", dependencies: ["HelmContract"]),
         .testTarget(name: "HelmRuntimeTests", dependencies: ["HelmRuntime"]),

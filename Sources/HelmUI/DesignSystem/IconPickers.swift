@@ -44,7 +44,14 @@ public struct IconShapePicker: View {
                 .strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 1.5))
             .contentShape(RoundedRectangle(cornerRadius: 10))
             .help(s.label)
+            // A real button, not a tap gesture: a gesture carries no button
+            // trait, takes no focus and cannot be reached from the keyboard, so
+            // this setting was mouse-only and unnamed for VoiceOver.
             .onTapGesture { selection = s.rawValue }
+            .accessibilityElement()
+            .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+            .accessibilityLabel(s.label)
+            .accessibilityAction { selection = s.rawValue }
     }
 }
 
@@ -96,5 +103,9 @@ public struct IconSizePicker: View {
             .contentShape(RoundedRectangle(cornerRadius: 10))
             .help(sz.label)
             .onTapGesture { selection = sz.rawValue }
+            .accessibilityElement()
+            .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+            .accessibilityLabel(sz.label)
+            .accessibilityAction { selection = sz.rawValue }
     }
 }
