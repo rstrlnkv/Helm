@@ -28,6 +28,11 @@ import Module_Disk_Engine
     /// The scan root's human name: "Macintosh HD", not "/".
     @Published public private(set) var rootTitle = ""
     @Published public var basket: [DiskEntry] = []
+    /// The second look: identical files under the focused folder. nil means
+    /// not asked; empty means asked and clean.
+    @Published public private(set) var duplicates: [DuplicateGroup]?
+    @Published public private(set) var duplicatesRunning = false
+    @Published public private(set) var duplicateProgress: DuplicateProgress?
     @Published public private(set) var banner: String?
     /// Paths macOS refused. Announcing only what was freed hides these.
     @Published public private(set) var failures: [String] = []
@@ -291,9 +296,56 @@ import Module_Disk_Engine
                 focusPath = DiskFocus.resolve(paths: focusPath.map(\.path), in: snapshot.root)
                 phase = .result
                 recomputeSegments()
+            case "dupProgress":
+                if let update = try? JSONDecoder().decode(DuplicateProgress.self,
+                                                          from: event.payload) {
+                    duplicateProgress = update
+                }
             default:
                 continue
             }
+        }
+    }
+
+    // MARK: - Duplicates
+
+    /// Looks for identical files under the folder the ring is focused on.
+    public func findDuplicates() {
+        guard !duplicatesRunning, let focus else { return }
+        duplicatesRunning = true
+        duplicateProgress = nil
+        duplicates = nil
+        let path = focus.path
+        Task {
+            let groups: [DuplicateGroup]? =
+                await client.request("duplicates", encoding: ["path": path])
+            // Cancelled comes back nil; the sheet closes rather than showing
+            // "no duplicates", which would be a claim nobody verified.
+            duplicates = groups
+            duplicatesRunning = false
+        }
+    }
+
+    public func cancelDuplicates() {
+        Task { await client.send("cancelDuplicates", encoding: [String]()) }
+        duplicatesRunning = false
+        duplicateProgress = nil
+    }
+
+    /// Leaving the sheet forgets the answer: the folder may change under it.
+    public func clearDuplicates() {
+        duplicates = nil
+        duplicateProgress = nil
+    }
+
+    /// Every path in the group except the first into the basket — the first
+    /// is the copy that stays.
+    public func basketAllButFirst(of group: DuplicateGroup) {
+        for path in group.paths.dropFirst() where !basket.contains(where: { $0.path == path }) {
+            let name = (path as NSString).lastPathComponent
+            let entry = DiskEntry(name: name, path: path, bytes: group.bytes,
+                                  isDirectory: false, noAccess: false, children: [])
+            if DiskSafety.isRemovable(path) { basket.append(entry) }
         }
     }
 

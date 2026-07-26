@@ -76,6 +76,7 @@ struct DiskResultView: View {
 private struct BreadcrumbBar: View {
     @ObservedObject var dvm: DiskViewModel
     @State private var showingAdvice = false
+    @State private var showingDuplicates = false
 
     static let ageFormatter: RelativeDateTimeFormatter = {
         let formatter = RelativeDateTimeFormatter()
@@ -141,10 +142,24 @@ private struct BreadcrumbBar: View {
                 }
             }
 
+            if !dvm.live {
+                Button {
+                    showingDuplicates = true
+                } label: {
+                    Image(systemName: "doc.on.doc")
+                }
+                .controlSize(.small)
+                .help(DkStr.duplicatesHint)
+                .accessibilityLabel(DkStr.duplicates)
+            }
+
             Button(DkStr.scanAgain) { dvm.newScan() }
                 .controlSize(.small)
         }
         .padding(.horizontal, 20).padding(.vertical, 12)
+        .sheet(isPresented: $showingDuplicates) {
+            DuplicatesView(dvm: dvm) { showingDuplicates = false }
+        }
     }
 
     @ViewBuilder private var crumbs: some View {

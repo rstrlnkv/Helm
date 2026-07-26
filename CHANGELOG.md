@@ -8,6 +8,15 @@ features, PATCH = fixes.
 ## [0.7.1] — 2026-07-26
 
 ### Added
+- **A duplicate finder inside Disk** — the second look. It walks the folder the
+  ring is focused on, nominates candidates by size (1 MB floor), thins them
+  with a 128 KB prefix hash and confirms with a full SHA-256, so distinct
+  files are never read in full. Hard links are collapsed by inode before
+  grouping — two names for one file free nothing when deleted, so they are
+  never offered. One copy per group is marked as staying; extras go to the
+  basket and deletion runs through the engine's removal scope like every
+  other Disk deletion. Cancelling returns no answer rather than a partial
+  one presented as complete.
 - The keyboard module can put its own input-source indicator in the menu bar,
   with the choices the system's one does not offer: letters, letters filled,
   letters outlined, an emoji flag or a drawn one, at the same sizes the app icon
