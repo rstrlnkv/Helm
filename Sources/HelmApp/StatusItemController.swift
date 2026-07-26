@@ -54,7 +54,9 @@ import HelmUI
     private func resubscribeToModules() {
         moduleCancellables.removeAll()
         for live in host.enabledModules {
-            live.vm.objectWillChange
+            // Only a module that tints the icon has anything to say here.
+            guard let changes = live.descriptor.statusChanges(live.vm) else { continue }
+            changes
                 // objectWillChange fires BEFORE the property is written, so
                 // refreshing inline read the previous state — the countdown tick
                 // was never started and nothing refreshed it afterwards.

@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import HelmContract
 import HelmRuntime
 
@@ -13,7 +14,14 @@ import HelmRuntime
     func settingsPage(_ vm: ModuleViewModel) -> AnyView
     /// Desired host status-icon appearance for the current vm state. Default = inactive (white ring).
     func statusAppearance(_ vm: ModuleViewModel) -> StatusAppearance
+    /// Fires when the value `statusAppearance` reads has changed.
+    ///
+    /// A module that tints the menu-bar icon keeps its own view state, so the
+    /// host cannot watch a shared object for it. Only Keep Awake answers this;
+    /// the default is nil, which means "this module never changes the icon".
+    func statusChanges(_ vm: ModuleViewModel) -> AnyPublisher<Void, Never>?
 }
 public extension ModuleDescriptor {
     func statusAppearance(_ vm: ModuleViewModel) -> StatusAppearance { .inactive }
+    func statusChanges(_ vm: ModuleViewModel) -> AnyPublisher<Void, Never>? { nil }
 }
