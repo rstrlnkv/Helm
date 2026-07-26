@@ -182,7 +182,11 @@ private struct BreadcrumbBar: View {
             } label: {
                 Text(dvm.displayName(for: entry))
                     .lineLimit(1).truncationMode(.middle)
-                    .frame(maxWidth: 140)
+                    // A ceiling, not a reservation: `frame(maxWidth:)` alone
+                    // took the full 140 pt and centred a short name inside it,
+                    // so "iMazing" sat in the middle of a gap.
+                    .fixedSize(horizontal: true, vertical: false)
+                    .frame(maxWidth: 140, alignment: .leading)
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)

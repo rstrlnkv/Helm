@@ -23,6 +23,8 @@ import Module_Disk_Engine
     /// wedge that represents it instead of cross-fading. Cleared once the ring
     /// has consumed it.
     @Published public var foldingBackFrom: String?
+    /// True while a folder deeper than the scan went is being measured.
+    @Published public private(set) var measuring = false
     /// The scan root's human name: "Macintosh HD", not "/".
     @Published public private(set) var rootTitle = ""
     @Published public var basket: [DiskEntry] = []
@@ -168,10 +170,40 @@ import Module_Disk_Engine
     /// then did nothing. The whole chain is appended, so jumping two levels
     /// still leaves breadcrumbs that describe where you are.
     public func drill(into path: String) {
-        guard let focus, let last = DiskFocus.chain(from: focus, to: path).last,
-              last.isDirectory, !last.children.isEmpty else { return }
+        guard let focus else { return }
+        let chain = DiskFocus.chain(from: focus, to: path)
+        guard let last = chain.last, last.isDirectory else { return }
+        // A folder with no children is not empty — it is the depth the scan
+        // stopped at. Measure it now and graft it in, or the ring simply ends
+        // six levels down with no way to say why.
+        guard !last.children.isEmpty else {
+            Task { await measureAndDrill(into: path) }
+            return
+        }
+        focusPath.append(contentsOf: chain)
+        recomputeSegments()
+    }
+
+    /// Scans one folder and splices the result into the tree, then opens it.
+    private func measureAndDrill(into path: String) async {
+        guard !measuring else { return }
+        measuring = true
+        defer { measuring = false }
+        guard let scan: ScanResult = await client.request("scan", encoding: ["path": path]),
+              let current = result else { return }
+        let grafted = DiskTreeSplice.replacing(path, with: scan.root, in: current.root)
+        // The advice stays: it describes the volume, not the folder just
+        // measured, and recomputing it from one branch would narrow it.
+        result = ScanResult(root: grafted, freeBytes: current.freeBytes,
+                            filesScanned: current.filesScanned, seconds: current.seconds,
+                            advice: current.advice)
+        // Rebuild the focus from paths: the entries in `focusPath` are values
+        // from the tree that just changed underneath them.
+        focusPath = DiskFocus.resolve(paths: focusPath.map(\.path), in: grafted)
+        guard let focus else { return }
         focusPath.append(contentsOf: DiskFocus.chain(from: focus, to: path))
         recomputeSegments()
+        store.saveDetached(result!, at: completedAt ?? Date())
     }
 
     public func back() {
