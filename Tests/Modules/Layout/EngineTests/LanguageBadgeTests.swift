@@ -36,15 +36,6 @@ final class LanguageBadgeTests: XCTestCase {
         XCTAssertNil(LanguageBadge.emojiFlag(region: "USA"))
         XCTAssertNil(LanguageBadge.emojiFlag(region: "1A"))
     }
-
-    /// A flag Helm cannot draw honestly is one it does not draw.
-    func testDrawnFlagsAreOnlyTheOnesInTheTable() {
-        XCTAssertEqual(LanguageBadge.stripes(region: "ru")?.colors.count, 3)
-        XCTAssertEqual(LanguageBadge.stripes(region: "FR")?.vertical, true)
-        XCTAssertEqual(LanguageBadge.stripes(region: "RU")?.vertical, false)
-        XCTAssertNil(LanguageBadge.stripes(region: "JP"))
-        XCTAssertNil(LanguageBadge.stripes(region: nil))
-    }
 }
 
 extension LanguageBadgeTests {

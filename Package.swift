@@ -98,6 +98,10 @@ let package = Package(
             dependencies: ["Module_Layout_Engine"],
             path: "Tests/Modules/Layout/EngineTests"
         ),
+        .testTarget(
+            name: "Module_Layout_UITests",
+            dependencies: ["Module_Layout_UI"],
+            path: "Tests/Modules/Layout/UITests"),
         .testTarget(name: "HelmContractTests", dependencies: ["HelmContract"]),
         .testTarget(name: "HelmRuntimeTests", dependencies: ["HelmRuntime"]),
         .testTarget(
