@@ -147,6 +147,35 @@ yesterday's session would not compare with today's, and comparing across
 restarts is exactly what triage does. Log counts and outcomes freely; run any
 name or path through `Redact` first.
 
+## Layout switching
+
+The `layout` module reads every keystroke and types into other applications,
+which is a larger claim on the machine than anything else Helm does. Four things
+make it workable, and each is somewhere specific:
+
+- **The tap is listen-only** (`SystemPorts.swift`, `CGKeyTap`). It reports keys
+  and can neither delay nor swallow them, so nothing here can freeze somebody's
+  typing — an active tap that hangs does exactly that.
+- **Replacement is synthesised Unicode**, `CGEvent.keyboardSetUnicodeString`,
+  never the clipboard. Clipboard replacement fails outright in Electron and VS
+  Code, and it destroys whatever the user had copied.
+- **Translation goes through `UCKeyTranslate`** against the layouts actually
+  installed, cached per source. A hard-coded ЙЦУКЕН↔QWERTY table supports
+  exactly two layouts and silently mangles a third.
+- **Helm's own events carry a marker** (`CGEventSource.userData`) and are
+  dropped on the way in. Without it the tap reads its own replacement back as
+  typing and converts it again, forever.
+
+The decision to convert is `LayoutVerdict`, and it is written as a list of
+reasons to decline with one way through: the word is not a word as typed **and**
+is one once translated. A word that is valid as typed is never touched, whatever
+else is true of it. Secure input, password fields, terminals and password
+managers are refused before the dictionary is even consulted.
+
+Nothing typed is written down: no key content in the log, no buffer on disk, and
+the buffer is cleared when secure input turns on. The log records that a
+conversion happened and in which app (redacted), never what was converted.
+
 ## Removal scope
 
 A view model builds the plan; a view model is not allowed to be the last word on

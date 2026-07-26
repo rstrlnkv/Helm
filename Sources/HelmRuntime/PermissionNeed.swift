@@ -18,11 +18,12 @@ public enum PermissionNeed: String, CaseIterable, Sendable {
         case wholeDiskScan         // Disk Space reads protected folders
         case vpnControl            // needs nothing
         case homebrew              // needs nothing
+        case layoutSwitch          // Layout reads keystrokes and types corrections
     }
 
     public static func of(_ feature: Feature) -> PermissionNeed? {
         switch feature {
-        case .pointerNudge: .accessibility
+        case .pointerNudge, .layoutSwitch: .accessibility
         case .appContainers, .leftoverRemoval, .wholeDiskScan: .fullDiskAccess
         case .vpnControl, .homebrew: nil
         }
