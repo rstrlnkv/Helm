@@ -7,6 +7,17 @@ features, PATCH = fixes.
 
 ## [0.7.1] — 2026-07-26
 
+### Fixed
+- The module order is applied everywhere it should be. The sidebar and the
+  icon's menu listed modules in registry order while the panel and the settings
+  list used the arranged one; the sidebar now sorts each category by the same
+  order. The setting is renamed to "Module order" to say so.
+- An abandoned drag no longer strands the settings list. The order was written
+  back only in `performDrop`, which never fires for a drag released outside the
+  list — so the list kept showing an order nothing else knew about, and the
+  dragged row stayed dimmed. The order is now persisted as it moves, and
+  reopening the page re-reads it.
+
 ### Changed
 - One container treatment across the app. Helm's own cards dropped their border
   to match the macOS grouped-form sections that make up half the app's
