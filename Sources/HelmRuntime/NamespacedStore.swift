@@ -52,6 +52,11 @@ public final class NamespacedStore {
     public func int(_ key: String, default d: Int) -> Int { backing.object(forKey: k(key)) as? Int ?? d }
     public func string(_ key: String, default d: String) -> String { backing.object(forKey: k(key)) as? String ?? d }
     public func stringArray(_ key: String) -> [String] { backing.object(forKey: k(key)) as? [String] ?? [] }
+    /// A per-app decision table, the shape three modules now keep: bundle id →
+    /// yes/no, with absent meaning "no opinion".
+    public func boolTable(_ key: String) -> [String: Bool] {
+        backing.object(forKey: k(key)) as? [String: Bool] ?? [:]
+    }
 }
 
 public extension Notification.Name {

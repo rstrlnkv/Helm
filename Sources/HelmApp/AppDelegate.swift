@@ -16,12 +16,29 @@ import HelmRuntime
         // status item until first activation; kick it once (accessory = no Dock icon).
         NSApp.activate()
 
-        // Global hotkey toggles Keep Awake.
-        HotkeyManager.shared.onFire = { [weak host] in
-            guard let engine = host?.liveModule("keep-awake")?.engine else { return }
-            let transport = engine.transport
-            Task { _ = try? await transport.send(EngineCommand(name: "toggle")) }
+        // Global shortcuts. Each one sends a command to a module's engine, so
+        // the host never reaches past the transport into a module.
+        func send(_ command: String, to module: String) -> () -> Void {
+            { [weak host] in
+                guard let engine = host?.liveModule(module)?.engine else { return }
+                let transport = engine.transport
+                Task { _ = try? await transport.send(EngineCommand(name: command)) }
+            }
         }
+        HotkeyManager.shared.register(
+            "keep-awake.toggle",
+            store: NamespacedStore(namespace: "keep-awake", backing: UserDefaults.standard),
+            action: send("toggle", to: "keep-awake"))
+        HotkeyManager.shared.register(
+            "layout.convert",
+            store: NamespacedStore(namespace: "layout", backing: UserDefaults.standard),
+            prefix: "convertHotkey",
+            action: send("convertLastWord", to: "layout"))
+        HotkeyManager.shared.register(
+            "layout.undo",
+            store: NamespacedStore(namespace: "layout", backing: UserDefaults.standard),
+            prefix: "undoHotkey",
+            action: send("undoLastConversion", to: "layout"))
         HotkeyManager.shared.start()
 
         // Dev builds always log: the file is the evidence we triage before a

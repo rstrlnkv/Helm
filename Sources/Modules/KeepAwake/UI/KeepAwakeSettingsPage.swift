@@ -36,12 +36,12 @@ public struct KeepAwakeSettingsPage: View {
     @State private var timerTintColor: String
     @State private var customActiveIcon: Bool
     @State private var activeIconShape: String
-    @StateObject private var recorder: HotkeyRecorder
+    @StateObject private var recorder: HelmHotkeyRecorder
 
     public init(vm: ModuleViewModel, store: NamespacedStore) {
         self.vm = KeepAwakeViewModel.shared(vm: vm)
         self.store = store
-        _recorder = StateObject(wrappedValue: HotkeyRecorder(store: store))
+        _recorder = StateObject(wrappedValue: HelmHotkeyRecorder(store: store))
         _autoExternalDisplay = State(initialValue: store.bool("autoExternalDisplay", default: false))
         _autoPower = State(initialValue: store.bool("autoPower", default: false))
         _appTriggers = State(initialValue: KeepAwakeSettings(store: store).appTriggers)
@@ -180,25 +180,8 @@ public struct KeepAwakeSettingsPage: View {
             }
 
             Section(KAStr.globalShortcut) {
-                HStack(spacing: 10) {
-                    Text(KAStr.toggleAction)
-                    Spacer()
-                    if recorder.recording {
-                        Text(KAStr.pressKeys).foregroundStyle(.secondary)
-                    } else if !recorder.label.isEmpty {
-                        Text(recorder.label).font(.body.monospaced())
-                    } else {
-                        Text(KAStr.none).foregroundStyle(.secondary)
-                    }
-                    Button(recorder.recording ? KAStr.cancel : KAStr.record) {
-                        recorder.recording ? recorder.stop() : recorder.startRecording()
-                    }
-                    .controlSize(.small)
-                    if !recorder.label.isEmpty && !recorder.recording {
-                        Button(KAStr.clear) { recorder.clear() }
-                            .controlSize(.small)
-                    }
-                }
+                HelmHotkeyRow(KAStr.toggleAction, recorder: recorder,
+                              taken: HotkeyStatus.isTaken("keep-awake.toggle"))
             }
         }
         .formStyle(.grouped)
@@ -357,73 +340,3 @@ public struct KeepAwakeSettingsPage: View {
 /// Records a global-shortcut combo into the module store and notifies the app's
 /// HotkeyManager (via `helmHotkeyChanged`) to (re)register it. Capture uses a
 /// local key monitor while the settings window is key — no Accessibility needed.
-@MainActor final class HotkeyRecorder: ObservableObject {
-    @Published var label: String
-    @Published var recording = false
-
-    private let store: NamespacedStore
-    private var monitor: Any?
-
-    init(store: NamespacedStore) {
-        self.store = store
-        self.label = store.string("hotkeyLabel", default: "")
-    }
-
-    func startRecording() {
-        recording = true
-        monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self else { return event }
-            // Escape leaves. Without this the monitor swallowed every keystroke
-            // including Escape and Tab, so someone who started recording from
-            // the keyboard could only get out with the mouse — or by assigning
-            // a shortcut they never wanted.
-            if event.keyCode == UInt16(kVK_Escape) {
-                self.stop()
-                return nil
-            }
-            self.capture(event)
-            return nil   // swallow the rest while recording
-        }
-    }
-
-    func stop() {
-        if let monitor { NSEvent.removeMonitor(monitor); self.monitor = nil }
-        recording = false
-    }
-
-    func clear() {
-        store.set(-1, for: "hotkeyKeyCode")
-        store.set(0, for: "hotkeyModifiers")
-        store.set("", for: "hotkeyLabel")
-        label = ""
-        NotificationCenter.default.post(name: Notification.Name("helmHotkeyChanged"), object: nil)
-    }
-
-    private func capture(_ event: NSEvent) {
-        let flags = event.modifierFlags
-        var carbon = 0
-        if flags.contains(.command) { carbon |= cmdKey }
-        if flags.contains(.option) { carbon |= optionKey }
-        if flags.contains(.control) { carbon |= controlKey }
-        if flags.contains(.shift) { carbon |= shiftKey }
-        guard carbon != 0 else { return }   // require at least one modifier
-
-        let key = (event.charactersIgnoringModifiers ?? "").uppercased()
-        let text = modifierSymbols(flags) + key
-        store.set(Int(event.keyCode), for: "hotkeyKeyCode")
-        store.set(carbon, for: "hotkeyModifiers")
-        store.set(text, for: "hotkeyLabel")
-        label = text
-        stop()
-        NotificationCenter.default.post(name: Notification.Name("helmHotkeyChanged"), object: nil)
-    }
-
-    private func modifierSymbols(_ f: NSEvent.ModifierFlags) -> String {
-        var s = ""
-        if f.contains(.control) { s += "⌃" }
-        if f.contains(.option) { s += "⌥" }
-        if f.contains(.shift) { s += "⇧" }
-        if f.contains(.command) { s += "⌘" }
-        return s
-    }
-}
