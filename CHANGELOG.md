@@ -8,6 +8,36 @@ features, PATCH = fixes.
 ## [0.7.1] — 2026-07-26
 
 ### Fixed
+- `VPNEngine` was the one engine with no background bridge. `scutil` is a
+  subprocess, and a connect polls it up to 25 times through
+  `DispatchQueue.main.asyncAfter`, so one connect could stall the main thread
+  for over two seconds in slices; `activate()` shelled out at launch before the
+  window existed, and auto-connect ran from AppKit's running-applications
+  notification straight into a synchronous keychain read that can raise a modal
+  panel. All of it goes through an injected work queue now.
+- The same class carried `@unchecked Sendable` with no synchronisation while
+  `connections` was written from the transport handler, the poll and the
+  application observer. `KeepAwakeEngine` had the mirror image: every observer
+  that writes its state delivers on main and only the command handler arrived on
+  a concurrency pool. `LocalTransport.setHandler` wrote the one field its class
+  did not guard.
+- `ModuleViewModel` — the type every module is handed — published five values
+  and decoded a `state` payload of one shape, and that shape was Keep Awake's.
+  VPN emits an event of the same name with a different shape, so the decoder
+  failed on every poll and left all five at their defaults forever; five modules
+  of six carried five dead `@Published` properties. Keep Awake has its own view
+  model; the status item follows a publisher the descriptor supplies.
+- Eleven icon-only controls had no accessibility name: `.help()` fills the hint,
+  not the name, so VoiceOver read them all as "button". Collapsed disclosures
+  stayed in the accessibility tree, so the panel read out its utilities list and
+  Keep Awake its automation block while both were shut.
+- The shortcut recorder's key monitor swallowed Escape and Tab, so a recording
+  started from the keyboard could only be left with the mouse. The icon shape,
+  icon size and both colour pickers were `onTapGesture` — no button trait, no
+  focus, no keyboard path — and the swatches' only name was
+  `rawValue.capitalized`, the one user-visible string that skipped `L()`.
+- `HelmApp` declared a direct dependency on all six engines and imported one of
+  them without using a symbol from it.
 - Opening App Uninstaller took 4.0 s warm and 9.4 s cold, on every visit,
   because listing apps measured each bundle — a full walk per app, 3.2 s for
   Xcode alone. Listing without sizes is 10 ms; the sizes arrive behind the list,
