@@ -30,10 +30,22 @@ public struct TypingBuffer {
 
     public var word: String { String(characters) }
 
+    /// A finished word, and the character that finished it.
+    ///
+    /// The ending matters as much as the word: a space or a full stop is
+    /// already in the text field by then, so a replacement that ignores it
+    /// deletes one character too few.
+    public struct Completion: Equatable {
+        public let word: String
+        /// nil when the word ended by the caret leaving rather than by a
+        /// character being typed.
+        public let ending: Character?
+    }
+
     /// Feeds one event. Returns the completed word when this event ended one,
     /// and nil otherwise.
     @discardableResult
-    public mutating func accept(_ event: Event) -> String? {
+    public mutating func accept(_ event: Event) -> Completion? {
         switch event {
         case .character(let character):
             guard characters.count < Self.maxLength else { return nil }
@@ -46,7 +58,17 @@ public struct TypingBuffer {
             guard !characters.isEmpty else { return nil }
             let finished = String(characters)
             characters.removeAll()
-            return finished
+            return Completion(word: finished, ending: Self.ending(of: event))
+        }
+    }
+
+    /// What the app already received. Navigation and clicks type nothing.
+    private static func ending(of event: Event) -> Character? {
+        switch event {
+        case .space: return " "
+        case .newline: return "\n"
+        case .punctuation(let character): return character
+        case .navigation, .click, .focusChange, .character, .backspace: return nil
         }
     }
 

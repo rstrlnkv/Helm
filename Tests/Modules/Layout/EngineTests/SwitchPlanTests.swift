@@ -27,3 +27,30 @@ final class SwitchPlanTests: XCTestCase {
         XCTAssertNil(SwitchPlan.make(replacing: "x", with: ""))
     }
 }
+
+/// The character that ended the word is already in the field, and the plan has
+/// to account for it. Without this the delete count was one short and the first
+/// letter of the word survived: `ghbdtn ` came back as `gпривет`.
+extension SwitchPlanTests {
+    func testTheEndingCharacterIsDeletedAndPutBack() {
+        let plan = SwitchPlan.make(replacing: "ghbdtn", with: "привет", trailing: " ")
+        XCTAssertEqual(plan?.backspaces, 7, "six letters and the space")
+        XCTAssertEqual(plan?.insert, "привет ")
+    }
+
+    func testEveryEndingIsCarriedThrough() {
+        for ending in [Character(" "), "\n", ".", ",", "!"] {
+            let plan = SwitchPlan.make(replacing: "abc", with: "фис", trailing: ending)
+            XCTAssertEqual(plan?.backspaces, 4, String(ending))
+            XCTAssertEqual(plan?.insert, "фис" + String(ending), String(ending))
+        }
+    }
+
+    /// The hotkey converts a word mid-typing: nothing has ended it, so there is
+    /// nothing extra to delete.
+    func testNoEndingMeansNoExtraBackspace() {
+        let plan = SwitchPlan.make(replacing: "ghbdtn", with: "привет")
+        XCTAssertEqual(plan?.backspaces, 6)
+        XCTAssertEqual(plan?.insert, "привет")
+    }
+}

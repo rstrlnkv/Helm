@@ -118,13 +118,13 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         lock.unlock()
         // Ended and meant are different things: leaving the word by clicking or
         // moving the caret ends it without asking for a conversion.
-        guard auto, confirms, let word = finished else { return }
-        convert(word, force: false)
+        guard auto, confirms, let completed = finished else { return }
+        convert(completed.word, trailing: completed.ending, force: false)
     }
 
     /// `force` is the hotkey: the user asked for this word by name, so the
     /// dictionary's opinion is not consulted. The secure checks still are.
-    private func convert(_ word: String, force: Bool) {
+    private func convert(_ word: String, trailing: Character?, force: Bool) {
         let bundleID = secure.frontmostBundleID()
         lock.lock(); let allowed = scope.allows(bundleID); lock.unlock()
         guard allowed else { return }
@@ -154,11 +154,14 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             replacement = candidate
         }
 
-        guard let plan = SwitchPlan.make(replacing: word, with: replacement) else { return }
+        guard let plan = SwitchPlan.make(replacing: word, with: replacement,
+                                         trailing: trailing) else { return }
         perform(plan)
         sources.select(to)
         lock.lock()
-        undo = UndoRecord(event: ConversionEvent(before: word, after: replacement, app: bundleID))
+        undo = UndoRecord(event: ConversionEvent(before: word, after: replacement,
+                                                 app: bundleID,
+                                                 trailing: trailing.map(String.init) ?? ""))
         conversions += 1
         lock.unlock()
         // Counts, never content: the words themselves stay out of the log.
@@ -183,7 +186,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     public func convertLastWord() {
         lock.lock(); let word = buffer.word; lock.unlock()
         guard !word.isEmpty else { return }
-        convert(word, force: true)
+        // Mid-word: nothing has ended it, so there is nothing extra to delete.
+        convert(word, trailing: nil, force: true)
     }
 
     /// Re-reads what the settings page wrote. The page owns the store; the

@@ -65,8 +65,11 @@ final class LayoutEngineTests: XCTestCase {
     func testAMislayoutWordIsConvertedAndTheSourceFollows() {
         let engine = engine()
         tap.type("ghbdtn"); tap.space()
-        XCTAssertEqual(typing.performed.first?.insert, "привет")
-        XCTAssertEqual(typing.performed.first?.backspaces, 6)
+        // The space is deleted and put back with the replacement: it was
+        // already in the field, and leaving it out of the count left the first
+        // letter behind — `ghbdtn ` came back as `gпривет`.
+        XCTAssertEqual(typing.performed.first?.insert, "привет ")
+        XCTAssertEqual(typing.performed.first?.backspaces, 7)
         XCTAssertEqual(sources.selected, ["ru"], "the input source follows the text")
         withExtendedLifetime(engine) {}
     }
@@ -127,7 +130,8 @@ final class LayoutEngineTests: XCTestCase {
         let engine = engine()
         tap.type("ghbdtn"); tap.space()
         engine.undoLast()
-        XCTAssertEqual(typing.performed.last?.insert, "ghbdtn")
+        XCTAssertEqual(typing.performed.last?.insert, "ghbdtn ",
+                       "undo puts back exactly what was replaced, ending and all")
         let count = typing.performed.count
         engine.undoLast()
         XCTAssertEqual(typing.performed.count, count, "a second undo has nothing to undo")
