@@ -12,8 +12,8 @@ in the spirit of PowerToys.
 | **App Uninstaller** | Remove apps together with their leftovers (caches, preferences, containers, …) — everything goes to the Trash. A Leftovers tab finds files from apps that are already gone. |
 | **Homebrew** | Installed formulae/casks with descriptions, updates (per-package and all), search & install, live console for long operations, in-app Homebrew installer. |
 | **Login Items & Extensions** | Everything that loads with the system — launch agents, settings files, plug-ins — marked In use / System / Leftover; leftovers removable. |
-| **Layout** | Fixes a word typed in the wrong keyboard layout — `ghbdtn` becomes `привет` — and moves the input source with it. Only when the word is not a word as typed and is one once swapped; terminals and password managers are left alone. Needs Accessibility. |
-| **Disk Space** | What is taking up room: a sunburst ring over the volume, firmlink-aware so an APFS volume group is not counted twice; folders open under the names Finder gives them, and anything you want gone collects in one list before it goes to the Trash. |
+| **Keyboard** | Fixes a word typed in the wrong keyboard layout — `ghbdtn` becomes `привет` — and moves the input source with it. Only when the word is not a word as typed and is one once swapped; terminals and password managers are left alone. Needs Accessibility. |
+| **Disk** | What is taking up room: a sunburst ring over the volume, firmlink-aware so an APFS volume group is not counted twice; folders open under the names Finder gives them, and anything you want gone collects in one list before it goes to the Trash. |
 
 Everything is localized in eight languages: English, 中文, Español, Français,
 Deutsch, 日本語, Русский, Português.
