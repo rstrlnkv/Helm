@@ -146,7 +146,7 @@ private struct BreadcrumbBar: View {
             Button(DkStr.scanAgain) { dvm.newScan() }
                 .controlSize(.small)
         }
-        .padding(.horizontal, 16).padding(.vertical, 9)
+        .padding(.horizontal, 20).padding(.vertical, 12)
     }
 
     @ViewBuilder private var crumbs: some View {

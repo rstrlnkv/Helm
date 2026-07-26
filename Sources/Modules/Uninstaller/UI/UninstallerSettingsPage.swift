@@ -367,10 +367,7 @@ public struct UninstallerSettingsPage: View {
                 .resizable().frame(width: 18, height: 18)
             Text(group.app.name).font(.callout.weight(.semibold))
             if group.running {
-                Text(UnStr.runningBadge)
-                    .font(.caption2.weight(.semibold))
-                    .padding(.horizontal, 6).padding(.vertical, 2)
-                    .background(Capsule().fill(Color.orange.opacity(0.25)))
+                HelmBadge(UnStr.runningBadge, tint: .orange)
             }
             Spacer()
             Text(Bytes(group.app.sizeBytes))
@@ -395,10 +392,7 @@ public struct UninstallerSettingsPage: View {
                     // Says why the box is empty: this one was found by the app's
                     // name, and names collide.
                     if leftover.matchedByName {
-                        Text(UnStr.matchedByName)
-                            .font(.caption2)
-                            .padding(.horizontal, 5).padding(.vertical, 1)
-                            .background(Color.primary.opacity(0.08), in: Capsule())
+                        HelmBadge(UnStr.matchedByName)
                     }
                 }
                 Text(leftover.path)
