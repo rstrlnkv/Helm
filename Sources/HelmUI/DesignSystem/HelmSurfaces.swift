@@ -153,9 +153,13 @@ public struct HelmMetricStrip: View {
                         // Darkened in light appearance so the figure is legible
                         // in both, rather than legible in one.
                         .foregroundStyle(metric.tint.map(legible) ?? .primary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                     Text(metric.label)
                         .font(.system(size: 9, weight: .semibold))
                         .tracking(0.7)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                         // `.tertiary` at 9 pt measured 1.87:1 light and 2.26:1
                         // dark — below every threshold, on a strip that appears
                         // on every module page.

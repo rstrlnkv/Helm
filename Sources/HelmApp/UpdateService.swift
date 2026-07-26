@@ -94,8 +94,7 @@ import HelmRuntime
     /// Update channel, persisted app-wide (not a module setting).
     static var channel: UpdateCheck.Channel {
         get {
-            UpdateCheck.Channel(rawValue: UserDefaults.standard.string(forKey: "updateChannel") ?? "")
-                ?? .stable
+            UpdateCheck.Channel.stored(UserDefaults.standard.string(forKey: "updateChannel"))
         }
         set { UserDefaults.standard.set(newValue.rawValue, forKey: "updateChannel") }
     }
@@ -123,8 +122,8 @@ import HelmRuntime
             let (data, resp) = try await URLSession.shared.data(for: req)
             guard let http = resp as? HTTPURLResponse else { return }
             // What the response MEANS is decided by the unit-tested core.
-            // Stable reads a single release; dev reads the list of releases.
-            let outcome = channel == .stable
+            // Beta reads a single release; dev reads the list of releases.
+            let outcome = channel == .beta
                 ? UpdateCheck.evaluate(statusCode: http.statusCode, data: data,
                                        currentVersion: currentVersion)
                 : UpdateCheck.evaluateList(statusCode: http.statusCode, data: data,

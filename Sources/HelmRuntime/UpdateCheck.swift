@@ -19,15 +19,30 @@ public enum UpdateCheck {
     }
 
     /// Which GitHub releases a user opts into.
+    ///
+    /// The slower of the two channels is `beta`, not "stable": Helm has not
+    /// reached 1.0, and a channel called stable promises something no release
+    /// so far has earned. It is the same endpoint either way — the name is a
+    /// claim made to the user, and this one is true.
     public enum Channel: String, Sendable, CaseIterable {
-        case stable, dev
+        case beta, dev
 
-        /// Stable reads the single "latest" release (GitHub already excludes
+        /// Beta reads the single "latest" release (GitHub already excludes
         /// prereleases there); dev reads the list so prereleases are visible.
         public func endpoint(repo: String) -> String {
             switch self {
-            case .stable: return "https://api.github.com/repos/\(repo)/releases/latest"
+            case .beta: return "https://api.github.com/repos/\(repo)/releases/latest"
             case .dev: return "https://api.github.com/repos/\(repo)/releases?per_page=20"
+            }
+        }
+
+        /// Reads a persisted value, including the one written before the
+        /// channel was renamed. An unreadable setting means the safer channel,
+        /// never the faster one.
+        public static func stored(_ raw: String?) -> Channel {
+            switch raw {
+            case "dev": return .dev
+            default: return .beta   // "beta", the legacy "stable", nil, garbage
             }
         }
     }

@@ -222,7 +222,7 @@ public struct LayoutSettingsPage: View {
             Text(LyStr.indicatorHint)
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            Toggle(LyStr.indicator, isOn: $indicator)
+            Toggle(LyStr.indicatorShow, isOn: $indicator)
                 .onChange(of: indicator) { _, value in write(value, "indicator") }
             if indicator {
                 Picker(LyStr.badgeStyle, selection: $badgeStyle) {
