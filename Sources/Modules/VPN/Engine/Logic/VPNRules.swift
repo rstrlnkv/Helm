@@ -15,6 +15,27 @@ public struct VPNAppRule: Codable, Equatable {
         self.connectOnLaunch = connectOnLaunch
         self.disconnectOnQuit = disconnectOnQuit
     }
+
+    /// The four states the two flags can express, named as the row reads.
+    /// A rule with neither is inert, and saying "off" out loud beats leaving
+    /// two switches that look set to something.
+    public enum Timing: String, CaseIterable, Sendable {
+        case launchAndQuit, launchOnly, quitOnly, off
+    }
+
+    public var timing: Timing {
+        switch (connectOnLaunch, disconnectOnQuit) {
+        case (true, true): .launchAndQuit
+        case (true, false): .launchOnly
+        case (false, true): .quitOnly
+        case (false, false): .off
+        }
+    }
+
+    public mutating func set(_ timing: Timing) {
+        connectOnLaunch = timing == .launchAndQuit || timing == .launchOnly
+        disconnectOnQuit = timing == .launchAndQuit || timing == .quitOnly
+    }
 }
 
 /// Pure encode/decode/validation of the per-app auto-VPN rules

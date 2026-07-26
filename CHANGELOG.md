@@ -8,6 +8,9 @@ features, PATCH = fixes.
 ## [0.7.1] — 2026-07-26
 
 ### Added
+- Login Items & Extensions lists system extensions themselves, with the status
+  their host app implies. They are never selectable: Helm cannot remove an
+  extension by moving a file, so the row opens the system pane instead.
 - Keep Awake's per-app rules take conditions: an app can hold the Mac awake
   always, or only with an external display, only on power, or both. Existing
   app lists migrate to unconditional rules.
@@ -39,6 +42,13 @@ features, PATCH = fixes.
   reopening the page re-reads it.
 
 ### Changed
+- Per-app rules are one row each — the app, one menu for when the rule applies,
+  and the remove button — in both Keep Awake and VPN. The two switches they
+  replace were never independent: "display and power" means both, and a VPN
+  rule with neither switch on does nothing, which the menu can now say.
+- The system-extension count left the Permissions section. It was neither a
+  permission nor Helm's, and a bare number could not tell you which app it
+  meant; the module named after extensions lists them by name instead.
 - Settings sections follow how often they are needed: general, module order,
   menu-bar icon and panel first; permissions and diagnostics last. They used to
   sit in the reverse order, with troubleshooting above appearance.

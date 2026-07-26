@@ -31,8 +31,10 @@ public struct StaleItem: Codable, Equatable, Sendable, Identifiable {
     public let runAtLoad: Bool
     public let status: ItemStatus
 
-    /// Only orphans may be trashed; the rest are shown for context.
-    public var removable: Bool { status == .orphaned }
+    /// Only orphans may be trashed, and never a system extension: those are
+    /// not files Helm can move — macOS removes them with their app or from
+    /// System Settings. Offering a checkbox would promise what we cannot do.
+    public var removable: Bool { status == .orphaned && kind != .systemExtension }
 
     public init(path: String, identifier: String, kind: StaleKind, sizeBytes: Int,
                 missingTarget: String? = nil, runAtLoad: Bool = false,

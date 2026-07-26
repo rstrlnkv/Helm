@@ -5,6 +5,13 @@ import Foundation
 /// anything in a system location, anything whose owner is still installed, and
 /// anything whose owner cannot be identified stays put.
 public enum StaleItemRules {
+    /// An extension id is its host app's id plus one component:
+    /// com.acme.app.networkExtension → com.acme.app.
+    static func hostIdentifier(of identifier: String) -> String {
+        let parts = identifier.split(separator: ".")
+        return parts.count > 3 ? parts.dropLast().joined(separator: ".") : identifier
+    }
+
     /// Locations Helm never touches, whatever they contain.
     static let protectedPrefixes = [
         "/System/", "/Library/Apple/", "/usr/", "/bin/", "/sbin/", "/private/var/db/",
