@@ -79,3 +79,13 @@ final class LayoutVerdictTests: XCTestCase {
                               validAsTyped: false, validTranslated: true), .leave)
     }
 }
+
+extension LayoutVerdictTests {
+    /// Somebody tired of seeing a word appear will add the word they see — the
+    /// translated one — not the letters they actually pressed.
+    func testAnExceptionMatchesEitherForm() {
+        XCTAssertEqual(LayoutVerdict.decide(word: "ghbdtn", translated: "привет",
+                                            validAsTyped: false, validTranslated: true,
+                                            exceptions: ["привет"]), .leave)
+    }
+}

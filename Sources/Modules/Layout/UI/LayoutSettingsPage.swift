@@ -87,15 +87,17 @@ public struct LayoutSettingsPage: View {
                 Text(LyStr.suspended).font(.caption).foregroundStyle(.secondary)
             }
             if let last = lvm.state.lastConversion {
+                // Shown, not offered. Undoing has to happen in the app the
+                // conversion happened in, and reaching a button here means
+                // bringing Helm forward — which is both the wrong app and, as a
+                // click, the thing that ends the chance to undo. A button that
+                // cannot fire is worse than no button.
                 LabeledContent(LyStr.lastChange) {
-                    HStack(spacing: 8) {
-                        Text("\(last.before) → \(last.after)")
-                            .font(.system(size: 12, design: .monospaced))
-                            .lineLimit(1).truncationMode(.middle)
-                        Button(LyStr.undo) { lvm.undoLast() }
-                            .controlSize(.small)
-                    }
+                    Text("\(last.before) → \(last.after)")
+                        .font(.system(size: 12, design: .monospaced))
+                        .lineLimit(1).truncationMode(.middle)
                 }
+                Text(LyStr.undoHint).font(.caption).foregroundStyle(.secondary)
             }
         }
     }
