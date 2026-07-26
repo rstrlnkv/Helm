@@ -33,7 +33,7 @@ struct BadgePreview: View {
                         Image(nsImage: HelmAppearance.rasterize(
                             BadgeImage.make(label: source.badge,
                                             flag: source.emojiFlag,
-                                            art: source.art,
+                                            region: source.region,
                                             style: style,
                                             points: size.points),
                             scheme: scheme))

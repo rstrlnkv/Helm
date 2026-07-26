@@ -36,6 +36,23 @@ cp "$REPO_ROOT/Resources/HelmApp/Info.plist" "$CONTENTS_DIR/Info.plist"
 # The ring artwork the icon is built from: the in-app mark draws the same
 # shape, so editing the icon in Icon Composer updates the app too.
 cp "$REPO_ROOT/Resources/Icon/Helm.icon/Assets/helm-ring.svg" "$RESOURCES_DIR/helm-ring.svg"
+# SwiftPM resource bundles. A target that declares `resources:` gets its own
+# .bundle beside the binary, and `Bundle.module` looks for it next to the
+# executable — miss this copy and the flag artwork is simply absent at
+# runtime, with every layout quietly falling back to letters and nothing in
+# the build saying so.
+BUNDLE_COUNT=0
+for bundle in "$REPO_ROOT"/.build/release/*.bundle; do
+  [ -e "$bundle" ] || continue
+  cp -R "$bundle" "$CONTENTS_DIR/Resources/"
+  BUNDLE_COUNT=$((BUNDLE_COUNT + 1))
+done
+echo "==> Resource bundles copied: $BUNDLE_COUNT"
+if [ "$BUNDLE_COUNT" -eq 0 ]; then
+  echo "!! No SwiftPM resource bundles found — Bundle.module lookups will fail" >&2
+  exit 1
+fi
+
 printf 'APPL????' > "$CONTENTS_DIR/PkgInfo"
 
 # Build number = git commit count, so About shows a real, increasing build.
