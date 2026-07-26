@@ -23,7 +23,12 @@ public final class ScanStore: @unchecked Sendable {
 
     public func save(_ result: ScanResult, at date: Date = Date()) {
         do {
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            // 0700: the cache is a full index of file names on the volume.
+            // ~/Library is already private, but that is the enclosing folder's
+            // doing, not this one's.
+            try FileManager.default.createDirectory(
+                at: directory, withIntermediateDirectories: true,
+                attributes: [.posixPermissions: 0o700])
             let data = try JSONEncoder().encode(Cached(result: result, savedAt: date))
             try data.write(to: fileURL, options: .atomic)
         } catch {

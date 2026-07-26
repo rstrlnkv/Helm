@@ -82,7 +82,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     }
 
     public func connect(_ name: String, auto: Bool = false) {
-        HelmLog.shared.info("vpn", "connect \(name)\(auto ? " (auto)" : "")")
+        HelmLog.shared.info("vpn", "connect \(Redact.vpn(name))\(auto ? " (auto)" : "")")
         if auto { autoConnected.insert(name) }
         var args = ["--nc", "start", name]
         if let creds = credentials?.credentials(for: name), creds.secret?.isEmpty == false {
@@ -96,7 +96,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     }
 
     public func disconnect(_ name: String) {
-        HelmLog.shared.info("vpn", "disconnect \(name)")
+        HelmLog.shared.info("vpn", "disconnect \(Redact.vpn(name))")
         autoConnected.remove(name)
         _ = runner.run(["--nc", "stop", name])
         emitState()
@@ -134,10 +134,12 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
                 self.pollUntilSettled()
             } else if Self.needsPoll(self.connections) {
                 HelmLog.shared.warn("vpn", "still transitioning after \(self.pollAttempts) polls: "
-                    + self.connections.map { "\($0.name)=\($0.status)" }.joined(separator: ", "))
+                    + self.connections.map { "\(Redact.vpn($0.name))=\($0.status)" }
+                        .joined(separator: ", "))
             } else {
                 HelmLog.shared.info("vpn", "settled: "
-                    + self.connections.map { "\($0.name)=\($0.status)" }.joined(separator: ", "))
+                    + self.connections.map { "\(Redact.vpn($0.name))=\($0.status)" }
+                        .joined(separator: ", "))
             }
         }
     }

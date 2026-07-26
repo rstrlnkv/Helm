@@ -1,4 +1,5 @@
 import SwiftUI
+import HelmRuntime
 import HelmUI
 import Module_Uninstaller_Engine
 
@@ -12,6 +13,7 @@ struct OrphansView: View {
     @State private var scanned = false
     @State private var scanning = false
     @State private var selected: Set<String> = []
+    @State private var failures: [TrashFailureInfo] = []
     @State private var busy = false
     @State private var confirming = false
     @State private var banner: String?
@@ -23,9 +25,18 @@ struct OrphansView: View {
     var body: some View {
         VStack(spacing: 0) {
             if let banner {
-                Text(banner).font(.callout).padding(8)
-                    .frame(maxWidth: .infinity)
-                    .background(Color.green.opacity(0.15))
+                // A green bar over a refusal is the app congratulating itself
+                // for work macOS did not let it do.
+                HelmRemovalOutcome(succeededText: banner,
+                                   failures: failures.map {
+                                       HelmRemovalFailure(path: $0.path,
+                                                          reason: UnStr.failureReason($0.reason))
+                                   },
+                                   needsFullDiskAccess: failures.contains {
+                                       $0.reason == TrashFailure.Reason.needsFullDiskAccess.rawValue
+                                   })
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             content
             if !groups.isEmpty { footer }
@@ -122,6 +133,7 @@ struct OrphansView: View {
         let result = await uvm.trashPaths(Array(selected))
         busy = false
         if let result {
+            failures = result.failures
             banner = UnStr.freed(Bytes(result.freedBytes))
             await scan()
         }
