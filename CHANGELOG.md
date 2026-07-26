@@ -5,6 +5,74 @@ All notable changes to Helm are documented here. The format is loosely based on
 [VERSIONING.md](VERSIONING.md) — MAJOR = global changes, MINOR = new/polished
 features, PATCH = fixes.
 
+## [0.7.0] — 2026-07-26
+
+### Added
+- **Disk Space module** — a sunburst ring showing what filled the disk. Scans a
+  whole volume or any folder with `getattrlistbulk` and a parallel walk (a
+  310 GB volume in about a minute), draws the ring while the scan is still
+  running, and drills in by clicking a wedge. Folders carry the names Finder
+  gives them in the user's language. Anything to remove collects in one list
+  and goes to the Trash together, and system paths can never be collected.
+- **Disk Space recommendations** — known cache folders past 100 MB, Downloads
+  items untouched for a month, and files over 1 GB untouched for half a year,
+  ranked by size behind one toolbar button.
+- **Disk Space remembers the last scan** — the tree is written to Application
+  Support and restored on open, labelled with when it was measured; deleting
+  updates the tree in place instead of re-walking the disk.
+- **Login Items & Extensions module** — everything that loads with the Mac,
+  marked in use, system, or leftover. Only leftovers can be selected.
+- **App Uninstaller: two-step flow** — tick the apps, then review the files
+  found for each before anything moves. Running apps are flagged and removed
+  only with an explicit force quit.
+- **Permissions section** — whether Helm has Full Disk Access, plus installed
+  system extensions read from `systemextensionsctl`. When a file cannot be
+  moved, Helm names the real reason and links to the right setting.
+- **Module reordering** — drag modules into the order they take in the panel.
+- **Diagnostics** — an optional log of what Helm does, reachable from Settings.
+  Dev builds always log.
+- Update channels (Stable / Dev), and a dev-first release flow: see
+  [VERSIONING.md](VERSIONING.md).
+
+### Changed
+- Every screen leads with its icon and its own key figures, on one layout.
+- Sizes are formatted once for the whole app: 1000 to the kilobyte as Finder
+  counts, and in the user's own units — "432,95 ГБ", not "432,95 GB".
+- Counted nouns follow each language's rules, including Russian's three forms.
+- Wording reviewed across all 334 strings: shorter labels, one name per thing,
+  duplicate labels split apart, explanations cut to their point.
+
+### Fixed
+- VPN rows no longer spin forever; the status is polled until it settles.
+- Uninstalling reports what actually happened: real failure reasons instead of
+  guesses, no duplicate paths queued twice, and Reveal falls back to the
+  enclosing folder when the item is already gone.
+- The Settings window no longer stretches to the height of the screen.
+- Sections no longer flicker when a disclosure finishes opening.
+
+## [0.6.3] — 2026-07-25
+
+### Changed
+- Redesigned About: the icon sits in a bezel that turns while updates are
+  checked, version and build read as instrument dials, and the update controls
+  live in one card.
+
+### Fixed
+- The update status no longer claims you are current when no check has run — it
+  shows when the last check happened.
+
+## [0.6.2] — 2026-07-25
+
+### Added
+- Update channels: stay on finished releases, or switch to Dev in About to get
+  early builds.
+
+## [0.6.1] — 2026-07-25
+
+### Fixed
+- VPN rows no longer show an endless spinner: the status is re-checked until the
+  connection settles.
+
 ## [0.6.0] — 2026-07-25
 
 ### Added
