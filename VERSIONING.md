@@ -64,9 +64,9 @@ build. Two consequences worth knowing before shipping a bad one:
 - To undo a dev build, publish the next one — `vX.Y.Z-dev.N+1` carrying the reverted
   code, with its digest lines. Never delete or re-tag a release people may have
   downloaded.
-- A user on a prerelease who switches to Stable sees `latest`, which is the last
-  stable tag — lower than what they are running, so Helm reports up-to-date and they
-  stay on the prerelease until the next stable release passes it. That is by design;
+- A user on a prerelease who switches to Beta sees `latest`, which is the last
+  non-prerelease tag — lower than what they are running, so Helm reports up-to-date
+  and they stay on the prerelease until the next beta release passes it. By design;
   say so if someone asks why the switch appears to do nothing.
 
 ## Release flow (since 0.7.0)
@@ -74,21 +74,21 @@ build. Two consequences worth knowing before shipping a bad one:
 **Everything ships to the dev channel first.** Cut a `vX.Y.Z-dev.N`
 prerelease, run it, and triage against the log it writes (dev builds always
 log — see Diagnostics below). Only when the bug and problem count is **zero**
-does the same code go out as the stable `vX.Y.Z` release. Never publish to
-stable without a dev round.
+does the same code go out as the beta `vX.Y.Z` release. Never publish to the
+beta channel without a dev round.
 
 ## Diagnostics log
 
 Dev builds enable `HelmLog` automatically (`LogPolicy.isEnabled` keys off the
 `-dev` suffix in the version). It writes one line per event to
 `~/Library/Logs/Helm/helm.log`, rolls over at 2 MB, and is reachable from
-Settings → Diagnostics (show in Finder, copy, clear). Stable builds stay
+Settings → Diagnostics (show in Finder, copy, clear). Beta builds stay
 silent unless the user turns the switch on.
 
 ## Dev channel
 
 Experimental builds ship as GitHub **prereleases** tagged
-`vX.Y.Z-dev.N` (`v0.7.0-dev.1`, `-dev.2`, …). They never change the stable
+`vX.Y.Z-dev.N` (`v0.7.0-dev.1`, `-dev.2`, …). They never change the beta
 numbering: the eventual `vX.Y.Z` release supersedes every `-dev.N` before it.
 
 ```bash
@@ -97,7 +97,7 @@ gh release create v0.7.0-dev.1 build/Helm-0.7.0-dev.1.dmg build/Helm-0.7.0-dev.1
   --prerelease --title "Helm 0.7.0-dev.1" --notes "…"
 ```
 
-In the app, About → Update channel switches between **Stable** (reads
+In the app, About → Update channel switches between **Beta** (reads
 `releases/latest`, prereleases invisible) and **Dev** (reads the releases list
 and takes the newest entry, prereleases included). Switching re-checks at once.
 Version ordering lives in `UpdateVersion`: `0.7.0` > `0.7.0-dev.2` >
