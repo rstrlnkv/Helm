@@ -33,7 +33,18 @@ codesign --verify --deep --strict "$STAGE/Helm.app"
 
 echo "==> Drawing the window"
 BACKGROUND="$STAGE/background.png"
-swift "$SCRIPT_DIR/design/make-dmg-background.swift" "$BACKGROUND" >/dev/null
+# Which of the three drawings the window uses. One edit switches it; see
+# Scripts/design/make-dmg-background.swift for what each one is.
+STYLE="${HELM_DMG_STYLE:-bezel}"
+# A dev image says so on its face, and says it from the version rather than
+# from anyone remembering to pass a flag: a screenshot of a dev window turns up
+# in an issue sooner or later and must not be mistaken for a release.
+case "$VERSION" in
+  *-dev.*) DEV_FLAG="--dev" ;;
+  *)       DEV_FLAG="" ;;
+esac
+swift "$SCRIPT_DIR/design/make-dmg-background.swift" \
+  "$BACKGROUND" "$STYLE" $DEV_FLAG >/dev/null
 
 # dmgbuild writes the .DS_Store itself instead of asking Finder to set the
 # window up. That is why it is here rather than an AppleScript: on macOS 26
