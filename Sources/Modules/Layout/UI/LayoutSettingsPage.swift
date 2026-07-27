@@ -22,6 +22,9 @@ public struct LayoutSettingsPage: View {
     @State private var showingIntro = false
     @StateObject private var convertKey: HelmHotkeyRecorder
     @StateObject private var undoKey: HelmHotkeyRecorder
+    @StateObject private var convertSelectionKey: HelmHotkeyRecorder
+    @StateObject private var transliterateKey: HelmHotkeyRecorder
+    @StateObject private var changeCaseKey: HelmHotkeyRecorder
 
     public init(vm: ModuleViewModel, store: NamespacedStore) {
         lvm = LayoutViewModel.shared(vm: vm)
@@ -43,6 +46,12 @@ public struct LayoutSettingsPage: View {
             HelmHotkeyRecorder(store: store, prefix: "convertHotkey"))
         _undoKey = StateObject(wrappedValue:
             HelmHotkeyRecorder(store: store, prefix: "undoHotkey"))
+        _convertSelectionKey = StateObject(wrappedValue:
+            HelmHotkeyRecorder(store: store, prefix: "convertSelectionHotkey"))
+        _transliterateKey = StateObject(wrappedValue:
+            HelmHotkeyRecorder(store: store, prefix: "transliterateHotkey"))
+        _changeCaseKey = StateObject(wrappedValue:
+            HelmHotkeyRecorder(store: store, prefix: "changeCaseHotkey"))
     }
 
     public var body: some View {
@@ -51,6 +60,7 @@ public struct LayoutSettingsPage: View {
             behaviourSection
             triggersSection
             shortcutsSection
+            selectionSection
             tryItSection
             exceptionsSection
             indicatorSection
@@ -167,6 +177,30 @@ public struct LayoutSettingsPage: View {
             Text(LyStr.tapKeyHint)
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// The three that act on a selection.
+    ///
+    /// A separate section from the shortcuts above, because they are a separate
+    /// promise: those two edit a word Helm watched being typed a keystroke ago,
+    /// these edit whatever is selected in whatever app is in front. Mixing them
+    /// into one list would read as five variations of the same thing.
+    private var selectionSection: some View {
+        Section(LyStr.selectionSection) {
+            Text(LyStr.selectionNote)
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            HelmHotkeyRow(LyStr.convertSelectionAction, recorder: convertSelectionKey,
+                          taken: HotkeyStatus.isTaken("layout.convertSelection"))
+            HelmHotkeyRow(LyStr.transliterateAction, recorder: transliterateKey,
+                          taken: HotkeyStatus.isTaken("layout.transliterate"))
+            Text(LyStr.transliterateHint)
+                .font(.caption).foregroundStyle(.secondary)
+            HelmHotkeyRow(LyStr.changeCaseAction, recorder: changeCaseKey,
+                          taken: HotkeyStatus.isTaken("layout.changeCase"))
+            Text(LyStr.changeCaseHint)
+                .font(.caption).foregroundStyle(.secondary)
         }
     }
 

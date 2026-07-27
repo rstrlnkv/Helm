@@ -387,3 +387,124 @@ public struct AXSecureContext: SecureContextPort {
         NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? ""
     }
 }
+
+// MARK: - Selection
+
+/// The selected text, through the accessibility tree where the app answers and
+/// through the clipboard where it does not.
+///
+/// Two routes because neither covers the machine. `AXSelectedText` is exact,
+/// instantaneous and leaves nothing behind — and a great many apps do not
+/// implement it: Electron ones, most web views, some of Apple's own. The
+/// fallback is ⌘C: it works nearly everywhere and it costs the clipboard, so it
+/// is second and it puts back what it borrowed.
+public struct AXSelection: SelectionPort {
+    public init() {}
+
+    public func selectedText() -> String? {
+        if let text = axSelection(), !text.isEmpty { return text }
+        return copySelection()
+    }
+
+    public func replaceSelection(with text: String) -> Bool {
+        if setAXSelection(text) { return true }
+        return pasteSelection(text)
+    }
+
+    // MARK: The exact route
+
+    private func focusedElement() -> AXUIElement? {
+        let system = AXUIElementCreateSystemWide()
+        var focused: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString,
+                                            &focused) == .success,
+              let focused
+        else { return nil }
+        // The same `unsafeBitCast` the rest of this file uses: a `CFTypeRef`
+        // that is an `AXUIElement` is one, and a conditional cast of a CF type
+        // through `as?` is the thing Swift 6 will not do.
+        return unsafeBitCast(focused, to: AXUIElement.self)
+    }
+
+    private func axSelection() -> String? {
+        guard let element = focusedElement() else { return nil }
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, kAXSelectedTextAttribute as CFString,
+                                            &value) == .success,
+              let text = value as? String
+        else { return nil }
+        return text
+    }
+
+    private func setAXSelection(_ text: String) -> Bool {
+        guard let element = focusedElement() else { return false }
+        return AXUIElementSetAttributeValue(element, kAXSelectedTextAttribute as CFString,
+                                            text as CFTypeRef) == .success
+    }
+
+    // MARK: The clipboard route
+
+    /// ⌘C, read, and put back what was there.
+    ///
+    /// The restore is not politeness: somebody's clipboard is theirs, and a
+    /// shortcut that quietly eats it is a shortcut people stop using. The
+    /// change count is what tells us the copy actually happened — a selection
+    /// of nothing leaves the pasteboard untouched, and reading it then would
+    /// return whatever was already on it and transliterate *that*.
+    private func copySelection() -> String? {
+        let pasteboard = NSPasteboard.general
+        let saved = pasteboard.string(forType: .string)
+        let before = pasteboard.changeCount
+
+        send(key: CGKeyCode(kVK_ANSI_C))
+        guard waitForChange(from: before) else {
+            restore(saved)
+            return nil
+        }
+        let copied = pasteboard.string(forType: .string)
+        restore(saved)
+        return copied
+    }
+
+    private func pasteSelection(_ text: String) -> Bool {
+        let pasteboard = NSPasteboard.general
+        let saved = pasteboard.string(forType: .string)
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+        send(key: CGKeyCode(kVK_ANSI_V))
+        // Long enough for the paste to have been read, short enough not to be
+        // felt. Restoring too early puts the old text back before the app has
+        // taken the new one, and the person pastes their own clipboard.
+        usleep(120_000)
+        restore(saved)
+        return true
+    }
+
+    private func restore(_ saved: String?) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        if let saved { pasteboard.setString(saved, forType: .string) }
+    }
+
+    /// Polled rather than slept: a fast app answers in a few milliseconds and a
+    /// slow one gets its 200, instead of everyone waiting for the slow one.
+    private func waitForChange(from before: Int) -> Bool {
+        for _ in 0..<20 {
+            usleep(10_000)
+            if NSPasteboard.general.changeCount != before { return true }
+        }
+        return false
+    }
+
+    private func send(key: CGKeyCode) {
+        guard let source = CGEventSource(stateID: .combinedSessionState) else { return }
+        source.userData = helmEventMarker
+        guard let down = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: true),
+              let up = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: false)
+        else { return }
+        down.flags = .maskCommand
+        up.flags = .maskCommand
+        down.post(tap: .cghidEventTap)
+        up.post(tap: .cghidEventTap)
+    }
+}
