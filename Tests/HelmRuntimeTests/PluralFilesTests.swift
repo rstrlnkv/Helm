@@ -32,3 +32,45 @@ final class PluralFilesTests: XCTestCase {
         XCTAssertEqual(Plural.files(0, language: "en"), "0 files")
     }
 }
+
+/// Counted rules, and counted days — the two the autopilot page prints.
+///
+/// Both shipped wrong: `"\(count) rules"` says "1 rules" for a new folder,
+/// which is the common case, and the Russian day count said «1 дней»,
+/// «2 дней», «22 дней» for every value.
+final class PluralRulesAndDaysTests: XCTestCase {
+
+    func testRussianRulesTakeAllThreeForms() {
+        XCTAssertEqual(Plural.rules(1, language: "ru"), "1 правило")
+        XCTAssertEqual(Plural.rules(2, language: "ru"), "2 правила")
+        XCTAssertEqual(Plural.rules(5, language: "ru"), "5 правил")
+        XCTAssertEqual(Plural.rules(11, language: "ru"), "11 правил")
+        XCTAssertEqual(Plural.rules(21, language: "ru"), "21 правило")
+    }
+
+    /// The case that made this a bug rather than a nicety: a folder somebody
+    /// just made has exactly one rule in it.
+    func testOneRuleIsSingularEverywhere() {
+        XCTAssertEqual(Plural.rules(1, language: "en"), "1 rule")
+        XCTAssertEqual(Plural.rules(1, language: "de"), "1 Regel")
+        XCTAssertEqual(Plural.rules(1, language: "es"), "1 regla")
+        XCTAssertEqual(Plural.rules(1, language: "fr"), "1 règle")
+        XCTAssertEqual(Plural.rules(1, language: "pt"), "1 regra")
+        XCTAssertEqual(Plural.rules(2, language: "en"), "2 rules")
+    }
+
+    func testRussianDaysTakeAllThreeForms() {
+        XCTAssertEqual(Plural.days(1, language: "ru"), "1 день")
+        XCTAssertEqual(Plural.days(2, language: "ru"), "2 дня")
+        XCTAssertEqual(Plural.days(7, language: "ru"), "7 дней")
+        XCTAssertEqual(Plural.days(22, language: "ru"), "22 дня")
+        XCTAssertEqual(Plural.days(30, language: "ru"), "30 дней")
+    }
+
+    func testOneDayIsSingularEverywhere() {
+        XCTAssertEqual(Plural.days(1, language: "en"), "1 day")
+        XCTAssertEqual(Plural.days(1, language: "fr"), "1 jour")
+        XCTAssertEqual(Plural.days(1, language: "de"), "1 Tag")
+        XCTAssertEqual(Plural.days(30, language: "de"), "30 Tage")
+    }
+}

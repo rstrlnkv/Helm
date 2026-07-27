@@ -271,10 +271,12 @@ public struct LayoutSettingsPage: View {
                           taken: HotkeyStatus.isTaken("layout.transliterate"))
             Text(LyStr.transliterateHint)
                 .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             HelmHotkeyRow(LyStr.changeCaseAction, recorder: changeCaseKey,
                           taken: HotkeyStatus.isTaken("layout.changeCase"))
             Text(LyStr.changeCaseHint)
                 .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 

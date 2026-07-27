@@ -34,6 +34,34 @@ public enum Plural {
         }
     }
 
+    /// "3 правила", "1 rule" — the autopilot page counts these.
+    public static func rules(_ count: Int, language: String) -> String {
+        switch language {
+        case "ru": return "\(count) " + russian(count, "правило", "правила", "правил")
+        case "es": return "\(count) " + (count == 1 ? "regla" : "reglas")
+        case "fr": return "\(count) " + (count <= 1 ? "règle" : "règles")
+        case "de": return "\(count) " + (count == 1 ? "Regel" : "Regeln")
+        case "pt": return "\(count) " + (count == 1 ? "regra" : "regras")
+        case "ja": return "\(count) 個のルール"
+        case "zh": return "\(count) 条规则"
+        default: return "\(count) " + (count == 1 ? "rule" : "rules")
+        }
+    }
+
+    /// "30 дней", "1 day" — a rule's age conditions are written in these.
+    public static func days(_ count: Int, language: String) -> String {
+        switch language {
+        case "ru": return "\(count) " + russian(count, "день", "дня", "дней")
+        case "es": return "\(count) " + (count == 1 ? "día" : "días")
+        case "fr": return "\(count) " + (count <= 1 ? "jour" : "jours")
+        case "de": return "\(count) " + (count == 1 ? "Tag" : "Tage")
+        case "pt": return "\(count) " + (count == 1 ? "dia" : "dias")
+        case "ja": return "\(count) 日"
+        case "zh": return "\(count) 天"
+        default: return "\(count) " + (count == 1 ? "day" : "days")
+        }
+    }
+
     /// Russian picks its form from the last two digits: 11–14 always take the
     /// "many" form, whatever their final digit says.
     public static func russian(_ count: Int, _ one: String, _ few: String,

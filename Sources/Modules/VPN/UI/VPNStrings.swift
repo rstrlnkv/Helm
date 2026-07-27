@@ -4,7 +4,7 @@ import Module_VPN_Engine
 /// Localized strings for the VPN module UI. "VPN" itself stays untranslated.
 enum VPNStr {
     static var summary: String {
-        L("Connect system VPNs, automatically per app.",
+        L("Connect system VPNs, automatically per app",
           [.ru: "Подключение системных VPN, автоматически по приложению.",
            .es: "Conecta VPN del sistema, automáticamente por app.",
            .fr: "Connecte les VPN système, automatiquement par app.",
