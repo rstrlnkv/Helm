@@ -33,19 +33,19 @@ public struct LayoutSettingsPage: View {
     public init(vm: ModuleViewModel, store: NamespacedStore) {
         lvm = LayoutViewModel.shared(vm: vm)
         self.store = store
-        _automatic = State(initialValue: store.bool("automatic", default: true))
-        _exceptions = State(initialValue: store.stringArray("exceptions").joined(separator: "\n"))
-        _onSpace = State(initialValue: store.bool("onSpace", default: ConversionTriggers.default.onSpace))
-        _onReturn = State(initialValue: store.bool("onReturn", default: ConversionTriggers.default.onReturn))
-        _onPunctuation = State(initialValue: store.bool("onPunctuation", default: ConversionTriggers.default.onPunctuation))
-        _appRules = State(initialValue: store.boolTable("appRules"))
-        _audible = State(initialValue: store.bool("audible", default: false))
-        _indicator = State(initialValue: store.bool("indicator", default: false))
+        _automatic = State(initialValue: store.bool(LayoutKey.automatic, default: true))
+        _exceptions = State(initialValue: store.stringArray(LayoutKey.exceptions).joined(separator: "\n"))
+        _onSpace = State(initialValue: store.bool(LayoutKey.onSpace, default: ConversionTriggers.default.onSpace))
+        _onReturn = State(initialValue: store.bool(LayoutKey.onReturn, default: ConversionTriggers.default.onReturn))
+        _onPunctuation = State(initialValue: store.bool(LayoutKey.onPunctuation, default: ConversionTriggers.default.onPunctuation))
+        _appRules = State(initialValue: store.boolTable(LayoutKey.appRules))
+        _audible = State(initialValue: store.bool(LayoutKey.audible, default: false))
+        _indicator = State(initialValue: store.bool(LayoutKey.indicator, default: false))
         _badgeStyle = State(initialValue:
-            BadgeStyle.from(store.string("badgeStyle", default: BadgeStyle.default.rawValue)))
+            BadgeStyle.from(store.string(LayoutKey.badgeStyle, default: BadgeStyle.default.rawValue)))
         _badgeSize = State(initialValue:
-            MenuBarIconSize(rawValue: store.string("badgeSize", default: "small")) ?? .small)
-        _tapKey = State(initialValue: TapKey.from(store.string("tapKey", default: TapKey.off.rawValue)))
+            MenuBarIconSize(rawValue: store.string(LayoutKey.badgeSize, default: "small")) ?? .small)
+        _tapKey = State(initialValue: TapKey.from(store.string(LayoutKey.tapKey, default: TapKey.off.rawValue)))
         _convertKey = StateObject(wrappedValue:
             HelmHotkeyRecorder(store: store, prefix: "convertHotkey"))
         _undoKey = StateObject(wrappedValue:
@@ -57,7 +57,7 @@ public struct LayoutSettingsPage: View {
         _changeCaseKey = StateObject(wrappedValue:
             HelmHotkeyRecorder(store: store, prefix: "changeCaseHotkey"))
         _abbreviations = State(initialValue: AutoReplaceStore.load(store))
-        _fixCapitals = State(initialValue: store.bool("fixCapitals", default: false))
+        _fixCapitals = State(initialValue: store.bool(LayoutKey.fixCapitals, default: false))
     }
 
     public var body: some View {
@@ -80,11 +80,11 @@ public struct LayoutSettingsPage: View {
             accessibility = PermissionCheck.currentAccessibility()
             // Once, and to the person who came looking for the module — rather
             // than in a queue of notices at first launch that nobody reads.
-            if !store.bool("introSeen", default: false) { showingIntro = true }
+            if !store.bool(LayoutKey.introSeen, default: false) { showingIntro = true }
         }
         .sheet(isPresented: $showingIntro) {
             LayoutIntro {
-                store.set(true, for: "introSeen")
+                store.set(true, for: LayoutKey.introSeen)
                 showingIntro = false
             }
         }
@@ -114,12 +114,12 @@ public struct LayoutSettingsPage: View {
     @ViewBuilder private var behaviourSection: some View {
         Section {
             Toggle(LyStr.automatic, isOn: $automatic)
-                .onChange(of: automatic) { _, value in write(value, "automatic") }
+                .onChange(of: automatic) { _, value in write(value, LayoutKey.automatic) }
             Text(LyStr.automaticNote)
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             Toggle(LyStr.audible, isOn: $audible)
-                .onChange(of: audible) { _, value in write(value, "audible") }
+                .onChange(of: audible) { _, value in write(value, LayoutKey.audible) }
             // macOS gives a key tap nothing without this grant, so the switch
             // above would be on and silent.
             if accessibility == .denied {
@@ -157,11 +157,11 @@ public struct LayoutSettingsPage: View {
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             Toggle(LyStr.onSpace, isOn: $onSpace)
-                .onChange(of: onSpace) { _, value in write(value, "onSpace") }
+                .onChange(of: onSpace) { _, value in write(value, LayoutKey.onSpace) }
             Toggle(LyStr.onReturn, isOn: $onReturn)
-                .onChange(of: onReturn) { _, value in write(value, "onReturn") }
+                .onChange(of: onReturn) { _, value in write(value, LayoutKey.onReturn) }
             Toggle(LyStr.onPunctuation, isOn: $onPunctuation)
-                .onChange(of: onPunctuation) { _, value in write(value, "onPunctuation") }
+                .onChange(of: onPunctuation) { _, value in write(value, LayoutKey.onPunctuation) }
         }
     }
 
@@ -180,7 +180,7 @@ public struct LayoutSettingsPage: View {
                     Text(LyStr.tapKeyName(key)).tag(key)
                 }
             }
-            .onChange(of: tapKey) { _, value in write(value.rawValue, "tapKey") }
+            .onChange(of: tapKey) { _, value in write(value.rawValue, LayoutKey.tapKey) }
             Text(LyStr.tapKeyHint)
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -233,7 +233,7 @@ public struct LayoutSettingsPage: View {
                               || newLong.isEmpty)
             }
             Toggle(LyStr.fixCapitals, isOn: $fixCapitals)
-                .onChange(of: fixCapitals) { _, value in write(value, "fixCapitals") }
+                .onChange(of: fixCapitals) { _, value in write(value, LayoutKey.fixCapitals) }
             Text(LyStr.fixCapitalsNote)
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -292,7 +292,7 @@ public struct LayoutSettingsPage: View {
                 .font(.system(size: 12, design: .monospaced))
                 .frame(minHeight: 90)
                 .onChange(of: exceptions) { _, value in
-                    write(value.split(separator: "\n").map(String.init), "exceptions")
+                    write(value.split(separator: "\n").map(String.init), LayoutKey.exceptions)
                 }
         }
     }
@@ -330,7 +330,7 @@ public struct LayoutSettingsPage: View {
             .fixedSize()
             Button {
                 appRules.removeValue(forKey: bundleID)
-                write(appRules, "appRules")
+                write(appRules, LayoutKey.appRules)
             } label: {
                 Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
             }
@@ -345,14 +345,14 @@ public struct LayoutSettingsPage: View {
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             Toggle(LyStr.indicatorShow, isOn: $indicator)
-                .onChange(of: indicator) { _, value in write(value, "indicator") }
+                .onChange(of: indicator) { _, value in write(value, LayoutKey.indicator) }
             if indicator {
                 Picker(LyStr.badgeStyle, selection: $badgeStyle) {
                     ForEach(BadgeStyle.allCases, id: \.self) { style in
                         Text(LyStr.badgeStyleName(style)).tag(style)
                     }
                 }
-                .onChange(of: badgeStyle) { _, value in write(value.rawValue, "badgeStyle") }
+                .onChange(of: badgeStyle) { _, value in write(value.rawValue, LayoutKey.badgeStyle) }
                 if badgeStyle.needsRegion {
                     Text(LyStr.flagNote)
                         .font(.caption).foregroundStyle(.secondary)
@@ -363,7 +363,7 @@ public struct LayoutSettingsPage: View {
                         Text(size.label).tag(size)
                     }
                 }
-                .onChange(of: badgeSize) { _, value in write(value.rawValue, "badgeSize") }
+                .onChange(of: badgeSize) { _, value in write(value.rawValue, LayoutKey.badgeSize) }
                 BadgePreview(style: badgeStyle, size: badgeSize)
             }
         }
@@ -378,14 +378,14 @@ public struct LayoutSettingsPage: View {
     private func addException(_ word: String) {
         guard !exceptionsContain(word) else { return }
         exceptions = exceptions.isEmpty ? word : exceptions + "\n" + word
-        write(exceptions.split(separator: "\n").map(String.init), "exceptions")
+        write(exceptions.split(separator: "\n").map(String.init), LayoutKey.exceptions)
     }
 
     private func ruleBinding(_ bundleID: String) -> Binding<Bool> {
         Binding(get: { appRules[bundleID] ?? false },
                 set: { value in
                     appRules[bundleID] = value
-                    write(appRules, "appRules")
+                    write(appRules, LayoutKey.appRules)
                 })
     }
 
@@ -395,7 +395,7 @@ public struct LayoutSettingsPage: View {
         for bundleID in AppPicker.choose() where appRules[bundleID] == nil {
             appRules[bundleID] = false
         }
-        write(appRules, "appRules")
+        write(appRules, LayoutKey.appRules)
     }
 
     private func write(_ value: Any, _ key: String) {

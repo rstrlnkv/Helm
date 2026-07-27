@@ -377,27 +377,27 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// engine owns the behaviour, and this is the one line between them.
     private func reloadSettings() {
         guard let settings else { return }
-        let rules = settings.boolTable("appRules")
+        let rules = settings.boolTable(LayoutKey.appRules)
         lock.lock()
-        automatic = settings.bool("automatic", default: true)
-        exceptions = Exceptions(words: settings.stringArray("exceptions"))
+        automatic = settings.bool(LayoutKey.automatic, default: true)
+        exceptions = Exceptions(words: settings.stringArray(LayoutKey.exceptions))
         scope = AppScope(rules: rules)
-        audible = settings.bool("audible", default: false)
-        fixCapitals = settings.bool("fixCapitals", default: false)
+        audible = settings.bool(LayoutKey.audible, default: false)
+        fixCapitals = settings.bool(LayoutKey.fixCapitals, default: false)
         // Decoded here rather than in the page: the engine is the only thing
         // that acts on the table, so it is the thing that has to have the
         // current one — a page that pushed entries would leave the engine
         // holding yesterday's list whenever the window had never been opened.
-        if let data = settings.data("autoReplace"),
+        if let data = settings.data(LayoutKey.autoReplace),
            let entries = try? JSONDecoder().decode([AutoReplace.Entry].self, from: data) {
             autoReplace = AutoReplace(entries: entries)
         } else {
             autoReplace = AutoReplace(entries: [])
         }
-        tapKey = ModifierTap(key: TapKey.from(settings.string("tapKey", default: TapKey.off.rawValue)))
-        triggers = ConversionTriggers(onSpace: settings.bool("onSpace", default: ConversionTriggers.default.onSpace),
-                                      onReturn: settings.bool("onReturn", default: ConversionTriggers.default.onReturn),
-                                      onPunctuation: settings.bool("onPunctuation", default: ConversionTriggers.default.onPunctuation))
+        tapKey = ModifierTap(key: TapKey.from(settings.string(LayoutKey.tapKey, default: TapKey.off.rawValue)))
+        triggers = ConversionTriggers(onSpace: settings.bool(LayoutKey.onSpace, default: ConversionTriggers.default.onSpace),
+                                      onReturn: settings.bool(LayoutKey.onReturn, default: ConversionTriggers.default.onReturn),
+                                      onPunctuation: settings.bool(LayoutKey.onPunctuation, default: ConversionTriggers.default.onPunctuation))
         lock.unlock()
         emitState()
     }

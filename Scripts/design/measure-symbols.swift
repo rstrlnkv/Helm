@@ -21,7 +21,8 @@ import AppKit
 let symbols = [
     "gearshape", "info.circle", "moon.zzz.fill", "lock.shield", "trash",
     "chart.pie", "doc.on.doc", "wand.and.rays", "keyboard", "shippingbox",
-    "location.north.circle",
+    "location.north.circle", "checkmark.circle", "clock.arrow.circlepath",
+    "sparkles",
 ]
 let point: CGFloat = 100
 

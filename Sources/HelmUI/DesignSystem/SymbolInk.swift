@@ -13,10 +13,13 @@ import CoreGraphics
 /// | `moon.zzz.fill` | 115 |
 /// | `trash`         | 111 |
 /// | `wand.and.rays` | 109 |
+/// | `sparkles`      | 112 |
+/// | `clock.arrow.circlepath` | 111 |
 /// | `shippingbox`   | 108 |
 /// | `gearshape`     | 107 |
 /// | `info.circle`   | 101 |
 /// | `chart.pie`     | 101 |
+/// | `checkmark.circle` | 101 |
 /// | `lock.shield`   |  99 |
 ///
 /// So one point size across the set is 28% of *visual* size between the largest
@@ -34,13 +37,16 @@ public enum SymbolInk {
         "keyboard": 1.27,
         "doc.on.doc": 1.25,
         "moon.zzz.fill": 1.15,
+        "sparkles": 1.12,
         "trash": 1.11,
+        "clock.arrow.circlepath": 1.11,
         "wand.and.rays": 1.09,
         "shippingbox": 1.08,
         "gearshape": 1.07,
         "info.circle": 1.01,
         "location.north.circle": 1.01,
         "chart.pie": 1.01,
+        "checkmark.circle": 1.01,
         "lock.shield": 0.99,
     ]
 
@@ -48,7 +54,7 @@ public enum SymbolInk {
     /// as the mean rather than a round number so the correction is as small as
     /// it can be — an unmeasured symbol lands here and is no worse off than it
     /// was before.
-    static let mean: CGFloat = 1.095
+    static let mean: CGFloat = 1.091
 
     /// The factor to multiply a point size by so this symbol paints the same
     /// amount as the rest. 1 for anything not in the table.
