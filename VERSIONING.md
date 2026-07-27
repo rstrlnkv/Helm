@@ -65,11 +65,13 @@ from two sides — change one and change the other.**
 Three drawings are kept, chosen by `HELM_DMG_STYLE` or by the default at the
 top of `make-dmg.sh`:
 
-- **`field`** (what ships) — squared paper, because measuring is what the app
+- **`field`** — squared paper, because measuring is what the app
   does. The grid fades before the window's edges: ruled hard into them it reads
   as a screenshot of something larger that got cropped.
-- **`bezel`** — the frame the About page puts the mark in, with the same ticks
-  unrolled into a straight run that does an arrow's job.
+- **`bezel`** (what ships) — the frame the About page puts the mark in, with
+  the same ticks unrolled into a straight run ending in a chevron of the same
+  strokes. The ring is open at the bottom, where Finder writes the icon's name:
+  closed, it ran behind the word and the two crowded each other.
 - **`sweep`** — one wedge of the sunburst opened towards Applications.
 
 **A dev image is marked, and marks itself.** The ticks take the blue of the DEV
