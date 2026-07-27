@@ -108,11 +108,12 @@ public struct HomebrewSettingsPage: View {
                     }
                 } label: {
                     Image(systemName: "arrow.clockwise")
+                        .symbolEffect(.rotate, options: .repeating, isActive: hb.running)
                 }
                 .buttonStyle(.borderless)
                 .disabled(hb.running)
                 .help(HbStr.refreshList)
-            .accessibilityLabel(HbStr.refreshList)
+                .accessibilityLabel(HbStr.refreshList)
             }
             .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
             Divider()
@@ -214,7 +215,7 @@ public struct HomebrewSettingsPage: View {
                 }
             }
             .frame(height: 160)
-            .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.05)))
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.primary.opacity(0.05)))
         }
         .padding(12)
     }
@@ -270,8 +271,7 @@ public struct HomebrewSettingsPage: View {
             } else {
                 List(items) { row($0) }
                     .listStyle(.inset)
-                    .scrollContentBackground(.hidden)
-                    .padding(.horizontal, 12)
+                                .padding(.horizontal, 12)
             }
         }
     }

@@ -15,13 +15,15 @@ import HelmUI
 
     /// One size for every page. Switching pages must never resize the window
     /// under the user's cursor; the size they pick is remembered instead.
-    /// 1040 was chosen against the densest page (Homebrew: name, kind badge,
-    /// version, description and an action button on one row) — narrower
-    /// crowds it, wider only adds empty gutter.
-    /// Measured against the densest page (a Homebrew row carries name, kind
-    /// badge, version, description and an action button): at 940 the longest
-    /// descriptions still fit on one line with no idle gutter to spare.
-    private static let defaultSize = NSSize(width: 940, height: 660)
+    ///
+    /// Measured against the two pages that ask for the most. Homebrew's
+    /// densest row — name, kind badge, version, description and an action
+    /// button — fits from about 940. The Disk screen wants more: its bar needs
+    /// 800 pt of pane before the scan statement will show
+    /// (`DiskLayout.barWithStatement`), and at 940 the pane is 690, so the
+    /// statement never appeared out of the box and nothing suggested widening
+    /// the window would reveal it. 1060 gives a 810 pt pane, which clears it.
+    private static let defaultSize = NSSize(width: 1060, height: 700)
     /// Below this the list rows start truncating names and paths.
     private static let minSize = NSSize(width: 860, height: 540)
 
@@ -39,7 +41,7 @@ import HelmUI
         window.center()
         window.isReleasedWhenClosed = false
         // Remember whatever size the user settles on.
-        window.setFrameAutosaveName("HelmSettingsWindow.v3")
+        window.setFrameAutosaveName("HelmSettingsWindow.v4")
         self.window = window
         super.init()
         window.delegate = self
@@ -53,6 +55,7 @@ import HelmUI
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)
     }
+
 
 
     func windowWillClose(_ notification: Notification) {
@@ -238,7 +241,8 @@ private struct ModuleDetailView: View {
             HelmPageHeader(symbol: descriptor.moduleMetadata.sfSymbol,
                            tint: categoryColor(descriptor.moduleCategory),
                            title: descriptor.moduleMetadata.name,
-                           subtitle: descriptor.moduleMetadata.summary) {
+                           subtitle: descriptor.moduleMetadata.summary,
+                           bleeds: descriptor.pageBleeds) {
                 Toggle(descriptor.moduleMetadata.name, isOn: Binding(
                     get: { host.isEnabled(descriptor) },
                     set: { host.setEnabled(descriptor, $0) }
@@ -250,13 +254,25 @@ private struct ModuleDetailView: View {
             if let live = host.liveModule(id) {
                 descriptor.settingsPage(live.vm)
             } else {
-                VStack {
-                    Spacer()
-                    Text(AppStr.turnOnToConfigure(descriptor.moduleMetadata.name))
-                        .foregroundStyle(.secondary)
-                    Spacer()
+                // A sentence pointing at a switch in the far corner was the
+                // app's poorest screen: it said neither what the module does
+                // nor where to turn it on. Say what it is, then offer the
+                // action where the eye already is.
+                HelmCenteredContent(spacing: 14) {
+                    HelmIconPlate(symbol: descriptor.moduleMetadata.sfSymbol,
+                                  tint: categoryColor(descriptor.moduleCategory),
+                                  size: 56)
+                    Text(descriptor.moduleMetadata.name)
+                        .font(.system(size: 17, weight: .semibold))
+                    Text(descriptor.moduleMetadata.summary)
+                        .foregroundStyle(HelmText.quiet)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 380)
+                    Button(AppStr.turnOn) { host.setEnabled(descriptor, true) }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                        .padding(.top, 4)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -518,7 +534,13 @@ private struct AboutHelmView: View {
     private var moduleCount: Int { ModuleRegistry.all.count }
 
     var body: some View {
-        VStack(spacing: 0) {
+        // A ScrollView because the page grows by ~50 pt when an update is
+        // available — a full-width prominent button — and it already measured
+        // 617 pt against the 540 pt minimum window. It overflowed at the
+        // default size precisely in the state that matters, dropping the
+        // Update button off the bottom.
+        ScrollView {
+            VStack(spacing: 0) {
             Spacer(minLength: 12)
             hero
             Spacer(minLength: 22).frame(maxHeight: 30)
@@ -551,15 +573,17 @@ private struct AboutHelmView: View {
                 // can carry it.
                 Link(AppStr.flagCredit,
                      destination: URL(string: "https://github.com/lipis/flag-icons")!)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(HelmText.faint)
             }
             .padding(.top, 6)
             .font(.caption2)
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(HelmText.faint)
         }
-        .frame(width: Self.column)
+            .frame(width: Self.column)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 24)
+        }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.vertical, 24)
         .sheet(isPresented: $showWhatsNew) {
             WhatsNewView(onClose: { showWhatsNew = false })
         }
@@ -808,7 +832,7 @@ private struct WhatsNewView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack(alignment: .firstTextBaseline, spacing: 8) {
                                 Text(entry.version).font(.title3.bold())
-                                Text(entry.date).font(.caption).foregroundStyle(.tertiary)
+                                Text(entry.date).font(.caption).foregroundStyle(HelmText.faint)
                             }
                             ForEach(entry.items) { item in
                                 HStack(alignment: .firstTextBaseline, spacing: 8) {

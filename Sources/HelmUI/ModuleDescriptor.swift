@@ -20,8 +20,13 @@ import HelmRuntime
     /// host cannot watch a shared object for it. Only Keep Awake answers this;
     /// the default is nil, which means "this module never changes the icon".
     func statusChanges(_ vm: ModuleViewModel) -> AnyPublisher<Void, Never>?
+    /// See the default implementation below.
+    var pageBleeds: Bool { get }
 }
 public extension ModuleDescriptor {
+    /// True when the page draws across the whole pane instead of inside the
+    /// 744 pt form column, so its header knows not to centre itself.
+    var pageBleeds: Bool { false }
     func statusAppearance(_ vm: ModuleViewModel) -> StatusAppearance { .inactive }
     func statusChanges(_ vm: ModuleViewModel) -> AnyPublisher<Void, Never>? { nil }
 }

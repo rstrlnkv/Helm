@@ -98,7 +98,7 @@ struct DuplicatesView: View {
                 Text((path as NSString).lastPathComponent)
                     .lineLimit(1).truncationMode(.middle)
                 Text((path as NSString).deletingLastPathComponent)
-                    .font(.caption2).foregroundStyle(.tertiary)
+                    .font(.caption2).foregroundStyle(HelmText.faint)
                     .lineLimit(1).truncationMode(.middle)
             }
             .accessibilityElement(children: .combine)
@@ -154,7 +154,7 @@ struct DuplicatesView: View {
                     .font(.caption).foregroundStyle(.secondary)
             } else {
                 Text(DkStr.duplicatesFloorNote)
-                    .font(.caption).foregroundStyle(.tertiary)
+                    .font(.caption).foregroundStyle(HelmText.faint)
             }
             Spacer()
             Button(DkStr.duplicatesClose) {

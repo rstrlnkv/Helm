@@ -7,6 +7,56 @@ features, PATCH = fixes.
 
 ## [Unreleased] — 0.7.2
 
+### Changed
+- **A design pass over the whole app**, in the macOS 26/27 idiom.
+  - **The masthead no longer walks away from its own page.** `HelmPageHeader`
+    centred itself on the 744 pt form column unconditionally, but four pages —
+    Disk, Uninstaller, Homebrew, Leftovers — draw across the whole pane. At a
+    1400 pt window the title sat 203 pt right of the controls beneath it, under
+    a full-width divider. It has never been seen because at the old default
+    window the pane was narrower than the column, where the two rules agree.
+  - **Liquid Glass on the floating surfaces.** The panel was `.regularMaterial`
+    plus a hand-drawn hairline, which is the pre-26 recipe — glass draws its own
+    specular edge, and drawing one over it is what made a macOS 26 panel read as
+    a macOS 12 one. Its radius is now concentric with the tile cards inside it,
+    so they nest rather than stack. Same for the disk tooltip.
+  - **Text that recedes now stays readable.** SwiftUI's `.tertiary` measures
+    1.88:1 against the window and `.quaternary` 1.25:1 — both below every
+    threshold, at sixteen sites. The metric strip had found and fixed this once,
+    in place; `HelmText.quiet/faint/separator` generalises it.
+  - **Live figures roll instead of cutting** — the metric strips on every module
+    page, the basket total, and Keep Awake's countdown, which cut once a second.
+  - **The refresh button was doing nothing at all.** Its animation was a 360°
+    rotation, which is geometrically a no-op, and nothing wrapped the mutation
+    in an animation either. Both refresh buttons now use `symbolEffect`.
+  - One fill ladder replaces four ad-hoc opacities; the one rounded rectangle in
+    the app without `style: .continuous` has it.
+- **The sidebar classifies something.** Five of seven modules were `.utilities`,
+  rendering as one section of five identical pink chips. Disk and Uninstaller
+  move to Files, a category that already existed, tinted, translated and unused.
+- **The default window is 1060 × 700.** Two contradictory comments claimed 940
+  and 1040; the code said 940, which left a 690 pt pane — narrower than the
+  800 pt the Disk bar needs before it will show the scan statement. The measured
+  threshold was never met out of the box, and nothing suggested widening.
+
+### Fixed
+- **Two pages announced a missing permission only after the work.** The
+  Uninstaller told you inside the review step — after ticking apps and sitting
+  through a scan; Disk told you only on the start screen, so with Full Disk
+  Access denied a scan still ran and still drew a ring that under-reported,
+  and the result screen said nothing. Both notes are page-level now.
+- **The About page could not scroll**, and grows by ~50 pt when an update is
+  available — so it overflowed at the default size precisely in the state that
+  matters, dropping the Update button off the bottom.
+- The Uninstaller's refresh button reloaded the Apps list while the Orphans tab
+  was showing: an icon spun and nothing the user could see changed.
+- The disabled-module page was a sentence pointing at a switch in the far
+  corner. It now says what the module is and offers the switch where the eye is.
+- Two tabs of one segmented control inset their rows differently, so switching
+  tabs jogged the list sideways; two of five lists dropped their background
+  while three kept it; four adjacent pages used two toolbar heights.
+
+
 ### Added
 - **The disk map answers VoiceOver.** A `Canvas` is one opaque rectangle to the
   accessibility system, so the ring said nothing at all and drilling into a

@@ -97,7 +97,7 @@ public struct LeftoversSettingsPage: View {
             }
             .disabled(lvm.scanning)
         }
-        .padding(.horizontal, 20).padding(.vertical, 12)
+        .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
     }
 
     @ViewBuilder private var content: some View {
@@ -167,7 +167,7 @@ public struct LeftoversSettingsPage: View {
                 }
                 if let target = item.missingTarget {
                     Text(LfStr.missingTarget(target))
-                        .font(.caption2).foregroundStyle(.tertiary)
+                        .font(.caption2).foregroundStyle(HelmText.faint)
                         .lineLimit(1).truncationMode(.middle)
                 }
             }
@@ -254,6 +254,6 @@ public struct LeftoversSettingsPage: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(lvm.selected.isEmpty)
         }
-        .padding(.horizontal, 20).padding(.vertical, 12)
+        .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
     }
 }

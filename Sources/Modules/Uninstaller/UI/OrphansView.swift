@@ -90,8 +90,7 @@ struct OrphansView: View {
                 }
             }
             .listStyle(.inset)
-            .scrollContentBackground(.hidden)
-        }
+            }
     }
 
     private var allPaths: [String] { groups.flatMap(\.leftovers).map(\.path) }
