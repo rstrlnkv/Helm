@@ -31,6 +31,10 @@ struct DiskResultView: View {
                              // what lands underneath it.
                              onSelect: { segment in dvm.drill(into: segment.path) },
                              onBack: { dvm.back() },
+                             canGoBack: dvm.focusPath.count > 1,
+                             displayName: { segment in
+                                 DiskViewModel.folderName(for: segment.path) ?? segment.name
+                             },
                              foldingBackFrom: dvm.foldingBackFrom,
                              onFoldConsumed: { dvm.foldingBackFrom = nil })
                 }
@@ -240,6 +244,11 @@ private struct ChildRow: View {
     private var removable: Bool { DiskSafety.isRemovable(child.path) }
     private var isHovered: Bool { hovered == child.path }
 
+
+    private func reveal() {
+        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: child.path)])
+    }
+
     var body: some View {
         HStack(spacing: 8) {
             Circle()
@@ -286,20 +295,23 @@ private struct ChildRow: View {
         )
         .contentShape(Rectangle())
         .onHover { inside in hovered = inside ? child.path : nil }
-        .onTapGesture(count: 2) { onDrill() }
-        // Double-click is invisible and mouse-only. The same drill is now an
-        // accessibility action and a menu item, so it can be reached by
-        // VoiceOver and found by anyone who right-clicks to look.
-        .accessibilityAction(named: DkStr.openFolder) {
-            if child.isDirectory { onDrill() }
+        // The primary gesture on the primary surface did nothing at all on a
+        // file — no drill, no feedback, only a grey dot to have noticed
+        // beforehand. A file's equivalent of "open" is Finder.
+        .onTapGesture(count: 2) { child.isDirectory ? onDrill() : reveal() }
+        // Double-click is invisible and mouse-only; this is the same drill
+        // where VoiceOver can reach it. Offered only where it does something:
+        // an action that silently fails is worse than one that is absent.
+        .accessibilityActions {
+            if child.isDirectory {
+                Button(DkStr.openFolder) { onDrill() }
+            }
         }
         .contextMenu {
             if child.isDirectory {
                 Button(DkStr.openFolder) { onDrill() }
             }
-            Button(DkStr.reveal) {
-                NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: child.path)])
-            }
+            Button(HelmA11y.showInFinder) { reveal() }
         }
         .listRowSeparator(.hidden)
     }
@@ -361,7 +373,7 @@ private struct AdviceList: View {
         }
         .padding(.vertical, 5).padding(.horizontal, 8)
         .contextMenu {
-            Button(DkStr.reveal) {
+            Button(HelmA11y.showInFinder) {
                 NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: item.path)])
             }
         }

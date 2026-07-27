@@ -116,3 +116,71 @@ final class HelmFailureTests: XCTestCase {
         XCTAssertFalse(line.contains("\n"), line)
     }
 }
+
+extension HelmFailureTests {
+    private enum InstallError: Error {
+        case versionMismatch(String)
+        case notReplaceable
+    }
+
+    /// Helm's own errors are plain Swift enums, and `error as NSError` throws
+    /// everything away: the associated value vanishes and the code is
+    /// declaration order, which renumbers on the next edit. The one call site
+    /// this describer was written for — the updater — throws exactly these.
+    func testASwiftEnumKeepsItsCaseAndItsPayload() {
+        let described = HelmFailure.describe(InstallError.versionMismatch("0.7.0"))
+        XCTAssertTrue(described.contains("versionMismatch"), described)
+        XCTAssertTrue(described.contains("0.7.0"), described)
+    }
+
+    func testASwiftEnumWithoutAPayloadStillNamesItsCase() {
+        XCTAssertTrue(HelmFailure.describe(InstallError.notReplaceable).contains("notReplaceable"))
+    }
+
+    /// An NSError already describes itself; adding `String(describing:)` would
+    /// just repeat the domain and code in another spelling.
+    func testAnNSErrorIsNotDoubleDescribed() {
+        // `String(describing: someNSError)` is "Error Domain=D Code=7 …" —
+        // the same facts again in another spelling.
+        let described = HelmFailure.describe(NSError(domain: "D", code: 7))
+        XCTAssertFalse(described.contains("Error Domain="), described)
+    }
+
+    // MARK: - Logging must not be the thing that crashes
+
+    func testACyclicUnderlyingChainTerminates() {
+        // Deep enough to overflow an uncapped recursion, cheap to build.
+        var error = NSError(domain: "Leaf", code: 0)
+        for depth in 1...500 {
+            error = NSError(domain: "L\(depth)", code: depth,
+                            userInfo: [NSUnderlyingErrorKey: error])
+        }
+        let described = HelmFailure.describe(error)
+        XCTAssertFalse(described.isEmpty)
+        XCTAssertLessThan(described.count, 2_000, "the chain was not capped")
+    }
+
+    /// A path can also arrive inside the message, where no userInfo key
+    /// reaches it — and the describer takes any Error, including ones Helm
+    /// has not written yet.
+    func testAHomePathInsideTheMessageIsRedactedToo() {
+        let home = NSHomeDirectory()
+        let error = NSError(domain: "D", code: 1, userInfo: [
+            NSLocalizedDescriptionKey: "could not read \(home)/Desktop/secret.txt",
+        ])
+        let described = HelmFailure.describe(error)
+        XCTAssertFalse(described.contains(home), described)
+        XCTAssertTrue(described.contains("~/Desktop/secret.txt"), described)
+    }
+
+    /// Trashing is a move, and a move failure names its source and destination
+    /// in keys the describer did not read.
+    func testAMoveFailureNamesTheFileItWasMoving() {
+        let home = NSHomeDirectory()
+        let error = NSError(domain: NSCocoaErrorDomain, code: 4, userInfo: [
+            "NSSourceFilePathErrorKey": "\(home)/Downloads/big.zip",
+        ])
+        let described = HelmFailure.describe(error)
+        XCTAssertTrue(described.contains("~/Downloads/big.zip"), described)
+    }
+}
