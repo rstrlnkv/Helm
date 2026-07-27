@@ -144,6 +144,7 @@ public struct DiskSettingsPage: View {
                 if let banner = dvm.banner {
                     HelmRemovalOutcome(
                         succeededText: banner,
+                        removed: dvm.removedCount,
                         failures: dvm.failures.map {
                             HelmRemovalFailure(path: $0.path,
                                                reason: TrashReasonText.sentence($0.reason.rawValue))

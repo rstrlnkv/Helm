@@ -14,6 +14,7 @@ struct OrphansView: View {
     @State private var scanning = false
     @State private var selected: Set<String> = []
     @State private var failures: [TrashFailureInfo] = []
+    @State private var removedCount = 0
     @State private var busy = false
     @State private var confirming = false
     @State private var banner: String?
@@ -28,6 +29,7 @@ struct OrphansView: View {
                 // A green bar over a refusal is the app congratulating itself
                 // for work macOS did not let it do.
                 HelmRemovalOutcome(succeededText: banner,
+                                   removed: removedCount,
                                    failures: failures.map {
                                        HelmRemovalFailure(path: $0.path,
                                                           reason: UnStr.failureReason($0.reason))
@@ -138,6 +140,7 @@ struct OrphansView: View {
         busy = false
         if let result {
             failures = result.failures
+            removedCount = result.trashed.count
             banner = UnStr.freed(Bytes(result.freedBytes))
             await scan()
         }

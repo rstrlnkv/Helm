@@ -22,12 +22,20 @@ public struct HelmRemovalFailure: Identifiable, Equatable, Sendable {
 
 public struct HelmRemovalOutcome: View {
     private let succeededText: String
+    private let removed: Int
     private let failures: [HelmRemovalFailure]
     private let needsFullDiskAccess: Bool
 
-    public init(succeededText: String, failures: [HelmRemovalFailure],
+    /// `removed` is the count, not the sentence, because the sentence cannot be
+    /// asked whether it is true. Disk builds its banner before it knows the
+    /// outcome, so a batch where every path refused still announced "Removed —
+    /// 0 bytes freed, 1 item could not be moved" — a claim, its own refutation,
+    /// and two em-dashes, in one caption.
+    public init(succeededText: String, removed: Int,
+                failures: [HelmRemovalFailure],
                 needsFullDiskAccess: Bool = false) {
         self.succeededText = succeededText
+        self.removed = removed
         self.failures = failures
         self.needsFullDiskAccess = needsFullDiskAccess
     }
@@ -42,7 +50,8 @@ public struct HelmRemovalOutcome: View {
                 HStack(spacing: 8) {
                     Image(systemName: "exclamationmark.circle.fill")
                         .foregroundStyle(.orange)
-                    Text(Self.heading(succeeded: succeededText, failed: failures.count))
+                    Text(Self.heading(succeeded: removed > 0 ? succeededText : nil,
+                                      failed: failures.count))
                         .font(.caption)
                         .foregroundStyle(Color.primary.opacity(0.7))
                     Spacer(minLength: 8)
@@ -84,8 +93,18 @@ public struct HelmRemovalOutcome: View {
         }
     }
 
-    private static func heading(succeeded: String, failed: Int) -> String {
+    static func heading(succeeded: String?, failed: Int) -> String {
         let items = Plural.items(failed, language: AppLanguage.current.rawValue)
+        guard let succeeded else {
+            return L("\(items) could not be moved",
+                     [.ru: "Не удалось переместить: \(items)",
+                      .es: "No se pudieron mover: \(items)",
+                      .fr: "Impossible de déplacer : \(items)",
+                      .de: "Nicht verschoben: \(items)",
+                      .ja: "移動できませんでした：\(items)",
+                      .zh: "无法移动：\(items)",
+                      .pt: "Não foi possível mover: \(items)"])
+        }
         return L("\(succeeded) — \(items) could not be moved",
                  [.ru: "\(succeeded) — не удалось переместить: \(items)",
                   .es: "\(succeeded) — no se pudieron mover: \(items)",

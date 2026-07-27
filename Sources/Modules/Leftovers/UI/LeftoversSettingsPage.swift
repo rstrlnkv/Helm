@@ -248,6 +248,7 @@ public struct LeftoversSettingsPage: View {
                 // The outcome, not a slogan: what stayed behind is named.
                 HelmRemovalOutcome(
                     succeededText: banner,
+                    removed: lvm.removedCount,
                     failures: lvm.failures.map {
                         HelmRemovalFailure(path: $0.path,
                                            reason: LfStr.failureReason($0.message))
