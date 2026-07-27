@@ -244,11 +244,13 @@ private struct HelmPanelContent: View {
             showSettingsButton = AppSettings.showSettingsButton
             showQuitButton = AppSettings.showQuitButton
         }
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
-        )
+        // Liquid Glass, and no border of our own: glass supplies its specular
+        // edge, and a hand-drawn hairline on top of it doubles the line. 26 pt
+        // rather than 20 so the radius is concentric with the 14 pt tile cards
+        // inside at 12 pt of padding — that is what makes them read as nested
+        // rather than merely stacked.
+        .glassEffect(.regular, in: .rect(cornerRadius: 26))
+        .containerShape(.rect(cornerRadius: 26))
         // Report every content size so the window tracks height changes.
         .onGeometryChange(for: CGSize.self, of: \.size) { size in
             sizeRelay.report(size)
@@ -280,10 +282,10 @@ private struct UtilitiesSection: View {
                         .foregroundStyle(.secondary)
                     Text(AppStr.utilities).font(.subheadline.weight(.medium))
                     Spacer()
-                    Text("\(modules.count)").font(.caption).foregroundStyle(.tertiary)
+                    Text("\(modules.count)").font(.caption).foregroundStyle(HelmText.faint)
                     Image(systemName: "chevron.right")
                         .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(HelmText.faint)
                         .rotationEffect(.degrees(expanded ? 90 : 0))
                 }
                 .contentShape(Rectangle())
@@ -332,7 +334,7 @@ private struct UtilitiesSection: View {
                 Spacer()
                 Image(systemName: "arrow.up.forward")
                     .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(HelmText.faint)
             }
             .padding(.vertical, 3)
             .contentShape(Rectangle())

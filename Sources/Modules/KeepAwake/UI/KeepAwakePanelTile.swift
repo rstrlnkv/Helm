@@ -153,7 +153,7 @@ public struct KeepAwakePanelTile: View {
             .font(.subheadline.weight(.medium))
             .frame(maxWidth: .infinity, minHeight: 16)
             .padding(.vertical, 6)
-            .background(Capsule().fill(active ? Color.accentColor.opacity(0.25) : Color.primary.opacity(0.08)))
+            .background(Capsule().fill(active ? Color.accentColor.opacity(0.25) : HelmSurface.onPanelFill))
             .contentShape(Capsule())
     }
 
@@ -309,6 +309,8 @@ public struct KeepAwakePanelTile: View {
                 Text(Self.formatRemaining(remaining))
                     .font(.subheadline.weight(.semibold))
                     .monospacedDigit()
+                    .contentTransition(.numericText(countsDown: true))
+                    .animation(HelmMotion.interface, value: remaining)
                 Spacer()
                 Button("+" + Self.durationLabel(15, compact: true)) {
                     let newMinutes = Int(ceil(remaining / 60)) + 15

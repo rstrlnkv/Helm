@@ -142,11 +142,5 @@ enum AppStr {
         }
     }
 
-    static func turnOnToConfigure(_ name: String) -> String {
-        L("Turn on \(name) to configure it.",
-          [.ru: "Включите «\(name)», чтобы настроить.", .es: "Activa \(name) para configurarlo.",
-           .fr: "Activez \(name) pour le configurer.", .de: "Aktiviere \(name) zum Konfigurieren.",
-           .ja: "\(name) を有効にすると設定できます。", .zh: "启用 \(name) 以进行配置。",
-           .pt: "Ative \(name) para configurá-lo."])
-    }
+    static var turnOn: String { L("Turn on", [.ru: "Включить", .es: "Activar", .fr: "Activer", .de: "Einschalten", .ja: "オンにする", .zh: "开启", .pt: "Ativar"]) }
 }

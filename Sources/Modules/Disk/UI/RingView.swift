@@ -184,8 +184,7 @@ struct RingView: View {
                 .foregroundStyle(.secondary)
         }
         .padding(.horizontal, 9).padding(.vertical, 5)
-        .background(Capsule().fill(.regularMaterial))
-        .overlay(Capsule().strokeBorder(HelmSurface.floatingEdge))
+        .glassEffect(.regular, in: .capsule)
         .fixedSize()
     }
 
@@ -202,7 +201,7 @@ struct RingView: View {
             if growing {
                 Text(DkStr.scanning + "…")
                     .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(HelmText.faint)
             }
         }
         .padding(.horizontal, 8)

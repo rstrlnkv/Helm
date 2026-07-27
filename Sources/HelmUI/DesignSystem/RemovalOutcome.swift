@@ -58,7 +58,7 @@ public struct HelmRemovalOutcome: View {
                         Text((failure.path as NSString).lastPathComponent)
                             .font(.caption2)
                             .lineLimit(1).truncationMode(.middle)
-                        Text("·").font(.caption2).foregroundStyle(.tertiary)
+                        Text("·").font(.caption2).foregroundStyle(HelmText.faint)
                         Text(failure.reason)
                             .font(.caption2)
                             .foregroundStyle(Color.primary.opacity(0.70))
