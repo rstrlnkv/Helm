@@ -8,11 +8,17 @@ public enum HelmSurface {
     /// the card sat 10 L from the panel where the system's section sits 7, in
     /// both themes — a heavier card claiming to be the same surface.
     public static let cardFill = Color.primary.opacity(0.035)
+    /// A recessed area *inside* a card: console output, an unselected swatch.
+    public static let wellFill = Color.primary.opacity(0.05)
+    /// The same idea on a panel card, which already sits at 0.06 — a well
+    /// there has to be heavier to read as recessed at all.
+    public static let onPanelFill = Color.primary.opacity(0.08)
+    /// A card on the panel's glass. Heavier than `cardFill` because glass
+    /// gives less to sit against than a window background does.
+    public static let panelCardFill = Color.primary.opacity(0.06)
     public static let hairline = Color.primary.opacity(0.10)
     /// For things that float *over* content — a tooltip following the cursor.
     /// Cards sit in the page and take no border (see `helmCard`); a floating
-    /// element needs an edge to separate it from whatever it covers.
-    public static let floatingEdge = Color.primary.opacity(0.08)
 }
 
 public extension View {
@@ -90,19 +96,43 @@ public enum HelmLayout {
     public static let settingsColumn: CGFloat = 744
 }
 
+/// Text that recedes, at contrasts that were measured rather than assumed.
+///
+/// SwiftUI's `.tertiary` measures **1.88:1** against the window in light and
+/// 2.26:1 in dark; `.quaternary` measures 1.25:1 and 1.34:1. Both are below
+/// every readability threshold there is, and both were in use at sixteen
+/// sites. `HelmMetricStrip` found this once and fixed it in place — the
+/// comment at its label style records 1.87:1 at 9 pt — and the fix was never
+/// generalised. These are literal colours, which also keeps them out of the
+/// hierarchical-style hazard that the Motion rules warn about inside animated
+/// blocks.
+public enum HelmText {
+    /// Secondary copy inside cards and rows. 5.74:1 light, 6.77:1 dark.
+    public static let quiet = Color.primary.opacity(0.60)
+    /// Captions that must recede and stay readable. 3.35:1 / 4.41:1.
+    public static let faint = Color.primary.opacity(0.45)
+    /// Marks, never text — breadcrumb chevrons and the like. 2.44:1 / 3.21:1.
+    public static let separator = Color.primary.opacity(0.35)
+}
+
 public struct HelmPageHeader<Trailing: View>: View {
     let symbol: String
     let tint: Color
     let title: String
     let subtitle: String
+    /// True for a page whose content spans the pane rather than sitting in the
+    /// 744 pt form column — Disk, Uninstaller, Homebrew, Leftovers.
+    let bleeds: Bool
     let trailing: Trailing
 
     public init(symbol: String, tint: Color, title: String, subtitle: String,
+                bleeds: Bool = false,
                 @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
         self.symbol = symbol
         self.tint = tint
         self.title = title
         self.subtitle = subtitle
+        self.bleeds = bleeds
         self.trailing = trailing()
     }
 
@@ -125,9 +155,17 @@ public struct HelmPageHeader<Trailing: View>: View {
         // 20, matching the inset a grouped Form uses at every width.
         .padding(.horizontal, 20)
         .padding(.vertical, 18)
-        // On the same column as the form below it, so the title starts where
-        // the first card starts however wide the window is.
-        .helmSettingsColumn()
+        // On the same column as the content below it. Which column that is
+        // depends on the page: a grouped Form is capped at 744 pt and centred,
+        // so its header is too — but a full-bleed page draws its toolbar at a
+        // flat 20 pt inset across the whole pane, and a centred header above
+        // it walks away as the window grows. Measured on a 1400 pt window: the
+        // title sat 203 pt right of the controls beneath it, under a
+        // full-width divider. It has never been seen because at the default
+        // window the pane is 690 pt — narrower than the column, where the two
+        // rules agree.
+        .frame(maxWidth: bleeds ? .infinity : HelmLayout.settingsColumn)
+        .frame(maxWidth: .infinity, alignment: bleeds ? .leading : .center)
     }
 }
 
@@ -175,6 +213,11 @@ public struct HelmMetricStrip: View {
                 VStack(spacing: 3) {
                     Text(metric.value)
                         .font(.system(size: 16, weight: .medium, design: .monospaced))
+                        // Figures roll rather than cut. The ring already did
+                        // this; every other live number in the app did not,
+                        // and Keep Awake's is a countdown at 1 Hz.
+                        .contentTransition(.numericText())
+                        .animation(HelmMotion.interface, value: metric.value)
                         // A system tint is built for a dark background: the same
                         // green measured 7.67:1 in dark and 2.03:1 in light.
                         // Darkened in light appearance so the figure is legible

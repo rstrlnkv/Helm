@@ -12,6 +12,8 @@ import Module_Homebrew_Engine
         sfSymbol: "shippingbox", permissions: [])
     public static let isolation: ModuleIsolation = .inProcess
     public static let category: ModuleCategory = .utilities
+    /// The page draws across the pane; its header must not centre itself.
+    public var pageBleeds: Bool { true }
 
     public init() {}
 

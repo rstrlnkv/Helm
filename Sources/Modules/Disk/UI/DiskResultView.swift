@@ -205,7 +205,7 @@ private struct BreadcrumbBar: View {
             Button(DkStr.scanAgain) { dvm.newScan() }
                 .controlSize(.small)
         }
-        .padding(.horizontal, 20).padding(.vertical, 12)
+        .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
         .sheet(isPresented: $showingDuplicates) {
             DuplicatesView(dvm: dvm) { showingDuplicates = false }
         }
@@ -217,11 +217,11 @@ private struct BreadcrumbBar: View {
             // A restored tree is a memory, not a measurement: say when.
             Text(DkStr.measured(Self.ageFormatter.localizedString(for: savedAt,
                                                                  relativeTo: Date())))
-                .font(.caption).foregroundStyle(.tertiary).lineLimit(1)
+                .font(.caption).foregroundStyle(HelmText.faint).lineLimit(1)
         } else if let result = dvm.result {
             Text(DkStr.scannedIn(result.filesScanned,
                                  String(format: "%.1f", result.seconds)))
-                .font(.caption).foregroundStyle(.tertiary).lineLimit(1)
+                .font(.caption).foregroundStyle(HelmText.faint).lineLimit(1)
         }
     }
 
@@ -288,7 +288,7 @@ private struct BreadcrumbBar: View {
     private var chevron: some View {
         Image(systemName: "chevron.compact.right")
             .font(.system(size: 11))
-            .foregroundStyle(.quaternary)
+            .foregroundStyle(HelmText.separator)
     }
 }
 
@@ -325,7 +325,7 @@ private struct ChildRow: View {
                 if child.noAccess {
                     Text(DkStr.noAccess).font(.caption2).foregroundStyle(.orange)
                 } else if !removable {
-                    Text(DkStr.systemItem).font(.caption2).foregroundStyle(.tertiary)
+                    Text(DkStr.systemItem).font(.caption2).foregroundStyle(HelmText.faint)
                 }
             }
             Spacer()

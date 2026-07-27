@@ -87,20 +87,37 @@ public struct UninstallerSettingsPage: View {
                         .frame(height: 22)
                 }
                 Spacer(minLength: 0)
+                // Only on the Apps tab: Orphans has its own scan and its own
+                // Rescan button, so here this spun an icon and changed nothing
+                // the user could see.
+                if tab == 0 {
                 Button {
                     Task { await refreshApps() }
                 } label: {
                     Image(systemName: "arrow.clockwise")
-                        .rotationEffect(.degrees(loading ? 360 : 0))
+                        // Was `.rotationEffect(.degrees(loading ? 360 : 0))`,
+                        // which is geometrically a no-op — and nothing wrapped
+                        // the mutation in an animation either, so the button
+                        // sat perfectly still through every reload.
+                        .symbolEffect(.rotate, options: .repeating, isActive: loading)
                 }
                 .buttonStyle(.borderless)
                 .disabled(loading)
                 .help(UnStr.refreshList)
-            .accessibilityLabel(UnStr.refreshList)
+                .accessibilityLabel(UnStr.refreshList)
+                }
             }
             .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
 
             Divider()
+
+            // Page level: the user used to tick apps, sit through a scan and
+            // only then learn the removal would be refused.
+            if diskAccess == .denied {
+                HelmPermissionNote(need: .fullDiskAccess, text: UnStr.removalNeedsAccess)
+                    .padding(.horizontal, 20).padding(.vertical, 10)
+                Divider()
+            }
 
             if tab == 0 {
                 if !failures.isEmpty {
@@ -228,11 +245,6 @@ public struct UninstallerSettingsPage: View {
 
     private var reviewStep: some View {
         VStack(spacing: 0) {
-            if diskAccess == .denied {
-                HelmPermissionNote(need: .fullDiskAccess, text: UnStr.removalNeedsAccess)
-                    .padding(.horizontal, 16).padding(.vertical, 8)
-                Divider()
-            }
             List {
                 ForEach(groups, id: \.id) { group in
                     Section {
@@ -326,7 +338,7 @@ public struct UninstallerSettingsPage: View {
                                 // macOS's own words: the classification is a
                                 // summary, this is the evidence behind it.
                                 Text(failure.message)
-                                    .font(.caption2).foregroundStyle(.tertiary)
+                                    .font(.caption2).foregroundStyle(HelmText.faint)
                                     .lineLimit(2)
                             }
                         }

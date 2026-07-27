@@ -19,6 +19,14 @@ public struct DiskSettingsPage: View {
 
     public var body: some View {
         VStack(spacing: 0) {
+            // Page-level, not phase-level: without the grant a scan still runs
+            // and still draws a ring, it simply under-reports — and the result
+            // screen used to say nothing at all about that.
+            if diskAccess == .denied {
+                HelmPermissionNote(need: .fullDiskAccess, text: DkStr.scanNeedsAccess)
+                    .padding(.horizontal, 20).padding(.vertical, 10)
+                Divider()
+            }
             switch dvm.phase {
             case .start: startState
             case .scanning: scanningState
@@ -66,12 +74,9 @@ public struct DiskSettingsPage: View {
                 Text(DkStr.startHint)
                     .font(.callout).foregroundStyle(.secondary)
                     .padding(.top, 4)
-                if diskAccess == .denied {
-                    HelmPermissionNote(need: .fullDiskAccess, text: DkStr.scanNeedsAccess)
-                        .helmCard()
-                }
                 ForEach(dvm.volumes) { volume in
                     volumeCard(volume)
+            .helmSettingsColumn()
                 }
                 Button {
                     chooseFolder()
@@ -161,6 +166,8 @@ public struct DiskSettingsPage: View {
                     }
                 } label: {
                     Text("\(DkStr.basket): \(dvm.basket.count) · " + formatted(dvm.basketBytes))
+                        .contentTransition(.numericText())
+                        .animation(HelmMotion.interface, value: dvm.basketBytes)
                         .font(.system(size: 12, design: .monospaced))
                 }
                 .menuStyle(.borderlessButton)
