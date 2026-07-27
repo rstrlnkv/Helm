@@ -35,6 +35,9 @@ import Module_Disk_Engine
     /// same sentence against every one of them — including the ones macOS
     /// refused for a reason the person could have acted on.
     @Published public private(set) var failures: [HelmTrash.Refusal] = []
+    /// How many actually moved. The banner is built before the outcome is
+    /// known, so it cannot be asked whether it is true.
+    @Published public private(set) var removedCount = 0
 
     private let client: TransportClient
     private let vm: ModuleViewModel
@@ -259,6 +262,7 @@ import Module_Disk_Engine
         let removal: DiskRemoval? = await client.request("trash", encoding: paths)
         let freed = removal?.freedBytes ?? 0
         failures = removal?.refused ?? []
+        removedCount = removal?.removed.count ?? 0
         banner = DkStr.removedFreed(Bytes(freed))
         basket = []
         // Re-walking the disk to learn what we already know — those paths are
