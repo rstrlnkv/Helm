@@ -118,17 +118,38 @@ public enum HelmFailure {
         return text.contains("\(status)") && text.count < 24 ? nil : text
     }
 
-    /// One event is one line: the log is triaged with grep.
+    /// How much of one message is worth keeping.
+    ///
+    /// `helm.log` rotates at 2 MB and keeps one previous file, so a single
+    /// unbounded message can erase the history the log exists to build: a 4 MB
+    /// description, twice, and everything before it is gone. No real failure
+    /// needs more than this; anything longer is a payload that got into a
+    /// message field.
+    private static let messageLimit = 800
+
+    /// One event is one line, and the reader is not to be lied to.
     ///
     /// The home path is stripped here rather than at the call sites, because
     /// every string this type emits passes through — including messages, which
     /// carry no key for `Redact.path` to find them by, and which come from
     /// errors Helm has not written yet.
+    ///
+    /// The line breaks are the obvious half. The rest are the characters a
+    /// *reader* obeys: a lone carriage return, U+2028 and U+2029 all break a
+    /// line in something, and U+202E reverses everything after it in whatever
+    /// the bug report gets pasted into — a log that can be made to misread
+    /// itself is worse than one that is merely long.
     private static func oneLine(_ text: String) -> String {
-        text.replacingOccurrences(of: "\r\n", with: " ")
-            .replacingOccurrences(of: "\n", with: " ")
-            .replacingOccurrences(of: NSHomeDirectory(), with: "~")
+        var flat = text
+        for control in ["\r\n", "\n", "\r", "\u{2028}", "\u{2029}",
+                        "\u{202A}", "\u{202B}", "\u{202D}", "\u{202E}", "\u{2066}",
+                        "\u{2067}", "\u{2068}", "\u{2069}", "\u{200F}", "\u{200E}"] {
+            flat = flat.replacingOccurrences(of: control, with: " ")
+        }
+        flat = flat.replacingOccurrences(of: NSHomeDirectory(), with: "~")
             .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard flat.count > messageLimit else { return flat }
+        return flat.prefix(messageLimit) + "… (\(flat.count) characters)"
     }
 }
 

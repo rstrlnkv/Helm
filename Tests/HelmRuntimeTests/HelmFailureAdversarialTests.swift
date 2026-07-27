@@ -24,7 +24,8 @@ final class HelmFailureAdversarialTests: XCTestCase {
     /// multi-megabyte message rotates the log twice and takes the entire
     /// diagnostic history with it: the one artefact the log exists to preserve.
     func testOneFailureCannotCostTheWholeLog() {
-        XCTExpectFailure("describe passes the message through at any length")
+        // Was an expected failure when written: the message went through at
+        // any length, and two 4 MB lines erase the log they are written to.
         let huge = String(repeating: "x", count: 4 * 1024 * 1024)
         let error = NSError(domain: "D", code: 1, userInfo: [NSLocalizedDescriptionKey: huge])
         let written = line(HelmFailure.describe(error))
@@ -73,7 +74,8 @@ final class HelmFailureAdversarialTests: XCTestCase {
     /// method exists to hold is "one event is one line"; it holds it for one
     /// character out of four.
     func testTheControlCharactersAReaderObeysAreNeutralised() {
-        XCTExpectFailure("only \\n and \\r\\n are replaced")
+        // Was an expected failure when written: only \n and \r\n were
+        // replaced, so a lone \r, U+2028/9 and the bidi overrides survived.
         for (name, raw) in [("CR", "\r"), ("LS", "\u{2028}"),
                             ("PS", "\u{2029}"), ("RLO", "\u{202E}")] {
             let error = NSError(domain: "D", code: 1,
@@ -121,7 +123,8 @@ final class HelmFailureAdversarialTests: XCTestCase {
         try XCTSkipIf(home.isEmpty || !home.hasPrefix("/Users/"))
         let account = (home as NSString).lastPathComponent
 
-        XCTExpectFailure("Redact.path matches the home prefix literally")
+        // Was an expected failure when written: Redact.path matched the home
+        // prefix literally, so the Data-volume twin carried the account name.
         let twin = "/System/Volumes/Data" + home + "/Documents/tax.pdf"
         let error = NSError(domain: NSCocoaErrorDomain, code: 4,
                             userInfo: [NSFilePathErrorKey: twin])
@@ -305,18 +308,24 @@ final class HelmFailureAdversarialTests: XCTestCase {
 
     /// `HelmFailure.posix` reads a buffer libc shares between threads.
     ///
-    /// Darwin's `strerror` returns a pointer to a constant for a known errno,
-    /// but for an unknown code it formats "Unknown error: N" into one static
-    /// buffer for the whole process. Two threads describing two different
-    /// unknown codes overwrite each other: measured with 8 threads, 1750 of
-    /// 1.6M calls came back naming another thread's code, some of them torn
-    /// mid-number. Nothing calls `posix` yet, which is the only reason this is
-    /// not already in the log; `strerror_r` is the call that has an answer.
+    /// Darwin's `strerror` returns a pointer to a constant string for a known
+    /// errno, but for an unknown code it formats "Unknown error: N" into one
+    /// static buffer for the whole process. A tight C loop over that — 8
+    /// threads, 1.6M calls — had 1750 of them come back naming another
+    /// thread's code, some torn mid-number ("Unknown error" with no number at
+    /// all). The hazard is libc's and it is real.
+    ///
+    /// Through `posix` it is much narrower: the returned pointer is copied
+    /// into a Swift String immediately and the rest of the call dwarfs the
+    /// window, and the same 1.6M calls came back clean. So this is a watch,
+    /// not a proof — it will catch the day a caller holds that pointer longer.
+    /// `strerror_r` is the call with no window at all. Nothing calls `posix`
+    /// yet, which is the only reason none of this is in the log already.
     ///
     /// Timing-dependent, so it reports rather than gates — HELM_BENCH=1.
     func testPosixUnderContentionNamesTheCodeItWasAsked() throws {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["HELM_BENCH"] == "1")
-        let threads = 8, each = 20_000
+        let threads = 8, each = 200_000
         let wrong = UnsafeMutablePointer<Int>.allocate(capacity: threads)
         wrong.initialize(repeating: 0, count: threads)
         defer { wrong.deinitialize(count: threads); wrong.deallocate() }

@@ -11,11 +11,23 @@ import Foundation
 public enum Redact {
     /// Replaces the home directory prefix with `~`. Everything else about the
     /// path stays: which module touched what is the point of the line.
+    /// On an APFS boot volume group every file under the home directory is
+    /// reachable twice — as `/Users/name/…` and as
+    /// `/System/Volumes/Data/Users/name/…` — and matching the literal prefix
+    /// caught only the first. The second spelling is not exotic: a scan can be
+    /// pointed at `/System/Volumes/Data` by hand, and the scan root is logged.
     public static func path(_ path: String, home: String = NSHomeDirectory()) -> String {
         guard !home.isEmpty else { return path }
-        if path == home { return "~" }
-        guard path.hasPrefix(home + "/") else { return path }
-        return "~" + path.dropFirst(home.count)
+        for prefix in [home, FirmlinkTwin.dataMount + home] {
+            if path == prefix { return "~" }
+            if path.hasPrefix(prefix + "/") { return "~" + path.dropFirst(prefix.count) }
+        }
+        return path
+    }
+
+    /// The Data volume's mount point, where the same files appear a second time.
+    enum FirmlinkTwin {
+        static let dataMount = "/System/Volumes/Data"
     }
 
     public static func paths(_ paths: [String], home: String = NSHomeDirectory()) -> String {

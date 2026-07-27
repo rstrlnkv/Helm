@@ -47,8 +47,13 @@ struct RingView: View {
     /// «Фильмы».
     @ViewBuilder private var ringElements: some View {
         let inner = segments.filter { $0.ring == 0 }
-        // Free space is not part of the folder, so it is not part of its total.
-        let total = max(inner.filter { !$0.isFreeSpace }.reduce(0) { $0 + $1.bytes }, 1)
+        // The folder's own size, which is what the wedges are drawn against —
+        // not the sum of the wedges. `DiskEntry` keeps only the 200 largest
+        // children, so summing them omits whatever was folded away and
+        // renormalises the gap: a wedge drawn at 30% of the circle was
+        // announced at 60%, which is the same disagreement between the spoken
+        // share and the drawn one that excluding free space set out to end.
+        let total = max(focusBytes, 1)
         VStack {
             // First, not last: a VoiceOver user walks this list in order, and
             // the way out should not sit behind twenty wedges.
