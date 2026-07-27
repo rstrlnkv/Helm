@@ -168,6 +168,11 @@ features, PATCH = fixes.
 - **Something is bound out of the box.** Nothing was, while the module's own
   intro promised "every change can be undone — set the shortcut below". The
   promise now needs no setting to be true.
+- **Either side of the keyboard.** The key picker offers the left ⌘ ⌥ ⌃ ⇧ as
+  well as the right. The right ones come first because they are the safer half —
+  on most keyboards the right modifier is a spare while the left is the key the
+  hand rests on — and choosing a left one shows a line saying so. It is not a
+  refusal; it is the person's keyboard.
 - **🌐 can be the key**, on the Macs that have one. It cannot be part of a key
   combination — Carbon's hotkey modifiers have no bit for it — so it is offered
   only in the key picker, with a note saying what macOS may already be using it

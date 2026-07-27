@@ -67,6 +67,11 @@ enum LyStr {
     /// something, and Helm cannot make it stop — the setting is the person's.
     static var globeNote: String { L("macOS may already use 🌐 to switch input source, open emoji or start dictation. Set “Press 🌐 to: Do Nothing” in Keyboard settings, or it will do both. Keyboards without a 🌐 key never send it.", [.ru: "macOS может уже использовать 🌐 — для смены языка, эмодзи или диктовки. Поставьте «Клавиша 🌐: ничего не делать» в настройках клавиатуры, иначе сработает и то и другое. Клавиатуры без 🌐 её не отправляют.", .es: "macOS quizá ya use 🌐 para cambiar de idioma, abrir emoji o dictar. Pon «Tecla 🌐: no hacer nada» en Ajustes de teclado, o hará las dos cosas. Los teclados sin 🌐 nunca la envían.", .fr: "macOS utilise peut-être déjà 🌐 pour changer de source, ouvrir les emoji ou dicter. Réglez « Touche 🌐 : ne rien faire » dans les réglages du clavier, sinon les deux se produiront. Les claviers sans 🌐 ne l’envoient jamais.", .de: "macOS nutzt 🌐 vielleicht schon für Eingabequelle, Emoji oder Diktat. Stelle in den Tastatur-Einstellungen „🌐-Taste: Nichts tun“ ein, sonst passiert beides. Tastaturen ohne 🌐 senden sie nie.", .ja: "macOS が 🌐 を入力ソース切り替え・絵文字・音声入力に使っている場合があります。キーボード設定で「🌐 キーを押して: 何もしない」にしてください。🌐 のないキーボードはこのキーを送りません。", .zh: "macOS 可能已把 🌐 用于切换输入法、打开表情或听写。请在键盘设置中选择「按下 🌐 键时：不执行任何操作」，否则两件事都会发生。没有 🌐 键的键盘不会发送它。", .pt: "O macOS talvez já use 🌐 para trocar de idioma, abrir emoji ou ditar. Defina “Tecla 🌐: não fazer nada” nos Ajustes de teclado, ou fará as duas coisas. Teclados sem 🌐 nunca a enviam."]) }
 
+    /// Shown when a left-hand key is chosen. Not a warning against it — it is
+    /// their keyboard — but the trade should be visible at the moment it is
+    /// made, not discovered later.
+    static var leftKeyNote: String { L("This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word.", [.ru: "Это клавиша, которой вы печатаете. Зажатая или в сочетании она работает как обычно, но случайное одиночное нажатие исправит последнее слово.", .es: "Es una tecla que usas al escribir. Mantenida o combinada sigue funcionando igual, pero una pulsación suelta por descuido corregirá la última palabra.", .fr: "C’est une touche dont vous vous servez en tapant. Maintenue ou combinée elle fonctionne normalement, mais une pression isolée par mégarde corrigera le dernier mot.", .de: "Das ist eine Taste, mit der du schreibst. Gehalten oder kombiniert funktioniert sie normal, aber ein versehentlicher einzelner Tipp korrigiert das letzte Wort.", .ja: "これは入力に使うキーです。押しっぱなしや同時押しでは通常どおりですが、単独でうっかり叩くと直前の単語が修正されます。", .zh: "这是你打字时会用到的键。按住或组合使用时一切照常，但不小心单独敲一下就会修正上一个词。", .pt: "Esta é uma tecla que você usa para digitar. Segurada ou combinada funciona normalmente, mas um toque solto por acidente vai corrigir a última palavra."]) }
+
     /// The one chord, for keyboards with no right-hand modifier to tap.
     static var orShortcut: String { L("Or a key combination", [.ru: "Или сочетание клавиш", .es: "O una combinación de teclas", .fr: "Ou une combinaison de touches", .de: "Oder eine Tastenkombination", .ja: "またはキーの組み合わせ", .zh: "或使用组合键", .pt: "Ou uma combinação de teclas"]) }
     static func tapKeyName(_ key: TapKey) -> String {
@@ -76,6 +81,10 @@ enum LyStr {
         case .rightOption: return L("Right ⌥", [.ru: "Правая ⌥", .es: "⌥ derecha", .fr: "⌥ droite", .de: "Rechte ⌥", .ja: "右 ⌥", .zh: "右 ⌥", .pt: "⌥ direita"])
         case .rightControl: return L("Right ⌃", [.ru: "Правая ⌃", .es: "⌃ derecha", .fr: "⌃ droite", .de: "Rechte ⌃", .ja: "右 ⌃", .zh: "右 ⌃", .pt: "⌃ direita"])
         case .rightShift: return L("Right ⇧", [.ru: "Правая ⇧", .es: "⇧ derecha", .fr: "⇧ droite", .de: "Rechte ⇧", .ja: "右 ⇧", .zh: "右 ⇧", .pt: "⇧ direita"])
+        case .leftCommand: return L("Left ⌘", [.ru: "Левая ⌘", .es: "⌘ izquierda", .fr: "⌘ gauche", .de: "Linke ⌘", .ja: "左 ⌘", .zh: "左 ⌘", .pt: "⌘ esquerda"])
+        case .leftOption: return L("Left ⌥", [.ru: "Левая ⌥", .es: "⌥ izquierda", .fr: "⌥ gauche", .de: "Linke ⌥", .ja: "左 ⌥", .zh: "左 ⌥", .pt: "⌥ esquerda"])
+        case .leftControl: return L("Left ⌃", [.ru: "Левая ⌃", .es: "⌃ izquierda", .fr: "⌃ gauche", .de: "Linke ⌃", .ja: "左 ⌃", .zh: "左 ⌃", .pt: "⌃ esquerda"])
+        case .leftShift: return L("Left ⇧", [.ru: "Левая ⇧", .es: "⇧ izquierda", .fr: "⇧ gauche", .de: "Linke ⇧", .ja: "左 ⇧", .zh: "左 ⇧", .pt: "⇧ esquerda"])
         case .globe: return L("🌐", [.ru: "🌐", .es: "🌐", .fr: "🌐", .de: "🌐", .ja: "🌐", .zh: "🌐", .pt: "🌐"])
         }
     }

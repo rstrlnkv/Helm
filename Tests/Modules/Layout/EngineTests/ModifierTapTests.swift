@@ -119,7 +119,11 @@ final class ModifierTapTests: XCTestCase {
     func testAnUnreadableSettingIsOffRatherThanSomeKey() {
         // Stored as a string. A binding nobody chose must not start rewriting
         // words because the value could not be parsed.
-        for raw in [nil, "", "leftCommand", "⌘"] {
+        // "leftCommand" used to belong in this list, back when only the right
+        // keys existed. It parses now, which is the point of the second loop:
+        // the fixture names things that are not keys, and every real case must
+        // survive a round trip.
+        for raw in [nil, "", "middleCommand", "⌘", "RightCommand"] {
             XCTAssertEqual(TapKey.from(raw), .off, String(describing: raw))
         }
         for key in TapKey.allCases {
@@ -160,5 +164,58 @@ final class GlobeTapKeyTests: XCTestCase {
         _ = combined.feed(.down(63, at: 0))
         _ = combined.feed(.otherInput)
         XCTAssertFalse(combined.feed(.up(63, at: 0.1)))
+    }
+}
+
+/// Both sides of the keyboard.
+///
+/// The left keys were withheld at first, on the reasoning that the right one of
+/// a pair is a spare while the left is the key the hand rests on. That is still
+/// true and is why the page says so — but it is the person's keyboard.
+final class LeftTapKeyTests: XCTestCase {
+
+    /// Every key must name its own side. `.maskCommand` cannot tell left from
+    /// right, so releasing the left ⌘ while the right is held would read as the
+    /// key still being down.
+    func testEverySideHasItsOwnCodeAndBit() {
+        let expected: [TapKey: (Int64, UInt64)] = [
+            .rightCommand: (54, 0x000010), .leftCommand: (55, 0x000008),
+            .rightOption: (61, 0x000040), .leftOption: (58, 0x000020),
+            .rightControl: (62, 0x002000), .leftControl: (59, 0x000001),
+            .rightShift: (60, 0x000004), .leftShift: (56, 0x000002),
+        ]
+        for (key, (code, mask)) in expected {
+            XCTAssertEqual(key.keyCode, code, "\(key)")
+            XCTAssertEqual(key.deviceMask, mask, "\(key)")
+        }
+    }
+
+    /// No two keys may share a code or a bit, or one would fire for the other.
+    func testNoTwoKeysCollide() {
+        let keys = TapKey.allCases.filter { $0 != .off }
+        XCTAssertEqual(Set(keys.compactMap(\.keyCode)).count, keys.count)
+        XCTAssertEqual(Set(keys.compactMap(\.deviceMask)).count, keys.count)
+    }
+
+    /// A left key taps and refuses exactly like a right one — the difference is
+    /// how often it is touched, not how it behaves.
+    func testALeftKeyTapsAndRefusesLikeAnyOther() {
+        var tap = ModifierTap(key: .leftOption)
+        XCTAssertFalse(tap.feed(.down(58, at: 0)))
+        XCTAssertTrue(tap.feed(.up(58, at: 0.1)))
+
+        var combined = ModifierTap(key: .leftOption)
+        _ = combined.feed(.down(58, at: 0))
+        _ = combined.feed(.otherInput)
+        XCTAssertFalse(combined.feed(.up(58, at: 0.1)))
+    }
+
+    /// The page shows a note for the keys people type with, and only those.
+    func testOnlyTheLeftKeysAreMarkedAsFrequentlyUsed() {
+        XCTAssertTrue(TapKey.leftShift.isFrequentlyUsed)
+        XCTAssertTrue(TapKey.leftCommand.isFrequentlyUsed)
+        XCTAssertFalse(TapKey.rightCommand.isFrequentlyUsed)
+        XCTAssertFalse(TapKey.globe.isFrequentlyUsed)
+        XCTAssertFalse(TapKey.off.isFrequentlyUsed)
     }
 }
