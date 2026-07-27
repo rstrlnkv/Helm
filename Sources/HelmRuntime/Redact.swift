@@ -54,4 +54,9 @@ public enum Redact {
     /// The tag for an app: bundle ids and display names both name a person's
     /// habits, and the log only needs to tell one app from another.
     public static func app(_ name: String) -> String { tag(name, prefix: "app") }
+
+    /// The tag for a package. What somebody installs from Homebrew is the same
+    /// class of fact as what applications they keep — the log needs to tell one
+    /// operation from another, not to name the software.
+    public static func pkg(_ name: String) -> String { tag(name, prefix: "pkg") }
 }

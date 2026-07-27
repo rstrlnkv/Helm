@@ -35,5 +35,9 @@ enum HbStr {
     static var panelHint: String { L("Manage Homebrew in Settings.", [.ru: "Управление Homebrew — в настройках.", .es: "Gestiona Homebrew en Ajustes.", .fr: "Gérez Homebrew dans Réglages.", .de: "Verwalte Homebrew in den Einstellungen.", .ja: "Homebrew の管理は設定で行います。", .zh: "在设置中管理 Homebrew。", .pt: "Gerencie o Homebrew nos Ajustes."]) }
     static var openInSettings: String { L("Open in Settings", [.ru: "Открыть в настройках", .es: "Abrir en Ajustes", .fr: "Ouvrir dans Réglages", .de: "In Einstellungen öffnen", .ja: "設定で開く", .zh: "在设置中打开", .pt: "Abrir nos Ajustes"]) }
     static var refreshList: String { L("Refresh list", [.ru: "Обновить список", .es: "Actualizar lista", .fr: "Actualiser la liste", .de: "Liste aktualisieren", .ja: "リストを更新", .zh: "刷新列表", .pt: "Atualizar lista"]) }
+    /// While the first list is still out. "0 packages · 0 updates · 0 casks"
+    /// is a statement of fact about a machine nobody has looked at yet, and it
+    /// is shown for the whole second after every install.
+    static var packagesLoading: String { L("Reading the package list…", [.ru: "Читаем список пакетов…", .es: "Leyendo la lista de paquetes…", .fr: "Lecture de la liste des paquets…", .de: "Paketliste wird gelesen…", .ja: "パッケージ一覧を読み込み中…", .zh: "正在读取软件包列表…", .pt: "Lendo a lista de pacotes…"]) }
     static func packagesStatus(_ total: Int, _ outdated: Int, _ casks: Int) -> String { L("\(total) packages · \(outdated) updates · \(casks) casks", [.ru: "Пакетов: \(total) · обновлений: \(outdated) · cask: \(casks)", .es: "\(total) paquetes · \(outdated) actualizaciones · \(casks) casks", .fr: "\(total) paquets · \(outdated) mises à jour · \(casks) casks", .de: "\(total) Pakete · \(outdated) Updates · \(casks) Casks", .ja: "パッケージ \(total)・更新 \(outdated)・cask \(casks)", .zh: "\(total) 个包 · \(outdated) 个更新 · \(casks) 个 cask", .pt: "\(total) pacotes · \(outdated) atualizações · \(casks) casks"]) }
 }
