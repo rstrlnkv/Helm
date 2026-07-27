@@ -10,7 +10,6 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
     /// Guards the in-flight scanner. A plain NSLock cannot be taken from an
     /// async context, so the box confines it to a serial queue.
     private let scannerBox = ScannerBox()
-    private let duplicateBox = DuplicateBox()
 
     public init(transport: LocalTransport = LocalTransport()) {
         self.localTransport = transport
@@ -21,7 +20,6 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
     public func activate() {}
     public func deactivate() {
         cancel()
-        duplicateBox.current?.cancel()
     }
 
     public func volumes() -> [VolumeInfo] {
@@ -98,7 +96,7 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
             // "Removed — N freed" over a file still sitting there. Leftovers and
             // Uninstaller already report their refusals; this was the last one.
             let unique = Set(paths)
-            let allowed = unique.filter { DiskSafety.isRemovable($0) }
+            let allowed = unique.filter { UserFileScope.isRemovable($0) }
             let refused = unique.subtracting(allowed)
             failed.append(contentsOf: refused)
             for path in refused {
@@ -127,24 +125,6 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
         }
     }
 
-    /// The second look: identical files under one folder. Serialized through
-    /// the same box discipline as the scanner so "cancel" reaches it.
-    public func duplicates(under path: String) async -> [DuplicateGroup]? {
-        // A new search supersedes any still running: the engine does not rely
-        // on the view model's guard for that.
-        duplicateBox.current?.cancel()
-        let finder = DuplicateScanner()
-        duplicateBox.set(finder)
-        let groups: [DuplicateGroup]? = await blocking {
-            finder.find(under: path, onProgress: { progress in
-                if let data = try? JSONEncoder().encode(progress) {
-                    self.localTransport.emit(EngineEvent(name: "dupProgress", payload: data))
-                }
-            })
-        }
-        duplicateBox.set(nil)
-        return groups
-    }
 
     private struct PathPayload: Codable { let path: String }
 
@@ -160,13 +140,6 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
                 return (try? JSONEncoder().encode(await self.scan(path: payload.path))) ?? Data()
             case "cancel":
                 self.cancel()
-                return Data()
-            case "duplicates":
-                guard let payload = try? JSONDecoder().decode(PathPayload.self, from: command.payload)
-                else { return Data() }
-                return (try? JSONEncoder().encode(await self.duplicates(under: payload.path))) ?? Data()
-            case "cancelDuplicates":
-                self.duplicateBox.current?.cancel()
                 return Data()
             case "trash":
                 guard let paths = try? JSONDecoder().decode([String].self, from: command.payload)
@@ -190,14 +163,6 @@ private final class FileCounter: @unchecked Sendable {
     }
 }
 
-/// Serial box around the in-flight duplicate search.
-private final class DuplicateBox: @unchecked Sendable {
-    private let queue = DispatchQueue(label: "helm.disk.duplicates")
-    private var finder: DuplicateScanner?
-
-    var current: DuplicateScanner? { queue.sync { finder } }
-    func set(_ value: DuplicateScanner?) { queue.sync { finder = value } }
-}
 
 /// Serial box around the in-flight scanner.
 private final class ScannerBox: @unchecked Sendable {

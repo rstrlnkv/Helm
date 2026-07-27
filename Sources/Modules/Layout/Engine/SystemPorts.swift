@@ -371,8 +371,12 @@ public struct AXSecureContext: SecureContextPort {
                                             &focused) == .success,
               let element = focused, CFGetTypeID(element) == AXUIElementGetTypeID()
         else { return false }
+        // The type ID was checked on the line above, so this cannot be wrong —
+        // but a trapping cast on the keystroke path would take the app down
+        // mid-sentence if that check ever moved, and this one cannot trap.
+        let axElement = unsafeBitCast(element, to: AXUIElement.self)
         var role: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(element as! AXUIElement,
+        guard AXUIElementCopyAttributeValue(axElement,
                                             kAXRoleAttribute as CFString, &role) == .success
         else { return false }
         // The constant is not exported to Swift; this is the value AppKit uses.

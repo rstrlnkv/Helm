@@ -18,6 +18,22 @@ public enum Plural {
         }
     }
 
+    /// "3 файла", "1 file" — for the modules that count files rather than the
+    /// generic objects `items` counts. A duplicate finder saying "2 файлов"
+    /// reads as a bug in exactly the dialog that must not look buggy.
+    public static func files(_ count: Int, language: String) -> String {
+        switch language {
+        case "ru": return "\(count) " + russian(count, "файл", "файла", "файлов")
+        case "es": return "\(count) " + (count == 1 ? "archivo" : "archivos")
+        case "fr": return "\(count) " + (count <= 1 ? "fichier" : "fichiers")
+        case "de": return "\(count) " + (count == 1 ? "Datei" : "Dateien")
+        case "pt": return "\(count) " + (count == 1 ? "arquivo" : "arquivos")
+        case "ja": return "\(count) 個のファイル"
+        case "zh": return "\(count) 个文件"
+        default: return "\(count) " + (count == 1 ? "file" : "files")
+        }
+    }
+
     /// Russian picks its form from the last two digits: 11–14 always take the
     /// "many" form, whatever their final digit says.
     public static func russian(_ count: Int, _ one: String, _ few: String,

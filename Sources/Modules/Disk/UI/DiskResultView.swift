@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import HelmRuntime
 import HelmUI
 import Module_Disk_Engine
 
@@ -135,7 +136,6 @@ private struct BreadcrumbBar: View {
     @ObservedObject var dvm: DiskViewModel
     let layout: DiskLayout
     @State private var showingAdvice = false
-    @State private var showingDuplicates = false
 
     var body: some View {
         HStack(spacing: 8) {
@@ -192,23 +192,10 @@ private struct BreadcrumbBar: View {
                 }
             }
 
-            if !dvm.live {
-                Button {
-                    showingDuplicates = true
-                } label: {
-                    Label(DkStr.duplicates, systemImage: "doc.on.doc")
-                }
-                .controlSize(.small)
-                .help(DkStr.duplicatesHint)
-            }
-
             Button(DkStr.scanAgain) { dvm.newScan() }
                 .controlSize(.small)
         }
         .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
-        .sheet(isPresented: $showingDuplicates) {
-            DuplicatesView(dvm: dvm) { showingDuplicates = false }
-        }
     }
 
     /// What the ring is showing: a fresh measurement, or a memory of one.
@@ -305,7 +292,7 @@ private struct ChildRow: View {
     let onToggleBasket: () -> Void
     let onDrill: () -> Void
 
-    private var removable: Bool { DiskSafety.isRemovable(child.path) }
+    private var removable: Bool { UserFileScope.isRemovable(child.path) }
     private var isHovered: Bool { hovered == child.path }
 
 

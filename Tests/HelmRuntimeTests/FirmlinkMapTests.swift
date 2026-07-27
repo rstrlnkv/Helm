@@ -1,5 +1,5 @@
 import XCTest
-@testable import Module_Disk_Engine
+@testable import HelmRuntime
 
 /// macOS presents `/` as the read-only System volume with the Data volume's
 /// directories firmlinked in. The same files are therefore reachable twice:

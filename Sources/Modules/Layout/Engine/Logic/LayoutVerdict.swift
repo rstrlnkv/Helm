@@ -11,9 +11,16 @@ public enum LayoutVerdict {
         case convert(String)
     }
 
-    /// Below this there is not enough evidence for a dictionary to mean
-    /// anything: "gj" is as likely a typo as a mislayout.
-    public static let minimumLength = 3
+    /// Below this there is no evidence at all: one character is a keystroke,
+    /// not a word.
+    public static let minimumLength = 2
+
+    /// At or below this length a spell checker's answer is not worth having —
+    /// almost every two-letter pair lands on something a checker will accept.
+    /// These are decided by `ShortWords` instead: convert only towards a word
+    /// people actually type. See that file for why permission is the wrong
+    /// question here and confidence is the right one.
+    public static let shortWordLength = 3
 
     public static func decide(word: String,
                               translated: String,
@@ -26,6 +33,13 @@ public enum LayoutVerdict {
         guard validTranslated else { return .leave }
         guard !translated.isEmpty, translated != word else { return .leave }
         guard word.count >= minimumLength else { return .leave }
+        // Short words do not get to lean on the dictionary: it is too easily
+        // satisfied at this length, and being wrong here rewrites a word in
+        // the middle of a sentence.
+        if word.count <= shortWordLength {
+            guard ShortWords.isCommon(translated), !ShortWords.isCommon(word)
+            else { return .leave }
+        }
         guard !word.contains(where: \.isNumber) else { return .leave }
         guard !looksLikeAddress(word) else { return .leave }
         guard !isAcronym(word) else { return .leave }
