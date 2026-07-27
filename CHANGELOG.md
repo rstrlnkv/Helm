@@ -156,6 +156,41 @@ features, PATCH = fixes.
   tuned until its own 22 pt tile reproduced that profile.
 
 ### Fixed
+- **When a file refused to move, Disk and Duplicates said so without saying
+  why.** Four modules kept their own copy of the trash loop and three of them
+  dropped the error: the path went on a `failed` list, and the person who had
+  just been refused by Full Disk Access was shown a count. There is one trash
+  now (`HelmTrash`), it returns each refusal with its reason, and Disk lists
+  those reasons per path while Duplicates names the one that applies to most
+  of the batch. The sentences moved out of the Uninstaller so all three
+  modules say them the same way. The scope gate stays inside each engine,
+  where it belongs.
+- **Reopening a module page while it was working showed an idle screen.** The
+  transport kept the last event, not the last of each event: Homebrew streams
+  log lines and publishes its busy state through the same engine, so a page
+  built during a `brew upgrade` replayed a log line and never learned there
+  was an operation running — live buttons over work in progress. Replay is
+  now per event name.
+- **Autopilot could sweep one folder twice at once**, and read its folder
+  watcher from two threads with nothing between them. The walk and the moves
+  also ran on the pool Swift concurrency uses for everything else, so a large
+  folder could hold a core for seconds. Both are on the module's own serial
+  queue now.
+- **Recessed text was fainter than its own documentation claimed.** The
+  contrast figures were arithmetic against pure black on pure white, and the
+  app draws neither: measured against the real window, secondary copy was
+  4.09:1 where the comment said 5.74:1, and captions were 2.69:1 — below the
+  threshold they were written down as clearing. The three tokens are now
+  solved for their target, and five empty states that were on the system's
+  own secondary colour use them.
+- **Localization.** Counted nouns at the last places that interpolated a bare
+  number ("1 items"). French no-break spaces where French macOS uses them.
+  One German verb for scanning instead of four, "Min." for minutes, and
+  `formula` left as Homebrew's own word. Straight apostrophes replaced with
+  typographic ones, and the "Upd" badge spelled out.
+- **The Leftovers toolbar** took four lines in Spanish at the smallest window
+  and pushed the list off the screen. **Disk's start screen** capped the
+  volume cards to the form column and left the button under them full width.
 - **The duplicate finder was wired to the wrong deletion gate.** `HelmRuntime`
   holds two and they answer different questions: `RemovableScope` asks what
   belongs to an *application* — its roots are `~/Library`, `/Applications` and
