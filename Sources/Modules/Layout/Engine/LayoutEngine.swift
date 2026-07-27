@@ -30,6 +30,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     private var undo: UndoRecord?
     private var scope: AppScope
     private var exceptions: Exceptions
+    private let selection: SelectionPort?
     private var automatic: Bool
     private var triggers: ConversionTriggers
     private var audible: Bool
@@ -53,6 +54,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                 spell: SpellPort,
                 secure: SecureContextPort,
                 sound: SoundPort? = nil,
+                selection: SelectionPort? = nil,
                 rules: [String: Bool] = [:],
                 exceptions: [String] = [],
                 automatic: Bool = true,
@@ -67,6 +69,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         self.spell = spell
         self.secure = secure
         self.sound = sound
+        self.selection = selection
         self.scope = AppScope(rules: rules)
         self.exceptions = Exceptions(words: exceptions)
         self.automatic = automatic
@@ -174,6 +177,47 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         }
         guard auto, confirms, let completed = finished else { return }
         convert(completed.word, trailing: completed.ending, force: false)
+    }
+
+    // MARK: - The selection
+
+    /// The three shortcuts that act on whatever is selected rather than on what
+    /// was typed.
+    ///
+    /// A different mechanism from the word conversion and a stricter one. The
+    /// word one only ever edits text it watched being typed, a keystroke ago;
+    /// this edits text Helm has never seen, in an app it did not choose. So the
+    /// same two refusals apply — a blocked app, a secure field — and one more:
+    /// nothing happens unless the result actually differs, because replacing a
+    /// selection with itself still clears that app's undo stack.
+    private func transform(_ action: SelectionAction) {
+        guard let selection else { return }
+        let bundleID = secure.frontmostBundleID()
+        lock.lock(); let allowed = scope.allows(bundleID); lock.unlock()
+        guard allowed, !secure.isSecure() else { return }
+        guard let text = selection.selectedText(), !text.isEmpty else { return }
+
+        let transform = SelectionTransform(convert: { [weak self] source in
+            guard let self,
+                  let from = self.sources.current(),
+                  let to = self.sources.installed().first(where: { $0 != from })
+            else { return nil }
+            return self.translation.translate(source, from: from, to: to)
+        })
+        guard let replacement = transform.apply(action, to: text) else { return }
+
+        // `performing` for the same reason the word path sets it: the
+        // replacement is typed, the tap sees it, and without this it is read
+        // back as somebody typing a paragraph.
+        lock.lock(); performing = true; lock.unlock()
+        let done = selection.replaceSelection(with: replacement)
+        lock.lock(); performing = false; buffer.clear(); undo = nil; lock.unlock()
+
+        guard done else {
+            HelmLog.shared.warn("layout", "selection \(action.rawValue) refused by \(Redact.app(bundleID))")
+            return
+        }
+        if audible { sound?.playSwitch() }
     }
 
     /// `force` is the hotkey: the user asked for this word by name, so the
@@ -315,6 +359,9 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             switch command.name {
             case "undoLastConversion": self.undoLast()
             case "convertLastWord": self.convertLastWord()
+            case "convertSelection": self.transform(.convert)
+            case "transliterateSelection": self.transform(.transliterate)
+            case "changeSelectionCase": self.transform(.changeCase)
             case "settingsChanged": self.reloadSettings()
             default: break
             }
