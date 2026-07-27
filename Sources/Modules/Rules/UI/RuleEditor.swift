@@ -74,7 +74,7 @@ struct RuleEditor: View {
                 }
                 .controlSize(.small)
             }
-            ForEach(Array(rule.conditions.enumerated()), id: \.offset) { index, condition in
+            ForEach(Array(rule.conditions.enumerated()), id: \.offset) { index, _ in
                 ConditionRow(condition: Binding(
                     get: { rule.conditions[index] },
                     set: { rule.conditions[index] = $0 })) {
