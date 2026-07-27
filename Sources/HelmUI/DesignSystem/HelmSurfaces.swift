@@ -62,8 +62,7 @@ public extension View {
 ///
 /// This is also the small tile in the panel, the sidebar and the order list —
 /// the same drawing at 20, 22 and 26 pt, which had been copy-pasted at three
-/// sites with their own radii and glyph sizes. Those are drawn flat: see
-/// `isHero`.
+/// sites with their own radii and glyph sizes.
 public struct HelmIconPlate: View {
     let symbol: String
     let tint: Color
@@ -92,13 +91,21 @@ public struct HelmIconPlate: View {
         }
     }
 
-    /// A tile in a row is a marker; a plate at the top of a page is an icon.
-    /// System Settings draws the first flat — its sidebar tiles have no shadow
-    /// and no gradient, at any size — and Control Center does the same in its
-    /// rows. Lighting a 20 pt square in a list makes the list look embossed,
-    /// not the square look real. Above row size the plate stops being a marker
-    /// and starts standing for the page, and that is where the light belongs.
-    private var isHero: Bool { size > 32 }
+    /// Measured off System Settings' own sidebar rather than guessed at, twice
+    /// — the first attempt drew these flat, and they are not.
+    ///
+    /// A system tile is 18 pt and carries a vertical gradient: sampled down its
+    /// centre, `71,153,247` at the top and `57,130,241` at the bottom. Around
+    /// it is a neutral shadow, not a tinted one: the sidebar's `237,237,237`
+    /// runs `234, 229, 218, 203` over the four pixels approaching the tile's
+    /// side, and `204, 217, 227, 232, 235` over the six below it — deeper and
+    /// longer underneath, which is a small downward offset.
+    ///
+    /// The ratios below were then tuned until Helm's own 22 pt tile produced the
+    /// same profile: `237 → 227` over six pixels above it, and `207, 213, 217,
+    /// 222, 225, 229, 233` over seven below — the system's shape, scaled.
+    private var shadowRadius: CGFloat { size * 0.09 }
+    private var shadowOffset: CGFloat { size * 0.045 }
 
     public var body: some View {
         Image(systemName: symbol)
@@ -107,18 +114,14 @@ public struct HelmIconPlate: View {
             .frame(width: size, height: size)
             .background(
                 RoundedRectangle(cornerRadius: size * 0.26, style: .continuous)
-                    .fill(fill)
+                    .fill(active ? AnyShapeStyle(tint.gradient)
+                                 : AnyShapeStyle(Color.secondary.opacity(0.45)))
             )
-            // Tinted rather than black: the plate keeps its colour relationship
-            // with the page without painting a ring of it. Dropped when the
-            // tile is off, since an unlit thing casts nothing.
-            .shadow(color: tint.opacity(isHero && active ? 0.30 : 0),
-                    radius: size * 0.16, y: size * 0.09)
-    }
-
-    private var fill: AnyShapeStyle {
-        guard active else { return AnyShapeStyle(Color.secondary.opacity(0.45)) }
-        return isHero ? AnyShapeStyle(tint.gradient) : AnyShapeStyle(tint)
+            // Neutral, not tinted: the system's is grey at every hue, and a
+            // tinted one reads as a glow again at the sizes where it shows.
+            // Dropped when the tile is off, since an unlit thing casts nothing.
+            .shadow(color: .black.opacity(active ? 0.16 : 0),
+                    radius: shadowRadius, y: shadowOffset)
     }
 }
 
