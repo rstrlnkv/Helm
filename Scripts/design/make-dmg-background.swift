@@ -86,10 +86,6 @@ context.drawLinearGradient(backdrop, start: CGPoint(x: 0, y: height),
 func bezel(around centre: CGPoint, radius: Double, length: Double,
            weight: Double, alpha: Double) {
     for tick in 0..<60 {
-        // Open at the bottom, where Finder writes the icon's name. A closed
-        // ring ran behind the word and the two crowded each other; a gauge with
-        // a window in it is a deliberate shape rather than a collision.
-        if (13...17).contains(tick) { continue }
         let long = tick % 5 == 0
         let reach = long ? length : length * 0.57
         let angle = Double(tick) / 60 * 2 * .pi
@@ -109,10 +105,16 @@ func bezel(around centre: CGPoint, radius: Double, length: Double,
 // MARK: - bezel — the About page's frame, and the ticks unrolled into an arrow
 
 func drawBezelStyle() {
-    // Around the app: the same frame the About page puts the mark in, and the only
-    // ring in the window. Radius 105 rather than the 82 it started at — at 82 the
-    // ring cut straight through the word "Helm" that Finder writes under the icon.
-    bezel(around: appSlot, radius: 105, length: 10, weight: 1.5, alpha: 0.75)
+    // Around the app: the same frame the About page puts the mark in, closed all
+    // the way round, and the only ring in the window.
+    //
+    // Radius 126, from 82 by way of 105. At 82 the ring cut through the word
+    // "Helm" that Finder writes under the icon; 105 cleared it but only just, so
+    // the ring was opened at the bottom to make room. Standing further off, it
+    // clears the name on its own: the label sits about 72 pt below the
+    // centre, where the ring is 103 pt out to either side and the word
+    // reaches about 13. The gap was no longer paying for anything.
+    bezel(around: appSlot, radius: 126, length: 11, weight: 1.5, alpha: 0.75)
 
     // The run between them: the bezel unrolled into a straight line, rising in
     // weight towards the destination. This is the arrow.
