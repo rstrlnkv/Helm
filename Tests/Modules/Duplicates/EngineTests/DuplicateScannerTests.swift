@@ -1,5 +1,5 @@
 import XCTest
-@testable import Module_Disk_Engine
+@testable import Module_Duplicates_Engine
 
 /// The scanner against a real directory: the logic is tested dry, so what is
 /// left to prove is the walking and hashing — that identical bytes group,

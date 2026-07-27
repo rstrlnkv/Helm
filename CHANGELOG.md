@@ -38,8 +38,48 @@ features, PATCH = fixes.
   and 1040; the code said 940, which left a 690 pt pane — narrower than the
   800 pt the Disk bar needs before it will show the scan statement. The measured
   threshold was never met out of the box, and nothing suggested widening.
+- **The duplicate finder is a module of its own**, listed after Disk. Inside
+  Disk it searched whatever folder the ring happened to be showing, which made
+  the ring a precondition: you could not look for duplicates anywhere you had
+  not first drawn one. It now takes a folder directly, remembers it, and Disk
+  goes back to answering a single question. `FirmlinkMap` moved to
+  `HelmRuntime` because both modules need it — Disk to keep from counting the
+  same bytes twice, the duplicate walk to keep from reading the same file
+  twice.
+- **Keyboard converts short words when it is sure of them.** Words of two and
+  three letters were refused outright, because a spell checker's yes/no is
+  nearly worthless at that length — ask one whether `yt` is a word and it may
+  well say yes. That left the most common mislayouts of all — `yf` for `на`,
+  `yt` for `не`, `rfr` for `как`, `xnj` for `что` — untouched. Short words are
+  now decided by
+  confidence rather than permission: a curated list of common Russian and
+  English function words, converted only when the *translated* form is in it
+  and the typed form is not. Nothing longer than three characters is in the
+  list, so the spell checker still has the last word everywhere else.
 
 ### Fixed
+- **The duplicate finder was wired to the wrong deletion gate.** `HelmRuntime`
+  holds two and they answer different questions: `RemovableScope` asks what
+  belongs to an *application* — its roots are `~/Library`, `/Applications` and
+  the shared `/Library` folders — and the finder inherited it in the move out of
+  Disk. Pointed at `~/Downloads`, every checkbox in the result would be disabled
+  and the basket would accept nothing, which looks from a distance like a
+  permissions problem rather than a mistake. The gate that asks what belongs to
+  the *user* was `DiskSafety`, private to Disk; it is now
+  `HelmRuntime.UserFileScope`, gained a `partition` so refusals come back
+  instead of being dropped, and both modules share it.
+- **The confirmation dialog said "Переместить 2 файлов"** — the plural form for
+  five and up, on the one screen where a language mistake reads as a broken app.
+  `Plural.files` joins `Plural.items`, and the dialog's cancel button is
+  Helm's own rather than SwiftUI's, which arrived in English whatever language
+  the rest of the dialog was in.
+- **The duplicates toolbar dropped the wrong thing when it ran out of room.**
+  The count wrapped onto a second line, making the row taller than the controls
+  in it, and the path shrank to `/…re`, which is not a location. What goes now
+  is decided by measurement (`Scripts/layout/measure-duplicates-bar.swift`,
+  `DuplicatesLayout`): the controls keep their labels, the path truncates to a
+  floor, and the count — which the list below repeats group by group — is the
+  first thing out.
 - **The panel drew a hairline along its shadow instead of its edge.** AppKit
   derives a transparent window's shadow from the alpha of its content, and the
   panel's content is a card floating at the top of a strip that runs to the

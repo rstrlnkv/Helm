@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 public struct ScanProgress: Sendable {
     public let filesSeen: Int

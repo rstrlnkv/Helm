@@ -1,5 +1,5 @@
 import XCTest
-@testable import Module_Disk_Engine
+@testable import Module_Duplicates_Engine
 
 /// A file whose identity could not be read is unknown, and unknown must never
 /// match — the rule `DiskScanner.DeviceID.unknown` already lives by.

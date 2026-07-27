@@ -1,5 +1,5 @@
 import XCTest
-@testable import Module_Disk_Engine
+@testable import Module_Duplicates_Engine
 
 /// The second look inside the disk: files that are the same file twice.
 ///

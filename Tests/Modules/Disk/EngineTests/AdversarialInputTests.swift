@@ -1,4 +1,5 @@
 import XCTest
+@testable import HelmRuntime
 @testable import Module_Disk_Engine
 
 /// The inputs a tester reaches for first: nothing, one, enormous, negative,
@@ -96,13 +97,13 @@ final class AdversarialInputTests: XCTestCase {
     // MARK: - Safety
 
     func testTheSafetyListCannotBeSidesteppedByATrailingSlash() {
-        XCTAssertFalse(DiskSafety.isRemovable("/System/"))
-        XCTAssertFalse(DiskSafety.isRemovable("/System"))
+        XCTAssertFalse(UserFileScope.isRemovable("/System/"))
+        XCTAssertFalse(UserFileScope.isRemovable("/System"))
     }
 
     func testRelativeAndEmptyPathsAreNeverRemovable() {
-        XCTAssertFalse(DiskSafety.isRemovable(""))
-        XCTAssertFalse(DiskSafety.isRemovable("relative/path"))
+        XCTAssertFalse(UserFileScope.isRemovable(""))
+        XCTAssertFalse(UserFileScope.isRemovable("relative/path"))
     }
 
     // MARK: - Pruning
