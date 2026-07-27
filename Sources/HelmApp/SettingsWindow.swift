@@ -345,17 +345,20 @@ private struct MenuBarSettingsView: View {
                     move(id, by: -1)
                 } label: { Image(systemName: "chevron.up") }
                 .buttonStyle(.borderless)
-                .accessibilityLabel(HelmA11y.moveUp)
+                .accessibilityLabel("\(HelmA11y.moveUp), \(descriptor.moduleMetadata.name)")
                 .disabled(orderedModules.first == id)
                 Button {
                     move(id, by: 1)
                 } label: { Image(systemName: "chevron.down") }
                 .buttonStyle(.borderless)
-                .accessibilityLabel(HelmA11y.moveDown)
+                .accessibilityLabel("\(HelmA11y.moveDown), \(descriptor.moduleMetadata.name)")
                 .disabled(orderedModules.last == id)
             }
         }
-        .frame(height: Self.orderRowHeight)
+        // A floor rather than a fixed height: the list's total is computed
+        // from this number, so it has to stay nominal — but a row that cannot
+        // grow clips the module name outright at larger text sizes.
+        .frame(minHeight: Self.orderRowHeight)
         .contentShape(Rectangle())
         // A `List` row is its content plus the style's own vertical inset, so
         // the height set above is not the height that lands: at eight modules

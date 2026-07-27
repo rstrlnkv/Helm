@@ -71,7 +71,7 @@ public struct HelmRemovalOutcome: View {
                             Image(systemName: "doc.text.magnifyingglass")
                         }
                         .buttonStyle(.borderless)
-                        .accessibilityLabel(HelmA11y.showInFinder)
+                        .accessibilityLabel("\(HelmA11y.showInFinder), \((failure.path as NSString).lastPathComponent)")
                         .controlSize(.small)
                     }
                 }

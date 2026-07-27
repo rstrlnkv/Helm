@@ -213,7 +213,7 @@ public struct LayoutSettingsPage: View {
                         Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(HelmA11y.remove)
+                    .accessibilityLabel("\(HelmA11y.remove), \(entry.from)")
                 }
             }
             HStack(spacing: 8) {
@@ -335,7 +335,7 @@ public struct LayoutSettingsPage: View {
                 Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(HelmA11y.remove)
+            .accessibilityLabel("\(HelmA11y.remove), \(info.name)")
         }
     }
 

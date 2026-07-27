@@ -147,7 +147,9 @@ public struct HomebrewSettingsPage: View {
                    desc: hb.description(name: pkg.name, isCask: pkg.isCask)) {
                 // Every other destructive action in Helm asks first; this one
                 // removed a cask — an app — on a single click.
-                Button(HbStr.uninstall) { pendingUninstall = pkg }.disabled(hb.running)
+                Button(HbStr.uninstall) { pendingUninstall = pkg }
+                    .disabled(hb.running)
+                    .accessibilityLabel("\(HbStr.uninstall), \(pkg.name)")
             }
         }
     }
@@ -163,7 +165,9 @@ public struct HomebrewSettingsPage: View {
             }
             listOrEmpty(hb.outdated, empty: hb.loadedOutdated ? HbStr.upToDate : nil) { pkg in
                 pkgRow(name: pkg.name, detail: "\(pkg.installed) → \(pkg.latest)", isCask: pkg.isCask) {
-                    Button(HbStr.upgrade) { hb.upgrade(pkg) }.disabled(hb.running)
+                    Button(HbStr.upgrade) { hb.upgrade(pkg) }
+                        .disabled(hb.running)
+                        .accessibilityLabel("\(HbStr.upgrade), \(pkg.name)")
                 }
             }
         }
@@ -184,7 +188,9 @@ public struct HomebrewSettingsPage: View {
                 listOrEmpty(hb.searchHits, empty: HbStr.noResults) { hit in
                     pkgRow(name: hit.name, detail: nil, isCask: hit.isCask,
                            desc: hb.description(name: hit.name, isCask: hit.isCask)) {
-                        Button(HbStr.install) { hb.install(hit) }.disabled(hb.running)
+                        Button(HbStr.install) { hb.install(hit) }
+                            .disabled(hb.running)
+                            .accessibilityLabel("\(HbStr.install), \(hit.name)")
                     }
                 }
             }
@@ -256,7 +262,7 @@ public struct HomebrewSettingsPage: View {
             Spacer()
             action().controlSize(.small)
         }
-        .frame(height: 34)
+        .frame(minHeight: 34)
     }
 
     /// `empty` is nil while the first query is still out: "nothing installed"

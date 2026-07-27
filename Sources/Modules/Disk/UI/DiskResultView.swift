@@ -315,6 +315,7 @@ private struct ChildRow: View {
                     Text(DkStr.systemItem).font(.caption2).foregroundStyle(HelmText.faint)
                 }
             }
+            .accessibilityElement(children: .combine)
             Spacer()
             Text(Bytes(child.bytes))
                 .font(.system(size: 11, design: .monospaced))

@@ -171,7 +171,7 @@ public struct VPNSettingsPage: View {
                 Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(HelmA11y.remove)
+            .accessibilityLabel("\(HelmA11y.remove), \(info.name)")
         }
         if missing, let name = rules[bundleID]?.vpnName {
             HStack(spacing: 6) {
