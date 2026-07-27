@@ -67,6 +67,16 @@ the whole strip — which reads as a hairline tracing the shadow instead of the
 card's edge. Glass carries its own shading, so the window's was turned off
 rather than fought with; there is nothing left for `invalidateShadow()` to do.
 
+**The strip is wider than the card, on purpose.** A window shadow is drawn by
+the window server *outside* the frame, so the strip could once be exactly as
+wide as the card. Glass draws its shading *inside* the view, and at equal
+widths the card's shadow was cut off flat at the left and right edges — so the
+strip carries `helmPanelShadowMargin` on each side and the card is centred in
+it. The margin is transparent and behaves like the rest of the strip below the
+card: a click there dismisses the panel. Order matters in the modifier chain —
+`.frame(maxWidth: .infinity)` must come *after* `.glassEffect`, or the effect
+paints the whole strip and the card comes out wider than the tiles inside it.
+
 The panel looks simple and is not. Three facts, each earned through
 frame-by-frame debugging; violating any of them reintroduces visible glitches:
 

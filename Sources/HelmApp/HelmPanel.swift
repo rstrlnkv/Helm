@@ -12,6 +12,14 @@ private final class KeyablePanel: NSPanel {
 
 /// One width for the strip window and the card content inside it.
 private let helmPanelWidth: CGFloat = 300
+/// Room on each side of the card for the glass to cast into.
+///
+/// A window shadow is drawn by the window server *outside* the frame, so the
+/// strip could be exactly as wide as the card. Glass draws its shading inside
+/// the view, so with the two the same width the card's own shadow was cut off
+/// flat at the left and right edges. The band is transparent and behaves like
+/// the rest of the strip below the card: a click there dismisses the panel.
+private let helmPanelShadowMargin: CGFloat = 28
 
 @MainActor final class HelmPanel: NSObject {
     private let panel: NSPanel
@@ -85,7 +93,7 @@ private let helmPanelWidth: CGFloat = 300
         anchorScreen = buttonWindow.screen ?? NSScreen.main
         let visible = anchorScreen?.visibleFrame ?? .zero
         let margin: CGFloat = 8
-        let width = helmPanelWidth
+        let width = helmPanelWidth + helmPanelShadowMargin * 2
         var x = statusButtonScreenFrame.midX - width / 2
         x = min(max(x, visible.minX + margin), visible.maxX - width - margin)
         let top = statusButtonScreenFrame.minY - 4
@@ -259,6 +267,11 @@ private struct HelmPanelContent: View {
         // rather than merely stacked.
         .glassEffect(.regular, in: .rect(cornerRadius: 26))
         .containerShape(.rect(cornerRadius: 26))
+        // Centred in a strip that is wider than the card, so the glass has
+        // somewhere to cast. This must come after the glass: applied before
+        // it, the effect painted the whole strip and the card came out 56 pt
+        // wider than the tiles inside it.
+        .frame(maxWidth: .infinity)
         // Report every content size so the window tracks height changes.
         .onGeometryChange(for: CGSize.self, of: \.size) { size in
             sizeRelay.report(size)
