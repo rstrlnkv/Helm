@@ -55,14 +55,16 @@ features, PATCH = fixes.
   Russian and English function words, converted only when the *translated* form
   is in it and the typed form is not. Nothing longer than three characters is in the
   list, so the spell checker still has the last word everywhere else.
-- **Reordering the modules is behind an Edit button.** Eight rows each carrying
-  a drag handle and a pair of arrows read as a list of controls rather than a
-  list of modules, and the order is looked at far more often than it is
-  changed. The rows are now the modules and nothing else until the section is
-  edited; both ways of moving them — the drag and the arrows, one direct and
-  one reachable from the keyboard — appear together and go away together. The
-  drag gesture is attached only while editing, so a row nobody meant to move no
-  longer lifts.
+- **Reordering the modules is behind an Edit button, and the drag is the
+  system's.** Eight rows each carrying a handle and a pair of arrows read as a
+  list of controls rather than a list of modules, and the order is looked at far
+  more often than it is changed; the rows are now the modules and nothing else
+  until the section is edited. The reorder itself moved to a real `List` with
+  `.onMove`: `.onMove` is inert outside one, so the rows had carried their own
+  `.onDrag`/`.onDrop` with an `NSItemProvider` of the row id. That reorders, but
+  it is not the system's drag — no lift, no gap opening under the cursor, no
+  drop animation; the row simply appeared somewhere else on release. The arrows
+  stay as what a keyboard has instead of a drag.
 
 ### Fixed
 - **The duplicate finder was wired to the wrong deletion gate.** `HelmRuntime`
