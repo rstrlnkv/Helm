@@ -99,7 +99,11 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
             // Uninstaller already report their refusals; this was the last one.
             let unique = Set(paths)
             let allowed = unique.filter { DiskSafety.isRemovable($0) }
-            failed.append(contentsOf: unique.subtracting(allowed))
+            let refused = unique.subtracting(allowed)
+            failed.append(contentsOf: refused)
+            for path in refused {
+                HelmLog.shared.warn("disk", "refused out-of-scope path: \(Redact.path(path))")
+            }
             for path in allowed {
                 let url = URL(fileURLWithPath: path)
                 let size = (try? url.resourceValues(forKeys: [.totalFileAllocatedSizeKey]))?
@@ -109,6 +113,7 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
                     removed.append(path); freed += size
                 } catch {
                     failed.append(path)
+                    HelmLog.shared.failure("disk", "trash refused \(Redact.path(path))", error)
                 }
             }
             HelmLog.shared.info("disk", "trashed \(removed.count), failed \(failed.count)")

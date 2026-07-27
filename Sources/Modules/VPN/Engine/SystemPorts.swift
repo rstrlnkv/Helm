@@ -157,7 +157,7 @@ public final class KeychainCredentials: VPNCredentialsPort {
         attributes[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
         let status = SecItemAdd(attributes as CFDictionary, nil)
         if status != errSecSuccess {
-            HelmLog.shared.warn("vpn", "could not cache credentials (OSStatus \(status))")
+            HelmLog.shared.warn("vpn", "could not cache credentials: \(HelmFailure.osStatus(status))")
         }
     }
 

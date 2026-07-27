@@ -214,7 +214,9 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // replaced. Switching the input source, recording an undo and counting
         // a success on top of that would be the app claiming work it did not do.
         guard perform(plan) else {
-            HelmLog.shared.warn("layout", "the app refused the replacement")
+            // Counts and shapes, never the word itself.
+            HelmLog.shared.warn("layout", "\(Redact.app(bundleID)) refused a replacement of "
+                                + "\(plan.backspaces) characters (\(from) → \(to))")
             return
         }
         sources.select(to)

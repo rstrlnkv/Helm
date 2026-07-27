@@ -20,7 +20,8 @@ public enum LogPolicy {
 /// One event, one line: the file is parsed line-by-line when triaging.
 public enum LogLine {
     public static func format(date: Date, level: LogLevel, category: String,
-                              message: String, timeZone: TimeZone = .current) -> String {
+                              message: String, site: LogSite? = nil,
+                              timeZone: TimeZone = .current) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
         formatter.timeZone = timeZone
@@ -28,7 +29,10 @@ public enum LogLine {
         let flat = message
             .replacingOccurrences(of: "\r\n", with: "\n")
             .replacingOccurrences(of: "\n", with: " ⏎ ")
-        return "\(formatter.string(from: date)) [\(level.rawValue)] [\(category)] \(flat)"
+        // The site goes last: the message is what you read, the place is what
+        // you need once you have decided to look.
+        let where_ = site.map { "  (\($0.description))" } ?? ""
+        return "\(formatter.string(from: date)) [\(level.rawValue)] [\(category)] \(flat)\(where_)"
     }
 }
 
@@ -90,8 +94,10 @@ public final class HelmLog: @unchecked Sendable {
         if on { write(.info, "app", "logging enabled") }
     }
 
-    public func write(_ level: LogLevel, _ category: String, _ message: String) {
-        let line = LogLine.format(date: Date(), level: level, category: category, message: message)
+    public func write(_ level: LogLevel, _ category: String, _ message: String,
+                      site: LogSite? = nil) {
+        let line = LogLine.format(date: Date(), level: level, category: category,
+                                  message: message, site: site)
         queue.async {
             guard self.enabled else { return }
             self.append(line + "\n")
@@ -99,9 +105,36 @@ public final class HelmLog: @unchecked Sendable {
     }
 
     /// Convenience wrappers so call sites read as prose.
-    public func info(_ category: String, _ message: String) { write(.info, category, message) }
-    public func warn(_ category: String, _ message: String) { write(.warn, category, message) }
-    public func error(_ category: String, _ message: String) { write(.error, category, message) }
+    ///
+    /// `warn` and `error` capture where they were called from: the wording of
+    /// a failure is what reaches a bug report, and the same wording can come
+    /// from four places. `info` does not — it describes an event, not a fault,
+    /// and the file it came from is noise on every line of a healthy log.
+    public func info(_ category: String, _ message: String) {
+        write(.info, category, message)
+    }
+
+    public func warn(_ category: String, _ message: String,
+                     fileID: String = #fileID, line: Int = #line,
+                     function: String = #function) {
+        write(.warn, category, message,
+              site: LogSite(fileID: fileID, line: line, function: function))
+    }
+
+    public func error(_ category: String, _ message: String,
+                      fileID: String = #fileID, line: Int = #line,
+                      function: String = #function) {
+        write(.error, category, message,
+              site: LogSite(fileID: fileID, line: line, function: function))
+    }
+
+    /// The common shape: something threw, and the thrown thing is the report.
+    public func failure(_ category: String, _ what: String, _ error: Error,
+                        fileID: String = #fileID, line: Int = #line,
+                        function: String = #function) {
+        write(.error, category, "\(what): \(HelmFailure.describe(error))",
+              site: LogSite(fileID: fileID, line: line, function: function))
+    }
 
     /// The current log, newest last — used by the in-app diagnostics view.
     public func currentText(maxBytes: Int = 256 * 1024) -> String {

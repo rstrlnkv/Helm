@@ -96,7 +96,7 @@ import HelmUI
             binding.ref = ref
             binding.status = status == noErr ? .registered : .taken
             if status != noErr {
-                HelmLog.shared.warn("hotkey", "\(name) could not be registered (OSStatus \(status))")
+                HelmLog.shared.warn("hotkey", "\(name) could not be registered: \(HelmFailure.osStatus(status))")
             }
             bindings[name] = binding
         }

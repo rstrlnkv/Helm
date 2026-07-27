@@ -85,7 +85,7 @@ import HelmRuntime
                 installState = .installing
                 try Installer.installZip(at: tmp, expectedVersion: rel.version)  // terminates on success
             } catch {
-                HelmLog.shared.error("update", "install failed: \(error.localizedDescription)")
+                HelmLog.shared.failure("update", "install failed", error)
                 installState = .failed
             }
         }

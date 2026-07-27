@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import HelmRuntime
 
 /// The flag artwork, loaded from the bundle.
 ///
@@ -32,7 +33,15 @@ enum FlagAsset {
     /// was a hand-maintained array beside the drawings it described.
     static let regions: Set<String> = {
         guard let urls = Bundle.module.urls(forResourcesWithExtension: "png",
-                                            subdirectory: "Flags") else { return [] }
+                                            subdirectory: "Flags"), !urls.isEmpty else {
+            // The one failure the packaging script guards against, said out
+            // loud on the other side: without the resource bundle every flag
+            // silently becomes letters and the app looks merely misconfigured.
+            HelmLog.shared.error("layout", "no flag artwork in the bundle — every layout "
+                                 + "will fall back to letters (Bundle.module at "
+                                 + "\(Redact.path(Bundle.module.bundlePath)))")
+            return []
+        }
         return Set(urls.map { $0.deletingPathExtension().lastPathComponent.uppercased() })
     }()
 

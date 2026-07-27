@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import HelmRuntime
 
 /// Where the duplicate search stands, for a sheet that shows its work.
 public struct DuplicateProgress: Codable, Sendable {
@@ -48,6 +49,8 @@ public final class DuplicateScanner: @unchecked Sendable {
         let files = walk(root, onProgress: onProgress)
         if isCancelled { return nil }
 
+        HelmLog.shared.info("duplicates", "walked \(Redact.path(root)): "
+                            + "\(files.count) files at or above the floor")
         let candidates = Duplicates.sizeGroups(files, minBytes: Self.minBytes)
         let total = candidates.reduce(0) { $0 + $1.count }
         // Twice per candidate: the prefix pass, then the full pass for
@@ -68,8 +71,10 @@ public final class DuplicateScanner: @unchecked Sendable {
             let byPrefix = Duplicates.refine(candidates[index]) { file in
                 if self.isCancelled { return nil }
                 progress.bump()
-                return Self.hash(file.path, limit: Self.prefixBytes,
-                                 expecting: min(Self.prefixBytes, file.bytes))
+                let digest = Self.hash(file.path, limit: Self.prefixBytes,
+                                       expecting: min(Self.prefixBytes, file.bytes))
+                if digest == nil { progress.noteUnreadable() }
+                return digest
             }
             for group in byPrefix {
                 // Files at or under the prefix size are already fully read:
@@ -89,7 +94,14 @@ public final class DuplicateScanner: @unchecked Sendable {
             bucketLock.lock(); buckets[index] = found; bucketLock.unlock()
         }
         if isCancelled { return nil }
-        return buckets.flatMap { $0 }.sorted { $0.wasted > $1.wasted }
+        let groups = buckets.flatMap { $0 }.sorted { $0.wasted > $1.wasted }
+        // Unreadable files leave the running silently by design; the count is
+        // what tells a triage session whether "no duplicates" meant "none" or
+        // "nothing could be read".
+        let unreadable = progress.unreadableCount
+        HelmLog.shared.info("duplicates", "\(groups.count) groups from \(total) candidates"
+                            + (unreadable > 0 ? ", \(unreadable) unreadable" : ""))
+        return groups
     }
 
     // MARK: - The walk
@@ -161,11 +173,24 @@ public final class DuplicateScanner: @unchecked Sendable {
         private let onProgress: (@Sendable (DuplicateProgress) -> Void)?
         private let lock = NSLock()
         private var count = 0
+        private var unreadable = 0
         private var lastEmit = Date.distantPast
 
         init(total: Int, onProgress: (@Sendable (DuplicateProgress) -> Void)?) {
             self.total = total
             self.onProgress = onProgress
+        }
+
+        /// Files whose digest could not be taken. They leave the running by
+        /// design — unknown is not identical — but a search that found nothing
+        /// because nothing could be read is a different answer from a clean one.
+        var unreadableCount: Int {
+            lock.lock(); defer { lock.unlock() }
+            return unreadable
+        }
+
+        func noteUnreadable() {
+            lock.lock(); unreadable += 1; lock.unlock()
         }
 
         func bump() {
