@@ -267,10 +267,51 @@ anyone thought to name it. A `.app` bundle is removable wherever it lives
 long as it is not a top-level directory. Paths are `standardizedFileURL`-resolved
 first: `..` is invisible to a prefix test and not to the filesystem.
 
+There are **two** gates and they answer different questions. `RemovableScope`
+asks what belongs to an *application*; `UserFileScope` (also HelmRuntime, and
+formerly the disk module's private `DiskSafety`) asks what belongs to the
+*user* — everything except `/System`, `/usr`, `/bin`, a home directory itself, a
+volume root and a top-level directory. Disk, Duplicates and Rules use the
+second; Leftovers and Uninstaller the first. Wiring a module to the wrong one is
+a real mistake with a misleading symptom: the duplicate finder pointed at
+`~/Downloads` under `RemovableScope` disabled every checkbox in its own result,
+which reads as a permissions problem rather than a defect.
+
 Refusals are reported, never dropped: they come back as
 `TrashFailure.Reason.outOfScope`, which is Helm refusing, not macOS — nothing was
-attempted. The disk module learned this first and re-checks
-`DiskSafety.isRemovable` inside its own engine; this is the same discipline.
+attempted.
+
+## Rules — read before touching
+
+The rules module acts on somebody's files without being asked each time, so its
+three guarantees are load-bearing rather than nice to have.
+
+**A rule must not act on the same file twice.** A rule that sorts a file into a
+subfolder of the folder it watches sees it again on the next sweep. `RuleStamp`
+writes `com.helm.rules.stamp` — an extended attribute holding the ids of the
+rules that have had their turn — and the runner asks before it acts. An xattr
+rather than a list of paths because it travels with the file across a move,
+which is exactly the case that matters. A stamp that will not stick is logged
+and shrugged off: refusing the file would make a volume without xattrs a volume
+where no rule works.
+
+**A rule must not overwrite.** An arriving file whose name is taken is numbered
+`a 2.pdf`, the way the Finder numbers a copy. This is the one failure the module
+could commit that nobody can undo.
+
+**A rule must not run before it has been seen.** New rules are off, and the
+editor shows the dry run — the files in the folder right now and what would
+happen to each — with the switch beside it. `RulePlan` produces the same value
+the runner executes, so what was shown and what happens cannot drift.
+
+Three triggers, and none covers the others: FSEvents (coalesced at one second,
+because a download in progress writes many times and acting on the first write
+moves a half-written file), an hourly sweep (a rule that says "older than 30
+days" comes true with nothing happening), and run-now.
+
+There is **no script action** and there must not be one. Helm is ad-hoc signed
+and unsandboxed and its rules live in a plist any process can write; a script
+action would turn "a file appeared" into arbitrary execution.
 
 ## Updater
 
