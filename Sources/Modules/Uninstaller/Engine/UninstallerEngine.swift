@@ -157,7 +157,7 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
         // deleted. A candidate that escaped its folder stops here.
         let (allowed, refused) = RemovableScope.partition(paths, home: home.path)
         for p in refused {
-            HelmLog.shared.warn("uninstaller", "refused out-of-scope path")
+            HelmLog.shared.warn("uninstaller", "refused out-of-scope path: \(Redact.path(p))")
             failed.append(p)
             failures.append(TrashFailureInfo(path: p,
                                              reason: TrashFailure.Reason.outOfScope.rawValue,

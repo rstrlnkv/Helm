@@ -132,21 +132,36 @@ scanner and the Settings audit all parse through them.
 
 ## Diagnostics log
 
-`HelmLog` (HelmRuntime) writes `~/Library/Logs/Helm/helm.log`, one line per
-event, 2 MB rollover. `LogPolicy` keys off the `-dev` version suffix: every
-dev build logs, beta builds stay silent unless the Diagnostics switch is on.
-The release process depends on this file: dev builds are triaged against it,
-and a build graduates to the beta channel only at zero known problems
-(VERSIONING.md).
+Dev build logs, beta builds stay silent unless the Diagnostics switch is on.
+`~/Library/Logs/Helm/helm.log`, 2 MB then one rollover, 0700.
 
-**What must not reach the file.** A VPN connection name announces an employer or
-a provider; an absolute path carries the account name; a bundle id names a
-person's habits. `Redact` (HelmRuntime) is what goes in instead: `Redact.path`
-rewrites the home prefix to `~`, `Redact.vpn`/`Redact.app` give a short stable
-tag (`vpn#3f9a`). FNV-1a rather than `Hasher`, which is seeded per process —
-yesterday's session would not compare with today's, and comparing across
-restarts is exactly what triage does. Log counts and outcomes freely; run any
-name or path through `Redact` first.
+**A failure that cannot be triaged is not logged, it is merely recorded.** The
+log had thirteen error sites across seven modules and most of them named the
+event without naming anything actionable: "refused out-of-scope path" (which
+path?), "the app refused the replacement" (which app?),
+`error.localizedDescription` — which for a Cocoa error is usually "The
+operation couldn't be completed", with the domain, the code, the failing path
+and the underlying error all discarded.
+
+So:
+
+- `HelmLog.warn` and `.error` capture `#fileID`/`#line`/`#function`
+  automatically and print them after the message. `info` does not: it describes
+  an event, not a fault, and the source location is noise on every line of a
+  healthy log.
+- `HelmLog.failure(category:what:error:)` is the common shape — something threw
+  and the thrown thing is the report.
+- `HelmFailure.describe` unwraps an `NSError` to domain, code, message, failure
+  reason, failing path and **the underlying error**, which is nearly always the
+  actual answer. `HelmFailure.osStatus` adds the name macOS knows for the code;
+  `HelmFailure.posix` names an errno. A bare integer is a number to paste into
+  a search engine, not a fact.
+- Redaction still applies, and applies *inside* the describer: a path in a
+  failing error is the most useful thing in it and the most private, so it goes
+  in as `~/Documents/…` rather than not at all.
+
+The rule about names is unchanged (see below): counts, outcomes, redacted paths
+and tags are free; names are not.
 
 ## Layout switching
 

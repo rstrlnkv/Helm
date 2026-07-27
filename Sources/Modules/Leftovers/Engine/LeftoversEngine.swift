@@ -41,7 +41,7 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
             // matter who asked. Refusals are reported, never dropped quietly.
             let (allowed, refused) = RemovableScope.partition(Array(Set(paths)))
             for path in refused {
-                HelmLog.shared.warn("leftovers", "refused out-of-scope path")
+                HelmLog.shared.warn("leftovers", "refused out-of-scope path: \(Redact.path(path))")
                 failed.append(TrashFailureDetail(path: path,
                                                  message: TrashFailure.Reason.outOfScope.rawValue))
             }
