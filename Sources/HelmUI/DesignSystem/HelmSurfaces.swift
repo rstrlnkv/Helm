@@ -61,8 +61,9 @@ public extension View {
 /// size) to sit inside the header's own padding rather than reaching past it.
 ///
 /// This is also the small tile in the panel, the sidebar and the order list —
-/// the same drawing at 20 and 22 pt, which had been copy-pasted at three sites
-/// with their own radii and glyph sizes.
+/// the same drawing at 20, 22 and 26 pt, which had been copy-pasted at three
+/// sites with their own radii and glyph sizes. Those are drawn flat: see
+/// `isHero`.
 public struct HelmIconPlate: View {
     let symbol: String
     let tint: Color
@@ -91,6 +92,14 @@ public struct HelmIconPlate: View {
         }
     }
 
+    /// A tile in a row is a marker; a plate at the top of a page is an icon.
+    /// System Settings draws the first flat — its sidebar tiles have no shadow
+    /// and no gradient, at any size — and Control Center does the same in its
+    /// rows. Lighting a 20 pt square in a list makes the list look embossed,
+    /// not the square look real. Above row size the plate stops being a marker
+    /// and starts standing for the page, and that is where the light belongs.
+    private var isHero: Bool { size > 32 }
+
     public var body: some View {
         Image(systemName: symbol)
             .font(.system(size: glyphSize, weight: .semibold))
@@ -98,15 +107,18 @@ public struct HelmIconPlate: View {
             .frame(width: size, height: size)
             .background(
                 RoundedRectangle(cornerRadius: size * 0.26, style: .continuous)
-                    .fill(active ? AnyShapeStyle(tint.gradient)
-                                 : AnyShapeStyle(Color.secondary.opacity(0.45)))
+                    .fill(fill)
             )
             // Tinted rather than black: the plate keeps its colour relationship
-            // with the page without painting a ring of it. Scaled with the
-            // plate, so a row tile is seated rather than lit — and dropped
-            // entirely when the tile is off, since an unlit thing casts nothing.
-            .shadow(color: tint.opacity(active ? 0.30 : 0),
+            // with the page without painting a ring of it. Dropped when the
+            // tile is off, since an unlit thing casts nothing.
+            .shadow(color: tint.opacity(isHero && active ? 0.30 : 0),
                     radius: size * 0.16, y: size * 0.09)
+    }
+
+    private var fill: AnyShapeStyle {
+        guard active else { return AnyShapeStyle(Color.secondary.opacity(0.45)) }
+        return isHero ? AnyShapeStyle(tint.gradient) : AnyShapeStyle(tint)
     }
 }
 

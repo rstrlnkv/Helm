@@ -80,7 +80,11 @@ features, PATCH = fixes.
   1.0 where the divider falls — below the eye's threshold). The same drawing
   had been copy-pasted at four more sites — the panel tile, the sidebar row,
   the order row — each with its own radius and glyph size; they are all
-  `HelmIconPlate` now, at 20, 22, 26 and 44 pt.
+  `HelmIconPlate` now, at 20, 22, 26 and 44 pt. Only the large ones are lit:
+  System Settings draws its sidebar tiles flat and so does Control Center in
+  its rows, because lighting a 20 pt square in a list makes the list look
+  embossed rather than the square look real. A tile in a row is a marker; a
+  plate at the top of a page stands for the page.
 
 ### Fixed
 - **The duplicate finder was wired to the wrong deletion gate.** `HelmRuntime`
