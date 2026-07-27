@@ -12,18 +12,27 @@ where being wrong costs one more question.
 | helm-engineer | opus | yes (+Skill) | production code; `test-driven-development`, `systematic-debugging` |
 | helm-tester | opus | tests only (+Skill) | adversarial inputs are judgment; race-proof assertions |
 | helm-security | opus | no (probes in scratchpad) | a missed finding is the expensive kind |
-| helm-localizer | opus | no | eight languages of register and idiom |
+| helm-localizer | opus | no (+Skill) | eight languages of register and idiom; `writing-clearly-and-concisely` |
 | helm-ui-designer | opus | no | pixel judgment, measured with `Scripts/design` |
 | helm-ux-designer | opus | no | flow critique against the built app |
 | helm-innovator | opus | no | competitor study, method extraction |
 | helm-a11y | sonnet | no | label/contrast checklist. **Not haiku**: a missed label is somebody unable to use the app |
-| helm-performance | sonnet | no | measures and reports; the engineer applies |
-| helm-release | sonnet | plist+shell | fixed checklist: package, seal, digests |
+| helm-performance | sonnet | benchmarks only | measures and reports; the engineer applies the fix |
+| helm-release | sonnet | plist+shell (+Skill) | fixed checklist; `verification-before-completion` |
 | helm-scribe | sonnet | yes (+Skill) | docs upkeep; `writing-clearly-and-concisely` |
 | helm-locator | haiku | no | file:line answers; the one role where a wrong answer costs a re-ask |
 
 Read-only reviewers stay read-only on purpose: findings flow to helm-engineer,
-which keeps one writer per change and reviews honest.
+which keeps one writer per change and reviews honest. They all have `Bash`,
+because measuring beats reasoning — and `Bash` can write, so each of their
+briefs says plainly that it must not: no redirect into a tracked file, no
+`sed -i`, no committing. Scratch work goes to the scratchpad and is deleted
+before they answer.
+
+The three roles that do write are scoped: helm-engineer to production code,
+helm-tester to `Tests/`, helm-performance to benchmarks under `Tests/` behind
+`HELM_BENCH=1`, helm-release to version numbers and release artefacts, and
+helm-scribe to documentation.
 
 ## Dispatching them
 

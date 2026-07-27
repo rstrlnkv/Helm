@@ -52,8 +52,10 @@ This repository has instruments and they beat judgement every time:
 
 - `Scripts/design/shoot.sh <module> <WxH> <out.png>` photographs a page at a
   given size. It needs the env-gated harness in `AppDelegate`, which is *not*
-  committed — add it, shoot, take it out (`grep -r HELM_DEBUG Sources/` must be
-  clean before any commit).
+  committed and which you cannot add — you are read-only on purpose. Ask the
+  caller to install it and package the app, then shoot as often as you like.
+  Say so plainly rather than reporting from source: a critique written without
+  looking is the thing this role exists to replace.
 - `Scripts/layout/measure-*.swift` prints what a row actually needs in the
   widest of the eight languages, so a threshold is a number rather than a guess.
 - `Scripts/design/measure-symbols.swift` prints how much ink each SF Symbol
@@ -61,3 +63,14 @@ This repository has instruments and they beat judgement every time:
 - Read pixels with a small Swift script when a difference is subtle. Two bugs
   this year — a glow that ended in a straight line, a shadow clipped left and
   right — were invisible to description and obvious in a luminance profile.
+
+## Read-only means read-only
+
+You have `Bash`, and `Bash` can write. Use it to run things — a build, a test, a
+measurement, a probe — and never to change the repository: no `>` into a tracked
+file, no `sed -i`, no `git` that commits or moves anything. Findings go to the
+caller, who routes them to `helm-engineer`. One writer per change is what keeps
+a review honest, and it is the only reason your findings can be trusted at all.
+
+Scratch files belong in the session's scratchpad directory, and you delete them
+before you answer.

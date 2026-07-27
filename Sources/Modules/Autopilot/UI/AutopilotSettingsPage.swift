@@ -117,6 +117,7 @@ public struct AutopilotSettingsPage: View {
                 Image(systemName: "ellipsis.circle")
             }
             .menuStyle(.borderlessButton)
+            .accessibilityLabel(HelmA11y.moreActions)
             .fixedSize()
         }
     }
@@ -166,20 +167,20 @@ public struct AutopilotSettingsPage: View {
                 Image(systemName: "slider.horizontal.3")
             }
             .buttonStyle(.borderless)
-            .accessibilityLabel(ApStr.edit)
+            .accessibilityLabel("\(ApStr.edit), \(rule.name)")
             // The order is the rule: the arrows are how it is set, and they are
             // reachable from the keyboard, which a drag is not.
             Button { rvm.move(rule, in: folder, by: -1) } label: {
                 Image(systemName: "chevron.up")
             }
             .buttonStyle(.borderless)
-            .accessibilityLabel(HelmA11y.moveUp)
+            .accessibilityLabel("\(HelmA11y.moveUp), \(rule.name)")
             .disabled(folder.rules.first?.id == rule.id)
             Button { rvm.move(rule, in: folder, by: 1) } label: {
                 Image(systemName: "chevron.down")
             }
             .buttonStyle(.borderless)
-            .accessibilityLabel(HelmA11y.moveDown)
+            .accessibilityLabel("\(HelmA11y.moveDown), \(rule.name)")
             .disabled(folder.rules.last?.id == rule.id)
         }
         .contentShape(Rectangle())
