@@ -68,7 +68,21 @@ struct DiskResultView: View {
 
     // MARK: - List
 
-    private var childList: some View {
+    @ViewBuilder private var childList: some View {
+        // A folder with nothing in it drew nothing at all: no ring, no rows,
+        // no sentence. An empty screen is a question the app should answer.
+        if dvm.focus?.children.isEmpty ?? true {
+            HelmCenteredContent {
+                Text(DkStr.emptyFolder)
+                    .font(.callout)
+                    .foregroundStyle(HelmText.quiet)
+            }
+        } else {
+            populatedChildList
+        }
+    }
+
+    private var populatedChildList: some View {
         List(selection: $selection) {
             ForEach(dvm.focus?.children ?? []) { child in
                 ChildRow(child: child,

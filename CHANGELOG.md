@@ -156,6 +156,12 @@ features, PATCH = fixes.
   tuned until its own 22 pt tile reproduced that profile.
 
 ### Fixed
+- **A remembered scan of a folder that no longer exists opened on a blank
+  screen** — a breadcrumb, a "Scan again" button, and nothing else: no ring, no
+  rows, no reason given. Folders get scanned and then deleted; the saved tree is
+  now checked against the disk before it is shown, and a stale one sends you to
+  the volume picker instead.
+- **An empty folder drew nothing at all.** It says it is empty.
 - **Scanning a folder drew a ring that measured the volume.** Free space was
   included whatever was scanned, so a 6 MB folder against 102 GB of free disk
   became one pale wedge worth 99.99% of the circle, with every file in it
