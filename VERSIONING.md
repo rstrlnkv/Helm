@@ -68,11 +68,27 @@ top of `make-dmg.sh`:
 - **`field`** — squared paper, because measuring is what the app
   does. The grid fades before the window's edges: ruled hard into them it reads
   as a screenshot of something larger that got cropped.
-- **`bezel`** (what ships) — the frame the About page puts the mark in, with
-  the same ticks unrolled into a straight run ending in a chevron of the same
-  strokes. The ring is open at the bottom, where Finder writes the icon's name:
-  closed, it ran behind the word and the two crowded each other.
+- **`bezel`** (what ships) — the frame the About page puts the mark in: sixty
+  ticks closed all the way round, and a single chevron pointing at
+  Applications.
 - **`sweep`** — one wedge of the sunburst opened towards Applications.
+
+Two things about that drawing were arrived at the slow way and are worth
+keeping:
+
+- **The ring is large — radius 126 — because that is what keeps it off the
+  name.** Finder writes the item's name under the icon, and a ring close enough
+  to frame the icon runs through the word. It was tried at 82 (through the
+  word), then at 105 with a gap cut in the bottom to make room, before the
+  obvious answer: stand further off and the gap is unnecessary. At 126 the
+  label sits about 72 pt below the centre, where the ring is 103 pt out to
+  either side and the word reaches about 13.
+- **The chevron is centred in the corridor, not between the icons.** Those are
+  the same point only while the ring is small. The corridor runs from the
+  ring's outer edge to the folder's left edge; with a large ring its centre is
+  30 pt right of the midpoint between the two slot centres, and a chevron
+  placed at the midpoint reads as attached to the app. It is derived from the
+  named radius and slot positions, so it stays centred when either moves.
 
 **A dev image is marked, and marks itself.** The drawing stays grey — tinting
 it blue as well made the two builds look like two products rather than one at
