@@ -39,10 +39,18 @@ final class PluralTests: XCTestCase {
         XCTAssertEqual(Plural.items(0, language: "en"), "0 items")
     }
 
-    /// Languages without a count distinction still read correctly.
-    func testUncountedLanguages() {
-        XCTAssertEqual(Plural.items(1, language: "ja"), "1 項目")
-        XCTAssertEqual(Plural.items(5, language: "zh"), "5 个项目")
+    /// Languages without a count distinction still read correctly — and take
+    /// no space before the counter.
+    ///
+    /// This assertion used to require one. macOS never writes it: its own
+    /// tables say `%@項目`, `30日`, `%@项`, `30天`. The space was Helm's
+    /// invention, applied consistently across eight branches, which is why it
+    /// looked deliberate.
+    func testUncountedLanguagesTakeNoSpaceBeforeTheCounter() {
+        XCTAssertEqual(Plural.items(1, language: "ja"), "1項目")
+        XCTAssertEqual(Plural.items(5, language: "zh"), "5个项目")
+        XCTAssertEqual(Plural.days(30, language: "ja"), "30日")
+        XCTAssertEqual(Plural.days(30, language: "zh"), "30天")
     }
 
     func testUnknownLanguageFallsBackToEnglish() {

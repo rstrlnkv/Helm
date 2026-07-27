@@ -12,8 +12,8 @@ public enum Plural {
         case "fr": return "\(count) " + (count <= 1 ? "élément" : "éléments")
         case "de": return "\(count) " + (count == 1 ? "Objekt" : "Objekte")
         case "pt": return "\(count) " + (count == 1 ? "item" : "itens")
-        case "ja": return "\(count) 項目"
-        case "zh": return "\(count) 个项目"
+        case "ja": return "\(count)項目"
+        case "zh": return "\(count)个项目"
         default: return "\(count) " + (count == 1 ? "item" : "items")
         }
     }
@@ -28,8 +28,8 @@ public enum Plural {
         case "fr": return "\(count) " + (count <= 1 ? "fichier" : "fichiers")
         case "de": return "\(count) " + (count == 1 ? "Datei" : "Dateien")
         case "pt": return "\(count) " + (count == 1 ? "arquivo" : "arquivos")
-        case "ja": return "\(count) 個のファイル"
-        case "zh": return "\(count) 个文件"
+        case "ja": return "\(count)個のファイル"
+        case "zh": return "\(count)个文件"
         default: return "\(count) " + (count == 1 ? "file" : "files")
         }
     }
@@ -42,8 +42,8 @@ public enum Plural {
         case "fr": return "\(count) " + (count <= 1 ? "règle" : "règles")
         case "de": return "\(count) " + (count == 1 ? "Regel" : "Regeln")
         case "pt": return "\(count) " + (count == 1 ? "regra" : "regras")
-        case "ja": return "\(count) 個のルール"
-        case "zh": return "\(count) 条规则"
+        case "ja": return "\(count)個のルール"
+        case "zh": return "\(count)条规则"
         default: return "\(count) " + (count == 1 ? "rule" : "rules")
         }
     }
@@ -56,8 +56,8 @@ public enum Plural {
         case "fr": return "\(count) " + (count <= 1 ? "jour" : "jours")
         case "de": return "\(count) " + (count == 1 ? "Tag" : "Tage")
         case "pt": return "\(count) " + (count == 1 ? "dia" : "dias")
-        case "ja": return "\(count) 日"
-        case "zh": return "\(count) 天"
+        case "ja": return "\(count)日"
+        case "zh": return "\(count)天"
         default: return "\(count) " + (count == 1 ? "day" : "days")
         }
     }

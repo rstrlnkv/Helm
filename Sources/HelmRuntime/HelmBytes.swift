@@ -26,6 +26,11 @@ public enum HelmBytes {
         case 2: decimals = 1         // MB
         default: decimals = 2        // GB and up
         }
+        // Whole bytes in Russian take a counted form; every larger unit is
+        // invariant, so only step 0 asks.
+        if step == 0, language == "ru" {
+            return number(value, decimals: 0, language: language) + " " + russianBytes(bytes)
+        }
         return number(value, decimals: decimals, language: language)
             + " " + unit(at: step, language: language, singular: bytes == 1)
     }
@@ -47,6 +52,16 @@ public enum HelmBytes {
     private static func unit(at step: Int, language: String, singular: Bool) -> String {
         let english = step == 0 && singular ? "byte" : unitOrder[step]
         return units[language]?.first { $0.0 == english }?.1 ?? english
+    }
+
+    /// Russian bytes take three forms, and the table can only hold one.
+    ///
+    /// «1 байт», «2 байта», «5 байт» — the singular and the many are the same
+    /// word, which is why «2 байт» survived: the two values the tests happened
+    /// to use, 1 and 512, both take it. Only the sizes counted in whole bytes
+    /// need this; КБ and МБ are invariant.
+    static func russianBytes(_ count: Int) -> String {
+        Plural.russian(count, "байт", "байта", "байт")
     }
 
     /// The separator follows Helm's own language, not the system locale: the
