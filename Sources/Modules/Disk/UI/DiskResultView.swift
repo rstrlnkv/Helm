@@ -287,7 +287,16 @@ private struct ChildRow: View {
         .contentShape(Rectangle())
         .onHover { inside in hovered = inside ? child.path : nil }
         .onTapGesture(count: 2) { onDrill() }
+        // Double-click is invisible and mouse-only. The same drill is now an
+        // accessibility action and a menu item, so it can be reached by
+        // VoiceOver and found by anyone who right-clicks to look.
+        .accessibilityAction(named: DkStr.openFolder) {
+            if child.isDirectory { onDrill() }
+        }
         .contextMenu {
+            if child.isDirectory {
+                Button(DkStr.openFolder) { onDrill() }
+            }
             Button(DkStr.reveal) {
                 NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: child.path)])
             }
