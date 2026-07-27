@@ -2,12 +2,12 @@ import AppKit
 import HelmContract
 import HelmRuntime
 import HelmUI
-import Module_Rules_Engine
+import Module_Autopilot_Engine
 import SwiftUI
 
 /// The module's state: which folders are watched, what their rules are, and
 /// what a rule would do before it is allowed to do it.
-@MainActor public final class RulesViewModel: ObservableObject {
+@MainActor public final class AutopilotViewModel: ObservableObject {
     @Published public private(set) var folders: [WatchedFolder] = []
     /// The dry run currently on screen, keyed by rule id so a stale answer for
     /// a rule nobody is looking at cannot land in the open editor.
@@ -42,12 +42,12 @@ import SwiftUI
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
-        panel.prompt = RuStr.addFolder
+        panel.prompt = ApStr.addFolder
         guard panel.runModal() == .OK, let url = panel.url else { return }
         // The same gate the engine applies, applied early so the refusal is a
         // sentence rather than a rule that silently never fires.
-        guard UserFileScope.isRemovable(url.path) else {
-            banner = RuStr.needsAccess
+        guard WatchScope.allows(url.path) else {
+            banner = ApStr.needsAccess
             return
         }
         guard !folders.contains(where: { $0.path == url.path }) else { return }
@@ -71,7 +71,7 @@ import SwiftUI
     // MARK: - Rules
 
     public func addRule(to folder: WatchedFolder) -> Rule {
-        let rule = Rule(name: RuStr.untitledRule, action: .sortIntoSubfolder(.kind))
+        let rule = Rule(name: ApStr.untitledRule, action: .sortIntoSubfolder(.kind))
         update(folder) { $0.rules.append(rule) }
         return rule
     }
@@ -138,7 +138,7 @@ import SwiftUI
         let report: SweepReport? = await client.request("runNow",
                                                         encoding: FolderID(id: folder.id))
         guard let report else { return }
-        banner = RuStr.swept(report.acted, report.examined)
+        banner = ApStr.swept(report.acted, report.examined)
     }
 
     public func dismissBanner() { banner = nil }

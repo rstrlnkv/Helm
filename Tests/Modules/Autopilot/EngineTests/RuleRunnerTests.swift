@@ -1,7 +1,7 @@
 import Foundation
 import XCTest
 @testable import HelmRuntime
-@testable import Module_Rules_Engine
+@testable import Module_Autopilot_Engine
 
 /// Where the plan meets the disk.
 ///
@@ -11,18 +11,24 @@ import XCTest
 /// second run that acts on the same file again.
 final class RuleRunnerTests: XCTestCase {
 
+    private var home: URL!
     private var root: URL!
     private var runner: RuleRunner!
 
+    /// The fixtures sit inside a temporary directory that the runner is told to
+    /// treat as the home directory. `WatchScope` refuses anything outside a
+    /// home, which is the point of it — so a test that wants to exercise the
+    /// runner has to give it one rather than be exempted from the gate.
     override func setUpWithError() throws {
-        root = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-runner-\(UUID().uuidString)")
+        home = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("helm-home-\(UUID().uuidString)")
+        root = home.appendingPathComponent("Files")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        runner = RuleRunner()
+        runner = RuleRunner(home: home.path)
     }
 
     override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: root)
+        try? FileManager.default.removeItem(at: home)
     }
 
     @discardableResult

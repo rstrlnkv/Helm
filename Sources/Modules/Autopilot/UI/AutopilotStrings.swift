@@ -1,10 +1,10 @@
 import HelmUI
-import Module_Rules_Engine
+import Module_Autopilot_Engine
 
 /// Every user-visible string in the rules module, in eight languages.
-enum RuStr {
+enum ApStr {
     static var moduleName: String { L("Rules", [.ru: "Правила", .es: "Reglas", .fr: "Règles", .de: "Regeln", .ja: "ルール", .zh: "规则", .pt: "Regras"]) }
-    static var summary: String { L("Folders that tidy themselves", [.ru: "Папки, которые убирают себя сами", .es: "Carpetas que se ordenan solas", .fr: "Des dossiers qui se rangent tout seuls", .de: "Ordner, die sich selbst aufräumen", .ja: "自分で片づくフォルダ", .zh: "会自己整理的文件夹", .pt: "Pastas que se organizam sozinhas"]) }
+    static var summary: String { L("Folders that keep themselves in order", [.ru: "Папки, которые убирают себя сами", .es: "Carpetas que se ordenan solas", .fr: "Des dossiers qui se rangent tout seuls", .de: "Ordner, die sich selbst aufräumen", .ja: "自分で片づくフォルダ", .zh: "会自己整理的文件夹", .pt: "Pastas que se organizam sozinhas"]) }
     static var startHint: String { L("Point Helm at a folder and give it rules. A file that arrives is checked against them in order, and the first rule that matches is the one that runs.", [.ru: "Укажите Helm папку и задайте правила. Появившийся файл проверяется по ним по порядку, и срабатывает первое подошедшее правило.", .es: "Indica una carpeta y dale reglas. Un archivo que llega se comprueba en orden, y se ejecuta la primera regla que coincide.", .fr: "Désignez un dossier et donnez-lui des règles. Un fichier qui arrive est vérifié dans l’ordre, et la première règle qui correspond s’exécute.", .de: "Wähle einen Ordner und gib ihm Regeln. Eine ankommende Datei wird der Reihe nach geprüft, und die erste passende Regel läuft.", .ja: "フォルダを指定してルールを与えます。届いたファイルは上から順に照合され、最初に一致したルールが実行されます。", .zh: "指定一个文件夹并为它设定规则。新到的文件按顺序检查，第一条匹配的规则会执行。", .pt: "Aponte para uma pasta e dê regras a ela. Um arquivo que chega é verificado na ordem, e a primeira regra que casa é a que roda."]) }
     static var needsAccess: String { L("Without Full Disk Access a rule sees only some of the folder, and acts on only some of it.", [.ru: "Без полного доступа к диску правило видит лишь часть папки — и действует лишь на часть.", .es: "Sin Acceso Total al Disco una regla ve solo parte de la carpeta y actúa solo sobre esa parte.", .fr: "Sans accès complet au disque, une règle ne voit qu’une partie du dossier et n’agit que sur celle-ci.", .de: "Ohne Festplattenvollzugriff sieht eine Regel nur einen Teil des Ordners — und wirkt nur darauf.", .ja: "フルディスクアクセスがないと、ルールはフォルダの一部しか見えず、その一部にしか働きません。", .zh: "没有完全磁盘访问权限时，规则只能看到文件夹的一部分，也只会作用于这一部分。", .pt: "Sem Acesso Total ao Disco uma regra vê apenas parte da pasta e age apenas sobre ela."]) }
 

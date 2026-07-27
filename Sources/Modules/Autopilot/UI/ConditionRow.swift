@@ -1,7 +1,7 @@
 import AppKit
 import HelmRuntime
 import HelmUI
-import Module_Rules_Engine
+import Module_Autopilot_Engine
 import SwiftUI
 
 /// One condition, editable.
@@ -27,7 +27,7 @@ struct ConditionRow: View {
             Spacer(minLength: 4)
             Button(action: remove) { Image(systemName: "minus.circle") }
                 .buttonStyle(.borderless)
-                .accessibilityLabel(RuStr.delete)
+                .accessibilityLabel(ApStr.delete)
         }
     }
 
@@ -38,14 +38,14 @@ struct ConditionRow: View {
 
         var label: String {
             switch self {
-            case .name: RuStr.fieldName
-            case .fileExtension: RuStr.fieldExtension
-            case .kind: RuStr.fieldKind
-            case .size: RuStr.fieldSize
-            case .dateAdded: RuStr.fieldDateAdded
-            case .dateModified: RuStr.fieldDateModified
-            case .source: RuStr.fieldSource
-            case .tag: RuStr.fieldTag
+            case .name: ApStr.fieldName
+            case .fileExtension: ApStr.fieldExtension
+            case .kind: ApStr.fieldKind
+            case .size: ApStr.fieldSize
+            case .dateAdded: ApStr.fieldDateAdded
+            case .dateModified: ApStr.fieldDateModified
+            case .source: ApStr.fieldSource
+            case .tag: ApStr.fieldTag
             }
         }
 
@@ -91,10 +91,10 @@ struct ConditionRow: View {
             Picker("", selection: Binding(
                 get: { comparison },
                 set: { condition = .name($0, value) })) {
-                    Text(RuStr.comparisonIs).tag(TextComparison.is)
-                    Text(RuStr.comparisonContains).tag(TextComparison.contains)
-                    Text(RuStr.comparisonBegins).tag(TextComparison.beginsWith)
-                    Text(RuStr.comparisonEnds).tag(TextComparison.endsWith)
+                    Text(ApStr.comparisonIs).tag(TextComparison.is)
+                    Text(ApStr.comparisonContains).tag(TextComparison.contains)
+                    Text(ApStr.comparisonBegins).tag(TextComparison.beginsWith)
+                    Text(ApStr.comparisonEnds).tag(TextComparison.endsWith)
                 }
                 .labelsHidden().frame(width: 140)
             TextField("", text: Binding(get: { value },
@@ -113,7 +113,7 @@ struct ConditionRow: View {
 
         case let .kind(kind):
             Picker("", selection: Binding(get: { kind }, set: { condition = .kind($0) })) {
-                ForEach(FileKind.allCases, id: \.self) { Text(RuStr.kindName($0)).tag($0) }
+                ForEach(FileKind.allCases, id: \.self) { Text(ApStr.kindName($0)).tag($0) }
             }
             .labelsHidden().frame(width: 160)
 
@@ -121,12 +121,12 @@ struct ConditionRow: View {
             Picker("", selection: Binding(
                 get: { comparison },
                 set: { condition = .size($0, megabytes: megabytes) })) {
-                    Text(RuStr.comparisonLarger).tag(SizeComparison.largerThan)
-                    Text(RuStr.comparisonSmaller).tag(SizeComparison.smallerThan)
+                    Text(ApStr.comparisonLarger).tag(SizeComparison.largerThan)
+                    Text(ApStr.comparisonSmaller).tag(SizeComparison.smallerThan)
                 }
                 .labelsHidden().frame(width: 140)
             numberField(megabytes) { condition = .size(comparison, megabytes: $0) }
-            Text(RuStr.unitMegabytes).font(.callout).foregroundStyle(HelmText.quiet)
+            Text(ApStr.unitMegabytes).font(.callout).foregroundStyle(HelmText.quiet)
 
         case let .dateAdded(comparison, days):
             dateDetail(comparison, days) { condition = .dateAdded($0, days: $1) }
@@ -135,12 +135,12 @@ struct ConditionRow: View {
             dateDetail(comparison, days) { condition = .dateModified($0, days: $1) }
 
         case let .downloadedFrom(host):
-            Text(RuStr.comparisonContains).font(.callout).foregroundStyle(HelmText.quiet)
+            Text(ApStr.comparisonContains).font(.callout).foregroundStyle(HelmText.quiet)
             TextField("example.com", text: Binding(get: { host },
                                                    set: { condition = .downloadedFrom($0) }))
 
         case let .tag(tag):
-            Text(RuStr.comparisonIs).font(.callout).foregroundStyle(HelmText.quiet)
+            Text(ApStr.comparisonIs).font(.callout).foregroundStyle(HelmText.quiet)
             TextField("", text: Binding(get: { tag }, set: { condition = .tag($0) }))
         }
     }
@@ -150,12 +150,12 @@ struct ConditionRow: View {
                             _ rebuild: @escaping (DateComparison, Double) -> Void) -> some View {
         Picker("", selection: Binding(get: { comparison },
                                       set: { rebuild($0, days) })) {
-            Text(RuStr.comparisonOlder).tag(DateComparison.olderThan)
-            Text(RuStr.comparisonNewer).tag(DateComparison.newerThan)
+            Text(ApStr.comparisonOlder).tag(DateComparison.olderThan)
+            Text(ApStr.comparisonNewer).tag(DateComparison.newerThan)
         }
         .labelsHidden().frame(width: 140)
         numberField(days) { rebuild(comparison, $0) }
-        Text(RuStr.unitDays).font(.callout).foregroundStyle(HelmText.quiet)
+        Text(ApStr.unitDays).font(.callout).foregroundStyle(HelmText.quiet)
     }
 
     /// Typed rather than stepped: 30 days and 500 MB are both a number someone
@@ -163,13 +163,17 @@ struct ConditionRow: View {
     private func numberField(_ value: Double,
                              _ set: @escaping (Double) -> Void) -> some View {
         TextField("", text: Binding(
-            get: { value == value.rounded() ? String(Int(value)) : String(value) },
+            get: { RuleSummary.number(value) },
             set: { text in
                 // A field that empties itself while being retyped must not
                 // become a rule that matches every file: an unparseable value
                 // leaves the last good one in place.
+                // Finite and bounded. `Double.init` accepts `1e999`, which is
+                // `+∞`: `JSONEncoder` then refuses the whole rule list and the
+                // engine's setter discarded every folder without a word, while
+                // `Int(∞)` in a formatter is a trap rather than an error.
                 if let parsed = Double(text.replacingOccurrences(of: ",", with: ".")),
-                   parsed > 0 {
+                   parsed.isFinite, parsed > 0, parsed < 1e9 {
                     set(parsed)
                 }
             }))

@@ -1,7 +1,7 @@
 import AppKit
 import HelmRuntime
 import HelmUI
-import Module_Rules_Engine
+import Module_Autopilot_Engine
 import SwiftUI
 
 /// Writing one rule: when, then, and what that would do to the folder as it
@@ -12,12 +12,12 @@ import SwiftUI
 /// visible before the switch is reachable — the same discipline as the
 /// duplicate basket, one level earlier.
 struct RuleEditor: View {
-    @ObservedObject var rvm: RulesViewModel
+    @ObservedObject var rvm: AutopilotViewModel
     let folder: WatchedFolder
     @State private var rule: Rule
     @Environment(\.dismiss) private var dismiss
 
-    init(rvm: RulesViewModel, folder: WatchedFolder, rule: Rule) {
+    init(rvm: AutopilotViewModel, folder: WatchedFolder, rule: Rule) {
         self.rvm = rvm
         self.folder = folder
         _rule = State(initialValue: rule)
@@ -45,9 +45,9 @@ struct RuleEditor: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            HelmIconPlate(symbol: "folder.badge.gearshape",
+            HelmIconPlate(symbol: "location.north.circle",
                           tint: ModuleCategory.files.tint, size: 26)
-            TextField(RuStr.ruleName, text: $rule.name)
+            TextField(ApStr.ruleName, text: $rule.name)
                 .textFieldStyle(.plain)
                 .font(.system(size: 15, weight: .semibold))
             Spacer()
@@ -60,16 +60,16 @@ struct RuleEditor: View {
     private var conditions: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                Text(RuStr.whenLabel).font(.headline)
+                Text(ApStr.whenLabel).font(.headline)
                 Picker("", selection: $rule.match) {
-                    Text(RuStr.matchAll).tag(RuleMatch.all)
-                    Text(RuStr.matchAny).tag(RuleMatch.any)
+                    Text(ApStr.matchAll).tag(RuleMatch.all)
+                    Text(ApStr.matchAny).tag(RuleMatch.any)
                 }
                 .labelsHidden()
                 .pickerStyle(.segmented)
                 .fixedSize()
                 Spacer()
-                Button(RuStr.addCondition) {
+                Button(ApStr.addCondition) {
                     rule.conditions.append(.name(.contains, ""))
                 }
                 .controlSize(.small)
@@ -85,7 +85,7 @@ struct RuleEditor: View {
                 // Stated rather than left to be discovered: an empty rule
                 // matching nothing is a deliberate choice, and the screen that
                 // lets someone make one has to say so.
-                Text(RuStr.nothingWouldHappen)
+                Text(ApStr.nothingWouldHappen)
                     .font(.caption).foregroundStyle(HelmText.faint)
             }
         }
@@ -95,7 +95,7 @@ struct RuleEditor: View {
 
     private var action: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(RuStr.thenLabel).font(.headline)
+            Text(ApStr.thenLabel).font(.headline)
             ActionRow(action: $rule.action)
         }
     }
@@ -105,7 +105,7 @@ struct RuleEditor: View {
     private var dryRun: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(RuStr.dryRun).font(.headline)
+                Text(ApStr.dryRun).font(.headline)
                 Spacer()
                 if rvm.previewingRuleID == rule.id, !rvm.preview.isEmpty {
                     Text("\(rvm.preview.count)")
@@ -113,11 +113,11 @@ struct RuleEditor: View {
                         .contentTransition(.numericText())
                 }
             }
-            Text(RuStr.dryRunNote)
+            Text(ApStr.dryRunNote)
                 .font(.caption).foregroundStyle(HelmText.faint)
                 .fixedSize(horizontal: false, vertical: true)
             if rvm.preview.isEmpty {
-                Text(RuStr.nothingWouldHappen)
+                Text(ApStr.nothingWouldHappen)
                     .font(.callout).foregroundStyle(HelmText.quiet)
                     .padding(.vertical, 6)
             } else {
@@ -152,14 +152,14 @@ struct RuleEditor: View {
 
     private var footer: some View {
         HStack {
-            Toggle(RuStr.enableRule, isOn: $rule.enabled)
+            Toggle(ApStr.enableRule, isOn: $rule.enabled)
                 .toggleStyle(.switch)
                 // A rule with no conditions matches nothing; switching it on
                 // would be switching on a rule that cannot fire.
                 .disabled(rule.conditions.isEmpty)
             Spacer()
-            Button(RuStr.cancel) { dismiss() }
-            Button(RuStr.done) {
+            Button(ApStr.cancel) { dismiss() }
+            Button(ApStr.done) {
                 rvm.save(rule, in: folder)
                 dismiss()
             }

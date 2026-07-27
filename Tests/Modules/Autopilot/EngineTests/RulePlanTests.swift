@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import Module_Rules_Engine
+@testable import Module_Autopilot_Engine
 
 /// Which rule wins.
 ///

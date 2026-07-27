@@ -31,6 +31,11 @@ public enum RuleMatcher {
             return facts.kind == kind
 
         case let .size(comparison, megabytes):
+            // A folder has no size to compare. `FolderReader` reports 0 for one,
+            // which made "smaller than anything" true of every folder and every
+            // package in the watched directory — a rule aimed at small files
+            // that quietly also took the folders they were sorted into.
+            guard !facts.isDirectory else { return false }
             let limit = megabytes * 1_000_000
             return comparison == .largerThan ? Double(facts.bytes) > limit
                                              : Double(facts.bytes) < limit

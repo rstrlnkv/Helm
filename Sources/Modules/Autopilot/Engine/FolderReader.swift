@@ -48,6 +48,7 @@ public struct FolderReader: Sendable {
         let isDirectory = (values.isDirectory ?? false) && !(values.isPackage ?? false)
         return FileFacts(
             name: url.lastPathComponent,
+            path: url.path,
             kind: isDirectory ? .folder : kind(of: values.contentType),
             bytes: values.fileSize ?? 0,
             // `addedToDirectoryDate` is what "date added" means in the Finder

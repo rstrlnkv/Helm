@@ -14,7 +14,7 @@ import Foundation
 /// case — several rules stamping the same file over time — from depending on
 /// how many attributes a filesystem will hold.
 public enum RuleStamp {
-    static let attribute = "com.helm.rules.stamp"
+    static let attribute = "com.helm.autopilot.stamp"
 
     public static func isStamped(_ path: String, by ruleID: String) -> Bool {
         ids(at: path).contains(ruleID)
@@ -31,16 +31,18 @@ public enum RuleStamp {
         stamped.append(ruleID)
         guard let data = try? JSONEncoder().encode(stamped) else { return false }
         return data.withUnsafeBytes { buffer in
-            setxattr(path, attribute, buffer.baseAddress, buffer.count, 0, 0) == 0
+            setxattr(path, attribute, buffer.baseAddress, buffer.count, 0, XATTR_NOFOLLOW) == 0
         }
     }
 
     private static func ids(at path: String) -> [String] {
-        let length = getxattr(path, attribute, nil, 0, 0, 0)
+        // `XATTR_NOFOLLOW`: without it a symlink is stamped through to whatever
+        // it points at, which is a write to a file no rule ever looked at.
+        let length = getxattr(path, attribute, nil, 0, 0, XATTR_NOFOLLOW)
         guard length > 0 else { return [] }
         var data = Data(count: length)
         let read = data.withUnsafeMutableBytes { buffer in
-            getxattr(path, attribute, buffer.baseAddress, length, 0, 0)
+            getxattr(path, attribute, buffer.baseAddress, length, 0, XATTR_NOFOLLOW)
         }
         guard read == length else { return [] }
         return (try? JSONDecoder().decode([String].self, from: data)) ?? []

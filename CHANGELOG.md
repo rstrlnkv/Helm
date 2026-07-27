@@ -8,8 +8,8 @@ features, PATCH = fixes.
 ## [Unreleased] — 0.7.2
 
 ### Added
-- **Rules — folders that tidy themselves.** Point Helm at a folder and give it
-  rules: a file that arrives is checked against them in order and the first one
+- **Autopilot — folders that keep themselves in order.** Point Helm at a folder
+  and give it rules: a file that arrives is checked against them in order and the first one
   that matches is the one that runs, so the list reads top to bottom as a single
   decision and exactly one thing happens to a file. Conditions on name,
   extension, kind, size, date added, date modified, Finder tag and **where a
@@ -34,6 +34,16 @@ features, PATCH = fixes.
   - **No script action**, which is Hazel's most powerful one. Helm is ad-hoc
     signed and unsandboxed and its rules live in a plist any process can write —
     a script action would turn "a file appeared" into arbitrary code execution.
+  - **A rule reaches the user's working files and nothing else.** The module has
+    its own gate rather than either shared one: `RemovableScope` is about
+    applications, and `UserFileScope` — right for deciding what may be trashed —
+    says yes to `~/Library/Messages`, to `~/Library/LaunchAgents` and to another
+    account's home. With Full Disk Access and rules that live in a writable
+    plist, that would have made the module a data-mover with somebody else's
+    permissions, and `~/Library/LaunchAgents` is the script action by another
+    name. `WatchScope` is positional: inside the home, never inside `~/Library`,
+    or on an external volume — and it resolves symlinks, because a destination
+    chosen in the panel can be replaced by a link afterwards.
 
 ### Changed
 - **A design pass over the whole app**, in the macOS 26/27 idiom.
