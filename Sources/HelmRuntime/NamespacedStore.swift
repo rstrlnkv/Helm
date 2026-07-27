@@ -52,6 +52,10 @@ public final class NamespacedStore {
     public func int(_ key: String, default d: Int) -> Int { backing.object(forKey: k(key)) as? Int ?? d }
     public func string(_ key: String, default d: String) -> String { backing.object(forKey: k(key)) as? String ?? d }
     public func stringArray(_ key: String) -> [String] { backing.object(forKey: k(key)) as? [String] ?? [] }
+    /// A structure too shaped to be a plist: rules, with their conditions and
+    /// actions, kept as JSON in one value rather than flattened into keys.
+    public func data(_ key: String) -> Data? { backing.object(forKey: k(key)) as? Data }
+
     /// A per-app decision table, the shape three modules now keep: bundle id →
     /// yes/no, with absent meaning "no opinion".
     public func boolTable(_ key: String) -> [String: Bool] {
