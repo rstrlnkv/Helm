@@ -172,6 +172,15 @@ public final class RulesEngine: ModuleEngine, @unchecked Sendable {
                 // will happen to it, which is what `PreviewRow` is.
                 let rows = self.preview(folder).map(PreviewRow.init)
                 return (try? JSONEncoder().encode(rows)) ?? Data()
+            case "previewDraft":
+                // The folder arrives as a draft rather than by id: a rule being
+                // written has not been saved, and a preview of the saved
+                // version would answer a question nobody asked.
+                guard let draft = try? JSONDecoder().decode(WatchedFolder.self,
+                                                            from: command.payload)
+                else { return Data() }
+                let rows = self.preview(draft).map(PreviewRow.init)
+                return (try? JSONEncoder().encode(rows)) ?? Data()
             case "runNow":
                 guard let payload = try? JSONDecoder().decode(FolderPayload.self,
                                                               from: command.payload),

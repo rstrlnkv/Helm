@@ -1,0 +1,145 @@
+import AppKit
+import HelmContract
+import HelmRuntime
+import HelmUI
+import Module_Rules_Engine
+import SwiftUI
+
+/// The module's state: which folders are watched, what their rules are, and
+/// what a rule would do before it is allowed to do it.
+@MainActor public final class RulesViewModel: ObservableObject {
+    @Published public private(set) var folders: [WatchedFolder] = []
+    /// The dry run currently on screen, keyed by rule id so a stale answer for
+    /// a rule nobody is looking at cannot land in the open editor.
+    @Published public private(set) var preview: [PreviewRow] = []
+    @Published public private(set) var previewingRuleID: String?
+    @Published public private(set) var banner: String?
+
+    let vm: ModuleViewModel
+    private let client: TransportClient
+
+    public init(vm: ModuleViewModel) {
+        self.vm = vm
+        self.client = TransportClient(vm.transport)
+        Task { await load() }
+    }
+
+    public func load() async {
+        folders = await client.request("folders", encoding: [String]()) ?? []
+    }
+
+    private func save() {
+        let list = folders
+        Task { await client.send("setFolders", encoding: list) }
+    }
+
+    // MARK: - Folders
+
+    /// The panel is the only way a folder gets in, so the path is one the
+    /// person chose rather than one anything typed.
+    public func addFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = RuStr.addFolder
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        // The same gate the engine applies, applied early so the refusal is a
+        // sentence rather than a rule that silently never fires.
+        guard UserFileScope.isRemovable(url.path) else {
+            banner = RuStr.needsAccess
+            return
+        }
+        guard !folders.contains(where: { $0.path == url.path }) else { return }
+        folders.append(WatchedFolder(path: url.path))
+        save()
+    }
+
+    public func removeFolder(_ folder: WatchedFolder) {
+        folders.removeAll { $0.id == folder.id }
+        save()
+    }
+
+    public func setEnabled(_ enabled: Bool, folder: WatchedFolder) {
+        update(folder) { $0.enabled = enabled }
+    }
+
+    public func setDepth(_ deep: Bool, folder: WatchedFolder) {
+        update(folder) { $0.depth = deep ? 8 : 1 }
+    }
+
+    // MARK: - Rules
+
+    public func addRule(to folder: WatchedFolder) -> Rule {
+        let rule = Rule(name: RuStr.untitledRule, action: .sortIntoSubfolder(.kind))
+        update(folder) { $0.rules.append(rule) }
+        return rule
+    }
+
+    public func save(_ rule: Rule, in folder: WatchedFolder) {
+        update(folder) { current in
+            guard let index = current.rules.firstIndex(where: { $0.id == rule.id }) else {
+                current.rules.append(rule); return
+            }
+            current.rules[index] = rule
+        }
+    }
+
+    public func remove(_ rule: Rule, from folder: WatchedFolder) {
+        update(folder) { $0.rules.removeAll { $0.id == rule.id } }
+    }
+
+    public func move(_ rule: Rule, in folder: WatchedFolder, by offset: Int) {
+        update(folder) { current in
+            guard let index = current.rules.firstIndex(where: { $0.id == rule.id }) else { return }
+            let target = index + offset
+            guard current.rules.indices.contains(target) else { return }
+            current.rules.swapAt(index, target)
+        }
+    }
+
+    private func update(_ folder: WatchedFolder, _ change: (inout WatchedFolder) -> Void) {
+        guard let index = folders.firstIndex(where: { $0.id == folder.id }) else { return }
+        change(&folders[index])
+        save()
+    }
+
+    // MARK: - Seeing before doing
+
+    /// What this folder's rules would do to what is in it right now.
+    ///
+    /// Asked with the rule as it stands in the editor, not as it was saved, so
+    /// the preview answers the rule being written rather than the one before
+    /// the last keystroke.
+    public func runPreview(for folder: WatchedFolder, rule: Rule) async {
+        previewingRuleID = rule.id
+        var probe = folder
+        probe.rules = [enabled(rule)]
+        // A folder with a single enabled rule: the dry run is about this rule,
+        // and a rule above it in the real list would otherwise take the files.
+        let rows: [PreviewRow]? = await client.request("previewDraft", encoding: probe)
+        guard previewingRuleID == rule.id else { return }
+        preview = rows ?? []
+    }
+
+    private func enabled(_ rule: Rule) -> Rule {
+        var copy = rule
+        copy.enabled = true
+        return copy
+    }
+
+    public func clearPreview() {
+        previewingRuleID = nil
+        preview = []
+    }
+
+    public func runNow(_ folder: WatchedFolder) async {
+        struct FolderID: Codable { let id: String }
+        let report: SweepReport? = await client.request("runNow",
+                                                        encoding: FolderID(id: folder.id))
+        guard let report else { return }
+        banner = RuStr.swept(report.acted, report.examined)
+    }
+
+    public func dismissBanner() { banner = nil }
+}
