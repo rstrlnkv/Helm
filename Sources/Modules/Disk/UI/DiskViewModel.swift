@@ -88,7 +88,17 @@ import Module_Disk_Engine
         // A scan may have started while the file was being read; the fresh one
         // wins.
         guard phase == .start else { return }
+        // And a memory of a folder that no longer exists is not worth showing.
+        // Restoring one put the module on a screen with a breadcrumb, a "Scan
+        // again" button and nothing else at all — no ring, no rows, no reason
+        // given — and the only way out was a back arrow that did not look like
+        // one. Folders get scanned and then deleted; volumes do not.
+        guard FileManager.default.fileExists(atPath: cached.result.root.path) else {
+            await store.clear()
+            return
+        }
         result = cached.result
+        scannedPath = cached.result.root.path
         completedAt = cached.savedAt
         restored = true
         rootTitle = ""
