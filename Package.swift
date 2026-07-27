@@ -79,6 +79,16 @@ let package = Package(
             path: "Sources/Modules/Duplicates/UI"
         ),
         .target(
+            name: "Module_Rules_Engine",
+            dependencies: ["HelmContract", "HelmRuntime"],
+            path: "Sources/Modules/Rules/Engine"
+        ),
+        .target(
+            name: "Module_Rules_UI",
+            dependencies: ["HelmContract", "HelmUI", "Module_Rules_Engine"],
+            path: "Sources/Modules/Rules/UI"
+        ),
+        .target(
             name: "Module_Layout_Engine",
             dependencies: ["HelmContract", "HelmRuntime"],
             path: "Sources/Modules/Layout/Engine"
@@ -104,6 +114,7 @@ let package = Package(
                            "Module_Leftovers_UI",
                            "Module_Disk_UI",
                            "Module_Duplicates_UI",
+                           "Module_Rules_UI",
                            "Module_Layout_UI"]
         ),
         .testTarget(
@@ -141,6 +152,16 @@ let package = Package(
             name: "Module_Disk_EngineTests",
             dependencies: ["Module_Disk_Engine"],
             path: "Tests/Modules/Disk/EngineTests"
+        ),
+        .testTarget(
+            name: "Module_Rules_EngineTests",
+            dependencies: ["Module_Rules_Engine"],
+            path: "Tests/Modules/Rules/EngineTests"
+        ),
+        .testTarget(
+            name: "Module_Rules_UITests",
+            dependencies: ["Module_Rules_UI"],
+            path: "Tests/Modules/Rules/UITests"
         ),
         .testTarget(
             name: "Module_Duplicates_EngineTests",
