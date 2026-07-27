@@ -55,6 +55,47 @@ Always attach the **`.zip`** — the in-app updater downloads it for silent inst
 (`Installer`); the `.dmg` is the manual/drag-install path. A release without a zip
 asset falls back to opening the release page.
 
+## The disk image window
+
+`make-dmg.sh` builds a laid-out window, not a bare folder: the app framed by
+Helm's own bezel, a run of the same ticks pointing at Applications, and the
+volume carrying the app's mark. The background is generated at build time by
+`Scripts/design/make-dmg-background.swift`; the layout lives in
+`Scripts/dmg-settings.py`. **The two hold the same numbers seen from two
+sides — change one and change the other.**
+
+**The window is never asked of Finder.** On macOS 26 Finder accepts the icon
+view options over AppleScript, reports them back correctly when queried, and
+draws its default window anyway: 48 pt icons in a grid, no background. This was
+checked twice — with a hand-written `osascript` block and with Homebrew's
+`create-dmg`, the maintained tool that does the same dance — and both produced
+the same nothing, so it is the OS rather than any one script. Only the window's
+*bounds* still take.
+
+So `dmgbuild` writes the `.DS_Store` directly instead. It lives in a virtual
+environment under `build/dmg-tools`, which `make-dmg.sh` creates on first run;
+it is not installed into the system Python, which Homebrew marks externally
+managed and which is not this project's to write into. `build/` is gitignored,
+so a fresh clone pays for the environment once.
+
+Judge the result by mounting it, never by reading the script:
+
+```bash
+open build/Helm-X.Y.Z.dmg      # icons at 128 pt, on the drawn background
+```
+
+Three things say it worked. `.DS_Store` is well over the 6148 bytes an
+untouched one occupies (about 16k here) — that size is the tell that Finder
+wrote a default and the settings were lost. `GetFileInfo` on the mounted volume
+shows `C` among the attributes, so the volume icon is more than a file nobody
+looks at. And `codesign --verify --deep --strict` still passes on the app
+*inside* the image.
+
+When changing the background, judge it against a composite of the real icons
+and their real labels rather than the empty artwork. The first version's bezel
+ran straight through the word "Helm" that Finder writes under the icon, and on
+the bare background there was nothing to see it against.
+
 ## Rollback
 
 There isn't one, and the shape of the updater is why: `UpdateVersion.isNewer` requires
