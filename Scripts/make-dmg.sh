@@ -27,14 +27,35 @@ rm -rf "$STAGE" "$DMG"
 mkdir -p "$STAGE"
 # ditto, not cp -R: it carries the signature and adds nothing of its own.
 ditto "$APP_DIR" "$STAGE/Helm.app"
-ln -s /Applications "$STAGE/Applications"   # drag-to-install target
-# The seal must still be intact in what actually gets packed.
+# The seal must still be intact in what actually gets packed. dmgbuild adds the
+# Applications link itself, from Scripts/dmg-settings.py.
 codesign --verify --deep --strict "$STAGE/Helm.app"
 
+echo "==> Drawing the window"
+BACKGROUND="$STAGE/background.png"
+swift "$SCRIPT_DIR/design/make-dmg-background.swift" "$BACKGROUND" >/dev/null
+
+# dmgbuild writes the .DS_Store itself instead of asking Finder to set the
+# window up. That is why it is here rather than an AppleScript: on macOS 26
+# Finder takes the view options, reports them back correctly, and draws its
+# default window anyway — confirmed against Homebrew's create-dmg, which does
+# the same dance and gets the same nothing.
+#
+# It lives in a virtual environment under build/ rather than in the system
+# Python, which Homebrew marks externally managed, and which is not this
+# project's to install into.
+TOOLS="$REPO_ROOT/build/dmg-tools"
+if [ ! -x "$TOOLS/bin/dmgbuild" ]; then
+  echo "==> Setting up dmgbuild (first run)"
+  python3 -m venv "$TOOLS"
+  "$TOOLS/bin/pip" install --quiet dmgbuild
+fi
+
 echo "==> Building $DMG"
-hdiutil create -volname "Helm $VERSION" \
-  -srcfolder "$STAGE" \
-  -fs HFS+ -format UDZO -ov "$DMG" >/dev/null
+export HELM_APP="$STAGE/Helm.app"
+export HELM_BACKGROUND="$BACKGROUND"
+export HELM_VOLUME_ICON="$APP_DIR/Contents/Resources/Helm.icns"
+"$TOOLS/bin/dmgbuild" -s "$SCRIPT_DIR/dmg-settings.py" "Helm $VERSION" "$DMG" >/dev/null
 rm -rf "$STAGE"
 
 echo "==> Done"
