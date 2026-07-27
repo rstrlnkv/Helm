@@ -45,7 +45,10 @@ features, PATCH = fixes.
   panel's content is a card floating at the top of a strip that runs to the
   bottom of the screen. Under `.regularMaterial` the opaque silhouette was the
   card; Liquid Glass paints its backdrop differently and AppKit began shading
-  the whole strip. Glass carries its own shading, so the window's is off.
+  the whole strip. Glass carries its own shading, so the window's is off — and
+  because glass casts *inside* the view where a window shadow casts outside it,
+  the strip is now wider than the card, which is what stopped the shadow being
+  cut off flat at the left and right edges.
 - **Two pages announced a missing permission only after the work.** The
   Uninstaller told you inside the review step — after ticking apps and sitting
   through a scan; Disk told you only on the start screen, so with Full Disk
