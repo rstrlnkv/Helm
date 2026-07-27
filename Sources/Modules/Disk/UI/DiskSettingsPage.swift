@@ -36,6 +36,9 @@ public struct DiskSettingsPage: View {
             await dvm.loadVolumes()
         }
         .animation(HelmMotion.interface, value: dvm.phase)
+        // The basket bar inserts a divider and 45 pt under the ring; without
+        // this the whole screen jumped upward when the sheet closed.
+        .animation(HelmMotion.interface, value: dvm.basket.isEmpty)
         .confirmationDialog(DkStr.confirmTrash(dvm.basket.count, formatted(dvm.basketBytes)),
                             isPresented: $confirming, titleVisibility: .visible) {
             Button(DkStr.moveToTrash, role: .destructive) {

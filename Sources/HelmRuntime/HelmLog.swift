@@ -96,11 +96,15 @@ public final class HelmLog: @unchecked Sendable {
 
     public func write(_ level: LogLevel, _ category: String, _ message: String,
                       site: LogSite? = nil) {
-        let line = LogLine.format(date: Date(), level: level, category: category,
-                                  message: message, site: site)
+        // The timestamp is taken here, where the event happened; the line is
+        // built on the queue, after the check. Formatting allocates a
+        // DateFormatter and walks the string twice, and on a beta build every
+        // one of those was discarded a moment later.
+        let now = Date()
         queue.async {
             guard self.enabled else { return }
-            self.append(line + "\n")
+            self.append(LogLine.format(date: now, level: level, category: category,
+                                       message: message, site: site) + "\n")
         }
     }
 

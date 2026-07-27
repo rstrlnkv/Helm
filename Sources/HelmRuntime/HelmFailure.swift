@@ -43,9 +43,23 @@ public enum HelmFailure {
 
     /// Domain, code, message, failing path and underlying cause — as much as
     /// the error actually carries, on one line.
-    public static func describe(_ error: Error) -> String {
+    ///
+    /// `depth` caps the underlying chain. Nothing should be able to make
+    /// logging the thing that crashes, and `NSUnderlyingErrorKey` is a
+    /// dictionary value: a cycle is possible and would recurse forever.
+    public static func describe(_ error: Error, depth: Int = 0) -> String {
         let nsError = error as NSError
         var parts = ["\(nsError.domain) \(nsError.code)"]
+
+        // A Swift enum bridged to NSError loses everything: the associated
+        // value is gone and the code is declaration order, which renumbers on
+        // the next edit. `InstallError.versionMismatch("0.7.0")` arrived as
+        // `… 0 "The operation couldn't be completed"` — which is precisely the
+        // uselessness this type was written to end, at the one call site it
+        // was written for.
+        if !(type(of: error) is NSError.Type) {
+            parts.append("(\(oneLine(String(describing: error))))")
+        }
 
         let message = nsError.userInfo[NSLocalizedDescriptionKey] as? String
             ?? nsError.localizedDescription
@@ -54,14 +68,22 @@ public enum HelmFailure {
         if let reason = nsError.localizedFailureReason, !reason.isEmpty {
             parts.append("reason: \(oneLine(reason))")
         }
-        if let path = nsError.userInfo[NSFilePathErrorKey] as? String {
-            parts.append("path: \(Redact.path(path))")
-        } else if let url = nsError.userInfo[NSURLErrorKey] as? URL {
+        // A move failure — and trashing is a move — names its file in a
+        // different key from the one a read failure uses.
+        for key in [NSFilePathErrorKey, "NSSourceFilePathErrorKey",
+                    "NSDestinationFilePathErrorKey"] {
+            if let path = nsError.userInfo[key] as? String {
+                parts.append("path: \(Redact.path(path))")
+                break
+            }
+        }
+        if parts.allSatisfy({ !$0.hasPrefix("path:") }),
+           let url = nsError.userInfo[NSURLErrorKey] as? URL {
             parts.append("path: \(Redact.path(url.path))")
         }
         // The reason is nearly always one level down.
-        if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? NSError {
-            parts.append("← \(describe(underlying))")
+        if depth < 4, let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? NSError {
+            parts.append("← \(describe(underlying, depth: depth + 1))")
         }
         return parts.joined(separator: " ")
     }
@@ -97,9 +119,15 @@ public enum HelmFailure {
     }
 
     /// One event is one line: the log is triaged with grep.
+    ///
+    /// The home path is stripped here rather than at the call sites, because
+    /// every string this type emits passes through — including messages, which
+    /// carry no key for `Redact.path` to find them by, and which come from
+    /// errors Helm has not written yet.
     private static func oneLine(_ text: String) -> String {
         text.replacingOccurrences(of: "\r\n", with: " ")
             .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: NSHomeDirectory(), with: "~")
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

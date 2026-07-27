@@ -14,6 +14,12 @@ struct RingView: View {
     @Binding var hovered: String?
     var onSelect: (RingSegment) -> Void
     var onBack: () -> Void
+    /// False at the scan root, where the middle of the ring leads nowhere —
+    /// the toolbar's Back button is honestly disabled in the same state.
+    var canGoBack: Bool
+    /// The name the rest of the screen shows for a path: macOS's own folders
+    /// are named the way Finder names them, and the list already does this.
+    var displayName: (RingSegment) -> String
     /// Path of the child just left, when arriving from below; the ring folds
     /// back into its wedge instead of cross-fading.
     var foldingBackFrom: String?
@@ -28,29 +34,56 @@ struct RingView: View {
 
     private let geometry = RingGeometry(innerRadius: 0.34, thickness: 0.155, gap: 0.012)
 
-    /// One element per wedge of the innermost data ring, plus the hole in the
-    /// middle. Deeper rings are the same folders one level down and would read
-    /// as repetition; the list beside the ring is where you go for those.
+    /// The elements the drawing implies, in the order the eye reads it: where
+    /// you are, then what is in it.
+    ///
+    /// Three things this has to get right, all of which it got wrong first:
+    /// the centre has to name the folder, or every "N% of this folder" below
+    /// it is a share of something never mentioned; the denominator must be the
+    /// used bytes, not the used bytes plus free space, or the spoken share
+    /// disagrees with the bar drawn beside it on the same row; and the names
+    /// must be the names on screen — the list and the tooltip both localize
+    /// macOS's own folders, so raw `name` said "Movies" while the screen said
+    /// «Фильмы».
     @ViewBuilder private var ringElements: some View {
-        let total = max(segments.filter { $0.ring == 0 }.reduce(0) { $0 + $1.bytes }, 1)
+        let inner = segments.filter { $0.ring == 0 }
+        // Free space is not part of the folder, so it is not part of its total.
+        let total = max(inner.filter { !$0.isFreeSpace }.reduce(0) { $0 + $1.bytes }, 1)
         VStack {
-            ForEach(segments.filter { $0.ring == 0 }, id: \.path) { segment in
-                let share = Int((Double(segment.bytes) / Double(total) * 100).rounded())
-                Color.clear
-                    .accessibilityElement()
-                    .accessibilityLabel(DkStr.ringShare(segment.name, Bytes(segment.bytes), share))
-                    .accessibilityAddTraits(segment.isDirectory ? [.isButton] : [])
-                    .accessibilityAction {
-                        guard segment.isDirectory, !segment.isOther, !segment.isFreeSpace else { return }
-                        open(segment)
-                    }
-            }
+            // First, not last: a VoiceOver user walks this list in order, and
+            // the way out should not sit behind twenty wedges.
             Color.clear
                 .accessibilityElement()
-                .accessibilityLabel(DkStr.goUp)
-                .accessibilityAddTraits(.isButton)
-                .accessibilityAction { onBack() }
+                .accessibilityLabel(centreLabel)
+                .accessibilityAddTraits(canGoBack ? [.isButton] : [])
+                .accessibilityAction { if canGoBack { onBack() } }
+            // `path` is empty for both free space and the folded bucket, so it
+            // cannot be the identity: two elements would collide and one would
+            // be dropped.
+            ForEach(inner, id: \.startAngle) { segment in
+                Color.clear
+                    .accessibilityElement()
+                    .accessibilityLabel(label(for: segment, total: total))
+                    .accessibilityAddTraits(canOpen(segment) ? [.isButton] : [])
+                    .accessibilityAction { if canOpen(segment) { open(segment) } }
+            }
         }
+    }
+
+    private func canOpen(_ segment: RingSegment) -> Bool {
+        segment.isDirectory && !segment.isOther && !segment.isFreeSpace
+    }
+
+    private var centreLabel: String {
+        let where_ = "\(focusName), \(Bytes(focusBytes))"
+        return growing ? "\(where_), \(DkStr.scanning)" : where_
+    }
+
+    private func label(for segment: RingSegment, total: Int) -> String {
+        if segment.isFreeSpace { return "\(Bytes(segment.bytes)) \(DkStr.free)" }
+        let name = segment.isOther ? DkStr.otherItems : displayName(segment)
+        let share = Int((Double(segment.bytes) / Double(total) * 100).rounded())
+        return DkStr.ringShare(name, Bytes(segment.bytes), share)
     }
 
     var body: some View {

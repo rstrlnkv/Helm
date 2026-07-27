@@ -8,7 +8,7 @@ Swift 6 / SwiftPM, AppKit + SwiftUI, macOS 26+, zero external dependencies.
 HelmContract   protocols + wire types: ModuleEngine, EngineTransport,
                EngineCommand/Event, StatusAppearance, LocalTransport
 HelmRuntime    shared plumbing, no UI: NamespacedStore, UpdateVersion/UpdateCheck,
-               ReleaseDigest, HelmLog + Redact, PermissionCheck + TrashFailure,
+               ReleaseDigest, HelmLog + HelmFailure + Redact, PermissionCheck + TrashFailure,
                RemovableScope, SystemExtensionParser, SystemFolderNames,
                ModuleOrder, Plural, HelmBytes
 HelmUI         design system (RingIcon, IconPickers, panel cards,
@@ -160,8 +160,20 @@ So:
   failing error is the most useful thing in it and the most private, so it goes
   in as `~/Documents/…` rather than not at all.
 
-The rule about names is unchanged (see below): counts, outcomes, redacted paths
-and tags are free; names are not.
+**What must not reach the file.** A VPN connection name announces an employer or
+a provider; an absolute path carries the account name; a bundle id names a
+person's habits. `Redact` (HelmRuntime) is what goes in instead: `Redact.path`
+rewrites the home prefix to `~`, `Redact.vpn`/`Redact.app` give a short stable
+tag (`vpn#3f9a`). FNV-1a rather than `Hasher`, which is seeded per process —
+yesterday's session would not compare with today's, and comparing across
+restarts is exactly what triage does. Log counts and outcomes freely; run any
+name or path through `Redact` first. `HelmFailure.describe` strips the home
+path from every string it emits, including messages, which carry no key for
+`Redact.path` to find them by.
+
+The release process depends on this file: dev builds are triaged against it,
+and a build graduates to the beta channel only at zero known problems
+(VERSIONING.md).
 
 ## Layout switching
 

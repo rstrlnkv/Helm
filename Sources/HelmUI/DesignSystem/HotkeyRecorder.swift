@@ -27,7 +27,20 @@ public extension Notification.Name {
         label = store.string("\(prefix)Label", default: "")
     }
 
+    /// The recorder currently armed, anywhere in the app.
+    ///
+    /// A page can hold more than one — the keyboard page has held two since
+    /// 0.7.1 — and arming the second used to leave the first armed as well. A
+    /// mouse click is not a `keyDown`, so the first monitor never saw the
+    /// click that armed its neighbour: one keystroke landed in both, or a
+    /// monitor sat there swallowing every keypress in the window with nothing
+    /// on screen to explain it. Weak, so a recorder whose page has gone does
+    /// not keep itself alive.
+    private static weak var armed: HelmHotkeyRecorder?
+
     public func startRecording() {
+        if let armed = Self.armed, armed !== self { armed.stop() }
+        Self.armed = self
         recording = true
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self else { return event }
@@ -46,6 +59,7 @@ public extension Notification.Name {
 
     public func stop() {
         if let monitor { NSEvent.removeMonitor(monitor); self.monitor = nil }
+        if Self.armed === self { Self.armed = nil }
         recording = false
     }
 
