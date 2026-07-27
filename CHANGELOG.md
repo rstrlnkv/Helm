@@ -8,6 +8,22 @@ features, PATCH = fixes.
 ## [Unreleased] — 0.7.2
 
 ### Added
+- **Keyboard works on the selection, not only on the last word.** Three
+  shortcuts, each unbound until you set one: convert the layout, transliterate
+  (`привет ↔ privet`, the direction decided by what is in the text), or walk the
+  case (lower → UPPER → Title). They act on whatever is selected in whatever app
+  is in front — a pasted paragraph, a file name in the Finder, somebody else's
+  message — which is text Helm never watched being typed, so each one refuses to
+  make an edit that changes nothing: replacing a selection with itself still
+  clears that app's undo stack.
+- **Abbreviations.** A short token you type often and what it stands for,
+  expanded at the same word boundary a layout conversion happens at. A word that
+  expanded is never also converted — two edits to one word would be one edit the
+  undo shortcut cannot take back in a single press. And optionally the one
+  typing habit Helm is sure enough about to correct: `ПРивет` → `Привет`, never
+  `ПРИВЕТ` (somebody shouting on purpose) and never a word with a digit in it
+  (an identifier).
+
 - **Autopilot — folders that keep themselves in order.** Point Helm at a folder
   and give it rules: a file that arrives is checked against them in order and the first one
   that matches is the one that runs, so the list reads top to bottom as a single

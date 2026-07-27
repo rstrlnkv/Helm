@@ -25,6 +25,10 @@ public struct LayoutSettingsPage: View {
     @StateObject private var convertSelectionKey: HelmHotkeyRecorder
     @StateObject private var transliterateKey: HelmHotkeyRecorder
     @StateObject private var changeCaseKey: HelmHotkeyRecorder
+    @State private var abbreviations: [AutoReplace.Entry]
+    @State private var newShort = ""
+    @State private var newLong = ""
+    @State private var fixCapitals: Bool
 
     public init(vm: ModuleViewModel, store: NamespacedStore) {
         lvm = LayoutViewModel.shared(vm: vm)
@@ -52,6 +56,8 @@ public struct LayoutSettingsPage: View {
             HelmHotkeyRecorder(store: store, prefix: "transliterateHotkey"))
         _changeCaseKey = StateObject(wrappedValue:
             HelmHotkeyRecorder(store: store, prefix: "changeCaseHotkey"))
+        _abbreviations = State(initialValue: AutoReplaceStore.load(store))
+        _fixCapitals = State(initialValue: store.bool("fixCapitals", default: false))
     }
 
     public var body: some View {
@@ -61,6 +67,7 @@ public struct LayoutSettingsPage: View {
             triggersSection
             shortcutsSection
             selectionSection
+            autoReplaceSection
             tryItSection
             exceptionsSection
             indicatorSection
@@ -178,6 +185,73 @@ public struct LayoutSettingsPage: View {
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    /// Abbreviations, and the one typing habit Helm is sure enough about to
+    /// correct.
+    private var autoReplaceSection: some View {
+        Section(LyStr.autoReplaceSection) {
+            Text(LyStr.autoReplaceNote)
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            if abbreviations.isEmpty {
+                Text(LyStr.noAbbreviations).font(.callout).foregroundStyle(.secondary)
+            }
+            ForEach(abbreviations) { entry in
+                HStack(spacing: 10) {
+                    Text(entry.from)
+                        .font(.callout.monospaced())
+                        .frame(minWidth: 60, alignment: .leading)
+                    Text("→").foregroundStyle(HelmText.faint)
+                    Text(entry.to).lineLimit(1).truncationMode(.tail)
+                    Spacer(minLength: 8)
+                    Button {
+                        abbreviations.removeAll { $0.from == entry.from }
+                        AutoReplaceStore.save(abbreviations, to: store)
+                        lvm.vm.send("settingsChanged")
+                    } label: {
+                        Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(HelmA11y.remove)
+                }
+            }
+            HStack(spacing: 8) {
+                // `prompt:` rather than a title, and labels hidden: inside a
+                // `Form` a `TextField`'s title is drawn as a label *beside* the
+                // field, so the placeholder ended up as a two-line word to the
+                // left of an empty box with "stands for" floating between them.
+                TextField("", text: $newShort, prompt: Text(LyStr.abbreviation))
+                    .textFieldStyle(.roundedBorder)
+                    .labelsHidden()
+                    .frame(width: 150)
+                TextField("", text: $newLong, prompt: Text(LyStr.expansion))
+                    .textFieldStyle(.roundedBorder)
+                    .labelsHidden()
+                Button(LyStr.addAbbreviation) { addAbbreviation() }
+                    .disabled(newShort.trimmingCharacters(in: .whitespaces).isEmpty
+                              || newLong.isEmpty)
+            }
+            Toggle(LyStr.fixCapitals, isOn: $fixCapitals)
+                .onChange(of: fixCapitals) { _, value in write(value, "fixCapitals") }
+            Text(LyStr.fixCapitalsNote)
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func addAbbreviation() {
+        let short = newShort.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !short.isEmpty, !newLong.isEmpty, short != newLong else { return }
+        abbreviations.removeAll { $0.from == short }
+        abbreviations.append(AutoReplace.Entry(from: short, to: newLong))
+        abbreviations.sort { $0.from < $1.from }
+        AutoReplaceStore.save(abbreviations, to: store)
+        // Announced rather than written through a spare key: the table is
+        // already saved, and the engine needs to be told to re-read it.
+        lvm.vm.send("settingsChanged")
+        newShort = ""
+        newLong = ""
     }
 
     /// The three that act on a selection.

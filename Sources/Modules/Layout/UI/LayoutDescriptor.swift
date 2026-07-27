@@ -36,6 +36,8 @@ import Module_Layout_Engine
                             secure: AXSecureContext(),
                             sound: SystemSound(),
                             selection: AXSelection(),
+                            autoReplace: AutoReplaceStore.load(store),
+                            fixCapitals: store.bool("fixCapitals", default: false),
                             rules: store.boolTable("appRules"),
                             exceptions: store.stringArray("exceptions"),
                             automatic: store.bool("automatic", default: true),
