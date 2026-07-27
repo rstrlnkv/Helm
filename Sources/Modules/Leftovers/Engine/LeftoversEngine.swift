@@ -29,11 +29,11 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
     public func deactivate() {}
 
     public func scan() async -> [StaleItem] {
-        await blocking { self.scanner.scan() }
+        await offTheCooperativePool { self.scanner.scan() }
     }
 
     public func trash(_ paths: [String]) async -> LeftoversRemoval {
-        await blocking {
+        await offTheCooperativePool {
             var removed: [String] = [], failed: [TrashFailureDetail] = []
             var freed = 0
             // The view model already decides what may be offered; this is the
@@ -60,11 +60,6 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
         }
     }
 
-    private func blocking<T: Sendable>(_ work: @escaping @Sendable () -> T) async -> T {
-        await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async { continuation.resume(returning: work()) }
-        }
-    }
 
     private func wireTransport() {
         localTransport.setHandler { [weak self] command in
@@ -76,7 +71,7 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
                 guard let request = try? JSONDecoder().decode(LeftoversToggle.self,
                                                               from: command.payload)
                 else { return Data() }
-                await self.blocking { self.extensions.setDisabled(request.disabled,
+                await offTheCooperativePool { self.extensions.setDisabled(request.disabled,
                                                                   label: request.label) }
                 return Data()
             case "trash":

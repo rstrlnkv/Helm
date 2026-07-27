@@ -89,7 +89,7 @@ public struct HelmRemovalOutcome: View {
         return L("\(succeeded) — \(items) could not be moved",
                  [.ru: "\(succeeded) — не удалось переместить: \(items)",
                   .es: "\(succeeded) — no se pudieron mover: \(items)",
-                  .fr: "\(succeeded) — impossible de déplacer : \(items)",
+                  .fr: "\(succeeded) — impossible de déplacer : \(items)",
                   .de: "\(succeeded) — nicht verschoben: \(items)",
                   .ja: "\(succeeded) — 移動できませんでした：\(items)",
                   .zh: "\(succeeded) — 无法移动：\(items)",

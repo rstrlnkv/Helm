@@ -33,7 +33,7 @@ enum KAStr {
     }
     /// Single-letter units for the narrow preset pills ("15 м", "1 ч").
     static var minutesUnitShort: String {
-        L("m", [.ru: "м", .es: "m", .fr: "m", .de: "M", .ja: "分", .zh: "分钟", .pt: "m"])
+        L("m", [.ru: "м", .es: "m", .fr: "m", .de: "Min.", .ja: "分", .zh: "分钟", .pt: "m"])
     }
     static var hoursUnitShort: String {
         L("h", [.ru: "ч", .es: "h", .fr: "h", .de: "Std", .ja: "時間", .zh: "小时", .pt: "h"])
@@ -101,11 +101,6 @@ enum KAStr {
     static var grantAccess: String { L("Grant…", [.ru: "Выдать…", .es: "Conceder…", .fr: "Accorder…", .de: "Erteilen…", .ja: "許可…", .zh: "授予…", .pt: "Conceder…"]) }
     static var globalShortcut: String { L("Global shortcut", [.ru: "Глобальный хоткей", .es: "Atajo global", .fr: "Raccourci global", .de: "Globaler Kurzbefehl", .ja: "グローバルショートカット", .zh: "全局快捷键", .pt: "Atalho global"]) }
     static var toggleAction: String { L("Toggle Keep Awake", [.ru: "Включить или выключить «Не спать»", .es: "Activar o desactivar Mantener activo", .fr: "Activer ou désactiver Rester éveillé", .de: "Wachhalten ein-/ausschalten", .ja: "「スリープ防止」を切り替え", .zh: "开关「保持唤醒」", .pt: "Ativar ou desativar Manter acordado"]) }
-    static var pressKeys: String { L("Press keys…", [.ru: "Нажмите клавиши…", .es: "Pulsa las teclas…", .fr: "Appuyez sur les touches…", .de: "Tasten drücken…", .ja: "キーを押してください…", .zh: "请按下按键…", .pt: "Pressione as teclas…"]) }
-    static var none: String { L("None", [.ru: "Нет", .es: "Ninguno", .fr: "Aucun", .de: "Keiner", .ja: "なし", .zh: "无", .pt: "Nenhum"]) }
-    static var record: String { L("Record", [.ru: "Задать", .es: "Grabar", .fr: "Enregistrer", .de: "Aufnehmen", .ja: "記録", .zh: "录制", .pt: "Gravar"]) }
-    static var cancel: String { L("Cancel", [.ru: "Отмена", .es: "Cancelar", .fr: "Annuler", .de: "Abbrechen", .ja: "キャンセル", .zh: "取消", .pt: "Cancelar"]) }
-    static var clear: String { L("Clear", [.ru: "Очистить", .es: "Borrar", .fr: "Effacer", .de: "Löschen", .ja: "クリア", .zh: "清除", .pt: "Limpar"]) }
     static var keepAwakeLidClosed: String { L("Keep awake with the lid closed", [.ru: "Не спать с закрытой крышкой", .es: "Mantener activo con la tapa cerrada", .fr: "Rester éveillé capot fermé", .de: "Bei geschlossenem Deckel wach halten", .ja: "ふたを閉じてもスリープ防止", .zh: "合盖时保持唤醒", .pt: "Manter ativo com a tampa fechada"]) }
     static var adminNote: String { L("Requires an admin password once (uses pmset).", [.ru: "Нужен пароль администратора один раз (использует pmset).", .es: "Requiere una contraseña de administrador una vez (usa pmset).", .fr: "Nécessite un mot de passe administrateur une fois (utilise pmset).", .de: "Erfordert einmalig ein Admin-Passwort (nutzt pmset).", .ja: "管理者パスワードが一度必要です（pmset を使用）。", .zh: "需要一次管理员密码（使用 pmset）。", .pt: "Requer uma senha de administrador uma vez (usa pmset)."]) }
     static var turnOffLowBattery: String { L("Turn off on low battery", [.ru: "Выключать при низком заряде", .es: "Apagar con batería baja", .fr: "Désactiver à batterie faible", .de: "Bei niedrigem Akku ausschalten", .ja: "バッテリー残量が少ないとき無効化", .zh: "电量低时关闭", .pt: "Desligar com bateria fraca"]) }

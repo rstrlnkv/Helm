@@ -34,12 +34,6 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     /// Runs blocking work (Process + waitUntilExit, file IO) on a dispatch
     /// queue so it never parks a Swift-concurrency pool thread for seconds.
-    private func blocking<T: Sendable>(_ work: @escaping @Sendable () -> T) async -> T {
-        await withCheckedContinuation { cont in
-            DispatchQueue.global(qos: .userInitiated).async { cont.resume(returning: work()) }
-        }
-    }
-
     // MARK: - Queries
 
     public func status() -> BrewStatus {
@@ -174,15 +168,15 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             guard let self else { return Data() }
             func json<T: Encodable>(_ v: T) -> Data { (try? JSONEncoder().encode(v)) ?? Data() }
             switch cmd.name {
-            case "status":        return json(await self.blocking { self.status() })
-            case "listInstalled": return json(await self.blocking { self.listInstalled() })
-            case "outdated":      return json(await self.blocking { self.outdated() })
+            case "status":        return json(await offTheCooperativePool { self.status() })
+            case "listInstalled": return json(await offTheCooperativePool { self.listInstalled() })
+            case "outdated":      return json(await offTheCooperativePool { self.outdated() })
             case "search":
                 let query = String(decoding: cmd.payload, as: UTF8.self)
-                return json(await self.blocking { self.search(query) })
+                return json(await offTheCooperativePool { self.search(query) })
             case "descriptions":
                 guard let r = try? JSONDecoder().decode(DescReq.self, from: cmd.payload) else { return Data() }
-                return json(await self.blocking { self.descriptions(names: r.names, isCask: r.isCask) })
+                return json(await offTheCooperativePool { self.descriptions(names: r.names, isCask: r.isCask) })
             case "install":
                 if let r = try? JSONDecoder().decode(PkgReq.self, from: cmd.payload) { self.install(name: r.name, isCask: r.isCask) }
             case "uninstall":

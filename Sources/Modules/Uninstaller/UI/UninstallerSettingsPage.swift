@@ -136,7 +136,7 @@ public struct UninstallerSettingsPage: View {
 
     /// Counts read as a quiet status line instead of a panel of dials.
     private var statusLine: String {
-        let count = loading ? "…" : "\(apps.count)"
+        let count: Int? = loading ? nil : apps.count
         guard !checked.isEmpty else { return UnStr.appsCount(count) }
         return UnStr.appsCountSelected(count, checked.count, sizeText)
     }

@@ -178,13 +178,27 @@ public enum HelmLayout {
 /// generalised. These are literal colours, which also keeps them out of the
 /// hierarchical-style hazard that the Motion rules warn about inside animated
 /// blocks.
+///
+/// The ratios below replace the ones this comment used to carry, which were
+/// arithmetic done against pure black on pure white. Neither is what the app
+/// draws: `Color.primary` is `labelColor`, which is 85% black, and it lands on
+/// `windowBackgroundColor`. Measured properly (`Scripts/design/contrast.swift`)
+/// the old 0.60 was 4.09:1 rather than the 5.74:1 written here, and 0.45 was
+/// 2.69:1 rather than 3.35:1 — the second one below the threshold it claimed
+/// to clear. The opacities are now solved for the target in the worse of the
+/// two appearances rather than chosen and described afterwards.
 public enum HelmText {
-    /// Secondary copy inside cards and rows. 5.74:1 light, 6.77:1 dark.
-    public static let quiet = Color.primary.opacity(0.60)
-    /// Captions that must recede and stay readable. 3.35:1 / 4.41:1.
-    public static let faint = Color.primary.opacity(0.45)
-    /// Marks, never text — breadcrumb chevrons and the like. 2.44:1 / 3.21:1.
-    public static let separator = Color.primary.opacity(0.35)
+    /// Secondary copy inside cards and rows: body text that happens to be
+    /// quieter, so it answers to the body threshold. 4.62:1 light, 5.78:1 dark
+    /// — where the platform's own `.secondary` is 3.95:1 light.
+    public static let quiet = Color.primary.opacity(0.64)
+    /// Captions that must recede and stay readable — short, and never the only
+    /// place a fact appears. 3.54:1 / 4.63:1.
+    public static let faint = Color.primary.opacity(0.55)
+    /// Marks, never text — breadcrumb chevrons and the like. A chevron carries
+    /// meaning, so it answers to the 3:1 non-text threshold rather than to
+    /// nothing at all. 3.07:1 / 4.07:1.
+    public static let separator = Color.primary.opacity(0.50)
 }
 
 public struct HelmPageHeader<Trailing: View>: View {

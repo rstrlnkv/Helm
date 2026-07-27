@@ -122,9 +122,16 @@ import SwiftUI
             return left.count > 1 ? DuplicateGroup(bytes: group.bytes, paths: left) : nil
         }
         basket = []
-        banner = removal.failed.isEmpty
-            ? DupStr.removed(removal.removed.count, Bytes(removal.freedBytes))
-            : DupStr.removedWithFailures(removal.removed.count, removal.failed.count)
+        if removal.refused.isEmpty {
+            banner = DupStr.removed(removal.removed.count, Bytes(removal.freedBytes))
+        } else {
+            let count = DupStr.removedWithFailures(removal.removed.count, removal.refused.count)
+            let why = HelmTrash.Result(removed: removal.removed, refused: removal.refused,
+                                       freedBytes: removal.freedBytes).principalReason
+            // A count with no reason sends the person back to the same folder
+            // to try the same thing again.
+            banner = why.map { "\(count) — \(TrashReasonText.sentence($0.rawValue))" } ?? count
+        }
     }
 
     public func dismissBanner() { banner = nil }
