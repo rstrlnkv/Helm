@@ -82,10 +82,17 @@ public final class DuplicateScanner: @unchecked Sendable {
                 for identical in Duplicates.refine(group, by: { file in
                     if self.isCancelled { return nil }
                     progress.bump()
-                    return file.bytes <= Self.prefixBytes
+                    let digest = file.bytes <= Self.prefixBytes
                         ? Self.hash(file.path, limit: Self.prefixBytes,
                                     expecting: file.bytes)
                         : Self.hash(file.path, limit: nil, expecting: file.bytes)
+                    // The second pass fails too, and on the largest files —
+                    // where an unreadable file is most likely to be the whole
+                    // answer. Counting only the first pass undercounts exactly
+                    // there. (No double count: a file that failed the prefix
+                    // pass never reaches this one.)
+                    if digest == nil { progress.noteUnreadable() }
+                    return digest
                 }) {
                     found.append(DuplicateGroup(bytes: identical.first?.bytes ?? 0,
                                                 paths: identical.map(\.path).sorted()))

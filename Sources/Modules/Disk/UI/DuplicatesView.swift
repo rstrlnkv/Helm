@@ -122,7 +122,7 @@ struct DuplicatesView: View {
             }
         }
         .contextMenu {
-            Button(DkStr.reveal) {
+            Button(HelmA11y.showInFinder) {
                 NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
             }
         }
