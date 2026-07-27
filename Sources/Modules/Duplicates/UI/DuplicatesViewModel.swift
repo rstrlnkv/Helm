@@ -121,7 +121,11 @@ import SwiftUI
             let left = group.paths.filter { !gone.contains($0) }
             return left.count > 1 ? DuplicateGroup(bytes: group.bytes, paths: left) : nil
         }
-        basket = []
+        // What refused stays in the basket. Emptying it wholesale made a
+        // refusal cost the person their selection: fix the permission, come
+        // back, and every checkbox has to be found and ticked again. Only the
+        // files that actually left are dropped.
+        basket = basket.filter { !gone.contains($0) }
         if removal.refused.isEmpty {
             banner = DupStr.removed(removal.removed.count, Bytes(removal.freedBytes))
         } else {
