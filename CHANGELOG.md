@@ -5,6 +5,30 @@ All notable changes to Helm are documented here. The format is loosely based on
 [VERSIONING.md](VERSIONING.md) — MAJOR = global changes, MINOR = new/polished
 features, PATCH = fixes.
 
+## [Unreleased] — 0.7.2
+
+### Added
+- **The disk map answers VoiceOver.** A `Canvas` is one opaque rectangle to the
+  accessibility system, so the ring said nothing at all and drilling into a
+  folder was a double-click with no keyboard equivalent.
+  `accessibilityChildren` now supplies the elements the drawing implies: one
+  per wedge of the innermost ring, each reading its name, its size and its
+  share of the folder, each with a way in; plus the hole in the middle, which
+  goes up a level. The list beside the ring gained the same drill as a named
+  accessibility action and a context-menu item — the double-click still works
+  and is no longer the only way.
+
+### Changed
+- **Failures say enough to be triaged.** `HelmFailure` unwraps an `NSError` to
+  its domain, code, message, failing path and — the part that usually holds the
+  answer — the error underneath it; `osStatus` and `posix` name their codes
+  instead of printing a bare integer. `warn` and `error` capture
+  `#fileID`/`#line`/`#function`, because one wording can come from four call
+  sites and the wording is what reaches a bug report. Redaction happens inside
+  the describer, so a failing path arrives as `~/Documents/…` rather than not
+  at all. Disk's trash loop, the duplicate search's unreadable files and a
+  missing flag-artwork bundle now log at all, having been silent.
+
 ## [0.7.1] — 2026-07-26
 
 ### Added

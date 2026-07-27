@@ -28,6 +28,31 @@ struct RingView: View {
 
     private let geometry = RingGeometry(innerRadius: 0.34, thickness: 0.155, gap: 0.012)
 
+    /// One element per wedge of the innermost data ring, plus the hole in the
+    /// middle. Deeper rings are the same folders one level down and would read
+    /// as repetition; the list beside the ring is where you go for those.
+    @ViewBuilder private var ringElements: some View {
+        let total = max(segments.filter { $0.ring == 0 }.reduce(0) { $0 + $1.bytes }, 1)
+        VStack {
+            ForEach(segments.filter { $0.ring == 0 }, id: \.path) { segment in
+                let share = Int((Double(segment.bytes) / Double(total) * 100).rounded())
+                Color.clear
+                    .accessibilityElement()
+                    .accessibilityLabel(DkStr.ringShare(segment.name, Bytes(segment.bytes), share))
+                    .accessibilityAddTraits(segment.isDirectory ? [.isButton] : [])
+                    .accessibilityAction {
+                        guard segment.isDirectory, !segment.isOther, !segment.isFreeSpace else { return }
+                        open(segment)
+                    }
+            }
+            Color.clear
+                .accessibilityElement()
+                .accessibilityLabel(DkStr.goUp)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction { onBack() }
+        }
+    }
+
     var body: some View {
         GeometryReader { proxy in
             let side = min(proxy.size.width, proxy.size.height)
@@ -66,6 +91,14 @@ struct RingView: View {
                 guard hit.isDirectory, !hit.isOther, !hit.isFreeSpace else { return }
                 open(hit)
             }
+            // A Canvas is one opaque rectangle to VoiceOver: the ring said
+            // nothing at all, and drilling in was a double-click with no
+            // keyboard equivalent. `accessibilityChildren` supplies the
+            // elements the drawing implies — one per wedge, each carrying its
+            // share and its way in.
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(DkStr.ringMap)
+            .accessibilityChildren { ringElements }
         }
         .animation(HelmMotion.interface, value: segments.count)
         // Arriving back at the parent: run the same transform backwards, so the

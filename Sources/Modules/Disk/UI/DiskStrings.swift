@@ -50,6 +50,10 @@ enum DkStr {
     static var duplicatesKeep: String { L("stays", [.ru: "останется", .es: "se queda", .fr: "reste", .de: "bleibt", .ja: "残す", .zh: "保留", .pt: "fica"]) }
     static var duplicatesBasketRest: String { L("Extras to basket", [.ru: "Лишние — к удалению", .es: "Sobrantes a la cesta", .fr: "Les surplus au panier", .de: "Überzählige in den Korb", .ja: "余分をバスケットへ", .zh: "多余的放入收集篮", .pt: "Excedentes para a cesta"]) }
     static var duplicatesClose: String { L("Close", [.ru: "Закрыть", .es: "Cerrar", .fr: "Fermer", .de: "Schließen", .ja: "閉じる", .zh: "关闭", .pt: "Fechar"]) }
+    static var ringMap: String { L("Disk map", [.ru: "Карта диска", .es: "Mapa del disco", .fr: "Carte du disque", .de: "Festplattenkarte", .ja: "ディスクマップ", .zh: "磁盘分布图", .pt: "Mapa do disco"]) }
+    static var openFolder: String { L("Open", [.ru: "Открыть", .es: "Abrir", .fr: "Ouvrir", .de: "Öffnen", .ja: "開く", .zh: "打开", .pt: "Abrir"]) }
+    static var goUp: String { L("Go up a level", [.ru: "На уровень выше", .es: "Subir un nivel", .fr: "Remonter d’un niveau", .de: "Eine Ebene höher", .ja: "ひとつ上の階層へ", .zh: "返回上一层", .pt: "Subir um nível"]) }
+    static func ringShare(_ name: String, _ size: String, _ percent: Int) -> String { L("\(name), \(size), \(percent)% of this folder", [.ru: "\(name), \(size), \(percent)% этой папки", .es: "\(name), \(size), \(percent)% de esta carpeta", .fr: "\(name), \(size), \(percent) % de ce dossier", .de: "\(name), \(size), \(percent) % dieses Ordners", .ja: "\(name)、\(size)、このフォルダの \(percent)%", .zh: "\(name)，\(size)，占此文件夹 \(percent)%", .pt: "\(name), \(size), \(percent)% desta pasta"]) }
     static var back: String { L("Back", [.ru: "Назад", .es: "Atrás", .fr: "Retour", .de: "Zurück", .ja: "戻る", .zh: "返回", .pt: "Voltar"]) }
     static func liveCount(_ files: Int) -> String { L("\(files) files", [.ru: "Файлов: \(files)", .es: "\(files) archivos", .fr: "\(files) fichiers", .de: "\(files) Dateien", .ja: "\(files) ファイル", .zh: "\(files) 个文件", .pt: "\(files) arquivos"]) }
 }
