@@ -1,7 +1,13 @@
-# Rules — a folder that tidies itself
+# Autopilot — a folder that keeps itself in order
 
 **Status:** design, awaiting approval
-**Module id:** `rules` · category: Files · symbol: `folder.badge.gearshape`
+**Module id:** `autopilot` · category: Files · symbol: `location.north.circle`
+
+Named for what it does, not what it is made of. "Rules" named the mechanism and
+left the sidebar with an entry that could have belonged to any part of the app;
+the folder still holds rules, and the module is the thing that keeps it on
+course without hands on it — the instrument Helm is named after, one step
+further along.
 
 ## What it is
 
@@ -90,7 +96,7 @@ its own is how a tidy Downloads folder becomes a rearranged project tree.
 **A file must not be acted on twice.** A rule that moves a file into a subfolder
 of the folder it is watching will see it again on the next sweep, and again
 after that. Each acted-on file gets an extended attribute —
-`com.helm.rules.stamp` — carrying the rule's id and when it ran; a file already
+`com.helm.autopilot.stamp` — carrying the rule's id and when it ran; a file already
 stamped by that rule is skipped. The stamp travels with the file because xattrs
 survive a move within a volume, which is exactly the case that matters.
 
@@ -112,7 +118,7 @@ free, as everywhere else.
 ## Structure
 
 ```
-Sources/Modules/Rules/
+Sources/Modules/Autopilot/
   Engine/
     Logic/                        pure, tests first
       FileFacts.swift             what a rule is allowed to know about a file
@@ -122,16 +128,16 @@ Sources/Modules/Rules/
       RulePlan.swift              facts + [Rule] → the one thing to do, or nothing
       RenamePattern.swift         pattern + facts → new name
       SortBucket.swift            facts + scheme → subfolder name
-    RulesEngine.swift             transport, the last word on Trash
+    AutopilotEngine.swift             transport, the last word on Trash
     FolderWatcher.swift           FSEvents
     RuleRunner.swift              plan → filesystem, one file at a time
     RuleStamp.swift               the xattr
   UI/
-    RulesDescriptor.swift
-    RulesSettingsPage.swift       folders, their rules, run now
+    AutopilotDescriptor.swift
+    AutopilotSettingsPage.swift       folders, their rules, run now
     RuleEditor.swift              conditions, action, dry run
-    RulesViewModel.swift
-    RulesStrings.swift
+    AutopilotViewModel.swift
+    AutopilotStrings.swift
 ```
 
 `RulePlan` is the piece that has to be right: given a file's facts and a

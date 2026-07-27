@@ -79,14 +79,14 @@ let package = Package(
             path: "Sources/Modules/Duplicates/UI"
         ),
         .target(
-            name: "Module_Rules_Engine",
+            name: "Module_Autopilot_Engine",
             dependencies: ["HelmContract", "HelmRuntime"],
-            path: "Sources/Modules/Rules/Engine"
+            path: "Sources/Modules/Autopilot/Engine"
         ),
         .target(
-            name: "Module_Rules_UI",
-            dependencies: ["HelmContract", "HelmUI", "Module_Rules_Engine"],
-            path: "Sources/Modules/Rules/UI"
+            name: "Module_Autopilot_UI",
+            dependencies: ["HelmContract", "HelmUI", "Module_Autopilot_Engine"],
+            path: "Sources/Modules/Autopilot/UI"
         ),
         .target(
             name: "Module_Layout_Engine",
@@ -114,7 +114,7 @@ let package = Package(
                            "Module_Leftovers_UI",
                            "Module_Disk_UI",
                            "Module_Duplicates_UI",
-                           "Module_Rules_UI",
+                           "Module_Autopilot_UI",
                            "Module_Layout_UI"]
         ),
         .testTarget(
@@ -154,14 +154,14 @@ let package = Package(
             path: "Tests/Modules/Disk/EngineTests"
         ),
         .testTarget(
-            name: "Module_Rules_EngineTests",
-            dependencies: ["Module_Rules_Engine"],
-            path: "Tests/Modules/Rules/EngineTests"
+            name: "Module_Autopilot_EngineTests",
+            dependencies: ["Module_Autopilot_Engine"],
+            path: "Tests/Modules/Autopilot/EngineTests"
         ),
         .testTarget(
-            name: "Module_Rules_UITests",
-            dependencies: ["Module_Rules_UI"],
-            path: "Tests/Modules/Rules/UITests"
+            name: "Module_Autopilot_UITests",
+            dependencies: ["Module_Autopilot_UI"],
+            path: "Tests/Modules/Autopilot/UITests"
         ),
         .testTarget(
             name: "Module_Duplicates_EngineTests",

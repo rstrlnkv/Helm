@@ -1,13 +1,13 @@
 import HelmContract
 import HelmRuntime
 import HelmUI
-import Module_Rules_Engine
+import Module_Autopilot_Engine
 import SwiftUI
 
 /// The module's page: the folders being watched, and each one's rules in the
 /// order they will be tried.
-public struct RulesSettingsPage: View {
-    @StateObject private var rvm: RulesViewModel
+public struct AutopilotSettingsPage: View {
+    @StateObject private var rvm: AutopilotViewModel
     @State private var editing: EditingRule?
     @State private var diskAccess: PermissionState = .granted
 
@@ -19,13 +19,13 @@ public struct RulesSettingsPage: View {
     }
 
     public init(vm: ModuleViewModel) {
-        _rvm = StateObject(wrappedValue: RulesViewModel(vm: vm))
+        _rvm = StateObject(wrappedValue: AutopilotViewModel(vm: vm))
     }
 
     public var body: some View {
         VStack(spacing: 0) {
             if diskAccess == .denied {
-                HelmPermissionNote(need: .fullDiskAccess, text: RuStr.needsAccess)
+                HelmPermissionNote(need: .fullDiskAccess, text: ApStr.needsAccess)
                     .padding(.horizontal, 20).padding(.vertical, 10)
                 Divider()
             }
@@ -41,7 +41,7 @@ public struct RulesSettingsPage: View {
                 HStack {
                     Text(banner).font(.callout)
                     Spacer()
-                    Button(RuStr.done) { rvm.dismissBanner() }.controlSize(.small)
+                    Button(ApStr.done) { rvm.dismissBanner() }.controlSize(.small)
                 }
                 .padding(.horizontal, 20).padding(.vertical, 12)
             }
@@ -56,11 +56,11 @@ public struct RulesSettingsPage: View {
 
     private var toolbar: some View {
         HStack(spacing: 8) {
-            Text(RuStr.firstMatchNote)
+            Text(ApStr.firstMatchNote)
                 .font(.caption).foregroundStyle(HelmText.faint)
                 .lineLimit(2).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 12)
-            Button(RuStr.addFolder) { rvm.addFolder() }
+            Button(ApStr.addFolder) { rvm.addFolder() }
                 .controlSize(.small)
                 .fixedSize()
         }
@@ -70,13 +70,13 @@ public struct RulesSettingsPage: View {
     @ViewBuilder private var content: some View {
         if rvm.folders.isEmpty {
             HelmCenteredContent(spacing: 14) {
-                HelmIconPlate(symbol: "folder.badge.gearshape",
+                HelmIconPlate(symbol: "location.north.circle",
                               tint: ModuleCategory.files.tint, size: 56)
-                Text(RuStr.startHint)
+                Text(ApStr.startHint)
                     .foregroundStyle(HelmText.quiet)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 420)
-                Button(RuStr.addFolder) { rvm.addFolder() }
+                Button(ApStr.addFolder) { rvm.addFolder() }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
             }
@@ -106,13 +106,13 @@ public struct RulesSettingsPage: View {
                 .font(.callout.weight(.semibold))
                 .lineLimit(1).truncationMode(.middle)
             Spacer(minLength: 8)
-            Button(RuStr.runNow) { Task { await rvm.runNow(folder) } }
+            Button(ApStr.runNow) { Task { await rvm.runNow(folder) } }
                 .controlSize(.small)
                 .disabled(folder.rules.allSatisfy { !$0.enabled })
             Menu {
-                Toggle(RuStr.depth, isOn: Binding(get: { folder.depth > 1 },
+                Toggle(ApStr.depth, isOn: Binding(get: { folder.depth > 1 },
                                                   set: { rvm.setDepth($0, folder: folder) }))
-                Button(RuStr.removeFolder, role: .destructive) { rvm.removeFolder(folder) }
+                Button(ApStr.removeFolder, role: .destructive) { rvm.removeFolder(folder) }
             } label: {
                 Image(systemName: "ellipsis.circle")
             }
@@ -123,13 +123,13 @@ public struct RulesSettingsPage: View {
 
     @ViewBuilder private func folderRows(_ folder: WatchedFolder) -> some View {
         if folder.rules.isEmpty {
-            Text(RuStr.noRules)
+            Text(ApStr.noRules)
                 .font(.callout).foregroundStyle(HelmText.faint)
         }
         ForEach(folder.rules) { rule in
             ruleRow(rule, in: folder)
         }
-        Button(RuStr.newRule) {
+        Button(ApStr.newRule) {
             editing = EditingRule(folder: folder, rule: rvm.addRule(to: folder))
         }
         .controlSize(.small)
@@ -166,7 +166,7 @@ public struct RulesSettingsPage: View {
                 Image(systemName: "slider.horizontal.3")
             }
             .buttonStyle(.borderless)
-            .accessibilityLabel(RuStr.edit)
+            .accessibilityLabel(ApStr.edit)
             // The order is the rule: the arrows are how it is set, and they are
             // reachable from the keyboard, which a drag is not.
             Button { rvm.move(rule, in: folder, by: -1) } label: {
@@ -184,8 +184,8 @@ public struct RulesSettingsPage: View {
         }
         .contentShape(Rectangle())
         .contextMenu {
-            Button(RuStr.edit) { editing = EditingRule(folder: folder, rule: rule) }
-            Button(RuStr.delete, role: .destructive) { rvm.remove(rule, from: folder) }
+            Button(ApStr.edit) { editing = EditingRule(folder: folder, rule: rule) }
+            Button(ApStr.delete, role: .destructive) { rvm.remove(rule, from: folder) }
         }
     }
 }

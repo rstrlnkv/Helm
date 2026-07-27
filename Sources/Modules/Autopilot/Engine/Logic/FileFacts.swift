@@ -12,6 +12,13 @@ import Foundation
 /// `Date()` inside the matcher is a test that passes today.
 public struct FileFacts: Equatable, Sendable {
     public let name: String
+    /// Where the file is. A rule is *decided* from the facts and *performed* on
+    /// this: without it the runner rebuilt the path as folder + name, which
+    /// names a different file for anything below the top level. At depth 2 a
+    /// plan about `sub/big.bin` was executed against `big.bin` — and where no
+    /// such twin existed, nothing below the top level ran at all while the dry
+    /// run promised it would.
+    public let path: String
     public let kind: FileKind
     public let bytes: Int
     public let added: Date
@@ -22,10 +29,12 @@ public struct FileFacts: Equatable, Sendable {
     public let isDirectory: Bool
     public let now: Date
 
-    public init(name: String, kind: FileKind, bytes: Int, added: Date, modified: Date,
+    public init(name: String, path: String = "", kind: FileKind, bytes: Int,
+                added: Date, modified: Date,
                 downloadedFrom: String? = nil, tags: [String] = [],
                 isDirectory: Bool = false, now: Date = Date()) {
         self.name = name
+        self.path = path
         self.kind = kind
         self.bytes = bytes
         self.added = added

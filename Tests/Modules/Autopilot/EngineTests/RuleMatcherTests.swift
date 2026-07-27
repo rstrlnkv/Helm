@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import Module_Rules_Engine
+@testable import Module_Autopilot_Engine
 
 /// Whether a file matches a rule. Everything here is arithmetic on facts — no
 /// filesystem — which is the point of `FileFacts` existing at all: the question

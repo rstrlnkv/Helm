@@ -271,7 +271,7 @@ There are **two** gates and they answer different questions. `RemovableScope`
 asks what belongs to an *application*; `UserFileScope` (also HelmRuntime, and
 formerly the disk module's private `DiskSafety`) asks what belongs to the
 *user* — everything except `/System`, `/usr`, `/bin`, a home directory itself, a
-volume root and a top-level directory. Disk, Duplicates and Rules use the
+volume root and a top-level directory. Disk and Duplicates use the
 second; Leftovers and Uninstaller the first. Wiring a module to the wrong one is
 a real mistake with a misleading symptom: the duplicate finder pointed at
 `~/Downloads` under `RemovableScope` disabled every checkbox in its own result,
@@ -281,14 +281,24 @@ Refusals are reported, never dropped: they come back as
 `TrashFailure.Reason.outOfScope`, which is Helm refusing, not macOS — nothing was
 attempted.
 
-## Rules — read before touching
+## Autopilot — read before touching
 
-The rules module acts on somebody's files without being asked each time, so its
+The autopilot module acts on somebody's files without being asked each time, so its
 three guarantees are load-bearing rather than nice to have.
+
+**A rule may only reach the user's own working files.** Neither shared gate is
+right for this: `RemovableScope` is about applications, and `UserFileScope` is a
+blocklist that says yes to `~/Library/Messages`, `~/Library/LaunchAgents` and
+another account's home. Helm holds Full Disk Access and these rules are JSON in
+a plist any process running as the user can write, so `WatchScope` — the
+module's own gate — is positional and narrow: inside the home directory, never
+inside `~/Library`, or inside a volume under `/Volumes`. It resolves symlinks
+first, because a destination chosen through the panel can be replaced by a link
+afterwards and the question is where a path *leads*.
 
 **A rule must not act on the same file twice.** A rule that sorts a file into a
 subfolder of the folder it watches sees it again on the next sweep. `RuleStamp`
-writes `com.helm.rules.stamp` — an extended attribute holding the ids of the
+writes `com.helm.autopilot.stamp` — an extended attribute holding the ids of the
 rules that have had their turn — and the runner asks before it acts. An xattr
 rather than a list of paths because it travels with the file across a move,
 which is exactly the case that matters. A stamp that will not stick is logged

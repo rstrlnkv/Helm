@@ -39,6 +39,7 @@ public enum SymbolInk {
         "shippingbox": 1.08,
         "gearshape": 1.07,
         "info.circle": 1.01,
+        "location.north.circle": 1.01,
         "chart.pie": 1.01,
         "lock.shield": 0.99,
     ]
@@ -47,7 +48,7 @@ public enum SymbolInk {
     /// as the mean rather than a round number so the correction is as small as
     /// it can be — an unmeasured symbol lands here and is no worse off than it
     /// was before.
-    static let mean: CGFloat = 1.103
+    static let mean: CGFloat = 1.095
 
     /// The factor to multiply a point size by so this symbol paints the same
     /// amount as the rest. 1 for anything not in the table.
