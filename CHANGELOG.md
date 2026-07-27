@@ -32,7 +32,22 @@ features, PATCH = fixes.
   search's unreadable files and a missing flag-artwork bundle now log at all,
   having been silent.
 
+- **The disk list can be walked from the keyboard.** Arrow keys move between
+  rows, Return goes into a folder (and reveals a file, which is what "open"
+  means for one), ⌘↑ comes back out — the pair Finder uses. The list had no
+  selection at all, so its rows were not focusable and the only way in was a
+  double-click.
+
 ### Fixed
+- **The breadcrumb bar did not fit.** Measured with real font metrics: it
+  needed 784 pt against the 610 the window's minimum leaves, and against the
+  690 of its default — so it overflowed at every size, not only when squeezed.
+  It was carrying two jobs: where you are, and what you can do. The scan
+  statement ("1 449 960 files in 76.7 s", the widest thing in the row) is
+  neither, and now sits under the ring with the measurement it describes; the
+  Stop control stays in the bar, because that is an action. With deep paths
+  collapsing one level sooner it comes to 572 pt, which fits the minimum
+  window with 38 pt to spare.
 - **Two hotkey recorders could be armed at once.** A page can hold more than
   one and the keyboard page has since 0.7.1; a mouse click is not a key press,
   so arming the second never disarmed the first. One keystroke landed in both,
