@@ -51,11 +51,18 @@ features, PATCH = fixes.
   nearly worthless at that length — ask one whether `yt` is a word and it may
   well say yes. That left the most common mislayouts of all — `yf` for `на`,
   `yt` for `не`, `rfr` for `как`, `xnj` for `что` — untouched. Short words are
-  now decided by
-  confidence rather than permission: a curated list of common Russian and
-  English function words, converted only when the *translated* form is in it
-  and the typed form is not. Nothing longer than three characters is in the
+  now decided by confidence rather than permission: a curated list of common
+  Russian and English function words, converted only when the *translated* form
+  is in it and the typed form is not. Nothing longer than three characters is in the
   list, so the spell checker still has the last word everywhere else.
+- **Reordering the modules is behind an Edit button.** Eight rows each carrying
+  a drag handle and a pair of arrows read as a list of controls rather than a
+  list of modules, and the order is looked at far more often than it is
+  changed. The rows are now the modules and nothing else until the section is
+  edited; both ways of moving them — the drag and the arrows, one direct and
+  one reachable from the keyboard — appear together and go away together. The
+  drag gesture is attached only while editing, so a row nobody meant to move no
+  longer lifts.
 
 ### Fixed
 - **The duplicate finder was wired to the wrong deletion gate.** `HelmRuntime`
