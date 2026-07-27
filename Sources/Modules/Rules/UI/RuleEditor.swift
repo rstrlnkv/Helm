@@ -1,0 +1,170 @@
+import AppKit
+import HelmRuntime
+import HelmUI
+import Module_Rules_Engine
+import SwiftUI
+
+/// Writing one rule: when, then, and what that would do to the folder as it
+/// stands.
+///
+/// The dry run is not a convenience here. A rule is a decision made once and
+/// carried out from then on, so the editor's job is to make the consequence
+/// visible before the switch is reachable — the same discipline as the
+/// duplicate basket, one level earlier.
+struct RuleEditor: View {
+    @ObservedObject var rvm: RulesViewModel
+    let folder: WatchedFolder
+    @State private var rule: Rule
+    @Environment(\.dismiss) private var dismiss
+
+    init(rvm: RulesViewModel, folder: WatchedFolder, rule: Rule) {
+        self.rvm = rvm
+        self.folder = folder
+        _rule = State(initialValue: rule)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+            Divider()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    conditions
+                    action
+                    dryRun
+                }
+                .padding(20)
+            }
+            Divider()
+            footer
+        }
+        .frame(width: 640, height: 620)
+        .task { await rvm.runPreview(for: folder, rule: rule) }
+        .onDisappear { rvm.clearPreview() }
+    }
+
+    private var header: some View {
+        HStack(spacing: 10) {
+            HelmIconPlate(symbol: "folder.badge.gearshape",
+                          tint: ModuleCategory.files.tint, size: 26)
+            TextField(RuStr.ruleName, text: $rule.name)
+                .textFieldStyle(.plain)
+                .font(.system(size: 15, weight: .semibold))
+            Spacer()
+        }
+        .padding(.horizontal, 20).padding(.vertical, 14)
+    }
+
+    // MARK: - When
+
+    private var conditions: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Text(RuStr.whenLabel).font(.headline)
+                Picker("", selection: $rule.match) {
+                    Text(RuStr.matchAll).tag(RuleMatch.all)
+                    Text(RuStr.matchAny).tag(RuleMatch.any)
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+                .fixedSize()
+                Spacer()
+                Button(RuStr.addCondition) {
+                    rule.conditions.append(.name(.contains, ""))
+                }
+                .controlSize(.small)
+            }
+            ForEach(Array(rule.conditions.enumerated()), id: \.offset) { index, condition in
+                ConditionRow(condition: Binding(
+                    get: { rule.conditions[index] },
+                    set: { rule.conditions[index] = $0 })) {
+                        rule.conditions.remove(at: index)
+                    }
+            }
+            if rule.conditions.isEmpty {
+                // Stated rather than left to be discovered: an empty rule
+                // matching nothing is a deliberate choice, and the screen that
+                // lets someone make one has to say so.
+                Text(RuStr.nothingWouldHappen)
+                    .font(.caption).foregroundStyle(HelmText.faint)
+            }
+        }
+    }
+
+    // MARK: - Then
+
+    private var action: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(RuStr.thenLabel).font(.headline)
+            ActionRow(action: $rule.action)
+        }
+    }
+
+    // MARK: - What would happen
+
+    private var dryRun: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(RuStr.dryRun).font(.headline)
+                Spacer()
+                if rvm.previewingRuleID == rule.id, !rvm.preview.isEmpty {
+                    Text("\(rvm.preview.count)")
+                        .font(.caption).foregroundStyle(HelmText.faint)
+                        .contentTransition(.numericText())
+                }
+            }
+            Text(RuStr.dryRunNote)
+                .font(.caption).foregroundStyle(HelmText.faint)
+                .fixedSize(horizontal: false, vertical: true)
+            if rvm.preview.isEmpty {
+                Text(RuStr.nothingWouldHappen)
+                    .font(.callout).foregroundStyle(HelmText.quiet)
+                    .padding(.vertical, 6)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(rvm.preview) { row in
+                        HStack(spacing: 8) {
+                            Text(row.name).lineLimit(1).truncationMode(.middle)
+                            Spacer()
+                            Text(RuleSummary.describe(row.action))
+                                .font(.caption).foregroundStyle(HelmText.quiet)
+                                .lineLimit(1)
+                        }
+                        .padding(.vertical, 5)
+                        if row.id != rvm.preview.last?.id { Divider() }
+                    }
+                }
+                .helmCard()
+            }
+        }
+        // Re-asked as the rule is written, so the list answers the rule on
+        // screen rather than the one before the last keystroke.
+        .task(id: previewKey) { await rvm.runPreview(for: folder, rule: rule) }
+    }
+
+    /// What a change to the rule means for the preview. The name is not in it:
+    /// renaming a rule cannot change what it would do.
+    private var previewKey: String {
+        var key = rule.match.rawValue
+        for condition in rule.conditions { key += RuleSummary.describe(condition) }
+        return key + RuleSummary.describe(rule.action)
+    }
+
+    private var footer: some View {
+        HStack {
+            Toggle(RuStr.enableRule, isOn: $rule.enabled)
+                .toggleStyle(.switch)
+                // A rule with no conditions matches nothing; switching it on
+                // would be switching on a rule that cannot fire.
+                .disabled(rule.conditions.isEmpty)
+            Spacer()
+            Button(RuStr.cancel) { dismiss() }
+            Button(RuStr.done) {
+                rvm.save(rule, in: folder)
+                dismiss()
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding(.horizontal, 20).padding(.vertical, 14)
+    }
+}

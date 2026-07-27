@@ -7,6 +7,34 @@ features, PATCH = fixes.
 
 ## [Unreleased] — 0.7.2
 
+### Added
+- **Rules — folders that tidy themselves.** Point Helm at a folder and give it
+  rules: a file that arrives is checked against them in order and the first one
+  that matches is the one that runs, so the list reads top to bottom as a single
+  decision and exactly one thing happens to a file. Conditions on name,
+  extension, kind, size, date added, date modified, Finder tag and **where a
+  file was downloaded from**; actions to move, sort into subfolders by kind or
+  by month, rename by pattern, tag, or move to the Trash through the same gate
+  every other module uses.
+  - **A rule is shown before it is switched on.** The editor's dry run lists the
+    files in the folder right now and what would happen to each, and the switch
+    sits beside it — a rule is a decision made once and carried out from then
+    on, so the consequence has to be visible first.
+  - **Nothing is ever overwritten.** An arriving file whose name is taken is
+    numbered the way the Finder numbers a copy: it is the one failure this
+    module could commit that nobody can undo.
+  - **Nothing is acted on twice.** A rule that sorts a file into a subfolder of
+    the folder it watches would otherwise see it again on every sweep; each
+    file carries an extended attribute recording which rules have had their
+    turn, and it travels with the file across a move.
+  - Three triggers, because none covers the others: the folder is watched, so a
+    file that arrives is sorted a moment later; a sweep runs hourly, because
+    "older than 30 days" comes true with nothing happening at all; and there is
+    a Run now.
+  - **No script action**, which is Hazel's most powerful one. Helm is ad-hoc
+    signed and unsandboxed and its rules live in a plist any process can write —
+    a script action would turn "a file appeared" into arbitrary code execution.
+
 ### Changed
 - **A design pass over the whole app**, in the macOS 26/27 idiom.
   - **The masthead no longer walks away from its own page.** `HelmPageHeader`
