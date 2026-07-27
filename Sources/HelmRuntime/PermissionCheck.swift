@@ -92,7 +92,7 @@ public extension PermissionCheck {
 
 /// Why a path refused to move, so the UI can say something actionable.
 public enum TrashFailure {
-    public enum Reason: String, Sendable, Equatable {
+    public enum Reason: String, Codable, Sendable, Equatable, Hashable {
         case needsFullDiskAccess, activeSystemExtension, noPermission, systemRefused
         /// Helm itself refused: the path is not inside a folder an app may
         /// leave things in. Not a macOS error — nothing was attempted.

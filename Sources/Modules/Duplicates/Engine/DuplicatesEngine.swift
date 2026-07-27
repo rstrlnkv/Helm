@@ -32,7 +32,7 @@ public final class DuplicatesEngine: ModuleEngine, @unchecked Sendable {
         finderBox.current?.cancel()
         let finder = DuplicateScanner()
         finderBox.set(finder)
-        let groups: [DuplicateGroup]? = await blocking {
+        let groups: [DuplicateGroup]? = await offTheCooperativePool {
             finder.find(under: path, onProgress: { progress in
                 if let data = try? JSONEncoder().encode(progress) {
                     self.localTransport.emit(EngineEvent(name: "progress", payload: data))
@@ -47,39 +47,16 @@ public final class DuplicatesEngine: ModuleEngine, @unchecked Sendable {
     /// the view model builds the list, and this decides what may go.
     /// Refusals come back in `failed`, never dropped.
     public func trash(_ paths: [String]) async -> DuplicateRemoval {
-        await blocking {
+        await offTheCooperativePool {
             let unique = Array(Set(paths))
             let (allowed, refused) = UserFileScope.partition(unique)
-            var removed: [String] = [], failed: [String] = []
-            var freed = 0
-            for path in refused {
-                failed.append(path)
-                HelmLog.shared.warn("duplicates",
-                                    "refused out-of-scope path: \(Redact.path(path))")
-            }
-            for path in allowed {
-                let url = URL(fileURLWithPath: path)
-                let size = (try? url.resourceValues(forKeys: [.totalFileAllocatedSizeKey]))?
-                    .totalFileAllocatedSize ?? 0
-                do {
-                    try FileManager.default.trashItem(at: url, resultingItemURL: nil)
-                    removed.append(path); freed += size
-                } catch {
-                    failed.append(path)
-                    HelmLog.shared.failure("duplicates",
-                                           "trash refused \(Redact.path(path))", error)
-                }
-            }
-            HelmLog.shared.info("duplicates", "trashed \(removed.count), failed \(failed.count)")
-            return DuplicateRemoval(removed: removed, failed: failed, freedBytes: freed)
+            let result = HelmTrash.remove(allowed: allowed, outOfScope: refused,
+                                          module: "duplicates")
+            return DuplicateRemoval(removed: result.removed, refused: result.refused,
+                                    freedBytes: result.freedBytes)
         }
     }
 
-    private func blocking<T: Sendable>(_ work: @escaping @Sendable () -> T) async -> T {
-        await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async { continuation.resume(returning: work()) }
-        }
-    }
 
     // MARK: - Transport
 
@@ -110,12 +87,15 @@ public final class DuplicatesEngine: ModuleEngine, @unchecked Sendable {
 
 public struct DuplicateRemoval: Codable, Equatable, Sendable {
     public let removed: [String]
-    public let failed: [String]
+    /// With the reason attached — see `DiskRemoval`.
+    public let refused: [HelmTrash.Refusal]
     public let freedBytes: Int
 
-    public init(removed: [String], failed: [String], freedBytes: Int) {
+    public var failed: [String] { refused.map(\.path) }
+
+    public init(removed: [String], refused: [HelmTrash.Refusal], freedBytes: Int) {
         self.removed = removed
-        self.failed = failed
+        self.refused = refused
         self.freedBytes = freedBytes
     }
 }

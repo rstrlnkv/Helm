@@ -18,6 +18,21 @@ public enum Plural {
         }
     }
 
+    /// "3 приложения", "1 app" — the uninstaller's status line, which counts
+    /// applications rather than the files inside them.
+    public static func apps(_ count: Int, language: String) -> String {
+        switch language {
+        case "ru": return "\(count) " + russian(count, "приложение", "приложения", "приложений")
+        case "es": return "\(count) " + (count == 1 ? "app" : "apps")
+        case "fr": return "\(count) " + (count <= 1 ? "app" : "apps")
+        case "de": return "\(count) " + (count == 1 ? "App" : "Apps")
+        case "pt": return "\(count) " + (count == 1 ? "app" : "apps")
+        case "ja": return "アプリ\(count)件"
+        case "zh": return "\(count)个应用"
+        default: return "\(count) " + (count == 1 ? "app" : "apps")
+        }
+    }
+
     /// "3 файла", "1 file" — for the modules that count files rather than the
     /// generic objects `items` counts. A duplicate finder saying "2 файлов"
     /// reads as a bug in exactly the dialog that must not look buggy.

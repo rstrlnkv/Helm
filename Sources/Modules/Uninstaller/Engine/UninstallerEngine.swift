@@ -35,27 +35,21 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
 
     /// Runs blocking filesystem work on a dispatch queue so it never parks a
     /// Swift-concurrency pool thread (app-size scans walk whole bundles).
-    private func blocking<T: Sendable>(_ work: @escaping @Sendable () -> T) async -> T {
-        await withCheckedContinuation { cont in
-            DispatchQueue.global(qos: .userInitiated).async { cont.resume(returning: work()) }
-        }
-    }
-
     private var library: URL { home.appendingPathComponent("Library") }
 
     // MARK: - Operations
 
     public func listApps() async -> [InstalledApp] {
-        await blocking { self.apps.installedApps() }
+        await offTheCooperativePool { self.apps.installedApps() }
     }
 
     /// Sizes for the list already on screen.
     public func appSizes() async -> [String: Int] {
-        await blocking { self.apps.appSizes(self.apps.installedApps()) }
+        await offTheCooperativePool { self.apps.appSizes(self.apps.installedApps()) }
     }
 
     public func scan(bundleID: String, appPath: String, appName: String) async throws -> ScanResult {
-        await blocking { self.scanSync(bundleID: bundleID, appPath: appPath, appName: appName) }
+        await offTheCooperativePool { self.scanSync(bundleID: bundleID, appPath: appPath, appName: appName) }
     }
 
     private func scanSync(bundleID: String, appPath: String, appName: String) -> ScanResult {
@@ -84,7 +78,7 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
     /// Trashes the selected leftover paths plus the app bundle. Sizes are read
     /// before trashing; only successfully trashed items count toward freedBytes.
     public func uninstall(appPath: String, paths: [String]) async throws -> UninstallResult {
-        await blocking {
+        await offTheCooperativePool {
             var targets = paths
             if !targets.contains(appPath) { targets.append(appPath) }
             return self.trashSync(targets)
@@ -110,7 +104,7 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
     /// Finds leftovers whose owning app is no longer installed, grouped by bundle
     /// id. Conservative by design — see `OrphanDetector`.
     public func scanOrphans() async -> [OrphanGroup] {
-        await blocking { self.scanOrphansSync() }
+        await offTheCooperativePool { self.scanOrphansSync() }
     }
 
     private func scanOrphansSync() -> [OrphanGroup] {
@@ -134,7 +128,7 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
 
     /// Trashes arbitrary leftover paths (no app bundle involved).
     public func trashPaths(_ paths: [String]) async -> UninstallResult {
-        await blocking { self.trashSync(paths) }
+        await offTheCooperativePool { self.trashSync(paths) }
     }
 
     /// Reads Info.plist for a bundle so failures can be tied to the app that
@@ -224,7 +218,7 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
                 let res = try await self.uninstall(appPath: r.appPath, paths: r.paths)
                 return (try? JSONEncoder().encode(res)) ?? Data()
             case "systemExtensions":
-                let list = await self.blocking { self.extensions.installedExtensions() }
+                let list = await offTheCooperativePool { self.extensions.installedExtensions() }
                 return (try? JSONEncoder().encode(list)) ?? Data()
             case "scanOrphans":
                 return (try? JSONEncoder().encode(await self.scanOrphans())) ?? Data()
