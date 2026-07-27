@@ -287,7 +287,6 @@ private struct MenuBarSettingsView: View {
     @State private var showSettingsButton = AppSettings.showSettingsButton
     @State private var showQuitButton = AppSettings.showQuitButton
     @State private var orderedModules: [String] = ModuleHost.shared.orderedModuleIDs
-    @State private var dragging: String?
     /// The order is read far more often than it is changed, so the controls
     /// for changing it are not on screen by default: eight rows of handles and
     /// arrow pairs read as a list of controls rather than a list of modules.
@@ -310,10 +309,7 @@ private struct MenuBarSettingsView: View {
             Divider()
             settingsForm
         }
-        .onAppear {
-            orderedModules = ModuleHost.shared.orderedModuleIDs
-            dragging = nil
-        }
+        .onAppear { orderedModules = ModuleHost.shared.orderedModuleIDs }
     }
 
     private func move(_ id: String, by offset: Int) {
@@ -328,18 +324,19 @@ private struct MenuBarSettingsView: View {
     }
 
 
-    /// One module in the order list. Reading and rearranging are different
-    /// tasks, so the row shows the handle, the arrows and the drag only while
-    /// the section is being edited; otherwise it is the module, and nothing
-    /// else. Both paths stay: dragging is the direct one, the arrows the one
-    /// that works from the keyboard.
+    /// One module in the order list.
+    ///
+    /// Reading the order and rearranging it are different tasks, so the handle
+    /// and the arrows appear only while the section is being edited; otherwise
+    /// the row is the module and nothing else. The drag itself belongs to the
+    /// `List` — see `moduleOrderList` for why that matters.
     @ViewBuilder
     private func moduleOrderRow(_ id: String,
                                 _ descriptor: any ModuleDescriptor) -> some View {
         HStack(spacing: 10) {
             if editingOrder {
                 Image(systemName: "line.3.horizontal")
-                    .foregroundStyle(dragging == id ? HelmText.quiet : HelmText.faint)
+                    .foregroundStyle(HelmText.faint)
                     .accessibilityHidden(true)
             }
             Image(systemName: descriptor.moduleMetadata.sfSymbol)
@@ -351,8 +348,7 @@ private struct MenuBarSettingsView: View {
             Text(descriptor.moduleMetadata.name)
             Spacer()
             if editingOrder {
-                // Dragging is fiddly inside a Form; the arrows are the reliable
-                // path and keyboard-reachable.
+                // The arrows are what a keyboard has instead of a drag.
                 Button {
                     move(id, by: -1)
                 } label: { Image(systemName: "chevron.up") }
@@ -367,12 +363,55 @@ private struct MenuBarSettingsView: View {
                 .disabled(orderedModules.last == id)
             }
         }
+        .frame(height: Self.orderRowHeight)
         .contentShape(Rectangle())
-        .opacity(dragging == id ? 0.4 : 1)
-        // `.onDrag` on a row that cannot be reordered would still lift it, so
-        // the gesture is attached only while editing.
-        .modifier(ModuleOrderDrag(id: id, active: editingOrder,
-                                  order: $orderedModules, dragging: $dragging))
+        // A `List` row is its content plus the style's own vertical inset, so
+        // the height set above is not the height that lands: at eight modules
+        // the guessed total was two rows short and the list clipped them.
+        // Zeroing the inset makes `count × orderRowHeight` exact.
+        .listRowInsets(EdgeInsets(top: 0, leading: 8, bottom: 0, trailing: 8))
+    }
+
+    /// The order list, and the reason it is a `List` rather than rows in the
+    /// `Form` around it.
+    ///
+    /// `.onMove` is inert outside a `List`, so the first version carried its own
+    /// `.onDrag`/`.onDrop` with an `NSItemProvider` of the row's id. That
+    /// reorders, but it is not the system's drag: no lift, no gap opening under
+    /// the cursor, no drop animation — the row simply appeared somewhere else
+    /// on release. A `List` gives all of it for free and is what every other
+    /// reorderable list on the machine does.
+    ///
+    /// It costs a fixed height: a `List` inside a `Form` would otherwise take
+    /// whatever it is offered and scroll inside it, which is a second scroll
+    /// view inside the page's own. Rows are a fixed height for the same reason,
+    /// so the arithmetic is exact rather than a guess.
+    private static let orderRowHeight: CGFloat = 28
+
+    private var moduleOrderList: some View {
+        // Spelled out rather than inlined: the ternary is an optional closure,
+        // which the type checker cannot infer inside a `List` builder.
+        var onMove: ((IndexSet, Int) -> Void)?
+        if editingOrder { onMove = { moveRows(from: $0, to: $1) } }
+        return List {
+            ForEach(orderedModules, id: \.self) { id in
+                if let descriptor = ModuleRegistry.all.first(where: { $0.idRaw == id }) {
+                    moduleOrderRow(id, descriptor)
+                }
+            }
+            .onMove(perform: onMove)
+        }
+        .listStyle(.plain)
+        .scrollDisabled(true)
+        .scrollContentBackground(.hidden)
+        .environment(\.defaultMinListRowHeight, Self.orderRowHeight)
+        .frame(height: CGFloat(orderedModules.count) * Self.orderRowHeight)
+        .animation(HelmMotion.interface, value: orderedModules)
+    }
+
+    private func moveRows(from source: IndexSet, to destination: Int) {
+        orderedModules = ModuleOrder.move(orderedModules, from: source, to: destination)
+        AppSettings.moduleOrder = orderedModules
     }
 
     private func permissionRow(_ title: String, detail: String, granted: Bool,
@@ -407,11 +446,7 @@ private struct MenuBarSettingsView: View {
             Section {
                 Text(editingOrder ? AppStr.moduleOrderEditNote : AppStr.moduleOrderNote)
                     .font(.caption).foregroundStyle(.secondary)
-                ForEach(orderedModules, id: \.self) { id in
-                    if let descriptor = ModuleRegistry.all.first(where: { $0.idRaw == id }) {
-                        moduleOrderRow(id, descriptor)
-                    }
-                }
+                moduleOrderList
             } header: {
                 HStack {
                     Text(AppStr.moduleOrderSection)
@@ -419,7 +454,6 @@ private struct MenuBarSettingsView: View {
                     Button(editingOrder ? AppStr.done : AppStr.edit) {
                         withAnimation(HelmMotion.interface) {
                             editingOrder.toggle()
-                            if !editingOrder { dragging = nil }
                         }
                     }
                     .buttonStyle(.borderless)
@@ -515,68 +549,6 @@ private struct MenuBarSettingsView: View {
 
     private var currentStyle: MenuBarIconStyle {
         MenuBarIconStyle(rawValue: style) ?? .ring
-    }
-}
-
-/// Reorders on hover while a row is being dragged, and persists on drop —
-/// the pattern SwiftUI lists use, done by hand because Form has no edit mode.
-/// Drag-to-reorder, attached only while the order section is being edited.
-///
-/// A `.onDrag` that is always present lifts rows nobody asked to move — the
-/// list is read far more often than it is rearranged — and an `.onDrop` with no
-/// drag to receive silently accepts text dropped from elsewhere.
-private struct ModuleOrderDrag: ViewModifier {
-    let id: String
-    let active: Bool
-    @Binding var order: [String]
-    @Binding var dragging: String?
-
-    func body(content: Content) -> some View {
-        if active {
-            content
-                .onDrag {
-                    dragging = id
-                    return NSItemProvider(object: id as NSString)
-                }
-                // NSItemProvider(object: NSString) registers
-                // public.utf8-plain-text; accepting only `.text` meant the drop
-                // was never offered and nothing moved.
-                .onDrop(of: [.utf8PlainText, .plainText, .text],
-                        delegate: ModuleDropDelegate(item: id, order: $order,
-                                                     dragging: $dragging))
-        } else {
-            content
-        }
-    }
-}
-
-private struct ModuleDropDelegate: DropDelegate {
-    let item: String
-    @Binding var order: [String]
-    @Binding var dragging: String?
-
-    func dropEntered(info: DropInfo) {
-        guard let dragging, dragging != item,
-              let from = order.firstIndex(of: dragging),
-              let to = order.firstIndex(of: item) else { return }
-        withAnimation(HelmMotion.interface) {
-            order = ModuleOrder.move(order, from: IndexSet(integer: from),
-                                     to: to > from ? to + 1 : to)
-        }
-        // Persist as it moves. A drag released outside the list never reaches
-        // `performDrop`, and saving only there left the list showing an order
-        // the panel and sidebar knew nothing about.
-        AppSettings.moduleOrder = order
-    }
-
-    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
-
-    func dropExited(info: DropInfo) { dragging = nil }
-
-    func performDrop(info: DropInfo) -> Bool {
-        AppSettings.moduleOrder = order
-        dragging = nil
-        return true
     }
 }
 
