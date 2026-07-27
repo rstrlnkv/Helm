@@ -155,10 +155,16 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// subfolders" setting did not reach the module's primary trigger and a
     /// depth-1 watch on Downloads acted on every file in every project unzipped
     /// into it.
+    /// The unattended path: a file arrived and a rule acted on it with nobody
+    /// looking. Which is exactly why it is logged — this used to record only
+    /// refusals and failures, so a rule that worked left no trace at all, and
+    /// the answer to "what moved my file" was nowhere. `sweep` has always
+    /// logged its totals; this had `default: break`.
     private func handle(_ changed: [String]) {
         let watched = folders.filter(\.enabled)
         guard !watched.isEmpty else { return }
         queue.async { [self] in
+            var acted = 0
             for path in Set(changed) {
                 guard let folder = self.folder(for: path, among: watched),
                       FileManager.default.fileExists(atPath: path),
@@ -166,15 +172,32 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
                       let plan = RulePlan.decide(facts, rules: folder.activeRules)
                 else { continue }
                 switch runner.run(plan, at: path) {
+                case let .moved(destination):
+                    acted += 1
+                    HelmLog.shared.info("autopilot",
+                                        "moved \(Redact.path(path)) → \(Redact.path(destination))")
+                case let .renamed(name):
+                    acted += 1
+                    HelmLog.shared.info("autopilot",
+                                        "renamed \(Redact.path(path)) → \(Redact.path(name))")
+                case let .tagged(tag):
+                    acted += 1
+                    HelmLog.shared.info("autopilot", "tagged \(Redact.path(path)): \(tag)")
+                case .trashed:
+                    acted += 1
+                    HelmLog.shared.info("autopilot", "trashed \(Redact.path(path))")
+                case .alreadyDone:
+                    break
                 case let .refused(reason):
                     HelmLog.shared.warn("autopilot",
                                         "refused \(Redact.path(path)): \(reason.rawValue)")
                 case let .failed(description):
                     HelmLog.shared.warn("autopilot",
                                         "failed \(Redact.path(path)): \(description)")
-                default:
-                    break
                 }
+            }
+            if acted > 0 {
+                HelmLog.shared.info("autopilot", "watcher acted on \(acted) of \(Set(changed).count)")
             }
         }
     }
