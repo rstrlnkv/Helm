@@ -5,7 +5,7 @@ description: >
   the postconditions rather than the steps. Use before cutting a build, and
   after any release to confirm it actually landed. Writes only version
   numbers, changelogs and release artefacts.
-tools: [Read, Edit, Bash, Grep, Glob]
+tools: [Read, Edit, Bash, Grep, Glob, Skill]
 model: sonnet
 ---
 
@@ -54,3 +54,11 @@ by what matters to a person, not by commit order.
 If a postcondition fails, say which, show the command output, and fix it
 before claiming the release is done. Never report success from a command
 that was not run.
+
+## Before you say a release landed
+
+Invoke `superpowers:verification-before-completion` via the Skill tool and
+follow it. This role's failure mode is announcing a step rather than confirming
+its result: a tag that never pushed, a digest line missing from the notes so the
+updater opens a web page instead of installing, an asset that uploaded empty.
+Each of those looks exactly like success from inside the script that ran it.
