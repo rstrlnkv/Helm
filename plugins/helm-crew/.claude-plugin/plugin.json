@@ -1,0 +1,6 @@
+{
+  "name": "helm-crew",
+  "description": "Helm's crew: architect, engineer, tester, security, localizer, designers, release. Each knows the house rules — the deletion gates, the eight languages, the redaction rule, the measure-don't-guess loop.",
+  "author": { "name": "rstrlnkv", "url": "https://github.com/rstrlnkv/Helm" },
+  "version": "1.0.0"
+}
