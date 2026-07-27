@@ -175,11 +175,22 @@ features, PATCH = fixes.
   subfolders by kind" without saying which subfolder, which is the one thing the
   rule you just wrote does not tell you. And a run report outlived the folder it
   described: stop watching, and it stayed on screen reporting on nothing.
+- **The status menu had no glyphs beside its modules**, and its nine entries
+  ran as one undivided list where the sidebar shows them in four groups. Each
+  row carries its module's symbol now, and the groups are ruled apart the way
+  the sidebar names them. The grouping itself is one function both lists call,
+  rather than two answers to "which modules are Files, and in what order".
+- **The What's New tags were words**, so the column they sit in was set by the
+  widest translation: Russian "Улучшено" ran half again as wide as "Испр."
+  next to it and the text beside them stepped in and out. NEW / UPD / FIX,
+  three letters, the same in every language.
 - **About showed one badge where two facts applied.** BETA is about the
-  program; DEV is about this install taking early builds. Both were true and
-  only the first appeared. The name is also centred on the same axis as the
-  mark and the tagline now — sharing a row with the badges pushed it off by
-  half their width.
+  program; DEV is about this install taking early builds — but both answer the
+  same question, "how finished is what I am running", so the channel's badge
+  replaces the other rather than sitting beside it. It is drawn to be looked
+  at now: a filled capsule with the lettering knocked out, sized and set so its
+  top meets the top of the H. The name is also centred on the same axis as the
+  mark and the tagline — sharing a row with the badge pushed it 42 pt off.
 - **When a file refused to move, Disk and Duplicates said so without saying
   why.** Four modules kept their own copy of the trash loop and three of them
   dropped the error: the path went on a `failed` list, and the person who had
