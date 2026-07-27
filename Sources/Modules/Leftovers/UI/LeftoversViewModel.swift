@@ -11,6 +11,8 @@ import Module_Leftovers_Engine
     @Published public var showAll = false
     @Published public private(set) var banner: String?
     @Published public private(set) var failures: [TrashFailureDetail] = []
+    /// How many actually moved — see `DiskViewModel.removedCount`.
+    @Published public private(set) var removedCount = 0
 
     private let client: TransportClient
 
@@ -68,6 +70,7 @@ import Module_Leftovers_Engine
     public func remove(_ item: StaleItem) async {
         let result: LeftoversRemoval? = await client.request("trash", encoding: [item.path])
         failures = result?.failed ?? []
+        removedCount = result?.removed.count ?? 0
         banner = LfStr.removedFreed(Bytes(result?.freedBytes ?? 0))
         await scan()
     }
@@ -77,6 +80,7 @@ import Module_Leftovers_Engine
         guard !paths.isEmpty else { return }
         let result: LeftoversRemoval? = await client.request("trash", encoding: paths)
         failures = result?.failed ?? []
+        removedCount = result?.removed.count ?? 0
         banner = LfStr.removedFreed(Bytes(result?.freedBytes ?? 0))
         await scan()
     }

@@ -130,7 +130,10 @@ import SwiftUI
                                        freedBytes: removal.freedBytes).principalReason
             // A count with no reason sends the person back to the same folder
             // to try the same thing again.
-            banner = why.map { "\(count) — \(TrashReasonText.sentence($0.rawValue))" } ?? count
+            // A full stop, not a dash: the reason sentences carry their own
+            // em-dash, and "refused 1 — no permission — it may be locked"
+            // reads as one run-on clause.
+            banner = why.map { "\(count). \(TrashReasonText.sentence($0.rawValue))" } ?? count
         }
     }
 
