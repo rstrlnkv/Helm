@@ -7,7 +7,7 @@ import Foundation
 /// on most keyboards. Whichever is chosen, its twin on the other side keeps
 /// working as a modifier, so nothing is lost.
 public enum TapKey: String, CaseIterable, Sendable {
-    case off, rightCommand, rightOption, rightControl, rightShift
+    case off, rightCommand, rightOption, rightControl, rightShift, globe
 
     /// The virtual key code `flagsChanged` reports.
     public var keyCode: Int64? {
@@ -17,6 +17,8 @@ public enum TapKey: String, CaseIterable, Sendable {
         case .rightOption: return 61
         case .rightControl: return 62
         case .rightShift: return 60
+        // 🌐 on the keyboards that have it. `kVK_Function` in Events.h.
+        case .globe: return 63
         }
     }
 
@@ -32,6 +34,12 @@ public enum TapKey: String, CaseIterable, Sendable {
         case .rightOption: return 0x000040
         case .rightControl: return 0x002000
         case .rightShift: return 0x000004
+        // `NX_SECONDARYFNMASK`. Unlike the four above it does not name a side —
+        // there is only one 🌐 — and unlike them it is also set by the arrow
+        // keys, Home/End and F1–F12 on Apple laptops. That is safe here only
+        // because the tap keys off the key code and consults the mask to decide
+        // up from down; a bare flag test would fire on every arrow key.
+        case .globe: return 0x800000
         }
     }
 

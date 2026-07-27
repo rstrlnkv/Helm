@@ -339,11 +339,34 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         let fired = tapKey.feed(input)
         lock.unlock()
         guard fired else { return }
-        let bundleID = secure.frontmostBundleID()
-        lock.lock()
-        let undoable = undo?.canUndo(in: bundleID) ?? false
-        lock.unlock()
-        if undoable { undoLast() } else { convertLastWord() }
+        fix()
+    }
+
+    /// The whole module in one gesture: fix whatever is in front of you.
+    ///
+    /// Selected text is an explicit act — somebody chose those characters — so
+    /// it wins. With nothing selected this is what it always was: put the last
+    /// conversion back if it is still undoable here, otherwise convert the last
+    /// word. There used to be five bindings for these three outcomes, and the
+    /// user was asked to assemble the gesture the app can assemble itself.
+    ///
+    /// Off the main thread first. This runs from the event tap's callback,
+    /// which is on the main run loop, and the accessibility tree can take a
+    /// noticeable moment to answer in an app that is busy — long enough to
+    /// stall the very key that is being tapped.
+    public func fix() {
+        DispatchQueue.global(qos: .userInitiated).async { [self] in
+            if let selected = selection?.selectedTextWithoutClipboard(),
+               !selected.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                transform(.convert)
+                return
+            }
+            let bundleID = secure.frontmostBundleID()
+            lock.lock()
+            let undoable = undo?.canUndo(in: bundleID) ?? false
+            lock.unlock()
+            if undoable { undoLast() } else { convertLastWord() }
+        }
     }
 
     /// Puts the last conversion back, if the caret can still be where it was.
@@ -394,7 +417,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         } else {
             autoReplace = AutoReplace(entries: [])
         }
-        tapKey = ModifierTap(key: TapKey.from(settings.string(LayoutKey.tapKey, default: TapKey.off.rawValue)))
+        tapKey = ModifierTap(key: TapKey.from(settings.string(LayoutKey.tapKey, default: TapKey.rightCommand.rawValue)))
         triggers = ConversionTriggers(onSpace: settings.bool(LayoutKey.onSpace, default: ConversionTriggers.default.onSpace),
                                       onReturn: settings.bool(LayoutKey.onReturn, default: ConversionTriggers.default.onReturn),
                                       onPunctuation: settings.bool(LayoutKey.onPunctuation, default: ConversionTriggers.default.onPunctuation))
@@ -416,11 +439,10 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         localTransport.setHandler { [weak self] command in
             guard let self else { return Data() }
             switch command.name {
+            case "fix": self.fix()
             case "undoLastConversion": self.undoLast()
             case "convertLastWord": self.convertLastWord()
             case "convertSelection": self.transform(.convert)
-            case "transliterateSelection": self.transform(.transliterate)
-            case "changeSelectionCase": self.transform(.changeCase)
             case "settingsChanged": self.reloadSettings()
             default: break
             }
