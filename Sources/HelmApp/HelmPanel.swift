@@ -346,11 +346,8 @@ private struct UtilitiesSection: View {
             NotificationCenter.default.post(name: .helmOpenSettings, object: live.descriptor.idRaw)
         } label: {
             HStack(spacing: 8) {
-                Image(systemName: meta.sfSymbol)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 20, height: 20)
-                    .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(live.descriptor.moduleCategory.tint))
+                HelmIconPlate(symbol: meta.sfSymbol,
+                              tint: live.descriptor.moduleCategory.tint, size: 20)
                 Text(meta.name).font(.callout).lineLimit(1)
                 Spacer()
                 Image(systemName: "arrow.up.forward")

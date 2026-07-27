@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The surfaces that give every Helm screen the same voice as the About page:
-/// a glowing icon plate, instrument-style figures, and one card treatment.
+/// one icon plate, instrument-style figures, and one card treatment.
 public enum HelmSurface {
     public static let cardRadius: CGFloat = 12
     /// Measured against a real `Form` section on the same background: at 0.05
@@ -19,6 +19,7 @@ public enum HelmSurface {
     public static let hairline = Color.primary.opacity(0.10)
     /// For things that float *over* content — a tooltip following the cursor.
     /// Cards sit in the page and take no border (see `helmCard`); a floating
+    /// surface has nothing behind it to sit against, so it keeps the hairline.
 }
 
 public extension View {
@@ -39,33 +40,73 @@ public extension View {
 }
 
 /// The icon plate from the About page, reused wherever a screen introduces
-/// itself: the symbol sits on its tint, lit from behind by a soft glow.
+/// itself: the symbol on its tint, lit the way macOS 26 and iOS 26 light an
+/// app icon — a soft shadow *under* it, not a halo around it.
+///
+/// It was a halo: a `RadialGradient` of the tint, drawn in a frame twice the
+/// plate's size. Two things were wrong with it, and both were visible.
+///
+/// It ended in a straight line. The glow is 44 pt of bloom hanging off a 44 pt
+/// plate, and the header that holds it is 18 pt of padding and then a divider —
+/// so the light spread up and sideways and was cut flat along the bottom by
+/// whatever the page drew next. Measured down the plate's centre: above it the
+/// luminance climbs 0.957 → 0.975 over 8 pt, below it the pixel under the plate
+/// is already the page's white. Light that falls off on three sides and stops
+/// dead on the fourth does not read as light.
+///
+/// And a linear ramp is not how anything glows. `RadialGradient` interpolates
+/// at a constant rate, so the disc has a visible rim where the ramp ends,
+/// however faint the colour is. A shadow is a Gaussian blur — no rim, nothing
+/// to see the end of, and small enough (7 pt of blur, 4 pt down at the default
+/// size) to sit inside the header's own padding rather than reaching past it.
+///
+/// This is also the small tile in the panel, the sidebar and the order list —
+/// the same drawing at 20 and 22 pt, which had been copy-pasted at three sites
+/// with their own radii and glyph sizes.
 public struct HelmIconPlate: View {
     let symbol: String
     let tint: Color
     var size: CGFloat = 44
+    /// A panel tile for a module that is switched off: the shape stays so the
+    /// row does not move, the colour goes so it does not claim to be running.
+    var active: Bool = true
 
-    public init(symbol: String, tint: Color, size: CGFloat = 44) {
+    public init(symbol: String, tint: Color, size: CGFloat = 44, active: Bool = true) {
         self.symbol = symbol
         self.tint = tint
         self.size = size
+        self.active = active
+    }
+
+    /// A glyph keeps a constant *proportion* of a large plate, but at row size
+    /// that proportion stops being legible — so the smaller tiles give the
+    /// symbol more of the square. The ratios reproduce the sizes the
+    /// hand-written copies used: 11 pt in a 20 pt tile, 13 in the panel's 26,
+    /// 19.4 in a 44 pt plate.
+    private var glyphSize: CGFloat {
+        switch size {
+        case ...24: size * 0.55
+        case ...32: size * 0.50
+        default: size * 0.44
+        }
     }
 
     public var body: some View {
-        ZStack {
-            RadialGradient(colors: [tint.opacity(0.35), .clear],
-                           center: .center, startRadius: 1, endRadius: size)
-                .frame(width: size * 2, height: size * 2)
-            Image(systemName: symbol)
-                .font(.system(size: size * 0.44, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: size, height: size)
-                .background(
-                    RoundedRectangle(cornerRadius: size * 0.26, style: .continuous)
-                        .fill(tint)
-                )
-        }
-        .frame(width: size, height: size)
+        Image(systemName: symbol)
+            .font(.system(size: glyphSize, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: size, height: size)
+            .background(
+                RoundedRectangle(cornerRadius: size * 0.26, style: .continuous)
+                    .fill(active ? AnyShapeStyle(tint.gradient)
+                                 : AnyShapeStyle(Color.secondary.opacity(0.45)))
+            )
+            // Tinted rather than black: the plate keeps its colour relationship
+            // with the page without painting a ring of it. Scaled with the
+            // plate, so a row tile is seated rather than lit — and dropped
+            // entirely when the tile is off, since an unlit thing casts nothing.
+            .shadow(color: tint.opacity(active ? 0.30 : 0),
+                    radius: size * 0.16, y: size * 0.09)
     }
 }
 
