@@ -74,8 +74,10 @@ top of `make-dmg.sh`:
   closed, it ran behind the word and the two crowded each other.
 - **`sweep`** — one wedge of the sunburst opened towards Applications.
 
-**A dev image is marked, and marks itself.** The ticks take the blue of the DEV
-badge in About and the same capsule sits in the corner; `make-dmg.sh` decides
+**A dev image is marked, and marks itself.** The drawing stays grey — tinting
+it blue as well made the two builds look like two products rather than one at
+two stages — and the mark is the capsule About puts beside the wordmark, in the
+same blue, drawn by the same recipe. `make-dmg.sh` decides
 from the version string, not from a flag anyone has to remember. A screenshot
 of a dev window turns up in an issue sooner or later and must not be mistaken
 for a release.
@@ -99,6 +101,18 @@ Judge the result by mounting it, never by reading the script:
 ```bash
 open build/Helm-X.Y.Z.dmg      # icons at 128 pt, on the drawn background
 ```
+
+Two numbers are easy to get wrong and neither announces itself:
+
+- **The window height includes the title bar.** `window_rect` is the window's,
+  not the content's, so it is the background's height plus about 28 pt. Asked
+  for the background's height alone, the bottom of the artwork is simply not
+  shown — and nothing errors. Check it with `bounds of container window`: the
+  height it reports minus 28 should equal the background's.
+- **`text_size` has a floor.** Finder writes item names in icon view and there
+  is no way to turn them off; the smallest that works is 10. Set to 1 to hide
+  them, dmgbuild writes the record happily and Finder rejects the whole
+  `.DS_Store` — no background, no positions, default icons, no complaint.
 
 Three things say it worked. `.DS_Store` is well over the 6148 bytes an
 untouched one occupies (about 16k here) — that size is the tell that Finder

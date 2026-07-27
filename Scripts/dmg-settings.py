@@ -21,8 +21,14 @@ icon = os.environ["HELM_VOLUME_ICON"]
 
 background = os.environ["HELM_BACKGROUND"]
 
-# ((x, y), (width, height)) — the size the background was drawn for.
-window_rect = ((200, 160), (640, 380))
+# ((x, y), (width, height)). The height is the *window's*, and Finder counts the
+# title bar in it — so the drawn background is 380 tall and the window is asked
+# for 380 plus the bar, or the bottom of the artwork is cut off. Checked on the
+# mounted image, where the DEV capsule sitting 24 pt off the bottom edge is the
+# thing that goes missing first.
+background_height = 380
+title_bar = 28
+window_rect = ((200, 160), (640, background_height + title_bar))
 default_view = "icon-view"
 show_status_bar = False
 show_tab_view = False
@@ -30,6 +36,10 @@ show_toolbar = False
 show_pathbar = False
 show_sidebar = False
 icon_size = 128
+# Finder has no way to turn the names off, so they are shrunk to the smallest
+# value the .DS_Store will carry. Whether Finder honours it or clamps it back
+# is checked on the mounted image, not assumed.
+text_size = 10.0
 # Centres, matching the two slots the background frames.
 icon_locations = {app_name: (168, 178), "Applications": (472, 178)}
 
