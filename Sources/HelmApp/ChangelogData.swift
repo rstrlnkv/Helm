@@ -7,11 +7,20 @@ import HelmUI
 enum ChangeKind {
     case new, upd, fix
 
+    /// NEW / UPD / FIX, the same three letters in every language.
+    ///
+    /// They were words — "Улучшено", "Correctif", "Melhoria" — and a word is a
+    /// different length in each of eight languages and in each of three kinds.
+    /// The badges sit in a column down the left of the list, so the widest one
+    /// set the indent for every entry and the column came out ragged: Russian
+    /// "Улучшено" ran half again as wide as "Испр." beside it. Three letters,
+    /// uppercase, untranslated — the same convention as BETA and DEV, and the
+    /// same width whatever the reader's language.
     var label: String {
         switch self {
-        case .new: return L("New", [.ru: "Новое", .es: "Nuevo", .fr: "Nouveau", .de: "Neu", .ja: "新機能", .zh: "新增", .pt: "Novo"])
-        case .upd: return L("Improved", [.ru: "Улучшено", .es: "Mejora", .fr: "Amélior.", .de: "Verb.", .ja: "改善", .zh: "改进", .pt: "Melhoria"])
-        case .fix: return L("Fix", [.ru: "Испр.", .es: "Arreglo", .fr: "Correctif", .de: "Behoben", .ja: "修正", .zh: "修复", .pt: "Correção"])
+        case .new: return "NEW"
+        case .upd: return "UPD"
+        case .fix: return "FIX"
         }
     }
 
