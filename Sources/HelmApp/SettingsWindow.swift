@@ -288,6 +288,10 @@ private struct MenuBarSettingsView: View {
     @State private var showQuitButton = AppSettings.showQuitButton
     @State private var orderedModules: [String] = ModuleHost.shared.orderedModuleIDs
     @State private var dragging: String?
+    /// The order is read far more often than it is changed, so the controls
+    /// for changing it are not on screen by default: eight rows of handles and
+    /// arrow pairs read as a list of controls rather than a list of modules.
+    @State private var editingOrder = false
     @State private var diskAccess: PermissionState = .granted
     @State private var accessibility: PermissionState = .granted
     private let adHocBuild = PermissionCheck.isAdHocSigned()
@@ -323,6 +327,54 @@ private struct MenuBarSettingsView: View {
         AppSettings.moduleOrder = orderedModules
     }
 
+
+    /// One module in the order list. Reading and rearranging are different
+    /// tasks, so the row shows the handle, the arrows and the drag only while
+    /// the section is being edited; otherwise it is the module, and nothing
+    /// else. Both paths stay: dragging is the direct one, the arrows the one
+    /// that works from the keyboard.
+    @ViewBuilder
+    private func moduleOrderRow(_ id: String,
+                                _ descriptor: any ModuleDescriptor) -> some View {
+        HStack(spacing: 10) {
+            if editingOrder {
+                Image(systemName: "line.3.horizontal")
+                    .foregroundStyle(dragging == id ? HelmText.quiet : HelmText.faint)
+                    .accessibilityHidden(true)
+            }
+            Image(systemName: descriptor.moduleMetadata.sfSymbol)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 20, height: 20)
+                .background(RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(descriptor.moduleCategory.tint))
+            Text(descriptor.moduleMetadata.name)
+            Spacer()
+            if editingOrder {
+                // Dragging is fiddly inside a Form; the arrows are the reliable
+                // path and keyboard-reachable.
+                Button {
+                    move(id, by: -1)
+                } label: { Image(systemName: "chevron.up") }
+                .buttonStyle(.borderless)
+                .accessibilityLabel(HelmA11y.moveUp)
+                .disabled(orderedModules.first == id)
+                Button {
+                    move(id, by: 1)
+                } label: { Image(systemName: "chevron.down") }
+                .buttonStyle(.borderless)
+                .accessibilityLabel(HelmA11y.moveDown)
+                .disabled(orderedModules.last == id)
+            }
+        }
+        .contentShape(Rectangle())
+        .opacity(dragging == id ? 0.4 : 1)
+        // `.onDrag` on a row that cannot be reordered would still lift it, so
+        // the gesture is attached only while editing.
+        .modifier(ModuleOrderDrag(id: id, active: editingOrder,
+                                  order: $orderedModules, dragging: $dragging))
+    }
+
     private func permissionRow(_ title: String, detail: String, granted: Bool,
                                action: @escaping () -> Void) -> some View {
         HStack(alignment: .top, spacing: 10) {
@@ -352,53 +404,31 @@ private struct MenuBarSettingsView: View {
                 }
                 .onChange(of: appearance) { _, choice in AppSettings.appearance = choice }
             }
-            Section(AppStr.moduleOrderSection) {
-                Text(AppStr.moduleOrderNote)
+            Section {
+                Text(editingOrder ? AppStr.moduleOrderEditNote : AppStr.moduleOrderNote)
                     .font(.caption).foregroundStyle(.secondary)
-                // `.onMove` only works inside an editable List; in a Form it is
-                // inert, so rows carry their own drag and drop.
                 ForEach(orderedModules, id: \.self) { id in
                     if let descriptor = ModuleRegistry.all.first(where: { $0.idRaw == id }) {
-                        HStack(spacing: 10) {
-                            Image(systemName: "line.3.horizontal")
-                                .foregroundStyle(dragging == id ? .secondary : .tertiary)
-                            Image(systemName: descriptor.moduleMetadata.sfSymbol)
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(.white)
-                                .frame(width: 20, height: 20)
-                                .background(RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                    .fill(descriptor.moduleCategory.tint))
-                            Text(descriptor.moduleMetadata.name)
-                            Spacer()
-                            // Dragging is fiddly inside a Form; the arrows are
-                            // the reliable path and keyboard-reachable.
-                            Button {
-                                move(id, by: -1)
-                            } label: { Image(systemName: "chevron.up") }
-                            .buttonStyle(.borderless)
-                            .accessibilityLabel(HelmA11y.moveUp)
-                            .disabled(orderedModules.first == id)
-                            Button {
-                                move(id, by: 1)
-                            } label: { Image(systemName: "chevron.down") }
-                            .buttonStyle(.borderless)
-                            .accessibilityLabel(HelmA11y.moveDown)
-                            .disabled(orderedModules.last == id)
-                        }
-                        .contentShape(Rectangle())
-                        .opacity(dragging == id ? 0.4 : 1)
-                        .onDrag {
-                            dragging = id
-                            return NSItemProvider(object: id as NSString)
-                        }
-                        // NSItemProvider(object: NSString) registers
-                        // public.utf8-plain-text; accepting only `.text` meant
-                        // the drop was never offered and nothing moved.
-                        .onDrop(of: [.utf8PlainText, .plainText, .text],
-                                delegate: ModuleDropDelegate(item: id,
-                                                             order: $orderedModules,
-                                                             dragging: $dragging))
+                        moduleOrderRow(id, descriptor)
                     }
+                }
+            } header: {
+                HStack {
+                    Text(AppStr.moduleOrderSection)
+                    Spacer()
+                    Button(editingOrder ? AppStr.done : AppStr.edit) {
+                        withAnimation(HelmMotion.interface) {
+                            editingOrder.toggle()
+                            if !editingOrder { dragging = nil }
+                        }
+                    }
+                    .buttonStyle(.borderless)
+                    // A Form section header is styled secondary and small; a
+                    // control inside it inherits that and stops reading as a
+                    // control. The button says what it is instead.
+                    .font(.body)
+                    .foregroundStyle(Color.accentColor)
+                    .textCase(nil)
                 }
             }
             Section(AppStr.menuBar) {
@@ -490,6 +520,36 @@ private struct MenuBarSettingsView: View {
 
 /// Reorders on hover while a row is being dragged, and persists on drop —
 /// the pattern SwiftUI lists use, done by hand because Form has no edit mode.
+/// Drag-to-reorder, attached only while the order section is being edited.
+///
+/// A `.onDrag` that is always present lifts rows nobody asked to move — the
+/// list is read far more often than it is rearranged — and an `.onDrop` with no
+/// drag to receive silently accepts text dropped from elsewhere.
+private struct ModuleOrderDrag: ViewModifier {
+    let id: String
+    let active: Bool
+    @Binding var order: [String]
+    @Binding var dragging: String?
+
+    func body(content: Content) -> some View {
+        if active {
+            content
+                .onDrag {
+                    dragging = id
+                    return NSItemProvider(object: id as NSString)
+                }
+                // NSItemProvider(object: NSString) registers
+                // public.utf8-plain-text; accepting only `.text` meant the drop
+                // was never offered and nothing moved.
+                .onDrop(of: [.utf8PlainText, .plainText, .text],
+                        delegate: ModuleDropDelegate(item: id, order: $order,
+                                                     dragging: $dragging))
+        } else {
+            content
+        }
+    }
+}
+
 private struct ModuleDropDelegate: DropDelegate {
     let item: String
     @Binding var order: [String]
