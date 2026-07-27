@@ -57,12 +57,26 @@ asset falls back to opening the release page.
 
 ## The disk image window
 
-`make-dmg.sh` builds a laid-out window, not a bare folder: the app framed by
-Helm's own bezel, a run of the same ticks pointing at Applications, and the
-volume carrying the app's mark. The background is generated at build time by
-`Scripts/design/make-dmg-background.swift`; the layout lives in
-`Scripts/dmg-settings.py`. **The two hold the same numbers seen from two
-sides — change one and change the other.**
+`make-dmg.sh` builds a laid-out window, not a bare folder. The background is
+generated at build time by `Scripts/design/make-dmg-background.swift`; the
+layout lives in `Scripts/dmg-settings.py`. **The two hold the same numbers seen
+from two sides — change one and change the other.**
+
+Three drawings are kept, chosen by `HELM_DMG_STYLE` or by the default at the
+top of `make-dmg.sh`:
+
+- **`field`** (what ships) — squared paper, because measuring is what the app
+  does. The grid fades before the window's edges: ruled hard into them it reads
+  as a screenshot of something larger that got cropped.
+- **`bezel`** — the frame the About page puts the mark in, with the same ticks
+  unrolled into a straight run that does an arrow's job.
+- **`sweep`** — one wedge of the sunburst opened towards Applications.
+
+**A dev image is marked, and marks itself.** The ticks take the blue of the DEV
+badge in About and the same capsule sits in the corner; `make-dmg.sh` decides
+from the version string, not from a flag anyone has to remember. A screenshot
+of a dev window turns up in an issue sooner or later and must not be mistaken
+for a release.
 
 **The window is never asked of Finder.** On macOS 26 Finder accepts the icon
 view options over AppleScript, reports them back correctly when queried, and
