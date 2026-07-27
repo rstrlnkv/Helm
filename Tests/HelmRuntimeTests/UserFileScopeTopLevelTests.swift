@@ -1,7 +1,7 @@
 import XCTest
-@testable import Module_Disk_Engine
+@testable import HelmRuntime
 
-/// `DiskSafety.isRemovable` is the whole gate for the disk module: the view
+/// `UserFileScope.isRemovable` is the whole gate for the disk module: the view
 /// model consults it before adding to the basket, and `DiskEngine.trash`
 /// re-checks it before calling `trashItem`. Nothing else stands between a
 /// clicked ring segment and the Trash.
@@ -11,7 +11,7 @@ import XCTest
 /// and `RemovableScope` states it outright ("not a top-level directory"). The
 /// boot volume's own top level is the case that falls through: scan `/`, click
 /// the second-largest arc, and `/Users` goes in the basket.
-final class DiskSafetyTopLevelTests: XCTestCase {
+final class UserFileScopeTopLevelTests: XCTestCase {
     /// Every one of these is a first-level directory of the boot volume whose
     /// removal is not a cleanup but an outage. `/System`, `/usr`, `/bin`,
     /// `/sbin` and `/cores` are already named in `protectedPrefixes`; these are
@@ -19,7 +19,7 @@ final class DiskSafetyTopLevelTests: XCTestCase {
     func testTopLevelDirectoriesOfTheBootVolumeAreNotRemovable() {
         for path in ["/Users", "/Library", "/Applications", "/private",
                      "/Volumes", "/Network", "/opt"] {
-            XCTAssertFalse(DiskSafety.isRemovable(path),
+            XCTAssertFalse(UserFileScope.isRemovable(path),
                            "\(path) is the top level of the boot volume, not a cleanup target")
         }
     }
@@ -29,7 +29,7 @@ final class DiskSafetyTopLevelTests: XCTestCase {
     func testWhatSitsInsideThemStaysRemovable() {
         for path in ["/Users/x/Movies", "/Library/Caches", "/Applications/Old.app",
                      "/private/tmp/build", "/opt/local"] {
-            XCTAssertTrue(DiskSafety.isRemovable(path), path)
+            XCTAssertTrue(UserFileScope.isRemovable(path), path)
         }
     }
 }

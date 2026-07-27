@@ -3,7 +3,7 @@ import Foundation
 /// What the basket is allowed to hold. The ring happily shows system storage,
 /// but nothing there may be trashed: removing it breaks the machine, and the
 /// module's whole value is that it is safe to poke around in.
-public enum DiskSafety {
+public enum UserFileScope {
     static let protectedPrefixes = [
         "/System", "/Library/Apple", "/usr", "/bin", "/sbin", "/private/var/db",
         "/Volumes/Recovery", "/cores", "/opt/homebrew/Cellar",
@@ -33,5 +33,17 @@ public enum DiskSafety {
         // file someone means to delete — their contents still are.
         guard path.split(separator: "/").count > 1 else { return false }
         return true
+    }
+
+    /// Splits a batch into what may be trashed and what may not, so the caller
+    /// reports the refusals instead of silently dropping them. Same shape as
+    /// `RemovableScope.partition`, which guards a different question: that one
+    /// asks what belongs to an app, this one what belongs to the user.
+    public static func partition(_ paths: [String]) -> (allowed: [String], refused: [String]) {
+        var allowed: [String] = [], refused: [String] = []
+        for path in paths {
+            if isRemovable(path) { allowed.append(path) } else { refused.append(path) }
+        }
+        return (allowed, refused)
     }
 }

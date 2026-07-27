@@ -7,7 +7,7 @@ import Foundation
 /// a view model is the wrong place for the last word: the engine takes a list
 /// of strings and trashes them, so any defect upstream that produces a bad
 /// string produces a deleted folder. The disk module learned this first and
-/// re-checks `DiskSafety.isRemovable` inside the engine; this is the same
+/// re-checks `UserFileScope.isRemovable` inside the engine; this is the same
 /// discipline for the modules that remove an app's belongings.
 ///
 /// The rule is positional, not a blocklist: a path is removable only if it sits

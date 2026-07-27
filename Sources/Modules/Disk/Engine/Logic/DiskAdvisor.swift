@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 /// One thing the user could delete to reclaim space, and why.
 public struct DiskAdvice: Codable, Equatable, Sendable, Identifiable {
@@ -47,7 +48,7 @@ public enum DiskAdvisor {
         for relative in cacheFolders {
             let path = home + "/" + relative
             if let node = find(path: path, under: root), node.bytes >= cacheFloor,
-               DiskSafety.isRemovable(node.path) {
+               UserFileScope.isRemovable(node.path) {
                 advice.append(DiskAdvice(name: node.name, path: node.path,
                                          bytes: node.bytes, kind: .cache))
             }
@@ -60,7 +61,7 @@ public enum DiskAdvisor {
         while let node = stack.popLast() {
             stack.append(contentsOf: node.children)
             guard !node.isDirectory, node.name != "…", node.modified > 0,
-                  DiskSafety.isRemovable(node.path),
+                  UserFileScope.isRemovable(node.path),
                   !cachePrefixes.contains(where: { node.path.hasPrefix($0) })
             else { continue }
             let age = now.timeIntervalSince1970 - node.modified

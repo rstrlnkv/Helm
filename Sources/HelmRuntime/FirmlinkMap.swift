@@ -14,6 +14,9 @@ import Foundation
 /// Data-side copy keeps the view the user recognises from Finder, and keeps
 /// Data-only directories (the Spotlight index, staged installers) that a
 /// blanket skip of the whole mount would silently drop.
+/// Shared: the disk scan skips these so bytes land where the user expects
+/// them, and the duplicate walk skips them so it does not read every user file
+/// twice. Two modules needing it is what moved it out of Disk.
 public enum FirmlinkMap {
     public static let tablePath = "/usr/share/firmlinks"
     public static let dataMount = "/System/Volumes/Data"
