@@ -14,9 +14,18 @@ struct DiskResultView: View {
     @State private var selection: String?
 
     var body: some View {
-        VStack(spacing: 0) {
-            BreadcrumbBar(dvm: dvm)
-            Divider()
+        GeometryReader { proxy in
+            let width = DiskLayout(availableWidth: proxy.size.width)
+            VStack(spacing: 0) {
+                BreadcrumbBar(dvm: dvm, layout: width)
+                Divider()
+                content(width)
+            }
+        }
+    }
+
+    @ViewBuilder private func content(_ layout: DiskLayout) -> some View {
+        if layout.showsRing {
             HStack(spacing: 0) {
                 // The ring swaps with a zoom that mirrors the navigation:
                 // The ring is never replaced: clicking a wedge widens it until
@@ -44,19 +53,15 @@ struct DiskResultView: View {
                 }
                 .frame(minWidth: 300, idealWidth: 360, maxWidth: 380)
                 .aspectRatio(1, contentMode: .fit)
-                .padding(.horizontal, 14)
-                .padding(.top, 14)
-                // Measured with real font metrics: with this line in it, the
-                // bar above needed 784 pt and had 610 at the window's minimum
-                // — and 690 at its default, so it overflowed even there. It is
-                // a statement about the measurement, not a control and not the
-                // path, and it belongs with the thing it describes.
-                measurementNote
-                    .padding(.horizontal, 14)
-                    .padding(.bottom, 10)
+                .padding(14)
                 Divider()
                 childList
             }
+        } else {
+            // Below the width where both fit, the ring is what goes. The list
+            // carries every fact the ring does and needs less room to do it;
+            // a 300 pt ring beside a squeezed list serves neither.
+            childList
         }
     }
 
@@ -115,34 +120,6 @@ struct DiskResultView: View {
         }
     }
 
-    /// What the ring is: a live count, a fresh measurement, or a memory of one.
-    @ViewBuilder private var measurementNote: some View {
-        Group {
-            if dvm.live, let tick = dvm.tick {
-                Text(DkStr.liveCount(tick.files))
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(.secondary)
-            } else if dvm.restored, let savedAt = dvm.completedAt {
-                // A restored tree is a memory, not a measurement: say when.
-                Text(DkStr.measured(Self.ageFormatter.localizedString(for: savedAt,
-                                                                     relativeTo: Date())))
-            } else if let result = dvm.result {
-                Text(DkStr.scannedIn(result.filesScanned,
-                                     String(format: "%.1f", result.seconds)))
-            }
-        }
-        .font(.caption)
-        .foregroundStyle(.tertiary)
-        .lineLimit(1)
-        .frame(maxWidth: .infinity)
-    }
-
-    static let ageFormatter: RelativeDateTimeFormatter = {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .full
-        return formatter
-    }()
-
     private func fraction(of child: DiskEntry) -> Double {
         guard let total = dvm.focus?.bytes, total > 0 else { return 0 }
         return Double(child.bytes) / Double(total)
@@ -156,6 +133,7 @@ struct DiskResultView: View {
 /// current folder out.
 private struct BreadcrumbBar: View {
     @ObservedObject var dvm: DiskViewModel
+    let layout: DiskLayout
     @State private var showingAdvice = false
     @State private var showingDuplicates = false
 
@@ -182,16 +160,21 @@ private struct BreadcrumbBar: View {
 
             Spacer(minLength: 12)
 
-            // While a scan runs the bar keeps the control that stops it —
-            // that is an action, and it must be reachable from here. The
-            // count that goes with it lives under the ring, with the rest of
-            // the measurement.
             if dvm.live {
                 HStack(spacing: 6) {
                     ProgressView().controlSize(.small)
+                    if let tick = dvm.tick, layout.showsScanStatement {
+                        Text(DkStr.liveCount(tick.files))
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    }
                     Button(DkStr.stop) { dvm.cancel() }
                         .controlSize(.small)
                 }
+            } else if layout.showsScanStatement {
+                // Between the path and the controls: it is what fills the gap
+                // on a wide window, and the first thing to go on a narrow one.
+                scanStatement
             }
 
             if let advice = dvm.result?.advice, !advice.isEmpty, !dvm.live {
@@ -227,6 +210,26 @@ private struct BreadcrumbBar: View {
             DuplicatesView(dvm: dvm) { showingDuplicates = false }
         }
     }
+
+    /// What the ring is showing: a fresh measurement, or a memory of one.
+    @ViewBuilder private var scanStatement: some View {
+        if dvm.restored, let savedAt = dvm.completedAt {
+            // A restored tree is a memory, not a measurement: say when.
+            Text(DkStr.measured(Self.ageFormatter.localizedString(for: savedAt,
+                                                                 relativeTo: Date())))
+                .font(.caption).foregroundStyle(.tertiary).lineLimit(1)
+        } else if let result = dvm.result {
+            Text(DkStr.scannedIn(result.filesScanned,
+                                 String(format: "%.1f", result.seconds)))
+                .font(.caption).foregroundStyle(.tertiary).lineLimit(1)
+        }
+    }
+
+    static let ageFormatter: RelativeDateTimeFormatter = {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return formatter
+    }()
 
     @ViewBuilder private var crumbs: some View {
         let path = dvm.focusPath
