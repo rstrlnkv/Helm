@@ -9,9 +9,9 @@ enum ChangeKind {
 
     var label: String {
         switch self {
-        case .new: return L("New", [.ru: "Новое", .es: "Nuevo", .fr: "Neuf", .de: "Neu", .ja: "新機能", .zh: "新增", .pt: "Novo"])
+        case .new: return L("New", [.ru: "Новое", .es: "Nuevo", .fr: "Nouveau", .de: "Neu", .ja: "新機能", .zh: "新增", .pt: "Novo"])
         case .upd: return L("Upd", [.ru: "Улучш.", .es: "Mejora", .fr: "Amélior.", .de: "Verb.", .ja: "改善", .zh: "改进", .pt: "Melhoria"])
-        case .fix: return L("Fix", [.ru: "Испр.", .es: "Arreglo", .fr: "Correctif", .de: "Fix", .ja: "修正", .zh: "修复", .pt: "Correção"])
+        case .fix: return L("Fix", [.ru: "Испр.", .es: "Arreglo", .fr: "Correctif", .de: "Behoben", .ja: "修正", .zh: "修复", .pt: "Correção"])
         }
     }
 

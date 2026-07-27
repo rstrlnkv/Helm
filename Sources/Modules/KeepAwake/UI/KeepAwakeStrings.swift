@@ -33,10 +33,10 @@ enum KAStr {
     }
     /// Single-letter units for the narrow preset pills ("15 м", "1 ч").
     static var minutesUnitShort: String {
-        L("m", [.ru: "м", .es: "m", .fr: "m", .de: "M", .ja: "分", .zh: "分", .pt: "m"])
+        L("m", [.ru: "м", .es: "m", .fr: "m", .de: "M", .ja: "分", .zh: "分钟", .pt: "m"])
     }
     static var hoursUnitShort: String {
-        L("h", [.ru: "ч", .es: "h", .fr: "h", .de: "Std", .ja: "時", .zh: "时", .pt: "h"])
+        L("h", [.ru: "ч", .es: "h", .fr: "h", .de: "Std", .ja: "時間", .zh: "小时", .pt: "h"])
     }
     static var hoursUnit: String {
         L("h", [.ru: "ч", .es: "h", .fr: "h", .de: "Std.", .ja: "時間", .zh: "小时", .pt: "h"])
@@ -48,7 +48,7 @@ enum KAStr {
         L("Lid closed — staying awake",
           [.ru: "Крышка закрыта — не спит", .es: "Tapa cerrada — sigue activo",
            .fr: "Capot fermé — reste éveillé", .de: "Deckel zu — bleibt wach",
-           .ja: "ふたを閉じても起動継続", .zh: "合盖仍保持唤醒", .pt: "Tampa fechada — continua ativo"])
+           .ja: "ふたを閉じてもスリープ防止", .zh: "合盖仍保持唤醒", .pt: "Tampa fechada — continua ativo"])
     }
 
     static func condition(_ wire: String) -> String {
@@ -67,7 +67,7 @@ enum KAStr {
     static var automation: String { L("Automation", [.ru: "Автоматизация", .es: "Automatización", .fr: "Automatisation", .de: "Automatisierung", .ja: "自動化", .zh: "自动化", .pt: "Automação"]) }
     static var withExternalDisplay: String { L("Keep awake with external display", [.ru: "Не спать при внешнем дисплее", .es: "Mantener activo con pantalla externa", .fr: "Rester éveillé avec un écran externe", .de: "Mit externem Bildschirm wach halten", .ja: "外部ディスプレイ接続中はスリープ防止", .zh: "连接外接显示器时保持唤醒", .pt: "Manter ativo com tela externa"]) }
     static var whileOnPower: String { L("Keep awake while on power", [.ru: "Не спать при питании", .es: "Mantener activo con corriente", .fr: "Rester éveillé sur secteur", .de: "Am Netzstrom wach halten", .ja: "電源接続中はスリープ防止", .zh: "接通电源时保持唤醒", .pt: "Manter ativo na tomada"]) }
-    static var appsSection: String { L("Apps that keep the Mac awake", [.ru: "Приложения, не дающие спать", .es: "Apps que mantienen activo el Mac", .fr: "Apps qui gardent le Mac éveillé", .de: "Apps, die den Mac wach halten", .ja: "Mac を起動させ続けるアプリ", .zh: "保持 Mac 唤醒的应用", .pt: "Apps que mantêm o Mac ativo"]) }
+    static var appsSection: String { L("Apps that keep the Mac awake", [.ru: "Приложения, не дающие спать", .es: "Apps que mantienen activo el Mac", .fr: "Apps qui gardent le Mac éveillé", .de: "Apps, die den Mac wach halten", .ja: "Mac をスリープさせないアプリ", .zh: "保持 Mac 唤醒的应用", .pt: "Apps que mantêm o Mac ativo"]) }
     static func triggerCondition(_ condition: AppTrigger.Condition) -> String {
         switch condition {
         case .always: return L("Always", [.ru: "Всегда", .es: "Siempre", .fr: "Toujours", .de: "Immer", .ja: "常に", .zh: "始终", .pt: "Sempre"])
