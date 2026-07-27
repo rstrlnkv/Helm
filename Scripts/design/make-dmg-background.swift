@@ -37,6 +37,10 @@ let width = 640.0, height = 380.0, scale = 2.0
 // so anything drawn here has to clear a box roughly 128 wide and 170 tall.
 let appSlot = CGPoint(x: 168, y: 178)
 let dropSlot = CGPoint(x: 472, y: 178)
+/// Half of the 128 pt Finder draws each icon at.
+let iconHalf = 64.0
+/// Named because the chevron is placed against it, not beside it.
+let bezelRadius = 126.0
 
 guard let context = CGContext(data: nil,
                               width: Int(width * scale), height: Int(height * scale),
@@ -114,7 +118,7 @@ func drawBezelStyle() {
     // clears the name on its own: the label sits about 72 pt below the
     // centre, where the ring is 103 pt out to either side and the word
     // reaches about 13. The gap was no longer paying for anything.
-    bezel(around: appSlot, radius: 126, length: 11, weight: 1.5, alpha: 0.75)
+    bezel(around: appSlot, radius: bezelRadius, length: 11, weight: 1.5, alpha: 0.75)
 
     // The run between them: the bezel unrolled into a straight line, rising in
     // weight towards the destination. This is the arrow.
@@ -122,14 +126,22 @@ func drawBezelStyle() {
     // to it was the bezel's vocabulary applied where it did not belong: a row
     // of marks reads as a scale, and a scale between two icons is a measurement
     // rather than an instruction.
-    let tip = CGPoint(x: (appSlot.x + dropSlot.x) / 2 + 14, y: appSlot.y)
+    //
+    // Centred in the corridor it actually sits in — from the ring's outer edge
+    // to the folder's left edge — rather than between the two slot centres.
+    // Those are the same thing only while the ring is small: at radius 126 the
+    // midpoint between the centres falls 25 pt inside the ring's half of the
+    // gap, and the chevron sat visibly closer to the app than to the folder.
+    let reach = 15.0, spread = 14.0
+    let corridor = (appSlot.x + bezelRadius + (dropSlot.x - iconHalf)) / 2
+    let tip = CGPoint(x: corridor + reach / 2, y: appSlot.y)
     context.setStrokeColor(ink(0.55))
     context.setLineWidth(3)
     context.setLineCap(.round)
     context.setLineJoin(.round)
-    context.move(to: CGPoint(x: tip.x - 15, y: tip.y - 14))
+    context.move(to: CGPoint(x: tip.x - reach, y: tip.y - spread))
     context.addLine(to: tip)
-    context.addLine(to: CGPoint(x: tip.x - 15, y: tip.y + 14))
+    context.addLine(to: CGPoint(x: tip.x - reach, y: tip.y + spread))
     context.strokePath()
 }
 
