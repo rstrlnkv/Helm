@@ -27,6 +27,10 @@ import Module_Disk_Engine
     @Published public private(set) var measuring = false
     /// The scan root's human name: "Macintosh HD", not "/".
     @Published public private(set) var rootTitle = ""
+    /// What the last scan measured, so it can be measured again. Without it
+    /// "Scan again" had nothing to scan and could only start over — it emptied
+    /// the screen and showed the volume picker, which is not what it says.
+    @Published public private(set) var scannedPath: String?
     @Published public var basket: [DiskEntry] = []
     /// The second look: identical files under the focused folder. nil means
     @Published public private(set) var banner: String?
@@ -123,6 +127,7 @@ import Module_Disk_Engine
     public func scan(path: String) async {
         // "/" is a path, not a name; the volume list knows what to call it.
         rootTitle = Self.title(for: path, volumes: volumes)
+        scannedPath = path
         restored = false
         phase = .scanning
         live = true
@@ -142,6 +147,25 @@ import Module_Disk_Engine
         focusPath = DiskFocus.resolve(paths: focusPath.map(\.path), in: scan.root)
         phase = .result
         recomputeSegments()
+    }
+
+    /// Measure the same target again — what the button has always said.
+    ///
+    /// A restored tree carries its root but not the path it was scanned from,
+    /// so that is the fallback: the same place, either way.
+    /// True when what was scanned is a whole volume rather than some folder on
+    /// one. Free space only means something for the first.
+    private var isVolumeScan: Bool {
+        guard let path = scannedPath else { return false }
+        return volumes.contains { $0.path == path }
+    }
+
+    public func rescan() async {
+        guard let path = scannedPath ?? result?.root.path else { newScan(); return }
+        basket = []
+        banner = nil
+        failures = []
+        await scan(path: path)
     }
 
     public func cancel() {
@@ -310,7 +334,13 @@ import Module_Disk_Engine
 
     private func recomputeSegments() {
         guard let focus else { segments = []; return }
-        let free = focusPath.count == 1 ? (result?.freeBytes ?? 0) : 0
+        // Free space is a fact about a volume, not about a folder. On a folder
+        // scan it was still drawn: 102 GB of free disk against 6 MB of content
+        // made one pale wedge worth 99.99% of the circle, and every file in the
+        // folder fell under the minimum visible angle and was folded into
+        // "other". The ring came out a flat grey disc that said nothing about
+        // the folder it was measuring.
+        let free = focusPath.count == 1 && isVolumeScan ? (result?.freeBytes ?? 0) : 0
         segments = RingLayout.layout(focus: Self.node(from: focus),
                                      depthLevels: 3, freeBytes: free)
     }

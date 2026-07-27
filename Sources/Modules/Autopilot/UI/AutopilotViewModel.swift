@@ -14,6 +14,10 @@ import SwiftUI
     @Published public private(set) var preview: [PreviewRow] = []
     @Published public private(set) var previewingRuleID: String?
     @Published public private(set) var banner: String?
+    /// Which folder the banner is about, so it can be taken down when that
+    /// folder is. "Swept 0 of 5" outlived the folder it described: stop
+    /// watching, and the report stayed on screen reporting on nothing.
+    private var bannerFolderID: WatchedFolder.ID?
 
     let vm: ModuleViewModel
     private let client: TransportClient
@@ -57,6 +61,7 @@ import SwiftUI
 
     public func removeFolder(_ folder: WatchedFolder) {
         folders.removeAll { $0.id == folder.id }
+        if bannerFolderID == folder.id { dismissBanner() }
         save()
     }
 
@@ -138,8 +143,9 @@ import SwiftUI
         let report: SweepReport? = await client.request("runNow",
                                                         encoding: FolderID(id: folder.id))
         guard let report else { return }
+        bannerFolderID = folder.id
         banner = ApStr.swept(report.acted, report.examined)
     }
 
-    public func dismissBanner() { banner = nil }
+    public func dismissBanner() { banner = nil; bannerFolderID = nil }
 }

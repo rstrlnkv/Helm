@@ -126,8 +126,19 @@ struct RuleEditor: View {
                         HStack(spacing: 8) {
                             Text(row.name).lineLimit(1).truncationMode(.middle)
                             Spacer()
+                            // The action, and where it lands. Naming only the
+                            // action left the reader to work out which
+                            // subfolder "sort by kind" meant — the one thing
+                            // the rule they just wrote does not tell them.
+                            if let destination = row.destination {
+                                Text(destination)
+                                    .font(.caption.monospaced())
+                                    .foregroundStyle(HelmText.quiet)
+                                    .lineLimit(1).truncationMode(.middle)
+                                Text("←").font(.caption).foregroundStyle(HelmText.separator)
+                            }
                             Text(RuleSummary.describe(row.action))
-                                .font(.caption).foregroundStyle(HelmText.quiet)
+                                .font(.caption).foregroundStyle(HelmText.faint)
                                 .lineLimit(1)
                         }
                         .padding(.vertical, 5)

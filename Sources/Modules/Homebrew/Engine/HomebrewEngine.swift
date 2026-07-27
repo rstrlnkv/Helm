@@ -69,8 +69,10 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         // both stays two distinguishable rows.
         let formulae = runner.run(brew, ["search", "--formula", query], env: [:]).stdout
         let casks = runner.run(brew, ["search", "--cask", query], env: [:]).stdout
-        return BrewSearchParser.parse(formulae, kind: false)
-             + BrewSearchParser.parse(casks, kind: true)
+        let hits = BrewSearchParser.parse(formulae, kind: false)
+                 + BrewSearchParser.parse(casks, kind: true)
+        // brew answers alphabetically, which buries the obvious one.
+        return SearchRanking.rank(hits, query: query)
     }
 
     // MARK: - Long operations

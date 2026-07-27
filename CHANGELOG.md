@@ -156,6 +156,30 @@ features, PATCH = fixes.
   tuned until its own 22 pt tile reproduced that profile.
 
 ### Fixed
+- **Scanning a folder drew a ring that measured the volume.** Free space was
+  included whatever was scanned, so a 6 MB folder against 102 GB of free disk
+  became one pale wedge worth 99.99% of the circle, with every file in it
+  folded under the minimum visible angle. The ring was a flat grey disc. Free
+  space is a fact about a volume, and now only appears on one.
+- **"Scan again" started over instead.** It cleared the result and showed the
+  volume picker — the button never knew what had been scanned, so it could not
+  scan it again. It measures the same target now.
+- **A refused removal cost you your selection.** The duplicate finder emptied
+  the basket whether or not anything left, so fixing a permission and coming
+  back meant finding and ticking every file again. Only what actually moved is
+  dropped.
+- **Homebrew search buried the exact match.** `brew` answers alphabetically:
+  searching `hello` listed fourteen other packages before `hello` itself. The
+  name you typed comes first, then the ones starting with it.
+- **Autopilot's preview named the action but not the destination** — "sort into
+  subfolders by kind" without saying which subfolder, which is the one thing the
+  rule you just wrote does not tell you. And a run report outlived the folder it
+  described: stop watching, and it stayed on screen reporting on nothing.
+- **About showed one badge where two facts applied.** BETA is about the
+  program; DEV is about this install taking early builds. Both were true and
+  only the first appeared. The name is also centred on the same axis as the
+  mark and the tagline now — sharing a row with the badges pushed it off by
+  half their width.
 - **When a file refused to move, Disk and Duplicates said so without saying
   why.** Four modules kept their own copy of the trash loop and three of them
   dropped the error: the path went on a `failed` list, and the person who had
