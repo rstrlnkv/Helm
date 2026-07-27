@@ -39,15 +39,17 @@ features, PATCH = fixes.
   double-click.
 
 ### Fixed
-- **The breadcrumb bar did not fit.** Measured with real font metrics: it
-  needed 784 pt against the 610 the window's minimum leaves, and against the
-  690 of its default — so it overflowed at every size, not only when squeezed.
-  It was carrying two jobs: where you are, and what you can do. The scan
-  statement ("1 449 960 files in 76.7 s", the widest thing in the row) is
-  neither, and now sits under the ring with the measurement it describes; the
-  Stop control stays in the bar, because that is an action. With deep paths
-  collapsing one level sooner it comes to 572 pt, which fits the minimum
-  window with 38 pt to spare.
+- **The Disk screen adapts to the width it has.** Measured with real font
+  metrics: the ring column needs 328 pt, a comfortable list 316, the bar 640
+  without the scan statement and 788 with it — against a detail pane of 690 pt
+  at the default window and 610 at its minimum, where neither the pair of panes
+  nor the full bar fits. Below 660 pt the ring goes and the list takes the
+  pane; below 800 the scan statement goes first, being neither the path nor a
+  control and the widest thing in the row. Nothing is dropped where there is
+  room for it: on a wide window the statement sits between the path and the
+  controls, which is also what fills the gap that otherwise opens there.
+  `Scripts/layout/measure-disk-bar.swift` prints the numbers, `DiskLayout`
+  turns them into thresholds and `DiskLayoutTests` pins them.
 - **Two hotkey recorders could be armed at once.** A page can hold more than
   one and the keyboard page has since 0.7.1; a mouse click is not a key press,
   so arming the second never disarmed the first. One keystroke landed in both,
