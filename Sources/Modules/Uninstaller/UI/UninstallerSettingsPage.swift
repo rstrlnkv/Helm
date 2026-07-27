@@ -233,7 +233,7 @@ public struct UninstallerSettingsPage: View {
             Text(Bytes(app.sizeBytes))
                 .font(.caption).foregroundStyle(.secondary).monospacedDigit()
         }
-        .frame(height: 34)
+        .frame(minHeight: 34)
         .contentShape(Rectangle())
         .onTapGesture {
             if checked.contains(app.bundleID) { checked.remove(app.bundleID) }
@@ -422,7 +422,7 @@ public struct UninstallerSettingsPage: View {
             Text(Bytes(leftover.sizeBytes))
                 .font(.caption).foregroundStyle(.secondary).monospacedDigit()
         }
-        .frame(height: 32)
+        .frame(minHeight: 32)
     }
 
     /// The list is drawn from names alone and the numbers land a moment later.
