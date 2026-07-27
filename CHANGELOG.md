@@ -26,8 +26,26 @@ features, PATCH = fixes.
   `#fileID`/`#line`/`#function`, because one wording can come from four call
   sites and the wording is what reaches a bug report. Redaction happens inside
   the describer, so a failing path arrives as `~/Documents/…` rather than not
-  at all. Disk's trash loop, the duplicate search's unreadable files and a
-  missing flag-artwork bundle now log at all, having been silent.
+  at all — including the home path spelled the other way, as
+  `/System/Volumes/Data/Users/…`, which `Redact.path` had never matched and
+  which a disk scan can be pointed at by hand. Disk's trash loop, the duplicate
+  search's unreadable files and a missing flag-artwork bundle now log at all,
+  having been silent.
+
+### Fixed
+- **Two hotkey recorders could be armed at once.** A page can hold more than
+  one and the keyboard page has since 0.7.1; a mouse click is not a key press,
+  so arming the second never disarmed the first. One keystroke landed in both,
+  or a monitor sat swallowing every keypress in the window with nothing on
+  screen to say so.
+- **Double-clicking a file in the disk list did nothing** — the primary
+  gesture on the primary surface, no action and no feedback. It reveals the
+  file in Finder, which is what "open" means for a file.
+- One oversized failure could erase the log it was written to: `helm.log`
+  rotates at 2 MB keeping one previous file, and a message went in at any
+  length. Messages are capped, and the characters a *reader* obeys — a lone
+  carriage return, U+2028/9, the bidi overrides that reverse everything after
+  them in a pasted bug report — are neutralised along with the line breaks.
 
 ## [0.7.1] — 2026-07-26
 
