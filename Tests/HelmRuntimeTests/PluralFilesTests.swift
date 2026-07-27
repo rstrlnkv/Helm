@@ -74,3 +74,31 @@ final class PluralRulesAndDaysTests: XCTestCase {
         XCTAssertEqual(Plural.days(30, language: "de"), "30 Tage")
     }
 }
+
+/// The Russian byte, which has three forms where the table could hold one.
+///
+/// «2 байт» shipped because the two values the existing tests used — 1 and 512
+/// — both take the same form as the plural. The middle form is the one nobody
+/// exercised.
+final class RussianBytesTests: XCTestCase {
+
+    func testTheMiddleFormIsTheOneThatWasWrong() {
+        XCTAssertEqual(HelmBytes.string(2, language: "ru"), "2 байта")
+        XCTAssertEqual(HelmBytes.string(3, language: "ru"), "3 байта")
+        XCTAssertEqual(HelmBytes.string(4, language: "ru"), "4 байта")
+    }
+
+    func testTheFormsThatWereAlreadyRight() {
+        XCTAssertEqual(HelmBytes.string(1, language: "ru"), "1 байт")
+        XCTAssertEqual(HelmBytes.string(5, language: "ru"), "5 байт")
+        XCTAssertEqual(HelmBytes.string(512, language: "ru"), "512 байт")
+        XCTAssertEqual(HelmBytes.string(21, language: "ru"), "21 байт")
+    }
+
+    /// Everything above a kilobyte is invariant, and must not have picked up
+    /// the counted form on the way past.
+    func testLargerUnitsAreUntouched() {
+        XCTAssertTrue(HelmBytes.string(2_000, language: "ru").hasSuffix(" КБ"))
+        XCTAssertTrue(HelmBytes.string(2_000_000, language: "ru").hasSuffix(" МБ"))
+    }
+}

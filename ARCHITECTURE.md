@@ -224,6 +224,21 @@ Nothing typed is written down: no key content in the log, no buffer on disk, and
 the buffer is cleared when secure input turns on. The log records that a
 conversion happened and in which app (redacted), never what was converted.
 
+### The one exception, added with the selection actions
+
+`AXSelection` (Layout/SystemPorts) reads and writes the *selection* rather than
+the last typed word, and it has two routes: `AXSelectedText` where the app
+answers, and ⌘C/⌘V where it does not — which is most Electron apps and most web
+views. So the sentence above holds for the word conversion and not for the three
+selection shortcuts.
+
+The cost is real and is not fully paid: `restore(_:)` puts back a *string*, so a
+clipboard holding an image, a file promise or RTF is replaced with plain text or
+with nothing. That is the exact harm the no-clipboard rule was written against.
+The three shortcuts are unbound by default, which limits it to people who asked
+for them — but the honest fix is to save and restore every representation on the
+pasteboard, and until that lands this is a known defect rather than a design.
+
 ## Running applications — read before touching
 
 `NSWorkspace.runningApplications` is main-thread-only, and reading it anywhere
@@ -267,10 +282,11 @@ anyone thought to name it. A `.app` bundle is removable wherever it lives
 long as it is not a top-level directory. Paths are `standardizedFileURL`-resolved
 first: `..` is invisible to a prefix test and not to the filesystem.
 
-There are **two** gates and they answer different questions. `RemovableScope`
+There are **three** gates and they answer different questions. `RemovableScope`
 asks what belongs to an *application*; `UserFileScope` (also HelmRuntime, and
 formerly the disk module's private `DiskSafety`) asks what belongs to the
-*user* — everything except `/System`, `/usr`, `/bin`, a home directory itself, a
+*user*, and `WatchScope` (Autopilot's own, because a rule runs unattended on
+input from a writable plist) asks where a folder rule may reach — everything except `/System`, `/usr`, `/bin`, a home directory itself, a
 volume root and a top-level directory. Disk and Duplicates use the
 second; Leftovers and Uninstaller the first. Wiring a module to the wrong one is
 a real mistake with a misleading symptom: the duplicate finder pointed at
