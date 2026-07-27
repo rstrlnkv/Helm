@@ -133,6 +133,11 @@ public struct HelmIconPlate: View {
             // Dropped when the tile is off, since an unlit thing casts nothing.
             .shadow(color: .black.opacity(active ? 0.16 : 0),
                     radius: shadowRadius, y: shadowOffset)
+            // Decoration at every one of its call sites: a title always sits
+            // beside it. Left visible, the symbol announces its own raw name as
+            // an extra stop before the heading it decorates — a dozen times
+            // over, since this is the plate the whole app uses.
+            .accessibilityHidden(true)
     }
 }
 

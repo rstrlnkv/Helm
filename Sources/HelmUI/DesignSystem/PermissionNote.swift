@@ -20,6 +20,7 @@ public struct HelmPermissionNote: View {
         HStack(spacing: 8) {
             Image(systemName: "exclamationmark.circle.fill")
                 .foregroundStyle(.orange)
+                .accessibilityHidden(true)
             Text(text)
                 .font(.caption)
                 // Literal, not `.secondary`: these notes appear inside blocks
