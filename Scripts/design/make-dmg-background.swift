@@ -68,10 +68,11 @@ extension NSFont {
     }
 }
 
-func ink(_ alpha: Double) -> CGColor {
-    isDev ? tint.copy(alpha: alpha * 0.85)!
-          : gray(0.32, alpha)
-}
+/// Grey whichever channel this is. Dev used to tint the whole drawing blue as
+/// well as adding the badge, which made the two builds look like two different
+/// products rather than one product at two stages. The badge says it, and the
+/// badge is enough.
+func ink(_ alpha: Double) -> CGColor { gray(0.32, alpha) }
 
 // A near-white that is not white: on a white desktop the window would have no
 // edge, and the black app icon needs something to sit on that is not paper.
@@ -115,30 +116,18 @@ func drawBezelStyle() {
 
     // The run between them: the bezel unrolled into a straight line, rising in
     // weight towards the destination. This is the arrow.
-    let runStart = appSlot.x + 116, runEnd = dropSlot.x - 84
-    let steps = 11
-    for step in 0...steps {
-        let t = Double(step) / Double(steps)
-        let x = runStart + (runEnd - runStart) * t
-        let half = (5.0 + 8.0 * t) / 2
-        context.setStrokeColor(ink(0.16 + 0.5 * (t * t)))
-        context.setLineWidth(1.1 + 1.0 * t)
-        context.setLineCap(.round)
-        context.move(to: CGPoint(x: x, y: appSlot.y - half))
-        context.addLine(to: CGPoint(x: x, y: appSlot.y + half))
-        context.strokePath()
-    }
-    // The head: two strokes of the same weight as the last tick, meeting at a
-    // point. Without it the run read as a row of marks that happened to grow,
-    // and which end of it was the front was a guess.
-    let tip = CGPoint(x: runEnd + 15, y: appSlot.y)
-    context.setStrokeColor(ink(0.66))
-    context.setLineWidth(2.1)
+    // A chevron and nothing else. The run of growing ticks that used to lead up
+    // to it was the bezel's vocabulary applied where it did not belong: a row
+    // of marks reads as a scale, and a scale between two icons is a measurement
+    // rather than an instruction.
+    let tip = CGPoint(x: (appSlot.x + dropSlot.x) / 2 + 14, y: appSlot.y)
+    context.setStrokeColor(ink(0.55))
+    context.setLineWidth(3)
     context.setLineCap(.round)
     context.setLineJoin(.round)
-    context.move(to: CGPoint(x: tip.x - 9, y: tip.y - 8))
+    context.move(to: CGPoint(x: tip.x - 15, y: tip.y - 14))
     context.addLine(to: tip)
-    context.addLine(to: CGPoint(x: tip.x - 9, y: tip.y + 8))
+    context.addLine(to: CGPoint(x: tip.x - 15, y: tip.y + 14))
     context.strokePath()
 }
 
