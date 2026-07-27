@@ -8,6 +8,10 @@ import Module_Disk_Engine
 struct DiskResultView: View {
     @ObservedObject var dvm: DiskViewModel
     @Binding var hovered: String?
+    /// The row the keyboard is on. A `List` with no selection has no focusable
+    /// rows at all: arrow keys did nothing, and the only way into a folder was
+    /// a double-click.
+    @State private var selection: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -40,7 +44,16 @@ struct DiskResultView: View {
                 }
                 .frame(minWidth: 300, idealWidth: 360, maxWidth: 380)
                 .aspectRatio(1, contentMode: .fit)
-                .padding(14)
+                .padding(.horizontal, 14)
+                .padding(.top, 14)
+                // Measured with real font metrics: with this line in it, the
+                // bar above needed 784 pt and had 610 at the window's minimum
+                // — and 690 at its default, so it overflowed even there. It is
+                // a statement about the measurement, not a control and not the
+                // path, and it belongs with the thing it describes.
+                measurementNote
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 10)
                 Divider()
                 childList
             }
@@ -50,7 +63,7 @@ struct DiskResultView: View {
     // MARK: - List
 
     private var childList: some View {
-        List {
+        List(selection: $selection) {
             ForEach(dvm.focus?.children ?? []) { child in
                 ChildRow(child: child,
                          title: dvm.displayName(for: child),
@@ -58,13 +71,77 @@ struct DiskResultView: View {
                          hovered: $hovered,
                          basketed: dvm.isBasketed(child),
                          onToggleBasket: { dvm.toggleBasket(child) },
-                         onDrill: {
-                             withAnimation(HelmMotion.emphasis) { dvm.drill(into: child.path) }
-                         })
+                         onDrill: { drill(into: child) })
+                    .tag(child.path)
             }
         }
         .listStyle(.inset)
+        // Return goes in, ⌘↑ comes back out — the pair macOS uses in Finder,
+        // and the keyboard equivalent of the double-click and the ring's
+        // centre. The buttons are hidden because the bar already carries Back
+        // and the list has no room for two more controls; a zero-size button
+        // still owns its shortcut.
+        .overlay {
+            VStack(spacing: 0) {
+                Button("") { drillSelected() }
+                    .keyboardShortcut(.return, modifiers: [])
+                Button("") { withAnimation(HelmMotion.emphasis) { dvm.back() } }
+                    .keyboardShortcut(.upArrow, modifiers: .command)
+                    .disabled(dvm.focusPath.count <= 1)
+            }
+            .opacity(0)
+            .frame(width: 0, height: 0)
+            .accessibilityHidden(true)
+        }
+        // A folder that is gone when the tree reloads should not keep the
+        // keyboard pointing at nothing.
+        .onChange(of: dvm.focus?.path) { _, _ in selection = nil }
     }
+
+    private func drill(into child: DiskEntry) {
+        guard child.isDirectory else { return }
+        withAnimation(HelmMotion.emphasis) { dvm.drill(into: child.path) }
+    }
+
+    /// Return on a selected row. On a file it reveals rather than doing
+    /// nothing, which is the same rule the double-click follows.
+    private func drillSelected() {
+        guard let path = selection,
+              let child = dvm.focus?.children.first(where: { $0.path == path }) else { return }
+        if child.isDirectory {
+            drill(into: child)
+        } else {
+            NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+        }
+    }
+
+    /// What the ring is: a live count, a fresh measurement, or a memory of one.
+    @ViewBuilder private var measurementNote: some View {
+        Group {
+            if dvm.live, let tick = dvm.tick {
+                Text(DkStr.liveCount(tick.files))
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            } else if dvm.restored, let savedAt = dvm.completedAt {
+                // A restored tree is a memory, not a measurement: say when.
+                Text(DkStr.measured(Self.ageFormatter.localizedString(for: savedAt,
+                                                                     relativeTo: Date())))
+            } else if let result = dvm.result {
+                Text(DkStr.scannedIn(result.filesScanned,
+                                     String(format: "%.1f", result.seconds)))
+            }
+        }
+        .font(.caption)
+        .foregroundStyle(.tertiary)
+        .lineLimit(1)
+        .frame(maxWidth: .infinity)
+    }
+
+    static let ageFormatter: RelativeDateTimeFormatter = {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return formatter
+    }()
 
     private func fraction(of child: DiskEntry) -> Double {
         guard let total = dvm.focus?.bytes, total > 0 else { return 0 }
@@ -81,12 +158,6 @@ private struct BreadcrumbBar: View {
     @ObservedObject var dvm: DiskViewModel
     @State private var showingAdvice = false
     @State private var showingDuplicates = false
-
-    static let ageFormatter: RelativeDateTimeFormatter = {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .full
-        return formatter
-    }()
 
     var body: some View {
         HStack(spacing: 8) {
@@ -111,26 +182,16 @@ private struct BreadcrumbBar: View {
 
             Spacer(minLength: 12)
 
+            // While a scan runs the bar keeps the control that stops it —
+            // that is an action, and it must be reachable from here. The
+            // count that goes with it lives under the ring, with the rest of
+            // the measurement.
             if dvm.live {
                 HStack(spacing: 6) {
                     ProgressView().controlSize(.small)
-                    if let tick = dvm.tick {
-                        Text(DkStr.liveCount(tick.files))
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundStyle(.secondary)
-                    }
                     Button(DkStr.stop) { dvm.cancel() }
                         .controlSize(.small)
                 }
-            } else if dvm.restored, let savedAt = dvm.completedAt {
-                // A restored tree is a memory, not a measurement: say when.
-                Text(DkStr.measured(Self.ageFormatter.localizedString(for: savedAt,
-                                                                     relativeTo: Date())))
-                    .font(.caption).foregroundStyle(.tertiary)
-            } else if let result = dvm.result {
-                Text(DkStr.scannedIn(result.filesScanned,
-                                     String(format: "%.1f", result.seconds)))
-                    .font(.caption).foregroundStyle(.tertiary)
             }
 
             if let advice = dvm.result?.advice, !advice.isEmpty, !dvm.live {
@@ -169,7 +230,7 @@ private struct BreadcrumbBar: View {
 
     @ViewBuilder private var crumbs: some View {
         let path = dvm.focusPath
-        if path.count <= 4 {
+        if path.count <= 3 {
             ForEach(Array(path.enumerated()), id: \.element.path) { index, entry in
                 crumb(entry, index: index, isLast: index == path.count - 1)
             }
@@ -203,7 +264,7 @@ private struct BreadcrumbBar: View {
             Text(dvm.displayName(for: entry))
                 .font(.callout.weight(.semibold))
                 .lineLimit(1).truncationMode(.middle)
-                .frame(maxWidth: 180, alignment: .leading)
+                .frame(maxWidth: 150, alignment: .leading)
         } else {
             Button {
                 withAnimation(HelmMotion.emphasis) { dvm.jump(to: index) }
@@ -214,7 +275,7 @@ private struct BreadcrumbBar: View {
                     // took the full 140 pt and centred a short name inside it,
                     // so "iMazing" sat in the middle of a gap.
                     .fixedSize(horizontal: true, vertical: false)
-                    .frame(maxWidth: 140, alignment: .leading)
+                    .frame(maxWidth: 120, alignment: .leading)
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
