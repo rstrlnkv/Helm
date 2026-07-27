@@ -10,7 +10,7 @@ enum KAStr {
                          .de: "Wach halten", .ja: "スリープ防止", .zh: "保持唤醒", .pt: "Manter ativo"])
     }
     static var summary: String {
-        L("Keep the Mac from falling asleep.",
+        L("Keep the Mac from falling asleep",
           [.ru: "Не давать Mac засыпать.", .es: "Evitar que el Mac se duerma.",
            .fr: "Empêcher le Mac de s’endormir.", .de: "Den Mac wach halten.",
            .ja: "Mac をスリープさせない。", .zh: "阻止 Mac 进入睡眠。",

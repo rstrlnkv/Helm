@@ -1,3 +1,4 @@
+import HelmRuntime
 import HelmUI
 import Module_Autopilot_Engine
 
@@ -9,7 +10,7 @@ import Module_Autopilot_Engine
 /// named the mechanism, and left the sidebar with an entry that could have
 /// belonged to any part of the app.
 enum ApStr {
-    static var moduleName: String { L("Autopilot", [.ru: "Автопилот", .es: "Piloto automático", .fr: "Pilote automatique", .de: "Autopilot", .ja: "オートパイロット", .zh: "自动驾驶", .pt: "Piloto automático"]) }
+    static var moduleName: String { L("Autopilot", [.ru: "Автопилот", .es: "Piloto automático", .fr: "Pilote automatique", .de: "Autopilot", .ja: "オートパイロット", .zh: "自动整理", .pt: "Piloto automático"]) }
     static var summary: String { L("Folders that keep themselves in order", [.ru: "Папки, которые держат себя в порядке", .es: "Carpetas que se mantienen en orden", .fr: "Des dossiers qui se tiennent en ordre", .de: "Ordner, die sich selbst in Ordnung halten", .ja: "自分で整った状態を保つフォルダ", .zh: "会自己保持整齐的文件夹", .pt: "Pastas que se mantêm em ordem"]) }
     static var startHint: String { L("Point Helm at a folder and give it rules. A file that arrives is checked against them in order, and the first rule that matches is the one that runs.", [.ru: "Укажите Helm папку и задайте правила. Появившийся файл проверяется по ним по порядку, и срабатывает первое подошедшее правило.", .es: "Indica una carpeta y dale reglas. Un archivo que llega se comprueba en orden, y se ejecuta la primera regla que coincide.", .fr: "Désignez un dossier et donnez-lui des règles. Un fichier qui arrive est vérifié dans l’ordre, et la première règle qui correspond s’exécute.", .de: "Wähle einen Ordner und gib ihm Regeln. Eine ankommende Datei wird der Reihe nach geprüft, und die erste passende Regel läuft.", .ja: "フォルダを指定してルールを与えます。届いたファイルは上から順に照合され、最初に一致したルールが実行されます。", .zh: "指定一个文件夹并为它设定规则。新到的文件按顺序检查，第一条匹配的规则会执行。", .pt: "Aponte para uma pasta e dê regras a ela. Um arquivo que chega é verificado na ordem, e a primeira regra que casa é a que roda."]) }
     static var needsAccess: String { L("Without Full Disk Access a rule sees only some of the folder, and acts on only some of it.", [.ru: "Без полного доступа к диску правило видит лишь часть папки — и действует лишь на часть.", .es: "Sin Acceso Total al Disco una regla ve solo parte de la carpeta y actúa solo sobre esa parte.", .fr: "Sans accès complet au disque, une règle ne voit qu’une partie du dossier et n’agit que sur celle-ci.", .de: "Ohne Festplattenvollzugriff sieht eine Regel nur einen Teil des Ordners — und wirkt nur darauf.", .ja: "フルディスクアクセスがないと、ルールはフォルダの一部しか見えず、その一部にしか働きません。", .zh: "没有完全磁盘访问权限时，规则只能看到文件夹的一部分，也只会作用于这一部分。", .pt: "Sem Acesso Total ao Disco uma regra vê apenas parte da pasta e age apenas sobre ela."]) }
@@ -19,7 +20,9 @@ enum ApStr {
     static var addFolder: String { L("Add folder…", [.ru: "Добавить папку…", .es: "Añadir carpeta…", .fr: "Ajouter un dossier…", .de: "Ordner hinzufügen…", .ja: "フォルダを追加…", .zh: "添加文件夹…", .pt: "Adicionar pasta…"]) }
     static var removeFolder: String { L("Stop watching", [.ru: "Перестать следить", .es: "Dejar de vigilar", .fr: "Ne plus surveiller", .de: "Nicht mehr beobachten", .ja: "監視をやめる", .zh: "停止监视", .pt: "Parar de vigiar"]) }
     static var runNow: String { L("Run now", [.ru: "Прогнать сейчас", .es: "Ejecutar ahora", .fr: "Exécuter maintenant", .de: "Jetzt ausführen", .ja: "今すぐ実行", .zh: "立即运行", .pt: "Executar agora"]) }
-    static func ruleCount(_ count: Int) -> String { L("\(count) rules", [.ru: "Правил: \(count)", .es: "\(count) reglas", .fr: "\(count) règles", .de: "\(count) Regeln", .ja: "\(count) 個のルール", .zh: "\(count) 条规则", .pt: "\(count) regras"]) }
+    static func ruleCount(_ count: Int) -> String {
+        Plural.rules(count, language: AppLanguage.current.rawValue)
+    }
     static var noRules: String { L("No rules yet", [.ru: "Правил пока нет", .es: "Aún sin reglas", .fr: "Pas encore de règles", .de: "Noch keine Regeln", .ja: "まだルールがありません", .zh: "还没有规则", .pt: "Ainda sem regras"]) }
     static var depth: String { L("Include subfolders", [.ru: "Включая подпапки", .es: "Incluir subcarpetas", .fr: "Inclure les sous-dossiers", .de: "Unterordner einbeziehen", .ja: "サブフォルダも対象", .zh: "包含子文件夹", .pt: "Incluir subpastas"]) }
     static var depthNote: String { L("A rule that reaches into subfolders is how a tidy folder becomes a rearranged one. Off by default.", [.ru: "Правило, залезающее в подпапки, — это то, как аккуратная папка становится переставленной. По умолчанию выключено.", .es: "Una regla que entra en las subcarpetas es como una carpeta ordenada acaba reorganizada. Desactivado por omisión.", .fr: "Une règle qui descend dans les sous-dossiers, c’est ainsi qu’un dossier rangé devient un dossier réorganisé. Désactivé par défaut.", .de: "Eine Regel, die in Unterordner greift, macht aus einem ordentlichen Ordner einen umsortierten. Standardmäßig aus.", .ja: "サブフォルダまで踏み込むルールは、整ったフォルダを並べ替えられたフォルダに変えます。既定はオフです。", .zh: "深入子文件夹的规则，正是整齐的文件夹被重新排布的原因。默认关闭。", .pt: "Uma regra que entra nas subpastas é como uma pasta arrumada vira uma pasta remexida. Desligado por padrão."]) }
@@ -64,7 +67,15 @@ enum ApStr {
     static var comparisonOlder: String { L("older than", [.ru: "старше", .es: "anterior a", .fr: "plus ancien que", .de: "älter als", .ja: "より古い", .zh: "早于", .pt: "mais antigo que"]) }
     static var comparisonNewer: String { L("newer than", [.ru: "новее", .es: "posterior a", .fr: "plus récent que", .de: "neuer als", .ja: "より新しい", .zh: "晚于", .pt: "mais recente que"]) }
     static var unitMegabytes: String { L("MB", [.ru: "МБ", .es: "MB", .fr: "Mo", .de: "MB", .ja: "MB", .zh: "MB", .pt: "MB"]) }
+    /// The bare word, for the editor row where it labels a field rather than
+    /// counting anything: "[ 30 ] days".
     static var unitDays: String { L("days", [.ru: "дней", .es: "días", .fr: "jours", .de: "Tage", .ja: "日", .zh: "天", .pt: "dias"]) }
+
+    /// Composed with the number rather than glued to it: a bare word after a
+    /// numeral gives «1 дней» and «22 дней» in Russian, and "1 days" in English.
+    static func days(_ count: Double) -> String {
+        Plural.days(Int(count.rounded()), language: AppLanguage.current.rawValue)
+    }
 
     static func kindName(_ kind: FileKind) -> String {
         switch kind {

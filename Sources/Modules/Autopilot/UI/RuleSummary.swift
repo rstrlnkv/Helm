@@ -28,9 +28,9 @@ enum RuleSummary {
         case let .size(comparison, megabytes):
             "\(ApStr.fieldSize) \(comparison == .largerThan ? ApStr.comparisonLarger : ApStr.comparisonSmaller) \(format(megabytes)) \(ApStr.unitMegabytes)"
         case let .dateAdded(comparison, days):
-            "\(ApStr.fieldDateAdded) \(describe(comparison)) \(format(days)) \(ApStr.unitDays)"
+            "\(ApStr.fieldDateAdded) \(describe(comparison)) \(ApStr.days(days))"
         case let .dateModified(comparison, days):
-            "\(ApStr.fieldDateModified) \(describe(comparison)) \(format(days)) \(ApStr.unitDays)"
+            "\(ApStr.fieldDateModified) \(describe(comparison)) \(ApStr.days(days))"
         case let .downloadedFrom(host):
             "\(ApStr.fieldSource) \(ApStr.comparisonContains) “\(host)”"
         case let .tag(tag):
