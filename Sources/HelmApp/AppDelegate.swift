@@ -37,31 +37,18 @@ import HelmRuntime
             "keep-awake.toggle",
             store: NamespacedStore(namespace: "keep-awake", backing: UserDefaults.standard),
             action: send("toggle", to: "keep-awake"))
+        // One chord for the whole module, doing whatever the tap key does — for
+        // keyboards with no right-hand modifier to tap. There were five: convert
+        // the last word, undo, and one for each of three selection actions. The
+        // engine already decided between converting and undoing on its own, and
+        // now it decides between the selection and the last word too, so the
+        // other four were rows asking the user to assemble a gesture the app
+        // could assemble itself.
         HotkeyManager.shared.register(
-            "layout.convert",
+            "layout.fix",
             store: NamespacedStore(namespace: "layout", backing: UserDefaults.standard),
             prefix: "convertHotkey",
-            action: send("convertLastWord", to: "layout"))
-        HotkeyManager.shared.register(
-            "layout.undo",
-            store: NamespacedStore(namespace: "layout", backing: UserDefaults.standard),
-            prefix: "undoHotkey",
-            action: send("undoLastConversion", to: "layout"))
-        // The three that act on a selection rather than on the last word. Each
-        // is unbound until somebody sets it: these edit text Helm never saw, in
-        // whatever app is in front, so none of them arrives with a default
-        // chord that could fire before it was asked for.
-        for (name, prefix, command) in [
-            ("layout.convertSelection", "convertSelectionHotkey", "convertSelection"),
-            ("layout.transliterate", "transliterateHotkey", "transliterateSelection"),
-            ("layout.changeCase", "changeCaseHotkey", "changeSelectionCase"),
-        ] {
-            HotkeyManager.shared.register(
-                name,
-                store: NamespacedStore(namespace: "layout", backing: UserDefaults.standard),
-                prefix: prefix,
-                action: send(command, to: "layout"))
-        }
+            action: send("fix", to: "layout"))
         HotkeyManager.shared.start()
 
         HelmLog.shared.info("app", "modules: \(ModuleRegistry.all.map(\.idRaw).joined(separator: ", "))")

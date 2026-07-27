@@ -127,3 +127,38 @@ final class ModifierTapTests: XCTestCase {
         }
     }
 }
+
+/// The Globe key as a tap key.
+///
+/// It cannot be a chord: Carbon's hotkey modifiers are ⌘⇧⌥⌃ and a right-shift
+/// bit documented "Not supported on Mac OS X" (Events.h), with no bit for fn at
+/// all. So the only rail it can ride is this one.
+final class GlobeTapKeyTests: XCTestCase {
+
+    /// `kVK_Function` in Events.h, and `NX_SECONDARYFNMASK` in IOLLEvent.h.
+    /// Written down because both are magic numbers with no symbol in Swift.
+    func testGlobeIsTheKeyCodeAndMaskTheSystemUses() {
+        XCTAssertEqual(TapKey.globe.keyCode, 63)
+        XCTAssertEqual(TapKey.globe.deviceMask, 0x800000)
+    }
+
+    /// It taps like every other key: press, release, nothing in between.
+    func testATapFires() {
+        var tap = ModifierTap(key: .globe)
+        XCTAssertFalse(tap.feed(.down(63, at: 0)))
+        XCTAssertTrue(tap.feed(.up(63, at: 0.1)))
+    }
+
+    /// And it refuses like every other key, which is what makes 🌐 usable at
+    /// all — held or combined it stays the system's key.
+    func testHoldingOrCombiningIsNotATap() {
+        var held = ModifierTap(key: .globe)
+        _ = held.feed(.down(63, at: 0))
+        XCTAssertFalse(held.feed(.up(63, at: 0.9)))
+
+        var combined = ModifierTap(key: .globe)
+        _ = combined.feed(.down(63, at: 0))
+        _ = combined.feed(.otherInput)
+        XCTAssertFalse(combined.feed(.up(63, at: 0.1)))
+    }
+}

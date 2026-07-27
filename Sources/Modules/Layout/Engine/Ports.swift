@@ -71,6 +71,17 @@ public protocol SelectionPort: Sendable {
     /// mean replacing the caret's surroundings with something.
     func selectedText() -> String?
 
+    /// The selection as the accessibility tree reports it, and nothing else.
+    ///
+    /// `selectedText()` falls back to ⌘C when the tree says nothing, which costs
+    /// up to 200 ms of polling and clobbers the clipboard on the way. That is
+    /// affordable once, when somebody presses a shortcut meaning "do it". It is
+    /// not affordable on the modifier tap, which fires whenever the key is
+    /// tapped and has to decide in that moment whether there is a selection at
+    /// all. An app whose tree says nothing is simply treated as having no
+    /// selection, and the tap does what it always did to the last word.
+    func selectedTextWithoutClipboard() -> String?
+
     /// Replaces the selection. False when the app refused, so the caller can
     /// report rather than assume — a failed replace with a reported success is
     /// text somebody thinks they changed.

@@ -21,10 +21,6 @@ public struct LayoutSettingsPage: View {
     @State private var tapKey: TapKey
     @State private var showingIntro = false
     @StateObject private var convertKey: HelmHotkeyRecorder
-    @StateObject private var undoKey: HelmHotkeyRecorder
-    @StateObject private var convertSelectionKey: HelmHotkeyRecorder
-    @StateObject private var transliterateKey: HelmHotkeyRecorder
-    @StateObject private var changeCaseKey: HelmHotkeyRecorder
     @State private var abbreviations: [AutoReplace.Entry]
     @State private var newShort = ""
     @State private var newLong = ""
@@ -45,17 +41,9 @@ public struct LayoutSettingsPage: View {
             BadgeStyle.from(store.string(LayoutKey.badgeStyle, default: BadgeStyle.default.rawValue)))
         _badgeSize = State(initialValue:
             MenuBarIconSize(rawValue: store.string(LayoutKey.badgeSize, default: "small")) ?? .small)
-        _tapKey = State(initialValue: TapKey.from(store.string(LayoutKey.tapKey, default: TapKey.off.rawValue)))
+        _tapKey = State(initialValue: TapKey.from(store.string(LayoutKey.tapKey, default: TapKey.rightCommand.rawValue)))
         _convertKey = StateObject(wrappedValue:
             HelmHotkeyRecorder(store: store, prefix: "convertHotkey"))
-        _undoKey = StateObject(wrappedValue:
-            HelmHotkeyRecorder(store: store, prefix: "undoHotkey"))
-        _convertSelectionKey = StateObject(wrappedValue:
-            HelmHotkeyRecorder(store: store, prefix: "convertSelectionHotkey"))
-        _transliterateKey = StateObject(wrappedValue:
-            HelmHotkeyRecorder(store: store, prefix: "transliterateHotkey"))
-        _changeCaseKey = StateObject(wrappedValue:
-            HelmHotkeyRecorder(store: store, prefix: "changeCaseHotkey"))
         _abbreviations = State(initialValue: AutoReplaceStore.load(store))
         _fixCapitals = State(initialValue: store.bool(LayoutKey.fixCapitals, default: false))
     }
@@ -66,7 +54,6 @@ public struct LayoutSettingsPage: View {
             behaviourSection
             triggersSection
             shortcutsSection
-            selectionSection
             autoReplaceSection
             tryItSection
             exceptionsSection
@@ -167,14 +154,13 @@ public struct LayoutSettingsPage: View {
 
     private var shortcutsSection: some View {
         Section(LyStr.shortcuts) {
-            // Both are explicit requests, for the two cases the automatic rules
-            // cannot cover: a word they declined, and a word they should have.
-            // They come first: the one-key option below says "both", and
-            // "both" should name things the reader has already met.
-            HelmHotkeyRow(LyStr.convertAction, recorder: convertKey,
-                          taken: HotkeyStatus.isTaken("layout.convert"))
-            HelmHotkeyRow(LyStr.undoAction, recorder: undoKey,
-                          taken: HotkeyStatus.isTaken("layout.undo"))
+            // One gesture. This was two sections and eleven controls: chords for
+            // "convert the last word" and "undo", and three more for the three
+            // things that could be done to a selection. The engine already chose
+            // between converting and undoing by itself, and now it chooses
+            // between the selection and the last word too — so every one of
+            // those rows was asking the reader to assemble something the app
+            // assembles better.
             Picker(LyStr.tapKey, selection: $tapKey) {
                 ForEach(TapKey.allCases, id: \.self) { key in
                     Text(LyStr.tapKeyName(key)).tag(key)
@@ -184,6 +170,19 @@ public struct LayoutSettingsPage: View {
             Text(LyStr.tapKeyHint)
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            // 🌐 is the system's key first. Helm cannot take it, and cannot even
+            // read what it is set to until the person has changed it once, so
+            // the note states the precondition instead of promising anything.
+            if tapKey == .globe {
+                Text(LyStr.globeNote)
+                    .font(.caption).foregroundStyle(HelmText.faint)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            // For keyboards with no right-hand modifier to tap: 60% boards,
+            // HHKB. Same action, so there is no second behaviour to explain and
+            // no way to bind the two against each other.
+            HelmHotkeyRow(LyStr.orShortcut, recorder: convertKey,
+                          taken: HotkeyStatus.isTaken("layout.fix"))
         }
     }
 
@@ -260,26 +259,6 @@ public struct LayoutSettingsPage: View {
     /// promise: those two edit a word Helm watched being typed a keystroke ago,
     /// these edit whatever is selected in whatever app is in front. Mixing them
     /// into one list would read as five variations of the same thing.
-    private var selectionSection: some View {
-        Section(LyStr.selectionSection) {
-            Text(LyStr.selectionNote)
-                .font(.caption).foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            HelmHotkeyRow(LyStr.convertSelectionAction, recorder: convertSelectionKey,
-                          taken: HotkeyStatus.isTaken("layout.convertSelection"))
-            HelmHotkeyRow(LyStr.transliterateAction, recorder: transliterateKey,
-                          taken: HotkeyStatus.isTaken("layout.transliterate"))
-            Text(LyStr.transliterateHint)
-                .font(.caption).foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            HelmHotkeyRow(LyStr.changeCaseAction, recorder: changeCaseKey,
-                          taken: HotkeyStatus.isTaken("layout.changeCase"))
-            Text(LyStr.changeCaseHint)
-                .font(.caption).foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
     /// A place to try it without risking anything that was being written.
     private var tryItSection: some View {
         Section(LyStr.tryIt) { LayoutTestField() }

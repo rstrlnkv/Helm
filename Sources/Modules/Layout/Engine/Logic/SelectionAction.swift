@@ -8,13 +8,19 @@ import Foundation
 /// can act on text Helm never saw — a paragraph pasted from somewhere, a file
 /// name in the Finder, a message somebody else wrote — which is the whole point
 /// and also the reason each one refuses to make an edit that changes nothing.
+/// One case, kept as an enum because the transform below is what the engine
+/// asks, and a bare function would lose the name of what is being done.
+///
+/// It had three. Transliteration went because it is not reversible: `ь` maps to
+/// nothing and `й`/`и` both map to `i`, so `соль` came back `сол` and `Русский`
+/// came back `Русскии` — four of eight sample words lost characters, on a
+/// transform whose own test file called both directions "reversible-ish, which
+/// is the whole reason they are safe to put on a shortcut". Changing case went
+/// because macOS already offers it in Edit ▸ Transformations wherever text can
+/// be edited at all.
 public enum SelectionAction: String, Codable, CaseIterable, Sendable {
     /// The same keys read through the other layout: `ghbdtn` → `привет`.
     case convert
-    /// Russian spelled in Latin letters, or back: `привет` → `privet`.
-    case transliterate
-    /// lower → UPPER → Title → lower.
-    case changeCase
 }
 
 /// The transform, applied. Separate from the action so the engine can ask
@@ -39,8 +45,6 @@ public struct SelectionTransform: Sendable {
         guard !trimmed.isEmpty else { return nil }
         let result: String? = switch action {
         case .convert: convert(text)
-        case .transliterate: Transliteration.convert(text)
-        case .changeCase: CaseCycle.apply(text)
         }
         guard let result, result != text else { return nil }
         return result

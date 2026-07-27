@@ -155,7 +155,40 @@ features, PATCH = fixes.
   and longer underneath, which is a small downward offset. Helm's ratios were
   tuned until its own 22 pt tile reproduced that profile.
 
+### Changed
+- **The Keyboard module has one gesture instead of five bindings.** Tap the key
+  — right ⌘ by default — and Helm fixes whatever is in front of you: the
+  selection if text is selected, otherwise the last word, and tapping again puts
+  it back. There were separate shortcuts for converting the last word, undoing,
+  and three things that could be done to a selection; the engine already decided
+  between converting and undoing on its own, so those rows were asking the
+  reader to assemble a gesture the app assembles better. Eleven controls become
+  two, and a keyboard with no right-hand modifier can still bind one chord to
+  the same action.
+- **Something is bound out of the box.** Nothing was, while the module's own
+  intro promised "every change can be undone — set the shortcut below". The
+  promise now needs no setting to be true.
+- **🌐 can be the key**, on the Macs that have one. It cannot be part of a key
+  combination — Carbon's hotkey modifiers have no bit for it — so it is offered
+  only in the key picker, with a note saying what macOS may already be using it
+  for, because Helm cannot take it and cannot even read that setting until you
+  have changed it once.
+
+### Removed
+- **Transliteration of a selection.** It was not reversible: `ь` mapped to
+  nothing and `й`/`и` both mapped to `i`, so `соль` came back `сол` and
+  `Русский` came back `Русскии` — four of eight sample words lost characters. It
+  was on a shortcut, its own test file called both directions "reversible-ish,
+  which is the whole reason they are safe to put on a shortcut", and nothing in
+  the suite exercised it.
+- **Changing the case of a selection.** macOS already offers it in
+  Edit ▸ Transformations wherever text can be edited.
+
 ### Fixed
+- **A selection replacement could report success it had not earned.** The paste
+  route returned true without checking anything, so in an app where ⌘V is not
+  paste, Helm clobbered the clipboard, restored it, played the success sound and
+  claimed a change that never happened.
 - **A remembered scan of a folder that no longer exists opened on a blank
   screen** — a breadcrumb, a "Scan again" button, and nothing else: no ring, no
   rows, no reason given. Folders get scanned and then deleted; the saved tree is
