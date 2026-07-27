@@ -133,32 +133,27 @@ import HelmUI
 
     private func showMenu() {
         guard let button = statusItem.button else { return }
-        let menu = NSMenu()
-        menu.addItem(withTitle: AppStr.settings, action: #selector(openSettings), keyEquivalent: "").target = self
 
-        // Jump straight to a module's page instead of opening Settings and
-        // hunting for it in the sidebar.
-        menu.addItem(.separator())
         // Only what is actually running: opening a disabled module's page just
         // to be told it is disabled is a dead end. The panel already did this.
         let live = Set(host.enabledModules.map { type(of: $0.descriptor).id.rawValue })
-        for descriptor in host.orderedModuleIDs
-            .filter({ live.contains($0) })
-            .compactMap({ id in ModuleRegistry.all.first { $0.idRaw == id } }) {
-            let item = NSMenuItem(title: descriptor.moduleMetadata.name,
-                                  action: #selector(openModuleSettings(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = descriptor.idRaw
-            let symbol = NSImage(systemSymbolName: descriptor.moduleMetadata.sfSymbol,
-                                 accessibilityDescription: nil)
-            symbol?.size = NSSize(width: 15, height: 15)
-            symbol?.isTemplate = true
-            item.image = symbol
-            menu.addItem(item)
+        // Grouped the way the sidebar groups, and in the order the user set
+        // inside each group, so the two lists of the same nine modules do not
+        // disagree about which ones belong together.
+        let groups = ModuleCategory.allCases.map { category in
+            StatusMenuBuilder.Group(entries: ModuleGrouping.ordered(in: category)
+                .filter { live.contains($0.idRaw) }
+                .map { StatusMenuBuilder.Entry(id: $0.idRaw,
+                                               title: $0.moduleMetadata.name,
+                                               symbol: $0.moduleMetadata.sfSymbol) })
         }
 
-        menu.addItem(.separator())
-        menu.addItem(withTitle: AppStr.quit, action: #selector(quit), keyEquivalent: "q").target = self
+        let menu = StatusMenuBuilder.menu(
+            settingsTitle: AppStr.settings, quitTitle: AppStr.quit, groups: groups,
+            target: self,
+            openSettings: #selector(openSettings),
+            openModule: #selector(openModuleSettings(_:)),
+            quit: #selector(quit))
 
         // Hand placement to the status item: popUp(at:) with a hand-computed
         // point stopped fitting once the module entries were added, and the menu

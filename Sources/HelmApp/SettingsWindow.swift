@@ -183,10 +183,7 @@ private struct SettingsSidebar: View {
     /// list and modules the user never dragged stay in registry order.
     private func orderedModules(in category: ModuleCategory) -> [any ModuleDescriptor] {
         _ = model.orderRevision                       // redraw when it changes
-        let inCategory = ModuleRegistry.all.filter { $0.moduleCategory == category }
-        let ordered = ModuleOrder.apply(saved: AppSettings.moduleOrder,
-                                        to: inCategory.map(\.idRaw))
-        return ordered.compactMap { id in inCategory.first { $0.idRaw == id } }
+        return ModuleGrouping.ordered(in: category)
     }
 
     private func sidebarRow(_ title: String, _ symbol: String, _ color: Color) -> some View {
@@ -650,11 +647,16 @@ private struct AboutHelmView: View {
                     .font(.system(size: 34, weight: .semibold))
                     .tracking(-0.4)
                     .overlay(alignment: .topTrailing) {
-                        badges
+                        badge
                             .fixedSize()
                             // The overlay's own leading edge, placed 7 pt past
                             // the end of the word.
                             .alignmentGuide(.trailing) { $0[.leading] - 7 }
+                            // The top of the capsule on the top of the H. Not a
+                            // guess: at 34 pt semibold the cap starts exactly
+                            // 9.00 pt below the line box's top, measured off
+                            // the rendered pixels
+                            // (Scripts/design/measure-wordmark.swift).
                             .alignmentGuide(.top) { $0[.top] - 9 }
                     }
                     .accessibilityElement(children: .combine)
@@ -666,27 +668,27 @@ private struct AboutHelmView: View {
         }
     }
 
-    /// Two different facts, so two badges.
+    /// One badge: which builds this copy takes.
     ///
-    /// BETA is about the program: it is pre-1.0 and stays until it is not. DEV
-    /// is about this install: it takes early builds. Both were true at once and
-    /// only the first was shown, so an About page on the dev channel described
-    /// a beta. On the beta channel the one badge already says both, and a
-    /// second reading "BETA" next to it would be noise.
-    private var badges: some View {
-        HStack(spacing: 5) {
-            HelmBadge(AppStr.betaBadge, tint: .orange)
-                .help(AppStr.channelBetaNote)
-            if channel == .dev {
-                HelmBadge(AppStr.devBadge, tint: .blue)
-                    .help(AppStr.channelDevNote)
-            }
-        }
+    /// It was two — BETA for the program and DEV for the channel — on the
+    /// reasoning that both facts were true. They are, but they are not two
+    /// things to the person reading: pre-1.0 and "on the early channel" both
+    /// answer "how finished is what I am running", and a pair reading BETA DEV
+    /// makes the reader work out which one wins. The channel is the stronger
+    /// claim and it subsumes the other, so it is the one shown.
+    private var badge: some View {
+        HelmBadge(channel == .dev ? AppStr.devBadge : AppStr.betaBadge,
+                  tint: channel == .dev ? .blue : .orange,
+                  emphasis: .prominent)
+            .help(channel == .dev ? AppStr.channelDevNote : AppStr.channelBetaNote)
+            // The badge changes with the segmented control below it; a swap
+            // with no transition reads as a glitch at this size.
+            .transition(.opacity)
+            .animation(HelmMotion.interface, value: channel)
     }
 
     private var badgeAccessibilityLabel: String {
-        channel == .dev ? "Helm, \(AppStr.betaBadge), \(AppStr.devBadge)"
-                        : "Helm, \(AppStr.betaBadge)"
+        "Helm, \(channel == .dev ? AppStr.devBadge : AppStr.betaBadge)"
     }
 
     // MARK: - Instrument row
