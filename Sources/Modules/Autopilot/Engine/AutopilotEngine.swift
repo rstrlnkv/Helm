@@ -282,10 +282,20 @@ public struct PreviewRow: Codable, Equatable, Identifiable, Sendable {
     public let name: String
     public let ruleName: String
     public let action: RuleAction
+    /// Where it lands, when the action has a where. The preview named the
+    /// action — "sort into subfolders by kind" — and left the person to work
+    /// out which subfolder, which is the only part they could not have known
+    /// from the rule they had just written.
+    ///
+    /// The folder, not the final filename: a name already taken gets numbered
+    /// at the moment of the move, and touching the disk to find out on every
+    /// keystroke of the editor is not worth knowing it a second early.
+    public let destination: String?
 
     public init(_ plan: RulePlan) {
         name = plan.facts.name
         ruleName = plan.rule.name
         action = plan.action
+        destination = PlannedDestination.describe(plan)
     }
 }

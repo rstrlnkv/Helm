@@ -192,8 +192,9 @@ private struct BreadcrumbBar: View {
                 }
             }
 
-            Button(DkStr.scanAgain) { dvm.newScan() }
+            Button(DkStr.scanAgain) { Task { await dvm.rescan() } }
                 .controlSize(.small)
+                .disabled(dvm.live)
         }
         .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
     }

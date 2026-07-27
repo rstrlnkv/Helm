@@ -634,22 +634,59 @@ private struct AboutHelmView: View {
             }
             .frame(height: 186)
             VStack(spacing: 5) {
-                // The badge sits on the wordmark, not on the version number:
-                // it is a statement about the program, and it stays until 1.0.
-                HStack(alignment: .top, spacing: 7) {
-                    Text("Helm")
-                        .font(.system(size: 34, weight: .semibold))
-                        .tracking(-0.4)
-                    HelmBadge(AppStr.betaBadge, tint: .orange)
-                        .padding(.top, 8)
-                        .help(AppStr.channelBetaNote)
-                }
-                .accessibilityElement(children: .combine)
+                // The badges hang off the wordmark instead of sharing a row
+                // with it. In an HStack the pair is centred together, so the
+                // name sat left of centre by half the badges' width — under a
+                // mark and above a tagline that are both centred on the column,
+                // which is where the eye reads the axis from. As an overlay
+                // they take no width, so "Helm" is centred on the same line
+                // everything else is.
+                //
+                // Measured on the rendered pixels, not judged
+                // (`Scripts/design/measure-wordmark.swift`): in the 380 pt
+                // column the row put the word 42.2 pt left of the axis; the
+                // overlay puts it at 189.8 against a centre of 190.
+                Text("Helm")
+                    .font(.system(size: 34, weight: .semibold))
+                    .tracking(-0.4)
+                    .overlay(alignment: .topTrailing) {
+                        badges
+                            .fixedSize()
+                            // The overlay's own leading edge, placed 7 pt past
+                            // the end of the word.
+                            .alignmentGuide(.trailing) { $0[.leading] - 7 }
+                            .alignmentGuide(.top) { $0[.top] - 9 }
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(badgeAccessibilityLabel)
                 Text(AppStr.tagline)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
         }
+    }
+
+    /// Two different facts, so two badges.
+    ///
+    /// BETA is about the program: it is pre-1.0 and stays until it is not. DEV
+    /// is about this install: it takes early builds. Both were true at once and
+    /// only the first was shown, so an About page on the dev channel described
+    /// a beta. On the beta channel the one badge already says both, and a
+    /// second reading "BETA" next to it would be noise.
+    private var badges: some View {
+        HStack(spacing: 5) {
+            HelmBadge(AppStr.betaBadge, tint: .orange)
+                .help(AppStr.channelBetaNote)
+            if channel == .dev {
+                HelmBadge(AppStr.devBadge, tint: .blue)
+                    .help(AppStr.channelDevNote)
+            }
+        }
+    }
+
+    private var badgeAccessibilityLabel: String {
+        channel == .dev ? "Helm, \(AppStr.betaBadge), \(AppStr.devBadge)"
+                        : "Helm, \(AppStr.betaBadge)"
     }
 
     // MARK: - Instrument row
