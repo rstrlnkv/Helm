@@ -31,6 +31,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     private var scope: AppScope
     private var exceptions: Exceptions
     private let selection: SelectionPort?
+    private var autoReplace: AutoReplace
+    private var fixCapitals: Bool
     private var automatic: Bool
     private var triggers: ConversionTriggers
     private var audible: Bool
@@ -55,6 +57,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                 secure: SecureContextPort,
                 sound: SoundPort? = nil,
                 selection: SelectionPort? = nil,
+                autoReplace: [AutoReplace.Entry] = [],
+                fixCapitals: Bool = false,
                 rules: [String: Bool] = [:],
                 exceptions: [String] = [],
                 automatic: Bool = true,
@@ -70,6 +74,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         self.secure = secure
         self.sound = sound
         self.selection = selection
+        self.autoReplace = AutoReplace(entries: autoReplace)
+        self.fixCapitals = fixCapitals
         self.scope = AppScope(rules: rules)
         self.exceptions = Exceptions(words: exceptions)
         self.automatic = automatic
@@ -175,8 +181,50 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         default:
             if let finished { lock.lock(); lastCompleted = finished; lock.unlock() }
         }
-        guard auto, confirms, let completed = finished else { return }
+        guard let completed = finished else { return }
+        // Three things can happen to a finished word, and exactly one does.
+        // The order is fixed and is not a preference: an abbreviation is an
+        // instruction somebody wrote down, a habit correction is about how the
+        // keyboard was held, and a layout conversion is a guess — most explicit
+        // first. Two edits to one word would be one edit the undo shortcut
+        // cannot take back in a single press.
+        guard confirms else { return }
+        if replaceWord(completed) { return }
+        guard auto else { return }
         convert(completed.word, trailing: completed.ending, force: false)
+    }
+
+    /// An abbreviation or a held capital. True when the word was dealt with and
+    /// the layout conversion must not also look at it.
+    private func replaceWord(_ completed: TypingBuffer.Completion) -> Bool {
+        lock.lock()
+        let expansion = autoReplace.expansion(for: completed.word)
+        let habit = fixCapitals ? TypingHabits.corrected(completed.word) : nil
+        lock.unlock()
+        guard let replacement = expansion ?? habit else { return false }
+
+        let bundleID = secure.frontmostBundleID()
+        lock.lock(); let allowed = scope.allows(bundleID); lock.unlock()
+        guard allowed, !secure.isSecure() else { return false }
+
+        // The trailing character was typed and stays typed, so the plan puts it
+        // back after the replacement — otherwise the space that confirmed the
+        // word is eaten by the backspaces that follow it.
+        let trailing = completed.ending.map(String.init) ?? ""
+        let plan = SwitchPlan(backspaces: completed.word.count + trailing.count,
+                              insert: replacement + trailing)
+        lock.lock(); performing = true; lock.unlock()
+        let done = typing.perform(plan)
+        lock.lock()
+        performing = false
+        buffer.clear()
+        // No undo record: an expansion is not a guess to be taken back, and the
+        // app's own undo already covers it. A record here would let the undo
+        // shortcut retype an abbreviation nobody asked to see again.
+        undo = nil
+        lock.unlock()
+        if done, audible { sound?.playSwitch() }
+        return done
     }
 
     // MARK: - The selection
@@ -335,6 +383,17 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         exceptions = Exceptions(words: settings.stringArray("exceptions"))
         scope = AppScope(rules: rules)
         audible = settings.bool("audible", default: false)
+        fixCapitals = settings.bool("fixCapitals", default: false)
+        // Decoded here rather than in the page: the engine is the only thing
+        // that acts on the table, so it is the thing that has to have the
+        // current one — a page that pushed entries would leave the engine
+        // holding yesterday's list whenever the window had never been opened.
+        if let data = settings.data("autoReplace"),
+           let entries = try? JSONDecoder().decode([AutoReplace.Entry].self, from: data) {
+            autoReplace = AutoReplace(entries: entries)
+        } else {
+            autoReplace = AutoReplace(entries: [])
+        }
         tapKey = ModifierTap(key: TapKey.from(settings.string("tapKey", default: TapKey.off.rawValue)))
         triggers = ConversionTriggers(onSpace: settings.bool("onSpace", default: ConversionTriggers.default.onSpace),
                                       onReturn: settings.bool("onReturn", default: ConversionTriggers.default.onReturn),
