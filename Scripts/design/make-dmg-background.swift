@@ -17,11 +17,11 @@ import AppKit
 /// the two labels — "Helm" and "Applications" — in the reader's own.
 ///
 /// Run: `swift Scripts/design/make-dmg-background.swift out.png [style] [--dev]`
-/// where style is `bezel` (default), `field` or `sweep`.
+/// where style is `field` (what ships), `bezel` or `sweep`.
 
 let arguments = CommandLine.arguments
 let outputPath = arguments[1]
-let style = arguments.dropFirst(2).first { !$0.hasPrefix("--") } ?? "bezel"
+let style = arguments.dropFirst(2).first { !$0.hasPrefix("--") } ?? "field"
 /// Dev images say so on their face. A screenshot of a dev window turns up in an
 /// issue sooner or later, and it must not be mistaken for a release.
 let isDev = arguments.contains("--dev")
