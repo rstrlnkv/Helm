@@ -44,7 +44,7 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
 
         let counter = FileCounter()
         let freeNow = freeBytes(forPathOn: path)
-        let result: ScanResult? = await blocking {
+        let result: ScanResult? = await offTheCooperativePool {
             guard let tree = scanner.scan(root: path, onProgress: { progress in
                 counter.value = progress.filesSeen
                 // Progress is broadcast so the UI can show it without polling.
@@ -88,42 +88,21 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
     }
 
     public func trash(_ paths: [String]) async -> DiskRemoval {
-        await blocking {
-            var removed: [String] = [], failed: [String] = []
-            var freed = 0
+        await offTheCooperativePool {
             // Refused, not dropped. Filtering the loop meant a path the gate
             // rejected reached neither list, and the page then announced
-            // "Removed — N freed" over a file still sitting there. Leftovers and
-            // Uninstaller already report their refusals; this was the last one.
+            // "Removed — N freed" over a file still sitting there.
             let unique = Set(paths)
             let allowed = unique.filter { UserFileScope.isRemovable($0) }
             let refused = unique.subtracting(allowed)
-            failed.append(contentsOf: refused)
-            for path in refused {
-                HelmLog.shared.warn("disk", "refused out-of-scope path: \(Redact.path(path))")
-            }
-            for path in allowed {
-                let url = URL(fileURLWithPath: path)
-                let size = (try? url.resourceValues(forKeys: [.totalFileAllocatedSizeKey]))?
-                    .totalFileAllocatedSize ?? 0
-                do {
-                    try FileManager.default.trashItem(at: url, resultingItemURL: nil)
-                    removed.append(path); freed += size
-                } catch {
-                    failed.append(path)
-                    HelmLog.shared.failure("disk", "trash refused \(Redact.path(path))", error)
-                }
-            }
-            HelmLog.shared.info("disk", "trashed \(removed.count), failed \(failed.count)")
-            return DiskRemoval(removed: removed, failed: failed, freedBytes: freed)
+            let result = HelmTrash.remove(allowed: Array(allowed),
+                                          outOfScope: Array(refused),
+                                          module: "disk")
+            return DiskRemoval(removed: result.removed, refused: result.refused,
+                               freedBytes: result.freedBytes)
         }
     }
 
-    private func blocking<T: Sendable>(_ work: @escaping @Sendable () -> T) async -> T {
-        await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async { continuation.resume(returning: work()) }
-        }
-    }
 
 
     private struct PathPayload: Codable { let path: String }
@@ -181,6 +160,17 @@ public struct ScanTick: Codable, Equatable, Sendable {
 
 public struct DiskRemoval: Codable, Equatable, Sendable {
     public let removed: [String]
-    public let failed: [String]
+    /// With the reason attached. `failed` used to be a list of paths and
+    /// nothing else, so the page could say how many refused but never why —
+    /// which is the only part worth reading when Full Disk Access is the cause.
+    public let refused: [HelmTrash.Refusal]
     public let freedBytes: Int
+
+    public var failed: [String] { refused.map(\.path) }
+
+    public init(removed: [String], refused: [HelmTrash.Refusal], freedBytes: Int) {
+        self.removed = removed
+        self.refused = refused
+        self.freedBytes = freedBytes
+    }
 }

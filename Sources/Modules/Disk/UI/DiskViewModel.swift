@@ -31,7 +31,10 @@ import Module_Disk_Engine
     /// The second look: identical files under the focused folder. nil means
     @Published public private(set) var banner: String?
     /// Paths macOS refused. Announcing only what was freed hides these.
-    @Published public private(set) var failures: [String] = []
+    /// With reasons. This was a list of bare paths, and the page printed the
+    /// same sentence against every one of them — including the ones macOS
+    /// refused for a reason the person could have acted on.
+    @Published public private(set) var failures: [HelmTrash.Refusal] = []
 
     private let client: TransportClient
     private let vm: ModuleViewModel
@@ -255,7 +258,7 @@ import Module_Disk_Engine
         guard !paths.isEmpty else { return }
         let removal: DiskRemoval? = await client.request("trash", encoding: paths)
         let freed = removal?.freedBytes ?? 0
-        failures = removal?.failed ?? []
+        failures = removal?.refused ?? []
         banner = DkStr.removedFreed(Bytes(freed))
         basket = []
         // Re-walking the disk to learn what we already know — those paths are

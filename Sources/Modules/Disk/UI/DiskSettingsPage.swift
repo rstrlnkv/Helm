@@ -72,7 +72,7 @@ public struct DiskSettingsPage: View {
         ScrollView {
             VStack(spacing: 12) {
                 Text(DkStr.startHint)
-                    .font(.callout).foregroundStyle(.secondary)
+                    .font(.callout).foregroundStyle(HelmText.quiet)
                     .padding(.top, 4)
                 ForEach(dvm.volumes) { volume in
                     volumeCard(volume)
@@ -145,7 +145,8 @@ public struct DiskSettingsPage: View {
                     HelmRemovalOutcome(
                         succeededText: banner,
                         failures: dvm.failures.map {
-                            HelmRemovalFailure(path: $0, reason: DkStr.couldNotMove)
+                            HelmRemovalFailure(path: $0.path,
+                                               reason: TrashReasonText.sentence($0.reason.rawValue))
                         },
                         needsFullDiskAccess: diskAccess == .denied)
                 } else {

@@ -50,18 +50,18 @@ struct OrphansView: View {
 
     @ViewBuilder private var content: some View {
         if scanning {
-            HelmCenteredContent { ProgressView(); Text(UnStr.scanningOrphans).font(.caption).foregroundStyle(.secondary) }
+            HelmCenteredContent { ProgressView(); Text(UnStr.scanningOrphans).font(.caption).foregroundStyle(HelmText.quiet) }
         } else if !scanned {
             HelmCenteredContent {
                 HelmIconPlate(symbol: "clock.arrow.circlepath", tint: .orange, size: 56)
-                Text(UnStr.orphansIntro).multilineTextAlignment(.center).foregroundStyle(.secondary)
+                Text(UnStr.orphansIntro).multilineTextAlignment(.center).foregroundStyle(HelmText.quiet)
                     .frame(maxWidth: 380)
                 Button(UnStr.scanOrphans) { Task { await scan() } }.buttonStyle(.borderedProminent)
             }
         } else if groups.isEmpty {
             HelmCenteredContent {
                 HelmIconPlate(symbol: "checkmark.circle", tint: .green, size: 56)
-                Text(UnStr.noOrphans).foregroundStyle(.secondary)
+                Text(UnStr.noOrphans).foregroundStyle(HelmText.quiet)
                 Button(UnStr.rescan) { Task { await scan() } }
             }
         } else {

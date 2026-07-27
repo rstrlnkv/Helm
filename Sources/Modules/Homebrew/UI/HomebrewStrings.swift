@@ -14,14 +14,14 @@ enum HbStr {
 
     static var searchPlaceholder: String { L("Search packages", [.ru: "Поиск пакетов", .es: "Buscar paquetes", .fr: "Rechercher des paquets", .de: "Pakete suchen", .ja: "パッケージを検索", .zh: "搜索软件包", .pt: "Buscar pacotes"]) }
     static var install: String { L("Install", [.ru: "Установить", .es: "Instalar", .fr: "Installer", .de: "Installieren", .ja: "インストール", .zh: "安装", .pt: "Instalar"]) }
-    static func confirmUninstall(_ name: String) -> String { L("Uninstall \(name)?", [.ru: "Удалить \(name)?", .es: "¿Desinstalar \(name)?", .fr: "Désinstaller \(name) ?", .de: "\(name) deinstallieren?", .ja: "\(name) をアンインストールしますか？", .zh: "卸载 \(name)？", .pt: "Desinstalar \(name)?"]) }
+    static func confirmUninstall(_ name: String) -> String { L("Uninstall \(name)?", [.ru: "Удалить \(name)?", .es: "¿Desinstalar \(name)?", .fr: "Désinstaller \(name) ?", .de: "\(name) deinstallieren?", .ja: "\(name) をアンインストールしますか？", .zh: "卸载 \(name)？", .pt: "Desinstalar \(name)?"]) }
     static var cancel: String { L("Cancel", [.ru: "Отмена", .es: "Cancelar", .fr: "Annuler", .de: "Abbrechen", .ja: "キャンセル", .zh: "取消", .pt: "Cancelar"]) }
     static var uninstall: String { L("Uninstall", [.ru: "Удалить", .es: "Desinstalar", .fr: "Désinstaller", .de: "Deinstallieren", .ja: "アンインストール", .zh: "卸载", .pt: "Desinstalar"]) }
     static var upgrade: String { L("Upgrade", [.ru: "Обновить", .es: "Actualizar", .fr: "Mettre à jour", .de: "Aktualisieren", .ja: "更新", .zh: "升级", .pt: "Atualizar"]) }
     static var upgradeAll: String { L("Upgrade all", [.ru: "Обновить всё", .es: "Actualizar todo", .fr: "Tout mettre à jour", .de: "Alle aktualisieren", .ja: "すべて更新", .zh: "全部升级", .pt: "Atualizar tudo"]) }
 
     static var cask: String { L("cask", [.ru: "cask", .es: "cask", .fr: "cask", .de: "cask", .ja: "cask", .zh: "cask", .pt: "cask"]) }
-    static var formula: String { L("formula", [.ru: "formula", .es: "formula", .fr: "formule", .de: "Formel", .ja: "formula", .zh: "formula", .pt: "fórmula"]) }
+    static var formula: String { L("formula", [.ru: "formula", .es: "formula", .fr: "formula", .de: "formula", .ja: "formula", .zh: "formula", .pt: "formula"]) }
 
     static var upToDate: String { L("Everything is up to date.", [.ru: "Всё обновлено.", .es: "Todo está actualizado.", .fr: "Tout est à jour.", .de: "Alles ist aktuell.", .ja: "すべて最新です。", .zh: "全部已是最新。", .pt: "Tudo está atualizado."]) }
     static var noneInstalled: String { L("No packages installed.", [.ru: "Нет установленных пакетов.", .es: "No hay paquetes instalados.", .fr: "Aucun paquet installé.", .de: "Keine Pakete installiert.", .ja: "インストール済みパッケージはありません。", .zh: "未安装任何软件包。", .pt: "Nenhum pacote instalado."]) }
