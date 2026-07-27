@@ -384,7 +384,7 @@ name: a project folder called "Documents" keeps its name.
 ## Dev loop
 
 ```bash
-swift test                              # 411 unit tests, pure logic, seconds
+swift test                              # 800+ unit tests, pure logic, seconds
 bash Scripts/package-app.sh             # build + sign → $TMPDIR/helm-package/Helm.app
 rm -rf /Applications/Helm.app
 ditto "$TMPDIR/helm-package/Helm.app" /Applications/Helm.app
