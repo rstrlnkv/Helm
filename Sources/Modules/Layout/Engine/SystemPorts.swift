@@ -70,6 +70,7 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
     private static let modifierMasks: [Int64: UInt64] = [
         54: 0x000010, 61: 0x000040, 62: 0x002000, 60: 0x000004,   // right ⌘ ⌥ ⌃ ⇧
         55: 0x000008, 58: 0x000020, 59: 0x000001, 56: 0x000002,   // left  ⌘ ⌥ ⌃ ⇧
+        63: 0x800000,                                             // 🌐
     ]
 
     private func deliverModifier(_ event: CGEvent) {
@@ -406,9 +407,17 @@ public struct AXSelection: SelectionPort {
         return copySelection()
     }
 
+    public func selectedTextWithoutClipboard() -> String? {
+        guard let text = axSelection(), !text.isEmpty else { return nil }
+        return text
+    }
+
     public func replaceSelection(with text: String) -> Bool {
         if setAXSelection(text) { return true }
-        return pasteSelection(text)
+        // Read before pasting, so the paste route has something to compare
+        // against and can tell whether the app took it.
+        let before = axSelection()
+        return pasteSelection(text, replacing: before)
     }
 
     // MARK: The exact route
@@ -466,7 +475,17 @@ public struct AXSelection: SelectionPort {
         return copied
     }
 
-    private func pasteSelection(_ text: String) -> Bool {
+    /// Returns whether the app took the text, as far as this route can tell.
+    ///
+    /// It used to return `true` always. In an app where ⌘V is not paste — a
+    /// terminal, a game, a modal that swallows it — Helm clobbered the
+    /// clipboard, restored it, played the success sound and reported a change
+    /// that never happened. There is no receipt for a synthesised keystroke, so
+    /// what is checked is the one thing that can be: whether the app read the
+    /// pasteboard at all. `changeCount` does not move on a read, but the
+    /// selection does — if the tree still reports exactly what was selected
+    /// before, nothing replaced it.
+    private func pasteSelection(_ text: String, replacing previous: String?) -> Bool {
         let pasteboard = NSPasteboard.general
         let saved = pasteboard.string(forType: .string)
         pasteboard.clearContents()
@@ -477,7 +496,11 @@ public struct AXSelection: SelectionPort {
         // taken the new one, and the person pastes their own clipboard.
         usleep(120_000)
         restore(saved)
-        return true
+        // Unreadable tree: no evidence either way, so do not claim failure on a
+        // paste that probably worked. Claiming success is the bug being fixed;
+        // claiming failure here would only trade it for the opposite one.
+        guard let now = axSelection() else { return true }
+        return now != previous
     }
 
     private func restore(_ saved: String?) {
