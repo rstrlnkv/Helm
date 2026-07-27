@@ -177,6 +177,10 @@ public struct LayoutSettingsPage: View {
                 Text(LyStr.globeNote)
                     .font(.caption).foregroundStyle(HelmText.faint)
                     .fixedSize(horizontal: false, vertical: true)
+            } else if tapKey.isFrequentlyUsed {
+                Text(LyStr.leftKeyNote)
+                    .font(.caption).foregroundStyle(HelmText.faint)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             // For keyboards with no right-hand modifier to tap: 60% boards,
             // HHKB. Same action, so there is no second behaviour to explain and

@@ -2,12 +2,20 @@ import Foundation
 
 /// A modifier key that can be bound on its own.
 ///
-/// Right-hand keys only, and that is the point: binding the left Command would
-/// take away a key the user needs, while the right one of the pair is a spare
-/// on most keyboards. Whichever is chosen, its twin on the other side keeps
-/// working as a modifier, so nothing is lost.
+/// Either side, with the right one first because it is the safer half of the
+/// pair: on most keyboards the right ⌘ or ⌥ is a spare, while the left one is
+/// the key the hand actually rests on. Whichever is chosen, its twin keeps
+/// working as an ordinary modifier, so nothing is taken away.
+///
+/// The left keys were withheld at first on exactly that reasoning. It is still
+/// true — a stray solo tap is likelier on the key you use all day — but it is
+/// the person's keyboard, and somebody on a 60% board or typing left-handed has
+/// a use for them. The page says which half is which; it does not decide.
 public enum TapKey: String, CaseIterable, Sendable {
-    case off, rightCommand, rightOption, rightControl, rightShift, globe
+    case off
+    case rightCommand, rightOption, rightControl, rightShift
+    case leftCommand, leftOption, leftControl, leftShift
+    case globe
 
     /// The virtual key code `flagsChanged` reports.
     public var keyCode: Int64? {
@@ -17,6 +25,10 @@ public enum TapKey: String, CaseIterable, Sendable {
         case .rightOption: return 61
         case .rightControl: return 62
         case .rightShift: return 60
+        case .leftCommand: return 55
+        case .leftOption: return 58
+        case .leftControl: return 59
+        case .leftShift: return 56
         // 🌐 on the keyboards that have it. `kVK_Function` in Events.h.
         case .globe: return 63
         }
@@ -34,12 +46,27 @@ public enum TapKey: String, CaseIterable, Sendable {
         case .rightOption: return 0x000040
         case .rightControl: return 0x002000
         case .rightShift: return 0x000004
+        case .leftCommand: return 0x000008
+        case .leftOption: return 0x000020
+        case .leftControl: return 0x000001
+        case .leftShift: return 0x000002
         // `NX_SECONDARYFNMASK`. Unlike the four above it does not name a side —
         // there is only one 🌐 — and unlike them it is also set by the arrow
         // keys, Home/End and F1–F12 on Apple laptops. That is safe here only
         // because the tap keys off the key code and consults the mask to decide
         // up from down; a bare flag test would fire on every arrow key.
         case .globe: return 0x800000
+        }
+    }
+
+    /// True for the keys most people type with. Not a refusal — the page says
+    /// so and lets them through — but a stray solo tap is likelier here, and
+    /// somebody choosing one should be told before they wonder why their text
+    /// changed.
+    public var isFrequentlyUsed: Bool {
+        switch self {
+        case .leftCommand, .leftOption, .leftControl, .leftShift: return true
+        default: return false
         }
     }
 
