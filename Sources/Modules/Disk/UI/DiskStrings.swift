@@ -5,7 +5,7 @@ enum DkStr {
     /// The display name only — the module id stays `disk`, or every stored
     /// setting keyed to it would be orphaned.
     static var moduleName: String { L("Disk", [.ru: "Диск", .es: "Disco", .fr: "Disque", .de: "Festplatte", .ja: "ディスク", .zh: "磁盘", .pt: "Disco"]) }
-    static var summary: String { L("What is taking up space.", [.ru: "Что занимает место на диске.", .es: "Qué ocupa espacio en el disco.", .fr: "Ce qui occupe l’espace disque.", .de: "Was den Speicherplatz belegt.", .ja: "ディスクを占めているもの。", .zh: "磁盘空间被什么占用。", .pt: "O que ocupa espaço no disco."]) }
+    static var summary: String { L("What is taking up space", [.ru: "Что занимает место на диске", .es: "Qué ocupa espacio en el disco", .fr: "Ce qui occupe l’espace disque", .de: "Was den Speicherplatz belegt", .ja: "ディスクを占めているもの", .zh: "磁盘空间被什么占用", .pt: "O que ocupa espaço no disco"]) }
     static var scanFolder: String { L("Scan a folder…", [.ru: "Сканировать папку…", .es: "Analizar una carpeta…", .fr: "Analyser un dossier…", .de: "Ordner scannen…", .ja: "フォルダをスキャン…", .zh: "扫描文件夹…", .pt: "Analisar uma pasta…"]) }
     static var scanning: String { L("Scanning", [.ru: "Сканирование", .es: "Analizando", .fr: "Analyse", .de: "Scan läuft", .ja: "スキャン中", .zh: "正在扫描", .pt: "Analisando"]) }
     static var stop: String { L("Stop", [.ru: "Остановить", .es: "Detener", .fr: "Arrêter", .de: "Stoppen", .ja: "停止", .zh: "停止", .pt: "Parar"]) }
