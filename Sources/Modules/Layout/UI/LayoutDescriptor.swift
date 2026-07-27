@@ -35,6 +35,7 @@ import Module_Layout_Engine
                             spell: SystemSpell(),
                             secure: AXSecureContext(),
                             sound: SystemSound(),
+                            selection: AXSelection(),
                             rules: store.boolTable("appRules"),
                             exceptions: store.stringArray("exceptions"),
                             automatic: store.bool("automatic", default: true),

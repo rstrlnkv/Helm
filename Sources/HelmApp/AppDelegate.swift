@@ -47,6 +47,21 @@ import HelmRuntime
             store: NamespacedStore(namespace: "layout", backing: UserDefaults.standard),
             prefix: "undoHotkey",
             action: send("undoLastConversion", to: "layout"))
+        // The three that act on a selection rather than on the last word. Each
+        // is unbound until somebody sets it: these edit text Helm never saw, in
+        // whatever app is in front, so none of them arrives with a default
+        // chord that could fire before it was asked for.
+        for (name, prefix, command) in [
+            ("layout.convertSelection", "convertSelectionHotkey", "convertSelection"),
+            ("layout.transliterate", "transliterateHotkey", "transliterateSelection"),
+            ("layout.changeCase", "changeCaseHotkey", "changeSelectionCase"),
+        ] {
+            HotkeyManager.shared.register(
+                name,
+                store: NamespacedStore(namespace: "layout", backing: UserDefaults.standard),
+                prefix: prefix,
+                action: send(command, to: "layout"))
+        }
         HotkeyManager.shared.start()
 
         HelmLog.shared.info("app", "modules: \(ModuleRegistry.all.map(\.idRaw).joined(separator: ", "))")

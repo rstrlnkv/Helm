@@ -59,3 +59,20 @@ public protocol SecureContextPort: Sendable {
     /// Bundle id of the frontmost app; empty when there is none.
     func frontmostBundleID() -> String
 }
+
+/// Reading and replacing whatever is selected in the frontmost app.
+///
+/// Separate from `TypingPort` because it is a different question asked of a
+/// different subsystem: typing is synthesised key events, this is the
+/// accessibility tree — and where the tree will not answer, the clipboard.
+public protocol SelectionPort: Sendable {
+    /// The selected text, or nil when nothing is selected or the app will not
+    /// say. Nil is not "empty selection": one means do nothing, the other would
+    /// mean replacing the caret's surroundings with something.
+    func selectedText() -> String?
+
+    /// Replaces the selection. False when the app refused, so the caller can
+    /// report rather than assume — a failed replace with a reported success is
+    /// text somebody thinks they changed.
+    func replaceSelection(with text: String) -> Bool
+}
