@@ -2,6 +2,9 @@ import SwiftUI
 
 /// Shared panel visual language so every module's tile reads as one system:
 /// a colored rounded-square icon badge + a subtle card.
+/// The panel's module tile. Kept as its own name because that is what the
+/// modules call it; it is `HelmIconPlate` at panel size, so the radius, the
+/// glyph proportion and the shadow are the app's, not this file's.
 public struct HelmIconBadge: View {
     let symbol: String
     let color: Color
@@ -12,14 +15,7 @@ public struct HelmIconBadge: View {
     }
 
     public var body: some View {
-        Image(systemName: symbol)
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundStyle(.white)
-            .frame(width: 26, height: 26)
-            .background(
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(active ? AnyShapeStyle(color.gradient) : AnyShapeStyle(Color.secondary.opacity(0.45)))
-            )
+        HelmIconPlate(symbol: symbol, tint: color, size: 26, active: active)
             .accessibilityHidden(true)
     }
 }

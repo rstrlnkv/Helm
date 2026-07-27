@@ -193,11 +193,7 @@ private struct SettingsSidebar: View {
         Label {
             Text(title)
         } icon: {
-            Image(systemName: symbol)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 22, height: 22)
-                .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(color))
+            HelmIconPlate(symbol: symbol, tint: color, size: 22)
         }
     }
 }
@@ -339,12 +335,8 @@ private struct MenuBarSettingsView: View {
                     .foregroundStyle(HelmText.faint)
                     .accessibilityHidden(true)
             }
-            Image(systemName: descriptor.moduleMetadata.sfSymbol)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 20, height: 20)
-                .background(RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .fill(descriptor.moduleCategory.tint))
+            HelmIconPlate(symbol: descriptor.moduleMetadata.sfSymbol,
+                          tint: descriptor.moduleCategory.tint, size: 20)
             Text(descriptor.moduleMetadata.name)
             Spacer()
             if editingOrder {
@@ -628,9 +620,9 @@ private struct AboutHelmView: View {
     private var hero: some View {
         VStack(spacing: 12) {
             ZStack {
-                RadialGradient(colors: [Color.primary.opacity(0.10), .clear],
-                               center: .center, startRadius: 2, endRadius: 100)
-                    .frame(width: 200, height: 200)
+                // No halo behind the mark: `HelmAppMark` casts its own shadow,
+                // and a radial gradient on top of it was a second light source
+                // with a visible rim where its ramp ended.
                 // The bezel turns only while a check is running: motion here
                 // means work, not decoration.
                 HelmBezel(active: updater.checking)

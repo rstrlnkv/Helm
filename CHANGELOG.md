@@ -66,6 +66,22 @@ features, PATCH = fixes.
   drop animation; the row simply appeared somewhere else on release. The arrows
   stay as what a keyboard has instead of a drag.
 
+- **One icon plate, lit the way macOS 26 lights an app icon.** The plate behind
+  a page's symbol was a halo — a radial gradient of the tint in a frame twice
+  the plate's size — and it ended in a straight line: the glow is 44 pt of bloom
+  on a 44 pt plate, and the header holding it is 18 pt of padding and then a
+  divider, so the light spread up and sideways and was cut flat along the
+  bottom by whatever the page drew next. Measured down the plate's centre:
+  0.957 → 0.975 luminance above it, and the page's plain white immediately
+  below. A linear ramp is also not how anything glows — the disc has a rim
+  where the ramp ends, however faint the colour. It is a soft shadow under the
+  plate now, which is a Gaussian blur: no rim, and small enough to sit inside
+  the header's own padding (measured again after: 0.9964 against the page's
+  1.0 where the divider falls — below the eye's threshold). The same drawing
+  had been copy-pasted at four more sites — the panel tile, the sidebar row,
+  the order row — each with its own radius and glyph size; they are all
+  `HelmIconPlate` now, at 20, 22, 26 and 44 pt.
+
 ### Fixed
 - **The duplicate finder was wired to the wrong deletion gate.** `HelmRuntime`
   holds two and they answer different questions: `RemovableScope` asks what
