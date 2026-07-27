@@ -90,14 +90,34 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         localTransport.emit(EngineEvent(name: "opState", payload: (try? JSONEncoder().encode(s)) ?? Data()))
     }
 
-    private func runOp(label: String, launch: String, args: [String], env: [String: String] = [:]) {
-        guard beginBusy() else { emitLog("⚠︎ Another operation is already running."); return }
+    /// `verb` is what happened; `subject` is the package it happened to, kept
+    /// apart from the label so the log can carry one and redact the other.
+    ///
+    /// Every operation this module runs comes through here, and until this was
+    /// written none of them left a trace: two package operations that changed
+    /// the machine — an install and an uninstall — produced 0 lines in
+    /// helm.log, which is the file the dev channel is triaged against.
+    private func runOp(verb: String, subject: String? = nil,
+                       label: String, launch: String, args: [String],
+                       env: [String: String] = [:]) {
+        guard beginBusy() else {
+            HelmLog.shared.warn("homebrew", "\(verb) refused: another operation is running")
+            emitLog("⚠︎ Another operation is already running.")
+            return
+        }
+        let what = subject.map { "\(verb) \(Redact.pkg($0))" } ?? verb
+        HelmLog.shared.info("homebrew", "\(what) started")
         emitState(OpState(phase: .running, label: label))
         runner.stream(launch, args, env: env,
                       onLine: { [weak self] line in self?.emitLog(line) },
                       onExit: { [weak self] code in
                           guard let self else { return }
                           self.endBusy()
+                          if code == 0 {
+                              HelmLog.shared.info("homebrew", "\(what) done")
+                          } else {
+                              HelmLog.shared.warn("homebrew", "\(what) failed, exit \(code)")
+                          }
                           self.emitState(OpState(phase: code == 0 ? .done : .failed,
                                                  label: label, exitCode: Int(code)))
                       })
@@ -105,19 +125,19 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     public func install(name: String, isCask: Bool) {
         guard let brew = locator.brewPath() else { return }
-        runOp(label: "install \(name)", launch: brew, args: isCask ? ["install", "--cask", name] : ["install", name])
+        runOp(verb: "install", subject: name, label: "install \(name)", launch: brew, args: isCask ? ["install", "--cask", name] : ["install", name])
     }
     public func uninstall(name: String, isCask: Bool) {
         guard let brew = locator.brewPath() else { return }
-        runOp(label: "uninstall \(name)", launch: brew, args: isCask ? ["uninstall", "--cask", name] : ["uninstall", name])
+        runOp(verb: "uninstall", subject: name, label: "uninstall \(name)", launch: brew, args: isCask ? ["uninstall", "--cask", name] : ["uninstall", name])
     }
     public func upgrade(name: String) {
         guard let brew = locator.brewPath() else { return }
-        runOp(label: "upgrade \(name)", launch: brew, args: ["upgrade", name])
+        runOp(verb: "upgrade", subject: name, label: "upgrade \(name)", launch: brew, args: ["upgrade", name])
     }
     public func upgradeAll() {
         guard let brew = locator.brewPath() else { return }
-        runOp(label: "upgrade all", launch: brew, args: ["upgrade"])
+        runOp(verb: "upgrade all", label: "upgrade all", launch: brew, args: ["upgrade"])
     }
 
     /// Install Homebrew itself: pre-create /opt/homebrew owned by the user via one
