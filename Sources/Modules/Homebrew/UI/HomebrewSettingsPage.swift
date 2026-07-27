@@ -79,7 +79,11 @@ public struct HomebrewSettingsPage: View {
 
     /// Counts as a quiet status line rather than a panel of dials.
     private var statusLine: String {
-        HbStr.packagesStatus(hb.installed.count,
+        // A count that has not arrived is not a count of zero. The list reloads
+        // after every operation, and for that second the line read
+        // "0 packages · 0 updates · 0 casks" over a machine with 53 of them.
+        guard hb.loadedInstalled else { return HbStr.packagesLoading }
+        return HbStr.packagesStatus(hb.installed.count,
                              hb.outdated.count,
                              hb.installed.filter(\.isCask).count)
     }
