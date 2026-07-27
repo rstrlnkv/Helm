@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import Module_Rules_Engine
+@testable import Module_Autopilot_Engine
 
 /// The two actions that compute a name rather than a destination.
 ///

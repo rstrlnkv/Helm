@@ -1,7 +1,7 @@
 import AppKit
 import HelmRuntime
 import HelmUI
-import Module_Rules_Engine
+import Module_Autopilot_Engine
 import SwiftUI
 
 /// The one thing the rule does, editable.
@@ -24,7 +24,7 @@ struct ActionRow: View {
                 Spacer(minLength: 4)
             }
             if case .rename = action {
-                Text(RuStr.patternHint)
+                Text(ApStr.patternHint)
                     .font(.caption).foregroundStyle(HelmText.faint)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -36,11 +36,11 @@ struct ActionRow: View {
 
         var label: String {
             switch self {
-            case .move: RuStr.actionMove
-            case .sort: RuStr.actionSort
-            case .rename: RuStr.actionRename
-            case .tag: RuStr.actionTag
-            case .trash: RuStr.actionTrash
+            case .move: ApStr.actionMove
+            case .sort: ApStr.actionSort
+            case .rename: ApStr.actionRename
+            case .tag: ApStr.actionTag
+            case .trash: ApStr.actionTrash
             }
         }
 
@@ -80,12 +80,12 @@ struct ActionRow: View {
                 .lineLimit(1).truncationMode(.middle)
             // The panel is the only way a destination gets in, so a rule cannot
             // name a folder nobody looked at.
-            Button(RuStr.chooseDestination) {
+            Button(ApStr.chooseDestination) {
                 let panel = NSOpenPanel()
                 panel.canChooseDirectories = true
                 panel.canChooseFiles = false
                 panel.allowsMultipleSelection = false
-                panel.prompt = RuStr.chooseDestination
+                panel.prompt = ApStr.chooseDestination
                 guard panel.runModal() == .OK, let url = panel.url else { return }
                 action = .move(to: url.path)
             }
@@ -94,8 +94,8 @@ struct ActionRow: View {
         case let .sortIntoSubfolder(scheme):
             Picker("", selection: Binding(get: { scheme },
                                           set: { action = .sortIntoSubfolder($0) })) {
-                Text(RuStr.schemeKind).tag(SortScheme.kind)
-                Text(RuStr.schemeMonth).tag(SortScheme.month)
+                Text(ApStr.schemeKind).tag(SortScheme.kind)
+                Text(ApStr.schemeMonth).tag(SortScheme.month)
             }
             .labelsHidden().frame(width: 140)
 

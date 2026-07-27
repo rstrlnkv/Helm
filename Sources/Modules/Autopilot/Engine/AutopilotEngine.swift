@@ -13,12 +13,12 @@ import HelmRuntime
 ///   becomes true with nothing happening, and no event will ever fire for it.
 /// - **Run now**, because someone who has just written a rule wants to see it
 ///   work rather than wait an hour to find out it does not.
-public final class RulesEngine: ModuleEngine, @unchecked Sendable {
+public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     private let localTransport: LocalTransport
     public let transport: EngineTransport
     private let store: NamespacedStore
     private let reader = FolderReader()
-    private let runner = RuleRunner()
+    private let runner: RuleRunner
     private let queue = DispatchQueue(label: "helm.rules", qos: .utility)
     private var watcher: FolderWatcher?
     private var sweepTimer: DispatchSourceTimer?
@@ -27,7 +27,12 @@ public final class RulesEngine: ModuleEngine, @unchecked Sendable {
     /// conditions that come true by themselves, which is a scale of hours.
     private static let sweepInterval: TimeInterval = 3600
 
-    public init(store: NamespacedStore, transport: LocalTransport = LocalTransport()) {
+    /// `home` is `WatchScope`'s reference point, injected so a test can point a
+    /// whole engine at a temporary directory without being exempted from the
+    /// gate the module's safety rests on.
+    public init(store: NamespacedStore, transport: LocalTransport = LocalTransport(),
+                home: String = NSHomeDirectory()) {
+        self.runner = RuleRunner(home: home)
         self.store = store
         self.localTransport = transport
         self.transport = transport
@@ -57,9 +62,22 @@ public final class RulesEngine: ModuleEngine, @unchecked Sendable {
             return list
         }
         set {
-            guard let data = try? JSONEncoder().encode(newValue) else { return }
-            store.set(data, for: "folders")
-            refreshWatch()
+            // Encoding a rule list can genuinely fail — `JSONEncoder` refuses a
+            // non-finite `Double`, which a condition can hold — and returning
+            // quietly discarded every folder and every rule while the screen
+            // went on showing the new state. The old list survives instead, and
+            // the failure is in the log.
+            // Clamped first: a condition holding ±∞ makes `JSONEncoder` throw,
+            // and the rules are one JSON value — so one unencodable number in
+            // one rule discarded every folder and every rule the person had,
+            // silently, while the screen went on showing the new state.
+            do {
+                store.set(try JSONEncoder().encode(newValue.map(\.storable)), for: "folders")
+                refreshWatch()
+            } catch {
+                HelmLog.shared.failure("autopilot", "could not save \(newValue.count) folders",
+                                       error)
+            }
         }
     }
 
@@ -92,7 +110,7 @@ public final class RulesEngine: ModuleEngine, @unchecked Sendable {
         let plans = RulePlan.decide(files, rules: folder.activeRules)
         var acted = 0, refused = 0, failed = 0
         for plan in plans {
-            let path = (folder.path as NSString).appendingPathComponent(plan.facts.name)
+            let path = plan.facts.path
             switch runner.run(plan, at: path) {
             case .moved, .renamed, .tagged, .trashed:
                 acted += 1
@@ -100,16 +118,16 @@ public final class RulesEngine: ModuleEngine, @unchecked Sendable {
                 break
             case let .refused(reason):
                 refused += 1
-                HelmLog.shared.warn("rules", "refused \(Redact.path(path)): \(reason.rawValue)")
+                HelmLog.shared.warn("autopilot", "refused \(Redact.path(path)): \(reason.rawValue)")
             case let .failed(description):
                 failed += 1
-                HelmLog.shared.warn("rules", "failed \(Redact.path(path)): \(description)")
+                HelmLog.shared.warn("autopilot", "failed \(Redact.path(path)): \(description)")
             }
         }
         let report = SweepReport(folderID: folder.id, examined: files.count,
                                  acted: acted, refused: refused, failed: failed)
         if acted + refused + failed > 0 {
-            HelmLog.shared.info("rules", "swept \(files.count), acted \(acted), " +
+            HelmLog.shared.info("autopilot", "swept \(files.count), acted \(acted), " +
                                          "refused \(refused), failed \(failed)")
         }
         return report
@@ -122,29 +140,48 @@ public final class RulesEngine: ModuleEngine, @unchecked Sendable {
 
     /// One event's worth of work. The paths FSEvents reports are files, and the
     /// folder they belong to decides which rules they meet.
+    ///
+    /// An FSEvents stream is recursive whether or not anyone asked, so the depth
+    /// has to be applied here — without it, the folder's own "include
+    /// subfolders" setting did not reach the module's primary trigger and a
+    /// depth-1 watch on Downloads acted on every file in every project unzipped
+    /// into it.
     private func handle(_ changed: [String]) {
         let watched = folders.filter(\.enabled)
         guard !watched.isEmpty else { return }
         queue.async { [self] in
             for path in Set(changed) {
-                let parent = (path as NSString).deletingLastPathComponent
-                guard let folder = watched.first(where: { parent.hasPrefix($0.path) }),
+                guard let folder = self.folder(for: path, among: watched),
                       FileManager.default.fileExists(atPath: path),
                       let facts = reader.facts(of: URL(fileURLWithPath: path)),
                       let plan = RulePlan.decide(facts, rules: folder.activeRules)
                 else { continue }
                 switch runner.run(plan, at: path) {
                 case let .refused(reason):
-                    HelmLog.shared.warn("rules",
+                    HelmLog.shared.warn("autopilot",
                                         "refused \(Redact.path(path)): \(reason.rawValue)")
                 case let .failed(description):
-                    HelmLog.shared.warn("rules",
+                    HelmLog.shared.warn("autopilot",
                                         "failed \(Redact.path(path)): \(description)")
                 default:
                     break
                 }
             }
         }
+    }
+
+    /// The watched folder a changed path belongs to, at that folder's depth.
+    ///
+    /// Longest match, not first: with a folder and a subfolder of it both
+    /// watched, the inner one's rules are the ones that were written about
+    /// these files. And the prefix carries its separator — without it
+    /// `~/Downloads` claimed the files in `~/Downloads Old`.
+    private func folder(for path: String, among watched: [WatchedFolder]) -> WatchedFolder? {
+        let candidates = watched.filter { path.hasPrefix($0.path + "/") }
+        guard let folder = candidates.max(by: { $0.path.count < $1.path.count })
+        else { return nil }
+        let below = path.dropFirst(folder.path.count + 1).filter { $0 == "/" }.count
+        return below < folder.depth ? folder : nil
     }
 
     // MARK: - Transport

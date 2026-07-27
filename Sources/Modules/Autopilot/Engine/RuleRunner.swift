@@ -25,18 +25,27 @@ public enum RuleOutcome: Equatable, Sendable {
 /// The plan, performed. One file at a time, and every path through it either
 /// does exactly one thing or does nothing and says why.
 public struct RuleRunner: Sendable {
+    /// Which home `WatchScope` measures against. Injected so a test can put its
+    /// fixtures somewhere real without writing into the person's own folders —
+    /// the gate is the same gate, asked about a different home.
+    private let home: String
 
-    public init() {}
+    public init(home: String = NSHomeDirectory()) {
+        self.home = home
+    }
 
     public func run(_ plan: RulePlan, at path: String) -> RuleOutcome {
         guard FileManager.default.fileExists(atPath: path) else { return .refused(.missing) }
         // Asked before anything happens, so a file already handled by this rule
         // costs a stat rather than a move.
         guard !RuleStamp.isStamped(path, by: plan.rule.id) else { return .alreadyDone }
-        // The file itself has to be the user's, whatever the rule says. This is
-        // the same gate the duplicate finder and the disk module use, and it is
-        // here — in the engine — rather than in whatever built the plan.
-        guard UserFileScope.isRemovable(path) else { return .refused(.outOfScope) }
+        // The file itself has to be somewhere a rule may reach, whatever the
+        // rule says — the rules are JSON in a plist any process can write, so
+        // this is the only place the question is settled. `WatchScope` rather
+        // than `UserFileScope`: the shared gate answers "may this be trashed
+        // without breaking the machine", which says yes to `~/Library/Messages`
+        // and to `~/Library/LaunchAgents`.
+        guard WatchScope.allows(path, home: home) else { return .refused(.outOfScope) }
 
         let outcome = perform(plan, at: path)
         switch outcome {
@@ -48,8 +57,13 @@ public struct RuleRunner: Sendable {
             note(destination, plan)
         case let .renamed(to: name):
             note((path as NSString).deletingLastPathComponent + "/" + name, plan)
-        case .tagged, .trashed:
+        case .tagged:
             note(path, plan)
+        case .trashed:
+            // Nothing to stamp: the file is in the Trash, and stamping the path
+            // it used to have logged a warning naming a file on every single
+            // successful deletion.
+            break
         }
         return outcome
     }
@@ -61,7 +75,7 @@ public struct RuleRunner: Sendable {
     /// re-runs an idempotent action on an unchanged file.
     private func note(_ path: String, _ plan: RulePlan) {
         guard !RuleStamp.stamp(path, by: plan.rule.id) else { return }
-        HelmLog.shared.warn("rules", "could not stamp \(Redact.path(path))")
+        HelmLog.shared.warn("autopilot", "could not stamp \(Redact.path(path))")
     }
 
     private func perform(_ plan: RulePlan, at path: String) -> RuleOutcome {
@@ -80,14 +94,30 @@ public struct RuleRunner: Sendable {
                 return .refused(.badPattern)
             }
             let target = url.deletingLastPathComponent().appendingPathComponent(name)
+            // A pattern can name the file it is renaming — `{name}` does, and so
+            // does any pattern mid-edit. Numbering it would make `a.pdf` into
+            // `a 2.pdf`, then `a 2 2.pdf`, one file per sweep forever.
+            guard target.path != url.path else { return .alreadyDone }
             do {
-                try FileManager.default.moveItem(at: url, to: free(target))
-                return .renamed(to: name)
+                // The name reported is the name that landed. They differ exactly
+                // in the collision case — which is the case the stamp exists for,
+                // so reporting the pattern's name stamped the bystander it
+                // collided with and left the moved file unmarked to be renamed
+                // again next sweep.
+                let landed = free(target)
+                try FileManager.default.moveItem(at: url, to: landed)
+                return .renamed(to: landed.lastPathComponent)
             } catch {
                 return .failed(HelmFailure.describe(error))
             }
 
         case let .addTag(tag):
+            // Tagging follows a symlink and writes to its target, which is a
+            // metadata write outside the gate the resolved path would have
+            // failed. `WatchScope` resolves, so this only has to refuse the
+            // case where the two disagree.
+            guard url.resolvingSymlinksInPath().path == url.standardizedFileURL.path
+            else { return .refused(.outOfScope) }
             do {
                 var values = URLResourceValues()
                 var tags = (try url.resourceValues(forKeys: [.tagNamesKey])).tagNames ?? []
@@ -102,7 +132,10 @@ public struct RuleRunner: Sendable {
             }
 
         case .trash:
-            // The engine has the last word on deletion, as everywhere else.
+            // The engine has the last word on deletion, as everywhere else —
+            // and both gates have to say yes: `WatchScope` that a rule may
+            // reach here at all, `UserFileScope` that trashing it will not
+            // break the machine.
             let (allowed, _) = UserFileScope.partition([path])
             guard !allowed.isEmpty else { return .refused(.outOfScope) }
             do {
@@ -118,7 +151,13 @@ public struct RuleRunner: Sendable {
         // A destination outside the user's own files is refused however it got
         // into the rule — a rule is a decision made once and executed forever,
         // so the check cannot live in the editor.
-        guard UserFileScope.isRemovable(folder.path) else { return .refused(.outOfScope) }
+        guard WatchScope.allows(folder.path, home: home) else { return .refused(.outOfScope) }
+        // A folder cannot be moved inside itself. Reachable without malice: a
+        // sorting rule whose conditions eventually match a folder will one day
+        // be handed the bucket folder it made itself, and `moveItem` would then
+        // fail with EINVAL on every sweep, forever, logging as it went.
+        guard !folder.path.hasPrefix(url.path + "/"), folder.path != url.path
+        else { return .refused(.outOfScope) }
         do {
             // A rule that names a folder is asking for that folder to exist.
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
