@@ -15,7 +15,19 @@ public final class LocalTransport: EngineTransport, @unchecked Sendable {
     /// subscriber — e.g. a view model built AFTER the engine already emitted its
     /// initial state during `activate()` — must still see it, or the UI stays
     /// stuck at defaults (toggle reads off while the engine is actually active).
-    private var lastEvent: EngineEvent?
+    /// Keyed by name, not one slot.
+    ///
+    /// One slot is right for one event name and wrong for two. Homebrew emits
+    /// `opLog` (a streaming line) and `opState` (level-triggered state) into the
+    /// same engine: closing and reopening its page during a `brew upgrade` gave
+    /// the new view model whichever arrived last, and log lines stream
+    /// continuously — so the page came back idle, buttons live, with an
+    /// operation still running behind it. Disk sits one event name away from
+    /// the same defect.
+    private var lastEvents: [String: EngineEvent] = [:]
+    /// Replayed in the order the names first appeared, so a subscriber sees
+    /// state in the sequence the engine established rather than a dictionary's.
+    private var eventOrder: [String] = []
 
     public init() {}
 
@@ -24,9 +36,9 @@ public final class LocalTransport: EngineTransport, @unchecked Sendable {
             let id = UUID()
             lock.lock()
             subscribers[id] = continuation
-            let replay = lastEvent
+            let replay = eventOrder.compactMap { lastEvents[$0] }
             lock.unlock()
-            if let replay { continuation.yield(replay) }
+            for event in replay { continuation.yield(event) }
             continuation.onTermination = { [weak self] _ in
                 guard let self else { return }
                 self.lock.lock(); self.subscribers[id] = nil; self.lock.unlock()
@@ -42,7 +54,11 @@ public final class LocalTransport: EngineTransport, @unchecked Sendable {
     }
 
     public func emit(_ e: EngineEvent) {
-        lock.lock(); lastEvent = e; let conts = Array(subscribers.values); lock.unlock()
+        lock.lock()
+        if lastEvents[e.name] == nil { eventOrder.append(e.name) }
+        lastEvents[e.name] = e
+        let conts = Array(subscribers.values)
+        lock.unlock()
         for c in conts { c.yield(e) }
     }
 

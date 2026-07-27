@@ -60,6 +60,11 @@ public struct LeftoversSettingsPage: View {
             Text(lvm.items.isEmpty ? LfStr.intro : LfStr.reviewNote)
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+                // Two lines, then truncate. Unbounded, the Spanish intro takes
+                // four at the minimum window width and the toolbar grows to
+                // about 100 pt — a caption pushing the content it introduces
+                // off the screen.
+                .lineLimit(2)
             Spacer(minLength: 8)
             if !lvm.items.isEmpty {
                 Menu {

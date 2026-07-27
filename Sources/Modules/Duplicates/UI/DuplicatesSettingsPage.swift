@@ -176,6 +176,5 @@ public struct DuplicatesSettingsPage: View {
             }
         }
         .padding(.horizontal, 20).padding(.vertical, 12)
-        .frame(minHeight: 25)
     }
 }

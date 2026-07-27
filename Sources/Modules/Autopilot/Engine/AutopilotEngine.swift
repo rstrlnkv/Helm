@@ -20,6 +20,11 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     private let reader = FolderReader()
     private let runner: RuleRunner
     private let queue = DispatchQueue(label: "helm.rules", qos: .utility)
+    /// Behind `queue`, like everything else here. It is written on the main
+    /// actor (`activate`/`deactivate` — `ModuleHost` is `@MainActor`) and read
+    /// from `refreshWatch`, which the `folders` setter reaches from the
+    /// transport handler on whatever thread called it. This class is
+    /// `@unchecked Sendable`; that has to mean something.
     private var watcher: FolderWatcher?
     private var sweepTimer: DispatchSourceTimer?
 
@@ -40,14 +45,17 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     }
 
     public func activate() {
-        watcher = FolderWatcher { [weak self] changed in self?.handle(changed) }
+        let made = FolderWatcher { [weak self] changed in self?.handle(changed) }
+        queue.async { [self] in watcher = made }
         refreshWatch()
         startSweepTimer()
     }
 
     public func deactivate() {
-        watcher?.stop()
-        watcher = nil
+        queue.async { [self] in
+            watcher?.stop()
+            watcher = nil
+        }
         sweepTimer?.cancel()
         sweepTimer = nil
     }
@@ -82,7 +90,8 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     }
 
     private func refreshWatch() {
-        watcher?.watch(folders.filter(\.enabled).map(\.path))
+        let paths = folders.filter(\.enabled).map(\.path)
+        queue.async { [self] in watcher?.watch(paths) }
     }
 
     private func startSweepTimer() {
@@ -170,6 +179,15 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         }
     }
 
+    /// Blocking work, on the module's own queue rather than the cooperative
+    /// pool — and serialised, which is also what stops the timer's sweep and a
+    /// Run now from walking the same folder at once.
+    private func offQueue<T: Sendable>(_ work: @escaping @Sendable () -> T) async -> T {
+        await withCheckedContinuation { continuation in
+            queue.async { continuation.resume(returning: work()) }
+        }
+    }
+
     /// The watched folder a changed path belongs to, at that folder's depth.
     ///
     /// Longest match, not first: with a folder and a subfolder of it both
@@ -207,7 +225,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
                 else { return Data() }
                 // The plans carry a rule each; the page needs the file and what
                 // will happen to it, which is what `PreviewRow` is.
-                let rows = self.preview(folder).map(PreviewRow.init)
+                let rows = await self.offQueue { self.preview(folder).map(PreviewRow.init) }
                 return (try? JSONEncoder().encode(rows)) ?? Data()
             case "previewDraft":
                 // The folder arrives as a draft rather than by id: a rule being
@@ -216,14 +234,18 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
                 guard let draft = try? JSONDecoder().decode(WatchedFolder.self,
                                                             from: command.payload)
                 else { return Data() }
-                let rows = self.preview(draft).map(PreviewRow.init)
+                // Runs on every keystroke in the rule editor.
+                let rows = await self.offQueue { self.preview(draft).map(PreviewRow.init) }
                 return (try? JSONEncoder().encode(rows)) ?? Data()
             case "runNow":
                 guard let payload = try? JSONDecoder().decode(FolderPayload.self,
                                                               from: command.payload),
                       let folder = self.folders.first(where: { $0.id == payload.id })
                 else { return Data() }
-                return (try? JSONEncoder().encode(self.sweep(folder))) ?? Data()
+                // A walk plus N moves, off the cooperative pool — and serialised
+                // with the hourly sweep, which is reachable at the same moment.
+                let report = await self.offQueue { self.sweep(folder) }
+                return (try? JSONEncoder().encode(report)) ?? Data()
             default:
                 return Data()
             }

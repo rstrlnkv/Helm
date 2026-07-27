@@ -8,7 +8,7 @@ import Module_Layout_Engine
 /// halves of an entry belong together, and two arrays that can differ in length
 /// is a defect waiting for someone to delete a row from one of them.
 enum AutoReplaceStore {
-    static let key = "autoReplace"
+    static let key = LayoutKey.autoReplace
 
     static func load(_ store: NamespacedStore) -> [AutoReplace.Entry] {
         guard let data = store.data(key),

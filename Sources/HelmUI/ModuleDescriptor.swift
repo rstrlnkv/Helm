@@ -6,7 +6,6 @@ import HelmRuntime
 @MainActor public protocol ModuleDescriptor {
     static var id: ModuleID { get }
     static var metadata: ModuleMetadata { get }
-    static var isolation: ModuleIsolation { get }
     static var category: ModuleCategory { get }
     /// Build the engine for this module (host owns lifecycle). `store` is the module's namespaced store.
     func makeEngine(store: NamespacedStore) -> any ModuleEngine

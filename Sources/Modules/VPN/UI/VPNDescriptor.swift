@@ -9,7 +9,6 @@ import Module_VPN_Engine
     public static let metadata = ModuleMetadata(
         id: id, name: "VPN", summary: VPNStr.summary,
         sfSymbol: "lock.shield", permissions: [])
-    public static let isolation: ModuleIsolation = .inProcess
     public static let category: ModuleCategory = .network
 
     private var store: NamespacedStore?

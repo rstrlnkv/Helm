@@ -22,7 +22,7 @@ import Module_Layout_Engine
     }
 
     func refresh() {
-        guard store.bool("indicator", default: false) else { teardown(); return }
+        guard store.bool(LayoutKey.indicator, default: false) else { teardown(); return }
         if item == nil { build() }
         redraw()
     }
@@ -63,8 +63,8 @@ import Module_Layout_Engine
 
     private func redraw() {
         guard let button = item?.button else { return }
-        let style = BadgeStyle.from(store.string("badgeStyle", default: BadgeStyle.default.rawValue))
-        let size = MenuBarIconSize(rawValue: store.string("badgeSize", default: "small")) ?? .small
+        let style = BadgeStyle.from(store.string(LayoutKey.badgeStyle, default: BadgeStyle.default.rawValue))
+        let size = MenuBarIconSize(rawValue: store.string(LayoutKey.badgeSize, default: "small")) ?? .small
         let source = InputSourceInfo.current()
         button.image = BadgeImage.make(label: source.badge, flag: source.emojiFlag,
                                        region: source.region, style: style,
