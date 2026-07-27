@@ -17,11 +17,11 @@ import AppKit
 /// the two labels — "Helm" and "Applications" — in the reader's own.
 ///
 /// Run: `swift Scripts/design/make-dmg-background.swift out.png [style] [--dev]`
-/// where style is `field` (what ships), `bezel` or `sweep`.
+/// where style is `bezel` (what ships), `field` or `sweep`.
 
 let arguments = CommandLine.arguments
 let outputPath = arguments[1]
-let style = arguments.dropFirst(2).first { !$0.hasPrefix("--") } ?? "field"
+let style = arguments.dropFirst(2).first { !$0.hasPrefix("--") } ?? "bezel"
 /// Dev images say so on their face. A screenshot of a dev window turns up in an
 /// issue sooner or later, and it must not be mistaken for a release.
 let isDev = arguments.contains("--dev")
@@ -56,8 +56,20 @@ func gray(_ value: Double, _ alpha: Double = 1) -> CGColor {
 
 /// The ink. Dev takes the blue of its own badge in About, so the two say the
 /// same thing in the same colour; the release image stays neutral.
+/// The system blue the DEV badge is tinted with, so the two match rather than
+/// merely rhyme.
+let tint = CGColor(srgbRed: 0.0, green: 0.478, blue: 1.0, alpha: 1)
+
+extension NSFont {
+    /// `.system(size:weight:design: .rounded)` has no AppKit spelling.
+    func rounded() -> NSFont {
+        guard let descriptor = fontDescriptor.withDesign(.rounded) else { return self }
+        return NSFont(descriptor: descriptor, size: pointSize) ?? self
+    }
+}
+
 func ink(_ alpha: Double) -> CGColor {
-    isDev ? CGColor(srgbRed: 0.00, green: 0.38, blue: 0.85, alpha: alpha * 0.85)
+    isDev ? tint.copy(alpha: alpha * 0.85)!
           : gray(0.32, alpha)
 }
 
@@ -73,6 +85,10 @@ context.drawLinearGradient(backdrop, start: CGPoint(x: 0, y: height),
 func bezel(around centre: CGPoint, radius: Double, length: Double,
            weight: Double, alpha: Double) {
     for tick in 0..<60 {
+        // Open at the bottom, where Finder writes the icon's name. A closed
+        // ring ran behind the word and the two crowded each other; a gauge with
+        // a window in it is a deliberate shape rather than a collision.
+        if (13...17).contains(tick) { continue }
         let long = tick % 5 == 0
         let reach = long ? length : length * 0.57
         let angle = Double(tick) / 60 * 2 * .pi
@@ -92,15 +108,6 @@ func bezel(around centre: CGPoint, radius: Double, length: Double,
 // MARK: - bezel — the About page's frame, and the ticks unrolled into an arrow
 
 func drawBezelStyle() {
-    // The destination: a socket rather than a mark. A hard-edged disc came out
-    // smaller than the folder standing on it and read as a stray circle behind an
-    // icon, so it fades out instead of ending — no edge to be the wrong size.
-    let socket = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!,
-                            colors: [gray(0.87, 0.85), gray(0.87, 0.0)] as CFArray,
-                            locations: [0.55, 1])!
-    context.drawRadialGradient(socket, startCenter: dropSlot, startRadius: 0,
-                               endCenter: dropSlot, endRadius: 118, options: [])
-
     // Around the app: the same frame the About page puts the mark in, and the only
     // ring in the window. Radius 105 rather than the 82 it started at — at 82 the
     // ring cut straight through the word "Helm" that Finder writes under the icon.
@@ -108,22 +115,31 @@ func drawBezelStyle() {
 
     // The run between them: the bezel unrolled into a straight line, rising in
     // weight towards the destination. This is the arrow.
-    let runStart = appSlot.x + 122, runEnd = dropSlot.x - 104
-    let steps = 8
+    let runStart = appSlot.x + 116, runEnd = dropSlot.x - 84
+    let steps = 11
     for step in 0...steps {
         let t = Double(step) / Double(steps)
         let x = runStart + (runEnd - runStart) * t
-        // Growing as it goes, in height as well as weight: a tick that is longer
-        // than the one behind it points without being an arrowhead.
-        let half = (5.0 + 7.0 * t) / 2
-        context.setStrokeColor(ink(0.14 + 0.46 * (t * t)))
-        context.setLineWidth(1.1 + 0.9 * t)
+        let half = (5.0 + 8.0 * t) / 2
+        context.setStrokeColor(ink(0.16 + 0.5 * (t * t)))
+        context.setLineWidth(1.1 + 1.0 * t)
         context.setLineCap(.round)
         context.move(to: CGPoint(x: x, y: appSlot.y - half))
         context.addLine(to: CGPoint(x: x, y: appSlot.y + half))
         context.strokePath()
     }
-
+    // The head: two strokes of the same weight as the last tick, meeting at a
+    // point. Without it the run read as a row of marks that happened to grow,
+    // and which end of it was the front was a guess.
+    let tip = CGPoint(x: runEnd + 15, y: appSlot.y)
+    context.setStrokeColor(ink(0.66))
+    context.setLineWidth(2.1)
+    context.setLineCap(.round)
+    context.setLineJoin(.round)
+    context.move(to: CGPoint(x: tip.x - 9, y: tip.y - 8))
+    context.addLine(to: tip)
+    context.addLine(to: CGPoint(x: tip.x - 9, y: tip.y + 8))
+    context.strokePath()
 }
 
 // MARK: - field — squared paper, because measuring is what the app does
@@ -241,28 +257,68 @@ case "sweep": drawSweepStyle()
 default: drawBezelStyle()
 }
 
-/// The dev mark: the capsule About puts beside the wordmark, in the same blue,
-/// so a dev image and a dev About page say it the same way.
+/// The dev mark, drawn the way `HelmBadge`'s prominent emphasis draws it — the
+/// same capsule that sits beside the wordmark in About, so the disk image and
+/// the app say it in one voice. The first version was monospaced text in a flat
+/// pill, which said the same word in a different accent.
+///
+/// Kept in step by hand, because a Swift script cannot import HelmUI: rounded
+/// bold at 9 with 0.5 of tracking, 6 by 2.5 of padding, a fill that lightens by
+/// 5% towards the top, a hairline of the light along the upper edge, and a
+/// shadow of the tint rather than a neutral one.
 if isDev {
     let text = "DEV" as NSString
     let attrs: [NSAttributedString.Key: Any] = [
-        .font: NSFont.monospacedSystemFont(ofSize: 11, weight: .bold),
+        .font: NSFont.systemFont(ofSize: 9, weight: .bold).rounded(),
         .foregroundColor: NSColor.white,
-        .kern: 1.4,
+        .kern: 0.5,
     ]
     let textSize = text.size(withAttributes: attrs)
-    let pad = CGSize(width: 12, height: 5)
-    let box = CGRect(x: width - textSize.width - pad.width * 2 - 24,
-                     y: height - textSize.height - pad.height * 2 - 22,
+    let pad = CGSize(width: 6, height: 2.5)
+    let box = CGRect(x: width - textSize.width - pad.width * 2 - 26,
+                     y: height - textSize.height - pad.height * 2 - 24,
                      width: textSize.width + pad.width * 2,
                      height: textSize.height + pad.height * 2)
-    context.setFillColor(CGColor(srgbRed: 0.00, green: 0.38, blue: 0.85, alpha: 1))
-    context.addPath(CGPath(roundedRect: box, cornerWidth: box.height / 2,
-                           cornerHeight: box.height / 2, transform: nil))
-    context.fillPath()
+    let capsule = CGPath(roundedRect: box, cornerWidth: box.height / 2,
+                         cornerHeight: box.height / 2, transform: nil)
 
     context.saveGState()
-    // Undo the flip applied at the top so the letters read the right way up.
+    context.setShadow(offset: CGSize(width: 0, height: -1), blur: 2,
+                      color: tint.copy(alpha: 0.35))
+    context.addPath(capsule)
+    context.setFillColor(tint)
+    context.fillPath()
+    context.restoreGState()
+
+    // The gradient, inside the capsule.
+    context.saveGState()
+    context.addPath(capsule)
+    context.clip()
+    let fill = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!,
+                          colors: [tint.copy(alpha: 0.95)!, tint] as CFArray,
+                          locations: [0, 1])!
+    context.drawLinearGradient(fill, start: CGPoint(x: 0, y: box.maxY),
+                               end: CGPoint(x: 0, y: box.minY), options: [])
+    // A hairline of the light source along the top edge, fading by the middle.
+    context.addPath(capsule)
+    context.clip()
+    let sheen = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!,
+                           colors: [CGColor(gray: 1, alpha: 0.45),
+                                    CGColor(gray: 1, alpha: 0)] as CFArray,
+                           locations: [0, 1])!
+    context.saveGState()
+    context.addPath(CGPath(roundedRect: box.insetBy(dx: 0.35, dy: 0.35),
+                           cornerWidth: box.height / 2, cornerHeight: box.height / 2,
+                           transform: nil))
+    context.setLineWidth(0.7)
+    context.replacePathWithStrokedPath()
+    context.clip()
+    context.drawLinearGradient(sheen, start: CGPoint(x: 0, y: box.maxY),
+                               end: CGPoint(x: 0, y: box.midY), options: [])
+    context.restoreGState()
+    context.restoreGState()
+
+    context.saveGState()
     context.translateBy(x: 0, y: height)
     context.scaleBy(x: 1, y: -1)
     NSGraphicsContext.saveGraphicsState()
