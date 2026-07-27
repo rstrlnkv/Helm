@@ -57,6 +57,16 @@ a pool thread for seconds.
 
 ### Menu-bar panel (`HelmPanel`) — read before touching
 
+**The window casts no shadow; the glass does.** `panel.hasShadow` is `false`
+deliberately. AppKit derives a transparent window's shadow from the alpha of
+its content, and the content here is a card floating at the top of a strip
+that runs from the status item to the bottom of the screen. Under
+`.regularMaterial` the opaque silhouette was the card, so the shadow was the
+card's. Liquid Glass paints its backdrop differently, and AppKit began shading
+the whole strip — which reads as a hairline tracing the shadow instead of the
+card's edge. Glass carries its own shading, so the window's was turned off
+rather than fought with; there is nothing left for `invalidateShadow()` to do.
+
 The panel looks simple and is not. Three facts, each earned through
 frame-by-frame debugging; violating any of them reintroduces visible glitches:
 
