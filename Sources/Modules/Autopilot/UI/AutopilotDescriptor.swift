@@ -9,7 +9,6 @@ import SwiftUI
     public static let metadata = ModuleMetadata(
         id: id, name: ApStr.moduleName, summary: ApStr.summary,
         sfSymbol: "location.north.circle", permissions: [.fullDisk])
-    public static let isolation: ModuleIsolation = .inProcess
     public static let category: ModuleCategory = .files
     /// Folders and their rules span the pane; the header must not centre itself
     /// on the 744 pt form column.

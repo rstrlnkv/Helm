@@ -9,7 +9,6 @@ import Module_Disk_Engine
     public static let metadata = ModuleMetadata(
         id: id, name: DkStr.moduleName, summary: DkStr.summary,
         sfSymbol: "chart.pie", permissions: [.fullDisk])
-    public static let isolation: ModuleIsolation = .inProcess
     public static let category: ModuleCategory = .files
     /// The page draws across the pane; its header must not centre itself.
     public var pageBleeds: Bool { true }

@@ -9,7 +9,6 @@ import Module_Uninstaller_Engine
     public static let metadata = ModuleMetadata(
         id: id, name: UnStr.moduleName, summary: UnStr.summary,
         sfSymbol: "trash", permissions: [.fullDisk])
-    public static let isolation: ModuleIsolation = .inProcess
     public static let category: ModuleCategory = .files
     /// The page draws across the pane; its header must not centre itself.
     public var pageBleeds: Bool { true }

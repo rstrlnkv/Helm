@@ -40,3 +40,41 @@ final class LocalTransportTests: XCTestCase {
         XCTAssertEqual(received?.payload, Data([9]))
     }
 }
+
+/// Replay remembers one event per name, not one event.
+///
+/// Homebrew emits a streaming log line and a level-triggered state into the
+/// same transport. With a single slot, a view model built while the log was
+/// streaming replayed a log line and never learned the engine was busy — so
+/// reopening the page mid-upgrade showed an idle screen with live buttons.
+final class LocalTransportReplayTests: XCTestCase {
+
+    func testEveryEventNameIsReplayedNotJustTheLast() async {
+        let transport = LocalTransport()
+        transport.emit(EngineEvent(name: "opState", payload: Data([1])))
+        transport.emit(EngineEvent(name: "opLog", payload: Data([2])))
+        transport.emit(EngineEvent(name: "opLog", payload: Data([3])))
+
+        var seen: [String: Data] = [:]
+        for await event in transport.events {
+            seen[event.name] = event.payload
+            if seen.count == 2 { break }
+        }
+        XCTAssertEqual(seen["opState"], Data([1]), "state was lost behind the log stream")
+        XCTAssertEqual(seen["opLog"], Data([3]), "the latest line of each name wins")
+    }
+
+    /// The order the engine established, not a dictionary's.
+    func testReplayFollowsTheOrderTheNamesFirstAppeared() async {
+        let transport = LocalTransport()
+        transport.emit(EngineEvent(name: "first", payload: Data()))
+        transport.emit(EngineEvent(name: "second", payload: Data()))
+
+        var order: [String] = []
+        for await event in transport.events {
+            order.append(event.name)
+            if order.count == 2 { break }
+        }
+        XCTAssertEqual(order, ["first", "second"])
+    }
+}

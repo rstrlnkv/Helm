@@ -9,7 +9,6 @@ import Module_Layout_Engine
     public static let metadata = ModuleMetadata(
         id: id, name: LyStr.moduleName, summary: LyStr.summary,
         sfSymbol: "keyboard", permissions: [.accessibility])
-    public static let isolation: ModuleIsolation = .inProcess
     public static let category: ModuleCategory = .utilities
 
     private var store: NamespacedStore?
@@ -37,15 +36,15 @@ import Module_Layout_Engine
                             sound: SystemSound(),
                             selection: AXSelection(),
                             autoReplace: AutoReplaceStore.load(store),
-                            fixCapitals: store.bool("fixCapitals", default: false),
-                            rules: store.boolTable("appRules"),
-                            exceptions: store.stringArray("exceptions"),
-                            automatic: store.bool("automatic", default: true),
+                            fixCapitals: store.bool(LayoutKey.fixCapitals, default: false),
+                            rules: store.boolTable(LayoutKey.appRules),
+                            exceptions: store.stringArray(LayoutKey.exceptions),
+                            automatic: store.bool(LayoutKey.automatic, default: true),
                             triggers: ConversionTriggers(
-                                onSpace: store.bool("onSpace", default: ConversionTriggers.default.onSpace),
-                                onReturn: store.bool("onReturn", default: ConversionTriggers.default.onReturn),
-                                onPunctuation: store.bool("onPunctuation", default: ConversionTriggers.default.onPunctuation)),
-                            audible: store.bool("audible", default: false),
+                                onSpace: store.bool(LayoutKey.onSpace, default: ConversionTriggers.default.onSpace),
+                                onReturn: store.bool(LayoutKey.onReturn, default: ConversionTriggers.default.onReturn),
+                                onPunctuation: store.bool(LayoutKey.onPunctuation, default: ConversionTriggers.default.onPunctuation)),
+                            audible: store.bool(LayoutKey.audible, default: false),
                             settings: store)
     }
 

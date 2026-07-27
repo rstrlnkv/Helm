@@ -11,7 +11,6 @@ import Module_KeepAwake_Engine
         id: id, name: KAStr.moduleName,
         summary: KAStr.summary,
         sfSymbol: "moon.zzz.fill", permissions: [.adminHelper])
-    public static let isolation: ModuleIsolation = .inProcess
     public static let category: ModuleCategory = .power
 
     private var store: NamespacedStore?

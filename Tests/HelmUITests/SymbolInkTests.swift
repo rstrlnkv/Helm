@@ -24,8 +24,14 @@ final class SymbolInkTests: XCTestCase {
     }
 
     /// A symbol nobody measured is left alone rather than guessed at.
+    ///
+    /// The name here has to be one the app does not draw: this used to say
+    /// `sparkles`, which was then measured and added, and the test failed for
+    /// being right rather than wrong.
     func testAnUnmeasuredSymbolIsUnchanged() {
-        XCTAssertEqual(SymbolInk.correction(for: "sparkles"), 1)
+        let unmeasured = "bolt.heart"
+        XCTAssertNil(SymbolInk.ratios[unmeasured], "pick a symbol the table has no row for")
+        XCTAssertEqual(SymbolInk.correction(for: unmeasured), 1)
     }
 
     /// The correction goes the way it should: the crowded symbols shrink.

@@ -76,7 +76,6 @@ public struct DiskSettingsPage: View {
                     .padding(.top, 4)
                 ForEach(dvm.volumes) { volume in
                     volumeCard(volume)
-            .helmSettingsColumn()
                 }
                 Button {
                     chooseFolder()
@@ -88,6 +87,7 @@ public struct DiskSettingsPage: View {
                 .padding(.top, 4)
             }
             .padding(20)
+            .helmSettingsColumn()
         }
     }
 
