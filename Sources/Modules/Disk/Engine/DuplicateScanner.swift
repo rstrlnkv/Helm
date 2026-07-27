@@ -4,7 +4,8 @@ import HelmRuntime
 
 /// Where the duplicate search stands, for a sheet that shows its work.
 public struct DuplicateProgress: Codable, Sendable {
-    /// Files whose size made them worth reading.
+    /// Hash operations this search will perform: two per candidate, a prefix
+    /// pass and a full one. Not a file count — the sheet says "checks".
     public let candidates: Int
     /// How many of them have been hashed so far.
     public let hashed: Int
