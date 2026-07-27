@@ -79,16 +79,27 @@ public struct HelmIconPlate: View {
     }
 
     /// A glyph keeps a constant *proportion* of a large plate, but at row size
-    /// that proportion stops being legible — so the smaller tiles give the
-    /// symbol more of the square. The ratios reproduce the sizes the
-    /// hand-written copies used: 11 pt in a 20 pt tile, 13 in the panel's 26,
-    /// 19.4 in a 44 pt plate.
+    /// that proportion stops being legible, so the smaller tiles give the
+    /// symbol more of the square.
+    ///
+    /// How much more was measured off System Settings rather than picked: its
+    /// sidebar tile is 40 px and the ink inside it is 28 — the symbol fills
+    /// **0.70** of the tile.
+    ///
+    /// The ratio has to be read off a real render, not computed. SwiftUI sizes
+    /// a symbol against the font's metrics, so `.font(.system(size: 15))` paints
+    /// about 1.34× that in ink; the old 0.55 was therefore filling 0.82 of the
+    /// tile, which is what made the sidebar look crowded. Photographed and
+    /// measured at 0.47: 41 px of ink in a 43 px tile became 30 in 44.
     private var glyphSize: CGFloat {
-        switch size {
-        case ...24: size * 0.55
-        case ...32: size * 0.50
+        let base: CGFloat = switch size {
+        case ...32: size * 0.47
         default: size * 0.44
         }
+        // Corrected per symbol: one point size across the set is 28% of visual
+        // size between `keyboard` and `lock.shield`. `SymbolInk` has the
+        // measurements.
+        return base * SymbolInk.correction(for: symbol)
     }
 
     /// Measured off System Settings' own sidebar rather than guessed at, twice

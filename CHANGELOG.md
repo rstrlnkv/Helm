@@ -66,6 +66,18 @@ features, PATCH = fixes.
   drop animation; the row simply appeared somewhere else on release. The arrows
   stay as what a keyboard has instead of a drag.
 
+- **The symbols in the sidebar are the same size as each other now.** They were
+  drawn at one point size, which is not the same thing: how much ink a symbol
+  puts inside its box is the symbol designer's business, and rendered at 100 pt
+  the set spans `keyboard` at 127 to `lock.shield` at 99 — 28% of visual size
+  between the largest and the smallest, which is why the keyboard and the two
+  documents crowded their tiles while the shield and the pie sat in space.
+  `SymbolInk` carries the measurements and corrects each symbol towards the
+  mean. The tiles were also too full: System Settings fills 0.70 of a sidebar
+  tile with ink and Helm was at 0.82, because SwiftUI sizes a symbol against
+  the font's metrics and paints about 1.34× the point size given — a ratio that
+  has to be read off a render rather than computed.
+
 - **One icon plate, lit the way macOS 26 lights an app icon.** The plate behind
   a page's symbol was a halo — a radial gradient of the tint in a frame twice
   the plate's size — and it ended in a straight line: the glow is 44 pt of bloom
