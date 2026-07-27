@@ -40,6 +40,12 @@ features, PATCH = fixes.
   threshold was never met out of the box, and nothing suggested widening.
 
 ### Fixed
+- **The panel drew a hairline along its shadow instead of its edge.** AppKit
+  derives a transparent window's shadow from the alpha of its content, and the
+  panel's content is a card floating at the top of a strip that runs to the
+  bottom of the screen. Under `.regularMaterial` the opaque silhouette was the
+  card; Liquid Glass paints its backdrop differently and AppKit began shading
+  the whole strip. Glass carries its own shading, so the window's is off.
 - **Two pages announced a missing permission only after the work.** The
   Uninstaller told you inside the review step — after ticking apps and sitting
   through a scan; Disk told you only on the start screen, so with Full Disk

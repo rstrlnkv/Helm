@@ -38,7 +38,14 @@ private let helmPanelWidth: CGFloat = 300
         panel.hidesOnDeactivate = false
         panel.isOpaque = false
         panel.backgroundColor = .clear
-        panel.hasShadow = true
+        // The window draws no shadow: Liquid Glass carries its own, and the two
+        // disagree about what the silhouette is. With `.regularMaterial` the
+        // window's shadow was derived from the opaque part — the card — and
+        // looked right. Glass paints its backdrop across the hosting view,
+        // which is a transparent strip running from the status item to the
+        // bottom of the screen, so AppKit started shading *that*: a hairline
+        // tracing the shadow instead of the card's edge.
+        panel.hasShadow = false
         panel.isMovable = false
         self.panel = panel
 
@@ -56,8 +63,9 @@ private let helmPanelWidth: CGFloat = 300
         self.sizeRelay = sizeBox
         panel.contentView = hosting
         super.init()
-        // Card shape changes inside a static window; keep the shadow with it.
-        sizeBox.onChange = { [weak self] _ in self?.panel.invalidateShadow() }
+        // Nothing to invalidate now that the window casts no shadow of its
+        // own; glass re-shades itself as the card grows.
+        sizeBox.onChange = { _ in }
         dismissObserver = NotificationCenter.default.addObserver(
             forName: .helmPanelDismissRequested, object: nil, queue: .main
         ) { [weak self] _ in

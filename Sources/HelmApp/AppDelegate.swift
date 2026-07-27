@@ -22,6 +22,7 @@ import HelmRuntime
         NSApp.activate()
 
 
+
         // Global shortcuts. Each one sends a command to a module's engine, so
         // the host never reaches past the transport into a module.
         func send(_ command: String, to module: String) -> () -> Void {

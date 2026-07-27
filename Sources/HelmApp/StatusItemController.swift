@@ -187,4 +187,5 @@ import HelmUI
     @objc private func quit() {
         NSApp.terminate(nil)
     }
+
 }
