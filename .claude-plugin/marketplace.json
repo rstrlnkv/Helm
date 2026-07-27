@@ -1,0 +1,14 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "helm",
+  "description": "Helm's own crew of subagents, packaged so they load.",
+  "owner": { "name": "rstrlnkv", "url": "https://github.com/rstrlnkv/Helm" },
+  "plugins": [
+    {
+      "name": "helm-crew",
+      "description": "Thirteen reviewers and builders that know this codebase's rules.",
+      "source": "./plugins/helm-crew",
+      "category": "development"
+    }
+  ]
+}
