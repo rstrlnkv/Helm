@@ -24,7 +24,7 @@ enum KAStr {
     /// already given by the group title.
     static var onExternalDisplay: String { L("With an external display", [.ru: "При внешнем дисплее", .es: "Con pantalla externa", .fr: "Avec un écran externe", .de: "Mit externem Bildschirm", .ja: "外部ディスプレイ接続時", .zh: "连接外接显示器时", .pt: "Com tela externa"]) }
     static var onPower: String { L("On power", [.ru: "При питании", .es: "Con corriente", .fr: "Sur secteur", .de: "Am Netzstrom", .ja: "電源接続時", .zh: "接通电源时", .pt: "Na tomada"]) }
-    static var timer: String { L("Timer", [.ru: "Таймер", .es: "Temporizador", .fr: "Minuteur", .de: "Timer", .ja: "タイマー", .zh: "计时器", .pt: "Timer"]) }
+    static var timer: String { L("Timer", [.ru: "Таймер", .es: "Timer", .fr: "Minuteur", .de: "Timer", .ja: "タイマー", .zh: "计时器", .pt: "Timer"]) }
     static var start: String {
         L("Start", [.ru: "Старт", .es: "Iniciar", .fr: "Démarrer", .de: "Start", .ja: "開始", .zh: "开始", .pt: "Iniciar"])
     }
@@ -54,7 +54,7 @@ enum KAStr {
     static func condition(_ wire: String) -> String {
         switch wire {
         case "manual": return L("Manual", [.ru: "Вручную", .es: "Manual", .fr: "Manuel", .de: "Manuell", .ja: "手動", .zh: "手动", .pt: "Manual"])
-        case "timer": return L("Timer", [.ru: "Таймер", .es: "Temporizador", .fr: "Minuteur", .de: "Timer", .ja: "タイマー", .zh: "计时器", .pt: "Temporizador"])
+        case "timer": return L("Timer", [.ru: "Таймер", .es: "Timer", .fr: "Minuteur", .de: "Timer", .ja: "タイマー", .zh: "计时器", .pt: "Timer"])
         case "externalDisplay": return L("External display", [.ru: "Внешний дисплей", .es: "Pantalla externa", .fr: "Écran externe", .de: "Externer Bildschirm", .ja: "外部ディスプレイ", .zh: "外接显示器", .pt: "Tela externa"])
         case "power": return L("Power", [.ru: "Питание", .es: "Corriente", .fr: "Secteur", .de: "Netzstrom", .ja: "電源", .zh: "电源", .pt: "Energia"])
         case "app": return L("App", [.ru: "Приложение", .es: "App", .fr: "App", .de: "App", .ja: "アプリ", .zh: "应用", .pt: "App"])
@@ -84,7 +84,11 @@ enum KAStr {
     /// quantifier agrees with the last digit, with the 11–14 exception
     /// `Plural.russian` already knows.
     static func everyMinutes(_ n: Int) -> String {
-        let ru = "Кажд" + Plural.russian(n, "ую", "ые", "ые") + " \(n) мин"
+        // Every other language says "Every minute" rather than "Every 1 min",
+        // and the stepper starts at one, so Russian was reading «Каждую 1 мин»
+        // in the state the setting opens in.
+        let ru = n == 1 ? "Каждую минуту"
+                        : "Кажд" + Plural.russian(n, "ую", "ые", "ые") + " \(n) мин"
         return L(n == 1 ? "Every minute" : "Every \(n) min",
                  [.ru: ru,
                   .es: n == 1 ? "Cada minuto" : "Cada \(n) min",
@@ -99,7 +103,7 @@ enum KAStr {
     static var indefinite: String { L("Indefinite", [.ru: "Бессрочно", .es: "Indefinido", .fr: "Illimité", .de: "Unbegrenzt", .ja: "無期限", .zh: "无限期", .pt: "Indefinido"]) }
     static var pointerNeedsAccessibility: String { L("Needs Accessibility, or the pointer will not move.", [.ru: "Нужен «Универсальный доступ», иначе указатель не двинется.", .es: "Requiere Accesibilidad; si no, el puntero no se moverá.", .fr: "Nécessite l’Accessibilité, sinon le pointeur ne bougera pas.", .de: "Benötigt Bedienungshilfen, sonst bewegt sich der Zeiger nicht.", .ja: "アクセシビリティの許可が必要です。ないとポインタは動きません。", .zh: "需要无障碍权限，否则指针不会移动。", .pt: "Precisa de Acessibilidade, senão o ponteiro não se move."]) }
     static var globalShortcut: String { L("Global shortcut", [.ru: "Глобальный хоткей", .es: "Atajo global", .fr: "Raccourci global", .de: "Globaler Kurzbefehl", .ja: "グローバルショートカット", .zh: "全局快捷键", .pt: "Atalho global"]) }
-    static var toggleAction: String { L("Toggle Keep Awake", [.ru: "Включить или выключить «Не спать»", .es: "Activar o desactivar Mantener activo", .fr: "Activer ou désactiver Rester éveillé", .de: "Wachhalten ein-/ausschalten", .ja: "「スリープ防止」を切り替え", .zh: "开关“保持唤醒”", .pt: "Ativar ou desativar Manter acordado"]) }
+    static var toggleAction: String { L("Toggle Keep Awake", [.ru: "Включить или выключить «Не спать»", .es: "Activar o desactivar Mantener activo", .fr: "Activer ou désactiver Rester éveillé", .de: "Wach halten ein-/ausschalten", .ja: "「スリープ防止」を切り替え", .zh: "开关“保持唤醒”", .pt: "Ativar ou desativar Manter ativo"]) }
     static var keepAwakeLidClosed: String { L("Keep awake with the lid closed", [.ru: "Не спать с закрытой крышкой", .es: "Mantener activo con la tapa cerrada", .fr: "Rester éveillé capot fermé", .de: "Bei geschlossenem Deckel wach halten", .ja: "ふたを閉じてもスリープ防止", .zh: "合盖时保持唤醒", .pt: "Manter ativo com a tampa fechada"]) }
     static var adminNote: String { L("Requires an admin password once (uses pmset).", [.ru: "Нужен пароль администратора один раз (использует pmset).", .es: "Requiere una contraseña de administrador una vez (usa pmset).", .fr: "Nécessite un mot de passe administrateur une fois (utilise pmset).", .de: "Erfordert einmalig ein Admin-Passwort (nutzt pmset).", .ja: "管理者パスワードが一度必要です（pmset を使用）。", .zh: "需要一次管理员密码（使用 pmset）。", .pt: "Requer uma senha de administrador uma vez (usa pmset)."]) }
     static var turnOffLowBattery: String { L("Turn off on low battery", [.ru: "Выключать при низком заряде", .es: "Apagar con batería baja", .fr: "Désactiver à batterie faible", .de: "Bei niedrigem Akku ausschalten", .ja: "バッテリー残量が少ないとき無効化", .zh: "电量低时关闭", .pt: "Desligar com bateria fraca"]) }

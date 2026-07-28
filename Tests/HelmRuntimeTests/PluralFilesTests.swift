@@ -75,24 +75,21 @@ final class PluralRulesAndDaysTests: XCTestCase {
     }
 }
 
-/// The Russian byte, which has three forms where the table could hold one.
+/// The Russian byte, which macOS abbreviates rather than spells.
 ///
-/// «2 байт» shipped because the two values the existing tests used — 1 and 512
-/// — both take the same form as the plural. The middle form is the one nobody
-/// exercised.
+/// This used to render «512 байт» through a three-form counted word, and the
+/// counting was correct — the word was not. `FileSizeFormatting.loctable`, the
+/// table `ByteCountFormatter` reads and therefore the one behind every size the
+/// Finder shows, gives `bytes` → «Б» in Russian. An abbreviation does not
+/// decline, so the three forms went with it.
 final class RussianBytesTests: XCTestCase {
 
-    func testTheMiddleFormIsTheOneThatWasWrong() {
-        XCTAssertEqual(HelmBytes.string(2, language: "ru"), "2 байта")
-        XCTAssertEqual(HelmBytes.string(3, language: "ru"), "3 байта")
-        XCTAssertEqual(HelmBytes.string(4, language: "ru"), "4 байта")
-    }
-
-    func testTheFormsThatWereAlreadyRight() {
-        XCTAssertEqual(HelmBytes.string(1, language: "ru"), "1 байт")
-        XCTAssertEqual(HelmBytes.string(5, language: "ru"), "5 байт")
-        XCTAssertEqual(HelmBytes.string(512, language: "ru"), "512 байт")
-        XCTAssertEqual(HelmBytes.string(21, language: "ru"), "21 байт")
+    func testTheByteIsAbbreviatedTheWayTheSystemAbbreviatesIt() {
+        XCTAssertEqual(HelmBytes.string(1, language: "ru"), "1 Б")
+        XCTAssertEqual(HelmBytes.string(2, language: "ru"), "2 Б")
+        XCTAssertEqual(HelmBytes.string(5, language: "ru"), "5 Б")
+        XCTAssertEqual(HelmBytes.string(512, language: "ru"), "512 Б")
+        XCTAssertEqual(HelmBytes.string(21, language: "ru"), "21 Б")
     }
 
     /// Everything above a kilobyte is invariant, and must not have picked up

@@ -41,11 +41,6 @@ public enum HelmBytes {
             step += 1
         }
         let decimals = precision(step)
-        // Whole bytes in Russian take a counted form; every larger unit is
-        // invariant, so only step 0 asks.
-        if step == 0, language == "ru" {
-            return number(value, decimals: 0, language: language) + " " + russianBytes(bytes)
-        }
         return number(value, decimals: decimals, language: language)
             + " " + unit(at: step, language: language, singular: bytes == 1)
     }
@@ -67,16 +62,6 @@ public enum HelmBytes {
     private static func unit(at step: Int, language: String, singular: Bool) -> String {
         let english = step == 0 && singular ? "byte" : unitOrder[step]
         return units[language]?.first { $0.0 == english }?.1 ?? english
-    }
-
-    /// Russian bytes take three forms, and the table can only hold one.
-    ///
-    /// «1 байт», «2 байта», «5 байт» — the singular and the many are the same
-    /// word, which is why «2 байт» survived: the two values the tests happened
-    /// to use, 1 and 512, both take it. Only the sizes counted in whole bytes
-    /// need this; КБ and МБ are invariant.
-    static func russianBytes(_ count: Int) -> String {
-        Plural.russian(count, "байт", "байта", "байт")
     }
 
     /// The separator follows Helm's own language, not the system locale: the
@@ -113,15 +98,22 @@ public enum HelmBytes {
     }
 
     /// Longest suffixes first so "bytes" is matched before "byte".
+    ///
+    /// Every spelling here is the one in Foundation's
+    /// `FileSizeFormatting.loctable` — the table `ByteCountFormatter` reads, and
+    /// therefore the one behind every size the Finder shows. Three of them were
+    /// invented instead of looked up: Russian spelled the byte out («байт»)
+    /// where the system abbreviates it, French capitalised the kilo (`Ko`) where
+    /// only mega and up are capitalised, and German pluralised `Byte`.
     private static let units: [String: [(String, String)]] = [
-        "ru": [("bytes", "байт"), ("byte", "байт"), ("KB", "КБ"), ("MB", "МБ"),
+        "ru": [("bytes", "Б"), ("byte", "Б"), ("KB", "КБ"), ("MB", "МБ"),
                ("GB", "ГБ"), ("TB", "ТБ"), ("PB", "ПБ")],
         "zh": [("bytes", "字节"), ("byte", "字节")],
         "ja": [("bytes", "バイト"), ("byte", "バイト")],
         "es": [("bytes", "bytes"), ("byte", "byte")],
-        "fr": [("bytes", "octets"), ("byte", "octet"), ("KB", "Ko"), ("MB", "Mo"),
+        "fr": [("bytes", "octets"), ("byte", "octet"), ("KB", "ko"), ("MB", "Mo"),
                ("GB", "Go"), ("TB", "To"), ("PB", "Po")],
-        "de": [("bytes", "Bytes"), ("byte", "Byte")],
+        "de": [("bytes", "Byte"), ("byte", "Byte")],
         "pt": [("bytes", "bytes"), ("byte", "byte")],
     ]
 }

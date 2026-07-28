@@ -30,12 +30,15 @@ enum HbStr {
     static var done: String { L("Done", [.ru: "Готово", .es: "Listo", .fr: "Terminé", .de: "Fertig", .ja: "完了", .zh: "完成", .pt: "Concluído"]) }
     static var failed: String { L("Failed", [.ru: "Ошибка", .es: "Error", .fr: "Échec", .de: "Fehlgeschlagen", .ja: "失敗", .zh: "失败", .pt: "Falhou"]) }
     static var clear: String { L("Clear", [.ru: "Очистить", .es: "Borrar", .fr: "Effacer", .de: "Löschen", .ja: "クリア", .zh: "清除", .pt: "Limpar"]) }
-    static var refreshList: String { L("Refresh list", [.ru: "Обновить список", .es: "Actualizar lista", .fr: "Actualiser la liste", .de: "Liste aktualisieren", .ja: "リストを更新", .zh: "刷新列表", .pt: "Atualizar lista"]) }
+    static var refreshList: String { L("Refresh list", [.ru: "Перечитать список", .es: "Actualizar lista", .fr: "Actualiser la liste", .de: "Liste aktualisieren", .ja: "リストを更新", .zh: "刷新列表", .pt: "Atualizar lista"]) }
     /// While the first list is still out. "0 packages · 0 updates · 0 casks"
     /// is a statement of fact about a machine nobody has looked at yet, and it
     /// is shown for the whole second after every install.
     static var packagesLoading: String { L("Reading the package list…", [.ru: "Читаем список пакетов…", .es: "Leyendo la lista de paquetes…", .fr: "Lecture de la liste des paquets…", .de: "Paketliste wird gelesen…", .ja: "パッケージ一覧を読み込み中…", .zh: "正在读取软件包列表…", .pt: "Lendo a lista de pacotes…"]) }
-    static func packagesStatus(_ total: Int, _ outdated: Int, _ casks: Int) -> String { L("\(total) packages · \(outdated) updates · \(casks) casks", [.ru: "Пакетов: \(total) · обновлений: \(outdated) · cask: \(casks)", .es: "\(total) paquetes · \(outdated) actualizaciones · \(casks) casks", .fr: "\(total) paquets · \(outdated) mises à jour · \(casks) casks", .de: "\(total) Pakete · \(outdated) Updates · \(casks) Casks", .ja: "パッケージ \(total)・更新 \(outdated)・cask \(casks)", .zh: "\(total) 个包 · \(outdated) 个更新 · \(casks) 个 cask", .pt: "\(total) pacotes · \(outdated) atualizações · \(casks) casks"]) }
+    /// Counted as labels rather than as sentences: one outdated package read as
+    /// "1 updates" in five of the eight languages, and a strip of three figures
+    /// is the one place where a label carries the meaning as well as a noun does.
+    static func packagesStatus(_ total: Int, _ outdated: Int, _ casks: Int) -> String { L("Packages: \(total) · Updates: \(outdated) · Casks: \(casks)", [.ru: "Пакетов: \(total) · обновлений: \(outdated) · cask: \(casks)", .es: "Paquetes: \(total) · actualizaciones: \(outdated) · casks: \(casks)", .fr: "Paquets : \(total) · mises à jour : \(outdated) · casks : \(casks)", .de: "Pakete: \(total) · Updates: \(outdated) · Casks: \(casks)", .ja: "パッケージ \(total)・更新 \(outdated)・cask \(casks)", .zh: "软件包 \(total) · 更新 \(outdated) · cask \(casks)", .pt: "Pacotes: \(total) · atualizações: \(outdated) · casks: \(casks)"]) }
 
     /// Shown instead of the Upgrade button. Not "cannot be upgraded": it is
     /// held on purpose, by the person reading this, and unpinning is a

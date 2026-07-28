@@ -18,14 +18,13 @@ features, PATCH = fixes.
   names live in the module's own store on your machine; the log still carries
   none. Deliberately a report and not a console: no filters, no search, one line
   per file, and a button to throw the whole thing away.
-- **Keyboard works on the selection, not only on the last word.** Three
-  shortcuts, each unbound until you set one: convert the layout, transliterate
-  (`привет ↔ privet`, the direction decided by what is in the text), or walk the
-  case (lower → UPPER → Title). They act on whatever is selected in whatever app
-  is in front — a pasted paragraph, a file name in the Finder, somebody else's
-  message — which is text Helm never watched being typed, so each one refuses to
-  make an edit that changes nothing: replacing a selection with itself still
-  clears that app's undo stack.
+- **Keyboard works on the selection, not only on the last word.** The gesture
+  acts on whatever is selected in whatever app is in front — a pasted paragraph,
+  a file name in the Finder, somebody else's message — which is text Helm never
+  watched being typed, so it refuses to make an edit that changes nothing:
+  replacing a selection with itself still clears that app's undo stack. This
+  shipped as three shortcuts (convert, transliterate, walk the case); the other
+  two were removed again before release, see **Removed** below.
 - **Abbreviations.** A short token you type often and what it stands for,
   expanded at the same word boundary a layout conversion happens at. A word that
   expanded is never also converted — two edits to one word would be one edit the
