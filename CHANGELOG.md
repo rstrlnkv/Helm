@@ -190,6 +190,15 @@ features, PATCH = fixes.
   Edit ▸ Transformations wherever text can be edited.
 
 ### Fixed
+- **Duplicates keeps the original, not the clutter.** Which copy stayed was
+  decided alphabetically — not a belief about anything, just the order the list
+  happened to be sorted in — so `~/Desktop/photo.jpg` beat
+  `~/Documents/Archive/2019/photo.jpg` and Helm offered to delete the filed copy
+  while keeping the one on the Desktop. It now keeps the copy that was there
+  first, by the same "Date Added" the Finder shows, falling back to the
+  shallower path when a batch of files reports the same moment. The page said
+  the old rule out loud, which only moved the checking onto you; it says the new
+  one now.
 - **The Keyboard gesture could edit text that was no longer there.** The word it
   remembers is a blind edit — a fixed number of backspaces sent at whatever the
   caret is in front of now — and four paths that refused to convert a word left
