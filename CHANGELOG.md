@@ -199,6 +199,30 @@ features, PATCH = fixes.
   Edit ▸ Transformations wherever text can be edited.
 
 ### Fixed
+- **The duplicate finder no longer holds everything it reads.** Hashing streams
+  a megabyte at a time so a video never becomes a `Data` the size of the video,
+  and that was true of the slice and false of the process: `FileHandle` returns
+  an autoreleased buffer, the parallel walk drains no pool per iteration, and so
+  every slice ever read stayed alive until the whole scan finished. The
+  footprint tracked the **volume read** — 14 580 files took the app past 39 GB,
+  climbing about 2 GB a second, and one person watched it reach 48 GB. Measured
+  on the same loop over 1.8 GB: 1760 MB before, 6 MB after. The disk scan's
+  directory walk had the same defect one framework call further out.
+- **Memory goes back to the system when the work is over.** Freeing an
+  allocation returns it to malloc, not to macOS, so the app sat on gigabytes of
+  emptied regions long after a scan — three of them, half an hour later, on a
+  menu-bar utility with nothing on screen. Every scan, walk and measurement now
+  hands the pages back when it finishes, and so does switching a module off.
+- **Switching a module off drops what its screen was holding.** A module's view
+  model deliberately outlives its settings page, or a sidebar click would throw
+  away a minute-long scan; it should not outlive the module. The scan tree, the
+  app list and the package list are released when the module is turned off — the
+  on-disk scan cache still has the result, so turning it back on shows it again.
+- **The log says what an operation cost.** A new `memory` category records the
+  footprint after each scan, walk and measurement, and every fifteen seconds
+  when nothing is happening, as a delta against the last reading — "48 GB by
+  morning" is not something a total can explain, and this is how the leak above
+  was found in one session.
 - **Uninstalling one app no longer offers another app's data.** Leftovers were
   matched with a prefix glob on the bundle id and never checked against what is
   installed, so removing `com.acme.tool` matched the containers and caches of

@@ -88,6 +88,11 @@ import Module_Disk_Engine
         if let cached, cached.vm === vm { return cached }
         let created = DiskViewModel(vm: vm)
         cached = created
+        // Switching the module off drops the tree: a scan of a whole volume is
+        // hundreds of megabytes of nodes that nobody can reach afterwards. The
+        // on-disk cache still holds the scan, so this drops the copy in memory,
+        // not the result.
+        ModuleUICache.dropWhenDisabled("disk") { cached = nil }
         return created
     }
 

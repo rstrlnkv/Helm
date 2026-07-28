@@ -67,6 +67,7 @@ public final class DuplicateScanner: @unchecked Sendable {
         // A subtree the walk was refused is a hole in "what is duplicated", and
         // a hole nobody is told about reads as a clean folder.
         let refused = unreadablePaths
+        MemoryReclaim.afterHeavyWork("duplicates.walk")
         HelmLog.shared.memory("duplicates.walk")
         HelmLog.shared.info("duplicates", "walked \(LogRoot.label(root)): "
                             + "\(files.count) files at or above the floor"
@@ -124,6 +125,7 @@ public final class DuplicateScanner: @unchecked Sendable {
         // Unreadable files leave the running silently by design; the count is
         // what tells a triage session whether "no duplicates" meant "none" or
         // "nothing could be read".
+        MemoryReclaim.afterHeavyWork("duplicates.hash")
         let unreadable = progress.unreadableCount
         HelmLog.shared.info("duplicates", "\(groups.count) groups from \(total) candidates"
                             + (unreadable > 0 ? ", \(unreadable) unreadable" : ""))
@@ -261,6 +263,15 @@ public final class DuplicateScanner: @unchecked Sendable {
     /// digest for every such file. Two unreadable files of equal size grouped
     /// as duplicates and the sheet offered to trash content nobody had read.
     /// Unknown is not identical: short reads answer nil and leave the running.
+    /// What one slice of a read came to. An enum rather than three flags
+    /// because the pool closure has to answer with a value, not with a
+    /// `return` that would only leave the closure.
+    private enum SliceOutcome {
+        case read(Int)
+        case end
+        case failed
+    }
+
     private static func hash(_ path: String, limit: Int?, expecting: Int) -> String? {
         guard let handle = FileHandle(forReadingAtPath: path) else { return nil }
         defer { try? handle.close() }
@@ -268,14 +279,33 @@ public final class DuplicateScanner: @unchecked Sendable {
         var remaining = limit ?? Int.max
         var hashed = 0
         while remaining > 0 {
-            let slice = min(remaining, 1024 * 1024)
-            // A thrown read is a failure; a nil/empty read is honest EOF.
-            let read: Data?
-            do { read = try handle.read(upToCount: slice) } catch { return nil }
-            guard let data = read, !data.isEmpty else { break }
-            hasher.update(data: data)
-            hashed += data.count
-            remaining -= data.count
+            // The pool is INSIDE the loop, and it is the whole reason the
+            // streaming above works. `FileHandle.read` hands back an
+            // autoreleased `Data`, and `concurrentPerform` drains no pool per
+            // iteration — so without this, every slice ever read stayed alive
+            // until the entire parallel block finished, and the footprint
+            // tracked the volume read rather than the slice size. Measured:
+            // 1.8 GB of reads ended at 1760 MB as written, 6 MB with the pool.
+            // A user saw 48 GB. Around the loop is not enough either: one 20 GB
+            // video is a single iteration of the caller's work.
+            let outcome: SliceOutcome = autoreleasepool {
+                let slice = min(remaining, 1024 * 1024)
+                // A thrown read is a failure; a nil/empty read is honest EOF.
+                let read: Data?
+                do { read = try handle.read(upToCount: slice) } catch { return .failed }
+                guard let data = read, !data.isEmpty else { return .end }
+                hasher.update(data: data)
+                return .read(data.count)
+            }
+            switch outcome {
+            case .failed: return nil
+            case .end: break
+            case .read(let count):
+                hashed += count
+                remaining -= count
+                continue
+            }
+            break
         }
         guard hashed >= expecting else { return nil }
         return hasher.finalize().map { String(format: "%02x", $0) }.joined()

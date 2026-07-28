@@ -76,6 +76,7 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
                                                          home: NSHomeDirectory()))
         }
         if let result {
+            MemoryReclaim.afterHeavyWork("disk.scan")
             HelmLog.shared.memory("disk.scan")
             HelmLog.shared.info("disk", "scanned \(LogRoot.label(path)): \(result.filesScanned) files in "
                                 + String(format: "%.1fs", result.seconds))
