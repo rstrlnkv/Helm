@@ -82,10 +82,18 @@ struct DiskResultView: View {
         }
     }
 
+    /// Every visible child refuses removal — true at a volume root, where the
+    /// caption would otherwise repeat down the whole column.
+    private var allRowsAreSystem: Bool {
+        let children = dvm.focus?.children ?? []
+        return !children.isEmpty && children.allSatisfy { !UserFileScope.isRemovable($0.path) }
+    }
+
     private var populatedChildList: some View {
         List(selection: $selection) {
             ForEach(dvm.focus?.children ?? []) { child in
-                ChildRow(child: child,
+                ChildRow(everyRowIsSystem: allRowsAreSystem,
+                         child: child,
                          title: dvm.displayName(for: child),
                          fraction: fraction(of: child),
                          hovered: $hovered,
@@ -299,6 +307,11 @@ private struct BreadcrumbBar: View {
 /// A row mirrors its wedge: same swatch, and a background bar whose width is
 /// the item's share of the focused folder — the list reads as a bar chart.
 private struct ChildRow: View {
+    @Environment(\.colorScheme) private var colorScheme
+    /// True when every visible row would carry the same caption — at a volume
+    /// root, all ten of them. Homebrew already wrote this lesson down: "46 of 47
+    /// rows were 'formula', and a label with one value is an ornament."
+    var everyRowIsSystem = false
     let child: DiskEntry
     let title: String
     let fraction: Double
@@ -326,7 +339,7 @@ private struct ChildRow: View {
                     .lineLimit(1).truncationMode(.middle)
                 if child.noAccess {
                     Text(DkStr.noAccess).font(.caption2).foregroundStyle(.orange)
-                } else if !removable {
+                } else if !removable, !everyRowIsSystem {
                     Text(DkStr.systemItem).font(.caption2).foregroundStyle(HelmText.faint)
                 }
             }
@@ -352,10 +365,19 @@ private struct ChildRow: View {
                 ZStack(alignment: .leading) {
                     if isHovered {
                         RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(DiskPalette.base(for: child.path).opacity(0.16))
+                            .fill(DiskPalette.base(for: child.path)
+                                .opacity(colorScheme == .light ? 0.38 : 0.16))
                     }
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(DiskPalette.base(for: child.path).opacity(0.10))
+                        // Heavier in light. `DiskPalette` is eight fixed HSB
+                        // constants with no idea what it is drawn on, and one
+                        // opacity does not carry the same weight on both: at
+                        // 0.10 the largest bar measures about 1.10:1 over a
+                        // white list against 1.17:1 over the dark one, and the
+                        // smaller bars simply are not there. Same trick
+                        // `HelmMetricStrip.legible` uses for the same reason.
+                        .fill(DiskPalette.base(for: child.path)
+                            .opacity(colorScheme == .light ? 0.28 : 0.10))
                         .frame(width: max(proxy.size.width * fraction, 2))
                 }
             }
@@ -422,7 +444,7 @@ private struct AdviceList: View {
                 Text(item.name).lineLimit(1).truncationMode(.middle)
                 Text(reason(item.kind))
                     .font(.caption2)
-                    .foregroundStyle(Color.primary.opacity(0.70))
+                    .foregroundStyle(HelmText.quiet)
             }
             Spacer()
             Text(Bytes(item.bytes))

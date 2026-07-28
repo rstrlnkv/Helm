@@ -44,7 +44,7 @@ public struct HelmRemovalOutcome: View {
         if failures.isEmpty {
             Text(succeededText)
                 .font(.caption)
-                .foregroundStyle(Color.primary.opacity(0.70))
+                .foregroundStyle(HelmText.quiet)
         } else {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
@@ -53,7 +53,7 @@ public struct HelmRemovalOutcome: View {
                     Text(Self.heading(succeeded: removed > 0 ? succeededText : nil,
                                       failed: failures.count))
                         .font(.caption)
-                        .foregroundStyle(Color.primary.opacity(0.7))
+                        .foregroundStyle(HelmText.quiet)
                     Spacer(minLength: 8)
                     if needsFullDiskAccess {
                         Button(Self.grant) { PermissionNeed.fullDiskAccess.openSettings() }
@@ -70,7 +70,7 @@ public struct HelmRemovalOutcome: View {
                         Text("·").font(.caption2).foregroundStyle(HelmText.faint)
                         Text(failure.reason)
                             .font(.caption2)
-                            .foregroundStyle(Color.primary.opacity(0.70))
+                            .foregroundStyle(HelmText.quiet)
                             .lineLimit(1)
                         Spacer(minLength: 4)
                         Button {
@@ -87,7 +87,7 @@ public struct HelmRemovalOutcome: View {
                 if failures.count > 4 {
                     Text(Self.more(failures.count - 4))
                         .font(.caption2)
-                        .foregroundStyle(Color.primary.opacity(0.70))
+                        .foregroundStyle(HelmText.quiet)
                 }
             }
         }
