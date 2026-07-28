@@ -95,8 +95,7 @@ public final class DuplicateScanner: @unchecked Sendable {
                     if digest == nil { progress.noteUnreadable() }
                     return digest
                 }) {
-                    found.append(DuplicateGroup(bytes: identical.first?.bytes ?? 0,
-                                                paths: identical.map(\.path).sorted()))
+                    found.append(Duplicates.group(identical))
                 }
             }
             bucketLock.lock(); buckets[index] = found; bucketLock.unlock()
