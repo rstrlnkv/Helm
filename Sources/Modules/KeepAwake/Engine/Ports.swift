@@ -14,13 +14,22 @@ public protocol PowerInfoPort: AnyObject {
     /// Every observer this module starts has to be stoppable, because the
     /// module can be switched off: the engine is dropped, the port goes with
     /// it, and anything still holding a pointer to the port is holding freed
-    /// memory. `DisplayObserverPort` and `AppRunningPort` use
-    /// `NotificationCenter`, which keeps its own tokens; this one hands IOKit a
-    /// raw pointer.
+    /// memory.
+    ///
+    /// This used to say `NotificationCenter` observers were exempt because the
+    /// centre keeps its own tokens. It keeps them; it does not remove them.
+    /// `WorkspaceAppPort` had already learned that and holds its tokens with a
+    /// comment saying why, while `ScreenParamsObserver` took the exemption at
+    /// face value and stacked another observer on every enable. There is no
+    /// exemption: the centre's token is the thing you have to keep in order to
+    /// take the observer back out.
     func stopObserving()
 }
 
-public protocol DisplayObserverPort: AnyObject { func startObserving(_ onChange: @escaping @Sendable () -> Void) }
+public protocol DisplayObserverPort: AnyObject {
+    func startObserving(_ onChange: @escaping @Sendable () -> Void)
+    func stopObserving()
+}
 
 public protocol AppRunningPort: AnyObject {
     func runningBundleIDs() -> Set<String>

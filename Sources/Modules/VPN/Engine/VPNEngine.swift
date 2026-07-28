@@ -201,7 +201,14 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
 
     private func disconnectNow(_ name: String) {
         HelmLog.shared.info("vpn", "disconnect \(Redact.vpn(name))")
-        lock.lock(); _autoConnected.remove(name); lock.unlock()
+        // Both books. `_cameUp` is the memory of "this one did come up", and a
+        // name left in it outlives the session it belonged to: the next time
+        // the same app launches and Helm raises the same VPN, the first refresh
+        // — the one that exists precisely because it still reports the old
+        // status — sees a name that is not up and *was* once up, and forgets it
+        // immediately. Connect and disconnect are this module's ordinary
+        // traffic, so that is the common path, not an edge.
+        lock.lock(); _autoConnected.remove(name); _cameUp.remove(name); lock.unlock()
         _ = runner.run(["--nc", "stop", name])
         emitState()
         scheduleRefresh()

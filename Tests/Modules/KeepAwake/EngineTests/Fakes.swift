@@ -20,6 +20,7 @@ final class FakeDisplayObserver: DisplayObserverPort {
     private var onChange: (@Sendable () -> Void)?
     func startObserving(_ onChange: @escaping @Sendable () -> Void) { self.onChange = onChange }
     func fire() { onChange?() }
+    func stopObserving() { onChange = nil }
 }
 
 final class FakePower: PowerInfoPort {

@@ -17,15 +17,25 @@ public struct ActionRecord: Codable, Equatable, Sendable, Identifiable {
     /// The rule that decided. Rules are named by the person who wrote them, so
     /// this is the one word that says *why* without explaining anything.
     public let rule: String
-    /// The file's name, not its path: the path is where it no longer is.
+    /// The file's name, shown as the row's subject.
     public let file: String
+    /// Where it was. Not shown — the row reads better without it — but it is
+    /// what makes two files one record or two.
+    ///
+    /// `PreviewRow` was given the same treatment this morning and for the same
+    /// reason; this is its sibling and it was missed. Two files called
+    /// `report.pdf` in two folders, refused by one rule, collapsed into a
+    /// single record and the newer *deleted* the older — worse than the
+    /// preview, where the cost was a row not drawn. Optional for decoding: a
+    /// history written before today has no such key.
+    public let path: String
     public let kind: Kind
     /// Where it went, what it was renamed to, which tag, or why it was refused.
     /// Empty for the actions that need no second half — a trashed file went to
     /// the Trash and saying so twice is noise.
     public let detail: String
 
-    public var id: String { "\(at.timeIntervalSince1970)-\(file)-\(kind.rawValue)" }
+    public var id: String { "\(at.timeIntervalSince1970)-\(path)-\(kind.rawValue)" }
 
     /// Whether another record of this kind about this file says the same thing.
     ///
@@ -35,16 +45,28 @@ public struct ActionRecord: Codable, Equatable, Sendable, Identifiable {
     public var repeatable: Bool { kind == .refused || kind == .failed }
 
     public func isRepeat(of other: ActionRecord) -> Bool {
-        kind == other.kind && file == other.file && detail == other.detail
+        kind == other.kind && path == other.path && detail == other.detail
             && rule == other.rule
     }
 
-    public init(at: Date, rule: String, file: String, kind: Kind, detail: String) {
+    public init(at: Date, rule: String, file: String, kind: Kind, detail: String,
+                path: String = "") {
         self.at = at
         self.rule = rule
         self.file = file
         self.kind = kind
         self.detail = detail
+        self.path = path.isEmpty ? file : path
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        at = try c.decode(Date.self, forKey: .at)
+        rule = try c.decode(String.self, forKey: .rule)
+        file = try c.decode(String.self, forKey: .file)
+        kind = try c.decode(Kind.self, forKey: .kind)
+        detail = try c.decode(String.self, forKey: .detail)
+        path = try c.decodeIfPresent(String.self, forKey: .path) ?? file
     }
 }
 
@@ -139,7 +161,7 @@ public extension ActionRecord {
     static func of(_ plan: RulePlan, _ outcome: RuleOutcome, at: Date = Date()) -> ActionRecord? {
         let make: (Kind, String) -> ActionRecord = { kind, detail in
             ActionRecord(at: at, rule: plan.rule.name, file: plan.facts.name,
-                         kind: kind, detail: detail)
+                         kind: kind, detail: detail, path: plan.facts.path)
         }
         switch outcome {
         case let .moved(destination):

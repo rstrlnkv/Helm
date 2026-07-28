@@ -67,7 +67,11 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
             guard let data = store.data("folders"),
                   let list = try? JSONDecoder().decode([WatchedFolder].self, from: data)
             else { return [] }
-            return list
+            // On the way out as well as in. The setter has always brought
+            // numbers into range, and a plist somebody edited by hand — or one
+            // written by an older build — never went through the setter. It
+            // reaches the engine here.
+            return list.map(\.storable)
         }
         set {
             // Encoding a rule list can genuinely fail — `JSONEncoder` refuses a

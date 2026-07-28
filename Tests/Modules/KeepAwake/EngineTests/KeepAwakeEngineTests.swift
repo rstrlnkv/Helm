@@ -189,3 +189,36 @@ final class PowerObserverTeardownTests: XCTestCase {
                        + "to be freed")
     }
 }
+
+/// An observer started twice is not two observers.
+///
+/// `ScreenParamsObserver` kept no token and removed nothing, so every enable of
+/// the module left another `didChangeScreenParameters` block registered for the
+/// life of the process. `WorkspaceAppPort`, twenty lines below it in the same
+/// file, holds its tokens and says why — "switching the module off and on
+/// stacked another pair each time" — and the port protocol's comment claimed
+/// `NotificationCenter` observers needed no such thing.
+final class DisplayObserverStackingTests: XCTestCase {
+
+    func testStartingTwiceLeavesOneObserver() {
+        let observer = ScreenParamsObserver()
+        let calls = Counter()
+        observer.startObserving { calls.bump() }
+        observer.startObserving { calls.bump() }
+
+        NotificationCenter.default.post(
+            name: NSApplication.didChangeScreenParametersNotification, object: nil)
+        // The block runs on the main queue; drain it.
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+        XCTAssertEqual(calls.value, 1, "each enable of the module left another observer behind")
+    }
+}
+
+/// A counter a `@Sendable` block may touch.
+private final class Counter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    func bump() { lock.lock(); count += 1; lock.unlock() }
+    var value: Int { lock.lock(); defer { lock.unlock() }; return count }
+}

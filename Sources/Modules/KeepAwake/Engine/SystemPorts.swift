@@ -155,16 +155,33 @@ public final class IOPSPowerInfo: PowerInfoPort {
 // MARK: - ScreenParamsObserver
 
 public final class ScreenParamsObserver: DisplayObserverPort {
+    /// Held so it can be taken back out — the same reason `WorkspaceAppPort`
+    /// twenty lines below holds its own, and for the same defect: every enable
+    /// of the module left another block registered for the life of the
+    /// process. `[weak self]` is not the answer here, because the block
+    /// captures the caller's closure and not this object, so nothing decayed;
+    /// the observers simply accumulated and the display callback ran once per
+    /// enable, quietly.
+    private var token: NSObjectProtocol?
+
     public init() {}
 
+    deinit { stopObserving() }
+
     public func startObserving(_ onChange: @escaping @Sendable () -> Void) {
-        NotificationCenter.default.addObserver(
+        stopObserving()
+        token = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
             object: nil,
             queue: .main
         ) { _ in
             onChange()
         }
+    }
+
+    public func stopObserving() {
+        if let token { NotificationCenter.default.removeObserver(token) }
+        token = nil
     }
 }
 
