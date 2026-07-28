@@ -32,3 +32,17 @@ attempt at this went.
 
 See also `Scripts/layout/` for measuring what a layout *needs*, before
 deciding what it should look like.
+
+## measure-motion.swift
+
+What an animation actually does, frame by frame, out of a screen recording:
+change between consecutive frames over a crop of the part that moves. A smooth
+move is a bell; every defect is a spike, and the shapes are named in
+ARCHITECTURE.md § Dev loop. Five defects in the disk ring were found with it and
+none of them was visible by watching.
+
+```bash
+B=$(osascript -e 'tell application "System Events" to tell process "Helm" to get {position, size} of window 1')
+screencapture -v -V 12 -x -R"$(echo $B | tr -d ' ')" /tmp/clip.mov
+swift Scripts/design/measure-motion.swift /tmp/clip.mov 16.6 0.17 0.57 0.32 0.91
+```
