@@ -48,8 +48,11 @@ public extension RuleCondition {
     /// save abandoned — losing somebody's other folders to a typo in this one
     /// is a far worse answer than storing a bound they will see on the screen.
     ///
-    /// The bounds are the same ones the editor's field enforces, so a value
-    /// arriving from a hand-edited plist ends up where a typed one would.
+    /// This brings a number into the range `JSONEncoder` will take. It does not
+    /// decide whether the number is one anybody would mean — `accepts` does
+    /// that, and `storable` drops what it cannot repair. The two were once
+    /// claimed to be the same rule and were not: clamping a negative gives `0`,
+    /// and "larger than 0 MB" is true of every file in the folder.
     static func clamp(_ value: Double) -> Double {
         guard value.isFinite else { return upperBound }
         return min(max(value, lowerBound), upperBound)
@@ -68,17 +71,41 @@ public extension RuleCondition {
     static let lowerBound: Double = 0
     static let upperBound: Double = 1e9
 
-    /// The same condition with any number it carries brought into range.
-    var storable: RuleCondition {
+    /// The same condition, or nothing when the number it carries is not one
+    /// the editor would let anybody type.
+    ///
+    /// Clamping was the wrong repair and in the wrong direction. `clamp`
+    /// brought a negative or a `0` up to `0`, which as "larger than 0 MB"
+    /// matches **every file in the folder** — and a rule whose action is Trash
+    /// then runs on all of them, on a timer, unattended. The failure mode of a
+    /// corrupted number is "matches everything", so the safe repair is
+    /// "matches nothing": the condition is dropped, and `RuleMatcher` already
+    /// refuses a rule left with none, for this exact reason.
+    ///
+    /// Numbers are still brought into range where they are merely out of it —
+    /// `JSONEncoder` refuses a non-finite `Double`, and the rules are one JSON
+    /// value, so a single `1e999` used to discard every folder somebody had.
+    var storable: RuleCondition? {
+        func repaired(_ value: Double) -> Double? {
+            // Non-finite first, and dropped rather than clamped. `clamp` sends
+            // ±∞ and NaN to the *upper* bound, which reads as "larger than a
+            // billion megabytes" — matches nothing, safe — and as "smaller than
+            // a billion megabytes", which matches every file in the folder.
+            // The same repair is safe under one comparison and catastrophic
+            // under the other, so it is not a repair.
+            guard value.isFinite else { return nil }
+            let clamped = Self.clamp(value)
+            return Self.accepts(clamped) ? clamped : nil
+        }
         switch self {
         case let .size(comparison, megabytes):
-            .size(comparison, megabytes: Self.clamp(megabytes))
+            return repaired(megabytes).map { .size(comparison, megabytes: $0) }
         case let .dateAdded(comparison, days):
-            .dateAdded(comparison, days: Self.clamp(days))
+            return repaired(days).map { .dateAdded(comparison, days: $0) }
         case let .dateModified(comparison, days):
-            .dateModified(comparison, days: Self.clamp(days))
+            return repaired(days).map { .dateModified(comparison, days: $0) }
         default:
-            self
+            return self
         }
     }
 }
@@ -91,7 +118,7 @@ public extension WatchedFolder {
         var copy = self
         copy.rules = rules.map { rule in
             var rule = rule
-            rule.conditions = rule.conditions.map(\.storable)
+            rule.conditions = rule.conditions.compactMap(\.storable)
             return rule
         }
         return copy

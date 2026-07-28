@@ -84,11 +84,29 @@ public enum HelmTrash {
         // names, and the second name frees nothing.
         var counted: Set<UInt64> = []
 
-        // Shortest paths first, so a folder is taken before anything inside it
-        // and the child can tell "the batch took my parent" from "it was never
-        // there". `DiskEngine` hands over `Array(Set(paths))`, whose order is a
-        // hash seed — the same basket gave two different answers on two runs.
-        for path in allowed.sorted(by: { $0.count < $1.count }) {
+        // One outcome per path, whatever the caller handed over. `removed` and
+        // `failed` are read as one description of one batch, and the same file
+        // appeared in both when a path arrived twice: the first turn trashed
+        // it, the second met `NSFileNoSuchFileError` and the "went with its
+        // parent" branch does not fire for a path that *is* itself. Every
+        // caller writes `Array(Set(paths))` today; nothing in this signature
+        // said they had to.
+        //
+        // A trailing slash names the same folder and is a different string, so
+        // it is stripped before either the dedupe or the ancestry test — that
+        // test is a raw prefix comparison, and `…/folder/` never prefixes
+        // `…/folder/inside.bin` with the separator this expects.
+        //
+        // Shortest first, so a folder is taken before anything inside it and
+        // the child can tell "the batch took my parent" from "it was never
+        // there". `DiskEngine` hands over a `Set`, whose order is a hash seed —
+        // the same basket gave two different answers on two runs.
+        var seenPaths: Set<String> = []
+        let ordered = allowed
+            .map { $0.count > 1 && $0.hasSuffix("/") ? String($0.dropLast()) : $0 }
+            .filter { seenPaths.insert($0).inserted }
+            .sorted { $0.count < $1.count }
+        for path in ordered {
             let url = URL(fileURLWithPath: path)
             // Read before the move: afterwards the URL points at nothing.
             let size = FileWeight.allocated(of: url, countingOnce: &counted)
