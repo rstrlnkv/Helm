@@ -26,7 +26,7 @@ enum DkStr {
     static func removedFreed(_ size: String) -> String { L("Removed — \(size) freed", [.ru: "Удалено — освобождено \(size)", .es: "Eliminado — \(size) liberados", .fr: "Supprimé — \(size) libérés", .de: "Entfernt — \(size) freigegeben", .ja: "削除しました — \(size) を解放", .zh: "已删除 — 释放 \(size)", .pt: "Removido — \(size) liberados"]) }
     static func confirmTrash(_ count: Int, _ size: String) -> String {
         let items = Plural.items(count, language: AppLanguage.current.rawValue)
-        return L("Move \(items) (\(size)) to the Trash?", [.ru: "Переместить \(items) (\(size)) в Корзину?", .es: "¿Mover \(items) (\(size)) a la papelera?", .fr: "Déplacer \(items) (\(size)) vers la corbeille ?", .de: "\(items) (\(size)) in den Papierkorb legen?", .ja: "\(items)（\(size)）をゴミ箱に入れますか？", .zh: "将\(items)（\(size)）移到废纸篓？", .pt: "Mover \(items) (\(size)) para o Lixo?"])
+        return L("Move \(items) (\(size)) to the Trash?", [.ru: "Переместить \(items) (\(size)) в Корзину?", .es: "¿Trasladar \(items) (\(size)) a la papelera?", .fr: "Déplacer \(items) (\(size)) vers la corbeille ?", .de: "\(items) (\(size)) in den Papierkorb legen?", .ja: "\(items)（\(size)）をゴミ箱に入れますか？", .zh: "将\(items)（\(size)）移到废纸篓？", .pt: "Mover \(items) (\(size)) para o Lixo?"])
     }
     static func measured(_ ago: String) -> String { L("Measured \(ago)", [.ru: "Измерено \(ago)", .es: "Medido \(ago)", .fr: "Mesuré \(ago)", .de: "Gemessen \(ago)", .ja: "計測 \(ago)", .zh: "测量于 \(ago)", .pt: "Medido \(ago)"]) }
     static var advice: String { L("Recommendations", [.ru: "Рекомендации", .es: "Recomendaciones", .fr: "Recommandations", .de: "Empfehlungen", .ja: "おすすめ", .zh: "建议", .pt: "Recomendações"]) }
