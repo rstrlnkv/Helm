@@ -25,7 +25,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// The word that most recently ended, kept so "convert the last word" has
     /// something to work with: the shortcut is itself a chord, and a chord ends
     /// the word before the Carbon handler for it ever runs.
-    private var lastCompleted: TypingBuffer.Completion?
+    private var lastCompleted: RememberedWord?
     private var activeObserver: NSObjectProtocol?
     private var undo: UndoRecord?
     private var scope: AppScope
@@ -38,7 +38,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     private var audible: Bool
     /// The single key bound to "fix / put it back", if any.
     private var tapKey = ModifierTap(key: .off)
-    private var conversions = 0
+    private var conversions = DailyCount()
     private var running = false
     /// Whether the tap is live. Without the grant `start` returns false, and
     /// that answer is what the settings page shows.
@@ -104,6 +104,9 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // Without this the tap stayed dead until the next launch, which is the
         // same "switch that looks like it works" defect the note exists to
         // prevent.
+        // Dropped rather than overwritten: `deactivate` removes one observer,
+        // so two activates in a row left the first registered for good.
+        if let activeObserver { NotificationCenter.default.removeObserver(activeObserver) }
         activeObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
         ) { [weak self] _ in
@@ -142,12 +145,26 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         tap.stop()
         lock.lock()
         running = false; tapped = false
-        buffer.clear(); undo = nil; lastCompleted = nil   // the third place a word lives
+        forgetTheWord()
         lock.unlock()
         emitState()
     }
 
     // MARK: - The pipeline
+
+    /// Everything a later gesture could use to edit text that is no longer in
+    /// front of the caret. A blind edit measured against a word must not
+    /// outlive the word — four paths used to clear two of these three and leave
+    /// the third standing, so a refused conversion, an expanded abbreviation or
+    /// a corrected capital left a word the gesture would then delete out of the
+    /// middle of the sentence that had replaced it.
+    ///
+    /// Call with the lock held.
+    private func forgetTheWord() {
+        buffer.clear()
+        undo = nil
+        lastCompleted = nil
+    }
 
     private func handle(_ event: TypingBuffer.Event) {
         // The cheap half of the secure check, on every key rather than at the
@@ -157,7 +174,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             // All three places a word lives, as in deactivate: a retained
             // lastCompleted could later be typed back by the hotkey into
             // whatever field happens to be focused.
-            lock.lock(); buffer.clear(); undo = nil; lastCompleted = nil; lock.unlock()
+            lock.lock(); forgetTheWord(); lock.unlock()
             return
         }
         lock.lock()
@@ -186,7 +203,14 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         case .click, .focusChange:
             lock.lock(); lastCompleted = nil; lock.unlock()
         default:
-            if let finished { lock.lock(); lastCompleted = finished; lock.unlock() }
+            // An event that ends no word still ends the last one's usefulness:
+            // a token too long for the buffer to hold refuses, and the word
+            // from before it used to stay remembered — by then it is as many
+            // characters upstream of the caret as the token is long.
+            let here = secure.frontmostBundleID()
+            lock.lock()
+            lastCompleted = finished.map { RememberedWord($0, in: here) }
+            lock.unlock()
         }
         guard let completed = finished else { return }
         // Three things can happen to a finished word, and exactly one does.
@@ -217,18 +241,24 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // The trailing character was typed and stays typed, so the plan puts it
         // back after the replacement — otherwise the space that confirmed the
         // word is eaten by the backspaces that follow it.
-        let trailing = completed.ending.map(String.init) ?? ""
-        let plan = SwitchPlan(backspaces: completed.word.count + trailing.count,
-                              insert: replacement + trailing)
+        // Through `make`, so the grapheme counting lives in one place: the
+        // arithmetic duplicated here counted a combining ending twice.
+        guard let plan = SwitchPlan.make(replacing: completed.word,
+                                         with: replacement,
+                                         trailing: completed.ending) else { return false }
         lock.lock(); performing = true; lock.unlock()
         let done = typing.perform(plan)
         lock.lock()
         performing = false
-        buffer.clear()
         // No undo record: an expansion is not a guess to be taken back, and the
         // app's own undo already covers it. A record here would let the undo
-        // shortcut retype an abbreviation nobody asked to see again.
-        undo = nil
+        // shortcut retype an abbreviation nobody asked to see again. And no
+        // remembered word: `brb` is not in the field any more, so a gesture
+        // that converted it would delete four characters out of the middle of
+        // the sentence that replaced it. The module's own rule — a word that
+        // expanded is never also converted — held for one keystroke without
+        // this, and then did not.
+        forgetTheWord()
         lock.unlock()
         if done, audible { sound?.playSwitch() }
         return done
@@ -248,8 +278,14 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     private func transform(_ action: SelectionAction) {
         guard let selection else { return }
         let bundleID = secure.frontmostBundleID()
-        lock.lock(); let allowed = scope.allows(bundleID); lock.unlock()
-        guard allowed, !secure.isSecure() else { return }
+        lock.lock()
+        // A module that was turned off types nothing. The word path has always
+        // asked; this one never did, and the only reason it never showed is
+        // that nothing in the app sends the command yet.
+        let live = running
+        let allowed = scope.allows(bundleID)
+        lock.unlock()
+        guard live, allowed, !secure.isSecure() else { return }
         guard let text = selection.selectedText(), !text.isEmpty else { return }
 
         let transform = SelectionTransform(convert: { [weak self] source in
@@ -279,7 +315,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // back as somebody typing a paragraph.
         lock.lock(); performing = true; lock.unlock()
         let done = selection.replaceSelection(with: replacement)
-        lock.lock(); performing = false; buffer.clear(); undo = nil; lock.unlock()
+        lock.lock(); performing = false; forgetTheWord(); lock.unlock()
 
         guard done else {
             HelmLog.shared.warn("layout", "selection \(action.rawValue) refused by \(Redact.app(bundleID))")
@@ -295,7 +331,12 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         lock.lock(); let allowed = scope.allows(bundleID); lock.unlock()
         guard allowed else { return }
         guard !secure.isSecure() else {
-            lock.lock(); buffer.clear(); lock.unlock()
+            // Not just the buffer. `isSecureInput()` is the cheap check and it
+            // is false for an app's own password field, which is why this
+            // expensive one exists — but by the time it refuses, the password
+            // is already the remembered word, and a refusal that leaves it
+            // there hands the gesture a password to type into the next field.
+            lock.lock(); forgetTheWord(); lock.unlock()
             emitState()
             return
         }
@@ -338,7 +379,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         undo = UndoRecord(event: ConversionEvent(before: word, after: replacement,
                                                  app: bundleID,
                                                  trailing: trailing.map(String.init) ?? ""))
-        conversions += 1
+        _ = conversions.add(on: Date())
         lock.unlock()
         // Counts, never content: the words themselves stay out of the log.
         HelmLog.shared.info("layout", "converted a word in \(Redact.app(bundleID))")
@@ -364,13 +405,17 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         lock.lock()
         let fired = tapKey.feed(input)
         let refusal = tapKey.lastRefusal
+        // Taken here rather than read again below: `reloadSettings` assigns the
+        // whole struct under this lock, and a struct several words wide read
+        // outside it can be torn.
+        let bound = tapKey.key.keyCode
         lock.unlock()
         guard fired else {
             // A gesture that never fires looks exactly like a gesture that was
             // never made: the key still does its own job and nothing is said.
             // Only the bound key's own release is reported, so an ordinary
             // day's typing adds nothing to the log.
-            if case let .up(code, _) = input, code == tapKey.key.keyCode, let refusal {
+            if case let .up(code, _) = input, code == bound, let refusal {
                 HelmLog.shared.info("layout", "tap refused: \(refusal.rawValue)")
             }
             return
@@ -429,6 +474,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// Converts whatever is in the buffer right now, whatever the dictionary
     /// thinks — the hotkey path.
     public func convertLastWord() {
+        let bundleID = secure.frontmostBundleID()
         lock.lock()
         let live = buffer.word
         let previous = lastCompleted
@@ -436,7 +482,9 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         if !live.isEmpty {
             // Mid-word: nothing ended it, so there is nothing extra to delete.
             convert(live, trailing: nil, force: true)
-        } else if let previous {
+        } else if let previous, previous.belongs(to: bundleID) {
+            // Only where it was typed. The backspaces are counted against text
+            // this app is holding; anywhere else they eat somebody else's.
             convert(previous.word, trailing: previous.ending, force: true)
         }
     }
@@ -474,7 +522,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     private func perform(_ plan: SwitchPlan) -> Bool {
         lock.lock(); performing = true; lock.unlock()
         let done = typing.perform(plan)
-        lock.lock(); performing = false; buffer.clear(); lastCompleted = nil; lock.unlock()
+        lock.lock(); performing = false; forgetTheWord(); lock.unlock()
         return done
     }
 
@@ -504,7 +552,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         let state = LayoutState(enabled: tapped, automatic: automatic,
                                 suspended: suspended,
                                 lastConversion: undo?.event,
-                                conversionsToday: conversions)
+                                conversionsToday: conversions.value(on: Date()))
         lock.unlock()
         if let data = try? JSONEncoder().encode(state) {
             localTransport.emit(EngineEvent(name: "layoutState", payload: data))
