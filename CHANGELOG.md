@@ -190,6 +190,26 @@ features, PATCH = fixes.
   Edit ▸ Transformations wherever text can be edited.
 
 ### Fixed
+- **Login Items & Extensions could trash a row the filter was hiding.** Tick
+  something while the list shows everything, switch back to the filtered view,
+  and the row disappears while the tick survives — outside the count and the
+  size on screen, and inside the batch that goes to the Trash. Same family as
+  the "Select all" fix in 0.6.2: that one taught the *counter* to follow what is
+  on screen, and the removal was never taught the same thing. Both read the
+  visible list now, and narrowing it drops the ticks it hides.
+- **That button was also the only multi-file removal in Helm that did not ask.**
+  It acts on launch agents and login items. It asks now, with the count and the
+  size.
+- **Converting a selection could empty the clipboard.** Where an app reports its
+  selection but refuses to have it set, Helm pastes instead — borrowing the
+  clipboard and giving back only a string, so an image, rich text or a promised
+  file did not survive. It declines rather than borrow: the selection is left
+  alone and nothing is lost.
+- **The Disk list's bar chart did not exist in light mode.** Each row is backed
+  by a bar showing its share of the folder; at its old weight the largest
+  measured about 1.10:1 against a white list and the smaller ones did not draw.
+- **Recessed text was fainter than the app's own measured standard** — 86 places
+  used the system's grey (3.95:1) rather than Helm's (4.62:1).
 - **A selection replacement could report success it had not earned.** The paste
   route returned true without checking anything, so in an app where ⌘V is not
   paste, Helm clobbered the clipboard, restored it, played the success sound and
