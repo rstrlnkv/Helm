@@ -128,4 +128,33 @@ enum ApStr {
     static var a11yScheme: String { L("Renaming scheme", [.ru: "Схема переименования", .es: "Esquema de renombrado", .fr: "Schéma de renommage", .de: "Umbenennungsschema", .ja: "リネームの方式", .zh: "重命名方式", .pt: "Esquema de renomeação"]) }
     static var a11yPattern: String { L("Name pattern", [.ru: "Шаблон имени", .es: "Patrón del nombre", .fr: "Modèle de nom", .de: "Namensmuster", .ja: "名前のパターン", .zh: "名称模板", .pt: "Padrão do nome"]) }
     static var a11yMatch: String { L("Which conditions must match", [.ru: "Какие условия должны совпасть", .es: "Qué condiciones deben coincidir", .fr: "Quelles conditions doivent correspondre", .de: "Welche Bedingungen zutreffen müssen", .ja: "一致が必要な条件", .zh: "需要满足哪些条件", .pt: "Quais condições devem corresponder"]) }
+
+    // MARK: - What it did
+
+    static var historyTitle: String { L("Last 30 days", [.ru: "Последние 30 дней", .es: "Últimos 30 días", .fr: "30 derniers jours", .de: "Letzte 30 Tage", .ja: "過去30日間", .zh: "最近 30 天", .pt: "Últimos 30 dias"]) }
+    static var historyEmpty: String { L("Autopilot has not done anything yet.", [.ru: "Автопилот пока ничего не делал.", .es: "El piloto automático aún no ha hecho nada.", .fr: "Le pilote automatique n’a encore rien fait.", .de: "Der Autopilot hat noch nichts getan.", .ja: "オートパイロットはまだ何もしていません。", .zh: "自动整理还没有做过任何事。", .pt: "O piloto automático ainda não fez nada."]) }
+    static var historyClear: String { L("Clear", [.ru: "Очистить", .es: "Borrar", .fr: "Effacer", .de: "Löschen", .ja: "消去", .zh: "清除", .pt: "Limpar"]) }
+    /// Refusals and failures counted together: both mean a file the rule meant
+    /// to act on is still sitting where it was.
+    static func historyProblems(_ count: Int) -> String {
+        // Written as label-then-count on purpose. "2 не прошло" needs "прошли"
+        // for two through four in Russian, and the same trap waits in every
+        // language that agrees a verb with a numeral; a colon makes the number
+        // a count rather than a subject and the agreement question disappears.
+        L("not completed: \(count)", [.ru: "не выполнено: \(count)", .es: "sin completar: \(count)", .fr: "non effectuées : \(count)", .de: "nicht ausgeführt: \(count)", .ja: "未実行: \(count)", .zh: "未完成：\(count)", .pt: "não concluídas: \(count)"])
+    }
+
+    /// The verb for one row. Past tense, because the row is a record of
+    /// something that already happened — the rule editor's list says "Move",
+    /// this says "moved", and the difference is the whole point of the section.
+    static func historyVerb(_ kind: ActionRecord.Kind) -> String {
+        switch kind {
+        case .moved: L("moved to", [.ru: "в", .es: "movido a", .fr: "déplacé vers", .de: "verschoben nach", .ja: "移動先", .zh: "移动到", .pt: "movido para"])
+        case .renamed: L("renamed to", [.ru: "переименован в", .es: "renombrado a", .fr: "renommé en", .de: "umbenannt in", .ja: "名前変更", .zh: "重命名为", .pt: "renomeado para"])
+        case .tagged: L("tagged", [.ru: "метка", .es: "etiquetado", .fr: "tag", .de: "Tag", .ja: "タグ", .zh: "标签", .pt: "etiquetado"])
+        case .trashed: L("moved to Trash", [.ru: "в Корзину", .es: "movido a la Papelera", .fr: "mis à la corbeille", .de: "in den Papierkorb", .ja: "ゴミ箱へ", .zh: "移到废纸篓", .pt: "movido para o Lixo"])
+        case .refused: L("refused", [.ru: "отказано", .es: "rechazado", .fr: "refusé", .de: "abgelehnt", .ja: "拒否", .zh: "已拒绝", .pt: "recusado"])
+        case .failed: L("failed", [.ru: "не удалось", .es: "falló", .fr: "échec", .de: "fehlgeschlagen", .ja: "失敗", .zh: "失败", .pt: "falhou"])
+        }
+    }
 }

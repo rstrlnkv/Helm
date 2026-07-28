@@ -89,8 +89,14 @@ public struct AutopilotSettingsPage: View {
                         folderHeader(folder)
                     }
                 }
+                Section {
+                    HistorySection(history: rvm.history) { rvm.clearHistory() }
+                }
             }
             .listStyle(.inset)
+            // The engine acts on a timer and on files arriving, so what the
+            // page holds is whatever was true when it opened.
+            .task { await rvm.loadHistory() }
         }
     }
 
