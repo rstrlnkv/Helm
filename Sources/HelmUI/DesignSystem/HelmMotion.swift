@@ -50,8 +50,16 @@ public enum HelmMotion {
     /// `emphasis` is a spring with a little overshoot, which is right for a pill
     /// growing into a card and wrong here: the ring's arcs travel a long way
     /// round the circle, and an overshoot at the end of that reads as a snap
-    /// rather than as life. This is a spring with no bounce at all, and it is
-    /// slower — a morph of the whole screen is not a toggle.
+    /// rather than as life.
+    /// Not a spring. A spring starts at its highest velocity and decays, which
+    /// is what "alive" means for a control that pops — and what "abrupt" means
+    /// for a shape that travels across the screen. Measured off a screen
+    /// recording of the ring, frame to frame: the first frame of the move
+    /// already held the largest change of the whole animation (193k of a 194k
+    /// peak), then decayed for half a second. It read as a snap with a long
+    /// tail, which is exactly what it was.
+    ///
+    /// An eased curve starts still, and that is the half a spring cannot do.
     ///
     /// `levels` is how far the ring is travelling. Crossing two levels at once
     /// (a breadcrumb jump) covers more ground than a single drill and needs the
@@ -59,7 +67,7 @@ public enum HelmMotion {
     public static func ringMorph(levels: Int = 1) -> Animation {
         guard !reduced else { return instant }
         let distance = Double(max(1, min(levels, 4)))
-        return .smooth(duration: 0.46 + 0.14 * (distance - 1))
+        return .easeInOut(duration: 0.50 + 0.16 * (distance - 1))
     }
 
     /// Steady rotation (the About page's bezel while a check runs) — the one
