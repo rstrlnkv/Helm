@@ -73,8 +73,7 @@ public enum HelmTrash {
         for path in allowed {
             let url = URL(fileURLWithPath: path)
             // Read before the move: afterwards the URL points at nothing.
-            let size = (try? url.resourceValues(forKeys: [.totalFileAllocatedSizeKey]))?
-                .totalFileAllocatedSize ?? 0
+            let size = allocatedSize(of: url)
             do {
                 try FileManager.default.trashItem(at: url, resultingItemURL: nil)
                 removed.append(path)
@@ -90,5 +89,32 @@ public enum HelmTrash {
 
         HelmLog.shared.info(module, "trashed \(removed.count), failed \(refused.count)")
         return Result(removed: removed, refused: refused, freedBytes: freed)
+    }
+
+    /// What trashing this frees.
+    ///
+    /// `totalFileAllocatedSize` on a directory answers for the directory entry
+    /// and not a byte of what is inside it — on APFS it answers **zero**. So
+    /// Disk, whose whole job is disk space, told people a trashed folder freed
+    /// nothing, and every plug-in bundle Leftovers removes would have done the
+    /// same the moment it stopped keeping its own recursive count. A folder is
+    /// what these modules delete most.
+    ///
+    /// The walk is bounded by what the person selected and happens once per
+    /// path, before the move. `.skipsHiddenFiles` is deliberately not set: a
+    /// hidden file inside the folder is freed along with it and belongs in the
+    /// figure.
+    private static func allocatedSize(of url: URL) -> Int {
+        let keys: [URLResourceKey] = [.totalFileAllocatedSizeKey, .isDirectoryKey]
+        guard let values = try? url.resourceValues(forKeys: Set(keys)) else { return 0 }
+        guard values.isDirectory == true else { return values.totalFileAllocatedSize ?? 0 }
+
+        var total = 0
+        let items = FileManager.default.enumerator(at: url, includingPropertiesForKeys: keys)
+        while let item = items?.nextObject() as? URL {
+            total += (try? item.resourceValues(forKeys: [.totalFileAllocatedSizeKey]))?
+                .totalFileAllocatedSize ?? 0
+        }
+        return total
     }
 }

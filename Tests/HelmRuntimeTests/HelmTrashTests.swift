@@ -77,3 +77,61 @@ final class HelmTrashTests: XCTestCase {
         XCTAssertNil(HelmTrash.Result(removed: ["/a"], refused: [], freedBytes: 1).principalReason)
     }
 }
+
+/// What "freed" means when the thing trashed is a folder.
+///
+/// `HelmTrash` reads `totalFileAllocatedSize` on the path it is given. For a
+/// file that is the file; for a directory it is the directory entry — a few
+/// kilobytes, whatever is inside. Disk trashes folders for a living and
+/// Leftovers trashes plug-in and extension bundles, so the figure both of them
+/// show after a removal is the one number the screen exists to produce.
+///
+/// Leftovers never hit this because it kept its own loop and its own recursive
+/// `size`. That is the difference that has to close before its loop can go.
+final class HelmTrashFolderSizeTests: XCTestCase {
+
+    private var root: URL!
+
+    override func setUpWithError() throws {
+        root = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("helm-trash-size-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    }
+
+    override func tearDownWithError() throws {
+        try? FileManager.default.removeItem(at: root)
+    }
+
+    private func write(_ relative: String, bytes: Int) throws {
+        let url = root.appendingPathComponent(relative)
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
+                                                withIntermediateDirectories: true)
+        try Data(repeating: 0x41, count: bytes).write(to: url)
+    }
+
+    func testAFolderFreesWhatIsInsideIt() throws {
+        try write("bundle/Contents/payload.bin", bytes: 400_000)
+        try write("bundle/Contents/Info.plist", bytes: 2_000)
+        let bundle = root.appendingPathComponent("bundle").path
+
+        let result = HelmTrash.remove(allowed: [bundle], module: "test")
+
+        XCTAssertEqual(result.removed, [bundle])
+        XCTAssertGreaterThan(result.freedBytes, 400_000,
+                             "a folder reported the size of its directory entry, not its contents")
+        // Trashed, so put it back out of the Trash rather than leaving it there.
+        addTeardownBlock { try? FileManager.default.removeItem(atPath: bundle) }
+    }
+
+    /// And a plain file still reports itself, not zero and not something else.
+    func testAFileStillFreesItsOwnSize() throws {
+        try write("one.bin", bytes: 300_000)
+        let file = root.appendingPathComponent("one.bin").path
+
+        let result = HelmTrash.remove(allowed: [file], module: "test")
+
+        XCTAssertEqual(result.removed, [file])
+        XCTAssertGreaterThanOrEqual(result.freedBytes, 300_000)
+        addTeardownBlock { try? FileManager.default.removeItem(atPath: file) }
+    }
+}
