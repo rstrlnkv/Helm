@@ -269,6 +269,9 @@ public struct KeepAwakePanelTile: View {
             // One line: field, unit, confirm — instead of three separate rows.
             HStack(spacing: 6) {
                 TextField("", text: $customMinutesText)
+                    // "min" sits beside the field as its own Text, so read
+                    // aloud the number had no unit.
+                    .accessibilityLabel(HelmA11y.minutes)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 56)
                     .multilineTextAlignment(.trailing)

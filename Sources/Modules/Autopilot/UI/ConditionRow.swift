@@ -16,7 +16,10 @@ struct ConditionRow: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Picker("", selection: fieldBinding) {
+            // The label is real and hidden, not absent: `.labelsHidden()`
+            // keeps the row reading as a sentence while VoiceOver still has
+            // something to announce before the value.
+            Picker(ApStr.a11yField, selection: fieldBinding) {
                 ForEach(Field.allCases, id: \.self) { Text($0.label).tag($0) }
             }
             .labelsHidden()
@@ -88,7 +91,7 @@ struct ConditionRow: View {
     @ViewBuilder private var detail: some View {
         switch condition {
         case let .name(comparison, value):
-            Picker("", selection: Binding(
+            Picker(ApStr.a11yComparison, selection: Binding(
                 get: { comparison },
                 set: { condition = .name($0, value) })) {
                     Text(ApStr.comparisonIs).tag(TextComparison.is)
@@ -99,6 +102,7 @@ struct ConditionRow: View {
                 .labelsHidden().frame(width: 140)
             TextField("", text: Binding(get: { value },
                                         set: { condition = .name(comparison, $0) }))
+                .accessibilityLabel(ApStr.a11yValue)
 
         case let .fileExtension(list):
             // Typed as a list because that is how it reads: "pdf, png, zip".
@@ -110,22 +114,23 @@ struct ConditionRow: View {
                         .map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
                         .filter { !$0.isEmpty })
                 }))
+                .accessibilityLabel(ApStr.a11yExtensions)
 
         case let .kind(kind):
-            Picker("", selection: Binding(get: { kind }, set: { condition = .kind($0) })) {
+            Picker(ApStr.a11yField, selection: Binding(get: { kind }, set: { condition = .kind($0) })) {
                 ForEach(FileKind.allCases, id: \.self) { Text(ApStr.kindName($0)).tag($0) }
             }
             .labelsHidden().frame(width: 160)
 
         case let .size(comparison, megabytes):
-            Picker("", selection: Binding(
+            Picker(ApStr.a11yComparison, selection: Binding(
                 get: { comparison },
                 set: { condition = .size($0, megabytes: megabytes) })) {
                     Text(ApStr.comparisonLarger).tag(SizeComparison.largerThan)
                     Text(ApStr.comparisonSmaller).tag(SizeComparison.smallerThan)
                 }
                 .labelsHidden().frame(width: 140)
-            numberField(megabytes) { condition = .size(comparison, megabytes: $0) }
+            numberField(megabytes, ApStr.a11yMegabytes) { condition = .size(comparison, megabytes: $0) }
             Text(ApStr.unitMegabytes).font(.callout).foregroundStyle(HelmText.quiet)
 
         case let .dateAdded(comparison, days):
@@ -138,29 +143,31 @@ struct ConditionRow: View {
             Text(ApStr.comparisonContains).font(.callout).foregroundStyle(HelmText.quiet)
             TextField("example.com", text: Binding(get: { host },
                                                    set: { condition = .downloadedFrom($0) }))
+                .accessibilityLabel(ApStr.a11yHost)
 
         case let .tag(tag):
             Text(ApStr.comparisonIs).font(.callout).foregroundStyle(HelmText.quiet)
             TextField("", text: Binding(get: { tag }, set: { condition = .tag($0) }))
+                .accessibilityLabel(ApStr.a11yTagValue)
         }
     }
 
     @ViewBuilder
     private func dateDetail(_ comparison: DateComparison, _ days: Double,
                             _ rebuild: @escaping (DateComparison, Double) -> Void) -> some View {
-        Picker("", selection: Binding(get: { comparison },
-                                      set: { rebuild($0, days) })) {
+        Picker(ApStr.a11yComparison, selection: Binding(get: { comparison },
+                                                        set: { rebuild($0, days) })) {
             Text(ApStr.comparisonOlder).tag(DateComparison.olderThan)
             Text(ApStr.comparisonNewer).tag(DateComparison.newerThan)
         }
         .labelsHidden().frame(width: 140)
-        numberField(days) { rebuild(comparison, $0) }
+        numberField(days, ApStr.a11yDays) { rebuild(comparison, $0) }
         Text(ApStr.unitDays).font(.callout).foregroundStyle(HelmText.quiet)
     }
 
     /// Typed rather than stepped: 30 days and 500 MB are both a number someone
     /// knows, and a stepper to reach either is a stepper nobody finishes.
-    private func numberField(_ value: Double,
+    private func numberField(_ value: Double, _ name: String,
                              _ set: @escaping (Double) -> Void) -> some View {
         TextField("", text: Binding(
             get: { RuleSummary.number(value) },
@@ -179,5 +186,8 @@ struct ConditionRow: View {
             }))
         .frame(width: 70)
         .multilineTextAlignment(.trailing)
+        // The unit is a separate Text beside the field, so read aloud the
+        // number had no unit at all: "30" for days and "10" for megabytes.
+        .accessibilityLabel(name)
     }
 }

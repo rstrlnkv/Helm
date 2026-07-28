@@ -15,7 +15,7 @@ struct ActionRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                Picker("", selection: kindBinding) {
+                Picker(ApStr.a11yAction, selection: kindBinding) {
                     ForEach(Kind.allCases, id: \.self) { Text($0.label).tag($0) }
                 }
                 .labelsHidden()
@@ -92,8 +92,8 @@ struct ActionRow: View {
             .controlSize(.small)
 
         case let .sortIntoSubfolder(scheme):
-            Picker("", selection: Binding(get: { scheme },
-                                          set: { action = .sortIntoSubfolder($0) })) {
+            Picker(ApStr.a11yScheme, selection: Binding(get: { scheme },
+                                                        set: { action = .sortIntoSubfolder($0) })) {
                 Text(ApStr.schemeKind).tag(SortScheme.kind)
                 Text(ApStr.schemeMonth).tag(SortScheme.month)
             }
@@ -102,9 +102,11 @@ struct ActionRow: View {
         case let .rename(pattern):
             TextField("{name}", text: Binding(get: { pattern },
                                               set: { action = .rename(pattern: $0) }))
+                .accessibilityLabel(ApStr.a11yPattern)
 
         case let .addTag(tag):
             TextField("", text: Binding(get: { tag }, set: { action = .addTag($0) }))
+                .accessibilityLabel(ApStr.a11yTagValue)
 
         case .trash:
             EmptyView()

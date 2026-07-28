@@ -91,7 +91,7 @@ public struct HomebrewSettingsPage: View {
     private var managerBody: some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
-                Picker("", selection: $segment) {
+                Picker(HelmA11y.whatToShow, selection: $segment) {
                     Text(HbStr.segInstalled).tag(0)
                     Text(HbStr.segUpdates).tag(1)
                     Text(HbStr.segSearch).tag(2)

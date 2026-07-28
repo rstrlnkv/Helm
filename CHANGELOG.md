@@ -190,6 +190,13 @@ features, PATCH = fixes.
   Edit ▸ Transformations wherever text can be edited.
 
 ### Fixed
+- **Every control has a name for VoiceOver.** The Autopilot rule editor was
+  built out of pickers and fields whose meaning came entirely from their place
+  in the row — sighted that works, read aloud it was "pop up button, pop up
+  button, text field", and a rule could not be built at all. Fifteen controls
+  across six modules were unnamed; all of them say what they are now, in eight
+  languages. A test scans the source and fails on the next one, because this is
+  a defect nobody sees at runtime unless they are the person it locks out.
 - **Duplicates keeps the original, not the clutter.** Which copy stayed was
   decided alphabetically — not a belief about anything, just the order the list
   happened to be sorted in — so `~/Desktop/photo.jpg` beat

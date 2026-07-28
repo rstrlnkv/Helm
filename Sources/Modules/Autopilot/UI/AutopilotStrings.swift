@@ -107,4 +107,25 @@ enum ApStr {
     static var done: String { L("Done", [.ru: "Готово", .es: "Listo", .fr: "Terminé", .de: "Fertig", .ja: "完了", .zh: "完成", .pt: "Concluído"]) }
     static var edit: String { L("Edit", [.ru: "Изменить", .es: "Editar", .fr: "Modifier", .de: "Bearbeiten", .ja: "編集", .zh: "编辑", .pt: "Editar"]) }
     static var delete: String { L("Delete", [.ru: "Удалить", .es: "Eliminar", .fr: "Supprimer", .de: "Löschen", .ja: "削除", .zh: "删除", .pt: "Excluir"]) }
+
+    // MARK: - Names for controls that carry none on screen
+
+    /// A rule reads as a sentence — "name contains report, move to Documents" —
+    /// and the screen builds it out of pickers and fields whose meaning comes
+    /// entirely from their position in the row. Sighted, that works; read aloud
+    /// it was "pop up button, pop up button, text field" and a rule could not be
+    /// built at all. These are the names those controls always had and never
+    /// said. Kept short, because VoiceOver reads the name before every value.
+    static var a11yField: String { L("What to check", [.ru: "Что проверять", .es: "Qué comprobar", .fr: "Quoi vérifier", .de: "Was geprüft wird", .ja: "確認する項目", .zh: "检查什么", .pt: "O que verificar"]) }
+    static var a11yComparison: String { L("How to compare", [.ru: "Как сравнивать", .es: "Cómo comparar", .fr: "Comment comparer", .de: "Wie verglichen wird", .ja: "比較の方法", .zh: "如何比较", .pt: "Como comparar"]) }
+    static var a11yValue: String { L("Value to match", [.ru: "Значение для совпадения", .es: "Valor a coincidir", .fr: "Valeur à faire correspondre", .de: "Wert zum Abgleich", .ja: "一致させる値", .zh: "要匹配的值", .pt: "Valor a corresponder"]) }
+    static var a11yExtensions: String { L("Extensions, separated by commas", [.ru: "Расширения через запятую", .es: "Extensiones separadas por comas", .fr: "Extensions séparées par des virgules", .de: "Endungen, durch Komma getrennt", .ja: "拡張子（カンマ区切り）", .zh: "扩展名，用逗号分隔", .pt: "Extensões separadas por vírgulas"]) }
+    static var a11yDays: String { L("Number of days", [.ru: "Число дней", .es: "Número de días", .fr: "Nombre de jours", .de: "Anzahl der Tage", .ja: "日数", .zh: "天数", .pt: "Número de dias"]) }
+    static var a11yMegabytes: String { L("Size in megabytes", [.ru: "Размер в мегабайтах", .es: "Tamaño en megabytes", .fr: "Taille en mégaoctets", .de: "Größe in Megabyte", .ja: "サイズ（メガバイト）", .zh: "大小（MB）", .pt: "Tamanho em megabytes"]) }
+    static var a11yHost: String { L("Site the file came from", [.ru: "Сайт, откуда файл", .es: "Sitio de procedencia del archivo", .fr: "Site d’où vient le fichier", .de: "Website, von der die Datei stammt", .ja: "ファイルの入手元サイト", .zh: "文件的来源网站", .pt: "Site de onde veio o arquivo"]) }
+    static var a11yTagValue: String { L("Tag name", [.ru: "Имя метки", .es: "Nombre de la etiqueta", .fr: "Nom du tag", .de: "Name des Tags", .ja: "タグ名", .zh: "标签名称", .pt: "Nome da etiqueta"]) }
+    static var a11yAction: String { L("What to do", [.ru: "Что сделать", .es: "Qué hacer", .fr: "Quoi faire", .de: "Was geschehen soll", .ja: "実行する処理", .zh: "做什么", .pt: "O que fazer"]) }
+    static var a11yScheme: String { L("Renaming scheme", [.ru: "Схема переименования", .es: "Esquema de renombrado", .fr: "Schéma de renommage", .de: "Umbenennungsschema", .ja: "リネームの方式", .zh: "重命名方式", .pt: "Esquema de renomeação"]) }
+    static var a11yPattern: String { L("Name pattern", [.ru: "Шаблон имени", .es: "Patrón del nombre", .fr: "Modèle de nom", .de: "Namensmuster", .ja: "名前のパターン", .zh: "名称模板", .pt: "Padrão do nome"]) }
+    static var a11yMatch: String { L("Which conditions must match", [.ru: "Какие условия должны совпасть", .es: "Qué condiciones deben coincidir", .fr: "Quelles conditions doivent correspondre", .de: "Welche Bedingungen zutreffen müssen", .ja: "一致が必要な条件", .zh: "需要满足哪些条件", .pt: "Quais condições devem corresponder"]) }
 }
