@@ -64,3 +64,20 @@ public func L(_ english: String, _ table: [AppLanguage: String] = [:]) -> String
 public func Bytes(_ count: Int) -> String {
     HelmBytes.string(count, language: AppLanguage.current.rawValue)
 }
+
+/// A number in the user's language: "1,5" where the language writes a comma.
+/// The rule summary printed `String(format: "%.1f", …)` beside sizes that
+/// `Bytes` had already written with a comma, so one line read "1.5 МБ" next to
+/// "1,5 ГБ".
+public func Decimal(_ value: Double, decimals: Int = 1) -> String {
+    HelmBytes.decimal(value, decimals: decimals, language: AppLanguage.current.rawValue)
+}
+
+/// Quotation marks belong to the language too. VPN and the settings window
+/// already spelled them out per language; anything that quotes a value the user
+/// typed goes through here instead of hard-coding English's pair.
+public func Quoted(_ text: String) -> String {
+    L("“\(text)”", [.ru: "«\(text)»", .es: "«\(text)»", .fr: "« \(text) »",
+                    .de: "„\(text)“", .ja: "「\(text)」", .zh: "“\(text)”",
+                    .pt: "“\(text)”"])
+}
