@@ -199,6 +199,11 @@ features, PATCH = fixes.
   Edit ▸ Transformations wherever text can be edited.
 
 ### Fixed
+- **Going back up several levels in Disk is an animation, not a cut.** A jump
+  through the breadcrumb folded into nothing at all beyond a single step, and
+  the ring simply changed. It now narrows into the wedge it went in through,
+  taking longer the further it travels, and the whole morph lost the slight
+  overshoot that read as a snap at the end of it.
 - **The disk ring no longer jumps at the end of a drill.** The animation used to
   transform the arcs that were on screen and then replace them with a layout
   computed separately, and the two disagreed — small folders fold into "other"
