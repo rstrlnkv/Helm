@@ -41,7 +41,7 @@ enum LfStr {
     /// and it was the only multi-file removal in Helm that did not ask.
     static func confirmSelected(_ count: Int, _ size: String) -> String {
         let items = Plural.items(count, language: AppLanguage.current.rawValue)
-        return L("Move \(items) to the Trash? \(size) freed.", [.ru: "Переместить \(items) в Корзину? Освободится \(size).", .es: "¿Mover \(items) a la Papelera? Se liberarán \(size).", .fr: "Déplacer \(items) vers la corbeille ? \(size) libérés.", .de: "\(items) in den Papierkorb legen? \(size) frei.", .ja: "\(items) をゴミ箱に入れますか？ \(size) を解放します。", .zh: "将 \(items) 移到废纸篓？将释放 \(size)。", .pt: "Mover \(items) para o Lixo? \(size) liberados."])
+        return L("Move \(items) to the Trash? \(size) freed.", [.ru: "Переместить \(items) в Корзину? Освободится \(size).", .es: "¿Trasladar \(items) a la papelera? Se liberarán \(size).", .fr: "Placer \(items) dans la corbeille ? \(size) libérés.", .de: "\(items) in den Papierkorb legen? \(size) frei.", .ja: "\(items) をゴミ箱に入れますか？ \(size) を解放します。", .zh: "将 \(items) 移到废纸篓？将释放 \(size)。", .pt: "Mover \(items) para o Lixo? \(size) liberados."])
     }
     static var removeSelected: String { L("Move to Trash", [.ru: "Переместить в Корзину", .es: "Trasladar a la papelera", .fr: "Placer dans la corbeille", .de: "In den Papierkorb legen", .ja: "ゴミ箱に入れる", .zh: "移到废纸篓", .pt: "Mover para o Lixo"]) }
     static var selectAll: String { L("Select all", [.ru: "Выбрать все", .es: "Seleccionar todo", .fr: "Tout sélectionner", .de: "Alle auswählen", .ja: "すべて選択", .zh: "全选", .pt: "Selecionar tudo"]) }

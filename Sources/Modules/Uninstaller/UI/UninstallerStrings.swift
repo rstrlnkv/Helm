@@ -12,7 +12,7 @@ enum UnStr {
     static var moveToTrash: String { L("Move to Trash", [.ru: "Переместить в Корзину", .es: "Trasladar a la papelera", .fr: "Placer dans la corbeille", .de: "In den Papierkorb legen", .ja: "ゴミ箱に入れる", .zh: "移到废纸篓", .pt: "Mover para o Lixo"]) }
     static func confirmTrash(_ count: Int, _ size: String) -> String {
         let items = Plural.items(count, language: AppLanguage.current.rawValue)
-        return L("Move \(items) (\(size)) to the Trash?", [.ru: "Переместить \(items) (\(size)) в Корзину?", .es: "¿Mover \(items) (\(size)) a la papelera?", .fr: "Déplacer \(items) (\(size)) vers la corbeille ?", .de: "\(items) (\(size)) in den Papierkorb legen?", .ja: "\(items)（\(size)）をゴミ箱に入れますか？", .zh: "将\(items)（\(size)）移到废纸篓？", .pt: "Mover \(items) (\(size)) para o Lixo?"])
+        return L("Move \(items) (\(size)) to the Trash?", [.ru: "Переместить \(items) (\(size)) в Корзину?", .es: "¿Trasladar \(items) (\(size)) a la papelera?", .fr: "Déplacer \(items) (\(size)) vers la corbeille ?", .de: "\(items) (\(size)) in den Papierkorb legen?", .ja: "\(items)（\(size)）をゴミ箱に入れますか？", .zh: "将\(items)（\(size)）移到废纸篓？", .pt: "Mover \(items) (\(size)) para o Lixo?"])
     }
     static var cancel: String { L("Cancel", [.ru: "Отменить", .es: "Cancelar", .fr: "Annuler", .de: "Abbrechen", .ja: "キャンセル", .zh: "取消", .pt: "Cancelar"]) }
     static func freed(_ size: String) -> String { L("Freed \(size)", [.ru: "Освобождено \(size)", .es: "Liberado \(size)", .fr: "\(size) libérés", .de: "\(size) freigegeben", .ja: "\(size) を解放しました", .zh: "已释放 \(size)", .pt: "Liberado \(size)"]) }
@@ -41,7 +41,7 @@ enum UnStr {
     static var noOrphans: String { L("No leftovers found.", [.ru: "Остатков не найдено.", .es: "No se encontraron restos.", .fr: "Aucun reste trouvé.", .de: "Keine Reste gefunden.", .ja: "残存ファイルは見つかりませんでした。", .zh: "未发现残留文件。", .pt: "Nenhum resto encontrado."]) }
     static var selectAll: String { L("Select all", [.ru: "Выбрать все", .es: "Seleccionar todo", .fr: "Tout sélectionner", .de: "Alle auswählen", .ja: "すべて選択", .zh: "全选", .pt: "Selecionar tudo"]) }
     static var rescan: String { L("Scan again", [.ru: "Сканировать заново", .es: "Escanear de nuevo", .fr: "Réanalyser", .de: "Erneut scannen", .ja: "再スキャン", .zh: "重新扫描", .pt: "Escanear de novo"]) }
-    static func selectedSummary(_ n: Int, _ size: String) -> String { L("\(n) selected · \(size)", [.ru: "Выбрано: \(n) · \(size)", .es: "\(n) seleccionados · \(size)", .fr: "\(n) sélectionnés · \(size)", .de: "\(n) ausgewählt · \(size)", .ja: "\(n) 件選択 · \(size)", .zh: "已选 \(n) 项 · \(size)", .pt: "\(n) selecionados · \(size)"]) }
+    static func selectedSummary(_ n: Int, _ size: String) -> String { L("\(n) selected · \(size)", [.ru: "Выбрано: \(n) · \(size)", .es: "\(n) seleccionados · \(size)", .fr: "\(n) sélectionnés · \(size)", .de: "\(n) ausgewählt · \(size)", .ja: "\(n) 件選択・\(size)", .zh: "已选 \(n) 项 · \(size)", .pt: "\(n) selecionados · \(size)"]) }
     static var selectNone: String { L("Clear selection", [.ru: "Снять выбор", .es: "Quitar selección", .fr: "Tout désélectionner", .de: "Auswahl aufheben", .ja: "選択を解除", .zh: "取消选择", .pt: "Limpar seleção"]) }
     static func reviewCount(_ n: Int) -> String { L("Review \(n)", [.ru: "Просмотреть: \(n)", .es: "Revisar \(n)", .fr: "Vérifier \(n)", .de: "\(n) prüfen", .ja: "\(n) 件を確認", .zh: "查看 \(n) 项", .pt: "Revisar \(n)"]) }
     static var back: String { L("Back", [.ru: "Назад", .es: "Atrás", .fr: "Retour", .de: "Zurück", .ja: "戻る", .zh: "返回", .pt: "Voltar"]) }
