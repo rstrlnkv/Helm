@@ -43,7 +43,56 @@ to **48 GB** of memory.
 unbounded buffer — it keeps the last event **per name** plus a name list, so it
 is bounded by the number of distinct event names an engine emits.
 
-**Prime suspect, and the first thing to test.** `LocalTransport.subscribers` is
+**Measured trace, 2026-07-28 23:11–23:17** — the app now logs its own footprint
+(category `memory`, delta against the last reading for the same label), and the
+first session with it caught the growth. Read top to bottom:
+
+```
+23:11:34  launch: 12 MB
+23:11:49  idle: 56 MB
+23:12:34  idle: 233 MB (+177 MB)      ← before any command was logged
+23:12:40  uninstaller.appSizes: 260 MB
+23:12:49  idle: 164 MB (-69 MB)
+23:13:19  idle: 139 MB (-24 MB)
+23:14:19  idle: 740 MB (+600 MB)      ← a scan of / is running
+23:14:49  idle: 963 MB (+105 MB)
+23:15:19  idle: 1091 MB (+124 MB)
+23:15:26  disk.scan: 859 MB           ← scanned /: 1 499 308 files in 75.2 s
+23:15:34  idle: 336 MB (-754 MB)
+23:16:49  idle: 324 MB
+23:17:12  leftovers.scan: 280 MB
+```
+
+**What that changes.** The dominant cost is not a slow leak — it is the disk
+scan, and it is proportional to the volume: **1.5 million files, ~1.1 GB at the
+peak, ~700 bytes per file**, of which roughly 750 MB comes back and ~270 MB
+stays as the tree the ring is drawn from. `DiskNode` is a class holding `name`
+**and** the full `path` as separate strings, plus `children`, `bytes`,
+`modified`, two flags — at 1.5 M nodes the paths alone are most of what is
+resident, and every one of them is its parent's path plus a component.
+
+So the 48 GB is most likely this number multiplied: several scans whose trees
+were all still reachable at once. That is exactly the shape the scanner-slot
+defect had before dev.28 (two scanners, the first unstoppable and still
+emitting) — worth re-testing on dev.28 before assuming it is gone, because a
+retained tree per scan needs only a handful of scans to reach tens of gigabytes.
+
+**Where to start, in order:**
+
+1. Scan `/`, then scan it again, and again, watching `idle` between them. If the
+   resting figure climbs by ~270 MB per scan, trees are being kept.
+2. Make the node cheap: store the component and derive the path (the parent
+   chain is already there), or intern the parent path. A 1.5 M-node tree should
+   not cost 700 bytes a node.
+3. Decide what happens to the tree when the module page closes. Right now the
+   view model is cached deliberately — losing a minute-long scan to a sidebar
+   click is hostile — but "kept while the page is closed" and "kept forever"
+   are different promises, and only the first one was intended.
+4. The +177 MB before the first uninstaller command is unexplained and is the
+   second thread to pull: it landed while the Uninstaller page was being opened,
+   which loads an icon per installed app.
+
+**Older suspect, not yet excluded.** `LocalTransport.subscribers` is
 pruned only by `continuation.onTermination`. Every access to `.events` builds a
 fresh stream and registers a new continuation, and Settings tears a module's page
 down and rebuilds it on every sidebar visit. If the `for await` task behind a
