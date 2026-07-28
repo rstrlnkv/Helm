@@ -200,6 +200,11 @@ features, PATCH = fixes.
   Edit ▸ Transformations wherever text can be edited.
 
 ### Fixed
+- **Clearing the log clears all of it.** The log rolls over at two megabytes,
+  and both the Clear button and the one-time purge of the older, un-redacted
+  logs removed only the current half — so up to two megabytes carrying VPN
+  names, application names and home paths sat beside a file that had just been
+  emptied, ready for the Copy button that exists to paste it into a bug report.
 - **Autopilot no longer trashes applications.** macOS calls an app bundle a
   package rather than a folder, and asks a package for its file size and gets
   nothing — so a rule reading "smaller than 1 MB, move to Trash" matched every
