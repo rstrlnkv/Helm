@@ -267,7 +267,22 @@ blind. **Do:** either hold the lock across the replay (measuring what that costs
 at activate time, since every module subscribes there), or stamp events with a
 sequence number the subscriber can order by. A test that fails first.
 
-## 7. The ring's drill animation tears, and the third level pops in
+## 7. The ring's drill animation — FIXED in dev.30 through dev.33 (kept as the record)
+
+**Done, in five parts, each measured before and after:** the spare level so the
+arriving ring has somewhere to slide in from (dev.30); the drill landing before
+the animation so the destination is the layout already on screen (dev.31); the
+fold for jumps of more than one level, and `ringMorph` instead of `emphasis`
+(dev.32); the eased curve instead of a spring, the two single-frame flashes at
+either end of every move, and the second animation running over the same arcs
+(dev.33). Method and what each spike shape means: ARCHITECTURE.md § Dev loop.
+
+**Still open:** some transitions still measure as two phases. Unifying the
+centre label's curve with the ring's was tried and did not move the numbers — it
+was kept because one movement should have one curve, not because it was shown to
+help. Record before changing anything here.
+
+## 7a. The original report
 
 **Reported, not yet reproduced** (user, 2026-07-28): going from folder to folder
 in Disk looks ragged, and the third level of the ring appears abruptly on

@@ -837,6 +837,31 @@ the animation to ~1.4 s, launch with the env var, capture with
 Remove the harness before committing. This loop caught every panel bug that
 pure reasoning missed.
 
+**"Ragged", "abrupt" and "too fast" are claims about frames, so measure frames.**
+Five defects in the ring's animation were found this way and none of them was
+visible by watching it, including two that lasted a single frame each.
+
+```bash
+screencapture -v -V 12 -x -R"$x,$y,$w,$h" clip.mov   # window rect from System Events
+```
+
+There is no `ffmpeg` on this machine and none is needed: `AVAssetImageGenerator`
+pulls exact frames, and the useful number is the **change between consecutive
+frames** — sum of absolute difference over a downscaled grayscale crop of the
+part that moves. A smooth move is a bell: small, rising, plateau, falling,
+nothing. Every defect is a spike in that curve, and each spike has a shape:
+
+- a single frame far above the plateau, at either end → something is drawn once
+  in a state the animation does not pass through;
+- the *first* frame holding the largest change of the whole move → the curve is
+  a spring, which starts at its highest velocity;
+- two bursts with a pause between them → two animations on the same view.
+
+Crop to the thing that moves before drawing conclusions — a whole-window
+difference is dominated by the list and the breadcrumb changing at the drill,
+which is honest but not what is being judged. The scratch tools that do this
+are worth rewriting rather than keeping: forty lines of AVFoundation.
+
 Design records for the larger modules live in `docs/superpowers/specs/`, the
 step-by-step build plans in `docs/superpowers/plans/`.
 
