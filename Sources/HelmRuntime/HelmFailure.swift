@@ -146,8 +146,19 @@ public enum HelmFailure {
                         "\u{2067}", "\u{2068}", "\u{2069}", "\u{200F}", "\u{200E}"] {
             flat = flat.replacingOccurrences(of: control, with: " ")
         }
-        flat = flat.replacingOccurrences(of: NSHomeDirectory(), with: "~")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        // Both spellings, longest first. On an APFS boot volume group every
+        // file under the home is reachable a second time as
+        // `/System/Volumes/Data` + the same path, which `Redact.path` and the
+        // `path:` extraction both answer `~` for. Stripping only the home left
+        // `/System/Volumes/Data~/Desktop/…` in the message: no account name in
+        // it, and no path either — it says the file is somewhere it is not.
+        let home = NSHomeDirectory()
+        if !home.isEmpty {
+            for spelling in [Redact.FirmlinkTwin.dataMount + home, home] {
+                flat = flat.replacingOccurrences(of: spelling, with: "~")
+            }
+        }
+        flat = flat.trimmingCharacters(in: .whitespacesAndNewlines)
         guard flat.count > messageLimit else { return flat }
         return flat.prefix(messageLimit) + "… (\(flat.count) characters)"
     }

@@ -133,6 +133,32 @@ final class HelmFailureAdversarialTests: XCTestCase {
                        "the account name reached the log: \(described)")
     }
 
+    /// The same twin, in a message rather than a `path:` key.
+    ///
+    /// The account name does not leak here — `oneLine` replaces the home
+    /// *anywhere* in the string, not only at the front, so the twin lost it by
+    /// accident. What came out was `/System/Volumes/Data~/Desktop/secret.txt`:
+    /// not a path anyone can paste, and it puts the file somewhere it is not.
+    /// `Redact.path` and the `path:` extraction both answer `~/…` for the twin,
+    /// and free text is where paths arrive from errors Helm has not written.
+    func testTheDataVolumeTwinReadsAsTheHomeInFreeTextToo() throws {
+        let home = NSHomeDirectory()
+        try XCTSkipIf(home.isEmpty || !home.hasPrefix("/Users/"))
+        let account = (home as NSString).lastPathComponent
+
+        let twin = "/System/Volumes/Data" + home + "/Desktop/secret.txt"
+        let error = NSError(domain: "D", code: 1, userInfo: [
+            NSLocalizedDescriptionKey: "could not read \(twin)",
+            NSLocalizedFailureReasonErrorKey: "while scanning \(twin)",
+        ])
+        let described = HelmFailure.describe(error)
+        XCTAssertFalse(described.contains(account),
+                       "the account name reached the log: \(described)")
+        XCTAssertFalse(described.contains("/System/Volumes/Data"), described)
+        XCTAssertTrue(described.contains("read ~/Desktop/secret.txt"), described)
+        XCTAssertTrue(described.contains("scanning ~/Desktop/secret.txt"), described)
+    }
+
     /// A path that is genuinely somewhere else stays whole — redaction is not
     /// allowed to turn a system path into a guess.
     func testAPathOutsideTheHomeIsKeptAsItIs() {
