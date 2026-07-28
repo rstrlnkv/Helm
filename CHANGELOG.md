@@ -200,6 +200,11 @@ features, PATCH = fixes.
   Edit ▸ Transformations wherever text can be edited.
 
 ### Fixed
+- **A per-app rule reads the same in every module.** Keep Awake, VPN and
+  Keyboard each list applications with a rule beside them, and each drew that
+  row for itself — so the icon was announced to VoiceOver in two of the three,
+  saying the app's name twice, and the rows sat at different heights. One row
+  now, in all three.
 - **"Freed" counts a folder's contents.** Trashing a folder reported the size of
   its directory entry, which on this filesystem is zero — so Disk, whose whole
   job is disk space, told you a folder you had just removed freed nothing. A

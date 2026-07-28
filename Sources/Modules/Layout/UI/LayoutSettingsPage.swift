@@ -300,29 +300,18 @@ public struct LayoutSettingsPage: View {
     }
 
     private func appRow(_ bundleID: String) -> some View {
-        let info = AppInfo.resolve(bundleID)
-        return HStack(spacing: 10) {
-            Image(nsImage: info.icon)
-                .resizable().frame(width: 22, height: 22)
-                .accessibilityHidden(true)
-            Text(info.name).lineLimit(1)
-            Spacer(minLength: 12)
+        HelmAppRuleRow(bundleID: bundleID) {
             // The picker carries the app's name: "Off, pop-up button" answers
             // nothing when there are five of these in a list.
-            Picker(info.name, selection: ruleBinding(bundleID)) {
+            Picker(AppInfo.resolve(bundleID).name, selection: ruleBinding(bundleID)) {
                 Text(LyStr.ruleOff).tag(false)
                 Text(LyStr.ruleOn).tag(true)
             }
             .labelsHidden()
             .fixedSize()
-            Button {
-                appRules.removeValue(forKey: bundleID)
-                write(appRules, LayoutKey.appRules)
-            } label: {
-                Image(systemName: "minus.circle.fill").foregroundStyle(HelmText.quiet)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("\(HelmA11y.remove), \(info.name)")
+        } remove: {
+            appRules.removeValue(forKey: bundleID)
+            write(appRules, LayoutKey.appRules)
         }
     }
 
