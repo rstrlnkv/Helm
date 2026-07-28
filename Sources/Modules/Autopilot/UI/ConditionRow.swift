@@ -180,7 +180,7 @@ struct ConditionRow: View {
                 // engine's setter discarded every folder without a word, while
                 // `Int(∞)` in a formatter is a trap rather than an error.
                 if let parsed = Double(text.replacingOccurrences(of: ",", with: ".")),
-                   parsed.isFinite, parsed > 0, parsed < 1e9 {
+                   RuleCondition.accepts(parsed) {
                     set(parsed)
                 }
             }))

@@ -99,17 +99,11 @@ public struct HomebrewSettingsPage: View {
                 .pickerStyle(.segmented).labelsHidden()
                 .frame(width: 300)
                 .onChange(of: segment) { _, seg in
-                    Task {
-                        if seg == 0 { await hb.refreshInstalled() }
-                        else if seg == 1 { await hb.refreshOutdated() }
-                    }
+                    Task { await refresh(segment: seg) }
                 }
                 Spacer(minLength: 0)
                 Button {
-                    Task {
-                        if segment == 1 { await hb.refreshOutdated() }
-                        else { await hb.refreshInstalled() }
-                    }
+                    Task { await refresh(segment: segment) }
                 } label: {
                     Image(systemName: "arrow.clockwise")
                         .symbolEffect(.rotate, options: .repeating, isActive: hb.running)
@@ -271,6 +265,20 @@ public struct HomebrewSettingsPage: View {
 
     /// `empty` is nil while the first query is still out: "nothing installed"
     /// must not be shown to someone who is simply waiting for the list.
+    /// Which list a segment is showing, and therefore which one Refresh
+    /// reloads. There were two answers: switching to Search reloaded nothing,
+    /// while pressing Refresh on Search reloaded the installed list behind it.
+    /// The switcher's answer is the right one — Search has nothing cached to
+    /// refresh, and a button that quietly reloads a list you are not looking at
+    /// is a button that did nothing.
+    private func refresh(segment: Int) async {
+        switch segment {
+        case 0: await hb.refreshInstalled()
+        case 1: await hb.refreshOutdated()
+        default: break
+        }
+    }
+
     private func listOrEmpty<T: Identifiable, Row: View>(_ items: [T], empty: String?,
                                                          @ViewBuilder row: @escaping (T) -> Row) -> some View {
         Group {
