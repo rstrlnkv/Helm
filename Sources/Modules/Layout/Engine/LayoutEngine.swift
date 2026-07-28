@@ -273,7 +273,16 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// same two refusals apply — a blocked app, a secure field — and one more:
     /// nothing happens unless the result actually differs, because replacing a
     /// selection with itself still clears that app's undo stack.
-    private func transform(_ action: SelectionAction) {
+    /// `selected` is the text the caller has already read, when it has.
+    ///
+    /// `fix()` reads the selection off the main thread precisely because that
+    /// read can block, then hopped back and let this read it again — on the
+    /// tap's own callback thread, where `selectedText()` can fall through to
+    /// the ⌘C route and poll the pasteboard for up to 200 ms. The expensive
+    /// probe was paid twice and the second time on the one thread the comment
+    /// above `fix()` says it must never be on. The transport's
+    /// `convertSelection` has nothing read yet and still asks here.
+    private func transform(_ action: SelectionAction, selected: String? = nil) {
         guard let selection else { return }
         let bundleID = secure.frontmostBundleID()
         lock.lock()
@@ -285,7 +294,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         let allowed = scope.allows(bundleID)
         lock.unlock()
         guard live, allowed, !secure.isSecure() else { return }
-        guard let text = selection.selectedText(), !text.isEmpty else { return }
+        guard let text = selected ?? selection.selectedText(), !text.isEmpty else { return }
 
         let transform = SelectionTransform(convert: { [weak self] source in
             guard let self,
@@ -438,9 +447,12 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // Only the accessibility probe goes off the main thread, and only
         // because it can block for as long as the app in front takes to answer
         // — on the tap's own callback that would stall the very key being
-        // tapped. Everything after it is AppKit: the frontmost app, the
-        // pasteboard, the sound. Those come back to main, which is where the
-        // first version of this method should have left them.
+        // tapped. What comes back to main is the acting: the frontmost app, the
+        // pasteboard, the sound.
+        //
+        // The text read here is carried into `transform` rather than read
+        // again. It used to be discarded, and the second read landed on main,
+        // which is exactly the thread this hop exists to keep clear.
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             let selected = selection?.selectedTextWithoutClipboard()
             let hasSelection = !(selected ?? "")
@@ -448,7 +460,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             DispatchQueue.main.async { [self] in
                 HelmLog.shared.info("layout",
                                     "gesture: \(hasSelection ? "selection" : "last word")")
-                if hasSelection { transform(.convert); return }
+                if hasSelection { transform(.convert, selected: selected); return }
                 let bundleID = secure.frontmostBundleID()
                 lock.lock()
                 let undoable = undo?.canUndo(in: bundleID) ?? false
