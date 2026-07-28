@@ -3,7 +3,10 @@ import Foundation
 /// One app queued for removal, with the files found for it. The review screen
 /// shows these grouped per app; the plan turns them into paths to trash.
 public struct UninstallGroup: Identifiable, Equatable, Sendable {
-    public var id: String { app.bundleID }
+    /// The copy on disk, not the bundle id. Two builds of one app — a Setapp
+    /// copy beside a direct download — share an id and are two rows, and
+    /// `ForEach` given one identity for two draws one of them.
+    public var id: String { app.path }
     public let app: InstalledApp
     public let leftovers: [Leftover]
     public let running: Bool

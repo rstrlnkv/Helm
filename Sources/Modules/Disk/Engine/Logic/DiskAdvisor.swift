@@ -60,7 +60,7 @@ public enum DiskAdvisor {
         var stack = [root]
         while let node = stack.popLast() {
             stack.append(contentsOf: node.children)
-            guard !node.isDirectory, node.name != "…", node.modified > 0,
+            guard !node.isDirectory, !node.isFolded, node.modified > 0,
                   UserFileScope.isRemovable(node.path),
                   !cachePrefixes.contains(where: { node.path.hasPrefix($0) })
             else { continue }

@@ -27,6 +27,18 @@ public struct ActionRecord: Codable, Equatable, Sendable, Identifiable {
 
     public var id: String { "\(at.timeIntervalSince1970)-\(file)-\(kind.rawValue)" }
 
+    /// Whether another record of this kind about this file says the same thing.
+    ///
+    /// An action happened once and each one is worth its own row. A refusal or
+    /// a failure is a *state* — the same file, the same reason, every sweep —
+    /// and a hundred rows of it say no more than one does.
+    public var repeatable: Bool { kind == .refused || kind == .failed }
+
+    public func isRepeat(of other: ActionRecord) -> Bool {
+        kind == other.kind && file == other.file && detail == other.detail
+            && rule == other.rule
+    }
+
     public init(at: Date, rule: String, file: String, kind: Kind, detail: String) {
         self.at = at
         self.rule = rule
@@ -60,7 +72,19 @@ public enum ActionHistory {
     public static func recording(_ record: ActionRecord,
                                  into history: [ActionRecord],
                                  now: Date = Date()) -> [ActionRecord] {
-        Array(within([record] + history, now: now).prefix(limit))
+        // A refusal repeats. Nothing about the file changed, nothing is
+        // stamped, so the next sweep decides the same thing about it an hour
+        // later — one symlink pointing outside home is 24 identical rows a day,
+        // 720 in the window, and the cap then evicts the one move that actually
+        // happened. `.alreadyDone` is already dropped for this reason; a
+        // refusal is the same event wearing a different name.
+        //
+        // The newest of a repeat is what a person wants ("it is still failing"),
+        // so the old one goes and the new one leads.
+        let deduped = record.repeatable
+            ? history.filter { !$0.isRepeat(of: record) }
+            : history
+        return Array(within([record] + deduped, now: now).prefix(limit))
     }
 
     /// Everything inside the window, newest first.
