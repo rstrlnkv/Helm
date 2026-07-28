@@ -190,6 +190,14 @@ features, PATCH = fixes.
   Edit ▸ Transformations wherever text can be edited.
 
 ### Fixed
+- **The Keyboard gesture took the app down.** Using it on selected text quit
+  Helm with no error. `NSWorkspace` is main-thread-only — reading it elsewhere
+  does not return stale data, it kills the process — and 0.7.2-dev.20 moved the
+  gesture to a background queue to keep a slow accessibility call off the main
+  run loop, taking eight `NSWorkspace` reads with it. Who is in front is now
+  read on the main thread and kept as a snapshot every thread can see, which is
+  the same answer this app already uses for the list of running applications
+  after that exact crash cost it four releases.
 - **Login Items & Extensions could trash a row the filter was hiding.** Tick
   something while the list shows everything, switch back to the filtered view,
   and the row disappears while the tick survives — outside the count and the
