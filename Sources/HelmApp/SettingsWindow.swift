@@ -158,7 +158,9 @@ private struct SettingsSidebar: View {
                 if !modules.isEmpty {
                     Section(AppStr.categoryName(category)) {
                         ForEach(modules, id: \.idRaw) { descriptor in
-                            sidebarRow(descriptor.moduleMetadata.name,
+                            // The sidebar column is fixed, so it asks for the
+                            // short name; everything else shows the full one.
+                            sidebarRow(descriptor.moduleMetadata.shortName,
                                        descriptor.moduleMetadata.sfSymbol,
                                        categoryColor(category))
                                 .tag(SettingsSelection.module(descriptor.idRaw))
