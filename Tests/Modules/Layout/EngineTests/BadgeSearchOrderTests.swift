@@ -19,6 +19,11 @@ import XCTest
 /// order rather than over one call, because with today's entries there is no
 /// input whose answer differs — which is exactly what makes an assertion on
 /// answers worth nothing here.
+///
+/// That the order has not *lost* an entry is asserted next to the table
+/// parser, in `BadgeTableAmbiguityTests`, so `byLayout` can stay private —
+/// nothing outside `LanguageBadge` may scan it, which is how the hash order got
+/// in.
 final class BadgeSearchOrderTests: XCTestCase {
 
     /// The rule, as an assertion: a key that another key starts with is never
@@ -35,15 +40,6 @@ final class BadgeSearchOrderTests: XCTestCase {
             }
         }
         XCTAssertEqual(wrong, [], wrong.joined(separator: "\n"))
-    }
-
-    /// The scan cannot be made honest by losing entries.
-    func testTheOrderHoldsEveryLayoutInTheTable() {
-        let ordered = LanguageBadge.ordered
-        XCTAssertEqual(ordered.count, LanguageBadge.byLayout.count)
-        for entry in ordered {
-            XCTAssertEqual(LanguageBadge.byLayout[entry.key], entry.region, entry.key)
-        }
     }
 
     /// Sorting on length alone leaves keys of equal length in whatever order
