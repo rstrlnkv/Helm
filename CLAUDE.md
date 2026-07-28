@@ -48,6 +48,12 @@ xattr -dr com.apple.quarantine /Applications/Helm.app && open /Applications/Helm
 - **A release without its digest does not install.** The notes must carry the
   `sha256 <asset> <hex>` line `make-zip.sh` prints, or the updater opens the
   release page instead (VERSIONING.md).
+- **A loop that reads files or asks Foundation for resource values in bulk gets
+  an `autoreleasepool` inside it** — not around it. Without one the footprint
+  tracks the volume read, not what is kept: 1.8 GB of streamed reads ended at
+  1760 MB, and a user reached 48 GB on an ordinary folder. Heavy work ends with
+  `MemoryReclaim.afterHeavyWork`, because freeing returns memory to malloc and
+  not to macOS. ARCHITECTURE.md § Memory has the measurements.
 - Pills are `HelmBadge`, cards are `.helmCard()` — one of each, no local variants.
 - Every user-visible string goes through `L()` with all eight languages, and
   everything the language shapes goes through `HelmUI`: `Bytes`, `Decimal`,

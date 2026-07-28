@@ -16,7 +16,27 @@ supposed to graduate into. Everything below it can wait; that cannot.
 
 ---
 
-## 0. Memory leak — RELEASE BLOCKER, do this first
+## 0. Memory leak — FIXED in 0.7.2-dev.29 (kept as the record)
+
+**Done:** the autorelease pool inside `DuplicateScanner.hash`'s read loop and
+inside `DiskScanner`'s directory walk, `MemoryReclaim.afterHeavyWork` at the end
+of every scan/walk/measurement and on module disable, and
+`ModuleUICache.dropWhenDisabled` so a module's cached view model dies with the
+module rather than with the app. `HashingFootprintTests` reads 384 MB and fails
+at 193 MB of growth without the pool. The lesson lives in ARCHITECTURE.md
+§ Memory now; what follows is the trail, kept because the next leak will be
+hunted the same way.
+
+**Still open from this hunt:**
+
+- `DiskNode` carries the full `path` beside the `name` at every node — 1.5 M
+  nodes is a real cost even with the pools in place. Store the component and
+  derive the path.
+- The **+177 MB** while the Uninstaller page opened is unexplained; it loads an
+  icon per installed app.
+- `LocalTransport.subscribers` is still not excluded (below).
+
+## 0a. The original report — how it was found
 
 **Reported** (user, 2026-07-28): while using Login Items & Extensions, Helm grew
 to **48 GB** of memory.

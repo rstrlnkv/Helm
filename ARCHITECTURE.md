@@ -567,6 +567,66 @@ replaces the screen the user just asked for. `DuplicatesViewModel` had this
 guard from the start; Disk did not, and the volume picker was replaced by the
 scan it had dismissed.
 
+## Memory — read before writing a loop that reads or stats in bulk
+
+**A streamed read still keeps everything it read, unless a pool says otherwise.**
+`DuplicateScanner.hash` reads a megabyte at a time precisely so a video does not
+become a `Data` the size of the video, and that was true of the slice and false
+of the process: `FileHandle.read` hands back an **autoreleased** `Data`, and
+`DispatchQueue.concurrentPerform` drains no autorelease pool per iteration. Every
+slice ever read therefore stayed alive until the whole parallel block finished,
+and the footprint tracked the *volume read* rather than the slice size. A scan of
+14 580 files took the app past 39 GB at roughly 2 GB per second; a user reached
+48 GB. Measured on the same loop over 1.8 GB of reads:
+
+| | footprint at the end |
+|---|---|
+| loop as first written | **1760 MB** |
+| identical loop inside `autoreleasepool` | **6 MB** |
+
+The pool goes **inside** the loop. Around it is not enough: a single 20 GB video
+is one iteration of the caller's work, and one file's worth is still gigabytes.
+`DiskScanner`'s directory walk had the same defect one framework call further
+out — `readDirectory` goes through Foundation, and at 1.5 M entries that was most
+of what looked like the cost of the tree. **Any loop that reads file contents or
+asks Foundation for resource values in bulk needs a pool inside it.**
+`HashingFootprintTests` reads 384 MB and fails at 193 MB of growth without one.
+
+**Freeing is not returning.** A freed allocation goes back to malloc, not to
+macOS: after a big scan the process sat on gigabytes of emptied regions — 13 299
+of them at one measurement — which is what a person sees as a menu-bar utility
+holding three gigabytes half an hour after they last asked it for anything.
+`MemoryReclaim.afterHeavyWork` calls `malloc_zone_pressure_relief`, the same path
+the system takes when it warns processes about pressure, at the moment we know
+the work is over. It is not free — it walks the zones — so it belongs at the end
+of an operation the user waited seconds for, never in a loop, and it logs what it
+gave back, because a reclaim that silently does nothing would end the hunt for
+the next leak.
+
+**A module's UI state outlives its page, not its module.** `DiskViewModel` and
+the other cached view models exist because Settings rebuilds a page on every
+sidebar visit and losing a minute-long scan — or paying four seconds to measure
+39 bundles again — to a sidebar click is hostile. But the cache is keyed to the
+view model and nothing cleared it, so a scan tree stayed reachable after the
+module was switched off. `ModuleHost.disable` posts `.helmModuleDisabled`;
+`ModuleUICache.dropWhenDisabled` (one observer per module id, written once rather
+than in each view model) drops the cached instance, and the reclaim above hands
+the pages back. The on-disk scan cache still holds the result, so this drops the
+copy in memory, not the answer.
+
+**The instrument.** `HelmLog.memory(_:)` logs the process footprint under the
+`memory` category as a **delta against the last reading for the same label** —
+`phys_footprint`, the figure Activity Monitor calls Memory, not `resident_size`,
+which counts shared pages and reads high for reasons nobody can act on. Labels
+sit at the end of each scan, walk and measurement, plus an `idle` reading every
+fifteen seconds that belongs to no operation at all: growth while the app sits
+there is exactly what none of the others can see. Silent below 8 MB of change,
+measured from the last *reported* value so a slow drift still crosses eventually.
+A total explains nothing on its own — the app is 13 MB at launch and was 39 GB an
+hour later, and only the deltas said which phase stood between them. That is how
+the leak above was found, in one session, after `heap`, `leaks` and `sample` all
+declined to attach.
+
 ## An observer outlives the thing it points at
 
 A module can be switched off. `ModuleHost.disable` calls `deactivate()` and then
