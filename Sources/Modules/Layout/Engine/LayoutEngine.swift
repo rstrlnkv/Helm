@@ -247,12 +247,25 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
 
         let transform = SelectionTransform(convert: { [weak self] source in
             guard let self,
-                  let from = self.sources.current(),
-                  let to = self.sources.installed().first(where: { $0 != from })
+                  let current = self.sources.current(),
+                  let other = self.sources.installed().first(where: { $0 != current })
             else { return nil }
-            return self.translation.translate(source, from: from, to: to)
+            // Both ways round. A selection carries no record of the layout it
+            // was typed with, so the active one is not evidence — see
+            // `TwoWayConversion`.
+            return TwoWayConversion.result(
+                for: source,
+                forward: { self.translation.translate($0, from: current, to: other) },
+                backward: { self.translation.translate($0, from: other, to: current) })
         })
-        guard let replacement = transform.apply(action, to: text) else { return }
+        guard let replacement = transform.apply(action, to: text) else {
+            // Silence was the whole problem with this path: the gesture fired,
+            // the translation declined, and nothing on screen or in the log
+            // said so. A count, not the text — the log carries no content.
+            HelmLog.shared.info("layout",
+                                "selection left alone: no conversion for \(text.count) characters")
+            return
+        }
 
         // `performing` for the same reason the word path sets it: the
         // replacement is typed, the tap sees it, and without this it is read
@@ -366,6 +379,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             let hasSelection = !(selected ?? "")
                 .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             DispatchQueue.main.async { [self] in
+                HelmLog.shared.info("layout",
+                                    "gesture: \(hasSelection ? "selection" : "last word")")
                 if hasSelection { transform(.convert); return }
                 let bundleID = secure.frontmostBundleID()
                 lock.lock()
