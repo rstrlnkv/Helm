@@ -129,7 +129,11 @@ public final class DuplicateScanner: @unchecked Sendable {
         // from inventing duplicates, but the second visit is a whole disk of
         // wasted reads. The same table DiskScanner uses names the twins.
         let firmlinkSkip = FirmlinkMap.skipSet(scanRoot: root)
-        let keys: [URLResourceKey] = [.isRegularFileKey, .isDirectoryKey, .fileSizeKey]
+        // `addedToDirectoryDate` decides which copy stays — the Finder's
+        // "Date Added", not the creation date a file carries with it when it
+        // is copied. See `SurvivingCopy`.
+        let keys: [URLResourceKey] = [.isRegularFileKey, .isDirectoryKey, .fileSizeKey,
+                                      .addedToDirectoryDateKey]
         guard let enumerator = FileManager.default.enumerator(
             at: url, includingPropertiesForKeys: keys,
             options: [.skipsPackageDescendants]) else { return [] }
@@ -165,7 +169,8 @@ public final class DuplicateScanner: @unchecked Sendable {
             guard lstat(item.path, &status) == 0 else { continue }
             if let rootDevice, status.st_dev != rootDevice { continue }
             files.append(FileFacts(path: item.path, bytes: size,
-                                   fileID: UInt64(status.st_ino)))
+                                   fileID: UInt64(status.st_ino),
+                                   added: values.addedToDirectoryDate))
         }
         return files
     }
