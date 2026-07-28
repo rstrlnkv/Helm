@@ -204,6 +204,18 @@ make it workable, and each is somewhere specific:
 - **The tap is listen-only** (`SystemPorts.swift`, `CGKeyTap`). It reports keys
   and can neither delay nor swallow them, so nothing here can freeze somebody's
   typing — an active tap that hangs does exactly that.
+
+- **State kept between events gets stuck; the event already knows.** The tap
+  machine used to remember which other modifiers were held, in a set filled on
+  each press and emptied on each release. There is no guarantee a release ever
+  arrives — the tap starts while a key is held, an event is dropped while the
+  tap is re-enabled, a key reports its press and its release under different
+  codes. One code left behind spoiled every tap from then on, permanently and
+  silently: the key kept working as a modifier, the events kept flowing, and the
+  gesture was gone with nothing in the log. Shipped that way in 0.7.2-dev.21.
+  Every event carries the live flags; read them and keep nothing. **Before
+  storing anything derived from an event stream, ask which event clears it and
+  what happens the one time that event never comes.**
 - **Replacement is synthesised Unicode**, `CGEvent.keyboardSetUnicodeString`,
   never the clipboard. Clipboard replacement fails outright in Electron and VS
   Code, and it destroys whatever the user had copied.
