@@ -278,7 +278,7 @@ public struct UninstallerSettingsPage: View {
                     Spacer()
                 }
                 .padding(.horizontal, 12).padding(.vertical, 10)
-                .background(Color.orange.opacity(0.10))
+                
             }
 
             HStack(spacing: 10) {

@@ -210,7 +210,7 @@ public struct KeepAwakePanelTile: View {
                 // the animation the style resolves again — visibly, as a blink.
                 // primary-with-alpha tracks light and dark on its own and does
                 // not depend on the layer.
-                .foregroundStyle(Color.primary.opacity(0.70))
+                .foregroundStyle(HelmText.quiet)
                 .padding(.top, 2)
 
             // The row's visible Text is a sibling, not the toggle's label, so

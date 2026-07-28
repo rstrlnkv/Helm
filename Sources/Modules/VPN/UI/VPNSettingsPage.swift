@@ -179,7 +179,7 @@ public struct VPNSettingsPage: View {
                     .accessibilityHidden(true)   // the text beside it says it
                 Text(VPNStr.ruleVPNMissing(name))
                     .font(.caption)
-                    .foregroundStyle(Color.primary.opacity(0.7))
+                    .foregroundStyle(HelmText.quiet)
             }
         }
         }
