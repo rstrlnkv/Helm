@@ -76,7 +76,13 @@ import Module_Leftovers_Engine
     }
 
     public func removeSelected() async {
-        let paths = items.map(\.path).filter { selected.contains($0) }
+        // `visibleItems`, not `items`. A tick made while the list showed
+        // everything survived a switch back to the filtered view: the row
+        // disappeared, `selected` kept its path, the count and the size on
+        // screen were computed over what was visible — and this then trashed it
+        // anyway. Deleting something the person cannot see, and did not see
+        // counted, is the one thing this module must not do.
+        let paths = visibleItems.map(\.path).filter { selected.contains($0) }
         guard !paths.isEmpty else { return }
         let result: LeftoversRemoval? = await client.request("trash", encoding: paths)
         failures = result?.failed ?? []
