@@ -547,6 +547,28 @@ which reads macOS's SystemFolderLocalizations table so `/Applications` reads
 "Программы" like it does in Finder. Eligibility is decided by path, never by
 name: a project folder called "Documents" keeps its name.
 
+**The drill lands before the animation starts, not after it.** The obvious order
+— transform the arcs that are on screen, then swap in the new tree when the
+transform finishes — cannot be made seamless, and the reason is not fixable by
+easing: folding small children into "other" is decided against the parent's
+total in the layout being left and against the folder's own total in the layout
+being entered, so the two disagree about how many arcs there are and where each
+one starts. Measured on the running app, one frame apart:
+
+```
+last frame ring0:  5 arcs 0-267 267-318 318-334 334-350 350-353
+first frame ring0: 3 arcs 0-288 288-358 358-360
+```
+
+Five arcs became three, every boundary moved, and the transformed state did not
+even close the circle. So `RingView.open` calls `onSelect` first: the ring is
+already showing the layout it will settle on, `leaving` holds a snapshot of the
+one being left, and the animation carries that snapshot out over the top while
+each staying arc moves from where it was to where it already is. At full
+progress every arc is exactly where its layout puts it, because it *is* the
+layout — the same log lines now read identically on both sides of the seam. The
+reverse is the same journey with the child as the snapshot.
+
 **The ring lays out one level more than it draws.** A drill promotes every
 level inward — the clicked wedge becomes the middle, its children take the
 innermost ring, its grandchildren the next — so whatever becomes the new
