@@ -258,6 +258,19 @@ Nothing typed is written down: no key content in the log, no buffer on disk, and
 the buffer is cleared when secure input turns on. The log records that a
 conversion happened and in which app (redacted), never what was converted.
 
+**Undo has a precondition, and it needs two kinds of key event to tell it
+apart.** The record of what was converted is only good while the caret has not
+moved: sending backspaces after the caret went elsewhere edits text nobody
+asked about. But the Carbon hotkey that *invokes* undo is itself a chord, and
+the head-inserted tap sees it before Carbon dispatches it — so the shortcut
+would kill its own precondition. That is why one navigation event used to be
+forgiven. The tap could not tell that chord from a bare arrow key, and both
+spent the same budget: press ←, tap the modifier, and the undo fired at the new
+caret. A modified key now arrives as `.chord` and a bare navigation key as
+`.navigation`; only the chord softens, a bare key invalidates. The tap still
+cannot tell ⌘← from the shortcut, and does not need to — both are chords, and
+forgiving one is what the budget is for.
+
 ### The one exception, added with the selection actions
 
 `AXSelection` (Layout/SystemPorts) reads and writes the *selection* rather than
@@ -394,6 +407,15 @@ rather than a list of paths because it travels with the file across a move,
 which is exactly the case that matters. A stamp that will not stick is logged
 and shrugged off: refusing the file would make a volume without xattrs a volume
 where no rule works.
+
+That shrug is only survivable because the action itself is idempotent, and for
+sorting it was not: the bucket was computed from the file's current parent, so
+on a volume that cannot take an xattr — exFAT, which is what a USB stick
+usually is — every hourly sweep sorted `a.jpg` one level deeper, into
+`Images/Images/a.jpg`. Sorting and moving now recognise a file already sitting
+where the rule would put it and report `.alreadyDone` whether or not the stamp
+was written. The stamp's remaining job is tagging and renaming, which cannot
+tell "already done" from "do it again" by looking at the file.
 
 **A rule must not overwrite.** An arriving file whose name is taken is numbered
 `a 2.pdf`, the way the Finder numbers a copy. This is the one failure the module
