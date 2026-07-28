@@ -1,23 +1,27 @@
 import XCTest
 @testable import Module_KeepAwake_Engine
 
+/// `pmset -g` output, read the way the engine reads it on launch.
+///
+/// `shouldRestoreSleep` used to sit beside this and was reached only by its own
+/// test — the engine writes the same `&&` inline, deliberately, so the second
+/// half is not evaluated unless the flag is set (the shell-out is the
+/// expensive part). Two answers to one question, one of them unused.
 final class ClamshellRecoveryTests: XCTestCase {
-    func test_flag_set_and_pmset_disabled_restores() {
-        XCTAssertTrue(ClamshellRecovery.shouldRestoreSleep(guardFlagSet: true, pmsetShowsDisabled: true))
+
+    func testItFindsTheDisabledState() {
+        XCTAssertTrue(ClamshellRecovery.sleepDisabled(inPmsetOutput: " SleepDisabled 1\n hibernatemode 3"))
+        XCTAssertTrue(ClamshellRecovery.sleepDisabled(inPmsetOutput: "sleepdisabled  1"))
     }
-    func test_flag_not_set_does_not_restore() {
-        XCTAssertFalse(ClamshellRecovery.shouldRestoreSleep(guardFlagSet: false, pmsetShowsDisabled: true))
+
+    func testItIsNotFooledByTheEnabledState() {
+        XCTAssertFalse(ClamshellRecovery.sleepDisabled(inPmsetOutput: " SleepDisabled 0"))
+        XCTAssertFalse(ClamshellRecovery.sleepDisabled(inPmsetOutput: ""))
     }
-    func test_flag_set_but_pmset_enabled_does_not_restore() {
-        XCTAssertFalse(ClamshellRecovery.shouldRestoreSleep(guardFlagSet: true, pmsetShowsDisabled: false))
-    }
-    func test_parses_sleepdisabled_1_with_tabs() {
-        XCTAssertTrue(ClamshellRecovery.sleepDisabled(inPmsetOutput: " SleepDisabled\t\t1"))
-    }
-    func test_parses_sleepdisabled_0_as_false() {
-        XCTAssertFalse(ClamshellRecovery.sleepDisabled(inPmsetOutput: "SleepDisabled 0"))
-    }
-    func test_parses_sleepdisabled_1_among_other_lines() {
-        XCTAssertTrue(ClamshellRecovery.sleepDisabled(inPmsetOutput: "hibernatemode 3\n SleepDisabled\t\t1"))
+
+    /// The digit has to be on the same line as the name: a `1` anywhere in the
+    /// report is not this setting.
+    func testADigitOnAnotherLineIsNotThisSetting() {
+        XCTAssertFalse(ClamshellRecovery.sleepDisabled(inPmsetOutput: "SleepDisabled 0\nstandby 1"))
     }
 }

@@ -130,7 +130,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     }
 
     public var defaultConnection: VPNConnection? {
-        if let live = connections.first(where: { $0.status == .connected || $0.status == .connecting }) {
+        if let live = connections.first(where: \.status.isUp) {
             return live
         }
         return VPNListParser.defaultConnection(from: connections, lastUsedName: settings.lastUsedName)
@@ -144,7 +144,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         refreshNow()
         guard let target = defaultConnection else { return }
         settings.setLastUsed(target.name)
-        if target.status == .connected || target.status == .connecting {
+        if target.status.isUp {
             disconnect(target.name)
         } else {
             connect(target.name)
@@ -194,7 +194,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// True while any connection is still transitioning — the UI shows a
     /// spinner for these, so state must be re-polled until it settles.
     static func needsPoll(_ connections: [VPNConnection]) -> Bool {
-        connections.contains { $0.status == .connecting || $0.status == .disconnecting }
+        connections.contains(where: \.status.isTransitioning)
     }
 
     private var pollAttempts = 0
@@ -262,10 +262,11 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     // MARK: - Transport
 
     private struct NamePayload: Codable { let name: String }
-    private struct StatePayload: Codable {
-        let connections: [VPNConnection]
-        let autoConnected: [String]
-        let defaultName: String?
+    /// Public because the page decodes it — see the note on KeepAwake's.
+    public struct StatePayload: Codable {
+        public let connections: [VPNConnection]
+        public let autoConnected: [String]
+        public let defaultName: String?
     }
 
     private func wireTransport() {
