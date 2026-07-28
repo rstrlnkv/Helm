@@ -190,6 +190,14 @@ features, PATCH = fixes.
   Edit ▸ Transformations wherever text can be edited.
 
 ### Fixed
+- **The Keyboard gesture stopped firing and never started again.** The tap
+  remembered which other modifiers were held in a set, filled on each press and
+  emptied on each release. Nothing guarantees a release ever arrives, and a code
+  left behind marked every later tap as part of a chord — so the key went on
+  doing its own job, the events went on flowing, and the gesture was simply gone
+  with nothing in the log. Whether anything else is held is now read from each
+  event's own flags, so there is no state left to get stuck. A refusal is also
+  written to the log now, for the bound key only.
 - **The gesture did nothing on selected text.** It decided which way to convert
   from whichever input source happened to be active — which is right for the
   last word, typed a moment ago, and tells you nothing about a selection that

@@ -80,15 +80,13 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
         if let mask = Self.modifierMasks[code] {
             let down = event.flags.rawValue & mask != 0
             if down {
-                handler(.down(code, at: at))
-                // A modifier already held when this key went down produced no
-                // event of its own inside the tap's window, so the machine
-                // could not know about it and the chord fired as a tap. The
-                // live flags do know.
+                // Whether anything else is held comes from this event's own
+                // flags. Nothing is remembered between events, so a release
+                // that never arrives cannot disable the gesture for good.
                 let others = Self.modifierMasks.values
                     .filter { $0 != mask }
                     .contains { event.flags.rawValue & $0 != 0 }
-                if others { handler(.otherInput) }
+                handler(.down(code, at: at, othersHeld: others))
             } else {
                 handler(.up(code, at: at))
             }

@@ -15,15 +15,15 @@ final class ModifierTapTests: XCTestCase {
 
     func testPressAndReleaseAloneFires() {
         var machine = tap()
-        XCTAssertFalse(machine.feed(.down(rightCommand, at: 0)))
+        XCTAssertFalse(machine.feed(.down(rightCommand, at: 0, othersHeld: false)))
         XCTAssertTrue(machine.feed(.up(rightCommand, at: 0.1)))
     }
 
     func testItFiresAgainOnTheNextTap() {
         var machine = tap()
-        _ = machine.feed(.down(rightCommand, at: 0))
+        _ = machine.feed(.down(rightCommand, at: 0, othersHeld: false))
         XCTAssertTrue(machine.feed(.up(rightCommand, at: 0.1)))
-        _ = machine.feed(.down(rightCommand, at: 1))
+        _ = machine.feed(.down(rightCommand, at: 1, othersHeld: false))
         XCTAssertTrue(machine.feed(.up(rightCommand, at: 1.1)))
     }
 
@@ -32,14 +32,14 @@ final class ModifierTapTests: XCTestCase {
     /// The whole reason the key is usable at all: ⌘S must still be ⌘S.
     func testTheKeyUsedAsAModifierDoesNotFire() {
         var machine = tap()
-        _ = machine.feed(.down(rightCommand, at: 0))
+        _ = machine.feed(.down(rightCommand, at: 0, othersHeld: false))
         _ = machine.feed(.otherInput)          // the S
         XCTAssertFalse(machine.feed(.up(rightCommand, at: 0.2)))
     }
 
     func testHoldingTheKeyDoesNotFire() {
         var machine = tap()
-        _ = machine.feed(.down(rightCommand, at: 0))
+        _ = machine.feed(.down(rightCommand, at: 0, othersHeld: false))
         // Held past the limit: a hold is somebody waiting for a menu to appear,
         // not somebody asking for their last word back.
         XCTAssertFalse(machine.feed(.up(rightCommand, at: ModifierTap.maxHold + 0.01)))
@@ -47,35 +47,36 @@ final class ModifierTapTests: XCTestCase {
 
     func testTheEdgeOfTheHoldLimitStillFires() {
         var machine = tap()
-        _ = machine.feed(.down(rightCommand, at: 0))
+        _ = machine.feed(.down(rightCommand, at: 0, othersHeld: false))
         XCTAssertTrue(machine.feed(.up(rightCommand, at: ModifierTap.maxHold)))
     }
 
     func testAnotherModifierHeldWithItDoesNotFire() {
         var machine = tap()
-        _ = machine.feed(.down(rightCommand, at: 0))
-        _ = machine.feed(.down(TapKey.rightShift.keyCode!, at: 0.05))
+        _ = machine.feed(.down(rightCommand, at: 0, othersHeld: false))
+        _ = machine.feed(.down(TapKey.rightShift.keyCode!, at: 0.05, othersHeld: false))
         XCTAssertFalse(machine.feed(.up(rightCommand, at: 0.2)))
     }
 
     /// Pressed before the watched key rather than after it — ⇧ then ⌘ then up.
+    /// Nothing about the earlier press is remembered; the ⌘ event's own flags
+    /// say the ⇧ is still down.
     func testAModifierAlreadyDownDoesNotFire() {
         var machine = tap()
-        _ = machine.feed(.down(TapKey.rightShift.keyCode!, at: 0))
-        _ = machine.feed(.down(rightCommand, at: 0.05))
+        _ = machine.feed(.down(rightCommand, at: 0.05, othersHeld: true))
         XCTAssertFalse(machine.feed(.up(rightCommand, at: 0.2)))
     }
 
     func testAClickInTheMiddleDoesNotFire() {
         var machine = tap()
-        _ = machine.feed(.down(rightCommand, at: 0))
+        _ = machine.feed(.down(rightCommand, at: 0, othersHeld: false))
         _ = machine.feed(.otherInput)
         XCTAssertFalse(machine.feed(.up(rightCommand, at: 0.1)))
     }
 
     func testAnotherKeysReleaseIsNotOurs() {
         var machine = tap()
-        _ = machine.feed(.down(rightCommand, at: 0))
+        _ = machine.feed(.down(rightCommand, at: 0, othersHeld: false))
         XCTAssertFalse(machine.feed(.up(TapKey.rightOption.keyCode!, at: 0.1)))
         // Ours is still armed and still fires.
         XCTAssertTrue(machine.feed(.up(rightCommand, at: 0.2)))
@@ -91,7 +92,7 @@ final class ModifierTapTests: XCTestCase {
     func testTheLeftTwinDoesNotFire() {
         var machine = tap()
         let leftCommand: Int64 = 55
-        _ = machine.feed(.down(leftCommand, at: 0))
+        _ = machine.feed(.down(leftCommand, at: 0, othersHeld: false))
         XCTAssertFalse(machine.feed(.up(leftCommand, at: 0.1)))
     }
 
@@ -99,7 +100,7 @@ final class ModifierTapTests: XCTestCase {
 
     func testOffNeverFires() {
         var machine = tap(.off)
-        _ = machine.feed(.down(rightCommand, at: 0))
+        _ = machine.feed(.down(rightCommand, at: 0, othersHeld: false))
         XCTAssertFalse(machine.feed(.up(rightCommand, at: 0.1)))
     }
 
@@ -149,7 +150,7 @@ final class GlobeTapKeyTests: XCTestCase {
     /// It taps like every other key: press, release, nothing in between.
     func testATapFires() {
         var tap = ModifierTap(key: .globe)
-        XCTAssertFalse(tap.feed(.down(63, at: 0)))
+        XCTAssertFalse(tap.feed(.down(63, at: 0, othersHeld: false)))
         XCTAssertTrue(tap.feed(.up(63, at: 0.1)))
     }
 
@@ -157,11 +158,11 @@ final class GlobeTapKeyTests: XCTestCase {
     /// all — held or combined it stays the system's key.
     func testHoldingOrCombiningIsNotATap() {
         var held = ModifierTap(key: .globe)
-        _ = held.feed(.down(63, at: 0))
+        _ = held.feed(.down(63, at: 0, othersHeld: false))
         XCTAssertFalse(held.feed(.up(63, at: 0.9)))
 
         var combined = ModifierTap(key: .globe)
-        _ = combined.feed(.down(63, at: 0))
+        _ = combined.feed(.down(63, at: 0, othersHeld: false))
         _ = combined.feed(.otherInput)
         XCTAssertFalse(combined.feed(.up(63, at: 0.1)))
     }
@@ -201,11 +202,11 @@ final class LeftTapKeyTests: XCTestCase {
     /// how often it is touched, not how it behaves.
     func testALeftKeyTapsAndRefusesLikeAnyOther() {
         var tap = ModifierTap(key: .leftOption)
-        XCTAssertFalse(tap.feed(.down(58, at: 0)))
+        XCTAssertFalse(tap.feed(.down(58, at: 0, othersHeld: false)))
         XCTAssertTrue(tap.feed(.up(58, at: 0.1)))
 
         var combined = ModifierTap(key: .leftOption)
-        _ = combined.feed(.down(58, at: 0))
+        _ = combined.feed(.down(58, at: 0, othersHeld: false))
         _ = combined.feed(.otherInput)
         XCTAssertFalse(combined.feed(.up(58, at: 0.1)))
     }
@@ -217,5 +218,68 @@ final class LeftTapKeyTests: XCTestCase {
         XCTAssertFalse(TapKey.rightCommand.isFrequentlyUsed)
         XCTAssertFalse(TapKey.globe.isFrequentlyUsed)
         XCTAssertFalse(TapKey.off.isFrequentlyUsed)
+    }
+}
+
+/// A modifier whose release never arrived must not disable the gesture forever.
+///
+/// The tap used to remember other held modifiers in a set: a code went in on
+/// its press and came out on its release. Nothing guarantees the release ever
+/// arrives — the tap starts while a key is held, an event is dropped while the
+/// tap is re-enabled, or a key reports its press and its release under
+/// different codes. Whatever the cause, the code stayed in the set and every
+/// tap from then on was spoiled: the gesture stopped working with the tap
+/// running, the events flowing and nothing in the log. Reading the flags off
+/// each event instead means there is no state left to get stuck.
+///
+/// Shipped broken in 0.7.2-dev.21, which put the 🌐 key into that set.
+final class StuckModifierTests: XCTestCase {
+
+    func testATapStillFiresAfterAModifierThatNeverReleased() {
+        var tap = ModifierTap(key: .rightCommand)
+
+        // Something else goes down and is never seen coming back up.
+        _ = tap.feed(.down(TapKey.globe.keyCode!, at: 0, othersHeld: false))
+
+        // A clean tap, much later. It must still count.
+        XCTAssertFalse(tap.feed(.down(TapKey.rightCommand.keyCode!, at: 10, othersHeld: false)))
+        XCTAssertTrue(tap.feed(.up(TapKey.rightCommand.keyCode!, at: 10.1)),
+                      "a stale key from ten seconds ago cannot spoil this tap")
+    }
+}
+
+/// The tap says why it refused, so a gesture that silently never fires leaves
+/// something behind to read.
+final class RefusalReasonTests: XCTestCase {
+
+    private let rightCommand = TapKey.rightCommand.keyCode!
+
+    func testEachRefusalNamesItself() {
+        var chord = ModifierTap(key: .rightCommand)
+        _ = chord.feed(.down(rightCommand, at: 0, othersHeld: true))
+        _ = chord.feed(.up(rightCommand, at: 0.1))
+        XCTAssertEqual(chord.lastRefusal, .chord)
+
+        var held = ModifierTap(key: .rightCommand)
+        _ = held.feed(.down(rightCommand, at: 0, othersHeld: false))
+        _ = held.feed(.up(rightCommand, at: 0.9))
+        XCTAssertEqual(held.lastRefusal, .held)
+
+        var unarmed = ModifierTap(key: .rightCommand)
+        _ = unarmed.feed(.up(rightCommand, at: 0.1))
+        XCTAssertEqual(unarmed.lastRefusal, .unarmed)
+    }
+
+    /// A tap that works says nothing — the reason is cleared, not left over
+    /// from whatever the key did last time.
+    func testASuccessfulTapLeavesNoReason() {
+        var tap = ModifierTap(key: .rightCommand)
+        _ = tap.feed(.down(rightCommand, at: 0, othersHeld: true))
+        _ = tap.feed(.up(rightCommand, at: 0.1))
+        XCTAssertEqual(tap.lastRefusal, .chord)
+
+        _ = tap.feed(.down(rightCommand, at: 1, othersHeld: false))
+        XCTAssertTrue(tap.feed(.up(rightCommand, at: 1.1)))
+        XCTAssertNil(tap.lastRefusal)
     }
 }
