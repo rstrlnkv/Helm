@@ -214,3 +214,63 @@ final class AutopilotSweepTests: XCTestCase {
                        "the assignment was a silent no-op and the caller has no way to know")
     }
 }
+
+/// Autopilot is the one module that acts with nobody watching, and until now it
+/// left no record a person could read: the log carries counts and redacted
+/// paths, which answers "did anything happen" and never "what happened to my
+/// file". These are about the record, over a real sweep, because a history that
+/// is only tested against a fabricated outcome is a history of the test.
+extension AutopilotSweepTests {
+
+    func testASweepWritesDownWhatItDid() throws {
+        try write("report.pdf", bytes: 8)
+        let watched = folder([rule("Tag PDFs", [.fileExtension(["pdf"])], .addTag("seen"))], depth: 1)
+
+        XCTAssertTrue(engine.history.isEmpty, "nothing has happened yet")
+        engine.sweep(watched)
+
+        XCTAssertEqual(engine.history.map(\.file), ["report.pdf"])
+        XCTAssertEqual(engine.history.first?.kind, .tagged)
+        XCTAssertEqual(engine.history.first?.detail, "seen")
+        XCTAssertEqual(engine.history.first?.rule, "Tag PDFs",
+                       "the rule's name is the one word that says why")
+    }
+
+    /// The second sweep finds the same file already dealt with. A record then
+    /// would be Autopilot reporting work it did not do, every time the timer
+    /// fires, until the real history is buried under it.
+    func testASecondSweepAddsNothingBecauseNothingHappened() throws {
+        try write("report.pdf", bytes: 8)
+        let watched = folder([rule("Tag PDFs", [.fileExtension(["pdf"])], .addTag("seen"))], depth: 1)
+
+        engine.sweep(watched)
+        let afterFirst = engine.history.count
+        engine.sweep(watched)
+
+        XCTAssertEqual(engine.history.count, afterFirst)
+    }
+
+    func testAFileThatWasMovedSaysWhereItWent() throws {
+        try write("march.pdf", bytes: 8)
+        let destination = home.appendingPathComponent("Invoices")
+        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+        let watched = folder([rule("Invoices", [.fileExtension(["pdf"])],
+                                   .move(to: destination.path))], depth: 1)
+
+        engine.sweep(watched)
+
+        XCTAssertEqual(engine.history.first?.kind, .moved)
+        XCTAssertEqual(engine.history.first?.detail, "Invoices",
+                       "the folder it landed in — a report, not a full path")
+    }
+
+    func testTheHistoryCanBeThrownAway() throws {
+        try write("report.pdf", bytes: 8)
+        engine.sweep(folder([rule("Tag PDFs", [.fileExtension(["pdf"])], .addTag("seen"))], depth: 1))
+        XCTAssertFalse(engine.history.isEmpty)
+
+        engine.clearHistory()
+
+        XCTAssertTrue(engine.history.isEmpty)
+    }
+}
