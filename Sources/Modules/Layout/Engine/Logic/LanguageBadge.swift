@@ -30,13 +30,33 @@ public enum LanguageBadge {
     /// letters, which looks like a mistake rather than a choice.
     public static func region(sourceID: String, language: String) -> String? {
         let name = sourceID.split(separator: ".").last.map(String.init) ?? sourceID
-        if let known = byLayout.first(where: { name.hasPrefix($0.key) })?.value { return known }
+        if let known = ordered.first(where: { name.hasPrefix($0.key) })?.region { return known }
         return Locale(identifier: language).region?.identifier
     }
 
-    /// Longest prefixes first is not needed here — every key is distinct at its
-    /// start — but variants matter: "Russian-PC", "British-PC", "German-DIN"
-    /// are the ones people actually have.
+    /// The table, longest key first, and alphabetically within a length.
+    ///
+    /// This scanned `byLayout` directly, and a `Dictionary` is walked in an
+    /// order that comes from a hash seeded per process — so a name two keys
+    /// both prefix resolved to whichever the seed happened to put first, and
+    /// the flag in the menu bar could change between launches with no code
+    /// change. `Duplicates.refine` documents the same defect and avoids it the
+    /// same way.
+    ///
+    /// Longest first is also the right answer rather than merely a fixed one:
+    /// `Canadian-CSA` is a more specific claim about a layout than `Canadian`,
+    /// and variants are what the table is mostly made of.
+    static let ordered: [(key: String, region: String)] =
+        byLayout.sorted { ($0.key.count, $0.key) > ($1.key.count, $1.key) }
+            .map { (key: $0.key, region: $0.value) }
+
+    /// The claim that used to sit here — "longest prefixes first is not needed,
+    /// every key is distinct at its start" — was not true when it was written:
+    /// `Canadian` and `Canadian-CSA` are both in the list below. Variants are
+    /// the point of the table, so more of them are coming.
+    ///
+    /// Private, and `ordered` is not: nothing may scan this one, which is how
+    /// the hash order got in.
     private static let byLayout: [String: String] = [
         "ABC": "US", "US": "US", "Australian": "AU", "Canadian": "CA",
         "British": "GB", "Irish": "IE",

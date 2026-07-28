@@ -119,6 +119,13 @@ public extension WatchedFolder {
         copy.rules = rules.map { rule in
             var rule = rule
             rule.conditions = rule.conditions.compactMap(\.storable)
+            // Switched off rather than dropped, which is the difference between
+            // a rule that reached storage in a state nobody could have typed
+            // and a rule somebody has not finished writing. A move with no
+            // destination refuses every file it matches, logging and writing a
+            // history row on every sweep; the person keeps the rule and the
+            // sweep is never offered it.
+            if !rule.canBeEnabled { rule.enabled = false }
             return rule
         }
         return copy
@@ -143,4 +150,13 @@ public struct Rule: Codable, Equatable, Identifiable, Sendable {
         self.conditions = conditions
         self.action = action
     }
+
+    /// Whether this rule could actually do something if it were switched on.
+    ///
+    /// A rule with no conditions matches nothing and a rule whose action names
+    /// nothing refuses everything; either way the switch would be switching on
+    /// a rule that cannot work. Both halves live here rather than in the
+    /// editor's `.disabled` so the screen and `storable` cannot answer
+    /// differently.
+    public var canBeEnabled: Bool { !conditions.isEmpty && action.isComplete }
 }

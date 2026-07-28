@@ -141,6 +141,17 @@ final class AutopilotSweepTests: XCTestCase {
 
     /// The same invariant for the action that already works, so a fix to the
     /// rename path cannot quietly break the move path on its way past.
+    ///
+    /// Green for a reason it does not name, and worth saying out loud: at depth
+    /// 1 the sorted file sits at enumerator level 2 and the second sweep never
+    /// reads it. Delete the `RuleStamp.isStamped` guard from `RuleRunner.run`
+    /// and this still passes; so does breaking the sort's own idempotence. The
+    /// two below are the ones that mean it.
+    ///
+    /// The tests that do fail without the stamp are the tagging one and the
+    /// renaming one — `testASecondSweepAddsNothingBecauseNothingHappened` and
+    /// `testASecondSweepOverAnUnchangedFolderChangesNothing`. Sorting no longer
+    /// needs it, which is the point of the bucket check rather than a gap.
     func testASecondSweepDoesNotMoveAgain() throws {
         try write("a.pdf", bytes: 4)
         try write("b.pdf", bytes: 4)
@@ -154,6 +165,67 @@ final class AutopilotSweepTests: XCTestCase {
         engine.sweep(watched)
 
         XCTAssertEqual(tree(), settled, "the sorted files were sorted a second time")
+    }
+
+    /// The same sweep at a depth that can see what the first one produced.
+    ///
+    /// A folder set to include its subfolders is the ordinary setting for a
+    /// Downloads folder, and it is the only depth at which a sorting rule ever
+    /// meets the file it sorted. Which of the two guards keeps it still is
+    /// deliberately not asserted here — the stamp and the bucket check both
+    /// answer, and the invariant is that the folder is unchanged.
+    func testASecondSweepDoesNotMoveAgainWhereItCanSeeTheResult() throws {
+        try write("a.pdf", bytes: 4)
+        try write("b.pdf", bytes: 4)
+
+        let watched = folder([rule("r", [.fileExtension(["pdf"])],
+                                   .sortIntoSubfolder(.kind))],
+                             depth: 8)
+        engine.sweep(watched)
+        let settled = tree()
+        XCTAssertEqual(settled, ["Documents", "Documents/a.pdf", "Documents/b.pdf"],
+                       "the premise: the second sweep will read these")
+
+        engine.sweep(watched)
+
+        XCTAssertEqual(tree(), settled, "the sorted files were sorted a second time")
+    }
+
+    /// And the same again with the mark taken off, which is what every sweep
+    /// looks like on a volume that will not hold one.
+    ///
+    /// `RuleRunner.note` logs a stamp that would not stick and acts anyway,
+    /// because refusing the file would make a volume without extended
+    /// attributes a volume where no rule works. The sentence that makes that
+    /// survivable is that the action is idempotent on an unchanged file — so
+    /// this is that sentence, tested. `setxattr` answers `ENOTSUP` on exFAT,
+    /// the format of most USB sticks, and `WatchScope` admits `/Volumes` on
+    /// purpose.
+    func testAnUnstampableVolumeDoesNotBuryTheFileDeeperEverySweep() throws {
+        try write("a.pdf", bytes: 4)
+
+        let watched = folder([rule("r", [.fileExtension(["pdf"])],
+                                   .sortIntoSubfolder(.kind))],
+                             depth: 8)
+        engine.sweep(watched)
+        let settled = tree()
+        XCTAssertEqual(settled, ["Documents", "Documents/a.pdf"])
+
+        unstamp()
+        engine.sweep(watched)
+
+        XCTAssertEqual(tree(), settled,
+                       "the file was buried one folder deeper, and would be again every hour")
+    }
+
+    /// Every mark under `root`, removed. The rest of the folder is left exactly
+    /// as the sweep left it, so the only thing the next sweep is missing is the
+    /// record — which is the state an unstampable volume is in permanently.
+    private func unstamp() {
+        for relative in tree() {
+            removexattr(root.appendingPathComponent(relative).path,
+                        RuleStamp.attribute, XATTR_NOFOLLOW)
+        }
     }
 
     // MARK: - Depth

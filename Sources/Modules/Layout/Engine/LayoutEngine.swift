@@ -179,14 +179,22 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         }
         lock.lock()
         guard !performing else { lock.unlock(); return }
-        // Typing, clicking and leaving end the chance to undo: an undo is a
-        // blind edit of a fixed length, and "привет abc" undone becomes
-        // "приghbdtn ". A chord is the exception, and not a convenient one —
-        // the undo shortcut *is* a chord, it reaches the tap before Carbon
-        // delivers it, and treating it like the rest meant the shortcut
+        // Typing, clicking, navigating and leaving end the chance to undo: an
+        // undo is a blind edit of a fixed length, and "привет abc" undone
+        // becomes "приghbdtn ". A chord is the exception, and not a convenient
+        // one — the undo shortcut *is* a chord, it reaches the tap before
+        // Carbon delivers it, and treating it like the rest meant the shortcut
         // destroyed its own precondition and could never fire once.
+        //
+        // Only a chord. This forgave every `.navigation`, which the tap emitted
+        // for the shortcut's own keys *and* for a bare arrow, Home, End, Tab or
+        // Escape — so one ordinary caret move spent the budget, and with the
+        // default gesture nothing spends the rest of it afterwards, because a
+        // solo-modifier tap goes through `deliverModifier` and never arrives
+        // here. One Left Arrow after a conversion and the gesture typed
+        // backspaces into the middle of the sentence.
         switch event {
-        case .navigation: undo?.soften()
+        case .chord: undo?.soften()
         default: undo?.invalidate()
         }
         let finished = buffer.accept(event)

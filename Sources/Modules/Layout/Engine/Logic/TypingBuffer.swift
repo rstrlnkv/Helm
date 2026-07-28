@@ -13,9 +13,17 @@ public struct TypingBuffer {
         case space
         case newline
         case punctuation(Character)
-        /// Arrows, home, end, tab — the caret moved, so what came before is no
-        /// longer adjacent to what comes next.
+        /// Arrows, home, end, tab, escape, pressed on their own — the caret
+        /// moved, so what came before is no longer adjacent to what comes next.
         case navigation
+        /// A key held with command, control or option. Ends the word exactly as
+        /// navigation does and confirms nothing, and is a separate case for one
+        /// reason: the convert/undo shortcut is itself a chord and the
+        /// head-inserted tap sees its keys before Carbon dispatches the action,
+        /// so a chord cannot be treated as proof the caret moved without the
+        /// shortcut killing its own precondition. A bare arrow carries no such
+        /// ambiguity and must not spend that forgiveness.
+        case chord
         case click
         case focusChange
     }
@@ -78,7 +86,7 @@ public struct TypingBuffer {
         case .backspace:
             if !characters.isEmpty { characters.removeLast() }
             return nil
-        case .space, .newline, .punctuation, .navigation, .click, .focusChange:
+        case .space, .newline, .punctuation, .navigation, .chord, .click, .focusChange:
             defer { characters.removeAll(); overflowed = false }
             guard !characters.isEmpty, !overflowed else { return nil }
             return Completion(word: String(characters), ending: Self.ending(of: event))
@@ -91,7 +99,7 @@ public struct TypingBuffer {
         case .space: return " "
         case .newline: return "\n"
         case .punctuation(let character): return character
-        case .navigation, .click, .focusChange, .character, .backspace: return nil
+        case .navigation, .chord, .click, .focusChange, .character, .backspace: return nil
         }
     }
 
