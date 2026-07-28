@@ -29,7 +29,7 @@ public enum TapKey: String, CaseIterable, Sendable {
         case .leftOption: return 58
         case .leftControl: return 59
         case .leftShift: return 56
-        // 🌐 on the keyboards that have it. `kVK_Function` in Events.h.
+        // 🌐︎ on the keyboards that have it. `kVK_Function` in Events.h.
         case .globe: return 63
         }
     }
@@ -51,7 +51,7 @@ public enum TapKey: String, CaseIterable, Sendable {
         case .leftControl: return 0x000001
         case .leftShift: return 0x000002
         // `NX_SECONDARYFNMASK`. Unlike the four above it does not name a side —
-        // there is only one 🌐 — and unlike them it is also set by the arrow
+        // there is only one 🌐︎ — and unlike them it is also set by the arrow
         // keys, Home/End and F1–F12 on Apple laptops. That is safe here only
         // because the tap keys off the key code and consults the mask to decide
         // up from down; a bare flag test would fire on every arrow key.
