@@ -67,6 +67,7 @@ public final class DuplicateScanner: @unchecked Sendable {
         // A subtree the walk was refused is a hole in "what is duplicated", and
         // a hole nobody is told about reads as a clean folder.
         let refused = unreadablePaths
+        HelmLog.shared.memory("duplicates.walk")
         HelmLog.shared.info("duplicates", "walked \(LogRoot.label(root)): "
                             + "\(files.count) files at or above the floor"
                             + (refused > 0 ? ", \(refused) unreadable" : ""))

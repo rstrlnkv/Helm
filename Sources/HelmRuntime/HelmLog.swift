@@ -48,6 +48,11 @@ public enum LogRotation {
 public final class HelmLog: @unchecked Sendable {
     public static let shared = HelmLog()
 
+    /// Guarded by its own queue rather than the log's: the log's queue is where
+    /// lines are written, and a reading must not wait behind a file rotation.
+    private var footprint = FootprintTracker()
+    private let footprintQueue = DispatchQueue(label: "helm.log.footprint")
+
     /// ~/Library/Logs/Helm/helm.log — the place macOS users (and Console.app)
     /// expect app logs to live.
     public static var directory: URL {
@@ -128,6 +133,22 @@ public final class HelmLog: @unchecked Sendable {
     /// and the file it came from is noise on every line of a healthy log.
     public func info(_ category: String, _ message: String) {
         write(.info, category, message)
+    }
+
+    /// What an operation cost, against the last reading for the same label.
+    ///
+    /// Silent when the kernel will not answer and silent when nothing moved:
+    /// a diagnostic that writes a line per event is a diagnostic nobody reads.
+    /// The threshold and the accounting live in `FootprintTracker` — this only
+    /// decides that memory is worth a category of its own, because "which of
+    /// these two hundred lines is about memory" is the question being asked
+    /// when someone opens the log for this.
+    public func memory(_ label: String) {
+        guard let bytes = MemoryFootprint.current() else { return }
+        footprintQueue.async {
+            guard let report = self.footprint.report(label, bytes: bytes) else { return }
+            self.write(.info, "memory", "\(report.label): \(report.line)")
+        }
     }
 
     public func warn(_ category: String, _ message: String,

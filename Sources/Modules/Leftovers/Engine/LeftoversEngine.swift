@@ -35,7 +35,9 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
     public func deactivate() {}
 
     public func scan() async -> [StaleItem] {
-        await offTheCooperativePool { self.scanner.scan() }
+        let items = await offTheCooperativePool { self.scanner.scan() }
+        HelmLog.shared.memory("leftovers.scan")
+        return items
     }
 
     public func trash(_ paths: [String]) async -> LeftoversRemoval {
