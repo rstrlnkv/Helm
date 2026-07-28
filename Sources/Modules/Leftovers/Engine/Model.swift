@@ -38,8 +38,17 @@ public struct StaleItem: Codable, Equatable, Sendable, Identifiable {
     /// What the checkbox offers: clearing leftovers in bulk. Anything in use
     /// is deleted one at a time, through the row's own menu, so a careless
     /// "select all" can never take out working software.
+    ///
+    /// Asked of the same rule the row's menu obeys, not a second one written
+    /// beside it. The two had already parted: the menu withholds delete from a
+    /// launch daemon, because unloading one needs root and a button that always
+    /// fails is worse than no button — while the checkbox offered it, "Select
+    /// all" ticked it, and `RemovableScope` lets `/Library/LaunchDaemons/*.plist`
+    /// through, so the batch went ahead and tried. The safer of two answers has
+    /// to be the only answer.
     public var removable: Bool {
-        status == .orphaned && kind != .systemExtension && writable
+        status == .orphaned
+            && LeftoverActions.available(for: self, writable: writable).contains(.delete)
     }
 
     public init(path: String, identifier: String, kind: StaleKind, sizeBytes: Int,

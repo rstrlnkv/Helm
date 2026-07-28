@@ -432,7 +432,9 @@ public struct UninstallerSettingsPage: View {
         let sizes = await uvm.appSizes()
         guard !sizes.isEmpty else { return }
         apps = apps.map { app in
-            guard let size = sizes[app.bundleID], size != app.sizeBytes else { return app }
+            // By path: two copies of one app share a bundle id and each has its
+            // own size.
+            guard let size = sizes[app.path], size != app.sizeBytes else { return app }
             return InstalledApp(name: app.name, bundleID: app.bundleID,
                                 path: app.path, sizeBytes: size)
         }
