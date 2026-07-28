@@ -200,6 +200,35 @@ features, PATCH = fixes.
   Edit ▸ Transformations wherever text can be edited.
 
 ### Fixed
+- **Autopilot no longer trashes applications.** macOS calls an app bundle a
+  package rather than a folder, and asks a package for its file size and gets
+  nothing — so a rule reading "smaller than 1 MB, move to Trash" matched every
+  application in the watched folder, every hour, with nobody looking. Helm now
+  measures what a thing actually occupies, whatever shape it is stored in.
+- **Nothing Helm runs can hang.** Every command the app runs — `brew`, `pmset`,
+  `scutil` — could stop forever if it was talkative enough about its own
+  warnings, taking the screen that was waiting for it with it.
+- **A folder inside `/private/var/db` could be selected for removal.** It is on
+  the list of places Helm never touches, and the list was being read in a
+  spelling macOS quietly rewrites, so the entry protected nothing.
+- **"1000 KB" is now "1 MB".** Sizes just under a round number were shown with
+  the unit below it — on every screen, in every language.
+- **Two copies of one app are two rows.** A Setapp build beside a direct
+  download shared a row and a size; which of the two sizes you saw was luck.
+- **Removing a folder and something inside it no longer reports a failure** for
+  the file that went with the folder, and the count no longer says one when two
+  went. Deleting one of two names for the same file no longer claims to free
+  space twice.
+- **The duplicate list does not reshuffle between scans**, and the copy it
+  offers is one whose deletion actually frees the space.
+- **VPN auto-connect survives a change of rules.** Switching a rule off while
+  its app was running left auto-connect dead for the rest of the session, with
+  the rule still showing as on.
+- **Autopilot's preview shows every file the rule will touch.** Two files with
+  the same name in different folders were one row.
+- **A rename that only changes capitalisation** gives you `REPORT.pdf`, not
+  `REPORT 2.pdf`.
+- **A month of one file failing no longer hides everything else Autopilot did.**
 - **A per-app rule reads the same in every module.** Keep Awake, VPN and
   Keyboard each list applications with a rule beside them, and each drew that
   row for itself — so the icon was announced to VoiceOver in two of the three,
