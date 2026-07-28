@@ -92,6 +92,19 @@ final class BadgeTableAmbiguityTests: XCTestCase {
                        "duplicated: \(keys.filter { key in keys.filter { $0 == key }.count > 1 })")
     }
 
+    /// The order `region` scans is the whole table and not a subset of it, so
+    /// the determinism `BadgeSearchOrderTests` asserts cannot have been bought
+    /// by dropping entries. Here rather than there because that is where the
+    /// literal is read, which keeps `byLayout` private.
+    func testTheSearchOrderHoldsEveryEntryInTheTable() throws {
+        let entries = try table()
+        XCTAssertEqual(LanguageBadge.ordered.count, entries.count)
+        for entry in entries {
+            XCTAssertEqual(LanguageBadge.ordered.first { $0.key == entry.key }?.region,
+                           entry.region, entry.key)
+        }
+    }
+
     /// And the answers the table gives are still the answers the module gives —
     /// so a rewrite that keeps the table honest and stops reading it would be
     /// caught here rather than by a person looking at a wrong flag.
