@@ -338,7 +338,9 @@ private struct ChildRow: View {
                                         : Color.secondary.opacity(0.5))
                 .frame(width: 8, height: 8)
             VStack(alignment: .leading, spacing: 1) {
-                Text(child.name == "…" ? DkStr.otherItems : title)
+                // The flag, not the name: a person's own file called "…" was
+                // labelled "Other items" and given the bucket's size.
+                Text(child.isFolded ? DkStr.otherItems : title)
                     .lineLimit(1).truncationMode(.middle)
                 if child.noAccess {
                     Text(DkStr.noAccess).font(.caption2).foregroundStyle(.orange)

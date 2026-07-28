@@ -26,6 +26,6 @@ public enum DiskTreePrune {
             - children.reduce(0) { $0 + $1.bytes }
         return DiskEntry(name: node.name, path: node.path, bytes: max(node.bytes - lost, 0),
                          isDirectory: node.isDirectory, noAccess: node.noAccess,
-                         children: children)
+                         children: children, isFolded: node.isFolded)
     }
 }

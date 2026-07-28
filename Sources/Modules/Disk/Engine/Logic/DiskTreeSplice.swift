@@ -21,6 +21,7 @@ public enum DiskTreeSplice {
                          children: root.children.map { child in
                              child.path == path ? subtree
                                  : replacing(path, with: subtree, in: child)
-                         })
+                         },
+                         isFolded: root.isFolded)
     }
 }

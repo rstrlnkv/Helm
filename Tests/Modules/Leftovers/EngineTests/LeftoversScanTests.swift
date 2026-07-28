@@ -23,7 +23,6 @@ private struct FakeApps: InstalledAppsPort {
 }
 
 private struct FakeExtensions: ExtensionsPort {
-    var ids: Set<String> = []
     var installed: [SystemExtensionInfo] = []
     func installedExtensions() -> [SystemExtensionInfo] { installed }
     var disabled: Set<String> = []
@@ -125,7 +124,15 @@ final class LeftoversScanTests: XCTestCase {
     func testExtensionsOfMissingAppsAreOfferedUnlessStillActive() {
         var files = FakeFiles()
         files.listing["/Users/x/Library/Preferences"] = []
-        let active = FakeExtensions(ids: ["com.gone.vendor.app.ext"])
+        // Through the field the port actually answers with. `ids` was a
+        // leftover of `activeExtensionIdentifiers`, deleted today, and the
+        // fixture went on setting it — so the scan saw no extensions at all and
+        // the rule below was asserted over an empty list.
+        let active = FakeExtensions(installed: [
+            SystemExtensionInfo(identifier: "com.gone.vendor.app.ext", teamID: "T",
+                                name: "Ext", version: "1", state: "activated enabled",
+                                enabled: true),
+        ])
         var scannerFiles = files
         scannerFiles.listing["/Users/x/Library/LaunchAgents"] = []
         let items = scanner(files: scannerFiles, installed: [], extensions: active).scan()
@@ -138,7 +145,7 @@ final class LeftoversScanTests: XCTestCase {
     /// were the one thing it never listed: they showed up only as a count on
     /// another page, with no names.
     func testInstalledExtensionsAreListed() {
-        let extensions = FakeExtensions(ids: ["com.acme.app.network"], installed: [
+        let extensions = FakeExtensions(installed: [
             SystemExtensionInfo(identifier: "com.acme.app.network", teamID: "T1",
                                 name: "Acme Network", version: "1.0",
                                 state: "activated enabled", enabled: true),
