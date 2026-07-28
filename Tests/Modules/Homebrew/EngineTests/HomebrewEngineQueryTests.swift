@@ -35,7 +35,10 @@ private final class BrewLikeRunner: ProcessRunner, @unchecked Sendable {
              env: [String: String]) -> (status: Int32, stdout: String) {
         lock.lock(); _calls.append(args); lock.unlock()
         guard args.first == "desc" else { return (0, "") }
-        let names = args.dropFirst(2)      // drop "desc" and "--formula"/"--cask"
+        // Names are whatever follows the `--`, which is what brew itself does:
+        // the terminator ends option parsing and everything after it is a name.
+        guard let terminator = args.firstIndex(of: "--") else { return (1, "") }
+        let names = args[args.index(after: terminator)...]
         guard names.allSatisfy({ known[$0] != nil }) else { return (1, "") }
         return (0, names.map { "\($0): \(known[$0]!)" }.joined(separator: "\n") + "\n")
     }
