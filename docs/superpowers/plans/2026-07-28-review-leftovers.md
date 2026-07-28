@@ -7,7 +7,9 @@ holding them. Nothing here is a release blocker for dev.28 — it is the list to
 work through once the log triage is done, so none of it has to be re-derived.
 
 Order below is the order worth doing them in, not severity: the two that need
-`Package.swift` unlock the tests for several of the others.
+`Package.swift` unlock the tests for several of the others. Item 7 came from the
+user watching the app rather than from the review, and is the only one here
+nobody has reproduced yet.
 
 ---
 
@@ -98,7 +100,50 @@ blind. **Do:** either hold the lock across the replay (measuring what that costs
 at activate time, since every module subscribes there), or stamp events with a
 sequence number the subscriber can order by. A test that fails first.
 
-## 7. Small, and honestly optional
+## 7. The ring's drill animation tears, and the third level pops in
+
+**Reported, not yet reproduced** (user, 2026-07-28): going from folder to folder
+in Disk looks ragged, and the third level of the ring appears abruptly on
+arrival instead of growing with the rest.
+
+What the code does today, as far as reading it goes:
+
+- `RingView.open(_:)` sets `pivot` to the wedge and animates `unfold` 0 → 1 with
+  `HelmMotion.emphasis`; only in the completion does it call `onSelect(hit)`,
+  reset `unfold` and clear `pivot`. The comment above it states the intent
+  exactly: the ring you end up looking at is the one you watched grow.
+- `RingUnfold.ring(_:isDescendant:progress:)` is what makes that true for the
+  levels that are already on screen — a descendant's ring index slides from `N`
+  to `N - t`, so the pivot's children walk inward as the pivot widens.
+
+The suspicion, in the order worth testing:
+
+1. **The new outermost level has no start state.** During the unfold the ring
+   draws what the old view had: the pivot and its children. The level that
+   becomes ring 3 after the drill — the grandchildren — was never drawn, so it
+   cannot slide inward from anywhere; it is simply there when the tree swaps at
+   completion. If so, the fix is to draw one level deeper than is shown and let
+   it enter at zero width, rather than to lengthen the animation.
+2. **Or the data is not there yet.** Drilling into a folder the walk had not
+   measured issues a second scan (`measureAndDrill`), and the grandchildren
+   arrive when that scan returns — which is after the animation has finished, at
+   a moment nothing is animating. That would look like the same defect and needs
+   a different fix (hold the transition, or bring the level in when it lands).
+   Which one it is depends on whether the folder was already measured, so
+   **reproduce both ways before touching anything.**
+3. `.animation(HelmMotion.interface, value: segments.count)` animates on the
+   *count* of segments. Two different rings with the same number of wedges get
+   no animation at all, and a count that changes for an unrelated reason gets
+   one. That is a plausible source of the "ragged" half of the report,
+   independent of the level that pops.
+
+**Do:** reproduce with the env-gated harness (ARCHITECTURE.md § Dev loop) on a
+folder that is already measured and on one that is not, slow the motion token,
+capture frames and **measure the ring radii across them** rather than judging by
+eye — that is what the house rule exists for and what caught the last subtle one.
+Only then decide between the three above.
+
+## 8. Small, and honestly optional
 
 - **`TreeBuilder.directory(for:)`** recurses toward `/` with no base case other
   than finding the root in its index. Every current caller descends from the root
