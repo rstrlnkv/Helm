@@ -16,7 +16,6 @@ import HelmUI
     private lazy var panel = HelmPanel(host: host)
     private lazy var settingsWindow = SettingsWindow(host: host)
 
-
     init(host: ModuleHost) {
         self.host = host
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -167,12 +166,6 @@ import HelmUI
         showSettings(module: sender.representedObject as? String)
     }
 
-
-    /// TEMPORARY screenshot harness (HELM_DEBUG_SHOT). Not for commit.
-    func debugShowSettings(selecting moduleID: String?, size: NSSize) {
-        settingsWindow.debugShow(selecting: moduleID, size: size)
-    }
-
     @objc func openSettings() {
         settingsWindow.show()
     }
@@ -182,11 +175,8 @@ import HelmUI
         settingsWindow.show(selecting: moduleID)
     }
 
-
-
     @objc private func quit() {
         NSApp.terminate(nil)
     }
-
 
 }
