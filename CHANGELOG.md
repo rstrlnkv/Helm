@@ -200,6 +200,13 @@ features, PATCH = fixes.
   Edit ▸ Transformations wherever text can be edited.
 
 ### Fixed
+- **A pinned Homebrew formula is marked, not offered.** Pinning is how you say
+  "leave this version alone"; `brew` still lists it as outdated, and Helm still
+  showed an Upgrade button that `brew` would refuse.
+- **A VPN that drops on its own stops being counted.** The strip went on saying
+  "automatic 1" beside "active 0" until the app was restarted.
+- **A VPN whose name contains brackets reports its own protocol.** A connection
+  called `Office [old]` was listed as an "old" connection.
 - **The menu-bar icon keeps its shape during a countdown.** Choosing "double
   ring" or "ring + dot" got you a plain ring the moment a timed session started,
   and choosing the dot or the filled circle got you no countdown at all — the

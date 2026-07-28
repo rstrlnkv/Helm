@@ -14,8 +14,14 @@ public struct OutdatedPackage: Codable, Equatable, Sendable {
     public let installed: String
     public let latest: String
     public let isCask: Bool
-    public init(name: String, installed: String, latest: String, isCask: Bool) {
-        self.name = name; self.installed = installed; self.latest = latest; self.isCask = isCask
+    /// Held at this version on purpose. brew still reports it as outdated and
+    /// `brew upgrade` still refuses it, so a row that offers Upgrade offers a
+    /// button that answers "…is pinned".
+    public let pinned: Bool
+    public init(name: String, installed: String, latest: String, isCask: Bool,
+                pinned: Bool = false) {
+        self.name = name; self.installed = installed; self.latest = latest
+        self.isCask = isCask; self.pinned = pinned
     }
 }
 

@@ -36,4 +36,11 @@ enum HbStr {
     /// is shown for the whole second after every install.
     static var packagesLoading: String { L("Reading the package list…", [.ru: "Читаем список пакетов…", .es: "Leyendo la lista de paquetes…", .fr: "Lecture de la liste des paquets…", .de: "Paketliste wird gelesen…", .ja: "パッケージ一覧を読み込み中…", .zh: "正在读取软件包列表…", .pt: "Lendo a lista de pacotes…"]) }
     static func packagesStatus(_ total: Int, _ outdated: Int, _ casks: Int) -> String { L("\(total) packages · \(outdated) updates · \(casks) casks", [.ru: "Пакетов: \(total) · обновлений: \(outdated) · cask: \(casks)", .es: "\(total) paquetes · \(outdated) actualizaciones · \(casks) casks", .fr: "\(total) paquets · \(outdated) mises à jour · \(casks) casks", .de: "\(total) Pakete · \(outdated) Updates · \(casks) Casks", .ja: "パッケージ \(total)・更新 \(outdated)・cask \(casks)", .zh: "\(total) 个包 · \(outdated) 个更新 · \(casks) 个 cask", .pt: "\(total) pacotes · \(outdated) atualizações · \(casks) casks"]) }
+
+    /// Shown instead of the Upgrade button. Not "cannot be upgraded": it is
+    /// held on purpose, by the person reading this, and unpinning is a
+    /// deliberate act in Terminal rather than something to offer in a row.
+    static var pinned: String {
+        L("Pinned", [.ru: "Закреплено", .es: "Fijado", .fr: "Épinglé", .de: "Angeheftet", .ja: "固定中", .zh: "已固定", .pt: "Fixado"])
+    }
 }
