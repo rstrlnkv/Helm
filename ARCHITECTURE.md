@@ -458,6 +458,26 @@ which reads macOS's SystemFolderLocalizations table so `/Applications` reads
 "Программы" like it does in Finder. Eligibility is decided by path, never by
 name: a project folder called "Documents" keeps its name.
 
+## An observer outlives the thing it points at
+
+A module can be switched off. `ModuleHost.disable` calls `deactivate()` and then
+drops the engine, so everything the engine owns goes with it — and anything
+still holding a pointer to one of those things is holding freed memory.
+
+`IOPSPowerInfo` handed IOKit `Unmanaged.passUnretained(self)` and added a run
+loop source that nothing ever removed. Switch Keep Awake off, unplug the
+charger, and the callback resolves that pointer into a port that no longer
+exists. The port had no `deinit` and `PowerInfoPort` had no stop, so there was
+nowhere the teardown could even have been written.
+
+`NotificationCenter` observers hide this: the centre keeps the token and a
+block capturing `[weak self]` costs nothing when it fires late. A C callback
+taking a raw context does not. **Every observer a module starts has to be
+stoppable, and `deactivate()` is where it stops** — with `deinit` as a backstop
+for the routes that do not go through it. Removing the source takes it off this
+run loop; invalidating it stops a callback already scheduled, which is the one
+that would land on the freed object.
+
 ## Running other programs
 
 `HelmProcess.run` reads stdout before it waits, because waiting first
