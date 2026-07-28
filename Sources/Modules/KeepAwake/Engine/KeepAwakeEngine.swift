@@ -3,7 +3,7 @@ import HelmContract
 import HelmRuntime
 
 /// Orchestrates the pure KeepAwake logic units (Conditions/ExternalDisplaySupport/
-/// PowerSupport/BatteryGuard/TimerPolicy/JiggleTarget/ClamshellRecovery) against the
+/// BatteryGuard/TimerPolicy/JiggleTarget/ClamshellRecovery) against the
 /// side-effecting ports. `activate()`/`deactivate()` are the MODULE lifecycle
 /// (host enables/disables the module); the keep-awake session itself is controlled
 /// independently via `startSession`/`stopSession`/`toggleSession`.
