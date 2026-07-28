@@ -354,7 +354,13 @@ public struct SystemSound: SoundPort {
 
     public init(name: String = "Tink") { self.name = name }
 
-    public func playSwitch() { NSSound(named: name)?.play() }
+    /// On the main thread, wherever it is called from. The engine reaches this
+    /// from the transport as well as from the tap, and AppKit is not a thing to
+    /// touch from whichever queue happened to deliver a command.
+    public func playSwitch() {
+        if Thread.isMainThread { NSSound(named: name)?.play(); return }
+        DispatchQueue.main.async { NSSound(named: self.name)?.play() }
+    }
 }
 
 public struct AXSecureContext: SecureContextPort {
@@ -384,9 +390,14 @@ public struct AXSecureContext: SecureContextPort {
         return (role as? String) == "AXSecureTextField"
     }
 
-    public func frontmostBundleID() -> String {
-        NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? ""
-    }
+    /// Through the snapshot, never straight to AppKit.
+    ///
+    /// This used to be `NSWorkspace.shared.frontmostApplication` on whatever
+    /// thread asked. That survived while every caller was the tap's own
+    /// main-thread callback, and stopped surviving the moment the gesture moved
+    /// to a background queue — `NSWorkspace` off the main thread does not go
+    /// stale, it takes the process down (ARCHITECTURE.md § Running applications).
+    public func frontmostBundleID() -> String { FrontmostApp.shared.bundleID() }
 }
 
 // MARK: - Selection

@@ -268,6 +268,20 @@ thread — from the KVO callback and the workspace notifications, which arrive
 there already — and every other thread reads the snapshot. `refresh()` off the
 main thread refuses rather than asserting its way to the same crash.
 
+The same applies to **who is in front**, and it had to be learned twice.
+`FrontmostApp` (HelmRuntime) is `RunningApps` for
+`NSWorkspace.frontmostApplication`, and it exists because the Keyboard module
+read that property on whatever thread asked. That survived for as long as every
+caller was the key tap's own main-thread callback, and stopped surviving in
+0.7.2-dev.20, when the fix gesture was moved to a background queue to keep a
+slow accessibility call off the main run loop — taking eight call sites with it.
+The app went down on the first use of the gesture with text selected.
+
+The rule that would have caught it: **moving work off the main thread is a
+change to every AppKit call it can reach**, not only to the one that was slow.
+The accessibility probe is what blocks; the frontmost app, the pasteboard and
+the sound are AppKit and come straight back to main.
+
 There is no safe way to offer "the live list, right now, from a background
 queue", so `RunningApps` does not offer one. A caller off the main thread wants
 a set of bundle identifiers as of a moment ago, which is what it gets.

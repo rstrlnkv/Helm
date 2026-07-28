@@ -355,17 +355,24 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// noticeable moment to answer in an app that is busy — long enough to
     /// stall the very key that is being tapped.
     public func fix() {
+        // Only the accessibility probe goes off the main thread, and only
+        // because it can block for as long as the app in front takes to answer
+        // — on the tap's own callback that would stall the very key being
+        // tapped. Everything after it is AppKit: the frontmost app, the
+        // pasteboard, the sound. Those come back to main, which is where the
+        // first version of this method should have left them.
         DispatchQueue.global(qos: .userInitiated).async { [self] in
-            if let selected = selection?.selectedTextWithoutClipboard(),
-               !selected.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                transform(.convert)
-                return
+            let selected = selection?.selectedTextWithoutClipboard()
+            let hasSelection = !(selected ?? "")
+                .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            DispatchQueue.main.async { [self] in
+                if hasSelection { transform(.convert); return }
+                let bundleID = secure.frontmostBundleID()
+                lock.lock()
+                let undoable = undo?.canUndo(in: bundleID) ?? false
+                lock.unlock()
+                if undoable { undoLast() } else { convertLastWord() }
             }
-            let bundleID = secure.frontmostBundleID()
-            lock.lock()
-            let undoable = undo?.canUndo(in: bundleID) ?? false
-            lock.unlock()
-            if undoable { undoLast() } else { convertLastWord() }
         }
     }
 
