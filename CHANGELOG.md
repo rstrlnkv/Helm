@@ -190,6 +190,13 @@ features, PATCH = fixes.
   Edit ▸ Transformations wherever text can be edited.
 
 ### Fixed
+- **The gesture did nothing on selected text.** It decided which way to convert
+  from whichever input source happened to be active — which is right for the
+  last word, typed a moment ago, and tells you nothing about a selection that
+  may have been typed yesterday or pasted from somewhere. Select `ghbdtn` with
+  Russian active and Helm asked for Russian → English; `g` is not on the Russian
+  keyboard, the translation declined, and nothing said so. Both directions are
+  tried now, the active one first, and a refusal is written to the log.
 - **The Keyboard gesture took the app down.** Using it on selected text quit
   Helm with no error. `NSWorkspace` is main-thread-only — reading it elsewhere
   does not return stale data, it kills the process — and 0.7.2-dev.20 moved the
