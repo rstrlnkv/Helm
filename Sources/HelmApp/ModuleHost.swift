@@ -44,6 +44,7 @@ import HelmUI
 
     private func enable(_ d: any ModuleDescriptor) {
         HelmLog.shared.info("host", "enable \(type(of: d).id.rawValue)")
+        HelmLog.shared.memory("module.\(type(of: d).id.rawValue).enable")
         let s = store(for: d)
         let engine = d.makeEngine(store: s)
         engine.activate()

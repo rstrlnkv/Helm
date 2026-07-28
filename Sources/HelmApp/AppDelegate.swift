@@ -5,6 +5,7 @@ import HelmRuntime
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
     let host = ModuleHost.shared
     var statusController: StatusItemController!
+    private var footprintTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -60,6 +61,24 @@ import HelmRuntime
         HelmLog.shared.info("permissions", "full disk access probe: \(PermissionCheck.currentFullDiskAccess().rawValue)")
 
         UpdateService.shared.checkOnLaunch()
+
+        HelmLog.shared.memory("launch")
+        startFootprintWatch()
+    }
+
+    /// The reading nothing else takes.
+    ///
+    /// Every other `memory(_:)` call sits on an operation, which answers "what
+    /// did that cost" — and says nothing at all about growth that happens while
+    /// the app sits there. This one runs on a timer and is silent unless the
+    /// footprint has moved past the threshold since the last time it spoke, so
+    /// a quiet app writes nothing and a growing one leaves a timestamped trail
+    /// of where it grew. It is what turns "48 GB by morning" into a interval
+    /// somebody can look at.
+    private func startFootprintWatch() {
+        footprintTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { _ in
+            HelmLog.shared.memory("idle")
+        }
     }
     func applicationWillTerminate(_ notification: Notification) {
         HelmLog.shared.info("app", "terminating")

@@ -45,7 +45,9 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
 
     /// Sizes for the list already on screen.
     public func appSizes() async -> [String: Int] {
-        await offTheCooperativePool { self.apps.appSizes(self.apps.installedApps()) }
+        let sizes = await offTheCooperativePool { self.apps.appSizes(self.apps.installedApps()) }
+        HelmLog.shared.memory("uninstaller.appSizes")
+        return sizes
     }
 
     public func scan(bundleID: String, appPath: String, appName: String) async throws -> ScanResult {
