@@ -72,7 +72,7 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
         }
         scannerBox.set(nil)
         if let result {
-            HelmLog.shared.info("disk", "scanned \(Redact.path(path)): \(result.filesScanned) files in "
+            HelmLog.shared.info("disk", "scanned \(LogRoot.label(path)): \(result.filesScanned) files in "
                                 + String(format: "%.1fs", result.seconds))
         }
         return result
