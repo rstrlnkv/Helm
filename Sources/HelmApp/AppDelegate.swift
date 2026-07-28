@@ -46,6 +46,9 @@ import HelmRuntime
             store: NamespacedStore(namespace: "layout", backing: UserDefaults.standard),
             prefix: "convertHotkey",
             action: send("fix", to: "layout"))
+        // Keeps the frontmost-app snapshot current, so every thread that asks
+        // reads a value rather than reaching into AppKit for it.
+        FrontmostApp.shared.startObserving()
         HotkeyManager.shared.start()
 
         HelmLog.shared.info("app", "modules: \(ModuleRegistry.all.map(\.idRaw).joined(separator: ", "))")
