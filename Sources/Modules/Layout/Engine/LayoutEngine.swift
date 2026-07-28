@@ -91,6 +91,13 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
 
     public func activate() {
         lock.lock(); running = true; lock.unlock()
+        // Read the stored settings before the first key arrives. This used to
+        // happen only when the transport announced a change, so a launch kept
+        // whatever the initialiser held — and the tap key, which has no
+        // initialiser parameter, stayed `.off`. The gesture worked only in a
+        // session where the page had been opened, and silently, because `.off`
+        // refuses before there is anything to refuse.
+        reloadSettings()
         startTap()
         // Permission is usually granted while Helm is already running — the
         // note in settings sends people to System Settings and they come back.
@@ -336,6 +343,12 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // Counts, never content: the words themselves stay out of the log.
         HelmLog.shared.info("layout", "converted a word in \(Redact.app(bundleID))")
         emitState()
+    }
+
+    /// The key the gesture is bound to. Read at start and on every change.
+    public var boundTapKey: TapKey {
+        lock.lock(); defer { lock.unlock() }
+        return tapKey.key
     }
 
     /// One key, pressed and released on its own, does both jobs in turn.

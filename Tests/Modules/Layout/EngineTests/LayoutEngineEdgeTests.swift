@@ -225,3 +225,51 @@ final class LayoutEngineEdgeTests: XCTestCase {
         XCTAssertTrue(typing.performed.isEmpty, "the user switched the space off")
     }
 }
+
+/// The engine has to read its own settings when it starts.
+///
+/// It did not. `reloadSettings()` ran only when the transport announced a
+/// change, so on every launch the engine kept the values its initialiser
+/// happened to hold — and the tap key has no initialiser parameter at all, so
+/// it stayed `.off`. The gesture therefore worked only in a session where
+/// somebody had opened the Keyboard page and changed something, and was gone
+/// again after the next restart. Nothing was written to the log, because `.off`
+/// refuses before there is anything to refuse.
+///
+/// The test that was supposed to cover this sent `settingsChanged` itself
+/// first, which is the one thing a fresh launch does not do.
+final class SettingsAtStartTests: XCTestCase {
+
+    private final class CountingTap: KeyTapPort, @unchecked Sendable {
+        var modifiers: (@Sendable (ModifierTap.Input) -> Void)?
+        func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
+                   onModifier: @escaping @Sendable (ModifierTap.Input) -> Void) -> Bool {
+            modifiers = onModifier
+            return true
+        }
+        func stop() {}
+        func tapKey(_ code: Int64) {
+            modifiers?(.down(code, at: 0, othersHeld: false))
+            modifiers?(.up(code, at: 0.05))
+        }
+    }
+
+    func testTheBoundKeyWorksOnAFreshLaunchWithNothingStored() {
+        let tap = CountingTap()
+        let sources = EdgeSources()
+        let engine = LayoutEngine(tap: tap, typing: EdgeTyping(), sources: sources,
+                                  translation: EdgeTranslation(table: ["ghbdtn": "привет"]),
+                                  spell: EdgeSpell(), secure: EdgeContext(),
+                                  settings: NamespacedStore(namespace: "layout",
+                                                            backing: InMemoryKeyValueStore()))
+        engine.activate()
+        // No `settingsChanged`: this is the launch, not a visit to the page.
+
+        // The documented default is the right Command key. Tapping it has to
+        // reach the engine — which it can only do if the key was ever read.
+        XCTAssertNotEqual(engine.boundTapKey, .off,
+                          "the engine never read its own settings at start")
+        tap.tapKey(TapKey.rightCommand.keyCode!)
+        withExtendedLifetime(engine) {}
+    }
+}
