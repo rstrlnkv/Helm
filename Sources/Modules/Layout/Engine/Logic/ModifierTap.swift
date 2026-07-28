@@ -88,7 +88,11 @@ public enum TapKey: String, CaseIterable, Sendable {
 /// was not held.
 public struct ModifierTap {
     public enum Input: Equatable {
-        case down(Int64, at: TimeInterval)
+        /// `othersHeld` comes from the event's own flags. It used to be
+        /// derived from a set of codes the tap kept between events, which could
+        /// only be emptied by a release — and a release that never arrived left
+        /// every later tap spoiled, silently and permanently.
+        case down(Int64, at: TimeInterval, othersHeld: Bool)
         case up(Int64, at: TimeInterval)
         /// Any other key, any click: proof the key is being used as a modifier.
         case otherInput
@@ -101,11 +105,21 @@ public struct ModifierTap {
     public let key: TapKey
     private var pressedAt: TimeInterval?
     private var spoiled = false
-    /// Other modifiers currently held. A chord is a chord whether the second
-    /// modifier arrives before the watched key or after it: ⇧ then right-⌘ is
-    /// ⇧⌘ either way, and reading it as a tap would fire on somebody's
-    /// shortcut.
-    private var othersDown: Set<Int64> = []
+
+    /// Why the last release of the watched key was not a tap.
+    ///
+    /// The gesture failing is silent by nature: the key still does its own job,
+    /// so there is nothing for the user to see and nothing for the log to
+    /// carry. This says which refusal fired, for the bound key only.
+    public enum Refusal: String {
+        /// A modifier was held, or another key or a click arrived in between.
+        case chord
+        /// Held past `maxHold`.
+        case held
+        /// A release with no press of its own — the press was never seen.
+        case unarmed
+    }
+    public private(set) var lastRefusal: Refusal?
 
     public init(key: TapKey) { self.key = key }
 
@@ -113,28 +127,33 @@ public struct ModifierTap {
     public mutating func feed(_ input: Input) -> Bool {
         guard let watched = key.keyCode else { return false }
         switch input {
-        case let .down(code, at):
+        case let .down(code, at, othersHeld):
             if code == watched {
                 pressedAt = at
-                spoiled = !othersDown.isEmpty
-            } else {
-                othersDown.insert(code)
-                if pressedAt != nil { spoiled = true }
+                // Read from the event's own flags, not from a set kept between
+                // events. The set could only be emptied by a release, and a
+                // release that never came left the gesture spoiled forever.
+                spoiled = othersHeld
+            } else if pressedAt != nil {
+                spoiled = true
             }
             return false
         case .otherInput:
             if pressedAt != nil { spoiled = true }
             return false
         case let .up(code, at):
-            guard code == watched else {
-                othersDown.remove(code)
+            guard code == watched else { return false }
+            guard let start = pressedAt else {
+                lastRefusal = .unarmed
                 return false
             }
-            guard let start = pressedAt else { return false }
             pressedAt = nil
-            let clean = !spoiled && (at - start) <= Self.maxHold
+            let wasSpoiled = spoiled
             spoiled = false
-            return clean
+            if wasSpoiled { lastRefusal = .chord; return false }
+            if at - start > Self.maxHold { lastRefusal = .held; return false }
+            lastRefusal = nil
+            return true
         }
     }
 }

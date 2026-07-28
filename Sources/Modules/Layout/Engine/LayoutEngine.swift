@@ -350,8 +350,18 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     private func handleModifier(_ input: ModifierTap.Input) {
         lock.lock()
         let fired = tapKey.feed(input)
+        let refusal = tapKey.lastRefusal
         lock.unlock()
-        guard fired else { return }
+        guard fired else {
+            // A gesture that never fires looks exactly like a gesture that was
+            // never made: the key still does its own job and nothing is said.
+            // Only the bound key's own release is reported, so an ordinary
+            // day's typing adds nothing to the log.
+            if case let .up(code, _) = input, code == tapKey.key.keyCode, let refusal {
+                HelmLog.shared.info("layout", "tap refused: \(refusal.rawValue)")
+            }
+            return
+        }
         fix()
     }
 
