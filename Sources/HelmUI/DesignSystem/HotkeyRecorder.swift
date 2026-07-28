@@ -141,7 +141,7 @@ public struct HelmHotkeyRow: View {
             }
             if taken, !recorder.label.isEmpty {
                 Text(Self.takenNote)
-                    .font(.caption).foregroundStyle(.orange)
+                    .font(.caption).foregroundStyle(HelmSignal.warning)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
