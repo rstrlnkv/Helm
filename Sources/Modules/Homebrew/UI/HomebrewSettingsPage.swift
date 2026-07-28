@@ -187,7 +187,7 @@ public struct HomebrewSettingsPage: View {
                 .padding(.bottom, 10)
             Divider()
             if query.isEmpty && hb.searchHits.isEmpty {
-                HelmCenteredContent { Text(HbStr.typeToSearch).foregroundStyle(HelmText.quiet) }
+                HelmEmptyState(message: HbStr.typeToSearch)
             } else {
                 listOrEmpty(hb.searchHits, empty: HbStr.noResults) { hit in
                     pkgRow(name: hit.name, detail: nil, isCask: hit.isCask,
@@ -275,9 +275,9 @@ public struct HomebrewSettingsPage: View {
                                                          @ViewBuilder row: @escaping (T) -> Row) -> some View {
         Group {
             if items.isEmpty, let empty {
-                HelmCenteredContent { Text(empty).foregroundStyle(HelmText.quiet).multilineTextAlignment(.center).padding() }
+                HelmEmptyState(message: empty)
             } else if items.isEmpty {
-                HelmCenteredContent { ProgressView().controlSize(.small) }
+                HelmBusyState()
             } else {
                 List(items) { row($0) }
                     .listStyle(.inset)

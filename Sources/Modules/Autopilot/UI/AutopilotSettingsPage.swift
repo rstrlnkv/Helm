@@ -69,16 +69,10 @@ public struct AutopilotSettingsPage: View {
 
     @ViewBuilder private var content: some View {
         if rvm.folders.isEmpty {
-            HelmCenteredContent(spacing: 14) {
-                HelmIconPlate(symbol: "location.north.circle",
-                              tint: ModuleCategory.files.tint, size: 56)
-                Text(ApStr.startHint)
-                    .foregroundStyle(HelmText.quiet)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 420)
+            HelmEmptyState(symbol: "location.north.circle", tint: ModuleCategory.files.tint,
+                           message: ApStr.startHint) {
                 Button(ApStr.addFolder) { rvm.addFolder() }
                     .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
             }
         } else {
             List {
