@@ -40,12 +40,37 @@ public struct HelmRemovalOutcome: View {
         self.needsFullDiskAccess = needsFullDiskAccess
     }
 
+    /// What this line has to say, given what actually happened.
+    ///
+    /// Pulled out because the `failures.isEmpty` branch was not consulting
+    /// `removed` at all — the parameter existed for exactly that question and
+    /// only one of the two branches asked it. A caller builds its success
+    /// sentence before it knows the outcome and defaults every count to zero,
+    /// so an engine reply carrying nothing rendered as unqualified success over
+    /// a row that was still there.
+    enum Verdict: Equatable {
+        /// Nothing moved and nothing was refused: no sentence is true, so none
+        /// is drawn. It needs no wording of its own — every sentence this
+        /// component has is about something that happened.
+        case silent
+        case succeeded
+        case failed
+    }
+
+    static func verdict(removed: Int, failed: Int) -> Verdict {
+        if failed > 0 { return .failed }
+        return removed > 0 ? .succeeded : .silent
+    }
+
     public var body: some View {
-        if failures.isEmpty {
+        switch Self.verdict(removed: removed, failed: failures.count) {
+        case .silent:
+            EmptyView()
+        case .succeeded:
             Text(succeededText)
                 .font(.caption)
                 .foregroundStyle(HelmText.quiet)
-        } else {
+        case .failed:
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
                     Image(systemName: "exclamationmark.circle.fill")
