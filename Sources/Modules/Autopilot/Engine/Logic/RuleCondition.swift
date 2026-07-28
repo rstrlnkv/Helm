@@ -55,6 +55,16 @@ public extension RuleCondition {
         return min(max(value, lowerBound), upperBound)
     }
 
+    /// What the editor's field will take. The comment above `clamp` says the
+    /// two rules are the same, and they had already drifted: `clamp` admitted
+    /// `0` and the field refused it, `clamp` admitted the upper bound and the
+    /// field refused that too. Stated once here instead, so the sentence stays
+    /// true. `0` is still refused at the keyboard — "larger than 0 MB" is a
+    /// condition that matches every file, which is not a rule anybody means.
+    static func accepts(_ value: Double) -> Bool {
+        value.isFinite && value > lowerBound && value <= upperBound
+    }
+
     static let lowerBound: Double = 0
     static let upperBound: Double = 1e9
 

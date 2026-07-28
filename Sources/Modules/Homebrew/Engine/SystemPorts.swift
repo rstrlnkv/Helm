@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 // MARK: - Locator
 
@@ -44,18 +45,22 @@ public struct ShellProcessRunner: ProcessRunner {
         return e
     }
 
+    /// The port stays — it is what makes the engine testable — but the body is
+    /// `HelmProcess`, like every other module's.
+    ///
+    /// Two things were different here, and both were wrong in the same
+    /// direction. This copy merged stderr into stdout, and all four of its
+    /// callers parse what they get: `BrewListParser` takes the first word of
+    /// every line as a package name, so a version-support warning from `brew`
+    /// became a row with an Uninstall button beside it. And it waited with
+    /// `waitUntilExit`, the 50 ms run-loop poll `HelmProcess` was written to
+    /// remove, paid twice per query.
+    ///
+    /// `stream` keeps stderr: a console should show what the tool says. It is
+    /// output that gets parsed that must not carry diagnostics.
     public func run(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, stdout: String) {
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: launchPath)
-        p.arguments = args
-        p.environment = environment(env)
-        let pipe = Pipe()
-        p.standardOutput = pipe
-        p.standardError = pipe
-        do { try p.run() } catch { return (-1, "") }
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        p.waitUntilExit()
-        return (p.terminationStatus, String(data: data, encoding: .utf8) ?? "")
+        let result = HelmProcess.run(launchPath, args, env: environment(env))
+        return (result.status, result.output)
     }
 
     public func stream(_ launchPath: String, _ args: [String], env: [String: String],

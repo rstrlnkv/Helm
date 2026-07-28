@@ -134,12 +134,33 @@ public struct FMTrash: TrashPort {
 
 public struct WorkspaceRunningApps: RunningAppsPort {
     public init() {}
-    public func isRunning(bundleID: String) -> Bool {
-        !NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).isEmpty
+
+    /// `runningApplications(withBundleIdentifier:)` reads AppKit's own mutable
+    /// list of running applications, and reading it off the main thread is what
+    /// killed the VPN engine over four releases (ARCHITECTURE.md § Running
+    /// applications). Both callers here are off it: the scan runs inside
+    /// `offTheCooperativePool`, and `quit` arrives on the transport's pool —
+    /// while this very type is terminating applications, which is to say while
+    /// that list is being mutated.
+    ///
+    /// The hop lives here rather than at the call sites because this is the
+    /// boundary: anything that reaches AppKit through this port gets the rule
+    /// for free, and a third caller cannot forget it. One hop per scan — the
+    /// scan is of one application, not a list.
+    private func onMain<T: Sendable>(_ body: @MainActor @Sendable () -> T) -> T {
+        if Thread.isMainThread { return MainActor.assumeIsolated(body) }
+        return DispatchQueue.main.sync { MainActor.assumeIsolated(body) }
     }
+
+    public func isRunning(bundleID: String) -> Bool {
+        onMain { !NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).isEmpty }
+    }
+
     public func quit(bundleID: String, force: Bool) {
-        for app in NSRunningApplication.runningApplications(withBundleIdentifier: bundleID) {
-            if force { app.forceTerminate() } else { app.terminate() }
+        onMain {
+            for app in NSRunningApplication.runningApplications(withBundleIdentifier: bundleID) {
+                if force { app.forceTerminate() } else { app.terminate() }
+            }
         }
     }
 }

@@ -137,12 +137,16 @@ struct OrphansView: View {
         busy = true
         let result = await uvm.trashPaths(Array(selected))
         busy = false
-        if let result {
-            failures = result.failures
-            removedCount = result.trashed.count
-            banner = UnStr.freed(Bytes(result.freedBytes))
-            await scan()
-        }
+        guard let result else { return }
+        // The rescan first. Its own first statement is `banner = nil`, and it
+        // runs synchronously up to its own await — so an outcome set before it
+        // was wiped inside the same main-actor turn and SwiftUI never drew a
+        // frame in between. This screen has been reporting nothing at all,
+        // including refusals somebody could have acted on.
+        await scan()
+        failures = result.failures
+        removedCount = result.trashed.count
+        banner = UnStr.freed(Bytes(result.freedBytes))
     }
 
     private func binding(for path: String) -> Binding<Bool> {
