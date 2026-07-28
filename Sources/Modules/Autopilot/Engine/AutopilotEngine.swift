@@ -119,8 +119,19 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         ActionHistory.within(ActionHistory.decode(store.data(Self.historyKey)))
     }
 
+    /// On the engine's own queue, like every write to this key.
+    ///
+    /// `remember` is a read-modify-write and reaches the store from the timer,
+    /// from `offQueue` and from the FSEvents path — all on `queue`. This
+    /// arrived on whatever thread the transport handed it, so a clear landing
+    /// between a `remember`'s read and its write was simply undone, and a row
+    /// survived "Clear".
     public func clearHistory() {
-        store.set(nil, for: Self.historyKey)
+        // `sync`, not `async`: the caller's next line reads the history back,
+        // and a clear that has not landed yet reads as a clear that did not
+        // happen. Safe from the transport, which arrives on the concurrency
+        // pool and never on this queue.
+        queue.sync { store.set(nil, for: Self.historyKey) }
     }
 
     private static let historyKey = "history"

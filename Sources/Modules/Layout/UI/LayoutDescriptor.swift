@@ -13,6 +13,14 @@ import Module_Layout_Engine
 
     private var store: NamespacedStore?
     private var indicator: LanguageIndicator?
+    /// Kept so it can be dropped. A block observer does not remove itself, and
+    /// this descriptor is one long-lived instance in `ModuleRegistry.all` whose
+    /// `makeEngine` runs again on every enable — so turning Keyboard off and on
+    /// left the previous indicator alive, retained by its own orphan observer
+    /// and still owning a status item, while a second one was built. One more
+    /// flag in the menu bar per toggle. `LayoutEngine.activate()` learned this
+    /// twenty lines away; this was the other place that needed it.
+    private var indicatorObserver: NSObjectProtocol?
 
     public init() {}
 
@@ -20,12 +28,15 @@ import Module_Layout_Engine
         self.store = store
         // Owned here, not by the host: it is this module's indicator, and it
         // goes away with the module.
+        if let indicatorObserver { NotificationCenter.default.removeObserver(indicatorObserver) }
+        self.indicator = nil
         let indicator = LanguageIndicator(store: store)
         self.indicator = indicator
         indicator.refresh()
-        NotificationCenter.default.addObserver(forName: .helmStoreChanged, object: nil,
-                                               queue: .main) { _ in
-            MainActor.assumeIsolated { indicator.refresh() }
+        indicatorObserver = NotificationCenter.default.addObserver(
+            forName: .helmStoreChanged, object: nil, queue: .main
+        ) { [weak indicator] _ in
+            MainActor.assumeIsolated { indicator?.refresh() }
         }
         return LayoutEngine(tap: CGKeyTap(),
                             typing: SynthesisTyping(),
