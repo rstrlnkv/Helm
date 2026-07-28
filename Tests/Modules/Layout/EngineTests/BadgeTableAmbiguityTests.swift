@@ -13,16 +13,19 @@ import XCTest
 /// not on this machine, not on any other, not with a table that is genuinely
 /// ambiguous.
 ///
-/// The hazard is real, though. `region` scans with
-/// `first(where: { name.hasPrefix($0.key) })`, so a name matched by two keys
-/// resolves to whichever the seed put first, and the flag in the menu bar then
-/// changes between launches. What actually has to hold is a property of the
-/// table and not of one run of it: where one key is a prefix of another, the two
-/// must agree about the country. `Canadian` and `Canadian-CSA` are such a pair
-/// today, and both say CA, which is why nobody has seen this.
+/// The hazard was real, and it has been closed at the scan rather than here:
+/// `region` walks `LanguageBadge.ordered`, longest key first, so a name two keys
+/// both prefix resolves to the more specific one and does so the same way on
+/// every launch (`BadgeSearchOrderTests`).
 ///
-/// Read out of the source, because the table is private and the property is
-/// about the table rather than about any call into it.
+/// What is left below is a rule about the table and no longer a defence against
+/// a race: where one key starts another, the two saying the same country means
+/// the answer does not depend on which rule wins. Cheap to keep, and it is the
+/// line that would notice somebody adding `Canadian-Extended → US`.
+///
+/// Read out of the source rather than off the symbol, because the property is
+/// about the literal — a table that had been moved or replaced by a computed
+/// answer would still satisfy a test that asked the type for it.
 final class BadgeTableAmbiguityTests: XCTestCase {
 
     private static let source: String = {
@@ -59,8 +62,8 @@ final class BadgeTableAmbiguityTests: XCTestCase {
         XCTAssertTrue(entries.contains { $0.key == "Russian" && $0.region == "RU" })
     }
 
-    /// The property the `first(where:)` scan needs, stated over the table rather
-    /// than over one process's view of it.
+    /// Where one key starts another, the two agree about the country — so it
+    /// does not matter which of them the scan reaches.
     func testNoTwoKeysThatCanMatchOneNameDisagreeAboutTheCountry() throws {
         let entries = try table()
         var conflicts: [String] = []
@@ -74,8 +77,9 @@ final class BadgeTableAmbiguityTests: XCTestCase {
         }
 
         XCTAssertEqual(conflicts, [], """
-            A layout name these keys both match resolves to whichever the dictionary's \
-            per-process seed put first, so the flag changes between launches:
+            A layout name these keys both match now resolves to the longer one. That is \
+            deliberate and it is worth being sure it was meant, because the shorter key \
+            reads as if it still answered:
             \(conflicts.joined(separator: "\n"))
             """)
     }
