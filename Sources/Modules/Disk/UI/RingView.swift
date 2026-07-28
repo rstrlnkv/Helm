@@ -23,6 +23,9 @@ struct RingView: View {
     /// Path of the child just left, when arriving from below; the ring folds
     /// back into its wedge instead of cross-fading.
     var foldingBackFrom: String?
+    /// How far that fold travels: a breadcrumb jump crosses more than one level
+    /// and is given the time to show it.
+    var foldingBackLevels: Int = 1
     var onFoldConsumed: () -> Void
     /// The layout for a folder, so the unfold can move towards the arcs that
     /// will exist rather than towards a transform of the ones that do.
@@ -163,7 +166,7 @@ struct RingView: View {
             pivot = wedge
             unfold = 0
             onFoldConsumed()
-            withAnimation(HelmMotion.emphasis) { unfold = 1 } completion: {
+            withAnimation(HelmMotion.ringMorph(levels: foldingBackLevels)) { unfold = 1 } completion: {
                 pivot = nil
                 leaving = []
                 unfold = 0
@@ -194,7 +197,7 @@ struct RingView: View {
         pivot = hit
         onSelect(hit)
         unfold = 0
-        withAnimation(HelmMotion.emphasis) {
+        withAnimation(HelmMotion.ringMorph()) {
             unfold = 1
         } completion: {
             pivot = nil
