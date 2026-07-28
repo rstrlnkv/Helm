@@ -200,6 +200,15 @@ features, PATCH = fixes.
   Edit ▸ Transformations wherever text can be edited.
 
 ### Fixed
+- **An empty page looks the same wherever you find one.** There were ten of
+  them drawn eight different ways — the text wrapped at 360, 380 or 420, the
+  spacing was 10 or 14, the button was large in two places and not in two
+  others, and one was assembled by hand out of a stack and two spacers. Each was
+  reasonable beside the screen it belonged to; together they made the app look
+  assembled rather than built. One shape now, with one deliberate difference
+  kept: a page with nothing on it *yet* offers the thing to do about it, and a
+  page reporting that nothing was found is a sentence and nothing else, because
+  a button there invites you to repeat what just came back empty.
 - **Every control has a name for VoiceOver.** The Autopilot rule editor was
   built out of pickers and fields whose meaning came entirely from their place
   in the row — sighted that works, read aloud it was "pop up button, pop up

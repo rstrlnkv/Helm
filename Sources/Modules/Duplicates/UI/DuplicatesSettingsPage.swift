@@ -109,46 +109,26 @@ public struct DuplicatesSettingsPage: View {
     @ViewBuilder private var content: some View {
         switch dvm.phase {
         case .start:
-            HelmCenteredContent(spacing: 14) {
-                HelmIconPlate(symbol: "doc.on.doc", tint: ModuleCategory.files.tint, size: 56)
-                Text(DupStr.startHint)
-                    .foregroundStyle(HelmText.quiet)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 380)
+            HelmEmptyState(symbol: "doc.on.doc", tint: ModuleCategory.files.tint,
+                           message: DupStr.startHint) {
                 // With a folder already remembered the page must not ask for
                 // one again — the toolbar above is showing it. Reading it is
                 // expensive, so it is offered rather than started.
                 if dvm.folder == nil {
                     Button(DupStr.chooseFolder) { dvm.chooseFolder() }
                         .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
                 } else {
                     Button(DupStr.search) { dvm.search() }
                         .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
                 }
             }
         case .searching:
-            HelmCenteredContent {
-                ProgressView()
-                if let progress = dvm.progress, progress.candidates > 0 {
-                    Text(DupStr.progressLine(progress.hashed, progress.candidates))
-                        .font(.caption).foregroundStyle(HelmText.quiet)
-                } else {
-                    Text(DupStr.searching)
-                        .font(.caption).foregroundStyle(HelmText.quiet)
-                }
-            }
+            HelmBusyState(dvm.progress.map { $0.candidates > 0
+                                             ? DupStr.progressLine($0.hashed, $0.candidates)
+                                             : DupStr.searching } ?? DupStr.searching)
         case .result:
             if dvm.groups.isEmpty {
-                HelmCenteredContent {
-                    Text(DupStr.none)
-                        .foregroundStyle(HelmText.quiet)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: 380)
-                    Text(DupStr.floorNote)
-                        .font(.caption).foregroundStyle(HelmText.faint)
-                }
+                HelmEmptyState(message: DupStr.none, note: DupStr.floorNote)
             } else {
                 DuplicatesView(dvm: dvm)
             }

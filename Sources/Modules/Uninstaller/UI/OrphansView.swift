@@ -52,18 +52,17 @@ struct OrphansView: View {
 
     @ViewBuilder private var content: some View {
         if scanning {
-            HelmCenteredContent { ProgressView(); Text(UnStr.scanningOrphans).font(.caption).foregroundStyle(HelmText.quiet) }
+            HelmBusyState(UnStr.scanningOrphans)
         } else if !scanned {
-            HelmCenteredContent {
-                HelmIconPlate(symbol: "clock.arrow.circlepath", tint: .orange, size: 56)
-                Text(UnStr.orphansIntro).multilineTextAlignment(.center).foregroundStyle(HelmText.quiet)
-                    .frame(maxWidth: 380)
-                Button(UnStr.scanOrphans) { Task { await scan() } }.buttonStyle(.borderedProminent)
+            HelmEmptyState(symbol: "clock.arrow.circlepath", tint: .orange,
+                           message: UnStr.orphansIntro) {
+                Button(UnStr.scanOrphans) { Task { await scan() } }
+                    .buttonStyle(.borderedProminent)
             }
         } else if groups.isEmpty {
-            HelmCenteredContent {
-                HelmIconPlate(symbol: "checkmark.circle", tint: .green, size: 56)
-                Text(UnStr.noOrphans).foregroundStyle(HelmText.quiet)
+            HelmEmptyState(symbol: "checkmark.circle", tint: .green, message: UnStr.noOrphans) {
+                // Not prominent: looking again for something that was not there
+                // is available, not recommended.
                 Button(UnStr.rescan) { Task { await scan() } }
             }
         } else {
