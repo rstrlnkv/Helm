@@ -205,6 +205,19 @@ make it workable, and each is somewhere specific:
   and can neither delay nor swallow them, so nothing here can freeze somebody's
   typing — an active tap that hangs does exactly that.
 
+- **An engine reads its settings when it starts, not only when they change.**
+  `LayoutEngine` reloaded on the transport's `settingsChanged` and nowhere else,
+  so every launch ran on whatever the initialiser held. Most fields have a
+  sensible initialiser value and the gap never showed; the tap key has none but
+  "no key", so the gesture was bound to nothing on every start and worked only
+  in a session where somebody had opened the page. It failed silently, because a
+  key bound to nothing refuses before there is anything to log. The test that
+  covered the stored defaults sent `settingsChanged` itself first — the one
+  thing a launch does not do. **A test that arranges the event whose absence is
+  the bug cannot see the bug.** Engines that read the store at the point of use
+  (KeepAwake) never had this; engines that cache into fields must reload in
+  `activate()`.
+
 - **State kept between events gets stuck; the event already knows.** The tap
   machine used to remember which other modifiers were held, in a set filled on
   each press and emptied on each release. There is no guarantee a release ever
