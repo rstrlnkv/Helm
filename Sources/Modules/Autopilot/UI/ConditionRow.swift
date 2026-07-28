@@ -23,7 +23,7 @@ struct ConditionRow: View {
                 ForEach(Field.allCases, id: \.self) { Text($0.label).tag($0) }
             }
             .labelsHidden()
-            .frame(width: 150)
+            .frame(width: HelmPickerWidth.fitting(Field.allCases.map(\.label), minimum: 150))
 
             detail
 
@@ -99,7 +99,10 @@ struct ConditionRow: View {
                     Text(ApStr.comparisonBegins).tag(TextComparison.beginsWith)
                     Text(ApStr.comparisonEnds).tag(TextComparison.endsWith)
                 }
-                .labelsHidden().frame(width: 140)
+                .labelsHidden()
+                .frame(width: HelmPickerWidth.fitting(
+                    [ApStr.comparisonIs, ApStr.comparisonContains,
+                     ApStr.comparisonBegins, ApStr.comparisonEnds], minimum: 140))
             TextField("", text: Binding(get: { value },
                                         set: { condition = .name(comparison, $0) }))
                 .accessibilityLabel(ApStr.a11yValue)
@@ -120,7 +123,8 @@ struct ConditionRow: View {
             Picker(ApStr.a11yField, selection: Binding(get: { kind }, set: { condition = .kind($0) })) {
                 ForEach(FileKind.allCases, id: \.self) { Text(ApStr.kindName($0)).tag($0) }
             }
-            .labelsHidden().frame(width: 160)
+            .labelsHidden()
+            .frame(width: HelmPickerWidth.fitting(FileKind.allCases.map(ApStr.kindName), minimum: 160))
 
         case let .size(comparison, megabytes):
             Picker(ApStr.a11yComparison, selection: Binding(
@@ -129,7 +133,9 @@ struct ConditionRow: View {
                     Text(ApStr.comparisonLarger).tag(SizeComparison.largerThan)
                     Text(ApStr.comparisonSmaller).tag(SizeComparison.smallerThan)
                 }
-                .labelsHidden().frame(width: 140)
+                .labelsHidden()
+                .frame(width: HelmPickerWidth.fitting(
+                    [ApStr.comparisonLarger, ApStr.comparisonSmaller], minimum: 140))
             numberField(megabytes, ApStr.a11yMegabytes) { condition = .size(comparison, megabytes: $0) }
             Text(ApStr.unitMegabytes).font(.callout).foregroundStyle(HelmText.quiet)
 
@@ -160,9 +166,11 @@ struct ConditionRow: View {
             Text(ApStr.comparisonOlder).tag(DateComparison.olderThan)
             Text(ApStr.comparisonNewer).tag(DateComparison.newerThan)
         }
-        .labelsHidden().frame(width: 140)
+        .labelsHidden()
+        .frame(width: HelmPickerWidth.fitting(
+            [ApStr.comparisonOlder, ApStr.comparisonNewer], minimum: 140))
         numberField(days, ApStr.a11yDays) { rebuild(comparison, $0) }
-        Text(ApStr.unitDays).font(.callout).foregroundStyle(HelmText.quiet)
+        Text(ApStr.unitDays(for: days)).font(.callout).foregroundStyle(HelmText.quiet)
     }
 
     /// Typed rather than stepped: 30 days and 500 MB are both a number someone

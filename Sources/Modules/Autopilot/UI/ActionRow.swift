@@ -19,7 +19,7 @@ struct ActionRow: View {
                     ForEach(Kind.allCases, id: \.self) { Text($0.label).tag($0) }
                 }
                 .labelsHidden()
-                .frame(width: 200)
+                .frame(width: HelmPickerWidth.fitting(Kind.allCases.map(\.label), minimum: 200))
                 detail
                 Spacer(minLength: 4)
             }
@@ -103,7 +103,8 @@ struct ActionRow: View {
                 Text(ApStr.schemeKind).tag(SortScheme.kind)
                 Text(ApStr.schemeMonth).tag(SortScheme.month)
             }
-            .labelsHidden().frame(width: 140)
+            .labelsHidden()
+            .frame(width: HelmPickerWidth.fitting([ApStr.schemeKind, ApStr.schemeMonth], minimum: 140))
 
         case let .rename(pattern):
             TextField("{name}", text: Binding(get: { pattern },
