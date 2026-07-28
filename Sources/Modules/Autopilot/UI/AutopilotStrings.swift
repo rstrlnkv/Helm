@@ -160,7 +160,7 @@ enum ApStr {
         case .moved: L("moved to", [.ru: "в", .es: "movido a", .fr: "déplacé vers", .de: "verschoben nach", .ja: "移動先", .zh: "移动到", .pt: "movido para"])
         case .renamed: L("renamed to", [.ru: "переименован в", .es: "renombrado a", .fr: "renommé en", .de: "umbenannt in", .ja: "名前変更", .zh: "重命名为", .pt: "renomeado para"])
         case .tagged: L("tagged", [.ru: "тег", .es: "etiquetado", .fr: "Étiquette", .de: "Tag", .ja: "タグ", .zh: "标签", .pt: "etiquetado"])
-        case .trashed: L("moved to Trash", [.ru: "в Корзину", .es: "movido a la Papelera", .fr: "mis à la corbeille", .de: "in den Papierkorb", .ja: "ゴミ箱へ", .zh: "移到废纸篓", .pt: "movido para o Lixo"])
+        case .trashed: L("moved to Trash", [.ru: "в Корзину", .es: "trasladado a la papelera", .fr: "placé dans la corbeille", .de: "in den Papierkorb", .ja: "ゴミ箱へ", .zh: "移到废纸篓", .pt: "movido para o Lixo"])
         case .refused: L("refused", [.ru: "отказано", .es: "rechazado", .fr: "refusé", .de: "abgelehnt", .ja: "拒否", .zh: "已拒绝", .pt: "recusado"])
         case .failed: L("failed", [.ru: "не удалось", .es: "falló", .fr: "échec", .de: "fehlgeschlagen", .ja: "失敗", .zh: "失败", .pt: "falhou"])
         }
