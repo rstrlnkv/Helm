@@ -73,6 +73,58 @@ public func Decimal(_ value: Double, decimals: Int = 1) -> String {
     HelmBytes.decimal(value, decimals: decimals, language: AppLanguage.current.rawValue)
 }
 
+/// Dates in the app's language, not the system's.
+///
+/// `RelativeDateTimeFormatter()` with no locale answers in the system language,
+/// so an Italian or Polish Mac — outside Helm's eight, therefore shown an
+/// English UI — read "Checked 2 ore fa". The formatters were also built once and
+/// held, which meant they kept the language the app started in after the user
+/// picked another one in Settings. Keyed by language, so both go away.
+public enum HelmDates {
+    /// "2 hours ago", «2 часа назад» — for a timestamp whose distance is the
+    /// point, not its calendar position.
+    public static func relative(_ date: Date, to now: Date = Date(),
+                                language: String = AppLanguage.current.rawValue) -> String {
+        cache.relative(language: language).localizedString(for: date, relativeTo: now)
+    }
+
+    /// Day and minute, short: a report covering thirty days needs the day, and a
+    /// morning's worth of moves needs the minute.
+    public static func dayAndMinute(_ date: Date,
+                                    language: String = AppLanguage.current.rawValue) -> String {
+        cache.absolute(language: language).string(from: date)
+    }
+
+    private static let cache = Cache()
+
+    private final class Cache: @unchecked Sendable {
+        private let lock = NSLock()
+        private var relatives: [String: RelativeDateTimeFormatter] = [:]
+        private var absolutes: [String: DateFormatter] = [:]
+
+        func relative(language: String) -> RelativeDateTimeFormatter {
+            lock.lock(); defer { lock.unlock() }
+            if let existing = relatives[language] { return existing }
+            let formatter = RelativeDateTimeFormatter()
+            formatter.unitsStyle = .full
+            formatter.locale = Locale(identifier: language)
+            relatives[language] = formatter
+            return formatter
+        }
+
+        func absolute(language: String) -> DateFormatter {
+            lock.lock(); defer { lock.unlock() }
+            if let existing = absolutes[language] { return existing }
+            let formatter = DateFormatter()
+            formatter.dateStyle = .short
+            formatter.timeStyle = .short
+            formatter.locale = Locale(identifier: language)
+            absolutes[language] = formatter
+            return formatter
+        }
+    }
+}
+
 /// Quotation marks belong to the language too. VPN and the settings window
 /// already spelled them out per language; anything that quotes a value the user
 /// typed goes through here instead of hard-coding English's pair.

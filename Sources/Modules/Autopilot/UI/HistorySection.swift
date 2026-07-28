@@ -63,7 +63,7 @@ struct HistorySection: View {
 
     private func row(_ record: ActionRecord) -> some View {
         HStack(spacing: 8) {
-            Text(Self.when.string(from: record.at))
+            Text(HelmDates.dayAndMinute(record.at))
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(HelmText.quiet)
                 .frame(width: 96, alignment: .leading)
@@ -95,12 +95,4 @@ struct HistorySection: View {
         return record.detail.isEmpty ? verb : "\(verb) \(record.detail)"
     }
 
-    /// Date and time, short: a report covering thirty days needs the day, and a
-    /// morning's worth of moves needs the minute.
-    private static let when: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .short
-        return formatter
-    }()
 }
