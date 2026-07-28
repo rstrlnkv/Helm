@@ -25,10 +25,13 @@ xattr -dr com.apple.quarantine /Applications/Helm.app && open /Applications/Helm
   Releases attach **both** dmg and zip; the zip feeds the silent updater.
 - New module = descriptor + engine targets following the existing pattern
   (see ARCHITECTURE.md), registered in `ModuleRegistry.all`. Pure logic in
-  `Engine/Logic/` with tests first. Shared plumbing lives in `HelmRuntime` —
-  log + redaction, permissions + `TrashFailure`, removal scope, release digest,
-  system-extension parsing, module order — check there before writing a helper
-  inside a module.
+  `Engine/Logic/` with tests first. **Shared plumbing lives in `HelmRuntime` —
+  read `ls Sources/HelmRuntime` before writing a helper inside a module.** The
+  list used to be spelled out here and went stale, which is the duplication it
+  existed to prevent: `HelmTrash`, `FileWeight`, `UserFileScope`,
+  `RemovableScope`, `HelmProcess`, `OffTheCooperativePool`, `RunningApps`,
+  `FrontmostApp`, `HelmBytes`, `Plural`, `FirmlinkMap`, `PermissionNeed` and
+  the log were each written twice or more before they moved there.
 - **The engine has the last word on deletion.** Anything that trashes paths goes
   through `RemovableScope.partition` inside the engine, not only through the view
   model that built the plan; refusals come back as

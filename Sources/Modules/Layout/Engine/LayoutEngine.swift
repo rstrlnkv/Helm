@@ -260,8 +260,12 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
 
     // MARK: - The selection
 
-    /// The three shortcuts that act on whatever is selected rather than on what
-    /// was typed.
+    /// The one action that acts on whatever is selected rather than on what was
+    /// typed.
+    ///
+    /// It had three — transliteration and case-walking went with them, and
+    /// `SelectionAction` records why. This comment said three long after they
+    /// were gone, which reads as two missing cases to find.
     ///
     /// A different mechanism from the word conversion and a stricter one. The
     /// word one only ever edits text it watched being typed, a keystroke ago;
@@ -274,8 +278,9 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         let bundleID = secure.frontmostBundleID()
         lock.lock()
         // A module that was turned off types nothing. The word path has always
-        // asked; this one never did, and the only reason it never showed is
-        // that nothing in the app sends the command yet.
+        // asked and this one did not, which showed up as nothing only because
+        // the gesture reaches it through `fix()` and the transport's
+        // `convertSelection` is the second door — both live, both here.
         let live = running
         let allowed = scope.allows(bundleID)
         lock.unlock()

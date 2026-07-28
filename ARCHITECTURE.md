@@ -21,6 +21,14 @@ HelmApp        executable: AppDelegate, ModuleHost/Registry, StatusItem,
 Tests/…        one test target per engine + HelmContract/HelmRuntime
 ```
 
+`HelmRuntime` is the answer to "has this been written already", and the list of
+what is in it does not live here — it went stale twice, which is the exact
+duplication the list exists to prevent. **`ls Sources/HelmRuntime` before
+writing a helper inside a module.** Twenty-eight files today; `HelmTrash`,
+`FileWeight`, `HelmProcess`, `OffTheCooperativePool`, `RunningApps` and
+`UserFileScope` were each written two to five times in modules before they
+moved there.
+
 ## Module pattern
 
 Every module is a **descriptor** (metadata + UI factories, in `Module_<X>_UI`)
@@ -50,7 +58,7 @@ and the Settings window in sync in both directions.
 
 **Blocking work**: transport handlers run on the Swift-concurrency pool. Any
 blocking call (Process + waitUntilExit, recursive file scans) must hop through
-the engine's `blocking { }` bridge (dispatch queue + continuation), or it parks
+`offTheCooperativePool` (HelmRuntime — a dispatch queue + continuation), or it parks
 a pool thread for seconds.
 
 ## UI shell
@@ -125,7 +133,8 @@ size into auto layout, and any pane whose ideal height is unbounded (a
 Spacer-centred empty state, a plain VStack outside a Form) silently grows the
 window to the full screen. With sizing options off, panes fill whatever the
 window gives them and never the reverse. One default size for every page
-(940×660, measured against the densest row), `contentMinSize` 860×540, frame
+(1060×700 — the Disk screen's bar-with-statement needs an 810 pt detail pane,
+which 940 does not give), `contentMinSize` 860×540, frame
 autosaved. Never resize the window per page — switching pages must not move
 it under the cursor.
 
@@ -254,13 +263,12 @@ conversion happened and in which app (redacted), never what was converted.
 `AXSelection` (Layout/SystemPorts) reads and writes the *selection* rather than
 the last typed word, and it has two routes: `AXSelectedText` where the app
 answers, and ⌘C/⌘V where it does not — which is most Electron apps and most web
-views. So the sentence above holds for the word conversion and not for the three
-selection shortcuts.
+views. So the sentence above holds for the word conversion and not for the selection.
 
 The cost is real and is not fully paid: `restore(_:)` puts back a *string*, so a
 clipboard holding an image, a file promise or RTF is replaced with plain text or
 with nothing. That is the exact harm the no-clipboard rule was written against.
-That used to be contained by the three shortcuts shipping unbound, so only
+That used to be contained by the selection shortcuts shipping unbound, so only
 somebody who went looking could meet it. When the module was reduced to one
 gesture with a default key, that containment disappeared and the defect did not
 — for a few hours the app was one tap away from eating an image somebody had
@@ -291,7 +299,9 @@ Thread 9  -[NSWorkspaceApplicationKVOHelper applications]         ← copying
 So nothing reads it directly. `RunningApps` (HelmRuntime) refreshes on the main
 thread — from the KVO callback and the workspace notifications, which arrive
 there already — and every other thread reads the snapshot. `refresh()` off the
-main thread refuses rather than asserting its way to the same crash.
+main thread asserts **and** refuses: the trap catches the caller in a debug
+build, the refusal keeps a release build alive. The doc used to say "refuses
+rather than asserting", which reads to a test author as inert and traps.
 
 The same applies to **who is in front**, and it had to be learned twice.
 `FrontmostApp` (HelmRuntime) is `RunningApps` for
@@ -639,7 +649,7 @@ subject (Helm = the wheel you steer by):
 - `HelmIconPlate` — the symbol on its category tint, lit from behind by a soft
   radial glow. Also used standalone in empty states.
 - `HelmMetricStrip` — instrument readout: monospaced figures over small-caps
-  labels, split by hairlines. **Form screens only** (About, Keep Awake, VPN):
+  labels, split by hairlines. **Form screens** (About, Keep Awake, VPN, Keyboard — examples, not the list):
   there the dials read as state. List screens (Uninstaller, Homebrew,
   Login Items) deliberately do NOT use it — their chrome is one toolbar row
   (segments · search · refresh) and the counts live as a quiet status line in
