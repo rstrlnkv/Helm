@@ -10,6 +10,10 @@ enum DkStr {
     static var scanning: String { L("Scanning", [.ru: "Сканирование", .es: "Analizando", .fr: "Analyse", .de: "Wird gescannt", .ja: "スキャン中", .zh: "正在扫描", .pt: "Analisando"]) }
     static var stop: String { L("Stop", [.ru: "Остановить", .es: "Detener", .fr: "Arrêter", .de: "Stoppen", .ja: "停止", .zh: "停止", .pt: "Parar"]) }
     static var cancel: String { L("Cancel", [.ru: "Отменить", .es: "Cancelar", .fr: "Annuler", .de: "Abbrechen", .ja: "キャンセル", .zh: "取消", .pt: "Cancelar"]) }
+    /// Leaves the scan on screen and goes back to the picker — and forgets the
+    /// saved one, which is the only way out of a scan that should not have been
+    /// there. Without it the app opened on whatever it measured last, for ever.
+    static var chooseAnother: String { L("Choose another…", [.ru: "\u{0412}\u{044B}\u{0431}\u{0440}\u{0430}\u{0442}\u{044C} \u{0434}\u{0440}\u{0443}\u{0433}\u{043E}\u{0435}\u{2026}", .es: "Elegir otro\u{2026}", .fr: "Choisir autre chose\u{2026}", .de: "Anderes w\u{00E4}hlen\u{2026}", .ja: "\u{5225}\u{306E}\u{5834}\u{6240}\u{3092}\u{9078}\u{629E}\u{2026}", .zh: "\u{9009}\u{62E9}\u{5176}\u{4ED6}\u{2026}", .pt: "Escolher outro\u{2026}"]) }
     static var scanAgain: String { L("Scan again", [.ru: "Сканировать заново", .es: "Escanear de nuevo", .fr: "Réanalyser", .de: "Erneut scannen", .ja: "再スキャン", .zh: "重新扫描", .pt: "Escanear de novo"]) }
     static var free: String { L("free", [.ru: "свободно", .es: "libre", .fr: "libre", .de: "frei", .ja: "空き", .zh: "可用", .pt: "livre"]) }
     static var basket: String { L("To remove", [.ru: "К удалению", .es: "Para eliminar", .fr: "À supprimer", .de: "Zu entfernen", .ja: "削除予定", .zh: "待删除", .pt: "Para remover"]) }
