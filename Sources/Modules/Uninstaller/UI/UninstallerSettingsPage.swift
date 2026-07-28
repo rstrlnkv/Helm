@@ -23,14 +23,12 @@ private enum AppIconCache {
 /// found for each of them before anything goes to the Trash. A running app is
 /// never removed silently — it is quit first, and only if the user says so.
 public struct UninstallerSettingsPage: View {
-    @StateObject private var uvm: UninstallerViewModel
+    @ObservedObject private var uvm: UninstallerViewModel
 
     private enum Step: Equatable { case pick, review }
 
     @State private var diskAccess: PermissionState = .granted
     @State private var step: Step = .pick
-    @State private var apps: [InstalledApp] = []
-    @State private var loading = true
     @State private var search = ""
     @State private var checked: Set<String> = []          // bundle ids
     @State private var groups: [UninstallGroup] = []
@@ -45,8 +43,13 @@ public struct UninstallerSettingsPage: View {
     @State private var tab = 0
 
     public init(vm: ModuleViewModel) {
-        _uvm = StateObject(wrappedValue: UninstallerViewModel(vm: vm))
+        uvm = UninstallerViewModel.shared(vm: vm)
     }
+
+    /// The list and its loading flag live in the view model, which outlives
+    /// this page — see `UninstallerViewModel.apps`.
+    private var apps: [InstalledApp] { uvm.apps }
+    private var loading: Bool { uvm.loadingApps }
 
     private var filtered: [InstalledApp] {
         guard !search.isEmpty else { return apps }
@@ -63,9 +66,7 @@ public struct UninstallerSettingsPage: View {
             .helmOnAppActive { diskAccess = PermissionCheck.currentFullDiskAccess() }
         .task {
                 diskAccess = PermissionCheck.currentFullDiskAccess()
-                apps = await uvm.listApps()
-                loading = false
-                await fillInSizes()
+                await uvm.loadAppsIfNeeded()
             }
     }
 
@@ -141,12 +142,7 @@ public struct UninstallerSettingsPage: View {
         return UnStr.appsCountSelected(count, checked.count, sizeText)
     }
 
-    private func refreshApps() async {
-        loading = true
-        apps = await uvm.listApps()
-        await fillInSizes()
-        loading = false
-    }
+    private func refreshApps() async { await uvm.reloadApps() }
 
     private var sizeText: String {
         let bytes: Int
@@ -425,21 +421,6 @@ public struct UninstallerSettingsPage: View {
         .frame(minHeight: 32)
     }
 
-    /// The list is drawn from names alone and the numbers land a moment later.
-    /// Measuring 39 bundles took four seconds here — nine on a cold cache — and
-    /// the page paid it before showing anything, every single visit.
-    private func fillInSizes() async {
-        let sizes = await uvm.appSizes()
-        guard !sizes.isEmpty else { return }
-        apps = apps.map { app in
-            // By path: two copies of one app share a bundle id and each has its
-            // own size.
-            guard let size = sizes[app.path], size != app.sizeBytes else { return app }
-            return InstalledApp(name: app.name, bundleID: app.bundleID,
-                                path: app.path, sizeBytes: size)
-        }
-    }
-
     // MARK: - Actions
 
     private func prepareReview() async {
@@ -506,7 +487,6 @@ public struct UninstallerSettingsPage: View {
         selectedLeftovers = []
         forceQuit = false
         step = .pick
-        apps = await uvm.listApps()
-        await fillInSizes()
+        await uvm.reloadApps()
     }
 }

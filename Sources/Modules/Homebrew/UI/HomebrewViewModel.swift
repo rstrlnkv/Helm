@@ -6,6 +6,7 @@ import Module_Homebrew_Engine
 @MainActor public final class HomebrewViewModel: ObservableObject {
     private let transport: EngineTransport
     private let client: TransportClient
+    private let vm: ModuleViewModel
 
     @Published public private(set) var status = BrewStatus(installed: false, brewPath: nil)
     @Published public private(set) var installed: [BrewPackage] = []
@@ -20,7 +21,27 @@ import Module_Homebrew_Engine
     /// after a list or search loads.
     @Published public private(set) var descriptions: [String: String] = [:]
 
+    /// One instance per host view model, for the app's lifetime.
+    ///
+    /// Leaving the page in Settings tears down the subtree and its
+    /// `@StateObject`; coming back builds a new one and re-runs `.task`. On a
+    /// fresh instance `descriptions` is empty, so returning to Homebrew re-ran
+    /// `brew list --versions` twice and a `brew desc` batch over every package
+    /// installed — every visit, for a list that had not changed.
+    ///
+    /// Keyed to the view model it was built against, not merely "exists", for
+    /// the reason `DiskViewModel.shared` gives: turning the module off drops
+    /// the engine, and a cache held past that is talking to a corpse.
+    private static var cached: HomebrewViewModel?
+    public static func shared(vm: ModuleViewModel) -> HomebrewViewModel {
+        if let cached, cached.vm === vm { return cached }
+        let created = HomebrewViewModel(vm: vm)
+        cached = created
+        return created
+    }
+
     public init(vm: ModuleViewModel) {
+        self.vm = vm
         self.transport = vm.transport
         self.client = TransportClient(vm.transport)
         let events = transport.events
@@ -30,6 +51,14 @@ import Module_Homebrew_Engine
                 await self.handle(e)
             }
         }
+    }
+
+    /// What the page asks for on appear. The first visit does the work; later
+    /// visits show what is already here.
+    public func loadIfNeeded() async {
+        guard !loadedStatus else { return }
+        await refreshStatus()
+        if status.installed { await refreshInstalled() }
     }
 
     public var running: Bool { op.phase == .running }
@@ -49,14 +78,28 @@ import Module_Homebrew_Engine
         }
     }
 
+    /// The status too, and it is not a nicety: installing Homebrew is one of
+    /// the operations that ends here, and `status.installed` is the only thing
+    /// `HomebrewSettingsPage.body` branches on. Refreshing the package lists
+    /// but not the status left somebody who had just installed Homebrew looking
+    /// at the install screen, with the only way forward being to close Settings
+    /// and open it again. Now that the view model outlives the page, closing
+    /// Settings no longer papers over it either.
     private func refreshAfterOp() async {
+        await refreshStatus()
         await refreshInstalled()
         await refreshOutdated()
     }
 
     // MARK: - Queries
 
-    public func refreshStatus() async { status = await client.request("status") ?? status }
+    /// False until the first answer, so `loadIfNeeded` can tell "not asked yet"
+    /// from "asked, and brew is not installed".
+    @Published public private(set) var loadedStatus = false
+    public func refreshStatus() async {
+        status = await client.request("status") ?? status
+        loadedStatus = true
+    }
     public func refreshInstalled() async {
         installed = await client.request("listInstalled") ?? []
         loadedInstalled = true
