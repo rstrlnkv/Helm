@@ -263,7 +263,7 @@ public struct UninstallerSettingsPage: View {
 
             if !runningNames.isEmpty {
                 HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(HelmSignal.warning)
                     VStack(alignment: .leading, spacing: 4) {
                         Text(UnStr.runningWarning(runningNames.joined(separator: ", ")))
                             .font(.callout)
@@ -318,7 +318,7 @@ public struct UninstallerSettingsPage: View {
                         VStack(alignment: .leading, spacing: 3) {
                             HStack(spacing: 8) {
                                 Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundStyle(.orange)
+                                    .foregroundStyle(HelmSignal.warning)
                                 Text((failure.path as NSString).lastPathComponent)
                                     .lineLimit(1)
                                 Spacer()
@@ -329,7 +329,7 @@ public struct UninstallerSettingsPage: View {
                                 .font(.caption).foregroundStyle(HelmText.quiet)
                                 .lineLimit(1).truncationMode(.middle)
                             Text(UnStr.failureReason(failure.reason))
-                                .font(.caption).foregroundStyle(.orange)
+                                .font(.caption).foregroundStyle(HelmSignal.warning)
                             if !failure.message.isEmpty {
                                 // macOS's own words: the classification is a
                                 // summary, this is the evidence behind it.

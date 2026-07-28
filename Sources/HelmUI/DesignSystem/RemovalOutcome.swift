@@ -49,7 +49,7 @@ public struct HelmRemovalOutcome: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
                     Image(systemName: "exclamationmark.circle.fill")
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(HelmSignal.warning)
                     Text(Self.heading(succeeded: removed > 0 ? succeededText : nil,
                                       failed: failures.count))
                         .font(.caption)

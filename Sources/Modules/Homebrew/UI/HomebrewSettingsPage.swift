@@ -237,9 +237,9 @@ public struct HomebrewSettingsPage: View {
         case .running:
             HStack(spacing: 6) { ProgressView().controlSize(.small); Text(hb.op.label).font(.caption) }
         case .done:
-            Label(HbStr.done, systemImage: "checkmark.circle.fill").foregroundStyle(.green).font(.caption)
+            Label(HbStr.done, systemImage: "checkmark.circle.fill").foregroundStyle(HelmSignal.success).font(.caption)
         case .failed:
-            Label(HbStr.failed, systemImage: "xmark.octagon.fill").foregroundStyle(.red).font(.caption)
+            Label(HbStr.failed, systemImage: "xmark.octagon.fill").foregroundStyle(HelmSignal.danger).font(.caption)
         case .idle:
             EmptyView()
         }
