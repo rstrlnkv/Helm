@@ -192,7 +192,7 @@ extension LayoutEngineTests {
     func testACommandChordEndsTheWordWithoutConverting() {
         let engine = engine()
         tap.type("ghbdtn")
-        tap.handler?(.navigation)      // what a chord now delivers
+        tap.handler?(.chord)           // what a chord delivers
         XCTAssertTrue(typing.performed.isEmpty)
 
         // …and the word it ended is still available to the shortcut, which is
