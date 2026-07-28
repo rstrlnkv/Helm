@@ -33,6 +33,7 @@ import Module_Uninstaller_Engine
         if let cached, cached.vm === vm { return cached }
         let created = UninstallerViewModel(vm: vm)
         cached = created
+        ModuleUICache.dropWhenDisabled("uninstaller") { cached = nil }
         return created
     }
 

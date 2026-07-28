@@ -43,4 +43,9 @@ public extension Notification.Name {
     /// Posted to bring up the Settings window. `object` may carry a module id
     /// (String) to open that module's page directly.
     static let helmOpenSettings = Notification.Name("helmOpenSettings")
+    /// Posted when a module is switched off. A module's UI state can outlive
+    /// its page on purpose — losing a minute-long scan to a sidebar click is
+    /// hostile — but "outlives the page" is not "outlives the module": a scan
+    /// tree the person switched off is gigabytes nobody asked to keep.
+    static let helmModuleDisabled = Notification.Name("helmModuleDisabled")
 }

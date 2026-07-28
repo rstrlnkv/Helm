@@ -64,6 +64,14 @@ public final class DiskScanner: @unchecked Sendable {
             DispatchQueue.concurrentPerform(iterations: workerCount) { _ in
                 while let dir = queue.next() {
                     if self.isCancelled { queue.finish(); return }
+                    // One pool per directory. `readDirectory` goes through
+                    // Foundation, which hands back autoreleased objects, and
+                    // `concurrentPerform` drains no pool per iteration — over a
+                    // million and a half entries that is the difference between
+                    // a scan that costs its tree and one that costs everything
+                    // it ever looked at. Same defect as the duplicate finder's
+                    // read loop, one framework call further out.
+                    autoreleasepool {
                     var files: [Entry] = []
                     var directories: [String] = []
                     var denied: [String] = []
@@ -86,6 +94,7 @@ public final class DiskScanner: @unchecked Sendable {
                     queue.add(directories)
                     channel.push(files: files, denied: denied)
                     queue.completed()
+                    }
                 }
             }
             channel.close()

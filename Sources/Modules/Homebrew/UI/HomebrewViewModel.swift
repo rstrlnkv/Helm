@@ -37,6 +37,7 @@ import Module_Homebrew_Engine
         if let cached, cached.vm === vm { return cached }
         let created = HomebrewViewModel(vm: vm)
         cached = created
+        ModuleUICache.dropWhenDisabled("homebrew") { cached = nil }
         return created
     }
 

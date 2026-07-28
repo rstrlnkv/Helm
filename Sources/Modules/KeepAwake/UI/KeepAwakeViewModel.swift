@@ -33,6 +33,7 @@ import Module_KeepAwake_Engine
         if let cached, cached.vm === vm { return cached }
         let created = KeepAwakeViewModel(vm: vm)
         cached = created
+        ModuleUICache.dropWhenDisabled("keep-awake") { cached = nil }
         return created
     }
 
