@@ -83,3 +83,45 @@ final class NamedControlsTests: XCTestCase {
         XCTAssertGreaterThan(seen, 20, "the source tree moved and this test stopped looking at it")
     }
 }
+
+/// An empty page is drawn by one component, not by whoever is nearest.
+///
+/// There were ten of these in eight shapes — spacing 10 or 14, text wrapped at
+/// 360, 380, 420 or not at all, the button large in two places and not in two
+/// others, one a hand-rolled `VStack` with its own `Spacer`s. Every one was
+/// reasonable beside the screen it belonged to. Together they made the app look
+/// assembled rather than built, and no single change would have looked wrong
+/// enough for anyone to stop.
+///
+/// `HelmCenteredContent` is the box; `HelmEmptyState` and `HelmBusyState` are
+/// what goes in it. Reaching for the box directly is how the eight shapes
+/// happened, so the box stays inside the design system.
+final class OneEmptyStateTests: XCTestCase {
+
+    func testNothingOutsideTheDesignSystemCentresItsOwnEmptyPage() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().appendingPathComponent("Sources")
+        var offenders: [String] = []
+
+        let files = FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil)
+        while let url = files?.nextObject() as? URL {
+            guard url.pathExtension == "swift",
+                  !url.path.contains("/HelmUI/DesignSystem/"),
+                  let source = try? String(contentsOf: url, encoding: .utf8) else { continue }
+            // Both call shapes. The first version of this test looked only for
+            // "HelmCenteredContent(" and so was blind to the trailing-closure
+            // form — which is the form every one of the eight shapes used.
+            for (index, line) in source.components(separatedBy: "\n").enumerated()
+            where line.contains("HelmCenteredContent(") || line.contains("HelmCenteredContent {") {
+                offenders.append("\(url.lastPathComponent):\(index + 1)")
+            }
+        }
+
+        XCTAssertEqual(offenders, [], """
+            These centre their own empty page instead of using HelmEmptyState \
+            or HelmBusyState:
+            \(offenders.joined(separator: "\n"))
+            """)
+    }
+}

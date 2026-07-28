@@ -72,11 +72,7 @@ struct DiskResultView: View {
         // A folder with nothing in it drew nothing at all: no ring, no rows,
         // no sentence. An empty screen is a question the app should answer.
         if dvm.focus?.children.isEmpty ?? true {
-            HelmCenteredContent {
-                Text(DkStr.emptyFolder)
-                    .font(.callout)
-                    .foregroundStyle(HelmText.quiet)
-            }
+            HelmEmptyState(message: DkStr.emptyFolder)
         } else {
             populatedChildList
         }

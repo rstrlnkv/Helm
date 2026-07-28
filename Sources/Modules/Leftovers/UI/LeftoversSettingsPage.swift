@@ -112,16 +112,9 @@ public struct LeftoversSettingsPage: View {
 
     @ViewBuilder private var content: some View {
         if lvm.items.isEmpty {
-            VStack(spacing: 10) {
-                Spacer()
-                HelmIconPlate(symbol: lvm.scanned ? "checkmark.circle" : "wand.and.rays",
-                              tint: ModuleCategory.utilities.tint, size: 56)
-                Text(lvm.scanned ? LfStr.nothingFound : LfStr.notScannedYet)
-                    .foregroundStyle(HelmText.quiet)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 360)
-                Spacer()
-            }
+            HelmEmptyState(symbol: lvm.scanned ? "checkmark.circle" : "wand.and.rays",
+                           tint: ModuleCategory.utilities.tint,
+                           message: lvm.scanned ? LfStr.nothingFound : LfStr.notScannedYet)
             // A bounded minimum: enough to centre the message, without the
             // unbounded height that made the window grow to fill the screen.
             .frame(maxWidth: .infinity, minHeight: 260)

@@ -248,16 +248,10 @@ private struct ModuleDetailView: View {
                 // app's poorest screen: it said neither what the module does
                 // nor where to turn it on. Say what it is, then offer the
                 // action where the eye already is.
-                HelmCenteredContent(spacing: 14) {
-                    HelmIconPlate(symbol: descriptor.moduleMetadata.sfSymbol,
-                                  tint: categoryColor(descriptor.moduleCategory),
-                                  size: 56)
-                    Text(descriptor.moduleMetadata.name)
-                        .font(.system(size: 17, weight: .semibold))
-                    Text(descriptor.moduleMetadata.summary)
-                        .foregroundStyle(HelmText.quiet)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: 380)
+                HelmEmptyState(symbol: descriptor.moduleMetadata.sfSymbol,
+                               tint: categoryColor(descriptor.moduleCategory),
+                               title: descriptor.moduleMetadata.name,
+                               message: descriptor.moduleMetadata.summary) {
                     Button(AppStr.turnOn) { host.setEnabled(descriptor, true) }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.large)
