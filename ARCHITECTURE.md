@@ -458,6 +458,41 @@ which reads macOS's SystemFolderLocalizations table so `/Applications` reads
 "Программы" like it does in Finder. Eligibility is decided by path, never by
 name: a project folder called "Documents" keeps its name.
 
+## Running other programs
+
+`HelmProcess.run` reads stdout before it waits, because waiting first
+deadlocks: the child fills the pipe, blocks in `write(2)`, and never reaches
+the exit the wait is waiting for.
+
+**The same is true of the descriptor nobody reads.** stderr was given a
+`Pipe()` and never drained, which is the identical deadlock one file
+descriptor over — past about 64 KB the child blocks, never exits, never closes
+stdout, and the read above it never returns. The comment said the diagnostics
+were discarded; discarding is `FileHandle.nullDevice`. A `brew` command with a
+deprecation warning per formula passes 64 KB without trying, and every module
+that runs a tool was one chatty command away from a parked thread and an orphan
+child. Measured before and after: 200 KB on stderr held the caller until a
+watchdog killed the child; the same volume through stdout took 19 ms.
+
+`stream` keeps stderr on purpose — a console should show what the tool says.
+It is output that gets *parsed* that must not carry diagnostics, which is why
+`ShellProcessRunner` merging the two turned a `brew` warning into a row with an
+Uninstall button.
+
+## A path that exists is not the path you wrote
+
+`NSString.standardizingPath` does more than resolve `.` and `..`: for a path
+that **exists on disk** it rewrites `/private/var/…` to `/var/…`. `UserFileScope`
+standardizes before testing its protected prefixes, and the list named
+`/private/var/db` — so every real path under it was rewritten out from under
+its own prefix and allowed, while `/private/var/db/does-not-exist` kept the
+prefix and was refused. The test that covered it used the second kind of path.
+
+`/private` is not a firmlink and `/` and `/private/var/db` share a device, so a
+scan of the volume walks it, the ring draws it and the basket accepts it. Both
+spellings are compared now. **A gate tested only with paths that do not exist
+is tested on the one input the filesystem treats differently.**
+
 ## Guards that are tests, not prose
 
 Two rules about the interface are enforced by scanning the source in
