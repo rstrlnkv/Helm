@@ -18,6 +18,11 @@ public struct SwitchPlan: Equatable, Sendable {
                             trailing: Character? = nil) -> SwitchPlan? {
         guard !word.isEmpty, !replacement.isEmpty else { return nil }
         let tail = trailing.map(String.init) ?? ""
-        return SwitchPlan(backspaces: word.count + tail.count, insert: replacement + tail)
+        // Measured together, not added up. A combining mark joins the character
+        // before it into one grapheme, so "приве" + U+0301 is five presses of
+        // delete and not six — and the sixth ate the space and the tail of the
+        // word before it. Counting them apart was right for every ending that
+        // stands on its own and wrong for every one that does not.
+        return SwitchPlan(backspaces: (word + tail).count, insert: replacement + tail)
     }
 }

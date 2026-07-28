@@ -95,3 +95,28 @@ extension LanguageBadgeTests {
         XCTAssertFalse(LanguageBadge.label(language: "eo", region: nil).isEmpty)
     }
 }
+
+/// The table is scanned with `first(where: hasPrefix)` over a Dictionary, whose
+/// order is seeded per process. That is only safe while no key is a prefix of
+/// another — the comment above the table claims it, and nothing checked.
+final class BadgeTablePrefixTests: XCTestCase {
+
+    /// Every layout id that could be ambiguous must answer the same on every
+    /// launch. Asking a hundred times exercises a hundred iteration orders
+    /// across runs, and the answer may not depend on which one came up.
+    func testNoLayoutNameCanBeClaimedByTwoDifferentRegions() {
+        let names = ["Canadian", "Canadian-CSA", "US", "USExtended", "USInternational-PC",
+                     "Russian", "Russian-PC", "British", "British-PC", "German", "German-DIN",
+                     "Swiss", "SwissGerman", "SwissFrench", "ABC", "ABC-QWERTZ",
+                     "Belarusian", "Byelorussian", "Serbian", "Serbian-Latin",
+                     "Portuguese", "Brazilian", "Spanish", "Spanish-ISO"]
+        for name in names {
+            let answers = Set((0..<100).map {
+                _ in LanguageBadge.region(sourceID: "com.apple.keylayout.\(name)",
+                                          language: "en") ?? "<nil>"
+            })
+            XCTAssertEqual(answers.count, 1,
+                           "\(name) resolves to \(answers.sorted()) depending on dictionary order")
+        }
+    }
+}

@@ -190,6 +190,28 @@ features, PATCH = fixes.
   Edit ▸ Transformations wherever text can be edited.
 
 ### Fixed
+- **The Keyboard gesture could edit text that was no longer there.** The word it
+  remembers is a blind edit — a fixed number of backspaces sent at whatever the
+  caret is in front of now — and four paths that refused to convert a word left
+  it remembered anyway. An abbreviation that expanded, a capital that was
+  corrected, a token too long to hold, and a word a password field refused: in
+  each case the next press of the key deleted characters counted against a word
+  that had already been replaced. The password one is the worst of them, because
+  the cheap check that runs on every key cannot see an app's own password field
+  — that is what the expensive one exists for — so the word reached the memory
+  before anything refused it. One place forgets the word now, and every refusal
+  goes through it.
+- **The gesture no longer carries a word into another app.** It remembers which
+  app the word was typed in and acts only there, the rule the undo has always
+  followed. Type in one app, switch to another, press the key: nothing happens,
+  instead of six backspaces and a word arriving where they were never measured.
+- **A word ending in a combining accent lost one character too many.** The word
+  and its ending were counted separately and added up, but a combining mark
+  joins the character before it — `приве` plus U+0301 is five presses of delete,
+  not six, and the sixth ate the space and the tail of the word before it. They
+  are measured together now, in one place instead of three. Ordinary typing on
+  the Vietnamese and polytonic Greek layouts.
+- **"Converted today" counts today.** It counted from launch.
 - **The Keyboard gesture did nothing on a fresh install.** The engine read its
   stored settings only when the settings page announced a change, so a launch
   kept whatever its initialiser held — and the tap key has no initialiser value
