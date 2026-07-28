@@ -47,30 +47,12 @@ import HelmUI
         window.delegate = self
     }
 
-
     /// `selecting` opens the window on that module's page (used by panel utility rows).
     func show(selecting moduleID: String? = nil) {
         if let moduleID { model.selection = .module(moduleID) }
         NSApp.setActivationPolicy(.regular)
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)
-    }
-
-
-
-    /// TEMPORARY screenshot harness (HELM_DEBUG_SHOT). Not for commit.
-    func debugShow(selecting moduleID: String?, size: NSSize) {
-        if let moduleID {
-            model.selection = moduleID == "general" ? .general
-                : (moduleID == "about" ? .about : .module(moduleID))
-        }
-        NSApp.setActivationPolicy(.regular)
-        NSApp.activate()
-        window.setContentSize(size)
-        window.center()
-        window.level = .floating
-        window.makeKeyAndOrderFront(nil)
-        window.orderFrontRegardless()
     }
 
     func windowWillClose(_ notification: Notification) {
@@ -330,7 +312,6 @@ private struct MenuBarSettingsView: View {
         }
         AppSettings.moduleOrder = orderedModules
     }
-
 
     /// One module in the order list.
     ///
