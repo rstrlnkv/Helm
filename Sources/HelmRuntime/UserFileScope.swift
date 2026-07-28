@@ -11,6 +11,11 @@ public enum UserFileScope {
 
     private static let homePath = FileManager.default.homeDirectoryForCurrentUser.path
 
+    /// Folded once, not per row: `isRemovable` runs on every frame the disk
+    /// list redraws.
+    private static let loweredPrefixes = protectedPrefixes.map { $0.lowercased() }
+    private static let loweredHome = homePath.lowercased()
+
     public static func isRemovable(_ rawPath: String) -> Bool {
         // Judge the resolved path, not the spelling. "/Users/me/Documents/.."
         // is the home directory however it is written, and every check below
@@ -30,14 +35,19 @@ public enum UserFileScope {
         // `/private` is not a firmlink, `/` and `/private/var/db` share a
         // device, so a scan of the volume walks it and the row reaches the
         // basket. This is the disk module's last word on deletion.
-        let spellings = [path, path.hasPrefix("/private/") ? String(path.dropFirst("/private".count)) : "/private" + path]
-        guard !protectedPrefixes.contains(where: { prefix in
+        //
+        // Folded, too: the boot volume is case-insensitive and
+        // `standardizingPath` resolves `..`, `~` and `/private` but never case,
+        // so `/USR/bin` and `/system/Library/CoreServices` are those
+        // directories to the filesystem and strangers to a prefix test.
+        let lowered = path.lowercased()
+        let spellings = [lowered, lowered.hasPrefix("/private/") ? String(lowered.dropFirst("/private".count)) : "/private" + lowered]
+        guard !loweredPrefixes.contains(where: { prefix in
             spellings.contains { $0 == prefix || $0.hasPrefix(prefix + "/") }
         }) else { return false }
-        // Never the user's whole home or a volume root. Resolved once — this
-        // runs per row on every frame the disk list redraws.
-        let home = homePath
-        guard path != home, !path.hasPrefix("/Volumes/") || path.split(separator: "/").count > 2
+        // Never the user's whole home or a volume root.
+        guard lowered != loweredHome,
+              !lowered.hasPrefix("/volumes/") || path.split(separator: "/").count > 2
         else { return false }
         // Never a top-level directory of the boot volume either. The named list
         // above cannot keep up: scan `/`, click the second-largest arc, and
