@@ -155,7 +155,12 @@ struct RingView: View {
             .accessibilityLabel(DkStr.ringMap)
             .accessibilityChildren { ringElements }
         }
-        .animation(HelmMotion.interface, value: segments.count)
+        // Not while a wedge is opening. This is here for the ring growing under
+        // a running scan, and during a drill it is a second animation on the
+        // same view with a different curve: measured off a recording, every
+        // move came out as two bursts with a pause between them, which is what
+        // "ragged" was. The morph animates the arcs itself.
+        .animation(pivot == nil ? HelmMotion.interface : nil, value: segments.count)
         // Arriving back at the parent: run the same transform backwards, so the
         // ring narrows into the wedge it came out of.
         .onChange(of: foldingBackFrom) { _, path in
@@ -169,7 +174,6 @@ struct RingView: View {
             withAnimation(HelmMotion.ringMorph(levels: foldingBackLevels)) { unfold = 1 } completion: {
                 pivot = nil
                 leaving = []
-                unfold = 0
             }
         }
     }
@@ -200,9 +204,14 @@ struct RingView: View {
         withAnimation(HelmMotion.ringMorph()) {
             unfold = 1
         } completion: {
+            // Only these two. Resetting `unfold` here as well let one frame
+            // render with the snapshot still in place and the progress already
+            // back at zero — the old geometry, for a sixtieth of a second, at
+            // the end of every move. It is `open` and the fold that put the
+            // progress back to zero before they animate, where nothing is
+            // drawn between the two writes.
             pivot = nil
             leaving = []
-            unfold = 0
         }
     }
 
@@ -239,7 +248,10 @@ struct RingView: View {
             Text(Bytes(focusBytes))
                 .font(.system(size: 19, weight: .medium, design: .monospaced))
                 .contentTransition(.numericText())
-                .animation(HelmMotion.interface, value: focusBytes)
+                // The same curve and the same length as the arcs around it.
+                // On its own token it settled a quarter-second before they did,
+                // and the eye read one move as two.
+                .animation(HelmMotion.ringMorph(), value: focusBytes)
             if growing {
                 Text(DkStr.scanning + "…")
                     .font(.caption2)
@@ -333,7 +345,12 @@ private struct RingCanvas: View, @MainActor Animatable {
     /// exactly where it will be — so the frame the animation ends on is the
     /// frame that follows it.
     private func arcs() -> [Drawn] {
-        guard let pivot, progress > 0, !leaving.isEmpty else {
+        // Not `progress > 0`: the drill lands before the animation's first tick,
+        // so at exactly zero this drew the destination for one frame and the
+        // animation then pulled it back to where it had come from. Measured off
+        // a recording, that single frame was the largest change in the whole
+        // move — a bigger jump than the animation it was introducing.
+        guard let pivot, !leaving.isEmpty else {
             return segments.compactMap { segment in
                 guard segment.ring < RingView.visibleRings else { return nil }
                 let (r0, r1) = geometry.radialRange(ring: segment.ring)
@@ -391,5 +408,7 @@ private struct RingCanvas: View, @MainActor Animatable {
     }
 
 }
+
+
 
 
