@@ -16,24 +16,57 @@ public struct FSBrewLocator: BrewLocator {
 // MARK: - Process runner
 
 /// Splits streamed bytes into whole lines, thread-safely.
-private final class LineBuffer: @unchecked Sendable {
+///
+/// **Bytes, not text.** This used to decode each chunk with
+/// `String(data:encoding:.utf8)` and `return` on nil. `availableData` splits on
+/// byte boundaries, not character boundaries, so a multi-byte character
+/// straddling two reads leaves the first chunk ending mid-sequence — and the
+/// whole chunk went, not the one character. Everything ahead of the split was
+/// plain ASCII and perfectly decodable, and it went too. Reachable with any
+/// non-ASCII output past one read, which `brew` produces on every successful
+/// install.
+///
+/// So the split happens on the newline *byte* and only complete lines are
+/// decoded; an unfinished character simply stays in the buffer with the rest of
+/// its unfinished line. `String(decoding:as:)` rather than the failable
+/// initialiser, because bytes that are not UTF-8 at all are still somebody's
+/// log: they come through as replacement characters instead of taking the lines
+/// around them with them.
+final class LineBuffer: @unchecked Sendable {
+    private static let newline: UInt8 = 0x0A
     private let onLine: @Sendable (String) -> Void
     private let lock = NSLock()
-    private var partial = ""
+    private var partial = Data()
     init(onLine: @escaping @Sendable (String) -> Void) { self.onLine = onLine }
+
     func feed(_ data: Data) {
-        guard let s = String(data: data, encoding: .utf8) else { return }
         lock.lock()
-        partial += s
-        var lines = partial.components(separatedBy: "\n")
-        partial = lines.removeLast()   // keep the trailing incomplete line
+        partial.append(data)
+        var complete: [Data] = []
+        while let newline = partial.firstIndex(of: Self.newline) {
+            complete.append(partial[partial.startIndex..<newline])
+            partial = partial[partial.index(after: newline)...]
+        }
+        // Re-base: a slice keeps its parent's indices, so without this the
+        // buffer's start walks forward for the life of the stream.
+        partial = Data(partial)
         lock.unlock()
-        for line in lines { onLine(line) }
+        for line in complete { onLine(String(decoding: line, as: UTF8.self)) }
     }
+
+    /// The last line of a tool that did not end with a newline is still a line.
     func flush() {
-        lock.lock(); let rest = partial; partial = ""; lock.unlock()
-        if !rest.isEmpty { onLine(rest) }
+        lock.lock(); let rest = partial; partial = Data(); lock.unlock()
+        if !rest.isEmpty { onLine(String(decoding: rest, as: UTF8.self)) }
     }
+}
+
+/// Carries the exit status from the termination callback to whoever reports it.
+private final class StatusBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: Int32 = -1
+    func set(_ v: Int32) { lock.lock(); value = v; lock.unlock() }
+    var status: Int32 { lock.lock(); defer { lock.unlock() }; return value }
 }
 
 public struct ShellProcessRunner: ProcessRunner {
@@ -63,6 +96,21 @@ public struct ShellProcessRunner: ProcessRunner {
         return (result.status, result.output)
     }
 
+    /// **The exit is reported at end of pipe, not at end of process.** These are
+    /// two different moments and the process is the earlier one: the child
+    /// exits, the termination callback fires, and whatever it had written that
+    /// the reader had not picked up yet is still sitting in the pipe. Clearing
+    /// the readability handler there threw that away — so the tail of a
+    /// `brew install`, which is the part that says where it put things, was
+    /// missing from the console whenever the reader ran behind the writer. It
+    /// always does: `onLine` hops to the main actor and redraws a console.
+    /// Measured at 5000 lines with a 2 ms consumer, five runs out of five lost
+    /// between 396 and 4200 of them.
+    ///
+    /// Reading to the end first is the same order `HelmProcess.run` uses, and
+    /// for the same reason. EOF arrives only when every writer has closed, so
+    /// by then the child has finished; the wait below is immediate rather than
+    /// a poll.
     public func stream(_ launchPath: String, _ args: [String], env: [String: String],
                        onLine: @escaping @Sendable (String) -> Void,
                        onExit: @escaping @Sendable (Int32) -> Void) {
@@ -74,16 +122,32 @@ public struct ShellProcessRunner: ProcessRunner {
         p.standardOutput = pipe
         p.standardError = pipe
         let buffer = LineBuffer(onLine: onLine)
+        let status = StatusBox()
+        let exited = DispatchSemaphore(value: 0)
+        p.terminationHandler = { proc in
+            status.set(proc.terminationStatus)
+            exited.signal()
+        }
         pipe.fileHandleForReading.readabilityHandler = { handle in
             let d = handle.availableData
-            if !d.isEmpty { buffer.feed(d) }
+            guard !d.isEmpty else {
+                // Empty means end of file: everything written has been read.
+                handle.readabilityHandler = nil
+                buffer.flush()
+                exited.wait()
+                onExit(status.status)
+                return
+            }
+            buffer.feed(d)
         }
-        p.terminationHandler = { proc in
+        do {
+            try p.run()
+        } catch {
+            // No child, so no EOF is ever coming — the page would keep its
+            // spinner forever waiting for one.
             pipe.fileHandleForReading.readabilityHandler = nil
-            buffer.flush()
-            onExit(proc.terminationStatus)
+            onExit(-1)
         }
-        do { try p.run() } catch { onExit(-1) }
     }
 }
 

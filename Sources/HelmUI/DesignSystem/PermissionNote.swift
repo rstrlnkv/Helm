@@ -19,7 +19,7 @@ public struct HelmPermissionNote: View {
     public var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "exclamationmark.circle.fill")
-                .foregroundStyle(.orange)
+                .foregroundStyle(HelmSignal.warning)
                 .accessibilityHidden(true)
             Text(text)
                 .font(.caption)

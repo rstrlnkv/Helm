@@ -342,10 +342,14 @@ private struct MenuBarSettingsView: View {
                 .disabled(orderedModules.last == id)
             }
         }
-        // A floor rather than a fixed height: the list's total is computed
-        // from this number, so it has to stay nominal — but a row that cannot
-        // grow clips the module name outright at larger text sizes.
+        // A floor rather than a fixed height: a row that cannot grow clips the
+        // module name outright at larger text sizes. What it actually comes to
+        // is reported upward, because the list around it has to be tall enough
+        // for the rows it really has — see `moduleOrderList`.
         .frame(minHeight: Self.orderRowHeight)
+        .onGeometryChange(for: CGFloat.self, of: \.size.height) { height in
+            if orderRowHeights[id] != height { orderRowHeights[id] = height }
+        }
         .contentShape(Rectangle())
         // A `List` row is its content plus the style's own vertical inset, so
         // the height set above is not the height that lands: at eight modules
@@ -370,6 +374,19 @@ private struct MenuBarSettingsView: View {
     /// so the arithmetic is exact rather than a guess.
     private static let orderRowHeight: CGFloat = 28
 
+    /// Measured heights per module id. The two halves of this used to disagree:
+    /// each row was given `minHeight` precisely so it could grow rather than
+    /// clip its name, and the list around it was then given a flat
+    /// `count × 28` — a total that assumes no row ever took the permission it
+    /// had just been granted. At larger system text the last rows were cut off.
+    @State private var orderRowHeights: [String: CGFloat] = [:]
+
+    /// Tall enough for the rows there actually are, falling back to the nominal
+    /// height for any row that has not reported yet (the first layout pass).
+    private var moduleOrderListHeight: CGFloat {
+        orderedModules.reduce(0) { $0 + (orderRowHeights[$1] ?? Self.orderRowHeight) }
+    }
+
     private var moduleOrderList: some View {
         // Spelled out rather than inlined: the ternary is an optional closure,
         // which the type checker cannot infer inside a `List` builder.
@@ -387,7 +404,7 @@ private struct MenuBarSettingsView: View {
         .scrollDisabled(true)
         .scrollContentBackground(.hidden)
         .environment(\.defaultMinListRowHeight, Self.orderRowHeight)
-        .frame(height: CGFloat(orderedModules.count) * Self.orderRowHeight)
+        .frame(height: moduleOrderListHeight)
         .animation(HelmMotion.interface, value: orderedModules)
     }
 
@@ -400,7 +417,7 @@ private struct MenuBarSettingsView: View {
                                action: @escaping () -> Void) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: granted ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
-                .foregroundStyle(granted ? .green : .orange)
+                .foregroundStyle(granted ? HelmSignal.success : HelmSignal.warning)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                 Text(detail).font(.caption).foregroundStyle(HelmText.quiet)
@@ -879,7 +896,11 @@ private struct WhatsNewView: View {
         VStack(spacing: 0) {
             HelmPageHeader(symbol: "sparkles", tint: .indigo,
                            title: AppStr.whatsNew, subtitle: AppStr.whatsNewSummary) {
+                // Escape closes it, like every sheet on the machine.
+                // `HelmHotkeyRecorder` special-cases Escape during capture and
+                // explains why; that care never reached the sheets.
                 Button(AppStr.close, action: onClose)
+                    .keyboardShortcut(.cancelAction)
             }
             Divider()
             ScrollView {

@@ -24,7 +24,6 @@ private let helmPanelShadowMargin: CGFloat = 28
 @MainActor final class HelmPanel: NSObject {
     private let panel: NSPanel
     private let hosting: NSHostingView<HelmPanelContent>
-    private let sizeRelay: SizeRelay
     private var dismissMonitor: Any?
     private var dismissObserver: NSObjectProtocol?
     private var statusButtonScreenFrame: NSRect = .zero
@@ -64,16 +63,11 @@ private let helmPanelShadowMargin: CGFloat = 28
         // card is top-pinned and animates entirely inside the static window.
         // A plain NSHostingView is used deliberately — a custom hitTest here
         // previously swallowed every click.
-        let sizeBox = SizeRelay()
-        let hosting = NSHostingView(rootView: HelmPanelContent(host: host, sizeRelay: sizeBox))
+        let hosting = NSHostingView(rootView: HelmPanelContent(host: host))
         hosting.sizingOptions = []
         self.hosting = hosting
-        self.sizeRelay = sizeBox
         panel.contentView = hosting
         super.init()
-        // Nothing to invalidate now that the window casts no shadow of its
-        // own; glass re-shades itself as the card grows.
-        sizeBox.onChange = { _ in }
         dismissObserver = NotificationCenter.default.addObserver(
             forName: .helmPanelDismissRequested, object: nil, queue: .main
         ) { [weak self] _ in
@@ -138,22 +132,8 @@ extension Notification.Name {
     static let helmPanelDismissRequested = Notification.Name("helmPanelDismissRequested")
 }
 
-/// Bridges the SwiftUI content's measured size out to `HelmPanel`, which owns
-/// the window frame (the hosting view's own auto-resizing is disabled).
-@MainActor final class SizeRelay {
-    var onChange: ((CGSize) -> Void)?
-    /// Last measured card size; `toggle` prefers it over `fittingSize`, which
-    /// is unreliable once the root view is wrapped in an expanding frame.
-    private(set) var lastSize: CGSize = .zero
-    func report(_ size: CGSize) {
-        lastSize = size
-        onChange?(size)
-    }
-}
-
 private struct HelmPanelContent: View {
     @ObservedObject var host: ModuleHost
-    let sizeRelay: SizeRelay
     @State private var utilitiesExpanded = false
     @State private var showSettingsButton = AppSettings.showSettingsButton
     @State private var showQuitButton = AppSettings.showQuitButton
@@ -272,10 +252,6 @@ private struct HelmPanelContent: View {
         // it, the effect painted the whole strip and the card came out 56 pt
         // wider than the tiles inside it.
         .frame(maxWidth: .infinity)
-        // Report every content size so the window tracks height changes.
-        .onGeometryChange(for: CGSize.self, of: \.size) { size in
-            sizeRelay.report(size)
-        }
         // Pin the card to the TOP of the hosting bounds: while window and content
         // sizes momentarily disagree, the slack stays at the transparent bottom
         // instead of the default centering, which read as the card dropping.

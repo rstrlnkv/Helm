@@ -12,6 +12,7 @@ import HelmUI
     private var moduleCancellables: Set<AnyCancellable> = []
     private var styleObserver: NSObjectProtocol?
     private var openSettingsObserver: NSObjectProtocol?
+    private var orderObserver: NSObjectProtocol?
 
     private lazy var panel = HelmPanel(host: host)
     private lazy var settingsWindow = SettingsWindow(host: host)
@@ -36,6 +37,19 @@ import HelmUI
             .sink { [weak self] _ in self?.resubscribeToModules() }
         styleObserver = NotificationCenter.default.addObserver(
             forName: .helmMenuBarStyleChanged, object: nil, queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            Task { @MainActor in self.refreshIcon() }
+        }
+        // `refreshIcon` resolves "the first active module" through
+        // `host.enabledModules`, which reads the user's order at call time —
+        // so a reorder changes the answer while nothing asks for it again.
+        // Latent today: `KeepAwakeDescriptor` is the only descriptor that
+        // overrides `statusAppearance`, so `.first { $0.tintToken != nil }`
+        // finds it whatever the order. It stops being latent the day a second
+        // module tints the icon, and that is not the day to remember this.
+        orderObserver = NotificationCenter.default.addObserver(
+            forName: .helmModuleOrderChanged, object: nil, queue: .main
         ) { [weak self] _ in
             guard let self else { return }
             Task { @MainActor in self.refreshIcon() }
