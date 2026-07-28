@@ -201,6 +201,54 @@ public enum HelmText {
     public static let separator = Color.primary.opacity(0.50)
 }
 
+/// Colour that carries a meaning: this needs attention, this failed, this is on.
+///
+/// The same argument as `HelmText`, one class of colour over. The system
+/// palette is tuned for dark, where all three are comfortable, and it is light
+/// where they fail — measured with `Scripts/design/contrast.swift` against both
+/// `windowBackgroundColor` and `controlBackgroundColor`, which are the same
+/// colour on macOS 26:
+///
+///     light   orange 2.31:1   green 2.22:1   red 3.57:1
+///     dark    orange 7.47:1   green 8.25:1   red 4.86:1
+///
+/// against a 4.5:1 body-text floor and a 3:1 floor for a mark that carries
+/// meaning. So the icon on every "needs a permission" banner — the most
+/// important warning the app has — was its least visible mark in light mode,
+/// and `HelmHotkeyRecorder`'s "this shortcut does nothing" note was body text
+/// at 2.31:1. This is the defect `HelmText` and `HelmBadge` were built to
+/// eliminate, never generalised past text tokens.
+///
+/// One threshold rather than two: these are used for icons *and* for body text,
+/// so they answer to the stricter one everywhere rather than to whichever the
+/// current call site happens to need. The light values are the system colours
+/// blended toward black by the smallest fraction that clears 4.5:1 (0.36, 0.38,
+/// 0.15) — solved for, not chosen and described afterwards. Dark keeps the
+/// system colours untouched: they already pass, and the palette macOS ships is
+/// the one people recognise.
+///
+/// Resolved colours, not hierarchical styles, so they are safe inside the
+/// measured-height blocks the Motion rules warn about.
+public enum HelmSignal {
+    /// Something needs attention and can still be acted on. 4.54:1 / 7.47:1.
+    public static let warning = adaptive(
+        light: NSColor(srgbRed: 0.700, green: 0.380, blue: 0.097, alpha: 1), dark: .systemOrange)
+    /// Granted, done, up to date. 4.59:1 / 8.25:1.
+    public static let success = adaptive(
+        light: NSColor(srgbRed: 0.126, green: 0.529, blue: 0.227, alpha: 1), dark: .systemGreen)
+    /// It failed. 4.52:1 / 4.86:1.
+    public static let danger = adaptive(
+        light: NSColor(srgbRed: 0.879, green: 0.188, blue: 0.202, alpha: 1), dark: .systemRed)
+
+    /// One colour that answers for itself in either appearance, so no call site
+    /// has to read the environment to stay legible.
+    private static func adaptive(light: NSColor, dark: NSColor) -> Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? dark : light
+        })
+    }
+}
+
 public struct HelmPageHeader<Trailing: View>: View {
     let symbol: String
     let tint: Color

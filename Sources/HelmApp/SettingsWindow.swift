@@ -400,7 +400,7 @@ private struct MenuBarSettingsView: View {
                                action: @escaping () -> Void) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: granted ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
-                .foregroundStyle(granted ? .green : .orange)
+                .foregroundStyle(granted ? HelmSignal.success : HelmSignal.warning)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                 Text(detail).font(.caption).foregroundStyle(HelmText.quiet)
