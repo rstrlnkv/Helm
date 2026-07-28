@@ -55,6 +55,9 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     private let lock = NSLock()
     private var _connections: [VPNConnection] = []
     private var _autoConnected: Set<String> = []
+    /// Which of those were ever observed up. Without it, "not up right now"
+    /// cannot be told from "not up yet".
+    private var _cameUp: Set<String> = []
 
     public var connections: [VPNConnection] {
         lock.lock(); defer { lock.unlock() }; return _connections
@@ -125,7 +128,24 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// The blocking half, always on the work queue.
     private func refreshNow() {
         let parsed = VPNListParser.parseList(runner.run(["--nc", "list"]))
-        lock.lock(); _connections = parsed; lock.unlock()
+        lock.lock()
+        _connections = parsed
+        // A VPN Helm raised can also drop on its own — the network goes, the
+        // server hangs up, somebody stops it in System Settings. The set was
+        // only ever emptied by Helm disconnecting it, so the strip went on
+        // saying "AUTOMATIC 1" beside "ACTIVE 0" until the app restarted.
+        //
+        // "Not up" is not enough to forget it by: the refresh that follows a
+        // connect usually still reports the old status, so intersecting with
+        // what is up would wipe a connection Helm had just raised, before it
+        // had a chance to come up. What is forgotten is one that *came* up and
+        // then went — which needs remembering that it ever did.
+        let up = Set(parsed.filter { $0.status.isUp }.map(\.name))
+        _cameUp.formUnion(up.intersection(_autoConnected))
+        let dropped = _autoConnected.subtracting(up).intersection(_cameUp)
+        _autoConnected.subtract(dropped)
+        _cameUp.subtract(dropped)
+        lock.unlock()
         emitState()
     }
 

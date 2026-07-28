@@ -1,4 +1,5 @@
 import XCTest
+@testable import HelmRuntime
 @testable import Module_VPN_Engine
 
 final class VPNRulesTests: XCTestCase {
@@ -85,5 +86,53 @@ final class VPNStatusVocabularyTests: XCTestCase {
         XCTAssertFalse(VPNStatus.disconnected.isConnected)
         XCTAssertFalse(VPNStatus.disconnected.isTransitioning)
         XCTAssertFalse(VPNStatus.unknown.isUp)
+    }
+}
+
+/// What the strip says Helm is holding up.
+///
+/// `autoConnected` is the set Helm raised itself, and it was emptied only when
+/// Helm took one down. A VPN can also drop on its own — the network goes, the
+/// server hangs up, somebody stops it in System Settings — and the strip then
+/// read "ACTIVE 0 · AUTOMATIC 1" until the app restarted.
+final class AutoConnectedFollowsRealityTests: XCTestCase {
+
+    func testANameNoLongerUpIsNoLongerCountedAsAutomatic() {
+        let runner = FakeRunner()
+        runner.listOutput = #"* (Connected) A --> B  "Work" [IKEv2]"#
+        let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
+            namespace: "vpn", backing: InMemoryKeyValueStore())),
+            runner: runner, apps: FakeApps(), work: .inline)
+        engine.connect("Work", auto: true)
+        XCTAssertEqual(engine.autoConnected, ["Work"])
+
+        // It drops without Helm asking.
+        runner.listOutput = #"* (Disconnected) A --> B  "Work" [IKEv2]"#
+        engine.refresh()
+
+        XCTAssertTrue(engine.autoConnected.isEmpty,
+                      "the strip still credits Helm with a connection that is down")
+    }
+}
+
+/// The other half of the same rule, and the reason it is not one line.
+extension AutoConnectedFollowsRealityTests {
+
+    /// The refresh that follows a connect usually still reports the old
+    /// status — the handshake takes seconds. Forgetting on "not up right now"
+    /// would wipe a connection Helm had just raised, which is what broke
+    /// `test_auto_connect_on_app_launch` on the first attempt at this.
+    func testAConnectionThatHasNotComeUpYetIsStillCredited() {
+        let runner = FakeRunner()
+        runner.listOutput = #"(Disconnected) 1111 IPSec "Work""#
+        let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
+            namespace: "vpn", backing: InMemoryKeyValueStore())),
+            runner: runner, apps: FakeApps(), work: .inline)
+
+        engine.connect("Work", auto: true)     // the list still says disconnected
+        engine.refresh()
+
+        XCTAssertEqual(engine.autoConnected, ["Work"],
+                       "a connection mid-handshake was forgotten before it arrived")
     }
 }

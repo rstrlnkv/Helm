@@ -163,9 +163,17 @@ public struct HomebrewSettingsPage: View {
             }
             listOrEmpty(hb.outdated, empty: hb.loadedOutdated ? HbStr.upToDate : nil) { pkg in
                 pkgRow(name: pkg.name, detail: "\(pkg.installed) → \(pkg.latest)", isCask: pkg.isCask) {
-                    Button(HbStr.upgrade) { hb.upgrade(pkg) }
-                        .disabled(hb.running)
-                        .accessibilityLabel("\(HbStr.upgrade), \(pkg.name)")
+                    if pkg.pinned {
+                        // Still listed — somebody who pinned a formula still
+                        // wants to know a newer one exists — but not offered.
+                        // `brew upgrade` answers a pinned formula with "…is
+                        // pinned", so the button could only ever fail.
+                        HelmBadge(HbStr.pinned)
+                    } else {
+                        Button(HbStr.upgrade) { hb.upgrade(pkg) }
+                            .disabled(hb.running)
+                            .accessibilityLabel("\(HbStr.upgrade), \(pkg.name)")
+                    }
                 }
             }
         }
