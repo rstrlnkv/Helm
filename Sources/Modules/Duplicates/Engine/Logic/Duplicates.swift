@@ -34,17 +34,44 @@ public struct FileFacts: Hashable, Sendable {
 
 /// Files with identical content, and what keeping only one would free.
 public struct DuplicateGroup: Codable, Equatable, Sendable, Identifiable {
-    public var id: String { paths.first ?? "" }
-    /// The size of one copy.
-    public let bytes: Int
-    /// Every path holding this content, sorted for stable display.
-    public let paths: [String]
-    /// What deleting all but one copy frees.
-    public var wasted: Int { bytes * max(paths.count - 1, 0) }
 
+    /// One copy, with what it occupies.
+    ///
+    /// Each copy carries its own figure because content-identical files need
+    /// not agree on one: an APFS clone or an HFS-compressed copy occupies far
+    /// less than its logical length. The group used to hold a single size and
+    /// multiply it, which made the answer depend on which copy the walk reached
+    /// first.
+    public struct Copy: Codable, Equatable, Sendable {
+        public let path: String
+        public let bytes: Int
+
+        public init(path: String, bytes: Int) {
+            self.path = path
+            self.bytes = bytes
+        }
+    }
+
+    /// The copies, the one that stays first — `SurvivingCopy`'s order.
+    public let copies: [Copy]
+
+    public var id: String { copies.first?.path ?? "" }
+    /// Every path holding this content, in the same order.
+    public var paths: [String] { copies.map(\.path) }
+    /// The size of one copy: the one that stays.
+    public var bytes: Int { copies.first?.bytes ?? 0 }
+    /// What deleting all but the first frees — those copies' own sizes, which
+    /// is the same measure `HelmTrash` reports back afterwards.
+    public var wasted: Int { copies.dropFirst().reduce(0) { $0 + $1.bytes } }
+
+    public init(copies: [Copy]) {
+        self.copies = copies
+    }
+
+    /// Where every copy is known to occupy the same amount — a fixture, or a
+    /// group being rebuilt from paths alone.
     public init(bytes: Int, paths: [String]) {
-        self.bytes = bytes
-        self.paths = paths
+        self.copies = paths.map { Copy(path: $0, bytes: bytes) }
     }
 }
 
@@ -120,10 +147,17 @@ public enum Duplicates {
     /// Both call this now, and a change to which copy survives cannot land in
     /// one line and miss the other.
     public static func group(_ identical: [FileFacts]) -> DuplicateGroup {
-        // What one copy occupies, because `wasted` promises what removing the
-        // extras frees and the removal reports the same measure.
-        DuplicateGroup(bytes: identical.first?.allocated ?? 0,
-                       paths: SurvivingCopy.order(identical))
+        // Each copy with what it occupies, because `wasted` promises what
+        // removing the extras frees and the removal reports the same measure.
+        // One size for the group took it from the walk order while the paths
+        // came from the survivor rule — two orderings of one array — so a clone
+        // beside its original reported nothing wasted or everything wasted
+        // depending on which was reached first.
+        let occupied = Dictionary(identical.map { ($0.path, $0.allocated) },
+                                  uniquingKeysWith: { first, _ in first })
+        return DuplicateGroup(copies: SurvivingCopy.order(identical).map {
+            DuplicateGroup.Copy(path: $0, bytes: occupied[$0] ?? 0)
+        })
     }
 
     /// The whole pipeline: size → prefix hash → full hash → groups, largest
