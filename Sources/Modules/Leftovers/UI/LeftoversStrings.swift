@@ -2,13 +2,12 @@ import HelmRuntime
 import HelmUI
 
 enum LfStr {
-    /// The engine reports a machine-readable token when it refuses a path
-    /// itself; everything else is macOS's own message, which is already a
-    /// sentence and is passed through unchanged.
-    static func failureReason(_ raw: String) -> String {
-        guard raw == TrashFailure.Reason.outOfScope.rawValue else { return raw }
-        return L("Outside the folders Helm may clean — nothing was attempted.", [.ru: "За пределами папок, которые Helm может чистить — ничего не удалялось.", .es: "Fuera de las carpetas que Helm puede limpiar; no se intentó nada.", .fr: "Hors des dossiers que Helm peut nettoyer — rien n’a été tenté.", .de: "Außerhalb der Ordner, die Helm bereinigen darf — nichts versucht.", .ja: "Helm が整理できるフォルダの外です。何も実行していません。", .zh: "不在 Helm 可清理的文件夹内，未执行任何操作。", .pt: "Fora das pastas que o Helm pode limpar — nada foi tentado."])
-    }
+    /// The sentences live in `TrashReasonText`, where Disk, Duplicates and
+    /// the uninstaller already read them. This module used to pass macOS's own
+    /// `localizedDescription` straight through, so it was the one removal
+    /// screen in Helm that showed an untranslated Cocoa sentence with the
+    /// reason discarded.
+    static func failureReason(_ raw: String) -> String { TrashReasonText.sentence(raw) }
 
     // Named after the macOS pane that covers the same ground, so the mapping
     // is obvious: System Settings → General → Login Items & Extensions.

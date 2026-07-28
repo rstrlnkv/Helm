@@ -16,18 +16,8 @@ public protocol LeftoversFilePort: Sendable {
     func exists(_ path: String) -> Bool
     func size(_ url: URL) -> Int
     func readPlist(_ url: URL) -> PlistData?
-    func trash(_ url: URL) -> TrashResult
 }
 
-public struct TrashResult: Sendable, Equatable {
-    public let succeeded: Bool
-    public let message: String
-    public init(succeeded: Bool, message: String = "") {
-        self.succeeded = succeeded
-        self.message = message
-    }
-    public static let success = TrashResult(succeeded: true)
-}
 
 /// Installed apps and their bundle ids — the yardstick for "is anyone still
 /// using this".

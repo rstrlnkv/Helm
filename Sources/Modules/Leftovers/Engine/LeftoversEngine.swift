@@ -7,6 +7,11 @@ import HelmRuntime
 /// concurrency pool via `blocking`.
 public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
     private let scanner: LeftoversScanner
+    /// The one the scan uses. The removal gate used to fall back to the
+    /// process's own home, so an engine built for a different one scanned
+    /// there and would have refused to remove there — two homes in a type
+    /// that was handed one.
+    private let home: String
     private let files: LeftoversFilePort
     private let localTransport: LocalTransport
     public let transport: EngineTransport
@@ -19,6 +24,7 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
                 transport: LocalTransport = LocalTransport()) {
         self.files = files
         self.extensions = extensions
+        self.home = home.path
         self.scanner = LeftoversScanner(home: home, files: files, apps: apps, extensions: extensions)
         self.localTransport = transport
         self.transport = transport
@@ -34,32 +40,26 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
 
     public func trash(_ paths: [String]) async -> LeftoversRemoval {
         await offTheCooperativePool {
-            var removed: [String] = [], failed: [TrashFailureDetail] = []
-            var freed = 0
             // The view model already decides what may be offered; this is the
             // engine refusing to act on a path outside an app's own folders no
-            // matter who asked. Refusals are reported, never dropped quietly.
-            let (allowed, refused) = RemovableScope.partition(Array(Set(paths)))
-            for path in refused {
-                HelmLog.shared.warn("leftovers", "refused out-of-scope path: \(Redact.path(path))")
-                failed.append(TrashFailureDetail(path: path,
-                                                 message: TrashFailure.Reason.outOfScope.rawValue))
-            }
-            for path in allowed {
-                let url = URL(fileURLWithPath: path)
-                let size = self.files.size(url)
-                let result = self.files.trash(url)
-                if result.succeeded {
-                    removed.append(path); freed += size
-                } else {
-                    failed.append(TrashFailureDetail(path: path, message: result.message))
-                }
-            }
-            HelmLog.shared.info("leftovers", "removed \(removed.count), failed \(failed.count)")
-            return LeftoversRemoval(removed: removed, failed: failed, freedBytes: freed)
+            // matter who asked. The gate stays here — `HelmTrash` takes paths
+            // that have already passed one.
+            let (allowed, refused) = RemovableScope.partition(Array(Set(paths)), home: self.home)
+            // The loop this used to write by hand was the last of the four
+            // `HelmTrash` was made for, and the only one that classified
+            // nothing: `localizedDescription` reached the screen untranslated,
+            // so a refusal by Full Disk Access read as "The operation couldn't
+            // be completed" with the domain, the code and the path thrown away.
+            let result = HelmTrash.remove(allowed: allowed, outOfScope: refused,
+                                          module: "leftovers")
+            return LeftoversRemoval(
+                removed: result.removed,
+                failed: result.refused.map {
+                    TrashFailureDetail(path: $0.path, message: $0.reason.rawValue)
+                },
+                freedBytes: result.freedBytes)
         }
     }
-
 
     private func wireTransport() {
         localTransport.setHandler { [weak self] command in

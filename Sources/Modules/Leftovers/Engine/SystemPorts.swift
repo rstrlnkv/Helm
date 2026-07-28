@@ -1,4 +1,3 @@
-import AppKit
 import Foundation
 import HelmRuntime
 
@@ -36,15 +35,6 @@ public struct FileSystemLeftovers: LeftoversFilePort {
     public func readPlist(_ url: URL) -> PlistData? {
         guard let dict = NSDictionary(contentsOf: url) as? [String: Any] else { return nil }
         return PlistData(dict)
-    }
-
-    public func trash(_ url: URL) -> TrashResult {
-        do {
-            try FileManager.default.trashItem(at: url, resultingItemURL: nil)
-            return .success
-        } catch {
-            return TrashResult(succeeded: false, message: (error as NSError).localizedDescription)
-        }
     }
 }
 

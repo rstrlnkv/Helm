@@ -8,7 +8,6 @@ private struct HostFakeFiles: LeftoversFilePort {
     func exists(_ path: String) -> Bool { false }
     func size(_ url: URL) -> Int { 0 }
     func readPlist(_ url: URL) -> PlistData? { nil }
-    func trash(_ url: URL) -> TrashResult { .success }
 }
 
 private struct HostFakeApps: InstalledAppsPort {

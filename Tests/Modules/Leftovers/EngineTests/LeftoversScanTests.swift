@@ -15,7 +15,6 @@ private struct FakeFiles: LeftoversFilePort {
     func exists(_ path: String) -> Bool { existing.contains(path) }
     func size(_ url: URL) -> Int { 100 }
     func readPlist(_ url: URL) -> PlistData? { plists[url.path] }
-    func trash(_ url: URL) -> TrashResult { .success }
 }
 
 private struct FakeApps: InstalledAppsPort {
