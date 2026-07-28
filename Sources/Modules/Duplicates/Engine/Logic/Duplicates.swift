@@ -8,17 +8,27 @@ public struct FileFacts: Hashable, Sendable {
     /// hard link — and deleting either frees nothing, so the pair must never
     /// be offered as a duplicate.
     public let fileID: UInt64
+    /// What it occupies, as opposed to how long it is.
+    ///
+    /// The two are separate on purpose. Grouping by size is a *content*
+    /// pre-filter and keeps the logical length: two identical files always
+    /// agree on that and need not agree on blocks, so grouping by what they
+    /// occupy would lose duplicates — a worse failure than an imprecise total.
+    /// The arithmetic the screen shows is about space, so it uses this.
+    public let allocated: Int
     /// When the file arrived in its folder — the Finder's "Date Added", and
     /// what decides which copy stays. Not the creation date: a file carries
     /// that with it when it is copied, so it would call the copy exactly as old
     /// as the original. nil on a volume that does not record it.
     public let added: Date?
 
-    public init(path: String, bytes: Int, fileID: UInt64, added: Date? = nil) {
+    public init(path: String, bytes: Int, fileID: UInt64, added: Date? = nil,
+                allocated: Int? = nil) {
         self.path = path
         self.bytes = bytes
         self.fileID = fileID
         self.added = added
+        self.allocated = allocated ?? bytes
     }
 }
 
@@ -110,7 +120,9 @@ public enum Duplicates {
     /// Both call this now, and a change to which copy survives cannot land in
     /// one line and miss the other.
     public static func group(_ identical: [FileFacts]) -> DuplicateGroup {
-        DuplicateGroup(bytes: identical.first?.bytes ?? 0,
+        // What one copy occupies, because `wasted` promises what removing the
+        // extras frees and the removal reports the same measure.
+        DuplicateGroup(bytes: identical.first?.allocated ?? 0,
                        paths: SurvivingCopy.order(identical))
     }
 

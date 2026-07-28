@@ -467,6 +467,21 @@ public struct AXSelection: SelectionPort {
     /// return whatever was already on it and transliterate *that*.
     private func copySelection() -> String? {
         let pasteboard = NSPasteboard.general
+        // The same guard the paste route has, on the route that reads.
+        //
+        // `restore` puts back a *string*, so a clipboard holding an image, RTF
+        // or a promised file comes back as plain text or as nothing — which is
+        // the harm `PasteboardSafety` exists to prevent, and it was checked
+        // only where Helm writes. The ⌘C below destroys just as thoroughly, and
+        // this is the route `fix()` reaches for a selection the accessibility
+        // API will not answer for, which is most Electron apps and web views.
+        let held = pasteboard.types?.map(\.rawValue) ?? []
+        guard PasteboardSafety.canBorrow(types: held) else {
+            HelmLog.shared.warn("layout",
+                                "selection left alone: the clipboard holds \(held.count) " +
+                                "type(s) that would not survive being borrowed")
+            return nil
+        }
         let saved = pasteboard.string(forType: .string)
         let before = pasteboard.changeCount
 

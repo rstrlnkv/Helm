@@ -200,6 +200,13 @@ features, PATCH = fixes.
   Edit ▸ Transformations wherever text can be edited.
 
 ### Fixed
+- **A clipboard holding an image survives the Keyboard gesture.** Helm borrows
+  the clipboard when an app will not answer for its selection any other way, and
+  it checked whether that was safe only on the half where it writes. Reading
+  destroys just as thoroughly.
+- **"Wasted" and "freed" are the same number.** The duplicate screen quoted how
+  long the files are and the removal reported what they occupied, so the figure
+  changed between the promise and the act.
 - **A pinned Homebrew formula is marked, not offered.** Pinning is how you say
   "leave this version alone"; `brew` still lists it as outdated, and Helm still
   showed an Upgrade button that `brew` would refuse.
