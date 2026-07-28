@@ -29,6 +29,20 @@ public final class DuplicateScanner: @unchecked Sendable {
 
     private var cancelled = false
     private let lock = NSLock()
+    private var unreadable = 0
+
+    /// Paths the walk was refused — a folder without read permission, an item
+    /// that vanished between being listed and being read. A count, not the
+    /// paths: the question the log is asked is whether the answer was whole,
+    /// not whose folder was in the way.
+    public var unreadablePaths: Int {
+        lock.lock(); defer { lock.unlock() }
+        return unreadable
+    }
+
+    private func noteUnreadable() {
+        lock.lock(); unreadable += 1; lock.unlock()
+    }
 
     public init() {}
 
@@ -50,8 +64,12 @@ public final class DuplicateScanner: @unchecked Sendable {
         let files = walk(root, onProgress: onProgress)
         if isCancelled { return nil }
 
-        HelmLog.shared.info("duplicates", "walked \(Redact.path(root)): "
-                            + "\(files.count) files at or above the floor")
+        // A subtree the walk was refused is a hole in "what is duplicated", and
+        // a hole nobody is told about reads as a clean folder.
+        let refused = unreadablePaths
+        HelmLog.shared.info("duplicates", "walked \(LogRoot.label(root)): "
+                            + "\(files.count) files at or above the floor"
+                            + (refused > 0 ? ", \(refused) unreadable" : ""))
         let candidates = Duplicates.sizeGroups(files, minBytes: Self.minBytes)
         let total = candidates.reduce(0) { $0 + $1.count }
         // Twice per candidate: the prefix pass, then the full pass for
@@ -134,9 +152,20 @@ public final class DuplicateScanner: @unchecked Sendable {
         let keys: [URLResourceKey] = [.isRegularFileKey, .isDirectoryKey, .fileSizeKey,
                                       .totalFileAllocatedSizeKey,
                                       .addedToDirectoryDateKey]
+        // The handler is what makes "keep walking" a decision instead of a
+        // default. Measured on this OS, the handler-less overload already walks
+        // past a directory it cannot open — but it walks past it *silently*,
+        // and a whole subtree missing from "what is duplicated" is the one
+        // thing this answer must not hide. Returning true carries on; the count
+        // is what the log reports, the way DiskScanner marks a denied directory
+        // `noAccess` instead of dropping it.
         guard let enumerator = FileManager.default.enumerator(
             at: url, includingPropertiesForKeys: keys,
-            options: [.skipsPackageDescendants]) else { return [] }
+            options: [.skipsPackageDescendants],
+            errorHandler: { [weak self] _, _ in
+                self?.noteUnreadable()
+                return true
+            }) else { return [] }
 
         var files: [FileFacts] = []
         var seen = 0
