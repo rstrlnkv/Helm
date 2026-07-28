@@ -36,5 +36,4 @@ import Module_Layout_Engine
         state = decoded
     }
 
-    public func undoLast() { vm.send("undoLastConversion") }
 }

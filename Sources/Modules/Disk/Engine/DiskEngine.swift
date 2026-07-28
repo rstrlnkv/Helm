@@ -92,11 +92,12 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
             // Refused, not dropped. Filtering the loop meant a path the gate
             // rejected reached neither list, and the page then announced
             // "Removed — N freed" over a file still sitting there.
-            let unique = Set(paths)
-            let allowed = unique.filter { UserFileScope.isRemovable($0) }
-            let refused = unique.subtracting(allowed)
-            let result = HelmTrash.remove(allowed: Array(allowed),
-                                          outOfScope: Array(refused),
+            // `UserFileScope.partition` is exactly this, written to be the
+            // same shape as `RemovableScope.partition` — which is the shape
+            // Leftovers uses. Three engines, one question, two spellings.
+            let (allowed, refused) = UserFileScope.partition(Array(Set(paths)))
+            let result = HelmTrash.remove(allowed: allowed,
+                                          outOfScope: refused,
                                           module: "disk")
             return DiskRemoval(removed: result.removed, refused: result.refused,
                                freedBytes: result.freedBytes)

@@ -46,16 +46,12 @@ import Module_Layout_Engine
                             secure: AXSecureContext(),
                             sound: SystemSound(),
                             selection: AXSelection(),
-                            autoReplace: AutoReplaceStore.load(store),
-                            fixCapitals: store.bool(LayoutKey.fixCapitals, default: false),
-                            rules: store.boolTable(LayoutKey.appRules),
-                            exceptions: store.stringArray(LayoutKey.exceptions),
-                            automatic: store.bool(LayoutKey.automatic, default: true),
-                            triggers: ConversionTriggers(
-                                onSpace: store.bool(LayoutKey.onSpace, default: ConversionTriggers.default.onSpace),
-                                onReturn: store.bool(LayoutKey.onReturn, default: ConversionTriggers.default.onReturn),
-                                onPunctuation: store.bool(LayoutKey.onPunctuation, default: ConversionTriggers.default.onPunctuation)),
-                            audible: store.bool(LayoutKey.audible, default: false),
+                            // Nothing about the stored settings is passed here.
+                            // `activate()` reads all of them, and passing a
+                            // second copy meant every default was written twice
+                            // with nothing checking the two agreed — which is
+                            // exactly the asymmetry that hid `tapKey` staying
+                            // `.off` on every launch until 283c3cf. One reader.
                             settings: store)
     }
 
