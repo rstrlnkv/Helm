@@ -86,8 +86,22 @@ public struct RuleRunner: Sendable {
 
         case let .sortIntoSubfolder(scheme):
             let bucket = SortBucket.name(for: plan.facts, scheme: scheme)
-            return move(url, into: url.deletingLastPathComponent()
-                .appendingPathComponent(bucket))
+            let here = url.deletingLastPathComponent()
+            // A file already in its bucket has arrived. The bucket used to be
+            // hung off the parent unconditionally, so `Images/a.jpg` was
+            // offered `Images/Images/`, and the only thing standing between
+            // that and a file buried a level deeper every hour was the stamp
+            // — which `note` explicitly tolerates the loss of. `setxattr`
+            // answers `ENOTSUP` on exFAT and `WatchScope` admits `/Volumes`,
+            // so the tolerated case is an ordinary USB stick.
+            //
+            // Compared without case, because `images` and `Images` are one
+            // folder on the volume Helm ships to: there the descent lands the
+            // file back beside itself, `free` reads its own name as taken, and
+            // the loop becomes `a 2.jpg`, `a 2 2.jpg` instead.
+            let sorted = here.lastPathComponent
+                .compare(bucket, options: .caseInsensitive) == .orderedSame
+            return move(url, into: sorted ? here : here.appendingPathComponent(bucket))
 
         case let .rename(pattern):
             guard let name = RenamePattern.apply(pattern, to: plan.facts) else {
@@ -158,6 +172,20 @@ public struct RuleRunner: Sendable {
         // fail with EINVAL on every sweep, forever, logging as it went.
         guard !folder.path.hasPrefix(url.path + "/"), folder.path != url.path
         else { return .refused(.outOfScope) }
+        // The file is already there, so there is nothing to do and — this is
+        // the part that bites — something to avoid doing. `free` would read the
+        // file's own name as taken, by the file itself, and number the arrival:
+        // `photo.jpg` moved into its own folder becomes `photo 2.jpg`, and
+        // `photo 2 2.jpg` the sweep after that. Reachable with one wrong choice
+        // in the panel: "every image goes to ~/Downloads", pointed at
+        // ~/Downloads. `rename` has said this since it was written; this path
+        // was left leaning on the stamp, which `note` tolerates the loss of.
+        // Standardized for the trailing slash a typed path carries, and
+        // caseless for the same reason `free` is.
+        let here = url.deletingLastPathComponent().standardizedFileURL.path
+        guard here.compare(folder.standardizedFileURL.path,
+                           options: .caseInsensitive) != .orderedSame
+        else { return .alreadyDone }
         do {
             // A rule that names a folder is asking for that folder to exist.
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)

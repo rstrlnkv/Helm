@@ -210,6 +210,89 @@ final class AutopilotBoundaryTests: XCTestCase {
         }
     }
 
+    /// The premise the two tests below rest on, pinned so a change in
+    /// Foundation shows up here as this sentence failing rather than as the
+    /// gate quietly reopening.
+    ///
+    /// `resolvingSymlinksInPath` canonicalizes nothing at all unless **every**
+    /// component of the path already exists — not merely the missing tail. So
+    /// a destination that has yet to be created, which is exactly what a rule
+    /// naming a folder is, reaches the gate spelled however the plist spelled
+    /// it.
+    func testAPathWithAMissingComponentIsNotCanonicalizedAtAll() {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+
+        XCTAssertEqual(URL(fileURLWithPath: "\(home)/library/Preferences")
+            .resolvingSymlinksInPath().path, "\(home)/Library/Preferences",
+            "every component exists, so the case is fixed")
+        let missing = "\(home)/library/Preferences/Helm-\(UUID().uuidString)"
+        XCTAssertEqual(URL(fileURLWithPath: missing).resolvingSymlinksInPath().path, missing,
+                       "one missing component and the case of the rest is left alone too")
+    }
+
+    /// `~/Library` is refused however the plist spells it.
+    ///
+    /// The gate matched `home + "/Library/"` exactly, and the rules are JSON in
+    /// `UserDefaults` that any process running as the user can write — so a
+    /// planted `.move(to: "~/library/Application Support/Sorted")` passed the
+    /// home test, missed the `~/Library` test on case alone, and was allowed.
+    /// `RuleRunner.move` then calls `createDirectory(withIntermediateDirectories:)`,
+    /// which on the case-insensitive volume Helm ships to lands inside the real
+    /// `~/Library/Application Support`, and the hourly sweep carries files
+    /// there. The panel returns canonical paths, so the only way to reach this
+    /// is a written plist — which is the threat this file's doc comment names
+    /// out loud.
+    func testTheLibraryRefusalDoesNotDependOnHowItIsSpelled() {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        // The leaf does not exist, because a destination a rule asks to be
+        // created is a leaf that does not exist. That is the whole case.
+        let leaf = "Helm-\(UUID().uuidString)"
+        for destination in ["\(home)/library/Application Support/\(leaf)",
+                            "\(home)/LIBRARY/\(leaf)",
+                            "\(home)/Library/Application Support/\(leaf)",
+                            "\(home)/library/LaunchAgents/\(leaf)",
+                            "\(home)/library"] {
+            XCTAssertFalse(WatchScope.allows(destination, home: home),
+                           "\(destination) is accepted as a rule's destination")
+        }
+    }
+
+    /// And the same gate, with a home that exists only as a string. Nothing
+    /// here touches the disk, so it says what the rule *is* rather than what
+    /// this machine happens to have in it.
+    func testTheLibraryRefusalHoldsForAHomeThatIsNotOnThisDisk() {
+        let home = "/Users/nobody-\(UUID().uuidString)"
+        for destination in ["\(home)/library/Sorted", "\(home)/Library/Sorted",
+                            "\(home)/LiBrArY/Sorted"] {
+            XCTAssertFalse(WatchScope.allows(destination, home: home),
+                           "\(destination) is accepted as a rule's destination")
+        }
+        XCTAssertTrue(WatchScope.allows("\(home)/Downloads/Sorted", home: home),
+                      "and the folders the module is for are still reachable")
+    }
+
+    /// A destination that does not exist yet is still canonicalized, so the
+    /// gate answers about where the path *leads* rather than how it is
+    /// written. Without this the sorting action — whose destination is a
+    /// subfolder that by definition does not exist on the first sweep — is
+    /// judged on a spelling.
+    func testADestinationThatDoesNotExistYetIsStillResolved() throws {
+        let home = root.appendingPathComponent("home")
+        let real = home.appendingPathComponent("Downloads")
+        try FileManager.default.createDirectory(at: real, withIntermediateDirectories: true)
+        let outside = root.appendingPathComponent("elsewhere")
+        try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
+        let link = home.appendingPathComponent("out")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: outside)
+
+        XCTAssertTrue(WatchScope.allows(real.appendingPathComponent("Images").path,
+                                        home: home.path),
+                      "a bucket a sorting rule is about to create was refused")
+        XCTAssertFalse(WatchScope.allows(link.appendingPathComponent("Images").path,
+                                         home: home.path),
+                       "a symlinked ancestor walked the rule out of the home directory")
+    }
+
     /// The gate is about where a path *leads*, not how it is spelled: a
     /// destination chosen through the panel can be replaced by a symlink
     /// afterwards, and the rule would go on using it every hour.
