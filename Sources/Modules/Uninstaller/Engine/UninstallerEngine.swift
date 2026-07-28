@@ -57,8 +57,23 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
         // Prefix globs overlap the exact candidates they generalise; the same
         // directory must not be listed (or trashed) twice.
         var seenPaths: Set<String> = []
+        // Read once: a glob hit has to be checked against the installed apps
+        // the same way `scanOrphansSync` checks every entry it finds. Ids only,
+        // so this costs a directory listing rather than a walk of every bundle.
+        var installed: Set<String>?
         for c in LeftoverMatcher.candidates(bundleID: bundleID, appName: appName, library: library) {
-            let urls: [URL] = c.isGlob ? fs.glob(c.url) : (fs.exists(c.url) ? [c.url] : [])
+            var urls: [URL] = c.isGlob ? fs.glob(c.url) : (fs.exists(c.url) ? [c.url] : [])
+            if c.isGlob, !urls.isEmpty {
+                // `com.acme.tool*` matches `com.acme.toolPro`, which is a
+                // different app and may be installed and running — and a glob
+                // hit is never `matchedByName`, so it would arrive pre-ticked.
+                let ids = installed ?? apps.installedBundleIDs()
+                installed = ids
+                urls = urls.filter {
+                    LeftoverOwnership.claims(name: $0.lastPathComponent,
+                                             bundleID: bundleID, installedBundleIDs: ids)
+                }
+            }
             for u in urls where seenPaths.insert(u.path).inserted {
                 leftovers.append(Leftover(path: u.path, kind: c.kind,
                                           sizeBytes: fs.size(u), matchedByName: c.matchedByName))
