@@ -61,6 +61,23 @@ blocking call (Process + waitUntilExit, recursive file scans) must hop through
 `offTheCooperativePool` (HelmRuntime — a dispatch queue + continuation), or it parks
 a pool thread for seconds.
 
+**A module's state belongs to its view model, not to its page.** Leaving a
+module's page in Settings tears down the type-erased subtree and every
+`@StateObject` in it; coming back builds a new one and runs `.task` again.
+`DiskViewModel.shared(vm:)` and `KeepAwakeViewModel.shared(vm:)` cache per
+underlying `ModuleViewModel` for exactly this reason, and Uninstaller and
+Homebrew have the same now — the uninstaller's own comment measures what it was
+paying: four seconds for 39 bundles, nine on a cold cache, on every sidebar
+click. Caching the view model is only half of it: whatever the page keeps in
+`@State` (the app list, the loading flag) dies with the page, so a cached view
+model feeding a list the page throws away is not a cache.
+
+**`ModuleMetadata.shortName`** is what the sidebar shows, defaulting to `name`.
+The sidebar column is fixed and truncates mid-word; page headers, the panel and
+the icon menu take the full name. Only a module named after a macOS pane with a
+compound name has needed it so far — and macOS ships both forms for that pane,
+so the short one is looked up rather than shortened by hand.
+
 ## UI shell
 
 ### Menu-bar panel (`HelmPanel`) — read before touching
@@ -384,6 +401,18 @@ rather than the process's: an engine handed one home for its scan and falling
 back to another for its removal gate is two homes in a type that was given one,
 and it makes the removal path untestable outside the real `~`.
 
+**A glob is a guess, and a guess must be checked against what is installed.**
+The uninstaller finds leftovers by globbing the bundle id (`com.acme.tool*`
+across Caches, Containers, Application Scripts, Group Containers), and a prefix
+glob matches a *different* app whose id merely starts the same way —
+`com.acme.toolPro`, `com.vendor.App.staging`, the ordinary shape of vendor
+namespacing. Worse, a match on the id rather than the display name is the kind
+`UninstallPlan.defaultSelection` trusts enough to pre-tick, so a neighbour's
+live container arrived on the review screen already selected. Glob results are
+now filtered against the installed set the way `scanOrphansSync` always filtered
+its candidates. **A path that a pattern produced is a candidate, not a finding:
+something has to say it belongs to the app being removed.**
+
 ## Autopilot — read before touching
 
 The autopilot module acts on somebody's files without being asked each time, so its
@@ -468,6 +497,31 @@ Code-based: `L("English", [.ru: …, …])` in `HelmUI/L10n.swift`; per-area str
 enums (`AppStr`, `KAStr`, `VPNStr`, `UnStr`, `HbStr`). Every user-visible
 string carries all eight languages. No .strings files.
 
+**Anything the language shapes goes through `HelmUI`, not through `Foundation`
+with its defaults.** `Bytes` (sizes), `Decimal` (a bare number, so "1,5 МБ" does
+not sit beside "1.5 МБ"), `Quoted` (a language's own quotation marks — «…»,
+„…", 「…」), `HelmDates.relative` / `.dayAndMinute`. Each of these existed as a
+hand-rolled call somewhere first, and each was wrong in the same way: a
+formatter built with no locale answers in the *system's* language, which on a
+Mac outside Helm's eight means an English UI with Italian dates spliced into it.
+A formatter also must not be a `static let`: the app's language can change while
+it runs, so they are cached per language, never once.
+
+**Terminology is looked up, not remembered.** The units, the permission panes
+and the module names all come from the tables macOS itself ships —
+`FileSizeFormatting.loctable` for `Б`/`ko`/`Byte`, the settings extensions for
+"Доступ к диску" and "无障碍", `LoginItems.appex` for the pane this app names a
+module after. Three units and four names were invented before anyone opened
+those files. When a string names something the system also names, read the
+system's spelling out of its bundle rather than translating it again.
+
+**Fixed widths are measured, not chosen.** `HelmPickerWidth.fitting(labels:
+minimum:)` sizes a pop-up from its own titles (chrome is 48 pt at the system
+font, pinned by a test against `NSPopUpButton.sizeToFit`). The rule editor's
+pickers were sized against English and clipped Spanish, French, Russian — and
+English's own longest label. A number chosen for one language cannot survive
+eight.
+
 ## Disk scanning on APFS volume groups
 
 `/` is the read-only System volume with the Data volume's directories
@@ -492,6 +546,26 @@ Folder names shown to the user come from `SystemFolderNames` (HelmRuntime),
 which reads macOS's SystemFolderLocalizations table so `/Applications` reads
 "Программы" like it does in Finder. Eligibility is decided by path, never by
 name: a project folder called "Documents" keeps its name.
+
+**A scan has an identity, because there can be two of them.** The engine held
+one scanner in one slot, and the slot was last-writer-wins. Drilling into a
+folder the walk had not measured yet issues a second `"scan"` — so the second
+scanner took the slot, finished, and cleared it, after which `cancel()`,
+`newScan()` and switching the module off were all no-ops on a first scanner
+still crossing the volume, holding the view model through its progress closure.
+The partials had the same hole from the other side: they carried no root, so the
+sub-folder's tree repainted the ring as though it were the disk — the volume's
+free space drawn against a folder, which is the flat-grey-disc bug a comment
+there says was fixed. `ScanRegistry` hands out a token only its owner can spend,
+every event names its scan, and the view model draws only its own. The duplicate
+finder's search slot had the identical defect and the identical fix.
+
+**Whoever suspends must fence what it wakes into.** `cancel()` and `newScan()`
+mutate state while `scan(path:)` is still suspended on the engine request, so
+without a generation counter the discarded scan's result arrives afterwards and
+replaces the screen the user just asked for. `DuplicatesViewModel` had this
+guard from the start; Disk did not, and the volume picker was replaced by the
+scan it had dismissed.
 
 ## An observer outlives the thing it points at
 
@@ -533,6 +607,31 @@ watchdog killed the child; the same volume through stdout took 19 ms.
 It is output that gets *parsed* that must not carry diagnostics, which is why
 `ShellProcessRunner` merging the two turned a `brew` warning into a row with an
 Uninstall button.
+
+**A stream ends when the pipe is empty, not when the child exits.** The
+termination handler used to clear the readability handler and report the exit
+immediately, dropping whatever was still buffered — the `🍺 /opt/homebrew/…`
+line a `brew install` ends with, gone from the console the person was reading.
+And `String(data:encoding:.utf8)` on `availableData` returns nil for a chunk
+that ends mid-character, so a single multi-byte character straddling a read
+boundary discarded the **whole block**, not the character. Both are only
+reachable when the consumer is slower than the producer, which the real one is
+(it hops to the main actor and redraws) — a test with an instant consumer passes
+over both defects.
+
+**A privileged command carries its content, never a path.** Keep Awake's sudoers
+rule was staged in `$TMPDIR` and root was asked to `visudo -cf` and `install`
+*that path*. The path stands in `ps auxww` for as long as the password prompt is
+up, `visudo` checks syntax and not authorship, and `install` copies whatever is
+there when it runs — so any process running as the user could swap the file
+between the prompt and the install and be handed permanent passwordless root.
+The rule text now travels inside the command (`SudoersRule`, pure and tested for
+shape) and every file it touches lives in root-owned `/etc/sudoers.d`. The
+command is also escaped for AppleScript the way `OSAPrivilegedRunner.runAdmin`
+escapes its own — the two were written separately and only one had it.
+**Anything handed to `do shell script … with administrator privileges` is a
+place where a string becomes root's intent: no user-writable input, and no
+unescaped interpolation.**
 
 ## A path that exists is not the path you wrote
 

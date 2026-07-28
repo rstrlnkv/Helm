@@ -49,7 +49,18 @@ xattr -dr com.apple.quarantine /Applications/Helm.app && open /Applications/Helm
   `sha256 <asset> <hex>` line `make-zip.sh` prints, or the updater opens the
   release page instead (VERSIONING.md).
 - Pills are `HelmBadge`, cards are `.helmCard()` — one of each, no local variants.
-- Every user-visible string goes through `L()` with all eight languages.
+- Every user-visible string goes through `L()` with all eight languages, and
+  everything the language shapes goes through `HelmUI`: `Bytes`, `Decimal`,
+  `Quoted`, `HelmDates`, `HelmPickerWidth`. A `Foundation` formatter built with
+  no locale answers in the *system's* language, not the app's. When a string
+  names something macOS also names (a unit, a settings pane, a folder), read the
+  system's spelling out of its bundle instead of translating it again —
+  ARCHITECTURE.md § Localization says where the tables are.
+- **A test target needs a tracked file in it.** `Package.swift` declared
+  `Tests/Modules/Autopilot/UITests` for weeks while the directory existed only
+  as untracked files in one checkout: SwiftPM refuses the whole manifest without
+  it, so `swift test` worked here and on nobody else's machine. Before a
+  release, build from a fresh `git clone` — the working copy is not evidence.
 - Animations come from `HelmMotion` tokens, never inline curves. Reveals grow
   (measured height + `.clipped()`), never fade; literal colours inside
   animated blocks (ARCHITECTURE.md § Motion has the why).
