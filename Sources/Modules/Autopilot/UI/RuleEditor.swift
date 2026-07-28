@@ -61,7 +61,10 @@ struct RuleEditor: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
                 Text(ApStr.whenLabel).font(.headline)
-                Picker("", selection: $rule.match) {
+                // "When" is a heading beside it, not this control's name:
+                // headings are not read as labels, so the segmented control
+                // announced only "all"/"any" with nothing to attach them to.
+                Picker(ApStr.a11yMatch, selection: $rule.match) {
                     Text(ApStr.matchAll).tag(RuleMatch.all)
                     Text(ApStr.matchAny).tag(RuleMatch.any)
                 }

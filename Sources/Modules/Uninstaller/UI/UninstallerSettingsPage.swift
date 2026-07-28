@@ -74,7 +74,7 @@ public struct UninstallerSettingsPage: View {
             // One toolbar row instead of a metric panel, a segmented row and a
             // search row stacked on top of each other.
             HStack(spacing: 10) {
-                Picker("", selection: $tab) {
+                Picker(HelmA11y.whatToShow, selection: $tab) {
                     Text(UnStr.tabApps).tag(0)
                     Text(UnStr.tabOrphans).tag(1)
                 }

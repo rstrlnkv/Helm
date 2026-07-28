@@ -225,10 +225,14 @@ public struct LayoutSettingsPage: View {
                 // field, so the placeholder ended up as a two-line word to the
                 // left of an empty box with "stands for" floating between them.
                 TextField("", text: $newShort, prompt: Text(LyStr.abbreviation))
+                    // A prompt is a placeholder, and a placeholder disappears
+                    // the moment there is a value to read.
+                    .accessibilityLabel(LyStr.abbreviation)
                     .textFieldStyle(.roundedBorder)
                     .labelsHidden()
                     .frame(width: 150)
                 TextField("", text: $newLong, prompt: Text(LyStr.expansion))
+                    .accessibilityLabel(LyStr.expansion)
                     .textFieldStyle(.roundedBorder)
                     .labelsHidden()
                 Button(LyStr.addAbbreviation) { addAbbreviation() }
