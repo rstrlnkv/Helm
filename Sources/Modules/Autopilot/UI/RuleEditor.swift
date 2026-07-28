@@ -168,9 +168,13 @@ struct RuleEditor: View {
         HStack {
             Toggle(ApStr.enableRule, isOn: $rule.enabled)
                 .toggleStyle(.switch)
-                // A rule with no conditions matches nothing; switching it on
-                // would be switching on a rule that cannot fire.
-                .disabled(rule.conditions.isEmpty)
+                // A rule with no conditions matches nothing, and one whose
+                // action names nothing — a move with no destination, which is
+                // where "Move to" starts — refuses everything. Switching either
+                // on would be switching on a rule that cannot work. The
+                // predicate is the engine's, so this and `storable` cannot
+                // drift apart.
+                .disabled(!rule.canBeEnabled)
             Spacer()
             Button(ApStr.cancel) { dismiss() }
             Button(ApStr.done) {
