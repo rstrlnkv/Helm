@@ -25,7 +25,7 @@ public struct HelmPermissionNote: View {
                 .font(.caption)
                 // Literal, not `.secondary`: these notes appear inside blocks
                 // that animate in, and hierarchical styles re-resolve there.
-                .foregroundStyle(Color.primary.opacity(0.7))
+                .foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 8)
             Button(Self.grant) { need.openSettings() }

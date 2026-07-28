@@ -33,7 +33,7 @@ public struct LeftoversSettingsPage: View {
             Divider()
             if diskAccess == .denied {
                 HelmPermissionNote(need: .fullDiskAccess, text: LfStr.removalNeedsAccess)
-                    .padding(.horizontal, 16).padding(.vertical, 8)
+                    .padding(.horizontal, 20).padding(.vertical, 10)
                 Divider()
             }
             content
@@ -107,7 +107,7 @@ public struct LeftoversSettingsPage: View {
             }
             .disabled(lvm.scanning)
         }
-        .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
+        .padding(.horizontal, 20).padding(.vertical, 12)
     }
 
     @ViewBuilder private var content: some View {
@@ -115,7 +115,7 @@ public struct LeftoversSettingsPage: View {
             VStack(spacing: 10) {
                 Spacer()
                 HelmIconPlate(symbol: lvm.scanned ? "checkmark.circle" : "wand.and.rays",
-                              tint: lvm.scanned ? .green : .blue, size: 56)
+                              tint: ModuleCategory.utilities.tint, size: 56)
                 Text(lvm.scanned ? LfStr.nothingFound : LfStr.notScannedYet)
                     .foregroundStyle(HelmText.quiet)
                     .multilineTextAlignment(.center)
