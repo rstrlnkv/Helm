@@ -55,6 +55,19 @@ public final class HelmLog: @unchecked Sendable {
             .appendingPathComponent("Library/Logs/Helm", isDirectory: true)
     }
     public static var fileURL: URL { directory.appendingPathComponent("helm.log") }
+    /// Where rollover puts the old half.
+    ///
+    /// Declared, because it used to be spelled twice and the two spellings did
+    /// not match: the one-time purge of the pre-redaction log removed
+    /// `helm.log.1`, a name rotation has never written. The half of the log that
+    /// most needed destroying — VPN names, application names, home paths —
+    /// survived both the purge and the Clear button.
+    public static var previousFileURL: URL {
+        directory.appendingPathComponent("helm.previous.log")
+    }
+    /// Everything the log can leave on disk. Anything that clears the log
+    /// clears all of it.
+    public static var allFileURLs: [URL] { [fileURL, previousFileURL] }
     private static let sizeLimit = 2 * 1024 * 1024   // 2 MB, then one rollover
 
     private let queue = DispatchQueue(label: "helm.log", qos: .utility)
@@ -84,8 +97,7 @@ public final class HelmLog: @unchecked Sendable {
         UserDefaults.standard.set(true, forKey: key)
         queue.async {
             let fm = FileManager.default
-            try? fm.removeItem(at: Self.fileURL)
-            try? fm.removeItem(at: Self.directory.appendingPathComponent("helm.log.1"))
+            for url in Self.allFileURLs { try? fm.removeItem(at: url) }
         }
     }
 
@@ -149,7 +161,10 @@ public final class HelmLog: @unchecked Sendable {
 
     public func clear() {
         queue.async {
-            try? FileManager.default.removeItem(at: Self.fileURL)
+            // All of it. Clearing only `helm.log` left the rollover behind, so
+            // the button said the log was gone while up to two megabytes of it
+            // sat beside the file it had just emptied.
+            for url in Self.allFileURLs { try? FileManager.default.removeItem(at: url) }
         }
     }
 
@@ -184,8 +199,7 @@ public final class HelmLog: @unchecked Sendable {
 
     private func rotate() {
         let fm = FileManager.default
-        let previous = Self.directory.appendingPathComponent("helm.previous.log")
-        try? fm.removeItem(at: previous)
-        try? fm.moveItem(at: Self.fileURL, to: previous)
+        try? fm.removeItem(at: Self.previousFileURL)
+        try? fm.moveItem(at: Self.fileURL, to: Self.previousFileURL)
     }
 }
