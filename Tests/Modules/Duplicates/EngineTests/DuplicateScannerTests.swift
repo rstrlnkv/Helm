@@ -88,3 +88,79 @@ extension DuplicateScannerTests {
         XCTAssertEqual(DuplicateScanner().find(under: root.path), [])
     }
 }
+
+/// Which copy the module offers to keep, through the scanner the engine
+/// actually calls.
+///
+/// There are two assembly lines: `Duplicates.groups`, which the unit tests
+/// drive, and `DuplicateScanner.find`, which the engine drives. `SurvivingCopy`
+/// was wired into the first and not the second, so the page explained the
+/// date-added rule in its tooltip while the app went on keeping whichever path
+/// sorted first. The suite stayed green because the only test through the real
+/// scanner compared the paths as a `Set`, where order cannot be observed.
+///
+/// So these assert the *first* path, and they run through `find`.
+final class SurvivorThroughTheScannerTests: XCTestCase {
+
+    private var root: URL!
+
+    override func setUpWithError() throws {
+        root = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("helm-survivor-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    }
+
+    override func tearDownWithError() throws {
+        try? FileManager.default.removeItem(at: root)
+    }
+
+    @discardableResult
+    private func write(_ relative: String, _ byte: UInt8) throws -> String {
+        let url = root.appendingPathComponent(relative)
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
+                                                withIntermediateDirectories: true)
+        // Over the scanner's own floor, or the file is never a candidate.
+        try Data(repeating: byte, count: 1_200_000).write(to: url)
+        return url.path
+    }
+
+    /// The structural one, and the one that cannot pass by luck: whatever the
+    /// rule decides, the scanner must decide it the same way. A value assertion
+    /// could be satisfied by alphabet, depth or date agreeing by accident on
+    /// one fixture; this cannot be satisfied by anything except the production
+    /// line calling the rule.
+    func testTheScannerOrdersEachGroupByTheSurvivorRule() throws {
+        try write("zebra.bin", 7)
+        try write("archive/2019/alpha.bin", 7)
+        try write("middle/beta.bin", 7)
+
+        let group = try XCTUnwrap(DuplicateScanner().find(under: root.path)?.first)
+        let facts = group.paths.map { path -> FileFacts in
+            let url = URL(fileURLWithPath: path)
+            let values = try? url.resourceValues(forKeys: [.addedToDirectoryDateKey])
+            return FileFacts(path: path, bytes: 1_200_000, fileID: 0,
+                             added: values?.addedToDirectoryDate)
+        }
+        XCTAssertEqual(group.paths, SurvivingCopy.order(facts),
+                       "the scanner the engine calls is not using the survivor rule")
+    }
+
+    /// And the case the rule exists for, when the volume records dates at all:
+    /// the filed original outranks the copy whose path happens to sort first.
+    func testTheOlderFiledCopySurvivesTheOneThatSortsFirst() throws {
+        let original = try write("archive/2019/photo.bin", 9)
+        Thread.sleep(forTimeInterval: 1.1)          // a distinguishable second
+        let copy = try write("desktop-photo.bin", 9)
+
+        let dates = [original, copy].map {
+            try? URL(fileURLWithPath: $0)
+                .resourceValues(forKeys: [.addedToDirectoryDateKey]).addedToDirectoryDate
+        }
+        try XCTSkipIf(dates.contains(where: { $0 == nil || $0 == .some(nil) }),
+                      "this volume does not record when a file was added")
+
+        let group = try XCTUnwrap(DuplicateScanner().find(under: root.path)?.first)
+        XCTAssertEqual((group.paths.first! as NSString).lastPathComponent, "photo.bin",
+                       "the copy on top won because its path sorts first")
+    }
+}
