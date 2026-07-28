@@ -106,7 +106,7 @@ public struct HomebrewSettingsPage: View {
                     Task { await refresh(segment: segment) }
                 } label: {
                     Image(systemName: "arrow.clockwise")
-                        .symbolEffect(.rotate, options: .repeating, isActive: hb.running)
+                        .helmSteadySpin(hb.running)
                 }
                 .buttonStyle(.borderless)
                 .disabled(hb.running)
