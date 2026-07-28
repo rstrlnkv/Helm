@@ -27,11 +27,17 @@ public struct AutoReplace: Equatable, Sendable {
         var table: [String: String] = [:]
         for entry in entries {
             let from = entry.from.trimmingCharacters(in: .whitespacesAndNewlines)
+            // Both sides trimmed, not one. `to` was tested with `isEmpty`,
+            // which measures length and not content: `" "` passed, was stored,
+            // and the engine deleted a word and typed a space over it. The same
+            // asymmetry let `" brb "` past the "expands to itself" check,
+            // because the comparison was against the trimmed `from`.
+            let to = entry.to.trimmingCharacters(in: .whitespacesAndNewlines)
             // An entry that expands to itself fires forever; one that expands
             // to nothing deletes a word somebody typed. Neither is stored, so
             // the engine never has to know they were possible.
-            guard !from.isEmpty, !entry.to.isEmpty, entry.to != from else { continue }
-            table[from] = entry.to
+            guard !from.isEmpty, !to.isEmpty, to != from else { continue }
+            table[from] = to
         }
         self.table = table
     }

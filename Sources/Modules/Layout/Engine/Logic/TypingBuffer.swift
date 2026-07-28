@@ -32,6 +32,21 @@ public struct TypingBuffer {
 
     public var word: String { String(characters) }
 
+    /// The word being typed, and only when the buffer holds all of it.
+    ///
+    /// `finish()` already refuses to report a completion it could not hold in
+    /// full, because a plan built from a prefix deletes fewer characters than
+    /// were typed and leaves the head of the word standing with a translation
+    /// after it. The gesture is the second door into the same arithmetic and it
+    /// went through `word`, which hands over the 64-character prefix without
+    /// saying it is one — so a 70-letter token was converted 64 characters
+    /// deep. Nothing is the right answer here: the module cannot fix a word it
+    /// never saw the start of.
+    public var wholeWord: String? {
+        guard !overflowed, !characters.isEmpty else { return nil }
+        return String(characters)
+    }
+
     /// A finished word, and the character that finished it.
     ///
     /// The ending matters as much as the word: a space or a full stop is

@@ -17,7 +17,6 @@ private struct HostFakeApps: InstalledAppsPort {
 
 private struct HostFakeExtensions: ExtensionsPort {
     var installed: [SystemExtensionInfo] = []
-    func activeExtensionIdentifiers() -> Set<String> { [] }
     func installedExtensions() -> [SystemExtensionInfo] { installed }
     func disabledLabels() -> Set<String> { [] }
     func setDisabled(_ disabled: Bool, label: String) {}

@@ -28,7 +28,6 @@ public protocol InstalledAppsPort: Sendable {
 /// Activated system extensions, so an extension whose app is gone can be told
 /// apart from one that is simply not running.
 public protocol ExtensionsPort: Sendable {
-    func activeExtensionIdentifiers() -> Set<String>
     /// The full list, so the module can name them instead of counting them.
     func installedExtensions() -> [SystemExtensionInfo]
     /// launchd labels the user has switched off.

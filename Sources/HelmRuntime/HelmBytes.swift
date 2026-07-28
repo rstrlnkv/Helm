@@ -13,19 +13,34 @@ import Foundation
 /// 1000 to the kilobyte, and precision that falls off with magnitude —
 /// "20 KB", "1,7 MB", "432,95 GB".
 public enum HelmBytes {
+
+    /// Finder's precision: it falls off with magnitude.
+    private static func precision(_ step: Int) -> Int {
+        switch step {
+        case 0, 1: 0      // bytes, KB
+        case 2: 1         // MB
+        default: 2        // GB and up
+        }
+    }
+
+    private static func rounded(_ value: Double, to decimals: Int) -> Double {
+        let scale = pow(10.0, Double(decimals))
+        return (value * scale).rounded() / scale
+    }
     public static func string(_ bytes: Int, language: String) -> String {
         var value = Double(max(bytes, 0))
         var step = 0
-        while value >= 1000, step < unitOrder.count - 1 {
+        // The unit is chosen against the number that will be *shown*, not the
+        // one before rounding. 999 999 divides once to 999.999 KB — under the
+        // threshold — and then rounds to nought decimals and prints "1000 KB",
+        // where the Finder says "1 MB". The same window sits under every unit:
+        // 50 MB wide below GB, 5 GB wide below TB. "1000 KB" is the only
+        // four-digit mantissa this can emit, which is why it looks so wrong.
+        while step < unitOrder.count - 1, rounded(value, to: precision(step)) >= 1000 {
             value /= 1000
             step += 1
         }
-        let decimals: Int
-        switch step {
-        case 0, 1: decimals = 0      // bytes, KB
-        case 2: decimals = 1         // MB
-        default: decimals = 2        // GB and up
-        }
+        let decimals = precision(step)
         // Whole bytes in Russian take a counted form; every larger unit is
         // invariant, so only step 0 asks.
         if step == 0, language == "ru" {

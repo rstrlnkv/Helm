@@ -42,7 +42,17 @@ public enum HelmProcess {
         process.standardOutput = out
         // Discarded, not merged: a tool's diagnostics are not its output, and
         // every caller here parses what it gets.
-        process.standardError = Pipe()
+        //
+        // `nullDevice`, not a `Pipe()`. A pipe nobody reads holds about 64 KB
+        // and then blocks the child in `write(2)` — so it never exits, never
+        // closes stdout, and the read below never returns. That is the same
+        // deadlock this function reads-before-waiting to avoid on the stdout
+        // side, reintroduced on the other one. A `brew` command with a
+        // deprecation warning per formula reaches 64 KB easily, and the caller
+        // is parked for the life of the process with an orphan child blocked
+        // behind it. Discarding means sending it nowhere, not sending it
+        // somewhere with no reader.
+        process.standardError = FileHandle.nullDevice
 
         let finished = DispatchSemaphore(value: 0)
         process.terminationHandler = { _ in finished.signal() }

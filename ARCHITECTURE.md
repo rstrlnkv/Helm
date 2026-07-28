@@ -345,6 +345,19 @@ Refusals are reported, never dropped: they come back as
 `TrashFailure.Reason.outOfScope`, which is Helm refusing, not macOS — nothing was
 attempted.
 
+**What "freed" means.** `HelmTrash.remove` reads a path's size before moving it,
+and for a folder it walks it. `totalFileAllocatedSize` on a directory answers for
+the directory entry, and on APFS it answers **zero** — so Disk, whose whole job
+is disk space, told people a folder they had just trashed freed nothing, and
+Leftovers would have said the same about every plug-in bundle the moment it
+stopped keeping its own recursive count. A folder is what these screens delete
+most. The walk is bounded by what the person selected and happens once per path.
+
+`LeftoversEngine` and `UninstallerEngine` reach the gate with their own `home`
+rather than the process's: an engine handed one home for its scan and falling
+back to another for its removal gate is two homes in a type that was given one,
+and it makes the removal path untestable outside the real `~`.
+
 ## Autopilot — read before touching
 
 The autopilot module acts on somebody's files without being asked each time, so its
@@ -445,10 +458,36 @@ which reads macOS's SystemFolderLocalizations table so `/Applications` reads
 "Программы" like it does in Finder. Eligibility is decided by path, never by
 name: a project folder called "Documents" keeps its name.
 
+## Guards that are tests, not prose
+
+Two rules about the interface are enforced by scanning the source in
+`Tests/HelmUITests/NamedControlsTests.swift`, because both describe a defect
+nobody sees at runtime unless they are the person it locks out.
+
+- **Every control has a name.** A `Picker("")` or `TextField("")` looks finished
+  — the segments say "Installed / Updates / Search" and no heading is wanted
+  above them — and reads aloud as a tab group with no name. The Autopilot rule
+  editor had nine such controls, so a rule could not be built at all with
+  VoiceOver; six more were in five other modules. Satisfy it either by giving
+  the control its real label and hiding it (`Picker(Str.thing, …)` with
+  `.labelsHidden()`, which is what that modifier is for) or with
+  `.accessibilityLabel`. A placeholder is not a name: it disappears the moment
+  there is a value to read.
+- **An empty page is drawn by one component.** `HelmEmptyState` and
+  `HelmBusyState`; `HelmCenteredContent` is the box they sit in and stays inside
+  the design system. There were ten empty pages in eight shapes — spacing 10 or
+  14, text wrapped at 360, 380, 420 or not at all — and every one was reasonable
+  beside the screen it belonged to.
+
+The first version of that scan looked for `HelmCenteredContent(` and was blind
+to the trailing-closure form, which is the form all eight offenders used: it
+passed green with an offender in the tree. **A guard that has never been seen to
+fail is not a guard** — put the defect back and watch it catch.
+
 ## Dev loop
 
 ```bash
-swift test                              # 800+ unit tests, pure logic, seconds
+swift test                              # 900+ unit tests, pure logic, seconds
 bash Scripts/package-app.sh             # build + sign → $TMPDIR/helm-package/Helm.app
 rm -rf /Applications/Helm.app
 ditto "$TMPDIR/helm-package/Helm.app" /Applications/Helm.app
