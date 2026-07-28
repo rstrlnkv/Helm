@@ -200,6 +200,11 @@ features, PATCH = fixes.
   Edit ▸ Transformations wherever text can be edited.
 
 ### Fixed
+- **The countdown reads the same everywhere.** A two-hour session showed
+  "120:00" in Settings while the menu bar beside it showed "2:00:00" — the
+  settings page had its own formatter with no hours field. A third copy in the
+  panel truncated where the menu bar rounds, so the two could differ by a second
+  at the same instant.
 - **Clearing the log clears all of it.** The log rolls over at two megabytes,
   and both the Clear button and the one-time purge of the older, un-redacted
   logs removed only the current half — so up to two megabytes carrying VPN

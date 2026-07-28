@@ -1,6 +1,7 @@
 import SwiftUI
 import HelmRuntime
 import HelmUI
+import Module_KeepAwake_Engine
 
 /// Compact tile shown in the shared Helm panel.
 public struct KeepAwakePanelTile: View {
@@ -309,7 +310,7 @@ public struct KeepAwakePanelTile: View {
             let remaining = max(0, end.timeIntervalSince(ctx.date))
             HStack(spacing: 8) {
                 Image(systemName: "timer").foregroundStyle(HelmText.quiet)
-                Text(Self.formatRemaining(remaining))
+                Text(TimerProgress.label(remaining: remaining))
                     .font(.subheadline.weight(.semibold))
                     .monospacedDigit()
                     .contentTransition(.numericText(countsDown: true))
@@ -332,11 +333,6 @@ public struct KeepAwakePanelTile: View {
         }
     }
 
-    private static func formatRemaining(_ s: TimeInterval) -> String {
-        let t = Int(s), h = Int(t) / 3600, m = (t % 3600) / 60, sec = t % 60
-        return h > 0 ? String(format: "%d:%02d:%02d", h, m, sec)
-                     : String(format: "%d:%02d", m, sec)
-    }
 }
 
 private func startPayload(_ minutes: Int) -> Data {
