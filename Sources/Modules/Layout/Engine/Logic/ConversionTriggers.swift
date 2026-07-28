@@ -35,8 +35,11 @@ public struct ConversionTriggers: Equatable, Sendable {
         case .space: return onSpace
         case .newline: return onReturn
         case .punctuation(let character): return onPunctuation && confirms(character)
-        // Ending a word by going somewhere else is not confirming it.
-        case .navigation, .click, .focusChange: return false
+        // Ending a word by going somewhere else is not confirming it. Nor is a
+        // chord: ⌘Space — the gesture someone makes on noticing the wrong
+        // layout — used to arrive as a plain space and budget a backspace for a
+        // character that never reached the field.
+        case .navigation, .chord, .click, .focusChange: return false
         case .character, .backspace: return false
         }
     }

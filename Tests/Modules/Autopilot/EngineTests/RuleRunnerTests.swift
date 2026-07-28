@@ -147,8 +147,13 @@ final class RuleRunnerTests: XCTestCase {
 
     // MARK: - Running twice
 
-    /// The reason `RuleStamp` exists, seen from the outside: the same rule over
-    /// the same file a second time does nothing.
+    /// The same rule over the same file a second time does nothing.
+    ///
+    /// This used to say it was `RuleStamp` seen from the outside, and it is not
+    /// any more: the second run is a move into the folder the file is already
+    /// in, which `RuleRunner.move` now refuses on its own. Deleting the stamp
+    /// guard leaves this green. What the stamp is still the only answer to is
+    /// tagging and renaming, and those are covered in `AutopilotSweepTests`.
     func testARuleDoesNotActOnTheSameFileTwice() throws {
         let file = try write("a.pdf")
         let destination = root.appendingPathComponent("Sorted")
