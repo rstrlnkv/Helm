@@ -170,7 +170,7 @@ public struct LayoutSettingsPage: View {
             Text(LyStr.tapKeyHint)
                 .font(.caption).foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
-            // 🌐 is the system's key first. Helm cannot take it, and cannot even
+            // 🌐︎ is the system's key first. Helm cannot take it, and cannot even
             // read what it is set to until the person has changed it once, so
             // the note states the precondition instead of promising anything.
             if tapKey == .globe {

@@ -70,7 +70,7 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
     private static let modifierMasks: [Int64: UInt64] = [
         54: 0x000010, 61: 0x000040, 62: 0x002000, 60: 0x000004,   // right ⌘ ⌥ ⌃ ⇧
         55: 0x000008, 58: 0x000020, 59: 0x000001, 56: 0x000002,   // left  ⌘ ⌥ ⌃ ⇧
-        63: 0x800000,                                             // 🌐
+        63: 0x800000,                                             // 🌐︎
     ]
 
     private func deliverModifier(_ event: CGEvent) {
