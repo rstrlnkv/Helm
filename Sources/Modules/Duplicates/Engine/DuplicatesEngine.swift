@@ -31,7 +31,8 @@ public final class DuplicatesEngine: ModuleEngine, @unchecked Sendable {
         // A new search supersedes any still running.
         finderBox.current?.cancel()
         let finder = DuplicateScanner()
-        finderBox.set(finder)
+        let slot = finderBox.start(finder)
+        defer { slot.finish() }
         let groups: [DuplicateGroup]? = await offTheCooperativePool {
             finder.find(under: path, onProgress: { progress in
                 if let data = try? JSONEncoder().encode(progress) {
@@ -39,7 +40,6 @@ public final class DuplicatesEngine: ModuleEngine, @unchecked Sendable {
                 }
             })
         }
-        finderBox.set(nil)
         return groups
     }
 
@@ -101,10 +101,38 @@ public struct DuplicateRemoval: Codable, Equatable, Sendable {
 }
 
 /// Serial box around the in-flight search, so cancel can reach it.
-private final class FinderBox: @unchecked Sendable {
+///
+/// A search leaving clears the slot it was given and no other. It used to clear
+/// the box outright: a superseded search returning — cancelled, and after its
+/// replacement had already started — emptied the box behind the search that had
+/// taken its place, and from then on Stop reached nothing and `deactivate()`
+/// left the hashing running.
+final class FinderBox: @unchecked Sendable {
+    /// A serial queue rather than a lock: the callers are async, and an NSLock
+    /// cannot be taken across a suspension point.
     private let queue = DispatchQueue(label: "helm.duplicates.finder")
     private var finder: DuplicateScanner?
+    private var token = 0
+
+    /// The right to clear one slot, spent once.
+    struct Slot {
+        fileprivate let token: Int
+        fileprivate let box: FinderBox
+        func finish() { box.finish(token) }
+    }
 
     var current: DuplicateScanner? { queue.sync { finder } }
-    func set(_ value: DuplicateScanner?) { queue.sync { finder = value } }
+
+    func start(_ value: DuplicateScanner) -> Slot {
+        let mine = queue.sync { () -> Int in
+            token += 1
+            finder = value
+            return token
+        }
+        return Slot(token: mine, box: self)
+    }
+
+    private func finish(_ owner: Int) {
+        queue.sync { if owner == token { finder = nil } }
+    }
 }

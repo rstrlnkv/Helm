@@ -46,11 +46,32 @@ import Module_Disk_Engine
     private let client: TransportClient
     private let vm: ModuleViewModel
     private var eventsTask: Task<Void, Never>?
-    private let store = ScanStore()
+    /// Injectable so a test does not read — and overwrite — the person's own
+    /// last scan.
+    private let store: ScanStore
     /// When the current result landed; drives the cache lifetime.
     @Published public private(set) var completedAt: Date?
     /// True while showing a tree restored from disk rather than just measured.
     @Published public private(set) var restored = false
+
+    /// Names for scans, handed out in order. Two are in flight whenever
+    /// somebody drills into a folder the walk has not reached, and both talk on
+    /// one transport.
+    private var lastScanID = 0
+    /// The scan the screen belongs to. Everything else — a folder measurement's
+    /// snapshots, the answer to a scan the user has since withdrawn — is not
+    /// about what is on screen and is dropped rather than drawn.
+    ///
+    /// `cancel()` and `newScan()` move this on, which is what fences the
+    /// request still suspended inside `scan(path:)`: the "cancel" command is a
+    /// no-op once the engine's walk has finished, so the answer arrives either
+    /// way and used to replace the picker the person had just asked for.
+    private var showingScan = 0
+
+    private func nextScanID() -> Int {
+        lastScanID += 1
+        return lastScanID
+    }
 
     /// Scan state must outlive the settings page — switching modules recreates
     /// the page, and losing a minute-long scan to a sidebar click is hostile.
@@ -70,8 +91,9 @@ import Module_Disk_Engine
         return created
     }
 
-    public init(vm: ModuleViewModel) {
+    public init(vm: ModuleViewModel, store: ScanStore = ScanStore()) {
         self.vm = vm
+        self.store = store
         client = TransportClient(vm.transport)
         // The VM owns the event loop, not the page: partial snapshots keep
         // building the tree even while the user is on another module.
@@ -143,7 +165,13 @@ import Module_Disk_Engine
         live = true
         tick = nil
         banner = nil
-        let scan: ScanResult? = await client.request("scan", encoding: ["path": path])
+        let mine = nextScanID()
+        showingScan = mine
+        let scan: ScanResult? = await client.request("scan",
+                                                     encoding: ScanRequest(path: path, scan: mine))
+        // Withdrawn while this was suspended: the screen has moved on and none
+        // of what follows is about it.
+        guard mine == showingScan else { return }
         live = false
         guard let scan else {                    // cancelled
             phase = .start
@@ -179,13 +207,17 @@ import Module_Disk_Engine
     }
 
     public func cancel() {
+        // Nothing in flight belongs to the screen any more. The engine may
+        // already have finished walking, in which case the command below
+        // changes nothing and only this line keeps the answer off the screen.
+        showingScan = nextScanID()
         Task { await client.send("cancel", encoding: [String]()) }
         live = false
         phase = .start
     }
 
     public func newScan() {
-        if live { cancel() }
+        cancel()
         store.clear()
         phase = .start
         result = nil
@@ -217,8 +249,13 @@ import Module_Disk_Engine
         // A folder with no children is not empty — it is the depth the scan
         // stopped at. Measure it now and graft it in, or the ring simply ends
         // six levels down with no way to say why.
+        //
+        // Except while the scan is still running, where it means something
+        // else: not walked yet. The walk in flight will bring it in, and a
+        // second walk of the same folder competes with the first for the same
+        // disk only to have its answer replaced by the next snapshot.
         guard !last.children.isEmpty else {
-            Task { await measureAndDrill(into: path) }
+            if !live { Task { await measureAndDrill(into: path) } }
             return
         }
         focusPath.append(contentsOf: chain)
@@ -230,8 +267,15 @@ import Module_Disk_Engine
         guard !measuring else { return }
         measuring = true
         defer { measuring = false }
-        guard let scan: ScanResult = await client.request("scan", encoding: ["path": path]),
-              let current = result else { return }
+        // A name of its own, and deliberately not the one the screen is
+        // showing: this scan's snapshots are a folder, and the ring is a
+        // volume. Only its final tree is wanted, and only if the tree it is
+        // grafted into is still the one on screen.
+        let owner = showingScan
+        let scan: ScanResult? = await client.request("scan",
+                                                     encoding: ScanRequest(path: path,
+                                                                           scan: nextScanID()))
+        guard owner == showingScan, let scan, let current = result else { return }
         let grafted = DiskTreeSplice.replacing(path, with: scan.root, in: current.root)
         // The advice stays: it describes the volume, not the folder just
         // measured, and recomputing it from one branch would narrow it.
@@ -322,15 +366,22 @@ import Module_Disk_Engine
         for await event in vm.transport.events {
             switch event.name {
             case "progress":
-                if let update = try? JSONDecoder().decode(ScanTick.self, from: event.payload) {
+                if let update = try? JSONDecoder().decode(ScanTick.self, from: event.payload),
+                   update.scan == showingScan {
                     tick = update
                 }
             case "partial":
+                // Whose snapshot this is decides everything: a folder
+                // measurement's tree drawn as the volume collapses the focus,
+                // keeps the volume's name and title, and draws the volume's
+                // free space against a folder.
                 guard live,
-                      let snapshot = try? JSONDecoder().decode(ScanResult.self, from: event.payload)
+                      let snapshot = try? JSONDecoder().decode(PartialScan.self,
+                                                               from: event.payload),
+                      snapshot.scan == showingScan
                 else { continue }
-                result = snapshot
-                focusPath = DiskFocus.resolve(paths: focusPath.map(\.path), in: snapshot.root)
+                result = snapshot.result
+                focusPath = DiskFocus.resolve(paths: focusPath.map(\.path), in: snapshot.result.root)
                 phase = .result
                 recomputeSegments()
             default:

@@ -7,9 +7,9 @@ import HelmRuntime
 public final class DiskEngine: ModuleEngine, @unchecked Sendable {
     private let localTransport: LocalTransport
     public let transport: EngineTransport
-    /// Guards the in-flight scanner. A plain NSLock cannot be taken from an
-    /// async context, so the box confines it to a serial queue.
-    private let scannerBox = ScannerBox()
+    /// Every scan in flight, not the last one started: drilling into a folder
+    /// the walk never reached starts a second scan beside the first.
+    private let scanners = ScanRegistry<DiskScanner>()
 
     public init(transport: LocalTransport = LocalTransport()) {
         self.localTransport = transport
@@ -37,9 +37,14 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
         }
     }
 
-    public func scan(path: String) async -> ScanResult? {
+    /// `scan` is the caller's name for this measurement, echoed on every event
+    /// it produces. Two scans share one transport — the volume walk and the
+    /// folder measurement a drill starts — and a snapshot that does not say
+    /// which one it belongs to was drawn as though it belonged to the other.
+    public func scan(path: String, scan id: Int = 0) async -> ScanResult? {
         let scanner = DiskScanner()
-        scannerBox.set(scanner)
+        let token = scanners.add(scanner)
+        defer { scanners.remove(token) }
         let started = Date()
 
         let counter = FileCounter()
@@ -49,7 +54,7 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
                 counter.value = progress.filesSeen
                 // Progress is broadcast so the UI can show it without polling.
                 if let data = try? JSONEncoder().encode(
-                    ScanTick(files: progress.filesSeen, bytes: progress.bytesSeen,
+                    ScanTick(scan: id, files: progress.filesSeen, bytes: progress.bytesSeen,
                              path: progress.currentPath)) {
                     self.localTransport.emit(EngineEvent(name: "progress", payload: data))
                 }
@@ -59,7 +64,7 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
                 let snapshot = ScanResult(root: DiskEntry(partialTree, depth: 4),
                                           freeBytes: freeNow,
                                           filesScanned: counter.value, seconds: 0)
-                if let data = try? JSONEncoder().encode(snapshot) {
+                if let data = try? JSONEncoder().encode(PartialScan(scan: id, result: snapshot)) {
                     self.localTransport.emit(EngineEvent(name: "partial", payload: data))
                 }
             }) else { return nil }
@@ -70,15 +75,17 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
                               advice: DiskAdvisor.advise(root: tree,
                                                          home: NSHomeDirectory()))
         }
-        scannerBox.set(nil)
         if let result {
-            HelmLog.shared.info("disk", "scanned \(Redact.path(path)): \(result.filesScanned) files in "
+            HelmLog.shared.info("disk", "scanned \(LogRoot.label(path)): \(result.filesScanned) files in "
                                 + String(format: "%.1fs", result.seconds))
         }
         return result
     }
 
-    public func cancel() { scannerBox.current?.cancel() }
+    /// Stops everything walking. A volume scan the user cannot stop is the
+    /// worst of the two mistakes available here, so this asks every scan in
+    /// flight rather than the one that started last.
+    public func cancel() { scanners.inFlight.forEach { $0.cancel() } }
 
     /// Free space of the volume a path lives on — the ring's dim sector.
     private func freeBytes(forPathOn path: String) -> Int {
@@ -111,8 +118,6 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
 
 
 
-    private struct PathPayload: Codable { let path: String }
-
     private func wireTransport() {
         localTransport.setHandler { [weak self] command in
             guard let self else { return Data() }
@@ -120,9 +125,10 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
             case "volumes":
                 return (try? JSONEncoder().encode(self.volumes())) ?? Data()
             case "scan":
-                guard let payload = try? JSONDecoder().decode(PathPayload.self, from: command.payload)
+                guard let payload = try? JSONDecoder().decode(ScanRequest.self, from: command.payload)
                 else { return Data() }
-                return (try? JSONEncoder().encode(await self.scan(path: payload.path))) ?? Data()
+                return (try? JSONEncoder().encode(await self.scan(path: payload.path,
+                                                                  scan: payload.scan))) ?? Data()
             case "cancel":
                 self.cancel()
                 return Data()
@@ -149,19 +155,50 @@ private final class FileCounter: @unchecked Sendable {
 }
 
 
-/// Serial box around the in-flight scanner.
-private final class ScannerBox: @unchecked Sendable {
-    private let queue = DispatchQueue(label: "helm.disk.scanner")
-    private var scanner: DiskScanner?
+/// What to measure, and under whose name. The name comes from the caller
+/// because the caller is the one who has to recognise the answer: the view
+/// model knows which scan the screen belongs to before the first snapshot of it
+/// exists.
+public struct ScanRequest: Codable, Equatable, Sendable {
+    public let path: String
+    public let scan: Int
 
-    var current: DiskScanner? { queue.sync { scanner } }
-    func set(_ value: DiskScanner?) { queue.sync { scanner = value } }
+    public init(path: String, scan: Int = 0) {
+        self.path = path
+        self.scan = scan
+    }
 }
 
 public struct ScanTick: Codable, Equatable, Sendable {
+    /// Which scan is counting. Two can be walking at once.
+    public let scan: Int
     public let files: Int
     public let bytes: Int
     public let path: String
+
+    public init(scan: Int = 0, files: Int, bytes: Int, path: String) {
+        self.scan = scan
+        self.files = files
+        self.bytes = bytes
+        self.path = path
+    }
+}
+
+/// A snapshot of a tree still being walked, with the scan it belongs to.
+///
+/// Without the name, a partial from a folder measurement was drawn as the
+/// volume it was started from: the focus collapsed, the title went on naming
+/// the volume, and the volume's free space was drawn against a folder — the
+/// flat grey disc `recomputeSegments` exists to prevent. The volume's own next
+/// snapshot swapped it back, so the ring oscillated until the walk finished.
+public struct PartialScan: Codable, Equatable, Sendable {
+    public let scan: Int
+    public let result: ScanResult
+
+    public init(scan: Int, result: ScanResult) {
+        self.scan = scan
+        self.result = result
+    }
 }
 
 public struct DiskRemoval: Codable, Equatable, Sendable {
