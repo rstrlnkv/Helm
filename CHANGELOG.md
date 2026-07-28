@@ -199,6 +199,72 @@ features, PATCH = fixes.
   Edit ▸ Transformations wherever text can be edited.
 
 ### Fixed
+- **Uninstalling one app no longer offers another app's data.** Leftovers were
+  matched with a prefix glob on the bundle id and never checked against what is
+  installed, so removing `com.acme.tool` matched the containers and caches of
+  `com.acme.toolPro` — a separate, installed, possibly running app — and offered
+  them **already ticked**, because a match on the id is the kind the review
+  screen trusts.
+- **The admin rule Keep Awake installs cannot be swapped on the way in.** The
+  rule was written to a temporary file and root was asked to install it *from
+  that path*, which any process running as this user could overwrite while the
+  password prompt was up — `visudo` checks syntax, not authorship. The rule text
+  now travels inside the privileged command and every file it touches is one
+  only root can write.
+- **A folder on a USB stick no longer sinks a level an hour.** Autopilot's
+  guard against acting twice is an extended attribute, and exFAT has none —
+  which was survivable only because the action was supposed to be idempotent.
+  Sorting computed its subfolder from the file's current parent, so each sweep
+  sorted the result again: `Images/Images/Images/a.jpg`.
+- **A rule cannot be switched on with nothing to do.** "Move to" started with an
+  empty destination, and the rule was saveable and enableable in that state:
+  every matching file was refused, logged and written to the history, for ever.
+- **The Keyboard gesture stops undoing after the caret moves.** One navigation
+  key was forgiven so the undo shortcut's own chord would not cancel it, but the
+  tap could not tell that chord from an arrow key — so pressing ← and then the
+  gesture key retyped the word wherever the caret had gone.
+- **Stop stops the disk scan.** Drilling into an unmeasured folder started a
+  second scan that took over the engine's single slot; when it finished, Stop,
+  "New scan" and switching the module off all became no-ops on a walk still
+  crossing the volume. Its partial results also repainted the ring as if they
+  were the whole disk, so the ring flickered between two trees. The duplicate
+  finder had the same defect in its own search slot.
+- **"Freed" in the duplicate finder counts the copies that leave.** The figure
+  came from whichever copy the walk saw first, multiplied — so a group holding
+  an APFS clone beside a full copy quoted nearly nothing, or the whole size,
+  depending on the order two identical files happened to be walked in.
+- **A preference file you cannot move is shown as one you cannot move.** Login
+  Items & Extensions asked the filesystem about launch agents only; preferences
+  and plug-ins were reported as removable whatever their permissions, and
+  "Select all" swept them up to be refused one by one.
+- **The Homebrew page leaves the install screen once Homebrew is installed**,
+  instead of waiting for Settings to be closed and reopened. The tail of a long
+  `brew` command is no longer cut off when the console is slower than the
+  output, and a non-ASCII description no longer swallows the block it lands in.
+- **Warnings are legible in the light theme.** The exclamation mark on every
+  "this needs a permission" banner sat at 2.3:1 against the card behind it, and
+  "another app already uses this combination" — the only thing that tells you a
+  shortcut does nothing — was orange caption text at the same ratio.
+- **The icon shape, icon size and Keep Awake colour swatches can be reached from
+  the keyboard.** They were tap gestures, which take no focus, so with Full
+  Keyboard Access those settings could not be changed without a mouse.
+- **The module order list grows with its rows** instead of clipping the last one
+  at larger system text sizes.
+- **Sizes and names are the system's, not ours.** Russian wrote out «байт» where
+  macOS abbreviates «Б», French capitalised `Ko` where only `Mo` and up are
+  capitalised, German pluralised `Byte`; Chinese named the Accessibility pane
+  two ways; five modules invented a name for Full Disk Access; and Login Items &
+  Extensions, the Uninstaller, Keep Awake and "Show in Finder" each answered to
+  more than one name. Counted strings that read "1 updates" in five languages
+  are labels now, and the rule editor's pickers are sized from their own labels
+  rather than from the English ones.
+- **A path Autopilot cannot canonicalize is refused, not allowed.** A
+  destination that does not exist yet is not case-folded by the filesystem, so
+  `~/library/Application Support` passed the `~/Library` gate on spelling alone
+  and the sweep created the folder inside the real one.
+- **`swift test` runs from a clean clone.** The package declared a test target
+  whose directory had never been committed, so a fresh checkout failed to load
+  the manifest at all.
 - **A clipboard holding an image survives the Keyboard gesture.** Helm borrows
   the clipboard when an app will not answer for its selection any other way, and
   it checked whether that was safe only on the half where it writes. Reading
