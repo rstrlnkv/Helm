@@ -134,6 +134,22 @@ public final class IOPSPowerInfo: PowerInfoPort {
         runLoopSource = source
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .defaultMode)
     }
+
+    /// Removed *and* invalidated. Removing takes it off this run loop;
+    /// invalidating stops the source firing at all, which is what matters if a
+    /// callback is already scheduled — the context it would resolve is `self`,
+    /// and `self` is about to go.
+    public func stopObserving() {
+        guard let source = runLoopSource else { return }
+        runLoopSource = nil
+        onChange = nil
+        CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .defaultMode)
+        CFRunLoopSourceInvalidate(source)
+    }
+
+    /// The backstop. `deactivate` is the ordinary route and covers the module
+    /// being switched off; this covers every other way the port can be let go.
+    deinit { stopObserving() }
 }
 
 // MARK: - ScreenParamsObserver

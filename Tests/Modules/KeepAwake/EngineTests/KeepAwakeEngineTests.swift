@@ -155,3 +155,37 @@ final class KeepAwakeEngineTests: XCTestCase {
         XCTAssertFalse(engine.isActive)
     }
 }
+
+/// Turning the module off has to take its observers with it.
+///
+/// `IOPSPowerInfo` hands IOKit an unretained pointer to itself and adds a run
+/// loop source that nothing ever removed. `ModuleHost.disable` drops the
+/// engine, the engine owns the port, the port deallocates — and the main run
+/// loop still holds the source, so the next power event dereferences freed
+/// memory. Unplug the charger after switching Keep Awake off.
+///
+/// The crash itself is not unit-testable; what is testable is the one thing
+/// that prevents it, which is that the engine asks the port to stop.
+final class PowerObserverTeardownTests: XCTestCase {
+
+    func testDeactivateStopsWatchingThePowerSource() {
+        let power = FakePower()
+        let store = NamespacedStore(namespace: "keep-awake",
+                                    backing: InMemoryKeyValueStore())
+        let engine = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
+                                     assertions: FakeAssertions(),
+                                     displayInfo: FakeDisplayInfo(),
+                                     displayObserver: FakeDisplayObserver(),
+                                     power: power, apps: FakeApps(),
+                                     pointer: FakePointer(), clamshell: FakeClamshell(),
+                                     clock: FakeClock())
+        engine.activate()
+        XCTAssertTrue(power.observing, "the engine watches the power source while it is on")
+
+        engine.deactivate()
+
+        XCTAssertFalse(power.observing,
+                       "the run loop still holds a source pointing at a port that is about "
+                       + "to be freed")
+    }
+}
