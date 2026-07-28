@@ -29,7 +29,13 @@ public enum VPNListParser {
                   // a toggle that acts on nothing, or on the wrong connection.
                   !name.isEmpty else { continue }
             let id = uuidLike(in: line) ?? name
-            let kind = between(line, "[", "]") ?? kindBeforeQuote(line)
+            // After the name, not anywhere on the line. `scutil` writes the
+            // protocol in brackets *following* the quoted name, and searching
+            // the whole line found a connection called `Office [old]` first —
+            // so the row reported its protocol as "old".
+            let afterName = line.range(of: "\"", options: .backwards)
+                .map { String(line[$0.upperBound...]) } ?? line
+            let kind = between(afterName, "[", "]") ?? kindBeforeQuote(line)
             result.append(VPNConnection(id: id, name: name,
                                         status: parseStatus(statusToken), kind: kind))
         }

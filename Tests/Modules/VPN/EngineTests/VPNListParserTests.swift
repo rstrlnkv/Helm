@@ -29,3 +29,30 @@ final class VPNListParserTests: XCTestCase {
         XCTAssertEqual(VPNListParser.defaultConnection(from: c, lastUsedName: nil)?.name, "A")
     }
 }
+
+/// Where the protocol tag ends and the connection's name begins.
+///
+/// `scutil --nc list` puts the protocol in square brackets *before* the quoted
+/// name. `between(line, "[", "]")` takes the first pair on the line, which is
+/// the right one — until the name itself carries brackets, at which point the
+/// first pair is still the protocol's. These pin that the name is not searched
+/// and that the tag is read from where scutil writes it.
+final class VPNListParserBracketTests: XCTestCase {
+
+    func testTheProtocolComesFromBeforeTheName() {
+        let line = #"* (Disconnected)   4C9E... --> 4B3F...  "Office" [IKEv2:Office]"#
+        let parsed = VPNListParser.parseList(line)
+        XCTAssertEqual(parsed.first?.name, "Office")
+        XCTAssertEqual(parsed.first?.kind, "IKEv2:Office")
+    }
+
+    /// A name with brackets in it. The tag scutil writes still wins, because it
+    /// is the first pair on the line and the name is quoted.
+    func testANameWithBracketsDoesNotBecomeTheProtocol() {
+        let line = #"* (Connected)   4C9E... --> 4B3F...  "Office [old]" [IKEv2]"#
+        let parsed = VPNListParser.parseList(line)
+        XCTAssertEqual(parsed.first?.name, "Office [old]")
+        XCTAssertEqual(parsed.first?.kind, "IKEv2",
+                       "the name's own brackets were read as the protocol")
+    }
+}
