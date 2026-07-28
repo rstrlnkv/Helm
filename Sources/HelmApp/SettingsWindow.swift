@@ -826,10 +826,7 @@ private struct AboutHelmView: View {
     private var lastCheckedText: String {
         let stamp = AppSettings.store.int("lastUpdateCheck", default: 0)
         guard stamp > 0 else { return AppStr.neverChecked }
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .full
-        let when = formatter.localizedString(for: Date(timeIntervalSince1970: TimeInterval(stamp)),
-                                             relativeTo: Date())
+        let when = HelmDates.relative(Date(timeIntervalSince1970: TimeInterval(stamp)))
         return AppStr.lastChecked(when)
     }
 

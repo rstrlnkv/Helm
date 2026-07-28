@@ -228,21 +228,14 @@ private struct BreadcrumbBar: View {
     @ViewBuilder private var scanStatement: some View {
         if dvm.restored, let savedAt = dvm.completedAt {
             // A restored tree is a memory, not a measurement: say when.
-            Text(DkStr.measured(Self.ageFormatter.localizedString(for: savedAt,
-                                                                 relativeTo: Date())))
+            Text(DkStr.measured(HelmDates.relative(savedAt)))
                 .font(.caption).foregroundStyle(HelmText.faint).lineLimit(1)
         } else if let result = dvm.result {
             Text(DkStr.scannedIn(result.filesScanned,
-                                 String(format: "%.1f", result.seconds)))
+                                 Decimal(result.seconds)))
                 .font(.caption).foregroundStyle(HelmText.faint).lineLimit(1)
         }
     }
-
-    static let ageFormatter: RelativeDateTimeFormatter = {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .full
-        return formatter
-    }()
 
     @ViewBuilder private var crumbs: some View {
         let path = dvm.focusPath
