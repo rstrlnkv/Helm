@@ -38,32 +38,42 @@ public struct IconShapePicker: View {
 
     private func swatch(_ s: MenuBarIconStyle) -> some View {
         let selected = selection == s.rawValue
-        // A neutral glyph is drawn white and rendered as a template, so its
-        // colour comes from `foregroundStyle` at draw time. Baking
-        // `labelColor` into the bitmap could not work: `RingIcon` draws with
-        // `lockFocus`, which resolves the dynamic colour once against whatever
-        // `NSAppearance.current` happened to be — and in a light window that
-        // produced white glyphs on a white swatch.
-        return HelmIconGlyph(image: RingIcon.make(style: s, size: .medium,
-                                                  tintToken: neutral ? nil : tintToken),
-                             neutral: neutral)
-            .frame(width: 26, height: 26)
-            .frame(maxWidth: .infinity)
-            .frame(height: 50)
-            .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(selected ? Color.accentColor.opacity(0.16) : HelmSurface.wellFill))
-            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 1.5))
-            .contentShape(RoundedRectangle(cornerRadius: 10))
-            .help(s.label)
-            // A real button, not a tap gesture: a gesture carries no button
-            // trait, takes no focus and cannot be reached from the keyboard, so
-            // this setting was mouse-only and unnamed for VoiceOver.
-            .onTapGesture { selection = s.rawValue }
-            .accessibilityElement()
-            .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
-            .accessibilityLabel(s.label)
-            .accessibilityAction { selection = s.rawValue }
+        // A real button, not a tap gesture. The comment here used to say
+        // exactly that — "a gesture carries no button trait, takes no focus and
+        // cannot be reached from the keyboard" — above a line that was still
+        // `.onTapGesture`; only the VoiceOver half had been added, which is the
+        // loud half, and Full Keyboard Access still skipped every swatch. So
+        // the menu-bar icon could not be chosen without a mouse.
+        //
+        // `.plain` keeps the drawing entirely ours: the fill, border and glyph
+        // below are unchanged, and the button contributes focus, the button
+        // trait and activation by Space and Return.
+        return Button {
+            selection = s.rawValue
+        } label: {
+            // A neutral glyph is drawn white and rendered as a template, so its
+            // colour comes from `foregroundStyle` at draw time. Baking
+            // `labelColor` into the bitmap could not work: `RingIcon` draws with
+            // `lockFocus`, which resolves the dynamic colour once against whatever
+            // `NSAppearance.current` happened to be — and in a light window that
+            // produced white glyphs on a white swatch.
+            HelmIconGlyph(image: RingIcon.make(style: s, size: .medium,
+                                               tintToken: neutral ? nil : tintToken),
+                          neutral: neutral)
+                .frame(width: 26, height: 26)
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(selected ? Color.accentColor.opacity(0.16) : HelmSurface.wellFill))
+                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 1.5))
+                .contentShape(RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+        .help(s.label)
+        // The button trait comes with `Button`; this is the part it cannot know.
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
+        .accessibilityLabel(s.label)
     }
 }
 
@@ -104,25 +114,27 @@ public struct IconSizePicker: View {
 
     private func swatch(_ sz: MenuBarIconSize) -> some View {
         let selected = selection == sz.rawValue
-        // No .resizable(): the image draws at its natural point size, so the
-        // sizes differ visibly across the row.
-        return HelmIconGlyph(image: RingIcon.make(style: style, size: sz,
-                                                  tintToken: neutral ? nil : tintToken),
-                             neutral: neutral)
-            .frame(width: 28, height: 28)
-            .frame(maxWidth: .infinity)
-            .frame(height: 48)
-            .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(selected ? Color.accentColor.opacity(0.16) : HelmSurface.wellFill))
-            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 1.5))
-            .contentShape(RoundedRectangle(cornerRadius: 10))
-            .help(sz.label)
-            .onTapGesture { selection = sz.rawValue }
-            .accessibilityElement()
-            .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
-            .accessibilityLabel(sz.label)
-            .accessibilityAction { selection = sz.rawValue }
+        return Button {
+            selection = sz.rawValue
+        } label: {
+            // No .resizable(): the image draws at its natural point size, so the
+            // sizes differ visibly across the row.
+            HelmIconGlyph(image: RingIcon.make(style: style, size: sz,
+                                               tintToken: neutral ? nil : tintToken),
+                          neutral: neutral)
+                .frame(width: 28, height: 28)
+                .frame(maxWidth: .infinity)
+                .frame(height: 48)
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(selected ? Color.accentColor.opacity(0.16) : HelmSurface.wellFill))
+                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 1.5))
+                .contentShape(RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+        .help(sz.label)
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
+        .accessibilityLabel(sz.label)
     }
 }
 

@@ -19,7 +19,11 @@ public enum HelmMotion {
     /// keeps this current, so a change applies to the next animation without a
     /// relaunch — and collapse to an instant cut rather than removing the state
     /// change itself.
-    private static var reduced: Bool {
+    private static var reduced: Bool { reduceMotion }
+
+    /// The system setting, read fresh. Public only so the view modifier below
+    /// can hand it to `spins` as a value.
+    public static var reduceMotion: Bool {
         NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
     }
     private static let instant = Animation.linear(duration: 0.01)
@@ -48,5 +52,28 @@ public enum HelmMotion {
     public static func steadyRotation(seconds: Double) -> Animation {
         guard !reduced else { return .linear(duration: 0) }
         return .linear(duration: seconds).repeatForever(autoreverses: false)
+    }
+
+    /// Whether an indefinite symbol spin may run.
+    ///
+    /// Both facts are arguments rather than one being read from the system, so
+    /// the rule can be tested at all: a check that consults `NSWorkspace` only
+    /// proves the machine it ran on was set the way the test assumed.
+    public static func spins(requested: Bool, reduceMotion: Bool) -> Bool {
+        requested && !reduceMotion
+    }
+}
+
+public extension View {
+    /// The one way a glyph turns forever — the refresh buttons on the list
+    /// screens while their list reloads.
+    ///
+    /// `.symbolEffect(.rotate, options: .repeating)` on its own does not honour
+    /// Reduce Motion; SwiftUI leaves that to us, and `HelmMotion.steadyRotation`
+    /// has always done it for the About bezel. These two spun regardless.
+    func helmSteadySpin(_ active: Bool) -> some View {
+        symbolEffect(.rotate, options: .repeating,
+                     isActive: HelmMotion.spins(requested: active,
+                                                reduceMotion: HelmMotion.reduceMotion))
     }
 }

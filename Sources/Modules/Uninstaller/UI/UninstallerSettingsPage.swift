@@ -100,7 +100,7 @@ public struct UninstallerSettingsPage: View {
                         // which is geometrically a no-op — and nothing wrapped
                         // the mutation in an animation either, so the button
                         // sat perfectly still through every reload.
-                        .symbolEffect(.rotate, options: .repeating, isActive: loading)
+                        .helmSteadySpin(loading)
                 }
                 .buttonStyle(.borderless)
                 .disabled(loading)
