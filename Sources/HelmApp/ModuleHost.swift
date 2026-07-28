@@ -57,6 +57,11 @@ import HelmUI
         let key = type(of: d).id.rawValue
         live[key]?.engine.deactivate()
         live[key] = nil
+        // Whoever cached UI state for this module drops it, and then the pages
+        // go back to the system rather than sitting in an emptied malloc zone.
+        NotificationCenter.default.post(name: .helmModuleDisabled, object: key)
+        MemoryReclaim.afterHeavyWork("module.\(key).disable")
+        HelmLog.shared.memory("module.\(key).disable")
     }
 
     func liveModule(_ id: String) -> Live? { live[id] }

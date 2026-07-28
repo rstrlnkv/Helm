@@ -36,6 +36,7 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
 
     public func scan() async -> [StaleItem] {
         let items = await offTheCooperativePool { self.scanner.scan() }
+        MemoryReclaim.afterHeavyWork("leftovers.scan")
         HelmLog.shared.memory("leftovers.scan")
         return items
     }
