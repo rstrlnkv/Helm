@@ -35,10 +35,8 @@ public enum WatchScope {
 
     public static func allows(_ rawPath: String,
                               home: String = NSHomeDirectory()) -> Bool {
-        let path = URL(fileURLWithPath: rawPath).resolvingSymlinksInPath()
-            .standardizedFileURL.path
-        let home = URL(fileURLWithPath: home).resolvingSymlinksInPath()
-            .standardizedFileURL.path
+        let path = canonical(rawPath)
+        let home = canonical(home)
 
         guard path != "/", !path.hasSuffix("/") else { return false }
 
@@ -46,7 +44,15 @@ public enum WatchScope {
             // `~/Library` is where an application's own belongings live and
             // where login items are declared. Neither is anything a folder rule
             // should be reaching into.
-            return !path.hasPrefix(home + "/Library/") && path != home + "/Library"
+            //
+            // Without case, and that is the second guard rather than the first:
+            // `canonical` fixes the spelling of every component that exists,
+            // which on a real Mac is `Library` itself. It cannot fix one that
+            // does not, and the deny side of a gate must not be the side that
+            // depends on the filesystem happening to hold the folder.
+            let library = home + "/Library"
+            return !path.hasPrefix(library + "/", caseInsensitive: true)
+                && path.compare(library, options: .caseInsensitive) != .orderedSame
         }
 
         // An external volume: `/Volumes/Disk` itself is the volume, so a rule
@@ -56,5 +62,46 @@ public enum WatchScope {
         }
 
         return false
+    }
+
+    /// A path canonicalized as far as the filesystem can take it, including the
+    /// part of it that does not exist yet.
+    ///
+    /// `resolvingSymlinksInPath` gives up on the *whole* path the moment one
+    /// component is missing: it stops following links and stops fixing case for
+    /// the components that do exist, not merely for the missing tail. A rule's
+    /// destination is precisely the path that does not exist — "a rule that
+    /// names a folder is asking for that folder to exist" — so the gate was
+    /// reading destinations exactly as the plist spelled them, and the plist is
+    /// writable by any process running as the user.
+    ///
+    /// What that cost: `~/library/Application Support/Sorted` passed the home
+    /// test, missed `~/Library/` on case alone, and was allowed; the runner's
+    /// `createDirectory(withIntermediateDirectories:)` then put it inside the
+    /// real `~/Library` on a case-insensitive volume.
+    ///
+    /// So the deepest ancestor that does exist is resolved and the missing tail
+    /// is put back on it.
+    private static func canonical(_ rawPath: String) -> String {
+        var url = URL(fileURLWithPath: rawPath).standardizedFileURL
+        var missing: [String] = []
+        while url.path != "/", !FileManager.default.fileExists(atPath: url.path) {
+            missing.append(url.lastPathComponent)
+            url = url.deletingLastPathComponent()
+        }
+        var resolved = url.resolvingSymlinksInPath().standardizedFileURL
+        for component in missing.reversed() { resolved.appendPathComponent(component) }
+        return resolved.path
+    }
+}
+
+private extension String {
+    /// `hasPrefix` that can be asked to ignore case. `lowercased()` on a path is
+    /// not the same question — full Unicode case folding changes the length of
+    /// some strings, and a prefix test on a different string is not a prefix
+    /// test.
+    func hasPrefix(_ prefix: String, caseInsensitive: Bool) -> Bool {
+        range(of: prefix, options: caseInsensitive ? [.caseInsensitive, .anchored] : [.anchored])
+            != nil
     }
 }
