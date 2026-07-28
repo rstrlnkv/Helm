@@ -26,4 +26,17 @@ public enum HelmA11y {
     public static var showInFinder: String {
         L("Show in Finder", [.ru: "Показать в Finder", .es: "Mostrar en el Finder", .fr: "Afficher dans le Finder", .de: "Im Finder zeigen", .ja: "Finderに表示", .zh: "在访达中显示", .pt: "Mostrar no Finder"])
     }
+
+    /// A segmented picker that narrows what a list is showing. Three modules
+    /// have one and none of them labelled it, because on screen the segments
+    /// say everything — "Installed / Updates / Search" needs no heading above
+    /// it. Read aloud it was a tab group with no name.
+    public static var whatToShow: String {
+        L("What to show", [.ru: "Что показывать", .es: "Qué mostrar", .fr: "Ce qui est affiché", .de: "Was angezeigt wird", .ja: "表示する内容", .zh: "显示内容", .pt: "O que mostrar"])
+    }
+    /// A number typed into a field whose unit is a separate label beside it,
+    /// which VoiceOver reads as a neighbour rather than as part of the value.
+    public static var minutes: String {
+        L("Minutes", [.ru: "Минуты", .es: "Minutos", .fr: "Minutes", .de: "Minuten", .ja: "分", .zh: "分钟", .pt: "Minutos"])
+    }
 }

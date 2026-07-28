@@ -82,7 +82,7 @@ public struct LeftoversSettingsPage: View {
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()
-                Picker("", selection: $lvm.showAll) {
+                Picker(HelmA11y.whatToShow, selection: $lvm.showAll) {
                     Text(LfStr.filterLeftovers).tag(false)
                     Text(LfStr.filterAll).tag(true)
                 }
