@@ -372,7 +372,10 @@ private struct MenuBarSettingsView: View {
     /// whatever it is offered and scroll inside it, which is a second scroll
     /// view inside the page's own. Rows are a fixed height for the same reason,
     /// so the arithmetic is exact rather than a guess.
-    private static let orderRowHeight: CGFloat = 28
+    /// The floor is 36 rather than 28 to match the rows in the card above it:
+    /// the same page carried two row heights, and the shorter one held the rows
+    /// with an icon in them, so the list with the most in it had the least air.
+    private static let orderRowHeight: CGFloat = 36
 
     /// Measured heights per module id. The two halves of this used to disagree:
     /// each row was given `minHeight` precisely so it could grow rather than
