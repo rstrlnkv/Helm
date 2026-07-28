@@ -56,7 +56,7 @@ public final class NamespacedStore {
     /// actions, kept as JSON in one value rather than flattened into keys.
     public func data(_ key: String) -> Data? { backing.object(forKey: k(key)) as? Data }
 
-    /// A per-app decision table, the shape three modules now keep: bundle id →
+    /// A per-app decision table: bundle id →
     /// yes/no, with absent meaning "no opinion".
     public func boolTable(_ key: String) -> [String: Bool] {
         backing.object(forKey: k(key)) as? [String: Bool] ?? [:]

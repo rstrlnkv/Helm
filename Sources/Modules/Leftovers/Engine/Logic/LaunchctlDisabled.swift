@@ -21,12 +21,4 @@ public enum LaunchctlDisabled {
         }
         return disabled
     }
-
-    /// Agents run in the user's domain — no password needed. Daemons need
-    /// root, and Apple's own agents are not ours to stop.
-    public static func canToggle(kind: StaleKind, status: ItemStatus,
-                                 identifier: String) -> Bool {
-        guard kind == .launchAgent, !identifier.isEmpty else { return false }
-        return !identifier.hasPrefix("com.apple.")
-    }
 }
