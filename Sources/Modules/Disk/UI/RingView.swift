@@ -34,6 +34,12 @@ struct RingView: View {
 
     private let geometry = RingGeometry(innerRadius: 0.34, thickness: 0.155, gap: 0.012)
 
+    /// How many levels the ring shows. The layout carries one more — see
+    /// `DiskViewModel.recomputeSegments` and `RingUnfold.opacity(isSpare:)`:
+    /// the spare is what the new outermost ring slides in from during a drill,
+    /// and it is drawn only while that is happening.
+    static let visibleRings = 3
+
     /// The elements the drawing implies, in the order the eye reads it: where
     /// you are, then what is in it.
     ///
@@ -213,7 +219,10 @@ struct RingView: View {
         let dx = point.x - center.x, dy = point.y - center.y
         let radius = sqrt(dx * dx + dy * dy) / (side / 2)
         let angle = atan2(dy, dx)
-        return RingLayout.hitTest(segments: segments, geometry: geometry,
+        // The spare level is laid out but not drawn, and what cannot be seen
+        // cannot be clicked.
+        return RingLayout.hitTest(segments: segments.filter { $0.ring < RingView.visibleRings },
+                                  geometry: geometry,
                                   angle: angle, radius: radius)
     }
 
@@ -280,7 +289,9 @@ private struct RingCanvas: View, @MainActor Animatable {
     }
 
     private func arc(for segment: RingSegment) -> (path: Path, opacity: Double)? {
+        let isSpare = segment.ring >= RingView.visibleRings
         guard let pivot, progress > 0 else {
+            guard !isSpare else { return nil }
             let (r0, r1) = geometry.radialRange(ring: segment.ring)
             return (helmArcPath(center: center, side: side, inner: r0, outer: r1,
                             start: segment.startAngle, end: segment.endAngle), 1)
@@ -295,7 +306,7 @@ private struct RingCanvas: View, @MainActor Animatable {
         let isPivot = segment.path == pivot.path
         let isDescendant = !pivot.path.isEmpty && segment.path.hasPrefix(pivot.path + "/")
         let opacity = RingUnfold.opacity(isPivot: isPivot, isDescendant: isDescendant,
-                                         progress: progress)
+                                         isSpare: isSpare, progress: progress)
         guard opacity > 0.001 else { return nil }
 
         let ring = RingUnfold.ring(segment.ring, isDescendant: isDescendant, progress: progress)
