@@ -199,6 +199,12 @@ features, PATCH = fixes.
   Edit ▸ Transformations wherever text can be edited.
 
 ### Fixed
+- **The disk ring moves in one motion.** Four separate faults were making it
+  feel abrupt, all found by measuring a screen recording frame by frame: the
+  curve was a spring, which starts at full speed; one frame of the destination
+  was drawn before the animation began, and one frame of the origin after it
+  ended; and a second, shorter animation ran over the same arcs during every
+  drill, so each move arrived as two bursts with a pause between them.
 - **Going back up several levels in Disk is an animation, not a cut.** A jump
   through the breadcrumb folded into nothing at all beyond a single step, and
   the ring simply changed. It now narrows into the wedge it went in through,

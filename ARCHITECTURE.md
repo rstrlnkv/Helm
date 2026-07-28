@@ -569,6 +569,33 @@ progress every arc is exactly where its layout puts it, because it *is* the
 layout — the same log lines now read identically on both sides of the seam. The
 reverse is the same journey with the child as the snapshot.
 
+**What "ragged" turned out to be, measured off a screen recording.** Frame-to-
+frame change in the ring's own area, sampled every 16 ms, says more than an eye
+does — a smooth move is a bell, and every defect below was a spike in it:
+
+- **A spring starts at its highest velocity.** `.smooth` has no overshoot, which
+  is why it was chosen, but the first frame of the move already held the largest
+  change of the whole animation (193k of a 194k peak) and the rest decayed. That
+  is a snap with a tail. `ringMorph` is `.easeInOut`, which starts still.
+- **One frame of the destination, before the animation.** The drill lands first,
+  so at `progress == 0` the "at rest" branch drew the new layout for a frame and
+  the animation then pulled it back where it came from. The guard is `pivot !=
+  nil`, not `progress > 0`.
+- **One frame of the origin, after it.** Resetting `unfold` in the completion
+  alongside `pivot` let a frame render with the snapshot still in place and the
+  progress already back at zero. `open` and the fold put it back to zero before
+  they animate, where nothing is drawn between the two writes.
+- **Two animations on one view.** `.animation(HelmMotion.interface, value:
+  segments.count)` is there for the ring growing under a running scan, and
+  during a drill it ran a second, shorter curve over the same arcs: every move
+  measured as two bursts with a pause between them. It is suppressed while a
+  wedge is opening.
+
+The remaining shape is a ramp and a decay per move. It is not perfect — some
+transitions still measure as two phases — and the next person to look should
+record before changing anything, because none of the four above were visible by
+watching.
+
 **A jump of two levels folds into the wedge it went in through.** The code used
 to set no wedge for anything further than one step, reasoning that several
 levels have no single wedge to fold into. They do: the child of the level being
