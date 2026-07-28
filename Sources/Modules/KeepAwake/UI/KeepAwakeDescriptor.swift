@@ -47,22 +47,21 @@ import Module_KeepAwake_Engine
         guard state.isActive, let store else { return .inactive }
         // Optional per-module active-state glyph: when enabled, the menu bar shows
         // this shape while Keep Awake is active (otherwise it keeps the global shape).
-        let iconStyle = store.bool("customActiveIcon", default: false)
-            ? store.string("activeIconShape", default: "ring") : nil
+        let iconStyle = MenuBarLook.customIcon(store) ? MenuBarLook.iconShape(store) : nil
         // Countdown ring: only while a timed session is running, and only if the
         // user asked for it.
         var progress: Double?
         var title: String?
-        var tint = KeepAwakeSettings(store: store).activeTintColor
+        var tint = MenuBarLook.activeTint(store)
         if let end = state.endDate {
-            if store.bool("ringTimer", default: true), let start = state.startDate {
+            if MenuBarLook.ringTimer(store), let start = state.startDate {
                 progress = TimerProgress.remainingFraction(now: Date(), start: start, end: end)
             }
-            if store.bool("showTimerText", default: false) {
+            if MenuBarLook.showTimerText(store) {
                 title = TimerProgress.label(remaining: end.timeIntervalSinceNow)
             }
             // A dedicated timer colour, when the user picked one.
-            let timerTint = store.string("timerTintColor", default: "red")
+            let timerTint = MenuBarLook.timerTint(store)
             if !timerTint.isEmpty { tint = timerTint }
         }
         return StatusAppearance(tintToken: tint,
