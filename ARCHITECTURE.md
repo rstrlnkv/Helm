@@ -569,6 +569,17 @@ progress every arc is exactly where its layout puts it, because it *is* the
 layout — the same log lines now read identically on both sides of the seam. The
 reverse is the same journey with the child as the snapshot.
 
+**A jump of two levels folds into the wedge it went in through.** The code used
+to set no wedge for anything further than one step, reasoning that several
+levels have no single wedge to fold into. They do: the child of the level being
+returned to that leads to where you were, and it is in the layout being entered.
+Without it every breadcrumb jump was a hard cut, which is the worst thing the
+ring did. The morph is `HelmMotion.ringMorph(levels:)` rather than `emphasis` —
+a spring with no bounce, because the arcs travel a long way round the circle and
+an overshoot at the end of that reads as a snap, and longer the further the ring
+travels, because the same duration for one level and for three reads as a cut
+with a blur on it.
+
 **The ring lays out one level more than it draws.** A drill promotes every
 level inward — the clicked wedge becomes the middle, its children take the
 innermost ring, its grandchildren the next — so whatever becomes the new

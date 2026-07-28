@@ -45,6 +45,23 @@ public enum HelmMotion {
         reduced ? instant : .spring(response: 0.42, dampingFraction: 0.78)
     }
 
+    /// The disk ring opening or closing a level.
+    ///
+    /// `emphasis` is a spring with a little overshoot, which is right for a pill
+    /// growing into a card and wrong here: the ring's arcs travel a long way
+    /// round the circle, and an overshoot at the end of that reads as a snap
+    /// rather than as life. This is a spring with no bounce at all, and it is
+    /// slower — a morph of the whole screen is not a toggle.
+    ///
+    /// `levels` is how far the ring is travelling. Crossing two levels at once
+    /// (a breadcrumb jump) covers more ground than a single drill and needs the
+    /// time to show it; at the same duration it read as a cut with a blur.
+    public static func ringMorph(levels: Int = 1) -> Animation {
+        guard !reduced else { return instant }
+        let distance = Double(max(1, min(levels, 4)))
+        return .smooth(duration: 0.46 + 0.14 * (distance - 1))
+    }
+
     /// Steady rotation (the About page's bezel while a check runs) — the one
     /// place a linear curve is correct, because the motion has no destination.
     /// Under Reduce Motion it does not turn at all; the progress spinner beside

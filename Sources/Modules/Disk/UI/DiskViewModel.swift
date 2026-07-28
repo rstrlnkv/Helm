@@ -23,6 +23,9 @@ import Module_Disk_Engine
     /// wedge that represents it instead of cross-fading. Cleared once the ring
     /// has consumed it.
     @Published public var foldingBackFrom: String?
+    /// How many levels that fold covers, so the animation can take the time the
+    /// distance deserves.
+    @Published public private(set) var foldingBackLevels: Int = 1
     /// True while a folder deeper than the scan went is being measured.
     @Published public private(set) var measuring = false
     /// The scan root's human name: "Macintosh HD", not "/".
@@ -298,6 +301,7 @@ import Module_Disk_Engine
 
     public func back() {
         guard focusPath.count > 1 else { return }
+        foldingBackLevels = 1
         foldingBackFrom = focusPath.last?.path
         focusPath.removeLast()
         recomputeSegments()
@@ -305,9 +309,12 @@ import Module_Disk_Engine
 
     public func jump(to index: Int) {
         guard focusPath.indices.contains(index), index < focusPath.count - 1 else { return }
-        // Only a single step folds back into its wedge; jumping several levels
-        // has no one wedge to fold into.
-        foldingBackFrom = index == focusPath.count - 2 ? focusPath.last?.path : nil
+        // There is always exactly one wedge to fold into, however far the jump:
+        // the child of the level being returned to that leads to where we were.
+        // Believing otherwise left every jump of more than one level as a hard
+        // cut, which is what the ring looked worst doing.
+        foldingBackLevels = focusPath.count - 1 - index
+        foldingBackFrom = focusPath[index + 1].path
         focusPath = Array(focusPath.prefix(index + 1))
         recomputeSegments()
     }
