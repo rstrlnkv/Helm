@@ -44,9 +44,15 @@ struct ActionRow: View {
             }
         }
 
-        /// An action of this kind that does nothing yet. A move with no
-        /// destination is refused by the runner rather than guessed at, which
-        /// is why the empty string is safe to start from.
+        /// An action of this kind that does nothing yet.
+        ///
+        /// A move starts with nowhere to go because the destination only ever
+        /// arrives through the panel — guessing one would be the module
+        /// choosing where somebody's files go. What made that safe was said to
+        /// be the runner's refusal, and a refusal repeated hourly is not safety:
+        /// it is a log line and a history row per matching file, forever, for a
+        /// rule that looks switched on. `Rule.canBeEnabled` is what makes it
+        /// safe — the switch is unreachable until the panel has been used.
         var blank: RuleAction {
             switch self {
             case .move: .move(to: "")
