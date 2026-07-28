@@ -407,8 +407,11 @@ import Module_Disk_Engine
         // "other". The ring came out a flat grey disc that said nothing about
         // the folder it was measuring.
         let free = focusPath.count == 1 && isVolumeScan ? (result?.freeBytes ?? 0) : 0
+        // One level deeper than the ring draws: the spare is invisible until a
+        // drill starts, and it is what the new outermost ring slides in from.
+        // See `RingUnfold.opacity(isSpare:)`.
         segments = RingLayout.layout(focus: Self.node(from: focus),
-                                     depthLevels: 3, freeBytes: free)
+                                     depthLevels: RingView.visibleRings + 1, freeBytes: free)
     }
 
     /// RingLayout works on the engine's node type; the UI holds the
