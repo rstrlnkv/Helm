@@ -190,7 +190,17 @@ features, PATCH = fixes.
   Edit ▸ Transformations wherever text can be edited.
 
 ### Fixed
-- **The Keyboard gesture stopped firing and never started again.** The tap
+- **The Keyboard gesture did nothing on a fresh install.** The engine read its
+  stored settings only when the settings page announced a change, so a launch
+  kept whatever its initialiser held — and the tap key has no initialiser value
+  but "no key", so on every start the gesture was bound to nothing. It worked
+  only in a session where somebody had opened the page and changed something,
+  and was gone again after the next restart. Silently: a key bound to nothing
+  refuses before there is anything to refuse. The engine reads its settings when
+  it starts now, which also means every other stored value — the sound, the
+  capital fix, the abbreviations table, which characters convert — applies on
+  launch instead of on the first visit to the page.
+- **The gesture could also get stuck off for the rest of the session.** The tap
   remembered which other modifiers were held in a set, filled on each press and
   emptied on each release. Nothing guarantees a release ever arrives, and a code
   left behind marked every later tap as part of a chord — so the key went on
