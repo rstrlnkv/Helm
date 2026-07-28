@@ -218,9 +218,9 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     /// The engine refuses to convert a word abandoned by a *click*, because the
     /// caret is somewhere else. Switching apps by keyboard is the same event to
     /// the person and a different one to the tap: every chord arrives as
-    /// `.navigation`, which ends the word and remembers it. The real tap never
-    /// emits `.focusChange` at all — grep the sources — so nothing tells the
-    /// engine the app changed.
+    /// `.chord`, which ends the word and remembers it. The real tap never emits
+    /// `.focusChange` at all — grep the sources — so nothing tells the engine
+    /// the app changed.
     ///
     /// `UndoRecord` already carries the bundle id and refuses to fire anywhere
     /// else, on exactly this reasoning: a blind edit is only correct in the app
@@ -229,7 +229,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     func testAWordLeftBehindInAnotherAppIsNotTheGesturesToConvert() {
         let engine = engine()
         tap.type("ghbdtn")
-        tap.send(.navigation)          // ⌘Tab, as the tap reports it
+        tap.send(.chord)               // ⌘Tab, as the tap reports it
         XCTAssertTrue(typing.performed.isEmpty, "precondition: nothing was converted")
 
         context.bundle = "com.apple.Mail"
@@ -244,7 +244,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     func testTheWordIsStillConvertibleInTheAppItWasTypedIn() {
         let engine = engine()
         tap.type("ghbdtn")
-        tap.send(.navigation)
+        tap.send(.chord)
         engine.convertLastWord()
         XCTAssertEqual(typing.performed.count, 1)
         XCTAssertEqual(typing.performed[0].backspaces, 6)
