@@ -85,7 +85,7 @@ public struct KeepAwakePanelTile: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(KAStr.moduleName).font(.headline)
                 if let subtitle = activeSubtitle {
-                    Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                    Text(subtitle).font(.caption).foregroundStyle(HelmText.quiet)
                 }
             }
             Spacer()
@@ -275,7 +275,7 @@ public struct KeepAwakePanelTile: View {
                     .onSubmit(applyCustomTime)
                 Text(KAStr.minutesUnit)
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(HelmText.quiet)
                 Spacer(minLength: 8)
                 Button(KAStr.done, action: applyCustomTime)
                     .controlSize(.small)
@@ -305,7 +305,7 @@ public struct KeepAwakePanelTile: View {
         TimelineView(.periodic(from: .now, by: 1)) { ctx in
             let remaining = max(0, end.timeIntervalSince(ctx.date))
             HStack(spacing: 8) {
-                Image(systemName: "timer").foregroundStyle(.secondary)
+                Image(systemName: "timer").foregroundStyle(HelmText.quiet)
                 Text(Self.formatRemaining(remaining))
                     .font(.subheadline.weight(.semibold))
                     .monospacedDigit()

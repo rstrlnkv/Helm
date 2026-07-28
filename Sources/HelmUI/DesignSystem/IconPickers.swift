@@ -25,7 +25,7 @@ public struct IconShapePicker: View {
             }
             Text(current.label)
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(HelmText.quiet)
                 .animation(HelmMotion.interface, value: selection)
         }
         .frame(maxWidth: .infinity)
@@ -93,7 +93,7 @@ public struct IconSizePicker: View {
             }
             Text(current.label)
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(HelmText.quiet)
                 .animation(HelmMotion.interface, value: selection)
         }
         .frame(maxWidth: .infinity)

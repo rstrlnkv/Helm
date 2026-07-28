@@ -181,10 +181,10 @@ public struct UninstallerSettingsPage: View {
                 Button(UnStr.selectNone) { checked.removeAll() }
                     .disabled(checked.isEmpty)
                 Text(statusLine)
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(HelmText.quiet)
                 Spacer()
                 if let banner = resultBanner {
-                    Text(banner).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    Text(banner).font(.caption).foregroundStyle(HelmText.quiet).lineLimit(1)
                 }
                 Button {
                     Task { await prepareReview() }
@@ -226,12 +226,12 @@ public struct UninstallerSettingsPage: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(app.name).lineLimit(1)
                 Text(app.path)
-                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    .font(.caption).foregroundStyle(HelmText.quiet).lineLimit(1)
                     .truncationMode(.middle)
             }
             Spacer()
             Text(Bytes(app.sizeBytes))
-                .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                .font(.caption).foregroundStyle(HelmText.quiet).monospacedDigit()
         }
         .frame(minHeight: 34)
         .contentShape(Rectangle())
@@ -250,7 +250,7 @@ public struct UninstallerSettingsPage: View {
                     Section {
                         if group.leftovers.isEmpty {
                             Text(UnStr.noLeftoversForApp)
-                                .font(.caption).foregroundStyle(.secondary)
+                                .font(.caption).foregroundStyle(HelmText.quiet)
                         }
                         ForEach(group.leftovers, id: \.path) { leftover in
                             leftoverRow(leftover)
@@ -287,7 +287,7 @@ public struct UninstallerSettingsPage: View {
                     forceQuit = false
                 }
                 Spacer()
-                Text(UnStr.willFree(sizeText)).font(.caption).foregroundStyle(.secondary)
+                Text(UnStr.willFree(sizeText)).font(.caption).foregroundStyle(HelmText.quiet)
                 // A blocked action must also LOOK blocked: a prominent blue
                 // button that silently does nothing invites repeated clicks.
                 let ready = UninstallPlan.readiness(groups, forceQuit: forceQuit) == .ready
@@ -330,7 +330,7 @@ public struct UninstallerSettingsPage: View {
                                     .controlSize(.small)
                             }
                             Text(failure.path)
-                                .font(.caption).foregroundStyle(.secondary)
+                                .font(.caption).foregroundStyle(HelmText.quiet)
                                 .lineLimit(1).truncationMode(.middle)
                             Text(UnStr.failureReason(failure.reason))
                                 .font(.caption).foregroundStyle(.orange)
@@ -390,7 +390,7 @@ public struct UninstallerSettingsPage: View {
             }
             Spacer()
             Text(Bytes(group.app.sizeBytes))
-                .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                .font(.caption).foregroundStyle(HelmText.quiet).monospacedDigit()
         }
     }
 
@@ -415,12 +415,12 @@ public struct UninstallerSettingsPage: View {
                     }
                 }
                 Text(leftover.path)
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(HelmText.quiet)
                     .lineLimit(1).truncationMode(.middle)
             }
             Spacer()
             Text(Bytes(leftover.sizeBytes))
-                .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                .font(.caption).foregroundStyle(HelmText.quiet).monospacedDigit()
         }
         .frame(minHeight: 32)
     }

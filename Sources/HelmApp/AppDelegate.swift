@@ -60,6 +60,24 @@ import HelmRuntime
         HelmLog.shared.info("permissions", "full disk access probe: \(PermissionCheck.currentFullDiskAccess().rawValue)")
 
 
+        // TEMPORARY screenshot harness. Not for commit.
+        if let shot = ProcessInfo.processInfo.environment["HELM_DEBUG_SHOT"] {
+            let parts = shot.split(separator: ":")
+            let size = parts.count > 1 ? parts[1].split(separator: "x").compactMap { Double($0) } : []
+            if ProcessInfo.processInfo.environment["HELM_DEBUG_LIGHT"] != nil {
+                NSApp.appearance = NSAppearance(named: .aqua)
+            }
+            if ProcessInfo.processInfo.environment["HELM_DEBUG_DARK"] != nil {
+                NSApp.appearance = NSAppearance(named: .darkAqua)
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+                self?.statusController?.debugShowSettings(
+                    selecting: parts.first.map(String.init),
+                    size: size.count == 2 ? NSSize(width: size[0], height: size[1])
+                                          : NSSize(width: 1060, height: 700))
+            }
+        }
+
         UpdateService.shared.checkOnLaunch()
     }
     func applicationWillTerminate(_ notification: Notification) {

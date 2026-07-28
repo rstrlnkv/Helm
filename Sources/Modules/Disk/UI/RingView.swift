@@ -181,7 +181,7 @@ struct RingView: View {
                 .lineLimit(1)
             Text(Bytes(segment.bytes))
                 .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(HelmText.quiet)
         }
         .padding(.horizontal, 9).padding(.vertical, 5)
         .glassEffect(.regular, in: .capsule)
@@ -192,7 +192,7 @@ struct RingView: View {
         VStack(spacing: 3) {
             Text(focusName)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(HelmText.quiet)
                 .lineLimit(1).truncationMode(.middle)
             Text(Bytes(focusBytes))
                 .font(.system(size: 19, weight: .medium, design: .monospaced))

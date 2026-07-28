@@ -63,7 +63,7 @@ public struct DuplicatesSettingsPage: View {
         HStack(spacing: 8) {
             if let folder = dvm.folder {
                 Image(systemName: "folder")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(HelmText.quiet)
                     .accessibilityHidden(true)
                 Text(Redact.path(folder.path))
                     .font(.callout.weight(.semibold))

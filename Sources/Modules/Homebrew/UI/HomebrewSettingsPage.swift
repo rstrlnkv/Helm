@@ -54,7 +54,7 @@ public struct HomebrewSettingsPage: View {
                 Text(HbStr.notInstalledTitle)
                     .font(.system(size: 20, weight: .semibold))
                 Text(HbStr.notInstalledBody)
-                    .font(.callout).foregroundStyle(.secondary)
+                    .font(.callout).foregroundStyle(HelmText.quiet)
                     .multilineTextAlignment(.center).frame(maxWidth: 380)
             }
             Button {
@@ -134,7 +134,7 @@ public struct HomebrewSettingsPage: View {
             Divider()
             HStack {
                 Text(statusLine)
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(HelmText.quiet)
                 Spacer()
             }
             // A caption is shorter than a button: without this the bar was
@@ -255,13 +255,13 @@ public struct HomebrewSettingsPage: View {
                     // Only when it says something: 46 of 47 rows were
                     // "formula", and a label with one value is an ornament.
                     if isCask { HelmBadge(HbStr.cask, tint: .purple) }
-                    if let detail { Text(detail).font(.caption2).foregroundStyle(.secondary) }
+                    if let detail { Text(detail).font(.caption2).foregroundStyle(HelmText.quiet) }
                 }
                 // The description arrives from a separate `brew desc` batch.
                 // The line is always present (empty until then) so rows keep
                 // their height and the list doesn't re-flow twice on load.
                 Text(desc ?? " ")
-                    .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                    .font(.caption2).foregroundStyle(HelmText.quiet).lineLimit(1)
             }
             Spacer()
             action().controlSize(.small)

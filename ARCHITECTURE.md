@@ -235,9 +235,18 @@ selection shortcuts.
 The cost is real and is not fully paid: `restore(_:)` puts back a *string*, so a
 clipboard holding an image, a file promise or RTF is replaced with plain text or
 with nothing. That is the exact harm the no-clipboard rule was written against.
-The three shortcuts are unbound by default, which limits it to people who asked
-for them — but the honest fix is to save and restore every representation on the
-pasteboard, and until that lands this is a known defect rather than a design.
+That used to be contained by the three shortcuts shipping unbound, so only
+somebody who went looking could meet it. When the module was reduced to one
+gesture with a default key, that containment disappeared and the defect did not
+— for a few hours the app was one tap away from eating an image somebody had
+copied, on by default, for everyone.
+
+So the containment is a rule instead of an absence: `PasteboardSafety.canBorrow`
+refuses the paste route whenever the clipboard holds anything a string restore
+cannot give back, and the selection is left alone. Declining is a correct
+outcome that the person can see; silently emptying their clipboard is not. The
+honest fix is still to save and restore every representation, and until that
+lands this is the guard rather than the cure.
 
 ## Running applications — read before touching
 

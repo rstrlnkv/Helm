@@ -23,7 +23,7 @@ struct BadgePreview: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(LyStr.badgePreview)
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(HelmText.quiet)
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 132), spacing: 10)],
                       alignment: .leading, spacing: 8) {
                 ForEach(sources, id: \.id) { source in

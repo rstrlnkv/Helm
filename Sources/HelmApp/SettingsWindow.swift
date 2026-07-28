@@ -58,6 +58,21 @@ import HelmUI
 
 
 
+    /// TEMPORARY screenshot harness (HELM_DEBUG_SHOT). Not for commit.
+    func debugShow(selecting moduleID: String?, size: NSSize) {
+        if let moduleID {
+            model.selection = moduleID == "general" ? .general
+                : (moduleID == "about" ? .about : .module(moduleID))
+        }
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate()
+        window.setContentSize(size)
+        window.center()
+        window.level = .floating
+        window.makeKeyAndOrderFront(nil)
+        window.orderFrontRegardless()
+    }
+
     func windowWillClose(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
     }
@@ -413,7 +428,7 @@ private struct MenuBarSettingsView: View {
                 .foregroundStyle(granted ? .green : .orange)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                Text(detail).font(.caption).foregroundStyle(.secondary)
+                Text(detail).font(.caption).foregroundStyle(HelmText.quiet)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
@@ -437,7 +452,7 @@ private struct MenuBarSettingsView: View {
             }
             Section {
                 Text(editingOrder ? AppStr.moduleOrderEditNote : AppStr.moduleOrderNote)
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(HelmText.quiet)
                 moduleOrderList
             } header: {
                 HStack {
@@ -467,7 +482,7 @@ private struct MenuBarSettingsView: View {
                         .onChange(of: size) { _, v in AppSettings.menuBarIconSize = v }
                 }
                 Text(AppStr.menuBarNote)
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(HelmText.quiet)
             }
             Section(AppStr.panel) {
                 Toggle(AppStr.showSettingsButton, isOn: $showSettingsButton)
@@ -475,7 +490,7 @@ private struct MenuBarSettingsView: View {
                 Toggle(AppStr.showQuitButton, isOn: $showQuitButton)
                     .onChange(of: showQuitButton) { _, v in AppSettings.showQuitButton = v }
                 Text(AppStr.panelButtonsNote)
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(HelmText.quiet)
             }
             Section(AppStr.permissions) {
                 // Driven by the table, so a new permission shows up here
@@ -500,7 +515,7 @@ private struct MenuBarSettingsView: View {
                         HelmLog.shared.setEnabled(v)
                     }
                 Text(isDevBuild ? AppStr.logNoteDev : AppStr.logNoteStable)
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(HelmText.quiet)
                 HStack(spacing: 10) {
                     Button {
                         NSWorkspace.shared.activateFileViewerSelecting([HelmLog.fileURL])
@@ -663,7 +678,7 @@ private struct AboutHelmView: View {
                     .accessibilityLabel(badgeAccessibilityLabel)
                 Text(AppStr.tagline)
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(HelmText.quiet)
             }
         }
     }
@@ -730,7 +745,7 @@ private struct AboutHelmView: View {
                 }
                 Text(channel == .dev ? AppStr.channelDevNote : AppStr.channelBetaNote)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(HelmText.quiet)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, 14)
@@ -775,7 +790,7 @@ private struct AboutHelmView: View {
                         Spacer()
                         Text(rel.version)
                             .font(.system(size: 12, design: .monospaced))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(HelmText.quiet)
                     }
                     Button(AppStr.updateAndRelaunch) { updater.downloadAndInstall() }
                         .buttonStyle(.borderedProminent)
@@ -807,7 +822,7 @@ private struct AboutHelmView: View {
                 // last check happened rather than claiming to be current.
                 HStack(spacing: 10) {
                     statusIcon("arrow.triangle.2.circlepath", .secondary)
-                    Text(lastCheckedText).lineLimit(1).foregroundStyle(.secondary)
+                    Text(lastCheckedText).lineLimit(1).foregroundStyle(HelmText.quiet)
                     Spacer()
                     Button(AppStr.checkNow) { updater.checkNow() }
                 }
@@ -829,7 +844,7 @@ private struct AboutHelmView: View {
     private func statusLine(_ text: String, spinning: Bool) -> some View {
         HStack(spacing: 10) {
             ProgressView().controlSize(.small)
-            Text(text).foregroundStyle(.secondary)
+            Text(text).foregroundStyle(HelmText.quiet)
             Spacer()
         }
     }
@@ -903,7 +918,7 @@ private struct WhatsNewView: View {
                             ForEach(entry.items) { item in
                                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                                     badge(item.kind)
-                                    Text(item.text).font(.callout).foregroundStyle(.secondary)
+                                    Text(item.text).font(.callout).foregroundStyle(HelmText.quiet)
                                 }
                             }
                         }
