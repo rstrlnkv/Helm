@@ -132,6 +132,7 @@ public final class DuplicateScanner: @unchecked Sendable {
         // "Date Added", not the creation date a file carries with it when it
         // is copied. See `SurvivingCopy`.
         let keys: [URLResourceKey] = [.isRegularFileKey, .isDirectoryKey, .fileSizeKey,
+                                      .totalFileAllocatedSizeKey,
                                       .addedToDirectoryDateKey]
         guard let enumerator = FileManager.default.enumerator(
             at: url, includingPropertiesForKeys: keys,
@@ -169,7 +170,8 @@ public final class DuplicateScanner: @unchecked Sendable {
             if let rootDevice, status.st_dev != rootDevice { continue }
             files.append(FileFacts(path: item.path, bytes: size,
                                    fileID: UInt64(status.st_ino),
-                                   added: values.addedToDirectoryDate))
+                                   added: values.addedToDirectoryDate,
+                                   allocated: values.totalFileAllocatedSize ?? size))
         }
         return files
     }

@@ -1,4 +1,5 @@
 import XCTest
+@testable import HelmRuntime
 @testable import Module_Duplicates_Engine
 
 /// The scanner against a real directory: the logic is tested dry, so what is
@@ -35,7 +36,12 @@ final class DuplicateScannerTests: XCTestCase {
         let tails = Set((groups?.first?.paths ?? []).map { ($0 as NSString).lastPathComponent })
         XCTAssertEqual(tails, ["a.bin", "b.bin"])
         _ = (a, b)
-        XCTAssertEqual(groups?.first?.wasted, 1_200_000)
+        // Asked of the filesystem, not written down: `wasted` promises what
+        // removing the extra copy frees, which is what it occupies and not how
+        // long it is. The two differ by the tail of a block.
+        var seen: Set<UInt64> = []
+        XCTAssertEqual(groups?.first?.wasted,
+                       FileWeight.allocated(of: URL(fileURLWithPath: b), countingOnce: &seen))
     }
 
     func testAHardLinkIsNotADuplicate() throws {

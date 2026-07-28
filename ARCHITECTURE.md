@@ -265,9 +265,12 @@ the last typed word, and it has two routes: `AXSelectedText` where the app
 answers, and ⌘C/⌘V where it does not — which is most Electron apps and most web
 views. So the sentence above holds for the word conversion and not for the selection.
 
-The cost is real and is not fully paid: `restore(_:)` puts back a *string*, so a
-clipboard holding an image, a file promise or RTF is replaced with plain text or
-with nothing. That is the exact harm the no-clipboard rule was written against.
+`restore(_:)` puts back a *string*, so a clipboard holding an image, a file
+promise or RTF would come back as plain text or as nothing — the exact harm the
+no-clipboard rule was written against. Both routes now refuse rather than
+borrow: `PasteboardSafety.canBorrow` gates the paste and, since it destroys just
+as thoroughly, the ⌘C read as well. It was on the write only, which is the half
+that is easier to think of.
 That used to be contained by the selection shortcuts shipping unbound, so only
 somebody who went looking could meet it. When the module was reduced to one
 gesture with a default key, that containment disappeared and the defect did not
