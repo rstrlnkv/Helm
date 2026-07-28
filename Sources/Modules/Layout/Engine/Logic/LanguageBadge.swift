@@ -54,7 +54,10 @@ public enum LanguageBadge {
     /// every key is distinct at its start" — was not true when it was written:
     /// `Canadian` and `Canadian-CSA` are both in the list below. Variants are
     /// the point of the table, so more of them are coming.
-    static let byLayout: [String: String] = [
+    ///
+    /// Private, and `ordered` is not: nothing may scan this one, which is how
+    /// the hash order got in.
+    private static let byLayout: [String: String] = [
         "ABC": "US", "US": "US", "Australian": "AU", "Canadian": "CA",
         "British": "GB", "Irish": "IE",
         "Russian": "RU", "Byelorussian": "BY", "Belarusian": "BY", "Ukrainian": "UA",
