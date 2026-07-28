@@ -37,7 +37,7 @@ private final class FakeTap: KeyTapPort, @unchecked Sendable {
     }
     /// One clean press and release of the bound key.
     func tapKey(_ code: Int64, at: TimeInterval = 0) {
-        modifiers?(.down(code, at: at))
+        modifiers?(.down(code, at: at, othersHeld: false))
         modifiers?(.up(code, at: at + 0.05))
     }
     func stop() { handler = nil }
