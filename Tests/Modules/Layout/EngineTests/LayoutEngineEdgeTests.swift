@@ -106,19 +106,20 @@ final class LayoutEngineEdgeTests: XCTestCase {
     /// the app it happened in". The shortcut cannot be a bare key — the
     /// recorder refuses one — and the tap is head-inserted, so Helm's engine
     /// sees the chord *before* Carbon delivers the hotkey and turns it into
-    /// `.navigation`. `handle` invalidates the undo on every event it sees, so
-    /// by the time `undoLast` runs the record it needs is already dead.
+    /// `.chord`. `handle` invalidates the undo on every event it sees, so by
+    /// the time `undoLast` runs the record it needs is already dead.
     ///
-    /// The fix is not to stop invalidating on `.navigation` — ⌘→ really does
+    /// The fix is not to stop invalidating on caret movement — ⌘→ really does
     /// move the caret. It is that the one chord which *is* the undo shortcut
-    /// must not destroy its own precondition.
+    /// must not destroy its own precondition. Which bare keys may spend that
+    /// forgiveness is `UndoAfterNavigationTests`.
     func testTheUndoShortcutCanUndo() {
         let engine = engine(table: ["ghbdtn": "привет"])
         tap.type("ghbdtn")
         tap.send(.space)
         XCTAssertEqual(typing.performed.count, 1, "precondition: the word was converted")
 
-        tap.send(.navigation)   // the chord the user just pressed, seen by the tap first
+        tap.send(.chord)        // the chord the user just pressed, seen by the tap first
         engine.undoLast()       // …and then delivered to Helm by Carbon
         XCTAssertEqual(typing.performed.count, 2, "the undo shortcut did nothing")
         XCTAssertEqual(typing.performed.last?.insert, "ghbdtn ",
