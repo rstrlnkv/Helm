@@ -91,13 +91,3 @@ enum BadgeImage {
     }
 }
 
-private extension NSColor {
-    /// Six hex digits, as the flag table stores them.
-    convenience init(hex: String) {
-        var value: UInt64 = 0
-        Scanner(string: hex).scanHexInt64(&value)
-        self.init(srgbRed: CGFloat((value >> 16) & 0xFF) / 255,
-                  green: CGFloat((value >> 8) & 0xFF) / 255,
-                  blue: CGFloat(value & 0xFF) / 255, alpha: 1)
-    }
-}

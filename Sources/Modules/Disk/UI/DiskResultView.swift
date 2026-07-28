@@ -86,9 +86,16 @@ struct DiskResultView: View {
     }
 
     private var populatedChildList: some View {
-        List(selection: $selection) {
+        // Answered once for the list, not once per row. Inside the `ForEach` it
+        // re-scanned every child for each child — at the 200-child cap that is
+        // 40 000 `isRemovable` calls per body evaluation, each one a
+        // `standardizingPath` and several prefix tests. `UserFileScope` already
+        // carries the note that it runs per row on every frame; it was priced
+        // for one pass, not n.
+        let everySystem = allRowsAreSystem
+        return List(selection: $selection) {
             ForEach(dvm.focus?.children ?? []) { child in
-                ChildRow(everyRowIsSystem: allRowsAreSystem,
+                ChildRow(everyRowIsSystem: everySystem,
                          child: child,
                          title: dvm.displayName(for: child),
                          fraction: fraction(of: child),

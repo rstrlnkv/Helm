@@ -8,7 +8,6 @@ enum UnStr {
     static var summary: String { L("Remove an app with all of its files", [.ru: "Удаление программы вместе со всеми её файлами", .es: "Eliminar una app con todos sus archivos", .fr: "Supprimer une app avec tous ses fichiers", .de: "Eine App mit allen ihren Dateien entfernen", .ja: "アプリを関連ファイルごと削除", .zh: "连同全部文件一起删除应用", .pt: "Remover um app com todos os seus arquivos"]) }
     static var searchApps: String { L("Search apps", [.ru: "Поиск приложений", .es: "Buscar apps", .fr: "Rechercher des apps", .de: "Apps suchen", .ja: "アプリを検索", .zh: "搜索应用", .pt: "Buscar apps"]) }
     static var scanning: String { L("Scanning…", [.ru: "Сканирование…", .es: "Analizando…", .fr: "Analyse…", .de: "Wird gescannt…", .ja: "スキャン中…", .zh: "扫描中…", .pt: "Analisando…"]) }
-    static var pickApp: String { L("Select an app to see what will be removed.", [.ru: "Выберите приложение, чтобы увидеть, что будет удалено.", .es: "Selecciona una app para ver qué se eliminará.", .fr: "Sélectionnez une app pour voir ce qui sera supprimé.", .de: "Wähle eine App, um zu sehen, was entfernt wird.", .ja: "削除対象を見るにはアプリを選択してください。", .zh: "选择一个应用以查看将删除的内容。", .pt: "Selecione um app para ver o que será removido."]) }
     static var removalNeedsAccess: String { L("Without Full Disk Access an app’s containers stay behind.", [.ru: "Без полного доступа к диску контейнеры программы останутся на диске.", .es: "Sin Acceso total al disco los contenedores de la app se quedarán.", .fr: "Sans accès complet au disque, les conteneurs de l’app resteront.", .de: "Ohne Festplattenvollzugriff bleiben die Container der App liegen.", .ja: "フルディスクアクセスがないと、アプリのコンテナが残ります。", .zh: "没有完全磁盘访问权限时，应用的容器会残留。", .pt: "Sem Acesso Total ao Disco os contêineres do app permanecem."]) }
     static var moveToTrash: String { L("Move to Trash", [.ru: "Переместить в Корзину", .es: "Trasladar a la papelera", .fr: "Placer dans la corbeille", .de: "In den Papierkorb legen", .ja: "ゴミ箱に入れる", .zh: "移到废纸篓", .pt: "Mover para o Lixo"]) }
     static func confirmTrash(_ count: Int, _ size: String) -> String {
@@ -17,8 +16,6 @@ enum UnStr {
     }
     static var cancel: String { L("Cancel", [.ru: "Отменить", .es: "Cancelar", .fr: "Annuler", .de: "Abbrechen", .ja: "キャンセル", .zh: "取消", .pt: "Cancelar"]) }
     static func freed(_ size: String) -> String { L("Freed \(size)", [.ru: "Освобождено \(size)", .es: "Liberado \(size)", .fr: "\(size) libérés", .de: "\(size) freigegeben", .ja: "\(size) を解放しました", .zh: "已释放 \(size)", .pt: "Liberado \(size)"]) }
-    static var openInSettings: String { L("Open in Settings", [.ru: "Открыть в настройках", .es: "Abrir en Ajustes", .fr: "Ouvrir dans Réglages", .de: "In Einstellungen öffnen", .ja: "設定で開く", .zh: "在设置中打开", .pt: "Abrir nos Ajustes"]) }
-    static var panelHint: String { L("Manage app removal in Settings.", [.ru: "Управление удалением — в настройках.", .es: "Gestiona la eliminación en Ajustes.", .fr: "Gérez la suppression dans Réglages.", .de: "Verwalte das Entfernen in den Einstellungen.", .ja: "削除の管理は設定で行います。", .zh: "在设置中管理删除。", .pt: "Gerencie a remoção nos Ajustes."]) }
 
     static func kind(_ k: LeftoverKind) -> String {
         switch k {

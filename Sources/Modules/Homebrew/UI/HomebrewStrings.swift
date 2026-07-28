@@ -21,19 +21,15 @@ enum HbStr {
     static var upgradeAll: String { L("Upgrade all", [.ru: "Обновить всё", .es: "Actualizar todo", .fr: "Tout mettre à jour", .de: "Alle aktualisieren", .ja: "すべて更新", .zh: "全部升级", .pt: "Atualizar tudo"]) }
 
     static var cask: String { L("cask", [.ru: "cask", .es: "cask", .fr: "cask", .de: "cask", .ja: "cask", .zh: "cask", .pt: "cask"]) }
-    static var formula: String { L("formula", [.ru: "formula", .es: "formula", .fr: "formula", .de: "formula", .ja: "formula", .zh: "formula", .pt: "formula"]) }
 
     static var upToDate: String { L("Everything is up to date.", [.ru: "Всё обновлено.", .es: "Todo está actualizado.", .fr: "Tout est à jour.", .de: "Alles ist aktuell.", .ja: "すべて最新です。", .zh: "全部已是最新。", .pt: "Tudo está atualizado."]) }
     static var noneInstalled: String { L("No packages installed.", [.ru: "Нет установленных пакетов.", .es: "No hay paquetes instalados.", .fr: "Aucun paquet installé.", .de: "Keine Pakete installiert.", .ja: "インストール済みパッケージはありません。", .zh: "未安装任何软件包。", .pt: "Nenhum pacote instalado."]) }
     static var noResults: String { L("No results.", [.ru: "Ничего не найдено.", .es: "Sin resultados.", .fr: "Aucun résultat.", .de: "Keine Ergebnisse.", .ja: "結果がありません。", .zh: "无结果。", .pt: "Sem resultados."]) }
     static var typeToSearch: String { L("Type a name and press Return.", [.ru: "Введите имя и нажмите Return.", .es: "Escribe un nombre y pulsa Retorno.", .fr: "Saisissez un nom et appuyez sur Entrée.", .de: "Namen eingeben und Return drücken.", .ja: "名前を入力して Return を押してください。", .zh: "输入名称并按回车。", .pt: "Digite um nome e pressione Return."]) }
 
-    static var loading: String { L("Loading…", [.ru: "Загрузка…", .es: "Cargando…", .fr: "Chargement…", .de: "Wird geladen…", .ja: "読み込み中…", .zh: "加载中…", .pt: "Carregando…"]) }
     static var done: String { L("Done", [.ru: "Готово", .es: "Listo", .fr: "Terminé", .de: "Fertig", .ja: "完了", .zh: "完成", .pt: "Concluído"]) }
     static var failed: String { L("Failed", [.ru: "Ошибка", .es: "Error", .fr: "Échec", .de: "Fehlgeschlagen", .ja: "失敗", .zh: "失败", .pt: "Falhou"]) }
     static var clear: String { L("Clear", [.ru: "Очистить", .es: "Borrar", .fr: "Effacer", .de: "Löschen", .ja: "クリア", .zh: "清除", .pt: "Limpar"]) }
-    static var panelHint: String { L("Manage Homebrew in Settings.", [.ru: "Управление Homebrew — в настройках.", .es: "Gestiona Homebrew en Ajustes.", .fr: "Gérez Homebrew dans Réglages.", .de: "Verwalte Homebrew in den Einstellungen.", .ja: "Homebrew の管理は設定で行います。", .zh: "在设置中管理 Homebrew。", .pt: "Gerencie o Homebrew nos Ajustes."]) }
-    static var openInSettings: String { L("Open in Settings", [.ru: "Открыть в настройках", .es: "Abrir en Ajustes", .fr: "Ouvrir dans Réglages", .de: "In Einstellungen öffnen", .ja: "設定で開く", .zh: "在设置中打开", .pt: "Abrir nos Ajustes"]) }
     static var refreshList: String { L("Refresh list", [.ru: "Обновить список", .es: "Actualizar lista", .fr: "Actualiser la liste", .de: "Liste aktualisieren", .ja: "リストを更新", .zh: "刷新列表", .pt: "Atualizar lista"]) }
     /// While the first list is still out. "0 packages · 0 updates · 0 casks"
     /// is a statement of fact about a machine nobody has looked at yet, and it
