@@ -8,6 +8,11 @@ features, PATCH = fixes.
 ## [Unreleased] — 0.7.2
 
 ### Added
+- **A way out of a scan in Disk.** The module reopens on whatever it measured
+  last, and the only control was "Scan again", which measures the same place
+  forever — so a scan of the wrong folder came back at every launch with no way
+  to leave it. "Choose another…" beside it clears the screen and forgets the
+  saved scan.
 - **Autopilot shows what it did.** A report of the last 30 days at the bottom of
   the page: which file, where it went, and which rule decided. Every other
   module acts because somebody pressed something a moment before, so the result

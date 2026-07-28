@@ -219,9 +219,16 @@ private struct BreadcrumbBar: View {
                 }
             }
 
-            Button(DkStr.scanAgain) { Task { await dvm.rescan() } }
-                .controlSize(.small)
-                .disabled(dvm.live)
+            HStack(spacing: 8) {
+                Button(DkStr.scanAgain) { Task { await dvm.rescan() } }
+                    .disabled(dvm.live)
+                // The way out. "Scan again" measures the same place forever, so
+                // a scan of the wrong thing — or of a folder that was only ever
+                // meant to be looked at once — had no exit at all: the module
+                // reopened on it at every launch.
+                Button(DkStr.chooseAnother) { dvm.newScan() }
+            }
+            .controlSize(.small)
         }
         .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
     }
