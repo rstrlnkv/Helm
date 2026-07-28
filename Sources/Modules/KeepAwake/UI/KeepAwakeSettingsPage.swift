@@ -52,12 +52,12 @@ public struct KeepAwakeSettingsPage: View {
         _clamshellEnabled = State(initialValue: store.bool("clamshellEnabled", default: false))
         _batteryGuardEnabled = State(initialValue: store.bool("batteryGuardEnabled", default: false))
         _batteryGuardPercent = State(initialValue: store.int("batteryGuardPercent", default: 20))
-        _activeTintColor = State(initialValue: store.string("activeTintColor", default: "orange"))
-        _ringTimer = State(initialValue: store.bool("ringTimer", default: true))
-        _showTimerText = State(initialValue: store.bool("showTimerText", default: false))
-        _timerTintColor = State(initialValue: store.string("timerTintColor", default: "red"))
-        _customActiveIcon = State(initialValue: store.bool("customActiveIcon", default: false))
-        _activeIconShape = State(initialValue: store.string("activeIconShape", default: "ring"))
+        _activeTintColor = State(initialValue: MenuBarLook.activeTint(store))
+        _ringTimer = State(initialValue: MenuBarLook.ringTimer(store))
+        _showTimerText = State(initialValue: MenuBarLook.showTimerText(store))
+        _timerTintColor = State(initialValue: MenuBarLook.timerTint(store))
+        _customActiveIcon = State(initialValue: MenuBarLook.customIcon(store))
+        _activeIconShape = State(initialValue: MenuBarLook.iconShape(store))
     }
 
     public var body: some View {
@@ -160,10 +160,10 @@ public struct KeepAwakeSettingsPage: View {
             Section(KAStr.menuBarIcon) {
                 LabeledContent(KAStr.activeIconColor) { colorSwatches }
                 Toggle(KAStr.customActiveIcon, isOn: $customActiveIcon)
-                    .onChange(of: customActiveIcon) { _, v in write(v, "customActiveIcon") }
+                    .onChange(of: customActiveIcon) { _, v in write(v, MenuBarLook.Key.customIcon) }
                 if customActiveIcon {
                     IconShapePicker(selection: $activeIconShape, tintToken: activeTintColor)
-                        .onChange(of: activeIconShape) { _, v in write(v, "activeIconShape") }
+                        .onChange(of: activeIconShape) { _, v in write(v, MenuBarLook.Key.iconShape) }
                 }
                 Text(KAStr.ringColorNote)
                     .font(.caption).foregroundStyle(HelmText.quiet)
@@ -171,11 +171,11 @@ public struct KeepAwakeSettingsPage: View {
 
             Section(KAStr.timer) {
                 Toggle(KAStr.ringTimer, isOn: $ringTimer)
-                    .onChange(of: ringTimer) { _, v in write(v, "ringTimer") }
+                    .onChange(of: ringTimer) { _, v in write(v, MenuBarLook.Key.ringTimer) }
                 Text(KAStr.ringTimerNote)
                     .font(.caption).foregroundStyle(HelmText.quiet)
                 Toggle(KAStr.showTimerText, isOn: $showTimerText)
-                    .onChange(of: showTimerText) { _, v in write(v, "showTimerText") }
+                    .onChange(of: showTimerText) { _, v in write(v, MenuBarLook.Key.showTimerText) }
                 LabeledContent(KAStr.timerColor) { timerColorSwatches }
             }
 
@@ -283,7 +283,7 @@ public struct KeepAwakeSettingsPage: View {
     private var colorSwatches: some View {
         swatchGrid(selection: activeTintColor) { token in
             activeTintColor = token
-            write(token, "activeTintColor")
+            write(token, MenuBarLook.Key.activeTint)
         }
     }
 
@@ -293,7 +293,7 @@ public struct KeepAwakeSettingsPage: View {
         // show that as the selection.
         swatchGrid(selection: timerTintColor.isEmpty ? activeTintColor : timerTintColor) { token in
             timerTintColor = token
-            write(token, "timerTintColor")
+            write(token, MenuBarLook.Key.timerTint)
         }
     }
 
