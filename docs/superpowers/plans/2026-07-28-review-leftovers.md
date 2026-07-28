@@ -63,6 +63,48 @@ first session with it caught the growth. Read top to bottom:
 23:17:12  leftovers.scan: 280 MB
 ```
 
+**Found it, 2026-07-28 23:17 — the Duplicates scan, and it is an autorelease
+pool that is never drained.** The user pointed at the module; the log named the
+phase:
+
+```
+23:17:44  duplicates.walk: 180 MB      ← the walk is cheap: 14 580 files
+23:17:49  idle: 10907 MB (+10727 MB)   ← five seconds later
+23:18:04  idle: 20342 MB (+9434 MB)
+23:18:19  idle: 31124 MB (+10782 MB)
+23:18:57  idle: 39303 MB (+8178 MB)
+```
+
+Roughly 2 GB per second, starting the moment hashing starts, on a scan of 14 580
+files — so it is not the file list, the groups, or the digests. It tracks the
+**volume read**.
+
+`DuplicateScanner.hash` streams 1 MB slices precisely so a video does not become
+a `Data` the size of the video, and that part is right. But `FileHandle.read`
+returns an autoreleased `Data`, the loop has no `autoreleasepool`, and
+`DispatchQueue.concurrentPerform` does not drain one per iteration — so every
+slice ever read stays alive until the whole parallel block finishes. The comment
+twelve lines above measures the worst case at **70 GB of full-hash volume for a
+real home directory**, which is then also the memory figure. The user saw 48 GB.
+
+Proven rather than reasoned, with the same read loop over 1.8 GB:
+
+| | footprint at the end |
+|---|---|
+| loop as it is written today | **1760 MB** |
+| identical loop inside `autoreleasepool` | **6 MB** |
+
+**The fix** is a pool inside the `while`, not around it: wrapping the whole
+file still accumulates one file's worth, and a single 20 GB video is the case
+that matters. Then re-measure — a scan of the same folder must come back at tens
+of megabytes.
+
+**Then check every other loop that reads or stats in bulk**, because this is a
+class, not an instance: `FileManager.enumerator` with `resourceValues` produces
+autoreleased objects too, and the disk scan's 1.1 GB peak over 1.5 M files
+(~700 bytes each) is the same shape. The tree is real, but it is probably not
+all of that number.
+
 **What that changes.** The dominant cost is not a slow leak — it is the disk
 scan, and it is proportional to the volume: **1.5 million files, ~1.1 GB at the
 peak, ~700 bytes per file**, of which roughly 750 MB comes back and ~270 MB
