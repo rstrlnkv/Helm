@@ -9,6 +9,7 @@ import Module_Leftovers_Engine
 public struct LeftoversSettingsPage: View {
     @StateObject private var lvm: LeftoversViewModel
     @State private var diskAccess: PermissionState = .granted
+    @State private var confirmingBatch = false
     @State private var pendingDeletion: StaleItem?
 
     public init(vm: ModuleViewModel) {
@@ -86,6 +87,10 @@ public struct LeftoversSettingsPage: View {
                     Text(LfStr.filterAll).tag(true)
                 }
                 .pickerStyle(.segmented).labelsHidden()
+                // Narrowing the list drops the ticks it hides, the way the kind
+                // filter and a fresh scan already do. Without this the segmented
+                // control was the one way a selection could outlive its row.
+                .onChange(of: lvm.showAll) { _, _ in lvm.dropHiddenSelections() }
                 .frame(width: 180)
             }
             Button {
@@ -256,9 +261,17 @@ public struct LeftoversSettingsPage: View {
                     needsFullDiskAccess: diskAccess == .denied)
                     .frame(maxWidth: 420, alignment: .leading)
             }
-            Button(LfStr.removeSelected) { Task { await lvm.removeSelected() } }
+            Button(LfStr.removeSelected) { confirmingBatch = true }
                 .buttonStyle(.borderedProminent)
                 .disabled(lvm.selected.isEmpty)
+                .confirmationDialog(LfStr.confirmSelected(lvm.selected.count,
+                                                          Bytes(selectedBytes)),
+                                    isPresented: $confirmingBatch, titleVisibility: .visible) {
+                    Button(LfStr.removeSelected, role: .destructive) {
+                        Task { await lvm.removeSelected() }
+                    }
+                    Button(LfStr.cancelAction, role: .cancel) { }
+                }
         }
         .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
     }
