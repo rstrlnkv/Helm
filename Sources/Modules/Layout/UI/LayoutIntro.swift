@@ -17,7 +17,7 @@ struct LayoutIntro: View {
                 HelmIconPlate(symbol: "keyboard", tint: .pink, size: 44)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(LyStr.introTitle).font(.title3.weight(.semibold))
-                    Text(LyStr.introSubtitle).font(.callout).foregroundStyle(.secondary)
+                    Text(LyStr.introSubtitle).font(.callout).foregroundStyle(HelmText.quiet)
                 }
             }
 
@@ -43,7 +43,7 @@ struct LayoutIntro: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: symbol)
                 .frame(width: 18)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(HelmText.quiet)
                 .accessibilityHidden(true)
             Text(text)
                 .font(.callout)
@@ -66,7 +66,7 @@ struct LayoutTestField: View {
                 .textFieldStyle(.roundedBorder)
                 .font(.system(size: 13, design: .monospaced))
             Text(LyStr.tryItHint)
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }

@@ -231,7 +231,7 @@ public struct HelmPageHeader<Trailing: View>: View {
                     .tracking(-0.2)
                 Text(subtitle)
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(HelmText.quiet)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -319,7 +319,10 @@ public struct HelmMetricStrip: View {
                         // `.tertiary` at 9 pt measured 1.87:1 light and 2.26:1
                         // dark — below every threshold, on a strip that appears
                         // on every module page.
-                        .foregroundStyle(Color.primary.opacity(0.6))
+                        // The token, not a hand-picked opacity. 0.6 was chosen
+                        // to beat `.tertiary`'s 1.87:1 and stopped at 4.09:1,
+                        // short of the 4.5 these tokens exist to clear.
+                        .foregroundStyle(HelmText.quiet)
                 }
                 // "Running, State" as one VoiceOver stop, not two in
                 // value-then-label order.

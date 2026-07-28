@@ -75,7 +75,7 @@ struct OrphansView: View {
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(item.path).font(.caption).lineLimit(1).truncationMode(.middle)
                                     Text("\(UnStr.kind(item.kind)) · \(Bytes(item.sizeBytes))")
-                                        .font(.caption2).foregroundStyle(.secondary)
+                                        .font(.caption2).foregroundStyle(HelmText.quiet)
                                 }
                             }
                             .toggleStyle(.checkbox)
@@ -86,7 +86,7 @@ struct OrphansView: View {
                         HStack {
                             Text(group.bundleID).font(.callout.weight(.medium))
                             Spacer()
-                            Text(Bytes(group.totalBytes)).font(.caption).foregroundStyle(.secondary)
+                            Text(Bytes(group.totalBytes)).font(.caption).foregroundStyle(HelmText.quiet)
                         }
                     }
                 }
@@ -109,7 +109,7 @@ struct OrphansView: View {
             .disabled(busy)
             Spacer()
             Text(UnStr.selectedSummary(selected.count, Bytes(selectedBytes)))
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(HelmText.quiet)
             Button(UnStr.moveToTrash) { confirming = true }
                 .buttonStyle(.borderedProminent)
                 .disabled(selected.isEmpty || busy)

@@ -180,7 +180,7 @@ private struct BreadcrumbBar: View {
                     if let tick = dvm.tick, layout.showsScanStatement {
                         Text(DkStr.liveCount(tick.files))
                             .font(.system(size: 11, design: .monospaced))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(HelmText.quiet)
                     }
                     Button(DkStr.stop) { dvm.cancel() }
                         .controlSize(.small)
@@ -283,7 +283,7 @@ private struct BreadcrumbBar: View {
                     .frame(maxWidth: 120, alignment: .leading)
             }
             .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(HelmText.quiet)
         }
     }
 
@@ -334,7 +334,7 @@ private struct ChildRow: View {
             Spacer()
             Text(Bytes(child.bytes))
                 .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(HelmText.quiet)
             if removable {
                 Button(action: onToggleBasket) {
                     Image(systemName: basketed ? "checkmark.circle.fill" : "plus.circle")
@@ -416,7 +416,7 @@ private struct AdviceList: View {
         let basketed = dvm.isBasketed(entry)
         return HStack(spacing: 10) {
             Image(systemName: icon(item.kind))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(HelmText.quiet)
                 .frame(width: 18)
             VStack(alignment: .leading, spacing: 1) {
                 Text(item.name).lineLimit(1).truncationMode(.middle)
@@ -427,7 +427,7 @@ private struct AdviceList: View {
             Spacer()
             Text(Bytes(item.bytes))
                 .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(HelmText.quiet)
             Button {
                 dvm.toggleBasket(entry)
             } label: {

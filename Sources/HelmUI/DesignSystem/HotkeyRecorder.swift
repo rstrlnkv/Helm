@@ -125,11 +125,11 @@ public struct HelmHotkeyRow: View {
                 Text(title)
                 Spacer()
                 if recorder.recording {
-                    Text(Self.pressKeys).foregroundStyle(.secondary)
+                    Text(Self.pressKeys).foregroundStyle(HelmText.quiet)
                 } else if !recorder.label.isEmpty {
                     Text(recorder.label).font(.body.monospaced())
                 } else {
-                    Text(Self.none).foregroundStyle(.secondary)
+                    Text(Self.none).foregroundStyle(HelmText.quiet)
                 }
                 Button(recorder.recording ? Self.cancel : Self.record) {
                     recorder.recording ? recorder.stop() : recorder.startRecording()

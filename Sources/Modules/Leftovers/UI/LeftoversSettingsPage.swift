@@ -58,7 +58,7 @@ public struct LeftoversSettingsPage: View {
     private var toolbar: some View {
         HStack(spacing: 10) {
             Text(lvm.items.isEmpty ? LfStr.intro : LfStr.reviewNote)
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
                 // Two lines, then truncate. Unbounded, the Spanish intro takes
                 // four at the minimum window width and the toolbar grows to
@@ -112,7 +112,7 @@ public struct LeftoversSettingsPage: View {
                 HelmIconPlate(symbol: lvm.scanned ? "checkmark.circle" : "wand.and.rays",
                               tint: lvm.scanned ? .green : .blue, size: 56)
                 Text(lvm.scanned ? LfStr.nothingFound : LfStr.notScannedYet)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(HelmText.quiet)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 360)
                 Spacer()
@@ -167,7 +167,7 @@ public struct LeftoversSettingsPage: View {
                 }
                 if item.kind != .systemExtension {
                     Text(item.path)
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(HelmText.quiet)
                         .lineLimit(1).truncationMode(.middle)
                 }
                 if let target = item.missingTarget {
@@ -192,7 +192,7 @@ public struct LeftoversSettingsPage: View {
                     .controlSize(.small)
             } else {
                 Text(Bytes(item.sizeBytes))
-                    .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                    .font(.caption).foregroundStyle(HelmText.quiet).monospacedDigit()
                 Menu {
                     Button(LfStr.reveal) {
                         NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: item.path)])
@@ -241,7 +241,7 @@ public struct LeftoversSettingsPage: View {
             if !lvm.items.isEmpty {
                 Text(LfStr.foundCount(lvm.leftoverCount,
                                       Bytes(selectedBytes)))
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(HelmText.quiet)
             }
             Spacer()
             if let banner = lvm.banner {

@@ -17,7 +17,7 @@ public struct VPNPanelTile: View {
             if vm.connections.isEmpty {
                 Text(VPNStr.noVPNs)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(HelmText.quiet)
             } else {
                 VStack(spacing: 8) {
                     ForEach(vm.connections) { connectionRow($0) }

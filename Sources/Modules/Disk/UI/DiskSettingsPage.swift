@@ -98,12 +98,12 @@ public struct DiskSettingsPage: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Image(systemName: "internaldrive")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(HelmText.quiet)
                     Text(volume.name).font(.headline)
                     Spacer()
                     Text(formatted(volume.usedBytes) + " / " + formatted(volume.totalBytes))
                         .font(.system(size: 12, design: .monospaced))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(HelmText.quiet)
                 }
                 GeometryReader { proxy in
                     let ratio = volume.totalBytes > 0
@@ -116,7 +116,7 @@ public struct DiskSettingsPage: View {
                 }
                 .frame(height: 6)
                 Text(formatted(volume.freeBytes) + " " + DkStr.free)
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(HelmText.quiet)
             }
             .helmCard()
         }
@@ -152,7 +152,7 @@ public struct DiskSettingsPage: View {
                         needsFullDiskAccess: diskAccess == .denied)
                 } else {
                     Text(DkStr.emptyBasket)
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(HelmText.quiet)
                 }
             } else {
                 // A count is not a list. Everything about to be trashed can be
