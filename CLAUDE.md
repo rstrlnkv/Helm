@@ -73,6 +73,12 @@ xattr -dr com.apple.quarantine /Applications/Helm.app && open /Applications/Helm
 - The in-app changelog is `Sources/HelmApp/ChangelogData.swift` (localized,
   badged, **user-facing — no fix minutiae**); `CHANGELOG.md` is the canonical
   English record. Update both.
+- **A harness must leave nothing behind.** The screenshot loop below drives real
+  code, and real code writes: a scan of a folder lands in `ScanStore`, and the
+  module then reopens on it at every launch — twice now the app was handed back
+  with somebody's test tree in it and no way out. Point a harness at a temporary
+  folder, delete whatever it saved (`~/Library/Application Support/Helm/`), and
+  check the app's own state before saying it is done.
 - UI changes: verify visually with an env-gated screenshot harness
   (`HELM_DEBUG_*` in AppDelegate; ARCHITECTURE.md § Dev loop) — do not ask the
   user to be the test loop; `grep -r HELM_DEBUG Sources/` must be clean before
