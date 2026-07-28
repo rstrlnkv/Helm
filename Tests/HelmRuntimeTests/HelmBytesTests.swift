@@ -11,9 +11,21 @@ final class HelmBytesTests: XCTestCase {
         XCTAssertEqual(HelmBytes.localizedUnits("2 TB", language: "ru"), "2 ТБ")
     }
 
+    /// Each of these is the spelling in `FileSizeFormatting.loctable`, the table
+    /// `ByteCountFormatter` reads: Russian abbreviates the byte, French writes a
+    /// lowercase kilo (`ko`) beside an uppercase mega (`Mo`), and German uses
+    /// one form for one byte and for many.
     func testByteWordIsTranslated() {
-        XCTAssertEqual(HelmBytes.localizedUnits("512 bytes", language: "ru"), "512 байт")
-        XCTAssertEqual(HelmBytes.localizedUnits("1 byte", language: "ru"), "1 байт")
+        XCTAssertEqual(HelmBytes.localizedUnits("512 bytes", language: "ru"), "512 Б")
+        XCTAssertEqual(HelmBytes.localizedUnits("1 byte", language: "ru"), "1 Б")
+        XCTAssertEqual(HelmBytes.localizedUnits("512 bytes", language: "de"), "512 Byte")
+        XCTAssertEqual(HelmBytes.localizedUnits("1 byte", language: "de"), "1 Byte")
+    }
+
+    func testFrenchKiloIsLowercaseAndTheRestAreNot() {
+        XCTAssertEqual(HelmBytes.localizedUnits("20 KB", language: "fr"), "20 ko")
+        XCTAssertEqual(HelmBytes.localizedUnits("1,7 MB", language: "fr"), "1,7 Mo")
+        XCTAssertEqual(HelmBytes.localizedUnits("432,95 GB", language: "fr"), "432,95 Go")
     }
 
     func testEnglishIsLeftAlone() {
