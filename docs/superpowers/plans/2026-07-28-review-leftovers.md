@@ -7,11 +7,67 @@ holding them. Nothing here is a release blocker for dev.28 — it is the list to
 work through once the log triage is done, so none of it has to be re-derived.
 
 Order below is the order worth doing them in, not severity: the two that need
-`Package.swift` unlock the tests for several of the others. Item 7 came from the
-user watching the app rather than from the review, and is the only one here
-nobody has reproduced yet.
+`Package.swift` unlock the tests for several of the others. Items 7 and 8 came
+from the user watching the app rather than from the review.
+
+**Item 0 is not like the others.** It is a memory leak the user hit at 48 GB, it
+is reproducible on an idle machine, and it blocks the beta this dev build was
+supposed to graduate into. Everything below it can wait; that cannot.
 
 ---
+
+## 0. Memory leak — RELEASE BLOCKER, do this first
+
+**Reported** (user, 2026-07-28): while using Login Items & Extensions, Helm grew
+to **48 GB** of memory.
+
+**What I measured** on 0.7.2-dev.28, before touching anything:
+
+- The app was **idle** — no scan running, no page open, nothing in the log after
+  launch — and RSS went **468 → 507 → 524 → 527 MB across 60 seconds**, three
+  samples, monotonic. A later 45-second window was flat (558 → 554 MB), so the
+  growth is bursty rather than a steady drip; whatever drives it is not
+  continuous.
+- Half a gigabyte resident on an idle accessory app is itself the wrong order of
+  magnitude — this is a menu-bar utility with nothing on screen.
+- `vmmap --summary` shows **13,299 `Malloc Small (empty)` regions holding 49.5 GB
+  of reserved address space**, and `Malloc Metadata metadata` at 203 MB across
+  406 regions. That is the signature of enormous allocation churn — memory taken
+  and given back so hard that the allocator keeps thousands of emptied regions —
+  not of one big retained buffer.
+- `heap`, `leaks` and `sample` all returned nothing against the running process
+  under the current permissions. Whoever picks this up will need Developer Tools
+  access granted, or a locally-signed build attached to Instruments.
+
+**Excluded already** (checked, so nobody re-checks): `LocalTransport` is *not* an
+unbounded buffer — it keeps the last event **per name** plus a name list, so it
+is bounded by the number of distinct event names an engine emits.
+
+**Prime suspect, and the first thing to test.** `LocalTransport.subscribers` is
+pruned only by `continuation.onTermination`. Every access to `.events` builds a
+fresh stream and registers a new continuation, and Settings tears a module's page
+down and rebuilds it on every sidebar visit. If the `for await` task behind a
+rebuilt page is not cancelled, its subscriber stays registered for the life of
+the app — still receiving every event, still holding whatever it captured. That
+would grow with page switches and with event volume, which fits both the churn
+signature and a leak that shows up "while using a module".
+
+**How to work it:**
+
+1. Reproduce with a counter, not a hunch: log `subscribers.count` per transport
+   on a timer in a debug build, then open and leave a module page twenty times.
+   If the count climbs, the diagnosis is done.
+2. If it does not climb, bisect by module: watch RSS with each module enabled
+   alone. The user hit it on Login Items & Extensions; that module runs
+   `launchctl` and `systemextensionsctl` and reads bundles, so its scan path and
+   its process output are the next place to look.
+3. Whatever it turns out to be, the regression test is a count that must not
+   grow — a subscriber count, a task count, an allocation count — not a memory
+   figure, which is too noisy to assert on.
+
+**Note for the beta decision:** dev.28 must not graduate until this is
+understood. It is the one defect in this file that costs the user something
+today.
 
 ## 1. A UI test target for Uninstaller and Homebrew
 
