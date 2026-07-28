@@ -85,6 +85,20 @@ public enum Duplicates {
         return byDigest.values.filter { $0.count > 1 }.map { $0 }
     }
 
+    /// One group, assembled the one way.
+    ///
+    /// There are two pipelines over the same three passes: this file's
+    /// `groups`, which the unit tests drive, and `DuplicateScanner.find`, which
+    /// the engine drives concurrently. When `SurvivingCopy` replaced the
+    /// alphabetical rule it was wired into the first and not the second, so the
+    /// page explained one rule in its tooltip while the app followed another.
+    /// Both call this now, and a change to which copy survives cannot land in
+    /// one line and miss the other.
+    public static func group(_ identical: [FileFacts]) -> DuplicateGroup {
+        DuplicateGroup(bytes: identical.first?.bytes ?? 0,
+                       paths: SurvivingCopy.order(identical))
+    }
+
     /// The whole pipeline: size → prefix hash → full hash → groups, largest
     /// waste first. `partial` and `full` are injected so the pipeline can be
     /// tested without a disk and driven with real hashing in production.
@@ -95,11 +109,7 @@ public enum Duplicates {
         for candidates in sizeGroups(files, minBytes: minBytes) {
             for byPrefix in refine(candidates, by: partial) {
                 for identical in refine(byPrefix, by: full) {
-                    result.append(DuplicateGroup(
-                        bytes: identical.first?.bytes ?? 0,
-                        // The survivor first: see `SurvivingCopy` for why
-                        // alphabetical was the wrong rule and what replaced it.
-                        paths: SurvivingCopy.order(identical)))
+                    result.append(group(identical))
                 }
             }
         }
