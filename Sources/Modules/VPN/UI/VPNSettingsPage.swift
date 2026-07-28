@@ -138,16 +138,10 @@ public struct VPNSettingsPage: View {
         let info = AppInfo.resolve(bundleID)
         // A renamed or deleted VPN silently disables its rules; the row said
         // nothing and the picker simply showed blank.
-        let missing = rules[bundleID].map { rule in
-            !vm.connections.contains { $0.name == rule.vpnName }
-        } ?? false
-        return VStack(alignment: .leading, spacing: 4) {
-        HStack(spacing: 10) {
-            Image(nsImage: info.icon)
-                .resizable().frame(width: 22, height: 22)
-            Text(info.name)
-                .lineLimit(1)
-            Spacer(minLength: 12)
+        // `VPNRules.orphaned` is this question, tested, and was answered here
+        // by hand — per row, which is also how the second answer gets written.
+        let missing = VPNRules.orphaned(rules, against: vm.connections)[bundleID] != nil
+        return HelmAppRuleRow(bundleID: bundleID) {
             // Two nameless pop-ups in one row are indistinguishable to
             // VoiceOver; each carries what it chooses.
             Picker("\(info.name) — \(VPNStr.rulePickerVPN)", selection: vpnNameBinding(bundleID)) {
@@ -164,26 +158,20 @@ public struct VPNSettingsPage: View {
             }
             .labelsHidden()
             .fixedSize()
-            Button {
-                rules.removeValue(forKey: bundleID)
-                persist()
-            } label: {
-                Image(systemName: "minus.circle.fill").foregroundStyle(HelmText.quiet)
+        } note: {
+            if missing, let name = rules[bundleID]?.vpnName {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.orange)
+                        .accessibilityHidden(true)   // the text beside it says it
+                    Text(VPNStr.ruleVPNMissing(name))
+                        .font(.caption)
+                        .foregroundStyle(HelmText.quiet)
+                }
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("\(HelmA11y.remove), \(info.name)")
+        } remove: {
+            rules.removeValue(forKey: bundleID)
+            persist()
         }
-        if missing, let name = rules[bundleID]?.vpnName {
-            HStack(spacing: 6) {
-                Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.orange)
-                    .accessibilityHidden(true)   // the text beside it says it
-                Text(VPNStr.ruleVPNMissing(name))
-                    .font(.caption)
-                    .foregroundStyle(HelmText.quiet)
-            }
-        }
-        }
-        .padding(.vertical, 5)
     }
 
     private func timingBinding(_ bundleID: String) -> Binding<VPNAppRule.Timing> {

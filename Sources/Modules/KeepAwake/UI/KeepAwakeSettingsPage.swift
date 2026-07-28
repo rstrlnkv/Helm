@@ -258,28 +258,18 @@ public struct KeepAwakeSettingsPage: View {
             // button. The condition is a single menu because the two flags are
             // not independent choices — "display and power" means both.
             ForEach(Array(appTriggers.enumerated()), id: \.element.bundleID) { index, trigger in
-                let info = AppInfo.resolve(trigger.bundleID)
-                HStack(spacing: 10) {
-                    Image(nsImage: info.icon)
-                        .resizable().frame(width: 22, height: 22)
-                    Text(info.name)
-                        .lineLimit(1)
-                    Spacer(minLength: 12)
-                    Picker(info.name, selection: conditionBinding(index)) {
+                HelmAppRuleRow(bundleID: trigger.bundleID) {
+                    Picker(AppInfo.resolve(trigger.bundleID).name,
+                           selection: conditionBinding(index)) {
                         ForEach(AppTrigger.Condition.allCases, id: \.self) { condition in
                             Text(KAStr.triggerCondition(condition)).tag(condition)
                         }
                     }
                     .labelsHidden()
                     .fixedSize()
-                    Button {
-                        appTriggers.remove(at: index)
-                        saveTriggers()
-                    } label: {
-                        Image(systemName: "minus.circle.fill").foregroundStyle(HelmText.quiet)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("\(HelmA11y.remove), \(info.name)")
+                } remove: {
+                    appTriggers.remove(at: index)
+                    saveTriggers()
                 }
         }
         Button {
