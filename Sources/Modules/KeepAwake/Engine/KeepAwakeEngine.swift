@@ -318,12 +318,18 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     // MARK: - Transport
 
     private struct StartPayload: Codable { let minutes: Int }
-    private struct StatePayload: Codable {
-        let isActive: Bool
-        let conditions: [String]
-        let clamshellActive: Bool
-        let endDate: Date?
-        let startDate: Date?
+    /// Public because the page decodes it. It was typed out again over there,
+    /// matched to this one by field names across a JSON hop with no compiler
+    /// in between — and a field that stops matching does not fail, it silently
+    /// decodes to nothing and the screen keeps its defaults forever. That is
+    /// the bug `ModuleViewModel`'s own doc comment records, shipped once and
+    /// then re-created inside the modules.
+    public struct StatePayload: Codable {
+        public let isActive: Bool
+        public let conditions: [String]
+        public let clamshellActive: Bool
+        public let endDate: Date?
+        public let startDate: Date?
     }
 
     private func wireTransport() {

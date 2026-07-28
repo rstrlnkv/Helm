@@ -26,7 +26,7 @@ public struct VPNSettingsPage: View {
 
     /// Connections that are up or on their way up.
     private var activeCount: Int {
-        vm.connections.filter { $0.status == .connected || $0.status == .connecting }.count
+        vm.connections.filter(\.status.isUp).count
     }
 
     private var vpnForm: some View {
@@ -70,8 +70,8 @@ public struct VPNSettingsPage: View {
     }
 
     private func connectionRow(_ c: VPNConnection) -> some View {
-        let active = c.status == .connected || c.status == .connecting
-        let transitioning = c.status == .connecting || c.status == .disconnecting
+        let active = c.status.isUp
+        let transitioning = c.status.isTransitioning
         return HStack(spacing: 12) {
             HelmStatusDot(active: active)
             VStack(alignment: .leading, spacing: 1) {

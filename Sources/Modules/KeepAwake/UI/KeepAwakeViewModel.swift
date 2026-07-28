@@ -1,6 +1,7 @@
 import SwiftUI
 import HelmContract
 import HelmUI
+import Module_KeepAwake_Engine
 
 /// Keep Awake's own view state.
 ///
@@ -43,10 +44,9 @@ import HelmUI
         }
     }
 
-    private struct StatePayload: Codable {
-        let isActive: Bool; let conditions: [String]
-        let clamshellActive: Bool; let endDate: Date?; let startDate: Date?
-    }
+    /// The engine's own declaration. There is no compiler between the two
+    /// sides of a JSON hop, so a second copy here could drift silently.
+    private typealias StatePayload = KeepAwakeEngine.StatePayload
 
     private func handle(_ event: EngineEvent) {
         guard event.name == "state",

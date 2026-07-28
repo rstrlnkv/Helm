@@ -16,10 +16,8 @@ import Module_VPN_Engine
         // Ask the engine to publish current state.
         send("refresh")
     }
-    private struct StatePayload: Codable {
-        let connections: [VPNConnection]; let autoConnected: [String]
-        let defaultName: String?
-    }
+    /// The engine's own declaration — see the note on KeepAwake's.
+    private typealias StatePayload = VPNEngine.StatePayload
     private func handle(_ e: EngineEvent) {
         guard e.name == "state",
               let p = try? JSONDecoder().decode(StatePayload.self, from: e.payload) else { return }
