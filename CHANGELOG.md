@@ -199,6 +199,13 @@ features, PATCH = fixes.
   Edit ▸ Transformations wherever text can be edited.
 
 ### Fixed
+- **The disk ring no longer jumps at the end of a drill.** The animation used to
+  transform the arcs that were on screen and then replace them with a layout
+  computed separately, and the two disagreed — small folders fold into "other"
+  against the parent's total in one and the folder's own total in the other — so
+  the last frame held five arcs spanning 353° where the first frame after it held
+  three spanning 360, and every boundary moved at once. The drill lands first
+  now, so the ring animates towards the arcs it is actually going to show.
 - **The disk ring grows into the folder you opened instead of snapping.** The
   ring draws three levels and a drill promotes each one inward, so the level
   that became the new outermost ring had never been laid out — it appeared all

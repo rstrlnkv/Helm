@@ -24,6 +24,9 @@ struct RingView: View {
     /// back into its wedge instead of cross-fading.
     var foldingBackFrom: String?
     var onFoldConsumed: () -> Void
+    /// The layout for a folder, so the unfold can move towards the arcs that
+    /// will exist rather than towards a transform of the ones that do.
+    var targetLayout: (String) -> [RingSegment]
 
     @State private var hoverPoint: CGPoint?
     /// The wedge currently opening (or closing), and how far along it is.
@@ -31,6 +34,11 @@ struct RingView: View {
     /// a second click cannot start a second unfold on top of the first.
     @State private var pivot: RingSegment?
     @State private var unfold: Double = 0
+    /// The layout the ring is coming *from*. The drill lands before the
+    /// animation starts, so `segments` is already the destination and this is
+    /// the snapshot being left behind — which makes the last frame of the
+    /// animation the layout itself, not a transform that has to agree with it.
+    @State private var leaving: [RingSegment] = []
 
     private let geometry = RingGeometry(innerRadius: 0.34, thickness: 0.155, gap: 0.012)
 
@@ -103,7 +111,7 @@ struct RingView: View {
             let center = CGPoint(x: proxy.size.width / 2, y: proxy.size.height / 2)
 
             ZStack {
-                RingCanvas(segments: segments, pivot: pivot, progress: unfold,
+                RingCanvas(segments: segments, leaving: leaving, pivot: pivot, progress: unfold,
                            geometry: geometry, center: center, side: side,
                            color: color(for:))
                 centerLabel
@@ -149,24 +157,49 @@ struct RingView: View {
         // ring narrows into the wedge it came out of.
         .onChange(of: foldingBackFrom) { _, path in
             guard let path, let wedge = segments.first(where: { $0.path == path }) else { return }
+            // The parent is already on screen; the child is what leaves, and
+            // it leaves by narrowing back into the wedge it came out of.
+            leaving = targetLayout(path)
             pivot = wedge
-            unfold = 1
+            unfold = 0
             onFoldConsumed()
-            withAnimation(HelmMotion.emphasis) { unfold = 0 } completion: { pivot = nil }
+            withAnimation(HelmMotion.emphasis) { unfold = 1 } completion: {
+                pivot = nil
+                leaving = []
+                unfold = 0
+            }
         }
     }
 
     /// Opens a wedge: it widens until it is the whole ring, and only then does
     /// the drill land — so the ring the user ends up looking at is the one they
     /// watched grow, rather than a different ring that faded in.
+    /// Opens a wedge: it widens until it is the whole ring while the layout
+    /// underneath moves to where it will be, and only then does the drill land.
+    /// The ring the user ends up looking at is the one they watched grow — and
+    /// now it is that one exactly, arc for arc, rather than a transform of the
+    /// old one that the new layout then replaced in a single frame.
+    /// Opens a wedge.
+    ///
+    /// The drill lands *first*, so the ring is already showing the layout it
+    /// will settle on, and the animation carries the previous layout out over
+    /// the top of it. The other order — transform the old arcs, then swap —
+    /// cannot be made seamless: folding into "other" is decided against the
+    /// parent's total in one layout and the folder's own total in the other, so
+    /// the last transformed frame held arcs the destination did not have, and
+    /// every boundary moved in the single frame between them. Measured before
+    /// and after: `last frame ring0` and `first frame ring0` in the log.
     private func open(_ hit: RingSegment) {
+        leaving = segments
         pivot = hit
+        onSelect(hit)
+        unfold = 0
         withAnimation(HelmMotion.emphasis) {
             unfold = 1
         } completion: {
-            onSelect(hit)
-            unfold = 0
             pivot = nil
+            leaving = []
+            unfold = 0
         }
     }
 
@@ -262,6 +295,8 @@ func helmArcPath(center: CGPoint, side: CGFloat, inner: Double, outer: Double,
 /// time, which is what turns the transform in `RingUnfold` into motion.
 private struct RingCanvas: View, @MainActor Animatable {
     let segments: [RingSegment]
+    /// The layout being left behind. Empty while nothing is opening.
+    let leaving: [RingSegment]
     let pivot: RingSegment?
     var progress: Double
     let geometry: RingGeometry
@@ -276,42 +311,82 @@ private struct RingCanvas: View, @MainActor Animatable {
 
     var body: some View {
         Canvas { context, _ in
-            for segment in segments {
-                guard let arc = arc(for: segment) else { continue }
-                context.opacity = arc.opacity
-                context.fill(arc.path, with: .color(color(segment)))
+            for drawn in arcs() {
+                context.opacity = drawn.opacity
+                context.fill(drawn.path, with: .color(color(drawn.segment)))
                 // A hairline of window background between arcs reads as
                 // engraved separations rather than touching paint.
-                context.stroke(arc.path, with: .color(Color(nsColor: .windowBackgroundColor)),
+                context.stroke(drawn.path, with: .color(Color(nsColor: .windowBackgroundColor)),
                                lineWidth: 1)
             }
         }
     }
 
-    private func arc(for segment: RingSegment) -> (path: Path, opacity: Double)? {
-        let isSpare = segment.ring >= RingView.visibleRings
-        guard let pivot, progress > 0 else {
-            guard !isSpare else { return nil }
-            let (r0, r1) = geometry.radialRange(ring: segment.ring)
-            return (helmArcPath(center: center, side: side, inner: r0, outer: r1,
-                            start: segment.startAngle, end: segment.endAngle), 1)
+    private typealias Drawn = (segment: RingSegment, path: Path, opacity: Double)
+
+    /// At rest the ring is its layout. While a wedge is opening it is two: the
+    /// arcs that are leaving, carried out by the widening transform, and the
+    /// arcs of the layout being entered, each moving from wherever it is now to
+    /// exactly where it will be — so the frame the animation ends on is the
+    /// frame that follows it.
+    private func arcs() -> [Drawn] {
+        guard let pivot, progress > 0, !leaving.isEmpty else {
+            return segments.compactMap { segment in
+                guard segment.ring < RingView.visibleRings else { return nil }
+                let (r0, r1) = geometry.radialRange(ring: segment.ring)
+                let path = helmArcPath(center: center, side: side, inner: r0, outer: r1,
+                                       start: segment.startAngle, end: segment.endAngle)
+                return (segment, path, 1)
+            }
         }
-        let span = pivot.endAngle - pivot.startAngle
-        let start = RingUnfold.angle(segment.startAngle, pivotStart: pivot.startAngle,
-                                     span: span, progress: progress)
-        let end = RingUnfold.angle(segment.endAngle, pivotStart: pivot.startAngle,
-                                   span: span, progress: progress)
-        guard RingUnfold.isVisible(start: start, end: end) else { return nil }
 
-        let isPivot = segment.path == pivot.path
-        let isDescendant = !pivot.path.isEmpty && segment.path.hasPrefix(pivot.path + "/")
-        let opacity = RingUnfold.opacity(isPivot: isPivot, isDescendant: isDescendant,
-                                         isSpare: isSpare, progress: progress)
-        guard opacity > 0.001 else { return nil }
+        var out: [Drawn] = []
+        let staying = Set(segments.map(\.path))
+        // Leaving: the wedge that was clicked, its siblings, everything above
+        // them — carried out by the widening transform and faded.
+        for segment in leaving where !staying.contains(segment.path) {
+            guard segment.ring < RingView.visibleRings else { continue }
+            let span = pivot.endAngle - pivot.startAngle
+            let start = RingUnfold.angle(segment.startAngle, pivotStart: pivot.startAngle,
+                                         span: span, progress: progress)
+            let end = RingUnfold.angle(segment.endAngle, pivotStart: pivot.startAngle,
+                                       span: span, progress: progress)
+            guard RingUnfold.isVisible(start: start, end: end) else { continue }
+            let opacity = max(0, 1 - progress)
+            guard opacity > 0.001 else { continue }
+            let (r0, r1) = geometry.radialRange(ring: segment.ring)
+            out.append((segment, helmArcPath(center: center, side: side, inner: r0, outer: r1,
+                                             start: start, end: end), opacity))
+        }
 
-        let ring = RingUnfold.ring(segment.ring, isDescendant: isDescendant, progress: progress)
-        let (r0, r1) = geometry.radialRange(ring: ring)
-        return (helmArcPath(center: center, side: side, inner: r0, outer: r1,
-                        start: start, end: end), opacity)
+        // Staying: the layout already on screen, each arc coming from wherever
+        // it was a moment ago. At full progress every one of them is exactly
+        // where the layout puts it, because it is the layout.
+        let before = Dictionary(leaving.map { ($0.path, $0) }, uniquingKeysWith: { first, _ in first })
+        for segment in segments where segment.ring < RingView.visibleRings {
+            let start: Double, end: Double, ring: Double, opacity: Double
+            if let was = before[segment.path], !segment.path.isEmpty {
+                start = RingUnfold.toward(was.startAngle, segment.startAngle, progress: progress)
+                end = RingUnfold.toward(was.endAngle, segment.endAngle, progress: progress)
+                ring = RingUnfold.toward(Double(was.ring), Double(segment.ring), progress: progress)
+                opacity = 1
+            } else {
+                // No counterpart: the level that was never drawn, and whatever
+                // a different fold produced. It slides in from one ring further
+                // out and fades up rather than appearing.
+                start = segment.startAngle
+                end = segment.endAngle
+                ring = RingUnfold.arrivingRing(segment.ring, progress: progress)
+                opacity = min(max(progress, 0), 1)
+            }
+            guard opacity > 0.001 else { continue }
+            let (r0, r1) = geometry.radialRange(ring: ring)
+            out.append((segment, helmArcPath(center: center, side: side, inner: r0, outer: r1,
+                                             start: start, end: end), opacity))
+        }
+        return out
     }
+
 }
+
+

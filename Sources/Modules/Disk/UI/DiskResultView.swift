@@ -50,7 +50,8 @@ struct DiskResultView: View {
                                  DiskViewModel.folderName(for: segment.path) ?? segment.name
                              },
                              foldingBackFrom: dvm.foldingBackFrom,
-                             onFoldConsumed: { dvm.foldingBackFrom = nil })
+                             onFoldConsumed: { dvm.foldingBackFrom = nil },
+                             targetLayout: { dvm.ringLayout(forFocusAt: $0) })
                 }
                 .frame(minWidth: 300, idealWidth: 360, maxWidth: 380)
                 .aspectRatio(1, contentMode: .fit)

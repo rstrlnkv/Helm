@@ -62,6 +62,31 @@ public enum RingUnfold {
         return max(0, 1 - t)
     }
 
+
+    /// Where an arc sits partway between the layout it is in and the layout it
+    /// is becoming.
+    ///
+    /// The transform above answers "where does this angle go while the wedge
+    /// widens", which is the right question for everything that is leaving the
+    /// screen and the wrong one for everything that is staying: the arcs that
+    /// stay have a destination, and it is not the one the transform arrives at.
+    /// Folding into "other" is decided against the parent's total in the layout
+    /// being left and against the folder's own total in the layout being
+    /// entered, so the transform ended five arcs short of the circle where the
+    /// destination had three that filled it. Interpolating to the destination
+    /// makes the last frame of the animation equal to the first frame after it,
+    /// which is the only definition of "not a jump" that holds.
+    public static func toward(_ from: Double, _ to: Double, progress t: Double) -> Double {
+        from + (to - from) * min(max(t, 0), 1)
+    }
+
+    /// An arc that has no counterpart in the layout being entered — the level
+    /// that was never drawn, and the buckets a different fold produced — slides
+    /// in from one ring further out and fades up, rather than appearing.
+    public static func arrivingRing(_ ring: Int, progress t: Double) -> Double {
+        Double(ring) + (1 - min(max(t, 0), 1))
+    }
+
     /// True while an arc is still inside the visible circle. Past the unfold
     /// the other branches have been pushed beyond a full turn, and drawing them
     /// would wrap them back over the ring they were making way for.
