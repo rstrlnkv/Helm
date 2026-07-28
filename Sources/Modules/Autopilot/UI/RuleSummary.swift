@@ -20,7 +20,7 @@ enum RuleSummary {
     static func describe(_ condition: RuleCondition) -> String {
         switch condition {
         case let .name(comparison, value):
-            "\(ApStr.fieldName) \(describe(comparison)) “\(value)”"
+            "\(ApStr.fieldName) \(describe(comparison)) \(Quoted(value))"
         case let .fileExtension(list):
             "\(ApStr.fieldExtension) \(ApStr.comparisonIs) \(list.joined(separator: ", "))"
         case let .kind(kind):
@@ -32,9 +32,9 @@ enum RuleSummary {
         case let .dateModified(comparison, days):
             "\(ApStr.fieldDateModified) \(describe(comparison)) \(ApStr.days(days))"
         case let .downloadedFrom(host):
-            "\(ApStr.fieldSource) \(ApStr.comparisonContains) “\(host)”"
+            "\(ApStr.fieldSource) \(ApStr.comparisonContains) \(Quoted(host))"
         case let .tag(tag):
-            "\(ApStr.fieldTag) \(ApStr.comparisonIs) “\(tag)”"
+            "\(ApStr.fieldTag) \(ApStr.comparisonIs) \(Quoted(tag))"
         }
     }
 
@@ -80,7 +80,7 @@ enum RuleSummary {
         if let whole = Int(exactly: value.rounded()), value == value.rounded() {
             return String(whole)
         }
-        return String(format: "%.1f", value)
+        return Decimal(value)
     }
 
     private static func format(_ value: Double) -> String { number(value) }

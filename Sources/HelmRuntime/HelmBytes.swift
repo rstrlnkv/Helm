@@ -64,6 +64,12 @@ public enum HelmBytes {
         return units[language]?.first { $0.0 == english }?.1 ?? english
     }
 
+    /// A bare number in the app's language, for the screens that show one
+    /// beside a size: the same separator, the same formatter cache.
+    public static func decimal(_ value: Double, decimals: Int, language: String) -> String {
+        number(value, decimals: decimals, language: language)
+    }
+
     /// The separator follows Helm's own language, not the system locale: the
     /// app lets the user pick a language, and "1.5 ГБ" would be neither.
     private static func number(_ value: Double, decimals: Int, language: String) -> String {

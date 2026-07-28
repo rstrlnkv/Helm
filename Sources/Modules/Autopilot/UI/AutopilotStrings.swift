@@ -67,6 +67,18 @@ enum ApStr {
     /// counting anything: "[ 30 ] days".
     static var unitDays: String { L("days", [.ru: "дней", .es: "días", .fr: "jours", .de: "Tage", .ja: "日", .zh: "天", .pt: "dias"]) }
 
+    /// The same word, agreeing with the number in the field beside it. The
+    /// argument for a bare plural was that the label names a field rather than
+    /// counting anything — but the field holds a number, so it counts, and the
+    /// row opened on "1 дней".
+    static func unitDays(for count: Double) -> String {
+        let n = Int(count.rounded())
+        let counted = Plural.days(n, language: AppLanguage.current.rawValue)
+        return counted.hasPrefix("\(n)")
+            ? String(counted.dropFirst("\(n)".count)).trimmingCharacters(in: .whitespaces)
+            : counted
+    }
+
     /// Composed with the number rather than glued to it: a bare word after a
     /// numeral gives «1 дней» and «22 дней» in Russian, and "1 days" in English.
     static func days(_ count: Double) -> String {
