@@ -14,6 +14,12 @@ public enum VPNStatus: String, Equatable, Sendable, Codable {
 
     /// Mid-change, so the screen shows a spinner and the engine keeps polling.
     public var isTransitioning: Bool { self == .connecting || self == .disconnecting }
+
+    /// Up, and only up. `isUp` answers "is something happening here", which is
+    /// the right question for a tile that lights, and the wrong one for a
+    /// number labelled *active*: it counted a connection whose own row was
+    /// showing a spinner and the word "Connecting", in green.
+    public var isConnected: Bool { self == .connected }
 }
 
 public struct VPNConnection: Identifiable, Equatable, Sendable, Codable {

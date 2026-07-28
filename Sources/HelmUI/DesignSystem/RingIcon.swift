@@ -49,14 +49,22 @@ public enum RingIcon {
     /// 0, consumed clockwise from 12 o'clock. nil = the plain glyph.
     public static func make(style: MenuBarIconStyle, size: MenuBarIconSize,
                             tintToken: String?, progress: Double? = nil) -> NSImage {
-        if let progress, style != .dot, style != .disc {
-            return makeArc(size: size, tintToken: tintToken, progress: progress)
+        // The shape and the countdown are two separate things somebody switched
+        // on, and both have to survive. The arc takes the place of the outer
+        // ring — which is what a countdown *is* on this icon — and whatever the
+        // shape draws inside that ring is drawn on top of it. `.dot` and
+        // `.disc` have no outer ring of their own, so they used to be excluded
+        // from the countdown altogether: the setting sits beside them on the
+        // page and meant nothing.
+        if let progress {
+            return makeArc(style: style, size: size, tintToken: tintToken, progress: progress)
         }
         return makeGlyph(style: style, size: size, tintToken: tintToken)
     }
 
     /// Ring drawn as an arc, plus a faint track so the icon keeps its footprint.
-    private static func makeArc(size: MenuBarIconSize, tintToken: String?, progress: Double) -> NSImage {
+    private static func makeArc(style: MenuBarIconStyle, size: MenuBarIconSize,
+                                tintToken: String?, progress: Double) -> NSImage {
         let s = size.points
         let lineWidth = max(1.5, s * 0.12)
         let radius = (s - lineWidth) / 2
@@ -82,6 +90,28 @@ public enum RingIcon {
             arc.lineCapStyle = .round
             color.setStroke()
             arc.stroke()
+        }
+
+        // What the shape puts inside its ring, kept. Without this every style
+        // collapsed to a plain ring the moment a timed session started.
+        color.setFill()
+        let inner = s * 0.2 + lineWidth
+        switch style {
+        case .ring:
+            break                       // the arc is the ring
+        case .doubleRing:
+            let ring = NSBezierPath(ovalIn: NSRect(x: inner, y: inner,
+                                                   width: s - 2 * inner, height: s - 2 * inner))
+            ring.lineWidth = max(1, lineWidth * 0.7)
+            ring.stroke()
+        case .ringDot:
+            fillCentred(diameter: s * 0.24, in: s)
+        case .disc:
+            // Inset clear of the arc, so the countdown stays legible against it.
+            NSBezierPath(ovalIn: NSRect(x: inner, y: inner,
+                                        width: s - 2 * inner, height: s - 2 * inner)).fill()
+        case .dot:
+            fillCentred(diameter: s * 0.5, in: s)
         }
         img.unlockFocus()
         img.isTemplate = (tintToken == nil)
@@ -121,6 +151,10 @@ public enum RingIcon {
         img.unlockFocus()
         img.isTemplate = (tintToken == nil)
         return img
+    }
+
+    private static func fillCentred(diameter d: CGFloat, in s: CGFloat) {
+        NSBezierPath(ovalIn: NSRect(x: (s - d) / 2, y: (s - d) / 2, width: d, height: d)).fill()
     }
 
     private static func strokeOval(inset: CGFloat, lineWidth: CGFloat, size: NSSize) {
