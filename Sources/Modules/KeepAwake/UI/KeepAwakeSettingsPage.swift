@@ -73,116 +73,26 @@ public struct KeepAwakeSettingsPage: View {
         return String(format: "%d:%02d", left / 60, left % 60)
     }
 
+    /// Seven sections, each its own fragment.
+    ///
+    /// This was one 123-line expression: more than anyone can hold at once and
+    /// more than SwiftUI's type-checker enjoys. `Section` stays the outermost
+    /// view of every fragment — a `Form` groups by what its direct children
+    /// are, so wrapping one in anything would change the layout — and every
+    /// modifier below stays on the `Form` itself, including the store observer
+    /// that keeps this page and the panel agreeing.
     private var keepAwakeForm: some View {
         Form {
-            Section {
-                // A countdown needs a tick of its own: the engine emits state on
-                // change, not once a second, so this figure sat at whatever it
-                // read when the page opened. The panel tile solves it the same
-                // way.
-                TimelineView(.periodic(from: .now, by: 1)) { _ in
-                HelmMetricStrip([
-                    .init(vm.isActive ? KAStr.metricOn : KAStr.metricOff, KAStr.metricState,
-                          tint: vm.isActive ? .green : nil),
-                    .init(remainingText, KAStr.metricTimer, tint: vm.endDate != nil ? .orange : nil),
-                    // Only the automatic reasons. `activeConditions` also
-                    // carries `manual` and `timer`, so turning Keep Awake on by
-                    // hand — with no rule configured at all — used to report
-                    // "AUTOMATIC 1". The panel already counts it this way.
-                    .init("\(vm.activeConditions.intersection(["externalDisplay", "power", "app"]).count)",
-                          KAStr.metricRules),
-                ])
-                }
-            }
+            sessionSection
 
-            Section(KAStr.automation) {
-                Toggle(KAStr.withExternalDisplay, isOn: $autoExternalDisplay)
-                    .onChange(of: autoExternalDisplay) { _, v in write(v, "autoExternalDisplay") }
-                Toggle(KAStr.whileOnPower, isOn: $autoPower)
-                    .onChange(of: autoPower) { _, v in write(v, "autoPower") }
-                Toggle(KAStr.keepAwakeLidClosed, isOn: $clamshellEnabled)
-                    .onChange(of: clamshellEnabled) { _, v in write(v, "clamshellEnabled") }
-                Text(KAStr.adminNote)
-                    .font(.caption).foregroundStyle(HelmText.quiet)
-                // The threshold only means anything with the rule on, so it
-                // shares the row instead of floating below it.
-                LabeledContent(KAStr.turnOffLowBattery) {
-                    HStack(spacing: 10) {
-                        Stepper(KAStr.belowPercent(batteryGuardPercent),
-                                value: $batteryGuardPercent, in: 5...50, step: 5)
-                            .disabled(!batteryGuardEnabled)
-                            .onChange(of: batteryGuardPercent) { _, v in write(v, "batteryGuardPercent") }
-                            .fixedSize()
-                        Toggle(KAStr.turnOffLowBattery, isOn: $batteryGuardEnabled)
-                            .labelsHidden()
-                            .onChange(of: batteryGuardEnabled) { _, v in write(v, "batteryGuardEnabled") }
-                    }
-                }
-            }
+            automationSection
+            appsSection
 
-            Section(KAStr.appsSection) {
-                appTriggersEditor
-            }
+            behaviourSection
 
-            Section(KAStr.behavior) {
-                Toggle(KAStr.keepDisplayOn, isOn: $keepDisplayOn)
-                    .onChange(of: keepDisplayOn) { _, v in write(v, "keepDisplayOn") }
-                // One row: the interval only means anything with the switch on,
-                // so it sits beside it instead of on a line of its own.
-                LabeledContent(KAStr.movePointer) {
-                    HStack(spacing: 10) {
-                        Stepper(KAStr.everyMinutes(jiggleIntervalMinutes),
-                                value: $jiggleIntervalMinutes, in: 1...60)
-                            .disabled(!jiggleEnabled)
-                            .onChange(of: jiggleIntervalMinutes) { _, v in write(v, "jiggleIntervalMinutes") }
-                            .fixedSize()
-                        Toggle(KAStr.movePointer, isOn: $jiggleEnabled)
-                            .labelsHidden()
-                            .onChange(of: jiggleEnabled) { _, v in write(v, "jiggleEnabled") }
-                    }
-                }
-                // macOS drops synthetic mouse events from an untrusted app, so
-                // without this grant the switch above is on and nothing moves.
-                // Say so where the switch is, not only in the app's settings.
-                if jiggleEnabled, accessibility == .denied {
-                    HelmPermissionNote(need: .accessibility,
-                                       text: KAStr.pointerNeedsAccessibility)
-                }
-                Picker(KAStr.defaultDuration, selection: $defaultDurationMinutes) {
-                    Text(KAStr.min15).tag(15)
-                    Text(KAStr.oneHour).tag(60)
-                    Text(KAStr.twoHours).tag(120)
-                    Text(KAStr.indefinite).tag(0)
-                }
-                .onChange(of: defaultDurationMinutes) { _, v in write(v, "defaultDurationMinutes") }
-            }
-
-            Section(KAStr.menuBarIcon) {
-                LabeledContent(KAStr.activeIconColor) { colorSwatches }
-                Toggle(KAStr.customActiveIcon, isOn: $customActiveIcon)
-                    .onChange(of: customActiveIcon) { _, v in write(v, MenuBarLook.Key.customIcon) }
-                if customActiveIcon {
-                    IconShapePicker(selection: $activeIconShape, tintToken: activeTintColor)
-                        .onChange(of: activeIconShape) { _, v in write(v, MenuBarLook.Key.iconShape) }
-                }
-                Text(KAStr.ringColorNote)
-                    .font(.caption).foregroundStyle(HelmText.quiet)
-            }
-
-            Section(KAStr.timer) {
-                Toggle(KAStr.ringTimer, isOn: $ringTimer)
-                    .onChange(of: ringTimer) { _, v in write(v, MenuBarLook.Key.ringTimer) }
-                Text(KAStr.ringTimerNote)
-                    .font(.caption).foregroundStyle(HelmText.quiet)
-                Toggle(KAStr.showTimerText, isOn: $showTimerText)
-                    .onChange(of: showTimerText) { _, v in write(v, MenuBarLook.Key.showTimerText) }
-                LabeledContent(KAStr.timerColor) { timerColorSwatches }
-            }
-
-            Section(KAStr.globalShortcut) {
-                HelmHotkeyRow(KAStr.toggleAction, recorder: recorder,
-                              taken: HotkeyStatus.isTaken("keep-awake.toggle"))
-            }
+            menuBarIconSection
+            timerSection
+            shortcutSection
         }
         .formStyle(.grouped)
         .helmSettingsColumn()
@@ -195,6 +105,131 @@ public struct KeepAwakeSettingsPage: View {
             if store.changed(note, is: "autoPower") {
                 autoPower = store.bool("autoPower", default: false)
             }
+        }
+    }
+
+    // MARK: - The sections
+
+    @ViewBuilder private var sessionSection: some View {
+        Section {
+            // A countdown needs a tick of its own: the engine emits state on
+            // change, not once a second, so this figure sat at whatever it
+            // read when the page opened. The panel tile solves it the same
+            // way.
+            TimelineView(.periodic(from: .now, by: 1)) { _ in
+            HelmMetricStrip([
+                .init(vm.isActive ? KAStr.metricOn : KAStr.metricOff, KAStr.metricState,
+                      tint: vm.isActive ? .green : nil),
+                .init(remainingText, KAStr.metricTimer, tint: vm.endDate != nil ? .orange : nil),
+                // Only the automatic reasons. `activeConditions` also
+                // carries `manual` and `timer`, so turning Keep Awake on by
+                // hand — with no rule configured at all — used to report
+                // "AUTOMATIC 1". The panel already counts it this way.
+                .init("\(vm.activeConditions.intersection(["externalDisplay", "power", "app"]).count)",
+                      KAStr.metricRules),
+            ])
+            }
+        }
+    }
+
+    @ViewBuilder private var automationSection: some View {
+        Section(KAStr.automation) {
+            Toggle(KAStr.withExternalDisplay, isOn: $autoExternalDisplay)
+                .onChange(of: autoExternalDisplay) { _, v in write(v, "autoExternalDisplay") }
+            Toggle(KAStr.whileOnPower, isOn: $autoPower)
+                .onChange(of: autoPower) { _, v in write(v, "autoPower") }
+            Toggle(KAStr.keepAwakeLidClosed, isOn: $clamshellEnabled)
+                .onChange(of: clamshellEnabled) { _, v in write(v, "clamshellEnabled") }
+            Text(KAStr.adminNote)
+                .font(.caption).foregroundStyle(HelmText.quiet)
+            // The threshold only means anything with the rule on, so it
+            // shares the row instead of floating below it.
+            LabeledContent(KAStr.turnOffLowBattery) {
+                HStack(spacing: 10) {
+                    Stepper(KAStr.belowPercent(batteryGuardPercent),
+                            value: $batteryGuardPercent, in: 5...50, step: 5)
+                        .disabled(!batteryGuardEnabled)
+                        .onChange(of: batteryGuardPercent) { _, v in write(v, "batteryGuardPercent") }
+                        .fixedSize()
+                    Toggle(KAStr.turnOffLowBattery, isOn: $batteryGuardEnabled)
+                        .labelsHidden()
+                        .onChange(of: batteryGuardEnabled) { _, v in write(v, "batteryGuardEnabled") }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var appsSection: some View {
+        Section(KAStr.appsSection) {
+            appTriggersEditor
+        }
+    }
+
+    @ViewBuilder private var behaviourSection: some View {
+        Section(KAStr.behavior) {
+            Toggle(KAStr.keepDisplayOn, isOn: $keepDisplayOn)
+                .onChange(of: keepDisplayOn) { _, v in write(v, "keepDisplayOn") }
+            // One row: the interval only means anything with the switch on,
+            // so it sits beside it instead of on a line of its own.
+            LabeledContent(KAStr.movePointer) {
+                HStack(spacing: 10) {
+                    Stepper(KAStr.everyMinutes(jiggleIntervalMinutes),
+                            value: $jiggleIntervalMinutes, in: 1...60)
+                        .disabled(!jiggleEnabled)
+                        .onChange(of: jiggleIntervalMinutes) { _, v in write(v, "jiggleIntervalMinutes") }
+                        .fixedSize()
+                    Toggle(KAStr.movePointer, isOn: $jiggleEnabled)
+                        .labelsHidden()
+                        .onChange(of: jiggleEnabled) { _, v in write(v, "jiggleEnabled") }
+                }
+            }
+            // macOS drops synthetic mouse events from an untrusted app, so
+            // without this grant the switch above is on and nothing moves.
+            // Say so where the switch is, not only in the app's settings.
+            if jiggleEnabled, accessibility == .denied {
+                HelmPermissionNote(need: .accessibility,
+                                   text: KAStr.pointerNeedsAccessibility)
+            }
+            Picker(KAStr.defaultDuration, selection: $defaultDurationMinutes) {
+                Text(KAStr.min15).tag(15)
+                Text(KAStr.oneHour).tag(60)
+                Text(KAStr.twoHours).tag(120)
+                Text(KAStr.indefinite).tag(0)
+            }
+            .onChange(of: defaultDurationMinutes) { _, v in write(v, "defaultDurationMinutes") }
+        }
+    }
+
+    @ViewBuilder private var menuBarIconSection: some View {
+        Section(KAStr.menuBarIcon) {
+            LabeledContent(KAStr.activeIconColor) { colorSwatches }
+            Toggle(KAStr.customActiveIcon, isOn: $customActiveIcon)
+                .onChange(of: customActiveIcon) { _, v in write(v, MenuBarLook.Key.customIcon) }
+            if customActiveIcon {
+                IconShapePicker(selection: $activeIconShape, tintToken: activeTintColor)
+                    .onChange(of: activeIconShape) { _, v in write(v, MenuBarLook.Key.iconShape) }
+            }
+            Text(KAStr.ringColorNote)
+                .font(.caption).foregroundStyle(HelmText.quiet)
+        }
+    }
+
+    @ViewBuilder private var timerSection: some View {
+        Section(KAStr.timer) {
+            Toggle(KAStr.ringTimer, isOn: $ringTimer)
+                .onChange(of: ringTimer) { _, v in write(v, MenuBarLook.Key.ringTimer) }
+            Text(KAStr.ringTimerNote)
+                .font(.caption).foregroundStyle(HelmText.quiet)
+            Toggle(KAStr.showTimerText, isOn: $showTimerText)
+                .onChange(of: showTimerText) { _, v in write(v, MenuBarLook.Key.showTimerText) }
+            LabeledContent(KAStr.timerColor) { timerColorSwatches }
+        }
+    }
+
+    @ViewBuilder private var shortcutSection: some View {
+        Section(KAStr.globalShortcut) {
+            HelmHotkeyRow(KAStr.toggleAction, recorder: recorder,
+                          taken: HotkeyStatus.isTaken("keep-awake.toggle"))
         }
     }
 
