@@ -126,10 +126,16 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
             // and the character to its left was eaten. ⌘S appended an "s". ⌘V
             // changed the text underneath without saying what it now holds.
             //
-            // `.navigation` covers all of it: the word ends, nothing is
-            // confirmed, and the buffer stops describing a field it no longer
-            // matches.
-            handler?(.navigation)
+            // `.chord` covers all of it: the word ends, nothing is confirmed,
+            // and the buffer stops describing a field it no longer matches.
+            //
+            // Its own case rather than `.navigation`, which this reported for
+            // years. The two are identical to the buffer and differ in exactly
+            // one place — a chord may have been the undo shortcut arriving, so
+            // `UndoRecord` forgives one, and a bare arrow may not have been, so
+            // it must not spend that forgiveness. Reporting both as one event
+            // handed the budget to ordinary typing.
+            handler?(.chord)
             return
         }
 
