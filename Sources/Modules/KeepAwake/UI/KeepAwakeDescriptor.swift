@@ -10,7 +10,12 @@ import Module_KeepAwake_Engine
     public static let metadata = ModuleMetadata(
         id: id, name: KAStr.moduleName,
         summary: KAStr.summary,
-        sfSymbol: "moon.zzz.fill", permissions: [.adminHelper])
+        // Accessibility as well as the admin prompt: the pointer nudge posts a
+        // synthetic CGEvent, which macOS drops without the grant. The audit
+        // after an update speaks only about permissions a module declares, so
+        // without this line a Keep Awake user who does not also run Layout was
+        // never told the grant had lapsed.
+        sfSymbol: "moon.zzz.fill", permissions: [.adminHelper, .accessibility])
     public static let category: ModuleCategory = .power
 
     private var store: NamespacedStore?
