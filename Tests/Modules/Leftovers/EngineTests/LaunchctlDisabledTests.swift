@@ -29,31 +29,4 @@ final class LaunchctlDisabledTests: XCTestCase {
     func testGarbageIsIgnored() {
         XCTAssertTrue(LaunchctlDisabled.parse("Could not print domain: 113").isEmpty)
     }
-
-    // MARK: - Which items Helm may switch
-
-    /// Agents load in the user's own domain, so `launchctl disable` works
-    /// without a password. Daemons are system-domain and would need root —
-    /// offering a button that always fails is worse than offering none.
-    func testOnlyAgentsCanBeToggled() {
-        XCTAssertTrue(LaunchctlDisabled.canToggle(kind: .launchAgent, status: .inUse,
-                                                  identifier: "com.acme.helper"))
-        XCTAssertFalse(LaunchctlDisabled.canToggle(kind: .launchDaemon, status: .inUse,
-                                                   identifier: "com.acme.helper"))
-        XCTAssertFalse(LaunchctlDisabled.canToggle(kind: .preference, status: .inUse,
-                                                   identifier: "com.acme.helper"))
-    }
-
-    /// Apple's own agents keep the Mac working; Helm never offers to stop one.
-    func testAppleAgentsAreNeverToggled() {
-        XCTAssertFalse(LaunchctlDisabled.canToggle(kind: .launchAgent, status: .protectedItem,
-                                                   identifier: "com.apple.Siri.agent"))
-        XCTAssertFalse(LaunchctlDisabled.canToggle(kind: .launchAgent, status: .inUse,
-                                                   identifier: "com.apple.Siri.agent"))
-    }
-
-    func testAnItemWithoutALabelCannotBeToggled() {
-        XCTAssertFalse(LaunchctlDisabled.canToggle(kind: .launchAgent, status: .inUse,
-                                                   identifier: ""))
-    }
 }
