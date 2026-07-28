@@ -8,11 +8,17 @@ public struct FileFacts: Hashable, Sendable {
     /// hard link — and deleting either frees nothing, so the pair must never
     /// be offered as a duplicate.
     public let fileID: UInt64
+    /// When the file arrived in its folder — the Finder's "Date Added", and
+    /// what decides which copy stays. Not the creation date: a file carries
+    /// that with it when it is copied, so it would call the copy exactly as old
+    /// as the original. nil on a volume that does not record it.
+    public let added: Date?
 
-    public init(path: String, bytes: Int, fileID: UInt64) {
+    public init(path: String, bytes: Int, fileID: UInt64, added: Date? = nil) {
         self.path = path
         self.bytes = bytes
         self.fileID = fileID
+        self.added = added
     }
 }
 
@@ -91,30 +97,9 @@ public enum Duplicates {
                 for identical in refine(byPrefix, by: full) {
                     result.append(DuplicateGroup(
                         bytes: identical.first?.bytes ?? 0,
-                        // TO REWORK — the survivor is decided here, and
-                        // alphabetically is the wrong rule.
-                        //
-                        // The first path after sorting is the copy that stays,
-                        // and "Extras to remove" baskets the rest in one click.
-                        // So `~/Desktop/photo.jpg` beats
-                        // `~/Documents/Archive/2019/photo.jpg` because D sorts
-                        // before A: Helm keeps the clutter and offers the filed
-                        // copy for deletion, which is the inverse of what the
-                        // person means. The UI is honest about it — "the first
-                        // path in alphabetical order" — and being honest about
-                        // a rule with no belief behind it only moves the work
-                        // back onto the reader, who must then check every row.
-                        //
-                        // What it should weigh, in about this order: the oldest
-                        // `addedToDirectoryDate` (the original, not the copy),
-                        // then the shallowest path, then alphabetically as the
-                        // last tie-break. That is the app deciding correctly
-                        // instead of asking — which is the house preference
-                        // everywhere else — and `keepWhy` has to change with it,
-                        // or the app will explain a rule it no longer follows.
-                        //
-                        // Owner's call, 2026-07-28: worth doing. Not a setting.
-                        paths: identical.map(\.path).sorted()))
+                        // The survivor first: see `SurvivingCopy` for why
+                        // alphabetical was the wrong rule and what replaced it.
+                        paths: SurvivingCopy.order(identical)))
                 }
             }
         }
