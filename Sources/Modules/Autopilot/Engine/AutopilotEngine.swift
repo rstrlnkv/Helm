@@ -108,6 +108,35 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     ///
     /// The same value the runner executes, so what someone was shown on the dry
     /// run and what happens afterwards cannot drift apart.
+    // MARK: - What it did
+
+    /// What Autopilot did, newest first, over the last thirty days.
+    ///
+    /// Read through the window on the way out as well as on the way in, so a
+    /// store left behind by a machine that was asleep for a month shows nothing
+    /// rather than a page of history that is no longer true.
+    public var history: [ActionRecord] {
+        ActionHistory.within(ActionHistory.decode(store.data(Self.historyKey)))
+    }
+
+    public func clearHistory() {
+        store.set(nil, for: Self.historyKey)
+    }
+
+    private static let historyKey = "history"
+
+    /// Written once for a whole pass rather than once per file: a sweep of a
+    /// full Downloads folder is one write, not two hundred.
+    private func remember(_ records: [ActionRecord]) {
+        guard !records.isEmpty else { return }
+        var kept = ActionHistory.decode(store.data(Self.historyKey))
+        // Oldest first, so the newest ends up at the head after the last insert.
+        for record in records.sorted(by: { $0.at < $1.at }) {
+            kept = ActionHistory.recording(record, into: kept)
+        }
+        store.set(ActionHistory.encode(kept), for: Self.historyKey)
+    }
+
     public func preview(_ folder: WatchedFolder) -> [RulePlan] {
         let files = reader.facts(in: folder.path, depth: folder.depth)
         return RulePlan.decide(files, rules: folder.rules.filter(\.enabled))
@@ -118,9 +147,12 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         let files = reader.facts(in: folder.path, depth: folder.depth)
         let plans = RulePlan.decide(files, rules: folder.activeRules)
         var acted = 0, refused = 0, failed = 0
+        var records: [ActionRecord] = []
         for plan in plans {
             let path = plan.facts.path
-            switch runner.run(plan, at: path) {
+            let outcome = runner.run(plan, at: path)
+            if let record = ActionRecord.of(plan, outcome) { records.append(record) }
+            switch outcome {
             case .moved, .renamed, .tagged, .trashed:
                 acted += 1
             case .alreadyDone:
@@ -133,6 +165,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
                 HelmLog.shared.warn("autopilot", "failed \(Redact.path(path)): \(description)")
             }
         }
+        remember(records)
         let report = SweepReport(folderID: folder.id, examined: files.count,
                                  acted: acted, refused: refused, failed: failed)
         if acted + refused + failed > 0 {
@@ -165,13 +198,16 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         guard !watched.isEmpty else { return }
         queue.async { [self] in
             var acted = 0
+            var records: [ActionRecord] = []
             for path in Set(changed) {
                 guard let folder = self.folder(for: path, among: watched),
                       FileManager.default.fileExists(atPath: path),
                       let facts = reader.facts(of: URL(fileURLWithPath: path)),
                       let plan = RulePlan.decide(facts, rules: folder.activeRules)
                 else { continue }
-                switch runner.run(plan, at: path) {
+                let outcome = runner.run(plan, at: path)
+                if let record = ActionRecord.of(plan, outcome) { records.append(record) }
+                switch outcome {
                 case let .moved(destination):
                     acted += 1
                     HelmLog.shared.info("autopilot",
@@ -196,6 +232,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
                                         "failed \(Redact.path(path)): \(description)")
                 }
             }
+            self.remember(records)
             if acted > 0 {
                 HelmLog.shared.info("autopilot", "watcher acted on \(acted) of \(Set(changed).count)")
             }
@@ -235,6 +272,11 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
             switch command.name {
             case "folders":
                 return (try? JSONEncoder().encode(self.folders)) ?? Data()
+            case "history":
+                return (try? JSONEncoder().encode(self.history)) ?? Data()
+            case "clearHistory":
+                self.clearHistory()
+                return Data()
             case "setFolders":
                 guard let list = try? JSONDecoder().decode([WatchedFolder].self,
                                                            from: command.payload)

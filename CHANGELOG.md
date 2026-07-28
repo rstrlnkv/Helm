@@ -8,6 +8,16 @@ features, PATCH = fixes.
 ## [Unreleased] — 0.7.2
 
 ### Added
+- **Autopilot shows what it did.** A report of the last 30 days at the bottom of
+  the page: which file, where it went, and which rule decided. Every other
+  module acts because somebody pressed something a moment before, so the result
+  on screen is the record — this one acts on a timer and on files arriving, and
+  the only trace was the log, which carries counts and redacted paths and
+  answers "did anything happen" but never "what happened to my file". A folder
+  that tidies itself is worth trusting only if it can say what it tidied. The
+  names live in the module's own store on your machine; the log still carries
+  none. Deliberately a report and not a console: no filters, no search, one line
+  per file, and a button to throw the whole thing away.
 - **Keyboard works on the selection, not only on the last word.** Three
   shortcuts, each unbound until you set one: convert the layout, transliterate
   (`привет ↔ privet`, the direction decided by what is in the text), or walk the

@@ -30,6 +30,25 @@ import SwiftUI
 
     public func load() async {
         folders = await client.request("folders", encoding: [String]()) ?? []
+        await loadHistory()
+    }
+
+    // MARK: - What it did
+
+    @Published public private(set) var history: [ActionRecord] = []
+
+    /// Asked for rather than pushed, like the folders: the engine acts on its
+    /// own queue and on FSEvents, and a page that is not open does not need
+    /// telling.
+    public func loadHistory() async {
+        history = await client.request("history", encoding: [String]()) ?? []
+    }
+
+    public func clearHistory() {
+        Task {
+            await client.send("clearHistory", encoding: [String]())
+            await loadHistory()
+        }
     }
 
     private func save() {
