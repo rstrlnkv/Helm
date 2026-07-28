@@ -7,12 +7,12 @@ extension OutdatedPackage: Identifiable { public var id: String { (isCask ? "c:"
 extension SearchHit: Identifiable { public var id: String { (isCask ? "c:" : "f:") + name } }
 
 public struct HomebrewSettingsPage: View {
-    @StateObject private var hb: HomebrewViewModel
+    @ObservedObject private var hb: HomebrewViewModel
     @State private var pendingUninstall: BrewPackage?
     @State private var segment = 0
     @State private var query = ""
 
-    public init(vm: ModuleViewModel) { _hb = StateObject(wrappedValue: HomebrewViewModel(vm: vm)) }
+    public init(vm: ModuleViewModel) { hb = HomebrewViewModel.shared(vm: vm) }
 
     public var body: some View {
         VStack(spacing: 0) {
@@ -26,10 +26,10 @@ public struct HomebrewSettingsPage: View {
                 console
             }
         }
-        .task {
-            await hb.refreshStatus()
-            if hb.status.installed { await hb.refreshInstalled() }
-        }
+        // The view model outlives this page, so a return visit shows what is
+        // already loaded instead of paying for `brew list` and a `brew desc`
+        // batch again.
+        .task { await hb.loadIfNeeded() }
         // Removing a cask removes an application. Every other destructive
         // action in Helm asks first; this one used to go on a single click.
         .confirmationDialog(pendingUninstall.map { HbStr.confirmUninstall($0.name) } ?? "",
