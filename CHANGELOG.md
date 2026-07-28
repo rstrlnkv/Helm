@@ -199,6 +199,12 @@ features, PATCH = fixes.
   Edit ▸ Transformations wherever text can be edited.
 
 ### Fixed
+- **The disk ring grows into the folder you opened instead of snapping.** The
+  ring draws three levels and a drill promotes each one inward, so the level
+  that became the new outermost ring had never been laid out — it appeared all
+  at once the moment the new tree landed. The layout now carries one spare
+  level, drawn only while a drill is running, sliding inward and fading up with
+  the rest.
 - **The duplicate finder no longer holds everything it reads.** Hashing streams
   a megabyte at a time so a video never becomes a `Data` the size of the video,
   and that was true of the slice and false of the process: `FileHandle` returns

@@ -547,6 +547,20 @@ which reads macOS's SystemFolderLocalizations table so `/Applications` reads
 "Программы" like it does in Finder. Eligibility is decided by path, never by
 name: a project folder called "Documents" keeps its name.
 
+**The ring lays out one level more than it draws.** A drill promotes every
+level inward — the clicked wedge becomes the middle, its children take the
+innermost ring, its grandchildren the next — so whatever becomes the new
+outermost ring was never on screen and had nowhere to slide in from. It arrived
+whole the instant the tree swapped, which is what "the third level appears
+abruptly" was. `RingLayout` is asked for `RingView.visibleRings + 1` levels; the
+spare is not drawn and not clickable while the ring is at rest, and during an
+unfold it slides inward from outside the drawn area while fading up with the
+same progress (`RingUnfold.opacity(isSpare:)`), so it reaches full opacity
+exactly where the drill lands and the swap changes nothing that was on screen a
+frame earlier. Laying out only what is drawn looks right in every screenshot and
+wrong in every animation, which is why this is pinned by a test rather than a
+comment.
+
 **A scan has an identity, because there can be two of them.** The engine held
 one scanner in one slot, and the slot was last-writer-wins. Drilling into a
 folder the walk had not measured yet issues a second `"scan"` — so the second

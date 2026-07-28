@@ -47,7 +47,17 @@ public enum RingUnfold {
     /// The pivot itself is on its way to becoming the middle, and everything
     /// outside its subtree is on its way out; both fade. Its descendants stay
     /// solid — they are what the user is about to be looking at.
-    public static func opacity(isPivot: Bool, isDescendant: Bool, progress t: Double) -> Double {
+    ///
+    /// `isSpare` is the level that is not drawn until the unfold needs it. The
+    /// ring shows three levels; the drill promotes each one inward, so the
+    /// level that becomes the new outermost was never on screen and had nowhere
+    /// to slide in from — it simply appeared, whole, the instant the tree
+    /// swapped. Now it is laid out one level deeper than is drawn and enters
+    /// the way everything else does: sliding inward, and fading up with the
+    /// same progress, which is 0 exactly where it is invisible anyway.
+    public static func opacity(isPivot: Bool, isDescendant: Bool, isSpare: Bool = false,
+                               progress t: Double) -> Double {
+        if isSpare { return isDescendant ? max(0, min(1, t)) : 0 }
         if isDescendant { return 1 }
         return max(0, 1 - t)
     }
