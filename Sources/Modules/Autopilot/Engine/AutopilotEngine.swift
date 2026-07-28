@@ -108,10 +108,6 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
 
     // MARK: - Running
 
-    /// What a folder's rules would do to what is in it right now.
-    ///
-    /// The same value the runner executes, so what someone was shown on the dry
-    /// run and what happens afterwards cannot drift apart.
     // MARK: - What it did
 
     /// What Autopilot did, newest first, over the last thirty days.
@@ -152,6 +148,12 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         store.set(ActionHistory.encode(kept), for: Self.historyKey)
     }
 
+    /// What a folder's rules would do to what is in it right now.
+    ///
+    /// The same value the runner executes, so what someone was shown on the dry
+    /// run and what happens afterwards cannot drift apart. That is the module's
+    /// fourth guarantee — a rule must not run before it has been seen — and the
+    /// sentence had come loose from the function that keeps it.
     public func preview(_ folder: WatchedFolder) -> [RulePlan] {
         let files = reader.facts(in: folder.path, depth: folder.depth)
         return RulePlan.decide(files, rules: folder.rules.filter(\.enabled))

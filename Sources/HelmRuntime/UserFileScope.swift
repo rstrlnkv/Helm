@@ -15,7 +15,7 @@ public enum UserFileScope {
         // Judge the resolved path, not the spelling. "/Users/me/Documents/.."
         // is the home directory however it is written, and every check below
         // is a string test — RemovableScope standardizes for exactly this
-        // reason, and this gate is the disk module's last word on deletion.
+        // reason, and this gate is the last word on deletion for Disk, Duplicates and Autopilot.
         let path = (rawPath as NSString).standardizingPath
         guard path.hasPrefix("/"), path != "/" else { return false }
         // A folded "…" bucket is an aggregate, not a real path.
