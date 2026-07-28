@@ -52,11 +52,11 @@ public final class TreeBuilder: @unchecked Sendable {
     }
 
     private func foldedBucket(of parent: DiskNode) -> DiskNode {
-        if let bucket = parent.children.first(where: { $0.name == "…" && !$0.isDirectory }) {
+        if let bucket = parent.children.first(where: \.isFolded) {
             return bucket
         }
         let bucket = DiskNode(name: "…", path: ScanPath.child(of: parent.path, name: "…"),
-                              bytes: 0, isDirectory: false)
+                              bytes: 0, isDirectory: false, isFolded: true)
         parent.children.append(bucket)
         return bucket
     }

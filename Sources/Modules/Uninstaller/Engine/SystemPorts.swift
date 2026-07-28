@@ -67,7 +67,11 @@ public final class WorkspaceAppLister: AppLister {
         DispatchQueue.concurrentPerform(iterations: apps.count) { index in
             let app = apps[index]
             let size = fs.size(URL(fileURLWithPath: app.path))
-            lock.lock(); sizes[app.bundleID] = size; lock.unlock()
+            // Keyed by path. Two copies of one app share a bundle id, so the
+            // second write overwrote the first and which size survived was
+            // decided by `concurrentPerform` — a race. Both rows then showed
+            // one number and "will free" was wrong about one of them.
+            lock.lock(); sizes[app.path] = size; lock.unlock()
         }
         return sizes
     }
@@ -80,23 +84,8 @@ public struct FMFileSystem: FileSystemPort {
 
     public func exists(_ url: URL) -> Bool { FileManager.default.fileExists(atPath: url.path) }
 
-    public func size(_ url: URL) -> Int {
-        let keys: Set<URLResourceKey> = [.totalFileAllocatedSizeKey, .isRegularFileKey]
-        let fm = FileManager.default
-        var isDir: ObjCBool = false
-        guard fm.fileExists(atPath: url.path, isDirectory: &isDir) else { return 0 }
-        if !isDir.boolValue {
-            let v = try? url.resourceValues(forKeys: keys)
-            return v?.totalFileAllocatedSize ?? 0
-        }
-        guard let e = fm.enumerator(at: url, includingPropertiesForKeys: Array(keys)) else { return 0 }
-        var total = 0
-        for case let u as URL in e {
-            let v = try? u.resourceValues(forKeys: keys)
-            if v?.isRegularFile == true { total += v?.totalFileAllocatedSize ?? 0 }
-        }
-        return total
-    }
+    /// One measurement for the app, and a hard link counted once.
+    public func size(_ url: URL) -> Int { FileWeight.allocated(of: url) }
 
     public func glob(_ pattern: URL) -> [URL] {
         let dir = pattern.deletingLastPathComponent()
