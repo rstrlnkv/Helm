@@ -66,7 +66,6 @@ public struct KeepAwakeSettingsPage: View {
         .task { accessibility = PermissionCheck.currentAccessibility() }
     }
 
-    /// mm:ss left on the timer, or an em dash when no timer is running.
     /// The same countdown the menu bar and the panel show.
     ///
     /// This was a third spelling with no hours field, so a two-hour session —

@@ -10,7 +10,9 @@ public enum TimerProgress {
         return min(1, max(0, left / total))
     }
 
-    /// Compact remaining-time label for the menu bar: "9:05" under an hour,
+    /// Compact remaining-time label. The app has one, read by the menu bar, the
+/// panel tile and the settings page — it had three, and the third had no hours
+/// field, so a two-hour session read "120:00" beside a menu bar saying "2:00:00": "9:05" under an hour,
     /// "1:04:09" above it. Never negative.
     public static func label(remaining seconds: TimeInterval) -> String {
         let t = max(0, Int(seconds.rounded()))

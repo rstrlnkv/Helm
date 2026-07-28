@@ -14,10 +14,14 @@ import CoreGraphics
 /// | bar: back, path, three controls         |  640 pt |
 /// | bar with the scan statement as well     |  788 pt |
 ///
-/// The settings window is 940 pt wide by default and 860 at its minimum, and
-/// the sidebar takes 250 of that — so the detail pane is 690 pt normally and
-/// **610 at the minimum, where neither the pair of panes nor the full bar
-/// fits**. The first attempt at this took the scan statement out of the bar
+/// The settings window is 1060 pt wide by default and 860 at its minimum, and
+/// the sidebar takes 250 of that — so the detail pane is 810 pt normally, where
+/// the full bar (788) fits, and **610 at the minimum, where it does not**.
+/// This paragraph reasoned from a 940 pt window until the Disk screen was the
+/// reason the default grew — and then went on concluding that the full bar
+/// never fits, which was the whole point of growing it.
+///
+/// The first attempt at this took the scan statement out of the bar
 /// permanently, which paid for the narrow case with the wide one: on a large
 /// window the bar then held a path on the left, three controls on the right
 /// and a void between them, and the statement floated in the empty space

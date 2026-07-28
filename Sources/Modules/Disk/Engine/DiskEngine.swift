@@ -92,9 +92,14 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
             // Refused, not dropped. Filtering the loop meant a path the gate
             // rejected reached neither list, and the page then announced
             // "Removed — N freed" over a file still sitting there.
-            // `UserFileScope.partition` is exactly this, written to be the
-            // same shape as `RemovableScope.partition` — which is the shape
-            // Leftovers uses. Three engines, one question, two spellings.
+            // `UserFileScope.partition` is written to the same *shape* as
+            // `RemovableScope.partition` and answers a different question —
+            // what belongs to the user, not what belongs to an application.
+            // The two are not interchangeable and the earlier wording here
+            // ("one question, two spellings") read as an invitation to merge
+            // them: wiring a module to the wrong gate is a real mistake with a
+            // misleading symptom, and the duplicate finder shipped one
+            // (ARCHITECTURE.md § Removal scope).
             let (allowed, refused) = UserFileScope.partition(Array(Set(paths)))
             let result = HelmTrash.remove(allowed: allowed,
                                           outOfScope: refused,
