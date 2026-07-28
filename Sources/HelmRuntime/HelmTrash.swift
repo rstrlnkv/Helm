@@ -70,14 +70,37 @@ public enum HelmTrash {
             HelmLog.shared.warn(module, "refused out-of-scope path: \(Redact.path(path))")
         }
 
-        for path in allowed {
+        // One set for the batch: a hard link is one allocation under several
+        // names, and the second name frees nothing.
+        var counted: Set<UInt64> = []
+
+        // Shortest paths first, so a folder is taken before anything inside it
+        // and the child can tell "the batch took my parent" from "it was never
+        // there". `DiskEngine` hands over `Array(Set(paths))`, whose order is a
+        // hash seed — the same basket gave two different answers on two runs.
+        for path in allowed.sorted(by: { $0.count < $1.count }) {
             let url = URL(fileURLWithPath: path)
             // Read before the move: afterwards the URL points at nothing.
-            let size = allocatedSize(of: url)
+            let size = FileWeight.allocated(of: url, countingOnce: &counted)
             do {
                 try FileManager.default.trashItem(at: url, resultingItemURL: nil)
                 removed.append(path)
                 freed += size
+            } catch let error as NSError
+                where error.code == NSFileNoSuchFileError
+                   && !FileManager.default.fileExists(atPath: path)
+                   && removed.contains(where: { path.hasPrefix($0 + "/") }) {
+                // It went with its parent, earlier in this same batch: basket a
+                // folder from one screen and a file inside it from another and
+                // the child's turn comes after the folder has moved. Reporting
+                // "macOS refused" would send somebody looking for a file that is
+                // in the Trash, and the count would say one when two went.
+                //
+                // Only when this batch is what took it. A path that was already
+                // gone before any of this started is still a refusal with a
+                // reason — the person is looking at a stale list and should be
+                // told so.
+                removed.append(path)
             } catch {
                 let reason = TrashFailure.reason(path: path,
                                                  errorCode: (error as NSError).code,
@@ -89,32 +112,5 @@ public enum HelmTrash {
 
         HelmLog.shared.info(module, "trashed \(removed.count), failed \(refused.count)")
         return Result(removed: removed, refused: refused, freedBytes: freed)
-    }
-
-    /// What trashing this frees.
-    ///
-    /// `totalFileAllocatedSize` on a directory answers for the directory entry
-    /// and not a byte of what is inside it — on APFS it answers **zero**. So
-    /// Disk, whose whole job is disk space, told people a trashed folder freed
-    /// nothing, and every plug-in bundle Leftovers removes would have done the
-    /// same the moment it stopped keeping its own recursive count. A folder is
-    /// what these modules delete most.
-    ///
-    /// The walk is bounded by what the person selected and happens once per
-    /// path, before the move. `.skipsHiddenFiles` is deliberately not set: a
-    /// hidden file inside the folder is freed along with it and belongs in the
-    /// figure.
-    private static func allocatedSize(of url: URL) -> Int {
-        let keys: [URLResourceKey] = [.totalFileAllocatedSizeKey, .isDirectoryKey]
-        guard let values = try? url.resourceValues(forKeys: Set(keys)) else { return 0 }
-        guard values.isDirectory == true else { return values.totalFileAllocatedSize ?? 0 }
-
-        var total = 0
-        let items = FileManager.default.enumerator(at: url, includingPropertiesForKeys: keys)
-        while let item = items?.nextObject() as? URL {
-            total += (try? item.resourceValues(forKeys: [.totalFileAllocatedSizeKey]))?
-                .totalFileAllocatedSize ?? 0
-        }
-        return total
     }
 }

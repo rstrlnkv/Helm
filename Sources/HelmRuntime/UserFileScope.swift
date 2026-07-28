@@ -20,8 +20,20 @@ public enum UserFileScope {
         guard path.hasPrefix("/"), path != "/" else { return false }
         // A folded "…" bucket is an aggregate, not a real path.
         guard !path.hasSuffix("/…") else { return false }
-        guard !protectedPrefixes.contains(where: { path == $0 || path.hasPrefix($0 + "/") })
-        else { return false }
+        // Both spellings. `standardizingPath` does more than drop `.` and `..`:
+        // for a path that **exists on disk** it rewrites `/private/var/…` to
+        // `/var/…`. So `/private/var/db` — the entry on the list — was rewritten
+        // out from under its own prefix and let through, while
+        // `/private/var/db/does-not-exist` was refused, because nothing rewrote
+        // it. The old test used a path that does not exist and passed.
+        //
+        // `/private` is not a firmlink, `/` and `/private/var/db` share a
+        // device, so a scan of the volume walks it and the row reaches the
+        // basket. This is the disk module's last word on deletion.
+        let spellings = [path, path.hasPrefix("/private/") ? String(path.dropFirst("/private".count)) : "/private" + path]
+        guard !protectedPrefixes.contains(where: { prefix in
+            spellings.contains { $0 == prefix || $0.hasPrefix(prefix + "/") }
+        }) else { return false }
         // Never the user's whole home or a volume root. Resolved once — this
         // runs per row on every frame the disk list redraws.
         let home = homePath

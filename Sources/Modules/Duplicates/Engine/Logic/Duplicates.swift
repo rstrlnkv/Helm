@@ -59,8 +59,16 @@ public enum Duplicates {
         for file in files where file.bytes >= minBytes {
             if file.fileID == 0 {
                 unknowable.append(file)
-            } else if byID[file.fileID] == nil {
-                // One entry per inode: the first path stands for the file.
+            } else if let standing = byID[file.fileID] {
+                // One entry per inode, and *which* name stands for it decides
+                // what the screen offers: the representative carries its own
+                // date added, and two names for one file report dates seconds
+                // apart. Reached-first is the walk order, which is not a fact
+                // about the files. The one that would survive among its own
+                // names stands for them all.
+                let keeper = SurvivingCopy.order([standing, file]).first
+                byID[file.fileID] = keeper == standing.path ? standing : file
+            } else {
                 byID[file.fileID] = file
             }
         }
@@ -82,7 +90,14 @@ public enum Duplicates {
             guard let d = digest(file) else { continue }
             byDigest[d, default: []].append(file)
         }
-        return byDigest.values.filter { $0.count > 1 }.map { $0 }
+        // Sorted, not `Dictionary.values`: that order comes from a hash seeded
+        // per process, so the same folder listed its groups differently on
+        // every launch. `SurvivingCopy` goes to the trouble of a third tiebreak
+        // so a row does not move between scans; between groups nothing did.
+        return byDigest.keys.sorted().compactMap { key in
+            let group = byDigest[key]!
+            return group.count > 1 ? group : nil
+        }
     }
 
     /// One group, assembled the one way.

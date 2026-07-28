@@ -104,7 +104,7 @@ public struct RuleRunner: Sendable {
                 // so reporting the pattern's name stamped the bystander it
                 // collided with and left the moved file unmarked to be renamed
                 // again next sweep.
-                let landed = free(target)
+                let landed = free(target, moving: url)
                 try FileManager.default.moveItem(at: url, to: landed)
                 return .renamed(to: landed.lastPathComponent)
             } catch {
@@ -172,7 +172,17 @@ public struct RuleRunner: Sendable {
     /// A name nothing is using yet. Overwriting is the one failure this module
     /// could commit that nobody can undo, so an arriving file is numbered
     /// — `a 2.pdf` — the way the Finder numbers a copy.
-    private func free(_ url: URL) -> URL {
+    /// A name nothing else is holding — `moving` excepted, which is the file
+    /// being renamed.
+    ///
+    /// On a case-insensitive volume `report.pdf` and `REPORT.pdf` are one name,
+    /// so asking for the second found the first "taken" — by the very file
+    /// being renamed — and produced `REPORT 2.pdf`. The person asked for
+    /// capitals, not for a second file.
+    private func free(_ url: URL, moving from: URL? = nil) -> URL {
+        if let from, url.path.compare(from.path, options: .caseInsensitive) == .orderedSame {
+            return url
+        }
         guard FileManager.default.fileExists(atPath: url.path) else { return url }
         let folder = url.deletingLastPathComponent()
         let stem = url.deletingPathExtension().lastPathComponent

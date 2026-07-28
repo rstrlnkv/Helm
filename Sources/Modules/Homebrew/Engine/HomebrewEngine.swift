@@ -55,10 +55,32 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     }
 
     /// One `brew desc` call per kind covers a whole list of names.
+    /// Descriptions for a batch, and the batch does not fail as a unit.
+    ///
+    /// `brew desc` validates every name before it prints anything, so one name
+    /// it can no longer resolve — installed from a tap since removed, renamed
+    /// upstream, still on disk and still reported by `brew list --versions` —
+    /// makes the whole call exit non-zero with **empty** stdout. The status was
+    /// thrown away, so every row on the page lost its description and nothing
+    /// said why.
+    ///
+    /// A failure splits the batch and asks again. A single bad name in fifty
+    /// costs about a dozen calls instead of fifty, and a good batch is still
+    /// exactly one.
     public func descriptions(names: [String], isCask: Bool) -> [String: String] {
         guard let brew = locator.brewPath(), !names.isEmpty else { return [:] }
-        let out = runner.run(brew, ["desc", isCask ? "--cask" : "--formula"] + names, env: [:]).stdout
-        return BrewDescParser.parse(out)
+        return describe(names, isCask: isCask, brew: brew)
+    }
+
+    private func describe(_ names: [String], isCask: Bool, brew: String) -> [String: String] {
+        let result = runner.run(brew, ["desc", isCask ? "--cask" : "--formula"] + names, env: [:])
+        if result.status == 0 { return BrewDescParser.parse(result.stdout) }
+        // One name and it still failed: that is the name brew cannot resolve.
+        // Nothing to say about it, and nothing it should cost the others.
+        guard names.count > 1 else { return [:] }
+        let middle = names.count / 2
+        return describe(Array(names[..<middle]), isCask: isCask, brew: brew)
+            .merging(describe(Array(names[middle...]), isCask: isCask, brew: brew)) { a, _ in a }
     }
 
     public func search(_ query: String) -> [SearchHit] {
