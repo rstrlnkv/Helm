@@ -37,12 +37,12 @@ public struct VPNPanelTile: View {
     }
 
     private var anyConnected: Bool {
-        vm.connections.contains { $0.status == .connected || $0.status == .connecting }
+        vm.connections.contains(where: \.status.isUp)
     }
 
     private func connectionRow(_ c: VPNConnection) -> some View {
-        let active = c.status == .connected || c.status == .connecting
-        let transitioning = c.status == .connecting || c.status == .disconnecting
+        let active = c.status.isUp
+        let transitioning = c.status.isTransitioning
         return HStack(spacing: 8) {
             HelmStatusDot(active: active)
             Text(c.name).lineLimit(1)
