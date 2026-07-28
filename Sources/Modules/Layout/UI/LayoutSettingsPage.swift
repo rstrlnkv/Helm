@@ -103,7 +103,7 @@ public struct LayoutSettingsPage: View {
             Toggle(LyStr.automatic, isOn: $automatic)
                 .onChange(of: automatic) { _, value in write(value, LayoutKey.automatic) }
             Text(LyStr.automaticNote)
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
             Toggle(LyStr.audible, isOn: $audible)
                 .onChange(of: audible) { _, value in write(value, LayoutKey.audible) }
@@ -113,7 +113,7 @@ public struct LayoutSettingsPage: View {
                 HelmPermissionNote(need: .accessibility, text: LyStr.needsAccessibility)
             }
             if lvm.state.suspended {
-                Text(LyStr.suspended).font(.caption).foregroundStyle(.secondary)
+                Text(LyStr.suspended).font(.caption).foregroundStyle(HelmText.quiet)
             }
             if let last = lvm.state.lastConversion {
                 // Shown, not offered. Undoing has to happen in the app the
@@ -133,7 +133,7 @@ public struct LayoutSettingsPage: View {
                             .disabled(exceptionsContain(last.before))
                     }
                 }
-                Text(LyStr.undoHint).font(.caption).foregroundStyle(.secondary)
+                Text(LyStr.undoHint).font(.caption).foregroundStyle(HelmText.quiet)
             }
         }
     }
@@ -141,7 +141,7 @@ public struct LayoutSettingsPage: View {
     private var triggersSection: some View {
         Section(LyStr.triggers) {
             Text(LyStr.triggersHint)
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
             Toggle(LyStr.onSpace, isOn: $onSpace)
                 .onChange(of: onSpace) { _, value in write(value, LayoutKey.onSpace) }
@@ -168,7 +168,7 @@ public struct LayoutSettingsPage: View {
             }
             .onChange(of: tapKey) { _, value in write(value.rawValue, LayoutKey.tapKey) }
             Text(LyStr.tapKeyHint)
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
             // 🌐 is the system's key first. Helm cannot take it, and cannot even
             // read what it is set to until the person has changed it once, so
@@ -195,10 +195,10 @@ public struct LayoutSettingsPage: View {
     private var autoReplaceSection: some View {
         Section(LyStr.autoReplaceSection) {
             Text(LyStr.autoReplaceNote)
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
             if abbreviations.isEmpty {
-                Text(LyStr.noAbbreviations).font(.callout).foregroundStyle(.secondary)
+                Text(LyStr.noAbbreviations).font(.callout).foregroundStyle(HelmText.quiet)
             }
             ForEach(abbreviations) { entry in
                 HStack(spacing: 10) {
@@ -213,7 +213,7 @@ public struct LayoutSettingsPage: View {
                         AutoReplaceStore.save(abbreviations, to: store)
                         lvm.vm.send("settingsChanged")
                     } label: {
-                        Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
+                        Image(systemName: "minus.circle.fill").foregroundStyle(HelmText.quiet)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("\(HelmA11y.remove), \(entry.from)")
@@ -238,7 +238,7 @@ public struct LayoutSettingsPage: View {
             Toggle(LyStr.fixCapitals, isOn: $fixCapitals)
                 .onChange(of: fixCapitals) { _, value in write(value, LayoutKey.fixCapitals) }
             Text(LyStr.fixCapitalsNote)
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -270,7 +270,7 @@ public struct LayoutSettingsPage: View {
 
     private var exceptionsSection: some View {
         Section(LyStr.exceptions) {
-            Text(LyStr.exceptionsHint).font(.caption).foregroundStyle(.secondary)
+            Text(LyStr.exceptionsHint).font(.caption).foregroundStyle(HelmText.quiet)
             TextEditor(text: $exceptions)
                 .font(.system(size: 12, design: .monospaced))
                 .frame(minHeight: 90)
@@ -283,10 +283,10 @@ public struct LayoutSettingsPage: View {
     @ViewBuilder private var appsSection: some View {
         Section(LyStr.apps) {
             Text(LyStr.appsHint)
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
             if appRules.isEmpty {
-                Text(LyStr.noAppsYet).font(.callout).foregroundStyle(.secondary)
+                Text(LyStr.noAppsYet).font(.callout).foregroundStyle(HelmText.quiet)
             }
             ForEach(appRules.keys.sorted(), id: \.self) { bundleID in
                 appRow(bundleID)
@@ -315,7 +315,7 @@ public struct LayoutSettingsPage: View {
                 appRules.removeValue(forKey: bundleID)
                 write(appRules, LayoutKey.appRules)
             } label: {
-                Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
+                Image(systemName: "minus.circle.fill").foregroundStyle(HelmText.quiet)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("\(HelmA11y.remove), \(info.name)")
@@ -325,7 +325,7 @@ public struct LayoutSettingsPage: View {
     @ViewBuilder private var indicatorSection: some View {
         Section(LyStr.indicator) {
             Text(LyStr.indicatorHint)
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
             Toggle(LyStr.indicatorShow, isOn: $indicator)
                 .onChange(of: indicator) { _, value in write(value, LayoutKey.indicator) }
@@ -338,7 +338,7 @@ public struct LayoutSettingsPage: View {
                 .onChange(of: badgeStyle) { _, value in write(value.rawValue, LayoutKey.badgeStyle) }
                 if badgeStyle.needsRegion {
                     Text(LyStr.flagNote)
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(HelmText.quiet)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Picker(LyStr.badgeSize, selection: $badgeSize) {

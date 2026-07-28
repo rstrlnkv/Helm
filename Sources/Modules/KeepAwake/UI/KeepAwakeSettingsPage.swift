@@ -103,7 +103,7 @@ public struct KeepAwakeSettingsPage: View {
                 Toggle(KAStr.keepAwakeLidClosed, isOn: $clamshellEnabled)
                     .onChange(of: clamshellEnabled) { _, v in write(v, "clamshellEnabled") }
                 Text(KAStr.adminNote)
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(HelmText.quiet)
                 // The threshold only means anything with the rule on, so it
                 // shares the row instead of floating below it.
                 LabeledContent(KAStr.turnOffLowBattery) {
@@ -166,14 +166,14 @@ public struct KeepAwakeSettingsPage: View {
                         .onChange(of: activeIconShape) { _, v in write(v, "activeIconShape") }
                 }
                 Text(KAStr.ringColorNote)
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(HelmText.quiet)
             }
 
             Section(KAStr.timer) {
                 Toggle(KAStr.ringTimer, isOn: $ringTimer)
                     .onChange(of: ringTimer) { _, v in write(v, "ringTimer") }
                 Text(KAStr.ringTimerNote)
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(HelmText.quiet)
                 Toggle(KAStr.showTimerText, isOn: $showTimerText)
                     .onChange(of: showTimerText) { _, v in write(v, "showTimerText") }
                 LabeledContent(KAStr.timerColor) { timerColorSwatches }
@@ -217,7 +217,7 @@ public struct KeepAwakeSettingsPage: View {
     private var appTriggersEditor: some View {
         if appTriggers.isEmpty {
             Text(KAStr.noAppsYet)
-                .font(.callout).foregroundStyle(.secondary)
+                .font(.callout).foregroundStyle(HelmText.quiet)
         }
             // One row per app: icon, name, when it applies, and the remove
             // button. The condition is a single menu because the two flags are
@@ -241,7 +241,7 @@ public struct KeepAwakeSettingsPage: View {
                         appTriggers.remove(at: index)
                         saveTriggers()
                     } label: {
-                        Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
+                        Image(systemName: "minus.circle.fill").foregroundStyle(HelmText.quiet)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("\(HelmA11y.remove), \(info.name)")

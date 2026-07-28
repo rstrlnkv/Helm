@@ -168,6 +168,11 @@ import HelmUI
     }
 
 
+    /// TEMPORARY screenshot harness (HELM_DEBUG_SHOT). Not for commit.
+    func debugShowSettings(selecting moduleID: String?, size: NSSize) {
+        settingsWindow.debugShow(selecting: moduleID, size: size)
+    }
+
     @objc func openSettings() {
         settingsWindow.show()
     }

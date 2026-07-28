@@ -414,6 +414,22 @@ public struct AXSelection: SelectionPort {
 
     public func replaceSelection(with text: String) -> Bool {
         if setAXSelection(text) { return true }
+        // The paste route borrows the clipboard and can only give back a
+        // string. Anything else on it — an image, RTF, a promised file — does
+        // not survive the round trip. That was contained by the shortcuts
+        // reaching this path being unbound; they are not any more, so the
+        // containment is a rule now: if the clipboard holds something Helm
+        // cannot put back, do not touch it.
+        //
+        // Declining is a correct outcome. The caller reports it, and the
+        // person still has both their selection and their clipboard.
+        let held = NSPasteboard.general.types?.map(\.rawValue) ?? []
+        guard PasteboardSafety.canBorrow(types: held) else {
+            HelmLog.shared.warn("layout",
+                                "selection left alone: the clipboard holds \(held.count) type(s) " +
+                                "that would not survive being borrowed")
+            return false
+        }
         // Read before pasting, so the paste route has something to compare
         // against and can tell whether the app took it.
         let before = axSelection()

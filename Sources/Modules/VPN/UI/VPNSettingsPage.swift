@@ -61,7 +61,7 @@ public struct VPNSettingsPage: View {
                 Text(VPNStr.noVPNsSystem)
             }
             .font(.callout)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(HelmText.quiet)
         } else {
             ForEach(vm.connections) { connection in
                 connectionRow(connection)
@@ -83,7 +83,7 @@ public struct VPNSettingsPage: View {
                     Text("· \(statusText(c.status))")
                 }
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(HelmText.quiet)
             }
             Spacer()
             if transitioning { ProgressView().controlSize(.small) }
@@ -117,7 +117,7 @@ public struct VPNSettingsPage: View {
         if rules.isEmpty {
             Text(VPNStr.perAppHint)
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(HelmText.quiet)
         }
         ForEach(Array(sortedBundleIDs.enumerated()), id: \.element) { index, bundleID in
             if index > 0 { Divider() }
@@ -168,7 +168,7 @@ public struct VPNSettingsPage: View {
                 rules.removeValue(forKey: bundleID)
                 persist()
             } label: {
-                Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
+                Image(systemName: "minus.circle.fill").foregroundStyle(HelmText.quiet)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("\(HelmA11y.remove), \(info.name)")

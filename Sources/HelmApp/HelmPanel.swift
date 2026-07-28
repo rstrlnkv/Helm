@@ -186,7 +186,7 @@ private struct HelmPanelContent: View {
                     .font(.system(size: 12, weight: .semibold))
                 Text(title).font(.subheadline.weight(.medium))
             }
-            .foregroundStyle(.secondary)
+            .foregroundStyle(HelmText.quiet)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -235,10 +235,10 @@ private struct HelmPanelContent: View {
                 VStack(spacing: 8) {
                     Image(systemName: "square.grid.2x2")
                         .font(.system(size: 30))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(HelmText.quiet)
                     Text(AppStr.noModules).font(.headline)
                     Text(AppStr.noModulesHint)
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(HelmText.quiet)
                         .multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity)
@@ -300,7 +300,7 @@ private struct UtilitiesSection: View {
                 HStack(spacing: 8) {
                     Image(systemName: "wrench.and.screwdriver")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(HelmText.quiet)
                     Text(AppStr.utilities).font(.subheadline.weight(.medium))
                     Spacer()
                     Text("\(modules.count)").font(.caption).foregroundStyle(HelmText.faint)
