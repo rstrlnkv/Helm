@@ -71,8 +71,14 @@ public struct StaleItem: Codable, Equatable, Sendable, Identifiable {
     }
 
     /// Whether Helm can switch this one off without a password.
+    /// Asked of the rule the row's menu obeys.
+    ///
+    /// There were two, and they disagreed about a protected agent — the second
+    /// took a `status` and never read it, which is exactly the argument that
+    /// would have caught it. Deleted rather than merged: everything it said is
+    /// already here, and what it did not say was the bug.
     public var canToggle: Bool {
-        LaunchctlDisabled.canToggle(kind: kind, status: status, identifier: identifier)
+        LeftoverActions.available(for: self, writable: writable).contains(.turnOff)
     }
 }
 

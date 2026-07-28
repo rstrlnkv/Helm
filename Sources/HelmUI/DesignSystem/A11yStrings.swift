@@ -7,9 +7,10 @@ import Foundation
 /// chooser, so a row with a remove button and an actions menu offered VoiceOver
 /// two anonymous buttons and no way to tell them apart.
 ///
-/// They live in `HelmUI` because the same four controls appear in four modules
-/// and in the host app, and a label that differs per module is the same defect
-/// in a nicer costume.
+/// They live in `HelmUI` because the same controls appear across seven modules
+/// and the host app, and a label that differs per module is the same defect in
+/// a nicer costume. No count here: it was "four controls in four modules" when
+/// it was written and is neither now, which is what a number in a comment does.
 public enum HelmA11y {
     public static var moveUp: String {
         L("Move up", [.ru: "Переместить вверх", .es: "Mover arriba", .fr: "Monter", .de: "Nach oben", .ja: "上へ移動", .zh: "上移", .pt: "Mover para cima"])

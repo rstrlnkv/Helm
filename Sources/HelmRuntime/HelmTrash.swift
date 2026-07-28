@@ -14,6 +14,16 @@ import Foundation
 /// The scope gate stays outside: what a module is allowed to touch is the
 /// module's own question (`RemovableScope`, `UserFileScope`, `WatchScope`),
 /// and this type takes paths that have already passed it.
+///
+/// Three of the four call it: Disk, Duplicates and Leftovers. The other two
+/// paths that trash things do not, and the reason is the same in both — they
+/// take a port so their tests can run without a filesystem, while this hard-
+/// wires `FileManager`. `UninstallerEngine.trashSync` also carries a rule this
+/// does not (a bundle that is a live system extension is blamed on the
+/// extension rather than on macOS), and `RuleRunner` trashes one file at a time
+/// inside a rule it has already decided. Adopting them needs an injectable
+/// seam here, which would change this for all five callers to serve two —
+/// weighed and declined, deliberately, rather than overlooked.
 public enum HelmTrash {
 
     /// What happened to one path.
