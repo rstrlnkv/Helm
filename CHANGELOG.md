@@ -200,6 +200,16 @@ features, PATCH = fixes.
   Edit ▸ Transformations wherever text can be edited.
 
 ### Fixed
+- **"Freed" counts a folder's contents.** Trashing a folder reported the size of
+  its directory entry, which on this filesystem is zero — so Disk, whose whole
+  job is disk space, told you a folder you had just removed freed nothing. A
+  folder is what these screens delete most.
+- **Leftovers says why a removal was refused.** It was the one removal path in
+  Helm that classified nothing: macOS's own English sentence reached the screen
+  with the reason, the path and the error code thrown away. It now gives the
+  same translated answer Disk and the uninstaller give — "Full Disk Access is
+  needed", "outside the folders Helm may clean" — and the log records the
+  failure with its domain and code instead of a shrug.
 - **An empty page looks the same wherever you find one.** There were ten of
   them drawn eight different ways — the text wrapped at 360, 380 or 420, the
   spacing was 10 or 14, the button was large in two places and not in two
