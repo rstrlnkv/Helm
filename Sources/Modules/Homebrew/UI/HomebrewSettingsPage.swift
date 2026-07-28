@@ -7,12 +7,12 @@ extension OutdatedPackage: Identifiable { public var id: String { (isCask ? "c:"
 extension SearchHit: Identifiable { public var id: String { (isCask ? "c:" : "f:") + name } }
 
 public struct HomebrewSettingsPage: View {
-    @StateObject private var hb: HomebrewViewModel
+    @ObservedObject private var hb: HomebrewViewModel
     @State private var pendingUninstall: BrewPackage?
     @State private var segment = 0
     @State private var query = ""
 
-    public init(vm: ModuleViewModel) { _hb = StateObject(wrappedValue: HomebrewViewModel(vm: vm)) }
+    public init(vm: ModuleViewModel) { hb = HomebrewViewModel.shared(vm: vm) }
 
     public var body: some View {
         VStack(spacing: 0) {
@@ -26,10 +26,10 @@ public struct HomebrewSettingsPage: View {
                 console
             }
         }
-        .task {
-            await hb.refreshStatus()
-            if hb.status.installed { await hb.refreshInstalled() }
-        }
+        // The view model outlives this page, so a return visit shows what is
+        // already loaded instead of paying for `brew list` and a `brew desc`
+        // batch again.
+        .task { await hb.loadIfNeeded() }
         // Removing a cask removes an application. Every other destructive
         // action in Helm asks first; this one used to go on a single click.
         .confirmationDialog(pendingUninstall.map { HbStr.confirmUninstall($0.name) } ?? "",
@@ -106,7 +106,7 @@ public struct HomebrewSettingsPage: View {
                     Task { await refresh(segment: segment) }
                 } label: {
                     Image(systemName: "arrow.clockwise")
-                        .symbolEffect(.rotate, options: .repeating, isActive: hb.running)
+                        .helmSteadySpin(hb.running)
                 }
                 .buttonStyle(.borderless)
                 .disabled(hb.running)
@@ -237,9 +237,9 @@ public struct HomebrewSettingsPage: View {
         case .running:
             HStack(spacing: 6) { ProgressView().controlSize(.small); Text(hb.op.label).font(.caption) }
         case .done:
-            Label(HbStr.done, systemImage: "checkmark.circle.fill").foregroundStyle(.green).font(.caption)
+            Label(HbStr.done, systemImage: "checkmark.circle.fill").foregroundStyle(HelmSignal.success).font(.caption)
         case .failed:
-            Label(HbStr.failed, systemImage: "xmark.octagon.fill").foregroundStyle(.red).font(.caption)
+            Label(HbStr.failed, systemImage: "xmark.octagon.fill").foregroundStyle(HelmSignal.danger).font(.caption)
         case .idle:
             EmptyView()
         }

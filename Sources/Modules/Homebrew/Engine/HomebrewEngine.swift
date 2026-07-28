@@ -5,6 +5,14 @@ import HelmContract
 /// Manages Homebrew via the `brew` CLI. Fast queries answer over `transport.send`
 /// (JSON); long operations (install/uninstall/upgrade/installBrew) stream
 /// `opLog`/`opState` events. One long operation at a time.
+///
+/// **Every value goes behind a `--`.** Arguments are an array and the executable
+/// path is absolute, so no shell ever sees them and there is nothing to inject
+/// into — but `brew` parses them, and it reads a leading `-` as a flag wherever
+/// it finds one. `query` is typed by the user; `name` is a word parsed out of
+/// brew's own stdout. Verified against Homebrew 6.0.13: `brew search --formula
+/// -n` prints usage and never searches, while `brew search --formula -- -n`
+/// searches for `-n`.
 public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     private let locator: BrewLocator
     private let runner: ProcessRunner
@@ -73,7 +81,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     }
 
     private func describe(_ names: [String], isCask: Bool, brew: String) -> [String: String] {
-        let result = runner.run(brew, ["desc", isCask ? "--cask" : "--formula"] + names, env: [:])
+        let result = runner.run(brew, ["desc", isCask ? "--cask" : "--formula", "--"] + names, env: [:])
         if result.status == 0 { return BrewDescParser.parse(result.stdout) }
         // One name and it still failed: that is the name brew cannot resolve.
         // Nothing to say about it, and nothing it should cost the others.
@@ -89,8 +97,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         // kind decides whether the install is `brew install` or `brew install
         // --cask`. Ids are already namespaced f:/c:, so a name that exists as
         // both stays two distinguishable rows.
-        let formulae = runner.run(brew, ["search", "--formula", query], env: [:]).stdout
-        let casks = runner.run(brew, ["search", "--cask", query], env: [:]).stdout
+        let formulae = runner.run(brew, ["search", "--formula", "--", query], env: [:]).stdout
+        let casks = runner.run(brew, ["search", "--cask", "--", query], env: [:]).stdout
         let hits = BrewSearchParser.parse(formulae, kind: false)
                  + BrewSearchParser.parse(casks, kind: true)
         // brew answers alphabetically, which buries the obvious one.
@@ -149,15 +157,15 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     public func install(name: String, isCask: Bool) {
         guard let brew = locator.brewPath() else { return }
-        runOp(verb: "install", subject: name, label: "install \(name)", launch: brew, args: isCask ? ["install", "--cask", name] : ["install", name])
+        runOp(verb: "install", subject: name, label: "install \(name)", launch: brew, args: isCask ? ["install", "--cask", "--", name] : ["install", "--", name])
     }
     public func uninstall(name: String, isCask: Bool) {
         guard let brew = locator.brewPath() else { return }
-        runOp(verb: "uninstall", subject: name, label: "uninstall \(name)", launch: brew, args: isCask ? ["uninstall", "--cask", name] : ["uninstall", name])
+        runOp(verb: "uninstall", subject: name, label: "uninstall \(name)", launch: brew, args: isCask ? ["uninstall", "--cask", "--", name] : ["uninstall", "--", name])
     }
     public func upgrade(name: String) {
         guard let brew = locator.brewPath() else { return }
-        runOp(verb: "upgrade", subject: name, label: "upgrade \(name)", launch: brew, args: ["upgrade", name])
+        runOp(verb: "upgrade", subject: name, label: "upgrade \(name)", launch: brew, args: ["upgrade", "--", name])
     }
     public func upgradeAll() {
         guard let brew = locator.brewPath() else { return }
