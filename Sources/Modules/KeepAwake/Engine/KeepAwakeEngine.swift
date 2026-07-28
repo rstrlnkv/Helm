@@ -81,6 +81,11 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     }
 
     public func deactivate() {
+        // Before anything else: the module can be switched off from Settings,
+        // and what that drops is this engine and everything it owns. An
+        // observer left armed is a pointer into freed memory the next time the
+        // charger moves.
+        power.stopObserving()
         if isActive { assertions.release() }
         if clamshellActive { disengageClamshell() }
         cancelTimers()

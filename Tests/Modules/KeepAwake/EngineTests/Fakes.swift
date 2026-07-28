@@ -26,7 +26,12 @@ final class FakePower: PowerInfoPort {
     var snap: (onBattery: Bool, percent: Int)? = (onBattery: false, percent: 100)
     private var onChange: (@Sendable () -> Void)?
     func snapshot() -> (onBattery: Bool, percent: Int)? { snap }
-    func startObserving(_ onChange: @escaping @Sendable () -> Void) { self.onChange = onChange }
+    private(set) var observing = false
+    func startObserving(_ onChange: @escaping @Sendable () -> Void) {
+        self.onChange = onChange
+        observing = true
+    }
+    func stopObserving() { onChange = nil; observing = false }
     func fire() { onChange?() }
 }
 

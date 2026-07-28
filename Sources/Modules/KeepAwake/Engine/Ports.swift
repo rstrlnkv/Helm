@@ -11,6 +11,13 @@ public protocol DisplayInfoPort: AnyObject { func builtInFlags() -> [Bool] }
 public protocol PowerInfoPort: AnyObject {
     func snapshot() -> (onBattery: Bool, percent: Int)?
     func startObserving(_ onChange: @escaping @Sendable () -> Void)
+    /// Every observer this module starts has to be stoppable, because the
+    /// module can be switched off: the engine is dropped, the port goes with
+    /// it, and anything still holding a pointer to the port is holding freed
+    /// memory. `DisplayObserverPort` and `AppRunningPort` use
+    /// `NotificationCenter`, which keeps its own tokens; this one hands IOKit a
+    /// raw pointer.
+    func stopObserving()
 }
 
 public protocol DisplayObserverPort: AnyObject { func startObserving(_ onChange: @escaping @Sendable () -> Void) }
