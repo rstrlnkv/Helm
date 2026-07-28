@@ -12,13 +12,18 @@ import SwiftUI
 /// scope, which has the last word.
 struct DuplicatesView: View {
     @ObservedObject var dvm: DuplicatesViewModel
+    /// The row the keyboard is on. A List with no selection has no focusable
+    /// rows at all: arrow keys did nothing, and the row that stays — an image,
+    /// a name and a badge, no control anywhere — could not be reached at all.
+    @State private var selection: String?
 
     var body: some View {
-        List {
+        List(selection: $selection) {
             ForEach(dvm.groups) { group in
                 Section {
                     ForEach(Array(group.paths.enumerated()), id: \.element) { index, path in
-                        row(path: path, bytes: group.bytes, stays: index == 0)
+                        row(path: path, stays: index == 0)
+                            .tag(path)
                     }
                 } header: {
                     HStack {
@@ -32,9 +37,32 @@ struct DuplicatesView: View {
             }
         }
         .listStyle(.inset)
+        // Return reveals the selected copy — the same rule the disk list
+        // follows for a file, and the only way to that action without a mouse:
+        // a context menu needs a right-click, which Full Keyboard Access
+        // without VoiceOver cannot produce. A zero-size button still owns its
+        // shortcut, and the row already carries the visible affordance.
+        .overlay {
+            Button("") { reveal(selection) }
+                .keyboardShortcut(.return, modifiers: [])
+                .disabled(selection == nil)
+                .opacity(0)
+                .frame(width: 0, height: 0)
+                .accessibilityHidden(true)
+        }
+        // A copy that has just been trashed must not keep the keyboard pointing
+        // at nothing.
+        .onChange(of: dvm.groups) { _, groups in
+            selection = DuplicateSelection.surviving(selection, in: groups)
+        }
     }
 
-    private func row(path: String, bytes: Int, stays: Bool) -> some View {
+    private func reveal(_ path: String?) {
+        guard let path else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+    }
+
+    private func row(path: String, stays: Bool) -> some View {
         HStack(spacing: 8) {
             // Decorative: the badge or the checkbox already says which is which.
             Image(systemName: stays ? "checkmark.circle" : "doc.on.doc")
@@ -68,9 +96,12 @@ struct DuplicatesView: View {
             }
         }
         .contextMenu {
-            Button(DupStr.reveal) {
-                NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
-            }
+            Button(DupStr.reveal) { reveal(path) }
+        }
+        // The same action where VoiceOver can reach it, since the menu above
+        // needs a right-click.
+        .accessibilityActions {
+            Button(DupStr.reveal) { reveal(path) }
         }
     }
 

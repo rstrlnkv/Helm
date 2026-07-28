@@ -37,9 +37,14 @@ import SwiftUI
 
     deinit { eventsTask?.cancel() }
 
+    /// What emptying the basket would free: each ticked copy's own figure. The
+    /// group's size is the copy that stays, and quoting it once per ticked path
+    /// promised a clone's nothing for a real file, or the reverse.
     public var basketBytes: Int {
         basket.reduce(0) { total, path in
-            total + (groups.first { $0.paths.contains(path) }?.bytes ?? 0)
+            total + (groups.lazy.compactMap { group in
+                group.copies.first { $0.path == path }
+            }.first?.bytes ?? 0)
         }
     }
 
@@ -118,8 +123,8 @@ import SwiftUI
         guard let removal else { return }
         let gone = Set(removal.removed)
         groups = groups.compactMap { group in
-            let left = group.paths.filter { !gone.contains($0) }
-            return left.count > 1 ? DuplicateGroup(bytes: group.bytes, paths: left) : nil
+            let left = group.copies.filter { !gone.contains($0.path) }
+            return left.count > 1 ? DuplicateGroup(copies: left) : nil
         }
         // What refused stays in the basket. Emptying it wholesale made a
         // refusal cost the person their selection: fix the permission, come
