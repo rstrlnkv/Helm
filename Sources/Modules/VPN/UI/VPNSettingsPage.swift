@@ -24,9 +24,10 @@ public struct VPNSettingsPage: View {
         vpnForm
     }
 
-    /// Connections that are up or on their way up.
+    /// Connections that are up. Not on their way up: the strip says "active"
+    /// and tints it green, beside a row spinning and saying "Connecting".
     private var activeCount: Int {
-        vm.connections.filter(\.status.isUp).count
+        vm.connections.filter(\.status.isConnected).count
     }
 
     private var vpnForm: some View {

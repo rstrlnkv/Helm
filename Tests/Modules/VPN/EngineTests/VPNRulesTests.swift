@@ -60,3 +60,30 @@ final class VPNRulesTests: XCTestCase {
         XCTAssertTrue(VPNRules.orphaned(rules, against: connections).isEmpty)
     }
 }
+
+/// The three questions a status can be asked, and which is which.
+///
+/// `isUp` means "something is happening here" — right for a tile that lights,
+/// wrong for a number labelled *active*, which counted a connection whose own
+/// row was spinning and saying "Connecting", in green.
+final class VPNStatusVocabularyTests: XCTestCase {
+
+    func testConnectedIsNarrowerThanUp() {
+        XCTAssertTrue(VPNStatus.connected.isConnected)
+        XCTAssertFalse(VPNStatus.connecting.isConnected, "still on its way")
+        XCTAssertTrue(VPNStatus.connecting.isUp, "but something is happening")
+    }
+
+    func testNothingIsBothConnectedAndMidChange() {
+        for status in [VPNStatus.connected, .connecting, .disconnected, .disconnecting, .unknown] {
+            XCTAssertFalse(status.isConnected && status.isTransitioning, "\(status)")
+        }
+    }
+
+    func testDisconnectedIsNoneOfThem() {
+        XCTAssertFalse(VPNStatus.disconnected.isUp)
+        XCTAssertFalse(VPNStatus.disconnected.isConnected)
+        XCTAssertFalse(VPNStatus.disconnected.isTransitioning)
+        XCTAssertFalse(VPNStatus.unknown.isUp)
+    }
+}

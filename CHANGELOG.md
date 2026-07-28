@@ -200,6 +200,12 @@ features, PATCH = fixes.
   Edit ▸ Transformations wherever text can be edited.
 
 ### Fixed
+- **The menu-bar icon keeps its shape during a countdown.** Choosing "double
+  ring" or "ring + dot" got you a plain ring the moment a timed session started,
+  and choosing the dot or the filled circle got you no countdown at all — the
+  setting sat on the page beside them and meant nothing.
+- **"Active" counts what is connected.** A VPN still connecting was counted, and
+  tinted green, beside its own row showing a spinner and the word "Connecting".
 - **The countdown reads the same everywhere.** A two-hour session showed
   "120:00" in Settings while the menu bar beside it showed "2:00:00" — the
   settings page had its own formatter with no hours field. A third copy in the
