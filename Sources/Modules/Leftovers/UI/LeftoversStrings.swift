@@ -12,6 +12,11 @@ enum LfStr {
     // Named after the macOS pane that covers the same ground, so the mapping
     // is obvious: System Settings → General → Login Items & Extensions.
     static var moduleName: String { L("Login Items & Extensions", [.ru: "Объекты входа и расширения", .es: "Ítems de inicio y extensiones", .fr: "Ouverture et extensions", .de: "Anmeldeobjekte & Erweiterungen", .ja: "ログイン項目と機能拡張", .zh: "登录项与扩展", .pt: "Itens de início e extensões"]) }
+
+    /// What the sidebar calls it. macOS carries the same pair: the pane is
+    /// "Login Items & Extensions" and a list of panes says "Login Items" —
+    /// these are its own words for the short form, language by language.
+    static var moduleNameShort: String { L("Login Items", [.ru: "\u{041E}\u{0431}\u{044A}\u{0435}\u{043A}\u{0442}\u{044B} \u{0432}\u{0445}\u{043E}\u{0434}\u{0430}", .es: "\u{00CD}tems de inicio", .fr: "Ouverture", .de: "Anmeldeobjekte", .ja: "\u{30ED}\u{30B0}\u{30A4}\u{30F3}\u{9805}\u{76EE}", .zh: "\u{767B}\u{5F55}\u{9879}", .pt: "Itens de in\u{00ED}cio"]) }
     static var summary: String { L("Startup items, extensions, and what removed apps left behind", [.ru: "Автозагрузка, расширения и остатки удалённых приложений", .es: "Ítems de inicio, extensiones y restos de apps eliminadas", .fr: "Éléments de démarrage, extensions et résidus d’apps supprimées", .de: "Anmeldeobjekte, Erweiterungen und Reste entfernter Apps", .ja: "起動項目、機能拡張、削除済みアプリの残存物", .zh: "启动项、扩展，以及已删除应用的残留", .pt: "Itens de início, extensões e restos de apps removidos"]) }
     static var filterAll: String { L("All", [.ru: "Все", .es: "Todo", .fr: "Tout", .de: "Alle", .ja: "すべて", .zh: "全部", .pt: "Tudo"]) }
     static var filterLeftovers: String { L("Leftovers", [.ru: "Остатки", .es: "Restos", .fr: "Restes", .de: "Reste", .ja: "残存物", .zh: "残留", .pt: "Restos"]) }
