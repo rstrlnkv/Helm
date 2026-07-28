@@ -32,3 +32,35 @@ final class TimerProgressTests: XCTestCase {
         XCTAssertEqual(TimerProgress.remainingFraction(now: start, start: start, end: start), 0, accuracy: 0.001)
     }
 }
+
+/// One countdown, wherever it is read.
+///
+/// There were three: this one, the panel tile's private copy, and the settings
+/// page's — which had no hours field at all, so a two-hour session (an offered
+/// preset) read "120:00" in the metric strip while the menu bar beside it read
+/// "2:00:00". The other two truncated where this one rounds, so the same
+/// instant could differ by a second between two surfaces of the same app.
+final class OneCountdownTests: XCTestCase {
+
+    func testPastAnHourItSaysHours() {
+        XCTAssertEqual(TimerProgress.label(remaining: 120 * 60), "2:00:00")
+        XCTAssertEqual(TimerProgress.label(remaining: 61 * 60), "1:01:00")
+    }
+
+    func testUnderAnHourItDoesNot() {
+        XCTAssertEqual(TimerProgress.label(remaining: 59 * 60 + 59), "59:59")
+        XCTAssertEqual(TimerProgress.label(remaining: 90), "1:30")
+    }
+
+    /// A countdown does not run past zero, and does not show a negative.
+    func testItStopsAtZero() {
+        XCTAssertEqual(TimerProgress.label(remaining: 0), "0:00")
+        XCTAssertEqual(TimerProgress.label(remaining: -10), "0:00")
+    }
+
+    /// The boundary the hours field turns on at, from both sides.
+    func testTheHourBoundary() {
+        XCTAssertEqual(TimerProgress.label(remaining: 3599), "59:59")
+        XCTAssertEqual(TimerProgress.label(remaining: 3600), "1:00:00")
+    }
+}

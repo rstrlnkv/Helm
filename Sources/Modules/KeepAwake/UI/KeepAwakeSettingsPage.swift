@@ -67,10 +67,14 @@ public struct KeepAwakeSettingsPage: View {
     }
 
     /// mm:ss left on the timer, or an em dash when no timer is running.
+    /// The same countdown the menu bar and the panel show.
+    ///
+    /// This was a third spelling with no hours field, so a two-hour session —
+    /// one of the offered presets — read "120:00" here while the menu bar read
+    /// "2:00:00" at the same instant.
     private var remainingText: String {
         guard let end = vm.endDate else { return "—" }
-        let left = max(Int(end.timeIntervalSinceNow), 0)
-        return String(format: "%d:%02d", left / 60, left % 60)
+        return TimerProgress.label(remaining: end.timeIntervalSinceNow)
     }
 
     /// Seven sections, each its own fragment.
