@@ -80,13 +80,26 @@ public enum UpdateCheck {
         return outcome(for: newest, currentVersion: currentVersion)
     }
 
+    /// Every URL that leaves here is one the app is willing to open, and the
+    /// response it came from is not trusted. `NSWorkspace.open` is a scheme
+    /// handler rather than a browser, so `file:` or a registered custom scheme
+    /// is a different action entirely — and the zip's digest is checked only
+    /// after it has been fetched.
+    private static func https(_ raw: String?) -> String? {
+        guard let raw, URL(string: raw)?.scheme == "https" else { return nil }
+        return raw
+    }
+
     private static func outcome(for gh: GHRelease, currentVersion: String) -> Outcome {
         guard UpdateVersion.isNewer(gh.tag_name, than: currentVersion) else { return .upToDate }
+        // No page to send anyone to is not an update: an offer whose only link
+        // opens something else is worse than no offer.
+        guard let page = https(gh.html_url) else { return .error }
         let assets = gh.assets ?? []
-        let zip = assets.first { $0.name.hasSuffix(".zip") }?.browser_download_url
-        let dmg = assets.first { $0.name.hasSuffix(".dmg") }?.browser_download_url
+        let zip = https(assets.first { $0.name.hasSuffix(".zip") }?.browser_download_url)
+        let dmg = https(assets.first { $0.name.hasSuffix(".dmg") }?.browser_download_url)
         return .available(Release(version: gh.tag_name,
-                                  pageURL: gh.html_url,
+                                  pageURL: page,
                                   zipURL: zip,
                                   downloadURL: dmg ?? zip,
                                   notes: gh.body ?? ""))
