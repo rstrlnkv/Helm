@@ -100,7 +100,11 @@ public struct LeftoversScanner: Sendable {
                 return StaleItem(path: url.path, identifier: identifier,
                                  kind: .preference, sizeBytes: files.size(url),
                                  status: status(identifier: identifier, path: url.path,
-                                                installed: installed, inUse: false))
+                                                installed: installed, inUse: false),
+                                 // Asked, not assumed. The initialiser defaults
+                                 // this to true, which offered a locked or
+                                 // root-owned plist to "Select all".
+                                 writable: files.isWritable(url))
             }
     }
 
@@ -119,7 +123,8 @@ public struct LeftoversScanner: Sendable {
                 return StaleItem(path: url.path, identifier: identifier,
                                  kind: .plugin, sizeBytes: files.size(url),
                                  status: status(identifier: identifier, path: url.path,
-                                                installed: installed, inUse: false))
+                                                installed: installed, inUse: false),
+                                 writable: files.isWritable(url))
             }
         }
     }
