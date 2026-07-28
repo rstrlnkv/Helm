@@ -25,7 +25,6 @@ private struct FakeApps: InstalledAppsPort {
 private struct FakeExtensions: ExtensionsPort {
     var ids: Set<String> = []
     var installed: [SystemExtensionInfo] = []
-    func activeExtensionIdentifiers() -> Set<String> { ids }
     func installedExtensions() -> [SystemExtensionInfo] { installed }
     var disabled: Set<String> = []
     func disabledLabels() -> Set<String> { disabled }

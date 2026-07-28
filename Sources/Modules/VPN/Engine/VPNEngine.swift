@@ -254,7 +254,17 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         for id in launched where core.rules[id] != nil {
             core.appLaunched(id, connect: connectAuto, disconnect: disconnectClosure)
         }
-        for id in quit where core.rules[id] != nil {
+        // Every quit, not only the ones a rule still covers. `appTerminated`
+        // consults `launched` — the record of what Helm actually did — and the
+        // core's own comment says `rules` "cannot be trusted to say what a quit
+        // should undo". This filter put the untrusted book back in front of it:
+        // switch a rule off while its app is running, or let `VPNRules.valid`
+        // drop it because the connection was renamed, and the quit never
+        // arrived. `launched[bundleID]` then stayed set for good, and
+        // `appLaunched`'s own guard refused every later launch — auto-connect
+        // dead for the session with the row still showing the rule as on, and
+        // the VPN Helm raised still up.
+        for id in quit {
             core.appTerminated(id, connect: connectAuto, disconnect: disconnectClosure)
         }
     }

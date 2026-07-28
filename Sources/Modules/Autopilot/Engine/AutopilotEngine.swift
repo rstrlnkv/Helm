@@ -331,8 +331,14 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
 
 /// One line of a dry run: the file, and the one thing that would happen to it.
 public struct PreviewRow: Codable, Equatable, Identifiable, Sendable {
-    public var id: String { name }
-    public let name: String
+    /// The path, not the name. `ForEach` draws one row per identity, and two
+    /// files called `report.pdf` in two folders were two plans and one row — so
+    /// the screen a person reads before letting a rule loose hid a file the
+    /// rule was about to touch. Ordinary at any depth above one.
+    public var id: String { path }
+    /// Shown as the name; carried as the path for exactly the reason above.
+    public var name: String { (path as NSString).lastPathComponent }
+    public let path: String
     public let ruleName: String
     public let action: RuleAction
     /// Where it lands, when the action has a where. The preview named the
@@ -346,7 +352,7 @@ public struct PreviewRow: Codable, Equatable, Identifiable, Sendable {
     public let destination: String?
 
     public init(_ plan: RulePlan) {
-        name = plan.facts.name
+        path = plan.facts.path
         ruleName = plan.rule.name
         action = plan.action
         destination = PlannedDestination.describe(plan)

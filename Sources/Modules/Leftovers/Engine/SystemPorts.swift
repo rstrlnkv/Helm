@@ -17,21 +17,7 @@ public struct FileSystemLeftovers: LeftoversFilePort {
         FileManager.default.fileExists(atPath: path)
     }
 
-    public func size(_ url: URL) -> Int {
-        guard let values = try? url.resourceValues(forKeys: [.totalFileAllocatedSizeKey, .isDirectoryKey])
-        else { return 0 }
-        if values.isDirectory == true {
-            let items = FileManager.default.enumerator(at: url, includingPropertiesForKeys: [.totalFileAllocatedSizeKey])
-            var total = 0
-            while let item = items?.nextObject() as? URL {
-                total += (try? item.resourceValues(forKeys: [.totalFileAllocatedSizeKey]))?
-                    .totalFileAllocatedSize ?? 0
-            }
-            return total
-        }
-        return values.totalFileAllocatedSize ?? 0
-    }
-
+    public func size(_ url: URL) -> Int { FileWeight.allocated(of: url) }
     public func readPlist(_ url: URL) -> PlistData? {
         guard let dict = NSDictionary(contentsOf: url) as? [String: Any] else { return nil }
         return PlistData(dict)
@@ -103,7 +89,4 @@ public struct ActiveExtensions: ExtensionsPort {
         HelmProcess.run("/bin/launchctl", arguments).output
     }
 
-    public func activeExtensionIdentifiers() -> Set<String> {
-        Set(SystemExtensionCLI.installed().map(\.identifier))
-    }
 }

@@ -50,7 +50,12 @@ public struct FolderReader: Sendable {
             name: url.lastPathComponent,
             path: url.path,
             kind: isDirectory ? .folder : kind(of: values.contentType),
-            bytes: values.fileSize ?? 0,
+            // Not `fileSize`: a package has none — `URLResourceValues` calls a
+            // `.app` a package rather than a directory, so it slipped past the
+            // size rule's directory guard and answered zero. "Smaller than 1 MB
+            // → Trash" then matched every application in the folder, hourly,
+            // unattended.
+            bytes: FileWeight.allocated(of: url),
             // `addedToDirectoryDate` is what "date added" means in the Finder
             // and it is what a Downloads rule is asking about; a file copied in
             // from elsewhere keeps its old creation date, which would make

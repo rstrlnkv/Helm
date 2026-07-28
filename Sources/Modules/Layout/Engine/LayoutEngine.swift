@@ -470,10 +470,12 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     public func convertLastWord() {
         let bundleID = secure.frontmostBundleID()
         lock.lock()
-        let live = buffer.word
+        // `wholeWord`, not `word`: the buffer refuses a word it could not hold
+        // in full, and this is the second door into the same blind edit.
+        let live = buffer.wholeWord
         let previous = lastCompleted
         lock.unlock()
-        if !live.isEmpty {
+        if let live {
             // Mid-word: nothing ended it, so there is nothing extra to delete.
             convert(live, trailing: nil, force: true)
         } else if let previous, previous.belongs(to: bundleID) {
