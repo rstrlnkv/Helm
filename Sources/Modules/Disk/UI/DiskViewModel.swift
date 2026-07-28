@@ -398,6 +398,33 @@ import Module_Disk_Engine
 
     // MARK: - Layout
 
+    /// The layout the ring is about to become, computed before the animation
+    /// starts.
+    ///
+    /// The unfold used to interpolate the *current* layout and then swap trees
+    /// at the end, and the two did not agree: folding into "other" is decided
+    /// against the parent's total in one and the folder's own total in the
+    /// other, so the last frame of the animation held five arcs spanning 353°
+    /// and the first frame after it held three spanning 360. Every boundary
+    /// moved at once, which is what read as a tear. Animating *towards* this
+    /// makes the last frame the first frame by construction.
+    public func ringLayout(forFocusAt path: String) -> [RingSegment] {
+        guard let root = result?.root, let node = Self.find(path, in: root) else { return [] }
+        // Free space belongs to a volume, not to a folder — the same rule
+        // `recomputeSegments` applies, and a drill always lands below the root.
+        return RingLayout.layout(focus: Self.node(from: node),
+                                 depthLevels: RingView.visibleRings + 1, freeBytes: 0)
+    }
+
+    private static func find(_ path: String, in entry: DiskEntry) -> DiskEntry? {
+        if entry.path == path { return entry }
+        guard path.hasPrefix(entry.path) else { return nil }
+        for child in entry.children {
+            if let hit = find(path, in: child) { return hit }
+        }
+        return nil
+    }
+
     private func recomputeSegments() {
         guard let focus else { segments = []; return }
         // Free space is a fact about a volume, not about a folder. On a folder
