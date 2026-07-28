@@ -370,16 +370,7 @@ public struct AXSecureContext: SecureContextPort {
         // System-wide secure input: the tap gets nothing anyway, and saying so
         // is what lets the UI explain the silence.
         if isSecureInput() { return true }
-        let system = AXUIElementCreateSystemWide()
-        var focused: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString,
-                                            &focused) == .success,
-              let element = focused, CFGetTypeID(element) == AXUIElementGetTypeID()
-        else { return false }
-        // The type ID was checked on the line above, so this cannot be wrong —
-        // but a trapping cast on the keystroke path would take the app down
-        // mid-sentence if that check ever moved, and this one cannot trap.
-        let axElement = unsafeBitCast(element, to: AXUIElement.self)
+        guard let axElement = systemFocusedElement() else { return false }
         var role: CFTypeRef?
         guard AXUIElementCopyAttributeValue(axElement,
                                             kAXRoleAttribute as CFString, &role) == .success
@@ -447,18 +438,7 @@ public struct AXSelection: SelectionPort {
 
     // MARK: The exact route
 
-    private func focusedElement() -> AXUIElement? {
-        let system = AXUIElementCreateSystemWide()
-        var focused: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString,
-                                            &focused) == .success,
-              let focused
-        else { return nil }
-        // The same `unsafeBitCast` the rest of this file uses: a `CFTypeRef`
-        // that is an `AXUIElement` is one, and a conditional cast of a CF type
-        // through `as?` is the thing Swift 6 will not do.
-        return unsafeBitCast(focused, to: AXUIElement.self)
-    }
+    private func focusedElement() -> AXUIElement? { systemFocusedElement() }
 
     private func axSelection() -> String? {
         guard let element = focusedElement() else { return nil }
@@ -555,4 +535,22 @@ public struct AXSelection: SelectionPort {
         down.post(tap: .cghidEventTap)
         up.post(tap: .cghidEventTap)
     }
+}
+
+/// Whatever has keyboard focus anywhere on the system.
+///
+/// Written twice, and only one copy checked the type ID before bitcasting. The
+/// check matters and the comment beside it said why: a `CFTypeRef` that is an
+/// `AXUIElement` is one, a conditional cast of a CF type is what Swift 6 will
+/// not do, and a trapping cast on the keystroke path would take the app down
+/// mid-sentence. The selection path bitcast whatever it got. One reader now,
+/// with the check, which is a guard the selection path gains.
+private func systemFocusedElement() -> AXUIElement? {
+    var focused: CFTypeRef?
+    guard AXUIElementCopyAttributeValue(AXUIElementCreateSystemWide(),
+                                        kAXFocusedUIElementAttribute as CFString,
+                                        &focused) == .success,
+          let element = focused, CFGetTypeID(element) == AXUIElementGetTypeID()
+    else { return nil }
+    return unsafeBitCast(element, to: AXUIElement.self)
 }

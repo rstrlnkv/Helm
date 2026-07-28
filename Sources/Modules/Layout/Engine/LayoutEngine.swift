@@ -246,20 +246,14 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         guard let plan = SwitchPlan.make(replacing: completed.word,
                                          with: replacement,
                                          trailing: completed.ending) else { return false }
-        lock.lock(); performing = true; lock.unlock()
-        let done = typing.perform(plan)
-        lock.lock()
-        performing = false
-        // No undo record: an expansion is not a guess to be taken back, and the
-        // app's own undo already covers it. A record here would let the undo
-        // shortcut retype an abbreviation nobody asked to see again. And no
-        // remembered word: `brb` is not in the field any more, so a gesture
-        // that converted it would delete four characters out of the middle of
-        // the sentence that replaced it. The module's own rule — a word that
-        // expanded is never also converted — held for one keystroke without
-        // this, and then did not.
-        forgetTheWord()
-        lock.unlock()
+        // `perform` forgets the word, which is what this path needs and used to
+        // spell out for itself: an expansion leaves no undo record — the app's
+        // own undo covers it, and one here would let the shortcut retype an
+        // abbreviation nobody asked to see again — and leaves no remembered
+        // word, because `brb` is not in the field any more and a gesture
+        // converting it would cut four characters out of the middle of the
+        // sentence that replaced it.
+        let done = perform(plan)
         if done, audible { sound?.playSwitch() }
         return done
     }
@@ -533,8 +527,6 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             guard let self else { return Data() }
             switch command.name {
             case "fix": self.fix()
-            case "undoLastConversion": self.undoLast()
-            case "convertLastWord": self.convertLastWord()
             case "convertSelection": self.transform(.convert)
             case "settingsChanged": self.reloadSettings()
             default: break

@@ -20,12 +20,8 @@ enum ApStr {
     static var addFolder: String { L("Add folder…", [.ru: "Добавить папку…", .es: "Añadir carpeta…", .fr: "Ajouter un dossier…", .de: "Ordner hinzufügen…", .ja: "フォルダを追加…", .zh: "添加文件夹…", .pt: "Adicionar pasta…"]) }
     static var removeFolder: String { L("Stop watching", [.ru: "Перестать следить", .es: "Dejar de vigilar", .fr: "Ne plus surveiller", .de: "Nicht mehr beobachten", .ja: "監視をやめる", .zh: "停止监视", .pt: "Parar de vigiar"]) }
     static var runNow: String { L("Run now", [.ru: "Прогнать сейчас", .es: "Ejecutar ahora", .fr: "Exécuter maintenant", .de: "Jetzt ausführen", .ja: "今すぐ実行", .zh: "立即运行", .pt: "Executar agora"]) }
-    static func ruleCount(_ count: Int) -> String {
-        Plural.rules(count, language: AppLanguage.current.rawValue)
-    }
     static var noRules: String { L("No rules yet", [.ru: "Правил пока нет", .es: "Aún sin reglas", .fr: "Pas encore de règles", .de: "Noch keine Regeln", .ja: "まだルールがありません", .zh: "还没有规则", .pt: "Ainda sem regras"]) }
     static var depth: String { L("Include subfolders", [.ru: "Включая подпапки", .es: "Incluir subcarpetas", .fr: "Inclure les sous-dossiers", .de: "Unterordner einbeziehen", .ja: "サブフォルダも対象", .zh: "包含子文件夹", .pt: "Incluir subpastas"]) }
-    static var depthNote: String { L("A rule that reaches into subfolders is how a tidy folder becomes a rearranged one. Off by default.", [.ru: "Правило, залезающее в подпапки, — это то, как аккуратная папка становится переставленной. По умолчанию выключено.", .es: "Una regla que entra en las subcarpetas es como una carpeta ordenada acaba reorganizada. Desactivado por omisión.", .fr: "Une règle qui descend dans les sous-dossiers, c’est ainsi qu’un dossier rangé devient un dossier réorganisé. Désactivé par défaut.", .de: "Eine Regel, die in Unterordner greift, macht aus einem ordentlichen Ordner einen umsortierten. Standardmäßig aus.", .ja: "サブフォルダまで踏み込むルールは、整ったフォルダを並べ替えられたフォルダに変えます。既定はオフです。", .zh: "深入子文件夹的规则，正是整齐的文件夹被重新排布的原因。默认关闭。", .pt: "Uma regra que entra nas subpastas é como uma pasta arrumada vira uma pasta remexida. Desligado por padrão."]) }
 
     // MARK: - Rules
 
