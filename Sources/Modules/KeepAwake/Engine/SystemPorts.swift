@@ -282,8 +282,8 @@ public final class DispatchClock: Clock {
 // MARK: - PmsetClamshellPort
 
 public final class PmsetClamshellPort: ClamshellPort {
-    private static let sudoersPath = "/etc/sudoers.d/helm-keepawake"
-    private static let pmsetPath = "/usr/bin/pmset"
+    private static let sudoersPath = SudoersRule.installedPath
+    private static let pmsetPath = SudoersRule.pmsetPath
     private static let sudoPath = "/usr/bin/sudo"
 
     public init() {}
@@ -314,40 +314,13 @@ public final class PmsetClamshellPort: ClamshellPort {
                 done(false)
                 return
             }
-            let rule = "\(user) ALL=(root) NOPASSWD: \(Self.pmsetPath) disablesleep 1, "
-                     + "\(Self.pmsetPath) disablesleep 0\n"
-            // The rule is written from Swift and only its *path* is handed to the
-            // privileged shell: nothing derived from the account name is ever
-            // quoted into a command line. The staging file is in this user's
-            // private temporary directory, not /tmp, so no one else can swap it.
-            // A fresh directory per attempt, not a fixed name. The privileged
-            // read happens after the password prompt, so with a predictable
-            // path anything already running as this user has an unbounded
-            // window to rewrite the rule it is about to install as root.
-            // $TMPDIR is 0700, which stops other users; this stops the rest.
-            let stagingDirectory = FileManager.default.temporaryDirectory
-                .appendingPathComponent("helm-sudoers-\(UUID().uuidString)")
-            guard (try? FileManager.default.createDirectory(
-                at: stagingDirectory, withIntermediateDirectories: false,
-                attributes: [.posixPermissions: 0o700])) != nil else {
-                done(false)
-                return
-            }
-            defer { try? FileManager.default.removeItem(at: stagingDirectory) }
-            let staged = stagingDirectory.appendingPathComponent("helm-keepawake.sudoers")
-            guard (try? rule.write(to: staged, atomically: true, encoding: .utf8)) != nil else {
-                done(false)
-                return
-            }
-            defer { try? FileManager.default.removeItem(at: staged) }
-            // visudo is the check that a syntax error cannot reach sudoers.d;
-            // install puts it in place with the ownership and mode sudo demands.
-            let shellCommand = "/usr/sbin/visudo -cf '\(staged.path)' "
-                             + "&& /usr/bin/install -m 440 -o root -g wheel "
-                             + "'\(staged.path)' \(Self.sudoersPath)"
-            let script = "do shell script \"\(shellCommand)\" with administrator privileges"
-
-            let result = Shell.run("/usr/bin/osascript", ["-e", script])
+            // The rule text goes to root, never a path root should read it from.
+            // Staging it in $TMPDIR and passing the path meant root installed
+            // whatever was at that path at the moment `install` ran, and the
+            // path stood in `ps auxww` for the whole life of the password
+            // prompt (`SudoersRule` has the rest). Everything now happens
+            // inside root-owned /etc/sudoers.d.
+            let result = Shell.run("/usr/bin/osascript", ["-e", SudoersRule.installScript(user: user)])
             done(result.status == 0)
         }
     }
@@ -358,9 +331,7 @@ public final class PmsetClamshellPort: ClamshellPort {
     public func removeSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async {
             guard self.isSudoersInstalled() else { done(true); return }
-            let script = "do shell script \"/bin/rm -f \(Self.sudoersPath)\" "
-                       + "with administrator privileges"
-            let result = Shell.run("/usr/bin/osascript", ["-e", script])
+            let result = Shell.run("/usr/bin/osascript", ["-e", SudoersRule.removeScript()])
             done(result.status == 0)
         }
     }
