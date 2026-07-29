@@ -12,6 +12,30 @@
 
 **Baseline:** `swift test` is **1462 tests, 0 failures**. Every task ends green.
 
+**Status: complete.** All ten tasks are done; `swift test` finishes at **1559
+tests, 0 failures**. Task 10's measurements are written into the spec's Risks
+section as fact. Three things it found are **open** and belong to whoever picks
+this up next:
+
+1. **A countdown does not suppress the spin** (spec Risk 4). The rule is inert in
+   the real composition and its test asserts on a shape no descriptor produces.
+   Measured on screen. This is a defect in this feature, not a limitation.
+2. **The name lasts three seconds only while no other module tints the icon**
+   (spec Risk 5) — 1.05 s with Keep Awake active. Intended by the tier order,
+   undescribed by the spec's table; either the table or the order should move.
+3. **A revocation is only heard when the VPN settings page appears** (spec Risk
+   1, last bullet). Between the revocation and that visit, `.system` produces the
+   spin and no name — the silence the fallback exists to prevent.
+
+Not part of this plan, found while running it: **an ad-hoc rebuild makes every
+launch raise a modal keychain prompt, and Helm's launch blocks behind it.**
+`AutopilotEngine.init` reads the rule-seal key synchronously from
+`ModuleHost.bootstrap`, on the main thread, inside
+`applicationDidFinishLaunching` — so until the panel is answered there is no
+status item and no app. Previously recorded as something a second instance
+caused; a single installed instance reproduces it after any rebuild, because the
+designated requirement of an ad-hoc build is the cdhash alone.
+
 ---
 
 ## File structure
@@ -41,7 +65,7 @@
 - Create: `Sources/Modules/VPN/Engine/Logic/VPNAutomation.swift`
 - Test: `Tests/Modules/VPN/EngineTests/VPNAutomationTests.swift`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```swift
 import XCTest
@@ -85,12 +109,12 @@ final class VPNAutomationTests: XCTestCase {
 }
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `swift test --filter VPNAutomationTests`
 Expected: FAIL — `cannot find 'VPNAutomation' in scope`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 ```swift
 import Foundation
@@ -139,12 +163,12 @@ public struct VPNAutomation: Codable, Equatable, Sendable {
 }
 ```
 
-- [ ] **Step 4: Run it and watch it pass**
+- [x] **Step 4: Run it and watch it pass**
 
 Run: `swift test --filter VPNAutomationTests`
 Expected: PASS, 4 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add Sources/Modules/VPN/Engine/Logic/VPNAutomation.swift Tests/Modules/VPN/EngineTests/VPNAutomationTests.swift
@@ -161,7 +185,7 @@ git commit -m "feat(vpn): the value for one automation firing, and its two windo
 
 This is the test that makes the feature mean anything. Write it first and do not weaken it.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Read the existing `Tests/Modules/VPN/EngineTests/` fakes before writing this — reuse the fake runner and ports already there rather than inventing a second set. The test below names them as `FakeVPNRunner` and `makeEngine`; if the existing helpers are called something else, use those names and keep the assertions.
 
@@ -230,12 +254,12 @@ final class VPNAutomationRecordingTests: XCTestCase {
 }
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `swift test --filter VPNAutomationRecordingTests`
 Expected: FAIL — `value of type 'VPNEngine' has no member 'lastAutomation'`.
 
-- [ ] **Step 3: Add the recording to the engine**
+- [x] **Step 3: Add the recording to the engine**
 
 In `VPNEngine`, beside `_autoConnected` (around line 58), add the storage and the accessors. `_lastAutomation` goes under the same `lock` as everything else in this class — the drop path runs on the refresh thread and `connectNow` on the work queue.
 
@@ -279,7 +303,7 @@ In the refresh path, where `dropped` is computed (around line 164) — inside th
         emitState()
 ```
 
-- [ ] **Step 4: Carry it in the payload**
+- [x] **Step 4: Carry it in the payload**
 
 In `StatePayload` add the field, and in `emitState()` pass it:
 
@@ -302,17 +326,17 @@ In `StatePayload` add the field, and in `emitState()` pass it:
 
 Decoding an older payload without the field would fail, so `lastAutomation` must be decoded with `decodeIfPresent`. `StatePayload` is encoded and decoded in the same process within one run, so this cannot actually bite — but `ActionRecord` in Autopilot carries the same note for the same reason, and the cost of matching it is one line. Write the explicit `init(from:)` if the synthesised one does not already tolerate a missing key.
 
-- [ ] **Step 5: Run the tests**
+- [x] **Step 5: Run the tests**
 
 Run: `swift test --filter "VPNAutomation"`
 Expected: PASS, 9 tests across both files.
 
-- [ ] **Step 6: Run the whole VPN module**
+- [x] **Step 6: Run the whole VPN module**
 
 Run: `swift test --filter Module_VPN`
 Expected: PASS, 0 failures. If `VPNAutoConnectDriftTests` fails, stop — it guards the stranded-VPN defect and this change touches the same bookkeeping.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add Sources/Modules/VPN/Engine/VPNEngine.swift Tests/Modules/VPN/EngineTests/VPNAutomationRecordingTests.swift
@@ -328,7 +352,7 @@ git commit -m "feat(vpn): record the firings Helm caused, and only those"
 - Modify: `Sources/Modules/VPN/Engine/VPNSettings.swift`
 - Test: `Tests/Modules/VPN/EngineTests/VPNNoticeTests.swift`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```swift
 import XCTest
@@ -380,12 +404,12 @@ final class VPNNoticeTests: XCTestCase {
 }
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `swift test --filter VPNNoticeTests`
 Expected: FAIL — `cannot find 'VPNNotice' in scope`.
 
-- [ ] **Step 3: Write the mode**
+- [x] **Step 3: Write the mode**
 
 ```swift
 import Foundation
@@ -412,7 +436,7 @@ public enum VPNNotice: String, CaseIterable, Codable, Sendable {
 }
 ```
 
-- [ ] **Step 4: Store it**
+- [x] **Step 4: Store it**
 
 In `VPNSettings`, beside `rulesJSON`:
 
@@ -425,12 +449,12 @@ In `VPNSettings`, beside `rulesJSON`:
     }
 ```
 
-- [ ] **Step 5: Run the tests**
+- [x] **Step 5: Run the tests**
 
 Run: `swift test --filter VPNNoticeTests`
 Expected: PASS, 5 tests.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add Sources/Modules/VPN/Engine/Logic/VPNNotice.swift Sources/Modules/VPN/Engine/VPNSettings.swift Tests/Modules/VPN/EngineTests/VPNNoticeTests.swift
@@ -446,7 +470,7 @@ git commit -m "feat(vpn): three notice modes, and a refused banner that says so"
 - Create: `Sources/HelmApp/StatusPlan.swift`
 - Test: `Tests/HelmAppTests/StatusPlanTests.swift` — **check whether a `HelmAppTests` target exists in `Package.swift` first.** If it does not, put `StatusPlan.swift` in `Sources/HelmRuntime/` and its test in `Tests/HelmRuntimeTests/` instead: the rule is pure and has no AppKit in it, and inventing a test target for one file is not worth a manifest edit (CLAUDE.md's warning about a target whose directory holds no tracked file applies).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```swift
 import XCTest
@@ -499,12 +523,12 @@ final class StatusPlanTests: XCTestCase {
 }
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `swift test --filter StatusPlanTests`
 Expected: FAIL — `cannot find 'StatusPlan' in scope`.
 
-- [ ] **Step 3: Add the field**
+- [x] **Step 3: Add the field**
 
 In `StatusAppearance`, after `title`:
 
@@ -520,7 +544,7 @@ In `StatusAppearance`, after `title`:
 
 Add it to the memberwise initializer with a `nil` default, **after** the existing parameters, so the eight other descriptors keep compiling untouched.
 
-- [ ] **Step 4: Write the rule**
+- [x] **Step 4: Write the rule**
 
 ```swift
 import Foundation
@@ -552,17 +576,17 @@ public enum StatusPlan {
 }
 ```
 
-- [ ] **Step 5: Run the tests**
+- [x] **Step 5: Run the tests**
 
 Run: `swift test --filter StatusPlanTests`
 Expected: PASS, 6 tests.
 
-- [ ] **Step 6: Run the whole suite** — the contract changed.
+- [x] **Step 6: Run the whole suite** — the contract changed.
 
 Run: `swift test`
 Expected: **1462 + 20 tests, 0 failures.**
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add Sources/HelmContract/StatusAppearance.swift Sources/HelmRuntime/StatusPlan.swift Tests/HelmRuntimeTests/StatusPlanTests.swift
@@ -577,7 +601,7 @@ git commit -m "feat: a status appearance can ask to spin, and one rule decides w
 - Modify: `Sources/HelmUI/DesignSystem/RingIcon.swift`
 - Test: `Tests/HelmUITests/RingSpinnerTests.swift`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```swift
 import XCTest
@@ -629,12 +653,12 @@ final class RingSpinnerTests: XCTestCase {
 }
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `swift test --filter RingSpinnerTests`
 Expected: FAIL — `type 'RingIcon' has no member 'makeSpinner'`.
 
-- [ ] **Step 3: Write the drawing**
+- [x] **Step 3: Write the drawing**
 
 Add to `RingIcon`, modelled on `makeArc` directly above it:
 
@@ -709,12 +733,12 @@ Add to `RingIcon`, modelled on `makeArc` directly above it:
 
 `isTemplate` matches whatever `makeArc` sets — read it and copy, do not guess: a template image is tinted by AppKit and would throw the module's colour away.
 
-- [ ] **Step 4: Run the tests**
+- [x] **Step 4: Run the tests**
 
 Run: `swift test --filter RingSpinnerTests`
 Expected: PASS, 5 tests. If `testHalfWayIsAWholeRevolution` fails, the sweep is not 720°.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add Sources/HelmUI/DesignSystem/RingIcon.swift Tests/HelmUITests/RingSpinnerTests.swift
@@ -730,7 +754,7 @@ git commit -m "feat(ui): a menu-bar ring that turns, with its frames built once"
 
 Read `ARCHITECTURE.md` § Status item and § "An observer outlives the thing it points at" before this task.
 
-- [ ] **Step 1: Replace the module choice with the rule**
+- [x] **Step 1: Replace the module choice with the rule**
 
 In `refreshIcon()`, the current three lines
 
@@ -752,7 +776,7 @@ become
         let spinning = StatusPlan.spins(appearance, now: now, reduceMotion: reduceMotion)
 ```
 
-- [ ] **Step 2: Drive the frames**
+- [x] **Step 2: Drive the frames**
 
 Add beside `timerTick`:
 
@@ -776,7 +800,7 @@ Add beside `timerTick`:
 
 Call `scheduleSpinTick(active: spinning)` beside the existing `scheduleTimerTick(active: progress != nil)`.
 
-- [ ] **Step 3: Pick the image, and let the key see the frame**
+- [x] **Step 3: Pick the image, and let the key see the frame**
 
 The redraw key exists to suppress redundant work and will suppress the animation itself unless the frame is part of it. Replace the key and the image line:
 
@@ -815,12 +839,12 @@ and add the helper:
 
 and use `StatusPlan.spinDuration` in the helper. Then change `VPNAutomation.spinDuration` (Task 1) to read `StatusPlan.spinDuration` so there is one number rather than two that can drift. If `Module_VPN_Engine` cannot import the target `StatusPlan` lives in, put the constant in `HelmContract` beside `StatusAppearance` instead and have both read it from there.
 
-- [ ] **Step 4: Build and run the whole suite**
+- [x] **Step 4: Build and run the whole suite**
 
 Run: `swift build && swift test`
 Expected: 0 failures.
 
-- [ ] **Step 5: Prove the timer stops**
+- [x] **Step 5: Prove the timer stops**
 
 Add to `Tests/HelmRuntimeTests/StatusPlanTests.swift`:
 
@@ -838,7 +862,7 @@ Add to `Tests/HelmRuntimeTests/StatusPlanTests.swift`:
 Run: `swift test --filter StatusPlanTests`
 Expected: PASS, 7 tests.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add Sources/HelmApp/StatusItemController.swift Sources/HelmRuntime/StatusPlan.swift Tests/HelmRuntimeTests/StatusPlanTests.swift
@@ -854,7 +878,7 @@ git commit -m "feat(app): run the spin frames, and stop the moment the window cl
 - Modify: `Sources/Modules/VPN/UI/VPNDescriptor.swift`
 - Test: `Tests/Modules/VPN/UITests/VPNStatusAppearanceTests.swift` — **`Module_VPN_UITests` does not exist yet.** Add it to `Package.swift` following the `Module_Layout_UITests` shape, and `git add` the test file in the same commit: a declared target over untracked files breaks the manifest for every checkout but this one (CLAUDE.md).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```swift
 import XCTest
@@ -907,12 +931,12 @@ final class VPNStatusAppearanceTests: XCTestCase {
 }
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `swift test --filter VPNStatusAppearanceTests`
 Expected: FAIL — the target does not exist, then `has no member 'applyAutomationForTesting'`.
 
-- [ ] **Step 3: Hold the firing in the view model**
+- [x] **Step 3: Hold the firing in the view model**
 
 In `VPNViewModel`, add the published state and the seam, and decode the new payload field in `handle(_:)` beside the existing `connections` / `autoConnected` handling:
 
@@ -939,7 +963,7 @@ In `handle(_:)`, after the existing assignments from `StatePayload`:
         }
 ```
 
-- [ ] **Step 4: Report it from the descriptor**
+- [x] **Step 4: Report it from the descriptor**
 
 `VPNDescriptor` currently has no `statusAppearance`. Add both it and `statusChanges` — without the second, the host never learns a firing happened until something else redraws the icon:
 
@@ -968,17 +992,17 @@ In `handle(_:)`, after the existing assignments from `StatePayload`:
 
 `import Combine` is needed for `AnyPublisher`.
 
-- [ ] **Step 5: Run the tests**
+- [x] **Step 5: Run the tests**
 
 Run: `swift test --filter VPNStatusAppearanceTests`
 Expected: PASS, 3 tests.
 
-- [ ] **Step 6: Run everything**
+- [x] **Step 6: Run everything**
 
 Run: `swift test`
 Expected: 0 failures.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add Package.swift Sources/Modules/VPN/UI/VPNViewModel.swift Sources/Modules/VPN/UI/VPNDescriptor.swift Tests/Modules/VPN/UITests/
@@ -994,7 +1018,7 @@ git commit -m "feat(vpn): the module asks the menu bar to spin, and names the co
 - Modify: `Sources/Modules/VPN/Engine/SystemPorts.swift`
 - Test: `Tests/Modules/VPN/EngineTests/AutomationNoticeTests.swift`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```swift
 import XCTest
@@ -1052,12 +1076,12 @@ final class AutomationNoticeTests: XCTestCase {
 }
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `swift test --filter AutomationNoticeTests`
 Expected: FAIL — `cannot find type 'AutomationNoticePort' in scope`.
 
-- [ ] **Step 3: Write the port and the decision**
+- [x] **Step 3: Write the port and the decision**
 
 In `Ports.swift`:
 
@@ -1093,7 +1117,7 @@ public enum AutomationNotice {
 
 `VPNBannerText` lives in the UI layer with the other strings (Task 9); until then, use a plain string so the test compiles, and replace it in Task 9. The engine target must not import `Module_VPN_UI` — if that ordering is awkward, move `announce` into the view model and keep only the port here, and say so in the commit message.
 
-- [ ] **Step 4: Write the system implementation**
+- [x] **Step 4: Write the system implementation**
 
 In `SystemPorts.swift`:
 
@@ -1135,12 +1159,12 @@ public struct SystemAutomationNotice: AutomationNoticePort {
 }
 ```
 
-- [ ] **Step 5: Run the tests**
+- [x] **Step 5: Run the tests**
 
 Run: `swift test --filter AutomationNoticeTests`
 Expected: PASS, 4 tests.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add Sources/Modules/VPN/Engine/Ports.swift Sources/Modules/VPN/Engine/SystemPorts.swift Tests/Modules/VPN/EngineTests/AutomationNoticeTests.swift
@@ -1157,7 +1181,7 @@ git commit -m "feat(vpn): the banner behind a port, and the decision above it in
 
 Every string here needs all eight languages (en, ru, es, fr, de, ja, zh, pt). Where a string names something macOS also names — "Notifications", the System Settings pane — read the system's own spelling out of its `.loctable` rather than translating afresh; `ARCHITECTURE.md` § Localization says where the tables are.
 
-- [ ] **Step 1: Add the strings**
+- [x] **Step 1: Add the strings**
 
 In `VPNStrings.swift`. The English is given; look the other seven up rather than inventing them.
 
@@ -1174,7 +1198,7 @@ In `VPNStrings.swift`. The English is given; look the other seven up rather than
     static func bannerDisconnected(_ name: String) -> String { L("Disconnected \(name)", [...]) }
 ```
 
-- [ ] **Step 2: Add the section**
+- [x] **Step 2: Add the section**
 
 In `vpnForm`, after the `Section(VPNStr.perAppAutomation)` block:
 
@@ -1210,12 +1234,12 @@ The binding writes through the store and, on selecting `.system`, asks for autho
     }
 ```
 
-- [ ] **Step 3: Build and check the eight languages**
+- [x] **Step 3: Build and check the eight languages**
 
 Run: `swift build && swift test`
 Expected: 0 failures. If a localization guard test exists for missing tables, it will name any language you skipped — do not silence it.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add Sources/Modules/VPN/UI/VPNSettingsPage.swift Sources/Modules/VPN/UI/VPNStrings.swift
@@ -1228,7 +1252,25 @@ git commit -m "feat(vpn): choose how loudly a rule announces itself"
 
 Nothing above proves the feature works. Tests prove the decisions; this proves the app.
 
-- [ ] **Step 1: Build, sign and install**
+**How it was actually run, and why.** Step 2 below says to launch and quit the
+app a rule covers. On this machine that rule's app was running a full-screen
+remote-desktop session over the very tunnel the rule manages, and both of the
+Mac's configured VPNs were up — so every firing available through the rules path
+would have taken down a connection somebody was working over, and the rebuild had
+already invalidated the keychain ACL Helm reads the L2TP shared secret through,
+which made a reconnect something only the user's password could do. The firings
+were therefore driven through the engine's own `connect(name, auto: true)` from a
+temporary `HELM_DEBUG_VPN_FIRING` harness in `AppDelegate`, naming a connection
+that is not configured: that path records the automation, emits the state
+payload, and drives the view model, the descriptor, `StatusPlan`, the frame cache
+and the notice port exactly as a rule does, while `scutil --nc start` fails
+harmlessly and the credential lookup returns before it touches the keychain. What
+it does **not** exercise is `VPNAutoConnectCore` deciding to call `connect` —
+covered by its unit tests, and observed in the log at every launch of the real
+build (`connect vpn#73af (auto)`). The harness is gone; `grep -r HELM_DEBUG
+Sources/` is clean and `git status` shows no trace of it.
+
+- [x] **Step 1: Build, sign and install**
 
 ```bash
 pkill -f 'MacOS/HelmApp'; bash Scripts/package-app.sh
@@ -1238,7 +1280,7 @@ codesign --verify --deep --strict /Applications/Helm.app
 xattr -dr com.apple.quarantine /Applications/Helm.app && open /Applications/Helm.app
 ```
 
-- [ ] **Step 2: Watch a real firing**
+- [x] **Step 2: Watch a real firing**
 
 Set a per-app rule for an application you can launch and quit. Launch it, and watch the menu bar: the ring should turn twice, and the connection's name should appear beside it and fade after three seconds. Then check the log names the firing without naming the connection:
 
@@ -1248,7 +1290,7 @@ grep -E "vpn|automation" ~/Library/Logs/Helm/helm.log | tail -20
 
 Expected: the line carries `vpn#<tag>`, **not** the connection's name. If the name is in the log, stop and fix it — `Redact.vpn` exists for this.
 
-- [ ] **Step 3: Answer the question the design could not**
+- [x] **Step 3: Answer the question the design could not**
 
 Switch the notice to **macOS notification**. Record what happens:
 
@@ -1258,7 +1300,7 @@ Switch the notice to **macOS notification**. Record what happens:
 
 Write the answer into the spec's Risks section as measured fact. If banners do not work under ad-hoc signing, the mode still ships — the denied path is already designed and the row already says so — but the spec must record it rather than leaving the next person to rediscover it.
 
-- [ ] **Step 4: Measure the redraw**
+- [x] **Step 4: Measure the redraw**
 
 The spin redraws the menu bar 30 times a second for 1.2 s. Trigger ten firings in a row and read the footprint:
 
@@ -1268,12 +1310,12 @@ grep memory ~/Library/Logs/Helm/helm.log | tail -20
 
 Expected: no growth across the ten. If it grows, the frame cache is not being hit — check that the key in `spinnerFrames` matches on every call.
 
-- [ ] **Step 5: Check the two suppression rules on screen**
+- [x] **Step 5: Check the two suppression rules on screen**
 
 - Start a Keep Awake timed session so the countdown arc is drawn, then trigger a firing: the ring must **not** spin, and the name must still appear.
 - Turn on System Settings → Accessibility → Display → Reduce motion, trigger a firing: no spin, name still appears.
 
-- [ ] **Step 6: Leave nothing behind**
+- [x] **Step 6: Leave nothing behind**
 
 ```bash
 grep -rn HELM_DEBUG Sources/    # must print nothing
@@ -1282,7 +1324,7 @@ ls ~/Library/Application\ Support/Helm/
 
 Remove any state a test rule created, and delete the per-app rule you added.
 
-- [ ] **Step 7: Changelog and commit**
+- [x] **Step 7: Changelog and commit**
 
 `CHANGELOG.md` gets the full entry. `Sources/HelmApp/ChangelogData.swift` gets the user-facing one in eight languages — this is a new feature a stable user has never seen, so it belongs there, badged as a feature.
 

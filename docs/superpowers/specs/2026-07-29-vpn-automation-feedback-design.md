@@ -173,8 +173,8 @@ Helm requests no notification permission today. Adding one means a new
 authorization, and these builds are ad-hoc signed — ARCHITECTURE.md § Permissions
 records that macOS ties such a grant to the exact binary, so every rebuild
 invalidates it while the checkbox stays ticked. Whether `UNUserNotificationCenter`
-authorization behaves the same way here is **not known and must be measured on a
-real build**, not reasoned about.
+authorization behaves the same way here was the design's open question; it was
+measured on a real build and the answer is **no** — see Risks 1 below.
 
 So the mode exists and states its own condition:
 
@@ -235,13 +235,72 @@ rather than pretending a test covers it.
 - **No history of firings.** Autopilot's history section exists because it moves
   files; a VPN connecting is visible in the connection list already.
 
-## Risks, stated plainly
+## Risks, measured
 
-1. **The banner may not work under ad-hoc signing.** Measured on a real build
-   before the mode is offered as working; the fallback above is the design's
-   answer either way.
-2. **A 30 Hz redraw of a menu-bar item is a cost nobody has measured here.** The
-   precomputed frame cache is the mitigation, and the plan measures the redraw
-   rather than assuming it is free.
-3. **Borrowing the status item from another module** is new behaviour. It lasts
-   1.2 s and ends by itself, but it is worth watching in the dev build.
+Measured 2026-07-29 on macOS 26 (Darwin 27.0.0), Helm 0.7.2-dev.35 installed to
+`/Applications` from `package-app.sh`, `Signature=adhoc`, `TeamIdentifier=not
+set`, designated requirement `cdhash H"…"` and nothing else.
+
+1. **The banner works under ad-hoc signing, and the grant survives a reinstall.**
+   The whole chain was exercised on the running app:
+   - The authorization prompt **does** appear when the mode is picked, and can be
+     granted.
+   - Afterwards `notificationSettings()` reports `authorizationStatus =
+     .authorized (2)`, `alertSetting = .enabled (2)`, `alertStyle = .banner (1)`,
+     `notificationCenterSetting = .enabled (2)`, `lockScreenSetting = .enabled
+     (2)`, and the port answers `authorized`.
+   - A banner **does** arrive on the next firing, on the display carrying the
+     menu bar, titled and bodied in the app's language.
+   - Helm appears in **System Settings → Notifications** under its own name and
+     its own icon, with a working Allow switch.
+   - **The grant survives a reinstall.** Three installs with three different
+     cdhashes (`20dcecb2…`, `dd1f9989…`, `dd74f39f…`), each a `rm -rf
+     /Applications/Helm.app` followed by a fresh `ditto`, and every one of them
+     read back `.authorized` with no new prompt. Notification authorization is
+     keyed by **bundle identifier**, not by the designated requirement — which is
+     the opposite of what § Permissions describes for Full Disk Access, and the
+     contrast was measured in the same reinstall: FDA went from `granted` to
+     `denied`, Accessibility with it, and the keychain items Autopilot and the
+     VPN credential cache own went back to prompting for the login password.
+     So the note § Permissions makes is right about TCC and the keychain and
+     does **not** extend to notifications.
+   - Revoking in System Settings gives `authorizationStatus = .denied (1)` while
+     `alertSetting` still reads `.enabled (2)` — which is why the port must key
+     off `authorizationStatus` alone, as it does.
+   - The refusal path was exercised end to end: with the permission revoked, the
+     settings row says macOS refuses banners and that the name will be shown in
+     the menu bar instead, and the next firing does put the name in the menu bar.
+     **But** the mirror is only re-read when the VPN settings page appears: a
+     firing between the revocation and the next visit to that page produces the
+     spin and nothing else, because the stored `bannerAuthorized` still says yes.
+     Measured — the ring turned for 1.1 s and no name was drawn.
+2. **The 30 Hz redraw costs nothing after the first spin.** Ten firings six
+   seconds apart: footprint 17 MB before the first, 18 MB from the second, and
+   18 MB unchanged through the tenth. The 1 MB is the one-time build of the
+   36-frame cache; the frames are hit on every spin after it.
+3. **Borrowing the status item works, and lasts as long as it should.** With no
+   other module tinting, the ring swept 720° ± 6% inside the 1.2 s window (two
+   revolutions, measured at 557–607°/s across two recordings) and the name stood
+   beside it for 2.97 s of the 3.0 s window; the missing frames at each end are
+   the engine→UI hop, one frame of paint delay.
+4. **A countdown does not suppress the spin, and the rule that says it does is
+   inert.** `StatusPlan.spins` reads `timerProgress` off the *chosen* appearance,
+   and `StatusPlan.choose` gives a live spin the icon before it looks at any
+   tint — so the appearance it inspects is VPN's, which never carries a
+   countdown. No descriptor produces one appearance holding both fields, which is
+   the only shape the rule can fire on, and the test that guards it
+   (`testACountdownSuppressesTheSpin`) constructs exactly that shape by hand.
+   Measured on screen with a Keep Awake timed session running: the red ring and
+   the remaining time were **replaced** for 1.2 s by a spinning grey ring and the
+   connection's name, at 585°/s, and the countdown then came back — which is the
+   "countdown arc that jumped backwards" this rule exists to prevent. Fixing it
+   means asking the question of the *set* of appearances rather than of the
+   chosen one, and the test has to be built from two appearances, the way the
+   app is.
+5. **The name is shown for three seconds only while no other module tints the
+   icon.** `StatusPlan.choose` ranks tint above title on purpose, so a module
+   with a live tint takes the icon back the moment the spin ends. Measured: with
+   Keep Awake active — which for a person using its per-app rules is most of the
+   day — the name was visible for 1.05 s, not 3.0 s. The spin still carries the
+   news, which is the trade the tier order was chosen for, but the table above
+   describes the uncontended case only.
