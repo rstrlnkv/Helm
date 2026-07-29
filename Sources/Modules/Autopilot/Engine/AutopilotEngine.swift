@@ -34,6 +34,9 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// carry their own lock rather than borrowing one that is held elsewhere.
     private let keys: RuleKeyPort
     private let trustLock = NSLock()
+    /// Held only around `keys.key()` — see `resolvedKey`. Never held with
+    /// `trustLock`, in either order.
+    private let keyLock = NSLock()
     private var key: RuleKey?
     private var refusal: Refusal?
     /// Whether the one trust-on-first-use adoption is still unspent. See
@@ -58,12 +61,19 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         self.localTransport = transport
         self.transport = transport
         wireTransport()
-        // Now, rather than when rules first appear. The key existing is what
-        // says the migration below has already happened, so it has to start
-        // existing at the first launch of this build — otherwise a machine with
-        // no rules yet stays in migration indefinitely, and rules planted a
-        // month later are still read as rules that predate the seal.
-        _ = resolvedKey()
+        // **Nothing here reads the key.** `ModuleHost.bootstrap()` builds every
+        // enabled module's engine on the main thread inside
+        // `applicationDidFinishLaunching`, before the status item exists, and
+        // reading the key can take as long as a person takes to answer a modal
+        // keychain prompt — which an ad-hoc build raises on every rebuild,
+        // because its designated requirement is its cdhash and a rebuilt binary
+        // is a different application to the keychain. Measured on an installed
+        // build: two prompts per launch, 20.7 s and 31.1 s with no menu bar.
+        //
+        // The key must still start existing at the first launch of this build —
+        // its absence is the whole migration policy below — and `activate` is
+        // what makes that true: it reads the rule set, and the first read
+        // resolves the key. See `AutopilotLaunchTests`.
     }
 
     public func activate() {
@@ -215,18 +225,33 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// The key, resolved once per run and held. The `firstUse` it carries out
     /// of the keychain is not the one the verdict sees — that one comes from
     /// `takeTheOneAdoption`, which is stricter.
+    ///
+    /// **`trustLock` is not held across the port call.** The port can sit inside
+    /// a modal keychain prompt for as long as a person ignores it, and
+    /// `trustLock` is also what answers `rulesRefused` — so holding it there put
+    /// a dialog between the UI and the engine's own state. `keyLock` is held
+    /// instead: it serialises the port, so the three threads that read the rule
+    /// set cannot each raise a prompt of their own, and it guards nothing any
+    /// other caller wants.
     private func resolvedKey() -> RuleKey? {
-        trustLock.lock()
-        defer { trustLock.unlock() }
-        if let key { return key }
+        if let held = trustLock.withLock({ key }) { return held }
+
+        keyLock.lock()
+        defer { keyLock.unlock() }
+        // Another thread may have resolved it while this one waited.
+        if let held = trustLock.withLock({ key }) { return held }
         guard let resolved = keys.key() else { return nil }
-        key = RuleKey(material: resolved.material, firstUse: false)
-        // Armed by the keychain having had to create the item, and by nothing
-        // else. This is the entire migration policy: the key's absence is the
-        // only evidence available that this installation predates sealing, and
-        // it is evidence kept somewhere the plist's author cannot reach.
-        adoptable = resolved.firstUse
-        return key
+
+        return trustLock.withLock {
+            key = RuleKey(material: resolved.material, firstUse: false)
+            // Armed by the keychain having had to create the item, and by
+            // nothing else. This is the entire migration policy: the key's
+            // absence is the only evidence available that this installation
+            // predates sealing, and it is evidence kept somewhere the plist's
+            // author cannot reach.
+            adoptable = resolved.firstUse
+            return key
+        }
     }
 
     /// **The migration, and the judgement behind it.** People upgrading to this
@@ -260,9 +285,18 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         return adoptable
     }
 
+    /// On the engine's queue, including the *read*.
+    ///
+    /// Reading `folders` resolves the key, and both callers arrive on a thread
+    /// that must not wait for a keychain prompt: `activate` on the main thread
+    /// during launch, the setter on whatever thread the transport handed it.
+    /// Only the `watcher?.watch` used to be dispatched here, which left the
+    /// blocking half on the caller.
     private func refreshWatch() {
-        let paths = folders.filter(\.enabled).map(\.path)
-        queue.async { [self] in watcher?.watch(paths) }
+        queue.async { [self] in
+            let paths = folders.filter(\.enabled).map(\.path)
+            watcher?.watch(paths)
+        }
     }
 
     private func startSweepTimer() {
