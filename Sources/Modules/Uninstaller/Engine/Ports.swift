@@ -16,6 +16,22 @@ public protocol AppLister: Sendable {
     /// LaunchServices sees apps one folder down and helpers nested inside
     /// other bundles; a directory listing sees neither.
     func isKnownToSystem(bundleID: String) -> Bool
+    /// The installed bundles declaring this id. Normally one — the app the
+    /// scan is about — because an id is what identifies an application. Two is
+    /// the fact the scan cannot do without: a bundle id is read from an app's
+    /// own `Info.plist`, so an app can declare somebody else's, and every
+    /// candidate built from an id belongs to whoever else declares it just as
+    /// well. An honest second copy (a Setapp build beside a direct download)
+    /// looks the same and means the same thing — the data stays in use.
+    func installedPaths(forBundleID id: String) -> [String]
+}
+
+public extension AppLister {
+    /// What a lister that only lists can answer. `WorkspaceAppLister` overrides
+    /// it, because the folders it lists are not where every app lives.
+    func installedPaths(forBundleID id: String) -> [String] {
+        installedApps().filter { $0.bundleID == id }.map(\.path)
+    }
 }
 
 public protocol FileSystemPort: Sendable {

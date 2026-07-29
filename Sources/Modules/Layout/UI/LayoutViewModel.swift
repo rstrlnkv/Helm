@@ -10,6 +10,8 @@ import Module_Layout_Engine
                                                            conversionsToday: 0)
     public let vm: ModuleViewModel
 
+    private var eventsTask: Task<Void, Never>?
+
     private static var cached: LayoutViewModel?
 
     /// Keyed to the host view model: turning the module off and on builds a new
@@ -18,16 +20,23 @@ import Module_Layout_Engine
         if let cached, cached.vm === vm { return cached }
         let created = LayoutViewModel(vm: vm)
         cached = created
+        ModuleUICache.dropWhenDisabled(LayoutDescriptor.id.rawValue) { cached = nil }
         return created
     }
 
     private init(vm: ModuleViewModel) {
         self.vm = vm
         let events = vm.transport.events
-        Task { [weak self] in
-            for await event in events { await self?.handle(event) }
+        eventsTask = Task { [weak self] in
+            for await event in events {
+                guard let self else { break }
+                self.handle(event)
+            }
         }
     }
+
+    /// Ends the event loop, which unregisters the transport subscriber.
+    deinit { eventsTask?.cancel() }
 
     private func handle(_ event: EngineEvent) {
         guard event.name == "layoutState",

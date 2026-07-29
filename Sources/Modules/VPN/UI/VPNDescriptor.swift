@@ -12,7 +12,7 @@ import Module_VPN_Engine
     public static let category: ModuleCategory = .network
 
     private var store: NamespacedStore?
-    private var cachedVM: VPNViewModel?
+    private var cached: (vm: ModuleViewModel, model: VPNViewModel)?
     public init() {}
 
     public func makeEngine(store: NamespacedStore) -> any ModuleEngine {
@@ -24,10 +24,18 @@ import Module_VPN_Engine
 
     /// One VPNViewModel per module: building a fresh one each call would leak a
     /// permanent transport-events subscriber every time the panel/settings open.
-    private func viewModel(_ hostVM: ModuleViewModel) -> VPNViewModel {
-        if let cachedVM { return cachedVM }
+    ///
+    /// Keyed to the host view model, the way `KeepAwakeViewModel.shared(vm:)`
+    /// is. Without the identity check the cache survived a module restart —
+    /// `ModuleHost.enable` builds a new engine and a new `ModuleViewModel`, and
+    /// the old model went on talking to the dead engine's transport, whose
+    /// handler is `[weak self]` and answers every command with empty `Data`.
+    /// Switching VPN off and on left the tile and the page frozen until relaunch.
+    func viewModel(_ hostVM: ModuleViewModel) -> VPNViewModel {
+        if let cached, cached.vm === hostVM { return cached.model }
         let m = VPNViewModel(transport: hostVM.transport)
-        cachedVM = m
+        cached = (hostVM, m)
+        ModuleUICache.dropWhenDisabled(Self.id.rawValue) { [weak self] in self?.cached = nil }
         return m
     }
 
@@ -35,7 +43,8 @@ import Module_VPN_Engine
         MenuBarContribution(panelTile: AnyView(VPNPanelTile(vm: viewModel(vm))))
     }
     public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
-        let store = self.store ?? NamespacedStore(namespace: "vpn", backing: UserDefaults.standard)
+        let store = self.store ?? NamespacedStore(namespace: Self.id.rawValue,
+                                                  backing: UserDefaults.standard)
         return AnyView(VPNSettingsPage(vm: viewModel(vm), store: store))
     }
 }

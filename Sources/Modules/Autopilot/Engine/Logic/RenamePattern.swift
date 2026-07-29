@@ -11,21 +11,38 @@ public enum RenamePattern {
 
     /// `{name}` the file's name without its extension, `{date}` the date it was
     /// added as `2026-07-15`, `{counter}` a three-digit sequence number.
-    public static let tokens = ["{name}", "{date}", "{counter}"]
+    public static let tokens = [nameToken, "{date}", "{counter}"]
+
+    /// The only token whose value comes from the file's name, and therefore the
+    /// only reason applying a pattern twice can produce two different names.
+    static let nameToken = "{name}"
 
     public static func apply(_ pattern: String, to facts: FileFacts,
                              counter: Int = 1) -> String? {
-        let stem = (facts.name as NSString).deletingPathExtension
-        var name = pattern
-            .replacingOccurrences(of: "{name}", with: stem)
+        // Everything but the file's own name, substituted once: what is left is
+        // both the template for this run and the shape of every name this
+        // pattern has produced for this file before.
+        let resolved = pattern
             .replacingOccurrences(of: "{date}", with: Self.day.string(from: facts.added))
             .replacingOccurrences(of: "{counter}", with: String(format: "%03d", counter))
+        let stem = (facts.name as NSString).deletingPathExtension
+        var name = resolved.replacingOccurrences(of: nameToken, with: stem)
         name = name.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !name.isEmpty else { return nil }
         // `/` is a path separator and `:` is one to the Finder; either turns a
         // rename into a move. A leading dot hides the file.
         guard !name.contains("/"), !name.contains(":"), !name.hasPrefix(".") else { return nil }
+
+        // A rename that has already been applied must not apply again, and a
+        // file the pattern already describes is one it has been applied to.
+        // Renaming is the one action here that is not idempotent, so this is
+        // what makes it safe to run unstamped — `RuleRunner` tolerates a stamp
+        // that will not stick, and its own `target.path != url.path` is this
+        // same test for the single pattern `{name}`. Every other shape walked
+        // past it: the second sweep feeds the first sweep's output back into
+        // `{name}` and gets something longer, once an hour, forever.
+        guard !RenameShape(resolved: resolved).matches(stem) else { return facts.name }
 
         // The extension is the file's own, never the pattern's: a rule that
         // renames a PDF must not be able to make it something else in passing.
