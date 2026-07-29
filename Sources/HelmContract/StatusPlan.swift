@@ -82,13 +82,16 @@ public enum StatusPlan {
     /// The frame is part of it because a spin is thirty redraws a second of an
     /// otherwise identical icon: leave it out and every frame reports "nothing
     /// changed" and the ring stands still. Progress is bucketed because a
-    /// countdown moves by far less than a pixel per tick.
+    /// countdown moves by far less than a pixel per tick. The spin's own
+    /// colour is part of it too: it is drawn instead of the tint while a spin
+    /// runs, so two colours at the same frame index must not compare equal.
     public static func redrawKey(style: String, size: String, tint: String?,
-                                 progress: Double?, title: String?, frame: Int?) -> String {
+                                 progress: Double?, title: String?, frame: Int?,
+                                 spinTint: String? = nil) -> String {
         let part = { (value: String?) in value.map { "=" + $0 } ?? "-" }
         let bucket = progress.map { "=\(Int(($0 * 100).rounded()))" } ?? "-"
         return [style, size, part(tint), bucket, part(title),
-                frame.map { "=\($0)" } ?? "-"].joined(separator: "|")
+                frame.map { "=\($0)" } ?? "-", part(spinTint)].joined(separator: "|")
     }
 
     /// Whether the chosen appearance should actually move right now.

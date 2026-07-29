@@ -242,4 +242,42 @@ final class StatusPlanTests: XCTestCase {
         XCTAssertEqual(indices, indices.sorted(), "the spin ran backwards")
         XCTAssertGreaterThan(Set(indices).count, 1, "every sample drew the same frame")
     }
+
+    /// The whole point of the separate field. `tintToken` is a claim on the
+    /// menu bar between moments; a module that only wants its own second of
+    /// animation coloured must not become the module that owns the icon.
+    func testASpinTintIsNotAClaimOnTheIcon() {
+        let now = Date()
+        let spinner = StatusAppearance(spinUntil: now.addingTimeInterval(1),
+                                       spinTintToken: "green")
+        let tinter = StatusAppearance(tintToken: "orange")
+
+        // While the spin runs it wins on its own tier, as before.
+        XCTAssertEqual(StatusPlan.choose([spinner, tinter], now: now), spinner)
+
+        // Once it is over, the module that actually tints takes the icon back —
+        // the spinner's colour must not have registered as a tint.
+        let after = now.addingTimeInterval(5)
+        XCTAssertEqual(StatusPlan.choose([spinner, tinter], now: after), tinter)
+    }
+
+    func testASpinTintAloneNeverWinsTheTintTier() {
+        let now = Date()
+        // Spin already finished, so only the fallback tiers can answer.
+        let spent = StatusAppearance(spinUntil: now.addingTimeInterval(-1),
+                                     spinTintToken: "green")
+        XCTAssertEqual(StatusPlan.choose([spent], now: now), .inactive,
+                       "a spent spin with a colour is not a module with a tint")
+    }
+
+    func testTheRedrawKeyNoticesTheSpinTint() {
+        let green = StatusPlan.redrawKey(style: "ring", size: "medium", tint: nil,
+                                         progress: nil, title: nil, frame: 3,
+                                         spinTint: "green")
+        let orange = StatusPlan.redrawKey(style: "ring", size: "medium", tint: nil,
+                                          progress: nil, title: nil, frame: 3,
+                                          spinTint: "orange")
+        XCTAssertNotEqual(green, orange,
+                          "the same frame in two colours must not report 'nothing changed'")
+    }
 }

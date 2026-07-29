@@ -17,14 +17,23 @@ public struct StatusAppearance: Equatable, Sendable {
     /// be missed or replayed depending on timing. "Spin until T" answers
     /// correctly however often it is asked.
     public var spinUntil: Date?
+    /// The colour of the spin, which is not a claim on the icon.
+    ///
+    /// Deliberately not `tintToken`: that field is what `StatusPlan.choose`
+    /// reads to decide who owns the menu bar *between* moments, and a module
+    /// that only wants its own second of animation coloured must not thereby
+    /// become the module that owns the icon all day. `VPNDescriptor` records
+    /// "no tint, ever" for the same reason and that decision still stands.
+    public var spinTintToken: String?
     public init(tintToken: String? = nil, iconStyle: String? = nil,
                 timerProgress: Double? = nil, title: String? = nil,
-                spinUntil: Date? = nil) {
+                spinUntil: Date? = nil, spinTintToken: String? = nil) {
         self.tintToken = tintToken
         self.iconStyle = iconStyle
         self.timerProgress = timerProgress
         self.title = title
         self.spinUntil = spinUntil
+        self.spinTintToken = spinTintToken
     }
     public static let inactive = StatusAppearance()
 }
