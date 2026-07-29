@@ -128,10 +128,37 @@ transitions paint rows over the header — fade only.
 
 ### Status item
 
-`StatusItemController` redraws from `statusAppearance(vm)` of the first active
-module: tint, optional glyph override, timer progress (countdown arc) and
-title (remaining time). Redraw is keyed/bucketed; a 1 s timer runs only while
-a countdown is live. Subscriptions come from `objectWillChange`, which fires
+One pure rule decides what the icon shows: `StatusPlan.choose` reads every
+enabled module's `statusAppearance(vm)` — tint, optional glyph override, timer
+progress (countdown arc), title, `spinUntil` — and returns, in order: the
+module whose spin is still running, else the first that tints, else the first
+that carries a title. **A module asking to spin borrows the icon for the
+length of its spin** (`StatusPlan.spinDuration`; the newest spin wins when two
+overlap).
+
+The title tier is last on purpose. A module may have a title and nothing else —
+VPN names the connection a rule raised for 3 s while its ring turns for 1.2 s,
+and it tints nothing, because a tint is a *permanent* presence in the menu bar
+(tier two is the fallback whenever no spin runs) and "a rule fired" is a
+moment. Without the third tier that name died with the ring; measured in the
+menu bar, gone by 1.8 s. Keeping it **below** the tint is the same rule the
+countdown's suppression of the spin encodes: Keep Awake tints while a countdown
+runs, and a moment must not interrupt continuous state. A name that arrives
+while another module owns the icon is simply not shown — its spin still
+happened, and that is the half that carries the news.
+
+A live countdown and Reduce Motion each suppress the movement and keep the
+title (`StatusPlan.spins`). Reduce Motion is read fresh per redraw, like
+`HelmMotion` — it changes while the app runs.
+
+Redraw is keyed (`StatusPlan.redrawKey`, progress bucketed) and **the frame
+index is part of the key**, or the key suppresses the animation. Two
+`RepeatingTick`s: 1 s while a countdown runs, 1/30 s while a spin does. The
+spin tick drives the refresh that decides whether it is still wanted, so it
+disarms itself within a frame; `RepeatingTick` is where the invalidation is
+tested, because the controller needs a real status bar to exist at all.
+
+Subscriptions come from `objectWillChange`, which fires
 **before** the value is written — always hop to the next main-actor turn
 before reading state. The right-click menu is assigned to `statusItem.menu`
 and opened via `performClick` (hand-positioned `popUp` breaks once the menu
