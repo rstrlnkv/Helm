@@ -21,6 +21,8 @@ import Module_VPN_Engine
     /// Set only by `setForTesting`; nil in the app, always.
     private var noticeForTesting: VPNNotice?
     private var bannerAuthorizedForTesting: Bool?
+    private var spinForTesting: Bool?
+    private var spinTintsForTesting: [VPNAutomation.Kind: String]?
     private var eventsTask: Task<Void, Never>?
     private var expiryTask: Task<Void, Never>?
     /// The announcement of the last firing, while it is still in flight.
@@ -37,6 +39,20 @@ import Module_VPN_Engine
     /// rather than cached, so a change in Settings applies to the next firing
     /// instead of to the next launch.
     public var notice: VPNNotice { noticeForTesting ?? settings?.notice ?? .menuBar }
+
+    /// Whether the menu-bar ring turns when a rule fires. Read at every ask
+    /// rather than cached, like `notice`, so a change in Settings applies to
+    /// the next firing instead of to the next launch.
+    public var automationSpin: Bool {
+        spinForTesting ?? settings?.automationSpin ?? false
+    }
+
+    /// The colour that firing turns in.
+    public func spinTint(for kind: VPNAutomation.Kind) -> String {
+        spinTintsForTesting?[kind]
+            ?? settings?.spinTint(for: kind)
+            ?? (kind == .connected ? "green" : "orange")
+    }
 
     /// Whether a banner would actually be shown.
     ///
@@ -107,9 +123,13 @@ import Module_VPN_Engine
     /// neither of which a test of the status item wants to own.
     func setForTesting(automation: VPNAutomation?, notice: VPNNotice,
                        bannerAuthorized: Bool = false,
-                       notices: AutomationNoticePort? = nil) {
+                       notices: AutomationNoticePort? = nil,
+                       spin: Bool = false,
+                       spinTints: [VPNAutomation.Kind: String]? = nil) {
         noticeForTesting = notice
         bannerAuthorizedForTesting = bannerAuthorized
+        spinForTesting = spin
+        spinTintsForTesting = spinTints
         if let notices { self.notices = notices }
         if let automation { adopt(automation) } else { lastAutomation = nil }
     }

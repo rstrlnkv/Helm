@@ -67,21 +67,25 @@ import Module_VPN_Engine
     /// larger change than saying that a rule fired. It would also settle
     /// "whose icon is this" by `ModuleOrder`, which `StatusItemController`
     /// notes is latent today precisely because no second module tints.
+    ///
+    /// The spin's colour is `spinTintToken`, which `StatusPlan.choose` does not
+    /// read — so colouring the animation does not make this a tinting module.
     public func statusAppearance(_ vm: ModuleViewModel) -> StatusAppearance {
         let model = viewModel(vm)
         guard let firing = model.lastAutomation else { return .inactive }
         // One reading of the clock, so the two windows cannot disagree about
         // which moment they are answering for.
         let now = Date()
-        let spinning = VPNAutomation.spinPhase(firing, now: now) != nil
-        // `effectiveNotice`, never the raw one: `.system` is the mode that shows
-        // no name because the banner carries it, so asking the raw choice left a
-        // person who had refused the banner permission with no banner AND no
-        // name — the loudest setting produced the least.
+        // The setting decides whether there is movement at all. Reduce Motion
+        // is a separate question, answered a level up in `StatusPlan.spins`:
+        // this is a preference, that is an instruction from the system.
+        let spinning = model.automationSpin
+            && VPNAutomation.spinPhase(firing, now: now) != nil
         let names = model.effectiveNotice.showsMenuBarName
             && VPNAutomation.showsName(firing, now: now)
         return StatusAppearance(title: names ? firing.name : nil,
-                                spinUntil: spinning ? VPNAutomation.spinEnd(firing) : nil)
+                                spinUntil: spinning ? VPNAutomation.spinEnd(firing) : nil,
+                                spinTintToken: spinning ? model.spinTint(for: firing.kind) : nil)
     }
 
     public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
