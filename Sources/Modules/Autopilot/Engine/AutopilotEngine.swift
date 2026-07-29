@@ -37,6 +37,25 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// Held only around `keys.key()` — see `resolvedKey`. Never held with
     /// `trustLock`, in either order.
     private let keyLock = NSLock()
+    /// One decision about the stored rules at a time: reading the plist,
+    /// judging it against its seal, and recording that judgement are one
+    /// indivisible act, and so is saving a rule set.
+    ///
+    /// The four callers that read the rule set — the sweep timer, FSEvents, the
+    /// transport and the watch refresh — each record what they decided in
+    /// `refusal`. Unordered, that write says what was true of the file at the
+    /// moment *that* read snapshotted it: a read which began before something
+    /// edited the plist could finish after the read that saw the edit and put
+    /// "these are Helm's own rules" back over "something else wrote these".
+    /// Which of the two verdicts a person is shown then depends on which thread
+    /// the scheduler ran last, and the verdict is the only signal they get.
+    /// `AutopilotSealRaceTests` holds one read open and asserts on the other.
+    ///
+    /// Taken before `keyLock`, never after, and never with `trustLock` held —
+    /// `trustLock` answers `rulesRefused`, which must not wait behind a keychain
+    /// prompt. Everything that waits on this lock is already a caller that wants
+    /// the rule set, which is what `keyLock` makes them queue for in any case.
+    private let decisionLock = NSLock()
     private var key: RuleKey?
     private var refusal: Refusal?
     /// Whether the one trust-on-first-use adoption is still unspent. See
@@ -95,69 +114,87 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     // MARK: - The folders
 
     public var folders: [WatchedFolder] {
-        get {
-            // Unverifiable is refused, not assumed. Without a key there is no
-            // way to tell the person's rules from anyone else's, and this
-            // module moves files with nobody watching.
-            guard let resolved = resolvedKey() else { refusing(.noKey); return [] }
-            // Spent here, before the rules are even looked at, so that a machine
-            // whose plist held nothing on the first run of this build cannot be
-            // handed a rule set a month later and read it as one that predates
-            // the seal.
-            let key = RuleKey(material: resolved.material, firstUse: takeTheOneAdoption())
-            guard let data = store.data("folders"), !data.isEmpty else { return [] }
-            switch RuleSeal.verdict(payload: data, mac: storedMAC, key: key) {
-            case .sealed:
-                break
-            case .adopt:
-                store.set(RuleSeal.mac(for: data, key: key.material), for: RuleSeal.storeKey)
-                HelmLog.shared.info("autopilot", "sealed the rules that were already here")
-            case .broken:
-                refusing(.tampered)
-                return []
-            }
-            refusing(nil)
-            guard let list = try? JSONDecoder().decode([WatchedFolder].self, from: data)
-            else { return [] }
-            // On the way out as well as in. The setter has always brought
-            // numbers into range, and a plist somebody edited by hand — or one
-            // written by an older build — never went through the setter. It
-            // reaches the engine here.
-            return list.map(\.storable)
-        }
+        get { decisionLock.withLock { decided() } }
         set {
-            // No key, no save. Writing the rules unsealed would be worse than
-            // refusing: the next launch would read them as somebody else's and
-            // throw away work the person had just done.
-            guard let key = resolvedKey() else {
-                HelmLog.shared.error("autopilot",
-                                     "could not seal \(newValue.count) folders, so they were not saved")
-                return
-            }
-            // Encoding a rule list can genuinely fail — `JSONEncoder` refuses a
-            // non-finite `Double`, which a condition can hold — and returning
-            // quietly discarded every folder and every rule while the screen
-            // went on showing the new state. The old list survives instead, and
-            // the failure is in the log.
-            // Clamped first: a condition holding ±∞ makes `JSONEncoder` throw,
-            // and the rules are one JSON value — so one unencodable number in
-            // one rule discarded every folder and every rule the person had,
-            // silently, while the screen went on showing the new state.
-            do {
-                let data = try JSONEncoder().encode(newValue.map(\.storable))
-                // Rules first, seal second. Interrupted between the two, the
-                // plist holds a rule set whose seal does not fit it — which is
-                // refused, and refusing rules the person did save is the
-                // survivable half of this pair.
-                store.set(data, for: "folders")
-                store.set(RuleSeal.mac(for: data, key: key.material), for: RuleSeal.storeKey)
-                // Whatever was in the file before, these are Helm's now.
-                refusing(nil)
-                refreshWatch()
-            } catch {
-                HelmLog.shared.failure("autopilot", "could not save \(newValue.count) folders",
-                                       error)
-            }
+            let saved = decisionLock.withLock { save(newValue) }
+            // Outside the lock. It only enqueues, but what it enqueues is
+            // another decision, which takes this lock.
+            if saved { refreshWatch() }
+        }
+    }
+
+    /// Whose rules the plist holds, and the ones that may run. Behind
+    /// `decisionLock`, with the `refusing` calls it makes.
+    private func decided() -> [WatchedFolder] {
+        // Unverifiable is refused, not assumed. Without a key there is no
+        // way to tell the person's rules from anyone else's, and this
+        // module moves files with nobody watching.
+        guard let resolved = resolvedKey() else { refusing(.noKey); return [] }
+        // Spent here, before the rules are even looked at, so that a machine
+        // whose plist held nothing on the first run of this build cannot be
+        // handed a rule set a month later and read it as one that predates
+        // the seal.
+        let key = RuleKey(material: resolved.material, firstUse: takeTheOneAdoption())
+        guard let data = store.data("folders"), !data.isEmpty else { return [] }
+        switch RuleSeal.verdict(payload: data, mac: storedMAC, key: key) {
+        case .sealed:
+            break
+        case .adopt:
+            store.set(RuleSeal.mac(for: data, key: key.material), for: RuleSeal.storeKey)
+            HelmLog.shared.info("autopilot", "sealed the rules that were already here")
+        case .broken:
+            refusing(.tampered)
+            return []
+        }
+        refusing(nil)
+        guard let list = try? JSONDecoder().decode([WatchedFolder].self, from: data)
+        else { return [] }
+        // On the way out as well as in. The setter has always brought
+        // numbers into range, and a plist somebody edited by hand — or one
+        // written by an older build — never went through the setter. It
+        // reaches the engine here.
+        return list.map(\.storable)
+    }
+
+    /// The rule set on its way to the plist, sealed. Behind `decisionLock` for
+    /// the reason above and one more: the payload and its seal are two writes,
+    /// and a read landing between them judges a rule set against the seal of the
+    /// one before it — which is the same "something else wrote these" the module
+    /// exists to report, said about Helm's own save.
+    ///
+    /// True when something was written, which is when the watch has to catch up.
+    private func save(_ folders: [WatchedFolder]) -> Bool {
+        // No key, no save. Writing the rules unsealed would be worse than
+        // refusing: the next launch would read them as somebody else's and
+        // throw away work the person had just done.
+        guard let key = resolvedKey() else {
+            HelmLog.shared.error("autopilot",
+                                 "could not seal \(folders.count) folders, so they were not saved")
+            return false
+        }
+        // Encoding a rule list can genuinely fail — `JSONEncoder` refuses a
+        // non-finite `Double`, which a condition can hold — and returning
+        // quietly discarded every folder and every rule while the screen
+        // went on showing the new state. The old list survives instead, and
+        // the failure is in the log.
+        // Clamped first: a condition holding ±∞ makes `JSONEncoder` throw,
+        // and the rules are one JSON value — so one unencodable number in
+        // one rule discarded every folder and every rule the person had,
+        // silently, while the screen went on showing the new state.
+        do {
+            let data = try JSONEncoder().encode(folders.map(\.storable))
+            // Rules first, seal second. Interrupted between the two, the
+            // plist holds a rule set whose seal does not fit it — which is
+            // refused, and refusing rules the person did save is the
+            // survivable half of this pair.
+            store.set(data, for: "folders")
+            store.set(RuleSeal.mac(for: data, key: key.material), for: RuleSeal.storeKey)
+            // Whatever was in the file before, these are Helm's now.
+            refusing(nil)
+            return true
+        } catch {
+            HelmLog.shared.failure("autopilot", "could not save \(folders.count) folders", error)
+            return false
         }
     }
 
