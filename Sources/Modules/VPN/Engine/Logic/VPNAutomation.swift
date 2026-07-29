@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Helm
 
 import Foundation
+import HelmContract
 
 /// One firing of a VPN rule: Helm raised or dropped a tunnel by itself.
 ///
@@ -22,8 +23,9 @@ public struct VPNAutomation: Codable, Equatable, Sendable {
 
     /// How long the ring turns. Two revolutions at 0.6 s each — long enough to
     /// register as movement, short enough that it cannot be mistaken for a
-    /// progress indicator.
-    public static let spinDuration: TimeInterval = 1.2
+    /// progress indicator. The host measures the same window from
+    /// `StatusPlan.spinDuration`, so this reads it rather than repeating it.
+    public static let spinDuration: TimeInterval = StatusPlan.spinDuration
     /// How long the name stays. It outlives the ring on purpose: the movement
     /// catches the eye, the word answers what caught it.
     public static let nameDuration: TimeInterval = 3.0
