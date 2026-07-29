@@ -129,6 +129,26 @@ features, PATCH = fixes.
     move the footprint by 1 MB on the first and by nothing after it.
 
 ### Changed
+- **The VPN spin is a choice now, and carries a colour.** It shipped in this
+  same release turning in every notice mode, on the argument that movement is
+  feedback the app acted rather than a notification. Sound, and overruled:
+  movement in the menu bar is a person's to switch off. Settings → VPN → "Turn
+  the menu-bar icon", off by default, with a colour per kind of firing — green
+  when a rule raises a tunnel, orange when one goes down, either replaceable
+  from the same ten-colour palette Keep Awake uses.
+  - **The one silent combination says so.** With the spin off *and* the notice
+    set to nothing, a rule connects or drops a tunnel with no sign at all. That
+    is a legitimate "leave me alone", and the page says it where the two
+    settings are rather than leaving it to be discovered.
+  - **The colour is not a tint**, which matters more than it sounds: a tint is
+    what decides who owns the single menu-bar icon between moments, so
+    colouring one second of animation through it would have made VPN the module
+    that owns the icon all day, and settled the contest with Keep Awake by
+    module order. It is a field of its own and the four tiers are untouched.
+  - The line under the notice picker said the ring turns either way. True when
+    it was written, false the moment the switch existed, and sitting directly
+    above the control that contradicted it — caught by opening the page, which
+    no test does.
 - **A design pass over the whole app**, in the macOS 26/27 idiom.
   - **The masthead no longer walks away from its own page.** `HelmPageHeader`
     centred itself on the 744 pt form column unconditionally, but four pages —
