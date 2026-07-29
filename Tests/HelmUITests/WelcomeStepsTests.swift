@@ -41,29 +41,29 @@ final class WelcomeStepsTests: XCTestCase {
 
     /// The suite runs in this machine's language, so a test that reads
     /// `AppLanguage.current` checks English eight times and calls it coverage.
-    /// `L(_:_:language:)` names the language outright, which is the only way to
-    /// see a table with a hole in it.
+    /// `L(_:language:)` names the language outright, which is the only way to
+    /// see a shipped table with a hole in it.
     ///
-    /// The tables are read off `WelcomeStr` by name rather than through its
-    /// accessors, because the accessors resolve `.current` internally — asking
-    /// them in a loop over languages asks the same question eight times. Keep
-    /// this list in step with `WelcomeStrings.swift`: a string added there and
-    /// not here is a string nobody checks.
+    /// Asks the `.lproj` files the same way the app does — through `L()` — not
+    /// through named `…English`/`…Table` constants: those existed only so this
+    /// test could walk them, and went with them. Keep this list in step with
+    /// `WelcomeStrings.swift`: a string added there and not here is a string
+    /// nobody checks.
     func testEveryChromeStringExistsInEveryLanguage() {
-        let tables: [(String, String, [AppLanguage: String])] = [
-            ("windowTitle", WelcomeStr.windowTitleEnglish, WelcomeStr.windowTitleTable),
-            ("introTitle", WelcomeStr.introTitleEnglish, WelcomeStr.introTitleTable),
-            ("introBody", WelcomeStr.introBodyEnglish, WelcomeStr.introBodyTable),
-            ("back", WelcomeStr.backEnglish, WelcomeStr.backTable),
-            ("next", WelcomeStr.nextEnglish, WelcomeStr.nextTable),
-            ("skip", WelcomeStr.skipEnglish, WelcomeStr.skipTable),
-            ("done", WelcomeStr.doneEnglish, WelcomeStr.doneTable),
+        let english = [
+            "windowTitle": "Welcome to Helm",
+            "introTitle": "Tools for your Mac",
+            "introBody": "Helm lives in the menu bar and is made of modules. Each one does a single job, and you can switch off the ones you do not want.",
+            "back": "Back",
+            "next": "Next",
+            "skip": "Skip",
+            "done": "Done",
         ]
-        for (name, english, table) in tables {
+        for (name, base) in english {
             for language in AppLanguage.allCases where language != .en {
-                let value = L(english, table, language: language)
+                let value = L(base, language: language)
                 XCTAssertFalse(value.isEmpty, "\(name) is empty in \(language.rawValue)")
-                XCTAssertNotEqual(value, english,
+                XCTAssertNotEqual(value, base,
                                   "\(name) fell back to English in \(language.rawValue)")
             }
         }
