@@ -60,6 +60,65 @@ final class VPNAutomationRecordingTests: XCTestCase {
         XCTAssertEqual(engine.lastAutomation?.at, at)
     }
 
+    // MARK: - Work that changed nothing
+
+    /// The case measured on a real machine: the rule's app was already running,
+    /// so `activate()` replayed `appLaunched` at every launch of Helm, and the
+    /// tunnel it asks for was already up. `scutil --nc start` is a no-op there —
+    /// the ring spun and named a VPN nobody had touched, every single launch.
+    /// An indicator that fires for that indicates nothing.
+    func test_a_rule_asking_for_a_tunnel_already_up_records_nothing() {
+        let runner = FakeRunner()
+        runner.listOutput = list("Connected")
+        let engine = makeEngine(runner, apps: alreadyRunning(), settings: ruleForA())
+
+        engine.activate()
+
+        XCTAssertTrue(runner.issued.contains(["--nc", "start", "A"]),
+                      "the rule has to have fired at all for the assertion below to mean anything")
+        XCTAssertNil(engine.lastAutomation,
+                     "Helm asked for a tunnel that was already up, so Helm changed nothing")
+    }
+
+    /// The guard against buying the test above by never recording on this path:
+    /// the same replay, with the tunnel actually down, is a real firing.
+    func test_the_same_rule_asking_for_a_tunnel_that_is_down_is_recorded() {
+        let runner = FakeRunner()
+        runner.listOutput = list("Disconnected")
+        let engine = makeEngine(runner, apps: alreadyRunning(), settings: ruleForA())
+
+        engine.activate()
+
+        XCTAssertEqual(engine.lastAutomation,
+                       VPNAutomation(at: at, name: "A", kind: .connected))
+    }
+
+    /// Already up is still Helm's to take down when the app quits: the quit rule
+    /// reads `_autoConnected`, and declining to *announce* must not be read as
+    /// declining to own.
+    func test_a_tunnel_already_up_is_still_recorded_as_helms_own() {
+        let runner = FakeRunner()
+        runner.listOutput = list("Connected")
+        let engine = makeEngine(runner, apps: alreadyRunning(), settings: ruleForA())
+
+        engine.activate()
+
+        XCTAssertTrue(engine.autoConnected.contains("A"))
+    }
+
+    private func alreadyRunning() -> FakeApps {
+        let apps = FakeApps()
+        apps.bundleIDs = ["com.a"]
+        return apps
+    }
+
+    private func ruleForA() -> VPNSettings {
+        let settings = makeSettings()
+        settings.setRulesJSON(
+            "{\"com.a\":{\"vpnName\":\"A\",\"connectOnLaunch\":true,\"disconnectOnQuit\":true}}")
+        return settings
+    }
+
     // MARK: - The person's work
 
     func test_a_connect_the_person_asked_for_is_not_recorded() {
@@ -145,6 +204,33 @@ final class VPNAutomationRecordingTests: XCTestCase {
                      "a tunnel that has not answered yet has not dropped")
     }
 
+    /// The mirror of the launch case: a teardown that changes nothing is not
+    /// news either. The rule quits, Helm asks for a stop, and the tunnel was
+    /// already down — `scutil --nc stop` is a no-op and there is nothing to
+    /// announce. Without this the ring spins for a disconnection that had
+    /// already happened, which is the same lie as announcing one that never did.
+    func test_a_teardown_of_a_tunnel_that_was_already_down_is_not_recorded() {
+        let runner = FakeRunner()
+        runner.listOutput = list("Disconnected")
+        let settings = makeSettings()
+        settings.setRulesJSON(
+            "{\"com.a\":{\"vpnName\":\"A\",\"connectOnLaunch\":true,\"disconnectOnQuit\":true}}")
+        let apps = FakeApps()
+        let engine = makeEngine(runner, apps: apps, settings: settings)
+
+        engine.activate()
+        apps.bundleIDs = ["com.a"]
+        apps.fire()
+        engine.refresh()                    // it never came up
+        engine.clearLastAutomationForTesting()
+        apps.bundleIDs = []
+        apps.fire()                         // the rule tears down anyway
+
+        XCTAssertNil(engine.lastAutomation,
+                     "a teardown of a tunnel that was already down was announced as a "
+                     + "disconnection the user never had")
+    }
+
     /// The rule's own teardown: the app that raised the tunnel quits and Helm
     /// takes it down. Helm did that, so it is a firing — and it takes the same
     /// route through `disconnect` as the panel button, which is not.
@@ -160,6 +246,12 @@ final class VPNAutomationRecordingTests: XCTestCase {
         engine.activate()
         apps.bundleIDs = ["com.a"]
         apps.fire()
+        // The tunnel Helm just asked for comes up. This is the only state a
+        // teardown can actually begin from — `appTerminated` takes down nothing
+        // Helm did not raise this session — and holding the fake at
+        // Disconnected here arranged a world the code cannot reach.
+        runner.listOutput = list("Connected")
+        engine.refresh()
         engine.clearLastAutomationForTesting()
         apps.bundleIDs = []
         apps.fire()

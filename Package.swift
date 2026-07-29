@@ -144,6 +144,10 @@ let package = Package(
             path: "Tests/Modules/VPN/EngineTests"
         ),
         .testTarget(
+            name: "Module_VPN_UITests",
+            dependencies: ["Module_VPN_UI"],
+            path: "Tests/Modules/VPN/UITests"),
+        .testTarget(
             name: "Module_Uninstaller_EngineTests",
             dependencies: ["Module_Uninstaller_Engine"],
             path: "Tests/Modules/Uninstaller/EngineTests"
