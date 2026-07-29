@@ -71,6 +71,14 @@ xattr -dr com.apple.quarantine /Applications/Helm.app && open /Applications/Helm
   reads `AppLanguage.current`.** The suite runs in whatever language this
   machine is set to (English), so a test gating its own assertion on `.current`
   never exercises the language it was written to check.
+- **A getter with a side effect on shared state needs its read and its write in
+  one critical section, or the last writer wins by scheduling.** Autopilot's
+  `folders` getter judges the stored rules against their seal and records the
+  verdict. Once one caller read it on a background queue and another on the
+  caller's thread, a *stale* read could record its verdict after a newer one —
+  so a rule set that had just been found tampered with reported itself fine, in
+  the signal that exists to tell the user their rules were forged. It showed up
+  as a test failing 7 times in 70 and never twice in a row.
 - Pills are `HelmBadge`, cards are `.helmCard()` — one of each, no local variants.
 - Every user-visible string goes through `L()` with all eight languages, and
   everything the language shapes goes through `HelmUI`: `Bytes`, `Decimal`,
