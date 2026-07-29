@@ -180,4 +180,23 @@ enum AppStr {
     }
 
     static var turnOn: String { L("Turn on", [.ru: "Включить", .es: "Activar", .fr: "Activer", .de: "Einschalten", .ja: "オンにする", .zh: "开启", .pt: "Ativar"]) }
+    static var cancel: String { L("Cancel", [.ru: "Отменить", .es: "Cancelar", .fr: "Annuler", .de: "Abbrechen", .ja: "キャンセル", .zh: "取消", .pt: "Cancelar"]) }
+    static var resetSection: String {
+        L("Reset", [.ru: "Сброс", .es: "Restablecer", .fr: "Réinitialiser", .de: "Zurücksetzen", .ja: "リセット", .zh: "重置", .pt: "Redefinir"])
+    }
+    static var resetAll: String {
+        L("Reset all settings…", [.ru: "Сбросить все настройки…", .es: "Restablecer todos los ajustes…", .fr: "Réinitialiser tous les réglages…", .de: "Alle Einstellungen zurücksetzen…", .ja: "すべての設定をリセット…", .zh: "重置所有设置…", .pt: "Redefinir todos os ajustes…"])
+    }
+    static var resetNote: String {
+        L("Helm returns to how it was just after installing. Access you granted in System Settings stays as it is.", [.ru: "Helm вернётся к состоянию сразу после установки. Доступ, выданный в Системных настройках, останется как есть.", .es: "Helm vuelve a como estaba recién instalado. El acceso que concediste en Ajustes del Sistema no cambia.", .fr: "Helm revient à son état juste après l’installation. Les accès accordés dans Réglages Système ne changent pas.", .de: "Helm kehrt in den Zustand direkt nach der Installation zurück. In den Systemeinstellungen erteilte Zugriffe bleiben, wie sie sind.", .ja: "Helm はインストール直後の状態に戻ります。システム設定で許可したアクセスはそのままです。", .zh: "Helm 会回到刚安装完的状态。你在系统设置中授予的权限不受影响。", .pt: "O Helm volta a como estava logo após a instalação. O acesso concedido nos Ajustes do Sistema permanece."])
+    }
+    static var resetConfirmTitle: String {
+        L("Reset all settings?", [.ru: "Сбросить все настройки?", .es: "¿Restablecer todos los ajustes?", .fr: "Réinitialiser tous les réglages ?", .de: "Alle Einstellungen zurücksetzen?", .ja: "すべての設定をリセットしますか？", .zh: "要重置所有设置吗？", .pt: "Redefinir todos os ajustes?"])
+    }
+    static var resetConfirmBody: String {
+        L("Every preference, every module's saved state and the diagnostics log go to the Trash. Helm restarts and greets you as it did the first time.", [.ru: "Все настройки, сохранённое состояние каждого модуля и журнал диагностики отправятся в Корзину. Helm перезапустится и встретит вас как в первый раз.", .es: "Todos los ajustes, el estado guardado de cada módulo y el registro de diagnóstico van a la papelera. Helm se reinicia y te saluda como la primera vez.", .fr: "Tous les réglages, l’état enregistré de chaque module et le journal de diagnostic partent à la corbeille. Helm redémarre et vous accueille comme la première fois.", .de: "Alle Einstellungen, der gespeicherte Zustand jedes Moduls und das Diagnoseprotokoll wandern in den Papierkorb. Helm startet neu und begrüßt dich wie beim ersten Mal.", .ja: "すべての設定、各モジュールの保存状態、診断ログがゴミ箱に移動します。Helm は再起動し、初回と同じように迎えます。", .zh: "所有设置、每个模块保存的状态以及诊断日志都会移到废纸篓。Helm 会重启，并像第一次那样迎接你。", .pt: "Todos os ajustes, o estado salvo de cada módulo e o registro de diagnóstico vão para o Lixo. O Helm reinicia e recebe você como da primeira vez."])
+    }
+    static var resetConfirmAction: String {
+        L("Reset and Restart", [.ru: "Сбросить и перезапустить", .es: "Restablecer y reiniciar", .fr: "Réinitialiser et redémarrer", .de: "Zurücksetzen und neu starten", .ja: "リセットして再起動", .zh: "重置并重启", .pt: "Redefinir e reiniciar"])
+    }
 }

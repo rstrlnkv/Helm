@@ -279,6 +279,7 @@ private struct MenuBarSettingsView: View {
     @State private var editingOrder = false
     @State private var diskAccess: PermissionState = .granted
     @State private var accessibility: PermissionState = .granted
+    @State private var confirmingReset = false
     private let adHocBuild = PermissionCheck.isAdHocSigned()
 
     /// The permissions an enabled module actually uses, in table order.
@@ -547,7 +548,14 @@ private struct MenuBarSettingsView: View {
                 }
                 .controlSize(.small)
             }
-                                                        }
+            Section(AppStr.resetSection) {
+                Button(AppStr.resetAll, role: .destructive) { confirmingReset = true }
+                Text(AppStr.resetNote)
+                    .font(.caption)
+                    .foregroundStyle(HelmText.quiet)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
         .formStyle(.grouped)
         // A grouped Form caps its content at 704 pt and centres it, so past a
         // 994 pt window its leading edge walks away from everything Helm draws
@@ -566,6 +574,13 @@ private struct MenuBarSettingsView: View {
         .task {
             diskAccess = PermissionCheck.currentFullDiskAccess()
             accessibility = PermissionCheck.currentAccessibility()
+        }
+        .confirmationDialog(AppStr.resetConfirmTitle, isPresented: $confirmingReset,
+                            titleVisibility: .visible) {
+            Button(AppStr.resetConfirmAction, role: .destructive) { ResetEverything.run() }
+            Button(AppStr.cancel, role: .cancel) {}
+        } message: {
+            Text(AppStr.resetConfirmBody)
         }
     }
 
