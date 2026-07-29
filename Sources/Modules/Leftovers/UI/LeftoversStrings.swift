@@ -11,36 +11,36 @@ enum LfStr {
 
     // Named after the macOS pane that covers the same ground, so the mapping
     // is obvious: System Settings → General → Login Items & Extensions.
-    static var moduleName: String { L("Login Items & Extensions", [.ru: "Объекты входа и расширения", .es: "Ítems de inicio y extensiones", .fr: "Ouverture et extensions", .de: "Anmeldeobjekte & Erweiterungen", .ja: "ログイン項目と機能拡張", .zh: "登录项与扩展", .pt: "Itens de início e extensões"]) }
+    static var moduleName: String { L("Login Items & Extensions") }
 
     /// What the sidebar calls it. macOS carries the same pair: the pane is
     /// "Login Items & Extensions" and a list of panes says "Login Items" —
     /// these are its own words for the short form, language by language.
-    static var moduleNameShort: String { L("Login Items", [.ru: "\u{041E}\u{0431}\u{044A}\u{0435}\u{043A}\u{0442}\u{044B} \u{0432}\u{0445}\u{043E}\u{0434}\u{0430}", .es: "\u{00CD}tems de inicio", .fr: "Ouverture", .de: "Anmeldeobjekte", .ja: "\u{30ED}\u{30B0}\u{30A4}\u{30F3}\u{9805}\u{76EE}", .zh: "\u{767B}\u{5F55}\u{9879}", .pt: "Itens de in\u{00ED}cio"]) }
-    static var summary: String { L("Startup items, extensions, and what removed apps left behind", [.ru: "Автозагрузка, расширения и остатки удалённых приложений", .es: "Ítems de inicio, extensiones y restos de apps eliminadas", .fr: "Éléments de démarrage, extensions et résidus d’apps supprimées", .de: "Anmeldeobjekte, Erweiterungen und Reste entfernter Apps", .ja: "起動項目、機能拡張、削除済みアプリの残存物", .zh: "启动项、扩展，以及已删除应用的残留", .pt: "Itens de início, extensões e restos de apps removidos"]) }
-    static var filterAll: String { L("All", [.ru: "Все", .es: "Todo", .fr: "Tout", .de: "Alle", .ja: "すべて", .zh: "全部", .pt: "Tudo"]) }
-    static var filterLeftovers: String { L("Leftovers", [.ru: "Остатки", .es: "Restos", .fr: "Restes", .de: "Reste", .ja: "残存物", .zh: "残留", .pt: "Restos"]) }
-    static var statusInUse: String { L("In use", [.ru: "Используется", .es: "En uso", .fr: "Utilisé", .de: "In Benutzung", .ja: "使用中", .zh: "使用中", .pt: "Em uso"]) }
-    static var statusProtected: String { L("System", [.ru: "Системный", .es: "Del sistema", .fr: "Système", .de: "System", .ja: "システム", .zh: "系统", .pt: "Do sistema"]) }
-    static var statusOrphaned: String { L("Leftover", [.ru: "Остаток", .es: "Resto", .fr: "Reste", .de: "Rest", .ja: "残存", .zh: "残留", .pt: "Resto"]) }
-    static var scan: String { L("Scan", [.ru: "Сканировать", .es: "Analizar", .fr: "Analyser", .de: "Scannen", .ja: "スキャン", .zh: "扫描", .pt: "Analisar"]) }
-    static var scanning: String { L("Scanning…", [.ru: "Сканирование…", .es: "Analizando…", .fr: "Analyse…", .de: "Wird gescannt…", .ja: "スキャン中…", .zh: "扫描中…", .pt: "Analisando…"]) }
-    static var rescan: String { L("Scan again", [.ru: "Сканировать заново", .es: "Escanear de nuevo", .fr: "Réanalyser", .de: "Erneut scannen", .ja: "再スキャン", .zh: "重新扫描", .pt: "Escanear de novo"]) }
-    static var intro: String { L("Launch agents, settings files, plug-ins and system extensions on this Mac. Leftovers can be removed; the rest is shown for context.", [.ru: "Агенты запуска, файлы настроек, плагины и системные расширения на этом Mac. Остатки можно удалить, остальное — для справки.", .es: "Agentes de inicio, archivos de ajustes, plug-ins y extensiones del sistema de este Mac. Los restos se pueden eliminar; el resto es informativo.", .fr: "Agents de lancement, fichiers de réglages, modules et extensions système de ce Mac. Les résidus peuvent être supprimés ; le reste est indicatif.", .de: "Startagenten, Einstellungsdateien, Plug-ins und Systemerweiterungen auf diesem Mac. Reste lassen sich entfernen, der Rest dient der Übersicht.", .ja: "この Mac の起動エージェント・設定ファイル・プラグイン・システム機能拡張。残存物は削除でき、その他は参考表示です。", .zh: "本机的启动代理、设置文件、插件与系统扩展。残留项可删除，其余仅供参考。", .pt: "Agentes de início, arquivos de ajustes, plug-ins e extensões do sistema neste Mac. Restos podem ser removidos; o resto é informativo."]) }
-    static var notScannedYet: String { L("Scan to see what apps left behind.", [.ru: "Сканируйте, чтобы увидеть, что осталось от приложений.", .es: "Escanea para ver qué dejaron las apps.", .fr: "Analysez pour voir ce que les apps ont laissé.", .de: "Scannen, um zu sehen, was Apps hinterlassen haben.", .ja: "スキャンして、アプリが残したものを確認。", .zh: "扫描以查看应用留下了什么。", .pt: "Escaneie para ver o que os apps deixaram."]) }
-    static var reviewNote: String { L("Nothing is selected by default — macOS loads these, so choose deliberately.", [.ru: "Ничего не выбрано заранее: эти файлы загружает macOS — выбирайте осознанно.", .es: "Nada está seleccionado: macOS carga estos archivos, elige con cuidado.", .fr: "Rien n’est sélectionné : macOS charge ces fichiers, choisissez avec soin.", .de: "Nichts ist vorausgewählt: macOS lädt diese Dateien — bewusst auswählen.", .ja: "既定では未選択です。macOS が読み込むファイルなので慎重に選んでください。", .zh: "默认未选择：这些文件由 macOS 加载，请谨慎选择。", .pt: "Nada vem selecionado: o macOS carrega esses arquivos, escolha com cuidado."]) }
-    static var removalNeedsAccess: String { L("Without Full Disk Access some files cannot be moved.", [.ru: "Без «Доступа к диску» часть файлов не удастся переместить.", .es: "Sin Acceso total al disco algunos archivos no podrán moverse.", .fr: "Sans accès complet au disque, certains fichiers ne pourront pas être déplacés.", .de: "Ohne Festplattenvollzugriff lassen sich manche Dateien nicht verschieben.", .ja: "フルディスクアクセスがないと、一部のファイルは移動できません。", .zh: "没有完全磁盘访问权限时，部分文件无法移动。", .pt: "Sem Acesso Total ao Disco alguns arquivos não poderão ser movidos."]) }
-    static var manageExtensions: String { L("Manage…", [.ru: "Управление…", .es: "Gestionar…", .fr: "Gérer…", .de: "Verwalten…", .ja: "管理…", .zh: "管理…", .pt: "Gerenciar…"]) }
-    static var disable: String { L("Turn off", [.ru: "Отключить", .es: "Desactivar", .fr: "Désactiver", .de: "Ausschalten", .ja: "オフにする", .zh: "关闭", .pt: "Desativar"]) }
-    static var enable: String { L("Turn on", [.ru: "Включить", .es: "Activar", .fr: "Activer", .de: "Einschalten", .ja: "オンにする", .zh: "开启", .pt: "Ativar"]) }
-    static var statusDisabled: String { L("Disabled", [.ru: "Отключено", .es: "Desactivado", .fr: "Désactivé", .de: "Aus", .ja: "オフ", .zh: "已关闭", .pt: "Desativado"]) }
-    static var filter: String { L("Show", [.ru: "Показывать", .es: "Mostrar", .fr: "Afficher", .de: "Anzeigen", .ja: "表示", .zh: "显示", .pt: "Mostrar"]) }
-    static var reveal: String { L("Show in Finder", [.ru: "Показать в Finder", .es: "Mostrar en el Finder", .fr: "Afficher dans le Finder", .de: "Im Finder zeigen", .ja: "Finderに表示", .zh: "在访达中显示", .pt: "Mostrar no Finder"]) }
-    static var cancelAction: String { L("Cancel", [.ru: "Отменить", .es: "Cancelar", .fr: "Annuler", .de: "Abbrechen", .ja: "キャンセル", .zh: "取消", .pt: "Cancelar"]) }
-    static var deleteItem: String { L("Delete…", [.ru: "Удалить…", .es: "Eliminar…", .fr: "Supprimer…", .de: "Löschen…", .ja: "削除…", .zh: "删除…", .pt: "Excluir…"]) }
+    static var moduleNameShort: String { L("Login Items") }
+    static var summary: String { L("Startup items, extensions, and what removed apps left behind") }
+    static var filterAll: String { L("All") }
+    static var filterLeftovers: String { L("Leftovers") }
+    static var statusInUse: String { L("In use") }
+    static var statusProtected: String { L("System") }
+    static var statusOrphaned: String { L("Leftover") }
+    static var scan: String { L("Scan") }
+    static var scanning: String { L("Scanning…") }
+    static var rescan: String { L("Scan again") }
+    static var intro: String { L("Launch agents, settings files, plug-ins and system extensions on this Mac. Leftovers can be removed; the rest is shown for context.") }
+    static var notScannedYet: String { L("Scan to see what apps left behind.") }
+    static var reviewNote: String { L("Nothing is selected by default — macOS loads these, so choose deliberately.") }
+    static var removalNeedsAccess: String { L("Without Full Disk Access some files cannot be moved.") }
+    static var manageExtensions: String { L("Manage…") }
+    static var disable: String { L("Turn off") }
+    static var enable: String { L("Turn on") }
+    static var statusDisabled: String { L("Disabled") }
+    static var filter: String { L("Show") }
+    static var reveal: String { L("Show in Finder") }
+    static var cancelAction: String { L("Cancel") }
+    static var deleteItem: String { L("Delete…") }
     static func confirmDeleteInUse(_ name: String) -> String { L("Delete \(name)? It is loaded now, and the app that installed it may put it back.", [.ru: "Удалить \(name)? Он сейчас загружен, и установившее его приложение может создать его заново.", .es: "¿Eliminar \(name)? Está cargado ahora y la app que lo instaló podría volver a crearlo.", .fr: "Supprimer \(name) ? Il est chargé, et l’app qui l’a installé peut le recréer.", .de: "\(name) löschen? Es ist gerade geladen, und die App, die es installiert hat, kann es neu anlegen.", .ja: "\(name) を削除しますか？現在読み込まれており、インストールしたアプリが再作成する場合があります。", .zh: "删除 \(name)？它当前已加载，安装它的应用可能会重新创建。", .pt: "Excluir \(name)? Está carregado agora, e o app que o instalou pode recriá-lo."]) }
-    static var needsAdmin: String { L("Needs an administrator to delete", [.ru: "Для удаления нужен администратор", .es: "Se necesita un administrador para eliminar", .fr: "Suppression réservée à un administrateur", .de: "Zum Löschen sind Admin-Rechte nötig", .ja: "削除には管理者権限が必要です", .zh: "删除需要管理员权限", .pt: "Excluir exige um administrador"]) }
-    static var nothingFound: String { L("No leftovers found.", [.ru: "Остатков не найдено.", .es: "No se encontraron restos.", .fr: "Aucun reste trouvé.", .de: "Keine Reste gefunden.", .ja: "残存物は見つかりませんでした。", .zh: "未找到残留项。", .pt: "Nenhum resto encontrado."]) }
+    static var needsAdmin: String { L("Needs an administrator to delete") }
+    static var nothingFound: String { L("No leftovers found.") }
     /// Asked before the batch, because this button is the one that acts on the
     /// most load-bearing files in the app — launch agents and login items —
     /// and it was the only multi-file removal in Helm that did not ask.
@@ -51,10 +51,10 @@ enum LfStr {
     static func confirmSelected(_ count: Int, _ size: String) -> String {
         HelmConfirm.trash(Plural.items(count, language: AppLanguage.current.rawValue), size)
     }
-    static var removeSelected: String { L("Move to Trash", [.ru: "Переместить в Корзину", .es: "Trasladar a la papelera", .fr: "Placer dans la corbeille", .de: "In den Papierkorb legen", .ja: "ゴミ箱に入れる", .zh: "移到废纸篓", .pt: "Mover para o Lixo"]) }
-    static var selectAll: String { L("Select all", [.ru: "Выбрать все", .es: "Seleccionar todo", .fr: "Tout sélectionner", .de: "Alle auswählen", .ja: "すべて選択", .zh: "全选", .pt: "Selecionar tudo"]) }
-    static var deselectAll: String { L("Clear selection", [.ru: "Снять выбор", .es: "Quitar selección", .fr: "Tout désélectionner", .de: "Auswahl aufheben", .ja: "選択を解除", .zh: "取消选择", .pt: "Limpar seleção"]) }
-    static var runsAtLogin: String { L("Runs at login", [.ru: "Запускается при входе", .es: "Se ejecuta al iniciar sesión", .fr: "S’exécute à la connexion", .de: "Startet bei der Anmeldung", .ja: "ログイン時に実行", .zh: "登录时运行", .pt: "Executa ao iniciar sessão"]) }
+    static var removeSelected: String { L("Move to Trash") }
+    static var selectAll: String { L("Select all") }
+    static var deselectAll: String { L("Clear selection") }
+    static var runsAtLogin: String { L("Runs at login") }
     static func missingTarget(_ path: String) -> String { L("Points at a missing file: \(path)", [.ru: "Ссылается на отсутствующий файл: \(path)", .es: "Apunta a un archivo inexistente: \(path)", .fr: "Pointe vers un fichier absent : \(path)", .de: "Verweist auf eine fehlende Datei: \(path)", .ja: "存在しないファイルを参照: \(path)", .zh: "指向缺失的文件：\(path)", .pt: "Aponta para um arquivo ausente: \(path)"]) }
     /// The bar under the list, about the selection and nothing else. It used to
     /// pair the number of rows found with the size of the selection, and a
@@ -77,11 +77,11 @@ enum LfStr {
     static func movedToTrash(_ size: String) -> String { L("Moved to the Trash — \(size)", [.ru: "Перемещено в Корзину — \(size)", .es: "Trasladado a la papelera — \(size)", .fr: "Placé dans la corbeille — \(size)", .de: "In den Papierkorb gelegt — \(size)", .ja: "ゴミ箱に入れました — \(size)", .zh: "已移到废纸篓 — \(size)", .pt: "Movido para o Lixo — \(size)"]) }
     static func kindName(_ kind: String) -> String {
         switch kind {
-        case "launchAgent": return L("Launch agents", [.ru: "Агенты запуска", .es: "Agentes de inicio", .fr: "Agents de lancement", .de: "Startagenten", .ja: "起動エージェント", .zh: "启动代理", .pt: "Agentes de início"])
-        case "launchDaemon": return L("Launch daemons", [.ru: "Демоны запуска", .es: "Demonios de inicio", .fr: "Démons de lancement", .de: "Start-Daemons", .ja: "起動デーモン", .zh: "启动守护进程", .pt: "Daemons de início"])
-        case "preference": return L("Settings files", [.ru: "Файлы настроек", .es: "Archivos de ajustes", .fr: "Fichiers de réglages", .de: "Einstellungsdateien", .ja: "設定ファイル", .zh: "设置文件", .pt: "Arquivos de ajustes"])
-        case "systemExtension": return L("System extensions", [.ru: "Системные расширения", .es: "Extensiones del sistema", .fr: "Extensions système", .de: "Systemerweiterungen", .ja: "システム機能拡張", .zh: "系统扩展", .pt: "Extensões do sistema"])
-        default: return L("Plug-ins", [.ru: "Плагины", .es: "Plug-ins", .fr: "Modules", .de: "Plug-ins", .ja: "プラグイン", .zh: "插件", .pt: "Plug-ins"])
+        case "launchAgent": return L("Launch agents")
+        case "launchDaemon": return L("Launch daemons")
+        case "preference": return L("Settings files")
+        case "systemExtension": return L("System extensions")
+        default: return L("Plug-ins")
         }
     }
 }

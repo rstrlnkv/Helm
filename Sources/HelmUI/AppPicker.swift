@@ -19,8 +19,7 @@ public enum AppInfo {
 public enum AppPicker {
     @MainActor public static func choose() -> [String] {
         let panel = NSOpenPanel()
-        panel.title = L("Choose apps", [.ru: "Выбор приложений", .es: "Elegir apps", .fr: "Choisir des apps",
-                                        .de: "Apps auswählen", .ja: "アプリを選択", .zh: "选择应用", .pt: "Escolher apps"])
+        panel.title = L("Choose apps")
         panel.directoryURL = URL(fileURLWithPath: "/Applications")
         panel.allowedContentTypes = [.application]
         panel.allowsMultipleSelection = true

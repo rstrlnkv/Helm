@@ -6,11 +6,11 @@ public enum MenuBarIconStyle: String, CaseIterable, Sendable {
 
     public var label: String {
         switch self {
-        case .ring: return L("Ring", [.ru: "Кольцо", .es: "Anillo", .fr: "Anneau", .de: "Ring", .ja: "リング", .zh: "圆环", .pt: "Anel"])
-        case .doubleRing: return L("Double ring", [.ru: "Двойное кольцо", .es: "Anillo doble", .fr: "Double anneau", .de: "Doppelring", .ja: "二重リング", .zh: "双环", .pt: "Anel duplo"])
-        case .ringDot: return L("Ring + dot", [.ru: "Кольцо + точка", .es: "Anillo + punto", .fr: "Anneau + point", .de: "Ring + Punkt", .ja: "リング＋点", .zh: "圆环+点", .pt: "Anel + ponto"])
-        case .disc: return L("Filled", [.ru: "Залитый", .es: "Relleno", .fr: "Plein", .de: "Gefüllt", .ja: "塗りつぶし", .zh: "实心", .pt: "Preenchido"])
-        case .dot: return L("Dot", [.ru: "Точка", .es: "Punto", .fr: "Point", .de: "Punkt", .ja: "点", .zh: "点", .pt: "Ponto"])
+        case .ring: return L("Ring")
+        case .doubleRing: return L("Double ring")
+        case .ringDot: return L("Ring + dot")
+        case .disc: return L("Filled")
+        case .dot: return L("Dot")
         }
     }
 }
@@ -33,11 +33,11 @@ public enum MenuBarIconSize: String, CaseIterable, Sendable {
     /// Human, localized size name (shown once for the selected size in the picker).
     public var label: String {
         switch self {
-        case .xxxSmall: return L("Tiny", [.ru: "Крошечный", .es: "Diminuto", .fr: "Minuscule", .de: "Winzig", .ja: "極小", .zh: "极小", .pt: "Minúsculo"])
-        case .xxSmall: return L("Very small", [.ru: "Очень маленький", .es: "Muy pequeño", .fr: "Très petit", .de: "Sehr klein", .ja: "とても小さい", .zh: "很小", .pt: "Muito pequeno"])
-        case .extraSmall: return L("Small", [.ru: "Маленький", .es: "Pequeño", .fr: "Petit", .de: "Klein", .ja: "小", .zh: "小", .pt: "Pequeno"])
-        case .small: return L("Medium", [.ru: "Средний", .es: "Mediano", .fr: "Moyen", .de: "Mittel", .ja: "中", .zh: "中", .pt: "Médio"])
-        case .medium: return L("Large", [.ru: "Большой", .es: "Grande", .fr: "Grand", .de: "Groß", .ja: "大", .zh: "大", .pt: "Grande"])
+        case .xxxSmall: return L("Tiny")
+        case .xxSmall: return L("Very small")
+        case .extraSmall: return L("Small")
+        case .small: return L("Medium")
+        case .medium: return L("Large")
         }
     }
 }
