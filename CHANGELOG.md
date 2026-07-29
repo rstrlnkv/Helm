@@ -5,7 +5,7 @@ All notable changes to Helm are documented here. The format is loosely based on
 [VERSIONING.md](VERSIONING.md) — MAJOR = global changes, MINOR = new/polished
 features, PATCH = fixes.
 
-## [Unreleased] — 0.7.2
+## [Unreleased] — 0.8.0
 
 ### Added
 - **A way out of a scan in Disk.** The module reopens on whatever it measured
