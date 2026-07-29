@@ -312,7 +312,7 @@ public struct KeepAwakeSettingsPage: View {
     // MARK: - Color swatches
 
     private var colorSwatches: some View {
-        swatchGrid(selection: activeTintColor) { token in
+        HelmPaletteSwatches(selection: activeTintColor) { token in
             activeTintColor = token
             write(token, MenuBarLook.Key.activeTint)
         }
@@ -320,54 +320,12 @@ public struct KeepAwakeSettingsPage: View {
 
     /// Timer palette: the countdown can stand out from the active colour.
     private var timerColorSwatches: some View {
-        // No stored value yet → the active colour is what the timer will use, so
-        // show that as the selection.
-        swatchGrid(selection: timerTintColor.isEmpty ? activeTintColor : timerTintColor) { token in
+        // No stored value yet → the active colour is what the timer will use,
+        // so show that as the selection.
+        HelmPaletteSwatches(selection: timerTintColor.isEmpty ? activeTintColor : timerTintColor) { token in
             timerTintColor = token
             write(token, MenuBarLook.Key.timerTint)
         }
-    }
-
-    /// Buttons, not tap gestures. A view whose only interaction is
-    /// `onTapGesture` never enters the key-view loop, so with Full Keyboard
-    /// Access on the Tab key skipped every swatch and the colour could not be
-    /// chosen without a mouse — VoiceOver worked, which is what hid it. Ten
-    /// `KeyViewProxy` views appear under the hosting view for the button form
-    /// and none for the gesture form; `.buttonStyle(.plain)` leaves the drawing
-    /// exactly as it was.
-    private func swatchGrid(selection: String, pick: @escaping (String) -> Void) -> some View {
-        // 5 columns × 2 rows for the 10 palette colors.
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 24, maximum: 44)), count: 5), spacing: 12) {
-            ForEach(PaletteColor.allCases, id: \.rawValue) { palette in
-                let selected = selection == palette.rawValue
-                Button { pick(palette.rawValue) } label: {
-                    Circle()
-                        .fill(palette.color)
-                        .frame(width: 24, height: 24)
-                        .overlay(Circle().strokeBorder(Color.primary.opacity(0.15), lineWidth: 1))
-                        .overlay {
-                            if selected {
-                                Image(systemName: "checkmark")
-                                    .font(.system(size: 11, weight: .bold))
-                                    .foregroundStyle(palette == .white || palette == .yellow || palette == .mint ? .black : .white)
-                            }
-                        }
-                        .overlay {
-                            if selected {
-                                Circle().strokeBorder(Color.accentColor, lineWidth: 2).padding(-3)
-                            }
-                        }
-                        .contentShape(Circle())
-                }
-                .buttonStyle(.plain)
-                .help(palette.label)
-                // The button carries its own trait and its own action; only
-                // "which one is chosen" has to be said here.
-                .accessibilityAddTraits(selected ? [.isSelected] : [])
-                .accessibilityLabel(palette.label)
-            }
-        }
-        .padding(.vertical, 4)
     }
 }
 
