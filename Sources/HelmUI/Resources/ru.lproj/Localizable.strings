@@ -42,7 +42,7 @@
 "Another app already uses this combination, so it does nothing here." = "Это сочетание уже занято другим приложением, поэтому здесь оно не работает.";
 "Anything that needs a system permission now says so where you turn it on — Disk, App Uninstaller, Login Items and Keep Awake all warn before they can disappoint you." = "Всё, чему нужно разрешение системы, теперь предупреждает прямо там, где вы это включаете — «Диск», «Удаление приложений», «Объекты входа и расширения» и «Не спать».";
 "App" = "Приложение";
-"App Uninstaller module: remove apps together with their caches, settings and other leftovers; find leftovers of apps that are already gone." = "Модуль «Удаление приложений»: удаление вместе с кешами, настройками и другими хвостами; поиск остатков уже удалённых приложений.";
+"App Uninstaller module: remove apps together with their caches, settings and other leftovers; find leftovers of apps that are already gone." = "Модуль «Удаление приложений»: удаление вместе с кешами, настройками и другими остатками; поиск остатков уже удалённых приложений.";
 "App Uninstaller no longer offers the files of installed apps as leftovers. Apps kept one folder down — Adobe Acrobat DC, Microsoft Office — were invisible to it, and nothing is pre-selected any more." = "«Удаление приложений» больше не предлагает как остатки файлы установленных приложений. Приложения, лежащие во вложенной папке — Adobe Acrobat DC, Microsoft Office, — были ему не видны; и ничего больше не отмечено заранее.";
 "App Uninstaller opens straight away. It used to measure every app on your Mac before showing anything — four seconds, nine on a cold start. The list appears now and the sizes fill in behind it." = "«Удаление приложений» открывается сразу. Раньше оно измеряло каждое приложение на Mac прежде чем показать хоть что-то — четыре секунды, девять на холодную. Теперь список появляется сразу, а размеры подставляются следом.";
 "App Uninstaller works in two steps: tick the apps you want gone, then review the files found for each of them before anything moves. Apps that are still running are flagged and only removed if you allow a force quit." = "Удаление приложений — в два шага: отметьте приложения, затем разберите найденные файлы по каждой из них, прежде чем что-то удалять. Запущенные приложения помечаются и удаляются только с вашего разрешения на принудительное завершение.";
@@ -60,7 +60,7 @@
 "Autopilot has not done anything yet." = "Автопилот пока ничего не делал.";
 "Autopilot shows what it did. A report of the last 30 days at the bottom of the page: which file, where it went, and which rule decided — because a folder that tidies itself is only worth trusting if it can say what it tidied." = "Автопилот показывает, что сделал. Отчёт за последние 30 дней внизу страницы: какой файл, куда уехал и какое правило так решило, — папка, которая убирается сама, заслуживает доверия только если может рассказать, что убрала.";
 "Autopilot stops sinking files on a USB stick. Sorting into a subfolder used the file’s current parent, so on a disk that cannot carry Helm’s “already done” mark every sweep sorted the result again. A rule with nowhere to move to can no longer be switched on." = "Автопилот больше не закапывает файлы на флешке. Раскладка по подпапкам считалась от текущей папки файла, и на диске, который не держит метку «уже сделано», каждый проход раскладывал результат заново. Правило без папки назначения теперь нельзя включить.";
-"Autopilot's preview now says where each file would land, not only what would be done to it. And About shows both badges that apply: the program is in beta, and this copy is on the dev channel." = "Превью «Автопилота» теперь говорит, куда именно уедет каждый файл, а не только что с ним будет. А в «О Helm» видны оба шильдика: программа в бете, и эта копия — на канале dev.";
+"Autopilot's preview now says where each file would land, not only what would be done to it. And About shows both badges that apply: the program is in beta, and this copy is on the dev channel." = "Превью «Автопилота» теперь говорит, куда именно уедет каждый файл, а не только что с ним будет. А в «О Helm» видны оба шильдика: приложение в бете, и эта копия — на канале dev.";
 "Autopilot: folders that keep themselves in order. Point Helm at a folder and give it rules — a file that arrives is checked against them in order, and the first one that matches is the one that runs. Sort by kind or by month, move, rename, tag, or bin; conditions include the site a file was downloaded from. A new rule is shown before it is switched on: the editor lists what is in the folder now and what would happen to each file. Nothing is ever overwritten, and nothing is acted on twice." = "«Автопилот»: папки, которые держат себя в порядке сами. Укажите Helm папку и задайте правила — появившийся файл проверяется по ним по порядку, и срабатывает первое подошедшее. Разложить по видам или по месяцам, переместить, переименовать, пометить тегом или отправить в Корзину; среди условий есть сайт, откуда файл скачан. Новое правило показывают до включения: редактор перечисляет, что сейчас лежит в папке и что с чем произойдёт. Ничего никогда не перезаписывается, и ничто не обрабатывается дважды.";
 "BETA" = "BETA";
 "BUILD" = "СБОРКА";
@@ -142,7 +142,7 @@
 "Duplicates" = "Дубликаты";
 "Duplicates can basket every extra at once, and Space shows you a file before you bin it. “All extras to basket” does across every group what the per-group button did — one copy of everything always stays, which is why it is not called “Select all”. Beside “Move to Trash” there is now a “Clear”, so one press can undo one press." = "«Дубликаты» умеют отправить в корзину все лишние копии сразу, а по пробелу показывают файл, прежде чем вы его удалите. «Все лишние — к удалению» делает по всем группам то же, что делала кнопка одной группы: одна копия всегда остаётся, поэтому кнопка и не называется «Выделить все». Рядом с «Переместить в Корзину» появилась «Очистить» — одно нажатие отменяется одним нажатием.";
 "Duplicates keeps the copy that was there first, by the same \"Date Added\" the Finder shows. It used to keep whichever path came first alphabetically, so a copy on the Desktop beat the filed original and Helm offered the wrong one for deletion." = "«Дубликаты» оставляют копию, появившуюся раньше, — по той же «дате добавления», что показывает Finder. Раньше побеждал первый путь по алфавиту, из-за чего копия на Рабочем столе выигрывала у убранного в папку оригинала.";
-"Each login item now offers what is actually possible: turn it off, show it in Finder, or delete it — with a word about why, when a password would be needed." = "У каждого элемента автозапуска теперь ровно те действия, которые возможны: отключить, показать в Finder или удалить — и объяснение, если нужен пароль администратора.";
+"Each login item now offers what is actually possible: turn it off, show it in Finder, or delete it — with a word about why, when a password would be needed." = "У каждого объекта входа теперь ровно те действия, которые возможны: отключить, показать в Finder или удалить — и объяснение, если нужен пароль администратора.";
 "Early builds with new features — expect rough edges." = "Ранние сборки с новыми функциями — возможны шероховатости.";
 "Edit" = "Изменить";
 "Empty" = "Очистить";
@@ -176,8 +176,8 @@
 "Folder" = "Папка";
 "Folders that keep themselves in order" = "Папки, которые держат себя в порядке";
 "Force quit and remove anyway" = "Завершить принудительно и удалить";
-"Full Disk Access" = "Доступ к диску";
-"Full disk access is off. Without it the disk scan cannot read every folder, and removing an app leaves its containers behind." = "Доступ к диску выключен. Без него скан диска не видит часть папок, а при удалении приложения его контейнеры остаются.";
+"Full Disk Access" = "Полный доступ к диску";
+"Full disk access is off. Without it the disk scan cannot read every folder, and removing an app leaves its containers behind." = "Полный доступ к диску выключен. Без него скан диска не видит часть папок, а при удалении приложения его контейнеры остаются.";
 "General" = "Основные";
 "GitHub update check and the What’s New window." = "Проверка обновлений через GitHub и окно «Что нового».";
 "Global shortcut" = "Глобальное сочетание клавиш";
@@ -192,7 +192,7 @@
 "Helm introduces itself. On a new installation a short tour opens once: what Helm is, then one screen per module, with Back, Next and Skip. It only tells you what is there — nothing is switched on and no permission is asked for. If Helm was already installed, you get it once too, because Autopilot and Duplicates arrived without ever being introduced." = "Helm теперь представляется. При первой установке один раз открывается короткий тур: что такое Helm, затем по экрану на модуль, с кнопками «Назад», «Далее» и «Пропустить». Он только рассказывает — ничего не включает и никаких разрешений не просит. Если Helm уже стоял, тур покажется один раз и вам: «Автопилот» и «Дубликаты» появились, когда о них никто не рассказал.";
 "Helm is still in development. Beta builds are the steadier of the two." = "Helm ещё в разработке. Из двух каналов Beta — устойчивее.";
 "Helm lives in the menu bar and is made of modules. Each one does a single job, and you can switch off the ones you do not want." = "Helm живёт в строке меню и состоит из модулей. Каждый делает одно дело, и ненужные можно выключить.";
-"Helm needs Full Disk Access to move this." = "Для перемещения нужен доступ к диску.";
+"Helm needs Full Disk Access to move this." = "Для перемещения нужен полный доступ к диску.";
 "Helm needs permission from macOS" = "Helm нужны разрешения macOS";
 "Helm returns to how it was just after installing. Access you granted in System Settings stays as it is." = "Helm вернётся к состоянию сразу после установки. Доступ, выданный в Системных настройках, останется как есть.";
 "Helm’s language now reaches the parts macOS draws for it. The folder picker, its sidebar and the menus on a text field were English whatever language you had chosen. Numbers and dates follow the language too: a count of files is grouped the way your language groups digits, and a date is written the way your language writes one." = "Язык Helm теперь распространяется и на то, что рисует macOS. Окно выбора папки, его боковое меню и меню у текстового поля оставались английскими при любом выбранном языке. Числа и даты тоже следуют языку: количество файлов разделяется по разрядам, а дата пишется так, как её пишут в вашем языке.";
@@ -257,7 +257,7 @@
 "Login Items & Extensions" = "Объекты входа и расширения";
 "Login Items & Extensions now lists system extensions themselves — what they are, whose they are, and which ones outlived the app that installed them." = "«Объекты входа и расширения» теперь показывает и сами системные расширения: что это, чьё это и какие из них пережили удалённое приложение.";
 "Login Items & Extensions: see everything that loads with your Mac, marked as in use, system, or leftover — and remove the leftovers." = "«Объекты входа и расширения»: видно всё, что грузится вместе с Mac, с пометками «используется», «системный» и «остаток» — остатки можно удалить.";
-"Login items can be switched off instead of only deleted. Helm uses the same list macOS itself uses, so the choice survives a reboot, needs no password, and can be undone here or in System Settings." = "Элементы автозапуска теперь можно отключить, а не только удалить. Helm пользуется тем же списком, что и сама macOS: выбор переживает перезагрузку, пароль не нужен, вернуть можно здесь или в системных настройках.";
+"Login items can be switched off instead of only deleted. Helm uses the same list macOS itself uses, so the choice survives a reboot, needs no password, and can be undone here or in System Settings." = "Объекты входа теперь можно отключить, а не только удалить. Helm пользуется тем же списком, что и сама macOS: выбор переживает перезагрузку, пароль не нужен, вернуть можно здесь или в Системных настройках.";
 "Logs" = "Логи";
 "Look inside" = "Заглянуть внутрь";
 "MB" = "МБ";
@@ -341,10 +341,10 @@
 "One per line." = "По одному в строке.";
 "Only when what you typed is not a word and becomes one once the layout is switched. Anything that is already a word is left alone." = "Только если набранное — не слово, а после смены раскладки словом становится. Всё, что осмысленно как есть, остаётся нетронутым.";
 "Open Extensions…" = "Открыть «Расширения»…";
-"Open Full Disk Access…" = "Открыть «Доступ к диску»…";
+"Open Full Disk Access…" = "Открыть «Полный доступ к диску»…";
 "Open Keyboard settings…" = "Открыть настройки клавиатуры…";
 "Open accessibility…" = "Открыть «Универсальный доступ»…";
-"Open disk access…" = "Открыть «Доступ к диску»…";
+"Open disk access…" = "Открыть «Полный доступ к диску»…";
 "Or a key combination" = "Или сочетание клавиш";
 "Orange" = "Оранжевый";
 "Other" = "Другое";
@@ -358,7 +358,7 @@
 "Per-app rules read as one line each: the app, when the rule applies, and nothing else. Both Keep Awake and VPN." = "Правила по приложениям — по одной строке: приложение, когда правило действует, и ничего лишнего. И в «Не спать», и в VPN.";
 "Permissions" = "Разрешения";
 "Permissions are called what System Settings calls them, so the row Helm points you at is the row you find." = "Разрешения называются так же, как в «Системных настройках», — вы находите именно тот пункт, на который Helm ссылается.";
-"Permissions at a glance: Settings shows whether Helm has Full Disk Access and lists installed system extensions. When a file can’t be removed, Helm names the reason and links to the right setting." = "Разрешения на виду: в настройках видно, есть ли у Helm доступ к диску, и перечислены системные расширения. Если файл удалить не удалось, Helm называет причину и ведёт в нужную настройку.";
+"Permissions at a glance: Settings shows whether Helm has Full Disk Access and lists installed system extensions. When a file can’t be removed, Helm names the reason and links to the right setting." = "Разрешения на виду: в настройках видно, есть ли у Helm полный доступ к диску, и перечислены системные расширения. Если файл удалить не удалось, Helm называет причину и ведёт в нужную настройку.";
 "Pick a folder and Helm will read what is in it, comparing content rather than names." = "Выберите папку — Helm прочитает, что в ней, сравнивая содержимое, а не имена.";
 "Pick a volume, or scan any folder." = "Выберите том или просканируйте любую папку.";
 "Pink" = "Розовый";
@@ -403,7 +403,7 @@
 "Run now" = "Прогнать сейчас";
 "Running" = "Запущено";
 "Runs at login" = "Запускается при входе";
-"STATE" = "СОСТОЯНИЕ";
+"STATE" = "СТАТУС";
 "Saved State" = "Сохранённое состояние";
 "Scan" = "Сканировать";
 "Scan a folder…" = "Сканировать папку…";
@@ -449,7 +449,7 @@
 "Start" = "Старт";
 "Startup items, extensions, and what removed apps left behind" = "Автозагрузка, расширения и остатки удалённых приложений";
 "Stop" = "Стоп";
-"Stop could leave an abandoned scan’s folders sitting in the basket, above the Trash button, on a screen that no longer had anything to do with them — and emptying the basket credited the space to whichever volume you’d since picked." = "«Стоп» мог оставить папки брошенного скана лежащими в корзине приложения, над кнопкой «Удалить», на экране, который уже не имел к ним отношения, — а опустошение корзины засчитывало место тому тому, который был выбран к этому моменту.";
+"Stop could leave an abandoned scan’s folders sitting in the basket, above the Trash button, on a screen that no longer had anything to do with them — and emptying the basket credited the space to whichever volume you’d since picked." = "«Стоп» мог оставить папки брошенного скана лежащими в корзине приложения, над кнопкой «Переместить в Корзину», на экране, который уже не имел к ним отношения, — а опустошение корзины засчитывало место тому, который был выбран к этому моменту.";
 "Stop scan" = "Остановить";
 "Stop stops the disk scan. Opening a folder mid-scan used to start a second one that took over, leaving the first walking the disk with nothing able to stop it and the ring flickering between the two. And the duplicate finder’s “freed” figure now counts the copies that actually leave." = "Кнопка остановки действительно останавливает скан. Переход в папку посреди скана запускал второй, и первый оставался ходить по диску без возможности его прервать. А в дубликатах «освободится» теперь считает именно те копии, которые уйдут.";
 "Stop watching" = "Перестать следить";
@@ -486,7 +486,7 @@
 "The menu-bar countdown ticks reliably; heavy work no longer stalls the app’s async machinery." = "Отсчёт в строке меню тикает стабильно; тяжёлые операции больше не тормозят асинхронику приложения.";
 "The module order you set is now used everywhere — the panel, the sidebar in Settings, and the icon’s menu — and it no longer gets lost when a drag is abandoned." = "Заданный вами порядок модулей теперь действует везде — в панели, в боковом меню настроек и в меню иконки — и больше не теряется, если перетаскивание прервано.";
 "The panel no longer jumps or slides when sections expand; settings stay in sync between the panel and the Settings window." = "Панель больше не прыгает при раскрытии секций; настройки синхронизированы между панелью и окном настроек.";
-"The slower update channel is called Beta, not Stable. Helm has not reached 1.0, and nothing shipped so far has earned the word stable — the app says Beta on its About page for the same reason." = "Медленный канал обновлений теперь называется «Бета», а не «Стабильный». Helm ещё не дошёл до 1.0, и ни одна сборка пока не заслужила слова «стабильный» — по той же причине на странице «О программе» появился шильдик «Бета».";
+"The slower update channel is called Beta, not Stable. Helm has not reached 1.0, and nothing shipped so far has earned the word stable — the app says Beta on its About page for the same reason." = "Медленный канал обновлений теперь называется «Бета», а не «Стабильный». Helm ещё не дошёл до 1.0, и ни одна сборка пока не заслужила слова «стабильный» — по той же причине на странице «О Helm» появился шильдик «Бета».";
 "The small labels above each module’s figures are legible again, in both light and dark." = "Мелкие подписи над показателями модулей снова читаются — и в светлой теме, и в тёмной.";
 "The update status no longer claims you are current when no check has run — it shows when the last check happened." = "Статус обновлений больше не утверждает, что версия последняя, если проверки не было — показывает, когда проверяли в последний раз.";
 "Then" = "То";
@@ -509,7 +509,7 @@
 "Turn on before reporting a problem. The file lives in Library/Logs/Helm." = "Включите перед тем, как сообщить о проблеме. Файл — в Library/Logs/Helm.";
 "Turn the menu-bar icon" = "Вращать значок в строке меню";
 "Turn the rule on" = "Включить правило";
-"Turning a login item off no longer clears everything else you had ticked." = "Отключение одного элемента автозапуска больше не снимает все остальные отметки.";
+"Turning a login item off no longer clears everything else you had ticked." = "Отключение одного объекта входа больше не снимает все остальные отметки.";
 "Turning off \"stay awake with the lid closed\" now also removes the passwordless permission it had to install. It used to stay on your Mac for good." = "Выключение «не спать с закрытой крышкой» теперь снимает и беспарольное разрешение, которое для этого пришлось установить. Раньше оно оставалось на Mac навсегда.";
 "Two modules have shorter names: Disk Space is now Disk, and the layout switcher is now Keyboard. Earlier entries below still use the old names, which is what they were called at the time." = "Два модуля стали называться короче: «Место на диске» — теперь «Диск», а переключатель раскладки — «Клавиатура». В записях ниже остались старые названия: так они назывались тогда.";
 "Type a name and press Return." = "Введите имя и нажмите Return.";
@@ -533,7 +533,7 @@
 "Upgrade all" = "Обновить всё";
 "Used by the panel, the sidebar, and the icon menu." = "Применяется в панели, боковом меню и меню иконки.";
 "Utilities" = "Утилиты";
-"Utilities live in a collapsible panel section; optional Settings and Quit buttons; the right-click menu jumps straight to any module." = "Утилиты — в раскрывающейся секции панели; опциональные кнопки «Настройки» и «Выйти»; меню правого клика ведёт сразу в модуль.";
+"Utilities live in a collapsible panel section; optional Settings and Quit buttons; the right-click menu jumps straight to any module." = "Утилиты — в раскрывающейся секции панели; опциональные кнопки «Настройки» и «Выход»; меню правого клика ведёт сразу в модуль.";
 "VERSION" = "ВЕРСИЯ";
 "VPN" = "VPN";
 "VPN module: connect and disconnect system VPNs with per-app auto-connect rules." = "Модуль VPN: подключение и отключение системных VPN с авто-подключением по приложениям.";
@@ -559,7 +559,7 @@
 "When Space is pressed" = "Когда нажат пробел";
 "When a VPN rule fires, the menu bar can say so. A tunnel a rule raised or dropped by itself changed nothing you could see. Now the connection can be named beside the icon for three seconds, or arrive as a macOS notification, or not be named at all — whichever you pick in Settings → VPN. The ring turns as well if you ask it to, in a colour you choose: one for connecting, another for dropping." = "Когда срабатывает правило VPN, строка меню может об этом сказать. Туннель, который правило подняло или опустило само, раньше не менял на экране ничего. Теперь имя подключения может стоять рядом со значком три секунды, или приходить уведомлением macOS, или не показываться вовсе — на ваш выбор в Настройках → VPN. А кольцо вращается, если вы этого попросили, в выбранном вами цвете: один для подключения, другой для разрыва.";
 "When a file cannot be moved, Helm now says which one and why instead of reporting success. Deleting a Homebrew package asks first, and the disk basket lists what is in it before it goes to the Trash." = "Если файл переместить не удалось, Helm называет какой и почему, а не рапортует об успехе. Удаление пакета Homebrew теперь спрашивает подтверждение, а корзина «Места на диске» показывает, что в ней лежит.";
-"When a file will not move, Helm now says why on every screen that removes things. Disk and the duplicate finder used to give you a count and leave you to guess — usually the answer was Full Disk Access, which is one click away once you know. Quiet text is also readable again: the captions and secondary lines were fainter than they were meant to be." = "Когда файл не удаётся переместить, Helm теперь говорит почему — на каждом экране, где что-то удаляется. «Диск» и поиск дубликатов раньше показывали число и оставляли догадываться; чаще всего дело в доступе к диску, а это один клик, если знать. И приглушённый текст снова читается: подписи и второстепенные строки были бледнее, чем задумано.";
+"When a file will not move, Helm now says why on every screen that removes things. Disk and the duplicate finder used to give you a count and leave you to guess — usually the answer was Full Disk Access, which is one click away once you know. Quiet text is also readable again: the captions and secondary lines were fainter than they were meant to be." = "Когда файл не удаётся переместить, Helm теперь говорит почему — на каждом экране, где что-то удаляется. «Диск» и поиск дубликатов раньше показывали число и оставляли догадываться; чаще всего дело в полном доступе к диску, а это один клик, если знать. И приглушённый текст снова читается: подписи и второстепенные строки были бледнее, чем задумано.";
 "When a punctuation mark is typed" = "Когда введён знак препинания";
 "When a rule connects" = "Когда правило подключает";
 "When a rule fires" = "Когда правило срабатывает";
@@ -572,11 +572,11 @@
 "With an external display" = "При внешнем дисплее";
 "With this off and the notice set to nothing, a rule that connects or drops a tunnel gives no sign at all." = "Если это выключено, а уведомление — «ничего», правило подключит или разорвёт туннель без единого признака.";
 "Without Accessibility Helm cannot see what you type, and this does nothing." = "Без универсального доступа Helm не видит набранное, и это не работает.";
-"Without Full Disk Access a rule sees only some of the folder, and acts on only some of it." = "Без «Доступа к диску» правило видит лишь часть папки — и действует лишь на часть.";
-"Without Full Disk Access an app’s containers stay behind." = "Без «Доступа к диску» контейнеры приложения останутся на диске.";
-"Without Full Disk Access some files cannot be moved." = "Без «Доступа к диску» часть файлов не удастся переместить.";
-"Without Full Disk Access some folders scan as empty." = "Без «Доступа к диску» часть папок будет показана пустыми.";
-"Without Full Disk Access the walk reads less, and a short answer looks exactly like a clean one." = "Без «Доступа к диску» обход прочитает меньше, а короткий ответ выглядит так же, как чистая папка.";
+"Without Full Disk Access a rule sees only some of the folder, and acts on only some of it." = "Без «Полного доступа к диску» правило видит лишь часть папки — и действует лишь на часть.";
+"Without Full Disk Access an app’s containers stay behind." = "Без «Полного доступа к диску» контейнеры приложения останутся на диске.";
+"Without Full Disk Access some files cannot be moved." = "Без «Полного доступа к диску» часть файлов не удастся переместить.";
+"Without Full Disk Access some folders scan as empty." = "Без «Полного доступа к диску» часть папок будет показана пустыми.";
+"Without Full Disk Access the walk reads less, and a short answer looks exactly like a clean one." = "Без «Полного доступа к диску» обход прочитает меньше, а короткий ответ выглядит так же, как чистая папка.";
 "Wording and sizes reviewed across the app: shorter labels, one name per thing, and sizes in your language — “432,95 ГБ”, not “432,95 GB”." = "Пересмотрены надписи и размеры по всему приложению: короче формулировки, одно название на одну вещь, размеры на вашем языке — «432,95 ГБ», а не «432,95 GB».";
 "Write a log file" = "Вести журнал";
 "Yellow" = "Жёлтый";
