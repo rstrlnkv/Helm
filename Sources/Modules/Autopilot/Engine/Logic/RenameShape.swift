@@ -4,10 +4,11 @@ import Foundation
 /// `{date}` and `{counter}` already resolved and `{name}` left as a hole.
 ///
 /// It exists to answer whether a rename has already happened. `RuleStamp` is the
-/// general answer to that and a volume without extended attributes cannot keep
-/// it — `setxattr` returns `ENOTSUP` on exFAT, which is what a USB stick usually
-/// is, and `WatchScope` admits `/Volumes` on purpose. So the sweep an hour later
-/// asks the pattern again, `{name}` takes the previous run's output as its
+/// general answer to that, and `RuleRunner.note` tolerates a stamp that will not
+/// stick — a volume that refuses extended attributes, or an AppleDouble `._name`
+/// sidecar that something along the way dropped. `WatchScope` admits `/Volumes`
+/// on purpose, so those volumes are reachable. Unstamped, the sweep an hour
+/// later asks the pattern again, `{name}` takes the previous run's output as its
 /// input, and a pattern that adds anything at all adds it once an hour until the
 /// name passes the 255-byte limit on a path component and the rule fails on that
 /// file for good.

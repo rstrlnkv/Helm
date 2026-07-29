@@ -15,7 +15,6 @@ enum UnStr {
         return L("Move \(items) (\(size)) to the Trash?", [.ru: "Переместить \(items) (\(size)) в Корзину?", .es: "¿Trasladar \(items) (\(size)) a la papelera?", .fr: "Déplacer \(items) (\(size)) vers la corbeille ?", .de: "\(items) (\(size)) in den Papierkorb legen?", .ja: "\(items)（\(size)）をゴミ箱に入れますか？", .zh: "将\(items)（\(size)）移到废纸篓？", .pt: "Mover \(items) (\(size)) para o Lixo?"])
     }
     static var cancel: String { L("Cancel", [.ru: "Отменить", .es: "Cancelar", .fr: "Annuler", .de: "Abbrechen", .ja: "キャンセル", .zh: "取消", .pt: "Cancelar"]) }
-    static func freed(_ size: String) -> String { L("Freed \(size)", [.ru: "Освобождено \(size)", .es: "Liberado \(size)", .fr: "\(size) libérés", .de: "\(size) freigegeben", .ja: "\(size) を解放しました", .zh: "已释放 \(size)", .pt: "Liberado \(size)"]) }
 
     static func kind(_ k: LeftoverKind) -> String {
         switch k {
@@ -46,15 +45,27 @@ enum UnStr {
     static func reviewCount(_ n: Int) -> String { L("Review \(n)", [.ru: "Просмотреть: \(n)", .es: "Revisar \(n)", .fr: "Vérifier \(n)", .de: "\(n) prüfen", .ja: "\(n) 件を確認", .zh: "查看 \(n) 项", .pt: "Revisar \(n)"]) }
     static var back: String { L("Back", [.ru: "Назад", .es: "Atrás", .fr: "Retour", .de: "Zurück", .ja: "戻る", .zh: "返回", .pt: "Voltar"]) }
     static var removing: String { L("Removing…", [.ru: "Удаление…", .es: "Eliminando…", .fr: "Suppression…", .de: "Entferne…", .ja: "削除中…", .zh: "删除中…", .pt: "Removendo…"]) }
+    /// The caption under the first row of every review group. The last screen
+    /// before deletion has no dialog after it, and it said nothing at all about
+    /// the app — only about the files beside it.
+    static var theAppItself: String { L("The app itself — always removed", [.ru: "Само приложение — удаляется всегда", .es: "La app en sí: siempre se elimina", .fr: "L’app elle-même — toujours supprimée", .de: "Die App selbst — wird immer entfernt", .ja: "アプリ本体 — 必ず削除されます", .zh: "应用本体 — 总是会被删除", .pt: "O app em si — sempre removido"]) }
+    /// Word for word what Disk calls a row it may not remove (`DkStr.systemItem`).
+    static var systemApp: String { L("System", [.ru: "Системный", .es: "Del sistema", .fr: "Système", .de: "System", .ja: "システム", .zh: "系统", .pt: "Do sistema"]) }
     static var noLeftoversForApp: String { L("No extra files found.", [.ru: "Дополнительных файлов не найдено.", .es: "No se encontraron archivos adicionales.", .fr: "Aucun fichier supplémentaire trouvé.", .de: "Keine zusätzlichen Dateien gefunden.", .ja: "追加ファイルは見つかりませんでした。", .zh: "未找到附加文件。", .pt: "Nenhum arquivo adicional encontrado."]) }
     static var runningBadge: String { L("Running", [.ru: "Запущено", .es: "En ejecución", .fr: "En cours", .de: "Läuft", .ja: "実行中", .zh: "运行中", .pt: "Em execução"]) }
     static func runningWarning(_ names: String) -> String { L("Still running: \(names). Quit to remove.", [.ru: "Ещё запущены: \(names). Для удаления нужно завершить.", .es: "Aún en ejecución: \(names). Hay que cerrarlas para eliminarlas.", .fr: "Encore en cours : \(names). À quitter pour les supprimer.", .de: "Läuft noch: \(names). Zum Entfernen beenden.", .ja: "実行中: \(names)。削除するには終了が必要です。", .zh: "仍在运行：\(names)。需先退出才能删除。", .pt: "Ainda em execução: \(names). É preciso encerrar para remover."]) }
     static var forceQuitAndRemove: String { L("Force quit and remove anyway", [.ru: "Завершить принудительно и удалить", .es: "Forzar salida y eliminar", .fr: "Forcer à quitter et supprimer", .de: "Sofort beenden und entfernen", .ja: "強制終了して削除", .zh: "强制退出并删除", .pt: "Forçar encerramento e remover"]) }
-    static func willFree(_ size: String) -> String { L("Frees \(size)", [.ru: "Освободит \(size)", .es: "Libera \(size)", .fr: "Libère \(size)", .de: "Gibt \(size) frei", .ja: "\(size) を解放", .zh: "释放 \(size)", .pt: "Libera \(size)"]) }
-    static func removedFreed(_ size: String) -> String { L("Removed — \(size) freed", [.ru: "Удалено — освобождено \(size)", .es: "Eliminado — \(size) liberados", .fr: "Supprimé — \(size) libérés", .de: "Entfernt — \(size) freigegeben", .ja: "削除しました — \(size) を解放", .zh: "已删除 — 释放 \(size)", .pt: "Removido — \(size) liberados"]) }
-    static func removedWithFailures(_ size: String, _ n: Int) -> String {
+    /// Where the files are going, not what the disk will gain. The button one
+    /// click later says "Move to Trash", and `~/.Trash` is a folder on the same
+    /// volume: nothing is free until somebody empties it.
+    static func toTrash(_ size: String) -> String { L("To the Trash — \(size)", [.ru: "В Корзину — \(size)", .es: "A la papelera — \(size)", .fr: "Vers la corbeille — \(size)", .de: "In den Papierkorb — \(size)", .ja: "ゴミ箱へ — \(size)", .zh: "移到废纸篓 — \(size)", .pt: "Para o Lixo — \(size)"]) }
+    /// Word for word what Disk says (`DkStr.movedToTrash`), whose verb and noun
+    /// per language were read out of Finder's own `AL13` key. Two screens that
+    /// do the same thing must not describe it in two ways.
+    static func movedToTrash(_ size: String) -> String { L("Moved to the Trash — \(size)", [.ru: "Перемещено в Корзину — \(size)", .es: "Trasladado a la papelera — \(size)", .fr: "Placé dans la corbeille — \(size)", .de: "In den Papierkorb gelegt — \(size)", .ja: "ゴミ箱に入れました — \(size)", .zh: "已移到废纸篓 — \(size)", .pt: "Movido para o Lixo — \(size)"]) }
+    static func movedWithFailures(_ size: String, _ n: Int) -> String {
         let items = Plural.items(n, language: AppLanguage.current.rawValue)
-        return L("Removed — \(size) freed, \(items) could not be moved", [.ru: "Удалено — освобождено \(size), не удалось переместить: \(items)", .es: "Eliminado — \(size) liberados, \(items) no se pudieron mover", .fr: "Supprimé — \(size) libérés, \(items) non déplacés", .de: "Entfernt — \(size) frei, \(items) konnten nicht verschoben werden", .ja: "削除しました — \(size) を解放、\(items) は移動できませんでした", .zh: "已删除 — 释放 \(size)，\(items) 无法移动", .pt: "Removido — \(size) liberados, \(items) não puderam ser movidos"])
+        return L("Moved to the Trash — \(size), \(items) could not be moved", [.ru: "Перемещено в Корзину — \(size), не удалось переместить: \(items)", .es: "Trasladado a la papelera — \(size), \(items) no se pudieron mover", .fr: "Placé dans la corbeille — \(size), \(items) non déplacés", .de: "In den Papierkorb gelegt — \(size), \(items) konnten nicht verschoben werden", .ja: "ゴミ箱に入れました — \(size)、\(items) は移動できませんでした", .zh: "已移到废纸篓 — \(size)，\(items) 无法移动", .pt: "Movido para o Lixo — \(size), \(items) não puderam ser movidos"])
     }
     static var blockedByRunning: String { L("Quit the running apps first, or allow a force quit.", [.ru: "Сначала завершите запущенные приложения или разрешите принудительное завершение.", .es: "Cierra primero las apps en ejecución o permite forzar la salida.", .fr: "Quittez d’abord les apps en cours, ou autorisez la fermeture forcée.", .de: "Beende zuerst die laufenden Apps oder erlaube das sofortige Beenden.", .ja: "実行中のアプリを終了するか、強制終了を許可してください。", .zh: "请先退出运行中的应用，或允许强制退出。", .pt: "Encerre primeiro os apps em execução ou permita o encerramento forçado."]) }
     static func couldNotRemove(_ n: Int) -> String {

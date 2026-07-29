@@ -16,6 +16,12 @@ import SwiftUI
     @Published public private(set) var progress: DuplicateProgress?
     @Published public var basket: [String] = []
     @Published public private(set) var banner: String?
+    /// Paths macOS refused, with their own reasons — see `DiskViewModel`. A
+    /// reason chosen for the whole batch describes at most one of them.
+    @Published public private(set) var failures: [HelmTrash.Refusal] = []
+    /// How many actually moved. `HelmRemovalOutcome` decides what to say from
+    /// this and `failures`: a sentence cannot be asked whether it is true.
+    @Published public private(set) var removedCount = 0
 
     /// Bumped whenever the running search stops being the one we want, so a
     /// late answer cannot resurrect itself over a newer one.
@@ -25,6 +31,24 @@ import SwiftUI
     private let client: TransportClient
     private let store: NamespacedStore
     private var eventsTask: Task<Void, Never>?
+
+    /// Search state must outlive the settings page. Settings tears the page down
+    /// on every sidebar visit, and this module has no on-disk cache behind it —
+    /// hashing a folder is minutes of reading, so losing it to a click is
+    /// hostile. One instance per host view model; the page observes it.
+    private static var cached: DuplicatesViewModel?
+    public static func shared(vm: ModuleViewModel, store: NamespacedStore) -> DuplicatesViewModel {
+        // Keyed to the view model it was built against, not merely "exists" —
+        // see `DiskViewModel.shared(vm:)`. Turning the module off deallocates
+        // the engine while the `LocalTransport` held here survives, and its
+        // weakly-captured handler answers every request with empty Data from
+        // then on.
+        if let cached, cached.vm === vm { return cached }
+        let created = DuplicatesViewModel(vm: vm, store: store)
+        cached = created
+        ModuleUICache.dropWhenDisabled(DuplicatesDescriptor.id.rawValue) { cached = nil }
+        return created
+    }
 
     public init(vm: ModuleViewModel, store: NamespacedStore) {
         self.vm = vm
@@ -52,11 +76,16 @@ import SwiftUI
     /// group's size is the copy that stays, and quoting it once per ticked path
     /// promised a clone's nothing for a real file, or the reverse.
     public var basketBytes: Int {
-        basket.reduce(0) { total, path in
-            total + (groups.lazy.compactMap { group in
-                group.copies.first { $0.path == path }
-            }.first?.bytes ?? 0)
-        }
+        basket.reduce(0) { $0 + bytes(of: $1) }
+    }
+
+    /// One copy's own figure. A group's size is the copy that stays, so quoting
+    /// it against a path promised a clone's nothing for a real file, or the
+    /// reverse — the basket bar and the menu under it both ask this.
+    public func bytes(of path: String) -> Int {
+        groups.lazy.compactMap { group in
+            group.copies.first { $0.path == path }
+        }.first?.bytes ?? 0
     }
 
     public var wastedBytes: Int { groups.reduce(0) { $0 + $1.wasted } }
@@ -142,22 +171,24 @@ import SwiftUI
         // back, and every checkbox has to be found and ticked again. Only the
         // files that actually left are dropped.
         basket = basket.filter { !gone.contains($0) }
-        if removal.refused.isEmpty {
-            banner = DupStr.removed(removal.removed.count, Bytes(removal.freedBytes))
-        } else {
-            let count = DupStr.removedWithFailures(removal.removed.count, removal.refused.count)
-            let why = HelmTrash.Result(removed: removal.removed, refused: removal.refused,
-                                       freedBytes: removal.freedBytes).principalReason
-            // A count with no reason sends the person back to the same folder
-            // to try the same thing again.
-            // A full stop, not a dash: the reason sentences carry their own
-            // em-dash, and "refused 1 — no permission — it may be locked"
-            // reads as one run-on clause.
-            banner = why.map { "\(count). \(TrashReasonText.sentence($0.rawValue))" } ?? count
-        }
+        // The numbers, not a sentence about them: `HelmRemovalOutcome` decides
+        // what is true from these — a batch where everything refused used to
+        // read as a removal with a refusal appended, and one reason was chosen
+        // for however many files there were.
+        failures = removal.refused
+        removedCount = removal.removed.count
+        // No sentence for something that did not happen: "Removed 0 files, 0 B
+        // freed" is a claim and its own refutation in one line.
+        banner = removal.removed.isEmpty
+            ? nil
+            : DupStr.movedToTrash(Bytes(removal.freedBytes))
     }
 
-    public func dismissBanner() { banner = nil }
+    public func dismissBanner() {
+        banner = nil
+        failures = []
+        removedCount = 0
+    }
 
     // MARK: - Events
 

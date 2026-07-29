@@ -17,9 +17,6 @@ public enum HelmSurface {
     /// gives less to sit against than a window background does.
     public static let panelCardFill = Color.primary.opacity(0.06)
     public static let hairline = Color.primary.opacity(0.10)
-    /// For things that float *over* content — a tooltip following the cursor.
-    /// Cards sit in the page and take no border (see `helmCard`); a floating
-    /// surface has nothing behind it to sit against, so it keeps the hairline.
 }
 
 public extension View {
@@ -199,6 +196,30 @@ public enum HelmText {
     /// meaning, so it answers to the 3:1 non-text threshold rather than to
     /// nothing at all. 3.07:1 / 4.07:1.
     public static let separator = Color.primary.opacity(0.50)
+
+    /// A figure: a byte size, a count, a version — anything whose digits a
+    /// reader compares down a column rather than reads as a word.
+    ///
+    /// Sizes were drawn in four faces across lists that sit next to each other
+    /// in the same sidebar. Measured, "1,24 ГБ" at SF Mono 11 renders 27% wider
+    /// than at SF Pro 10 with tabular figures, so two such columns cannot be
+    /// made to agree by choosing a width — they disagree about the glyphs.
+    ///
+    /// Monospaced rather than tabular-SF-Pro because the figures share their
+    /// row with a unit («ГБ», "Mo") and a mono face keeps the number and its
+    /// unit at one rhythm. 11 pt is the size the strip's own figures scale
+    /// from, one step under body.
+    public static let figureFont = Font.system(size: 11, design: .monospaced)
+}
+
+public extension View {
+    /// A figure, in the one face figures are set in. See `HelmText.figureFont`.
+    func helmFigure() -> some View {
+        font(HelmText.figureFont)
+            // Digits that change in place must not shift the ones beside them:
+            // a size in a list is refreshed while the pointer is over it.
+            .monospacedDigit()
+    }
 }
 
 /// Colour that carries a meaning: this needs attention, this failed, this is on.
@@ -311,9 +332,35 @@ public struct HelmMetricStrip: View {
     /// they fail.
     @Environment(\.colorScheme) private var colorScheme
 
-    private func legible(_ tint: Color) -> Color {
-        guard colorScheme == .light else { return tint }
-        return Color(nsColor: NSColor(tint).blended(withFraction: 0.30, of: .black) ?? NSColor(tint))
+    /// Static so the fraction can be measured rather than described: a blend
+    /// depth is a contrast decision, and the last one was made against
+    /// `.tertiary` rather than against a floor. At 0.30 the figures measured
+    /// **green 3.85:1, orange 3.99:1, teal 3.76:1** against the window in
+    /// light, at 16 pt medium — which is body text by every threshold there
+    /// is. At 0.40 they measure **4.80 / 4.97 / 4.69**.
+    ///
+    /// The tint is resolved in the light appearance explicitly rather than in
+    /// whichever one `NSAppearance.current` happens to hold. `NSColor(Color)`
+    /// asks the ambient appearance what a dynamic colour is, and this runs
+    /// under `colorScheme == .light` taken from the *environment* — two
+    /// different sources for one answer. Measured with the two disagreeing,
+    /// the same 0.30 blend came out at 3.54 / 3.87 / 3.27, because it had
+    /// darkened dark mode's brighter green and called it a light-mode colour.
+    /// A contrast that depends on which of the two won is not a contrast
+    /// anybody measured.
+    static func legible(_ tint: Color, in scheme: ColorScheme) -> Color {
+        guard scheme == .light else { return tint }
+        var darkened = NSColor(tint)
+        NSAppearance(named: .aqua)?.performAsCurrentDrawingAppearance {
+            // Both steps inside the block, and the conversion to sRGB before
+            // the blend. `NSColor(Color)` hands back a *dynamic* colour, so
+            // resolving it here and blending it outside resolves it a second
+            // time against whatever appearance is current then — which is the
+            // bug this block exists to close, reintroduced one line lower.
+            let base = NSColor(tint).usingColorSpace(.sRGB) ?? NSColor(tint)
+            darkened = base.blended(withFraction: 0.40, of: .black) ?? base
+        }
+        return Color(nsColor: darkened)
     }
 
     public struct Metric: Identifiable {
@@ -353,10 +400,11 @@ public struct HelmMetricStrip: View {
                         .contentTransition(.numericText())
                         .animation(HelmMotion.interface, value: metric.value)
                         // A system tint is built for a dark background: the same
-                        // green measured 7.67:1 in dark and 2.03:1 in light.
+                        // green measured 8.25:1 in dark and 2.22:1 in light.
                         // Darkened in light appearance so the figure is legible
-                        // in both, rather than legible in one.
-                        .foregroundStyle(metric.tint.map(legible) ?? .primary)
+                        // in both, rather than legible in one — see `legible`
+                        // for how far, and for what it measures after.
+                        .foregroundStyle(metric.tint.map { Self.legible($0, in: colorScheme) } ?? .primary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
                     Text(metric.label)

@@ -30,15 +30,3 @@ public enum AppPicker {
         return panel.urls.compactMap { Bundle(url: $0)?.bundleIdentifier }
     }
 }
-
-/// The shared "connected / not" indicator dot.
-public struct HelmStatusDot: View {
-    let active: Bool
-    public init(active: Bool) { self.active = active }
-    public var body: some View {
-        Circle()
-            .fill(active ? Color.green : Color.secondary.opacity(0.4))
-            .frame(width: 8, height: 8)
-            .accessibilityHidden(true)
-    }
-}

@@ -618,6 +618,46 @@ features, PATCH = fixes.
 - Two tabs of one segmented control inset their rows differently, so switching
   tabs jogged the list sideways; two of five lists dropped their background
   while three kept it; four adjacent pages used two toolbar heights.
+- **Escape closes the menu-bar panel.** It took key focus so its switches and
+  fields would accept input, and then answered only the mouse: clicking outside
+  dismissed it, Escape did nothing. Opened from the keyboard shortcut, it could
+  not be closed from the keyboard. `cancelOperation` posts the dismiss the
+  click-through path already posts, so there is still one way to close, and it
+  arrives after the responder chain — a field mid-edit or a shortcut recorder
+  capturing a key still takes Escape first.
+- **The About page's badge told you about a preference, not about the build.**
+  It read the update-channel picker, so switching to Beta on a `0.7.2-dev.34`
+  build relabelled the running build BETA. And because the version comparison
+  works on numeric cores, 0.7.1 is not "newer" than 0.7.2-dev.34, so the row
+  underneath then said "You're on the latest version" to the one person
+  definitely running something unreleased. The badge now describes the build it
+  is in, and the check has an answer for being ahead of a channel.
+- **The last colours that failed in light appearance.** The About page's update
+  card drew its warning and success marks straight from the system palette
+  (2.31:1 and 2.22:1 against the window, where the tokens are 4.54 and 4.58),
+  and so did the shared connected/not dot at its three call sites. The tinted
+  figures in a metric strip were darkened by a fraction chosen against the
+  colour it replaced rather than against a floor — 3.85:1, and darkening the
+  *dark* palette's colour half the time on top of that. A scan now catches a
+  system colour handed to anything that paints with it.
+- **AppKit's own panels spoke English inside a Russian or Japanese app.** The
+  bundle declared no localizations, so the folder picker's Open / Cancel / New
+  Folder and its sidebar, the text-field context menu and the window titles
+  VoiceOver reads were English whatever language Helm was in. Three modules open
+  that picker.
+- **Numbers and dates in the language that is on screen.** Counts were
+  interpolated straight out of an integer, so a scan of `/` reported
+  "1499308 files"; the changelog printed the date it stores, `2026-07-28`, which
+  no language writes. Quotation marks were three-eighths wrong for the same
+  reason units used to be — read out of the system's tables now: French keeps
+  the name against its guillemets with a non-breaking space (an ordinary one can
+  break the line between the mark and the name), and Spanish and Japanese use
+  the curly quotes macOS uses rather than the guillemets and corner brackets
+  they had been given.
+- **The panel's Utilities row announced less than it showed.** Its accessibility
+  label replaced the one SwiftUI builds from the row, throwing away the module
+  count a sighted user can see, and a disclosure that opens and closes said
+  nothing about which it had just done.
 
 
 ### Added

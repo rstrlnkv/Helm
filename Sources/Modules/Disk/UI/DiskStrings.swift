@@ -1,5 +1,7 @@
+import Foundation
 import HelmRuntime
 import HelmUI
+import Module_Disk_Engine
 
 enum DkStr {
     /// The display name only — the module id stays `disk`, or every stored
@@ -18,9 +20,22 @@ enum DkStr {
     static var free: String { L("free", [.ru: "свободно", .es: "libre", .fr: "libre", .de: "frei", .ja: "空き", .zh: "可用", .pt: "livre"]) }
     static var basket: String { L("To remove", [.ru: "К удалению", .es: "Para eliminar", .fr: "À supprimer", .de: "Zu entfernen", .ja: "削除予定", .zh: "待删除", .pt: "Para remover"]) }
     static var moveToTrash: String { L("Move to Trash", [.ru: "Переместить в Корзину", .es: "Trasladar a la papelera", .fr: "Placer dans la corbeille", .de: "In den Papierkorb legen", .ja: "ゴミ箱に入れる", .zh: "移到废纸篓", .pt: "Mover para o Lixo"]) }
-    static var basketContents: String { L("Show what is in the basket", [.ru: "Показать, что отобрано к удалению", .es: "Ver qué hay en la cesta", .fr: "Voir le contenu du panier", .de: "Inhalt des Korbs zeigen", .ja: "バスケットの中身を表示", .zh: "查看收集篮内容", .pt: "Ver o que está na cesta"]) }
+    /// "Basket" was the only place the English UI used the word: no visible
+    /// label says it — the bar itself is headed "To remove".
+    static var basketContents: String { L("Show what is marked for removal", [.ru: "Показать, что отмечено к удалению", .es: "Ver qué está marcado para eliminar", .fr: "Voir ce qui est marqué pour suppression", .de: "Zeigen, was zum Entfernen markiert ist", .ja: "削除予定の項目を表示", .zh: "查看已标记为待删除的项目", .pt: "Ver o que está marcado para remoção"]) }
     static var emptyBasket: String { L("Nothing selected", [.ru: "Ничего не выбрано", .es: "Nada seleccionado", .fr: "Rien de sélectionné", .de: "Nichts ausgewählt", .ja: "未選択", .zh: "未选择任何项", .pt: "Nada selecionado"]) }
-    static var addToBasket: String { L("Add", [.ru: "Добавить", .es: "Añadir", .fr: "Ajouter", .de: "Hinzufügen", .ja: "追加", .zh: "添加", .pt: "Adicionar"]) }
+    /// The name of the action, not of the gesture: "Add" has no object, and a
+    /// screen reader says it once per row down a list of two hundred.
+    static var markForRemoval: String { L("Mark for removal", [.ru: "Отметить к удалению", .es: "Marcar para eliminar", .fr: "Marquer pour suppression", .de: "Zum Entfernen markieren", .ja: "削除予定に追加", .zh: "标记为待删除", .pt: "Marcar para remoção"]) }
+    /// What the same button does when the item is already marked — which is
+    /// what it was announcing as "Add".
+    static var unmarkForRemoval: String { L("Unmark for removal", [.ru: "Снять отметку удаления", .es: "Desmarcar para eliminar", .fr: "Ne plus marquer pour suppression", .de: "Markierung zum Entfernen aufheben", .ja: "削除予定から外す", .zh: "取消待删除标记", .pt: "Desmarcar para remoção"]) }
+    /// One button, two meanings. Kept here rather than at the two call sites so
+    /// the pair cannot drift apart — they already had, in the direction where
+    /// the label described neither state.
+    static func basketAction(basketed: Bool) -> String {
+        basketed ? unmarkForRemoval : markForRemoval
+    }
     static var systemItem: String { L("System", [.ru: "Системный", .es: "Del sistema", .fr: "Système", .de: "System", .ja: "システム", .zh: "系统", .pt: "Do sistema"]) }
     static var emptyFolder: String { L("Nothing in this folder.", [.ru: "В этой папке ничего нет.", .es: "No hay nada en esta carpeta.", .fr: "Rien dans ce dossier.", .de: "In diesem Ordner ist nichts.", .ja: "このフォルダには何もありません。", .zh: "这个文件夹里没有内容。", .pt: "Não há nada nesta pasta."]) }
     static var noAccess: String { L("No access", [.ru: "Нет доступа", .es: "Sin acceso", .fr: "Pas d’accès", .de: "Kein Zugriff", .ja: "アクセス不可", .zh: "无访问权限", .pt: "Sem acesso"]) }
@@ -40,7 +55,35 @@ enum DkStr {
     static var adviceHint: String { L("What could be deleted", [.ru: "Что можно удалить", .es: "Qué se podría eliminar", .fr: "Ce qui pourrait être supprimé", .de: "Was gelöscht werden könnte", .ja: "削除できる候補", .zh: "可删除的内容", .pt: "O que pode ser excluído"]) }
     static var adviceKindCache: String { L("Cache — safe to clear", [.ru: "Кеш — можно очистить", .es: "Caché — se puede limpiar", .fr: "Cache — peut être vidé", .de: "Cache — kann geleert werden", .ja: "キャッシュ — 削除可能", .zh: "缓存 — 可清理", .pt: "Cache — pode limpar"]) }
     static var adviceKindOldDownload: String { L("Old download", [.ru: "Старая загрузка", .es: "Descarga antigua", .fr: "Téléchargement ancien", .de: "Alter Download", .ja: "古いダウンロード", .zh: "旧下载", .pt: "Download antigo"]) }
-    static var adviceKindLargeOld: String { L("Untouched for months", [.ru: "Не открывался месяцами", .es: "Sin abrir desde hace meses", .fr: "Inutilisé depuis des mois", .de: "Seit Monaten unberührt", .ja: "数か月間未使用", .zh: "数月未打开", .pt: "Sem uso há meses"]) }
+    /// What the attribute actually says. The scanner reads `ATTR_CMN_MODTIME`,
+    /// which is when the file was last *written*; the row used to claim
+    /// "Untouched for months", which is a statement about use. A Parallels
+    /// image opened every morning and a film watched monthly are both written
+    /// to by nobody, and both were listed as untouched. Nothing macOS hands a
+    /// bulk directory read reports use, so the row says the date instead —
+    /// which is also the reason it was previously missing.
+    static func notModifiedSince(_ date: String) -> String { L("Not modified since \(date)", [.ru: "Не изменялся с \(date)", .es: "Sin modificar desde el \(date)", .fr: "Non modifié depuis le \(date)", .de: "Nicht geändert seit \(date)", .ja: "\(date) 以降変更なし", .zh: "自 \(date) 起未修改", .pt: "Sem modificações desde \(date)"]) }
+    /// The same claim with no date to hang it on: advice restored from a scan
+    /// an earlier build cached, which carried the verdict and not the date.
+    static var notModifiedInMonths: String { L("Not modified in months", [.ru: "Не изменялся месяцами", .es: "Sin modificar desde hace meses", .fr: "Non modifié depuis des mois", .de: "Seit Monaten nicht geändert", .ja: "数か月間変更なし", .zh: "数月未修改", .pt: "Sem modificações há meses"]) }
+    /// Why a row is in the Advice list — and, for the size-and-age verdict, the
+    /// date it was reached from. Here rather than in the view because it is a
+    /// decision with three branches and one of them turns on whether there is a
+    /// date at all, which is exactly the kind of thing a test should be able to
+    /// ask about without rendering anything.
+    static func adviceReason(_ advice: DiskAdvice) -> String {
+        switch advice.kind {
+        case .cache: adviceKindCache
+        case .oldDownload: adviceKindOldDownload
+        case .largeOld:
+            // The day, not the minute: this line explains an advice measured in
+            // months, and "19:00" is noise on a file nobody has touched since
+            // March.
+            advice.modified.map {
+                notModifiedSince(HelmDates.day(Date(timeIntervalSince1970: $0)))
+            } ?? notModifiedInMonths
+        }
+    }
     static var otherItems: String { L("Smaller items", [.ru: "Мелкие объекты", .es: "Elementos pequeños", .fr: "Petits éléments", .de: "Kleinere Objekte", .ja: "小さい項目", .zh: "较小的项目", .pt: "Itens menores"]) }
     static var ringMap: String { L("Disk map", [.ru: "Карта диска", .es: "Mapa del disco", .fr: "Carte du disque", .de: "Festplattenkarte", .ja: "ディスクマップ", .zh: "磁盘分布图", .pt: "Mapa do disco"]) }
     static var openFolder: String { L("Look inside", [.ru: "Заглянуть внутрь", .es: "Ver dentro", .fr: "Regarder dedans", .de: "Hineinsehen", .ja: "中を見る", .zh: "查看内部", .pt: "Ver dentro"]) }

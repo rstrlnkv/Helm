@@ -51,7 +51,24 @@ final class LogFileNamesTests: XCTestCase {
         XCTAssertFalse(counts.isEmpty, "the scan stopped finding the file names")
         let repeated = counts.filter { $0.value > 1 }.keys.sorted()
         XCTAssertEqual(repeated, [], "built in more than one place, so two places can disagree")
-        XCTAssertEqual(Set(counts.keys), ["Library/Logs/Helm", "helm.log", "helm.previous.log"],
+        XCTAssertEqual(Set(counts.keys), ["Library/Logs/Helm", "helm.log", "helm.previous.log",
+                                          ".redaction-reset"],
                        "a name here that no property declares is a name nothing clears")
+    }
+
+    /// The purge's latch is the one file the log must **not** clear.
+    ///
+    /// It records that the one-time purge already happened. A purge that
+    /// removed its own latch could run again — which is the failure this whole
+    /// file exists around, wearing different clothes: the latch used to live in
+    /// `UserDefaults.standard`, i.e. in the *calling process's* domain, so
+    /// "once" meant once per process identity and any tool linking HelmRuntime
+    /// wiped the user's log the first time it ran. It did exactly that, to a
+    /// dev build's triage evidence, before it was caught.
+    func testTheResetMarkerIsNotSomethingClearingTheLogDestroys() {
+        XCTAssertFalse(HelmLog.allFileURLs.contains(HelmLog.resetMarkerURL),
+                       "clearing the log would delete the record that the purge already ran, "
+                       + "which lets the purge run a second time and take a real log with it")
+        XCTAssertEqual(HelmLog.resetMarkerURL.deletingLastPathComponent(), HelmLog.directory)
     }
 }
