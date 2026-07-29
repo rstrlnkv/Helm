@@ -31,9 +31,25 @@ connections Helm itself raised through a rule, and `_cameUp` records which of
 those actually reached the up state. So:
 
 - **Connected by automation** — `connect(name, auto: true)` succeeds.
-- **Disconnected by automation** — a name leaves `_autoConnected` because the
-  rule's app closed, i.e. the existing drop path, not `disconnect()` called from
-  the UI.
+- **Torn down by a rule** — the rule's app quit, so `VPNAutoConnectCore`
+  asks the engine to disconnect. This goes through `disconnect(name, auto: true)`
+  and **not** through the refresh path.
+- **Dropped from under us** — a tunnel Helm raised is no longer up and is not
+  coming back: the `dropped` set computed during a refresh. Helm did not cause
+  this one; the network or System Settings did. It is reported anyway, because
+  a tunnel the app promised to keep up going away is exactly the news the user
+  wants, and it is the one case where nothing else on screen would say so.
+
+The first draft of this spec said the rule's teardown arrived through the
+refresh path. It does not — `appTerminated` calls `disconnect` directly, so the
+name leaves `_autoConnected` before any refresh sees it, and the `dropped` set
+is left holding only the third case above. Written down because the mistake is
+invisible from the outside: implemented as first described, "a rule disconnected
+your VPN" would never once have fired, and the feature would have looked
+finished.
+
+What is deliberately **not** a firing: `disconnect(name)` with no `auto:`, which
+is every button in the panel and the transport command behind it.
 
 Both produce one value:
 
