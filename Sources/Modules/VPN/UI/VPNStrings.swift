@@ -90,6 +90,20 @@ enum VPNStr {
         L("macOS is not allowing notifications from Helm. The name will be shown in the menu bar instead.", [.ru: "macOS не разрешает уведомления от Helm. Вместо этого имя будет показано в строке меню.", .es: "macOS no permite notificaciones de Helm. En su lugar, el nombre se mostrará en la barra de menús.", .fr: "macOS n’autorise pas les notifications de Helm. Le nom sera affiché dans la barre des menus à la place.", .de: "macOS lässt keine Mitteilungen von Helm zu. Stattdessen wird der Name in der Menüleiste angezeigt.", .ja: "macOS が Helm の通知を許可していません。代わりにメニューバーに名前を表示します。", .zh: "macOS 不允许 Helm 发送通知。将改为在菜单栏显示名称。", .pt: "O macOS não está permitindo notificações do Helm. Em vez disso, o nome será mostrado na barra de menus."])
     }
 
+    static var spinLabel: String {
+        L("Turn the menu-bar icon", [.ru: "Вращать значок в строке меню", .es: "Girar el icono de la barra de menús", .fr: "Faire tourner l’icône de la barre des menus", .de: "Menüleistensymbol drehen", .ja: "メニューバーのアイコンを回す", .zh: "转动菜单栏图标", .pt: "Girar o ícone da barra de menus"])
+    }
+    static var spinConnected: String {
+        L("When a rule connects", [.ru: "Когда правило подключает", .es: "Cuando una regla conecta", .fr: "Quand une règle connecte", .de: "Wenn eine Regel verbindet", .ja: "ルールが接続したとき", .zh: "规则连接时", .pt: "Quando uma regra conecta"])
+    }
+    static var spinDisconnected: String {
+        L("When a tunnel goes down", [.ru: "Когда туннель разрывается", .es: "Cuando un túnel cae", .fr: "Quand un tunnel tombe", .de: "Wenn ein Tunnel abbricht", .ja: "トンネルが切れたとき", .zh: "隧道断开时", .pt: "Quando um túnel cai"])
+    }
+    /// The cost of the two quiet settings meeting, said where they are set.
+    static var spinSilentWarning: String {
+        L("With this off and the notice set to nothing, a rule that connects or drops a tunnel gives no sign at all.", [.ru: "Если это выключено, а уведомление — «ничего», правило подключит или разорвёт туннель без единого признака.", .es: "Con esto desactivado y el aviso en nada, una regla que conecta o corta un túnel no da ninguna señal.", .fr: "Avec ceci désactivé et l’avis réglé sur rien, une règle qui connecte ou coupe un tunnel ne donne aucun signe.", .de: "Ist dies aus und der Hinweis auf nichts gestellt, verbindet oder trennt eine Regel ohne jedes Zeichen.", .ja: "これをオフにし、通知も「なし」にすると、ルールが接続・切断しても何の合図も出ません。", .zh: "关闭此项且提示设为“无”时，规则连接或断开隧道将没有任何提示。", .pt: "Com isto desligado e o aviso em nada, uma regra que conecta ou derruba um túnel não dá sinal algum."])
+    }
+
     // MARK: - The banner a firing posts
 
     /// The words on the macOS banner, which the engine posts but cannot write:
