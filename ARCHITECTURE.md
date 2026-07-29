@@ -198,13 +198,20 @@ while the checkbox in System Settings stays ticked. The Permissions section
 says this to the user; the real fix is Developer ID signing (needs a paid
 Apple account — user's call).
 
-*Caveat, 2026-07-29:* how much of the observed grant loss this explains is no
-longer certain. Until the move out of `~/Documents` (see Dev loop) signing
-itself was failing intermittently, and an unsigned bundle loses the grant for a
-different reason — no cdhash at all. The two causes were never separated while
-both were live. The paragraph above describes real ad-hoc behaviour, but the
-severity attributed to it here was measured under the confound and has not been
-re-measured since.
+*Measured 2026-07-29, after the move out of `~/Documents`:* the paragraph above
+is right, and the mechanism is now pinned. Signing succeeds every time from the
+new location, so the old confound (an unsigned bundle, which loses the grant for
+the different reason of having no cdhash at all) is gone. What remains is that
+**the build is not reproducible**: three consecutive `package-app.sh` runs with
+no source change and the same build number (405) produced three different
+cdhashes — `c69e17ab`, `d1a877da`, `135404ea`. So it is not the build number
+that moves the hash, and bumping or freezing it would not help.
+
+The practical consequence: a grant survives relaunch and reboot, because the
+installed binary's cdhash only changes when you replace it. Every *reinstall*
+costs both toggles again. Budget for re-granting Full Disk Access and
+Accessibility after each install, or use a Developer ID identity, which ties the
+grant to the Team ID instead of the hash and is the only real fix.
 
 `TrashFailure` classifies removal failures from the actual Cocoa error code,
 never by guessing from the path shape.
