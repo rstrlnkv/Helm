@@ -66,7 +66,9 @@ struct DuplicatesView: View {
         HStack(spacing: 8) {
             // Decorative: the badge or the checkbox already says which is which.
             Image(systemName: stays ? "checkmark.circle" : "doc.on.doc")
-                .foregroundStyle(stays ? Color.green : .secondary)
+                // The token, not SwiftUI's green: that one measures 2.22:1 in
+                // light mode against `HelmSignal.success`'s 4.58:1.
+                .foregroundStyle(stays ? HelmSignal.success : HelmText.quiet)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 1) {
                 Text((path as NSString).lastPathComponent)
@@ -78,7 +80,7 @@ struct DuplicatesView: View {
             .accessibilityElement(children: .combine)
             Spacer()
             if stays {
-                HelmBadge(DupStr.keep, tint: .green)
+                HelmBadge(DupStr.keep, tint: HelmSignal.success)
                     .help(DupStr.keepWhy)
             } else {
                 // The title names the file, so a dozen checkboxes are a dozen

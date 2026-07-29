@@ -186,7 +186,13 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             emitLog("Unsupported account name.")
             return
         }
-        let prep = "mkdir -p /opt/homebrew && chown -R '\(user)':admin /opt/homebrew"
+        // Absolute paths, because this string is resolved by a root shell that
+        // inherits our `PATH` — and Helm's environment comes from the launchd
+        // GUI session, which any process running as the user can rewrite
+        // (`launchctl setenv PATH …`). A bare `mkdir` is then whichever `mkdir`
+        // that process planted. Every other privileged string in the app
+        // already names its tools in full; see `SudoersRule.installCommand`.
+        let prep = "/bin/mkdir -p /opt/homebrew && /usr/sbin/chown -R '\(user)':admin /opt/homebrew"
         guard privileged.runAdmin(prep) else {
             endBusy()
             emitState(OpState(phase: .failed, label: "install Homebrew", exitCode: 1))

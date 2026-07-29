@@ -91,9 +91,10 @@ public struct RuleRunner: Sendable {
             // hung off the parent unconditionally, so `Images/a.jpg` was
             // offered `Images/Images/`, and the only thing standing between
             // that and a file buried a level deeper every hour was the stamp
-            // — which `note` explicitly tolerates the loss of. `setxattr`
-            // answers `ENOTSUP` on exFAT and `WatchScope` admits `/Volumes`,
-            // so the tolerated case is an ordinary USB stick.
+            // — which `note` explicitly tolerates the loss of, on any volume
+            // that will not keep an extended attribute or whose AppleDouble
+            // sidecar something drops (ARCHITECTURE.md § Autopilot; exFAT,
+            // which used to be named here, keeps it).
             //
             // Compared without case, because `images` and `Images` are one
             // folder on the volume Helm ships to: there the descent lands the

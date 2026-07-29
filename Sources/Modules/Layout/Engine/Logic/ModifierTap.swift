@@ -59,6 +59,19 @@ public enum TapKey: String, CaseIterable, Sendable {
         }
     }
 
+    /// The same nine keys, indexed the way an arriving event identifies them.
+    ///
+    /// `CGEventTapPort` used to carry its own `[Int64: UInt64]` literal of
+    /// these — the identical nine constants, written a second time — and the
+    /// comment above it had already drifted from what it held, claiming it was
+    /// the left-side bits when it was all of them. Derived here instead, so a
+    /// key added to the enum is a key the tap can classify, and neither half
+    /// can be updated without the other.
+    public static let masksByKeyCode: [Int64: UInt64] = allCases.reduce(into: [:]) { table, key in
+        guard let code = key.keyCode, let mask = key.deviceMask else { return }
+        table[code] = mask
+    }
+
     /// True for the keys most people type with. Not a refusal — the page says
     /// so and lets them through — but a stray solo tap is likelier here, and
     /// somebody choosing one should be told before they wonder why their text

@@ -73,6 +73,16 @@ public func Decimal(_ value: Double, decimals: Int = 1) -> String {
     HelmBytes.decimal(value, decimals: decimals, language: AppLanguage.current.rawValue)
 }
 
+/// A count in the user's language: "1 499 308", "1.499.308". Beside `Bytes` and
+/// `Decimal` because it is the same mistake one class of number over — a scan
+/// of `/` reported "1499308 files", where macOS itself groups the digits.
+///
+/// Not `Decimal`, which turns grouping off on purpose: that one writes the
+/// mantissa of a size, where a separator would be a second decimal mark.
+public func Count(_ value: Int) -> String {
+    HelmBytes.grouped(value, language: AppLanguage.current.rawValue)
+}
+
 /// Dates in the app's language, not the system's.
 ///
 /// `RelativeDateTimeFormatter()` with no locale answers in the system language,
@@ -95,12 +105,67 @@ public enum HelmDates {
         cache.absolute(language: language).string(from: date)
     }
 
+    /// A calendar day written down as "2026-07-28" — the changelog's entries —
+    /// in the language's own long form: "28 июля 2026 г.", "28. Juli 2026".
+    ///
+    /// The stored form stays as it is: it sorts, it is what the entries are
+    /// keyed by, and it is not a date anybody reads. Anything that is not a day
+    /// comes back untouched, because the changelog is written by hand and a
+    /// blank line under a version number reads as a broken sheet rather than as
+    /// a typo in the data.
+    ///
+    /// Parsed and written in the same time zone. Parsed in UTC and written in
+    /// the reader's, half the world would see the 27th.
+    public static func day(_ stored: String,
+                           language: String = AppLanguage.current.rawValue) -> String {
+        guard let date = cache.storage.date(from: stored) else { return stored }
+        return cache.day(language: language).string(from: date)
+    }
+
+    /// The same long day, for a date the app already holds.
+    ///
+    /// A file's modification time is a moment, but "not modified since
+    /// 09.03.2024, 19:00" answers a question nobody asked — the advice it
+    /// explains is measured in months. `dayAndMinute` is for a report of
+    /// today's activity; this is for a date far enough back that the minute is
+    /// noise.
+    public static func day(_ date: Date,
+                           language: String = AppLanguage.current.rawValue) -> String {
+        cache.day(language: language).string(from: date)
+    }
+
     private static let cache = Cache()
 
     private final class Cache: @unchecked Sendable {
         private let lock = NSLock()
         private var relatives: [String: RelativeDateTimeFormatter] = [:]
         private var absolutes: [String: DateFormatter] = [:]
+        private var days: [String: DateFormatter] = [:]
+
+        /// Reads the stored form and nothing else: fixed format, fixed locale.
+        /// `en_US_POSIX` because a fixed-format formatter on any other locale
+        /// answers to the reader's calendar — a Japanese one parses this as an
+        /// era year and returns nil.
+        let storage: DateFormatter = {
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.calendar = Calendar(identifier: .gregorian)
+            formatter.dateFormat = "yyyy-MM-dd"
+            return formatter
+        }()
+
+        func day(language: String) -> DateFormatter {
+            lock.lock(); defer { lock.unlock() }
+            if let existing = days[language] { return existing }
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: language)
+            formatter.dateStyle = .long
+            formatter.timeStyle = .none
+            // The zone the stored day was parsed in, so the day cannot shift.
+            formatter.timeZone = storage.timeZone
+            days[language] = formatter
+            return formatter
+        }
 
         func relative(language: String) -> RelativeDateTimeFormatter {
             lock.lock(); defer { lock.unlock() }
@@ -128,8 +193,31 @@ public enum HelmDates {
 /// Quotation marks belong to the language too. VPN and the settings window
 /// already spelled them out per language; anything that quotes a value the user
 /// typed goes through here instead of hard-coding English's pair.
-public func Quoted(_ text: String) -> String {
-    L("“\(text)”", [.ru: "«\(text)»", .es: "«\(text)»", .fr: "« \(text) »",
-                    .de: "„\(text)“", .ja: "「\(text)」", .zh: "“\(text)”",
-                    .pt: "“\(text)”"])
+///
+/// Which marks a language uses is looked up, not remembered — the same rule the
+/// units and the pane names follow. Counted over the 1176 `Localizable.loctable`
+/// files macOS ships, for this exact shape (a substituted name between a pair):
+///
+///     fr   «\u{00A0}%@\u{00A0}»  3206     « %@ » with plain spaces   12
+///     de   „%@“                  3674
+///     ru   «%@»                   483
+///     es   “%@”                  2768     «%@»                        0
+///     ja   “%@”                  3099     「%@」                       1
+///     zh   “%@”                  3399
+///     pt   “%@”                   378
+///
+/// Three of the eight had been translated rather than read. French put ordinary
+/// spaces inside its guillemets, which is not only the wrong character but a
+/// line-breaking one: a name can end up on the next line from the mark that
+/// opens it. Spanish was given guillemets and Japanese corner brackets; macOS
+/// uses curly quotes for both when what it quotes is a name — 「」 does other
+/// work in Japanese, and this helper only ever wraps a name.
+public func Quoted(_ text: String, language: AppLanguage = AppLanguage.current) -> String {
+    let nbsp = "\u{00A0}"
+    switch language {
+    case .ru: return "«\(text)»"
+    case .fr: return "«\(nbsp)\(text)\(nbsp)»"
+    case .de: return "„\(text)“"
+    case .en, .es, .ja, .zh, .pt: return "“\(text)”"
+    }
 }

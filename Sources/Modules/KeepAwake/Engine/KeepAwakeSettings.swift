@@ -16,7 +16,11 @@ public struct KeepAwakeSettings {
     public var jiggleEnabled: Bool { store.bool("jiggleEnabled", default: false) }
     public var jiggleIntervalMinutes: Int { max(1, store.int("jiggleIntervalMinutes", default: 5)) }
     public var clamshellEnabled: Bool { store.bool("clamshellEnabled", default: false) }
-    public var batteryGuardEnabled: Bool { store.bool("batteryGuardEnabled", default: false) }
+    /// On by default, because `defaultDurationMinutes` is 0 — "indefinitely" —
+    /// and nothing else in the module ever ends that session: the guard is the
+    /// only reason an unattended Mac on battery stops being held awake. It can
+    /// only ever stop keeping the machine awake, never start it.
+    public var batteryGuardEnabled: Bool { store.bool("batteryGuardEnabled", default: true) }
     public var batteryGuardPercent: Int { store.int("batteryGuardPercent", default: 20) }
     public var defaultDurationMinutes: Int { store.int("defaultDurationMinutes", default: 0) }
 }

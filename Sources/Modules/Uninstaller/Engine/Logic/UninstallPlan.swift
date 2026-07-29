@@ -18,6 +18,36 @@ public struct UninstallGroup: Identifiable, Equatable, Sendable {
     }
 }
 
+/// One line of the review screen.
+///
+/// The bundle is a row rather than a header ornament because the screen has to
+/// say what it takes, and `paths` always takes it — see `reviewRows`.
+public enum ReviewRow: Equatable, Sendable, Identifiable {
+    case bundle(app: InstalledApp)
+    case leftover(Leftover)
+
+    public var id: String {
+        switch self {
+        case .bundle(let app): return app.path
+        case .leftover(let leftover): return leftover.path
+        }
+    }
+
+    /// A checkbox is an offer to decline, and the bundle cannot be declined:
+    /// removing an app without removing the app is not a thing this screen does.
+    public var isTickable: Bool {
+        if case .leftover = self { return true }
+        return false
+    }
+
+    public var sizeBytes: Int {
+        switch self {
+        case .bundle(let app): return app.sizeBytes
+        case .leftover(let leftover): return leftover.sizeBytes
+        }
+    }
+}
+
 /// Pure rules behind the batch uninstall flow.
 public enum UninstallPlan {
     public enum Readiness: Equatable, Sendable {
@@ -48,6 +78,16 @@ public enum UninstallPlan {
         }
     }
 
+    /// What one group shows, bundle first.
+    ///
+    /// The screen used to draw `group.leftovers` alone, so the one path every
+    /// removal is certain to take was the only one nobody was shown. Built here
+    /// rather than in the view so that what is displayed and what `paths`
+    /// returns are two readings of the same rule.
+    public static func reviewRows(_ group: UninstallGroup) -> [ReviewRow] {
+        [.bundle(app: group.app)] + group.leftovers.map { .leftover($0) }
+    }
+
     public static func totalBytes(_ groups: [UninstallGroup], selectedLeftovers: Set<String>) -> Int {
         var seen: Set<String> = []
         return groups.reduce(0) { sum, group in
@@ -57,11 +97,6 @@ public enum UninstallPlan {
             }
             return sum + subtotal
         }
-    }
-
-    public static func allLeftoverPaths(_ groups: [UninstallGroup]) -> [String] {
-        var seen: Set<String> = []
-        return groups.flatMap { $0.leftovers.map(\.path) }.filter { seen.insert($0).inserted }
     }
 
     /// The leftovers the review screen may arrive with already ticked.

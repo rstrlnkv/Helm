@@ -66,6 +66,17 @@ public enum VPNRules {
         return rules.filter { names.contains($0.value.vpnName) }
     }
 
+    /// How many rules can fire — what a dial labelled *automatic* is counting.
+    ///
+    /// It used to count `autoConnected`, the connections a rule has up at this
+    /// instant, so the strip read "0" directly above the list of rules the
+    /// person had written. Whether one is firing right now is the green dot's
+    /// answer; this is the other question. A rule set to `.off` is written down
+    /// and inert, and counting it would be the same lie the other way round.
+    public static func automationCount(_ rules: [String: VPNAppRule]) -> Int {
+        rules.values.count { $0.timing != .off }
+    }
+
     /// Rules naming a VPN the system no longer has. They stop firing the
     /// moment a connection is renamed or removed, and dropping them quietly
     /// is how someone ends up trusting automation that has not run for weeks.

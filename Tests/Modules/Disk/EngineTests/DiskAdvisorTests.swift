@@ -65,6 +65,53 @@ final class DiskAdvisorTests: XCTestCase {
         XCTAssertTrue(DiskAdvisor.advise(root: root, home: home, now: now).isEmpty)
     }
 
+    // MARK: - The date the advice was judged by
+
+    /// The row asks somebody to bin a gigabyte-plus file and gives a category
+    /// word as its whole reason. The date it was judged by is the reason, and
+    /// the advice carried no date at all — so the screen could not have shown
+    /// one even if it wanted to.
+    func testLargeOldAdviceCarriesTheDateItWasJudgedBy() {
+        let stale = file(home + "/Movies/raw-footage.mov", 5_000_000_000, ageDays: 400)
+        let root = dir(home, [dir(home + "/Movies", [stale])])
+        let advice = DiskAdvisor.advise(root: root, home: home, now: now)
+        XCTAssertEqual(advice.first?.modified, stale.modified)
+    }
+
+    func testOldDownloadAdviceCarriesTheDateItWasJudgedBy() {
+        let old = file(home + "/Downloads/installer.dmg", 900_000_000, ageDays: 90)
+        let root = dir(home, [dir(home + "/Downloads", [old])])
+        let advice = DiskAdvisor.advise(root: root, home: home, now: now)
+        XCTAssertEqual(advice.first?.modified, old.modified)
+    }
+
+    /// A folder's own modification time is when something was last added to it,
+    /// not when anything in it was last written — so a cache advice has no date
+    /// to offer and must not invent one.
+    func testCacheAdviceCarriesNoDate() {
+        let derived = dir(home + "/Library/Developer/Xcode/DerivedData",
+                          [file(home + "/Library/Developer/Xcode/DerivedData/big.o",
+                                2_000_000_000)])
+        let root = dir(home, [dir(home + "/Library",
+                                  [dir(home + "/Library/Developer",
+                                       [dir(home + "/Library/Developer/Xcode", [derived])])])])
+        let advice = DiskAdvisor.advise(root: root, home: home, now: now)
+        XCTAssertEqual(advice.first?.kind, .cache)
+        XCTAssertNil(advice.first?.modified)
+    }
+
+    /// A scan cached by an earlier build has no such key, and the whole cached
+    /// tree is decoded or dropped as one — a required field here would throw
+    /// somebody's last scan away on the first launch after an update.
+    func testAdviceCachedByAnEarlierBuildStillDecodes() throws {
+        let json = Data("""
+            {"name":"blob","path":"/Users/test/Movies/blob","bytes":5000000000,"kind":"largeOld"}
+            """.utf8)
+        let advice = try JSONDecoder().decode(DiskAdvice.self, from: json)
+        XCTAssertNil(advice.modified)
+        XCTAssertEqual(advice.kind, .largeOld)
+    }
+
     func testProtectedPathsAreNeverAdvised() {
         let sys = file("/System/Library/huge.bin", 9_000_000_000, ageDays: 900)
         let root = dir("/", [dir("/System", [dir("/System/Library", [sys])])])

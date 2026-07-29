@@ -81,8 +81,22 @@ import HelmRuntime
             HelmLog.shared.memory("idle")
         }
     }
+    /// Quitting must not leave the machine changed.
+    ///
+    /// Keep Awake's lid option runs `sudo pmset disablesleep 1`, which is
+    /// system state, not a process assertion — it outlives Helm. What takes it
+    /// back is `deactivate()`, and nothing called it on quit: the only recovery
+    /// was in `activate()`, i.e. the *next* launch of Helm. So quitting during
+    /// a clamshell session left the Mac unable to sleep until the app was
+    /// started again, and deleting the app left it that way for good.
+    ///
+    /// Deactivating every live engine fixes the class rather than that one
+    /// instance — the IOKit assertions, the event tap, the folder watchers and
+    /// the power observers are all released the same way, by the code that
+    /// already knows how.
     func applicationWillTerminate(_ notification: Notification) {
         HelmLog.shared.info("app", "terminating")
+        for live in host.live.values { live.engine.deactivate() }
     }
 
 }

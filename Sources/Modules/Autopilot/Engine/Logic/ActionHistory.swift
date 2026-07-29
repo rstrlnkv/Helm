@@ -34,6 +34,21 @@ public struct ActionRecord: Codable, Equatable, Sendable, Identifiable {
     /// Empty for the actions that need no second half — a trashed file went to
     /// the Trash and saying so twice is noise.
     public let detail: String
+    /// Where the file is now, in full.
+    ///
+    /// This section's whole job is "where did that go", and neither of the other
+    /// two fields could answer it: `detail` is the destination's parent folder
+    /// *name*, which reads well and opens nothing, and `path` is where the file
+    /// was — after a move, a path nothing is at.
+    ///
+    /// Empty when the module does not know where the file ended up: the Trash
+    /// renames what it takes and was never asked for the resulting URL, and a
+    /// refusal or a failure may or may not have left the file where it stood.
+    /// An offer that silently does nothing is worse than no offer.
+    public let destination: String
+
+    /// The path to reveal, or nothing to offer.
+    public var revealPath: String? { destination.isEmpty ? nil : destination }
 
     public var id: String { "\(at.timeIntervalSince1970)-\(path)-\(kind.rawValue)" }
 
@@ -50,13 +65,14 @@ public struct ActionRecord: Codable, Equatable, Sendable, Identifiable {
     }
 
     public init(at: Date, rule: String, file: String, kind: Kind, detail: String,
-                path: String = "") {
+                path: String = "", destination: String = "") {
         self.at = at
         self.rule = rule
         self.file = file
         self.kind = kind
         self.detail = detail
         self.path = path.isEmpty ? file : path
+        self.destination = destination
     }
 
     public init(from decoder: Decoder) throws {
@@ -67,6 +83,9 @@ public struct ActionRecord: Codable, Equatable, Sendable, Identifiable {
         kind = try c.decode(Kind.self, forKey: .kind)
         detail = try c.decode(String.self, forKey: .detail)
         path = try c.decodeIfPresent(String.self, forKey: .path) ?? file
+        // Missing in every history written before this build, the same way
+        // `path` is missing from the ones written before that.
+        destination = try c.decodeIfPresent(String.self, forKey: .destination) ?? ""
     }
 }
 
@@ -159,23 +178,36 @@ public extension ActionRecord {
     /// means the record cannot say one thing on the timer and another when a
     /// file arrives.
     static func of(_ plan: RulePlan, _ outcome: RuleOutcome, at: Date = Date()) -> ActionRecord? {
-        let make: (Kind, String) -> ActionRecord = { kind, detail in
+        let make: (Kind, String, String) -> ActionRecord = { kind, detail, destination in
             ActionRecord(at: at, rule: plan.rule.name, file: plan.facts.name,
-                         kind: kind, detail: detail, path: plan.facts.path)
+                         kind: kind, detail: detail, path: plan.facts.path,
+                         destination: destination)
         }
         switch outcome {
         case let .moved(destination):
             // The folder it landed in, not the whole path: the page is a
             // report, and "→ /Users/r/Documents/Invoices/march.pdf" is the
-            // file's new name spelled out at length.
+            // file's new name spelled out at length. The whole path is kept
+            // beside it, because the row also has to be able to *open* it.
             let folder = URL(fileURLWithPath: destination).deletingLastPathComponent()
                 .lastPathComponent
-            return make(.moved, folder.isEmpty ? destination : folder)
-        case let .renamed(name): return make(.renamed, name)
-        case let .tagged(tag): return make(.tagged, tag)
-        case .trashed: return make(.trashed, "")
-        case let .refused(reason): return make(.refused, reason.rawValue)
-        case let .failed(description): return make(.failed, description)
+            return make(.moved, folder.isEmpty ? destination : folder, destination)
+        case let .renamed(name):
+            // A rename never leaves the folder, and the name reported is the
+            // one that landed — including the numbered form a collision makes.
+            // `FileFacts.path` defaults to empty, and an empty parent would
+            // make `/name`: a path at the root of the volume, which is not
+            // where the file is and may well be something else.
+            let folder = (plan.facts.path as NSString).deletingLastPathComponent
+            return make(.renamed, name, folder.isEmpty ? "" : folder + "/" + name)
+        case let .tagged(tag): return make(.tagged, tag, plan.facts.path)
+        // Where the Trash put it is not `path` — it renames what it takes when
+        // the name is occupied, and `trashItem` was never asked for the
+        // resulting URL. Likewise a refusal or a failure: the file is probably
+        // still where it stood, and probably is not something to open a window on.
+        case .trashed: return make(.trashed, "", "")
+        case let .refused(reason): return make(.refused, reason.rawValue, "")
+        case let .failed(description): return make(.failed, description, "")
         // Nothing happened, so there is nothing to say happened. A rule that
         // matches a file it has already dealt with runs on every sweep, and
         // recording that would bury the day's real work under it.

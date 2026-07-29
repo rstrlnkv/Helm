@@ -9,8 +9,10 @@ import XCTest
 /// volume without extended attributes would otherwise be a volume where no rule
 /// works. The sentence it leans on is that the action re-runs *idempotently* on
 /// an unchanged file. Two actions did not, and neither needed a contrived
-/// filesystem to reach — `setxattr` answers `ENOTSUP` on exFAT, which is the
-/// format of most USB sticks, and `WatchScope` deliberately admits `/Volumes`.
+/// filesystem to reach — any volume that will not keep the attribute, or whose
+/// AppleDouble `._name` sidecar something drops, and `WatchScope` deliberately
+/// admits `/Volumes`. (exFAT, which this used to name, keeps it —
+/// ARCHITECTURE.md § Autopilot.)
 ///
 /// So every test here runs a rule id that was never stamped, against a file
 /// already sitting where that rule wants it. The stamp is not disabled; it is

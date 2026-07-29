@@ -5,6 +5,7 @@ import AppKit
 import Foundation
 import HelmRuntime
 import Security
+import SystemConfiguration
 
 // MARK: - Shell
 
@@ -52,6 +53,104 @@ public final class WorkspaceAppObserver: AppObserverPort {
             // engine's queue has something correct to read a moment later.
             RunningApps.shared.refreshOnMain(then: onChange)
         }
+    }
+}
+
+// MARK: - DynamicStoreNetworkWatch
+
+/// Production `NetworkWatchPort`: a `SCDynamicStore` session on the keys that
+/// move when a tunnel does.
+///
+/// The module used to ask `scutil` once per launch and answer from that for the
+/// rest of the session, so a VPN started from the macOS menu bar, stopped in
+/// System Settings, or dropped by the network left Helm's dot saying whatever
+/// it had said at login.
+public final class DynamicStoreNetworkWatch: NetworkWatchPort {
+
+    /// The callback's context, and the reason this is a class rather than the
+    /// closure itself.
+    ///
+    /// `SCDynamicStoreCreate` retains what the context holds and releases it
+    /// when the session goes — measured, not assumed: one retain on create, one
+    /// release on drop. So a notification already sitting on the queue when the
+    /// module is switched off resolves to a live object rather than to freed
+    /// memory, which is what ARCHITECTURE.md § "An observer outlives the thing
+    /// it points at" is about. Clearing the action is what makes that late
+    /// notification a no-op.
+    private final class Sink: @unchecked Sendable {
+        private let lock = NSLock()
+        private var action: (@Sendable () -> Void)?
+        init(_ action: @escaping @Sendable () -> Void) { self.action = action }
+        func fire() { lock.lock(); let action = action; lock.unlock(); action?() }
+        func clear() { lock.lock(); action = nil; lock.unlock() }
+    }
+
+    private let lock = NSLock()
+    private var store: SCDynamicStore?
+    private var sink: Sink?
+    /// Notifications land here, never on the main thread: the engine hops to
+    /// its own serial queue to run `scutil` anyway.
+    private let queue = DispatchQueue(label: "helm.vpn.network", qos: .utility)
+
+    public init() {}
+    deinit { stopObserving() }
+
+    public func startObserving(_ onChange: @escaping @Sendable () -> Void) {
+        stopObserving()
+        let sink = Sink(onChange)
+        var context = SCDynamicStoreContext(
+            version: 0,
+            info: Unmanaged.passUnretained(sink).toOpaque(),
+            retain: { UnsafeRawPointer(Unmanaged<Sink>.fromOpaque($0).retain().toOpaque()) },
+            release: { Unmanaged<Sink>.fromOpaque($0).release() },
+            copyDescription: nil)
+        let callback: SCDynamicStoreCallBack = { _, _, info in
+            guard let info else { return }
+            Unmanaged<Sink>.fromOpaque(info).takeUnretainedValue().fire()
+        }
+        guard let store = SCDynamicStoreCreate(nil, "com.helm.vpn" as CFString,
+                                               callback, &context) else {
+            HelmLog.shared.warn("vpn", "no network-state session; the connection list "
+                + "will only be re-read when Helm is asked")
+            return
+        }
+        // Which key answers which half: the global entity moves when the
+        // default route does (a full-tunnel VPN coming up or going away), the
+        // per-service state entity when any service gains or loses an address
+        // (a split tunnel, and a tunnel that simply dropped), and the Setup
+        // pattern when the *configuration* changes — a VPN added or removed in
+        // System Settings, which is what left the rule editor offering a list
+        // missing the connection the rule was for.
+        let keys = [SCDynamicStoreKeyCreateNetworkGlobalEntity(
+            nil, kSCDynamicStoreDomainState, kSCEntNetIPv4)]
+        let patterns = [
+            SCDynamicStoreKeyCreateNetworkServiceEntity(
+                nil, kSCDynamicStoreDomainState, kSCCompAnyRegex, kSCEntNetIPv4),
+            SCDynamicStoreKeyCreateNetworkServiceEntity(
+                nil, kSCDynamicStoreDomainSetup, kSCCompAnyRegex, kSCEntNetInterface),
+        ]
+        guard SCDynamicStoreSetNotificationKeys(store, keys as CFArray, patterns as CFArray),
+              SCDynamicStoreSetDispatchQueue(store, queue) else {
+            HelmLog.shared.warn("vpn", "could not subscribe to network-state changes")
+            return
+        }
+        lock.lock()
+        self.store = store
+        self.sink = sink
+        lock.unlock()
+    }
+
+    public func stopObserving() {
+        lock.lock()
+        let store = self.store
+        let sink = self.sink
+        self.store = nil
+        self.sink = nil
+        lock.unlock()
+        // Cleared before unscheduling, not after: unscheduling stops the next
+        // notification, and clearing is what stops the one already on the queue.
+        sink?.clear()
+        if let store { SCDynamicStoreSetDispatchQueue(store, nil) }
     }
 }
 
@@ -198,5 +297,6 @@ public struct VPNSystemPorts {
     public let runner = ScutilRunner()
     public let credentials = KeychainCredentials()
     public let apps = WorkspaceAppObserver()
+    public let network = DynamicStoreNetworkWatch()
     public init() {}
 }

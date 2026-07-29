@@ -36,7 +36,10 @@ public struct VPNSettingsPage: View {
                 HelmMetricStrip([
                     .init("\(vm.connections.count)", VPNStr.metricConnections),
                     .init("\(activeCount)", VPNStr.metricActive, tint: activeCount > 0 ? .green : nil),
-                    .init("\(vm.autoConnected.count)", VPNStr.metricAutomatic),
+                    // The rules written down, not the ones firing this second:
+                    // the dial sat directly above the list and read 0 over one
+                    // visible rule. Which of them is up is the dot's answer.
+                    .init("\(VPNRules.automationCount(rules))", VPNStr.metricAutomatic),
                 ])
             }
 
@@ -50,6 +53,16 @@ public struct VPNSettingsPage: View {
         }
         .formStyle(.grouped)
         .helmSettingsColumn()
+        // The engine is asked once in `init` and the view model is cached for
+        // the app's lifetime, so without these the page showed whatever the
+        // system said at launch — this was the only settings page of nine with
+        // no `.task` at all.
+        .task { vm.refresh() }
+        // A VPN connected, disconnected or added while the person was in
+        // System Settings. `DynamicStoreNetworkWatch` catches most of that
+        // already; coming back to Helm is the moment it costs nothing to be
+        // sure, and it is the one route that needs no observer to have fired.
+        .helmOnAppActive { vm.refresh() }
     }
 
     // MARK: - Connections
@@ -63,6 +76,7 @@ public struct VPNSettingsPage: View {
             }
             .font(.callout)
             .foregroundStyle(HelmText.quiet)
+            .accessibilityElement(children: .combine)
         } else {
             ForEach(vm.connections) { connection in
                 connectionRow(connection)
@@ -86,6 +100,10 @@ public struct VPNSettingsPage: View {
                 .font(.caption)
                 .foregroundStyle(HelmText.quiet)
             }
+            // The name and what it is doing are one thing to read, not two
+            // stops. On the text only, the way Disk and Duplicates do it: the
+            // switch beside it stays its own control.
+            .accessibilityElement(children: .combine)
             Spacer()
             if transitioning { ProgressView().controlSize(.small) }
             Toggle("", isOn: Binding(
@@ -162,7 +180,11 @@ public struct VPNSettingsPage: View {
         } note: {
             if missing, let name = rules[bundleID]?.vpnName {
                 HStack(spacing: 6) {
-                    Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.orange)
+                    // The token, not `.orange`: `HelmPermissionNote` draws this
+                    // exact glyph two rows away at 4.54:1, and the literal
+                    // measured 2.31:1 in light appearance.
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .foregroundStyle(HelmSignal.warning)
                         .accessibilityHidden(true)   // the text beside it says it
                     Text(VPNStr.ruleVPNMissing(name))
                         .font(.caption)
