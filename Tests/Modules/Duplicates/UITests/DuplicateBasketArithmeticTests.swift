@@ -30,8 +30,8 @@ final class DuplicateBasketArithmeticTests: XCTestCase {
     private var home: String { NSHomeDirectory() }
 
     private func model(_ groups: [DuplicateGroup]) async -> DuplicatesViewModel {
-        let store = NamespacedStore(namespace: "test.duplicates.\(UUID().uuidString)",
-                                    backing: UserDefaults.standard)
+        // In memory: the module's real store is the person's remembered folder.
+        let store = NamespacedStore(namespace: "duplicates", backing: InMemoryKeyValueStore())
         store.set("\(home)/Downloads", for: "folder")
         let dvm = DuplicatesViewModel(vm: ModuleViewModel(transport:
             OneAnswerTransport(groups: groups)), store: store)
@@ -54,6 +54,21 @@ final class DuplicateBasketArithmeticTests: XCTestCase {
         XCTAssertEqual(dvm.basket, [real])
         XCTAssertEqual(dvm.basketBytes, 4_000_000,
                        "the basket quoted the copy that stays")
+    }
+
+    /// The same figure, one path at a time: the basket menu names each copy
+    /// beside its own size, and asking the group would print the size of the
+    /// copy that stays against every row in the list.
+    func testACopysOwnSizeIsAskedOfThatCopy() async {
+        let clone = "\(home)/Downloads/clone.bin"
+        let real = "\(home)/Downloads/real.bin"
+        let dvm = await model([DuplicateGroup(copies: [.init(path: clone, bytes: 0),
+                                                      .init(path: real, bytes: 4_000_000)])])
+
+        XCTAssertEqual(dvm.bytes(of: real), 4_000_000)
+        XCTAssertEqual(dvm.bytes(of: clone), 0)
+        XCTAssertEqual(dvm.bytes(of: "\(home)/Downloads/never-seen.bin"), 0,
+                       "a path this search never returned has no size to quote")
     }
 
     /// And the whole group's promise is the sum of the ones that would go.

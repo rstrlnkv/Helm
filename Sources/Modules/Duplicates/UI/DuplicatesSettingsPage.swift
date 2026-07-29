@@ -6,14 +6,18 @@ import SwiftUI
 
 /// The module's page: pick a folder, watch it read, decide what goes.
 public struct DuplicatesSettingsPage: View {
-    @StateObject private var dvm: DuplicatesViewModel
+    /// Observed, never owned: Settings tears this page down on every sidebar
+    /// visit, and a `@StateObject` here took the search, the basket and the
+    /// phase with it. Hashing a folder is minutes of reading and there is no
+    /// on-disk cache behind it — the view model outlives the page.
+    @ObservedObject private var dvm: DuplicatesViewModel
     @State private var confirming = false
     @State private var diskAccess: PermissionState = .granted
     /// The toolbar's own width, which decides what it can carry.
     @State private var barWidth: CGFloat = 0
 
     public init(vm: ModuleViewModel, store: NamespacedStore) {
-        _dvm = StateObject(wrappedValue: DuplicatesViewModel(vm: vm, store: store))
+        dvm = DuplicatesViewModel.shared(vm: vm, store: store)
     }
 
     public var body: some View {
@@ -36,8 +40,19 @@ public struct DuplicatesSettingsPage: View {
                     }
                 Divider()
             }
+            // What the answer excludes belongs with the answer. This note used
+            // to appear only when nothing was found, so anyone who got results
+            // was never told that files under a megabyte were never compared.
+            if dvm.phase == .result, !dvm.groups.isEmpty {
+                Text(DupStr.floorNote)
+                    .font(.caption).foregroundStyle(HelmText.quiet)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 20).padding(.vertical, 8)
+                Divider()
+            }
             content
-            if !dvm.basket.isEmpty || dvm.banner != nil {
+            if !dvm.basket.isEmpty || dvm.banner != nil || !dvm.failures.isEmpty {
                 Divider()
                 basketBar
             }
@@ -54,7 +69,22 @@ public struct DuplicatesSettingsPage: View {
             // Without an explicit cancel SwiftUI supplies its own, in English
             // whatever language the rest of the dialog is in.
             Button(DupStr.cancel, role: .cancel) {}
+        } message: {
+            Text(Self.confirmationMessage(dvm.basket))
         }
+    }
+
+    /// The files the question is about, named.
+    ///
+    /// A count and a size name nothing, and this module deletes a person's own
+    /// photos and videos. Abbreviated by AppKit — `Redact` is the log's, and if
+    /// it is ever made to hash a component this dialog would start asking about
+    /// `IMG_4231#3f9a`. Four, then an ellipsis: a dialog is not a list view.
+    static func confirmationMessage(_ paths: [String]) -> String {
+        paths.prefix(4)
+            .map { ($0 as NSString).abbreviatingWithTildeInPath }
+            .joined(separator: "\n")
+            + (paths.count > 4 ? "\n…" : "")
     }
 
     // MARK: - Toolbar
@@ -138,23 +168,69 @@ public struct DuplicatesSettingsPage: View {
     // MARK: - Basket
 
     private var basketBar: some View {
-        HStack {
-            if let banner = dvm.banner {
-                Text(banner).font(.callout)
-                Spacer()
-                Button(DupStr.close) { dvm.dismissBanner() }
-                    .controlSize(.small)
-            } else {
-                Text("\(DupStr.basket): \(dvm.basket.count) · \(Bytes(dvm.basketBytes))")
-                    .font(.callout)
-                    .contentTransition(.numericText())
-                    .animation(HelmMotion.interface, value: dvm.basketBytes)
-                Spacer()
-                Button(DupStr.moveToTrash) { confirming = true }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
+        // Stacked, not exclusive: what macOS refused stays ticked so the person
+        // can fix the permission and press the button again, which means the
+        // basket and the outcome are both true at the same moment. Drawing the
+        // outcome only for an empty basket hid the failure list in exactly the
+        // case it exists for — seen on a render, not reasoned about.
+        VStack(alignment: .leading, spacing: 8) {
+            if dvm.banner != nil || !dvm.failures.isEmpty {
+                outcomeRow
+            }
+            if !dvm.basket.isEmpty {
+                basketRow
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 20).padding(.vertical, 12)
+    }
+
+    /// What actually happened, named and reasoned — the component Disk,
+    /// Leftovers and the orphans tab already use.
+    private var outcomeRow: some View {
+        HStack(spacing: 10) {
+            HelmRemovalOutcome(
+                succeededText: dvm.banner ?? "",
+                removed: dvm.removedCount,
+                failures: dvm.failures.map {
+                    HelmRemovalFailure(path: $0.path,
+                                       reason: TrashReasonText.sentence($0.reason.rawValue))
+                },
+                needsFullDiskAccess: diskAccess == .denied)
+                // Bounded, as Leftovers bounds it: unbounded, each named
+                // failure's Reveal button ran to the right edge and sat under
+                // the Close button.
+                .frame(maxWidth: 520, alignment: .leading)
+            Spacer(minLength: 8)
+            Button(DupStr.close) { dvm.dismissBanner() }
+                .controlSize(.small)
+        }
+    }
+
+    private var basketRow: some View {
+        HStack(spacing: 10) {
+            // A count is not a list. Everything about to be trashed can be
+            // named here, and taken back out without hunting for its row.
+            Menu {
+                ForEach(dvm.basket, id: \.self) { path in
+                    Button {
+                        dvm.toggleBasket(path)
+                    } label: {
+                        Text("\((path as NSString).lastPathComponent)  ·  \(Bytes(dvm.bytes(of: path)))  ✕")
+                    }
+                }
+            } label: {
+                Text("\(DupStr.basket): \(dvm.basket.count) · \(Bytes(dvm.basketBytes))")
+                    .contentTransition(.numericText())
+                    .animation(HelmMotion.interface, value: dvm.basketBytes)
+                    .font(.system(size: 12, design: .monospaced))
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            .help(DupStr.basketContents)
+            Spacer()
+            Button(DupStr.moveToTrash) { confirming = true }
+                .buttonStyle(.borderedProminent)
+        }
     }
 }

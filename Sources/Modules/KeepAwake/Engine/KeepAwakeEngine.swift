@@ -30,6 +30,13 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 
     private var manualOn = false
     private var suppressed = false
+    /// An admin password prompt is on screen and has not been answered.
+    ///
+    /// Nothing else can stand for this. `isSudoersInstalled()` asks the
+    /// filesystem, and the file appears only when the person types their
+    /// password — so for the whole life of the prompt, which is seconds to
+    /// minutes, the answer is the same "no" that started it.
+    private var sudoersInstallInFlight = false
 
     private var expiryToken: AnyObject?
     private var jiggleToken: AnyObject?
@@ -275,16 +282,35 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 
     private func engageClamshell() {
         if !clamshell.isSudoersInstalled() {
+            // Every false→true edge of `isActive` and every settings change
+            // reaches here, and while a prompt is up the disk still says the
+            // rule is missing — so without this the person got one password
+            // dialog per click for a single decision, each of them an
+            // `osascript` writing the same staging file in /etc/sudoers.d.
+            // A *declined* prompt is a different state: the flag clears when
+            // the prompt is answered, so the next session asks again.
+            guard !sudoersInstallInFlight else { return }
+            sudoersInstallInFlight = true
             clamshell.installSudoers { [weak self] ok in
                 // The osascript callback arrives on a background queue; engine
                 // state and store writes belong on main.
                 DispatchQueue.main.async {
-                    if ok { self?.reallyEngageClamshell() }
+                    self?.sudoersInstallFinished(granted: ok)
                 }
             }
         } else {
             reallyEngageClamshell()
         }
+    }
+
+    /// The prompt has been answered, and only now is there a file to reason
+    /// about. Both questions asked while it was up were asked of a rule that
+    /// did not exist yet, so both are asked again here.
+    private func sudoersInstallFinished(granted: Bool) {
+        sudoersInstallInFlight = false
+        guard granted else { return }
+        reallyEngageClamshell()
+        releaseSudoersIfUnneeded()
     }
 
     /// Switching the option off takes the passwordless-sudo rule back out.

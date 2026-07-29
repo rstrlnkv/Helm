@@ -33,7 +33,7 @@ import HelmUI
         let split = SettingsSplitViewController(model: model)
         let window = NSWindow(contentViewController: split)
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
-        window.title = "Helm Settings"
+        window.title = AppStr.settingsWindowTitle
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.setContentSize(Self.defaultSize)
@@ -280,6 +280,19 @@ private struct MenuBarSettingsView: View {
     @State private var diskAccess: PermissionState = .granted
     @State private var accessibility: PermissionState = .granted
     private let adHocBuild = PermissionCheck.isAdHocSigned()
+
+    /// The permissions an enabled module actually uses, in table order.
+    private var neededPermissions: [PermissionNeed] {
+        let declared = ModuleRegistry.all
+            .filter { ModuleHost.shared.isEnabled($0) }
+            .flatMap { $0.moduleMetadata.permissions }
+        return PermissionNeed.allCases.filter { need in
+            switch need {
+            case .fullDiskAccess: return declared.contains(.fullDisk)
+            case .accessibility: return declared.contains(.accessibility)
+            }
+        }
+    }
     @State private var loggingOn = LogPolicy.isEnabled(
         version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0",
         override: AppSettings.loggingOverride)
@@ -491,8 +504,13 @@ private struct MenuBarSettingsView: View {
             }
             Section(AppStr.permissions) {
                 // Driven by the table, so a new permission shows up here
-                // without anyone remembering to add a row.
-                ForEach(PermissionNeed.allCases, id: \.self) { need in
+                // without anyone remembering to add a row — but only the ones
+                // an enabled module actually uses. Listing all of them asked
+                // someone who has switched Keyboard and Keep Awake off to grant
+                // Accessibility for nothing, which is how people learn to grant
+                // everything without reading. `PermissionAudit.run()` already
+                // filters this way; the two disagreed.
+                ForEach(neededPermissions, id: \.self) { need in
                     let granted = need.state(accessibility: accessibility,
                                              fullDisk: diskAccess) == .granted
                     permissionRow(AppStr.permissionTitle(need),
@@ -680,27 +698,31 @@ private struct AboutHelmView: View {
         }
     }
 
-    /// One badge: which builds this copy takes.
+    /// One badge: what this copy *is*.
     ///
     /// It was two — BETA for the program and DEV for the channel — on the
     /// reasoning that both facts were true. They are, but they are not two
     /// things to the person reading: pre-1.0 and "on the early channel" both
     /// answer "how finished is what I am running", and a pair reading BETA DEV
-    /// makes the reader work out which one wins. The channel is the stronger
-    /// claim and it subsumes the other, so it is the one shown.
+    /// makes the reader work out which one wins.
+    ///
+    /// It then answered from the wrong fact. The badge read the *channel
+    /// preference*, so switching the segmented control to Beta on a
+    /// `0.7.2-dev.34` build relabelled the running build BETA — while the row
+    /// above it went on offering dev releases, because a preference is not a
+    /// binary. The badge describes the build; the picker below it describes
+    /// what will be offered next, and those are allowed to differ.
+    private var isDevBuild: Bool { shortVersion.contains("-dev") }
+
     private var badge: some View {
-        HelmBadge(channel == .dev ? AppStr.devBadge : AppStr.betaBadge,
-                  tint: channel == .dev ? .blue : .orange,
+        HelmBadge(isDevBuild ? AppStr.devBadge : AppStr.betaBadge,
+                  tint: isDevBuild ? .blue : .orange,
                   emphasis: .prominent)
-            .help(channel == .dev ? AppStr.channelDevNote : AppStr.channelBetaNote)
-            // The badge changes with the segmented control below it; a swap
-            // with no transition reads as a glitch at this size.
-            .transition(.opacity)
-            .animation(HelmMotion.interface, value: channel)
+            .help(isDevBuild ? AppStr.channelDevNote : AppStr.channelBetaNote)
     }
 
     private var badgeAccessibilityLabel: String {
-        "Helm, \(channel == .dev ? AppStr.devBadge : AppStr.betaBadge)"
+        "Helm, \(isDevBuild ? AppStr.devBadge : AppStr.betaBadge)"
     }
 
     // MARK: - Instrument row
@@ -722,7 +744,12 @@ private struct AboutHelmView: View {
             updateRow
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
-            Divider().opacity(0.6)
+            // The token, not a divider dimmed by eye: every other hairline in
+            // the app is this colour, and 0.6 of a system divider is not a
+            // value anybody can match on the next screen over.
+            Rectangle()
+                .fill(HelmSurface.hairline)
+                .frame(height: 1)
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text(AppStr.updateChannel)
@@ -761,7 +788,7 @@ private struct AboutHelmView: View {
         case .failed:
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 10) {
-                    statusIcon("exclamationmark.triangle.fill", .orange)
+                    statusIcon("exclamationmark.triangle.fill", HelmSignal.warning)
                     Text(AppStr.updateFailed).lineLimit(2)
                     Spacer()
                 }
@@ -796,20 +823,32 @@ private struct AboutHelmView: View {
                 }
             } else if updater.lastMessage == "manual-install" {
                 HStack(spacing: 10) {
-                    statusIcon("exclamationmark.triangle.fill", .orange)
+                    statusIcon("exclamationmark.triangle.fill", HelmSignal.warning)
                     Text(AppStr.updateManualInstall).lineLimit(2)
                     Spacer()
                 }
             } else if updater.lastMessage == "error" {
                 HStack(spacing: 10) {
-                    statusIcon("exclamationmark.triangle.fill", .orange)
+                    statusIcon("exclamationmark.triangle.fill", HelmSignal.warning)
                     Text(AppStr.updateCheckFailed).lineLimit(1)
                     Spacer()
                     Button(AppStr.retry) { updater.checkNow() }
                 }
+            } else if let newest = updater.aheadOfChannel {
+                // Before "up to date", which this state used to be read as: the
+                // check reports both, and being ahead is the more specific
+                // answer of the two.
+                HStack(spacing: 10) {
+                    statusIcon("arrow.up.circle.fill", HelmSignal.warning)
+                    Text(AppStr.aheadOfChannel(newest))
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer()
+                    Button(AppStr.checkNow) { updater.checkNow() }
+                }
             } else if updater.lastMessage == "up-to-date" {
                 HStack(spacing: 10) {
-                    statusIcon("checkmark.circle.fill", .green)
+                    statusIcon("checkmark.circle.fill", HelmSignal.success)
                     Text(AppStr.upToDate).lineLimit(1)
                     Spacer()
                     Button(AppStr.checkNow) { updater.checkNow() }
@@ -911,7 +950,10 @@ private struct WhatsNewView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack(alignment: .firstTextBaseline, spacing: 8) {
                                 Text(entry.version).font(.title3.bold())
-                                Text(entry.date).font(.caption).foregroundStyle(HelmText.faint)
+                                // The entry stores "2026-07-28" because that is
+                                // what sorts; no language writes it that way.
+                                Text(HelmDates.day(entry.date))
+                                    .font(.caption).foregroundStyle(HelmText.faint)
                             }
                             ForEach(entry.items) { item in
                                 HStack(alignment: .firstTextBaseline, spacing: 8) {

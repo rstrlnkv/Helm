@@ -147,6 +147,10 @@ public struct KeepAwakePanelTile: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(HelmA11y.moreActions)
+        // Which of the two things this button does it has just done. The block
+        // below is hidden from the tree while collapsed, so without this the
+        // only feedback for pressing it was silence.
+        .accessibilityValue(showMore ? KAStr.disclosureExpanded : KAStr.disclosureCollapsed)
     }
 
     private func pillLabel(_ content: some View, active: Bool = false) -> some View {

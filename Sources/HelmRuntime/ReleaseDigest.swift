@@ -47,12 +47,30 @@ public enum ReleaseDigest {
 
     /// Streams the file rather than reading it whole: a release zip is tens of
     /// megabytes and this runs while the app is up.
+    ///
+    /// The pool goes **inside** the loop, not around it. `FileHandle.read`
+    /// returns an autoreleased `Data`, so without one every slice ever read
+    /// stays alive until the whole call returns and the footprint tracks the
+    /// volume read rather than what is kept: measured over a 1200 MB file,
+    /// 1204 MB of growth without the pool against 1.0 MB with it. This is the
+    /// same defect the duplicate scanner's hash loop had, in a loop that is not
+    /// even parallel — see ARCHITECTURE.md § Memory.
     public static func sha256(ofFileAt url: URL) throws -> String {
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
         var hasher = SHA256()
-        while let chunk = try handle.read(upToCount: 1 << 20), !chunk.isEmpty {
-            hasher.update(data: chunk)
+        while true {
+            // Read and update inside the pool, hand only a verdict back out —
+            // the same shape `DuplicateScanner.hash` uses, so the slice never
+            // outlives the iteration that read it.
+            let more: Bool = try autoreleasepool {
+                guard let data = try handle.read(upToCount: 1 << 20), !data.isEmpty else {
+                    return false
+                }
+                hasher.update(data: data)
+                return true
+            }
+            if !more { break }
         }
         return hasher.finalize().map { String(format: "%02x", $0) }.joined()
     }

@@ -21,6 +21,10 @@ import HelmRuntime
     enum InstallState: Equatable { case idle, downloading, installing, failed }
 
     @Published private(set) var available: Release?
+    /// What the channel's newest release is, when the running build is a
+    /// prerelease ahead of it. Nil in every other state, including while an
+    /// update is on offer.
+    @Published private(set) var aheadOfChannel: String?
     @Published private(set) var checking = false
     @Published private(set) var installState: InstallState = .idle
     /// A short status for the settings row after a manual check (nil = idle).
@@ -105,6 +109,7 @@ import HelmRuntime
         guard channel != Self.channel else { return }
         Self.channel = channel
         available = nil
+        aheadOfChannel = nil
         checkNow()
     }
 
@@ -136,7 +141,13 @@ import HelmRuntime
             case .upToDate:
                 HelmLog.shared.info("update", "up to date on \(channel.rawValue)")
                 available = nil
+                aheadOfChannel = nil
                 if manual { lastMessage = "up-to-date" }
+            case .ahead(let newest):
+                HelmLog.shared.info("update", "ahead of \(channel.rawValue) (newest \(newest))")
+                available = nil
+                aheadOfChannel = newest
+                if manual { lastMessage = "ahead" }
             case .error:
                 HelmLog.shared.warn("update", "check failed (HTTP \(http.statusCode), \(channel.rawValue))")
                 if manual { lastMessage = "error" }
@@ -146,6 +157,7 @@ import HelmRuntime
                     if manual { lastMessage = "error" }
                     return
                 }
+                aheadOfChannel = nil
                 available = Release(version: r.version,
                                     pageURL: page,
                                     zipURL: r.zipURL.flatMap(URL.init(string:)),

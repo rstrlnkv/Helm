@@ -46,8 +46,10 @@ public enum RemovableScope {
     public static func isRemovable(_ path: String,
                                    home: String = NSHomeDirectory()) -> Bool {
         // Resolve first: `..` is invisible to a prefix test but not to the
-        // filesystem, which is what actually performs the removal.
-        let resolved = URL(fileURLWithPath: path).standardizedFileURL.path
+        // filesystem, which is what actually performs the removal — and neither
+        // is a symlinked ancestor, which `standardizedFileURL` alone leaves in
+        // place while `trashItem` follows it (PathCanonical says what that cost).
+        let resolved = PathCanonical.resolvingAncestors(path)
         guard !resolved.hasSuffix("/"), resolved != "/" else { return false }
         for bad in forbidden where resolved == bad || resolved.hasPrefix(bad + "/") {
             return false

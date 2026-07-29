@@ -64,6 +64,29 @@ final class TypingBufferTests: XCTestCase {
         XCTAssertNil(buffer.accept(.click)?.ending)
     }
 
+    /// Which events are proof the caret went somewhere else.
+    ///
+    /// The module holds two things that can only be spent at a caret that has
+    /// not moved — the undo record and the remembered word — and each used to
+    /// answer this for itself, in its own `switch`, in the same function. They
+    /// disagreed about `.navigation`: the undo dropped on it and the remembered
+    /// word was stored across it, so one Left Arrow left the gesture holding a
+    /// word three lines up. One list, exhaustive, so a third caller cannot
+    /// invent a third answer.
+    func testTheEventsThatAreProofTheCaretMoved() {
+        for event in [TypingBuffer.Event.navigation, .click, .focusChange] {
+            XCTAssertTrue(event.movedTheCaret,
+                          "\(event) moved the caret and did not say so")
+        }
+        // A chord is the one boundary that is deliberately not proof: the
+        // gesture's own keys reach the tap before Carbon dispatches the action.
+        for event in [TypingBuffer.Event.character("a"), .backspace, .space, .newline,
+                      .punctuation("."), .chord] {
+            XCTAssertFalse(event.movedTheCaret,
+                           "\(event) was taken as proof the caret moved")
+        }
+    }
+
     /// A tap that never sees a boundary must not become a leak.
     func testTheBufferIsBounded() {
         var buffer = TypingBuffer()

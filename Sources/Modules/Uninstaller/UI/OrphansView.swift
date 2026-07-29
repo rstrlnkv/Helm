@@ -37,7 +37,9 @@ struct OrphansView: View {
                                    needsFullDiskAccess: failures.contains {
                                        $0.reason == TrashFailure.Reason.needsFullDiskAccess.rawValue
                                    })
-                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    // 20/12 like every other bar in Helm. At 12/10 this one sat
+                    // narrower than the toolbar above it and the footer below.
+                    .padding(.horizontal, 20).padding(.vertical, 12)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             content
@@ -54,13 +56,18 @@ struct OrphansView: View {
         if scanning {
             HelmBusyState(UnStr.scanningOrphans)
         } else if !scanned {
-            HelmEmptyState(symbol: "clock.arrow.circlepath", tint: .orange,
+            // The module's own category tint, not a colour chosen per state:
+            // orange and green here read as a warning and a success on a screen
+            // that is only waiting to be asked. `UninstallerDescriptor.category`
+            // is `.files`.
+            HelmEmptyState(symbol: "clock.arrow.circlepath", tint: ModuleCategory.files.tint,
                            message: UnStr.orphansIntro) {
                 Button(UnStr.scanOrphans) { Task { await scan() } }
                     .buttonStyle(.borderedProminent)
             }
         } else if groups.isEmpty {
-            HelmEmptyState(symbol: "checkmark.circle", tint: .green, message: UnStr.noOrphans) {
+            HelmEmptyState(symbol: "checkmark.circle", tint: ModuleCategory.files.tint,
+                           message: UnStr.noOrphans) {
                 // Not prominent: looking again for something that was not there
                 // is available, not recommended.
                 Button(UnStr.rescan) { Task { await scan() } }
@@ -146,7 +153,7 @@ struct OrphansView: View {
         await scan()
         failures = result.failures
         removedCount = result.trashed.count
-        banner = UnStr.freed(Bytes(result.freedBytes))
+        banner = UnStr.movedToTrash(Bytes(result.freedBytes))
     }
 
     private func binding(for path: String) -> Binding<Bool> {

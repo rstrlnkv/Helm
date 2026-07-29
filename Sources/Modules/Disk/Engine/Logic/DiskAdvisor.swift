@@ -17,9 +17,21 @@ public struct DiskAdvice: Codable, Equatable, Sendable, Identifiable {
     public let path: String
     public let bytes: Int
     public let kind: Kind
+    /// When the file was last **written**, as epoch seconds — the only date the
+    /// scanner has (`ATTR_CMN_MODTIME`), and the one the age thresholds above
+    /// are measured against. nil where there is none to give: a cache advice is
+    /// a folder, whose own mtime says when something was last added to it and
+    /// nothing about what is inside.
+    ///
+    /// It travels with the advice because the row that asks somebody to bin a
+    /// gigabyte otherwise offers a category word as its whole reason — and the
+    /// category word claimed *use*, which no attribute here measures.
+    public let modified: TimeInterval?
 
-    public init(name: String, path: String, bytes: Int, kind: Kind) {
+    public init(name: String, path: String, bytes: Int, kind: Kind,
+                modified: TimeInterval? = nil) {
         self.name = name; self.path = path; self.bytes = bytes; self.kind = kind
+        self.modified = modified
     }
 }
 
@@ -67,10 +79,12 @@ public enum DiskAdvisor {
             let age = now.timeIntervalSince1970 - node.modified
             if node.path.hasPrefix(downloads), node.bytes >= downloadFloor, age > downloadAge {
                 advice.append(DiskAdvice(name: node.name, path: node.path,
-                                         bytes: node.bytes, kind: .oldDownload))
+                                         bytes: node.bytes, kind: .oldDownload,
+                                         modified: node.modified))
             } else if node.bytes >= largeFloor, age > largeAge {
                 advice.append(DiskAdvice(name: node.name, path: node.path,
-                                         bytes: node.bytes, kind: .largeOld))
+                                         bytes: node.bytes, kind: .largeOld,
+                                         modified: node.modified))
             }
         }
 

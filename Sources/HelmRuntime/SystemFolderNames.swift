@@ -46,9 +46,20 @@ public enum SystemFolderNames {
 
     private static let cache = TableCache()
 
+    /// What macOS calls the directory for a language Helm calls something else.
+    ///
+    /// The lproj name happens to equal the language code for seven of the eight
+    /// languages, which is why building the path out of the raw code survived
+    /// this long. Chinese is the exception: macOS ships `zh_CN`, `zh_TW` and
+    /// `zh_HK` and no plain `zh`, so the table silently loaded as empty and the
+    /// ring showed a Chinese user `Applications` where Finder says 应用程序.
+    /// Helm's `zh` is Simplified, so `zh_CN` is the one to read.
+    private static let systemDirectory = ["zh": "zh_CN"]
+
     private static func table(for language: String) -> [String: String] {
         if let hit = cache.get(language) { return hit }
-        let path = localizationsRoot + "/" + language + ".lproj/SystemFolderLocalizations.strings"
+        let directory = systemDirectory[language] ?? language
+        let path = localizationsRoot + "/" + directory + ".lproj/SystemFolderLocalizations.strings"
         let loaded = (NSDictionary(contentsOfFile: path) as? [String: String]) ?? [:]
         cache.set(language, loaded)
         return loaded

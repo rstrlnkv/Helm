@@ -202,7 +202,9 @@ final class LayoutEngineEdgeTests: XCTestCase {
     func testATurnedOffModuleTypesNothingAndRemembersNothing() {
         let engine = engine(table: ["ghbdtn": "привет"])
         tap.type("ghbdtn")
-        tap.send(.navigation)   // ends the word without converting; it is remembered
+        // A chord, not an arrow: a caret move now forgets the word by itself, so
+        // arranging this with one would prove nothing about `deactivate`.
+        tap.send(.chord)        // ends the word without converting; it is remembered
         XCTAssertTrue(typing.performed.isEmpty, "precondition: nothing was converted")
         engine.deactivate()
         engine.convertLastWord()

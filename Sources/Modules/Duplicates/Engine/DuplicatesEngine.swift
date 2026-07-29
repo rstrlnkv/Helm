@@ -50,10 +50,7 @@ public final class DuplicatesEngine: ModuleEngine, @unchecked Sendable {
         await offTheCooperativePool {
             let unique = Array(Set(paths))
             let (allowed, refused) = UserFileScope.partition(unique)
-            let result = HelmTrash.remove(allowed: allowed, outOfScope: refused,
-                                          module: "duplicates")
-            return DuplicateRemoval(removed: result.removed, refused: result.refused,
-                                    freedBytes: result.freedBytes)
+            return HelmTrash.remove(allowed: allowed, outOfScope: refused, module: "duplicates")
         }
     }
 
@@ -85,20 +82,10 @@ public final class DuplicatesEngine: ModuleEngine, @unchecked Sendable {
     }
 }
 
-public struct DuplicateRemoval: Codable, Equatable, Sendable {
-    public let removed: [String]
-    /// With the reason attached — see `DiskRemoval`.
-    public let refused: [HelmTrash.Refusal]
-    public let freedBytes: Int
-
-    public var failed: [String] { refused.map(\.path) }
-
-    public init(removed: [String], refused: [HelmTrash.Refusal], freedBytes: Int) {
-        self.removed = removed
-        self.refused = refused
-        self.freedBytes = freedBytes
-    }
-}
+/// What the trash command answers with — the same value `DiskRemoval` names,
+/// and for the same reason. Its doc comment used to point at `DiskRemoval` for
+/// the explanation of a field, which is a type citing its own duplicate.
+public typealias DuplicateRemoval = HelmTrash.Result
 
 /// Serial box around the in-flight search, so cancel can reach it.
 ///

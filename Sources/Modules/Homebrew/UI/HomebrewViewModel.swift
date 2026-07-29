@@ -6,6 +6,7 @@ import Module_Homebrew_Engine
 @MainActor public final class HomebrewViewModel: ObservableObject {
     private let transport: EngineTransport
     private let client: TransportClient
+    private var eventsTask: Task<Void, Never>?
     private let vm: ModuleViewModel
 
     @Published public private(set) var status = BrewStatus(installed: false, brewPath: nil)
@@ -46,13 +47,18 @@ import Module_Homebrew_Engine
         self.transport = vm.transport
         self.client = TransportClient(vm.transport)
         let events = transport.events
-        Task { [weak self] in
+        eventsTask = Task { [weak self] in
             for await e in events {
                 guard let self else { break }   // page closed: stop consuming
-                await self.handle(e)
+                self.handle(e)
             }
         }
     }
+
+    /// Ends the event loop, which unregisters the transport subscriber. The
+    /// `guard` above already released the view model; without this the task
+    /// itself waited for an event that may never come.
+    deinit { eventsTask?.cancel() }
 
     /// What the page asks for on appear. The first visit does the work; later
     /// visits show what is already here.
