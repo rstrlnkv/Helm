@@ -59,6 +59,17 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// Which of those were ever observed up. Without it, "not up right now"
     /// cannot be told from "not up yet".
     private var _cameUp: Set<String> = []
+    private var _lastAutomation: VPNAutomation?
+
+    public var lastAutomation: VPNAutomation? {
+        lock.lock(); defer { lock.unlock() }; return _lastAutomation
+    }
+
+    /// Test seam: lets a test tell "nothing was written here" from "nothing was
+    /// ever written". Nothing in the app clears this.
+    func clearLastAutomationForTesting() {
+        lock.lock(); _lastAutomation = nil; lock.unlock()
+    }
 
     public var connections: [VPNConnection] {
         lock.lock(); defer { lock.unlock() }; return _connections
@@ -71,6 +82,9 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     private var knownBundleIDs: Set<String> = []
     private var running = false
     private let work: VPNWorkQueue
+    /// Injected so a firing's moment is a fact of the caller rather than of the
+    /// machine — `VPNAutomation.spinPhase` measures from it.
+    private let now: @Sendable () -> Date
 
     public init(settings: VPNSettings,
                 runner: VPNRunnerPort,
@@ -78,7 +92,9 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
                 apps: AppObserverPort,
                 network: NetworkWatchPort? = nil,
                 transport: LocalTransport = LocalTransport(),
+                now: @escaping @Sendable () -> Date = Date.init,
                 work: VPNWorkQueue = .background) {
+        self.now = now
         self.work = work
         self.settings = settings
         self.runner = runner
@@ -165,6 +181,13 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         _autoConnected.subtract(dropped)
         _cameUp.subtract(dropped)
         lock.unlock()
+        // Recorded outside the lock the names were collected under: sorted so
+        // that when several go at once the last one written is the same on
+        // every run.
+        for name in dropped.sorted() {
+            HelmLog.shared.info("vpn", "automatic connection dropped: \(Redact.vpn(name))")
+            recordAutomation(name, .disconnected)
+        }
         emitState()
     }
 
@@ -196,7 +219,10 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
 
     private func connectNow(_ name: String, auto: Bool) {
         HelmLog.shared.info("vpn", "connect \(Redact.vpn(name))\(auto ? " (auto)" : "")")
-        if auto { lock.lock(); _autoConnected.insert(name); lock.unlock() }
+        if auto {
+            lock.lock(); _autoConnected.insert(name); lock.unlock()
+            recordAutomation(name, .connected)
+        }
         var args = ["--nc", "start", name]
         // Known limitation: scutil takes the shared secret only as an argument,
         // and process arguments are readable by every process running as this
@@ -214,12 +240,13 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         scheduleRefresh()
     }
 
-    public func disconnect(_ name: String) {
-        work.run { [weak self] in self?.disconnectNow(name) }
+    public func disconnect(_ name: String, auto: Bool = false) {
+        work.run { [weak self] in self?.disconnectNow(name, auto: auto) }
     }
 
-    private func disconnectNow(_ name: String) {
-        HelmLog.shared.info("vpn", "disconnect \(Redact.vpn(name))")
+    private func disconnectNow(_ name: String, auto: Bool) {
+        HelmLog.shared.info("vpn", "disconnect \(Redact.vpn(name))\(auto ? " (auto)" : "")")
+        if auto { recordAutomation(name, .disconnected) }
         // Both books. `_cameUp` is the memory of "this one did come up", and a
         // name left in it outlives the session it belonged to: the next time
         // the same app launches and Helm raises the same VPN, the first refresh
@@ -231,6 +258,14 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         _ = runner.run(["--nc", "stop", name])
         emitState()
         scheduleRefresh()
+    }
+
+    /// The one writer, so "Helm caused this" is decided in a single place. Under
+    /// the same lock as `_autoConnected`, because `connectNow` runs on the work
+    /// queue and the drop above runs on the refresh path.
+    private func recordAutomation(_ name: String, _ kind: VPNAutomation.Kind) {
+        let firing = VPNAutomation(at: now(), name: name, kind: kind)
+        lock.lock(); _lastAutomation = firing; lock.unlock()
     }
 
     public func status(_ name: String) -> VPNStatus {
@@ -296,7 +331,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         let quit = knownBundleIDs.subtracting(now)
         knownBundleIDs = now
         let connectAuto: (String) -> Void = { [weak self] in self?.connect($0, auto: true) }
-        let disconnectClosure: (String) -> Void = { [weak self] in self?.disconnect($0) }
+        let disconnectClosure: (String) -> Void = { [weak self] in self?.disconnect($0, auto: true) }
         for id in launched where core.rules[id] != nil {
             core.appLaunched(id, connect: connectAuto, disconnect: disconnectClosure)
         }
@@ -323,6 +358,12 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         public let connections: [VPNConnection]
         public let autoConnected: [String]
         public let defaultName: String?
+        /// The last firing Helm caused, if any. Optional, so the synthesized
+        /// decoder reads it with `decodeIfPresent` and a payload written before
+        /// this field existed still decodes — a throw here would cost the page
+        /// its whole state for the sake of one field.
+        /// `VPNAutomationRecordingTests` holds a payload without it.
+        public let lastAutomation: VPNAutomation?
     }
 
     private func wireTransport() {
@@ -353,7 +394,8 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     private func emitState() {
         let payload = StatePayload(connections: connections,
                                     autoConnected: autoConnected.sorted(),
-                                    defaultName: defaultConnection?.name)
+                                    defaultName: defaultConnection?.name,
+                                    lastAutomation: lastAutomation)
         if let data = try? JSONEncoder().encode(payload) {
             localTransport.emit(EngineEvent(name: "state", payload: data))
         }
