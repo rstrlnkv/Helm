@@ -15,6 +15,7 @@ enum DupStr {
     static var moveToTrash: String { L("Move to Trash", [.ru: "Переместить в Корзину", .es: "Trasladar a la papelera", .fr: "Placer dans la corbeille", .de: "In den Papierkorb legen", .ja: "ゴミ箱に入れる", .zh: "移到废纸篓", .pt: "Mover para o Lixo"]) }
     static var systemItem: String { L("System item", [.ru: "Системный", .es: "Del sistema", .fr: "Élément système", .de: "Systemobjekt", .ja: "システム項目", .zh: "系统项目", .pt: "Item do sistema"]) }
     static var reveal: String { L("Show in Finder", [.ru: "Показать в Finder", .es: "Mostrar en el Finder", .fr: "Afficher dans le Finder", .de: "Im Finder zeigen", .ja: "Finderに表示", .zh: "在访达中显示", .pt: "Mostrar no Finder"]) }
+    static var quickLook: String { L("Quick Look", [.ru: "Быстрый просмотр", .es: "Vista rápida", .fr: "Coup d’œil", .de: "Übersicht", .ja: "クイックルック", .zh: "快速查看", .pt: "Visualização rápida"]) }
     /// What happened, not what people hope happened: the copies went to the
     /// Trash, which is on the same volume, so nothing is freed until the Trash
     /// is emptied. Word for word `DiskStrings.movedToTrash` — four modules say
@@ -37,6 +38,11 @@ enum DupStr {
     static var keepWhy: String { L("The copy that was there first. Helm never offers every copy of a file.", [.ru: "Копия, появившаяся раньше остальных. Helm никогда не предлагает удалить все копии файла.", .es: "La copia que lleva más tiempo ahí. Helm nunca ofrece todas las copias de un archivo.", .fr: "La copie présente depuis le plus longtemps. Helm ne propose jamais toutes les copies d’un fichier.", .de: "Die Kopie, die am längsten da ist. Helm bietet nie alle Kopien einer Datei an.", .ja: "最初からあるコピーです。Helm がすべてのコピーを削除対象にすることはありません。", .zh: "最早存在的那份副本。Helm 绝不会把文件的所有副本都列为可删。", .pt: "A cópia que está lá há mais tempo. O Helm nunca oferece todas as cópias de um arquivo."]) }
     static var keep: String { L("stays", [.ru: "останется", .es: "se queda", .fr: "reste", .de: "bleibt", .ja: "残す", .zh: "保留", .pt: "fica"]) }
     static var basketExtras: String { L("Extras to basket", [.ru: "Лишние — к удалению", .es: "Sobrantes a la cesta", .fr: "Les surplus au panier", .de: "Überzählige in den Korb", .ja: "余分をバスケットへ", .zh: "多余的放入收集篮", .pt: "Excedentes para a cesta"]) }
+    /// Not "Select all", which invites exactly the reading this module
+    /// refuses. A control that lies about its effect on files is the failure
+    /// this page is most exposed to.
+    static var basketAllExtras: String { L("All extras to basket", [.ru: "Все лишние — к удалению", .es: "Todos los sobrantes a la cesta", .fr: "Tous les surplus au panier", .de: "Alle Überzähligen in den Korb", .ja: "余分をすべてバスケットへ", .zh: "所有多余的放入收集篮", .pt: "Todos os excedentes para a cesta"]) }
+    static var clearBasket: String { L("Clear", [.ru: "Очистить", .es: "Vaciar", .fr: "Vider", .de: "Leeren", .ja: "クリア", .zh: "清空", .pt: "Limpar"]) }
     static var cancel: String { L("Cancel", [.ru: "Отменить", .es: "Cancelar", .fr: "Annuler", .de: "Abbrechen", .ja: "キャンセル", .zh: "取消", .pt: "Cancelar"]) }
     static var close: String { L("Close", [.ru: "Закрыть", .es: "Cerrar", .fr: "Fermer", .de: "Schließen", .ja: "閉じる", .zh: "关闭", .pt: "Fechar"]) }
 }
