@@ -94,12 +94,18 @@ features, PATCH = fixes.
     every launch and name a tunnel nobody had touched.
   - **Reduce Motion removes the movement and keeps the information**: no spin,
     the name still appears.
+  - **A Keep Awake countdown keeps the menu bar.** There is one icon and one
+    slot of text beside it, and a timer counting down in them is worth more than
+    a moment that has passed: while one runs, a firing turns nothing and names
+    nothing. The notification is the setting that survives a busy menu bar.
   - **The permission is asked for when the mode is picked**, never at launch,
     and a refusal is stated where the switch is rather than only in the app's
     permission list: the row says macOS refuses banners and that the name will
     be shown in the menu bar instead. A refused banner becomes the label, never
     silence — the person asked to be told loudly, and the one thing the app must
-    not do is quietly not tell them.
+    not do is quietly not tell them. Withdrawing the permission in System
+    Settings takes effect at the very next firing: Helm asks macOS then, rather
+    than trusting what it was told the last time the VPN settings were open.
   - **The connection's name never reaches the log.** It appears on screen and in
     the notification, both of which were asked for; the diagnostics file carries
     `vpn#<tag>` as every other VPN line already does.

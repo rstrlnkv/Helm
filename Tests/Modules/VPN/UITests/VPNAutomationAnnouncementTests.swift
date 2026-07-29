@@ -32,33 +32,39 @@ final class VPNAutomationAnnouncementTests: XCTestCase {
                                    payload: try! JSONEncoder().encode(payload)))
     }
 
-    /// Waits on the firing itself: the assertion is only reached once the very
-    /// payload carrying it has been handled, so nothing here passes by being
-    /// asked before the work happened.
-    private func settle(_ model: VPNViewModel, _ port: FakeAutomationNotice) async {
-        for _ in 0..<500 where model.lastAutomation == nil || port.posted.isEmpty {
-            await Task.yield()
-        }
+    /// Waits on the announcement itself rather than on a count of yields: the
+    /// firing arrives on the event loop, and everything the assertions read is
+    /// written by the task that handles it. A number of yields would be a race
+    /// that happens to come out right, which is the way a broken fix shipped
+    /// green here once already.
+    private func settle(_ model: VPNViewModel) async {
+        for _ in 0..<500 where model.lastAutomation == nil { await Task.yield() }
+        await model.announcement?.value
     }
 
     /// One object answers both questions, because the defect is that the two
     /// answers can both be "nothing" at the same time.
-    private func announce(notice: VPNNotice, authorized: Bool)
+    ///
+    /// `mirror` is what the settings page last wrote down and `macOS` is what
+    /// the system would answer if asked now. They are separate parameters
+    /// because the two disagree the moment someone revokes the permission in
+    /// System Settings, and the app hears nothing when they do.
+    private func announce(notice: VPNNotice, mirror: Bool, macOS: NoticeAuthorization)
         async -> (banner: [(String, String)], label: String?) {
         let transport = LocalTransport()
         let descriptor = VPNDescriptor()
         let host = ModuleViewModel(transport: transport)
-        let port = FakeAutomationNotice()
+        let port = FakeAutomationNotice(state: macOS)
         let model = descriptor.viewModel(host)
         model.setForTesting(automation: nil, notice: notice,
-                            bannerAuthorized: authorized, notices: port)
+                            bannerAuthorized: mirror, notices: port)
         emit(firing(), on: transport)
-        await settle(model, port)
+        await settle(model)
         return (port.posted, descriptor.statusAppearance(host).title)
     }
 
     func testTheAuthorizedBannerModePostsTheBanner() async {
-        let said = await announce(notice: .system, authorized: true)
+        let said = await announce(notice: .system, mirror: true, macOS: .authorized)
         XCTAssertEqual(said.banner.count, 1, "the mode that asks to be told loudly said nothing")
         XCTAssertTrue(said.banner[0].1.contains("Office"),
                       "the banner did not name the connection: \(said.banner)")
@@ -66,18 +72,34 @@ final class VPNAutomationAnnouncementTests: XCTestCase {
 
     /// The defect in one assertion: a firing the person asked to hear about
     /// must leave by one door or the other, never by neither.
+    ///
+    /// Every mode against every answer macOS can give, with the stored mirror
+    /// deliberately holding the opposite — the state left behind by a
+    /// permission revoked in System Settings since the page was last open. A
+    /// firing decided on that memory is decided wrong, and `.system` is the
+    /// mode where wrong means silence: it hides the menu-bar name because the
+    /// banner is meant to carry it, and macOS drops the banner.
     func testEveryModeThatSpeaksAtAllSpeaksExactlyOnce() async {
-        for authorized in [true, false] {
-            for notice in [VPNNotice.menuBar, .system] {
-                let said = await announce(notice: notice, authorized: authorized)
+        for macOS in [NoticeAuthorization.authorized, .denied, .notDetermined] {
+            for notice in VPNNotice.allCases {
+                let said = await announce(notice: notice, mirror: macOS != .authorized,
+                                          macOS: macOS)
                 let banner = !said.banner.isEmpty
                 let label = said.label != nil
+                let where_ = "\(notice), macOS says \(macOS)"
+                guard notice != .silent else {
+                    XCTAssertFalse(banner || label, "\(where_) — silence was chosen and broken")
+                    continue
+                }
                 XCTAssertTrue(banner || label,
-                              "\(notice), authorized: \(authorized) — the rule fired and "
-                              + "neither the banner nor the menu bar said so")
+                              "\(where_) — the rule fired and neither the banner nor the "
+                              + "menu bar said so")
                 XCTAssertFalse(banner && label,
-                               "\(notice), authorized: \(authorized) — said twice; the "
-                               + "banner carries the name so the label steps aside")
+                               "\(where_) — said twice; the banner carries the name so the "
+                               + "label steps aside")
+                XCTAssertEqual(banner, notice == .system && macOS == .authorized,
+                               "\(where_) — the banner was decided on the stored mirror "
+                               + "rather than on what macOS says now")
             }
         }
     }
@@ -85,9 +107,20 @@ final class VPNAutomationAnnouncementTests: XCTestCase {
     /// Chosen silence stays silent. The ring still turns, which is the
     /// descriptor's business and `VPNStatusAppearanceTests`'s.
     func testTheSilentModePostsNothingAndNamesNothing() async {
-        let said = await announce(notice: .silent, authorized: true)
+        let said = await announce(notice: .silent, mirror: true, macOS: .authorized)
         XCTAssertTrue(said.banner.isEmpty)
         XCTAssertNil(said.label)
+    }
+
+    /// The measured defect, on its own: the permission was revoked in System
+    /// Settings and nobody has opened the VPN page since, so the only record
+    /// the app holds says yes. The firing must still reach the person.
+    func testARevokedPermissionIsNoticedWhenTheRuleFiresAndNotAtTheNextSettingsVisit() async {
+        let said = await announce(notice: .system, mirror: true, macOS: .denied)
+        XCTAssertTrue(said.banner.isEmpty, "macOS had refused, so nothing was shown")
+        XCTAssertEqual(said.label, "Office",
+                       "the ring turned and nothing was named — the silence the fallback exists "
+                       + "to prevent, on the strength of a stale yes")
     }
 
     /// The engine keeps its last firing for good and repeats it in every state
@@ -100,9 +133,10 @@ final class VPNAutomationAnnouncementTests: XCTestCase {
         model.setForTesting(automation: nil, notice: .system, bannerAuthorized: true)
         let fired = firing()
         emit(fired, on: transport)
-        await settle(model, port)
+        await settle(model)
         emit(fired, on: transport)
         for _ in 0..<200 { await Task.yield() }
+        await model.announcement?.value
         XCTAssertEqual(port.posted.count, 1, "the same firing was announced twice")
     }
 }
