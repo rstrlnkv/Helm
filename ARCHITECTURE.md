@@ -196,8 +196,18 @@ in `~/Library/Containers` is refused even when access IS granted.
 granted permission to the exact binary. Every rebuild invalidates the grant
 while the checkbox in System Settings stays ticked. The Permissions section
 says this to the user; the real fix is Developer ID signing (needs a paid
-Apple account — user's call). `TrashFailure` classifies removal failures from
-the actual Cocoa error code, never by guessing from the path shape.
+Apple account — user's call).
+
+*Caveat, 2026-07-29:* how much of the observed grant loss this explains is no
+longer certain. Until the move out of `~/Documents` (see Dev loop) signing
+itself was failing intermittently, and an unsigned bundle loses the grant for a
+different reason — no cdhash at all. The two causes were never separated while
+both were live. The paragraph above describes real ad-hoc behaviour, but the
+severity attributed to it here was measured under the confound and has not been
+re-measured since.
+
+`TrashFailure` classifies removal failures from the actual Cocoa error code,
+never by guessing from the path shape.
 
 `SystemExtensionParser` + `SystemExtensionCLI` (HelmRuntime) are the single
 source for `systemextensionsctl list` — the uninstaller, the leftovers
@@ -1020,7 +1030,7 @@ is the state they are meant to be in — an entry is a debt, not a permission.
 ## Dev loop
 
 ```bash
-swift test                              # 900+ unit tests, pure logic, seconds
+swift test                              # 1575 unit tests, pure logic, seconds
 bash Scripts/package-app.sh             # build + sign → $TMPDIR/helm-package/Helm.app
 rm -rf /Applications/Helm.app
 ditto "$TMPDIR/helm-package/Helm.app" /Applications/Helm.app
@@ -1028,16 +1038,27 @@ codesign --verify --deep --strict /Applications/Helm.app   # must pass
 xattr -dr com.apple.quarantine /Applications/Helm.app && open /Applications/Helm.app
 ```
 
-**Sign outside the checkout.** This repo lives under `~/Documents`, which a file
-provider syncs, and the provider stamps `com.apple.FinderInfo` onto the
-directories it manages faster than `xattr -c` strips it. `codesign` refuses a
-bundle carrying it ("resource fork, Finder information, or similar detritus not
-allowed"), so signing in place succeeds or fails by luck. An unsigned bundle has
-no cdhash for TCC to hang Full Disk Access on — which is why the permission kept
-coming loose after every rebuild. `package-app.sh` assembles and signs in
-`$TMPDIR/helm-package` (not synced) and verifies the seal there; the copy it
-leaves in `build/` is for inspection and must never be installed or packaged
-from.
+**Keep this repo out from under a file provider.** It lived under `~/Documents`
+until 2026-07-29 and moved to `~/Projects/Claude/Helm` for this reason alone.
+A file provider stamps `com.apple.FinderInfo` onto the **bundles** it manages
+faster than `xattr -c` strips it, and `codesign` refuses a bundle carrying it
+("resource fork, Finder information, or similar detritus not allowed"), so
+signing in place succeeded or failed by luck. An unsigned bundle has no cdhash
+for TCC to hang Full Disk Access on — which is why the permission kept coming
+loose after every rebuild, and why that was misread for months as a flaw in
+ad-hoc signing itself. It eventually took down `swift test` too, and wrote
+conflict copies into `.git` (`git fsck`: `refs/remotes/origin/main 2`, an
+invalid refname).
+
+The tell was hidden by what the provider *didn't* touch: plain files and
+directories were never stamped, only packages (`.app`, `.xctest`), so every
+probe that created a file and checked its xattrs came back clean. Proving it
+took creating a directory named `*.xctest` in each location — stamped within
+seconds under `~/Documents`, never stamped in the home tree.
+
+`package-app.sh` still assembles and signs in `$TMPDIR/helm-package`; that
+costs nothing and keeps the output away from the checkout. The copy it leaves
+in `build/` is for inspection and must never be installed or packaged from.
 
 **Visual self-verification** (the app is an accessory; automation tools can't
 click its status item): add a temporary env-gated harness in `AppDelegate`

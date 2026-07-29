@@ -6,6 +6,8 @@
 
 **Architecture:** Same pattern as Keep Awake. Pure logic TDD'd (XCTest, `swift test`), side effects behind ports, `.inProcess`. Source of truth for the port = fork files at `/Users/r.strlnkv/Documents/Claude/vorssaint-utils/Sources/HelmUtility/Services/VPN/`. See [VPN spec](../specs/2026-07-24-vpn-module-design.md).
 
+> *Note added 2026-07-29:* that fork path no longer exists anywhere on disk — the plan is kept as the record of how the module was built, but the pointer is dead and the shipped module in `Sources/Modules/VPN/` is the only source of truth now.
+
 **Tech Stack:** Swift 6, SwiftPM, AppKit+SwiftUI, macOS 26, XCTest. Same repo, same conventions as Keep Awake.
 
 ---

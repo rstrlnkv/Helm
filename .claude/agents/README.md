@@ -54,7 +54,7 @@ the work went through `general-purpose` with the briefs pasted in by hand, which
 works and wastes the model selection. Install once:
 
 ```
-/plugin marketplace add ~/Documents/Claude/Helm
+/plugin marketplace add ~/Projects/Claude/Helm
 /plugin install helm-crew@helm
 ```
 
