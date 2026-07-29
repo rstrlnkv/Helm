@@ -5,11 +5,30 @@ public protocol KeyValueStore: AnyObject {
     func set(_ value: Any?, forKey: String)
 }
 
-public final class InMemoryKeyValueStore: KeyValueStore {
-    public var raw: [String: Any] = [:]
+/// `UserDefaults` without the disk, for tests and for a module that has no
+/// business persisting anything.
+///
+/// Locked, because the thing it stands in for is safe to touch from any thread
+/// and the engines handed one are not single-threaded: they read their own state
+/// from their own queues while the test that owns them writes from its. A bare
+/// `Dictionary` under two threads is undefined behaviour rather than a race with
+/// a bad answer — it took the Autopilot bundle down with no assertion and no
+/// message, about once in thirty runs under load, until the thread sanitizer
+/// named it.
+public final class InMemoryKeyValueStore: KeyValueStore, @unchecked Sendable {
+    private let lock = NSLock()
+    private var values: [String: Any] = [:]
+    /// The whole map, which tests plant into and read back. `raw[k] = v` is a
+    /// read and a write of this property, so it is two critical sections rather
+    /// than one — enough to keep the dictionary intact, which is what is at
+    /// stake here.
+    public var raw: [String: Any] {
+        get { lock.withLock { values } }
+        set { lock.withLock { values = newValue } }
+    }
     public init() {}
-    public func object(forKey k: String) -> Any? { raw[k] }
-    public func set(_ v: Any?, forKey k: String) { raw[k] = v }
+    public func object(forKey k: String) -> Any? { lock.withLock { values[k] } }
+    public func set(_ v: Any?, forKey k: String) { lock.withLock { values[k] = v } }
 }
 
 extension UserDefaults: KeyValueStore {}
