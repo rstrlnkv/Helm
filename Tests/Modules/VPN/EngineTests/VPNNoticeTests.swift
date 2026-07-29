@@ -46,6 +46,23 @@ final class VPNNoticeTests: XCTestCase {
         XCTAssertFalse(VPNNotice.silent.postsBanner)
     }
 
+    /// Nothing has asked macOS yet, so nothing may claim it said yes: the
+    /// default has to be the one that keeps `.system` audible as the label.
+    func testBannerAuthorizationIsNotAssumedBeforeAnyoneHasAsked() {
+        XCTAssertFalse(settings().bannerAuthorized)
+    }
+
+    /// Remembered across launches on purpose — macOS is asked once, and a
+    /// mirror that resets at every launch would demote `.system` to the label
+    /// for a person who granted the permission months ago.
+    func testTheAuthorizationMirrorRoundTrips() {
+        let s = settings()
+        s.setBannerAuthorized(true)
+        XCTAssertTrue(s.bannerAuthorized)
+        s.setBannerAuthorized(false)
+        XCTAssertFalse(s.bannerAuthorized)
+    }
+
     /// Authorization refused: the loud mode becomes the quiet one, never
     /// silence. The person asked to be told.
     func testADeniedBannerFallsBackToTheLabelAndNotToSilence() {
