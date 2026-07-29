@@ -1,11 +1,14 @@
 import AppKit
 import HelmContract
 import HelmRuntime
+import HelmUI
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
     let host = ModuleHost.shared
     var statusController: StatusItemController!
     private var footprintTimer: Timer?
+    /// Held for as long as it is on screen; dropped in its own close handler.
+    private var welcomeWindow: WelcomeWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -57,7 +60,22 @@ import HelmRuntime
         // First launch: find out what macOS is withholding before a removal
         // silently leaves files behind.
         PermissionAudit.host = host
-        PermissionAudit.run()
+        // The audit puts up an alert when macOS is withholding something, and
+        // on a first launch that is the same moment the welcome window wants.
+        // Two of them arriving together is not an introduction, it is a
+        // pile-up — so the audit waits for the window to go away, by Done, by
+        // Skip or by the close button.
+        if WelcomeWindow.shouldShow(store: AppSettings.store) {
+            let welcome = WelcomeWindow { [weak self] in
+                self?.welcomeWindow = nil
+                PermissionAudit.run()
+            }
+            welcomeWindow = welcome
+            welcome.show(steps: WelcomeSteps.build(from: ModuleRegistry.all.map(\.moduleMetadata)),
+                         store: AppSettings.store)
+        } else {
+            PermissionAudit.run()
+        }
         HelmLog.shared.info("permissions", "full disk access probe: \(PermissionCheck.currentFullDiskAccess().rawValue)")
 
         UpdateService.shared.checkOnLaunch()
