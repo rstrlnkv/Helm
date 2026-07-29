@@ -7,7 +7,11 @@ long debugging sessions and are easy to re-break.
 ## Commands
 
 ```bash
-swift test                              # full unit suite, seconds
+# Nothing that gets signed may be built inside ~/Documents. The file provider
+# attaches com.apple.FinderInfo faster than anything can strip it, and codesign
+# refuses a bundle carrying it — which now takes down the ordinary test build,
+# not only the app: "CodeSign … Module_VPN_EngineTests.xctest failed".
+swift test --scratch-path /private/tmp/helm-build   # full unit suite, seconds
 bash Scripts/package-app.sh             # build + sign → $TMPDIR/helm-package/Helm.app
 # install + relaunch locally (from the SIGNED copy, never from build/):
 pkill -f 'MacOS/HelmApp'; bash Scripts/package-app.sh
