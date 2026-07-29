@@ -61,7 +61,7 @@ enum VPNStr {
         L("When a rule fires", [.ru: "Когда правило срабатывает", .es: "Cuando se ejecuta una regla", .fr: "Quand une règle se déclenche", .de: "Wenn eine Regel greift", .ja: "ルールが動作したとき", .zh: "规则生效时", .pt: "Quando uma regra dispara"])
     }
     static var noticeLabel: String {
-        L("Announce", [.ru: "Сообщать", .es: "Avisar", .fr: "Signaler", .de: "Melden", .ja: "知らせる", .zh: "提示方式", .pt: "Avisar"])
+        L("Notification style", [.ru: "Стиль уведомления", .es: "Estilo de aviso", .fr: "Style d’avis", .de: "Hinweisstil", .ja: "通知のスタイル", .zh: "提示样式", .pt: "Estilo do aviso"])
     }
 
     /// The three answers. "Menu bar" and "Notification" are macOS's own words
@@ -71,8 +71,8 @@ enum VPNStr {
     /// *Benachrichtigung*, which is not what macOS calls it.
     static func noticeOption(_ notice: VPNNotice) -> String {
         switch notice {
-        case .silent: return L("Nothing", [.ru: "Ничего", .es: "Nada", .fr: "Rien", .de: "Nichts", .ja: "何もしない", .zh: "不提示", .pt: "Nada"])
-        case .menuBar: return L("Name in the menu bar", [.ru: "Имя в строке меню", .es: "Nombre en la barra de menús", .fr: "Nom dans la barre des menus", .de: "Name in der Menüleiste", .ja: "メニューバーに名前", .zh: "在菜单栏显示名称", .pt: "Nome na barra de menus"])
+        case .silent: return L("Do not notify", [.ru: "Не уведомлять", .es: "No avisar", .fr: "Ne pas avertir", .de: "Nicht hinweisen", .ja: "通知しない", .zh: "不提示", .pt: "Não avisar"])
+        case .menuBar: return L("Connection name in the menu bar", [.ru: "Название подключения в строке меню", .es: "Nombre de la conexión en la barra de menús", .fr: "Nom de la connexion dans la barre des menus", .de: "Verbindungsname in der Menüleiste", .ja: "接続名をメニューバーに", .zh: "在菜单栏显示连接名称", .pt: "Nome da conexão na barra de menus"])
         case .system: return L("Notification", [.ru: "Уведомление", .es: "Notificación", .fr: "Notification", .de: "Mitteilung", .ja: "通知", .zh: "通知", .pt: "Notificação"])
         }
     }
