@@ -75,6 +75,38 @@ features, PATCH = fixes.
     or on an external volume — and it resolves symlinks, because a destination
     chosen in the panel can be replaced by a link afterwards.
 
+- **A VPN rule that fires says so.** Until now a rule connecting or dropping a
+  tunnel on its own changed the status item's tint and nothing else, which
+  nobody sees happen. The ring now turns twice — two revolutions in 1.2 s,
+  measured at 607°/s in the menu bar — and the connection can be named.
+  - **Three notice modes**, in Settings → VPN → When a rule fires: nothing, the
+    name beside the menu-bar icon for three seconds, or a macOS notification.
+    The ring turns in all three; the setting decides the fate of the text only.
+    Default is the menu-bar name, the one mode that needs no new permission.
+  - **What counts as a firing** is not "the VPN state changed". A tunnel raised
+    by hand from the panel, from the macOS menu bar or from System Settings
+    animates nothing: an indicator that fires for everything indicates nothing.
+    Three cases qualify — a rule connected, a rule's app quit and the rule
+    dropped it, and a tunnel Helm raised went away by itself.
+  - **A connect that changed nothing is not announced.** `scutil --nc start` on
+    a tunnel already up is a no-op, and Helm replays every rule for every
+    running app at launch, so a rule whose app runs all day used to fire this at
+    every launch and name a tunnel nobody had touched.
+  - **Reduce Motion removes the movement and keeps the information**: no spin,
+    the name still appears.
+  - **The permission is asked for when the mode is picked**, never at launch,
+    and a refusal is stated where the switch is rather than only in the app's
+    permission list: the row says macOS refuses banners and that the name will
+    be shown in the menu bar instead. A refused banner becomes the label, never
+    silence — the person asked to be told loudly, and the one thing the app must
+    not do is quietly not tell them.
+  - **The connection's name never reaches the log.** It appears on screen and in
+    the notification, both of which were asked for; the diagnostics file carries
+    `vpn#<tag>` as every other VPN line already does.
+  - The spin is thirty redraws a second of the menu-bar icon, so its 36 frames
+    are built once per style, size and tint and cached: ten firings in a row
+    move the footprint by 1 MB on the first and by nothing after it.
+
 ### Changed
 - **A design pass over the whole app**, in the macOS 26/27 idiom.
   - **The masthead no longer walks away from its own page.** `HelmPageHeader`
