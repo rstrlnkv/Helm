@@ -23,6 +23,28 @@ features, PATCH = fixes.
   - Whether it has been seen is a revision number rather than a flag, so
     "show the next one once" is a deliberate act and cannot happen by a
     setting getting cleared.
+- **Duplicates: every extra at once, and Space to look first.** "All extras to
+  basket" does across every group what the per-group button already did — and
+  it is not called "Select all", which would invite exactly the reading this
+  module refuses: one copy of everything always stays. It runs the same
+  per-group rule rather than a second walk of the list, because two answers to
+  "which copy survives" is two answers to the only question here that costs
+  somebody a file. Beside "Move to Trash" there is now a "Clear", because a
+  button that ticks three hundred checkboxes needs one that unticks them.
+  - **Space previews the selected copy**, the way it does in the Finder, with
+    Quick Look in the row's context menu and among its VoiceOver actions —
+    a shortcut with no visible affordance cannot be discovered. Deciding
+    *which* file to show is its own tested rule: a copy that has just been
+    trashed leaves the list while the selection still names it, and a panel
+    opened onto a file that is gone is an empty frame with no explanation.
+- **Reset all settings**, in Settings → Settings. Helm goes back to how it is
+  just after installing: every preference forgotten, each module's saved state
+  and the diagnostics log in the Trash, and the welcome tour shown again at the
+  next launch. **To the Trash, not past it** — everywhere else in Helm removal
+  is recoverable, and somebody who presses this by accident must be able to get
+  their Autopilot rules back. What may be removed is a list of exactly two
+  directories with a gate that refuses everything else, and a test asserts the
+  two agree. Access granted in System Settings is macOS's and is not touched.
 - **A way out of a scan in Disk.** The module reopens on whatever it measured
   last, and the only control was "Scan again", which measures the same place
   forever — so a scan of the wrong folder came back at every launch with no way
@@ -129,6 +151,16 @@ features, PATCH = fixes.
     move the footprint by 1 MB on the first and by nothing after it.
 
 ### Changed
+- **The three notice styles are shown, not listed.** They differed in what they
+  *look* like and were offered as three lines of a pop-up menu, which is the
+  control for options that differ in what they are called. They are three
+  picture cards now — a drawn menu bar with nothing beside the icon, one with
+  the connection's name, one with a notification below it — in the idiom macOS
+  System Settings uses for the same kind of choice. The previews are drawn
+  rather than shipped as images, so they follow light and dark like everything
+  else, and the cards are buttons rather than tappable pictures: a view whose
+  only interaction is a tap gesture never joins the key-view loop, and Full
+  Keyboard Access cannot reach it.
 - **The VPN spin is a choice now, and carries a colour.** It shipped in this
   same release turning in every notice mode, on the argument that movement is
   feedback the app acted rather than a notification. Sound, and overruled:
