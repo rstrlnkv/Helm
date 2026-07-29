@@ -16,9 +16,10 @@ struct DuplicatesView: View {
     /// rows at all: arrow keys did nothing, and the row that stays — an image,
     /// a name and a badge, no control anywhere — could not be reached at all.
     @State private var selection: String?
-    /// Held so the Space shortcut has something to talk to. Assigned once,
-    /// when the representable makes its view.
-    @State private var previewOwner: PreviewPanelOwner?
+    /// The copy being previewed in the sheet, nil when it is closed.
+    /// A String rather than a URL because the selection is one, and
+    /// `DuplicatePreview.target` is what turns it into a file to show.
+    @State private var previewPath: String?
 
     var body: some View {
         List(selection: $selection) {
@@ -52,8 +53,6 @@ struct DuplicatesView: View {
                 Button("") { preview(selection) }
                     .keyboardShortcut(.space, modifiers: [])
                     .disabled(selection == nil)
-                PreviewPanelHost { previewOwner = $0 }
-                    .frame(width: 0, height: 0)
             }
             .opacity(0)
             .frame(width: 0, height: 0)
@@ -63,6 +62,30 @@ struct DuplicatesView: View {
         // at nothing.
         .onChange(of: dvm.groups) { _, groups in
             selection = DuplicateSelection.surviving(selection, in: groups)
+            if DuplicatePreview.target(selection: previewPath, in: groups) == nil {
+                previewPath = nil
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { previewPath != nil },
+            set: { if !$0 { previewPath = nil } })) {
+            if let path = previewPath {
+                VStack(spacing: 0) {
+                    QuickLookSheet(url: URL(fileURLWithPath: path))
+                        .frame(minWidth: 640, minHeight: 420)
+                    Divider()
+                    HStack {
+                        Text((path as NSString).lastPathComponent)
+                            .font(.caption)
+                            .foregroundStyle(HelmText.quiet)
+                            .lineLimit(1).truncationMode(.middle)
+                        Spacer()
+                        Button(DupStr.close) { previewPath = nil }
+                            .keyboardShortcut(.cancelAction)
+                    }
+                    .padding(12)
+                }
+            }
         }
     }
 
@@ -72,7 +95,11 @@ struct DuplicatesView: View {
     }
 
     private func preview(_ path: String?) {
-        previewOwner?.toggle(DuplicatePreview.target(selection: path, in: dvm.groups))
+        if previewPath != nil {
+            previewPath = nil
+        } else if let url = DuplicatePreview.target(selection: path, in: dvm.groups) {
+            previewPath = url.path
+        }
     }
 
     private func row(path: String, stays: Bool) -> some View {

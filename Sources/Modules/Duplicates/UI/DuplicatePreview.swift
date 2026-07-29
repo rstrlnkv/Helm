@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Helm
 
 import AppKit
-import QuickLookUI
+import Quartz
 import SwiftUI
 import Module_Duplicates_Engine
 
@@ -20,76 +20,34 @@ public enum DuplicatePreview {
     }
 }
 
-/// Owns the shared Quick Look panel for one file.
+/// The preview itself, as a view rather than the shared panel.
 ///
-/// `QLPreviewPanel` is driven through the responder chain: something in the
-/// chain has to answer `acceptsPreviewPanelControl` and then hand itself over
-/// as data source and delegate. SwiftUI puts nothing there, so this is a bare
-/// `NSView` inserted into the hierarchy for the sole purpose of being that
-/// something.
-///
-/// **`@preconcurrency` is load-bearing, not decoration.** QuickLookUI declares
-/// these two protocols on `NSResponder` through a category with no `@MainActor`,
-/// while `NSResponder` is main-actor isolated by inference — a mismatch in the
-/// SDK rather than in this code. `@MainActor` alone cannot close it: on the
-/// class the conformance still "crosses into main actor-isolated code"; on the
-/// conformance it becomes "cannot be used in nonisolated context" at
-/// `panel.dataSource = self`; on the three overrides it collides with the
-/// `nonisolated` declarations being overridden. Measured against the macOS 27
-/// SDK, four ways round, before this.
-@MainActor
-final class PreviewPanelOwner: NSView, @preconcurrency QLPreviewPanelDataSource,
-                               @preconcurrency QLPreviewPanelDelegate {
-    var url: URL?
+/// This replaced `QLPreviewPanel`. The panel is a singleton driven through the
+/// responder chain — something in the chain must answer
+/// `acceptsPreviewPanelControl` — and in this accessory app it never took
+/// control: Space and the context menu both called it and nothing appeared,
+/// on a real build, through both entry points. `QLPreviewView` is an ordinary
+/// `NSView` with none of that machinery, and a sheet needs no key-window
+/// politics. The design spec named this exact fallback before the panel was
+/// tried.
+struct QuickLookSheet: NSViewRepresentable {
+    let url: URL
 
-    override var acceptsFirstResponder: Bool { true }
-
-    override func acceptsPreviewPanelControl(_ panel: QLPreviewPanel!) -> Bool { url != nil }
-
-    override func beginPreviewPanelControl(_ panel: QLPreviewPanel!) {
-        panel.dataSource = self
-        panel.delegate = self
-    }
-
-    override func endPreviewPanelControl(_ panel: QLPreviewPanel!) {
-        panel.dataSource = nil
-        panel.delegate = nil
-    }
-
-    func numberOfPreviewItems(in panel: QLPreviewPanel!) -> Int { url == nil ? 0 : 1 }
-
-    func previewPanel(_ panel: QLPreviewPanel!, previewItemAt index: Int) -> QLPreviewItem! {
-        url as (any QLPreviewItem)?
-    }
-
-    /// Toggles, which is what Space does in the Finder and therefore what a
-    /// person will try. The panel is a shared singleton, so asking whether it
-    /// is visible is asking about the whole app, not about this list — which is
-    /// correct here: only one list can be in front.
-    func toggle(_ url: URL?) {
-        self.url = url
-        guard url != nil, let panel = QLPreviewPanel.shared() else { return }
-        if QLPreviewPanel.sharedPreviewPanelExists() && panel.isVisible {
-            panel.orderOut(nil)
-        } else {
-            window?.makeFirstResponder(self)
-            panel.makeKeyAndOrderFront(nil)
-        }
-        panel.reloadData()
-    }
-}
-
-/// Puts a `PreviewPanelOwner` in the SwiftUI hierarchy and hands the view a
-/// way to drive it.
-struct PreviewPanelHost: NSViewRepresentable {
-    /// Called once with the owner so the view can toggle it from a button.
-    let attach: (PreviewPanelOwner) -> Void
-
-    func makeNSView(context: Context) -> PreviewPanelOwner {
-        let view = PreviewPanelOwner()
-        attach(view)
+    func makeNSView(context: Context) -> QLPreviewView {
+        // .normal, not .compact: the sheet is the whole experience here,
+        // not a thumbnail beside something else.
+        let view = QLPreviewView(frame: .zero, style: .normal) ?? QLPreviewView()
+        view.previewItem = url as NSURL
         return view
     }
 
-    func updateNSView(_ nsView: PreviewPanelOwner, context: Context) {}
+    func updateNSView(_ view: QLPreviewView, context: Context) {
+        view.previewItem = url as NSURL
+    }
+
+    static func dismantleNSView(_ view: QLPreviewView, coordinator: ()) {
+        // Documented requirement: a QLPreviewView must be closed or it leaks
+        // its preview machinery.
+        view.close()
+    }
 }
