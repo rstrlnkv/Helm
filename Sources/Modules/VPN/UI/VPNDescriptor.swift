@@ -35,8 +35,13 @@ import Module_VPN_Engine
     /// Switching VPN off and on left the tile and the page frozen until relaunch.
     func viewModel(_ hostVM: ModuleViewModel) -> VPNViewModel {
         if let cached, cached.vm === hostVM { return cached.model }
+        // `SystemAutomationNotice` on its own rather than through
+        // `VPNSystemPorts`: building the whole bundle here would also build
+        // `KeychainCredentials`, whose init purges the old credential cache.
+        // Its own init touches nothing, so this stays free in a test.
         let m = VPNViewModel(transport: hostVM.transport,
-                             settings: VPNSettings(store: settingsStore))
+                             settings: VPNSettings(store: settingsStore),
+                             notices: SystemAutomationNotice())
         cached = (hostVM, m)
         ModuleUICache.dropWhenDisabled(Self.id.rawValue) { [weak self] in self?.cached = nil }
         return m

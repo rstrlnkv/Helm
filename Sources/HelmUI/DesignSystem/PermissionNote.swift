@@ -8,12 +8,19 @@ import HelmRuntime
 /// switch that macOS ignores looks exactly like a switch that works, and the
 /// person flipping it is the one who needs to know.
 public struct HelmPermissionNote: View {
-    private let need: PermissionNeed
     private let text: String
+    private let openSettings: () -> Void
 
     public init(need: PermissionNeed, text: String) {
-        self.need = need
+        self.init(text: text, openSettings: need.openSettings)
+    }
+
+    /// For a grant that is not a `PermissionNeed`: notifications are asked for
+    /// through macOS's own API and answered by it, so there is nothing for
+    /// `PermissionCheck` to probe — only a pane to send the person to.
+    public init(text: String, openSettings: @escaping () -> Void) {
         self.text = text
+        self.openSettings = openSettings
     }
 
     public var body: some View {
@@ -28,7 +35,7 @@ public struct HelmPermissionNote: View {
                 .foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 8)
-            Button(Self.grant) { need.openSettings() }
+            Button(Self.grant) { openSettings() }
                 .controlSize(.small)
         }
     }

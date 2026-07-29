@@ -80,6 +80,14 @@ public extension PermissionCheck {
         open("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
     }
 
+    /// Notifications is not a Privacy & Security pane and not a `PermissionNeed`
+    /// — macOS answers for this grant through its own API — so it is only ever
+    /// a destination. The identifier is the settings extension's own
+    /// (`NotificationsSettings.appex`), not the legacy prefPane's.
+    static func openNotificationSettings() {
+        open("x-apple.systempreferences:com.apple.Notifications-Settings.extension")
+    }
+
     static func openExtensionSettings() {
         open("x-apple.systempreferences:com.apple.ExtensionsPreferences")
     }
