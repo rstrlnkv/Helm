@@ -44,20 +44,38 @@ enum LfStr {
     /// Asked before the batch, because this button is the one that acts on the
     /// most load-bearing files in the app — launch agents and login items —
     /// and it was the only multi-file removal in Helm that did not ask.
+    /// One question, and nothing after it. It used to promise "It will free
+    /// 4 KB" — of files that move to a folder on the same volume, where they
+    /// stay until the Trash is emptied. Disk's `confirmTrash` is the shape: the
+    /// size sits inside the question as what is going, not as what is gained.
     static func confirmSelected(_ count: Int, _ size: String) -> String {
         let items = Plural.items(count, language: AppLanguage.current.rawValue)
-        return L("Move \(items) to the Trash? \(size) freed.", [.ru: "Переместить \(items) в Корзину? Освободится \(size).", .es: "¿Trasladar \(items) a la papelera? Se liberarán \(size).", .fr: "Placer \(items) dans la corbeille ? \(size) libérés.", .de: "\(items) in den Papierkorb legen? \(size) frei.", .ja: "\(items) をゴミ箱に入れますか？ \(size) を解放します。", .zh: "将 \(items) 移到废纸篓？将释放 \(size)。", .pt: "Mover \(items) para o Lixo? \(size) liberados."])
+        return L("Move \(items) (\(size)) to the Trash?", [.ru: "Переместить \(items) (\(size)) в Корзину?", .es: "¿Trasladar \(items) (\(size)) a la papelera?", .fr: "Placer \(items) (\(size)) dans la corbeille ?", .de: "\(items) (\(size)) in den Papierkorb legen?", .ja: "\(items)（\(size)）をゴミ箱に入れますか？", .zh: "将\(items)（\(size)）移到废纸篓？", .pt: "Mover \(items) (\(size)) para o Lixo?"])
     }
     static var removeSelected: String { L("Move to Trash", [.ru: "Переместить в Корзину", .es: "Trasladar a la papelera", .fr: "Placer dans la corbeille", .de: "In den Papierkorb legen", .ja: "ゴミ箱に入れる", .zh: "移到废纸篓", .pt: "Mover para o Lixo"]) }
     static var selectAll: String { L("Select all", [.ru: "Выбрать все", .es: "Seleccionar todo", .fr: "Tout sélectionner", .de: "Alle auswählen", .ja: "すべて選択", .zh: "全选", .pt: "Selecionar tudo"]) }
     static var deselectAll: String { L("Clear selection", [.ru: "Снять выбор", .es: "Quitar selección", .fr: "Tout désélectionner", .de: "Auswahl aufheben", .ja: "選択を解除", .zh: "取消选择", .pt: "Limpar seleção"]) }
     static var runsAtLogin: String { L("Runs at login", [.ru: "Запускается при входе", .es: "Se ejecuta al iniciar sesión", .fr: "S’exécute à la connexion", .de: "Startet bei der Anmeldung", .ja: "ログイン時に実行", .zh: "登录时运行", .pt: "Executa ao iniciar sessão"]) }
     static func missingTarget(_ path: String) -> String { L("Points at a missing file: \(path)", [.ru: "Ссылается на отсутствующий файл: \(path)", .es: "Apunta a un archivo inexistente: \(path)", .fr: "Pointe vers un fichier absent : \(path)", .de: "Verweist auf eine fehlende Datei: \(path)", .ja: "存在しないファイルを参照: \(path)", .zh: "指向缺失的文件：\(path)", .pt: "Aponta para um arquivo ausente: \(path)"]) }
-    static func foundCount(_ n: Int, _ size: String) -> String {
+    /// The bar under the list, about the selection and nothing else. It used to
+    /// pair the number of rows found with the size of the selection, and a
+    /// middle dot made the two look like one measurement: "1 item · 0 B" over a
+    /// visible row saying 4 KB.
+    static func selectedLine(_ n: Int, _ size: String) -> String {
         let items = Plural.items(n, language: AppLanguage.current.rawValue)
-        return L("\(items) · \(size)", [.ru: "\(items) · \(size)", .es: "\(items) · \(size)", .fr: "\(items) · \(size)", .de: "\(items) · \(size)", .ja: "\(items)・\(size)", .zh: "\(items) · \(size)", .pt: "\(items) · \(size)"])
+        return L("Selected: \(items) · \(size)", [.ru: "Выбрано: \(items) · \(size)", .es: "Seleccionado: \(items) · \(size)", .fr: "Sélection : \(items) · \(size)", .de: "Ausgewählt: \(items) · \(size)", .ja: "選択：\(items)・\(size)", .zh: "已选择：\(items) · \(size)", .pt: "Selecionado: \(items) · \(size)"])
     }
-    static func removedFreed(_ size: String) -> String { L("Removed — \(size) freed", [.ru: "Удалено — освобождено \(size)", .es: "Eliminado — \(size) liberados", .fr: "Supprimé — \(size) libérés", .de: "Entfernt — \(size) freigegeben", .ja: "削除しました — \(size) を解放", .zh: "已删除 — 释放 \(size)", .pt: "Removido — \(size) liberados"]) }
+
+    /// What the scan turned up, beside the control that filters it.
+    static func foundLine(_ n: Int) -> String {
+        let items = Plural.items(n, language: AppLanguage.current.rawValue)
+        return L("Found: \(items)", [.ru: "Найдено: \(items)", .es: "Encontrado: \(items)", .fr: "Trouvé : \(items)", .de: "Gefunden: \(items)", .ja: "検出：\(items)", .zh: "找到：\(items)", .pt: "Encontrado: \(items)"])
+    }
+    /// Where the files went, not what the disk gained: the Trash is a folder on
+    /// the same volume, so nothing is free until it is emptied. The same
+    /// sentence Disk settled on, in Finder's own words for the act (`AL13`) in
+    /// the past tense — one phrasing across the app, not a second one here.
+    static func movedToTrash(_ size: String) -> String { L("Moved to the Trash — \(size)", [.ru: "Перемещено в Корзину — \(size)", .es: "Trasladado a la papelera — \(size)", .fr: "Placé dans la corbeille — \(size)", .de: "In den Papierkorb gelegt — \(size)", .ja: "ゴミ箱に入れました — \(size)", .zh: "已移到废纸篓 — \(size)", .pt: "Movido para o Lixo — \(size)"]) }
     static func kindName(_ kind: String) -> String {
         switch kind {
         case "launchAgent": return L("Launch agents", [.ru: "Агенты запуска", .es: "Agentes de inicio", .fr: "Agents de lancement", .de: "Startagenten", .ja: "起動エージェント", .zh: "启动代理", .pt: "Agentes de início"])

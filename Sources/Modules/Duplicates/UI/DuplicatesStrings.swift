@@ -10,21 +10,23 @@ enum DupStr {
     static var startHint: String { L("Pick a folder and Helm will read what is in it, comparing content rather than names.", [.ru: "Выберите папку — Helm прочитает, что в ней, сравнивая содержимое, а не имена.", .es: "Elige una carpeta y Helm leerá lo que hay en ella, comparando el contenido y no los nombres.", .fr: "Choisissez un dossier : Helm lira ce qu’il contient, en comparant le contenu et non les noms.", .de: "Wähle einen Ordner; Helm liest, was darin ist, und vergleicht den Inhalt, nicht die Namen.", .ja: "フォルダを選ぶと、名前ではなく中身を比較して調べます。", .zh: "选择一个文件夹，Helm 会读取其中内容并比较内容而非文件名。", .pt: "Escolha uma pasta e o Helm lerá o que há nela, comparando o conteúdo e não os nomes."]) }
     static var needsAccess: String { L("Without Full Disk Access the walk reads less, and a short answer looks exactly like a clean one.", [.ru: "Без «Доступа к диску» обход прочитает меньше, а короткий ответ выглядит так же, как чистая папка.", .es: "Sin Acceso total al disco el recorrido lee menos, y una respuesta corta se ve igual que una carpeta limpia.", .fr: "Sans accès complet au disque, le parcours lit moins, et une réponse courte ressemble exactement à un dossier propre.", .de: "Ohne Festplattenvollzugriff liest der Durchlauf weniger — und eine kurze Antwort sieht aus wie ein sauberer Ordner.", .ja: "フルディスクアクセスがないと調べられる範囲が狭くなり、少ない結果が「重複なし」と見分けられません。", .zh: "没有完全磁盘访问权限时，遍历能读到的更少，而结果少看起来和“没有重复”一模一样。", .pt: "Sem Acesso Total ao Disco a varredura lê menos, e uma resposta curta parece exatamente uma pasta limpa."]) }
     static var stop: String { L("Stop", [.ru: "Остановить", .es: "Detener", .fr: "Arrêter", .de: "Stoppen", .ja: "停止", .zh: "停止", .pt: "Parar"]) }
+    static var basketContents: String { L("Show what is in the basket", [.ru: "Показать, что отобрано к удалению", .es: "Ver qué hay en la cesta", .fr: "Voir le contenu du panier", .de: "Inhalt des Korbs zeigen", .ja: "バスケットの中身を表示", .zh: "查看收集篮内容", .pt: "Ver o que está na cesta"]) }
     static var basket: String { L("To remove", [.ru: "К удалению", .es: "Para eliminar", .fr: "À supprimer", .de: "Zu entfernen", .ja: "削除予定", .zh: "待删除", .pt: "Para remover"]) }
     static var moveToTrash: String { L("Move to Trash", [.ru: "Переместить в Корзину", .es: "Trasladar a la papelera", .fr: "Placer dans la corbeille", .de: "In den Papierkorb legen", .ja: "ゴミ箱に入れる", .zh: "移到废纸篓", .pt: "Mover para o Lixo"]) }
     static var systemItem: String { L("System item", [.ru: "Системный", .es: "Del sistema", .fr: "Élément système", .de: "Systemobjekt", .ja: "システム項目", .zh: "系统项目", .pt: "Item do sistema"]) }
     static var reveal: String { L("Show in Finder", [.ru: "Показать в Finder", .es: "Mostrar en el Finder", .fr: "Afficher dans le Finder", .de: "Im Finder zeigen", .ja: "Finderに表示", .zh: "在访达中显示", .pt: "Mostrar no Finder"]) }
-    static func removed(_ count: Int, _ freed: String) -> String {
-        let files = Plural.files(count, language: AppLanguage.current.rawValue)
-        return L("Removed \(files), \(freed) freed", [.ru: "Удалено \(files), освобождено \(freed)", .es: "Eliminados \(files), \(freed) liberados", .fr: "\(files) supprimés, \(freed) libérés", .de: "\(files) entfernt, \(freed) frei", .ja: "\(files)を削除、\(freed) 解放", .zh: "已删除\(files)，释放 \(freed)", .pt: "\(files) removidos, \(freed) liberados"])
+    /// What happened, not what people hope happened: the copies went to the
+    /// Trash, which is on the same volume, so nothing is freed until the Trash
+    /// is emptied. Word for word `DiskStrings.movedToTrash` — four modules say
+    /// this sentence now and they must say it the same way.
+    static func movedToTrash(_ size: String) -> String {
+        L("Moved to the Trash — \(size)", [.ru: "Перемещено в Корзину — \(size)", .es: "Trasladado a la papelera: \(size)", .fr: "Placé dans la corbeille — \(size)", .de: "In den Papierkorb gelegt – \(size)", .ja: "ゴミ箱に入れました — \(size)", .zh: "已移到废纸篓 — \(size)", .pt: "Movido para o Lixo — \(size)"])
     }
-    /// Counted as labels, like the Russian line always was: "Eliminados 1" and
-    /// "1 supprimés" are what a bare number beside a participle gives when the
-    /// number turns out to be one.
-    static func removedWithFailures(_ removed: Int, _ failed: Int) -> String { L("Removed: \(removed); refused: \(failed)", [.ru: "Удалено: \(removed); не удалось переместить: \(failed)", .es: "Eliminados: \(removed); rechazados: \(failed)", .fr: "Supprimés : \(removed) ; refusés : \(failed)", .de: "Entfernt: \(removed); abgelehnt: \(failed)", .ja: "削除 \(removed) 件、拒否 \(failed) 件", .zh: "已删除 \(removed) 个；被拒绝 \(failed) 个", .pt: "Removidos: \(removed); recusados: \(failed)"]) }
     static func confirmTrash(_ count: Int, _ size: String) -> String {
         let files = Plural.files(count, language: AppLanguage.current.rawValue)
-        return L("Move \(files) to the Trash? That frees \(size).", [.ru: "Переместить \(files) в Корзину? Освободится \(size).", .es: "¿Trasladar \(files) a la papelera? Libera \(size).", .fr: "Placer \(files) dans la corbeille ? Cela libère \(size).", .de: "\(files) in den Papierkorb legen? Das gibt \(size) frei.", .ja: "\(files)をゴミ箱に入れますか？ \(size) が解放されます。", .zh: "把\(files)移到废纸篓？将释放 \(size)。", .pt: "Mover \(files) para o Lixo? Isso libera \(size)."])
+        // The size stays — how much is going is worth knowing — but the promise
+        // that it will be freed does not: the Trash is on the same volume.
+        return L("Move \(files) (\(size)) to the Trash?", [.ru: "Переместить \(files) (\(size)) в Корзину?", .es: "¿Trasladar \(files) (\(size)) a la papelera?", .fr: "Placer \(files) (\(size)) dans la corbeille\u{00A0}?", .de: "\(files) (\(size)) in den Papierkorb legen?", .ja: "\(files)（\(size)）をゴミ箱に入れますか？", .zh: "把\(files)（\(size)）移到废纸篓？", .pt: "Mover \(files) (\(size)) para o Lixo?"])
     }
     static var moduleName: String { L("Duplicates", [.ru: "Дубликаты", .es: "Duplicados", .fr: "Doublons", .de: "Duplikate", .ja: "重複", .zh: "重复文件", .pt: "Duplicatas"]) }
     static var summary: String { L("Files that exist more than once", [.ru: "Файлы, которые существуют больше одного раза", .es: "Archivos que existen más de una vez", .fr: "Fichiers présents plus d’une fois", .de: "Dateien, die mehr als einmal existieren", .ja: "複数存在するファイル", .zh: "存在多份的文件", .pt: "Arquivos que existem mais de uma vez"]) }

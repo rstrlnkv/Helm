@@ -41,36 +41,35 @@ public struct HomebrewSettingsPage: View {
                 pendingUninstall = nil
             }
             Button(HbStr.cancel, role: .cancel) { pendingUninstall = nil }
+        } message: {
+            // The title alone asked the same question the recoverable deletions
+            // ask, for the one deletion nothing can undo.
+            Text(HbStr.uninstallIsPermanent)
         }
     }
 
     // MARK: - Not installed
 
+    /// The same pane draws `HelmEmptyState` with the module switched off; this
+    /// used to replace it in place with a hand-rolled second one — 16 pt stack
+    /// spacing against 14, a 20 pt title against 17, a 12 pt body against 13,
+    /// and a button pinned to 260 pt. One flick of the switch showed both.
+    ///
+    /// The tint is read off the descriptor rather than written as `.pink`,
+    /// which is what the category happens to resolve to today.
     private var installScreen: some View {
-        VStack(spacing: 16) {
-            Spacer()
-            HelmIconPlate(symbol: "shippingbox", tint: .pink, size: 56)
-            VStack(spacing: 6) {
-                Text(HbStr.notInstalledTitle)
-                    .font(.system(size: 20, weight: .semibold))
-                Text(HbStr.notInstalledBody)
-                    .font(.callout).foregroundStyle(HelmText.quiet)
-                    .multilineTextAlignment(.center).frame(maxWidth: 380)
-            }
+        HelmEmptyState(symbol: "shippingbox",
+                       tint: HomebrewDescriptor.category.tint,
+                       title: HbStr.notInstalledTitle,
+                       message: HbStr.notInstalledBody) {
             Button {
                 hb.installBrew()
             } label: {
                 Label(HbStr.installBrew, systemImage: "arrow.down.circle")
-                    .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .frame(width: 260)
             .disabled(hb.running)
-            Spacer()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
     }
 
     // MARK: - Manager
@@ -140,7 +139,8 @@ public struct HomebrewSettingsPage: View {
     }
 
     private var installedList: some View {
-        listOrEmpty(hb.installed, empty: hb.loadedInstalled ? HbStr.noneInstalled : nil) { pkg in
+        listOrEmpty(hb.installed, empty: hb.loadedInstalled ? HbStr.noneInstalled : nil,
+                    busy: HbStr.packagesLoading) { pkg in
             pkgRow(name: pkg.name, detail: pkg.version, isCask: pkg.isCask,
                    desc: hb.description(name: pkg.name, isCask: pkg.isCask)) {
                 // Every other destructive action in Helm asks first; this one
@@ -161,7 +161,8 @@ public struct HomebrewSettingsPage: View {
                 }.padding(8)
                 Divider()
             }
-            listOrEmpty(hb.outdated, empty: hb.loadedOutdated ? HbStr.upToDate : nil) { pkg in
+            listOrEmpty(hb.outdated, empty: hb.loadedOutdated ? HbStr.upToDate : nil,
+                        busy: HbStr.checkingForUpdates) { pkg in
                 pkgRow(name: pkg.name, detail: "\(pkg.installed) → \(pkg.latest)", isCask: pkg.isCask) {
                     if pkg.pinned {
                         // Still listed — somebody who pinned a formula still
@@ -191,7 +192,7 @@ public struct HomebrewSettingsPage: View {
             if query.isEmpty && hb.searchHits.isEmpty {
                 HelmEmptyState(message: HbStr.typeToSearch)
             } else {
-                listOrEmpty(hb.searchHits, empty: HbStr.noResults) { hit in
+                listOrEmpty(hb.searchHits, empty: HbStr.noResults, busy: HbStr.searching) { hit in
                     pkgRow(name: hit.name, detail: nil, isCask: hit.isCask,
                            desc: hb.description(name: hit.name, isCask: hit.isCask)) {
                         Button(HbStr.install) { hb.install(hit) }
@@ -227,7 +228,9 @@ public struct HomebrewSettingsPage: View {
                 }
             }
             .frame(height: 160)
-            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.primary.opacity(0.05)))
+            // The token's own doc comment names console output as its call site.
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(HelmSurface.wellFill))
         }
         .padding(12)
     }
@@ -287,13 +290,16 @@ public struct HomebrewSettingsPage: View {
         }
     }
 
-    private func listOrEmpty<T: Identifiable, Row: View>(_ items: [T], empty: String?,
+    private func listOrEmpty<T: Identifiable, Row: View>(_ items: [T], empty: String?, busy: String,
                                                          @ViewBuilder row: @escaping (T) -> Row) -> some View {
         Group {
             if items.isEmpty, let empty {
                 HelmEmptyState(message: empty)
             } else if items.isEmpty {
-                HelmBusyState()
+                // `HelmBusyState()` is the bare spinner its own doc comment
+                // names as one of the three shapes it exists to end; the caller
+                // still has to say what is being waited on.
+                HelmBusyState(busy)
             } else {
                 List(items) { row($0) }
                     .listStyle(.inset)

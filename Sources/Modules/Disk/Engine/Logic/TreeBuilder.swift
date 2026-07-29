@@ -21,8 +21,21 @@ public final class TreeBuilder: @unchecked Sendable {
 
     public func addFile(path: String, bytes: Int, fileID: UInt64, modified: TimeInterval = 0) {
         // A hard link's target is one allocation however many names it has.
+        //
+        // 0 is not an id — it is the absence of one. `DiskScanner.readDirectory`
+        // leaves it there when the filesystem does not return `ATTR_CMN_FILEID`,
+        // and treating that as an id like any other means the first such file is
+        // counted and every later one is dropped from the tree *and* from the
+        // totals. Nobody could name a volume that withholds the attribute, so
+        // this is a guard rather than a fix: an unknown id deduplicates nothing.
+        guard fileID != 0 else { insert(path: path, bytes: bytes, modified: modified); return }
         guard seenFileIDs.insert(fileID).inserted else { return }
-        let parent = directory(for: (path as NSString).deletingLastPathComponent)
+        insert(path: path, bytes: bytes, modified: modified)
+    }
+
+    private func insert(path: String, bytes: Int, modified: TimeInterval) {
+        guard let parent = directory(for: (path as NSString).deletingLastPathComponent)
+        else { return }
         if bytes < foldThreshold {
             foldedBucket(of: parent).bytes += bytes
         } else {
@@ -34,16 +47,27 @@ public final class TreeBuilder: @unchecked Sendable {
     }
 
     public func markNoAccess(path: String) {
-        directory(for: path).noAccess = true
+        directory(for: path)?.noAccess = true
     }
 
     public func build() -> DiskNode { rootNode }
 
     // MARK: - Internals
 
-    private func directory(for path: String) -> DiskNode {
+    /// nil for a path that does not descend from the scan root.
+    ///
+    /// The walk up had no base case but finding the root in the index, and
+    /// `/`'s parent is `/` — so one path from outside the root recursed until
+    /// the stack was gone. Every caller descends from the root, which is why
+    /// nobody has seen it. Nothing is invented on the way out either: charging
+    /// a stray path to the root would trade the crash for a folder that was
+    /// never scanned marking the whole volume unreadable.
+    private func directory(for path: String) -> DiskNode? {
         if let hit = index[path] { return hit }
-        let parent = directory(for: (path as NSString).deletingLastPathComponent)
+        let above = (path as NSString).deletingLastPathComponent
+        guard above != path, !above.isEmpty, let parent = directory(for: above) else {
+            return nil
+        }
         let node = DiskNode(name: (path as NSString).lastPathComponent,
                             path: path, bytes: 0, isDirectory: true)
         parent.children.append(node)

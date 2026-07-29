@@ -345,7 +345,10 @@ private struct ChildRow: View {
                 Text(child.isFolded ? DkStr.otherItems : title)
                     .lineLimit(1).truncationMode(.middle)
                 if child.noAccess {
-                    Text(DkStr.noAccess).font(.caption2).foregroundStyle(.orange)
+                    // The token, not `.orange`: the system colour is tuned for
+                    // a dark background and measures 2.31:1 on a light window,
+                    // which is ten-point body text nobody can read.
+                    Text(DkStr.noAccess).font(.caption2).foregroundStyle(HelmSignal.warning)
                 } else if !removable, !everyRowIsSystem {
                     Text(DkStr.systemItem).font(.caption2).foregroundStyle(HelmText.faint)
                 }
@@ -361,8 +364,12 @@ private struct ChildRow: View {
                         .foregroundStyle(basketed ? Color.accentColor : .secondary)
                 }
                 .buttonStyle(.borderless)
-                .help(DkStr.addToBasket)
-                .accessibilityLabel(DkStr.addToBasket)
+                // The button toggles, so its name has to. It read "Add" in both
+                // states — on a basketed row that is the opposite of what
+                // pressing it does.
+                .help(DkStr.basketAction(basketed: basketed))
+                .accessibilityLabel(DkStr.basketAction(basketed: basketed))
+                .accessibilityAddTraits(basketed ? .isSelected : [])
             }
         }
         .padding(.vertical, 3)
@@ -449,7 +456,7 @@ private struct AdviceList: View {
                 .frame(width: 18)
             VStack(alignment: .leading, spacing: 1) {
                 Text(item.name).lineLimit(1).truncationMode(.middle)
-                Text(reason(item.kind))
+                Text(DkStr.adviceReason(item))
                     .font(.caption2)
                     .foregroundStyle(HelmText.quiet)
             }
@@ -464,15 +471,24 @@ private struct AdviceList: View {
                     .foregroundStyle(basketed ? Color.accentColor : .secondary)
             }
             .buttonStyle(.borderless)
-            .help(DkStr.addToBasket)
-            .accessibilityLabel(DkStr.addToBasket)
+            .help(DkStr.basketAction(basketed: basketed))
+            .accessibilityLabel(DkStr.basketAction(basketed: basketed))
+            .accessibilityAddTraits(basketed ? .isSelected : [])
         }
         .padding(.vertical, 5).padding(.horizontal, 8)
         .contextMenu {
-            Button(HelmA11y.showInFinder) {
-                NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: item.path)])
-            }
+            Button(HelmA11y.showInFinder) { reveal(item) }
         }
+        // A right-click is a mouse. Without this the popover offered no way at
+        // all to look at what it is asking you to delete — the same drill
+        // `ChildRow` already runs for the same reason.
+        .accessibilityActions {
+            Button(HelmA11y.showInFinder) { reveal(item) }
+        }
+    }
+
+    private func reveal(_ item: DiskAdvice) {
+        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: item.path)])
     }
 
     private func icon(_ kind: DiskAdvice.Kind) -> String {
@@ -480,14 +496,6 @@ private struct AdviceList: View {
         case .cache: "arrow.triangle.2.circlepath"
         case .oldDownload: "arrow.down.circle"
         case .largeOld: "clock.arrow.circlepath"
-        }
-    }
-
-    private func reason(_ kind: DiskAdvice.Kind) -> String {
-        switch kind {
-        case .cache: DkStr.adviceKindCache
-        case .oldDownload: DkStr.adviceKindOldDownload
-        case .largeOld: DkStr.adviceKindLargeOld
         }
     }
 }

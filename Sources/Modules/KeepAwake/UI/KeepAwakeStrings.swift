@@ -20,11 +20,31 @@ enum KAStr {
     static var customTimeTitle: String { L("Custom duration", [.ru: "Своё время", .es: "Duración personalizada", .fr: "Durée personnalisée", .de: "Eigene Dauer", .ja: "カスタム時間", .zh: "自定义时长", .pt: "Duração personalizada"]) }
     static var customTime: String { L("Custom…", [.ru: "Своё время…", .es: "Personalizado…", .fr: "Personnalisé…", .de: "Eigene Zeit…", .ja: "カスタム…", .zh: "自定义…", .pt: "Personalizado…"]) }
     static var done: String { L("Done", [.ru: "Готово", .es: "Listo", .fr: "OK", .de: "Fertig", .ja: "完了", .zh: "完成", .pt: "OK"]) }
+    /// The state of the ⋯ disclosure, read after its name.
+    ///
+    /// Said in words because there is no other way to say it: SwiftUI's
+    /// `AccessibilityTraits` has no expanded member on any platform, and AppKit's
+    /// `NSAccessibilityExpanded` — which VoiceOver would voice in the user's own
+    /// language — is not reachable from a SwiftUI view. So the button was a
+    /// control whose entire purpose is showing and hiding a block, and read
+    /// aloud it never said which of the two it had just done. These eight are
+    /// the one set of strings in this file not taken from a system table:
+    /// macOS does not ship these adjectives anywhere readable.
+    static var disclosureExpanded: String {
+        L("Expanded", [.ru: "Развёрнуто", .es: "Desplegado", .fr: "Développé", .de: "Aufgeklappt", .ja: "展開済み", .zh: "已展开", .pt: "Expandido"])
+    }
+    static var disclosureCollapsed: String {
+        L("Collapsed", [.ru: "Свёрнуто", .es: "Contraído", .fr: "Réduit", .de: "Zugeklappt", .ja: "折りたたみ済み", .zh: "已折叠", .pt: "Recolhido"])
+    }
     /// Short forms used under the "Automatically" heading, where the context is
     /// already given by the group title.
     static var onExternalDisplay: String { L("With an external display", [.ru: "При внешнем дисплее", .es: "Con pantalla externa", .fr: "Avec un écran externe", .de: "Mit externem Bildschirm", .ja: "外部ディスプレイ接続時", .zh: "连接外接显示器时", .pt: "Com tela externa"]) }
     static var onPower: String { L("On power", [.ru: "При питании", .es: "Con corriente", .fr: "Sur secteur", .de: "Am Netzstrom", .ja: "電源接続時", .zh: "接通电源时", .pt: "Na tomada"]) }
-    static var timer: String { L("Timer", [.ru: "Таймер", .es: "Timer", .fr: "Minuteur", .de: "Timer", .ja: "タイマー", .zh: "计时器", .pt: "Timer"]) }
+    /// Spanish says `Temporizador`, which is what macOS's own Clock says
+    /// (Clock.app `Localizable.loctable`, key `TIMER`) and what this file
+    /// already said two labels down — so one page carried both words. German
+    /// and Brazilian Portuguese genuinely say `Timer` in the same table.
+    static var timer: String { L("Timer", [.ru: "Таймер", .es: "Temporizador", .fr: "Minuteur", .de: "Timer", .ja: "タイマー", .zh: "计时器", .pt: "Timer"]) }
     static var start: String {
         L("Start", [.ru: "Старт", .es: "Iniciar", .fr: "Démarrer", .de: "Start", .ja: "開始", .zh: "开始", .pt: "Iniciar"])
     }
@@ -35,8 +55,12 @@ enum KAStr {
     static var minutesUnitShort: String {
         L("m", [.ru: "м", .es: "m", .fr: "m", .de: "Min.", .ja: "分", .zh: "分钟", .pt: "m"])
     }
+    /// German abbreviates with a period — `2 Std.` — in CLDR and in ordinary
+    /// orthography, and `hoursUnit` two lines down already had one, so the same
+    /// duration was spelled two ways. Distinct from `minutesUnitShort` above,
+    /// which is deliberately the full `Min.` because the pill was measured.
     static var hoursUnitShort: String {
-        L("h", [.ru: "ч", .es: "h", .fr: "h", .de: "Std", .ja: "時間", .zh: "小时", .pt: "h"])
+        L("h", [.ru: "ч", .es: "h", .fr: "h", .de: "Std.", .ja: "時間", .zh: "小时", .pt: "h"])
     }
     static var hoursUnit: String {
         L("h", [.ru: "ч", .es: "h", .fr: "h", .de: "Std.", .ja: "時間", .zh: "小时", .pt: "h"])
@@ -54,7 +78,7 @@ enum KAStr {
     static func condition(_ wire: String) -> String {
         switch wire {
         case "manual": return L("Manual", [.ru: "Вручную", .es: "Manual", .fr: "Manuel", .de: "Manuell", .ja: "手動", .zh: "手动", .pt: "Manual"])
-        case "timer": return L("Timer", [.ru: "Таймер", .es: "Timer", .fr: "Minuteur", .de: "Timer", .ja: "タイマー", .zh: "计时器", .pt: "Timer"])
+        case "timer": return L("Timer", [.ru: "Таймер", .es: "Temporizador", .fr: "Minuteur", .de: "Timer", .ja: "タイマー", .zh: "计时器", .pt: "Timer"])
         case "externalDisplay": return L("External display", [.ru: "Внешний дисплей", .es: "Pantalla externa", .fr: "Écran externe", .de: "Externer Bildschirm", .ja: "外部ディスプレイ", .zh: "外接显示器", .pt: "Tela externa"])
         case "power": return L("Power", [.ru: "Питание", .es: "Corriente", .fr: "Secteur", .de: "Netzstrom", .ja: "電源", .zh: "电源", .pt: "Energia"])
         case "app": return L("App", [.ru: "Приложение", .es: "App", .fr: "App", .de: "App", .ja: "アプリ", .zh: "应用", .pt: "App"])
@@ -102,10 +126,23 @@ enum KAStr {
     static var twoHours: String { L("2 hours", [.ru: "2 часа", .es: "2 horas", .fr: "2 heures", .de: "2 Stunden", .ja: "2 時間", .zh: "2 小时", .pt: "2 horas"]) }
     static var indefinite: String { L("Indefinite", [.ru: "Бессрочно", .es: "Indefinido", .fr: "Illimité", .de: "Unbegrenzt", .ja: "無期限", .zh: "无限期", .pt: "Indefinido"]) }
     static var pointerNeedsAccessibility: String { L("Needs Accessibility, or the pointer will not move.", [.ru: "Нужен «Универсальный доступ», иначе указатель не двинется.", .es: "Requiere Accesibilidad; si no, el puntero no se moverá.", .fr: "Nécessite l’Accessibilité, sinon le pointeur ne bougera pas.", .de: "Benötigt Bedienungshilfen, sonst bewegt sich der Zeiger nicht.", .ja: "アクセシビリティの許可が必要です。ないとポインタは動きません。", .zh: "需要无障碍权限，否则指针不会移动。", .pt: "Precisa de Acessibilidade, senão o ponteiro não se move."]) }
-    static var globalShortcut: String { L("Global shortcut", [.ru: "Глобальный хоткей", .es: "Atajo global", .fr: "Raccourci global", .de: "Globaler Kurzbefehl", .ja: "グローバルショートカット", .zh: "全局快捷键", .pt: "Atalho global"]) }
+    /// Russian was the odd one out: «хоткей» is slang, and Helm's own Layout
+    /// page already says «сочетание клавиш». macOS calls it «Сочетание клавиш»
+    /// (KeyboardSettings.appex, key "Keyboard shortcut"), so that is the word.
+    /// The other seven already carry their own system's root — de Kurzbefehl,
+    /// es Atajo, fr Raccourci, zh 快捷键, ja ショートカット, pt Atalho — checked
+    /// against the same table rather than assumed.
+    static var globalShortcut: String { L("Global shortcut", [.ru: "Глобальное сочетание клавиш", .es: "Atajo global", .fr: "Raccourci global", .de: "Globaler Kurzbefehl", .ja: "グローバルショートカット", .zh: "全局快捷键", .pt: "Atalho global"]) }
     static var toggleAction: String { L("Toggle Keep Awake", [.ru: "Включить или выключить «Не спать»", .es: "Activar o desactivar Mantener activo", .fr: "Activer ou désactiver Rester éveillé", .de: "Wach halten ein-/ausschalten", .ja: "「スリープ防止」を切り替え", .zh: "开关“保持唤醒”", .pt: "Ativar ou desativar Manter ativo"]) }
     static var keepAwakeLidClosed: String { L("Keep awake with the lid closed", [.ru: "Не спать с закрытой крышкой", .es: "Mantener activo con la tapa cerrada", .fr: "Rester éveillé capot fermé", .de: "Bei geschlossenem Deckel wach halten", .ja: "ふたを閉じてもスリープ防止", .zh: "合盖时保持唤醒", .pt: "Manter ativo com a tampa fechada"]) }
-    static var adminNote: String { L("Requires an admin password once (uses pmset).", [.ru: "Нужен пароль администратора один раз (использует pmset).", .es: "Requiere una contraseña de administrador una vez (usa pmset).", .fr: "Nécessite un mot de passe administrateur une fois (utilise pmset).", .de: "Erfordert einmalig ein Admin-Passwort (nutzt pmset).", .ja: "管理者パスワードが一度必要です（pmset を使用）。", .zh: "需要一次管理员密码（使用 pmset）。", .pt: "Requer uma senha de administrador uma vez (usa pmset)."]) }
+    /// What the person is about to face and what they get for it. `pmset` was
+    /// the tool's name, which answers a question nobody asked: the two things
+    /// worth knowing are that the password prompt is macOS's own — not this
+    /// app's — and that the setting is system-wide, so it outlives a restart
+    /// and Helm is not what keeps it. The wording for the password follows the
+    /// system's own (SecurityPrivacyExtension.appex, "Require an administrator
+    /// password to access system-wide settings").
+    static var adminNote: String { L("macOS asks for an administrator password once. The setting is system-wide and survives a restart.", [.ru: "macOS один раз запросит пароль администратора. Настройка системная и сохраняется после перезагрузки.", .es: "macOS solicita una contraseña de administración una vez. El ajuste es del sistema y se mantiene tras reiniciar.", .fr: "macOS demande une fois un mot de passe d’administrateur. Le réglage est système et survit à un redémarrage.", .de: "macOS fragt einmal nach einem Adminpasswort. Die Einstellung gilt systemweit und bleibt nach einem Neustart erhalten.", .ja: "macOS が管理者パスワードを一度要求します。設定はシステム全体に適用され、再起動後も残ります。", .zh: "macOS 会要求输入一次管理员密码。该设置作用于整个系统，重启后依然有效。", .pt: "O macOS pede uma senha de administrador uma vez. O ajuste é do sistema e continua após reiniciar."]) }
     static var turnOffLowBattery: String { L("Turn off on low battery", [.ru: "Выключать при низком заряде", .es: "Apagar con batería baja", .fr: "Désactiver à batterie faible", .de: "Bei niedrigem Akku ausschalten", .ja: "バッテリー残量が少ないとき無効化", .zh: "电量低时关闭", .pt: "Desligar com bateria fraca"]) }
     static func belowPercent(_ n: Int) -> String { L("Below \(n)%", [.ru: "Ниже \(n) %", .es: "Por debajo del \(n) %", .fr: "En dessous de \(n) %", .de: "Unter \(n) %", .ja: "\(n)% 未満", .zh: "低于 \(n)%", .pt: "Abaixo de \(n)%"]) }
     static var activeIconColor: String { L("Active icon color", [.ru: "Цвет активной иконки", .es: "Color del icono activo", .fr: "Couleur de l’icône active", .de: "Farbe des aktiven Symbols", .ja: "アクティブ時のアイコン色", .zh: "激活时的图标颜色", .pt: "Cor do ícone ativo"]) }
@@ -119,8 +156,15 @@ enum KAStr {
     static var customActiveIcon: String { L("Custom icon when active", [.ru: "Своя иконка при активации", .es: "Icono propio cuando está activo", .fr: "Icône personnalisée si actif", .de: "Eigenes Symbol bei Aktivität", .ja: "アクティブ時にカスタムアイコン", .zh: "激活时使用自定义图标", .pt: "Ícone personalizado quando ativo"]) }
     static var min15: String { "15 " + minutesUnit }
     static var metricState: String { L("STATE", [.ru: "СОСТОЯНИЕ", .es: "ESTADO", .fr: "ÉTAT", .de: "STATUS", .ja: "状態", .zh: "状态", .pt: "ESTADO"]) }
-    static var metricTimer: String { L("TIMER", [.ru: "ТАЙМЕР", .es: "TEMPORIZ.", .fr: "MINUTEUR", .de: "TIMER", .ja: "タイマー", .zh: "计时", .pt: "TIMER"]) }
-    static var metricRules: String { L("AUTOMATIONS", [.ru: "АВТОМАТИКА", .es: "AUTOMATIZ.", .fr: "AUTOMATIS.", .de: "AUTOMATIK", .ja: "自動化", .zh: "自动化", .pt: "AUTOMAÇÕES"]) }
+    /// Whole words. Three of these were clipped with a period into a cell that
+    /// fits them: the strip's label style is 9 pt semibold at 0.7 tracking and
+    /// the cell is a third of the 704 pt settings column, about 230 pt, while
+    /// `TEMPORIZADOR` measures 84, `AUTOMATIZACIONES` 109 and
+    /// `AUTOMATISATIONS` 101. Chinese was `计时` — the verb "to time" — where
+    /// every other language has the noun; macOS's own Clock says `计时器`
+    /// (`Localizable.loctable`, key `TIMER`), which measures 29.
+    static var metricTimer: String { L("TIMER", [.ru: "ТАЙМЕР", .es: "TEMPORIZADOR", .fr: "MINUTEUR", .de: "TIMER", .ja: "タイマー", .zh: "计时器", .pt: "TIMER"]) }
+    static var metricRules: String { L("AUTOMATIONS", [.ru: "АВТОМАТИКА", .es: "AUTOMATIZACIONES", .fr: "AUTOMATISATIONS", .de: "AUTOMATIK", .ja: "自動化", .zh: "自动化", .pt: "AUTOMAÇÕES"]) }
     static var metricOn: String { L("ON", [.ru: "ВКЛ", .es: "ON", .fr: "ON", .de: "AN", .ja: "オン", .zh: "开", .pt: "ON"]) }
     static var metricOff: String { L("OFF", [.ru: "ВЫКЛ", .es: "OFF", .fr: "OFF", .de: "AUS", .ja: "オフ", .zh: "关", .pt: "OFF"]) }
 }

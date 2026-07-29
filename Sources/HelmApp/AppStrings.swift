@@ -3,6 +3,20 @@ import HelmUI
 
 /// Localized strings for the app shell (settings window chrome).
 enum AppStr {
+    /// The settings window's own title. Never drawn — the window hides its
+    /// title bar text — and read aloud all the same: VoiceOver announces it on
+    /// focus, and the Window menu lists it. It was the one user-visible English
+    /// string in the app that was not behind `L()`, which is exactly the kind of
+    /// string that keeps being the last one.
+    ///
+    /// "Helm Settings", the shape macOS uses for an app's own settings window,
+    /// with each language's word for the pane taken from `settingsPane` so the
+    /// title and the sidebar cannot disagree.
+    static var settingsWindowTitle: String {
+        L("Helm Settings", [.ru: "Helm — Настройки", .es: "Ajustes de Helm",
+                            .fr: "Réglages Helm", .de: "Helm-Einstellungen",
+                            .ja: "Helm 設定", .zh: "Helm 设置", .pt: "Ajustes do Helm"])
+    }
     /// Sidebar entry for the app-level pane (login item, panel layout, menu-bar icon).
     static var settingsPane: String { L("Settings", [.ru: "Настройки", .es: "Ajustes", .fr: "Réglages", .de: "Einstellungen", .ja: "設定", .zh: "设置", .pt: "Ajustes"]) }
     /// Section title inside that pane, for the menu-bar icon controls.
@@ -11,6 +25,19 @@ enum AppStr {
     static var launchAtLogin: String { L("Launch automatically at startup", [.ru: "Автозапуск при включении Mac", .es: "Abrir automáticamente al iniciar el Mac", .fr: "Lancer automatiquement au démarrage du Mac", .de: "Beim Starten des Mac automatisch öffnen", .ja: "Mac の起動時に自動で開始", .zh: "开机时自动启动", .pt: "Abrir automaticamente ao ligar o Mac"]) }
     static var checking: String { L("Checking…", [.ru: "Проверка…", .es: "Buscando…", .fr: "Recherche…", .de: "Suche…", .ja: "確認中…", .zh: "检查中…", .pt: "Verificando…"]) }
     static var upToDate: String { L("You’re on the latest version.", [.ru: "Установлена последняя версия.", .es: "Tienes la última versión.", .fr: "Vous avez la dernière version.", .de: "Du hast die neueste Version.", .ja: "最新バージョンです。", .zh: "已是最新版本。", .pt: "Você tem a versão mais recente."]) }
+    /// Said to somebody running a build the channel has not published yet —
+    /// which is a state worth naming rather than calling "up to date", because
+    /// the person in it is usually the person testing something.
+    static func aheadOfChannel(_ newest: String) -> String {
+        L("Your build is newer than the channel — its latest is \(newest).",
+          [.ru: "Ваша сборка новее канала — в нём последняя \(newest).",
+           .es: "Tu compilación es más reciente que el canal: la última de este es \(newest).",
+           .fr: "Votre version est plus récente que le canal — la dernière y est \(newest).",
+           .de: "Dein Build ist neuer als der Kanal — dessen neuester ist \(newest).",
+           .ja: "お使いのビルドはチャンネルより新しいバージョンです（チャンネルの最新は \(newest)）。",
+           .zh: "你的版本比该通道更新——通道中的最新版本是 \(newest)。",
+           .pt: "Sua build é mais recente que o canal — a última dele é \(newest)."])
+    }
     static var download: String { L("Download", [.ru: "Скачать", .es: "Descargar", .fr: "Télécharger", .de: "Herunterladen", .ja: "ダウンロード", .zh: "下载", .pt: "Baixar"]) }
     static var updateReady: String { L("Update ready", [.ru: "Обновление готово", .es: "Actualización lista", .fr: "Mise à jour prête", .de: "Update bereit", .ja: "アップデートあり", .zh: "有可用更新", .pt: "Atualização pronta"]) }
     static var updateAndRelaunch: String { L("Update & Relaunch", [.ru: "Обновить и перезапустить", .es: "Actualizar y reiniciar", .fr: "Mettre à jour et relancer", .de: "Aktualisieren & neu starten", .ja: "更新して再起動", .zh: "更新并重启", .pt: "Atualizar e reiniciar"]) }

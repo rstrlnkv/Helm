@@ -4,14 +4,16 @@ import Module_VPN_Engine
 /// Localized strings for the VPN module UI. "VPN" itself stays untranslated.
 enum VPNStr {
     static var summary: String {
+        // No full stop, in any of them: a module subtitle is a label, and the
+        // English base carries none in any of the nine.
         L("Connect system VPNs, automatically per app",
-          [.ru: "Подключение системных VPN, автоматически по приложению.",
-           .es: "Conecta VPN del sistema, automáticamente por app.",
-           .fr: "Connecte les VPN système, automatiquement par app.",
-           .de: "Verbindet System-VPNs, automatisch pro App.",
-           .ja: "システム VPN をアプリごとに自動接続。",
-           .zh: "按应用自动连接系统 VPN。",
-           .pt: "Conecta VPNs do sistema, automaticamente por app."])
+          [.ru: "Подключение системных VPN, автоматически по приложению",
+           .es: "Conecta VPN del sistema, automáticamente por app",
+           .fr: "Connecte les VPN système, automatiquement par app",
+           .de: "Verbindet System-VPNs, automatisch pro App",
+           .ja: "システム VPN をアプリごとに自動接続",
+           .zh: "按应用自动连接系统 VPN",
+           .pt: "Conecta VPNs do sistema, automaticamente por app"])
     }
     static var noVPNs: String {
         L("No VPNs configured", [.ru: "Нет настроенных VPN", .es: "Sin VPN configuradas", .fr: "Aucun VPN configuré", .de: "Keine VPNs eingerichtet", .ja: "VPN が設定されていません", .zh: "未配置 VPN", .pt: "Nenhuma VPN configurada"])

@@ -7,13 +7,25 @@ import Module_Leftovers_Engine
 /// Scan, review, remove. Nothing is pre-selected: every item here is something
 /// macOS loads, so each one is a deliberate choice.
 public struct LeftoversSettingsPage: View {
-    @StateObject private var lvm: LeftoversViewModel
+    /// Observed, never owned: Settings tears this page down on every sidebar
+    /// visit, and a `@StateObject` here took the scan and every checkbox with
+    /// it. Nothing in this list is pre-ticked — each tick is a decision about a
+    /// file macOS loads, and one sidebar click asked for all of them again.
+    @ObservedObject private var lvm: LeftoversViewModel
     @State private var diskAccess: PermissionState = .granted
     @State private var confirmingBatch = false
     @State private var pendingDeletion: StaleItem?
 
     public init(vm: ModuleViewModel) {
-        _lvm = StateObject(wrappedValue: LeftoversViewModel(vm: vm))
+        lvm = LeftoversViewModel.shared(vm: vm)
+    }
+
+    /// What the row's menu may call this. An ellipsis is a promise that another
+    /// step follows; for a leftover none does, and the click deleted. Where no
+    /// dialog follows the row says exactly what the bar below it says, because
+    /// it is the same act.
+    static func deleteLabel(for item: StaleItem) -> String {
+        LeftoverActions.needsConfirmation(item) ? LfStr.deleteItem : LfStr.removeSelected
     }
 
     private var grouped: [(kind: StaleKind, items: [StaleItem])] {
@@ -21,10 +33,6 @@ public struct LeftoversSettingsPage: View {
             let items = lvm.visibleItems.filter { $0.kind == kind }
             return items.isEmpty ? nil : (kind, items)
         }
-    }
-
-    private var selectedBytes: Int {
-        lvm.visibleItems.filter { lvm.selected.contains($0.path) }.reduce(0) { $0 + $1.sizeBytes }
     }
 
     public var body: some View {
@@ -68,6 +76,12 @@ public struct LeftoversSettingsPage: View {
                 .lineLimit(2)
             Spacer(minLength: 8)
             if !lvm.items.isEmpty {
+                // What the scan found, beside the control that filters it. It
+                // used to sit in the bar at the bottom joined to the size of the
+                // selection, where the two read as one measurement.
+                Text(LfStr.foundLine(lvm.leftoverCount))
+                    .font(.caption).foregroundStyle(HelmText.quiet)
+                    .lineLimit(1).fixedSize()
                 Menu {
                     ForEach(StaleKind.allCases, id: \.self) { kind in
                         Toggle(LfStr.kindName(kind.rawValue), isOn: Binding(
@@ -107,7 +121,7 @@ public struct LeftoversSettingsPage: View {
             }
             .disabled(lvm.scanning)
         }
-        .padding(.horizontal, 20).padding(.vertical, 12)
+        .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
     }
 
     @ViewBuilder private var content: some View {
@@ -153,7 +167,11 @@ public struct LeftoversSettingsPage: View {
                 HStack(spacing: 6) {
                     Text(item.identifier)
                         .lineLimit(1)
-                        .foregroundStyle(item.removable ? .primary : .secondary)
+                        // Not SwiftUI's `.secondary`: it measures 3.95:1 here,
+                        // under the 4.5:1 body floor `HelmText.quiet` (4.62:1)
+                        // exists to hold. A row nobody may delete is still a row
+                        // somebody has to read.
+                        .foregroundStyle(item.removable ? Color.primary : HelmText.quiet)
                     if item.disabled {
                         HelmBadge(LfStr.statusDisabled)
                     } else {
@@ -174,6 +192,12 @@ public struct LeftoversSettingsPage: View {
                         .lineLimit(1).truncationMode(.middle)
                 }
             }
+            // A name, up to two badges, a path and a note about a missing
+            // target: five stops per row on a list that holds dozens, and the
+            // name arrives without the badge that qualifies it. One element,
+            // read in the order it is drawn — the checkbox and the buttons stay
+            // their own, being things to operate rather than to read.
+            .accessibilityElement(children: .combine)
             Spacer()
             if item.actions.contains(.turnOff) {
                 // Not everything here is rubbish to delete — most of it is
@@ -196,7 +220,7 @@ public struct LeftoversSettingsPage: View {
                         NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: item.path)])
                     }
                     if item.actions.contains(.delete) {
-                        Button(LfStr.deleteItem, role: .destructive) {
+                        Button(Self.deleteLabel(for: item), role: .destructive) {
                             if LeftoverActions.needsConfirmation(item) {
                                 pendingDeletion = item
                             } else {
@@ -237,8 +261,7 @@ public struct LeftoversSettingsPage: View {
             Button(LfStr.deselectAll) { lvm.selected.removeAll() }
                 .disabled(lvm.selected.isEmpty)
             if !lvm.items.isEmpty {
-                Text(LfStr.foundCount(lvm.leftoverCount,
-                                      Bytes(selectedBytes)))
+                Text(LfStr.selectedLine(lvm.selectedCount, Bytes(lvm.selectedBytes)))
                     .font(.caption).foregroundStyle(HelmText.quiet)
             }
             Spacer()
@@ -258,7 +281,7 @@ public struct LeftoversSettingsPage: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(lvm.selected.isEmpty)
                 .confirmationDialog(LfStr.confirmSelected(lvm.selected.count,
-                                                          Bytes(selectedBytes)),
+                                                          Bytes(lvm.selectedBytes)),
                                     isPresented: $confirmingBatch, titleVisibility: .visible) {
                     Button(LfStr.removeSelected, role: .destructive) {
                         Task { await lvm.removeSelected() }
@@ -266,6 +289,6 @@ public struct LeftoversSettingsPage: View {
                     Button(LfStr.cancelAction, role: .cancel) { }
                 }
         }
-        .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
+        .padding(.horizontal, 20).padding(.vertical, 12)
     }
 }

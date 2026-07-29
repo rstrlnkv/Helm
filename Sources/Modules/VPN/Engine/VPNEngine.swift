@@ -46,6 +46,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     private let runner: VPNRunnerPort
     private let credentials: VPNCredentialsPort?
     private let apps: AppObserverPort
+    private let network: NetworkWatchPort?
     private let localTransport: LocalTransport
     public let transport: EngineTransport
 
@@ -75,6 +76,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
                 runner: VPNRunnerPort,
                 credentials: VPNCredentialsPort? = nil,
                 apps: AppObserverPort,
+                network: NetworkWatchPort? = nil,
                 transport: LocalTransport = LocalTransport(),
                 work: VPNWorkQueue = .background) {
         self.work = work
@@ -82,6 +84,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         self.runner = runner
         self.credentials = credentials
         self.apps = apps
+        self.network = network
         self.localTransport = transport
         self.transport = transport
         wireTransport()
@@ -113,11 +116,27 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             }
         }
         apps.startObserving { [weak self] in self?.appsChanged() }
+        // The one question this module answers is asked of the system, not of a
+        // cache: a tunnel raised from the menu bar, stopped in System Settings
+        // or dropped by the network never comes back through Helm.
+        network?.startObserving { [weak self] in
+            // An observer that never fires and an observer that fires and finds
+            // nothing changed look identical from outside the process, and the
+            // release process triages dev builds against the log. One line per
+            // real network event, no names in it.
+            HelmLog.shared.info("vpn", "network state changed; re-reading")
+            self?.refresh()
+        }
     }
 
     public func deactivate() {
         running = false
+        network?.stopObserving()
     }
+
+    /// The backstop for the routes that do not go through `deactivate()`.
+    /// ARCHITECTURE.md § "An observer outlives the thing it points at".
+    deinit { network?.stopObserving() }
 
     // MARK: - VPN control
 

@@ -202,9 +202,11 @@ final class AutopilotSweepTests: XCTestCase {
     /// because refusing the file would make a volume without extended
     /// attributes a volume where no rule works. The sentence that makes that
     /// survivable is that the action is idempotent on an unchanged file — so
-    /// this is that sentence, tested. `setxattr` answers `ENOTSUP` on exFAT,
-    /// the format of most USB sticks, and `WatchScope` admits `/Volumes` on
-    /// purpose.
+    /// this is that sentence, tested. Reachable wherever the attribute does not
+    /// survive: a filesystem that refuses it, or an AppleDouble `._name`
+    /// sidecar dropped in transit, on the `/Volumes` `WatchScope` admits on
+    /// purpose. (Not exFAT, which this used to name: it keeps the stamp —
+    /// ARCHITECTURE.md § Autopilot.)
     func testAnUnstampableVolumeDoesNotBuryTheFileDeeperEverySweep() throws {
         try write("a.pdf", bytes: 4)
 

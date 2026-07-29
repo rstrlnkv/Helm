@@ -27,3 +27,18 @@ public protocol AppObserverPort: AnyObject {
     func runningBundleIDs() -> Set<String>
     func startObserving(_ onChange: @escaping @Sendable () -> Void)
 }
+
+/// Notifies when the machine's network configuration or state changes.
+///
+/// A tunnel can be raised from the macOS menu bar, dropped by the network, or
+/// stopped in System Settings, and none of that comes back through Helm. The
+/// port carries no detail: what changed is `scutil`'s answer to give, and the
+/// engine re-reads the list either way.
+///
+/// `stopObserving` is not optional courtesy — ARCHITECTURE.md § "An observer
+/// outlives the thing it points at": the host calls `deactivate()` and drops
+/// the engine, and a callback still holding it holds freed memory.
+public protocol NetworkWatchPort: AnyObject {
+    func startObserving(_ onChange: @escaping @Sendable () -> Void)
+    func stopObserving()
+}

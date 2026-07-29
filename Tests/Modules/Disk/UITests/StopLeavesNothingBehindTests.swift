@@ -143,6 +143,48 @@ final class StopLeavesNothingBehindTests: XCTestCase {
                       + "on screen, above a Trash button")
     }
 
+    /// The same screen from the other side. Trash something mid-scan and the
+    /// bar stops being a basket and becomes a report — and the report is not
+    /// the basket, so emptying the basket does not take it away. `cancel()`
+    /// clears what it knows about and the bar's own condition is
+    /// `!basket.isEmpty || banner != nil`, so Stop drew the removal report over
+    /// the volume picker: a sentence about a tree that is no longer on screen,
+    /// with the failures of a scan nobody can look at any more.
+    func testStopDoesNotLeaveTheRemovalReportOverTheVolumePicker() async {
+        let transport = transport()
+        transport.answerTrash(with: DiskRemoval(
+            removed: ["/Volumes/Big/Sub"],
+            refused: [HelmTrash.Refusal(path: "/Volumes/Big/Locked", reason: .noPermission)],
+            freedBytes: 600))
+        let dvm = model(transport)
+        await scannedWithABasketedFolder(dvm)
+        await dvm.emptyBasket()
+        XCTAssertNotNil(dvm.banner, "precondition: the bar is showing a removal report")
+        XCTAssertFalse(dvm.failures.isEmpty, "precondition: with what macOS refused")
+
+        dvm.cancel()                    // the Stop button
+
+        XCTAssertFalse(dvm.showsRemovalBar,
+                       "the volume picker is drawn over a removal report: "
+                       + "banner \(String(describing: dvm.banner)), "
+                       + "\(dvm.failures.count) failures")
+    }
+
+    /// And the bar the assertion above names is the one the page draws — the
+    /// condition lives on the view model precisely so a test cannot pass
+    /// against a copy of it that has drifted.
+    func testTheBarIsShownForABasketAndForAReport() async {
+        let transport = transport()
+        transport.answerTrash(with: DiskRemoval(removed: ["/Volumes/Big/Sub"],
+                                                refused: [], freedBytes: 600))
+        let dvm = model(transport)
+        XCTAssertFalse(dvm.showsRemovalBar, "nothing selected, nothing removed")
+        await scannedWithABasketedFolder(dvm)
+        XCTAssertTrue(dvm.showsRemovalBar, "something is marked for removal")
+        await dvm.emptyBasket()
+        XCTAssertTrue(dvm.showsRemovalBar, "and the report of what happened stays up")
+    }
+
     /// The arithmetic that state turns into.
     ///
     /// Stop, pick a different volume, and the basket bar is still there. Empty

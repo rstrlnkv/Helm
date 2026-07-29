@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import HelmUI
 import Module_VPN_Engine
@@ -25,6 +26,18 @@ public struct VPNPanelTile: View {
             }
         }
         .helmPanelCard()
+        // The panel's hosting view is built once and merely ordered in and out,
+        // so `.task` here runs at the first open and never again — and the
+        // panel deliberately does not activate the app, so `helmOnAppActive`
+        // never fires for it either. Becoming key is the one event a
+        // non-activating panel does raise, and `HelmPanel.toggle` calls
+        // `makeKey()` on every open for its own reasons.
+        //
+        // The engine's network observer is the real answer; this is the route
+        // that needs nothing to have fired. One `scutil --nc list` on the
+        // engine's own queue, once per window activation.
+        .onReceive(NotificationCenter.default.publisher(
+            for: NSWindow.didBecomeKeyNotification)) { _ in vm.refresh() }
     }
 
     private var header: some View {

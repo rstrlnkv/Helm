@@ -7,10 +7,10 @@ import XCTest
 /// `RuleRunnerIdempotenceTests` covers `move` and `sortIntoSubfolder` under
 /// exactly these conditions and says why they matter: `RuleRunner.note`
 /// tolerates a stamp that will not stick, and the sentence it leans on is that
-/// the action "re-runs an idempotent action on an unchanged file". `setxattr`
-/// answers `ENOTSUP` on exFAT — the format of most USB sticks — and
-/// `WatchScope` deliberately admits `/Volumes`, so the tolerated case is an
-/// ordinary external disk with a sweep every hour.
+/// the action "re-runs an idempotent action on an unchanged file". The
+/// tolerated case is any volume that will not keep the attribute, or a file
+/// whose AppleDouble `._name` sidecar something dropped, with a sweep every
+/// hour — `WatchScope` deliberately admits `/Volumes`.
 ///
 /// `rename` is the third action and it is the one that is not idempotent.
 /// `RuleRunner` guards a single shape of it — `guard target.path != url.path`,
@@ -51,8 +51,8 @@ final class RenameIdempotenceTests: XCTestCase {
 
     /// The pattern the rule editor's own examples lead somebody to write, and
     /// the one a Downloads folder wants: stamp the date on the front and keep
-    /// the name. On a volume that takes the xattr this runs once. On exFAT it
-    /// runs every sweep, and each one prepends another date.
+    /// the name. Stamped, this runs once. Unstamped it runs every sweep, and
+    /// each one prepends another date.
     ///
     /// Asserted as a fixed point rather than as a count of files: after the
     /// first rename the file is where the rule wants it, so every later sweep

@@ -63,26 +63,22 @@ enum ApStr {
     static var comparisonOlder: String { L("older than", [.ru: "старше", .es: "anterior a", .fr: "plus ancien que", .de: "älter als", .ja: "より古い", .zh: "早于", .pt: "mais antigo que"]) }
     static var comparisonNewer: String { L("newer than", [.ru: "новее", .es: "posterior a", .fr: "plus récent que", .de: "neuer als", .ja: "より新しい", .zh: "晚于", .pt: "mais recente que"]) }
     static var unitMegabytes: String { L("MB", [.ru: "МБ", .es: "MB", .fr: "Mo", .de: "MB", .ja: "MB", .zh: "MB", .pt: "MB"]) }
-    /// The bare word, for the editor row where it labels a field rather than
-    /// counting anything: "[ 30 ] days".
-    static var unitDays: String { L("days", [.ru: "дней", .es: "días", .fr: "jours", .de: "Tage", .ja: "日", .zh: "天", .pt: "dias"]) }
-
-    /// The same word, agreeing with the number in the field beside it. The
+    /// The word, agreeing with the number in the field beside it. The
     /// argument for a bare plural was that the label names a field rather than
     /// counting anything — but the field holds a number, so it counts, and the
     /// row opened on "1 дней".
+    ///
+    /// Both of these stand after «старше» or «новее», which govern the
+    /// genitive, so the agreement is `DayUnit`'s rather than `Plural`'s: the
+    /// count's own «1 день» / «2 дня» is the wrong case in this position.
     static func unitDays(for count: Double) -> String {
-        let n = Int(count.rounded())
-        let counted = Plural.days(n, language: AppLanguage.current.rawValue)
-        return counted.hasPrefix("\(n)")
-            ? String(counted.dropFirst("\(n)".count)).trimmingCharacters(in: .whitespaces)
-            : counted
+        DayUnit.wordAfterComparison(count, language: AppLanguage.current.rawValue)
     }
 
     /// Composed with the number rather than glued to it: a bare word after a
     /// numeral gives «1 дней» and «22 дней» in Russian, and "1 days" in English.
     static func days(_ count: Double) -> String {
-        Plural.days(Int(count.rounded()), language: AppLanguage.current.rawValue)
+        DayUnit.afterComparison(count, language: AppLanguage.current.rawValue)
     }
 
     static func kindName(_ kind: FileKind) -> String {
@@ -159,7 +155,12 @@ enum ApStr {
         switch kind {
         case .moved: L("moved to", [.ru: "в", .es: "movido a", .fr: "déplacé vers", .de: "verschoben nach", .ja: "移動先", .zh: "移动到", .pt: "movido para"])
         case .renamed: L("renamed to", [.ru: "переименован в", .es: "renombrado a", .fr: "renommé en", .de: "umbenannt in", .ja: "名前変更", .zh: "重命名为", .pt: "renomeado para"])
-        case .tagged: L("tagged", [.ru: "тег", .es: "etiquetado", .fr: "Étiquette", .de: "Tag", .ja: "タグ", .zh: "标签", .pt: "etiquetado"])
+        // German said "Tag" — the word for *day*, which this module also prints
+        // in the same column ("älter als 30 Tage"), so the record of a tagged
+        // file read as a record of a date. French said "Étiquette", a
+        // capitalised noun among five lowercase past participles. Both are past
+        // participles now, which is what every other language here already had.
+        case .tagged: L("tagged", [.ru: "тег", .es: "etiquetado", .fr: "étiqueté", .de: "markiert", .ja: "タグ", .zh: "标签", .pt: "etiquetado"])
         case .trashed: L("moved to Trash", [.ru: "в Корзину", .es: "trasladado a la papelera", .fr: "placé dans la corbeille", .de: "in den Papierkorb", .ja: "ゴミ箱へ", .zh: "移到废纸篓", .pt: "movido para o Lixo"])
         case .refused: L("refused", [.ru: "отказано", .es: "rechazado", .fr: "refusé", .de: "abgelehnt", .ja: "拒否", .zh: "已拒绝", .pt: "recusado"])
         case .failed: L("failed", [.ru: "не удалось", .es: "falló", .fr: "échec", .de: "fehlgeschlagen", .ja: "失敗", .zh: "失败", .pt: "falhou"])
