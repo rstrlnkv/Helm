@@ -156,6 +156,26 @@ import SwiftUI
         }
     }
 
+    /// Every group's extras, through the same rule the per-group button uses.
+    ///
+    /// Deliberately a loop over `basketExtras(of:)` rather than its own walk of
+    /// the groups: two implementations of "which copy survives" is two answers
+    /// to the only question on this page that costs someone a file.
+    public func basketAllExtras() {
+        for group in groups { basketExtras(of: group) }
+    }
+
+    /// Empties the basket. Nothing is deleted, nothing is moved.
+    ///
+    /// The counterpart to `basketAllExtras`, and the reason it can exist: one
+    /// press that ticks three hundred checkboxes needs one press that unticks
+    /// them. Named apart from `emptyBasket()`, which is the one that trashes —
+    /// two methods about the basket differing only in outcome must not read
+    /// alike at the call site.
+    public func clearBasket() {
+        basket.removeAll()
+    }
+
     public func emptyBasket() async {
         let paths = basket
         guard !paths.isEmpty else { return }
