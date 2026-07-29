@@ -158,6 +158,28 @@ features, PATCH = fixes.
     move the footprint by 1 MB on the first and by nothing after it.
 
 ### Changed
+- **The translations live in `.lproj` files now, not in the source.** Every
+  user-visible string was a Swift dictionary at its call site; 663 of 700 moved
+  into `Resources/<lang>.lproj/Localizable.strings`, eight files of 614 keys,
+  with the English text as the key. That is what a macOS app looks like and it
+  is what a translator can be handed. The 36 that stayed carry Swift
+  interpolation, which cannot be a key — interpolation runs before the lookup.
+  - **Seventeen English keys turned out to mean two things.** A collision guard
+    refused to migrate while one key carried two different translations for the
+    same language, and it fired 64 times. Twelve of the seventeen were not
+    mistakes: several languages had independently drawn a distinction the
+    English had lost — gender endings in Spanish, French and Portuguese where
+    two screens described nouns of different gender, German's *Wenn* against
+    *Wann*, Russian's «Поиск» against «Искать». The translators were right and
+    the English was wrong to be one word, so twelve keys became twenty-five:
+    "Stop" split from "Stop scan", "Clear" from "Empty", "When" from "Timing",
+    "Running" from "Active".
+  - **Nine Russian strings called Full Disk Access «Доступ к диску»** where
+    macOS itself indexes it as «Полный доступ к диску» — found by reading
+    Apple's own search-terms table rather than trusting the translation. Six
+    more Russian fixes came with it: a module whose name disagreed with itself
+    in the same sentence, a note pointing at a button that no longer exists,
+    and a Quit button with two different names.
 - **The three notice styles are shown, not listed.** They differed in what they
   *look* like and were offered as three lines of a pop-up menu, which is the
   control for options that differ in what they are called. They are three

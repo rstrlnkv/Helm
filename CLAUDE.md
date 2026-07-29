@@ -89,13 +89,23 @@ xattr -dr com.apple.quarantine /Applications/Helm.app && open /Applications/Helm
   the signal that exists to tell the user their rules were forged. It showed up
   as a test failing 7 times in 70 and never twice in a row.
 - Pills are `HelmBadge`, cards are `.helmCard()` — one of each, no local variants.
-- Every user-visible string goes through `L()` with all eight languages, and
-  everything the language shapes goes through `HelmUI`: `Bytes`, `Decimal`,
+- **Every user-visible string is `L("English")`, and the English is the key.**
+  The seven translations live in `Sources/HelmUI/Resources/<lang>.lproj/Localizable.strings`,
+  not in the source — add a key to all eight files or `StringsCoverageTests`
+  fails. Only a Swift-interpolated string keeps an inline table, because
+  interpolation runs before the lookup. **One English key means one thing:** if
+  you need the same word for a second meaning, write different English, or the
+  two translations will collide. Seventeen keys already meant two things each
+  and twelve of them had to be split — ARCHITECTURE.md § Localization.
+- **A malformed `.strings` file fails silently**, falling every string back to
+  English with no error. `plutil -lint` on all eight after any hand edit.
+- Everything the language shapes goes through `HelmUI`: `Bytes`, `Decimal`,
   `Quoted`, `HelmDates`, `HelmPickerWidth`. A `Foundation` formatter built with
   no locale answers in the *system's* language, not the app's. When a string
   names something macOS also names (a unit, a settings pane, a folder), read the
-  system's spelling out of its bundle instead of translating it again —
-  ARCHITECTURE.md § Localization says where the tables are.
+  system's spelling out of its bundle instead of translating it again — it was
+  «Доступ к диску» for nine strings where macOS itself indexes «Полный доступ к
+  диску», and only reading Apple's own table caught it.
 - **A test target needs a tracked file in it.** `Package.swift` declared
   `Tests/Modules/Autopilot/UITests` for weeks while the directory existed only
   as untracked files in one checkout: SwiftPM refuses the whole manifest without

@@ -636,9 +636,49 @@ canonical English record; it is **not** bundled.
 
 ## Localization
 
-Code-based: `L("English", [.ru: …, …])` in `HelmUI/L10n.swift`; per-area string
-enums (`AppStr`, `KAStr`, `VPNStr`, `UnStr`, `HbStr`). Every user-visible
-string carries all eight languages. No .strings files.
+`L("English")` in `HelmUI/L10n.swift`, called through per-area string enums
+(`AppStr`, `KAStr`, `VPNStr`, `UnStr`, `HbStr`). **The English text is the key**
+and stays at the call site; the seven translations live in
+`Sources/HelmUI/Resources/<lang>.lproj/Localizable.strings` — 614 keys, eight
+files. SwiftPM builds them into `Helm_HelmUI.bundle` and `package-app.sh`
+already copies every generated bundle, so nothing in the script knows about
+this.
+
+The `.lproj` directories are named by `AppLanguage`'s raw values (`en ru es fr
+de ja zh pt`), **not** the `zh-Hans`/`pt-BR` spellings in `Info.plist`, because
+Helm resolves the language itself and never lets the system's bundle machinery
+do it. `Localized` loads the per-language sub-bundle explicitly and caches it —
+one bundle per language, not one per row of a hovered list, the same reasoning
+`AppLanguage.current` already carried one level up.
+
+**Not `NSLocalizedString`.** It would hand the language decision to the system
+and, worse, break the `language:` overload that every localization test uses to
+ask about a language other than this machine's. A missing key falls back to the
+key, which is the English — the fallback this app always had, now for free.
+
+**36 sites keep an inline table**, and must: a Swift-interpolated string cannot
+be a key, because interpolation runs before the lookup, so `L("Step \(step) of
+\(total)")` would look for "Step 3 of 10". `L()` keeps its `table` parameter and
+an inline table wins where it has an entry.
+
+**One English key means one thing.** The migration's collision guard — refuse to
+proceed if one key carries two different translations for the same language —
+fired on 17 keys and 64 conflicts, and twelve of the seventeen were not
+translation mistakes: several languages had independently drawn a distinction the
+English had lost (gender endings in es/fr/pt where two sites described nouns of
+different gender, `Wenn` against `Wann`, «Поиск» against «Искать», `Anzeigen`
+against `Zeigen`). The translators were right to diverge; the English was wrong
+to be one word. Twelve keys became twenty-five. The full ruling, with the macOS
+tables each was checked against, is in
+`docs/superpowers/specs/2026-07-30-lproj-migration-and-key-rulings.md`.
+
+`StringsCoverageTests` is what keeps this honest: every key present in all eight
+files, nothing empty, and one lookup end to end through the shipped bundle.
+**A malformed `.strings` file is silent** — `NSDictionary(contentsOfFile:)`
+returns nil and every string falls back to English with no error anywhere. That
+happened once during the migration, from a `*/` inside a `**/` glob in a header
+comment closing the block comment early, and only the coverage test caught it.
+`plutil -lint` on all eight is the cheap check.
 
 **Anything the language shapes goes through `HelmUI`, not through `Foundation`
 with its defaults.** `Bytes` (sizes), `Decimal` (a bare number, so "1,5 МБ" does
