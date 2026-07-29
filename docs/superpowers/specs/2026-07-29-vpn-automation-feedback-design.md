@@ -99,12 +99,25 @@ view model's last automation:
 
 The title is only produced when the notice style is `.menuBar`.
 
+This is the table for an idle menu bar. There is one status item and one title
+slot, and a module already using them keeps them — see "Which module drives the
+icon" below for exactly how much of the firing survives that.
+
 ### Two rules the animation obeys
 
-**A countdown wins.** Keep Awake draws its remaining time as an arc on this same
-ring. If the chosen appearance carries a `timerProgress`, the spin does not run —
-the label still appears. A continuous state must not be interrupted by a moment,
-and a countdown that jumped backwards for 1.2 s would read as a bug.
+**A countdown wins — the whole icon, not only the movement.** Keep Awake draws
+its remaining time as an arc on this same ring. A live countdown outranks a live
+spin in `StatusPlan.choose`, so the appearance the host draws is the counting
+one and `StatusPlan.spins` refuses to move it. A continuous state must not be
+interrupted by a moment, and a countdown that jumped backwards for 1.2 s would
+read as a bug.
+
+The first version of this rule said "the spin does not run — the label still
+appears". That was never achievable and the code never did it: the title slot
+holds the countdown's own remaining time, so there is nowhere for the name to
+go. **While another module owns the icon, the menu bar does not announce a
+firing at all.** Someone who wants to be told regardless picks the banner, which
+is the mode that owns its own surface.
 
 **Reduce Motion wins.** `NSWorkspace.accessibilityDisplayShouldReduceMotion` is
 read fresh, exactly as `HelmMotion` does it, and when it is on the ring does not
@@ -122,9 +135,20 @@ bar:
 StatusPlan.choose(_ appearances: [StatusAppearance], now: Date) -> StatusAppearance
 ```
 
-An appearance whose `spinUntil` is in the future wins; otherwise the existing
-rule applies unchanged. A spin is at most 1.2 seconds, so the borrow is brief
-and self-ending.
+Four tiers, in order:
+
+1. an appearance with a live `timerProgress` — a countdown owns the icon while
+   it runs;
+2. the newest live spin;
+3. the first that tints, which is the rule that was always here;
+4. the first that carries a title.
+
+A spin is at most 1.2 seconds, so the borrow in tier 2 is brief and
+self-ending. Tier 1 is what makes `StatusPlan.spins`'s `timerProgress == nil`
+guard reachable at all: no descriptor puts a countdown and a spin on one
+appearance, so a guard that reads only the chosen appearance answers for
+whichever module was chosen — and while the spin ranked first, that was always
+VPN's, which never counts down.
 
 ## Drawing it
 
@@ -209,11 +233,13 @@ Pure logic, tests first:
 - `SpinWindow.phase(firedAt:now:)` → `nil` after 1.2 s, 0…1 inside it, and
   `SpinWindow.showsName(firedAt:now:)` → false after 3 s. Parameterised by an
   injected `now`, never the machine's clock.
-- `StatusPlan.choose` — a spinning appearance wins; a countdown suppresses the
-  spin but not the name; Reduce Motion suppresses the spin but not the name.
+- `StatusPlan.choose` — a spinning appearance wins over a tint; a countdown wins
+  over a spin, built from **two** appearances, which is the composition the app
+  produces; Reduce Motion suppresses the spin but not the name.
 - `VPNNotice` default and round-trip through the store.
-- The notice decision: which of the three outputs each mode produces, including
-  the denied-authorization fallback.
+- The notice decision: which of the three outputs each mode produces, for every
+  answer macOS can give, with the stored mirror deliberately holding the
+  opposite — a firing is decided on what the system says now, not on a memory.
 
 Host and drawing:
 
@@ -270,10 +296,20 @@ set`, designated requirement `cdhash H"…"` and nothing else.
    - The refusal path was exercised end to end: with the permission revoked, the
      settings row says macOS refuses banners and that the name will be shown in
      the menu bar instead, and the next firing does put the name in the menu bar.
-     **But** the mirror is only re-read when the VPN settings page appears: a
-     firing between the revocation and the next visit to that page produces the
-     spin and nothing else, because the stored `bannerAuthorized` still says yes.
-     Measured — the ring turned for 1.1 s and no name was drawn.
+     **A revocation used to be heard only when the VPN settings page next
+     appeared** — a firing before that visit produced the spin and nothing else,
+     because the stored `bannerAuthorized` still said yes; measured, the ring
+     turned for 1.1 s and no name was drawn. **Fixed:** the firing asks.
+     `AutomationNotice.announce` now reads `authorizationState()` on its way to
+     the banner and returns what it heard; `VPNViewModel` publishes that, and
+     `effective(bannerAuthorized:)` is judged against it rather than against the
+     mirror. The read prompts nobody, so it is affordable at every firing, and
+     only `.system` asks — the answer cannot change what the other two modes do.
+     The mirror stays as what the settings page displays. Guarded by
+     `testEveryModeThatSpeaksAtAllSpeaksExactlyOnce`, which now runs every mode
+     against every answer macOS can give with the mirror deliberately holding
+     the opposite, and by
+     `testARevokedPermissionIsNoticedWhenTheRuleFiresAndNotAtTheNextSettingsVisit`.
 2. **The 30 Hz redraw costs nothing after the first spin.** Ten firings six
    seconds apart: footprint 17 MB before the first, 18 MB from the second, and
    18 MB unchanged through the tenth. The 1 MB is the one-time build of the
@@ -283,24 +319,39 @@ set`, designated requirement `cdhash H"…"` and nothing else.
    revolutions, measured at 557–607°/s across two recordings) and the name stood
    beside it for 2.97 s of the 3.0 s window; the missing frames at each end are
    the engine→UI hop, one frame of paint delay.
-4. **A countdown does not suppress the spin, and the rule that says it does is
-   inert.** `StatusPlan.spins` reads `timerProgress` off the *chosen* appearance,
-   and `StatusPlan.choose` gives a live spin the icon before it looks at any
-   tint — so the appearance it inspects is VPN's, which never carries a
-   countdown. No descriptor produces one appearance holding both fields, which is
-   the only shape the rule can fire on, and the test that guards it
-   (`testACountdownSuppressesTheSpin`) constructs exactly that shape by hand.
-   Measured on screen with a Keep Awake timed session running: the red ring and
-   the remaining time were **replaced** for 1.2 s by a spinning grey ring and the
-   connection's name, at 585°/s, and the countdown then came back — which is the
-   "countdown arc that jumped backwards" this rule exists to prevent. Fixing it
-   means asking the question of the *set* of appearances rather than of the
-   chosen one, and the test has to be built from two appearances, the way the
-   app is.
-5. **The name is shown for three seconds only while no other module tints the
-   icon.** `StatusPlan.choose` ranks tint above title on purpose, so a module
-   with a live tint takes the icon back the moment the spin ends. Measured: with
-   Keep Awake active — which for a person using its per-app rules is most of the
-   day — the name was visible for 1.05 s, not 3.0 s. The spin still carries the
-   news, which is the trade the tier order was chosen for, but the table above
-   describes the uncontended case only.
+4. **A countdown did not suppress the spin, and the rule that said it did was
+   inert. Fixed 2026-07-29.** `StatusPlan.spins` reads `timerProgress` off the
+   *chosen* appearance, and `StatusPlan.choose` gave a live spin the icon before
+   it looked at anything else — so the appearance it inspected was VPN's, which
+   never carries a countdown. No descriptor produces one appearance holding both
+   fields, which is the only shape the rule could fire on, and the test that
+   guarded it (`testACountdownSuppressesTheSpin`) constructed exactly that shape
+   by hand. Measured on screen with a Keep Awake timed session running: the red
+   ring and the remaining time were **replaced** for 1.2 s by a spinning grey
+   ring and the connection's name, at 585°/s, and the countdown then came back —
+   which is the "countdown arc that jumped backwards" this rule exists to
+   prevent.
+
+   The fix is a tier: a live `timerProgress` now outranks a live spin in
+   `choose`, so the appearance handed to `spins` really is the counting one and
+   the existing guard answers for the right reason. The test is built from two
+   appearances, the way the app is
+   (`testACountdownOutranksASpinForTheIcon`,
+   `testTheChosenAppearanceOfACountdownDoesNotSpin`); the hand-built single
+   appearance is kept as one assertion among several rather than as the whole
+   coverage, because `spins` is public and the two fields are independent.
+5. **While another module owns the icon, the menu bar does not announce a firing
+   at all.** Not a limitation to work around — the consequence of there being
+   one status item and one title slot, now that a countdown outranks a spin
+   (Risk 4). With a Keep Awake countdown running, a firing produces no spin and
+   no name: the slot holds "14:22" and it is the more important of the two.
+   Asserted in `testWhileACountdownOwnsTheIconAFiringIsNotNamed`. With a module
+   that tints but does not count down, the spin plays in full and the name is
+   dropped the moment it ends — measured at 1.05 s of a 3.0 s window before the
+   countdown tier existed, and unchanged by it. The person who wants to be told
+   whatever else the menu bar is doing has the banner; that is what the mode is
+   for. The picker's hint — "The menu-bar ring turns either way." — is a
+   statement about the three modes and stays true of them, but it is the one
+   place in the app that could be read as promising a ring a countdown will not
+   give. Left alone deliberately: it is not wrong about the choice it sits
+   under, and rewriting it costs eight languages and a screenshot pass.

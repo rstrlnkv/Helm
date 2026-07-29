@@ -12,20 +12,30 @@
 
 **Baseline:** `swift test` is **1462 tests, 0 failures**. Every task ends green.
 
-**Status: complete.** All ten tasks are done; `swift test` finishes at **1559
-tests, 0 failures**. Task 10's measurements are written into the spec's Risks
-section as fact. Three things it found are **open** and belong to whoever picks
-this up next:
+**Status: complete.** All ten tasks are done, and both defects Task 10's
+measurements found are **fixed** (2026-07-29):
 
-1. **A countdown does not suppress the spin** (spec Risk 4). The rule is inert in
-   the real composition and its test asserts on a shape no descriptor produces.
-   Measured on screen. This is a defect in this feature, not a limitation.
-2. **The name lasts three seconds only while no other module tints the icon**
-   (spec Risk 5) — 1.05 s with Keep Awake active. Intended by the tier order,
-   undescribed by the spec's table; either the table or the order should move.
-3. **A revocation is only heard when the VPN settings page appears** (spec Risk
-   1, last bullet). Between the revocation and that visit, `.system` produces the
-   spin and no name — the silence the fallback exists to prevent.
+1. **A countdown did not suppress the spin** (spec Risk 4). `StatusPlan.choose`
+   now ranks a live `timerProgress` above a live spin, which is what makes
+   `StatusPlan.spins`'s existing guard reachable — it was inert because no
+   descriptor produces one appearance carrying both fields, and the only test
+   that covered it built that shape by hand. The test is now over two
+   appearances, the composition the app actually has.
+2. **A revocation was only heard when the VPN settings page appeared** (spec
+   Risk 1, last bullet). The firing asks: `AutomationNotice.announce` reads
+   `authorizationState()` — a read that prompts nobody — and returns it, and the
+   label decision is judged against that instead of the stored mirror. The
+   mirror stays as what the settings page displays.
+   `testEveryModeThatSpeaksAtAllSpeaksExactlyOnce` now covers every mode against
+   every answer macOS can give, with the mirror deliberately holding the
+   opposite.
+
+One thing Task 10 found is **not a defect and is now written down as behaviour**
+(spec Risk 5): while another module owns the icon a firing is not announced in
+the menu bar at all — with a countdown, neither the spin nor the name; with a
+plain tint, the spin only. There is one status item and one title slot. The
+banner is the mode that survives contention, and the spec's table is marked as
+the uncontended case.
 
 Not part of this plan, found while running it: **an ad-hoc rebuild makes every
 launch raise a modal keychain prompt, and Helm's launch blocks behind it.**

@@ -21,7 +21,16 @@ final class FakeAutomationNotice: AutomationNoticePort, @unchecked Sendable {
     /// How many times the person was actually prompted. macOS shows that
     /// prompt once ever, so this number is the whole point of `prepare`.
     var requests: Int { lock.withLock { _requests } }
+    /// What the person was actually shown — see `post`.
     var posted: [(title: String, body: String)] { lock.withLock { _posted } }
+
+    /// What the mode is judged against at the moment a rule fires. Settable so
+    /// a test can revoke the permission behind the app's back, which is the
+    /// only way System Settings ever does it.
+    var state: NoticeAuthorization {
+        get { lock.withLock { _state } }
+        set { lock.withLock { _state = newValue } }
+    }
 
     func authorizationState() async -> NoticeAuthorization { lock.withLock { _state } }
 
@@ -29,7 +38,14 @@ final class FakeAutomationNotice: AutomationNoticePort, @unchecked Sendable {
         lock.withLock { _requests += 1; return _state }
     }
 
+    /// A banner posted without the permission is dropped by macOS and nobody
+    /// sees it, so this records what arrived rather than what was attempted.
+    /// Recording the attempt would let "the person was told" pass on a firing
+    /// that went nowhere — which is the whole of the defect these tests guard.
     func post(title: String, body: String) async {
-        lock.withLock { _posted.append((title, body)) }
+        lock.withLock {
+            guard _state == .authorized else { return }
+            _posted.append((title, body))
+        }
     }
 }

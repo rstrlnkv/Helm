@@ -75,11 +75,27 @@ public enum AutomationNotice {
         notice.postsBanner ? await port.requestAuthorization() : await port.authorizationState()
     }
 
-    /// Says a rule fired, in the one mode that says it with a banner.
+    /// Says a rule fired, in the one mode that says it with a banner, and
+    /// answers what macOS said about banners while it was there.
+    ///
+    /// **It asks macOS now rather than being told.** The permission can be
+    /// revoked in System Settings at any moment and nothing tells the app; a
+    /// stored mirror of the last answer is therefore a memory, and this is the
+    /// one instant where being wrong costs the person the news — `.system`
+    /// suppresses the menu-bar name because the banner is meant to carry it, so
+    /// a stale yes means macOS drops the banner and nothing else is said.
+    /// Measured: the ring turned for 1.1 s and the connection was never named.
+    /// `authorizationState()` is a read that prompts nobody, which is what
+    /// makes asking on every firing affordable.
+    ///
+    /// Only the banner mode asks: for the other two the answer cannot change
+    /// what happens, and a permission nobody needs is not worth a question.
+    /// Hence the optional — nil is "macOS was not asked", not "no".
     ///
     /// Routed through `effective(bannerAuthorized:)` rather than through
     /// `postsBanner` directly, so a refused banner falls back to the menu-bar
-    /// label — which posts nothing here — instead of to silence.
+    /// label — which posts nothing here — instead of to silence. The caller
+    /// puts the returned answer where the label decision reads it.
     ///
     /// The words come in already written. `L()` lives in `HelmUI`, which an
     /// engine target cannot import, and moving `L()` down into `HelmRuntime` to
@@ -87,10 +103,15 @@ public enum AutomationNotice {
     /// engine. So the decision stays here, where it is pure and tested, and the
     /// caller that already speaks eight languages says it: `VPNStr` writes the
     /// banner, `VPNViewModel` hands it over.
-    public static func announce(notice: VPNNotice, authorized: Bool,
-                                title: String, body: String,
-                                port: AutomationNoticePort) async {
-        guard notice.effective(bannerAuthorized: authorized).postsBanner else { return }
+    @discardableResult
+    public static func announce(notice: VPNNotice, title: String, body: String,
+                                port: AutomationNoticePort) async -> NoticeAuthorization? {
+        guard notice.postsBanner else { return nil }
+        let heard = await port.authorizationState()
+        guard notice.effective(bannerAuthorized: heard == .authorized).postsBanner else {
+            return heard
+        }
         await port.post(title: title, body: body)
+        return heard
     }
 }
