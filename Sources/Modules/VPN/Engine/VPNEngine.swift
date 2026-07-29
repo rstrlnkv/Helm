@@ -162,7 +162,19 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
 
     /// The blocking half, always on the work queue.
     private func refreshNow() {
-        let parsed = VPNListParser.parseList(runner.run(["--nc", "list"]))
+        let output = runner.run(["--nc", "list"])
+        // Silence is not an answer. `scutil`'s exit status never reaches us, so
+        // a read that failed looks exactly like a Mac with no VPNs — and acting
+        // on it does two kinds of damage: the page announces that the user's
+        // connections are gone while they are up, and the drop detection below,
+        // which asks what is missing from this list, decides that everything
+        // Helm ever raised fell over at once. Keeping the last real answer is
+        // the only honest response to not being told anything.
+        guard VPNListParser.isReadable(output) else {
+            HelmLog.shared.warn("vpn", "connection list unreadable; keeping the last answer")
+            return
+        }
+        let parsed = VPNListParser.parseList(output)
         lock.lock()
         _connections = parsed
         // A VPN Helm raised can also drop on its own — the network goes, the
@@ -220,8 +232,20 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     private func connectNow(_ name: String, auto: Bool) {
         HelmLog.shared.info("vpn", "connect \(Redact.vpn(name))\(auto ? " (auto)" : "")")
         if auto {
+            // Read before the books are touched, so this asks what was true when
+            // the rule asked, not what Helm has since written down.
+            let alreadyUp = status(name).isUp
+            // Owning it and announcing it are different questions: the quit rule
+            // reads `_autoConnected`, so a tunnel already up is still Helm's to
+            // take down when the app goes.
             lock.lock(); _autoConnected.insert(name); lock.unlock()
-            recordAutomation(name, .connected)
+            // Announced only when Helm actually changed something. `--nc start`
+            // on a tunnel that is up is a no-op, and `activate()` replays
+            // `appLaunched` for every app that was already running — so a rule
+            // whose app runs all day fired this at every launch of Helm, naming
+            // a tunnel nobody had touched. Measured in the menu bar, not
+            // reasoned about: the ring spun 0.8 s after each launch.
+            if !alreadyUp { recordAutomation(name, .connected) }
         }
         var args = ["--nc", "start", name]
         // Known limitation: scutil takes the shared secret only as an argument,

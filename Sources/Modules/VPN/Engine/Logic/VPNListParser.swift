@@ -18,6 +18,28 @@ public enum VPNListParser {
 
     /// Parse the multi-line `scutil --nc list` output. Lines that don't match the
     /// expected shape (status in parens + a quoted name) are skipped.
+    /// The header `scutil --nc list` prints before it enumerates anything. It is
+    /// there on a machine with no VPN configured at all, which is what makes it
+    /// a usable sign of "the tool spoke".
+    private static let listHeader = "Available network connection services"
+
+    /// Whether this output is an answer at all.
+    ///
+    /// `ScutilRunner` hands back the tool's stdout and drops its exit status, so
+    /// a read that failed arrives here as an empty string — and an empty string
+    /// parses, perfectly happily, into "this Mac has no VPNs". The two are not
+    /// the same fact and the caller must not confuse them: the page told a user
+    /// their connections were gone while both were up, and the drop detection,
+    /// which asks what is no longer in this list, concluded that everything Helm
+    /// had raised had fallen over at once.
+    ///
+    /// An answer carries the header, or at least one row we could read. Anything
+    /// else — silence, or a complaint from the tool — is not an answer.
+    public static func isReadable(_ output: String) -> Bool {
+        if output.contains(listHeader) { return true }
+        return !parseList(output).isEmpty
+    }
+
     public static func parseList(_ output: String) -> [VPNConnection] {
         var result: [VPNConnection] = []
         for rawLine in output.split(separator: "\n", omittingEmptySubsequences: true) {
