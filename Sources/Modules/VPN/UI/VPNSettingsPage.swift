@@ -103,15 +103,22 @@ public struct VPNSettingsPage: View {
     /// one, and never at launch.
     @ViewBuilder
     private var noticePicker: some View {
-        Picker(VPNStr.noticeLabel, selection: Binding(
-            get: { notice },
-            set: { chosen in
-                notice = chosen
-                Task { await vm.choose(chosen) }
-            })) {
-            ForEach(VPNNotice.allCases, id: \.self) { option in
-                Text(VPNStr.noticeOption(option)).tag(option)
-            }
+        VStack(alignment: .leading, spacing: 8) {
+            Text(VPNStr.noticeLabel)
+            HelmChoiceCards(selection: Binding(
+                get: { notice },
+                set: { chosen in
+                    notice = chosen
+                    Task { await vm.choose(chosen) }
+                }),
+                items: [
+                    .init(id: .silent, label: VPNStr.noticeOption(.silent),
+                          preview: NoticePreview.strip(name: false, banner: false)),
+                    .init(id: .menuBar, label: VPNStr.noticeOption(.menuBar),
+                          preview: NoticePreview.strip(name: true, banner: false)),
+                    .init(id: .system, label: VPNStr.noticeOption(.system),
+                          preview: NoticePreview.strip(name: true, banner: true)),
+                ])
         }
         // Where the switch is, not only in the app's permission list: a mode
         // macOS refuses looks exactly like one it allows.
