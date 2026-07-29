@@ -54,9 +54,18 @@ public enum AppLanguage: String, CaseIterable, Sendable {
 /// languages. Missing entries fall back to English. Usage:
 /// `L("Keep Awake", [.ru: "Не давать спать", .es: "Mantener activo"])`.
 public func L(_ english: String, _ table: [AppLanguage: String] = [:]) -> String {
-    let lang = AppLanguage.current
-    if lang == .en { return english }
-    return table[lang] ?? english
+    L(english, table, language: AppLanguage.current)
+}
+
+/// The same, for a language named outright.
+///
+/// The suite runs in this machine's language, so a test that reads
+/// `AppLanguage.current` checks English eight times — `Quoted` and
+/// `HelmConfirm.trash` both take the language for exactly this reason, and each
+/// had to spell the lookup out again to do it.
+public func L(_ english: String, _ table: [AppLanguage: String] = [:],
+              language: AppLanguage) -> String {
+    language == .en ? english : table[language] ?? english
 }
 
 /// A size in the user's language: "432,95 ГБ", "1.5 GB". One formatter for

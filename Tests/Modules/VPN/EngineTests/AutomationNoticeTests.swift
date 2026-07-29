@@ -34,67 +34,39 @@ final class AutomationNoticeTests: XCTestCase {
         XCTAssertEqual(state, .denied)
     }
 
+    /// The engine decides whether a banner is posted; it does not write it.
+    ///
+    /// `L()` lives in `HelmUI` and an engine target cannot see it, so the words
+    /// come in from the caller that can — and they must arrive on the banner
+    /// untouched, or the eight languages stop where this boundary is.
+    func testTheWordsPostedAreTheOnesHandedIn() async {
+        let port = FakeNotice()
+        await AutomationNotice.announce(notice: .system, authorized: true,
+                                        title: "TITLE", body: "BODY", port: port)
+        XCTAssertEqual(port.posted.count, 1)
+        XCTAssertEqual(port.posted[0].0, "TITLE")
+        XCTAssertEqual(port.posted[0].1, "BODY")
+    }
+
     func testTheBannerIsPostedOnlyInTheBannerMode() async {
         let port = FakeNotice()
         port.state = .authorized
-        let firing = VPNAutomation(at: Date(), name: "work", kind: .connected)
-        await AutomationNotice.announce(firing, notice: .system, authorized: true, port: port)
+        await AutomationNotice.announce(notice: .system, authorized: true,
+                                        title: "t", body: "work is connected", port: port)
         XCTAssertEqual(port.posted.count, 1)
         XCTAssertTrue(port.posted[0].1.contains("work"), "the banner did not name the connection")
 
-        await AutomationNotice.announce(firing, notice: .menuBar, authorized: true, port: port)
-        await AutomationNotice.announce(firing, notice: .silent, authorized: true, port: port)
+        await AutomationNotice.announce(notice: .menuBar, authorized: true,
+                                        title: "t", body: "b", port: port)
+        await AutomationNotice.announce(notice: .silent, authorized: true,
+                                        title: "t", body: "b", port: port)
         XCTAssertEqual(port.posted.count, 1, "a quiet mode posted a banner")
     }
 
     func testNothingIsPostedWhenAuthorizationWasRefused() async {
         let port = FakeNotice()
-        let firing = VPNAutomation(at: Date(), name: "work", kind: .connected)
-        await AutomationNotice.announce(firing, notice: .system, authorized: false, port: port)
+        await AutomationNotice.announce(notice: .system, authorized: false,
+                                        title: "t", body: "b", port: port)
         XCTAssertTrue(port.posted.isEmpty)
-    }
-
-    /// The banner's words are English in all eight languages, and this is what
-    /// stops that from reaching anybody.
-    ///
-    /// `AutomationNotice.Words` cannot call `L()`: that lives in `HelmUI`, and
-    /// an engine target depends on `HelmContract` + `HelmRuntime` alone. Nothing
-    /// in the app calls `announce` yet, so the English costs nobody anything —
-    /// the day something does, this turns red and the words have to be settled
-    /// first. A prose note in the file would not have.
-    ///
-    /// Seen to fail: wiring `announce` into `VPNEngine.recordAutomation` names
-    /// that file here and the test reports it.
-    func testTheBannerIsNotWiredUpWhileItsWordsAreEnglishOnly() throws {
-        let sources = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()   // EngineTests
-            .deletingLastPathComponent()   // VPN
-            .deletingLastPathComponent()   // Modules
-            .deletingLastPathComponent()   // Tests
-            .deletingLastPathComponent()   // repo
-            .appendingPathComponent("Sources")
-        var callers: [String] = []
-        let files = FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil)
-        while let url = files?.nextObject() as? URL {
-            guard url.pathExtension == "swift",
-                  let source = try? String(contentsOf: url, encoding: .utf8),
-                  source.contains("AutomationNotice.announce(") else { continue }
-            callers.append(url.lastPathComponent)
-        }
-        XCTAssertTrue(callers.isEmpty, "\(callers.joined(separator: ", ")) posts a banner whose "
-            + "words are English in all eight languages. macOS ships the sentence itself in "
-            + "Network.appex/Contents/Resources/Localizable.loctable (VPN_CONNECTED) — read the "
-            + "eight out of there, put them somewhere L() can reach, and delete this guard.")
-    }
-
-    /// A disconnection is not a connection, and the banner must not say it is.
-    func testTheTwoKindsReadDifferently() async {
-        let port = FakeNotice()
-        port.state = .authorized
-        await AutomationNotice.announce(VPNAutomation(at: Date(), name: "work", kind: .connected),
-                                        notice: .system, authorized: true, port: port)
-        await AutomationNotice.announce(VPNAutomation(at: Date(), name: "work", kind: .disconnected),
-                                        notice: .system, authorized: true, port: port)
-        XCTAssertNotEqual(port.posted[0].0, port.posted[1].0)
     }
 }

@@ -293,18 +293,37 @@ public final class KeychainCredentials: VPNCredentialsPort {
 
 /// Production `AutomationNoticePort`: `UNUserNotificationCenter`.
 ///
-/// **Nothing here may run in a test.** `UNUserNotificationCenter.current()`
-/// raises `NSInternalInconsistencyException` — "bundleProxyForCurrentProcess is
-/// nil" — in any process that is not a bundled app, which kills the whole
-/// `swift test` run rather than failing one case. That is why the centre is
-/// reached inside each method and never in `init`: constructing
-/// `VPNSystemPorts` must stay free, so the tests that build a descriptor or an
-/// engine keep working. The behaviour is tested against fakes through
-/// `AutomationNoticePort`; this class is covered by Task 10's manual pass.
+/// `UNUserNotificationCenter.current()` raises `NSInternalInconsistencyException`
+/// — "bundleProxyForCurrentProcess is nil" — in any process that is not a
+/// bundled app, and an ObjC exception does not fail a test case: it kills the
+/// whole `swift test` run. Hence two defences. The centre is reached inside
+/// each method and never in `init`, so constructing `VPNSystemPorts` stays free
+/// for the tests that build a descriptor or an engine; and `isBundledApp` below
+/// answers before anything is asked, so a test that does reach one of these
+/// methods gets a refusal instead of ending the run.
 public final class SystemAutomationNotice: AutomationNoticePort {
     public init() {}
 
+    /// Whether this process is the kind macOS will answer for.
+    ///
+    /// Measured, not assumed — the identifier is no help: under `xctest`
+    /// `Bundle.main.bundleIdentifier` is `com.apple.dt.xctest.tool`, thoroughly
+    /// non-nil, while its bundle path is
+    /// `/Applications/Xcode.app/Contents/Developer/usr/bin`, which is a
+    /// directory and not a bundle. The shipped app's is `Helm.app`.
+    private var isBundledApp: Bool { Bundle.main.bundleURL.pathExtension == "app" }
+
+    /// Says so in the log, because in the app this can only mean the banners
+    /// are dead: `notDetermined` is what an unbundled process knows about
+    /// permissions, which is nothing.
+    @discardableResult
+    private func unbundled() -> NoticeAuthorization {
+        HelmLog.shared.warn("vpn", "no bundle identity, so macOS was not asked about banners")
+        return .notDetermined
+    }
+
     public func authorizationState() async -> NoticeAuthorization {
+        guard isBundledApp else { return unbundled() }
         let settings = await UNUserNotificationCenter.current().notificationSettings()
         switch settings.authorizationStatus {
         // Provisional and ephemeral both post without a prompt, so for the one
@@ -320,6 +339,7 @@ public final class SystemAutomationNotice: AutomationNoticePort {
     /// prompt only the first time; afterwards this returns the standing answer
     /// without troubling anyone.
     public func requestAuthorization() async -> NoticeAuthorization {
+        guard isBundledApp else { return unbundled() }
         do {
             let granted = try await UNUserNotificationCenter.current()
                 .requestAuthorization(options: [.alert])
@@ -335,6 +355,7 @@ public final class SystemAutomationNotice: AutomationNoticePort {
     /// needs. The identifier is fresh each time so two firings stack instead of
     /// the second replacing the first.
     public func post(title: String, body: String) async {
+        guard isBundledApp else { unbundled(); return }
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
