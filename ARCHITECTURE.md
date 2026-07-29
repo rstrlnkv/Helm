@@ -510,6 +510,24 @@ itself wrote and sealed may reach — the folder a rule watches is still user
 input relayed through the editor, and a destination can be swapped for a symlink
 after the picker closes.
 
+**Judging a rule set is one decision, and decisions are serialised.** The rules
+are read from the sweep timer, from FSEvents, from the transport and from the
+watch refresh, and every read records its verdict in `rulesRefused` — the only
+signal a person gets that something else wrote their rules. Left unordered, that
+write says what was true of the file at the moment *that* read snapshotted it: a
+read which began before an edit can finish after the read that saw the edit and
+put "these are Helm's own rules" back over "something else wrote these", so
+which verdict stands is decided by which thread the scheduler ran last. So
+`decisionLock` makes reading the plist, judging it against its seal and
+recording that judgement one indivisible act — and saving a rule set another,
+because the payload and its seal are two writes and a read landing between them
+judges new rules against an old seal, which is the same "tampered" said about
+Helm's own save. Taken before `keyLock`, never with `trustLock` held:
+`trustLock` answers `rulesRefused` and must not wait behind a keychain prompt.
+`AutopilotSealRaceTests` holds one read open mid-decision and asserts on the
+other; before it existed, `testRulesEditedInThePlistAreNotRun` failed about once
+in thirty runs of its bundle under load, and nobody could say why.
+
 **A rule must not act on the same file twice.** A rule that sorts a file into a
 subfolder of the folder it watches sees it again on the next sweep. `RuleStamp`
 writes `com.helm.autopilot.stamp` — an extended attribute holding the ids of the
