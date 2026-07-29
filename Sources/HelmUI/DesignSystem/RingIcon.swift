@@ -92,8 +92,79 @@ public enum RingIcon {
             arc.stroke()
         }
 
-        // What the shape puts inside its ring, kept. Without this every style
-        // collapsed to a plain ring the moment a timed session started.
+        drawInterior(style: style, size: s, lineWidth: lineWidth, color: color)
+        img.unlockFocus()
+        img.isTemplate = (tintToken == nil)
+        return img
+    }
+
+    /// The ring as a quarter segment at a turning angle, over the countdown's
+    /// faint track so the icon keeps its footprint while it moves.
+    ///
+    /// `phase` runs 0…1 across the whole spin and the segment turns *twice* in
+    /// it, so half way is one whole revolution and the two ends meet.
+    public static func makeSpinner(style: MenuBarIconStyle, size: MenuBarIconSize,
+                                   tintToken: String?, phase: Double) -> NSImage {
+        let s = size.points
+        let lineWidth = max(1.5, s * 0.12)
+        let radius = (s - lineWidth) / 2
+        let center = CGPoint(x: s / 2, y: s / 2)
+        let img = NSImage(size: NSSize(width: s, height: s))
+        img.lockFocus()
+        let color = nsColor(tintToken: tintToken)
+
+        let track = NSBezierPath()
+        track.appendArc(withCenter: center, radius: radius, startAngle: 0, endAngle: 360)
+        track.lineWidth = lineWidth
+        color.withAlphaComponent(0.25).setStroke()
+        track.stroke()
+
+        // Clockwise from 12 o'clock, like the countdown: AppKit angles run
+        // counter-clockwise from 3 o'clock, so the start angle counts down.
+        let start = CGFloat(90 - 720 * phase)
+        let arc = NSBezierPath()
+        arc.appendArc(withCenter: center, radius: radius,
+                      startAngle: start, endAngle: start - 90, clockwise: true)
+        arc.lineWidth = lineWidth
+        arc.lineCapStyle = .round
+        color.setStroke()
+        arc.stroke()
+
+        drawInterior(style: style, size: s, lineWidth: lineWidth, color: color)
+        img.unlockFocus()
+        img.isTemplate = (tintToken == nil)
+        return img
+    }
+
+    /// The whole spin as `frameCount` still images, built once per appearance
+    /// and kept.
+    ///
+    /// The menu bar wants about thirty frames a second for as long as the spin
+    /// lasts, and every one of them is a bitmap the size of the icon: drawing
+    /// on demand allocates thirty a second, indefinitely, while a module can
+    /// ask for a spin as often as a VPN rule fires. Thirty-six, once, cover
+    /// every angle the eye can tell apart at this size.
+    public static func spinnerFrames(style: MenuBarIconStyle, size: MenuBarIconSize,
+                                     tintToken: String?) -> [NSImage] {
+        spinnerCache.frames(for: SpinnerKey(style: style, size: size, tint: tintToken,
+                                            appearance: currentAppearanceName)) {
+            (0..<frameCount).map {
+                makeSpinner(style: style, size: size, tintToken: tintToken,
+                            phase: Double($0) / Double(frameCount))
+            }
+        }
+    }
+
+    /// Frames in one spin: two revolutions over `StatusPlan.spinDuration` at
+    /// the thirty frames a second the menu bar redraws at.
+    public static let frameCount = 36
+
+    /// What the shape puts inside its ring, kept — for the countdown and the
+    /// spin alike. Without this every style collapsed to a plain ring the
+    /// moment a timed session started, and a spin would do the same for its
+    /// second and a bit.
+    private static func drawInterior(style: MenuBarIconStyle, size s: CGFloat,
+                                     lineWidth: CGFloat, color: NSColor) {
         color.setFill()
         let inner = s * 0.2 + lineWidth
         switch style {
@@ -107,15 +178,44 @@ public enum RingIcon {
         case .ringDot:
             fillCentred(diameter: s * 0.24, in: s)
         case .disc:
-            // Inset clear of the arc, so the countdown stays legible against it.
+            // Inset clear of the arc, so the arc stays legible against it.
             NSBezierPath(ovalIn: NSRect(x: inner, y: inner,
                                         width: s - 2 * inner, height: s - 2 * inner)).fill()
         case .dot:
             fillCentred(diameter: s * 0.5, in: s)
         }
-        img.unlockFocus()
-        img.isTemplate = (tintToken == nil)
-        return img
+    }
+
+    /// Every palette colour here is dynamic — `.labelColor` and the system
+    /// colours all differ between light and dark — and `lockFocus` bakes the
+    /// one that was current. A cache keyed only by style, size and tint would
+    /// therefore keep drawing yesterday's appearance after the user switched,
+    /// so the appearance is part of the key.
+    private static var currentAppearanceName: String {
+        NSAppearance.currentDrawing().name.rawValue
+    }
+
+    private struct SpinnerKey: Hashable {
+        let style: MenuBarIconStyle
+        let size: MenuBarIconSize
+        let tint: String?
+        let appearance: String
+    }
+
+    private static let spinnerCache = SpinnerCache()
+
+    private final class SpinnerCache: @unchecked Sendable {
+        private let lock = NSLock()
+        private var stored: [SpinnerKey: [NSImage]] = [:]
+
+        func frames(for key: SpinnerKey, build: () -> [NSImage]) -> [NSImage] {
+            lock.lock()
+            if let hit = stored[key] { lock.unlock(); return hit }
+            lock.unlock()
+            let built = build()
+            lock.lock(); stored[key] = built; lock.unlock()
+            return built
+        }
     }
 
     private static func makeGlyph(style: MenuBarIconStyle, size: MenuBarIconSize, tintToken: String?) -> NSImage {
