@@ -69,7 +69,12 @@ import Module_VPN_Engine
         // which moment they are answering for.
         let now = Date()
         let spinning = VPNAutomation.spinPhase(firing, now: now) != nil
-        let names = model.notice.showsMenuBarName && VPNAutomation.showsName(firing, now: now)
+        // `effectiveNotice`, never the raw one: `.system` is the mode that shows
+        // no name because the banner carries it, so asking the raw choice left a
+        // person who had refused the banner permission with no banner AND no
+        // name — the loudest setting produced the least.
+        let names = model.effectiveNotice.showsMenuBarName
+            && VPNAutomation.showsName(firing, now: now)
         return StatusAppearance(title: names ? firing.name : nil,
                                 spinUntil: spinning ? VPNAutomation.spinEnd(firing) : nil)
     }
