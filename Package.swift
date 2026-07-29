@@ -149,6 +149,11 @@ let package = Package(
             path: "Tests/Modules/Uninstaller/EngineTests"
         ),
         .testTarget(
+            name: "Module_Uninstaller_UITests",
+            dependencies: ["Module_Uninstaller_UI"],
+            path: "Tests/Modules/Uninstaller/UITests"
+        ),
+        .testTarget(
             name: "Module_Disk_EngineTests",
             dependencies: ["Module_Disk_Engine"],
             path: "Tests/Modules/Disk/EngineTests"
@@ -177,6 +182,11 @@ let package = Package(
             name: "Module_Leftovers_EngineTests",
             dependencies: ["Module_Leftovers_Engine"],
             path: "Tests/Modules/Leftovers/EngineTests"
+        ),
+        .testTarget(
+            name: "Module_Leftovers_UITests",
+            dependencies: ["Module_Leftovers_UI"],
+            path: "Tests/Modules/Leftovers/UITests"
         ),
         .testTarget(
             name: "Module_Homebrew_EngineTests",

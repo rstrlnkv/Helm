@@ -182,6 +182,13 @@ import Module_Disk_Engine
 
     public var focus: DiskEntry? { focusPath.last }
     public var basketBytes: Int { basket.reduce(0) { $0 + $1.bytes } }
+    /// Whether the page draws the bar under the ring — for a basket waiting to
+    /// be emptied, or for the report of an emptying that has happened.
+    ///
+    /// Here rather than in the page because it is the condition three exits have
+    /// to satisfy, and a copy of it in the view is a copy that can be satisfied
+    /// while the screen still shows the bar.
+    public var showsRemovalBar: Bool { !basket.isEmpty || banner != nil }
 
     public func loadVolumes() async {
         volumes = await client.request("volumes") ?? []
@@ -232,8 +239,7 @@ import Module_Disk_Engine
     public func rescan() async {
         guard let path = scannedPath ?? result?.root.path else { newScan(); return }
         basket = []
-        banner = nil
-        failures = []
+        clearRemovalReport()
         await scan(path: path)
     }
 
@@ -250,6 +256,17 @@ import Module_Disk_Engine
         // basket bar naming folders of an abandoned scan, above a Trash button,
         // with nothing on that screen able to say what they belong to.
         basket = []
+        // The same bar from the other side: trash something mid-scan and it
+        // stops being a basket and becomes a report of what was removed and
+        // what macOS refused. That is a sentence about the tree that Stop is
+        // taking away, so it goes with it.
+        clearRemovalReport()
+    }
+
+    private func clearRemovalReport() {
+        banner = nil
+        failures = []
+        removedCount = 0
     }
 
     public func newScan() {
@@ -261,7 +278,6 @@ import Module_Disk_Engine
         restored = false
         focusPath = []
         segments = []
-        banner = nil
         Task { await loadVolumes() }
     }
 

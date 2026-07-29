@@ -19,7 +19,8 @@ import Module_VPN_Engine
         self.store = store
         let ports = VPNSystemPorts()
         return VPNEngine(settings: VPNSettings(store: store),
-                         runner: ports.runner, credentials: ports.credentials, apps: ports.apps)
+                         runner: ports.runner, credentials: ports.credentials,
+                         apps: ports.apps, network: ports.network)
     }
 
     /// One VPNViewModel per module: building a fresh one each call would leak a

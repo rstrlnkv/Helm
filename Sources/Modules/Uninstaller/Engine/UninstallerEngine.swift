@@ -43,9 +43,12 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
         await offTheCooperativePool { self.apps.installedApps() }
     }
 
-    /// Sizes for the list already on screen.
-    public func appSizes() async -> [String: Int] {
-        let sizes = await offTheCooperativePool { self.apps.appSizes(self.apps.installedApps()) }
+    /// Sizes for the list already on screen — which is why the list arrives as
+    /// an argument. Asking `installedApps()` for it again re-read the app
+    /// folders and re-parsed every `Info.plist` seconds after `listApps()` did,
+    /// for a list the caller was already holding.
+    public func appSizes(_ list: [InstalledApp]) async -> [String: Int] {
+        let sizes = await offTheCooperativePool { self.apps.appSizes(list) }
         MemoryReclaim.afterHeavyWork("uninstaller.appSizes")
         HelmLog.shared.memory("uninstaller.appSizes")
         return sizes
@@ -73,7 +76,7 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
             var urls: [URL] = c.isGlob ? fs.glob(c.url) : (fs.exists(c.url) ? [c.url] : [])
             // A candidate built from the display name is a different guess with
             // a different default — `defaultSelection` leaves it unticked — and
-            // the id is not in its name for this to read.
+            // carries no id for these rules to weigh.
             if !c.matchedByName, !urls.isEmpty {
                 let owner = ownership ?? makeOwnership(bundleID: bundleID)
                 ownership = owner
@@ -267,7 +270,9 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
                 HelmLog.shared.info("uninstaller", "engine listApps done: \(list.count)")
                 return (try? JSONEncoder().encode(list)) ?? Data()
             case "appSizes":
-                let sizes = await self.appSizes()
+                guard let list = try? JSONDecoder().decode([InstalledApp].self, from: cmd.payload)
+                else { return Data() }
+                let sizes = await self.appSizes(list)
                 return (try? JSONEncoder().encode(sizes)) ?? Data()
             case "scan":
                 guard let r = try? JSONDecoder().decode(ScanReq.self, from: cmd.payload) else { return Data() }

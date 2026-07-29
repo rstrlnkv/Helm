@@ -107,11 +107,18 @@ final class UpdateListOrderTests: XCTestCase {
 
     /// A dev user must never be walked backwards onto a stable release older
     /// than the prerelease they are running.
+    ///
+    /// The answer used to be `.upToDate` and is now `.ahead`, which is the same
+    /// answer to the question this test asks — nothing is offered — said more
+    /// precisely. Being ahead of the channel is a real state, and calling it
+    /// "up to date" is what let the About page tell somebody running an
+    /// unreleased build that they were on the latest version.
     func testAStableReleaseOlderThanTheRunningPrereleaseIsNotOffered() {
         let json = "[" + release("v0.7.0", prerelease: false) + "," + release("v0.7.0-dev.20") + "]"
-        XCTAssertEqual(UpdateCheck.evaluateList(statusCode: 200, data: Data(json.utf8),
-                                                currentVersion: "0.7.1-dev.9", channel: .dev),
-                       .upToDate)
+        let outcome = UpdateCheck.evaluateList(statusCode: 200, data: Data(json.utf8),
+                                               currentVersion: "0.7.1-dev.9", channel: .dev)
+        if case .available = outcome { XCTFail("offered a walk backwards: \(outcome)") }
+        XCTAssertEqual(outcome, .ahead(newest: "v0.7.0"))
     }
 
     /// …and the stable channel, reading the same list, must not be offered the

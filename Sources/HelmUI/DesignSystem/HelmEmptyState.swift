@@ -94,12 +94,24 @@ public extension HelmEmptyState where Actions == EmptyView {
 
 /// Work in progress on an otherwise empty page.
 ///
-/// The same three shapes problem, smaller: a bare spinner, a spinner with a
-/// caption, and a spinner with a caption at a different size.
-public struct HelmBusyState: View {
+/// The same shapes problem, smaller: a bare spinner, a spinner with a caption,
+/// a spinner with a caption at a different size — and a spinner with a caption
+/// and a Stop button, which is the one that never came here at all. Work in
+/// Helm reads directories and runs other programs, so most of it can be
+/// stopped; a busy state that had nowhere to put the button left its author to
+/// centre a `VStack` between two `Spacer()`s instead, which is how the fourth
+/// shape happened and why the guard was blind to it.
+///
+/// The slot is `HelmEmptyState`'s slot, down to the `Actions == EmptyView`
+/// overload: waiting with nothing to do about it stays one argument long.
+public struct HelmBusyState<Actions: View>: View {
     private let message: String?
+    private let actions: Actions
 
-    public init(_ message: String? = nil) { self.message = message }
+    public init(_ message: String? = nil, @ViewBuilder actions: () -> Actions) {
+        self.message = message
+        self.actions = actions()
+    }
 
     public var body: some View {
         HelmCenteredContent(spacing: 10) {
@@ -110,6 +122,22 @@ public struct HelmBusyState: View {
                     .foregroundStyle(HelmText.quiet)
                     .multilineTextAlignment(.center)
             }
+            actions
+                // Not `.large`, which is what an empty state gives its button:
+                // that one is the page's invitation and this one interrupts
+                // something. Set here all the same, so the answer is given once.
+                .controlSize(.regular)
+                // The spinner sits 10 pt above its caption; a button that close
+                // to a line of text reads as part of the sentence.
+                .padding(.top, 4)
         }
+    }
+}
+
+public extension HelmBusyState where Actions == EmptyView {
+    /// Waiting with nothing to be done about it — a spinner, or a spinner and a
+    /// line saying what is being waited for.
+    init(_ message: String? = nil) {
+        self.init(message) { EmptyView() }
     }
 }

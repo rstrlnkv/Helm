@@ -8,6 +8,22 @@ import HelmUI
 /// controls (toggles, text fields) accept input.
 private final class KeyablePanel: NSPanel {
     override var canBecomeKey: Bool { true }
+
+    /// Escape closes it, as every menu and popover on the machine does.
+    ///
+    /// The panel took key focus so its controls would accept input, and then
+    /// answered only the mouse: clicking outside dismissed it, Escape did
+    /// nothing at all. Somebody who opened it from the keyboard shortcut had no
+    /// way to close it from the keyboard.
+    ///
+    /// `cancelOperation` rather than a key handler: it is what AppKit sends for
+    /// Escape *and* for ⌘. , and it arrives after the responder chain has had
+    /// its say — so a text field mid-edit or a `HelmHotkeyRecorder` capturing a
+    /// shortcut still gets to take the key first. It goes out as the same
+    /// notification the click-through path posts, so there is one way to close.
+    override func cancelOperation(_ sender: Any?) {
+        NotificationCenter.default.post(name: .helmPanelDismissRequested, object: nil)
+    }
 }
 
 /// One width for the strip window and the card content inside it.
@@ -288,7 +304,14 @@ private struct UtilitiesSection: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            // The count is on screen and was being thrown away: a bare
+            // `.accessibilityLabel` *replaces* the label SwiftUI synthesizes
+            // from the row, so "Utilities 3 ›" was read as "Utilities". The
+            // count goes back as the value, where a number belongs, and the
+            // open/closed state with it — a disclosure that will not say
+            // whether it is open answers its own button press with silence.
             .accessibilityLabel(AppStr.utilities)
+            .accessibilityValue("\(Count(modules.count)), \(HelmA11y.expanded(expanded))")
 
             // Measured height rather than `if expanded`: with the rows removed
             // from the hierarchy the card's background collapsed instantly

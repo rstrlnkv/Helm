@@ -72,6 +72,15 @@ public final class HelmLog: @unchecked Sendable {
     /// Everything the log can leave on disk. Anything that clears the log
     /// clears all of it.
     public static var allFileURLs: [URL] { [fileURL, previousFileURL] }
+    /// The latch for the one-time pre-redaction purge.
+    ///
+    /// Deliberately **not** in `allFileURLs`: it is the record that the purge
+    /// happened, so a purge that removed it would be able to run again. Named
+    /// here rather than inside the purge because a file name invented in a
+    /// second place is the exact defect `LogFileNamesTests` was written for.
+    public static var resetMarkerURL: URL {
+        directory.appendingPathComponent(".redaction-reset")
+    }
     private static let sizeLimit = 2 * 1024 * 1024   // 2 MB, then one rollover
 
     private let queue = DispatchQueue(label: "helm.log", qos: .utility)
@@ -95,13 +104,22 @@ public final class HelmLog: @unchecked Sendable {
     /// home paths; it did nothing about the ones already on disk, and there is
     /// a "Copy log" button whose whole purpose is pasting that file into a bug
     /// report. Two megabytes of rollover could take weeks to clear it. Once.
+    ///
+    /// **The latch is a file beside the log, not a preference.** It used to be
+    /// `UserDefaults.standard`, which is the *calling process's* domain — so
+    /// "once" meant once per process identity, and any tool that links
+    /// HelmRuntime and starts the log deleted the user's log the first time it
+    /// ran. That is not hypothetical: it destroyed a dev build's triage
+    /// evidence, which is the one thing this file exists to hold.
     private func discardPreRedactionLog() {
-        let key = "module.app.logRedactionReset"
-        guard !UserDefaults.standard.bool(forKey: key) else { return }
-        UserDefaults.standard.set(true, forKey: key)
+        let marker = Self.resetMarkerURL
+        let fm = FileManager.default
+        guard !fm.fileExists(atPath: marker.path) else { return }
         queue.async {
-            let fm = FileManager.default
             for url in Self.allFileURLs { try? fm.removeItem(at: url) }
+            try? fm.createDirectory(at: Self.directory, withIntermediateDirectories: true,
+                                    attributes: [.posixPermissions: 0o700])
+            fm.createFile(atPath: marker.path, contents: Data())
         }
     }
 

@@ -1,3 +1,4 @@
+import AppKit
 import HelmRuntime
 import HelmUI
 import Module_Autopilot_Engine
@@ -66,6 +67,11 @@ struct HistorySection: View {
             Text(HelmDates.dayAndMinute(record.at))
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(HelmText.quiet)
+                // The width is fixed and the format is macOS's, not ours:
+                // Russian and Portuguese measure 92 pt in this font, four short
+                // of the frame. Without the limit the overflow wraps to a second
+                // line and takes the height of the whole row with it.
+                .lineLimit(1)
                 .frame(width: 96, alignment: .leading)
             Text(record.file)
                 .font(.callout)
@@ -87,6 +93,26 @@ struct HistorySection: View {
         // Read as one thing. Six separate labels per row turns a page of
         // twenty into a hundred and twenty stops.
         .accessibilityElement(children: .combine)
+        // "Where did that go" ends at the folder the file went to, and every
+        // other list in Helm can open it. Offered only where the record knows
+        // the answer — a trashed or refused row has nothing to point at, and an
+        // item that silently does nothing is worse than one that is absent.
+        .contextMenu {
+            if let path = record.revealPath {
+                Button(HelmA11y.showInFinder) { reveal(path) }
+            }
+        }
+        // The same action where VoiceOver can reach it, since the menu above
+        // needs a right-click. `DiskResultView` documents the pairing.
+        .accessibilityActions {
+            if let path = record.revealPath {
+                Button(HelmA11y.showInFinder) { reveal(path) }
+            }
+        }
+    }
+
+    private func reveal(_ path: String) {
+        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
     }
 
     /// "trashed" needs no second half; the rest read as verb then value.

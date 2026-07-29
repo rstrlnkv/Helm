@@ -1,0 +1,135 @@
+import XCTest
+import HelmContract
+import HelmRuntime
+import HelmUI
+import Module_Leftovers_Engine
+@testable import Module_Leftovers_UI
+
+/// What this page promises before it acts, and what it says afterwards.
+@MainActor
+final class LeftoversPageContractTests: XCTestCase {
+
+    private final class ScanTransport: EngineTransport, @unchecked Sendable {
+        private let lock = NSLock()
+        private var items: [StaleItem]
+        private var removal: LeftoversRemoval
+        var events: AsyncStream<EngineEvent> { AsyncStream { _ in } }
+
+        init(items: [StaleItem],
+             removal: LeftoversRemoval = LeftoversRemoval(removed: [], failed: [], freedBytes: 0)) {
+            self.items = items
+            self.removal = removal
+        }
+
+        /// What the rescan after a removal will see.
+        func setItems(_ next: [StaleItem]) { lock.lock(); items = next; lock.unlock() }
+
+        private var current: [StaleItem] { lock.lock(); defer { lock.unlock() }; return items }
+        private var currentRemoval: LeftoversRemoval {
+            lock.lock(); defer { lock.unlock() }; return removal
+        }
+
+        func send(_ command: EngineCommand) async throws -> Data {
+            switch command.name {
+            case "scan": return (try? JSONEncoder().encode(current)) ?? Data()
+            case "trash": return (try? JSONEncoder().encode(currentRemoval)) ?? Data()
+            default: return Data()
+            }
+        }
+    }
+
+    private func agent(_ name: String, bytes: Int, status: ItemStatus = .orphaned) -> StaleItem {
+        StaleItem(path: "\(NSHomeDirectory())/Library/LaunchAgents/\(name).plist",
+                  identifier: name, kind: .launchAgent, sizeBytes: bytes, status: status)
+    }
+
+    // MARK: - The bottom bar's two quantities
+
+    /// The bar read "1 объект · 0 Б" with nothing ticked, above a visible row
+    /// saying 4 КБ: the count was everything found and removable, the size was
+    /// the selection, and the middle dot made them look like one measurement.
+    func testTheBarsCountAndSizeAreBothAboutTheSelection() async {
+        let transport = ScanTransport(items: [agent("one", bytes: 4_096),
+                                              agent("two", bytes: 8_192)])
+        let lvm = LeftoversViewModel(vm: ModuleViewModel(transport: transport))
+        await lvm.scan()
+        XCTAssertEqual(lvm.leftoverCount, 2, "precondition: two removable rows were found")
+
+        XCTAssertEqual(lvm.selectedCount, 0, "nothing is ticked, so the bar counts nothing")
+        XCTAssertEqual(lvm.selectedBytes, 0)
+
+        lvm.selected.insert(lvm.visibleItems[0].path)
+
+        XCTAssertEqual(lvm.selectedCount, 1)
+        XCTAssertEqual(lvm.selectedBytes, 4_096)
+    }
+
+    /// A tick on a row that is no longer shown counts for neither figure — the
+    /// same rule `removeSelected` follows when it decides what may go.
+    func testAHiddenTickIsCountedByNeitherFigure() async {
+        let transport = ScanTransport(items: [agent("kept", bytes: 4_096),
+                                              agent("busy", bytes: 8_192, status: .inUse)])
+        let lvm = LeftoversViewModel(vm: ModuleViewModel(transport: transport))
+        lvm.showAll = true
+        await lvm.scan()
+        lvm.selected = Set(lvm.visibleItems.map(\.path))
+        XCTAssertEqual(lvm.selectedCount, 2, "precondition: both rows are shown and ticked")
+
+        lvm.showAll = false     // back to leftovers only
+
+        XCTAssertEqual(lvm.selectedCount, 1,
+                       "a row the list no longer shows was still counted in the bar")
+        XCTAssertEqual(lvm.selectedBytes, 4_096)
+    }
+
+    // MARK: - One act, one name
+
+    /// The ellipsis is a promise of a dialog. For a leftover there is none, and
+    /// the row deleted on the click — while the bar three inches away called the
+    /// same act "Move to Trash".
+    func testTheRowNamesTheActItPerforms() {
+        let leftover = agent("gone", bytes: 4_096)
+        let inUse = agent("busy", bytes: 4_096, status: .inUse)
+        XCTAssertFalse(LeftoverActions.needsConfirmation(leftover),
+                       "precondition: a leftover is deleted without a dialog")
+        XCTAssertTrue(LeftoverActions.needsConfirmation(inUse))
+
+        XCTAssertEqual(LeftoversSettingsPage.deleteLabel(for: leftover), LfStr.removeSelected,
+                       "the ellipsis promised a step that never comes")
+        XCTAssertEqual(LeftoversSettingsPage.deleteLabel(for: inUse), LfStr.deleteItem)
+    }
+
+    // MARK: - What the Trash is
+
+    /// The Trash is a folder on the same volume: nothing is free until it is
+    /// emptied. Disk's `movedToTrash` says where the files went, in Finder's own
+    /// words for the act, and this module now says the same thing.
+    func testTheBannerReportsTheMoveRatherThanFreedSpace() async {
+        let item = agent("gone", bytes: 4_096)
+        let transport = ScanTransport(
+            items: [item],
+            removal: LeftoversRemoval(removed: [item.path], failed: [], freedBytes: 4_096))
+        let lvm = LeftoversViewModel(vm: ModuleViewModel(transport: transport))
+        await lvm.scan()
+        lvm.selected.insert(item.path)
+        transport.setItems([])
+
+        await lvm.removeSelected()
+
+        XCTAssertEqual(lvm.banner, LfStr.movedToTrash(Bytes(4_096)),
+                       "the banner promises space that only emptying the Trash gives back")
+        XCTAssertEqual(lvm.removedCount, 1)
+    }
+
+    /// And the question asked first is one question. It carried a second
+    /// sentence — "It will free 4 KB." — about something that had not happened
+    /// and would not happen by pressing the button.
+    func testTheConfirmationIsOneQuestionAndClaimsNothingAfterIt() {
+        let question = LfStr.confirmSelected(2, Bytes(4_096)).trimmingCharacters(in: .whitespaces)
+
+        XCTAssertTrue(question.hasSuffix("?") || question.hasSuffix("？"),
+                      "the confirmation carries a claim after the question: \(question)")
+        XCTAssertTrue(question.contains(Bytes(4_096)),
+                      "the confirmation stopped saying how much is going")
+    }
+}

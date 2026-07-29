@@ -439,12 +439,38 @@ where no rule works.
 
 That shrug is only survivable because the action itself is idempotent, and for
 sorting it was not: the bucket was computed from the file's current parent, so
-on a volume that cannot take an xattr — exFAT, which is what a USB stick
-usually is — every hourly sweep sorted `a.jpg` one level deeper, into
-`Images/Images/a.jpg`. Sorting and moving now recognise a file already sitting
-where the rule would put it and report `.alreadyDone` whether or not the stamp
-was written. The stamp's remaining job is tagging and renaming, which cannot
-tell "already done" from "do it again" by looking at the file.
+on a volume that could not keep the stamp, every hourly sweep sorted `a.jpg` one
+level deeper, into `Images/Images/a.jpg`. Sorting and moving now recognise a
+file already sitting where the rule would put it and report `.alreadyDone`
+whether or not the stamp was written.
+
+**exFAT is no longer the example of a volume that cannot keep it.** That
+sentence stood here for a long time and it does not survive being tried: on
+macOS 27, `setxattr` on an exFAT volume *succeeds* — measured on a mounted
+`hdiutil` image — and macOS stores the value in an AppleDouble `._name` sidecar
+beside the file, which then survived both a rename and a move within the volume.
+Delete the sidecar and the stamp is gone with it, which is the shape of the real
+remaining risk: filesystems that genuinely refuse extended attributes, and the
+tools and transfers that drop `._` files. The tolerated loss is still real. Only
+its usual example was wrong, and the fallbacks below exist because of the loss,
+not because of exFAT.
+
+The stamp's remaining job is narrower than "tagging and renaming":
+
+- **Renaming** can now tell "already done" from "do it again" by looking at the
+  file. `RenameShape` asks whether the name is one this pattern could have
+  produced — every literal of the resolved pattern, in order, with a non-empty
+  hole where `{name}` stands — so `{name} {date}` and `{date}-{name}` are
+  recognised alike, where the runner's own `target.path != url.path` only ever
+  caught the bare `{name}`. It is not total: the numbered form a collision
+  produces (`a-done 2`) is not a name the shape describes, so that file can be
+  renamed a second time.
+- **Tagging** was always idempotent by inspection — the runner reads the file's
+  tags and returns `.tagged` without writing if the tag is already there.
+
+What the stamp still buys, then, is the work and the record rather than the
+correctness: without it an unstamped file is re-examined and re-reported on
+every sweep, and a history of one file tagged once reads as one row an hour.
 
 **A rule must not overwrite.** An arriving file whose name is taken is numbered
 `a 2.pdf`, the way the Finder numbers a copy. This is the one failure the module
@@ -514,6 +540,24 @@ and the module names all come from the tables macOS itself ships —
 module after. Three units and four names were invented before anyone opened
 those files. When a string names something the system also names, read the
 system's spelling out of its bundle rather than translating it again.
+
+**Punctuation is terminology too.** `Quoted` had three of its eight languages
+wrong for the same reason the units did. Counted over the 1176 `.loctable` files
+macOS ships, for a substituted name between a pair of marks: French writes
+`«\u{00A0}%@\u{00A0}»` 3206 times against 12 with ordinary spaces — and an
+ordinary space there is a line-breaking one, so the name can end up on the line
+below the mark that opens it. Spanish had been given guillemets (macOS: `“%@”`,
+2768 to 0) and Japanese corner brackets (macOS: `“%@”`, 3099 to 1). The same
+search settles VoiceOver's own vocabulary: `HelmA11y.expanded` says *condensé*,
+not *réduit*, and 折りたたまれています, not 閉じています.
+
+**A number is shaped by the language as much as a word is.** `Bytes` (sizes),
+`Decimal` (a size's mantissa, grouping deliberately **off** — a separator there
+is a second decimal mark), `Count` (a count of things, grouping **on** — a scan
+of `/` reported "1499308 files" where macOS writes 1 499 308), `Quoted`,
+`HelmDates.relative` / `.dayAndMinute` / `.day`. `HelmBytes`'s formatter cache is
+keyed by grouping as well as by language and precision, or a size and a count
+are handed the same formatter and whichever asked first wins.
 
 **Fixed widths are measured, not chosen.** `HelmPickerWidth.fitting(labels:
 minimum:)` sizes a pop-up from its own titles (chrome is 48 pt at the system
@@ -807,6 +851,25 @@ to the trailing-closure form, which is the form all eight offenders used: it
 passed green with an offender in the tree. **A guard that has never been seen to
 fail is not a guard** — put the defect back and watch it catch.
 
+The second version was blind in a subtler way: it looked for the design system's
+own box, so it could only catch somebody who had already found `HelmUI` and then
+reached for the wrong piece of it. A page hand-rolled out of a `VStack` and two
+bare `Spacer()`s — which is what centres content when you have not found the box
+at all — was invisible to it. It now looks for **that shape**: two `Spacer()`s
+that are direct children of one `VStack`, indentation deciding what "direct"
+means, because a brace counter cannot tell a child view from a closure passed to
+one. Widening it turned up a second offender nobody had reported (`Disk`'s
+`scanningState` — a spinner, a caption *and* a Stop button, which is why
+`HelmBusyState` now takes an `actions:` slot the way `HelmEmptyState` does).
+
+Two lists, spelled differently on purpose: `allowed` is for a page that is
+legitimately centred by hand, and every entry carries the reason; `beingFixed`
+is for offenders that exist and are already being replaced, keyed by file so
+that neither editing one nor fixing one turns the guard red for its author. A
+third test asserts every named file still exists, because a ledger nobody prunes
+starts excusing names that nothing answers to. **Both lists are empty**, which
+is the state they are meant to be in — an entry is a debt, not a permission.
+
 ## Dev loop
 
 ```bash
@@ -872,9 +935,19 @@ grouped `Form` sections, which the system draws as a plain fill and which we
 cannot restyle. An outlined card of our own therefore reads as a different kind
 of box on the next page over — which is exactly what happened: the About page
 carried one bordered card and one unbordered one, side by side. `helmCard()` is
-the only card; it matches the system's treatment. `HelmSurface.floatingEdge`
-exists for things that float *over* content (the disk tooltip), which do need an
-edge.
+the only card; it matches the system's treatment.
+
+**A surface that floats over content takes `.glassEffect`, not an edge.** This
+paragraph used to name a `HelmSurface.floatingEdge` token for the purpose. There
+is no such token and there is no evidence there ever was one: `grep` found the
+name in this file and in the doc comment that quoted this file, and nowhere in
+the source. Both sites that float over content had meanwhile been built on the
+system's material — the menu-bar panel's card
+(`HelmPanel.swift`, `.glassEffect(.regular, in: .rect(cornerRadius: 26))`) and
+the disk ring's readout (`Modules/Disk/UI/RingView.swift`,
+`.glassEffect(.regular, in: .capsule)`). Glass carries its own edge and its own
+shadow, which is the whole reason a floating thing needed one; a hairline drawn
+on top of it is a second silhouette disagreeing with the first.
 
 **Metric strips live inside the form, not above it.** They used to be pinned
 with `safeAreaInset` at the window's own 20pt margin while the content below sat
@@ -936,7 +1009,23 @@ subject (Helm = the wheel you steer by):
   there the dials read as state. List screens (Uninstaller, Homebrew,
   Login Items) deliberately do NOT use it — their chrome is one toolbar row
   (segments · search · refresh) and the counts live as a quiet status line in
-  the bottom bar, which costs no vertical space.
+  the bottom bar, which costs no vertical space. A tinted figure is darkened in
+  light appearance by a fraction that is **measured, not chosen**: 0.30 left
+  green at 3.85:1, orange 3.99:1 and teal 3.76:1 at 16 pt medium, which is body
+  text; 0.40 puts them at 4.80 / 4.97 / 4.69. Resolve the tint inside the light
+  appearance *and blend it there* — `NSColor(Color)` returns a dynamic colour,
+  so a blend one line outside the block resolves it again against whatever
+  appearance happens to be current and silently darkens the wrong green.
+- `HelmText.figureFont` / `.helmFigure()` — the one face for a figure: a byte
+  size, a count, a version. Sizes were drawn in four faces across lists that sit
+  next to each other, and SF Mono 11 renders "1,24 ГБ" 27% wider than SF Pro 10
+  tabular, so no choice of column width could have made them agree.
+- Ink that means something comes from `HelmSignal`, never from the system
+  palette, and `SignalInkTests` scans `HelmUI` + `HelmApp` for the shape "a raw
+  `.orange` / `.green` / `.red` handed to something that paints with it". A
+  *tint* is not ink and is deliberately not caught — `HelmBadge` takes one and
+  draws it at 0.20 behind `Color.primary` text, which is the whole reason the
+  pill exists.
 - `.helmCard()` — the one card treatment: `primary.opacity(0.035)` fill, **no
   border**, 12pt continuous corners. The fill is measured against a real `Form`
   section on the same background: the system's section sits 7 L from the panel

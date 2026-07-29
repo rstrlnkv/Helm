@@ -1,17 +1,19 @@
 import Foundation
 
-/// Whether an entry a glob matched really belongs to the app being removed.
+/// Whether an entry named after a bundle id really belongs to the app being
+/// removed — one decision for every candidate the id produced, exact and
+/// globbed alike, because a check applied to some of them and not the others is
+/// how the same data arrives ticked by a different route.
 ///
 /// `GlobMatch` answers a question about text; this answers the question the
-/// scan actually has. Every id-derived candidate is `"<id>*"` or `"*<id>*"`,
-/// and a bundle id is a prefix of its own vendor's next product — so
-/// `com.acme.tool*` reaches `com.acme.toolPro`'s cache, container, group
-/// container and LaunchAgent as readily as it reaches `com.acme.tool.helper`'s.
-/// `scanOrphansSync` puts every entry it finds past `installedBundleIDs()`
-/// before offering it; `scanSync` put its glob matches past nothing, and a glob
-/// hit is never `matchedByName`, so `UninstallPlan.defaultSelection` arrives
-/// with it **already ticked** — the hazard ARCHITECTURE.md § Removal scope is
-/// about.
+/// scan actually has. A glob is `"<id>*"` or `"*<id>*"`, and a bundle id is a
+/// prefix of its own vendor's next product — so `com.acme.tool*` reaches
+/// `com.acme.toolPro`'s cache, container, group container and LaunchAgent as
+/// readily as it reaches `com.acme.tool.helper`'s. `scanOrphansSync` puts every
+/// entry it finds past `installedBundleIDs()` before offering it; `scanSync`
+/// put its glob matches past nothing, and a glob hit is never `matchedByName`,
+/// so `UninstallPlan.defaultSelection` arrives with it **already ticked** — the
+/// hazard ARCHITECTURE.md § Removal scope is about.
 ///
 /// Three rules, because each alone lets a real case through:
 ///

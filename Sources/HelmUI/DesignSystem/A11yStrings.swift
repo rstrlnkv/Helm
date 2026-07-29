@@ -40,4 +40,27 @@ public enum HelmA11y {
     public static var minutes: String {
         L("Minutes", [.ru: "Минуты", .es: "Minutos", .fr: "Minutes", .de: "Minuten", .ja: "分", .zh: "分钟", .pt: "Minutos"])
     }
+
+    /// Whether a disclosure is open. SwiftUI has no trait for it on macOS — the
+    /// rotor gets `.isButton` and nothing else — so the state has to be said,
+    /// and a control whose whole purpose is to open and close must say it.
+    ///
+    /// Read out of the system's own tables rather than translated: searching
+    /// every `.loctable` macOS ships for the strings whose English is
+    /// "expanded" / "collapsed" gives seven of the eight. Four of the first
+    /// attempt's eight guesses were wrong — French says *condensé*, not
+    /// *réduit*; Japanese says 折りたたまれています, not 閉じています; Russian
+    /// spells it without the ё it is normally written with.
+    ///
+    /// Portuguese is the exception: no system table carries it, so it is a
+    /// translation, and it is the only one here that is.
+    public static func expanded(_ isExpanded: Bool) -> String {
+        isExpanded
+            ? L("expanded", [.ru: "развернуто", .es: "expandido", .fr: "développé",
+                             .de: "erweitert", .ja: "展開されています", .zh: "已展开",
+                             .pt: "expandido"])
+            : L("collapsed", [.ru: "свернуто", .es: "contraído", .fr: "condensé",
+                              .de: "reduziert", .ja: "折りたたまれています", .zh: "已折叠",
+                              .pt: "recolhido"])
+    }
 }

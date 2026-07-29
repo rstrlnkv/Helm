@@ -145,6 +145,12 @@ struct RuleEditor: View {
                                 .lineLimit(1)
                         }
                         .padding(.vertical, 5)
+                        // One stop per file, not four. This is the list whose
+                        // whole purpose is making the consequence audible before
+                        // the switch is reachable, and read as loose fragments —
+                        // name, destination, arrow, action — it says least to
+                        // the reader who most depends on it.
+                        .accessibilityElement(children: .combine)
                         if row.id != rvm.preview.last?.id { Divider() }
                     }
                 }
@@ -176,12 +182,19 @@ struct RuleEditor: View {
                 // drift apart.
                 .disabled(!rule.canBeEnabled)
             Spacer()
+            // The two keys every sheet on this system answers to, and this is
+            // the sheet a keyboard has furthest to travel across: conditions,
+            // pickers, fields, the dry run. Escape did not close it at all.
+            // Nothing here claims Return — none of `ConditionRow`'s fields calls
+            // `.onSubmit` — so the default button is free to take it.
             Button(ApStr.cancel) { dismiss() }
+                .keyboardShortcut(.cancelAction)
             Button(ApStr.done) {
                 rvm.save(rule, in: folder)
                 dismiss()
             }
             .buttonStyle(.borderedProminent)
+            .keyboardShortcut(.defaultAction)
         }
         .padding(.horizontal, 20).padding(.vertical, 14)
     }
