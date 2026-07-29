@@ -12,6 +12,7 @@ public struct WelcomeView: View {
     private let steps: [WelcomeStep]
     private let onClose: () -> Void
     @State private var flow: WelcomeFlow
+    @State private var revealed = false
 
     public init(steps: [WelcomeStep], onClose: @escaping () -> Void) {
         self.steps = steps
@@ -27,10 +28,43 @@ public struct WelcomeView: View {
         VStack(spacing: 0) {
             if let step {
                 VStack(spacing: 16) {
-                    Image(systemName: step.sfSymbol)
-                        .font(.system(size: 44, weight: .light))
-                        .foregroundStyle(HelmText.quiet)
-                        .accessibilityHidden(true)
+                    if step.moduleSymbols.isEmpty {
+                        Image(systemName: step.sfSymbol)
+                            .font(.system(size: 44, weight: .light))
+                            .foregroundStyle(HelmText.quiet)
+                            .accessibilityHidden(true)
+                    } else {
+                        // The mark and the title/body stand still; only the
+                        // icon row moves — one thing moves, the rest doesn't.
+                        VStack(spacing: 20) {
+                            HelmAppMark(size: 72)
+                            // The app's parts, arriving one after another — the
+                            // first screen answers "what is this made of" before
+                            // a word is read. Icons are decorative here; the step
+                            // text carries the meaning, and the row is hidden
+                            // from accessibility as a whole.
+                            HStack(spacing: 14) {
+                                ForEach(Array(step.moduleSymbols.enumerated()), id: \.offset) { index, symbol in
+                                    Image(systemName: symbol)
+                                        .font(.system(size: 17, weight: .medium))
+                                        .foregroundStyle(HelmText.quiet)
+                                        .frame(width: 36, height: 36)
+                                        .background(Circle().fill(Color.primary.opacity(0.06)))
+                                        .scaleEffect(revealed ? 1 : 0.4)
+                                        .opacity(revealed ? 1 : 0)
+                                        // Under Reduce Motion the icons still
+                                        // arrive — the stagger and the scale
+                                        // that would carry it do not, the
+                                        // same trade the VPN spin makes.
+                                        .animation(HelmMotion.reduceMotion ? nil
+                                                   : HelmMotion.emphasis.delay(Double(index) * 0.06),
+                                                   value: revealed)
+                                }
+                            }
+                            .accessibilityHidden(true)
+                        }
+                        .onAppear { revealed = true }
+                    }
                     Text(step.title)
                         .font(.title2.weight(.semibold))
                         .multilineTextAlignment(.center)
@@ -50,6 +84,9 @@ public struct WelcomeView: View {
                 // its shape, never an inline curve.
                 .id(step.id)
                 .transition(.opacity)
+                .onChange(of: flow.step) { _, newStep in
+                    if newStep != 0 { revealed = false }
+                }
             }
 
             Divider()

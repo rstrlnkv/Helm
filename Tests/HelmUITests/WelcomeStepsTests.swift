@@ -68,4 +68,12 @@ final class WelcomeStepsTests: XCTestCase {
             }
         }
     }
+
+    /// The intro is a showcase: it carries every module's symbol, in registry
+    /// order, so the first screen can show what the app is made of.
+    func testTheIntroCarriesEveryModuleSymbolInOrder() {
+        let steps = WelcomeSteps.build(from: [metadata("Alpha"), metadata("Beta")])
+        XCTAssertEqual(steps[0].moduleSymbols, ["circle", "circle"])
+        XCTAssertTrue(steps[1].moduleSymbols.isEmpty, "module steps are not showcases")
+    }
 }
