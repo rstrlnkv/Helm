@@ -203,14 +203,16 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         lock.unlock()
         // Ended and meant are different things: leaving the word by clicking or
         // moving the caret ends it without asking for a conversion.
-        // A click or a focus change means the person went somewhere else, and
-        // converting then types six backspaces into wherever the caret is now —
-        // possibly an hour later. A chord does not: the shortcut itself is one,
-        // and it must not destroy its own input.
-        switch event {
-        case .click, .focusChange:
+        // Converting a word the caret has left types six backspaces into
+        // whatever is in front of it now — possibly an hour later. Through
+        // `movedTheCaret`, which is the same fact the undo above spends, because
+        // this used to carry its own shorter list: a click and a focus change
+        // dropped the word and a bare arrow, Home, End, Tab or Escape *stored*
+        // the one it had just ended. Press ←, tap the key, and the conversion
+        // landed wherever the arrow had gone.
+        if event.movedTheCaret {
             lock.lock(); lastCompleted = nil; lock.unlock()
-        default:
+        } else {
             // An event that ends no word still ends the last one's usefulness:
             // a token too long for the buffer to hold refuses, and the word
             // from before it used to stay remembered — by then it is as many

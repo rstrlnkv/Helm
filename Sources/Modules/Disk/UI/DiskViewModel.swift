@@ -1,4 +1,5 @@
 import Foundation
+import HelmContract
 import HelmRuntime
 import HelmUI
 import Module_Disk_Engine
@@ -105,9 +106,31 @@ import Module_Disk_Engine
         client = TransportClient(vm.transport)
         // The VM owns the event loop, not the page: partial snapshots keep
         // building the tree even while the user is on another module.
-        eventsTask = Task { [weak self] in await self?.observeEvents() }
+        //
+        // The stream is captured here and `self` re-acquired per event, rather
+        // than handed to an instance method: `await self?.observeEvents()`
+        // resolves the weak capture once and then needs `self` for the whole
+        // call, and that call is a `for await` over a stream nothing finishes.
+        // It held the view model — scan tree and all — for the life of the app,
+        // so `ModuleUICache.dropWhenDisabled` dropped the cache and freed
+        // nothing.
+        let events = vm.transport.events
+        eventsTask = Task { [weak self] in
+            for await event in events {
+                guard let self else { break }   // dropped: stop consuming
+                await self.handle(event)
+            }
+        }
         Task { [weak self] in await self?.restoreLastScan() }
     }
+
+    /// Ends the event loop, which unregisters the transport subscriber.
+    ///
+    /// Cancelling is what makes `AsyncStream` finish its iteration and fire
+    /// `onTermination`; the `guard let self` above only notices at the next
+    /// event, and a module that emits rarely would keep its subscriber until
+    /// one arrived.
+    deinit { eventsTask?.cancel() }
 
     /// A whole disk takes a minute to measure. Reopening Helm should not spend
     /// it again: the last tree is read back from disk and shown at once, with
@@ -222,6 +245,11 @@ import Module_Disk_Engine
         Task { await client.send("cancel", encoding: [String]()) }
         live = false
         phase = .start
+        // The basket only ever holds entries from the tree on screen, and Stop
+        // takes the tree away. Keeping them left the volume picker drawn over a
+        // basket bar naming folders of an abandoned scan, above a Trash button,
+        // with nothing on that screen able to say what they belong to.
+        basket = []
     }
 
     public func newScan() {
@@ -233,7 +261,6 @@ import Module_Disk_Engine
         restored = false
         focusPath = []
         segments = []
-        basket = []
         banner = nil
         Task { await loadVolumes() }
     }
@@ -353,14 +380,19 @@ import Module_Disk_Engine
         let freed = removal?.freedBytes ?? 0
         failures = removal?.refused ?? []
         removedCount = removal?.removed.count ?? 0
-        banner = DkStr.removedFreed(Bytes(freed))
+        banner = DkStr.movedToTrash(Bytes(freed))
         basket = []
         // Re-walking the disk to learn what we already know — those paths are
         // gone, and by how much — costs a minute on a full volume. Apply the
         // deletion to the tree in hand instead.
         guard let previous = result, let removed = removal?.removed, !removed.isEmpty else { return }
         let pruned = DiskTreePrune.removing(paths: removed, from: previous.root)
-        let updated = ScanResult(root: pruned, freeBytes: previous.freeBytes + freed,
+        // Free space stays as measured: `HelmTrash` moved these paths to
+        // `~/.Trash`, a folder on this same volume, so the disk gained nothing
+        // and crediting `freed` to it invented space until the next real scan —
+        // and past it, since the figure is saved and restored. Pruning the tree
+        // is the true half: what the volume *uses* falls by what left.
+        let updated = ScanResult(root: pruned, freeBytes: previous.freeBytes,
                                  filesScanned: previous.filesScanned, seconds: previous.seconds,
                                  advice: previous.advice.filter { advice in
                                      !removed.contains { advice.path == $0
@@ -374,31 +406,29 @@ import Module_Disk_Engine
 
     // MARK: - Events
 
-    private func observeEvents() async {
-        for await event in vm.transport.events {
-            switch event.name {
-            case "progress":
-                if let update = try? JSONDecoder().decode(ScanTick.self, from: event.payload),
-                   update.scan == showingScan {
-                    tick = update
-                }
-            case "partial":
-                // Whose snapshot this is decides everything: a folder
-                // measurement's tree drawn as the volume collapses the focus,
-                // keeps the volume's name and title, and draws the volume's
-                // free space against a folder.
-                guard live,
-                      let snapshot = try? JSONDecoder().decode(PartialScan.self,
-                                                               from: event.payload),
-                      snapshot.scan == showingScan
-                else { continue }
-                result = snapshot.result
-                focusPath = DiskFocus.resolve(paths: focusPath.map(\.path), in: snapshot.result.root)
-                phase = .result
-                recomputeSegments()
-            default:
-                continue
+    private func handle(_ event: EngineEvent) async {
+        switch event.name {
+        case "progress":
+            if let update = try? JSONDecoder().decode(ScanTick.self, from: event.payload),
+               update.scan == showingScan {
+                tick = update
             }
+        case "partial":
+            // Whose snapshot this is decides everything: a folder
+            // measurement's tree drawn as the volume collapses the focus,
+            // keeps the volume's name and title, and draws the volume's
+            // free space against a folder.
+            guard live,
+                  let snapshot = try? JSONDecoder().decode(PartialScan.self,
+                                                           from: event.payload),
+                  snapshot.scan == showingScan
+            else { return }
+            result = snapshot.result
+            focusPath = DiskFocus.resolve(paths: focusPath.map(\.path), in: snapshot.result.root)
+            phase = .result
+            recomputeSegments()
+        default:
+            return
         }
     }
 

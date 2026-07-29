@@ -21,7 +21,21 @@ public enum UserFileScope {
         // is the home directory however it is written, and every check below
         // is a string test — RemovableScope standardizes for exactly this
         // reason, and this gate is the last word on deletion for Disk, Duplicates and Autopilot.
-        let path = (rawPath as NSString).standardizingPath
+        //
+        // The absolute-path guard comes FIRST, before any resolution: every
+        // resolver here builds a `URL(fileURLWithPath:)`, which resolves a
+        // relative path against the process's working directory and hands back
+        // something absolute. Canonicalizing before the guard therefore turned
+        // "" and "relative/path" into paths this gate approved — the guard was
+        // asking a question that had already been answered for it.
+        let standardized = (rawPath as NSString).standardizingPath
+        guard standardized.hasPrefix("/"), standardized != "/" else { return false }
+        // Then symlinks, which `standardizingPath` does not resolve while
+        // `trashItem` follows them: a link in an ordinary user folder pointing
+        // at `/System/Library` made a protected path wear a permitted spelling.
+        // Only ancestors are resolved — trashing a stale alias must still be
+        // allowed to remove the alias (PathCanonical says why).
+        let path = PathCanonical.resolvingAncestors(standardized)
         guard path.hasPrefix("/"), path != "/" else { return false }
         // A folded "…" bucket is an aggregate, not a real path.
         guard !path.hasSuffix("/…") else { return false }

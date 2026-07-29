@@ -60,28 +60,36 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
         // Prefix globs overlap the exact candidates they generalise; the same
         // directory must not be listed (or trashed) twice.
         var seenPaths: Set<String> = []
-        // Read once: a glob hit has to be checked against the installed apps
-        // the same way `scanOrphansSync` checks every entry it finds. Ids only,
-        // so this costs a directory listing rather than a walk of every bundle.
-        var installed: Set<String>?
+        // Every candidate below is derived from the app's bundle id, and the
+        // facts that can refute a claim on one refute the claim on all of them,
+        // so they are gathered once per scan rather than per candidate — and
+        // only when there is something to judge, since an app with no leftovers
+        // should not pay for a directory listing.
+        var ownership: LeftoverOwnership?
+        // Refusals are the point of this gate, so they are counted by path (a
+        // glob and the exact candidate it generalises reach the same entry).
+        var refusedPaths: Set<String> = []
         for c in LeftoverMatcher.candidates(bundleID: bundleID, appName: appName, library: library) {
             var urls: [URL] = c.isGlob ? fs.glob(c.url) : (fs.exists(c.url) ? [c.url] : [])
-            if c.isGlob, !urls.isEmpty {
-                // `com.acme.tool*` matches `com.acme.toolPro`, which is a
-                // different app and may be installed and running — and a glob
-                // hit is never `matchedByName`, so it would arrive pre-ticked.
-                let ids = installed ?? apps.installedBundleIDs()
-                installed = ids
-                urls = urls.filter {
-                    LeftoverOwnership.claims(name: $0.lastPathComponent,
-                                             bundleID: bundleID, installedBundleIDs: ids)
+            // A candidate built from the display name is a different guess with
+            // a different default — `defaultSelection` leaves it unticked — and
+            // the id is not in its name for this to read.
+            if !c.matchedByName, !urls.isEmpty {
+                let owner = ownership ?? makeOwnership(bundleID: bundleID)
+                ownership = owner
+                let kept = urls.filter { owner.claims(name: $0.lastPathComponent) }
+                if kept.count != urls.count {
+                    let keptPaths = Set(kept.map(\.path))
+                    for u in urls where !keptPaths.contains(u.path) { refusedPaths.insert(u.path) }
                 }
+                urls = kept
             }
             for u in urls where seenPaths.insert(u.path).inserted {
                 leftovers.append(Leftover(path: u.path, kind: c.kind,
                                           sizeBytes: fs.size(u), matchedByName: c.matchedByName))
             }
         }
+        report(refusedPaths, bundleID: bundleID, contested: ownership?.idIsContested ?? false)
         leftovers.sort { $0.sizeBytes > $1.sizeBytes }
         return ScanResult(bundleID: bundleID, appPath: appPath,
                           // Zero, deliberately: nothing reads this, and filling it walked the
@@ -91,6 +99,40 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
                           appSizeBytes: 0,
                           leftovers: leftovers,
                           runningNow: running.isRunning(bundleID: bundleID))
+    }
+
+    /// The per-scan ownership facts, read once each: the app folders' listing,
+    /// the bundles declaring this id, and LaunchServices for what neither of
+    /// those can see. Its answers are remembered for the length of the scan —
+    /// five folders of entries ask about the same handful of ids, and each
+    /// question is a round trip to the system.
+    private func makeOwnership(bundleID: String) -> LeftoverOwnership {
+        var answers: [String: Bool] = [:]
+        return LeftoverOwnership(
+            bundleID: bundleID,
+            installedBundleIDs: apps.installedBundleIDs(),
+            installedPaths: apps.installedPaths(forBundleID: bundleID),
+            knownToSystem: { [apps] id in
+                if let remembered = answers[id] { return remembered }
+                let answer = apps.isKnownToSystem(bundleID: id)
+                answers[id] = answer
+                return answer
+            })
+    }
+
+    /// A refusal that leaves no trace reads exactly like a scan that found
+    /// nothing, and those two want different answers from whoever opens the
+    /// log. Ids are tags: a bundle id names somebody's habits.
+    private func report(_ refused: Set<String>, bundleID: String, contested: Bool) {
+        if contested {
+            HelmLog.shared.warn("uninstaller",
+                                "scan \(Redact.app(bundleID)): the id is declared by more than one "
+                                + "installed bundle, so nothing derived from it is this app's")
+        }
+        guard !refused.isEmpty else { return }
+        HelmLog.shared.info("uninstaller",
+                            "scan \(Redact.app(bundleID)): refused \(refused.count) "
+                            + "candidate(s) belonging to another installed app")
     }
 
     /// Trashes the selected leftover paths plus the app bundle. Sizes are read

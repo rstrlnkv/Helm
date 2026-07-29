@@ -32,7 +32,18 @@ import SwiftUI
         self.client = TransportClient(vm.transport)
         let remembered = store.string("folder", default: "")
         if !remembered.isEmpty { folder = URL(fileURLWithPath: remembered) }
-        eventsTask = Task { [weak self] in await self?.observeEvents() }
+        // The stream is captured here and `self` re-acquired per event: handing
+        // the loop to an instance method resolves the weak capture once and
+        // then holds `self` for the whole call, which never returns. That kept
+        // the view model alive, which in turn meant the `deinit` below could
+        // never run — a cancel that cancelled nothing.
+        let events = vm.transport.events
+        eventsTask = Task { [weak self] in
+            for await event in events {
+                guard let self else { break }
+                await self.handle(event)
+            }
+        }
     }
 
     deinit { eventsTask?.cancel() }
@@ -150,12 +161,11 @@ import SwiftUI
 
     // MARK: - Events
 
-    private func observeEvents() async {
-        for await event in vm.transport.events where event.name == "progress" {
-            if let update = try? JSONDecoder().decode(DuplicateProgress.self,
-                                                      from: event.payload) {
-                progress = update
-            }
+    private func handle(_ event: EngineEvent) async {
+        guard event.name == "progress" else { return }
+        if let update = try? JSONDecoder().decode(DuplicateProgress.self,
+                                                  from: event.payload) {
+            progress = update
         }
     }
 }

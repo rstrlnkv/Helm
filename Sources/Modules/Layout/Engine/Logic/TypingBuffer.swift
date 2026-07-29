@@ -26,6 +26,25 @@ public struct TypingBuffer {
         case chord
         case click
         case focusChange
+
+        /// Whether this event is proof the caret went somewhere else.
+        ///
+        /// The module keeps two things that may only be spent at a caret that
+        /// has not moved: the record of what to undo and the word that most
+        /// recently ended. Both are blind edits of a fixed length, both are
+        /// measured against text that was in front of the caret when they were
+        /// taken, and both used to answer this question for themselves — which
+        /// is how `.navigation` came to invalidate one and be stored across the
+        /// other. A chord is the single exception and it is spelled out above:
+        /// the gesture's own keys reach the tap before Carbon dispatches the
+        /// action, so a chord treated as a caret move has the gesture destroy
+        /// its own input.
+        public var movedTheCaret: Bool {
+            switch self {
+            case .navigation, .click, .focusChange: return true
+            case .character, .backspace, .space, .newline, .punctuation, .chord: return false
+            }
+        }
     }
 
     /// Longer than any word in any language Helm can judge. Past it the tap is

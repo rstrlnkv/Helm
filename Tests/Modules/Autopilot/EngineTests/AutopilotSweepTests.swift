@@ -31,9 +31,13 @@ final class AutopilotSweepTests: XCTestCase {
         root = home
             .appendingPathComponent("helm-sweep-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        // `keys` is a double for the same reason `home` is one: the real port
+        // writes to the user's login keychain, and a test suite leaves nothing
+        // behind. The seal itself is not stubbed out — these sweeps save and
+        // read their rules through it exactly as the app does.
         engine = AutopilotEngine(store: NamespacedStore(namespace: "rules.test.\(UUID().uuidString)",
                                                     backing: InMemoryKeyValueStore()),
-                             home: home.path)
+                             home: home.path, keys: TestRuleKey())
     }
 
     override func tearDownWithError() throws {
