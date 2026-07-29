@@ -17,6 +17,10 @@ public struct VPNSettingsPage: View {
     @State private var spin: Bool
     @State private var spinTintConnected: String
     @State private var spinTintDisconnected: String
+    /// Natural height of the two swatch rows, measured so the disclosure
+    /// animates between 0 and a concrete value — the same pattern
+    /// `UtilitiesSection` in `HelmPanel.swift` uses for its rows.
+    @State private var spinRowsHeight: CGFloat = 0
 
     public init(vm: VPNViewModel, store: NamespacedStore) {
         self.vm = vm
@@ -67,7 +71,10 @@ public struct VPNSettingsPage: View {
             Section(VPNStr.noticeSection) {
                 noticePicker
             }
-            .animation(HelmMotion.interface, value: spin)
+
+            Section(VPNStr.spinSection) {
+                spinControls
+            }
         }
         .formStyle(.grouped)
         .helmSettingsColumn()
@@ -129,28 +136,46 @@ public struct VPNSettingsPage: View {
         Text(VPNStr.noticeHint)
             .font(.caption)
             .foregroundStyle(HelmText.quiet)
+    }
 
+    /// The spin toggle and its two colour rows. The rows are mounted always
+    /// and revealed by an animated, measured height rather than an `if` — the
+    /// same pattern `UtilitiesSection` in `HelmPanel.swift` uses, because an
+    /// `if`-mounted subtree pops instead of growing (ARCHITECTURE.md §
+    /// Motion).
+    @ViewBuilder
+    private var spinControls: some View {
         Toggle(VPNStr.spinLabel, isOn: Binding(
             get: { spin },
             set: { on in
-                spin = on
+                withAnimation(HelmMotion.disclosure) { spin = on }
                 VPNSettings(store: store).setAutomationSpin(on)
             }))
 
-        if spin {
+        VStack(spacing: 2) {
             LabeledContent(VPNStr.spinConnected) {
-                HelmPaletteSwatches(selection: spinTintConnected) { token in
+                HelmPaletteSwatches(selection: spinTintConnected, layout: .row) { token in
                     spinTintConnected = token
                     VPNSettings(store: store).setSpinTint(token, for: .connected)
                 }
             }
             LabeledContent(VPNStr.spinDisconnected) {
-                HelmPaletteSwatches(selection: spinTintDisconnected) { token in
+                HelmPaletteSwatches(selection: spinTintDisconnected, layout: .row) { token in
                     spinTintDisconnected = token
                     VPNSettings(store: store).setSpinTint(token, for: .disconnected)
                 }
             }
         }
+        .onGeometryChange(for: CGFloat.self, of: \.size.height) { height in
+            if height > 0 { spinRowsHeight = height }
+        }
+        .frame(height: spin ? spinRowsHeight : 0, alignment: .top)
+        // Height + clipping only, matching `UtilitiesSection`: fading would
+        // isolate the rows in their own layer.
+        .clipped()
+        .allowsHitTesting(spin)
+        // `.clipped()` hides it from the eye, not from the accessibility tree.
+        .accessibilityHidden(!spin)
 
         // Said where the two settings are, not only in a spec file.
         if !spin, notice == .silent {
