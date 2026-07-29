@@ -1,10 +1,12 @@
 import AppKit
 import Combine
+import HelmContract
+import HelmRuntime
 import HelmUI
 
-/// Owns the single `NSStatusItem`. Reflects the first enabled module that
-/// reports a non-default status appearance; left click toggles the shared
-/// panel, right click shows Settings/Quit.
+/// Owns the single `NSStatusItem`. `StatusPlan` decides which enabled module it
+/// reflects and whether the ring moves; left click toggles the shared panel,
+/// right click shows Settings/Quit.
 @MainActor final class StatusItemController: NSObject {
     private let host: ModuleHost
     private let statusItem: NSStatusItem
@@ -41,13 +43,13 @@ import HelmUI
             guard let self else { return }
             Task { @MainActor in self.refreshIcon() }
         }
-        // `refreshIcon` resolves "the first active module" through
-        // `host.enabledModules`, which reads the user's order at call time —
-        // so a reorder changes the answer while nothing asks for it again.
-        // Latent today: `KeepAwakeDescriptor` is the only descriptor that
-        // overrides `statusAppearance`, so `.first { $0.tintToken != nil }`
-        // finds it whatever the order. It stops being latent the day a second
-        // module tints the icon, and that is not the day to remember this.
+        // `refreshIcon` hands `StatusPlan.choose` the modules in the user's
+        // order, read at call time — so a reorder changes the answer while
+        // nothing asks for it again. Latent today: `KeepAwakeDescriptor` is the
+        // only descriptor that overrides `statusAppearance`, so the fallback to
+        // the first tinted module finds it whatever the order. It stops being
+        // latent the day a second module tints the icon, and that is not the
+        // day to remember this.
         orderObserver = NotificationCenter.default.addObserver(
             forName: .helmModuleOrderChanged, object: nil, queue: .main
         ) { [weak self] _ in
@@ -84,40 +86,46 @@ import HelmUI
     private var lastIconKey: String?
     /// Drives the countdown ring: modules only emit on state changes, so the
     /// arc needs its own tick while a timer is running.
-    private var timerTick: Timer?
-
-    private func scheduleTimerTick(active: Bool) {
-        if active, timerTick == nil {
-            timerTick = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-                Task { @MainActor in self?.refreshIcon() }
-            }
-        } else if !active, timerTick != nil {
-            timerTick?.invalidate()
-            timerTick = nil
-        }
-    }
+    private lazy var timerTick = RepeatingTick(interval: 1) { [weak self] in self?.refreshIcon() }
+    /// Drives a spin, which is thirty frames a second for about a second — far
+    /// faster than the countdown, and armed only while a spin is live. It stops
+    /// itself: the tick calls the very refresh that decides whether it is still
+    /// wanted, so a spin that ends, a module switched off mid-spin and Reduce
+    /// Motion switched on all disarm it within one frame.
+    private lazy var spinTick = RepeatingTick(interval: 1.0 / 30) { [weak self] in self?.refreshIcon() }
 
     private func refreshIcon() {
         guard let button = statusItem.button else { return }
-        // First active module (non-nil tint) drives both the tint and an optional
-        // active-state shape override.
-        let appearance = host.enabledModules
-            .map { $0.descriptor.statusAppearance($0.vm) }
-            .first { $0.tintToken != nil } ?? .inactive
+        let now = Date()
+        // One rule decides: a module whose spin is running borrows the icon,
+        // otherwise the first module that tints it.
+        let appearance = StatusPlan.choose(
+            host.enabledModules.map { $0.descriptor.statusAppearance($0.vm) }, now: now)
         let token = appearance.tintToken
         let globalStyle = MenuBarIconStyle(rawValue: AppSettings.menuBarIconStyle) ?? .ring
         let style = appearance.iconStyle.flatMap(MenuBarIconStyle.init(rawValue:)) ?? globalStyle
         let size = MenuBarIconSize(rawValue: AppSettings.menuBarIconSize) ?? .medium
         let progress = appearance.timerProgress
-        scheduleTimerTick(active: progress != nil)
+        // Read fresh, the way `HelmMotion` does: the setting can be switched on
+        // while a spin is running, and a cached answer would keep it moving.
+        let spinning = StatusPlan.spins(appearance, now: now, reduceMotion: HelmMotion.reduceMotion)
+        let frame = spinning ? StatusPlan.frame(spinUntil: appearance.spinUntil, now: now,
+                                                frameCount: RingIcon.frameCount) : nil
+        timerTick.set(active: progress != nil)
+        // Tied to the frame rather than to `spinning`: what keeps the tick alive
+        // is exactly what it has left to draw.
+        spinTick.set(active: frame != nil)
         // Modules emit state on every tick; only redraw when the glyph changes.
-        // Progress is bucketed so a countdown redraws ~1% at a time, not per pixel.
-        let bucket = progress.map { Int(($0 * 100).rounded()) }
         let title = appearance.title
-        let key = "\(style.rawValue)|\(size.rawValue)|\(token ?? "")|\(bucket.map(String.init) ?? "-")|\(title ?? "")"
+        let key = StatusPlan.redrawKey(style: style.rawValue, size: size.rawValue, tint: token,
+                                       progress: progress, title: title, frame: frame)
         guard key != lastIconKey else { return }
         lastIconKey = key
-        button.image = RingIcon.make(style: style, size: size, tintToken: token, progress: progress)
+        if let frame {
+            button.image = RingIcon.spinnerFrames(style: style, size: size, tintToken: token)[frame]
+        } else {
+            button.image = RingIcon.make(style: style, size: size, tintToken: token, progress: progress)
+        }
         // Countdown text sits after the glyph, in the tint the module asked for.
         if let title {
             button.imagePosition = .imageLeading

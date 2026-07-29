@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import HelmContract
 import HelmRuntime
 import HelmUI
@@ -34,7 +35,8 @@ import Module_VPN_Engine
     /// Switching VPN off and on left the tile and the page frozen until relaunch.
     func viewModel(_ hostVM: ModuleViewModel) -> VPNViewModel {
         if let cached, cached.vm === hostVM { return cached.model }
-        let m = VPNViewModel(transport: hostVM.transport)
+        let m = VPNViewModel(transport: hostVM.transport,
+                             settings: VPNSettings(store: settingsStore))
         cached = (hostVM, m)
         ModuleUICache.dropWhenDisabled(Self.id.rawValue) { [weak self] in self?.cached = nil }
         return m
@@ -43,9 +45,41 @@ import Module_VPN_Engine
     public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? {
         MenuBarContribution(panelTile: AnyView(VPNPanelTile(vm: viewModel(vm))))
     }
+    /// Without this the host reads `statusAppearance` only when something else
+    /// redraws the icon, and a rule firing by itself is precisely the case
+    /// where nothing else does.
+    public func statusChanges(_ vm: ModuleViewModel) -> AnyPublisher<Void, Never>? {
+        viewModel(vm).objectWillChange
+            .map { _ in () }
+            .eraseToAnyPublisher()
+    }
+
+    /// Only while a rule's firing is still news.
+    ///
+    /// No tint, ever: this module has no presence in the menu bar between
+    /// firings, and giving it a permanent one — which is what a tint is, since
+    /// `StatusPlan.choose` falls back to the first module that tints — is a
+    /// larger change than saying that a rule fired. It would also settle
+    /// "whose icon is this" by `ModuleOrder`, which `StatusItemController`
+    /// notes is latent today precisely because no second module tints.
+    public func statusAppearance(_ vm: ModuleViewModel) -> StatusAppearance {
+        let model = viewModel(vm)
+        guard let firing = model.lastAutomation else { return .inactive }
+        // One reading of the clock, so the two windows cannot disagree about
+        // which moment they are answering for.
+        let now = Date()
+        let spinning = VPNAutomation.spinPhase(firing, now: now) != nil
+        let names = model.notice.showsMenuBarName && VPNAutomation.showsName(firing, now: now)
+        return StatusAppearance(title: names ? firing.name : nil,
+                                spinUntil: spinning ? VPNAutomation.spinEnd(firing) : nil)
+    }
+
     public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
-        let store = self.store ?? NamespacedStore(namespace: Self.id.rawValue,
-                                                  backing: UserDefaults.standard)
-        return AnyView(VPNSettingsPage(vm: viewModel(vm), store: store))
+        AnyView(VPNSettingsPage(vm: viewModel(vm), store: settingsStore))
+    }
+
+    /// The module's own defaults, whether or not the engine has been built yet.
+    private var settingsStore: NamespacedStore {
+        store ?? NamespacedStore(namespace: Self.id.rawValue, backing: UserDefaults.standard)
     }
 }

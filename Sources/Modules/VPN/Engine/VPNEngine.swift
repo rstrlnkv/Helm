@@ -270,7 +270,13 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
 
     private func disconnectNow(_ name: String, auto: Bool) {
         HelmLog.shared.info("vpn", "disconnect \(Redact.vpn(name))\(auto ? " (auto)" : "")")
-        if auto { recordAutomation(name, .disconnected) }
+        // Read before the books are touched, and mirror the connect side: a
+        // teardown of a tunnel that is already down changes nothing, so
+        // `scutil --nc stop` is a no-op and there is nothing to announce.
+        // Announcing it anyway would name a disconnection the user never had,
+        // which is the same lie as announcing one that never happened.
+        let wasUp = status(name).isUp
+        if auto, wasUp { recordAutomation(name, .disconnected) }
         // Both books. `_cameUp` is the memory of "this one did come up", and a
         // name left in it outlives the session it belonged to: the next time
         // the same app launches and Helm raises the same VPN, the first refresh

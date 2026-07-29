@@ -37,6 +37,28 @@ final class StatusPlanTests: XCTestCase {
         XCTAssertEqual(StatusPlan.choose([active, stale], now: now).tintToken, "orange")
     }
 
+    /// Tier three. A module can have nothing but something to say — VPN names
+    /// the connection a rule raised for three seconds, while its spin lasts
+    /// only 1.2 s, and it deliberately tints nothing. Without this the name
+    /// died with the ring: measured in the menu bar, gone by 1.8 s.
+    func testATitleAloneIsChosenWhenNothingTints() {
+        let naming = StatusAppearance(title: "Office VPN")
+        XCTAssertEqual(StatusPlan.choose([StatusAppearance(), naming], now: now).title,
+                       "Office VPN")
+    }
+
+    /// And never above a module that tints. A name is a moment; a countdown is
+    /// continuous state, and Keep Awake tints while one runs — the same rule
+    /// the countdown's suppression of the spin already encodes. `naming` is
+    /// first here on purpose: "the first that tints or titles" would pick it.
+    func testATitleAloneDoesNotDisplaceATintedModule() {
+        let naming = StatusAppearance(title: "Office VPN")
+        let counting = StatusAppearance(tintToken: "orange", timerProgress: 0.5)
+        XCTAssertEqual(StatusPlan.choose([naming, counting], now: now).tintToken, "orange")
+        XCTAssertEqual(StatusPlan.choose([counting, naming], now: now).tintToken, "orange",
+                       "the answer must not depend on the order the modules arrive in")
+    }
+
     func testNothingActiveIsInactive() {
         XCTAssertEqual(StatusPlan.choose([StatusAppearance()], now: now), .inactive)
     }
@@ -62,5 +84,111 @@ final class StatusPlanTests: XCTestCase {
         XCTAssertFalse(StatusPlan.spins(ended, now: now, reduceMotion: false))
         XCTAssertEqual(StatusPlan.choose([ended], now: now).tintToken, "green",
                        "an ended spin should still be an ordinary tinted module")
+    }
+
+    // MARK: - Which frame belongs to now
+
+    private let frames = 36
+
+    /// A spin that has just been asked for starts at its first frame: the host
+    /// derives the phase from what is left of `spinUntil`, and getting the
+    /// direction wrong would run the whole animation backwards.
+    func testASpinOpensOnItsFirstFrame() {
+        let spinUntil = now.addingTimeInterval(StatusPlan.spinDuration)
+        XCTAssertEqual(StatusPlan.frame(spinUntil: spinUntil, now: now, frameCount: frames), 0)
+    }
+
+    /// The instant before the window closes is the last frame, not one past it:
+    /// the host subscripts an array with this.
+    func testTheLastInstantOfASpinIsTheLastFrame() {
+        let spinUntil = now.addingTimeInterval(0.0001)
+        XCTAssertEqual(StatusPlan.frame(spinUntil: spinUntil, now: now, frameCount: frames), 35)
+    }
+
+    func testNoFrameWhenNothingIsSpinning() {
+        XCTAssertNil(StatusPlan.frame(spinUntil: nil, now: now, frameCount: frames))
+        XCTAssertNil(StatusPlan.frame(spinUntil: now, now: now, frameCount: frames),
+                     "a spin ending exactly now is over")
+        XCTAssertNil(StatusPlan.frame(spinUntil: now.addingTimeInterval(-1), now: now,
+                                      frameCount: frames))
+    }
+
+    /// Nothing promises `spinUntil` is inside one spin's length — a module could
+    /// ask for longer, or a clock could jump. Every answer still has to be a
+    /// subscript that exists.
+    func testEveryFrameIsInsideTheArray() {
+        for offset in stride(from: -0.5, through: 5.0, by: 0.05) {
+            guard let frame = StatusPlan.frame(spinUntil: now.addingTimeInterval(offset),
+                                               now: now, frameCount: frames) else { continue }
+            XCTAssertTrue((0..<frames).contains(frame),
+                          "frame \(frame) at offset \(offset) is not an index of the array")
+        }
+    }
+
+    // MARK: - What counts as a redraw
+
+    /// The key exists to skip redundant redraws, so a key that ignores the
+    /// frame skips the animation itself — every frame of a spin would answer
+    /// "nothing changed" and the ring would sit still. This is the assertion
+    /// that catches that; nothing else can see it without a menu bar.
+    func testEveryFrameOfASpinIsItsOwnRedraw() {
+        let keys = (0..<frames).map {
+            StatusPlan.redrawKey(style: "ring", size: "medium", tint: "green",
+                                 progress: nil, title: nil, frame: $0)
+        }
+        XCTAssertEqual(Set(keys).count, frames, "frames share a key, so the spin would not move")
+    }
+
+    func testTheSameIconIsNotRedrawn() {
+        let key = { StatusPlan.redrawKey(style: "ring", size: "medium", tint: "green",
+                                         progress: nil, title: "12:00", frame: nil) }
+        XCTAssertEqual(key(), key())
+    }
+
+    /// A countdown moves by a hair per tick; redrawing per pixel is why this is
+    /// bucketed. Two progresses inside one percent are the same icon.
+    func testACountdownRedrawsAboutOncePerPercent() {
+        let key = { (progress: Double) in
+            StatusPlan.redrawKey(style: "ring", size: "medium", tint: "green",
+                                 progress: progress, title: nil, frame: nil)
+        }
+        XCTAssertEqual(key(0.500), key(0.5001))
+        XCTAssertNotEqual(key(0.50), key(0.51))
+    }
+
+    func testEachPartOfTheAppearanceCanChangeTheIcon() {
+        let base = StatusPlan.redrawKey(style: "ring", size: "medium", tint: "green",
+                                        progress: 0.5, title: "12:00", frame: nil)
+        XCTAssertNotEqual(base, StatusPlan.redrawKey(style: "dot", size: "medium", tint: "green",
+                                                     progress: 0.5, title: "12:00", frame: nil))
+        XCTAssertNotEqual(base, StatusPlan.redrawKey(style: "ring", size: "large", tint: "green",
+                                                     progress: 0.5, title: "12:00", frame: nil))
+        XCTAssertNotEqual(base, StatusPlan.redrawKey(style: "ring", size: "medium", tint: "orange",
+                                                     progress: 0.5, title: "12:00", frame: nil))
+        XCTAssertNotEqual(base, StatusPlan.redrawKey(style: "ring", size: "medium", tint: "green",
+                                                     progress: 0.5, title: "11:59", frame: nil))
+    }
+
+    /// A title that ends and a title that reads "-" are different icons; so are
+    /// a missing tint and a tint literally spelled the way the key spells nil.
+    func testAnAbsentPartIsNotTheSameAsAPartSpelledLikeIt() {
+        XCTAssertNotEqual(StatusPlan.redrawKey(style: "ring", size: "medium", tint: nil,
+                                               progress: nil, title: nil, frame: nil),
+                          StatusPlan.redrawKey(style: "ring", size: "medium", tint: "",
+                                               progress: nil, title: "", frame: nil))
+    }
+
+    /// The animation has to advance: sampling across one spin must produce
+    /// frames that never go backwards and do not all sit on the same image.
+    func testFramesAdvanceAcrossTheSpin() {
+        let spinUntil = now.addingTimeInterval(StatusPlan.spinDuration)
+        let samples = stride(from: 0.0, to: StatusPlan.spinDuration, by: 1.0 / 30).map {
+            StatusPlan.frame(spinUntil: spinUntil, now: now.addingTimeInterval($0),
+                             frameCount: frames)
+        }
+        XCTAssertNil(samples.first(where: { $0 == nil }), "the spin ended before its window did")
+        let indices = samples.compactMap { $0 }
+        XCTAssertEqual(indices, indices.sorted(), "the spin ran backwards")
+        XCTAssertGreaterThan(Set(indices).count, 1, "every sample drew the same frame")
     }
 }
