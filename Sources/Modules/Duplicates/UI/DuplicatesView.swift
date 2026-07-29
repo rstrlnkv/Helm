@@ -16,6 +16,9 @@ struct DuplicatesView: View {
     /// rows at all: arrow keys did nothing, and the row that stays — an image,
     /// a name and a badge, no control anywhere — could not be reached at all.
     @State private var selection: String?
+    /// Held so the Space shortcut has something to talk to. Assigned once,
+    /// when the representable makes its view.
+    @State private var previewOwner: PreviewPanelOwner?
 
     var body: some View {
         List(selection: $selection) {
@@ -37,18 +40,24 @@ struct DuplicatesView: View {
             }
         }
         .listStyle(.inset)
-        // Return reveals the selected copy — the same rule the disk list
-        // follows for a file, and the only way to that action without a mouse:
-        // a context menu needs a right-click, which Full Keyboard Access
-        // without VoiceOver cannot produce. A zero-size button still owns its
-        // shortcut, and the row already carries the visible affordance.
         .overlay {
-            Button("") { reveal(selection) }
-                .keyboardShortcut(.return, modifiers: [])
-                .disabled(selection == nil)
-                .opacity(0)
-                .frame(width: 0, height: 0)
-                .accessibilityHidden(true)
+            // Zero-size and invisible: a button still owns its shortcut, and
+            // the rows already carry the visible affordances in their context
+            // menus. A context menu needs a right-click, which Full Keyboard
+            // Access without VoiceOver cannot produce.
+            ZStack {
+                Button("") { reveal(selection) }
+                    .keyboardShortcut(.return, modifiers: [])
+                    .disabled(selection == nil)
+                Button("") { preview(selection) }
+                    .keyboardShortcut(.space, modifiers: [])
+                    .disabled(selection == nil)
+                PreviewPanelHost { previewOwner = $0 }
+                    .frame(width: 0, height: 0)
+            }
+            .opacity(0)
+            .frame(width: 0, height: 0)
+            .accessibilityHidden(true)
         }
         // A copy that has just been trashed must not keep the keyboard pointing
         // at nothing.
@@ -60,6 +69,10 @@ struct DuplicatesView: View {
     private func reveal(_ path: String?) {
         guard let path else { return }
         NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+    }
+
+    private func preview(_ path: String?) {
+        previewOwner?.toggle(DuplicatePreview.target(selection: path, in: dvm.groups))
     }
 
     private func row(path: String, stays: Bool) -> some View {
@@ -98,11 +111,13 @@ struct DuplicatesView: View {
             }
         }
         .contextMenu {
+            Button(DupStr.quickLook) { preview(path) }
             Button(DupStr.reveal) { reveal(path) }
         }
-        // The same action where VoiceOver can reach it, since the menu above
-        // needs a right-click.
+        // The same actions where VoiceOver can reach them, since the menu
+        // above needs a right-click.
         .accessibilityActions {
+            Button(DupStr.quickLook) { preview(path) }
             Button(DupStr.reveal) { reveal(path) }
         }
     }
