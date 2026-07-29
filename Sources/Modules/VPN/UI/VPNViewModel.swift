@@ -23,15 +23,31 @@ import Module_VPN_Engine
     private var bannerAuthorizedForTesting: Bool?
     private var eventsTask: Task<Void, Never>?
     private var expiryTask: Task<Void, Never>?
+    /// The announcement of the last firing, while it is still in flight.
+    ///
+    /// Held so it can be waited on: what a firing said is decided across an
+    /// `await`, and a test that instead yielded a fixed number of times would
+    /// be asserting on whichever half had finished — green by luck, which is
+    /// how an inert fix shipped here once. `deinit` cancels it with the others;
+    /// nothing inside checks for cancellation, so that is bookkeeping rather
+    /// than a way to call a banner back.
+    private(set) var announcement: Task<Void, Never>?
 
     /// How loudly a firing is announced. Read from the store at every ask
     /// rather than cached, so a change in Settings applies to the next firing
     /// instead of to the next launch.
     public var notice: VPNNotice { noticeForTesting ?? settings?.notice ?? .menuBar }
 
-    /// What macOS last said about banners, as the store remembers it.
+    /// Whether a banner would actually be shown.
+    ///
+    /// The freshest answer wins: `bannerAuthorization` is what macOS said this
+    /// launch, and the store is only what it said some launch ago. The order
+    /// matters because a firing asks macOS on its way past and the label
+    /// decision is read a moment later — the stored mirror is the thing that
+    /// was believed while the permission was already gone.
     public var bannerAuthorized: Bool {
-        bannerAuthorizedForTesting ?? settings?.bannerAuthorized ?? false
+        if let heard = bannerAuthorization { return heard == .authorized }
+        return bannerAuthorizedForTesting ?? settings?.bannerAuthorized ?? false
     }
 
     /// The mode as it will actually behave, which is not always the mode that
@@ -41,9 +57,10 @@ import Module_VPN_Engine
         notice.effective(bannerAuthorized: bannerAuthorized)
     }
 
-    /// What macOS answered the last time it was asked, this launch. Nil until
-    /// something asks — the settings page shows the refusal, and only a refusal
-    /// heard in front of the person is worth putting on screen.
+    /// What macOS answered the last time it was asked, this launch — by the
+    /// settings page, or by a firing on its way to a banner. Nil until
+    /// something asks, which is why the settings row says nothing about a
+    /// permission that has never come up.
     @Published public private(set) var bannerAuthorization: NoticeAuthorization?
 
     /// Whether there is any way to reach macOS's banners from here.
@@ -134,7 +151,7 @@ import Module_VPN_Engine
     }
 
     /// Ends the event loop, which unregisters the transport subscriber.
-    deinit { eventsTask?.cancel(); expiryTask?.cancel() }
+    deinit { eventsTask?.cancel(); expiryTask?.cancel(); announcement?.cancel() }
 
     /// Re-reads the system's answer.
     ///
@@ -176,16 +193,26 @@ import Module_VPN_Engine
     ///
     /// The words are written here because `L()` is here: the engine decides
     /// whether to post, this decides what it says.
+    ///
+    /// What macOS answers on the way through is kept, because the label
+    /// decision downstream reads it: a permission revoked in System Settings
+    /// turns `.system` back into the menu-bar name at the next firing rather
+    /// than at the next visit to the settings page. Publishing it is what
+    /// redraws the icon — `statusChanges` is this model's `objectWillChange` —
+    /// so the name appears a hop after the ring starts, well inside its three
+    /// seconds. The stored mirror is left alone here: it is what the settings
+    /// page displays, and it is written where the person can see it change.
     private func announce(_ firing: VPNAutomation) {
         guard let port = notices else { return }
         let mode = notice
-        let authorized = bannerAuthorized
         let title = VPNStr.automationBannerTitle(firing.kind)
         let body = VPNStr.automationBannerBody(firing.name, kind: firing.kind)
-        // Captures no `self`: a task that outlives the model must not hold it.
-        Task {
-            await AutomationNotice.announce(notice: mode, authorized: authorized,
-                                            title: title, body: body, port: port)
+        // Resolves `self` only after the await, so the wait holds nothing.
+        announcement = Task { [weak self] in
+            let heard = await AutomationNotice.announce(notice: mode, title: title,
+                                                        body: body, port: port)
+            guard let heard else { return }
+            self?.bannerAuthorization = heard
         }
     }
     public func send(_ name: String, payload: Data = Data()) {

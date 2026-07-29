@@ -63,13 +63,64 @@ final class StatusPlanTests: XCTestCase {
         XCTAssertEqual(StatusPlan.choose([StatusAppearance()], now: now), .inactive)
     }
 
+    // MARK: - A countdown against a spin
+
+    /// The composition the app actually produces: Keep Awake counts down on one
+    /// appearance, VPN asks for a spin on another. No descriptor ever puts both
+    /// fields on one appearance, so this — not the hand-built single appearance
+    /// below — is the shape the rule has to hold on.
+    private var countdown: StatusAppearance {
+        StatusAppearance(tintToken: "red", timerProgress: 0.4, title: "14:22")
+    }
+    private var firing: StatusAppearance {
+        StatusAppearance(title: "Office VPN", spinUntil: now.addingTimeInterval(1))
+    }
+
     /// A countdown is continuous state; a spin is a moment. The moment must not
     /// interrupt the state — a countdown arc that jumped backwards for a second
-    /// reads as a bug.
-    func testACountdownSuppressesTheSpin() {
+    /// reads as a bug, and on screen the arc and its remaining time were
+    /// *replaced* by a grey spinning ring for 1.2 s.
+    func testACountdownOutranksASpinForTheIcon() {
+        XCTAssertEqual(StatusPlan.choose([countdown, firing], now: now), countdown)
+        XCTAssertEqual(StatusPlan.choose([firing, countdown], now: now), countdown,
+                       "the answer must not depend on the order the modules arrive in")
+    }
+
+    /// And the guard that reads the chosen appearance then answers for the
+    /// right reason: the appearance it is handed is the counting one.
+    func testTheChosenAppearanceOfACountdownDoesNotSpin() {
+        let chosen = StatusPlan.choose([countdown, firing], now: now)
+        XCTAssertFalse(StatusPlan.spins(chosen, now: now, reduceMotion: false))
+        XCTAssertNil(StatusPlan.frame(spinUntil: chosen.spinUntil, now: now, frameCount: 36),
+                     "the host would still have had a frame to draw")
+    }
+
+    /// The honest consequence, asserted rather than described. There is one
+    /// title slot, and while a countdown owns the icon it holds the countdown's
+    /// own remaining time — so a firing arriving then is not announced in the
+    /// menu bar at all, neither by the ring nor by the name. Someone who wants
+    /// to be told regardless picks the banner.
+    func testWhileACountdownOwnsTheIconAFiringIsNotNamed() {
+        XCTAssertEqual(StatusPlan.choose([countdown, firing], now: now).title, "14:22",
+                       "the connection's name displaced the countdown's remaining time")
+    }
+
+    /// The shape no descriptor produces, kept because `spins` is public and the
+    /// two fields are independent: one appearance carrying both must still
+    /// refuse to move. On its own this proved nothing about the app — it was
+    /// the only coverage the rule had, and it passed while the menu bar spun.
+    func testACountdownSuppressesTheSpinWithinOneAppearance() {
         let counting = StatusAppearance(tintToken: "green", timerProgress: 0.5,
                                         spinUntil: now.addingTimeInterval(1))
         XCTAssertFalse(StatusPlan.spins(counting, now: now, reduceMotion: false))
+    }
+
+    /// A countdown outranks a spin, not every tint: an ordinary tinted module
+    /// still loses the icon to a live spin, which is the borrow the feature is
+    /// built on.
+    func testOnlyACountdownOutranksASpinAndNotAnyTint() {
+        let tinted = StatusAppearance(tintToken: "orange")
+        XCTAssertEqual(StatusPlan.choose([tinted, firing], now: now), firing)
     }
 
     /// Reduce Motion removes the movement and keeps the information.

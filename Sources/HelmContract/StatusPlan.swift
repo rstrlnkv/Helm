@@ -12,10 +12,29 @@ public enum StatusPlan {
     /// number, so the two cannot drift.
     public static let spinDuration: TimeInterval = 1.2
 
-    /// Three tiers, in order: a module whose spin is still running takes the
-    /// icon; otherwise the first module that tints it, which is the rule that
-    /// was always here; otherwise the first module that has something to say.
-    /// A spin lasts about a second and ends by itself, so the borrow is brief.
+    /// Four tiers, in order: a module counting down owns the icon while it
+    /// counts; otherwise a module whose spin is still running takes it;
+    /// otherwise the first module that tints it, which is the rule that was
+    /// always here; otherwise the first module that has something to say. A
+    /// spin lasts about a second and ends by itself, so the borrow is brief.
+    ///
+    /// **The countdown tier is first, and `spins` depends on it being first.**
+    /// A countdown is continuous state and a spin is a moment; the moment must
+    /// not interrupt the state, or the arc jumps backwards and reads as a bug.
+    /// `spins` enforces that by refusing to move an appearance that carries a
+    /// `timerProgress` — but it can only see the appearance this function
+    /// returns, and no descriptor produces one holding both fields: Keep Awake
+    /// counts down on its appearance, VPN asks for the spin on another. So
+    /// while the spin tier ranked first, `spins` was handed VPN's appearance,
+    /// found no countdown on it, and the rule never fired once. Ranking the
+    /// countdown above the spin is what makes that guard reachable, and on
+    /// screen it is the difference between a red ring reading 14:22 and the
+    /// same ring replaced by a grey spinner for 1.2 seconds.
+    ///
+    /// The cost is stated rather than hidden: there is one status item and one
+    /// title slot, and while a countdown holds them a VPN firing shows neither
+    /// the spin nor the name. The banner mode exists for people who want to be
+    /// told regardless.
     ///
     /// When two spins overlap the **newest** wins, which is why that tier is a
     /// `max` and not a `first`. Taking the first would settle the question by
@@ -34,6 +53,7 @@ public enum StatusPlan {
     /// while another module owns the icon is simply not shown — the spin that
     /// went with it still happened, and that is the half that carries the news.
     public static func choose(_ appearances: [StatusAppearance], now: Date) -> StatusAppearance {
+        if let counting = appearances.first(where: { $0.timerProgress != nil }) { return counting }
         let spinEnd = { (a: StatusAppearance) in a.spinUntil ?? .distantPast }
         if let newest = appearances.filter({ spinEnd($0) > now }).max(by: { spinEnd($0) < spinEnd($1) }) {
             return newest
@@ -75,7 +95,9 @@ public enum StatusPlan {
     public static func spins(_ appearance: StatusAppearance,
                              now: Date, reduceMotion: Bool) -> Bool {
         guard !reduceMotion else { return false }
-        // A countdown owns this ring while it runs.
+        // A countdown owns this ring while it runs. Reachable only because
+        // `choose` ranks a countdown above a spin: this is the second half of
+        // that rule, and for one release it was the whole of it and inert.
         guard appearance.timerProgress == nil else { return false }
         return (appearance.spinUntil ?? .distantPast) > now
     }
