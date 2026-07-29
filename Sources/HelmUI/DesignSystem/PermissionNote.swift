@@ -41,8 +41,7 @@ public struct HelmPermissionNote: View {
     }
 
     private static var grant: String {
-        L("Grant…", [.ru: "Выдать…", .es: "Conceder…", .fr: "Accorder…", .de: "Erteilen…",
-                     .ja: "許可…", .zh: "授予…", .pt: "Conceder…"])
+        L("Grant…")
     }
 }
 

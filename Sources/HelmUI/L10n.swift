@@ -50,9 +50,16 @@ public enum AppLanguage: String, CaseIterable, Sendable {
     }
 }
 
-/// Localize a base (English) string with a table of translations for the other
-/// languages. Missing entries fall back to English. Usage:
-/// `L("Keep Awake", [.ru: "Не давать спать", .es: "Mantener activo"])`.
+/// Localize a base (English) string, read out of `Resources/<lang>.lproj/
+/// Localizable.strings` with the English itself as the key. Usage:
+/// `L("Keep Awake")`.
+///
+/// The optional table is for the handful of call sites Swift interpolation
+/// keeps out of a `.strings` file — interpolation runs before the lookup, so
+/// `L("Step \(step) of \(total)")` would look for the literal key "Step 3 of
+/// 10". Where a table is given, it wins outright and the `.lproj` files are
+/// never consulted; where it is empty (the default, and the ordinary case),
+/// the lookup goes to `Localized`.
 public func L(_ english: String, _ table: [AppLanguage: String] = [:]) -> String {
     L(english, table, language: AppLanguage.current)
 }
@@ -65,7 +72,65 @@ public func L(_ english: String, _ table: [AppLanguage: String] = [:]) -> String
 /// had to spell the lookup out again to do it.
 public func L(_ english: String, _ table: [AppLanguage: String] = [:],
               language: AppLanguage) -> String {
-    language == .en ? english : table[language] ?? english
+    guard table.isEmpty else {
+        return language == .en ? english : table[language] ?? english
+    }
+    return Localized.string(english, language: language)
+}
+
+/// The `.lproj` tables themselves: one sub-bundle per language, loaded from
+/// `Bundle.module` and cached — the same reasoning `AppLanguage.current`
+/// already carried one level up, one bundle per language rather than one per
+/// row of a hovered list.
+///
+/// Not `NSLocalizedString`: that hands the language to the system's own bundle
+/// resolution, which would answer `Locale.preferredLanguages` again rather than
+/// `AppLanguage.current`, and has no way to ask about a language other than the
+/// running one — which every localization test in this suite needs to do.
+public enum Localized {
+    /// English is the key, and English is also what a missing bundle or a
+    /// missing key falls back to — so a table that never made it out of the
+    /// migration reads as untranslated English rather than a crash.
+    public static func string(_ key: String, language: AppLanguage) -> String {
+        guard language != .en else { return key }
+        return cache.table(for: language)[key] ?? key
+    }
+
+    /// The path to a language's `Localizable.strings`, so a test can read the
+    /// shipped table as data — `Bundle.module` inside a test target resolves to
+    /// the test's own bundle, not `HelmUI`'s, so this is the only way a test
+    /// outside this module can see what actually ships.
+    public static func stringsFile(for language: AppLanguage) -> URL? {
+        Bundle.module
+            .url(forResource: language.rawValue, withExtension: "lproj")?
+            .appendingPathComponent("Localizable.strings")
+    }
+
+    private static let cache = TableCache()
+
+    private final class TableCache: @unchecked Sendable {
+        private let lock = NSLock()
+        private var tables: [AppLanguage: [String: String]] = [:]
+
+        func table(for language: AppLanguage) -> [String: String] {
+            lock.lock()
+            defer { lock.unlock() }
+            if let existing = tables[language] { return existing }
+            let loaded = Self.load(language)
+            tables[language] = loaded
+            return loaded
+        }
+
+        private static func load(_ language: AppLanguage) -> [String: String] {
+            guard let bundleURL = Bundle.module.url(forResource: language.rawValue,
+                                                     withExtension: "lproj"),
+                  let bundle = Bundle(url: bundleURL),
+                  let path = bundle.path(forResource: "Localizable", ofType: "strings"),
+                  let dict = NSDictionary(contentsOfFile: path) as? [String: String]
+            else { return [:] }
+            return dict
+        }
+    }
 }
 
 /// A size in the user's language: "432,95 ГБ", "1.5 GB". One formatter for

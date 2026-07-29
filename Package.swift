@@ -3,11 +3,13 @@ import PackageDescription
 
 let package = Package(
     name: "Helm",
+    defaultLocalization: "en",
     platforms: [.macOS("26.0")],
     targets: [
         .target(name: "HelmContract"),
         .target(name: "HelmRuntime"),
-        .target(name: "HelmUI", dependencies: ["HelmContract", "HelmRuntime"]),
+        .target(name: "HelmUI", dependencies: ["HelmContract", "HelmRuntime"],
+                resources: [.process("Resources")]),
         .target(
             name: "Module_KeepAwake_Engine",
             dependencies: ["HelmContract", "HelmRuntime"],

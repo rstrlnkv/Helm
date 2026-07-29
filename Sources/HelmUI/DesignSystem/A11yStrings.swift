@@ -13,19 +13,19 @@ import Foundation
 /// it was written and is neither now, which is what a number in a comment does.
 public enum HelmA11y {
     public static var moveUp: String {
-        L("Move up", [.ru: "Переместить вверх", .es: "Mover arriba", .fr: "Monter", .de: "Nach oben", .ja: "上へ移動", .zh: "上移", .pt: "Mover para cima"])
+        L("Move up")
     }
     public static var moveDown: String {
-        L("Move down", [.ru: "Переместить вниз", .es: "Mover abajo", .fr: "Descendre", .de: "Nach unten", .ja: "下へ移動", .zh: "下移", .pt: "Mover para baixo"])
+        L("Move down")
     }
     public static var remove: String {
-        L("Remove", [.ru: "Убрать", .es: "Quitar", .fr: "Retirer", .de: "Entfernen", .ja: "削除", .zh: "移除", .pt: "Remover"])
+        L("Remove")
     }
     public static var moreActions: String {
-        L("More actions", [.ru: "Ещё действия", .es: "Más acciones", .fr: "Plus d’actions", .de: "Weitere Aktionen", .ja: "その他の操作", .zh: "更多操作", .pt: "Mais ações"])
+        L("More actions")
     }
     public static var showInFinder: String {
-        L("Show in Finder", [.ru: "Показать в Finder", .es: "Mostrar en el Finder", .fr: "Afficher dans le Finder", .de: "Im Finder zeigen", .ja: "Finderに表示", .zh: "在访达中显示", .pt: "Mostrar no Finder"])
+        L("Show in Finder")
     }
 
     /// A segmented picker that narrows what a list is showing. Three modules
@@ -33,12 +33,12 @@ public enum HelmA11y {
     /// say everything — "Installed / Updates / Search" needs no heading above
     /// it. Read aloud it was a tab group with no name.
     public static var whatToShow: String {
-        L("What to show", [.ru: "Что показывать", .es: "Qué mostrar", .fr: "Ce qui est affiché", .de: "Was angezeigt wird", .ja: "表示する内容", .zh: "显示内容", .pt: "O que mostrar"])
+        L("What to show")
     }
     /// A number typed into a field whose unit is a separate label beside it,
     /// which VoiceOver reads as a neighbour rather than as part of the value.
     public static var minutes: String {
-        L("Minutes", [.ru: "Минуты", .es: "Minutos", .fr: "Minutes", .de: "Minuten", .ja: "分", .zh: "分钟", .pt: "Minutos"])
+        L("Minutes")
     }
 
     /// Whether a disclosure is open. SwiftUI has no trait for it on macOS — the
@@ -56,11 +56,7 @@ public enum HelmA11y {
     /// translation, and it is the only one here that is.
     public static func expanded(_ isExpanded: Bool) -> String {
         isExpanded
-            ? L("expanded", [.ru: "развернуто", .es: "expandido", .fr: "développé",
-                             .de: "erweitert", .ja: "展開されています", .zh: "已展开",
-                             .pt: "expandido"])
-            : L("collapsed", [.ru: "свернуто", .es: "contraído", .fr: "condensé",
-                              .de: "reduziert", .ja: "折りたたまれています", .zh: "已折叠",
-                              .pt: "recolhido"])
+            ? L("expanded")
+            : L("collapsed")
     }
 }
