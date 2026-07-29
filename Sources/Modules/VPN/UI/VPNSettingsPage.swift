@@ -14,6 +14,9 @@ public struct VPNSettingsPage: View {
 
     @State private var rules: [String: VPNAppRule]
     @State private var notice: VPNNotice
+    @State private var spin: Bool
+    @State private var spinTintConnected: String
+    @State private var spinTintDisconnected: String
 
     public init(vm: VPNViewModel, store: NamespacedStore) {
         self.vm = vm
@@ -24,6 +27,10 @@ public struct VPNSettingsPage: View {
         // notification centre: `UNUserNotificationCenter.current()` ends a test
         // run outright, and this page is constructed in one.
         _notice = State(initialValue: VPNSettings(store: store).notice)
+        let settings = VPNSettings(store: store)
+        _spin = State(initialValue: settings.automationSpin)
+        _spinTintConnected = State(initialValue: settings.spinTint(for: .connected))
+        _spinTintDisconnected = State(initialValue: settings.spinTint(for: .disconnected))
     }
 
     public var body: some View {
@@ -60,6 +67,7 @@ public struct VPNSettingsPage: View {
             Section(VPNStr.noticeSection) {
                 noticePicker
             }
+            .animation(HelmMotion.interface, value: spin)
         }
         .formStyle(.grouped)
         .helmSettingsColumn()
@@ -114,6 +122,36 @@ public struct VPNSettingsPage: View {
         Text(VPNStr.noticeHint)
             .font(.caption)
             .foregroundStyle(HelmText.quiet)
+
+        Toggle(VPNStr.spinLabel, isOn: Binding(
+            get: { spin },
+            set: { on in
+                spin = on
+                VPNSettings(store: store).setAutomationSpin(on)
+            }))
+
+        if spin {
+            LabeledContent(VPNStr.spinConnected) {
+                HelmPaletteSwatches(selection: spinTintConnected) { token in
+                    spinTintConnected = token
+                    VPNSettings(store: store).setSpinTint(token, for: .connected)
+                }
+            }
+            LabeledContent(VPNStr.spinDisconnected) {
+                HelmPaletteSwatches(selection: spinTintDisconnected) { token in
+                    spinTintDisconnected = token
+                    VPNSettings(store: store).setSpinTint(token, for: .disconnected)
+                }
+            }
+        }
+
+        // Said where the two settings are, not only in a spec file.
+        if !spin, notice == .silent {
+            Text(VPNStr.spinSilentWarning)
+                .font(.caption)
+                .foregroundStyle(HelmSignal.warning)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     // MARK: - Connections
