@@ -39,7 +39,11 @@ final class DeclaredPermissionsTests: XCTestCase {
         guard let need = PermissionNeed.of(.pointerNudge) else {
             return XCTFail("the runtime table no longer says what the pointer nudge needs")
         }
-        XCTAssertTrue(try declaredPermissions().contains(need.rawValue))
+        // `declaredName`, not `rawValue`: the contract spells Full Disk Access
+        // `fullDisk` and the runtime spells it `fullDiskAccess`, so a rawValue
+        // comparison happens to be right here and would fail open for any
+        // module needing the other grant.
+        XCTAssertTrue(try declaredPermissions().contains(need.declaredName))
     }
 
     /// The admin prompt for the sudoers rule is the other one, and it stays.

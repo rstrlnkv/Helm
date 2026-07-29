@@ -11,8 +11,7 @@ enum UnStr {
     static var removalNeedsAccess: String { L("Without Full Disk Access an app’s containers stay behind.", [.ru: "Без «Доступа к диску» контейнеры приложения останутся на диске.", .es: "Sin Acceso total al disco los contenedores de la app se quedarán.", .fr: "Sans accès complet au disque, les conteneurs de l’app resteront.", .de: "Ohne Festplattenvollzugriff bleiben die Container der App liegen.", .ja: "フルディスクアクセスがないと、アプリのコンテナが残ります。", .zh: "没有完全磁盘访问权限时，应用的容器会残留。", .pt: "Sem Acesso Total ao Disco os contêineres do app permanecem."]) }
     static var moveToTrash: String { L("Move to Trash", [.ru: "Переместить в Корзину", .es: "Trasladar a la papelera", .fr: "Placer dans la corbeille", .de: "In den Papierkorb legen", .ja: "ゴミ箱に入れる", .zh: "移到废纸篓", .pt: "Mover para o Lixo"]) }
     static func confirmTrash(_ count: Int, _ size: String) -> String {
-        let items = Plural.items(count, language: AppLanguage.current.rawValue)
-        return L("Move \(items) (\(size)) to the Trash?", [.ru: "Переместить \(items) (\(size)) в Корзину?", .es: "¿Trasladar \(items) (\(size)) a la papelera?", .fr: "Déplacer \(items) (\(size)) vers la corbeille ?", .de: "\(items) (\(size)) in den Papierkorb legen?", .ja: "\(items)（\(size)）をゴミ箱に入れますか？", .zh: "将\(items)（\(size)）移到废纸篓？", .pt: "Mover \(items) (\(size)) para o Lixo?"])
+        HelmConfirm.trash(Plural.items(count, language: AppLanguage.current.rawValue), size)
     }
     static var cancel: String { L("Cancel", [.ru: "Отменить", .es: "Cancelar", .fr: "Annuler", .de: "Abbrechen", .ja: "キャンセル", .zh: "取消", .pt: "Cancelar"]) }
 

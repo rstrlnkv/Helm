@@ -50,7 +50,7 @@ import Module_Homebrew_Engine
         eventsTask = Task { [weak self] in
             for await e in events {
                 guard let self else { break }   // page closed: stop consuming
-                await self.handle(e)
+                self.handle(e)
             }
         }
     }

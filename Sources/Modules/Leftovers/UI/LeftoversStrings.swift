@@ -49,8 +49,7 @@ enum LfStr {
     /// stay until the Trash is emptied. Disk's `confirmTrash` is the shape: the
     /// size sits inside the question as what is going, not as what is gained.
     static func confirmSelected(_ count: Int, _ size: String) -> String {
-        let items = Plural.items(count, language: AppLanguage.current.rawValue)
-        return L("Move \(items) (\(size)) to the Trash?", [.ru: "Переместить \(items) (\(size)) в Корзину?", .es: "¿Trasladar \(items) (\(size)) a la papelera?", .fr: "Placer \(items) (\(size)) dans la corbeille ?", .de: "\(items) (\(size)) in den Papierkorb legen?", .ja: "\(items)（\(size)）をゴミ箱に入れますか？", .zh: "将\(items)（\(size)）移到废纸篓？", .pt: "Mover \(items) (\(size)) para o Lixo?"])
+        HelmConfirm.trash(Plural.items(count, language: AppLanguage.current.rawValue), size)
     }
     static var removeSelected: String { L("Move to Trash", [.ru: "Переместить в Корзину", .es: "Trasladar a la papelera", .fr: "Placer dans la corbeille", .de: "In den Papierkorb legen", .ja: "ゴミ箱に入れる", .zh: "移到废纸篓", .pt: "Mover para o Lixo"]) }
     static var selectAll: String { L("Select all", [.ru: "Выбрать все", .es: "Seleccionar todo", .fr: "Tout sélectionner", .de: "Alle auswählen", .ja: "すべて選択", .zh: "全选", .pt: "Selecionar tudo"]) }

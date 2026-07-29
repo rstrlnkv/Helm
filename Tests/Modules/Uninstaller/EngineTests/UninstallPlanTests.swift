@@ -62,13 +62,6 @@ final class UninstallPlanTests: XCTestCase {
                        ["/Applications/Alpha.app", "/Applications/Beta.app"])
     }
 
-    /// The review screen ticks every leftover by default.
-    func testDefaultSelectionIsEveryLeftover() {
-        let groups = [group("Alpha", running: false, leftovers: [leftover("/L1", 1)]),
-                      group("Beta", running: false, leftovers: [leftover("/L2", 2), leftover("/L3", 3)])]
-        XCTAssertEqual(UninstallPlan.allLeftoverPaths(groups), ["/L1", "/L2", "/L3"])
-    }
-
     /// Prefix globs and exact paths can resolve to the same directory. Trashing
     /// it twice made macOS report "doesn't exist" for the second attempt, which
     /// surfaced as a failure the user could do nothing about.

@@ -21,7 +21,11 @@ enum LyStr {
     static var addApp: String { L("Add app…", [.ru: "Добавить приложение…", .es: "Añadir app…", .fr: "Ajouter une app…", .de: "App hinzufügen…", .ja: "アプリを追加…", .zh: "添加应用…", .pt: "Adicionar app…"]) }
     static var ruleOn: String { L("Fix", [.ru: "Исправлять", .es: "Corregir", .fr: "Corriger", .de: "Korrigieren", .ja: "修正する", .zh: "修正", .pt: "Corrigir"]) }
     static var ruleOff: String { L("Don’t fix", [.ru: "Не исправлять", .es: "No corregir", .fr: "Ne pas corriger", .de: "Nicht korrigieren", .ja: "修正しない", .zh: "不修正", .pt: "Não corrigir"]) }
-    static var shortcuts: String { L("Shortcuts", [.ru: "Горячие клавиши", .es: "Atajos", .fr: "Raccourcis", .de: "Kurzbefehle", .ja: "ショートカット", .zh: "快捷键", .pt: "Atalhos"]) }
+    /// «Сочетания клавиш» is what macOS calls these — 12 tables to 0 for
+    /// `Keyboard shortcut`, and 2 to 0 for the plural. «Горячие клавиши» is a
+    /// colloquialism the system never uses, and this file already said the
+    /// right thing thirty lines down (`orShortcut`). One name per thing.
+    static var shortcuts: String { L("Shortcuts", [.ru: "Сочетания клавиш", .es: "Atajos", .fr: "Raccourcis", .de: "Kurzbefehle", .ja: "ショートカット", .zh: "快捷键", .pt: "Atalhos"]) }
     static var apps: String { L("Rules for specific apps", [.ru: "Правила для отдельных приложений", .es: "Reglas para apps concretas", .fr: "Règles par app", .de: "Regeln für einzelne Apps", .ja: "アプリごとのルール", .zh: "针对特定应用的规则", .pt: "Regras para apps específicos"]) }
     static var appsHint: String { L("Terminals and password managers are left alone: there, a wrong-looking word is often exactly right.", [.ru: "Терминалы и менеджеры паролей не трогаются: там странное на вид слово чаще всего именно то, что нужно.", .es: "Los terminales y gestores de contraseñas se dejan en paz: allí una palabra rara suele ser la correcta.", .fr: "Les terminaux et gestionnaires de mots de passe sont ignorés : un mot qui semble faux y est souvent exact.", .de: "Terminals und Passwortmanager bleiben unangetastet: dort ist ein seltsames Wort meist genau richtig.", .ja: "ターミナルとパスワード管理アプリは対象外です。そこでは不自然に見える語こそ正しいことが多いためです。", .zh: "终端和密码管理器不受影响：在那里，看起来奇怪的词往往正是对的。", .pt: "Terminais e gerenciadores de senha ficam de fora: ali, uma palavra estranha costuma ser a certa."]) }
     static var metricToday: String { L("TODAY", [.ru: "СЕГОДНЯ", .es: "HOY", .fr: "AUJOURD’HUI", .de: "HEUTE", .ja: "本日", .zh: "今日", .pt: "HOJE"]) }

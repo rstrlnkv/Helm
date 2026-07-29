@@ -23,10 +23,9 @@ enum DupStr {
         L("Moved to the Trash — \(size)", [.ru: "Перемещено в Корзину — \(size)", .es: "Trasladado a la papelera: \(size)", .fr: "Placé dans la corbeille — \(size)", .de: "In den Papierkorb gelegt – \(size)", .ja: "ゴミ箱に入れました — \(size)", .zh: "已移到废纸篓 — \(size)", .pt: "Movido para o Lixo — \(size)"])
     }
     static func confirmTrash(_ count: Int, _ size: String) -> String {
-        let files = Plural.files(count, language: AppLanguage.current.rawValue)
         // The size stays — how much is going is worth knowing — but the promise
         // that it will be freed does not: the Trash is on the same volume.
-        return L("Move \(files) (\(size)) to the Trash?", [.ru: "Переместить \(files) (\(size)) в Корзину?", .es: "¿Trasladar \(files) (\(size)) a la papelera?", .fr: "Placer \(files) (\(size)) dans la corbeille\u{00A0}?", .de: "\(files) (\(size)) in den Papierkorb legen?", .ja: "\(files)（\(size)）をゴミ箱に入れますか？", .zh: "把\(files)（\(size)）移到废纸篓？", .pt: "Mover \(files) (\(size)) para o Lixo?"])
+        HelmConfirm.trash(Plural.files(count, language: AppLanguage.current.rawValue), size)
     }
     static var moduleName: String { L("Duplicates", [.ru: "Дубликаты", .es: "Duplicados", .fr: "Doublons", .de: "Duplikate", .ja: "重複", .zh: "重复文件", .pt: "Duplicatas"]) }
     static var summary: String { L("Files that exist more than once", [.ru: "Файлы, которые существуют больше одного раза", .es: "Archivos que existen más de una vez", .fr: "Fichiers présents plus d’une fois", .de: "Dateien, die mehr als einmal existieren", .ja: "複数存在するファイル", .zh: "存在多份的文件", .pt: "Arquivos que existem mais de uma vez"]) }
