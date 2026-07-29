@@ -77,11 +77,16 @@ enum VPNStr {
         }
     }
 
-    /// Said under the picker, because "Nothing" is not nothing: the ring turns
-    /// in every mode, and that is feedback that Helm acted rather than a
-    /// notification.
+    /// Said under the picker, which decides the words and nothing else.
+    ///
+    /// It used to say the ring turns in every mode, which was true when the
+    /// spin always played. The spin became a switch of its own and this line
+    /// went on claiming otherwise — sitting directly above the control that
+    /// contradicted it. No test could see that; it was caught by opening the
+    /// page. A sentence about a sibling control has to be re-read when that
+    /// control changes.
     static var noticeHint: String {
-        L("The menu-bar ring turns either way.", [.ru: "Кольцо в строке меню вращается в любом случае.", .es: "El anillo de la barra de menús gira en cualquier caso.", .fr: "L’anneau de la barre des menus tourne dans tous les cas.", .de: "Der Ring in der Menüleiste dreht sich in jedem Fall.", .ja: "メニューバーのリングはどの場合も回ります。", .zh: "无论哪种方式，菜单栏的圆环都会转动。", .pt: "O anel na barra de menus gira de qualquer forma."])
+        L("This decides the words. Whether the ring turns is the switch below.", [.ru: "Это решает про слова. Вращается ли кольцо — переключатель ниже.", .es: "Esto decide las palabras. Si el anillo gira lo decide el interruptor de abajo.", .fr: "Ceci décide des mots. C’est l’interrupteur ci-dessous qui décide si l’anneau tourne.", .de: "Dies entscheidet über die Worte. Ob sich der Ring dreht, entscheidet der Schalter darunter.", .ja: "ここで決まるのは文字だけです。リングが回るかどうかは下のスイッチで決まります。", .zh: "这里只决定文字。圆环是否转动由下面的开关决定。", .pt: "Isto decide as palavras. Se o anel gira é o interruptor abaixo que decide."])
     }
 
     /// Shown when macOS answered no. It says what will happen instead, because
