@@ -46,6 +46,16 @@ public final class LocalTransport: EngineTransport, @unchecked Sendable {
         }
     }
 
+    /// How many consumers are registered right now.
+    ///
+    /// An observability seam, not a feature: a subscriber that outlives the page
+    /// that made it is invisible from the outside, and the only regression guard
+    /// that works for it is a count that must not grow.
+    public var subscriberCount: Int {
+        lock.lock(); defer { lock.unlock() }
+        return subscribers.count
+    }
+
     public func setHandler(_ h: @escaping Handler) {
         // Under the same lock as everything else here. It is set once during
         // `init` today, but it was the single unguarded field in a class whose

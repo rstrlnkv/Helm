@@ -50,8 +50,11 @@ public struct KeepAwakeSettingsPage: View {
         _jiggleIntervalMinutes = State(initialValue: max(1, store.int("jiggleIntervalMinutes", default: 5)))
         _defaultDurationMinutes = State(initialValue: store.int("defaultDurationMinutes", default: 0))
         _clamshellEnabled = State(initialValue: store.bool("clamshellEnabled", default: false))
-        _batteryGuardEnabled = State(initialValue: store.bool("batteryGuardEnabled", default: false))
-        _batteryGuardPercent = State(initialValue: store.int("batteryGuardPercent", default: 20))
+        // Through the settings struct, not a second literal: the engine's
+        // default is on, and a toggle drawn off above a guard that is armed
+        // would be the page lying about what the Mac will do.
+        _batteryGuardEnabled = State(initialValue: KeepAwakeSettings(store: store).batteryGuardEnabled)
+        _batteryGuardPercent = State(initialValue: KeepAwakeSettings(store: store).batteryGuardPercent)
         _activeTintColor = State(initialValue: MenuBarLook.activeTint(store))
         _ringTimer = State(initialValue: MenuBarLook.ringTimer(store))
         _showTimerText = State(initialValue: MenuBarLook.showTimerText(store))

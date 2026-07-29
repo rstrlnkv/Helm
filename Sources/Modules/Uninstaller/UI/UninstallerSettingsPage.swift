@@ -25,19 +25,12 @@ private enum AppIconCache {
 public struct UninstallerSettingsPage: View {
     @ObservedObject private var uvm: UninstallerViewModel
 
-    private enum Step: Equatable { case pick, review }
-
+    /// What survives a sidebar click is exactly what the person cannot retype:
+    /// the permission is re-probed on every appearance and a search term costs a
+    /// second. Everything else — what is ticked, which step, the scan, the
+    /// failure report — is on the view model. See `UninstallerViewModel.step`.
     @State private var diskAccess: PermissionState = .granted
-    @State private var step: Step = .pick
     @State private var search = ""
-    @State private var checked: Set<String> = []          // bundle ids
-    @State private var groups: [UninstallGroup] = []
-    @State private var selectedLeftovers: Set<String> = []
-    @State private var scanning = false
-    @State private var busy = false
-    @State private var forceQuit = false
-    @State private var resultBanner: String?
-    @State private var failures: [TrashFailureInfo] = []
 
     /// 0 = installed apps, 1 = leftovers from apps that are already gone.
     @State private var tab = 0
@@ -50,6 +43,10 @@ public struct UninstallerSettingsPage: View {
     /// this page — see `UninstallerViewModel.apps`.
     private var apps: [InstalledApp] { uvm.apps }
     private var loading: Bool { uvm.loadingApps }
+    private var step: UninstallStep { uvm.step }
+    private var groups: [UninstallGroup] { uvm.groups }
+    private var checked: Set<String> { uvm.checked }
+    private var failures: [TrashFailureInfo] { uvm.failures }
 
     private var filtered: [InstalledApp] {
         guard !search.isEmpty else { return apps }
@@ -147,7 +144,7 @@ public struct UninstallerSettingsPage: View {
     private var sizeText: String {
         let bytes: Int
         if step == .review {
-            bytes = UninstallPlan.totalBytes(groups, selectedLeftovers: selectedLeftovers)
+            bytes = UninstallPlan.totalBytes(groups, selectedLeftovers: uvm.selectedLeftovers)
         } else {
             bytes = apps.filter { checked.contains($0.bundleID) }.reduce(0) { $0 + $1.sizeBytes }
         }
@@ -170,22 +167,21 @@ public struct UninstallerSettingsPage: View {
                     }
                 }
                 .listStyle(.inset)
-                .padding(.horizontal, 12)
             }
             Divider()
             HStack(spacing: 10) {
-                Button(UnStr.selectNone) { checked.removeAll() }
+                Button(UnStr.selectNone) { uvm.clearChecked() }
                     .disabled(checked.isEmpty)
                 Text(statusLine)
                     .font(.caption).foregroundStyle(HelmText.quiet)
                 Spacer()
-                if let banner = resultBanner {
+                if let banner = uvm.resultBanner {
                     Text(banner).font(.caption).foregroundStyle(HelmText.quiet).lineLimit(1)
                 }
                 Button {
-                    Task { await prepareReview() }
+                    Task { await uvm.prepareReview() }
                 } label: {
-                    if scanning {
+                    if uvm.scanning {
                         HStack(spacing: 6) {
                             ProgressView().controlSize(.small)
                             Text(UnStr.scanning)
@@ -195,7 +191,7 @@ public struct UninstallerSettingsPage: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(checked.isEmpty || scanning)
+                .disabled(checked.isEmpty || uvm.scanning)
             }
             .padding(.horizontal, 20).padding(.vertical, 12)
         }
@@ -204,37 +200,51 @@ public struct UninstallerSettingsPage: View {
     private func appRow(_ app: InstalledApp) -> some View {
         // The checkbox is its own control centred against the row, so it lines
         // up with the icon and the name instead of hanging above them.
-        HStack(spacing: 10) {
-            // Named, though the label stays hidden: `.labelsHidden()` hides a
-            // label visually and keeps it for VoiceOver, but an empty string
-            // leaves nothing to keep — a list of 250 rows read as "checkbox,
-            // unchecked" 250 times.
-            Toggle(app.name, isOn: Binding(
-                get: { checked.contains(app.bundleID) },
-                set: { on in
-                    if on { checked.insert(app.bundleID) } else { checked.remove(app.bundleID) }
-                }
-            ))
-            .toggleStyle(.checkbox)
-            .labelsHidden()
+        let system = SystemApp.isSystem(bundleID: app.bundleID)
+        return HStack(spacing: 10) {
+            if system {
+                // Marked the way Disk marks a row it cannot remove: no
+                // checkbox, and a word saying why. Safari sat here tickable at
+                // 0 bytes, and macOS refuses it — after the scan and the click.
+                // The space keeps the icons in one column.
+                Color.clear.frame(width: 16, height: 1)
+            } else {
+                // Named, though the label stays hidden: `.labelsHidden()` hides a
+                // label visually and keeps it for VoiceOver, but an empty string
+                // leaves nothing to keep — a list of 250 rows read as "checkbox,
+                // unchecked" 250 times.
+                Toggle(app.name, isOn: Binding(
+                    get: { uvm.isChecked(app.bundleID) },
+                    set: { on in uvm.setChecked(app.bundleID, on) }
+                ))
+                .toggleStyle(.checkbox)
+                .labelsHidden()
+            }
             Image(nsImage: AppIconCache.icon(forFile: app.path))
                 .resizable().frame(width: 28, height: 28)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 1) {
                 Text(app.name).lineLimit(1)
                 Text(app.path)
                     .font(.caption).foregroundStyle(HelmText.quiet).lineLimit(1)
                     .truncationMode(.middle)
+                if system {
+                    Text(UnStr.systemApp).font(.caption2).foregroundStyle(HelmText.faint)
+                }
             }
+            // A name, a path and the System caption are one thing to read, in
+            // the order they are drawn — three stops per row down a list that
+            // holds hundreds, and the name arrived without the caption that
+            // qualifies it. The checkbox stays its own, being a thing to
+            // operate rather than to read.
+            .accessibilityElement(children: .combine)
             Spacer()
             Text(Bytes(app.sizeBytes))
                 .font(.caption).foregroundStyle(HelmText.quiet).monospacedDigit()
         }
         .frame(minHeight: 34)
         .contentShape(Rectangle())
-        .onTapGesture {
-            if checked.contains(app.bundleID) { checked.remove(app.bundleID) }
-            else { checked.insert(app.bundleID) }
-        }
+        .onTapGesture { uvm.toggleChecked(app.bundleID) }
     }
 
     // MARK: - Step 2: review the files, grouped per app
@@ -244,12 +254,17 @@ public struct UninstallerSettingsPage: View {
             List {
                 ForEach(groups, id: \.id) { group in
                     Section {
+                        // `reviewRows` puts the bundle first, and it is the one
+                        // path every removal takes — see `UninstallPlan.paths`.
+                        ForEach(UninstallPlan.reviewRows(group)) { row in
+                            switch row {
+                            case .bundle(let app): bundleRow(app)
+                            case .leftover(let leftover): leftoverRow(leftover)
+                            }
+                        }
                         if group.leftovers.isEmpty {
                             Text(UnStr.noLeftoversForApp)
                                 .font(.caption).foregroundStyle(HelmText.quiet)
-                        }
-                        ForEach(group.leftovers, id: \.path) { leftover in
-                            leftoverRow(leftover)
                         }
                     } header: {
                         groupHeader(group)
@@ -257,40 +272,38 @@ public struct UninstallerSettingsPage: View {
                 }
             }
             .listStyle(.inset)
-            .padding(.horizontal, 12)
 
             Divider()
 
             if !runningNames.isEmpty {
                 HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(HelmSignal.warning)
+                    // The sentence beside it already says an app is still
+                    // running; read aloud, the triangle adds "warning" and no
+                    // information.
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(HelmSignal.warning)
+                        .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 4) {
                         Text(UnStr.runningWarning(runningNames.joined(separator: ", ")))
                             .font(.callout)
                             .fixedSize(horizontal: false, vertical: true)
-                        Toggle(UnStr.forceQuitAndRemove, isOn: $forceQuit)
+                        Toggle(UnStr.forceQuitAndRemove, isOn: $uvm.forceQuit)
                             .font(.callout)
                     }
                     Spacer()
                 }
-                .padding(.horizontal, 12).padding(.vertical, 10)
-                
+                .padding(.horizontal, 20).padding(.vertical, 12)
             }
 
             HStack(spacing: 10) {
-                Button(UnStr.back) {
-                    step = .pick
-                    forceQuit = false
-                }
+                Button(UnStr.back) { uvm.backToPick() }
                 Spacer()
-                Text(UnStr.willFree(sizeText)).font(.caption).foregroundStyle(HelmText.quiet)
-                // A blocked action must also LOOK blocked: a prominent blue
-                // button that silently does nothing invites repeated clicks.
-                let ready = UninstallPlan.readiness(groups, forceQuit: forceQuit) == .ready
+                Text(UnStr.toTrash(sizeText)).font(.caption).foregroundStyle(HelmText.quiet)
+                let ready = UninstallPlan.readiness(groups, forceQuit: uvm.forceQuit) == .ready
                 Button {
-                    Task { await removeSelection() }
+                    Task { await uvm.removeSelection() }
                 } label: {
-                    if busy {
+                    if uvm.busy {
                         HStack(spacing: 6) {
                             ProgressView().controlSize(.small)
                             Text(UnStr.removing)
@@ -300,13 +313,36 @@ public struct UninstallerSettingsPage: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(ready ? Color.accentColor : Color.gray)
-                .opacity(ready ? 1 : 0.55)
-                .disabled(busy || !ready)
+                // `.disabled` alone, like every other disabled button in the
+                // app: a grey tint and an opacity stacked on top of it dimmed
+                // the same button three times over, and the two extras only
+                // said what the system already draws. The `.help` stays — it is
+                // the one part that says *why*.
+                .disabled(uvm.busy || !ready)
                 .help(ready ? "" : UnStr.blockedByRunning)
             }
             .padding(.horizontal, 20).padding(.vertical, 12)
         }
+    }
+
+    /// The app itself, first in its group and with no checkbox: `paths` always
+    /// takes it, so a box to untick would be an offer the plan does not honour.
+    private func bundleRow(_ app: InstalledApp) -> some View {
+        HStack(spacing: 10) {
+            // Where the leftover rows put their checkbox, so the paths line up.
+            Color.clear.frame(width: 16, height: 1)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(app.path)
+                    .lineLimit(1).truncationMode(.middle)
+                Text(UnStr.theAppItself)
+                    .font(.caption).foregroundStyle(HelmText.quiet)
+            }
+            .accessibilityElement(children: .combine)
+            Spacer()
+            Text(Bytes(app.sizeBytes))
+                .font(.caption).foregroundStyle(HelmText.quiet).monospacedDigit()
+        }
+        .frame(minHeight: 32)
     }
 
     /// What stayed behind, why, and what to do about it.
@@ -315,28 +351,36 @@ public struct UninstallerSettingsPage: View {
             List {
                 Section {
                     ForEach(failures, id: \.path) { failure in
-                        VStack(alignment: .leading, spacing: 3) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundStyle(HelmSignal.warning)
-                                Text((failure.path as NSString).lastPathComponent)
-                                    .lineLimit(1)
-                                Spacer()
-                                Button(UnStr.showInFinder) { reveal(failure.path) }
-                                    .controlSize(.small)
+                        HStack(alignment: .top, spacing: 8) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                HStack(spacing: 8) {
+                                    // The line under it names the reason in
+                                    // words; the triangle only repeats it.
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundStyle(HelmSignal.warning)
+                                        .accessibilityHidden(true)
+                                    Text((failure.path as NSString).lastPathComponent)
+                                        .lineLimit(1)
+                                }
+                                Text(failure.path)
+                                    .font(.caption).foregroundStyle(HelmText.quiet)
+                                    .lineLimit(1).truncationMode(.middle)
+                                Text(UnStr.failureReason(failure.reason))
+                                    .font(.caption).foregroundStyle(HelmSignal.warning)
+                                if !failure.message.isEmpty {
+                                    // macOS's own words: the classification is a
+                                    // summary, this is the evidence behind it.
+                                    Text(failure.message)
+                                        .font(.caption2).foregroundStyle(HelmText.faint)
+                                        .lineLimit(2)
+                                }
                             }
-                            Text(failure.path)
-                                .font(.caption).foregroundStyle(HelmText.quiet)
-                                .lineLimit(1).truncationMode(.middle)
-                            Text(UnStr.failureReason(failure.reason))
-                                .font(.caption).foregroundStyle(HelmSignal.warning)
-                            if !failure.message.isEmpty {
-                                // macOS's own words: the classification is a
-                                // summary, this is the evidence behind it.
-                                Text(failure.message)
-                                    .font(.caption2).foregroundStyle(HelmText.faint)
-                                    .lineLimit(2)
-                            }
+                            // Name, path, reason and what macOS said are one
+                            // report; the button that acts on it stays its own.
+                            .accessibilityElement(children: .combine)
+                            Spacer()
+                            Button(UnStr.showInFinder) { reveal(failure.path) }
+                                .controlSize(.small)
                         }
                         .padding(.vertical, 3)
                     }
@@ -345,7 +389,6 @@ public struct UninstallerSettingsPage: View {
                 }
             }
             .listStyle(.inset)
-            .padding(.horizontal, 12)
 
             Divider()
             HStack(spacing: 10) {
@@ -356,7 +399,7 @@ public struct UninstallerSettingsPage: View {
                     Button(UnStr.openExtensions) { PermissionCheck.openExtensionSettings() }
                 }
                 Spacer()
-                Button(UnStr.done) { failures = [] }
+                Button(UnStr.done) { uvm.dismissFailures() }
                     .buttonStyle(.borderedProminent)
             }
             .padding(.horizontal, 20).padding(.vertical, 12)
@@ -378,8 +421,11 @@ public struct UninstallerSettingsPage: View {
 
     private func groupHeader(_ group: UninstallGroup) -> some View {
         HStack(spacing: 8) {
+            // The icon reads as an unticked checkbox beside a column of them,
+            // and says nothing a screen reader needs — the name follows it.
             Image(nsImage: AppIconCache.icon(forFile: group.app.path))
                 .resizable().frame(width: 18, height: 18)
+                .accessibilityHidden(true)
             Text(group.app.name).font(.callout.weight(.semibold))
             if group.running {
                 HelmBadge(UnStr.runningBadge, tint: .orange)
@@ -388,16 +434,15 @@ public struct UninstallerSettingsPage: View {
             Text(Bytes(group.app.sizeBytes))
                 .font(.caption).foregroundStyle(HelmText.quiet).monospacedDigit()
         }
+        // A name, a "Running" badge and a size: one heading, read in order.
+        .accessibilityElement(children: .combine)
     }
 
     private func leftoverRow(_ leftover: Leftover) -> some View {
         HStack(spacing: 10) {
             Toggle((leftover.path as NSString).lastPathComponent, isOn: Binding(
-                get: { selectedLeftovers.contains(leftover.path) },
-                set: { on in
-                    if on { selectedLeftovers.insert(leftover.path) }
-                    else { selectedLeftovers.remove(leftover.path) }
-                }
+                get: { uvm.isSelected(leftover: leftover.path) },
+                set: { on in uvm.setSelected(leftover: leftover.path, on) }
             ))
             .toggleStyle(.checkbox)
             .labelsHidden()
@@ -414,6 +459,9 @@ public struct UninstallerSettingsPage: View {
                     .font(.caption).foregroundStyle(HelmText.quiet)
                     .lineLimit(1).truncationMode(.middle)
             }
+            // The name, the badge that qualifies it and the path are one thing
+            // to read; the checkbox stays its own stop.
+            .accessibilityElement(children: .combine)
             Spacer()
             Text(Bytes(leftover.sizeBytes))
                 .font(.caption).foregroundStyle(HelmText.quiet).monospacedDigit()
@@ -421,72 +469,4 @@ public struct UninstallerSettingsPage: View {
         .frame(minHeight: 32)
     }
 
-    // MARK: - Actions
-
-    private func prepareReview() async {
-        scanning = true
-        resultBanner = nil
-        defer { scanning = false }
-        // Concurrently: the scans are independent, each already hops to a
-        // background queue, and awaiting them in a row stacked every delay.
-        // Order comes from `apps`, not from whichever finishes first.
-        let chosen = apps.filter { checked.contains($0.bundleID) }
-        var scans: [String: ScanResult] = [:]
-        await withTaskGroup(of: (String, ScanResult?).self) { group in
-            for app in chosen {
-                group.addTask { (app.bundleID, await uvm.scan(app)) }
-            }
-            for await (id, scan) in group { scans[id] = scan }
-        }
-        let built = chosen.map { app in
-            UninstallGroup(app: app,
-                           leftovers: scans[app.bundleID]?.leftovers ?? [],
-                           running: scans[app.bundleID]?.runningNow ?? false)
-        }
-        groups = built
-        selectedLeftovers = Set(UninstallPlan.defaultSelection(built))
-        forceQuit = false
-        HelmLog.shared.info("uninstaller",
-                            "review \(built.count) apps, \(selectedLeftovers.count) leftovers, running: "
-                            + built.filter(\.running).map { Redact.app($0.app.name) }.joined(separator: ","))
-        step = .review
-    }
-
-    private func removeSelection() async {
-        guard UninstallPlan.readiness(groups, forceQuit: forceQuit) == .ready else { return }
-        busy = true
-        defer { busy = false }
-
-        if forceQuit {
-            for group in groups where group.running {
-                HelmLog.shared.info("uninstaller", "force quit \(Redact.app(group.app.bundleID))")
-                await uvm.quit(bundleID: group.app.bundleID, force: true)
-            }
-            // Let the apps disappear before their bundles move.
-            try? await Task.sleep(nanoseconds: 800_000_000)
-        }
-
-        let paths = UninstallPlan.paths(groups, selectedLeftovers: selectedLeftovers)
-        HelmLog.shared.info("uninstaller", "trashing \(paths.count) paths")
-        let result = await uvm.trashPaths(paths)
-
-        let freed = Bytes(result?.freedBytes ?? 0)
-        if let failed = result?.failed, !failed.isEmpty {
-            HelmLog.shared.warn("uninstaller", "failed to trash: \(Redact.paths(failed))")
-            resultBanner = UnStr.removedWithFailures(freed, failed.count)
-            // Leftovers that stayed put are the whole point of the module, so
-            // they get a screen of their own rather than a line to overlook.
-            failures = result?.failures ?? failed.map { TrashFailureInfo(path: $0, reason: "unknown") }
-        } else {
-            resultBanner = UnStr.removedFreed(freed)
-            failures = []
-        }
-
-        checked.removeAll()
-        groups = []
-        selectedLeftovers = []
-        forceQuit = false
-        step = .pick
-        await uvm.reloadApps()
-    }
 }

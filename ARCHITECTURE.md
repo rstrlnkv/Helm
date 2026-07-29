@@ -217,6 +217,27 @@ name or path through `Redact` first. `HelmFailure.describe` strips the home
 path from every string it emits, including messages, which carry no key for
 `Redact.path` to find them by.
 
+**A tag has to be salted, or it isn't redaction — it's an index.** `Redact.tag`
+hashed a name with no salt, over values drawn from small public dictionaries
+(bundle ids, VPN provider names, Homebrew formulae): inverting it against the
+104 bundle ids installed on one Mac identified **every one of them**, which is
+the opposite of what this section claimed the function did. The salt is now
+random per install, 16 bytes in a `0600` file beside the log rather than the
+keychain — the threat this guards against is someone reading a log the user
+handed them, not someone with the user's disk, and a keychain prompt for a
+logging detail is the wrong trade for that. Salting does not cost the property
+FNV-1a was chosen for: the salt is stable per install, so a line from yesterday
+still compares equal to a line from today, while a tag pasted into a bug report
+means nothing on anyone else's Mac.
+
+**A latch belongs to the file it guards, not to whichever process asks.** The
+one-time purge that discards logs written before redaction existed used to
+record that it had run in `UserDefaults` — namespaced per *process*, not per log
+file. Any other binary linking `HelmRuntime` (a test target, a script) therefore
+ran the purge again against the one real `helm.log` and wiped it, with nothing
+in the (now-empty) file to say why — this cost the third review pass a dev
+build's own triage evidence mid-session. The latch is a file beside the log now.
+
 The release process depends on this file: dev builds are triaged against it,
 and a build graduates to the beta channel only at zero known problems
 (VERSIONING.md).
@@ -370,8 +391,15 @@ things in (`~/Library`, `/Library/LaunchAgents`, `/Applications`, …), minus
 `~/Documents`, a home directory, a volume root — is refused whether or not
 anyone thought to name it. A `.app` bundle is removable wherever it lives
 (people keep apps in `~/Downloads`, on external volumes, in Setapp's folder) as
-long as it is not a top-level directory. Paths are `standardizedFileURL`-resolved
-first: `..` is invisible to a prefix test and not to the filesystem.
+long as it is not a top-level directory. Paths go through `PathCanonical`
+first, which resolves every **symlinked ancestor** in the path and deliberately
+leaves the leaf alone: `standardizedFileURL`/`standardizingPath` collapse `..`
+but do not resolve symlinks, while `trashItem` follows them, so a link planted
+in an allowed root (the leftovers scan enumerates four `~/Library` plug-in
+directories that do not exist on a stock install, and can therefore be created
+by any process as a link) let the gate approve one path and the Trash act on
+another. The leaf is left unresolved on purpose — trashing a stale alias has to
+remove the alias, not chase it to whatever it points at.
 
 There are **three** gates and they answer different questions. `RemovableScope`
 asks what belongs to an *application*; `UserFileScope` (also HelmRuntime, and
@@ -409,24 +437,51 @@ glob matches a *different* app whose id merely starts the same way —
 namespacing. Worse, a match on the id rather than the display name is the kind
 `UninstallPlan.defaultSelection` trusts enough to pre-tick, so a neighbour's
 live container arrived on the review screen already selected. Glob results are
-now filtered against the installed set the way `scanOrphansSync` always filtered
-its candidates. **A path that a pattern produced is a candidate, not a finding:
-something has to say it belongs to the app being removed.**
+filtered against the installed set two ways at once — `AppLister.isKnownToSystem`
+asks LaunchServices, and `installedPaths(forBundleID:)` asks the same directory
+listing `scanOrphansSync` reads — because a directory listing alone misses an app
+nested one folder down (`/Applications/Adobe Acrobat DC/…`), which LaunchServices
+still knows about. And the filter is not only for globs: the *exact* candidates
+(`Containers/<id>`, `Preferences/<id>.plist`, `HTTPStorages`, `WebKit`, `Cookies`,
+`Saved Application State`) went through no ownership check at all until they were
+routed through the same filter, because their hazard is a different one — not a
+prefix match on a neighbour's id, but an app that simply declares somebody else's
+bundle id outright in its own `Info.plist`. **A path that a pattern — or an
+id — produced is a candidate, not a finding: something has to say it belongs to
+the app being removed.**
 
 ## Autopilot — read before touching
 
 The autopilot module acts on somebody's files without being asked each time, so its
-three guarantees are load-bearing rather than nice to have.
+four guarantees are load-bearing rather than nice to have.
 
 **A rule may only reach the user's own working files.** Neither shared gate is
 right for this: `RemovableScope` is about applications, and `UserFileScope` is a
 blocklist that says yes to `~/Library/Messages`, `~/Library/LaunchAgents` and
-another account's home. Helm holds Full Disk Access and these rules are JSON in
-a plist any process running as the user can write, so `WatchScope` — the
+another account's home. Helm holds Full Disk Access, so `WatchScope` — the
 module's own gate — is positional and narrow: inside the home directory, never
 inside `~/Library`, or inside a volume under `/Volumes`. It resolves symlinks
 first, because a destination chosen through the panel can be replaced by a link
 afterwards and the question is where a path *leads*.
+
+Narrowness used to be argued entirely from the rules living in a plist any
+process running as the user can write — and that argument is now only half true.
+A rule set must be **Helm's own** to be honoured at all: `AutopilotEngine.folders`
+decoded the plist with no authenticity check, re-read on every hourly sweep, so
+any unsandboxed process could plant a move-or-trash rule and borrow Helm's Full
+Disk Access with no TCC grant of its own — on a module that is on by default.
+Rules now carry an HMAC keyed from a secret Helm creates once in its own login
+keychain item (the `SecItemAdd` access-list treatment `KeychainCredentials.helmCacheWrite`
+already uses); a rule set whose seal does not match decodes to `[]`. What says a
+migration is due is the absence of the **keychain item**, not the absence of the
+seal — a seal is data sitting beside the rules it signs, so an attacker who can
+write the file can delete the seal too, and treating a missing seal as
+"pre-upgrade, trust it" would undo the whole guarantee. Only a missing *key*
+means this Mac has never signed a rule set before. `WatchScope`'s remaining job,
+now that authorship is settled elsewhere, is to bound what even a rule Helm
+itself wrote and sealed may reach — the folder a rule watches is still user
+input relayed through the editor, and a destination can be swapped for a symlink
+after the picker closes.
 
 **A rule must not act on the same file twice.** A rule that sorts a file into a
 subfolder of the folder it watches sees it again on the next sweep. `RuleStamp`
@@ -439,12 +494,38 @@ where no rule works.
 
 That shrug is only survivable because the action itself is idempotent, and for
 sorting it was not: the bucket was computed from the file's current parent, so
-on a volume that cannot take an xattr — exFAT, which is what a USB stick
-usually is — every hourly sweep sorted `a.jpg` one level deeper, into
-`Images/Images/a.jpg`. Sorting and moving now recognise a file already sitting
-where the rule would put it and report `.alreadyDone` whether or not the stamp
-was written. The stamp's remaining job is tagging and renaming, which cannot
-tell "already done" from "do it again" by looking at the file.
+on a volume that could not keep the stamp, every hourly sweep sorted `a.jpg` one
+level deeper, into `Images/Images/a.jpg`. Sorting and moving now recognise a
+file already sitting where the rule would put it and report `.alreadyDone`
+whether or not the stamp was written.
+
+**exFAT is no longer the example of a volume that cannot keep it.** That
+sentence stood here for a long time and it does not survive being tried: on
+macOS 27, `setxattr` on an exFAT volume *succeeds* — measured on a mounted
+`hdiutil` image — and macOS stores the value in an AppleDouble `._name` sidecar
+beside the file, which then survived both a rename and a move within the volume.
+Delete the sidecar and the stamp is gone with it, which is the shape of the real
+remaining risk: filesystems that genuinely refuse extended attributes, and the
+tools and transfers that drop `._` files. The tolerated loss is still real. Only
+its usual example was wrong, and the fallbacks below exist because of the loss,
+not because of exFAT.
+
+The stamp's remaining job is narrower than "tagging and renaming":
+
+- **Renaming** can now tell "already done" from "do it again" by looking at the
+  file. `RenameShape` asks whether the name is one this pattern could have
+  produced — every literal of the resolved pattern, in order, with a non-empty
+  hole where `{name}` stands — so `{name} {date}` and `{date}-{name}` are
+  recognised alike, where the runner's own `target.path != url.path` only ever
+  caught the bare `{name}`. It is not total: the numbered form a collision
+  produces (`a-done 2`) is not a name the shape describes, so that file can be
+  renamed a second time.
+- **Tagging** was always idempotent by inspection — the runner reads the file's
+  tags and returns `.tagged` without writing if the tag is already there.
+
+What the stamp still buys, then, is the work and the record rather than the
+correctness: without it an unstamped file is re-examined and re-reported on
+every sweep, and a history of one file tagged once reads as one row an hour.
 
 **A rule must not overwrite.** An arriving file whose name is taken is numbered
 `a 2.pdf`, the way the Finder numbers a copy. This is the one failure the module
@@ -507,6 +588,17 @@ Mac outside Helm's eight means an English UI with Italian dates spliced into it.
 A formatter also must not be a `static let`: the app's language can change while
 it runs, so they are cached per language, never once.
 
+**A language code is not always the directory macOS files it under.**
+`SystemFolderNames` built `<language>.lproj` from `AppLanguage`'s raw value,
+which happens to equal the lproj name for seven of Helm's eight languages — and
+is wrong for the eighth: macOS ships `zh_CN.lproj`, `zh_TW.lproj` and
+`zh_HK.lproj`, never a plain `zh.lproj`. Loading a table that isn't there isn't
+an error, it's an empty dictionary, so this failed silently: a Chinese user's
+Disk ring read `/Applications` as literal "Applications" where Finder writes
+应用程序. Helm's `zh` is Simplified, so the fixed mapping reads `zh_CN`. Any table
+keyed by "the language" has to be checked against what the *system* calls each
+one, not assumed equal to Helm's own short code.
+
 **Terminology is looked up, not remembered.** The units, the permission panes
 and the module names all come from the tables macOS itself ships —
 `FileSizeFormatting.loctable` for `Б`/`ko`/`Byte`, the settings extensions for
@@ -514,6 +606,24 @@ and the module names all come from the tables macOS itself ships —
 module after. Three units and four names were invented before anyone opened
 those files. When a string names something the system also names, read the
 system's spelling out of its bundle rather than translating it again.
+
+**Punctuation is terminology too.** `Quoted` had three of its eight languages
+wrong for the same reason the units did. Counted over the 1176 `.loctable` files
+macOS ships, for a substituted name between a pair of marks: French writes
+`«\u{00A0}%@\u{00A0}»` 3206 times against 12 with ordinary spaces — and an
+ordinary space there is a line-breaking one, so the name can end up on the line
+below the mark that opens it. Spanish had been given guillemets (macOS: `“%@”`,
+2768 to 0) and Japanese corner brackets (macOS: `“%@”`, 3099 to 1). The same
+search settles VoiceOver's own vocabulary: `HelmA11y.expanded` says *condensé*,
+not *réduit*, and 折りたたまれています, not 閉じています.
+
+**A number is shaped by the language as much as a word is.** `Bytes` (sizes),
+`Decimal` (a size's mantissa, grouping deliberately **off** — a separator there
+is a second decimal mark), `Count` (a count of things, grouping **on** — a scan
+of `/` reported "1499308 files" where macOS writes 1 499 308), `Quoted`,
+`HelmDates.relative` / `.dayAndMinute` / `.day`. `HelmBytes`'s formatter cache is
+keyed by grouping as well as by language and precision, or a size and a count
+are handed the same formatter and whichever asked first wins.
 
 **Fixed widths are measured, not chosen.** `HelmPickerWidth.fitting(labels:
 minimum:)` sizes a pop-up from its own titles (chrome is 48 pt at the system
@@ -684,9 +794,45 @@ sidebar visit and losing a minute-long scan — or paying four seconds to measur
 view model and nothing cleared it, so a scan tree stayed reachable after the
 module was switched off. `ModuleHost.disable` posts `.helmModuleDisabled`;
 `ModuleUICache.dropWhenDisabled` (one observer per module id, written once rather
-than in each view model) drops the cached instance, and the reclaim above hands
-the pages back. The on-disk scan cache still holds the result, so this drops the
-copy in memory, not the answer.
+than in each view model) drops the cached instance and hands the pages back. The
+on-disk scan cache still holds the result, so this drops the copy in memory, not
+the answer.
+
+**That was true of the drop and false of the free, until the retain underneath
+it was found.** `dropWhenDisabled` shipped in dev.29 to fix a 48 GB leak, and it
+did release the cached view model's own strong reference — but six view models
+(VPN, KeepAwake, Layout, Homebrew, Disk, Duplicates) each start their event loop
+as `Task { [weak self] in await self?.observeEvents() }`, and that weak capture
+resolves **once**, on entry. `observeEvents()` is then an ordinary instance
+method holding a strong `self` for as long as it runs, and `LocalTransport`'s
+`for await` never returns, because the transport never calls `.finish()`. So the
+task itself held the object for the life of the app no matter what
+`dropWhenDisabled` released — dropping the cache's reference removed one of two
+owners and freed nothing. `DuplicatesViewModel`'s `deinit { eventsTask?.cancel()
+}` had been unreachable code for the identical reason: `deinit` cannot run while
+the object retains itself. The fix is to capture the stream outside the loop and
+re-acquire `self` per event, so a cancelled task actually lets the weak capture
+matter, and to cancel every subscriber task on the way out rather than relying on
+`deinit`. `LocalTransport.subscriberCount` is what makes the regression guard a
+**count that must not grow** rather than a memory figure a test can pass by
+luck. The general lesson: a `Task { [weak self] in await self?.method() }` is
+only as weak as the moment it starts — everything `method()` touches afterward is
+held as strongly as any other call on the stack.
+
+**"Check every other loop that reads or stats in bulk" is answered, and the
+answer is negative for `resourceValues`.** Every `resourceValues(forKeys:)` loop
+in the codebase was measured rather than assumed: a serial 100 000-file walk
+grows 0.3 MB without a pool, and an 8-way `concurrentPerform` over 480 000 files
+grows 1.8 MB. `URLResourceValues` bridges to small value types, not to a retained
+buffer the way `FileHandle.read`'s `Data` does — **do not add pools there.** The
+class that does need one is `FileHandle.read`, and `ReleaseDigest.sha256` (the
+digest check run on every silent update check) was a second, simpler instance of
+the exact defect the duplicate scanner had: a plain serial `while let chunk =
+try handle.read(upToCount:)`, not even inside `concurrentPerform`, so the pool
+matters independent of parallelism. Measured: 1204 MB of growth hashing a
+1200 MB file, 0 MB with the pool inside the `while`. Its footprint test used to
+only print the number for a person to read — a test that logs a measurement and
+asserts nothing cannot fail, and this one hadn't. It is a gate now.
 
 **The instrument.** `HelmLog.memory(_:)` logs the process footprint under the
 `memory` category as a **delta against the last reading for the same label** —
@@ -807,6 +953,25 @@ to the trailing-closure form, which is the form all eight offenders used: it
 passed green with an offender in the tree. **A guard that has never been seen to
 fail is not a guard** — put the defect back and watch it catch.
 
+The second version was blind in a subtler way: it looked for the design system's
+own box, so it could only catch somebody who had already found `HelmUI` and then
+reached for the wrong piece of it. A page hand-rolled out of a `VStack` and two
+bare `Spacer()`s — which is what centres content when you have not found the box
+at all — was invisible to it. It now looks for **that shape**: two `Spacer()`s
+that are direct children of one `VStack`, indentation deciding what "direct"
+means, because a brace counter cannot tell a child view from a closure passed to
+one. Widening it turned up a second offender nobody had reported (`Disk`'s
+`scanningState` — a spinner, a caption *and* a Stop button, which is why
+`HelmBusyState` now takes an `actions:` slot the way `HelmEmptyState` does).
+
+Two lists, spelled differently on purpose: `allowed` is for a page that is
+legitimately centred by hand, and every entry carries the reason; `beingFixed`
+is for offenders that exist and are already being replaced, keyed by file so
+that neither editing one nor fixing one turns the guard red for its author. A
+third test asserts every named file still exists, because a ledger nobody prunes
+starts excusing names that nothing answers to. **Both lists are empty**, which
+is the state they are meant to be in — an entry is a debt, not a permission.
+
 ## Dev loop
 
 ```bash
@@ -872,9 +1037,19 @@ grouped `Form` sections, which the system draws as a plain fill and which we
 cannot restyle. An outlined card of our own therefore reads as a different kind
 of box on the next page over — which is exactly what happened: the About page
 carried one bordered card and one unbordered one, side by side. `helmCard()` is
-the only card; it matches the system's treatment. `HelmSurface.floatingEdge`
-exists for things that float *over* content (the disk tooltip), which do need an
-edge.
+the only card; it matches the system's treatment.
+
+**A surface that floats over content takes `.glassEffect`, not an edge.** This
+paragraph used to name a `HelmSurface.floatingEdge` token for the purpose. There
+is no such token and there is no evidence there ever was one: `grep` found the
+name in this file and in the doc comment that quoted this file, and nowhere in
+the source. Both sites that float over content had meanwhile been built on the
+system's material — the menu-bar panel's card
+(`HelmPanel.swift`, `.glassEffect(.regular, in: .rect(cornerRadius: 26))`) and
+the disk ring's readout (`Modules/Disk/UI/RingView.swift`,
+`.glassEffect(.regular, in: .capsule)`). Glass carries its own edge and its own
+shadow, which is the whole reason a floating thing needed one; a hairline drawn
+on top of it is a second silhouette disagreeing with the first.
 
 **Metric strips live inside the form, not above it.** They used to be pinned
 with `safeAreaInset` at the window's own 20pt margin while the content below sat
@@ -936,7 +1111,23 @@ subject (Helm = the wheel you steer by):
   there the dials read as state. List screens (Uninstaller, Homebrew,
   Login Items) deliberately do NOT use it — their chrome is one toolbar row
   (segments · search · refresh) and the counts live as a quiet status line in
-  the bottom bar, which costs no vertical space.
+  the bottom bar, which costs no vertical space. A tinted figure is darkened in
+  light appearance by a fraction that is **measured, not chosen**: 0.30 left
+  green at 3.85:1, orange 3.99:1 and teal 3.76:1 at 16 pt medium, which is body
+  text; 0.40 puts them at 4.80 / 4.97 / 4.69. Resolve the tint inside the light
+  appearance *and blend it there* — `NSColor(Color)` returns a dynamic colour,
+  so a blend one line outside the block resolves it again against whatever
+  appearance happens to be current and silently darkens the wrong green.
+- `HelmText.figureFont` / `.helmFigure()` — the one face for a figure: a byte
+  size, a count, a version. Sizes were drawn in four faces across lists that sit
+  next to each other, and SF Mono 11 renders "1,24 ГБ" 27% wider than SF Pro 10
+  tabular, so no choice of column width could have made them agree.
+- Ink that means something comes from `HelmSignal`, never from the system
+  palette, and `SignalInkTests` scans `HelmUI` + `HelmApp` for the shape "a raw
+  `.orange` / `.green` / `.red` handed to something that paints with it". A
+  *tint* is not ink and is deliberately not caught — `HelmBadge` takes one and
+  draws it at 0.20 behind `Color.primary` text, which is the whole reason the
+  pill exists.
 - `.helmCard()` — the one card treatment: `primary.opacity(0.035)` fill, **no
   border**, 12pt continuous corners. The fill is measured against a real `Form`
   section on the same background: the system's section sits 7 L from the panel

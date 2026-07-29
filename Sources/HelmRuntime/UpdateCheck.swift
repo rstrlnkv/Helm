@@ -15,6 +15,15 @@ public enum UpdateCheck {
     public enum Outcome: Equatable, Sendable {
         case upToDate
         case available(Release)
+        /// The running build is a prerelease newer than anything the channel
+        /// publishes: 0.7.2-dev.34 against a Beta channel whose newest is
+        /// 0.7.1. Carries what the channel does have.
+        ///
+        /// This used to read as `.upToDate`, because `isNewer` compares numeric
+        /// cores and 0.7.1 is not newer than 0.7.2 — so the About page told the
+        /// one person definitely running an unreleased build that they were on
+        /// the latest version.
+        case ahead(newest: String)
         case error
     }
 
@@ -91,7 +100,17 @@ public enum UpdateCheck {
     }
 
     private static func outcome(for gh: GHRelease, currentVersion: String) -> Outcome {
-        guard UpdateVersion.isNewer(gh.tag_name, than: currentVersion) else { return .upToDate }
+        guard UpdateVersion.isNewer(gh.tag_name, than: currentVersion) else {
+            // Only a prerelease reports being ahead. A *final* release ahead of
+            // its own channel is a state the release flow does not produce
+            // (VERSIONING.md: everything ships to dev first), and treating it
+            // as one would put a notice on every ordinary user's About page the
+            // day a channel lags.
+            guard UpdateVersion.prereleaseOrdinal(currentVersion) != nil,
+                  UpdateVersion.isNewer(currentVersion, than: gh.tag_name)
+            else { return .upToDate }
+            return .ahead(newest: gh.tag_name)
+        }
         // No page to send anyone to is not an update: an offer whose only link
         // opens something else is worse than no offer.
         guard let page = https(gh.html_url) else { return .error }

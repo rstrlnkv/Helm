@@ -20,6 +20,26 @@ final class FakeCreds: VPNCredentialsPort {
     func credentials(for name: String) -> VPNCredentials? { map[name] }
 }
 
+/// Records the observer's lifetime as well as its callback: an observer a
+/// module starts has to stop, and "did it stop" is the assertion that catches
+/// the callback landing on a freed engine.
+final class FakeNetwork: NetworkWatchPort {
+    private(set) var starts = 0
+    private(set) var stops = 0
+    private(set) var onChange: (@Sendable () -> Void)?
+
+    func startObserving(_ onChange: @escaping @Sendable () -> Void) {
+        starts += 1
+        self.onChange = onChange
+    }
+    func stopObserving() {
+        stops += 1
+        onChange = nil
+    }
+    /// Only fires while something is watching, like the real store.
+    func fire() { onChange?() }
+}
+
 final class FakeApps: AppObserverPort {
     var bundleIDs: Set<String> = []
     private(set) var onChange: (@Sendable () -> Void)?

@@ -45,16 +45,6 @@ public enum HelmBytes {
             + " " + unit(at: step, language: language, singular: bytes == 1)
     }
 
-    /// Swaps a trailing English unit for the language's own. Split out so the
-    /// mapping can be checked without a formatter or a locale in the way.
-    public static func localizedUnits(_ formatted: String, language: String) -> String {
-        guard let table = units[language] else { return formatted }
-        for (english, translated) in table where formatted.hasSuffix(" " + english) {
-            return formatted.dropLast(english.count) + translated
-        }
-        return formatted
-    }
-
     // MARK: - Internals
 
     private static let unitOrder = ["bytes", "KB", "MB", "GB", "TB", "PB"]
@@ -70,10 +60,26 @@ public enum HelmBytes {
         number(value, decimals: decimals, language: language)
     }
 
+    /// A count of things — files, packages, rules — grouped the way the
+    /// language groups digits: 1 499 308 in Russian and French, 1.499.308 in
+    /// German, 1,499,308 in English.
+    ///
+    /// Counts were interpolated straight out of `Int`, so a scan of `/`
+    /// reported "1499308 files". Seven ungrouped digits are read by counting
+    /// them, which is the one thing a magnitude is not for.
+    ///
+    /// Separate from `decimal` rather than a flag on it: `decimal` writes the
+    /// mantissa of a size, where a grouping separator would be a second decimal
+    /// mark inside one number. The two share the cache and nothing else.
+    public static func grouped(_ count: Int, language: String) -> String {
+        let formatter = formatters.formatter(language: language, decimals: 0, grouped: true)
+        return formatter.string(from: NSNumber(value: count)) ?? String(count)
+    }
+
     /// The separator follows Helm's own language, not the system locale: the
     /// app lets the user pick a language, and "1.5 ГБ" would be neither.
     private static func number(_ value: Double, decimals: Int, language: String) -> String {
-        let formatter = formatters.formatter(language: language, decimals: decimals)
+        let formatter = formatters.formatter(language: language, decimals: decimals, grouped: false)
         return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.0f", value)
     }
 
@@ -87,15 +93,18 @@ public enum HelmBytes {
         private let lock = NSLock()
         private var cache: [String: NumberFormatter] = [:]
 
-        func formatter(language: String, decimals: Int) -> NumberFormatter {
-            let key = "\(language)#\(decimals)"
+        func formatter(language: String, decimals: Int, grouped: Bool) -> NumberFormatter {
+            // Grouping is part of the key: a size mantissa and a count of files
+            // want opposite answers and would otherwise be handed the same
+            // formatter, whichever asked first.
+            let key = "\(language)#\(decimals)#\(grouped)"
             lock.lock()
             defer { lock.unlock() }
             if let existing = cache[key] { return existing }
             let formatter = NumberFormatter()
             formatter.locale = Locale(identifier: language)
             formatter.numberStyle = .decimal
-            formatter.usesGroupingSeparator = false
+            formatter.usesGroupingSeparator = grouped
             formatter.minimumFractionDigits = 0      // 1,50 GB reads as noise
             formatter.maximumFractionDigits = decimals
             cache[key] = formatter

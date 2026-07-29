@@ -5,7 +5,10 @@ import Foundation
 /// Converting it is a blind edit: a fixed number of backspaces sent at whatever
 /// the caret is in front of now. That is only correct while the caret is still
 /// where the word left it — which is the same reasoning `UndoRecord` is built
-/// on, and the same check it makes. The remembered word used to carry no app at
+/// on, and the same check it makes — which caret moves count is
+/// `TypingBuffer.Event.movedTheCaret`, one list rather than a second one written
+/// here, because the second one was shorter and left a bare arrow key out of it.
+/// The remembered word used to carry no app at
 /// all, so a word typed in one place could be edited into another: type
 /// `ghbdtn` in Notes, switch to Mail, tap the key, and six backspaces and a
 /// Russian word land in Mail.

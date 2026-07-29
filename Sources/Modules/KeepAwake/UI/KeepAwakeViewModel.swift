@@ -25,6 +25,8 @@ import Module_KeepAwake_Engine
 
     public let vm: ModuleViewModel
 
+    private var eventsTask: Task<Void, Never>?
+
     private static var cached: KeepAwakeViewModel?
 
     public static func shared(vm: ModuleViewModel) -> KeepAwakeViewModel {
@@ -40,10 +42,18 @@ import Module_KeepAwake_Engine
     private init(vm: ModuleViewModel) {
         self.vm = vm
         let events = vm.transport.events
-        Task { [weak self] in
-            for await event in events { await self?.handle(event) }
+        eventsTask = Task { [weak self] in
+            for await event in events {
+                guard let self else { break }
+                self.handle(event)
+            }
         }
     }
+
+    /// Ends the event loop, which unregisters the transport subscriber.
+    /// `await self?.handle(…)` already let the view model itself go, but the
+    /// task outlived it, and with it the registration.
+    deinit { eventsTask?.cancel() }
 
     /// The engine's own declaration. There is no compiler between the two
     /// sides of a JSON hop, so a second copy here could drift silently.

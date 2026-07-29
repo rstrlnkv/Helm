@@ -283,3 +283,55 @@ final class RefusalReasonTests: XCTestCase {
         XCTAssertNil(tap.lastRefusal)
     }
 }
+
+/// The tap's key codes and flag bits were written out twice: once as `TapKey`'s
+/// two switches, once as a `[Int64: UInt64]` literal inside `CGEventTapPort`.
+/// Nine hardware constants in two places, and the comment above the second copy
+/// had already gone stale — it claimed the literal held the left-side bits
+/// while it in fact held all nine.
+///
+/// `TapKey.masksByKeyCode` is now the one table and the port reads it. These
+/// assert the derivation rather than the values, because the values are pinned
+/// above: a key that gains a code but no bit, or a bit the port cannot reach,
+/// is the failure that matters.
+final class ModifierMaskTableTests: XCTestCase {
+
+    func testEveryBindableKeyIsReachableByItsKeyCode() {
+        for key in TapKey.allCases where key != .off {
+            let code = try? XCTUnwrap(key.keyCode)
+            XCTAssertNotNil(code, "\(key) has no key code")
+            guard let code = key.keyCode else { continue }
+            XCTAssertEqual(TapKey.masksByKeyCode[code], key.deviceMask,
+                           "\(key) is not reachable from the table the tap reads")
+        }
+    }
+
+    /// A code without a bit, or a bit without a code, would be a key the tap
+    /// sees and cannot classify — which is how a press once arrived as a
+    /// release.
+    func testACodeAndABitAlwaysArriveTogether() {
+        for key in TapKey.allCases {
+            XCTAssertEqual(key.keyCode == nil, key.deviceMask == nil,
+                           "\(key) has one half of its identity")
+        }
+    }
+
+    func testTheTableHoldsEveryKeyAndNothingElse() {
+        let bindable = TapKey.allCases.filter { $0 != .off }
+        XCTAssertEqual(TapKey.masksByKeyCode.count, bindable.count)
+        XCTAssertEqual(Set(TapKey.masksByKeyCode.keys),
+                       Set(bindable.compactMap(\.keyCode)))
+        XCTAssertEqual(Set(TapKey.masksByKeyCode.values),
+                       Set(bindable.compactMap(\.deviceMask)))
+    }
+
+    /// Both sides must be in it. The stale comment described a table holding
+    /// only the left bits, and a table that actually did would stop the right
+    /// keys spoiling a chord.
+    func testBothSidesAndTheGlobeAreInTheTable() {
+        for key in [TapKey.leftCommand, .rightCommand, .leftShift, .rightShift, .globe] {
+            guard let code = key.keyCode else { return XCTFail("\(key) has no code") }
+            XCTAssertNotNil(TapKey.masksByKeyCode[code], "\(key) is missing")
+        }
+    }
+}

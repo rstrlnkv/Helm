@@ -15,8 +15,29 @@ import Module_Leftovers_Engine
     @Published public private(set) var removedCount = 0
 
     private let client: TransportClient
+    let vm: ModuleViewModel
 
-    public init(vm: ModuleViewModel) { client = TransportClient(vm.transport) }
+    /// The scan and every checkbox must outlive the page. Settings rebuilds the
+    /// page on every sidebar visit, and nothing here is pre-ticked: each tick is
+    /// a decision about a file macOS loads, which is not something to make the
+    /// person take twice.
+    private static var cached: LeftoversViewModel?
+    public static func shared(vm: ModuleViewModel) -> LeftoversViewModel {
+        // Keyed to the view model it was built against — see
+        // `DiskViewModel.shared(vm:)`: switching the module off deallocates the
+        // engine, while the transport held here survives and answers every
+        // request with empty Data from then on.
+        if let cached, cached.vm === vm { return cached }
+        let created = LeftoversViewModel(vm: vm)
+        cached = created
+        ModuleUICache.dropWhenDisabled(LeftoversDescriptor.id.rawValue) { cached = nil }
+        return created
+    }
+
+    public init(vm: ModuleViewModel) {
+        self.vm = vm
+        client = TransportClient(vm.transport)
+    }
 
     /// Kinds the user has hidden. System extensions are the common case:
     /// they are informational, and someone reviewing login items does not
@@ -35,6 +56,19 @@ import Module_Leftovers_Engine
     /// while the list is filtered made "Выбрать все" tick rows nobody could
     /// see — and then delete them.
     public var leftoverCount: Int { visibleItems.filter(\.removable).count }
+
+    /// What the bar at the bottom is about, both halves of it. It used to pair
+    /// the number of removable rows found with the size of the selection, so
+    /// "1 item · 0 B" stood under a visible row saying 4 KB. A count and a size
+    /// joined by a middle dot read as one measurement, and were two.
+    public var selectedCount: Int { selectedItems.count }
+    public var selectedBytes: Int { selectedItems.reduce(0) { $0 + $1.sizeBytes } }
+
+    /// Counted over what the list actually shows — the rule `removeSelected`
+    /// follows when it decides what may go.
+    private var selectedItems: [StaleItem] {
+        visibleItems.filter { selected.contains($0.path) }
+    }
 
     /// Everything the user could tick right now.
     public var selectablePaths: Set<String> {
@@ -71,7 +105,7 @@ import Module_Leftovers_Engine
         let result: LeftoversRemoval? = await client.request("trash", encoding: [item.path])
         failures = result?.failed ?? []
         removedCount = result?.removed.count ?? 0
-        banner = LfStr.removedFreed(Bytes(result?.freedBytes ?? 0))
+        banner = LfStr.movedToTrash(Bytes(result?.freedBytes ?? 0))
         await scan()
     }
 
@@ -82,12 +116,12 @@ import Module_Leftovers_Engine
         // screen were computed over what was visible — and this then trashed it
         // anyway. Deleting something the person cannot see, and did not see
         // counted, is the one thing this module must not do.
-        let paths = visibleItems.map(\.path).filter { selected.contains($0) }
+        let paths = selectedItems.map(\.path)
         guard !paths.isEmpty else { return }
         let result: LeftoversRemoval? = await client.request("trash", encoding: paths)
         failures = result?.failed ?? []
         removedCount = result?.removed.count ?? 0
-        banner = LfStr.removedFreed(Bytes(result?.freedBytes ?? 0))
+        banner = LfStr.movedToTrash(Bytes(result?.freedBytes ?? 0))
         await scan()
     }
 }

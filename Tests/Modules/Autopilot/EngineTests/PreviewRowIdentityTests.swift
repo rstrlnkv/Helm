@@ -29,7 +29,7 @@ final class PreviewRowIdentityTests: XCTestCase {
         engine = AutopilotEngine(
             store: NamespacedStore(namespace: "rules.test.\(UUID().uuidString)",
                                    backing: InMemoryKeyValueStore()),
-            home: home.path)
+            home: home.path, keys: TestRuleKey())
     }
 
     override func tearDownWithError() throws {

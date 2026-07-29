@@ -3,6 +3,20 @@ import HelmUI
 
 /// Localized strings for the app shell (settings window chrome).
 enum AppStr {
+    /// The settings window's own title. Never drawn — the window hides its
+    /// title bar text — and read aloud all the same: VoiceOver announces it on
+    /// focus, and the Window menu lists it. It was the one user-visible English
+    /// string in the app that was not behind `L()`, which is exactly the kind of
+    /// string that keeps being the last one.
+    ///
+    /// "Helm Settings", the shape macOS uses for an app's own settings window,
+    /// with each language's word for the pane taken from `settingsPane` so the
+    /// title and the sidebar cannot disagree.
+    static var settingsWindowTitle: String {
+        L("Helm Settings", [.ru: "Helm — Настройки", .es: "Ajustes de Helm",
+                            .fr: "Réglages Helm", .de: "Helm-Einstellungen",
+                            .ja: "Helm 設定", .zh: "Helm 设置", .pt: "Ajustes do Helm"])
+    }
     /// Sidebar entry for the app-level pane (login item, panel layout, menu-bar icon).
     static var settingsPane: String { L("Settings", [.ru: "Настройки", .es: "Ajustes", .fr: "Réglages", .de: "Einstellungen", .ja: "設定", .zh: "设置", .pt: "Ajustes"]) }
     /// Section title inside that pane, for the menu-bar icon controls.
@@ -11,6 +25,19 @@ enum AppStr {
     static var launchAtLogin: String { L("Launch automatically at startup", [.ru: "Автозапуск при включении Mac", .es: "Abrir automáticamente al iniciar el Mac", .fr: "Lancer automatiquement au démarrage du Mac", .de: "Beim Starten des Mac automatisch öffnen", .ja: "Mac の起動時に自動で開始", .zh: "开机时自动启动", .pt: "Abrir automaticamente ao ligar o Mac"]) }
     static var checking: String { L("Checking…", [.ru: "Проверка…", .es: "Buscando…", .fr: "Recherche…", .de: "Suche…", .ja: "確認中…", .zh: "检查中…", .pt: "Verificando…"]) }
     static var upToDate: String { L("You’re on the latest version.", [.ru: "Установлена последняя версия.", .es: "Tienes la última versión.", .fr: "Vous avez la dernière version.", .de: "Du hast die neueste Version.", .ja: "最新バージョンです。", .zh: "已是最新版本。", .pt: "Você tem a versão mais recente."]) }
+    /// Said to somebody running a build the channel has not published yet —
+    /// which is a state worth naming rather than calling "up to date", because
+    /// the person in it is usually the person testing something.
+    static func aheadOfChannel(_ newest: String) -> String {
+        L("Your build is newer than the channel — its latest is \(newest).",
+          [.ru: "Ваша сборка новее канала — в нём последняя \(newest).",
+           .es: "Tu compilación es más reciente que el canal: la última de este es \(newest).",
+           .fr: "Votre version est plus récente que le canal — la dernière y est \(newest).",
+           .de: "Dein Build ist neuer als der Kanal — dessen neuester ist \(newest).",
+           .ja: "お使いのビルドはチャンネルより新しいバージョンです（チャンネルの最新は \(newest)）。",
+           .zh: "你的版本比该通道更新——通道中的最新版本是 \(newest)。",
+           .pt: "Sua build é mais recente que o canal — a última dele é \(newest)."])
+    }
     static var download: String { L("Download", [.ru: "Скачать", .es: "Descargar", .fr: "Télécharger", .de: "Herunterladen", .ja: "ダウンロード", .zh: "下载", .pt: "Baixar"]) }
     static var updateReady: String { L("Update ready", [.ru: "Обновление готово", .es: "Actualización lista", .fr: "Mise à jour prête", .de: "Update bereit", .ja: "アップデートあり", .zh: "有可用更新", .pt: "Atualização pronta"]) }
     static var updateAndRelaunch: String { L("Update & Relaunch", [.ru: "Обновить и перезапустить", .es: "Actualizar y reiniciar", .fr: "Mettre à jour et relancer", .de: "Aktualisieren & neu starten", .ja: "更新して再起動", .zh: "更新并重启", .pt: "Atualizar e reiniciar"]) }
@@ -22,9 +49,9 @@ enum AppStr {
     static var done: String { L("Done", [.ru: "Готово", .es: "Listo", .fr: "Terminé", .de: "Fertig", .ja: "完了", .zh: "完成", .pt: "Concluído"]) }
     static var moduleOrderEditNote: String { L("Drag a row, or use the arrows.", [.ru: "Перетащите строку или используйте стрелки.", .es: "Arrastra una fila o usa las flechas.", .fr: "Faites glisser une ligne ou utilisez les flèches.", .de: "Zeile ziehen oder die Pfeile benutzen.", .ja: "行をドラッグするか、矢印を使います。", .zh: "拖动某一行，或使用箭头。", .pt: "Arraste uma linha ou use as setas."]) }
     static var moduleOrderNote: String { L("Used by the panel, the sidebar, and the icon menu.", [.ru: "Применяется в панели, боковом меню и меню иконки.", .es: "Se aplica al panel, la barra lateral y el menú del icono.", .fr: "S’applique au panneau, à la barre latérale et au menu de l’icône.", .de: "Gilt für Panel, Seitenleiste und Symbolmenü.", .ja: "パネル、サイドバー、アイコンメニューに適用されます。", .zh: "适用于面板、侧边栏和图标菜单。", .pt: "Vale para o painel, a barra lateral e o menu do ícone."]) }
+    /// The first launch: nothing has lapsed, because nothing was ever granted.
+    static var permissionsNeeded: String { L("Helm needs permission from macOS", [.ru: "Helm нужны разрешения macOS", .es: "Helm necesita permisos de macOS", .fr: "Helm a besoin d’autorisations de macOS", .de: "Helm benötigt Berechtigungen von macOS", .ja: "Helm には macOS の許可が必要です", .zh: "Helm 需要 macOS 的权限", .pt: "O Helm precisa de permissões do macOS"]) }
     static var permissionsChanged: String { L("Some permissions need granting again", [.ru: "Некоторые разрешения нужно выдать заново", .es: "Hay permisos que hay que volver a conceder", .fr: "Certaines autorisations sont à réaccorder", .de: "Einige Berechtigungen müssen neu erteilt werden", .ja: "一部の権限を再度許可する必要があります", .zh: "部分权限需要重新授予", .pt: "Algumas permissões precisam ser concedidas de novo"]) }
-    static var permissionAuditTitle: String { L("Helm works better with Full Disk Access", [.ru: "Helm работает полнее с доступом к диску", .es: "Helm funciona mejor con Acceso total al disco", .fr: "Helm fonctionne mieux avec l’accès complet au disque", .de: "Helm arbeitet besser mit vollem Festplattenzugriff", .ja: "Helm はフルディスクアクセスがあると完全に動作します", .zh: "授予完全磁盘访问权限后 Helm 更完整", .pt: "O Helm funciona melhor com Acesso Total ao Disco"]) }
-    static var permissionAuditBody: String { L("Without it, an uninstalled app leaves its containers behind. Grant it now, or later in Settings → Permissions.", [.ru: "Без него контейнеры удалённых приложений остаются на диске. Выдать можно сейчас или позже в «Настройки → Разрешения».", .es: "Sin él, las apps eliminadas dejan sus contenedores. Concédelo ahora o luego en Ajustes → Permisos.", .fr: "Sans lui, les apps supprimées laissent leurs conteneurs. Accordez-le maintenant ou plus tard dans Réglages → Autorisations.", .de: "Ohne ihn bleiben Container gelöschter Apps liegen. Jetzt erteilen oder später unter Einstellungen → Berechtigungen.", .ja: "許可がないと削除したアプリのコンテナが残ります。今すぐ、または「設定 → アクセス権」で許可できます。", .zh: "没有它，已删除应用的容器会留在磁盘上。可现在授予，或稍后在“设置 → 权限”中授予。", .pt: "Sem ele, apps removidos deixam seus contêineres. Conceda agora ou depois em Ajustes → Permissões."]) }
     static var later: String { L("Later", [.ru: "Позже", .es: "Más tarde", .fr: "Plus tard", .de: "Später", .ja: "後で", .zh: "稍后", .pt: "Depois"]) }
     static var permissions: String { L("Permissions", [.ru: "Разрешения", .es: "Permisos", .fr: "Autorisations", .de: "Berechtigungen", .ja: "アクセス権", .zh: "权限", .pt: "Permissões"]) }
     static var fullDiskAccess: String { L("Full Disk Access", [.ru: "Доступ к диску", .es: "Acceso total al disco", .fr: "Accès complet au disque", .de: "Festplattenvollzugriff", .ja: "フルディスクアクセス", .zh: "完全磁盘访问权限", .pt: "Acesso Total ao Disco"]) }
@@ -45,7 +72,11 @@ enum AppStr {
         }
     }
     static var accessibility: String { L("Accessibility", [.ru: "Универсальный доступ", .es: "Accesibilidad", .fr: "Accessibilité", .de: "Bedienungshilfen", .ja: "アクセシビリティ", .zh: "无障碍", .pt: "Acessibilidade"]) }
-    static var accessibilityWhy: String { L("Needed for Keep Awake to nudge the pointer. Without it that setting does nothing.", [.ru: "Нужен, чтобы «Не спать» двигал указатель. Без него эта настройка не работает.", .es: "Necesario para que Mantener activo mueva el puntero. Sin él ese ajuste no hace nada.", .fr: "Nécessaire pour que Rester éveillé bouge le pointeur. Sans lui, ce réglage ne fait rien.", .de: "Nötig, damit Wach halten den Zeiger bewegt. Ohne die Freigabe bleibt die Einstellung wirkungslos.", .ja: "「スリープ防止」がポインタを動かすために必要です。許可がないとこの設定は機能しません。", .zh: "“保持唤醒”移动指针需要此权限。未授予时该设置不起作用。", .pt: "Necessário para o Manter ativo mover o ponteiro. Sem ele, esse ajuste não faz nada."]) }
+    /// Names both things the grant buys, because one of them is that Helm can
+    /// see every keystroke in every application. The lapsed-grant alert
+    /// (`permissionReason`) already said so; this is the caption a person reads
+    /// *while deciding*, and it described a mouse jiggle.
+    static var accessibilityWhy: String { L("Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works.", [.ru: "Нужен, чтобы «Клавиатура» исправляла раскладку набранного, а «Не спать» двигал указатель. Без него не работает ни то, ни другое.", .es: "Necesario para que Teclado corrija la distribución de lo que escribes y para que Mantener activo mueva el puntero. Sin él no funciona ninguno de los dos.", .fr: "Nécessaire pour que Clavier corrige la disposition de ce que vous tapez et que Rester éveillé bouge le pointeur. Sans lui, aucun des deux ne fonctionne.", .de: "Nötig, damit Tastatur die Belegung des Getippten korrigiert und Wach halten den Zeiger bewegt. Ohne die Freigabe funktioniert beides nicht.", .ja: "「キーボード」が入力したテキストの配列を直し、「スリープ防止」がポインタを動かすために必要です。許可がないとどちらも機能しません。", .zh: "“键盘”纠正你输入内容的布局、“保持唤醒”移动指针都需要此权限。未授予时两者都不起作用。", .pt: "Necessário para o Teclado corrigir o layout do que você digita e para o Manter ativo mover o ponteiro. Sem ele, nenhum dos dois funciona."]) }
     static var diagnostics: String { L("Diagnostics", [.ru: "Диагностика", .es: "Diagnóstico", .fr: "Diagnostic", .de: "Diagnose", .ja: "診断", .zh: "诊断", .pt: "Diagnóstico"]) }
     static var writeLog: String { L("Write a log file", [.ru: "Вести журнал", .es: "Escribir un registro", .fr: "Écrire un journal", .de: "Protokoll schreiben", .ja: "ログを記録", .zh: "记录日志", .pt: "Gravar um registro"]) }
     static var logNoteDev: String { L("Dev builds always log. The file lives in Library/Logs/Helm.", [.ru: "В dev-сборках журнал всегда включён. Файл — в Library/Logs/Helm.", .es: "Las compilaciones Dev siempre registran. El archivo está en Library/Logs/Helm.", .fr: "Les versions Dev journalisent toujours. Le fichier est dans Library/Logs/Helm.", .de: "Dev-Builds protokollieren immer. Die Datei liegt in Library/Logs/Helm.", .ja: "Dev ビルドは常にログを記録します。ファイルは Library/Logs/Helm。", .zh: "开发版始终记录日志。文件位于 Library/Logs/Helm。", .pt: "Builds Dev sempre registram. O arquivo fica em Library/Logs/Helm."]) }

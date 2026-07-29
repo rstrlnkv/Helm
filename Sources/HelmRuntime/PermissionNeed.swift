@@ -29,6 +29,22 @@ public enum PermissionNeed: String, CaseIterable, Sendable {
         }
     }
 
+    /// How a module descriptor spells this grant — `ModulePermission`'s case
+    /// name, which `HelmContract` owns and this target cannot import.
+    ///
+    /// The two enums do not agree: this one says `fullDiskAccess`, the contract
+    /// says `fullDisk`. The one place that compared them did it through
+    /// `rawValue`, which is true of Accessibility by coincidence and could
+    /// never have matched for the disk — so the check would have passed for the
+    /// grant it was written for and silently failed open for the other.
+    /// `FeaturePermissionsTests` pins this string against the real cases.
+    public var declaredName: String {
+        switch self {
+        case .fullDiskAccess: "fullDisk"
+        case .accessibility: "accessibility"
+        }
+    }
+
     public func state(accessibility: PermissionState, fullDisk: PermissionState) -> PermissionState {
         switch self {
         case .accessibility: accessibility
@@ -59,7 +75,10 @@ public enum PermissionNeed: String, CaseIterable, Sendable {
         case .fullDiskAccess:
             "Needed to remove app containers and to read every folder when scanning the disk."
         case .accessibility:
-            "Needed for Keep Awake to nudge the pointer."
+            // Both, not just the pointer: this grant is also what lets the
+            // Keyboard module read every keystroke in every application, and
+            // the sentence a person weighs must say the larger half.
+            "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer."
         }
     }
 }

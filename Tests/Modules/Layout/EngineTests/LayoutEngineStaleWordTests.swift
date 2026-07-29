@@ -154,7 +154,9 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     func testConvertingASelectionLeavesNoWordBehind() async throws {
         let engine = engine()
         tap.type("vjq")
-        tap.send(.navigation)     // ends the word without converting; it is remembered
+        // A chord, not an arrow: a caret move now forgets the word on its own,
+        // and the subject here is what the selection edit leaves behind.
+        tap.send(.chord)          // ends the word without converting; it is remembered
         XCTAssertTrue(typing.performed.isEmpty, "precondition: nothing was converted")
 
         selection.text = "ghbdtn"
@@ -264,7 +266,9 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     func testATokenTooLongToHoldDoesNotLeaveTheWordBeforeItStanding() {
         let engine = engine()
         tap.type("ghbdtn")
-        tap.send(.navigation)           // ends the word without converting; it is remembered
+        // A chord, not an arrow, for the same reason: the subject is the token
+        // the buffer refused, not the boundary that set the word up.
+        tap.send(.chord)                // ends the word without converting; it is remembered
         tap.type(String(repeating: "g", count: TypingBuffer.maxLength + 6))
         tap.send(.space)                // too long to report — and it is not reported
         XCTAssertTrue(typing.performed.isEmpty, "precondition: the long token was refused")

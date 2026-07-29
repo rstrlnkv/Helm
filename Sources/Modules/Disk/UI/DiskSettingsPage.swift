@@ -32,7 +32,7 @@ public struct DiskSettingsPage: View {
             case .scanning: scanningState
             case .result: DiskResultView(dvm: dvm, hovered: $hovered)
             }
-            if !dvm.basket.isEmpty || dvm.banner != nil {
+            if dvm.showsRemovalBar {
                 Divider()
                 basketBar
             }
@@ -86,8 +86,14 @@ public struct DiskSettingsPage: View {
                 .controlSize(.large)
                 .padding(.top, 4)
             }
+            // 20, the same inset the header, the permission note, the scanning
+            // state and the result all use. The centred 744 pt column belongs
+            // to a grouped `Form`, and this page has none: `pageBleeds` is true
+            // precisely because the header must not centre itself over
+            // full-bleed content, so a column here put the cards 32.5 pt right
+            // of the note introducing them at the default window, and 202.5 at
+            // 1400 — measured in `StartScreenColumnTests`.
             .padding(20)
-            .helmSettingsColumn()
         }
     }
 
@@ -125,15 +131,14 @@ public struct DiskSettingsPage: View {
 
     // MARK: - Scanning (only until the first partial snapshot arrives)
 
+    /// Duplicates draws the same event — a walk that has nothing to show yet —
+    /// as a small spinner and a quiet caption, one row away in the sidebar.
+    /// This was a large spinner under a bold headline because the component had
+    /// nowhere to put Stop; it has a slot for it now.
     private var scanningState: some View {
-        VStack(spacing: 14) {
-            Spacer()
-            ProgressView().controlSize(.large)
-            Text(DkStr.scanning).font(.headline)
+        HelmBusyState(DkStr.scanning) {
             Button(DkStr.stop) { dvm.cancel() }
-            Spacer()
         }
-        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Basket

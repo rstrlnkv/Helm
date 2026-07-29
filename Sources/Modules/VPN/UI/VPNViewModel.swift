@@ -9,13 +9,31 @@ import Module_VPN_Engine
     @Published public private(set) var defaultName: String?
 
     private let transport: EngineTransport
+    private var eventsTask: Task<Void, Never>?
+
     public init(transport: EngineTransport) {
         self.transport = transport
         let events = transport.events
-        Task { [weak self] in for await e in events { await self?.handle(e) } }
+        eventsTask = Task { [weak self] in
+            for await e in events {
+                guard let self else { break }
+                self.handle(e)
+            }
+        }
         // Ask the engine to publish current state.
         send("refresh")
     }
+
+    /// Ends the event loop, which unregisters the transport subscriber.
+    deinit { eventsTask?.cancel() }
+
+    /// Re-reads the system's answer.
+    ///
+    /// The engine is asked once in `init` and then only after Helm itself
+    /// connects or disconnects, so a tunnel raised from the macOS menu bar,
+    /// from System Settings, or one that simply dropped, left this showing
+    /// yesterday's state for as long as the app ran.
+    public func refresh() { send("refresh") }
     /// The engine's own declaration — see the note on KeepAwake's.
     private typealias StatePayload = VPNEngine.StatePayload
     private func handle(_ e: EngineEvent) {
