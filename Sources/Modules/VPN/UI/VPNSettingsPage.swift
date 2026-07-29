@@ -13,11 +13,17 @@ public struct VPNSettingsPage: View {
     private let store: NamespacedStore
 
     @State private var rules: [String: VPNAppRule]
+    @State private var notice: VPNNotice
 
     public init(vm: VPNViewModel, store: NamespacedStore) {
         self.vm = vm
         self.store = store
         _rules = State(initialValue: VPNRules.decode(store.string("vpnAppRules", default: "{}")))
+        // From the store rather than from `vm`, which is main-actor isolated
+        // while this initializer is not. Nothing here may reach macOS's
+        // notification centre: `UNUserNotificationCenter.current()` ends a test
+        // run outright, and this page is constructed in one.
+        _notice = State(initialValue: VPNSettings(store: store).notice)
     }
 
     public var body: some View {
@@ -50,6 +56,10 @@ public struct VPNSettingsPage: View {
             Section(VPNStr.perAppAutomation) {
                 appRulesEditor
             }
+
+            Section(VPNStr.noticeSection) {
+                noticePicker
+            }
         }
         .formStyle(.grouped)
         .helmSettingsColumn()
@@ -57,12 +67,53 @@ public struct VPNSettingsPage: View {
         // the app's lifetime, so without these the page showed whatever the
         // system said at launch — this was the only settings page of nine with
         // no `.task` at all.
-        .task { vm.refresh() }
+        .task {
+            vm.refresh()
+            // The mirror of what macOS said is a memory, and the person can
+            // revoke banners in System Settings without Helm hearing a thing.
+            // A read, never a request: opening a settings page must not prompt.
+            await vm.refreshBannerAuthorization()
+        }
         // A VPN connected, disconnected or added while the person was in
         // System Settings. `DynamicStoreNetworkWatch` catches most of that
         // already; coming back to Helm is the moment it costs nothing to be
         // sure, and it is the one route that needs no observer to have fired.
-        .helmOnAppActive { vm.refresh() }
+        //
+        // Banners are re-read here for a sharper reason: the button below sends
+        // the person to the Notifications pane, and coming back is the only
+        // moment Helm can learn what they did there. A read, never a request.
+        .helmOnAppActive {
+            vm.refresh()
+            Task { await vm.refreshBannerAuthorization() }
+        }
+    }
+
+    // MARK: - How a firing is announced
+
+    /// The choice, and the one place in Helm that asks macOS for the
+    /// notification permission — `vm.choose` asks only for the mode that needs
+    /// one, and never at launch.
+    @ViewBuilder
+    private var noticePicker: some View {
+        Picker(VPNStr.noticeLabel, selection: Binding(
+            get: { notice },
+            set: { chosen in
+                notice = chosen
+                Task { await vm.choose(chosen) }
+            })) {
+            ForEach(VPNNotice.allCases, id: \.self) { option in
+                Text(VPNStr.noticeOption(option)).tag(option)
+            }
+        }
+        // Where the switch is, not only in the app's permission list: a mode
+        // macOS refuses looks exactly like one it allows.
+        if notice == .system, vm.bannerAuthorization == .denied {
+            HelmPermissionNote(text: VPNStr.noticeDenied,
+                               openSettings: PermissionCheck.openNotificationSettings)
+        }
+        Text(VPNStr.noticeHint)
+            .font(.caption)
+            .foregroundStyle(HelmText.quiet)
     }
 
     // MARK: - Connections
