@@ -28,20 +28,42 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     private var watcher: FolderWatcher?
     private var sweepTimer: DispatchSourceTimer?
 
+    /// The rule set is read from the timer, from FSEvents and from the
+    /// transport — three threads, none of them `queue`, because the read has to
+    /// answer before the work is dispatched onto it. So the key and the verdict
+    /// carry their own lock rather than borrowing one that is held elsewhere.
+    private let keys: RuleKeyPort
+    private let trustLock = NSLock()
+    private var key: RuleKey?
+    private var refusal: Refusal?
+    /// Whether the one trust-on-first-use adoption is still unspent. See
+    /// `takeTheOneAdoption`.
+    private var adoptable = false
+
     /// Hourly. The events cover anything that happens; this only exists for
     /// conditions that come true by themselves, which is a scale of hours.
     private static let sweepInterval: TimeInterval = 3600
 
     /// `home` is `WatchScope`'s reference point, injected so a test can point a
     /// whole engine at a temporary directory without being exempted from the
-    /// gate the module's safety rests on.
+    /// gate the module's safety rests on. `keys` is injected for the same
+    /// reason and one more: the production key lives in the user's login
+    /// keychain, and a test suite must leave nothing there.
     public init(store: NamespacedStore, transport: LocalTransport = LocalTransport(),
-                home: String = NSHomeDirectory()) {
+                home: String = NSHomeDirectory(),
+                keys: RuleKeyPort = KeychainRuleKey()) {
         self.runner = RuleRunner(home: home)
         self.store = store
+        self.keys = keys
         self.localTransport = transport
         self.transport = transport
         wireTransport()
+        // Now, rather than when rules first appear. The key existing is what
+        // says the migration below has already happened, so it has to start
+        // existing at the first launch of this build — otherwise a machine with
+        // no rules yet stays in migration indefinitely, and rules planted a
+        // month later are still read as rules that predate the seal.
+        _ = resolvedKey()
     }
 
     public func activate() {
@@ -64,8 +86,28 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
 
     public var folders: [WatchedFolder] {
         get {
-            guard let data = store.data("folders"),
-                  let list = try? JSONDecoder().decode([WatchedFolder].self, from: data)
+            // Unverifiable is refused, not assumed. Without a key there is no
+            // way to tell the person's rules from anyone else's, and this
+            // module moves files with nobody watching.
+            guard let resolved = resolvedKey() else { refusing(.noKey); return [] }
+            // Spent here, before the rules are even looked at, so that a machine
+            // whose plist held nothing on the first run of this build cannot be
+            // handed a rule set a month later and read it as one that predates
+            // the seal.
+            let key = RuleKey(material: resolved.material, firstUse: takeTheOneAdoption())
+            guard let data = store.data("folders"), !data.isEmpty else { return [] }
+            switch RuleSeal.verdict(payload: data, mac: storedMAC, key: key) {
+            case .sealed:
+                break
+            case .adopt:
+                store.set(RuleSeal.mac(for: data, key: key.material), for: RuleSeal.storeKey)
+                HelmLog.shared.info("autopilot", "sealed the rules that were already here")
+            case .broken:
+                refusing(.tampered)
+                return []
+            }
+            refusing(nil)
+            guard let list = try? JSONDecoder().decode([WatchedFolder].self, from: data)
             else { return [] }
             // On the way out as well as in. The setter has always brought
             // numbers into range, and a plist somebody edited by hand — or one
@@ -74,6 +116,14 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
             return list.map(\.storable)
         }
         set {
+            // No key, no save. Writing the rules unsealed would be worse than
+            // refusing: the next launch would read them as somebody else's and
+            // throw away work the person had just done.
+            guard let key = resolvedKey() else {
+                HelmLog.shared.error("autopilot",
+                                     "could not seal \(newValue.count) folders, so they were not saved")
+                return
+            }
             // Encoding a rule list can genuinely fail — `JSONEncoder` refuses a
             // non-finite `Double`, which a condition can hold — and returning
             // quietly discarded every folder and every rule while the screen
@@ -84,13 +134,130 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
             // one rule discarded every folder and every rule the person had,
             // silently, while the screen went on showing the new state.
             do {
-                store.set(try JSONEncoder().encode(newValue.map(\.storable)), for: "folders")
+                let data = try JSONEncoder().encode(newValue.map(\.storable))
+                // Rules first, seal second. Interrupted between the two, the
+                // plist holds a rule set whose seal does not fit it — which is
+                // refused, and refusing rules the person did save is the
+                // survivable half of this pair.
+                store.set(data, for: "folders")
+                store.set(RuleSeal.mac(for: data, key: key.material), for: RuleSeal.storeKey)
+                // Whatever was in the file before, these are Helm's now.
+                refusing(nil)
                 refreshWatch()
             } catch {
                 HelmLog.shared.failure("autopilot", "could not save \(newValue.count) folders",
                                        error)
             }
         }
+    }
+
+    private var storedMAC: String? {
+        let mac = store.string(RuleSeal.storeKey, default: "")
+        return mac.isEmpty ? nil : mac
+    }
+
+    // MARK: - Whose rules these are
+
+    /// True while the stored rule set is not being run — it does not match its
+    /// seal, or there is no key to check it against.
+    ///
+    /// **This has no reader yet, and that is a known gap rather than an
+    /// oversight.** A refused rule set makes `folders` empty, so the settings
+    /// page draws its "no folders yet" empty state: a person whose rules were
+    /// tampered with is told they never had any. The log says what happened and
+    /// nothing on screen does.
+    ///
+    /// What closing it takes, precisely:
+    ///
+    /// 1. a `rulesRefused` command in `wireTransport`, beside `history`;
+    /// 2. `@Published var rulesRefused` on `AutopilotViewModel`, read in
+    ///    `load()` — not the existing `banner`, which is a dismissible report
+    ///    of a sweep and this must not be dismissible;
+    /// 3. a card above the folder list in `AutopilotSettingsPage`, with an
+    ///    `ApStr` string in all eight languages saying the rules on disk were
+    ///    not written by Helm and none of them are running.
+    ///
+    /// It is left undone deliberately. The affordance beside that message is a
+    /// real decision — the obvious one, "discard them and start again", throws
+    /// away the person's own rules on the reading of a machine that has just
+    /// been told it cannot trust what it is reading — and the house rule is
+    /// that UI is verified in the running app through the env-gated screenshot
+    /// harness, which lives in a target this work may not touch. A card that
+    /// compiles is not a card that was seen.
+    public var rulesRefused: Bool { trustLock.withLock { refusal != nil } }
+
+    private enum Refusal { case tampered, noKey }
+
+    /// Logged on the way in, once per transition. The rules are read on every
+    /// sweep, every filesystem event and every settings request, and a line per
+    /// read would bury the log in the state it is warning about.
+    private func refusing(_ next: Refusal?) {
+        trustLock.lock()
+        defer { trustLock.unlock() }
+        guard next != refusal else { return }
+        refusal = next
+        switch next {
+        case .tampered:
+            // No path, no folder, no rule name: the log ships to strangers, and
+            // this line is about the rule set as a whole in any case.
+            HelmLog.shared.error("autopilot",
+                                 "the stored rules do not match their seal — something other " +
+                                 "than Helm wrote them; none of them will run")
+        case .noKey:
+            HelmLog.shared.error("autopilot",
+                                 "the key the rules are sealed with is unavailable; " +
+                                 "no rules will run until it can be read")
+        case .none:
+            break
+        }
+    }
+
+    /// The key, resolved once per run and held. The `firstUse` it carries out
+    /// of the keychain is not the one the verdict sees — that one comes from
+    /// `takeTheOneAdoption`, which is stricter.
+    private func resolvedKey() -> RuleKey? {
+        trustLock.lock()
+        defer { trustLock.unlock() }
+        if let key { return key }
+        guard let resolved = keys.key() else { return nil }
+        key = RuleKey(material: resolved.material, firstUse: false)
+        // Armed by the keychain having had to create the item, and by nothing
+        // else. This is the entire migration policy: the key's absence is the
+        // only evidence available that this installation predates sealing, and
+        // it is evidence kept somewhere the plist's author cannot reach.
+        adoptable = resolved.firstUse
+        return key
+    }
+
+    /// **The migration, and the judgement behind it.** People upgrading to this
+    /// build have rules and no seal. Refusing them would delete real
+    /// configuration — a worse defect than the one the seal closes, and one the
+    /// person has no way to diagnose. So the run that *creates* the key accepts
+    /// the rule set it finds and seals it: trust on first use.
+    ///
+    /// The weakness is real and worth stating plainly: an attacker who plants
+    /// rules before the first run of this build has them adopted, and wins. It
+    /// is accepted because it is a race they must win once, on one machine,
+    /// against an update they cannot schedule — against a door that today
+    /// stands open at any hour on every machine.
+    ///
+    /// What is not left open is re-arming it, which would give that back:
+    ///
+    /// - The latch is the keychain item, not a flag in the plist. Writing rules
+    ///   *and deleting `foldersMAC`* is the obvious attack on trust-on-first-use
+    ///   and it buys nothing, because the seal's absence is not what says a
+    ///   migration is due. Deleting the keychain item would say so, and that is
+    ///   an item whose access list names only Helm — another process removing it
+    ///   has to get past the user.
+    /// - One adoption per run of the process, spent at the first read of the
+    ///   rule set whether or not there was one to read. Helm stays running for
+    ///   days; without this, an attacker who wrote rules at any point during the
+    ///   launch that created the key would be adopted too.
+    private func takeTheOneAdoption() -> Bool {
+        trustLock.lock()
+        defer { trustLock.unlock() }
+        defer { adoptable = false }
+        return adoptable
     }
 
     private func refreshWatch() {

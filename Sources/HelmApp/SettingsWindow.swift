@@ -280,6 +280,19 @@ private struct MenuBarSettingsView: View {
     @State private var diskAccess: PermissionState = .granted
     @State private var accessibility: PermissionState = .granted
     private let adHocBuild = PermissionCheck.isAdHocSigned()
+
+    /// The permissions an enabled module actually uses, in table order.
+    private var neededPermissions: [PermissionNeed] {
+        let declared = ModuleRegistry.all
+            .filter { ModuleHost.shared.isEnabled($0) }
+            .flatMap { $0.moduleMetadata.permissions }
+        return PermissionNeed.allCases.filter { need in
+            switch need {
+            case .fullDiskAccess: return declared.contains(.fullDisk)
+            case .accessibility: return declared.contains(.accessibility)
+            }
+        }
+    }
     @State private var loggingOn = LogPolicy.isEnabled(
         version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0",
         override: AppSettings.loggingOverride)
@@ -491,8 +504,13 @@ private struct MenuBarSettingsView: View {
             }
             Section(AppStr.permissions) {
                 // Driven by the table, so a new permission shows up here
-                // without anyone remembering to add a row.
-                ForEach(PermissionNeed.allCases, id: \.self) { need in
+                // without anyone remembering to add a row — but only the ones
+                // an enabled module actually uses. Listing all of them asked
+                // someone who has switched Keyboard and Keep Awake off to grant
+                // Accessibility for nothing, which is how people learn to grant
+                // everything without reading. `PermissionAudit.run()` already
+                // filters this way; the two disagreed.
+                ForEach(neededPermissions, id: \.self) { need in
                     let granted = need.state(accessibility: accessibility,
                                              fullDisk: diskAccess) == .granted
                     permissionRow(AppStr.permissionTitle(need),

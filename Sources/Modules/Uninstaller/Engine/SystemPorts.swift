@@ -34,6 +34,23 @@ public final class WorkspaceAppLister: AppLister {
         NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) != nil
     }
 
+    /// The listing above cannot answer this: `/Applications/Adobe Acrobat
+    /// DC/Adobe Acrobat.app` is one folder past what it reads, and a second
+    /// bundle declaring an id is the only evidence the scan has that the id
+    /// does not belong to the app being removed. LaunchServices knows every
+    /// copy it has ever seen, so `InstalledLocation` keeps the ones that are
+    /// installed rather than merely present.
+    /// LaunchServices rather than the listing, and not both: the listing is
+    /// already read once per scan for `installedBundleIDs()`, and reading it a
+    /// second time to group it by id would double that for an answer
+    /// LaunchServices gives more completely — it registers `/Applications`
+    /// itself, so a bundle there that it has never heard of does not arise.
+    public func installedPaths(forBundleID id: String) -> [String] {
+        NSWorkspace.shared.urlsForApplications(withBundleIdentifier: id)
+            .map(\.path)
+            .filter { InstalledLocation.isInstalled(path: $0, home: home.path) }
+    }
+
     public func installedApps() -> [InstalledApp] {
         let fm = FileManager.default
         var seen = Set<String>()

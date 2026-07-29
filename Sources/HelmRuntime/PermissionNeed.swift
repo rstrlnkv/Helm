@@ -59,7 +59,10 @@ public enum PermissionNeed: String, CaseIterable, Sendable {
         case .fullDiskAccess:
             "Needed to remove app containers and to read every folder when scanning the disk."
         case .accessibility:
-            "Needed for Keep Awake to nudge the pointer."
+            // Both, not just the pointer: this grant is also what lets the
+            // Keyboard module read every keystroke in every application, and
+            // the sentence a person weighs must say the larger half.
+            "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer."
         }
     }
 }
