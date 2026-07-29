@@ -22,9 +22,9 @@ enum NoticePreview {
                         .strokeBorder(Color.accentColor, lineWidth: 1.5)
                         .frame(width: 8, height: 8)
                     if name {
-                        RoundedRectangle(cornerRadius: 1.5)
-                            .fill(Color.primary.opacity(0.55))
-                            .frame(width: 22, height: 4)
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color.primary.opacity(0.70))
+                            .frame(width: 34, height: 6)
                     }
                     Spacer().frame(width: 6)
                 }
