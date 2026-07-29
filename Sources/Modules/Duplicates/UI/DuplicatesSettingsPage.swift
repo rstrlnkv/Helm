@@ -129,6 +129,11 @@ public struct DuplicatesSettingsPage: View {
                     .controlSize(.small)
                     .fixedSize()
                 }
+                if !dvm.groups.isEmpty {
+                    Button(DupStr.basketAllExtras) { dvm.basketAllExtras() }
+                        .controlSize(.small)
+                        .fixedSize()
+                }
             }
         }
         .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
@@ -229,6 +234,8 @@ public struct DuplicatesSettingsPage: View {
             .fixedSize()
             .help(DupStr.basketContents)
             Spacer()
+            Button(DupStr.clearBasket) { dvm.clearBasket() }
+                .controlSize(.small)
             Button(DupStr.moveToTrash) { confirming = true }
                 .buttonStyle(.borderedProminent)
         }
