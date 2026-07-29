@@ -8,10 +8,7 @@ public struct FileSystemLeftovers: LeftoversFilePort {
 
     public init() {}
 
-    public func children(of url: URL) -> [URL] {
-        (try? FileManager.default.contentsOfDirectory(atPath: url.path))?
-            .map { url.appendingPathComponent($0) } ?? []
-    }
+    public func children(of url: URL) -> [URL] { DirectoryListing.children(of: url) }
 
     public func exists(_ path: String) -> Bool {
         FileManager.default.fileExists(atPath: path)

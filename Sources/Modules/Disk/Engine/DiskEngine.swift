@@ -110,11 +110,7 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
             // misleading symptom, and the duplicate finder shipped one
             // (ARCHITECTURE.md § Removal scope).
             let (allowed, refused) = UserFileScope.partition(Array(Set(paths)))
-            let result = HelmTrash.remove(allowed: allowed,
-                                          outOfScope: refused,
-                                          module: "disk")
-            return DiskRemoval(removed: result.removed, refused: result.refused,
-                               freedBytes: result.freedBytes)
+            return HelmTrash.remove(allowed: allowed, outOfScope: refused, module: "disk")
         }
     }
 
@@ -203,19 +199,12 @@ public struct PartialScan: Codable, Equatable, Sendable {
     }
 }
 
-public struct DiskRemoval: Codable, Equatable, Sendable {
-    public let removed: [String]
-    /// With the reason attached. `failed` used to be a list of paths and
-    /// nothing else, so the page could say how many refused but never why —
-    /// which is the only part worth reading when Full Disk Access is the cause.
-    public let refused: [HelmTrash.Refusal]
-    public let freedBytes: Int
-
-    public var failed: [String] { refused.map(\.path) }
-
-    public init(removed: [String], refused: [HelmTrash.Refusal], freedBytes: Int) {
-        self.removed = removed
-        self.refused = refused
-        self.freedBytes = freedBytes
-    }
-}
+/// What the trash command answers with.
+///
+/// This was a field-for-field copy of `HelmTrash.Result` — the same three
+/// stored properties in the same order, the same `failed`, the same
+/// conformances — which the engine built and then unwrapped and re-wrapped for
+/// no gain. The wire is unchanged by the alias and `RemovalWireFormatTests`
+/// says so; `refused` still carries the reason, which is the only part worth
+/// reading when Full Disk Access is the cause.
+public typealias DiskRemoval = HelmTrash.Result

@@ -45,16 +45,6 @@ public enum HelmBytes {
             + " " + unit(at: step, language: language, singular: bytes == 1)
     }
 
-    /// Swaps a trailing English unit for the language's own. Split out so the
-    /// mapping can be checked without a formatter or a locale in the way.
-    public static func localizedUnits(_ formatted: String, language: String) -> String {
-        guard let table = units[language] else { return formatted }
-        for (english, translated) in table where formatted.hasSuffix(" " + english) {
-            return formatted.dropLast(english.count) + translated
-        }
-        return formatted
-    }
-
     // MARK: - Internals
 
     private static let unitOrder = ["bytes", "KB", "MB", "GB", "TB", "PB"]

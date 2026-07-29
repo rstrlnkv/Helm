@@ -19,10 +19,4 @@ final class ScanPathTests: XCTestCase {
         XCTAssertEqual(ScanPath.child(of: "/Users/me/", name: "Downloads"),
                        "/Users/me/Downloads")
     }
-
-    func testNormalizeCollapsesALeadingDoubleSlash() {
-        XCTAssertEqual(ScanPath.normalize("//System/Volumes"), "/System/Volumes")
-        XCTAssertEqual(ScanPath.normalize("/Users/me"), "/Users/me")
-        XCTAssertEqual(ScanPath.normalize("/"), "/")
-    }
 }

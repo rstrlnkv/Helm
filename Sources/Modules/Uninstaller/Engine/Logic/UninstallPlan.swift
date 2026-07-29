@@ -99,11 +99,6 @@ public enum UninstallPlan {
         }
     }
 
-    public static func allLeftoverPaths(_ groups: [UninstallGroup]) -> [String] {
-        var seen: Set<String> = []
-        return groups.flatMap { $0.leftovers.map(\.path) }.filter { seen.insert($0).inserted }
-    }
-
     /// The leftovers the review screen may arrive with already ticked.
     ///
     /// A path found under the app's *bundle id* is that app's, near enough to
