@@ -32,11 +32,11 @@ enum UnStr {
         }
     }
     static var tabApps: String { L("Apps", [.ru: "Приложения", .es: "Apps", .fr: "Apps", .de: "Apps", .ja: "アプリ", .zh: "应用", .pt: "Apps"]) }
-    static var tabOrphans: String { L("Leftovers", [.ru: "Остатки", .es: "Restos", .fr: "Restes", .de: "Reste", .ja: "残存ファイル", .zh: "残留文件", .pt: "Restos"]) }
+    static var tabOrphans: String { L("Leftovers", [.ru: "Остатки", .es: "Restos", .fr: "Restes", .de: "Reste", .ja: "残存物", .zh: "残留", .pt: "Restos"]) }
     static var orphansIntro: String { L("Files left behind by apps you no longer have. Only files named after an app’s bundle id are listed.", [.ru: "Файлы, оставшиеся от удалённых приложений. В списке — только файлы с именем bundle id приложения.", .es: "Archivos dejados por apps que ya no tienes. Solo se listan los nombrados por el bundle id de una app.", .fr: "Fichiers laissés par des apps que vous n’avez plus. Seuls ceux nommés d’après le bundle id d’une app sont listés.", .de: "Dateien von Apps, die du nicht mehr hast. Gelistet werden nur Dateien mit der Bundle-ID einer App.", .ja: "すでにないアプリが残したファイル。アプリの bundle id を名前に持つファイルのみを表示します。", .zh: "已卸载应用留下的文件。仅列出以应用 bundle id 命名的文件。", .pt: "Arquivos deixados por apps que você não tem mais. Só são listados os nomeados pelo bundle id de um app."]) }
     static var scanOrphans: String { L("Scan for leftovers", [.ru: "Найти остатки", .es: "Buscar restos", .fr: "Rechercher les restes", .de: "Nach Resten scannen", .ja: "残存ファイルを検索", .zh: "扫描残留文件", .pt: "Procurar restos"]) }
-    static var scanningOrphans: String { L("Scanning…", [.ru: "Поиск…", .es: "Buscando…", .fr: "Analyse…", .de: "Wird gescannt…", .ja: "検索中…", .zh: "扫描中…", .pt: "Analisando…"]) }
-    static var noOrphans: String { L("No leftovers found.", [.ru: "Остатков не найдено.", .es: "No se encontraron restos.", .fr: "Aucun reste trouvé.", .de: "Keine Reste gefunden.", .ja: "残存ファイルは見つかりませんでした。", .zh: "未发现残留文件。", .pt: "Nenhum resto encontrado."]) }
+    static var scanningOrphans: String { L("Searching…", [.ru: "Ищем…", .es: "Buscando…", .fr: "Recherche…", .de: "Wird gesucht…", .ja: "検索中…", .zh: "正在搜索…", .pt: "Buscando…"]) }
+    static var noOrphans: String { L("No leftovers found.", [.ru: "Остатков не найдено.", .es: "No se encontraron restos.", .fr: "Aucun reste trouvé.", .de: "Keine Reste gefunden.", .ja: "残存物は見つかりませんでした。", .zh: "未找到残留项。", .pt: "Nenhum resto encontrado."]) }
     static var selectAll: String { L("Select all", [.ru: "Выбрать все", .es: "Seleccionar todo", .fr: "Tout sélectionner", .de: "Alle auswählen", .ja: "すべて選択", .zh: "全选", .pt: "Selecionar tudo"]) }
     static var rescan: String { L("Scan again", [.ru: "Сканировать заново", .es: "Escanear de nuevo", .fr: "Réanalyser", .de: "Erneut scannen", .ja: "再スキャン", .zh: "重新扫描", .pt: "Escanear de novo"]) }
     static func selectedSummary(_ n: Int, _ size: String) -> String { L("\(n) selected · \(size)", [.ru: "Выбрано: \(n) · \(size)", .es: "\(n) seleccionados · \(size)", .fr: "\(n) sélectionnés · \(size)", .de: "\(n) ausgewählt · \(size)", .ja: "\(n) 件選択・\(size)", .zh: "已选 \(n) 项 · \(size)", .pt: "\(n) selecionados · \(size)"]) }
@@ -77,11 +77,11 @@ enum UnStr {
     /// Marks a leftover found by the app's display name rather than its
     /// bundle id — a guess, so it is not ticked by default.
     static var matchedByName: String { L("by name", [.ru: "по названию", .es: "por nombre", .fr: "par nom", .de: "nach Namen", .ja: "名前一致", .zh: "按名称", .pt: "por nome"]) }
-    static var showInFinder: String { L("Show", [.ru: "Показать", .es: "Mostrar", .fr: "Afficher", .de: "Zeigen", .ja: "表示", .zh: "显示", .pt: "Mostrar"]) }
+    static var showInFinder: String { L("Show in Finder", [.ru: "Показать в Finder", .es: "Mostrar en el Finder", .fr: "Afficher dans le Finder", .de: "Im Finder zeigen", .ja: "Finderに表示", .zh: "在访达中显示", .pt: "Mostrar no Finder"]) }
     static var openDiskAccess: String { L("Open Full Disk Access…", [.ru: "Открыть «Доступ к диску»…", .es: "Abrir Acceso total al disco…", .fr: "Ouvrir Accès complet au disque…", .de: "Festplattenvollzugriff öffnen…", .ja: "フルディスクアクセスを開く…", .zh: "打开完全磁盘访问权限…", .pt: "Abrir Acesso Total ao Disco…"]) }
     static var openExtensions: String { L("Open Extensions…", [.ru: "Открыть «Расширения»…", .es: "Abrir Extensiones…", .fr: "Ouvrir Extensions…", .de: "Erweiterungen öffnen…", .ja: "機能拡張を開く…", .zh: "打开扩展…", .pt: "Abrir Extensões…"]) }
     static var done: String { L("Done", [.ru: "Готово", .es: "Listo", .fr: "Terminé", .de: "Fertig", .ja: "完了", .zh: "完成", .pt: "Concluído"]) }
-    static var refreshList: String { L("Refresh list", [.ru: "Перечитать список", .es: "Actualizar lista", .fr: "Actualiser la liste", .de: "Liste aktualisieren", .ja: "リストを更新", .zh: "刷新列表", .pt: "Atualizar lista"]) }
+    static var refreshList: String { L("Refresh list", [.ru: "Перечитать список", .es: "Recargar lista", .fr: "Actualiser la liste", .de: "Liste aktualisieren", .ja: "リストを更新", .zh: "刷新列表", .pt: "Recarregar lista"]) }
     /// Nil while the first query is still out: the line reads as a count that
     /// has not arrived rather than a count of zero.
     static func appsCount(_ n: Int?) -> String {

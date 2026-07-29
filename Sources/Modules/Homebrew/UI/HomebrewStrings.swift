@@ -45,7 +45,7 @@ enum HbStr {
 
     static var done: String { L("Done", [.ru: "Готово", .es: "Listo", .fr: "Terminé", .de: "Fertig", .ja: "完了", .zh: "完成", .pt: "Concluído"]) }
     static var failed: String { L("Failed", [.ru: "Ошибка", .es: "Error", .fr: "Échec", .de: "Fehlgeschlagen", .ja: "失敗", .zh: "失败", .pt: "Falhou"]) }
-    static var clear: String { L("Clear", [.ru: "Очистить", .es: "Borrar", .fr: "Effacer", .de: "Löschen", .ja: "クリア", .zh: "清除", .pt: "Limpar"]) }
+    static var clear: String { L("Clear", [.ru: "Очистить", .es: "Borrar", .fr: "Effacer", .de: "Löschen", .ja: "消去", .zh: "清除", .pt: "Limpar"]) }
     /// Not "Actualizar lista" / "Atualizar lista": the Updates screen shows the
     /// toolbar's refresh and a per-row Upgrade button at the same time, and in
     /// Spanish and Portuguese both said *Actualizar* / *Atualizar* — one verb

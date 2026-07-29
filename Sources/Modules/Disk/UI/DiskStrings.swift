@@ -10,7 +10,7 @@ enum DkStr {
     static var summary: String { L("What is taking up space", [.ru: "Что занимает место на диске", .es: "Qué ocupa espacio en el disco", .fr: "Ce qui occupe l’espace disque", .de: "Was den Speicherplatz belegt", .ja: "ディスクを占めているもの", .zh: "磁盘空间被什么占用", .pt: "O que ocupa espaço no disco"]) }
     static var scanFolder: String { L("Scan a folder…", [.ru: "Сканировать папку…", .es: "Analizar una carpeta…", .fr: "Analyser un dossier…", .de: "Ordner scannen…", .ja: "フォルダをスキャン…", .zh: "扫描文件夹…", .pt: "Analisar uma pasta…"]) }
     static var scanning: String { L("Scanning", [.ru: "Сканирование", .es: "Analizando", .fr: "Analyse", .de: "Wird gescannt", .ja: "スキャン中", .zh: "正在扫描", .pt: "Analisando"]) }
-    static var stop: String { L("Stop", [.ru: "Остановить", .es: "Detener", .fr: "Arrêter", .de: "Stoppen", .ja: "停止", .zh: "停止", .pt: "Parar"]) }
+    static var stop: String { L("Stop scan", [.ru: "Остановить", .es: "Detener", .fr: "Arrêter", .de: "Stoppen", .ja: "停止", .zh: "停止", .pt: "Parar"]) }
     static var cancel: String { L("Cancel", [.ru: "Отменить", .es: "Cancelar", .fr: "Annuler", .de: "Abbrechen", .ja: "キャンセル", .zh: "取消", .pt: "Cancelar"]) }
     /// Leaves the scan on screen and goes back to the picker — and forgets the
     /// saved one, which is the only way out of a scan that should not have been

@@ -19,7 +19,7 @@ enum KAStr {
     /// Window title: no ellipsis — that belongs to the menu entry that opens it.
     static var customTimeTitle: String { L("Custom duration", [.ru: "Своё время", .es: "Duración personalizada", .fr: "Durée personnalisée", .de: "Eigene Dauer", .ja: "カスタム時間", .zh: "自定义时长", .pt: "Duração personalizada"]) }
     static var customTime: String { L("Custom…", [.ru: "Своё время…", .es: "Personalizado…", .fr: "Personnalisé…", .de: "Eigene Zeit…", .ja: "カスタム…", .zh: "自定义…", .pt: "Personalizado…"]) }
-    static var done: String { L("Done", [.ru: "Готово", .es: "Listo", .fr: "OK", .de: "Fertig", .ja: "完了", .zh: "完成", .pt: "OK"]) }
+    static var done: String { L("OK", [.ru: "Готово", .es: "Listo", .fr: "OK", .de: "Fertig", .ja: "完了", .zh: "完成", .pt: "OK"]) }
     /// The state of the ⋯ disclosure, read after its name.
     ///
     /// Said in words because there is no other way to say it: SwiftUI's
@@ -80,7 +80,7 @@ enum KAStr {
         case "manual": return L("Manual", [.ru: "Вручную", .es: "Manual", .fr: "Manuel", .de: "Manuell", .ja: "手動", .zh: "手动", .pt: "Manual"])
         case "timer": return L("Timer", [.ru: "Таймер", .es: "Temporizador", .fr: "Minuteur", .de: "Timer", .ja: "タイマー", .zh: "计时器", .pt: "Timer"])
         case "externalDisplay": return L("External display", [.ru: "Внешний дисплей", .es: "Pantalla externa", .fr: "Écran externe", .de: "Externer Bildschirm", .ja: "外部ディスプレイ", .zh: "外接显示器", .pt: "Tela externa"])
-        case "power": return L("Power", [.ru: "Питание", .es: "Corriente", .fr: "Secteur", .de: "Netzstrom", .ja: "電源", .zh: "电源", .pt: "Energia"])
+        case "power": return L("On power", [.ru: "При питании", .es: "Con corriente", .fr: "Sur secteur", .de: "Am Netzstrom", .ja: "電源接続時", .zh: "接通电源时", .pt: "Na tomada"])
         case "app": return L("App", [.ru: "Приложение", .es: "App", .fr: "App", .de: "App", .ja: "アプリ", .zh: "应用", .pt: "App"])
         default: return wire
         }
