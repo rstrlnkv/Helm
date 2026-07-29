@@ -15,6 +15,10 @@ features, PATCH = fixes.
   is switched on, no permission is asked for. Every step's text is the module's
   own name and summary, read from its descriptor, so the tour cannot go stale
   the way a second copy of nine descriptions would.
+  - **The first screen is a showcase.** Helm's mark, and every module's icon
+    arriving in a stagger — the screen answers "what is this made of" before a
+    word is read. One thing moves and the rest stands still; Reduce Motion
+    gets the icons without the movement, the same trade the VPN spin makes.
   - **The permission notice now waits for it.** That alert also fires on a first
     launch, which is the same moment the window wants. Measured on an installed
     build: the audit arrived 82 seconds after launch, when the tour was closed,
@@ -31,12 +35,15 @@ features, PATCH = fixes.
   "which copy survives" is two answers to the only question here that costs
   somebody a file. Beside "Move to Trash" there is now a "Clear", because a
   button that ticks three hundred checkboxes needs one that unticks them.
-  - **Space previews the selected copy**, the way it does in the Finder, with
-    Quick Look in the row's context menu and among its VoiceOver actions —
-    a shortcut with no visible affordance cannot be discovered. Deciding
-    *which* file to show is its own tested rule: a copy that has just been
-    trashed leaves the list while the selection still names it, and a panel
-    opened onto a file that is gone is an empty frame with no explanation.
+  - **Space previews the selected copy**, with Quick Look in the row's context
+    menu and among its VoiceOver actions — a shortcut with no visible
+    affordance cannot be discovered. The preview is a sheet, not the Finder's
+    floating panel: `QLPreviewPanel` is driven through the responder chain and
+    in this accessory app nothing ever took control — on a real build both
+    entry points called it and nothing appeared. Escape closes it, and a copy
+    trashed out from under an open preview closes it too. Deciding *which*
+    file to show is its own tested rule: a selection that has just left the
+    list is nothing to show, not an empty frame.
 - **Reset all settings**, in Settings → Settings. Helm goes back to how it is
   just after installing: every preference forgotten, each module's saved state
   and the diagnostics log in the Trash, and the welcome tour shown again at the
@@ -161,6 +168,15 @@ features, PATCH = fixes.
   else, and the cards are buttons rather than tappable pictures: a view whose
   only interaction is a tap gesture never joins the key-view loop, and Full
   Keyboard Access cannot reach it.
+  - **And then designed, after a measured review.** The middle card's label ran
+    to three lines at the card's own width while its neighbours took one — it
+    is "Name in menu bar" now, the caption above already saying whose name.
+    The name pill in the preview more than doubled, from 6% of the bar's area
+    to legible. The two ten-swatch colour grids collapsed from 5×2 blocks to
+    single rows (68 pt each to 24 pt), and the spin's controls moved into a
+    section of their own — six shapes in one section read as a pile. Its
+    reveal now grows by measured height instead of being mounted by `if`,
+    which is the § Motion rule this page was quietly breaking.
 - **The VPN spin is a choice now, and carries a colour.** It shipped in this
   same release turning in every notice mode, on the argument that movement is
   feedback the app acted rather than a notification. Sound, and overruled:
