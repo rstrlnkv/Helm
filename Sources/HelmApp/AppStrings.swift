@@ -83,7 +83,7 @@ enum AppStr {
     static var logNoteStable: String { L("Turn on before reporting a problem. The file lives in Library/Logs/Helm.", [.ru: "Включите перед тем, как сообщить о проблеме. Файл — в Library/Logs/Helm.", .es: "Actívalo antes de informar de un problema. El archivo está en Library/Logs/Helm.", .fr: "Activez-le avant de signaler un problème. Le fichier est dans Library/Logs/Helm.", .de: "Vor einer Problemmeldung einschalten. Die Datei liegt in Library/Logs/Helm.", .ja: "問題を報告する前にオンにしてください。ファイルは Library/Logs/Helm。", .zh: "报告问题前请开启。文件位于 Library/Logs/Helm。", .pt: "Ative antes de relatar um problema. O arquivo fica em Library/Logs/Helm."]) }
     static var revealLog: String { L("Show in Finder", [.ru: "Показать в Finder", .es: "Mostrar en el Finder", .fr: "Afficher dans le Finder", .de: "Im Finder zeigen", .ja: "Finderに表示", .zh: "在访达中显示", .pt: "Mostrar no Finder"]) }
     static var copyLog: String { L("Copy log", [.ru: "Скопировать журнал", .es: "Copiar registro", .fr: "Copier le journal", .de: "Protokoll kopieren", .ja: "ログをコピー", .zh: "复制日志", .pt: "Copiar registro"]) }
-    static var clearLog: String { L("Clear", [.ru: "Очистить", .es: "Vaciar", .fr: "Vider", .de: "Leeren", .ja: "消去", .zh: "清空", .pt: "Limpar"]) }
+    static var clearLog: String { L("Clear", [.ru: "Очистить", .es: "Borrar", .fr: "Effacer", .de: "Löschen", .ja: "消去", .zh: "清除", .pt: "Limpar"]) }
     static var whatsNewSummary: String { L("Everything that landed in Helm, newest first.", [.ru: "Всё, что появилось в Helm, начиная с последнего.", .es: "Todo lo que llegó a Helm, de lo más reciente a lo más antiguo.", .fr: "Tout ce qui est arrivé dans Helm, du plus récent au plus ancien.", .de: "Alles, was in Helm gelandet ist — Neuestes zuerst.", .ja: "Helm に追加されたすべて（新しい順）。", .zh: "Helm 的全部更新，最新在前。", .pt: "Tudo que chegou ao Helm, do mais recente ao mais antigo."]) }
     static var settingsPaneSummary: String { L("Behaviour, module order, permissions, and diagnostics.", [.ru: "Поведение, порядок модулей, разрешения и диагностика.", .es: "Comportamiento, orden de módulos, permisos y diagnóstico.", .fr: "Comportement, ordre des modules, autorisations et diagnostic.", .de: "Verhalten, Modulreihenfolge, Berechtigungen und Diagnose.", .ja: "動作、モジュールの並び順、アクセス権、診断。", .zh: "行为、模块顺序、权限与诊断。", .pt: "Comportamento, ordem dos módulos, permissões e diagnóstico."]) }
     static var tagline: String { L("Modular tools in your menu bar.", [.ru: "Модульные утилиты в строке меню.", .es: "Herramientas modulares en tu barra de menús.", .fr: "Des outils modulaires dans votre barre des menus.", .de: "Modulare Werkzeuge in deiner Menüleiste.", .ja: "メニューバーのモジュール式ツール。", .zh: "菜单栏里的模块化工具。", .pt: "Ferramentas modulares na sua barra de menus."]) }
@@ -175,7 +175,7 @@ enum AppStr {
         case .files: return L("Files", [.ru: "Файлы", .es: "Archivos", .fr: "Fichiers", .de: "Dateien", .ja: "ファイル", .zh: "文件", .pt: "Arquivos"])
         case .appearance: return L("Appearance", [.ru: "Оформление", .es: "Aspecto", .fr: "Apparence", .de: "Erscheinungsbild", .ja: "外観", .zh: "外观", .pt: "Aparência"])
         case .utilities: return AppStr.utilities
-        case .misc: return L("Other", [.ru: "Прочее", .es: "Otros", .fr: "Autres", .de: "Sonstiges", .ja: "その他", .zh: "其他", .pt: "Outros"])
+        case .misc: return L("Miscellaneous", [.ru: "Прочее", .es: "Otros", .fr: "Autres", .de: "Sonstiges", .ja: "その他", .zh: "其他", .pt: "Outros"])
         }
     }
 
