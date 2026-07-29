@@ -549,7 +549,13 @@ private struct MenuBarSettingsView: View {
                 .controlSize(.small)
             }
             Section(AppStr.resetSection) {
+                // `role: .destructive` alone draws as an ordinary link in a
+                // grouped Form on macOS — the role reaches menus and dialogs,
+                // not form rows. The token, not SwiftUI's `.red`: HelmSignal
+                // exists because literal colours measured under the 4.5:1
+                // floor in light mode.
                 Button(AppStr.resetAll, role: .destructive) { confirmingReset = true }
+                    .foregroundStyle(HelmSignal.danger)
                 Text(AppStr.resetNote)
                     .font(.caption)
                     .foregroundStyle(HelmText.quiet)
