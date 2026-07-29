@@ -60,6 +60,9 @@ enum VPNStr {
     static var noticeSection: String {
         L("When a rule fires", [.ru: "Когда правило срабатывает", .es: "Cuando se ejecuta una regla", .fr: "Quand une règle se déclenche", .de: "Wenn eine Regel greift", .ja: "ルールが動作したとき", .zh: "规则生效时", .pt: "Quando uma regra dispara"])
     }
+    static var spinSection: String {
+        L("Menu-bar spin", [.ru: "Вращение значка", .es: "Giro del icono", .fr: "Rotation de l’icône", .de: "Drehung des Symbols", .ja: "アイコンの回転", .zh: "图标转动", .pt: "Giro do ícone"])
+    }
     static var noticeLabel: String {
         L("Notification style", [.ru: "Стиль уведомления", .es: "Estilo de aviso", .fr: "Style d’avis", .de: "Hinweisstil", .ja: "通知のスタイル", .zh: "提示样式", .pt: "Estilo do aviso"])
     }
@@ -72,7 +75,7 @@ enum VPNStr {
     static func noticeOption(_ notice: VPNNotice) -> String {
         switch notice {
         case .silent: return L("Do not notify", [.ru: "Не уведомлять", .es: "No avisar", .fr: "Ne pas avertir", .de: "Nicht hinweisen", .ja: "通知しない", .zh: "不提示", .pt: "Não avisar"])
-        case .menuBar: return L("Connection name in the menu bar", [.ru: "Название подключения в строке меню", .es: "Nombre de la conexión en la barra de menús", .fr: "Nom de la connexion dans la barre des menus", .de: "Verbindungsname in der Menüleiste", .ja: "接続名をメニューバーに", .zh: "在菜单栏显示连接名称", .pt: "Nome da conexão na barra de menus"])
+        case .menuBar: return L("Name in menu bar", [.ru: "Имя в строке меню", .es: "Nombre en la barra de menús", .fr: "Nom dans la barre des menus", .de: "Name in der Menüleiste", .ja: "名前をメニューバーに", .zh: "名称显示在菜单栏", .pt: "Nome na barra de menus"])
         case .system: return L("Notification", [.ru: "Уведомление", .es: "Notificación", .fr: "Notification", .de: "Mitteilung", .ja: "通知", .zh: "通知", .pt: "Notificação"])
         }
     }
