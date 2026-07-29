@@ -45,7 +45,7 @@ import Module_KeepAwake_Engine
         eventsTask = Task { [weak self] in
             for await event in events {
                 guard let self else { break }
-                await self.handle(event)
+                self.handle(event)
             }
         }
     }

@@ -20,6 +20,10 @@ Each of these is small. Six of them already have a failing test written.
 
 ### 0.1 The events task retains its view model forever — `dropWhenDisabled` frees nothing
 
+**Done** — `ebd38c1`, 2026-07-29. Stream captured outside the loop, `self` re-acquired per event,
+every view model cancels its task on the way out; `LocalTransport.subscriberCount` pins the
+regression as a count that must not grow. ARCHITECTURE.md § Memory updated.
+
 `Sources/HelmContract/LocalTransport.swift:34-46` and six view models
 (`VPNViewModel.swift:14`, `KeepAwakeViewModel.swift:42`, `LayoutViewModel.swift:26`,
 `HomebrewViewModel.swift:48`, `DiskViewModel.swift:108`, `DuplicatesViewModel.swift:35`).
@@ -49,6 +53,10 @@ would make this small.
 
 ### 0.2 `ReleaseDigest.sha256` has the same unfixed hash-loop defect
 
+**Done** — `ebd38c1`, 2026-07-29. Pool moved inside the `while`; the footprint test is a gate now
+instead of a report. ARCHITECTURE.md § Memory and CLAUDE.md both updated (a report-only test is
+not a regression guard).
+
 `Sources/HelmRuntime/ReleaseDigest.swift:54` — `while let chunk = try handle.read(upToCount: 1 << 20)`
 with no `autoreleasepool`, and unlike `DuplicateScanner.hash` it is not even inside
 `concurrentPerform`, so it leaks on a plain serial call. Measured in-repo: **1204 MB of growth
@@ -60,6 +68,9 @@ This is the only place in the codebase currently violating CLAUDE.md's own autor
 `Tests/HelmRuntimeTests/ReleaseDigestFootprintTests.swift`.
 
 ### 0.3 Quit leaves `pmset disablesleep 1` set, system-wide
+
+**Done** — `ebd38c1`, 2026-07-29. `applicationWillTerminate` now calls `deactivate()` on every
+live engine.
 
 `Sources/HelmApp/AppDelegate.swift:84-86` only writes a log line. What disengages clamshell is
 `KeepAwakeEngine.deactivate()` (`:83-100`), and nothing calls it on quit. The recovery exists —
@@ -74,6 +85,9 @@ it is fast) — measure it.
 **Verify:** enable the lid option, start a session, Quit, `pmset -g | grep SleepDisabled` reads 0.
 
 ### 0.4 VPN talks to a dead engine after the module is switched off and on
+
+**Done** — `ebd38c1`, 2026-07-29. `VPNDescriptor` now caches `(vm: ModuleViewModel, model:
+VPNViewModel)` and checks identity, the same shape `KeepAwakeViewModel.shared(vm:)` has.
 
 `Sources/Modules/VPN/UI/VPNDescriptor.swift:15,27-32` — `cachedVM` is returned regardless of the
 host view model it was handed. `ModuleHost.enable` (`ModuleHost.swift:45-53`) builds a new engine
@@ -90,6 +104,9 @@ path that changes behaviour is the one that is broken.
 
 ### 0.5 The keyboard gesture converts a word the caret has already left
 
+**Done** — `ebd38c1`, 2026-07-29. `.navigation` and `.chord` are both asked the same question,
+once, off the event itself; `GestureAfterNavigationTests` is green.
+
 `Sources/Modules/Layout/Engine/LayoutEngine.swift:210`. `handle()` clears `lastCompleted` for
 `.click` and `.focusChange`; `.navigation` falls into `default` and *stores* the word the arrow
 key just ended. Type `ghbdtn`, press ←, tap the bound modifier: six backspaces and `привет` typed
@@ -102,6 +119,10 @@ The undo half of this was fixed (`:196-199`); the convert half was left open, th
 
 ### 0.6 An Autopilot rename rule renames the same file every hour on exFAT
 
+**Done** — `ebd38c1`, 2026-07-29. `RenameShape` added; `RenameIdempotenceTests` (5 cases) green.
+Autopilot has not shipped to a stable release yet, so this fix has no CHANGELOG.md/ChangelogData
+user-facing entry — see the third-pass documentation report for why.
+
 `Sources/Modules/Autopilot/Engine/RuleRunner.swift:114`. Tolerating a stamp that will not stick
 (`:96` names exFAT) leans on "re-runs an idempotent action on an unchanged file" (`:75`) — but
 rename is not idempotent. The only guard is `target.path != url.path`, which catches the bare
@@ -112,6 +133,19 @@ forever. Also hits `{name} {date}`, `{name}{counter}`, `scan-{name}`, `{name}-co
 **Pinned by:** `RenameIdempotenceTests` (5 cases, one through the real runner on a real folder).
 
 ### 0.7 Keep Awake: stacked password prompts, and an orphaned sudoers rule
+
+**Done for the two cases pinned by the test** — `ebd38c1`, 2026-07-29. `sudoersInstallInFlight`
+guards the double prompt; `sudoersInstallFinished(granted:)` calls `releaseSudoersIfUnneeded()`
+once the prompt resolves, closing the "clamshell toggled off while the prompt is up" case.
+
+**Still open, found during verification of this fix and not covered by any test:** the completion
+handler captures `[weak self]`, so if the whole module is switched off (not just the clamshell
+setting) while the prompt is on screen, `deactivate()` tears the engine down, `self` is `nil` by
+the time `installSudoers`'s callback fires, and `sudoersInstallFinished` — the only place that now
+calls `releaseSudoersIfUnneeded()` — never runs. A person who types their password after disabling
+the module is left with a passwordless-sudo rule and no live engine to ever remove it. Needs its
+own fact the same shape as `sudoersInstallInFlight`, held somewhere that survives the engine (or a
+`deactivate()` that waits for or cancels the in-flight prompt before tearing down).
 
 `Sources/Modules/KeepAwake/Engine/KeepAwakeEngine.swift:276` and `:297`. One missing fact causes
 both: "an install is in flight" is state the engine keeps nowhere, and the file the question is
@@ -130,6 +164,8 @@ still be askable again.
 
 ### 0.8 Stop leaves the abandoned scan's folders in the basket, and credits them to the wrong disk
 
+**Done** — `ebd38c1`, 2026-07-29. `StopLeavesNothingBehindTests` (2 cases) green.
+
 `Sources/Modules/Disk/UI/DiskViewModel.swift:217`. `newScan()` and `rescan()` clear the basket;
 `cancel()` — the Stop button — does not, and `newScan()` clears it *after* calling `cancel()`,
 which is where the omission is legible. The basket bar is drawn outside `switch dvm.phase`
@@ -140,6 +176,14 @@ volume's free space.
 **Pinned by:** `StopLeavesNothingBehindTests` (2 cases, including the cross-volume credit).
 
 ### 0.9 The Uninstaller pre-ticks another application's data
+
+**Done** — `ebd38c1`, 2026-07-29. `AppLister.installedPaths(forBundleID:)` added (default
+implementation on the protocol; `WorkspaceAppLister` overrides it) and routed through both the
+sibling check and the exact-candidate ownership check. `NestedSiblingTests` (3 cases) green.
+ARCHITECTURE.md § Removal scope updated — this is a distinct gap from the glob-prefix bug fixed in
+an earlier pass (already in CHANGELOG.md's 0.7.2 section); both are folded into one user-facing
+line in ChangelogData.swift since a user should not read two near-identical bullets for one
+release.
 
 Three reviewers reached this from three directions; it is one seam.
 
@@ -160,6 +204,9 @@ scan), use it for both questions, and route both modules through one installed-a
 
 ### 0.10 Chinese never gets the system folder names
 
+**Done** — `ebd38c1`, 2026-07-29. `SystemFolderNames.systemDirectory` maps `"zh"` → `"zh_CN"`;
+`SystemFolderNamesTests` loops all eight languages now. ARCHITECTURE.md § Localization updated.
+
 `Sources/HelmRuntime/SystemFolderNames.swift:51` builds `<language>.lproj` from
 `AppLanguage.zh.rawValue` = `"zh"`, and the system ships only `zh_CN.lproj`, `zh_TW.lproj` and
 `zh_HK.lproj` — I listed the directory. The table never loads, so the Disk ring shows a Chinese
@@ -175,6 +222,11 @@ regression test has to loop all eight.
 ## Tier 1 — safety and truthfulness
 
 ### 1.1 Autopilot's rule set is attacker-writable, and the module is on by default
+
+**Done** — `ebd38c1`, 2026-07-29. `RuleSeal` (HMAC, keyed from a secret in Helm's own keychain
+item) added; `AutopilotSealTests`, `RuleSealTests` green. `WatchScope` left as wide as designed, per
+the "do not narrow" instruction below. ARCHITECTURE.md § Autopilot updated with the fourth
+guarantee and the corrected (now only-half-true) narrowness argument.
 
 `module.autopilot.folders` is plain data in `~/Library/Preferences/com.helm.app.plist`;
 `AutopilotEngine.folders` (`:65`) decodes it with no authenticity check, and `startSweepTimer`
@@ -192,6 +244,10 @@ the flag behind "new rules ship off" — lives in the file the attacker wrote.
 **Do not** narrow `WatchScope` — those are the folders people actually want sorted.
 
 ### 1.2 The removal gates judge the path as spelled; the trash follows symlinks
+
+**Done** — `ebd38c1`, 2026-07-29. `PathCanonical.resolvingAncestors` added (new file), wired into
+`RemovableScope` and `UserFileScope`; leaf deliberately left unresolved. `ScopeFollowsLinksTests`
+green. ARCHITECTURE.md § Removal scope updated.
 
 `RemovableScope.isRemovable` (`:50`) and `UserFileScope.isRemovable` (`:24`) use
 `standardizedFileURL` / `standardizingPath`, which collapse `..` but do **not** resolve symlinks —
@@ -213,6 +269,11 @@ Checked and clean, so nobody re-checks: `DiskScanner` skips `VLNK` (`:305`), and
 
 ### 1.3 `Redact` does not redact
 
+**Done** — `ebd38c1`, 2026-07-29. Per-install 16-byte salt in a `0600` file beside the log,
+mixed into the FNV-1a loop; `RedactSaltTests` green. ARCHITECTURE.md § Diagnostics log updated.
+The related `LogRoot.swift:31` `~`-rooted scan-root name was **not** addressed by either commit —
+still open.
+
 `Redact.tag` (`:42`) is **unsalted** FNV-1a truncated to 16 bits, over values drawn from small
 public dictionaries: bundle ids, VPN provider names, Homebrew formulae. The reviewer inverted it
 against the 104 bundle ids on this Mac: **104 of 104 tags resolve to exactly one application.**
@@ -229,6 +290,12 @@ Related, smaller: `LogRoot.swift:31` writes a `~`-rooted scan root into the log 
 name "names an employer", and that argument does not stop at the home directory.
 
 ### 1.4 A root shell resolves bare command names through the inherited `PATH`
+
+**Done for `mkdir`/`chown`** — `ebd38c1`, 2026-07-29: both now run by absolute path
+(`/bin/mkdir`, `/usr/sbin/chown`). **Still open:** whether the privileged trampoline itself
+inherits `PATH` was not tested (needs the user's password) — this is a hardening fix, not a
+verified-closed vulnerability. The AppleScript-escaper newline/U+2028/U+2029 gap is also **still
+open** — neither commit touched the shared escaper.
 
 `HomebrewEngine.swift:189` runs `mkdir -p /opt/homebrew && chown -R '<user>':admin /opt/homebrew`
 inside `do shell script … with administrator privileges`. The user name is correctly validated and
@@ -247,6 +314,10 @@ fails the moment leftovers-plan item 4 gives it a third caller. Reject newlines 
 runner rather than escape them; escaping would change what root runs.
 
 ### 1.5 "Freed" is not freed
+
+**Done** — `ebd38c1` (Disk's "Moved to the Trash" + stop-crediting-free-space) and `1734fac`
+(Duplicates, Login Items & Extensions, Uninstaller strings, and the Leftovers-bottom-bar /
+VPN-dial mismatches), 2026-07-29. In CHANGELOG.md and, curated, in ChangelogData.swift.
 
 Six strings and one piece of arithmetic tell the user that disk space came back when the files are
 in `~/.Trash`, on the same volume: `UninstallerStrings.swift:53,54,18`, `LeftoversStrings.swift:49,60`,
@@ -267,6 +338,11 @@ rules the person wrote (`VPNSettingsPage.swift:39`).
 
 ### 1.6 The last screen before deletion does not name what it deletes
 
+**Done** — `1734fac`, 2026-07-29. `UninstallPlan.ReviewRow`/`reviewRows(_:)` added; the bundle is a
+non-tickable first row per group. `ReviewRowsTests` green. Homebrew's mildest-confirmation wording,
+Leftovers' "Delete…" ellipsis and Duplicates' richer confirmation were fixed in the same commit;
+Safari/system-app marking too.
+
 `UninstallerSettingsPage.swift:242-310` — seen on the running app. The review screen shows the app
 name as a section header, "no additional files found", and a bottom bar. Nothing on it says the
 application bundle itself is going, and there is no dialog after it. The group header's icon at
@@ -283,6 +359,10 @@ names up to four paths. And Safari is in the removable list, tickable, at "0 B" 
 `com.apple.` test that would mark it already exists in `LeftoverActions.available`.
 
 ### 1.7 The permission the app asks for is described as less than it is
+
+**Done** — `ebd38c1`, 2026-07-29. `accessibilityWhy` now names both Keyboard and Keep Awake; the
+first-launch "again" wording and the Settings list asking for a permission no enabled module needs
+are both fixed in the same commit (`PermissionAudit.swift`, `PermissionNeed.swift`).
 
 `AppStrings.swift:48` — the standing caption in Settings → Permissions explains Accessibility as
 "needed for Keep Awake to nudge the pointer". That grant is also what the entire Keyboard module's
@@ -304,41 +384,59 @@ empty), and the button labelled "Grant…" opens System Settings and grants noth
   app; on the failure report it discards the only record of what macOS refused and why. This is
   exactly the "a cached view model feeding a list the page throws away is not a cache" note in
   ARCHITECTURE.md, applied to the state that matters most.
+  **Done — `1734fac`, 2026-07-29.** State moved into the (already-cached) view model.
+  `StateOutlivesThePageTests` (behavioural + a source-shape test, so a sixth `@State` can't slip
+  past the behavioural one alone) green.
 - **Duplicates and Leftovers use a page-scoped `@StateObject`** while five other modules use
   `shared(vm:)` — so a sidebar click throws away the most expensive scan in the app (and every
   checkbox in Leftovers). Duplicates has no on-disk cache either; Disk has `ScanStore`. Leaving the
   page during a search also fails to cancel the engine, which keeps hashing with nobody watching.
+  **Done — `1734fac`, 2026-07-29.** Both take `shared(vm:)`. `SharedViewModelTests` (Duplicates,
+  Leftovers) green.
 - **`UninstallerEngine.appSizes()` (`:47-52`) calls `installedApps()` a second time**, re-enumerating
   and re-parsing every `Info.plist` seconds after `listApps()` did. The list is already in the view
   model; pass it in the command payload.
+  **Done — `1734fac`, 2026-07-29.** `AppListEnumeratedOnceTests` green.
 - **Disk's "Stop" throws away a partial tree** the user watched build for up to a minute
   (`DiskViewModel.swift:217-225`). Either keep the partial, marked as partial, or rename the control.
+  **Still open.** `ebd38c1` fixed the basket/wrong-volume-credit half of Stop (item 0.8); this
+  distinct design question — keep the partial tree, marked partial, or rename the control — was not
+  addressed by either commit.
 - **`DiskNode` carries the full path beside the name** — measured over a 1.5 M-node array with
   realistic paths: **92 MB name-only against 437.6 MB name+path**, i.e. ~345 MB, larger than the
   earlier estimate. Store the component and derive the path.
+  **Still open.** Neither commit touched `DiskNode`.
 
 **Answered, so it can be struck off the leftovers plan:** "then check every other loop that reads
 or stats in bulk" — done, and the answer is negative. Every `resourceValues(forKeys:)` loop was
 measured, not assumed: a serial 100 000-file walk grows 0.3 MB without a pool; an 8-way
 `concurrentPerform` over 480 000 files grows 1.8 MB. `URLResourceValues` bridges to small value
 types, not to a retained buffer the way `FileHandle.read`'s `Data` does. **Do not add pools there.**
+Recorded in ARCHITECTURE.md § Memory. `ReleaseDigest.sha256` (item 0.2) turned out to be a second,
+non-parallel instance of the class this question was about — fixed the same way, pool inside the loop.
 
 **Still unexplained:** the +177 MB when the Uninstaller page opens. Both of the leftovers plan's
 hypotheses are now falsified — the per-app icons cost **3.9 MB** for this machine's 39 apps at the
 row's real 28×28 (and load through a virtualized `List`), and bundle sizing costs single-digit MB.
 The next step is the instrumentation that caught the hash loop: `HelmLog.memory` deltas around page
-navigation in a live build.
+navigation in a live build. **Still open** — neither commit measured or explained this.
 
 ---
 
 ## Tier 3 — code that can go, and duplication that has earned its removal
 
+*A separate dead-code/consolidation pass over `Sources/` is running concurrently with this list's
+upkeep (2026-07-29) — check its result before re-deriving any of the "Consolidate" items below.*
+
 Proven dead (the declaration is the only hit; greps re-run by hand):
 
 - `AppStrings.swift:26,27` — `permissionAuditTitle` and `permissionAuditBody`, superseded by
   `permissionsChanged` + `permissionReason(_:)`. Two dead strings times eight languages.
+  **Done — `ebd38c1`, 2026-07-29.**
 - `HelmLog.swift:2` — `import os`, with no `os` API used in the file. The only such import in the package.
+  **Done — `ebd38c1`, 2026-07-29.**
 - `HelmLog.swift:9` — `LogLevel.debug`, never constructed, no wrapper.
+  **Done — `ebd38c1`, 2026-07-29.**
 - `ScanPath.normalize` (`:14`) and `UninstallPlan.allLeftoverPaths` (`:62`) — tests only.
 - `HelmBytes.localizedUnits` (`:50`) — tests only, **but** its 15 asserts are the only direct
   coverage of the per-language unit table. Re-point them at `HelmBytes.string` first, then delete.
@@ -381,6 +479,11 @@ nothing behind but the live `ObsoleteDefaults` migration, which is covered by te
 
 ## Tier 4 — design, accessibility, localization
 
+*Nearly all of this tier is Done — `1734fac`, 2026-07-29 — with per-item notes below. The bundle
+still declares no `CFBundleLocalizations` and ships no `.lproj`, and the Advice popover's
+context-menu-only reveal, the Autopilot dry-run preview's fragmentation and the CJK/Latin spacing
+question are all **still open** — see the notes inline.*
+
 **Contrast, which is correctness rather than taste.** Literal `.orange` / `.green` where
 `HelmSignal` exists, measured in light mode: system `.orange` **2.31:1**, `.green` **2.22:1**,
 against `HelmSignal.warning` **4.54:1** and `.success` **4.58:1**. Worst instance is body text at
@@ -388,6 +491,9 @@ against `HelmSignal.warning` **4.54:1** and `.success` **4.58:1**. Worst instanc
 apart from its own permission rows. `HelmMetricStrip`'s tint blend at 0.30 gives 3.85–3.99:1 — under
 the floor at 16 pt medium; 0.40 gives 4.69–4.97:1. `LeftoversSettingsPage.swift:156` uses SwiftUI's
 `.secondary` (3.95:1) for row names where `HelmText.quiet` (4.62:1) is the token.
+**Done — `1734fac`.** `SignalInkTests`, `MetricTintTests` green; the metric-strip blend's second
+defect (resolved against `NSAppearance.current` rather than the SwiftUI environment, so it
+darkened *dark* mode's own colour half the time) was found while fixing this — see CHANGELOG.md.
 
 **Screens that read as two products.** Disk's start screen sits 32.5 pt off its own header at the
 default window and 202.5 pt off at 1400 — the same 203 the `HelmPageHeader` doc records as the
@@ -396,6 +502,11 @@ reason `bleeds` was invented. Homebrew hand-rolls a second, larger empty state t
 "we are working" — has four different shapes, one of which is a bare spinner with no words while
 250 app icons load. Three sheets have three mastheads. Byte sizes appear in four different
 typefaces across adjacent lists (measured: 27% width difference).
+**Done — `1734fac`** for the header offset (`StartScreenColumnTests`), the Homebrew second empty
+state (guard widened to the shape, not just the component; `HelmBusyState` gained an `actions:`
+slot so Disk's Stop button stopped needing a fourth loading shape) and byte-size typeface
+consistency (`FigureFontTests`). Mastheads and general spacing/hairline/tint consistency also
+addressed across the Uninstaller, Leftovers, Homebrew and About pages.
 
 **Accessibility.** The Disk basket button's label says "Add" even when the item is already
 basketed, so a VoiceOver user is told the opposite of what pressing it does. The Uninstaller's
@@ -404,6 +515,12 @@ popover has a context-menu reveal with no `.accessibilityActions` counterpart, u
 row which documents exactly why one is needed. The Autopilot dry-run preview — the list whose whole
 purpose is making the consequence visible — reads as loose fragments, and its Done button has no
 `.defaultAction`.
+**Done — `1734fac`** for the basket button label, the Uninstaller/Leftovers/Autopilot-preview/VPN
+`combine` sweep, and disclosures announcing expanded/collapsed plus the panel's Utilities row
+regaining its module count (`ResultViewAccessibilityTests`, `NamedControlsTests`). **Still open:**
+the Advice popover's context-menu-only reveal (no `.accessibilityActions` counterpart) and the
+Autopilot dry-run preview's fragmentation/Done-button `.defaultAction` — neither commit touched
+`Modules/Disk/UI` advice popover or `Autopilot/UI/RuleEditor`'s preview list for this.
 
 **Localization.** Beyond 0.10: the bundle declares no `CFBundleLocalizations` and ships no `.lproj`,
 so every AppKit panel (the folder picker's "Open"/"Cancel"/"New Folder" and sidebar, the text-field
@@ -415,6 +532,11 @@ names for "keyboard shortcut" and one of them is slang; Spanish still says "Time
 which is the German word for *day*, in a module whose `unitDays` is "Tage". Counts are interpolated
 as raw `Int`, so a scan of `/` reports `1499308 files in 75,2 s` — the seconds go through a
 formatter and the count does not. A changelog date prints as the literal `2026-07-28`.
+**Done — `1734fac`** for `Quoted`'s French/Spanish/Japanese marks (`QuotedTests`), the Russian
+keyboard-shortcut/genitive-day wording, Spanish "Temporizador", German's tag verb, raw-`Int` counts
+(`HelmBytes.grouped`, `GroupedCountTests`) and the changelog date (`HelmDates.day`,
+`ChangelogDateTests`). **Still open:** the missing `CFBundleLocalizations`/`.lproj` declaration —
+this needs an `Info.plist`/build-script change, and neither commit touched packaging.
 
 Coverage itself is sound: 649 `L()` calls, all seven tables each, zero placeholder mismatches, zero
 English left in a non-English slot, and nothing overflows in German or Russian at the measured widths.

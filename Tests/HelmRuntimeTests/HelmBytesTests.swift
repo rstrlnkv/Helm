@@ -3,12 +3,15 @@ import XCTest
 
 /// Sizes are the numbers users compare between screens, so one formatter has
 /// to produce all of them — and in Russian macOS writes "ГБ", never "GB".
+/// The unit words are asserted through `string`, the only way the app asks for
+/// one. They used to be asserted through a separate suffix-swapping helper that
+/// no screen called, so the table below was covered by a function nobody ran.
 final class HelmBytesTests: XCTestCase {
     func testUnitsAreTranslated() {
-        XCTAssertEqual(HelmBytes.localizedUnits("1,5 GB", language: "ru"), "1,5 ГБ")
-        XCTAssertEqual(HelmBytes.localizedUnits("340 MB", language: "ru"), "340 МБ")
-        XCTAssertEqual(HelmBytes.localizedUnits("12 KB", language: "ru"), "12 КБ")
-        XCTAssertEqual(HelmBytes.localizedUnits("2 TB", language: "ru"), "2 ТБ")
+        XCTAssertEqual(HelmBytes.string(1_500_000_000, language: "ru"), "1,5 ГБ")
+        XCTAssertEqual(HelmBytes.string(340_000_000, language: "ru"), "340 МБ")
+        XCTAssertEqual(HelmBytes.string(12_000, language: "ru"), "12 КБ")
+        XCTAssertEqual(HelmBytes.string(2_000_000_000_000, language: "ru"), "2 ТБ")
     }
 
     /// Each of these is the spelling in `FileSizeFormatting.loctable`, the table
@@ -16,31 +19,32 @@ final class HelmBytesTests: XCTestCase {
     /// lowercase kilo (`ko`) beside an uppercase mega (`Mo`), and German uses
     /// one form for one byte and for many.
     func testByteWordIsTranslated() {
-        XCTAssertEqual(HelmBytes.localizedUnits("512 bytes", language: "ru"), "512 Б")
-        XCTAssertEqual(HelmBytes.localizedUnits("1 byte", language: "ru"), "1 Б")
-        XCTAssertEqual(HelmBytes.localizedUnits("512 bytes", language: "de"), "512 Byte")
-        XCTAssertEqual(HelmBytes.localizedUnits("1 byte", language: "de"), "1 Byte")
+        XCTAssertEqual(HelmBytes.string(512, language: "ru"), "512 Б")
+        XCTAssertEqual(HelmBytes.string(1, language: "ru"), "1 Б")
+        XCTAssertEqual(HelmBytes.string(512, language: "de"), "512 Byte")
+        XCTAssertEqual(HelmBytes.string(1, language: "de"), "1 Byte")
+        XCTAssertEqual(HelmBytes.string(512, language: "zh"), "512 字节")
+        XCTAssertEqual(HelmBytes.string(1, language: "ja"), "1 バイト")
     }
 
     func testFrenchKiloIsLowercaseAndTheRestAreNot() {
-        XCTAssertEqual(HelmBytes.localizedUnits("20 KB", language: "fr"), "20 ko")
-        XCTAssertEqual(HelmBytes.localizedUnits("1,7 MB", language: "fr"), "1,7 Mo")
-        XCTAssertEqual(HelmBytes.localizedUnits("432,95 GB", language: "fr"), "432,95 Go")
+        XCTAssertEqual(HelmBytes.string(20_000, language: "fr"), "20 ko")
+        XCTAssertEqual(HelmBytes.string(1_700_000, language: "fr"), "1,7 Mo")
+        XCTAssertEqual(HelmBytes.string(432_950_000_000, language: "fr"), "432,95 Go")
+        XCTAssertEqual(HelmBytes.string(1, language: "fr"), "1 octet")
+        XCTAssertEqual(HelmBytes.string(512, language: "fr"), "512 octets")
     }
 
-    func testEnglishIsLeftAlone() {
-        XCTAssertEqual(HelmBytes.localizedUnits("1.5 GB", language: "en"), "1.5 GB")
+    /// A language whose table stops at the byte keeps the English abbreviation
+    /// above it — which is what `FileSizeFormatting.loctable` itself does.
+    func testLanguagesWithoutTheirOwnAbbreviationKeepEnglish() {
+        XCTAssertEqual(HelmBytes.string(1_000_000_000, language: "de"), "1 GB")
+        XCTAssertEqual(HelmBytes.string(1_000, language: "ja"), "1 KB")
+        XCTAssertEqual(HelmBytes.string(1_000, language: "zh"), "1 KB")
     }
 
-    /// Only the trailing unit is a unit: a file called "GB" in the number's
-    /// place must not be rewritten.
-    func testOnlyTheTrailingUnitIsReplaced() {
-        XCTAssertEqual(HelmBytes.localizedUnits("1 GB", language: "de"), "1 GB")
-        XCTAssertEqual(HelmBytes.localizedUnits("1 KB", language: "ja"), "1 KB")
-    }
-
-    func testUnknownLanguageIsUnchanged() {
-        XCTAssertEqual(HelmBytes.localizedUnits("7 MB", language: "xx"), "7 MB")
+    func testUnknownLanguageFallsBackToEnglishUnits() {
+        XCTAssertEqual(HelmBytes.string(7_000_000, language: "xx"), "7 MB")
     }
 
     // MARK: - End to end

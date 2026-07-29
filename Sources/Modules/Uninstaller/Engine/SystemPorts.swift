@@ -114,10 +114,7 @@ public struct FMFileSystem: FileSystemPort {
             .map { dir.appendingPathComponent($0) }
     }
 
-    public func children(of url: URL) -> [URL] {
-        (try? FileManager.default.contentsOfDirectory(atPath: url.path))?
-            .map { url.appendingPathComponent($0) } ?? []
-    }
+    public func children(of url: URL) -> [URL] { DirectoryListing.children(of: url) }
 }
 
 // MARK: - Trash

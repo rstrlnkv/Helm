@@ -62,16 +62,16 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
     /// whether it went down or up comes from its own device-dependent bit,
     /// because `.maskCommand` cannot tell the two Command keys apart and would
     /// read a release as a press whenever the other one is held.
-    /// Device-dependent flag bits for every modifier key, both sides. The
-    /// bindable right-side keys carry theirs in `TapKey`; the left-side bits
-    /// live here because a left modifier must still *spoil* a tap — without
-    /// them a left press arrived as a release, was never entered into the
-    /// chord set, and left-⇧ right-⌘ fired the gesture mid-shortcut.
-    private static let modifierMasks: [Int64: UInt64] = [
-        54: 0x000010, 61: 0x000040, 62: 0x002000, 60: 0x000004,   // right ⌘ ⌥ ⌃ ⇧
-        55: 0x000008, 58: 0x000020, 59: 0x000001, 56: 0x000002,   // left  ⌘ ⌥ ⌃ ⇧
-        63: 0x800000,                                             // 🌐︎
-    ]
+    /// Device-dependent flag bits for every modifier key, both sides, from
+    /// `TapKey` — which is where the codes and the bits are defined.
+    ///
+    /// Every key is in it, not only the bindable one: a modifier on the other
+    /// side must still *spoil* a tap, and without it a left press arrived as a
+    /// release, was never entered into the chord set, and left-⇧ right-⌘ fired
+    /// the gesture mid-shortcut. This was a second copy of those nine
+    /// constants, and its comment had drifted into describing a table holding
+    /// only the left ones.
+    private static let modifierMasks = TapKey.masksByKeyCode
 
     private func deliverModifier(_ event: CGEvent) {
         guard let handler = modifierHandler else { return }
@@ -199,21 +199,35 @@ public struct SynthesisTyping: TypingPort {
 // MARK: - Input sources
 
 /// One place that reads the Text Input Sources list, because every other port
-/// here needs the same lookup.
-enum InputSources {
-    static func all() -> [TISInputSource] {
+/// here needs the same lookup — and so does the module's own menu-bar
+/// indicator, which is why this is public rather than internal. The indicator
+/// had grown its own copy of the list call, the layout filter and
+/// `string(_:_:)`, which is the drift this type exists to prevent.
+public enum InputSources {
+    public static func all() -> [TISInputSource] {
         (TISCreateInputSourceList(nil, false)?.takeRetainedValue() as? [TISInputSource]) ?? []
     }
 
-    static func identifier(of source: TISInputSource) -> String? {
+    /// Keyboard layouts only: an input method (Chinese, Japanese) composes
+    /// rather than maps, and has no key table to translate through or to name a
+    /// language badge from.
+    public static func keyboardLayouts() -> [TISInputSource] {
+        all().filter { TISGetInputSourceProperty($0, kTISPropertyUnicodeKeyLayoutData) != nil }
+    }
+
+    public static func identifier(of source: TISInputSource) -> String? {
         string(source, kTISPropertyInputSourceID)
     }
 
-    static func source(id: String) -> TISInputSource? {
+    public static func source(id: String) -> TISInputSource? {
         all().first { identifier(of: $0) == id }
     }
 
-    static func string(_ source: TISInputSource, _ key: CFString!) -> String? {
+    public static func current() -> TISInputSource? {
+        TISCopyCurrentKeyboardInputSource()?.takeRetainedValue()
+    }
+
+    public static func string(_ source: TISInputSource, _ key: CFString!) -> String? {
         guard let pointer = TISGetInputSourceProperty(source, key) else { return nil }
         return (Unmanaged<CFString>.fromOpaque(pointer).takeUnretainedValue() as String)
     }
@@ -223,17 +237,11 @@ public struct TISLayoutSources: LayoutSourcePort {
     public init() {}
 
     public func installed() -> [String] {
-        // Keyboard layouts only: an input method (Chinese, Japanese) composes
-        // rather than maps, and has no key table to translate through.
-        InputSources.all()
-            .filter { TISGetInputSourceProperty($0, kTISPropertyUnicodeKeyLayoutData) != nil }
-            .compactMap(InputSources.identifier(of:))
+        InputSources.keyboardLayouts().compactMap(InputSources.identifier(of:))
     }
 
     public func current() -> String? {
-        guard let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue()
-        else { return nil }
-        return InputSources.identifier(of: source)
+        InputSources.current().flatMap(InputSources.identifier(of:))
     }
 
     public func select(_ sourceID: String) {

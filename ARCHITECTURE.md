@@ -217,6 +217,27 @@ name or path through `Redact` first. `HelmFailure.describe` strips the home
 path from every string it emits, including messages, which carry no key for
 `Redact.path` to find them by.
 
+**A tag has to be salted, or it isn't redaction — it's an index.** `Redact.tag`
+hashed a name with no salt, over values drawn from small public dictionaries
+(bundle ids, VPN provider names, Homebrew formulae): inverting it against the
+104 bundle ids installed on one Mac identified **every one of them**, which is
+the opposite of what this section claimed the function did. The salt is now
+random per install, 16 bytes in a `0600` file beside the log rather than the
+keychain — the threat this guards against is someone reading a log the user
+handed them, not someone with the user's disk, and a keychain prompt for a
+logging detail is the wrong trade for that. Salting does not cost the property
+FNV-1a was chosen for: the salt is stable per install, so a line from yesterday
+still compares equal to a line from today, while a tag pasted into a bug report
+means nothing on anyone else's Mac.
+
+**A latch belongs to the file it guards, not to whichever process asks.** The
+one-time purge that discards logs written before redaction existed used to
+record that it had run in `UserDefaults` — namespaced per *process*, not per log
+file. Any other binary linking `HelmRuntime` (a test target, a script) therefore
+ran the purge again against the one real `helm.log` and wiped it, with nothing
+in the (now-empty) file to say why — this cost the third review pass a dev
+build's own triage evidence mid-session. The latch is a file beside the log now.
+
 The release process depends on this file: dev builds are triaged against it,
 and a build graduates to the beta channel only at zero known problems
 (VERSIONING.md).
@@ -370,8 +391,15 @@ things in (`~/Library`, `/Library/LaunchAgents`, `/Applications`, …), minus
 `~/Documents`, a home directory, a volume root — is refused whether or not
 anyone thought to name it. A `.app` bundle is removable wherever it lives
 (people keep apps in `~/Downloads`, on external volumes, in Setapp's folder) as
-long as it is not a top-level directory. Paths are `standardizedFileURL`-resolved
-first: `..` is invisible to a prefix test and not to the filesystem.
+long as it is not a top-level directory. Paths go through `PathCanonical`
+first, which resolves every **symlinked ancestor** in the path and deliberately
+leaves the leaf alone: `standardizedFileURL`/`standardizingPath` collapse `..`
+but do not resolve symlinks, while `trashItem` follows them, so a link planted
+in an allowed root (the leftovers scan enumerates four `~/Library` plug-in
+directories that do not exist on a stock install, and can therefore be created
+by any process as a link) let the gate approve one path and the Trash act on
+another. The leaf is left unresolved on purpose — trashing a stale alias has to
+remove the alias, not chase it to whatever it points at.
 
 There are **three** gates and they answer different questions. `RemovableScope`
 asks what belongs to an *application*; `UserFileScope` (also HelmRuntime, and
@@ -409,24 +437,51 @@ glob matches a *different* app whose id merely starts the same way —
 namespacing. Worse, a match on the id rather than the display name is the kind
 `UninstallPlan.defaultSelection` trusts enough to pre-tick, so a neighbour's
 live container arrived on the review screen already selected. Glob results are
-now filtered against the installed set the way `scanOrphansSync` always filtered
-its candidates. **A path that a pattern produced is a candidate, not a finding:
-something has to say it belongs to the app being removed.**
+filtered against the installed set two ways at once — `AppLister.isKnownToSystem`
+asks LaunchServices, and `installedPaths(forBundleID:)` asks the same directory
+listing `scanOrphansSync` reads — because a directory listing alone misses an app
+nested one folder down (`/Applications/Adobe Acrobat DC/…`), which LaunchServices
+still knows about. And the filter is not only for globs: the *exact* candidates
+(`Containers/<id>`, `Preferences/<id>.plist`, `HTTPStorages`, `WebKit`, `Cookies`,
+`Saved Application State`) went through no ownership check at all until they were
+routed through the same filter, because their hazard is a different one — not a
+prefix match on a neighbour's id, but an app that simply declares somebody else's
+bundle id outright in its own `Info.plist`. **A path that a pattern — or an
+id — produced is a candidate, not a finding: something has to say it belongs to
+the app being removed.**
 
 ## Autopilot — read before touching
 
 The autopilot module acts on somebody's files without being asked each time, so its
-three guarantees are load-bearing rather than nice to have.
+four guarantees are load-bearing rather than nice to have.
 
 **A rule may only reach the user's own working files.** Neither shared gate is
 right for this: `RemovableScope` is about applications, and `UserFileScope` is a
 blocklist that says yes to `~/Library/Messages`, `~/Library/LaunchAgents` and
-another account's home. Helm holds Full Disk Access and these rules are JSON in
-a plist any process running as the user can write, so `WatchScope` — the
+another account's home. Helm holds Full Disk Access, so `WatchScope` — the
 module's own gate — is positional and narrow: inside the home directory, never
 inside `~/Library`, or inside a volume under `/Volumes`. It resolves symlinks
 first, because a destination chosen through the panel can be replaced by a link
 afterwards and the question is where a path *leads*.
+
+Narrowness used to be argued entirely from the rules living in a plist any
+process running as the user can write — and that argument is now only half true.
+A rule set must be **Helm's own** to be honoured at all: `AutopilotEngine.folders`
+decoded the plist with no authenticity check, re-read on every hourly sweep, so
+any unsandboxed process could plant a move-or-trash rule and borrow Helm's Full
+Disk Access with no TCC grant of its own — on a module that is on by default.
+Rules now carry an HMAC keyed from a secret Helm creates once in its own login
+keychain item (the `SecItemAdd` access-list treatment `KeychainCredentials.helmCacheWrite`
+already uses); a rule set whose seal does not match decodes to `[]`. What says a
+migration is due is the absence of the **keychain item**, not the absence of the
+seal — a seal is data sitting beside the rules it signs, so an attacker who can
+write the file can delete the seal too, and treating a missing seal as
+"pre-upgrade, trust it" would undo the whole guarantee. Only a missing *key*
+means this Mac has never signed a rule set before. `WatchScope`'s remaining job,
+now that authorship is settled elsewhere, is to bound what even a rule Helm
+itself wrote and sealed may reach — the folder a rule watches is still user
+input relayed through the editor, and a destination can be swapped for a symlink
+after the picker closes.
 
 **A rule must not act on the same file twice.** A rule that sorts a file into a
 subfolder of the folder it watches sees it again on the next sweep. `RuleStamp`
@@ -532,6 +587,17 @@ formatter built with no locale answers in the *system's* language, which on a
 Mac outside Helm's eight means an English UI with Italian dates spliced into it.
 A formatter also must not be a `static let`: the app's language can change while
 it runs, so they are cached per language, never once.
+
+**A language code is not always the directory macOS files it under.**
+`SystemFolderNames` built `<language>.lproj` from `AppLanguage`'s raw value,
+which happens to equal the lproj name for seven of Helm's eight languages — and
+is wrong for the eighth: macOS ships `zh_CN.lproj`, `zh_TW.lproj` and
+`zh_HK.lproj`, never a plain `zh.lproj`. Loading a table that isn't there isn't
+an error, it's an empty dictionary, so this failed silently: a Chinese user's
+Disk ring read `/Applications` as literal "Applications" where Finder writes
+应用程序. Helm's `zh` is Simplified, so the fixed mapping reads `zh_CN`. Any table
+keyed by "the language" has to be checked against what the *system* calls each
+one, not assumed equal to Helm's own short code.
 
 **Terminology is looked up, not remembered.** The units, the permission panes
 and the module names all come from the tables macOS itself ships —
@@ -728,9 +794,45 @@ sidebar visit and losing a minute-long scan — or paying four seconds to measur
 view model and nothing cleared it, so a scan tree stayed reachable after the
 module was switched off. `ModuleHost.disable` posts `.helmModuleDisabled`;
 `ModuleUICache.dropWhenDisabled` (one observer per module id, written once rather
-than in each view model) drops the cached instance, and the reclaim above hands
-the pages back. The on-disk scan cache still holds the result, so this drops the
-copy in memory, not the answer.
+than in each view model) drops the cached instance and hands the pages back. The
+on-disk scan cache still holds the result, so this drops the copy in memory, not
+the answer.
+
+**That was true of the drop and false of the free, until the retain underneath
+it was found.** `dropWhenDisabled` shipped in dev.29 to fix a 48 GB leak, and it
+did release the cached view model's own strong reference — but six view models
+(VPN, KeepAwake, Layout, Homebrew, Disk, Duplicates) each start their event loop
+as `Task { [weak self] in await self?.observeEvents() }`, and that weak capture
+resolves **once**, on entry. `observeEvents()` is then an ordinary instance
+method holding a strong `self` for as long as it runs, and `LocalTransport`'s
+`for await` never returns, because the transport never calls `.finish()`. So the
+task itself held the object for the life of the app no matter what
+`dropWhenDisabled` released — dropping the cache's reference removed one of two
+owners and freed nothing. `DuplicatesViewModel`'s `deinit { eventsTask?.cancel()
+}` had been unreachable code for the identical reason: `deinit` cannot run while
+the object retains itself. The fix is to capture the stream outside the loop and
+re-acquire `self` per event, so a cancelled task actually lets the weak capture
+matter, and to cancel every subscriber task on the way out rather than relying on
+`deinit`. `LocalTransport.subscriberCount` is what makes the regression guard a
+**count that must not grow** rather than a memory figure a test can pass by
+luck. The general lesson: a `Task { [weak self] in await self?.method() }` is
+only as weak as the moment it starts — everything `method()` touches afterward is
+held as strongly as any other call on the stack.
+
+**"Check every other loop that reads or stats in bulk" is answered, and the
+answer is negative for `resourceValues`.** Every `resourceValues(forKeys:)` loop
+in the codebase was measured rather than assumed: a serial 100 000-file walk
+grows 0.3 MB without a pool, and an 8-way `concurrentPerform` over 480 000 files
+grows 1.8 MB. `URLResourceValues` bridges to small value types, not to a retained
+buffer the way `FileHandle.read`'s `Data` does — **do not add pools there.** The
+class that does need one is `FileHandle.read`, and `ReleaseDigest.sha256` (the
+digest check run on every silent update check) was a second, simpler instance of
+the exact defect the duplicate scanner had: a plain serial `while let chunk =
+try handle.read(upToCount:)`, not even inside `concurrentPerform`, so the pool
+matters independent of parallelism. Measured: 1204 MB of growth hashing a
+1200 MB file, 0 MB with the pool inside the `while`. Its footprint test used to
+only print the number for a person to read — a test that logs a measurement and
+asserts nothing cannot fail, and this one hadn't. It is a gate now.
 
 **The instrument.** `HelmLog.memory(_:)` logs the process footprint under the
 `memory` category as a **delta against the last reading for the same label** —

@@ -199,7 +199,7 @@ public struct LeftoversSettingsPage: View {
             // their own, being things to operate rather than to read.
             .accessibilityElement(children: .combine)
             Spacer()
-            if item.actions.contains(.turnOff) {
+            if item.canToggle {
                 // Not everything here is rubbish to delete — most of it is
                 // working software the user may simply want quiet.
                 Button(item.disabled ? LfStr.enable : LfStr.disable) {

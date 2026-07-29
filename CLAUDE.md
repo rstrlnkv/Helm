@@ -48,12 +48,29 @@ xattr -dr com.apple.quarantine /Applications/Helm.app && open /Applications/Helm
 - **A release without its digest does not install.** The notes must carry the
   `sha256 <asset> <hex>` line `make-zip.sh` prints, or the updater opens the
   release page instead (VERSIONING.md).
-- **A loop that reads files or asks Foundation for resource values in bulk gets
-  an `autoreleasepool` inside it** — not around it. Without one the footprint
-  tracks the volume read, not what is kept: 1.8 GB of streamed reads ended at
-  1760 MB, and a user reached 48 GB on an ordinary folder. Heavy work ends with
+- **A loop that reads file contents gets an `autoreleasepool` inside it** — not
+  around it, and not around `resourceValues` loops either (measured negative,
+  ARCHITECTURE.md § Memory). Without one the footprint tracks the volume read,
+  not what is kept: 1.8 GB of streamed reads ended at 1760 MB, and a user
+  reached 48 GB on an ordinary folder. Heavy work ends with
   `MemoryReclaim.afterHeavyWork`, because freeing returns memory to malloc and
   not to macOS. ARCHITECTURE.md § Memory has the measurements.
+- **`Task { [weak self] in await self?.method() }` only weakly captures `self`
+  at the top.** Once `method()` starts it holds `self` strongly for as long as
+  it runs, so if `method()` never returns (an event `for await` with no
+  `.finish()`), the task holds the object for the life of the app regardless of
+  who drops their own reference to it. Cancel the task itself from outside, and
+  cancel it in the class's own teardown — not only in `deinit`, which cannot run
+  while the task still retains `self`. This shipped in six view models before it
+  was caught; ARCHITECTURE.md § Memory has the story.
+- **A test that only prints a measurement is not a regression guard.**
+  `ReleaseDigestFootprintTests` logged a memory figure for a person to read and
+  asserted nothing, so a real leak sat there until someone read the number by
+  hand. If a test exists to catch a regression, it has to fail on one.
+- **A test parameterized by an explicit language catches more than one that
+  reads `AppLanguage.current`.** The suite runs in whatever language this
+  machine is set to (English), so a test gating its own assertion on `.current`
+  never exercises the language it was written to check.
 - Pills are `HelmBadge`, cards are `.helmCard()` — one of each, no local variants.
 - Every user-visible string goes through `L()` with all eight languages, and
   everything the language shapes goes through `HelmUI`: `Bytes`, `Decimal`,

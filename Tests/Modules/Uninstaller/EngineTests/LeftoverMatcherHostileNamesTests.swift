@@ -2,8 +2,8 @@ import XCTest
 @testable import Module_Uninstaller_Engine
 
 /// `LeftoverMatcher` builds every candidate by pasting a bundle id or a display
-/// name onto a shared `~/Library` folder, and the review screen pre-ticks
-/// everything the scan returns (`selectedLeftovers = Set(allLeftoverPaths(...))`).
+/// name onto a shared `~/Library` folder, and the review screen arrives with
+/// what `UninstallPlan.defaultSelection` returns already ticked.
 /// So a candidate that resolves to the shared folder itself, or walks out of it,
 /// is one click away from the Trash. These pin the two invariants that keep that
 /// from happening: a candidate is always strictly *inside* its kind folder, and

@@ -147,7 +147,7 @@ import Module_Disk_Engine
         // given — and the only way out was a back arrow that did not look like
         // one. Folders get scanned and then deleted; volumes do not.
         guard FileManager.default.fileExists(atPath: cached.result.root.path) else {
-            await store.clear()
+            store.clear()
             return
         }
         result = cached.result

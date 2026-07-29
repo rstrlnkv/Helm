@@ -47,8 +47,7 @@ enum DkStr {
     /// the button that started it (Finder's `AL13`), in the past tense.
     static func movedToTrash(_ size: String) -> String { L("Moved to the Trash — \(size)", [.ru: "Перемещено в Корзину — \(size)", .es: "Trasladado a la papelera — \(size)", .fr: "Placé dans la corbeille — \(size)", .de: "In den Papierkorb gelegt — \(size)", .ja: "ゴミ箱に入れました — \(size)", .zh: "已移到废纸篓 — \(size)", .pt: "Movido para o Lixo — \(size)"]) }
     static func confirmTrash(_ count: Int, _ size: String) -> String {
-        let items = Plural.items(count, language: AppLanguage.current.rawValue)
-        return L("Move \(items) (\(size)) to the Trash?", [.ru: "Переместить \(items) (\(size)) в Корзину?", .es: "¿Trasladar \(items) (\(size)) a la papelera?", .fr: "Déplacer \(items) (\(size)) vers la corbeille ?", .de: "\(items) (\(size)) in den Papierkorb legen?", .ja: "\(items)（\(size)）をゴミ箱に入れますか？", .zh: "将\(items)（\(size)）移到废纸篓？", .pt: "Mover \(items) (\(size)) para o Lixo?"])
+        HelmConfirm.trash(Plural.items(count, language: AppLanguage.current.rawValue), size)
     }
     static func measured(_ ago: String) -> String { L("Measured \(ago)", [.ru: "Измерено \(ago)", .es: "Medido \(ago)", .fr: "Mesuré \(ago)", .de: "Gemessen \(ago)", .ja: "計測 \(ago)", .zh: "测量于 \(ago)", .pt: "Medido \(ago)"]) }
     static var advice: String { L("Recommendations", [.ru: "Рекомендации", .es: "Recomendaciones", .fr: "Recommandations", .de: "Empfehlungen", .ja: "おすすめ", .zh: "建议", .pt: "Recomendações"]) }

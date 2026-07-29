@@ -717,6 +717,207 @@ features, PATCH = fixes.
   carriage return, U+2028/9, the bidi overrides that reverse everything after
   them in a pasted bug report — are neutralised along with the line breaks.
 
+### Fixed
+- **`ModuleUICache.dropWhenDisabled` — shipped in dev.29 to fix a 48 GB leak —
+  dropped the cache and freed nothing.** Six view models (VPN, Keep Awake,
+  Layout, Homebrew, Disk, Duplicates) start their event loop as `Task { [weak
+  self] in await self?.observeEvents() }`; the weak capture resolves once, on
+  entry, and `observeEvents()` then holds a strong `self` for a call that never
+  returns, because `LocalTransport`'s stream never finishes. Dropping the cache
+  removed one of two owners. `DuplicatesViewModel`'s `deinit {
+  eventsTask?.cancel() }` had been unreachable code for the identical reason:
+  deinit cannot run while the object retains itself. The stream is captured
+  outside the loop and `self` re-acquired per event now, so a cancelled task
+  actually lets go; `LocalTransport.subscriberCount` turns the regression guard
+  into a count that must not grow rather than a memory figure a test can pass by
+  luck.
+- **`ReleaseDigest.sha256`, which runs on every silent update check, had the
+  same unfixed hash-loop leak the duplicate scanner used to.** A plain serial
+  `while let chunk = try handle.read(upToCount:)` with no pool, not even inside
+  `concurrentPerform`: 1204 MB of growth hashing a 1200 MB file, 0 MB with the
+  pool inside the loop. Its footprint test used to only print the number; it
+  fails on a regression now.
+- **Quitting Helm — or deleting it — could leave the Mac unable to sleep.**
+  Keep Awake's clamshell option runs `sudo pmset disablesleep 1`, which is
+  system state that outlives the process; nothing released it on quit, so the
+  only recovery was the *next* launch of Helm. Terminating now deactivates every
+  live module, the same route that releases the IOKit assertions, the event tap
+  and the observers when a module is switched off.
+- **Turning VPN off and back on could leave the tile and the settings page
+  talking to a transport that no longer existed** — frozen, silently, answering
+  nothing, until Helm was relaunched. The cached view model wasn't checked
+  against the engine behind it, which is the exact defect
+  `DiskViewModel.shared(vm:)` exists to prevent, missed here because an earlier
+  fix cited VPN as the module to copy.
+- **The Keyboard gesture could still convert a word after the caret had moved
+  on.** An earlier fix stopped it from *undoing* in the wrong place; the
+  *convert* path had the identical gap, because a bare navigation key fell into
+  a `default` branch instead of clearing the remembered word. Both directions
+  now ask the same question, once, off the event itself.
+- **An Autopilot rename rule could rename the same file every sweep, on a
+  volume that can't hold the "already done" mark.** The only guard was
+  `target.path != url.path`, which catches a bare `{name}` pattern and nothing
+  built around it — `{date}-{name}` fed each run's own output back into
+  `{name}`, producing a new name every hour, a runaway filename length, and
+  eventually a `moveItem` that throws forever. `RenameShape` now asks whether
+  the current name is one the pattern could already have produced.
+- **Keep Awake could ask for the admin password twice for one decision, and
+  could leave a passwordless-sudo rule behind for a feature that was off.** Both
+  traced to one missing fact — "an install is in flight" was state the engine
+  kept nowhere, so any settings change while the first prompt was up launched a
+  second one, and turning clamshell off *during* the prompt left
+  `releaseSudoersIfUnneeded` looking for a file that didn't exist yet.
+- **Stop left the abandoned scan's folders sitting in the basket, over the
+  volume picker, above a Trash button** — and emptying the basket credited the
+  freed bytes to whichever volume the picker happened to be showing.
+- **Uninstalling one app could still pre-tick another app's data.** An app kept
+  one folder down in a vendor directory (`/Applications/Adobe Acrobat DC/…`) was
+  invisible to the sibling check, which only reads top-level `*.app` entries —
+  so its containers, caches and LaunchAgent were claimed and offered already
+  ticked. Separately, the *exact* leftover candidates (`Containers/<id>`,
+  `Preferences/<id>.plist`, `HTTPStorages`, `WebKit`, `Cookies`, `Saved
+  Application State`) went through no ownership check at all, so an app
+  declaring somebody else's bundle id outright could claim that app's data too.
+- **Chinese never got the system's own folder names.** The lproj directory Helm
+  reads was built from the language code, which happens to equal the directory
+  name for seven of eight languages — macOS ships `zh_CN`, `zh_TW` and `zh_HK`,
+  never a plain `zh`. The table silently loaded empty, so the Disk ring showed a
+  Chinese user `Applications` where Finder writes 应用程序.
+- **A symbolic link inside a folder Helm is allowed to clean could point removal
+  at the wrong file.** The removal gates judged the path as spelled —
+  `standardizedFileURL`/`standardizingPath` collapse `..` and leave symlinks
+  alone — while `trashItem` follows them. A link planted inside one of the four
+  leftovers plug-in directories that don't exist on a stock install (and so can
+  be created by any process as a link) could be approved by the gate and act
+  somewhere else entirely. Every ancestor of a path is resolved now; the leaf
+  deliberately is not, so trashing a stale alias still removes the alias.
+- **Autopilot's rules were plain, unauthenticated data in a plist any process
+  running as the user could write** — and the module is on by default, so
+  writing one borrowed Helm's Full Disk Access with no TCC grant of the writer's
+  own. Rules now carry an HMAC keyed from a secret Helm creates once in its own
+  keychain item; a rule set with no matching seal decodes to empty.
+- **The diagnostics log's short tags for app, VPN and package names could be
+  reversed back into the real names.** `Redact.tag` was an unsalted hash over
+  names drawn from small public lists (bundle ids, VPN providers, Homebrew
+  formulae) — inverting it against the 104 bundle ids installed on one Mac
+  identified every one of them. The salt is per install now, in a `0600` file
+  beside the log, so a tag still compares equal across restarts (the property
+  the hash exists for) but means nothing pasted into someone else's bug report.
+- **Homebrew's one-time setup step ran `mkdir` and `chown` as root through a
+  shell that inherits Helm's own `PATH`** — which any process running as the
+  user can rewrite, ahead of the admin password prompt. Both now run by
+  absolute path, like every other privileged command in the app.
+- **The Accessibility caption undersold the grant it asks for.** It described
+  "nudging the pointer" for Keep Awake and said nothing about the Keyboard
+  module's system-wide keystroke tap, the larger of the two claims; it names
+  both now. The first-launch alert no longer says permissions need granting
+  "again" when nothing has ever been granted, and the Settings list no longer
+  asks for a permission that none of the enabled modules need.
+- **"Removed — 4 KB freed" was never true — the file went to the Trash, on the
+  same volume.** Disk, Duplicates, Leftovers and the Uninstaller now say what
+  happened instead: "Moved to the Trash — 4 KB." Disk stopped adding the bytes
+  to free space; the tree is still pruned, so the used total falls on its own
+  once the Trash is emptied.
+- The VPN dial counted live auto-connections while sitting directly above the
+  list of rules it appeared to be counting. Leftovers' bottom bar mixed a
+  *found* count with a *selected* size.
+
+### Changed
+- **The Uninstaller's review screen — the last one before deletion, with no
+  dialog after it — now names the app itself.** Each group leads with the
+  bundle, its path and a caption saying it is always removed; before, only its
+  leftover files were listed, so a group with none found read as "nothing is
+  selected."
+- **Homebrew's uninstall says plainly that it does not go to the Trash.** It is
+  the only irreversible deletion in the app and had the mildest confirmation of
+  the five.
+- **Leftovers' "Delete…" no longer promises a dialog it doesn't show.** Orphaned
+  items were excluded from `needsConfirmation` and trashed on the click; the
+  ellipsis now appears only where a confirmation follows.
+- **Duplicates confirms with a count, a size and up to four named paths, like
+  Disk** — it used to ask with a bare count and size, in the module that deletes
+  a person's own photos.
+- **Disk's advice cites the date a file was last written, not "untouched for
+  months."** The underlying fact is a modification time, and "untouched" claims
+  more than that supports.
+- **Safari is marked as a system app rather than offered at "0 B."**
+- **Switching pages no longer throws away what you were doing.** The Uninstaller
+  kept its ticks, its review step, its scanned groups and its failure report as
+  `@State` on the settings page — a click over to Disk and back zeroed every
+  tick, discarded a scan of every ticked app, or lost the only record of what
+  macOS had refused to remove. That state lives in the view model, which the
+  page already caches, now. Leftovers' scan — the most expensive one in the
+  app — restarted the same way on every sidebar click; it and Duplicates now
+  take the `shared(vm:)` treatment Disk and Keep Awake already had.
+- Opening the Uninstaller measured every app's size twice: `appSizes()`
+  re-enumerated and re-parsed every `Info.plist` seconds after the initial
+  listing already had.
+- **Warning and success colours, and the figures in a metric strip, meet the
+  app's own contrast floor in light mode.** They had been drawn from the system
+  palette (2.31:1 / 2.22:1 against the window) rather than `HelmSignal`
+  (4.54:1 / 4.58:1); a source scan now catches a literal system colour handed to
+  anything that paints with it. The metric strip's tint blend was also being
+  resolved against `NSAppearance.current` rather than the SwiftUI environment,
+  so it silently darkened *dark* mode's own colour half the time while claiming
+  a lighter ratio than it drew.
+- **Homebrew's second empty state — a hand-rolled `VStack` and two bare
+  `Spacer()`s, one click from the real one in the same pane — is gone.** The
+  one-empty-state guard didn't see it because it recognised only the design
+  system's own component; it now recognises the *shape* (two direct-child
+  spacers in one stack) and found this as the one other offender in the tree.
+- **`HelmBusyState` takes an `actions:` slot**, so Disk's Stop button no longer
+  needs a fourth, hand-rolled loading layout.
+- **Disk's start screen lines up with its own header.** It sat 32.5 pt off at
+  the default window and 202.5 pt off at 1400 — the same 203 pt that motivated
+  `HelmPageHeader.bleeds` for a different, horizontal instance of this bug.
+- Spacing, hairlines, dimming and category tints made consistent across the
+  Uninstaller, Leftovers, Homebrew and About pages.
+
+### Fixed
+- **Disk's basket button told VoiceOver "Add" while pressing it removed an item
+  that was already basketed.**
+- The Uninstaller's lists, Leftovers' rows, Autopilot's dry-run preview and
+  VPN's rows read as one stop each now, not four or five, for VoiceOver and
+  Full Keyboard Access.
+- **The Advice popover could be basketed but never opened without a mouse** —
+  its only reveal was a context menu, with no `.accessibilityActions`
+  counterpart.
+- Autopilot's rule editor — the sheet furthest from the sidebar by Tab — has
+  Return and Escape now.
+- Disclosures announce expanded/collapsed, and the panel's Utilities row stopped
+  dropping the module count a sighted user can see from its own accessibility
+  label.
+- Russian said «хоткей» for "keyboard shortcut" where macOS says «сочетание
+  клавиш», and «старше 1 день» where a comparative takes the genitive («1
+  дня»). Spanish said "Timer" where macOS, and Helm's own later screens, say
+  "Temporizador." German's tag verb read as "Tag," the word for *day*, in a
+  module whose date unit is "Tage"; French's read as a capitalised noun among
+  four lowercase past participles. Abbreviations were cut with a period in cells
+  wide enough for the whole word.
+- French `Quoted` used ordinary, breakable spaces inside guillemets where
+  macOS's own tables use U+00A0 — 1127 instances to none, across the 80 system
+  tables checked. The same check found Spanish given guillemets and Japanese
+  given corner brackets where macOS's own tables use curly quotes for both.
+- Keep Awake's battery guard shipped switched off, beside a session length that
+  defaults to indefinite — the guard against draining the battery, off, next to
+  the setting most likely to need it. New installs now get it on at 20%; a
+  stored choice is left alone.
+- Autopilot's history recorded only the destination's parent folder name, and
+  its `path` field held where a file *was*, not where it went; the row can now
+  show the file in Finder.
+
+### Also
+- `HelmLog`'s one-time purge — the one that discards logs written before
+  redaction existed — latched on the *calling process's* `UserDefaults` domain
+  rather than on the log file itself. Any tool linking `HelmRuntime` (a test
+  target, a script) therefore ran the purge again against the one real
+  `helm.log` and wiped it, with nothing left in the file to say why — this cost
+  the pass a dev build's own triage evidence mid-session. The latch is a file
+  beside the log now.
+- Dead code removed: `permissionAuditTitle`/`Body`, `import os` in
+  `HelmLog.swift`, `LogLevel.debug`.
+
+
 ## [0.7.1] — 2026-07-26
 
 ### Added
