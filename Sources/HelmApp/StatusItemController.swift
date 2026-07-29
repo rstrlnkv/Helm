@@ -117,12 +117,17 @@ import HelmUI
         spinTick.set(active: frame != nil)
         // Modules emit state on every tick; only redraw when the glyph changes.
         let title = appearance.title
+        // The spin's own colour when it has one, and the module's tint
+        // otherwise — which is what Keep Awake has always drawn with.
+        let spinTint = appearance.spinTintToken ?? token
         let key = StatusPlan.redrawKey(style: style.rawValue, size: size.rawValue, tint: token,
-                                       progress: progress, title: title, frame: frame)
+                                       progress: progress, title: title, frame: frame,
+                                       spinTint: frame != nil ? spinTint : nil)
         guard key != lastIconKey else { return }
         lastIconKey = key
         if let frame {
-            button.image = RingIcon.spinnerFrames(style: style, size: size, tintToken: token)[frame]
+            button.image = RingIcon.spinnerFrames(style: style, size: size,
+                                                  tintToken: spinTint)[frame]
         } else {
             button.image = RingIcon.make(style: style, size: size, tintToken: token, progress: progress)
         }
