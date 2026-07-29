@@ -4,14 +4,19 @@ Read [ARCHITECTURE.md](ARCHITECTURE.md) before changing the panel, status item
 or settings window — the "read before touching" facts there were earned through
 long debugging sessions and are easy to re-break.
 
+**The repository must not live under a file provider.** It sat in `~/Documents`
+until 2026-07-29, where a provider attached `com.apple.FinderInfo` to every
+bundle it created — which made `codesign` refuse them. That cost months of
+"ad-hoc signing loses TCC grants" (an unsigned bundle has no cdhash to tie a
+grant to), then began failing `swift test` outright, and finally turned up
+conflict copies **inside `.git`**: a `refs/remotes/origin/main 2` that `git fsck`
+called an invalid refname. Plain files were never tagged, only packages, which
+is why the cause hid for so long. It lives in `~/Projects/Claude/Helm` now.
+
 ## Commands
 
 ```bash
-# Nothing that gets signed may be built inside ~/Documents. The file provider
-# attaches com.apple.FinderInfo faster than anything can strip it, and codesign
-# refuses a bundle carrying it — which now takes down the ordinary test build,
-# not only the app: "CodeSign … Module_VPN_EngineTests.xctest failed".
-swift test --scratch-path /private/tmp/helm-build   # full unit suite, seconds
+swift test                              # full unit suite, seconds
 bash Scripts/package-app.sh             # build + sign → $TMPDIR/helm-package/Helm.app
 # install + relaunch locally (from the SIGNED copy, never from build/):
 pkill -f 'MacOS/HelmApp'; bash Scripts/package-app.sh
