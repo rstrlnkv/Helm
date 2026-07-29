@@ -14,6 +14,30 @@ public struct VPNSettings {
         store.set(notice.rawValue, for: "automationNotice")
     }
 
+    /// Whether the menu-bar ring turns when a rule fires.
+    ///
+    /// Off by default, which reverses what the automation-feedback spec
+    /// decided: it argued the movement is feedback rather than a notification
+    /// and should always play. Sound, and overruled — movement in the menu bar
+    /// is a person's to switch off. The cost is exact and is stated under the
+    /// switch: with this off *and* the notice set to nothing, a rule fires with
+    /// no sign at all.
+    public var automationSpin: Bool { store.bool("automationSpin", default: false) }
+    public func setAutomationSpin(_ on: Bool) { store.set(on, for: "automationSpin") }
+
+    /// The colour the ring turns in, per kind of firing. A tunnel going up and
+    /// a tunnel going down are the two things worth telling apart at a glance,
+    /// and `VPNAutomation.Kind` already distinguishes them.
+    public func spinTint(for kind: VPNAutomation.Kind) -> String {
+        store.string(Self.spinTintKey(kind), default: kind == .connected ? "green" : "orange")
+    }
+    public func setSpinTint(_ token: String, for kind: VPNAutomation.Kind) {
+        store.set(token, for: Self.spinTintKey(kind))
+    }
+    private static func spinTintKey(_ kind: VPNAutomation.Kind) -> String {
+        "spinTint.\(kind.rawValue)"
+    }
+
     /// What macOS last said about banners — a mirror, not the truth.
     ///
     /// It is here rather than in memory because macOS is asked once and the
