@@ -18,11 +18,15 @@ import XCTest
 final class VPNStatusAppearanceTests: XCTestCase {
 
     private func descriptor(firing: VPNAutomation?, notice: VPNNotice,
-                            bannerAuthorized: Bool = false) -> (VPNDescriptor, ModuleViewModel) {
+                            bannerAuthorized: Bool = false,
+                            spin: Bool = false,
+                            spinTints: [VPNAutomation.Kind: String]? = nil)
+                            -> (VPNDescriptor, ModuleViewModel) {
         let descriptor = VPNDescriptor()
         let host = ModuleViewModel(transport: LocalTransport())
         descriptor.viewModel(host).setForTesting(automation: firing, notice: notice,
-                                                 bannerAuthorized: bannerAuthorized)
+                                                 bannerAuthorized: bannerAuthorized,
+                                                 spin: spin, spinTints: spinTints)
         return (descriptor, host)
     }
 
@@ -30,20 +34,26 @@ final class VPNStatusAppearanceTests: XCTestCase {
         VPNAutomation(at: Date().addingTimeInterval(-secondsAgo), name: name, kind: .connected)
     }
 
+    private func firing(secondsAgo: TimeInterval, name: String = "Office",
+                        kind: VPNAutomation.Kind) -> VPNAutomation {
+        VPNAutomation(at: Date().addingTimeInterval(-secondsAgo), name: name, kind: kind)
+    }
+
     func testFreshFiringSpinsTheRingAndNamesTheConnection() {
         let fired = firing(secondsAgo: 0)
-        let (d, host) = descriptor(firing: fired, notice: .menuBar)
+        let (d, host) = descriptor(firing: fired, notice: .menuBar, spin: true)
         let appearance = d.statusAppearance(host)
         XCTAssertEqual(appearance.spinUntil, VPNAutomation.spinEnd(fired))
         XCTAssertEqual(appearance.title, "Office")
     }
 
-    /// The movement is feedback that the app did something, not a notification:
-    /// the quietest mode still gets it, or an automation cannot be told apart
-    /// from a tunnel that changed on its own.
+    /// The movement is feedback that the app did something rather than a
+    /// notification, so the quietest *notice* mode still gets it — the notice
+    /// setting decides the fate of the name only. Whether there is movement at
+    /// all is now its own switch, which this test turns on.
     func testSilentModeStillSpinsButNamesNothing() {
         let fired = firing(secondsAgo: 0)
-        let (d, host) = descriptor(firing: fired, notice: .silent)
+        let (d, host) = descriptor(firing: fired, notice: .silent, spin: true)
         let appearance = d.statusAppearance(host)
         XCTAssertEqual(appearance.spinUntil, VPNAutomation.spinEnd(fired))
         XCTAssertNil(appearance.title)
@@ -90,7 +100,7 @@ final class VPNStatusAppearanceTests: XCTestCase {
     /// menu bar goes back to just turning.
     func testAnAuthorizedBannerLeavesTheNameToTheBanner() {
         let fired = firing(secondsAgo: 0)
-        let (d, host) = descriptor(firing: fired, notice: .system, bannerAuthorized: true)
+        let (d, host) = descriptor(firing: fired, notice: .system, bannerAuthorized: true, spin: true)
         let appearance = d.statusAppearance(host)
         XCTAssertNil(appearance.title)
         XCTAssertEqual(appearance.spinUntil, VPNAutomation.spinEnd(fired),
@@ -172,5 +182,55 @@ final class VPNStatusAppearanceTests: XCTestCase {
         model.setForTesting(automation: firing(secondsAgo: 0), notice: .menuBar)
         token.cancel()
         XCTAssertEqual(fired, 1)
+    }
+
+    // MARK: - The spin setting
+
+    /// The reversal, pinned. The automation-feedback spec had the ring turning
+    /// in every mode; movement in the menu bar is a person's to switch off, and
+    /// the default is off.
+    func testNothingTurnsUntilSomebodyAsksForIt() {
+        let (d, host) = descriptor(firing: firing(secondsAgo: 0), notice: .menuBar)
+        let appearance = d.statusAppearance(host)
+        XCTAssertNil(appearance.spinUntil, "the ring must not turn when nobody asked")
+        XCTAssertEqual(appearance.title, "Office", "the name is a separate setting and still applies")
+    }
+
+    func testEachKindTurnsInItsOwnColour() {
+        let tints: [VPNAutomation.Kind: String] = [.connected: "purple", .disconnected: "pink"]
+        let (up, upHost) = descriptor(firing: firing(secondsAgo: 0, kind: .connected),
+                                      notice: .menuBar, spin: true, spinTints: tints)
+        XCTAssertEqual(up.statusAppearance(upHost).spinTintToken, "purple")
+
+        let (down, downHost) = descriptor(firing: firing(secondsAgo: 0, kind: .disconnected),
+                                          notice: .menuBar, spin: true, spinTints: tints)
+        XCTAssertEqual(down.statusAppearance(downHost).spinTintToken, "pink")
+    }
+
+    func testTheDefaultColoursDifferByKind() {
+        let (up, upHost) = descriptor(firing: firing(secondsAgo: 0, kind: .connected),
+                                      notice: .menuBar, spin: true)
+        let (down, downHost) = descriptor(firing: firing(secondsAgo: 0, kind: .disconnected),
+                                          notice: .menuBar, spin: true)
+        XCTAssertEqual(up.statusAppearance(upHost).spinTintToken, "green")
+        XCTAssertEqual(down.statusAppearance(downHost).spinTintToken, "orange")
+    }
+
+    /// The decision this module wrote down three days ago, which the colour
+    /// work must not quietly spend: a tint is a claim on the icon between
+    /// moments, and this module makes none.
+    func testTheModuleStillNeverTints() {
+        let (d, host) = descriptor(firing: firing(secondsAgo: 0), notice: .menuBar, spin: true)
+        XCTAssertNil(d.statusAppearance(host).tintToken,
+                     "no tint, ever — the spin colour is a different field")
+    }
+
+    /// A spin that is over carries no colour either, so a spent appearance
+    /// cannot be mistaken for a live one further up.
+    func testASpentSpinCarriesNoColour() {
+        let (d, host) = descriptor(firing: firing(secondsAgo: 60), notice: .menuBar, spin: true)
+        let appearance = d.statusAppearance(host)
+        XCTAssertNil(appearance.spinUntil)
+        XCTAssertNil(appearance.spinTintToken)
     }
 }
