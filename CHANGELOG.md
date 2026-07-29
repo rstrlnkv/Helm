@@ -8,6 +8,21 @@ features, PATCH = fixes.
 ## [Unreleased] — 0.8.0
 
 ### Added
+- **A welcome window, shown once.** Helm arrives as an icon in the menu bar and
+  nine modules nobody has been introduced to; two of them — Autopilot and
+  Duplicates — turned up in existing installations without a word. Ten steps,
+  Back / Next / Skip, and it is over: it tells, and does nothing else. No module
+  is switched on, no permission is asked for. Every step's text is the module's
+  own name and summary, read from its descriptor, so the tour cannot go stale
+  the way a second copy of nine descriptions would.
+  - **The permission notice now waits for it.** That alert also fires on a first
+    launch, which is the same moment the window wants. Measured on an installed
+    build: the audit arrived 82 seconds after launch, when the tour was closed,
+    where it used to arrive 10 milliseconds after it. When there is no tour to
+    show it runs exactly where it always did.
+  - Whether it has been seen is a revision number rather than a flag, so
+    "show the next one once" is a deliberate act and cannot happen by a
+    setting getting cleared.
 - **A way out of a scan in Disk.** The module reopens on whatever it measured
   last, and the only control was "Scan again", which measures the same place
   forever — so a scan of the wrong folder came back at every launch with no way
