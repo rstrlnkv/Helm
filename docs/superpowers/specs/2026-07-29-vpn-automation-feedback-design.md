@@ -13,7 +13,10 @@ Decided with the user before any code:
   nine descriptors for one caller.
 - **The animation always plays**, in all three notice modes. It is feedback that
   the app did something, not a notification; the setting decides the fate of the
-  *text* only.
+  *text* only. **Superseded in 0.8.0** — the spin became a setting of its own,
+  off by default, and gained a colour per firing kind. The reasoning here is not
+  wrong; it was overruled on the grounds that movement in the menu bar is a
+  person's to switch off. See `2026-07-29-0.8.0-features-design.md`.
 - **The label is the connection's name**, for three seconds.
 - **Default is the menu-bar label.** A module that acts on its own should say
   what it did, and this is the only mode that needs no new permission.
