@@ -45,7 +45,7 @@ enum ApStr {
 
     // MARK: - Fields
 
-    static var fieldName: String { L("Name", [.ru: "Имя", .es: "Nombre", .fr: "Nom", .de: "Name", .ja: "名前", .zh: "名称", .pt: "Nome"]) }
+    static var fieldName: String { L("File name", [.ru: "Имя", .es: "Nombre", .fr: "Nom", .de: "Name", .ja: "名前", .zh: "名称", .pt: "Nome"]) }
     static var fieldExtension: String { L("Extension", [.ru: "Расширение", .es: "Extensión", .fr: "Extension", .de: "Endung", .ja: "拡張子", .zh: "扩展名", .pt: "Extensão"]) }
     static var fieldKind: String { L("Kind", [.ru: "Вид", .es: "Tipo", .fr: "Type", .de: "Art", .ja: "種類", .zh: "种类", .pt: "Tipo"]) }
     static var fieldSize: String { L("Size", [.ru: "Размер", .es: "Tamaño", .fr: "Taille", .de: "Größe", .ja: "サイズ", .zh: "大小", .pt: "Tamanho"]) }
