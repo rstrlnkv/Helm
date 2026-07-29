@@ -15,6 +15,7 @@ import Module_VPN_Engine
     private let settings: VPNSettings?
     /// Set only by `setForTesting`; nil in the app, always.
     private var noticeForTesting: VPNNotice?
+    private var bannerAuthorizedForTesting: Bool?
     private var eventsTask: Task<Void, Never>?
     private var expiryTask: Task<Void, Never>?
 
@@ -23,11 +24,25 @@ import Module_VPN_Engine
     /// instead of to the next launch.
     public var notice: VPNNotice { noticeForTesting ?? settings?.notice ?? .menuBar }
 
+    /// What macOS last said about banners, as the store remembers it.
+    public var bannerAuthorized: Bool {
+        bannerAuthorizedForTesting ?? settings?.bannerAuthorized ?? false
+    }
+
+    /// The mode as it will actually behave, which is not always the mode that
+    /// was chosen: `.system` without the permission is the menu-bar label, and
+    /// anything that acts on the choice has to ask this rather than the raw one.
+    public var effectiveNotice: VPNNotice {
+        notice.effective(bannerAuthorized: bannerAuthorized)
+    }
+
     /// Test seam. `@testable` reaches it; nothing in the app does. It stands in
     /// for the engine that fires the rule and for the store that holds the mode,
     /// neither of which a test of the status item wants to own.
-    func setForTesting(automation: VPNAutomation?, notice: VPNNotice) {
+    func setForTesting(automation: VPNAutomation?, notice: VPNNotice,
+                       bannerAuthorized: Bool = false) {
         noticeForTesting = notice
+        bannerAuthorizedForTesting = bannerAuthorized
         if let automation { adopt(automation) } else { lastAutomation = nil }
     }
 

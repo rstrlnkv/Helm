@@ -17,11 +17,12 @@ import XCTest
 @MainActor
 final class VPNStatusAppearanceTests: XCTestCase {
 
-    private func descriptor(firing: VPNAutomation?,
-                            notice: VPNNotice) -> (VPNDescriptor, ModuleViewModel) {
+    private func descriptor(firing: VPNAutomation?, notice: VPNNotice,
+                            bannerAuthorized: Bool = false) -> (VPNDescriptor, ModuleViewModel) {
         let descriptor = VPNDescriptor()
         let host = ModuleViewModel(transport: LocalTransport())
-        descriptor.viewModel(host).setForTesting(automation: firing, notice: notice)
+        descriptor.viewModel(host).setForTesting(automation: firing, notice: notice,
+                                                 bannerAuthorized: bannerAuthorized)
         return (descriptor, host)
     }
 
@@ -67,6 +68,33 @@ final class VPNStatusAppearanceTests: XCTestCase {
     func testNoFiringAsksForNothing() {
         let (d, host) = descriptor(firing: nil, notice: .menuBar)
         XCTAssertEqual(d.statusAppearance(host), .inactive)
+    }
+
+    // MARK: - The banner mode, before there is a banner
+
+    /// The loudest mode was the quietest one.
+    ///
+    /// The descriptor asked `notice.showsMenuBarName`, which is false for
+    /// `.system`, so a person who chose to be told loudly and had refused (or
+    /// never been asked for) the permission got nothing at all — neither banner
+    /// nor name. `effective(bannerAuthorized:)` exists precisely to rule that
+    /// out, and the descriptor has to be the one asking it.
+    func testTheBannerModeNamesTheConnectionWhenMacOSHasNotAuthorizedBanners() {
+        let (d, host) = descriptor(firing: firing(secondsAgo: 0), notice: .system,
+                                   bannerAuthorized: false)
+        XCTAssertEqual(d.statusAppearance(host).title, "Office",
+                       "the mode that asks to be told loudly said nothing at all")
+    }
+
+    /// And once macOS has authorized them, the banner carries the name and the
+    /// menu bar goes back to just turning.
+    func testAnAuthorizedBannerLeavesTheNameToTheBanner() {
+        let fired = firing(secondsAgo: 0)
+        let (d, host) = descriptor(firing: fired, notice: .system, bannerAuthorized: true)
+        let appearance = d.statusAppearance(host)
+        XCTAssertNil(appearance.title)
+        XCTAssertEqual(appearance.spinUntil, VPNAutomation.spinEnd(fired),
+                       "the ring turns in every mode — that is feedback, not a notification")
     }
 
     // MARK: - What arrives from the engine
