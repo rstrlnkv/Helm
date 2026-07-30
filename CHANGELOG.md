@@ -32,7 +32,7 @@ features, PATCH = fixes.
     launches and forgotten when it leaves the Trash, so restoring an app and
     deleting it again is a new question. Closing the window counts as the same no.
   - **Off until you ask for it**, on the Uninstaller's Leftovers tab: "Offer to
-    clean up when I trash an app". A window that appears unasked is not something
+    remove a trashed app's files". A window that appears unasked is not something
     to switch on for somebody, and the tab it lives on is the one already
     answering "what did an app I removed leave behind". Turning it on takes effect
     at once — and looks at what is already in the Trash rather than waiting for

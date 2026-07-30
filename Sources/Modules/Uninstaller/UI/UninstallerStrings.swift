@@ -55,12 +55,24 @@ enum UnStr {
     /// The switch on the Leftovers tab. Says what Helm will do, not what it will
     /// watch: "watch the Trash" describes the mechanism and asks the reader to
     /// work out the point of it.
-    static var watchTrash: String { L("Offer to clean up when I trash an app") }
-    /// Why the offer can only work at that moment, which is also why the module
-    /// cannot simply find these files later: the bundle in the Trash is what says
-    /// which app they belonged to.
+    ///
+    /// Impersonal, like every other switch in Helm and — the reason that settles
+    /// it — like Finder's own Trash settings in all eight languages. The first
+    /// person it used to be ("when I trash an app") is the one string in the app
+    /// that read as somebody's diary, and it cost seven translators a politeness
+    /// decision they should never have been asked to make.
+    ///
+    /// "a trashed app's" rather than "when it goes to the Trash": the offer
+    /// covers the whole time the app sits there, including apps that arrived
+    /// before the switch was turned on — `setWatchingTrash` emits `trashChanged`
+    /// for exactly that. The clause described one second of it.
+    static var watchTrash: String { L("Offer to remove a trashed app’s files") }
+    /// The one fact the label cannot carry, and the only one with a consequence:
+    /// empty the Trash first and there is no offer at all, because the bundle is
+    /// what says whose files these are. The sentence it used to open with was the
+    /// label again in more words.
     static var watchTrashNote: String {
-        L("A window lists what it left behind, while the app is still in the Trash to be identified.")
+        L("Only the app in the Trash can say which files belong to it.")
     }
     static var tabApps: String { L("Apps") }
     static var tabOrphans: String { L("Leftovers") }
