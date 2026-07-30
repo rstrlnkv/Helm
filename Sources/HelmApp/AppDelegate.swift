@@ -120,7 +120,11 @@ import HelmUI
     /// the sweep comes back empty and no window appears — and the place that says
     /// why is the module's own page, which already carries the notice.
     private func offerTrashLeftovers() {
-        guard trashWindow == nil, let live = host.liveModule("uninstaller") else { return }
+        guard trashWindow == nil, let live = host.liveModule("uninstaller") else {
+            HelmLog.shared.info("app", "trash sweep skipped: uninstaller is off or a window is up")
+            return
+        }
+        HelmLog.shared.info("app", "trash sweep requested")
         let window = TrashedLeftoversWindow { [weak self] in self?.trashWindow = nil }
         trashWindow = window
         Task { [weak self] in

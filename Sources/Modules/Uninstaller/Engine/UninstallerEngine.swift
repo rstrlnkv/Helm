@@ -190,6 +190,12 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
 
     private func trashedAppLeftoversSync() -> [TrashedAppLeftovers] {
         let found = apps.trashedApps()
+        // Four different outcomes used to look identical from outside — no
+        // window — and one of them is a defect while three are the feature
+        // working: the Trash holds no app, the app was declined before, another
+        // copy is still installed, or it left nothing behind. Counts only; a
+        // bundle id names somebody's habits.
+        var stillInstalled = 0, nothingLeft = 0
         var dismissed = Set(store.stringArray(Self.dismissedKey))
         // Swept before it is read: an app that has left the Trash — restored, or
         // finally deleted — takes its "no" with it, so removing the same app later
@@ -200,21 +206,35 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
             dismissed = kept
         }
 
-        return TrashOfferMemory.toOffer(found: found, dismissed: dismissed)
-            .compactMap { app in
+        let offerable = TrashOfferMemory.toOffer(found: found, dismissed: dismissed)
+        let groups = offerable
+            .compactMap { app -> TrashedAppLeftovers? in
                 // Two copies of one app share a bundle id, and dragging one to the
                 // Trash leaves the other installed with its support files in use.
                 // `installedPaths` is what makes that answerable: LaunchServices
                 // reports every copy it has ever seen — five stale build copies of
                 // Helm itself, on this machine — and `InstalledLocation` is the
                 // positional rule that keeps only the ones that count.
-                guard apps.installedPaths(forBundleID: app.bundleID).isEmpty else { return nil }
+                guard apps.installedPaths(forBundleID: app.bundleID).isEmpty else {
+                    stillInstalled += 1
+                    return nil
+                }
                 let result = scanSync(bundleID: app.bundleID, appPath: app.path,
                                       appName: app.name)
-                guard !result.leftovers.isEmpty else { return nil }
+                guard !result.leftovers.isEmpty else {
+                    nothingLeft += 1
+                    return nil
+                }
                 return TrashedAppLeftovers(bundleID: app.bundleID, name: app.name,
                                            appPath: app.path, leftovers: result.leftovers)
             }
+        HelmLog.shared.info("uninstaller",
+                            "trash sweep: \(found.count) app(s) in the Trash, "
+                            + "\(found.count - offerable.count) declined before, "
+                            + "\(stillInstalled) still installed elsewhere, "
+                            + "\(nothingLeft) left nothing behind, "
+                            + "\(groups.count) to offer")
+        return groups
     }
 
     /// Cancel. Remembered so the window does not return for this app at the next
