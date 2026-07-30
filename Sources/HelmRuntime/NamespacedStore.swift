@@ -70,6 +70,13 @@ public final class NamespacedStore {
     public func bool(_ key: String, default d: Bool) -> Bool { backing.object(forKey: k(key)) as? Bool ?? d }
     public func int(_ key: String, default d: Int) -> Int { backing.object(forKey: k(key)) as? Int ?? d }
     public func string(_ key: String, default d: String) -> String { backing.object(forKey: k(key)) as? String ?? d }
+    /// For a stored `Date`, which is a `Double` and not an `Int`. Rounding an
+    /// epoch to the second makes a restored deadline differ from the one that was
+    /// written — a session that comes back a fraction of a second off is a session
+    /// whose stored end is no longer its real end.
+    public func double(_ key: String, default d: Double) -> Double {
+        backing.object(forKey: k(key)) as? Double ?? d
+    }
     public func stringArray(_ key: String) -> [String] { backing.object(forKey: k(key)) as? [String] ?? [] }
     /// A structure too shaped to be a plist: rules, with their conditions and
     /// actions, kept as JSON in one value rather than flattened into keys.

@@ -84,6 +84,9 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             self?.recompute()
         }
         apps.startObserving { [weak self] in self?.recompute() }
+        // Before the recompute, so the session the person started is one of the
+        // conditions it resolves rather than something added afterwards.
+        restoreSession()
         recompute()
     }
 
@@ -123,11 +126,12 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         if minutes > 0 {
             startDate = clock.now()
             endDate = clock.now().addingTimeInterval(TimeInterval(minutes * 60))
-            scheduleExpiry(minutes: minutes)
+            scheduleExpiry(after: TimeInterval(minutes * 60))
         } else {
             startDate = nil
             endDate = nil
         }
+        rememberSession()
         recompute()
     }
 
@@ -139,6 +143,10 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         endDate = nil
         startDate = nil
         expiryToken = nil
+        // Stopping is a decision too, and it has to outlive the process as firmly
+        // as starting does — otherwise the next launch resurrects what was
+        // switched off.
+        rememberSession()
         recompute()
     }
 
@@ -222,8 +230,10 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 
     // MARK: - Timer expiry
 
-    private func scheduleExpiry(minutes: Int) {
-        expiryToken = clock.schedule(after: TimeInterval(minutes * 60)) { [weak self] in
+    /// In seconds, not minutes: a session restored after a relaunch is scheduled
+    /// for what is *left* of it rather than for the duration it was asked for.
+    private func scheduleExpiry(after seconds: TimeInterval) {
+        expiryToken = clock.schedule(after: seconds) { [weak self] in
             self?.handleExpiry()
         }
     }
@@ -234,9 +244,75 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             manualOn = false
             endDate = nil
             startDate = nil
+            rememberSession()
             recompute()
         case .deactivate:
             stopSession()
+        }
+    }
+
+    // MARK: - A session across the end of the process
+
+    private enum SessionKey {
+        static let on = "sessionOn"
+        static let startedAt = "sessionStartedAt"
+        static let endsAt = "sessionEndsAt"
+    }
+
+    /// Written wherever the person's intent changes, and **not** in
+    /// `deactivate()`.
+    ///
+    /// `deactivate()` looks like the place for it and is the one place it must not
+    /// go: `applicationWillTerminate` calls it on every live engine
+    /// (`HelmApp/AppDelegate.swift:127`), so recording "off" there would erase the
+    /// session on every quit — including the silent updater's, which is the
+    /// relaunch this whole thing exists for. It would have been a fix that
+    /// changed nothing.
+    ///
+    /// The cost of that choice, stated: `deactivate()` also runs when the module
+    /// is switched off in Settings, and it cannot tell the two callers apart. So
+    /// switching Keep Awake off and on again resumes a session that has not
+    /// expired. Of the two possible mistakes, forgetting what the person asked for
+    /// is the one that was reported.
+    /// Stored against 2001 and not 1970, which is not a style choice: a `Date`
+    /// *is* a `Double` of seconds since the reference date, so that round-trips
+    /// exactly, while going through `timeIntervalSince1970` adds and then
+    /// subtracts 978 307 200 and loses the low-order bits. The restored deadline
+    /// then differs from the stored one by a fraction of a second — enough for a
+    /// re-scheduled expiry to miss the interval it was scheduled for, and enough
+    /// to make a test of it pass or fail on the fractional part of `Date()`.
+    private func rememberSession() {
+        store.set(manualOn, for: SessionKey.on)
+        store.set(startDate?.timeIntervalSinceReferenceDate ?? 0, for: SessionKey.startedAt)
+        store.set(endDate?.timeIntervalSinceReferenceDate ?? 0, for: SessionKey.endsAt)
+    }
+
+    private func restoreSession() {
+        let stamp = { (seconds: Double) -> Date? in
+            seconds > 0 ? Date(timeIntervalSinceReferenceDate: seconds) : nil
+        }
+        let storedStart = stamp(store.double(SessionKey.startedAt, default: 0))
+        let storedEnd = stamp(store.double(SessionKey.endsAt, default: 0))
+
+        switch SessionRestore.decide(manualOn: store.bool(SessionKey.on, default: false),
+                                     startDate: storedStart, endDate: storedEnd,
+                                     now: clock.now()) {
+        case .none:
+            manualOn = false
+            startDate = nil
+            endDate = nil
+            // The record goes with it, so a later launch cannot find the same
+            // spent deadline and weigh it again.
+            rememberSession()
+        case .indefinite:
+            manualOn = true
+            startDate = nil
+            endDate = nil
+        case .remaining(let left):
+            manualOn = true
+            startDate = storedStart
+            endDate = storedEnd
+            scheduleExpiry(after: left)
         }
     }
 
