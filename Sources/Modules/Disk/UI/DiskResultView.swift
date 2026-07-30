@@ -233,9 +233,19 @@ private struct BreadcrumbBar: View {
         .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
     }
 
-    /// What the ring is showing: a fresh measurement, or a memory of one.
+    /// What the ring is showing: a stopped walk, a fresh measurement, or a memory
+    /// of one.
+    ///
+    /// Stopped comes first because it is the only one of the three that makes the
+    /// sizes beside it untrue as totals, and the line is the only place on the
+    /// screen that says so.
     @ViewBuilder private var scanStatement: some View {
-        if dvm.restored, let savedAt = dvm.completedAt {
+        if dvm.stopped, let result = dvm.result {
+            Text(DkStr.stopped)
+                .font(.caption).foregroundStyle(HelmText.faint).lineLimit(1)
+                .help(DkStr.stoppedHint(result.filesScanned))
+                .accessibilityHint(DkStr.stoppedHint(result.filesScanned))
+        } else if dvm.restored, let savedAt = dvm.completedAt {
             // A restored tree is a memory, not a measurement: say when.
             Text(DkStr.measured(HelmDates.relative(savedAt)))
                 .font(.caption).foregroundStyle(HelmText.faint).lineLimit(1)

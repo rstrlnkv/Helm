@@ -57,6 +57,20 @@ import Module_Disk_Engine
     @Published public private(set) var completedAt: Date?
     /// True while showing a tree restored from disk rather than just measured.
     @Published public private(set) var restored = false
+    /// True while showing a tree the walk never finished — Stop was pressed.
+    ///
+    /// Every number in such a tree is a **floor**: `TreeBuilder` charges a
+    /// directory as its files are found, so a folder the walk had not reached the
+    /// bottom of reports what had been counted so far and nothing about the rest.
+    /// The screen has to say so, and the tree must never be saved: the module
+    /// reopens on whatever the store holds and calls it a measurement.
+    @Published public private(set) var stopped = false
+
+    /// Whether the tree on screen is a finished measurement, and so worth
+    /// keeping for the next launch. The one place that decides it, because the
+    /// consequence of getting it wrong is a partial tree presented as fact at
+    /// every launch — the failure "Choose another…" exists to give a way out of.
+    public var treeIsComplete: Bool { !stopped }
 
     /// Names for scans, handed out in order. Two are in flight whenever
     /// somebody drills into a folder the walk has not reached, and both talk on
@@ -154,6 +168,7 @@ import Module_Disk_Engine
         scannedPath = cached.result.root.path
         completedAt = cached.savedAt
         restored = true
+        stopped = false
         rootTitle = ""
         focusPath = [cached.result.root]
         phase = .result
@@ -199,10 +214,23 @@ import Module_Disk_Engine
         rootTitle = Self.title(for: path, volumes: volumes)
         scannedPath = path
         restored = false
+        stopped = false
         phase = .scanning
         live = true
         tick = nil
-        banner = nil
+        // A new tree is arriving, so nothing about the old one belongs to the
+        // screen any more. This lives here rather than in each caller: it is the
+        // invariant "the basket only holds entries from the tree on screen", and
+        // every route to a new tree comes through this method. `rescan()` and
+        // `newScan()` used to each clear it themselves and Stop had to as well,
+        // because Stop showed the volume picker — with Stop keeping the tree it
+        // measured, this is the only door left where a tree is replaced.
+        basket = []
+        clearRemovalReport()
+        // There is no completed measurement while one is running; leaving the
+        // previous scan's date here made `expireIfStale` judge the new tree by
+        // the old tree's age.
+        completedAt = nil
         let mine = nextScanID()
         showingScan = mine
         let scan: ScanResult? = await client.request("scan",
@@ -243,24 +271,42 @@ import Module_Disk_Engine
         await scan(path: path)
     }
 
+    /// Stop. Keeps what the walk had measured, and says that is what it is.
+    ///
+    /// It used to put the phase back to `.start`, so a minute of watching the
+    /// ring grow ended at the volume picker with the tree thrown away — while
+    /// `result` still held it. Everything the ring needs was already on hand;
+    /// what was missing was somewhere to say the tree is unfinished.
+    ///
+    /// The clearing this used to do went with it, and the reason is worth
+    /// keeping: the basket only ever holds entries from the tree on screen, and
+    /// Stop **took the tree away**, which left the volume picker drawn over a
+    /// basket bar naming folders of an abandoned scan (the page draws that bar
+    /// outside `switch dvm.phase`). Stop no longer takes the tree away, so the
+    /// bar is over the tree it belongs to and the invariant holds by keeping
+    /// rather than by clearing. The clearing moved to `scan(path:)`, which is now
+    /// the only place a tree is replaced.
     public func cancel() {
         // Nothing in flight belongs to the screen any more. The engine may
         // already have finished walking, in which case the command below
         // changes nothing and only this line keeps the answer off the screen.
         showingScan = nextScanID()
         Task { await client.send("cancel", encoding: [String]()) }
+        let wasWalking = live
         live = false
-        phase = .start
-        // The basket only ever holds entries from the tree on screen, and Stop
-        // takes the tree away. Keeping them left the volume picker drawn over a
-        // basket bar naming folders of an abandoned scan, above a Trash button,
-        // with nothing on that screen able to say what they belong to.
-        basket = []
-        // The same bar from the other side: trash something mid-scan and it
-        // stops being a basket and becomes a report of what was removed and
-        // what macOS refused. That is a sentence about the tree that Stop is
-        // taking away, so it goes with it.
-        clearRemovalReport()
+        // There is a tree worth keeping only when a walk was actually running and
+        // had reported at least one snapshot. Two other callers arrive here:
+        // `newScan()`, which wants the screen emptied, and Stop pressed inside
+        // the first third of a second, before any partial. Both are the volume
+        // picker, as they always were — and a finished tree must never be marked
+        // stopped, which is the whole difference this flag carries.
+        guard wasWalking, phase == .result, result != nil else {
+            phase = .start
+            basket = []
+            clearRemovalReport()
+            return
+        }
+        stopped = true
     }
 
     private func clearRemovalReport() {
@@ -276,6 +322,12 @@ import Module_Disk_Engine
         result = nil
         completedAt = nil
         restored = false
+        stopped = false
+        // Stated here rather than inherited from `cancel()`, which no longer
+        // clears: this is the door that really does take the tree away, so it is
+        // the one that has to leave the volume picker with nothing under it.
+        basket = []
+        clearRemovalReport()
         focusPath = []
         segments = []
         Task { await loadVolumes() }
@@ -415,7 +467,13 @@ import Module_Disk_Engine
                                          || advice.path.hasPrefix($0 + "/") }
                                  })
         result = updated
-        store.saveDetached(updated, at: completedAt ?? Date())
+        // An unfinished tree is not written down. Every directory in it reports a
+        // floor rather than a total, and the store is what the module reopens on
+        // and labels "measured N minutes ago" — so saving one turns a tree the
+        // person was told is incomplete into a measurement they are not.
+        if treeIsComplete {
+            store.saveDetached(updated, at: completedAt ?? Date())
+        }
         focusPath = DiskFocus.resolve(paths: focusPath.map(\.path), in: pruned)
         recomputeSegments()
     }
