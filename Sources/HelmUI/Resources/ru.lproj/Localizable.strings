@@ -530,6 +530,7 @@
 "Updates" = "Обновления";
 "Upgrade" = "Обновить";
 "Upgrade all" = "Обновить всё";
+"Use this module" = "Использовать этот модуль";
 "Used by the panel, the sidebar, and the icon menu." = "Применяется в панели, боковом меню и меню иконки.";
 "Utilities" = "Утилиты";
 "Utilities live in a collapsible panel section; optional Settings and Quit buttons; the right-click menu jumps straight to any module." = "Утилиты — в раскрывающейся секции панели; опциональные кнопки «Настройки» и «Выход»; меню правого клика ведёт сразу в модуль.";
@@ -579,6 +580,7 @@
 "Wording and sizes reviewed across the app: shorter labels, one name per thing, and sizes in your language — “432,95 ГБ”, not “432,95 GB”." = "Пересмотрены надписи и размеры по всему приложению: короче формулировки, одно название на одну вещь, размеры на вашем языке — «432,95 ГБ», а не «432,95 GB».";
 "Write a log file" = "Вести журнал";
 "Yellow" = "Жёлтый";
+"You can change this later in Settings." = "Это можно изменить позже в Настройках.";
 "Your layouts, as they will look:" = "Ваши раскладки — как они будут выглядеть:";
 "You’re on the latest version." = "Установлена последняя версия.";
 "all of" = "все из";

@@ -530,6 +530,7 @@
 "Updates" = "更新";
 "Upgrade" = "升级";
 "Upgrade all" = "全部升级";
+"Use this module" = "使用此模块";
 "Used by the panel, the sidebar, and the icon menu." = "适用于面板、侧边栏和图标菜单。";
 "Utilities" = "实用工具";
 "Utilities live in a collapsible panel section; optional Settings and Quit buttons; the right-click menu jumps straight to any module." = "实用工具收纳于面板可折叠区；可选“设置/退出”按钮；右键菜单直达任意模块。";
@@ -579,6 +580,7 @@
 "Wording and sizes reviewed across the app: shorter labels, one name per thing, and sizes in your language — “432,95 ГБ”, not “432,95 GB”." = "全应用文案与大小显示梳理：标签更简短、同一事物统一称呼、大小按你的语言显示。";
 "Write a log file" = "记录日志";
 "Yellow" = "黄色";
+"You can change this later in Settings." = "稍后可以在设置中更改。";
 "Your layouts, as they will look:" = "你的键盘布局，实际显示效果：";
 "You’re on the latest version." = "已是最新版本。";
 "all of" = "全部满足";

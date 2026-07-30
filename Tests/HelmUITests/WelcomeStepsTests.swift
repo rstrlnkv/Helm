@@ -76,4 +76,13 @@ final class WelcomeStepsTests: XCTestCase {
         XCTAssertEqual(steps[0].moduleSymbols, ["circle", "circle"])
         XCTAssertTrue(steps[1].moduleSymbols.isEmpty, "module steps are not showcases")
     }
+
+    /// A module step has to know which module it is, or its switch cannot be
+    /// bound to anything. The intro is not a module and carries nil.
+    func testModuleStepsCarryTheirIDAndTheIntroDoesNot() {
+        let steps = WelcomeSteps.build(from: [metadata("Alpha"), metadata("Beta")])
+        XCTAssertNil(steps[0].moduleID)
+        XCTAssertEqual(steps[1].moduleID, "alpha")
+        XCTAssertEqual(steps[2].moduleID, "beta")
+    }
 }

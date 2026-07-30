@@ -530,6 +530,7 @@
 "Updates" = "Mises à jour";
 "Upgrade" = "Mettre à jour";
 "Upgrade all" = "Tout mettre à jour";
+"Use this module" = "Utiliser ce module";
 "Used by the panel, the sidebar, and the icon menu." = "S’applique au panneau, à la barre latérale et au menu de l’icône.";
 "Utilities" = "Utilitaires";
 "Utilities live in a collapsible panel section; optional Settings and Quit buttons; the right-click menu jumps straight to any module." = "Les utilitaires vivent dans une section repliable ; boutons Réglages et Quitter en option ; le menu contextuel ouvre directement un module.";
@@ -579,6 +580,7 @@
 "Wording and sizes reviewed across the app: shorter labels, one name per thing, and sizes in your language — “432,95 ГБ”, not “432,95 GB”." = "Textes et tailles revus dans toute l’app : libellés plus courts, un nom par chose, et des tailles dans votre langue.";
 "Write a log file" = "Écrire un journal";
 "Yellow" = "Jaune";
+"You can change this later in Settings." = "Vous pourrez le changer plus tard dans Réglages.";
 "Your layouts, as they will look:" = "Vos dispositions, telles qu’elles s’afficheront :";
 "You’re on the latest version." = "Vous avez la dernière version.";
 "all of" = "toutes";

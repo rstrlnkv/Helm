@@ -21,6 +21,11 @@ public enum WelcomeStr {
     public static var next: String { L("Next") }
     public static var skip: String { L("Skip") }
     public static var done: String { L("Done") }
+    public static var useThisModule: String { L("Use this module") }
+    public static var switchHint: String { L("You can change this later in Settings.") }
+    /// Shares the app's own key rather than a second table entry for the same
+    /// English — the intro is the one place outside Settings this is asked.
+    public static var launchAtLogin: String { L("Launch automatically at startup") }
 
     /// Read aloud in place of "3 of 10", which VoiceOver otherwise renders as
     /// two bare numbers with no idea what they count.
