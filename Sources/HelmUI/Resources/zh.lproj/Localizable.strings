@@ -13,7 +13,6 @@
 "A rule is a decision made once and carried out from then on, so it is shown before it is switched on." = "规则是一次做出、此后一直执行的决定，所以在开启之前先展示它。";
 "A short token you type often, and what it stands for. It expands when you finish the word." = "你经常输入的简写，以及它代表的内容。在词输入完成时展开。";
 "A way out of a scan in Disk. The module opens on whatever it measured last, and the only button was “Scan again”, which measures the same place — so a scan of the wrong folder came back at every launch with no way to leave it. “Choose another…” beside it clears the screen and forgets the saved scan." = "“磁盘”中终于有了退出扫描的办法：“选择其他…”会清空界面并忘记已保存的扫描。";
-"A window lists what it left behind, while the app is still in the Trash to be identified." = "趁 App 还在废纸篓里、可以辨认，用窗口列出它留下的文件。";
 "A word is checked when you finish it this way. Moving the caret or clicking elsewhere never converts — by then you have moved on." = "以这些方式结束单词时才会判断。移动光标或点击别处从不转换——那时你已经离开了。";
 "A word is only changed when it is not a word as typed and is one once swapped. Anything valid is left alone." = "只有当按原样不是单词、转换后才是单词时才替换。有效的内容不会被改动。";
 "ACTIVE" = "已连接";
@@ -334,7 +333,7 @@
 "OK" = "完成";
 "ON" = "开";
 "Off" = "关闭";
-"Offer to clean up when I trash an app" = "把 App 移到废纸篓时提出清理";
+"Offer to remove a trashed app’s files" = "提议删除废纸篓中 App 的文件";
 "Old download" = "旧下载";
 "On a wide window the settings no longer drift: every page starts at the same left edge, and switching between them stops shifting the content sideways." = "窗口拉宽时设置不再错位：所有页面从同一左边缘开始。";
 "On launch and quit" = "启动与退出时";
@@ -343,6 +342,7 @@
 "On quit only" = "仅退出时";
 "One key does both fixes. Pick right ⌘, ⌥, ⌃ or ⇧ and press it on its own: the first tap fixes the last word, the next puts it back. It keeps working as a modifier — held down, or pressed with anything else, it is an ordinary key again, so nothing you already use it for stops working." = "一个键完成两件事：选择右侧 ⌘、⌥、⌃ 或 ⇧ 并单独按下，第一次修正上一个词，再按一次还原。按住或与其他键同时按下时，它仍是普通修饰键。";
 "One per line." = "每行一个。";
+"Only the app in the Trash can say which files belong to it." = "只有 App 还在废纸篓里，才能认出它的文件。";
 "Only when what you typed is not a word and becomes one once the layout is switched. Anything that is already a word is left alone." = "仅当按原样不是单词、切换布局后才是单词时才会改。已经是单词的一律不动。";
 "Open Extensions…" = "打开扩展…";
 "Open Full Disk Access…" = "打开完全磁盘访问权限…";
