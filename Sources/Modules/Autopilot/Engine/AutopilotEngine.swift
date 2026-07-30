@@ -430,9 +430,24 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         return report
     }
 
+    /// Every enabled folder, which is what the sweep timer runs.
+    ///
+    /// Labelled because it is unattended. `HelmLog.memory` is a delta against the
+    /// last reading for the same label and is silent below 8 MB, so a sweep that
+    /// costs nothing says nothing — but the app's memory trail had a hole exactly
+    /// the shape of this method: growth appearing between two `idle` readings with
+    /// no command in between, because a timer is not a command. A reading here
+    /// turns "something happened" into "the sweep happened", and the reclaim hands
+    /// the emptied regions back to macOS at the moment the work ends rather than
+    /// leaving them resident until the next labelled operation
+    /// (docs/superpowers/plans/2026-07-29-third-pass.md has the trail).
     @discardableResult
     public func sweepAll() -> [SweepReport] {
-        folders.filter(\.enabled).map { sweep($0) }
+        let reports = folders.filter(\.enabled).map { sweep($0) }
+        guard !reports.isEmpty else { return reports }
+        MemoryReclaim.afterHeavyWork("autopilot.sweep")
+        HelmLog.shared.memory("autopilot.sweep")
+        return reports
     }
 
     /// One event's worth of work. The paths FSEvents reports are files, and the

@@ -125,7 +125,13 @@ public final class DuplicateScanner: @unchecked Sendable {
         // Unreadable files leave the running silently by design; the count is
         // what tells a triage session whether "no duplicates" meant "none" or
         // "nothing could be read".
+        // Reclaimed *and* reported. This phase had the reclaim and not the
+        // reading, which left the one loop that has already caused a 48 GB
+        // incident handing its memory back without ever saying what it had taken
+        // — a regression here would not appear in the trail at all, while its
+        // sibling `duplicates.walk` two dozen lines up reports normally.
         MemoryReclaim.afterHeavyWork("duplicates.hash")
+        HelmLog.shared.memory("duplicates.hash")
         let unreadable = progress.unreadableCount
         HelmLog.shared.info("duplicates", "\(groups.count) groups from \(total) candidates"
                             + (unreadable > 0 ? ", \(unreadable) unreadable" : ""))
