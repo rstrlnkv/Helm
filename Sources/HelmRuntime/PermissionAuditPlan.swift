@@ -19,11 +19,17 @@ public enum PermissionAuditPlan {
         return out
     }
 
-    /// True when this version has not yet said its piece.
+    /// True when this version has not yet said its piece — and only from the
+    /// second run on.
     ///
-    /// Keyed by version rather than a flag: the same build asking twice is
-    /// nagging, and a new build not asking at all is the bug this exists for.
+    /// The audit exists to catch a grant that went away: "it was granted
+    /// yesterday and is denied today." That is a question you can only ask
+    /// once there is a previous version to compare against. A first run has
+    /// nothing to compare, and every module that needs a grant already shows
+    /// its own note with a Grant button on its own page — asking here too
+    /// meant a brand-new install requested Full Disk Access and Accessibility
+    /// before the person had asked for anything.
     public static func shouldSpeak(lastSeenVersion: String, current: String) -> Bool {
-        !current.isEmpty && lastSeenVersion != current
+        !lastSeenVersion.isEmpty && !current.isEmpty && lastSeenVersion != current
     }
 }

@@ -47,8 +47,6 @@ enum AppStr {
     static var done: String { L("Done") }
     static var moduleOrderEditNote: String { L("Drag a row, or use the arrows.") }
     static var moduleOrderNote: String { L("Used by the panel, the sidebar, and the icon menu.") }
-    /// The first launch: nothing has lapsed, because nothing was ever granted.
-    static var permissionsNeeded: String { L("Helm needs permission from macOS") }
     static var permissionsChanged: String { L("Some permissions need granting again") }
     static var later: String { L("Later") }
     static var permissions: String { L("Permissions") }

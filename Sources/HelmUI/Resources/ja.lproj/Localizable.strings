@@ -193,7 +193,6 @@
 "Helm is still in development. Beta builds are the steadier of the two." = "Helm はまだ開発中です。2 つのうち Beta のほうが安定しています。";
 "Helm lives in the menu bar and is made of modules. Each one does a single job, and you can switch off the ones you do not want." = "Helm はメニューバーに常駐し、モジュールでできています。それぞれが一つの仕事をし、要らないものはオフにできます。";
 "Helm needs Full Disk Access to move this." = "移動にはフルディスクアクセスが必要です。";
-"Helm needs permission from macOS" = "Helm には macOS の許可が必要です";
 "Helm returns to how it was just after installing. Access you granted in System Settings stays as it is." = "Helm はインストール直後の状態に戻ります。システム設定で許可したアクセスはそのままです。";
 "Helm’s language now reaches the parts macOS draws for it. The folder picker, its sidebar and the menus on a text field were English whatever language you had chosen. Numbers and dates follow the language too: a count of files is grouped the way your language groups digits, and a date is written the way your language writes one." = "macOS が描く部分にも Helm の言語が届くようになりました。フォルダ選択画面やそのサイドバー、テキストフィールドのメニューは英語のままでした。数字や日付も言語に合わせて表記されます。";
 "Helm’s own copy of the menu-bar indicator, with the choices the system’s one does not offer. macOS shows its own — turn that one off in Keyboard settings, or you get two." = "システムの入力ソース表示を、設定できる形で複製したものです。システム側は残るので、キーボード設定でオフにしないと2つ並びます。";

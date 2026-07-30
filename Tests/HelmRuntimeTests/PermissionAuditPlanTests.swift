@@ -23,9 +23,9 @@ final class PermissionAuditPlanTests: XCTestCase {
                         .isEmpty)
     }
 
-    /// The same build must not ask twice, and a new build must always ask.
+    /// The same build must not ask twice, and a new build must always ask —
+    /// once there is a previous version to compare against.
     func testItSpeaksOncePerVersion() {
-        XCTAssertTrue(PermissionAuditPlan.shouldSpeak(lastSeenVersion: "", current: "0.7.1"))
         XCTAssertTrue(PermissionAuditPlan.shouldSpeak(lastSeenVersion: "0.7.0", current: "0.7.1"))
         XCTAssertFalse(PermissionAuditPlan.shouldSpeak(lastSeenVersion: "0.7.1", current: "0.7.1"))
     }
@@ -33,5 +33,23 @@ final class PermissionAuditPlanTests: XCTestCase {
     /// An unreadable version is not a new version.
     func testAnEmptyVersionSaysNothing() {
         XCTAssertFalse(PermissionAuditPlan.shouldSpeak(lastSeenVersion: "0.7.1", current: ""))
+    }
+
+    /// A first run has nothing to compare against. The audit exists to catch a
+    /// grant that went away — "it was granted yesterday and is denied today" —
+    /// and that is a question you can only ask the second time. Every module
+    /// that needs a grant already shows its own note with a Grant button on its
+    /// own page, so on day one the audit was asking for the two scariest
+    /// permissions macOS has before the person had asked for anything.
+    func testAFirstRunIsNotSpokenTo() {
+        XCTAssertFalse(PermissionAuditPlan.shouldSpeak(lastSeenVersion: "", current: "0.8.0"))
+    }
+
+    func testAChangedVersionStillSpeaks() {
+        XCTAssertTrue(PermissionAuditPlan.shouldSpeak(lastSeenVersion: "0.7.1", current: "0.8.0"))
+    }
+
+    func testTheSameVersionStaysQuiet() {
+        XCTAssertFalse(PermissionAuditPlan.shouldSpeak(lastSeenVersion: "0.8.0", current: "0.8.0"))
     }
 }
