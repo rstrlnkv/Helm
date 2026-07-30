@@ -37,6 +37,32 @@ public struct ScanResult: Codable, Equatable, Sendable {
     }
 }
 
+/// An app sitting in the Trash and what it left behind — one group in the window
+/// that offers to clean up after it.
+///
+/// It crosses the transport because `HelmApp` cannot import this target: the host
+/// depends on the UI targets only, so that a direct edge is not "a door past the
+/// transport into an engine's internals" (Package.swift, at the HelmApp target).
+/// That is why the whole sweep is one command rather than the host listing the
+/// Trash itself and asking about each bundle it finds.
+public struct TrashedAppLeftovers: Codable, Equatable, Sendable {
+    public let bundleID: String
+    /// What the person will recognise, from the bundle's own `Info.plist`.
+    public let name: String
+    /// Where it sits in the Trash. The window reads its icon from here — and it is
+    /// deliberately not among the things offered for deletion: the app is already
+    /// where the person put it.
+    public let appPath: String
+    public let leftovers: [Leftover]
+
+    public init(bundleID: String, name: String, appPath: String, leftovers: [Leftover]) {
+        self.bundleID = bundleID; self.name = name
+        self.appPath = appPath; self.leftovers = leftovers
+    }
+
+    public var totalBytes: Int { leftovers.reduce(0) { $0 + $1.sizeBytes } }
+}
+
 /// Why one path could not be moved, so the UI can say something actionable.
 public struct TrashFailureInfo: Codable, Equatable, Sendable, Identifiable {
     public var id: String { path }

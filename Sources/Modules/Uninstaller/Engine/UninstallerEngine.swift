@@ -12,12 +12,19 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
     private let trash: TrashPort
     private let running: RunningAppsPort
     private let extensions: SystemExtensionPort
+    private let store: NamespacedStore
     private let localTransport: LocalTransport
     public let transport: EngineTransport
 
+    /// `store` holds one thing: which trashed apps the person has already declined
+    /// to clean up after. Defaulted to memory so the thirteen tests that build this
+    /// engine directly keep working — and a fresh record per test is what a test
+    /// wants anyway.
     public init(home: URL, apps: AppLister, fs: FileSystemPort, trash: TrashPort,
                 running: RunningAppsPort,
                 extensions: SystemExtensionPort = NoSystemExtensions(),
+                store: NamespacedStore = NamespacedStore(namespace: "uninstaller",
+                                                        backing: InMemoryKeyValueStore()),
                 transport: LocalTransport = LocalTransport()) {
         self.home = home
         self.apps = apps
@@ -25,6 +32,7 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
         self.trash = trash
         self.running = running
         self.extensions = extensions
+        self.store = store
         self.localTransport = transport
         self.transport = transport
         wireTransport()
@@ -164,6 +172,59 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
         ("Logs", .logs),
     ]
 
+    // MARK: - Apps the person dragged to the Trash themselves
+
+    private static let dismissedKey = "trashOfferDismissed"
+
+    /// What is sitting in the Trash that left something behind, minus what has
+    /// already been declined.
+    ///
+    /// One command rather than several, because the host cannot import this target
+    /// and reach these pieces one at a time (Package.swift, HelmApp's dependencies).
+    ///
+    /// The order is the order the Trash listed, which is the order the window draws
+    /// its groups in.
+    public func trashedAppLeftovers() async -> [TrashedAppLeftovers] {
+        await offTheCooperativePool { self.trashedAppLeftoversSync() }
+    }
+
+    private func trashedAppLeftoversSync() -> [TrashedAppLeftovers] {
+        let found = apps.trashedApps()
+        var dismissed = Set(store.stringArray(Self.dismissedKey))
+        // Swept before it is read: an app that has left the Trash — restored, or
+        // finally deleted — takes its "no" with it, so removing the same app later
+        // is a new question rather than one already answered.
+        let kept = TrashOfferMemory.stillDismissed(dismissed, found: found)
+        if kept != dismissed {
+            store.set(Array(kept), for: Self.dismissedKey)
+            dismissed = kept
+        }
+
+        return TrashOfferMemory.toOffer(found: found, dismissed: dismissed)
+            .compactMap { app in
+                // Two copies of one app share a bundle id, and dragging one to the
+                // Trash leaves the other installed with its support files in use.
+                // `installedPaths` is what makes that answerable: LaunchServices
+                // reports every copy it has ever seen — five stale build copies of
+                // Helm itself, on this machine — and `InstalledLocation` is the
+                // positional rule that keeps only the ones that count.
+                guard apps.installedPaths(forBundleID: app.bundleID).isEmpty else { return nil }
+                let result = scanSync(bundleID: app.bundleID, appPath: app.path,
+                                      appName: app.name)
+                guard !result.leftovers.isEmpty else { return nil }
+                return TrashedAppLeftovers(bundleID: app.bundleID, name: app.name,
+                                           appPath: app.path, leftovers: result.leftovers)
+            }
+    }
+
+    /// Cancel. Remembered so the window does not return for this app at the next
+    /// launch, and forgotten when the app leaves the Trash.
+    public func dismissTrashedApp(bundleID: String) {
+        var dismissed = Set(store.stringArray(Self.dismissedKey))
+        dismissed.insert(bundleID)
+        store.set(Array(dismissed), for: Self.dismissedKey)
+    }
+
     /// Finds leftovers whose owning app is no longer installed, grouped by bundle
     /// id. Conservative by design — see `OrphanDetector`.
     public func scanOrphans() async -> [OrphanGroup] {
@@ -287,6 +348,11 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
                 return (try? JSONEncoder().encode(list)) ?? Data()
             case "scanOrphans":
                 return (try? JSONEncoder().encode(await self.scanOrphans())) ?? Data()
+            case "trashedAppLeftovers":
+                return (try? JSONEncoder().encode(await self.trashedAppLeftovers())) ?? Data()
+            case "dismissTrashedApp":
+                self.dismissTrashedApp(bundleID: String(decoding: cmd.payload, as: UTF8.self))
+                return Data()
             case "trashPaths":
                 guard let paths = try? JSONDecoder().decode([String].self, from: cmd.payload) else { return Data() }
                 return (try? JSONEncoder().encode(await self.trashPaths(paths))) ?? Data()

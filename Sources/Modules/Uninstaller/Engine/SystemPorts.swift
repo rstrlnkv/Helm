@@ -51,6 +51,28 @@ public final class WorkspaceAppLister: AppLister {
             .filter { InstalledLocation.isInstalled(path: $0, home: home.path) }
     }
 
+    /// The user's own Trash only. Per-volume `/Volumes/*/.Trashes/<uid>` is left
+    /// alone: an app is rarely installed on and deleted from an external disk, and
+    /// each of those is a separate protected read.
+    ///
+    /// Something in there that is not a readable app bundle — a broken download, a
+    /// folder somebody named `.app` — yields nothing rather than an error. There is
+    /// no failure to report to anyone: the question is whether there is anything to
+    /// offer, and the answer is no. The same is true without Full Disk Access,
+    /// which is what the directory read needs.
+    public func trashedApps() -> [TrashedApp] {
+        let trash = home.appendingPathComponent(".Trash", isDirectory: true)
+        guard let items = try? FileManager.default.contentsOfDirectory(
+            at: trash, includingPropertiesForKeys: nil) else { return [] }
+        return items
+            .filter { $0.pathExtension == "app" }
+            .compactMap { app in
+                let info = app.appendingPathComponent("Contents/Info.plist")
+                return TrashedAppIdentity.of(path: app.path,
+                                             info: NSDictionary(contentsOf: info) as? [String: Any])
+            }
+    }
+
     public func installedApps() -> [InstalledApp] {
         let fm = FileManager.default
         var seen = Set<String>()
