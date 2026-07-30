@@ -24,6 +24,19 @@ public protocol AppLister: Sendable {
     /// well. An honest second copy (a Setapp build beside a direct download)
     /// looks the same and means the same thing — the data stays in use.
     func installedPaths(forBundleID id: String) -> [String]
+
+    /// Application bundles sitting in the user's Trash.
+    ///
+    /// Dragging an app there is how almost everyone uninstalls on a Mac, and it is
+    /// the one removal Helm never saw. The bundle is intact while it waits, so its
+    /// own `Info.plist` still answers the only question the leftover scan needs.
+    ///
+    /// Reading `~/.Trash` requires Full Disk Access — measured: a process without it
+    /// gets `Operation not permitted`. Empty is therefore the honest answer both
+    /// when the Trash holds no applications and when Helm is not allowed to look,
+    /// and the module's page is where the second case is explained, since
+    /// `permissions: [.fullDisk]` is already what it declares.
+    func trashedApps() -> [TrashedApp]
 }
 
 public extension AppLister {
@@ -32,6 +45,9 @@ public extension AppLister {
     func installedPaths(forBundleID id: String) -> [String] {
         installedApps().filter { $0.bundleID == id }.map(\.path)
     }
+
+    /// Nothing, for a lister that only knows what is installed.
+    func trashedApps() -> [TrashedApp] { [] }
 }
 
 public protocol FileSystemPort: Sendable {

@@ -18,9 +18,12 @@ import Module_Uninstaller_Engine
     public func makeEngine(store: NamespacedStore) -> any ModuleEngine {
         let home = FileManager.default.homeDirectoryForCurrentUser
         let ports = UninstallerSystemPorts(home: home)
+        // The store the host hands every module was unused here until the Trash
+        // offer needed somewhere to remember a "no" across launches.
         return UninstallerEngine(home: home, apps: ports.apps, fs: ports.fs,
                                  trash: ports.trash, running: ports.running,
-                                 extensions: SystemExtensionLister())
+                                 extensions: SystemExtensionLister(),
+                                 store: store)
     }
 
     public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { .utility }
