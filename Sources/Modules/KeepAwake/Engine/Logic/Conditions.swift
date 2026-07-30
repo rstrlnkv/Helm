@@ -1,4 +1,10 @@
-public enum ActiveCondition: Hashable, Sendable { case manual, timer, externalDisplay, power, app }
+/// `CaseIterable` earns its keep in `ConditionLabelTests`, which walks every case
+/// and fails when one is added without a word for the log — otherwise the reason
+/// the module is holding sleep would be the one thing missing from the line that
+/// exists to explain it.
+public enum ActiveCondition: Hashable, Sendable, CaseIterable {
+    case manual, timer, externalDisplay, power, app
+}
 
 public enum Conditions {
     public struct Inputs: Equatable, Sendable {
