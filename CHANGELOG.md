@@ -185,6 +185,24 @@ features, PATCH = fixes.
   the reset is run against a temporary home where it must take Helm's two
   directories and leave three neighbours — including `Helmet`, whose name starts
   the same way — plus every container above them.
+- **A Keep Awake session survives Helm restarting.** `manualOn`, `startDate` and
+  `endDate` lived in engine fields and nowhere else, so anything that ended the
+  process cancelled a two-hour session — routinely Helm's own silent updater,
+  which terminates the app and has a detached script swap the bundle and start it
+  again. The IOKit assertion goes with the process too, so the Mac was free to
+  sleep with the countdown gone from the menu bar and nothing anywhere saying the
+  session had been cut short. The module already knew the pattern one field away:
+  `clamshellGuard` is stored when sleep is disabled and undone on the next launch,
+  because that change outlives the process — it protected the system from being
+  left wrong and not the person's own request.
+  - A restored session comes back with what was **left** of it, not the duration
+    it was asked for, or it would end later every time the app restarts. One whose
+    deadline passed while Helm was gone stays finished: resuming it would keep the
+    Mac awake for a stretch nobody asked for, hours after they stopped watching.
+    Stopping is stored as firmly as starting, so the next launch cannot resurrect
+    a session that was switched off.
+  - What it cannot repair, and does not pretend to: the assertion was released
+    when the process died, so the Mac could have slept in the gap.
 
 ### Changed
 - **The diagnostics log can now name every phase that does bulk work.** Helm
