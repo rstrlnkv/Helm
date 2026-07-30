@@ -49,6 +49,19 @@ ones. Show the failing case, not just the rule. Keep code identifiers and
 commands exact. Never document an intention — only what is true of the
 current source.
 
+## Auditing CLAUDE.md itself
+
+`claude-md-management:claude-md-improver` grades a CLAUDE.md against what such a
+file is for and says where it has gone vague. Invoke it via the Skill tool when
+you are asked to review that file rather than to add one fact to it — it is a
+whole-file judgement, not an edit, and it will notice rules that have quietly
+stopped being true.
+
+Its advice is generic and this file is not. Where the two disagree, `CLAUDE.md`
+wins: a rule here has usually been bought with a debugging session, and "this
+could be shorter" is a poor reason to drop the sentence that says why the
+repository may not live under a file provider.
+
 ## How to answer
 
 List: lessons missing from the docs (with the commit or file that proves

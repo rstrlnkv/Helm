@@ -24,12 +24,34 @@ say so and give the replacement — then judge the seven translations against
 
 ## Where the strings are
 
-Every user-visible string goes through `L("English base", [.ru: …, .es: …,
-.fr: …, .de: …, .ja: …, .zh: …, .pt: …])`. The tables live in
-`Sources/**/…Strings.swift`, in `Sources/HelmApp/AppStrings.swift`, and
-inline in a few views and in `HelmUI/DesignSystem`. The in-app changelog
-(`Sources/HelmApp/ChangelogData.swift`) is localized too and is
-user-facing — no fix minutiae there.
+Every user-visible string goes through `L("English base")`, and **the English
+is the key**. It stays at the call site — in `Sources/**/…Strings.swift`, in
+`Sources/HelmApp/AppStrings.swift`, and in a few views and `HelmUI/DesignSystem`
+— while the seven translations live in
+`Sources/HelmUI/Resources/<lang>.lproj/Localizable.strings`. Eight files, one
+key set. That is where you do your work.
+
+They moved there on 2026-07-30. If you find an inline `[.ru: …, .es: …]` table,
+it is one of the ~36 strings that carry Swift interpolation and therefore
+cannot be a key at all — interpolation runs before the lookup. Those keep their
+tables and are edited in place.
+
+**One English key means one thing.** The migration's collision guard found
+seventeen keys carrying two different translations for the same language, and
+twelve of them were two concepts wearing one English word. If a string needs a
+second meaning, the English gets split; it does not get a second translation.
+The rulings are in
+`docs/superpowers/specs/2026-07-30-lproj-migration-and-key-rulings.md`.
+
+**A malformed `.strings` file is silent.** `NSDictionary(contentsOfFile:)`
+returns nil and every string in that language falls back to English with no
+error anywhere. Run `plutil -lint` on all eight after any edit — this has
+already bitten once, from a `*/` inside a glob in a header comment.
+
+`StringsCoverageTests` is the guard: every key present in all eight files,
+nothing empty, one lookup end to end. The in-app changelog
+(`Sources/HelmApp/ChangelogData.swift`) is localized too and is user-facing —
+no fix minutiae there.
 
 ## What you check
 
@@ -71,6 +93,30 @@ someone who can.
 Invoke `elements-of-style:writing-clearly-and-concisely` via the Skill tool. The
 strings you propose land in the app in eight languages at once, and a sentence
 doing two jobs does them twice as badly by the time it is translated.
+
+## Russian has its own tools — use them, do not eyeball it
+
+Three skills exist for the language you are most likely to be judged on, and
+they measure what you would otherwise assert:
+
+- **`ru-text:ru-check`** before you rewrite anything Russian — typography,
+  info-style, UX wording. It is the one that catches «ё», the wrong dash, a
+  hyphen doing a dash's job, and a label that reads like a manual.
+- **`ru-text:ru-score`** before *and* after, so the change is a number rather
+  than an opinion. "Was 7.4, is 8.6" is a report; "reads better now" is not.
+- **`humanizer-ru:humanizer-ru`** when the Russian reads like a machine wrote
+  it — canned openings, noun stacks, «является», flat rhythm. Its own rule
+  binds you too: **a text that is already good is left alone and said to be
+  good.** It scored Helm's 174 long Russian strings at 98/100 and the honest
+  outcome was fifteen edits, not a rewrite.
+
+Two things that skill will flag which are *house style here* and must not be
+"fixed": the em dashes, which every language in this app uses deliberately, and
+«не только»/«не просто» where they mark a real contrast. Over-editing is itself
+detectable, and it destroys the voice you were asked to protect.
+
+The other seven languages have no such tooling. There you read macOS's own
+tables — see § What you check.
 
 ## Read-only means read-only
 

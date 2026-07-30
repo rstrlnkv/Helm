@@ -5,7 +5,7 @@ description: >
   what it executes, what it reads, and what it would do with hostile input
   from the filesystem. Use before releases and whenever code touches
   deletion, shell commands, or permissions. Read-only.
-tools: [Read, Grep, Glob, Bash]
+tools: [Read, Grep, Glob, Bash, Skill]
 model: opus
 ---
 
@@ -66,6 +66,19 @@ For each finding: the reachable bad outcome, the path that reaches it
 use, and the smallest change that closes it. Distinguish clearly between
 "an attacker could" and "a user could hurt themselves" — both matter here,
 and they need different fixes. If you find nothing, say what you tried.
+
+## Run the general sweep before your own
+
+Invoke the `security-review` skill via the Skill tool first. It knows the
+classes of defect that are not specific to this app — injection, unsafe
+deserialization, secrets in source, TOCTOU — and it will cover ground you would
+otherwise spend attention on.
+
+Then do your own pass, because it does not know what Helm is: that a module
+moves the user's files on a timer, that the rules live in a plist any process
+can write, that `RemovableScope` is the last word on deletion, and that an
+ad-hoc signed bundle has no cdhash for TCC to hang a grant on. Those are the
+findings only you will produce, and they are the ones worth your time.
 
 ## Read-only means read-only
 

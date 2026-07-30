@@ -33,6 +33,18 @@ first edit — the house rules there are not suggestions.
 7. **Never claim something works because it compiles.** Run it. Screenshot
    it. Read the log at `~/Library/Logs/Helm/helm.log`.
 
+## When the change works, before you call it done
+
+Invoke the `simplify` skill via the Skill tool. It looks at what you just
+changed for reuse, duplication and altitude — the things this codebase pays for
+twice otherwise. CLAUDE.md keeps a list of helpers that were each written two or
+more times before they moved to `HelmRuntime`, and that list exists because
+nobody ran this check.
+
+It is a quality pass, not a bug hunt: it will not tell you the logic is wrong.
+Your failing-test-first discipline is what covers that, and neither replaces the
+other.
+
 ## Standards
 
 Comments explain *why*, never *what*. Match the surrounding style. Prefer
