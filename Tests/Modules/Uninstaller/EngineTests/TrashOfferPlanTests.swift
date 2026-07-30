@@ -112,4 +112,73 @@ final class TrashOfferPlanTests: XCTestCase {
         let groups = [group("com.a", [leftover("/1", 100)])]
         XCTAssertEqual(TrashOfferPlan.totalBytes(groups, selected: []), 0)
     }
+
+    // MARK: - A second app arrives while the window is open
+
+    /// Dragging two apps to the Trash is one gesture to the person and two
+    /// arrivals to the app, so the window has to take the second one. What it
+    /// must not do is take it by rebuilding: a person who unticked something and
+    /// then dropped another app would have their decision quietly undone.
+
+    func testASecondAppArrivesTicked() {
+        let before = [group("com.a", [leftover("/a1")])]
+        let after = before + [group("com.b", [leftover("/b1")])]
+        XCTAssertEqual(
+            TrashOfferPlan.selectionAfterRefresh(previous: before,
+                                                 selected: ["/a1"], current: after),
+            ["/a1", "/b1"])
+    }
+
+    /// The one that matters. Unticking is a decision, and a decision the window
+    /// forgets because somebody dropped a second app is worse than no window.
+    func testWhatWasUntickedStaysUnticked() {
+        let before = [group("com.a", [leftover("/a1"), leftover("/a2")])]
+        let after = before + [group("com.b", [leftover("/b1")])]
+        let selection = TrashOfferPlan.selectionAfterRefresh(
+            previous: before, selected: ["/a1"], current: after)
+        XCTAssertFalse(selection.contains("/a2"), "a path the person unticked came back ticked")
+        XCTAssertEqual(selection, ["/a1", "/b1"])
+    }
+
+    /// And the other direction: something ticked by hand stays ticked, even
+    /// though the default would have left it alone.
+    func testAGuessTickedByHandStaysTicked() {
+        let before = [group("com.a", [leftover("/a1", byName: true)])]
+        let after = before + [group("com.b", [leftover("/b1")])]
+        XCTAssertEqual(
+            TrashOfferPlan.selectionAfterRefresh(previous: before,
+                                                 selected: ["/a1"], current: after),
+            ["/a1", "/b1"])
+    }
+
+    /// The new group's own default still applies to it — arriving late does not
+    /// make a name guess any less of a guess.
+    func testANewGroupsGuessArrivesUnticked() {
+        let before = [group("com.a", [leftover("/a1")])]
+        let after = before + [group("com.b", [leftover("/b1"), leftover("/b2", byName: true)])]
+        XCTAssertEqual(
+            TrashOfferPlan.selectionAfterRefresh(previous: before,
+                                                 selected: ["/a1"], current: after),
+            ["/a1", "/b1"])
+    }
+
+    /// An app put back before the window was answered takes its files out of the
+    /// selection with it — they are not the person's to remove any more.
+    func testAnAppThatLeftTheTrashLeavesTheSelection() {
+        let before = [group("com.a", [leftover("/a1")]), group("com.b", [leftover("/b1")])]
+        let after = [group("com.a", [leftover("/a1")])]
+        XCTAssertEqual(
+            TrashOfferPlan.selectionAfterRefresh(previous: before,
+                                                 selected: ["/a1", "/b1"], current: after),
+            ["/a1"])
+    }
+
+    /// A refresh that changes nothing must change nothing.
+    func testTheSameGroupsKeepTheSameSelection() {
+        let groups = [group("com.a", [leftover("/a1"), leftover("/a2")])]
+        XCTAssertEqual(
+            TrashOfferPlan.selectionAfterRefresh(previous: groups,
+                                                 selected: ["/a2"], current: groups),
+            ["/a2"])
+    }
 }

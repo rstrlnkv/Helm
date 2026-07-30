@@ -44,6 +44,34 @@ public enum TrashOfferPlan {
             .filter { selected.contains($0) && seen.insert($0).inserted }
     }
 
+    /// What stays ticked when a second app lands in the Trash and the window
+    /// takes it in.
+    ///
+    /// Two apps dropped together are one gesture to the person and two arrivals
+    /// to the app, so the window has to grow. Rebuilding the selection from the
+    /// default would be the cheap way to do it and it would quietly undo a
+    /// decision: somebody who unticked a folder and then dropped another app
+    /// would find it ticked again, next to a button that removes it.
+    ///
+    /// So: a path that was already on screen keeps whatever the person left it
+    /// as, a path that was not gets the default for its own group, and a path
+    /// that is gone — its app put back — takes itself out of the selection.
+    public static func selectionAfterRefresh(previous: [TrashedAppLeftovers],
+                                             selected: Set<String>,
+                                             current: [TrashedAppLeftovers]) -> Set<String> {
+        let seenBefore = Set(previous.flatMap(\.leftovers).map(\.path))
+        let defaults = Set(defaultSelection(current))
+        var out: Set<String> = []
+        for path in current.flatMap(\.leftovers).map(\.path) {
+            if seenBefore.contains(path) {
+                if selected.contains(path) { out.insert(path) }
+            } else if defaults.contains(path) {
+                out.insert(path)
+            }
+        }
+        return out
+    }
+
     /// The size under the list, counting what `paths` would send.
     public static func totalBytes(_ groups: [TrashedAppLeftovers], selected: Set<String>) -> Int {
         var seen: Set<String> = []

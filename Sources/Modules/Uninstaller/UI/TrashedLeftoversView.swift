@@ -45,6 +45,14 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { bundleID }
 /// the app, and this window is a visitor that appears, is answered and goes away.
 @MainActor final class TrashedLeftoversModel: ObservableObject {
     private let client: TransportClient
+    /// The same "look again" the host acts on when no window is up. With one up,
+    /// the host stands back and this takes it instead — a second app dropped a
+    /// moment after the first is one gesture to the person, and answering it with
+    /// a second window, or with nothing at all, are both wrong.
+    private let events: AsyncStream<EngineEvent>
+    /// Cancelled when the window goes away. A `for await` over a stream that
+    /// never finishes outlives every reference to this object otherwise.
+    private var watching: Task<Void, Never>?
 
     @Published private(set) var groups: [TrashedAppLeftovers] = []
     @Published var selected: Set<String> = []
@@ -58,11 +66,43 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { bundleID }
 
     init(vm: ModuleViewModel) {
         client = TransportClient(vm.transport)
+        events = vm.transport.events
     }
 
     func load() async {
         groups = await client.request("trashedAppLeftovers") ?? []
         selected = Set(TrashOfferPlan.defaultSelection(groups))
+    }
+
+    /// Starts taking arrivals while the window is on screen.
+    func watchForMore() {
+        watching?.cancel()
+        watching = Task { [weak self] in
+            guard let events = self?.events else { return }
+            for await event in events where event.name == "trashChanged" {
+                await self?.refresh()
+            }
+        }
+    }
+
+    func stopWatching() {
+        watching?.cancel()
+        watching = nil
+    }
+
+    /// Takes in whatever the Trash holds now, keeping every decision already made
+    /// about what was on screen — see `TrashOfferPlan.selectionAfterRefresh`.
+    ///
+    /// Skipped while a removal is in flight: the answer would be about a Trash
+    /// that is mid-change, and the outcome screen is what comes next anyway.
+    private func refresh() async {
+        guard !busy, outcome == nil else { return }
+        let fresh: [TrashedAppLeftovers] = await client.request("trashedAppLeftovers") ?? []
+        guard fresh != groups else { return }
+        selected = TrashOfferPlan.selectionAfterRefresh(previous: groups,
+                                                        selected: selected, current: fresh)
+        groups = fresh
+        HelmLog.shared.info("uninstaller", "trash offer: now \(groups.count) app(s) on screen")
     }
 
     var totalBytes: Int { TrashOfferPlan.totalBytes(groups, selected: selected) }
@@ -80,6 +120,10 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { bundleID }
     /// Returns true when the window has said everything it has to say and may
     /// close.
     func removeSelection() async -> Bool {
+        // Fixed before the work starts: an app that lands in the Trash while this
+        // is running was never on screen, and answering a question on somebody's
+        // behalf is exactly what the record must not do.
+        let answering = groups
         let paths = TrashOfferPlan.paths(groups, selected: selected)
         guard !paths.isEmpty else { return true }
         busy = true
@@ -90,7 +134,7 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { bundleID }
         // removal that succeeded the next sweep finds nothing anyway, and for one
         // macOS refused, asking again at every launch is the nagging the record
         // exists to prevent. The files are still listed on the module's own page.
-        await answered()
+        await answered(answering)
         guard let result, !result.failures.isEmpty else { return true }
         failures = result.failures
         removedCount = result.trashed.count
@@ -105,8 +149,11 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { bundleID }
     ///
     /// Awaited rather than fired: the write outlives the process only if it
     /// happens, and every caller here closes the window in the next line.
-    func answered() async {
-        for group in groups {
+    /// Takes the groups it answers for, rather than reading `groups`: by the time
+    /// this runs the list may have grown, and an app nobody has seen yet has not
+    /// been declined by anybody.
+    func answered(_ answering: [TrashedAppLeftovers]? = nil) async {
+        for group in answering ?? groups {
             await client.send("dismissTrashedApp", payload: Data(group.bundleID.utf8))
         }
     }
@@ -143,11 +190,18 @@ struct TrashedLeftoversView: View {
             footer
         }
         .frame(width: 520)
+        // The list grows when a second app lands in the Trash, so the window has
+        // to grow with it rather than hiding the newcomer below its own edge.
+        .animation(HelmMotion.interface, value: model.groups.count)
+        .onAppear { model.watchForMore() }
         // Every way out of this window is an answer, including the close button,
         // and an answer that is not recorded comes back at the next launch. The
         // one place that catches all three — Cancel, Move to Trash, and the red
         // button in the corner — is the view going away.
-        .onDisappear { Task { await model.answered() } }
+        .onDisappear {
+            model.stopWatching()
+            Task { await model.answered() }
+        }
     }
 
     /// The standing line, and it is the honest cost of offering now rather than
