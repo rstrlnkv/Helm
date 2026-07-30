@@ -157,6 +157,19 @@ features, PATCH = fixes.
     are built once per style, size and tint and cached: ten firings in a row
     move the footprint by 1 MB on the first and by nothing after it.
 
+### Fixed
+- **Two guards for the two things that could not be checked by hand.** The VPN
+  spin's colour and the reset's deletion were both unverifiable on the
+  development machine — the L2TP tunnel never comes up, so a firing never
+  happens and a connect that changed nothing is deliberately not announced; and
+  the status item sits on a second display that stopped taking synthesized
+  clicks. Both are now covered by tests that were each watched failing on a real
+  regression: the spin's frames are rendered through the same call the status
+  item makes and measured (cyan must be blue-dominant, red red-dominant), and
+  the reset is run against a temporary home where it must take Helm's two
+  directories and leave three neighbours — including `Helmet`, whose name starts
+  the same way — plus every container above them.
+
 ### Changed
 - **The translations live in `.lproj` files now, not in the source.** Every
   user-visible string was a Swift dictionary at its call site; 663 of 700 moved
