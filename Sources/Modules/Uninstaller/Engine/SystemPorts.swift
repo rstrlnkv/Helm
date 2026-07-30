@@ -62,8 +62,19 @@ public final class WorkspaceAppLister: AppLister {
     /// which is what the directory read needs.
     public func trashedApps() -> [TrashedApp] {
         let trash = home.appendingPathComponent(".Trash", isDirectory: true)
-        guard let items = try? FileManager.default.contentsOfDirectory(
-            at: trash, includingPropertiesForKeys: nil) else { return [] }
+        let items: [URL]
+        do {
+            items = try FileManager.default.contentsOfDirectory(
+                at: trash, includingPropertiesForKeys: nil)
+        } catch {
+            // A read that failed and a Trash with nothing in it are the same
+            // silence to whoever opens the log, and they want different answers:
+            // the first is usually Full Disk Access, which every install takes
+            // away again. The path is the user's home and is not written.
+            HelmLog.shared.warn("uninstaller",
+                                "the Trash could not be read: \((error as NSError).code)")
+            return []
+        }
         return items
             .filter { $0.pathExtension == "app" }
             .compactMap { app in
