@@ -530,6 +530,7 @@
 "Updates" = "アップデート";
 "Upgrade" = "更新";
 "Upgrade all" = "すべて更新";
+"Use this module" = "このモジュールを使う";
 "Used by the panel, the sidebar, and the icon menu." = "パネル、サイドバー、アイコンメニューに適用されます。";
 "Utilities" = "ユーティリティ";
 "Utilities live in a collapsible panel section; optional Settings and Quit buttons; the right-click menu jumps straight to any module." = "ユーティリティはパネルの折りたたみセクションに。設定/終了ボタンを追加可能。右クリックメニューから各モジュールへ直行。";
@@ -579,6 +580,7 @@
 "Wording and sizes reviewed across the app: shorter labels, one name per thing, and sizes in your language — “432,95 ГБ”, not “432,95 GB”." = "アプリ全体の文言とサイズ表記を見直し：ラベルを簡潔に、名称を統一し、サイズを各言語の単位で表示。";
 "Write a log file" = "ログを記録";
 "Yellow" = "黄";
+"You can change this later in Settings." = "あとで設定で変更できます。";
 "Your layouts, as they will look:" = "インストール済みの配列の表示例：";
 "You’re on the latest version." = "最新バージョンです。";
 "all of" = "すべて";

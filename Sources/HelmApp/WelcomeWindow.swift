@@ -27,13 +27,21 @@ import HelmUI
         WelcomeGate.shouldShow(seenRevision: store.int(WelcomeGate.storeKey, default: 0))
     }
 
-    func show(steps: [WelcomeStep], store: NamespacedStore) {
+    func show(steps: [WelcomeStep], store: NamespacedStore,
+              isModuleEnabled: @escaping (String) -> Bool,
+              setModuleEnabled: @escaping (String, Bool) -> Void,
+              isLaunchAtLogin: @escaping () -> Bool,
+              setLaunchAtLogin: @escaping (Bool) -> Void) {
         // Written when the window opens, not when it closes: a person who
         // force-quits mid-tour has still been shown it, and showing it again
         // at every launch until they press Done is worse than not showing it.
         store.set(WelcomeGate.revision, for: WelcomeGate.storeKey)
 
-        let view = WelcomeView(steps: steps) { [weak self] in self?.close() }
+        let view = WelcomeView(steps: steps,
+                                isModuleEnabled: isModuleEnabled,
+                                setModuleEnabled: setModuleEnabled,
+                                isLaunchAtLogin: isLaunchAtLogin,
+                                setLaunchAtLogin: setLaunchAtLogin) { [weak self] in self?.close() }
         let window = NSWindow(contentViewController: NSHostingController(rootView: view))
         window.styleMask = [.titled, .closable, .fullSizeContentView]
         window.title = WelcomeStr.windowTitle

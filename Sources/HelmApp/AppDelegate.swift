@@ -71,8 +71,18 @@ import HelmUI
                 PermissionAudit.run()
             }
             welcomeWindow = welcome
-            welcome.show(steps: WelcomeSteps.build(from: ModuleRegistry.all.map(\.moduleMetadata)),
-                         store: AppSettings.store)
+            welcome.show(
+                steps: WelcomeSteps.build(from: ModuleRegistry.all.map(\.moduleMetadata)),
+                store: AppSettings.store,
+                isModuleEnabled: { [host] id in
+                    ModuleRegistry.all.first { $0.idRaw == id }.map { host.isEnabled($0) } ?? true
+                },
+                setModuleEnabled: { [host] id, on in
+                    guard let d = ModuleRegistry.all.first(where: { $0.idRaw == id }) else { return }
+                    host.setEnabled(d, on)
+                },
+                isLaunchAtLogin: { LoginItem.isEnabled },
+                setLaunchAtLogin: { LoginItem.setEnabled($0) })
         } else {
             PermissionAudit.run()
         }

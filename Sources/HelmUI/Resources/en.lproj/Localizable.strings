@@ -530,6 +530,7 @@
 "Updates" = "Updates";
 "Upgrade" = "Upgrade";
 "Upgrade all" = "Upgrade all";
+"Use this module" = "Use this module";
 "Used by the panel, the sidebar, and the icon menu." = "Used by the panel, the sidebar, and the icon menu.";
 "Utilities" = "Utilities";
 "Utilities live in a collapsible panel section; optional Settings and Quit buttons; the right-click menu jumps straight to any module." = "Utilities live in a collapsible panel section; optional Settings and Quit buttons; the right-click menu jumps straight to any module.";
@@ -579,6 +580,7 @@
 "Wording and sizes reviewed across the app: shorter labels, one name per thing, and sizes in your language — “432,95 ГБ”, not “432,95 GB”." = "Wording and sizes reviewed across the app: shorter labels, one name per thing, and sizes in your language — “432,95 ГБ”, not “432,95 GB”.";
 "Write a log file" = "Write a log file";
 "Yellow" = "Yellow";
+"You can change this later in Settings." = "You can change this later in Settings.";
 "Your layouts, as they will look:" = "Your layouts, as they will look:";
 "You’re on the latest version." = "You’re on the latest version.";
 "all of" = "all of";

@@ -12,14 +12,18 @@ public struct WelcomeStep: Equatable, Identifiable, Sendable {
     /// Every module's symbol, in registry order — only ever non-empty on the
     /// intro step, which is a showcase rather than a single-symbol step.
     public let moduleSymbols: [String]
+    /// The module this step is about, so its switch has something to bind to.
+    /// Nil on the intro, which is not a module.
+    public let moduleID: String?
 
     public init(id: String, sfSymbol: String, title: String, body: String,
-                moduleSymbols: [String] = []) {
+                moduleSymbols: [String] = [], moduleID: String? = nil) {
         self.id = id
         self.sfSymbol = sfSymbol
         self.title = title
         self.body = body
         self.moduleSymbols = moduleSymbols
+        self.moduleID = moduleID
     }
 }
 
@@ -34,7 +38,7 @@ public enum WelcomeSteps {
                                 moduleSymbols: modules.map(\.sfSymbol))
         return [intro] + modules.map {
             WelcomeStep(id: $0.id.rawValue, sfSymbol: $0.sfSymbol,
-                        title: $0.name, body: $0.summary)
+                        title: $0.name, body: $0.summary, moduleID: $0.id.rawValue)
         }
     }
 }
