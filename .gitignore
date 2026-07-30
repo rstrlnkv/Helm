@@ -11,3 +11,4 @@ DerivedData/
 # installing them needed git.
 /.claude/agents/
 /plugins/
+/.claude-plugin/
