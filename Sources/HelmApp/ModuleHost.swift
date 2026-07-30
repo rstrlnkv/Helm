@@ -37,6 +37,10 @@ import HelmUI
         store(for: d).set(on, for: "enabled")
         if on {
             if live[type(of: d).id.rawValue] == nil { enable(d) }
+            // Only from here, never from `bootstrap`: this is somebody switching
+            // a module on, which is the moment a module may act unasked.
+            NotificationCenter.default.post(name: .helmModuleEnabled,
+                                            object: type(of: d).id.rawValue)
         } else {
             disable(d)
         }

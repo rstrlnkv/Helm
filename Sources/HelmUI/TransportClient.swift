@@ -39,4 +39,12 @@ import HelmContract
         let data = (try? JSONEncoder().encode(payload)) ?? Data()
         _ = try? await transport.send(EngineCommand(name: name, payload: data))
     }
+
+    /// The same, for a command whose payload is raw rather than JSON — a plain
+    /// UTF-8 string, say. `fire` already takes one; awaiting it is what a caller
+    /// needs when the command writes something that has to survive the next
+    /// moment, and the window that sent it is about to close.
+    public func send(_ name: String, payload: Data = Data()) async {
+        _ = try? await transport.send(EngineCommand(name: name, payload: payload))
+    }
 }

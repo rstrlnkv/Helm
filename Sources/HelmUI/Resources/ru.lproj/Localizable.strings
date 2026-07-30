@@ -163,6 +163,7 @@
 "File name" = "Имя";
 "Files" = "Файлы";
 "Files from 1 MB. Hard links are one file and are never offered." = "Файлы от 1 МБ. Жёсткие ссылки — это один файл, они не предлагаются.";
+"Files left behind" = "Оставшиеся файлы";
 "Files left behind by apps you no longer have. Only files named after an app’s bundle id are listed." = "Файлы, оставшиеся от удалённых приложений. В списке — только файлы с именем bundle id приложения.";
 "Files that exist more than once" = "Файлы, которые существуют больше одного раза";
 "Filled" = "Залитый";
@@ -241,6 +242,7 @@
 "Launch agents, settings files, plug-ins and system extensions on this Mac. Leftovers can be removed; the rest is shown for context." = "Агенты запуска, файлы настроек, плагины и системные расширения на этом Mac. Остатки можно удалить, остальное — для справки.";
 "Launch automatically at startup" = "Автозапуск при включении Mac";
 "Launch daemons" = "Демоны запуска";
+"Left behind by apps you moved to the Trash. Putting an app back does not bring its files back." = "Остались от приложений, которые вы переместили в Корзину. Если вернуть приложение, эти файлы не вернутся.";
 "Left ⇧" = "Левая ⇧";
 "Left ⌃" = "Левая ⌃";
 "Left ⌘" = "Левая ⌘";

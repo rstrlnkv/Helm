@@ -163,6 +163,7 @@
 "File name" = "名前";
 "Files" = "ファイル";
 "Files from 1 MB. Hard links are one file and are never offered." = "1 MB 以上のファイルが対象。ハードリンクは同一ファイルなので提案されません。";
+"Files left behind" = "残されたファイル";
 "Files left behind by apps you no longer have. Only files named after an app’s bundle id are listed." = "すでにないアプリが残したファイル。アプリの bundle id を名前に持つファイルのみを表示します。";
 "Files that exist more than once" = "複数存在するファイル";
 "Filled" = "塗りつぶし";
@@ -241,6 +242,7 @@
 "Launch agents, settings files, plug-ins and system extensions on this Mac. Leftovers can be removed; the rest is shown for context." = "この Mac の起動エージェント・設定ファイル・プラグイン・システム機能拡張。残存物は削除でき、その他は参考表示です。";
 "Launch automatically at startup" = "Mac の起動時に自動で開始";
 "Launch daemons" = "起動デーモン";
+"Left behind by apps you moved to the Trash. Putting an app back does not bring its files back." = "ゴミ箱に入れたAppが残したファイルです。Appを元に戻しても、これらのファイルは戻りません。";
 "Left ⇧" = "左 ⇧";
 "Left ⌃" = "左 ⌃";
 "Left ⌘" = "左 ⌘";

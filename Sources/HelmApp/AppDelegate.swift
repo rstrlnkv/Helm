@@ -9,6 +9,10 @@ import HelmUI
     private var footprintTimer: Timer?
     /// Held for as long as it is on screen; dropped in its own close handler.
     private var welcomeWindow: WelcomeWindow?
+    /// The same, for the window that offers to clean up after an app somebody
+    /// dragged to the Trash.
+    private var trashWindow: TrashedLeftoversWindow?
+    private var moduleEnabledObserver: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -69,6 +73,7 @@ import HelmUI
             let welcome = WelcomeWindow { [weak self] in
                 self?.welcomeWindow = nil
                 PermissionAudit.run()
+                self?.offerTrashLeftovers()
             }
             welcomeWindow = welcome
             welcome.show(
@@ -85,7 +90,15 @@ import HelmUI
                 setLaunchAtLogin: { LoginItem.setEnabled($0) })
         } else {
             PermissionAudit.run()
+            offerTrashLeftovers()
         }
+        // Switching the Uninstaller on is the other moment worth sweeping: the
+        // module that answers this question did not exist a second ago.
+        moduleEnabledObserver = NotificationCenter.default.addObserver(
+            forName: .helmModuleEnabled, object: nil, queue: .main) { [weak self] note in
+                guard note.object as? String == "uninstaller" else { return }
+                MainActor.assumeIsolated { self?.offerTrashLeftovers() }
+            }
         HelmLog.shared.info("permissions", "full disk access probe: \(PermissionCheck.currentFullDiskAccess().rawValue)")
 
         UpdateService.shared.checkOnLaunch()
@@ -93,6 +106,28 @@ import HelmUI
         HelmLog.shared.memory("launch")
         startFootprintWatch()
 
+    }
+
+    /// Asks the Uninstaller what is sitting in the Trash and shows the offer if
+    /// there is one.
+    ///
+    /// A sweep and not a watcher, deliberately: it needs nothing unproven, and it
+    /// already catches everything in the Trash — including an app deleted while
+    /// Helm was closed, which is the case a watcher cannot see. The module being
+    /// off is the whole answer: no engine, no sweep, no window.
+    ///
+    /// Full Disk Access is not checked here. Without it the Trash cannot be read,
+    /// the sweep comes back empty and no window appears — and the place that says
+    /// why is the module's own page, which already carries the notice.
+    private func offerTrashLeftovers() {
+        guard trashWindow == nil, let live = host.liveModule("uninstaller") else { return }
+        let window = TrashedLeftoversWindow { [weak self] in self?.trashWindow = nil }
+        trashWindow = window
+        Task { [weak self] in
+            // Nothing to offer: drop the holder, or the next sweep finds it
+            // occupied and stays quiet for the rest of the run.
+            if await window.showIfAnything(vm: live.vm) == false { self?.trashWindow = nil }
+        }
     }
 
     /// The reading nothing else takes.

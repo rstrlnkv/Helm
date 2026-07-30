@@ -8,6 +8,33 @@ features, PATCH = fixes.
 ## [Unreleased] — 0.8.0
 
 ### Added
+- **Leftovers, offered when an app reaches the Trash.** The Uninstaller could
+  only clean up after an app removed *through Helm* — and almost nobody removes
+  an app that way. Drag one to the Trash and a small window now lists what it
+  left behind: settings, caches, containers, support files, grouped per app with
+  the bundle id under the name, because the id is what tells two apps of the same
+  name apart and what every path below it was derived from.
+  - **The app in the Trash is never touched.** It is already where the person put
+    it; Helm cleans up around that decision and does not make it. The window says
+    the other half of that out loud — putting an app back does not bring its files
+    back — rather than asking twice in a sheet.
+  - **A guess arrives unticked.** A path found under the app's bundle id is that
+    app's; one found under its display name is a guess, and names collide. Same
+    rule the review screen already takes, and it matters more here because nobody
+    asked for this window: pre-ticked, you have to notice a guess to *keep* your
+    data.
+  - **Still installed somewhere else means no offer.** Two copies of one app share
+    a bundle id, so dragging one to the Trash can leave the other running on the
+    same support files. The module answers that with the rule it already had
+    (`InstalledLocation`), because LaunchServices reports every copy it has ever
+    seen — five stale build copies of Helm itself, on this machine.
+  - **Cancel means no, and no sticks.** The declined app is remembered across
+    launches and forgotten when it leaves the Trash, so restoring an app and
+    deleting it again is a new question. Closing the window counts as the same no.
+  - A sweep when the Uninstaller is live, not a watcher: it needs nothing
+    unproven and already catches everything sitting in the Trash, including an app
+    deleted while Helm was closed. The module switched off is the whole answer —
+    no engine, no sweep, no window.
 - **A welcome window, shown once.** Helm arrives as an icon in the menu bar and
   nine modules nobody has been introduced to; two of them — Autopilot and
   Duplicates — turned up in existing installations without a word. Ten steps,

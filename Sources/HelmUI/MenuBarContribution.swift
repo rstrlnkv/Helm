@@ -48,4 +48,9 @@ public extension Notification.Name {
     /// hostile — but "outlives the page" is not "outlives the module": a scan
     /// tree the person switched off is gigabytes nobody asked to keep.
     static let helmModuleDisabled = Notification.Name("helmModuleDisabled")
+    /// Posted when a module is switched **on** by hand — not at launch, where
+    /// `bootstrap` enables every module the person already had on. `object`
+    /// carries the module id. A module that has something to do the moment it is
+    /// switched on does it here.
+    static let helmModuleEnabled = Notification.Name("helmModuleEnabled")
 }
