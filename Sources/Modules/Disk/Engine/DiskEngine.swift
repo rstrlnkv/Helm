@@ -61,7 +61,7 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
             }, onPartial: { partialTree in
                 // A shallow snapshot every ~0.35s: the ring grows while the
                 // walk is still running.
-                let snapshot = ScanResult(root: DiskEntry(partialTree, depth: 4),
+                let snapshot = ScanResult(root: DiskEntry(partialTree, depth: 4, path: path),
                                           freeBytes: freeNow,
                                           filesScanned: counter.value, seconds: 0)
                 if let data = try? JSONEncoder().encode(PartialScan(scan: id, result: snapshot)) {
@@ -69,10 +69,10 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
                 }
             }) else { return nil }
             let free = self.freeBytes(forPathOn: path)
-            return ScanResult(root: DiskEntry(tree, depth: 6), freeBytes: free,
+            return ScanResult(root: DiskEntry(tree, depth: 6, path: path), freeBytes: free,
                               filesScanned: counter.value,
                               seconds: Date().timeIntervalSince(started),
-                              advice: DiskAdvisor.advise(root: tree,
+                              advice: DiskAdvisor.advise(root: tree, rootPath: path,
                                                          home: NSHomeDirectory()))
         }
         if let result {

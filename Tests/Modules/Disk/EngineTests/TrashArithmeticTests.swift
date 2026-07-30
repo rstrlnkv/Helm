@@ -78,7 +78,9 @@ final class DiskFoldedBucketNameTests: XCTestCase {
         XCTAssertEqual(root.bytes, 100_010, "precondition: both files were charged to the root")
         XCTAssertEqual(root.children.count, 2,
                        "the file the user has and the bucket the scan invented are two rows")
-        let real = root.children.first { $0.path == "/r/…" }
+        // By the flag, not by the path: the bucket's path is the path a real file
+        // called `…` would have, which is the whole reason `isFolded` exists.
+        let real = root.children.first { !$0.isFolded }
         XCTAssertEqual(real?.bytes, 100_000, "the file's row shows the file's size")
     }
 }

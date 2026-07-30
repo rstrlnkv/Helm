@@ -54,14 +54,19 @@ public enum DiskAdvisor {
         "Library/Logs",
     ]
 
-    public static func advise(root: DiskNode, home: String, now: Date = Date()) -> [DiskAdvice] {
+    /// `rootPath` is where `root` was scanned from, and it is not `home`: the
+    /// volume walk hands in `/` while home is somewhere inside it. The two were
+    /// one parameter for as long as `DiskNode` stored its own path, and the
+    /// tests never caught the conflation because they scan home itself.
+    public static func advise(root: DiskNode, rootPath: String, home: String,
+                              now: Date = Date()) -> [DiskAdvice] {
         var advice: [DiskAdvice] = []
 
         for relative in cacheFolders {
             let path = home + "/" + relative
-            if let node = find(path: path, under: root), node.bytes >= cacheFloor,
-               UserFileScope.isRemovable(node.path) {
-                advice.append(DiskAdvice(name: node.name, path: node.path,
+            if let node = find(path: path, under: root, rootPath: rootPath),
+               node.bytes >= cacheFloor, UserFileScope.isRemovable(path) {
+                advice.append(DiskAdvice(name: node.name, path: path,
                                          bytes: node.bytes, kind: .cache))
             }
         }
@@ -69,35 +74,57 @@ public enum DiskAdvisor {
         let cachePrefixes = advice.map { $0.path + "/" }
 
         let downloads = home + "/Downloads/"
-        var stack = [root]
-        while let node = stack.popLast() {
-            stack.append(contentsOf: node.children)
-            guard !node.isDirectory, !node.isFolded, node.modified > 0,
-                  UserFileScope.isRemovable(node.path),
-                  !cachePrefixes.contains(where: { node.path.hasPrefix($0) })
-            else { continue }
-            let age = now.timeIntervalSince1970 - node.modified
-            if node.path.hasPrefix(downloads), node.bytes >= downloadFloor, age > downloadAge {
-                advice.append(DiskAdvice(name: node.name, path: node.path,
-                                         bytes: node.bytes, kind: .oldDownload,
-                                         modified: node.modified))
-            } else if node.bytes >= largeFloor, age > largeAge {
-                advice.append(DiskAdvice(name: node.name, path: node.path,
-                                         bytes: node.bytes, kind: .largeOld,
-                                         modified: node.modified))
+        // A depth-first descent, and deliberately not the breadth-first stack
+        // this used to be. The path is composed on the way down and released on
+        // the way up, so the strings alive at any moment number the depth of the
+        // tree — a stack of pending siblings would hold one per node still to
+        // visit, handing back as a transient spike exactly the ~345 MB that
+        // dropping the stored path saved.
+        func sweep(_ node: DiskNode, path: String) {
+            if !node.isDirectory, !node.isFolded, node.modified > 0,
+               UserFileScope.isRemovable(path),
+               !cachePrefixes.contains(where: { path.hasPrefix($0) }) {
+                let age = now.timeIntervalSince1970 - node.modified
+                if path.hasPrefix(downloads), node.bytes >= downloadFloor, age > downloadAge {
+                    advice.append(DiskAdvice(name: node.name, path: path,
+                                             bytes: node.bytes, kind: .oldDownload,
+                                             modified: node.modified))
+                } else if node.bytes >= largeFloor, age > largeAge {
+                    advice.append(DiskAdvice(name: node.name, path: path,
+                                             bytes: node.bytes, kind: .largeOld,
+                                             modified: node.modified))
+                }
+            }
+            // A node is judged before its children, as it was when this popped a
+            // stack: `sorted` below is not stable, so a changed visit order would
+            // silently reshuffle advice of equal size.
+            for child in node.children {
+                sweep(child, path: ScanPath.child(of: path, name: child.name))
             }
         }
+        sweep(root, path: rootPath)
 
         return Array(advice.sorted { $0.bytes > $1.bytes }.prefix(cap))
     }
 
-    private static func find(path: String, under root: DiskNode) -> DiskNode? {
-        guard path.hasPrefix(root.path) else { return nil }
+    /// Descends towards `path`, composing each candidate's path from its name.
+    /// The node it returns does not know where it is, so the caller keeps the
+    /// path it asked for — which is the same string by construction.
+    private static func find(path: String, under root: DiskNode,
+                             rootPath: String) -> DiskNode? {
+        // `child(of: rootPath, name: "")` is the root with exactly one trailing
+        // slash, whether or not it already had one — the same arithmetic the
+        // descent uses, so the cheap reject cannot disagree with it.
+        guard path == rootPath
+                || path.hasPrefix(ScanPath.child(of: rootPath, name: "")) else { return nil }
         var node = root
-        while node.path != path {
+        var here = rootPath
+        while here != path {
             guard let next = node.children.first(where: {
-                $0.path == path || path.hasPrefix($0.path + "/")
+                let candidate = ScanPath.child(of: here, name: $0.name)
+                return candidate == path || path.hasPrefix(candidate + "/")
             }) else { return nil }
+            here = ScanPath.child(of: here, name: next.name)
             node = next
         }
         return node

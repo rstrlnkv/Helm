@@ -8,7 +8,7 @@ import XCTest
 /// a negative device id, a path joined onto "/", a folder with no bytes.
 final class AdversarialInputTests: XCTestCase {
     private func node(_ name: String, _ bytes: Int, _ children: [DiskNode] = []) -> DiskNode {
-        DiskNode(name: name, path: "/" + name, bytes: bytes,
+        DiskNode(name: name, bytes: bytes,
                  isDirectory: !children.isEmpty, children: children)
     }
 
@@ -17,12 +17,12 @@ final class AdversarialInputTests: XCTestCase {
     func testEveryChildIsZeroBytes() {
         let root = node("root", 0, [node("a", 0), node("b", 0)])
         // No division by a zero total, and nothing to draw.
-        XCTAssertTrue(RingLayout.layout(focus: root, depthLevels: 3, freeBytes: 0).isEmpty)
+        XCTAssertTrue(RingLayout.layout(focus: root, path: "/", depthLevels: 3, freeBytes: 0).isEmpty)
     }
 
     func testOneChildFillsTheCircleExactly() {
         let root = node("root", 100, [node("only", 100)])
-        let segment = RingLayout.layout(focus: root, depthLevels: 1, freeBytes: 0).first
+        let segment = RingLayout.layout(focus: root, path: "/", depthLevels: 1, freeBytes: 0).first
         XCTAssertEqual((segment?.endAngle ?? 0) - (segment?.startAngle ?? 0),
                        2 * .pi, accuracy: 0.0001)
     }
@@ -30,7 +30,7 @@ final class AdversarialInputTests: XCTestCase {
     func testAThousandChildrenStayBounded() {
         let children = (0..<1000).map { node("c\($0)", $0 + 1) }
         let segments = RingLayout.layout(focus: node("root", 500_500, children),
-                                         depthLevels: 3, freeBytes: 0)
+                                         path: "/", depthLevels: 3, freeBytes: 0)
         // Folding must keep the ring drawable; the exact count is the layout's
         // business, but a thousand slivers is not a ring.
         XCTAssertLessThan(segments.count, 200)
@@ -41,7 +41,7 @@ final class AdversarialInputTests: XCTestCase {
     /// segment happened to be first.
     func testSegmentsOnOneRingNeverOverlap() {
         let root = node("root", 60, [node("a", 30), node("b", 20), node("c", 10)])
-        let ring0 = RingLayout.layout(focus: root, depthLevels: 1, freeBytes: 0)
+        let ring0 = RingLayout.layout(focus: root, path: "/", depthLevels: 1, freeBytes: 0)
             .filter { $0.ring == 0 }
             .sorted { $0.startAngle < $1.startAngle }
         for (previous, next) in zip(ring0, ring0.dropFirst()) {
@@ -52,7 +52,7 @@ final class AdversarialInputTests: XCTestCase {
     func testFreeSpaceLargerThanTheDisk() {
         // A nonsense free-space figure must not produce a segment past a turn.
         let segments = RingLayout.layout(focus: node("root", 10, [node("a", 10)]),
-                                         depthLevels: 1, freeBytes: .max / 2)
+                                         path: "/", depthLevels: 1, freeBytes: .max / 2)
         for segment in segments {
             XCTAssertLessThanOrEqual(segment.endAngle - segment.startAngle, 2 * .pi + 0.0001)
         }
@@ -75,7 +75,11 @@ final class AdversarialInputTests: XCTestCase {
         }
         let root = builder.build()
         XCTAssertEqual(root.bytes, 60)
-        XCTAssertTrue(root.children.allSatisfy { $0.path.hasPrefix("/r/") })
+        // Asked of the snapshot rather than the node: the path is composed on the
+        // way out now, so the string worth checking is the one the UI receives.
+        let entry = DiskEntry(root, depth: 2, path: "/r")
+        XCTAssertTrue(entry.children.allSatisfy { $0.path.hasPrefix("/r/") },
+                      "\(entry.children.map(\.path))")
     }
 
     /// A file directly at the volume root, where the parent is "/" itself.
@@ -84,7 +88,8 @@ final class AdversarialInputTests: XCTestCase {
         builder.addFile(path: "/lonely.bin", bytes: 42, fileID: 1)
         let root = builder.build()
         XCTAssertEqual(root.bytes, 42)
-        XCTAssertEqual(root.children.first?.path, "/lonely.bin")
+        XCTAssertEqual(DiskEntry(root, depth: 2, path: "/").children.first?.path,
+                       "/lonely.bin", "the root already ends in a slash")
     }
 
     func testDeeplyNestedPath() {

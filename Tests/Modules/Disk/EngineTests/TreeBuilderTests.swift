@@ -107,11 +107,13 @@ final class TreeBuilderTests: XCTestCase {
     }
 
     /// The bucket under "/" must be "/…", not "//…": doubled slashes break
-    /// every path comparison downstream.
+    /// every path comparison downstream. Asked of the snapshot, because that is
+    /// where the path is now composed — and by the flag, not the name, since a
+    /// person can create a file called `…` themselves.
     func testFoldedBucketAtRootHasASingleSlash() {
         let builder = TreeBuilder(root: "/", foldThreshold: 1_000)
         builder.addFile(path: "/tiny.bin", bytes: 10, fileID: 1)
-        let bucket = builder.build().children.first { $0.name == "…" }
-        XCTAssertEqual(bucket?.path, "/…")
+        let entry = DiskEntry(builder.build(), depth: 2, path: "/")
+        XCTAssertEqual(entry.children.first { $0.isFolded }?.path, "/…")
     }
 }

@@ -37,7 +37,7 @@ final class FoldedBucketWireTests: XCTestCase {
     /// fixed for on the same day; this one was fixed in the engine and left on
     /// the wire.
     func testTheBucketAndARealFileOfThatNameAreTwoRowsOnTheScreenToo() {
-        let entry = DiskEntry(treeWithBothKindsOfEllipsis(), depth: 3)
+        let entry = DiskEntry(treeWithBothKindsOfEllipsis(), depth: 3, path: "/r")
 
         XCTAssertEqual(entry.children.count, 2, "precondition: the engine keeps them apart")
         XCTAssertEqual(Set(entry.children.map(\.id)).count, entry.children.count,
@@ -51,7 +51,7 @@ final class FoldedBucketWireTests: XCTestCase {
     /// `isDirectory` is equal, and the bytes are whatever the folder happened
     /// to hold.
     func testTheWireValueSaysWhichOfTheTwoIsTheBucket() throws {
-        let entry = DiskEntry(treeWithBothKindsOfEllipsis(), depth: 3)
+        let entry = DiskEntry(treeWithBothKindsOfEllipsis(), depth: 3, path: "/r")
         let mirror = Mirror(reflecting: try XCTUnwrap(entry.children.first))
 
         XCTAssertTrue(mirror.children.contains { $0.label == "isFolded" },

@@ -465,7 +465,7 @@ import Module_Disk_Engine
         guard let root = result?.root, let node = Self.find(path, in: root) else { return [] }
         // Free space belongs to a volume, not to a folder — the same rule
         // `recomputeSegments` applies, and a drill always lands below the root.
-        return RingLayout.layout(focus: Self.node(from: node),
+        return RingLayout.layout(focus: Self.node(from: node), path: node.path,
                                  depthLevels: RingView.visibleRings + 1, freeBytes: 0)
     }
 
@@ -490,14 +490,19 @@ import Module_Disk_Engine
         // One level deeper than the ring draws: the spare is invisible until a
         // drill starts, and it is what the new outermost ring slides in from.
         // See `RingUnfold.opacity(isSpare:)`.
-        segments = RingLayout.layout(focus: Self.node(from: focus),
+        segments = RingLayout.layout(focus: Self.node(from: focus), path: focus.path,
                                      depthLevels: RingView.visibleRings + 1, freeBytes: free)
     }
 
     /// RingLayout works on the engine's node type; the UI holds the
     /// transported snapshot, so the focused subtree is rebuilt for it.
+    ///
+    /// The entry's path is dropped here and handed to `layout` separately: a
+    /// `DiskNode` keeps only the name, and the layout composes the rest back
+    /// down from the focus. The paths that come out are the entries' own again,
+    /// which is what the basket and `RemovableScope` see.
     private static func node(from entry: DiskEntry) -> DiskNode {
-        DiskNode(name: entry.name, path: entry.path, bytes: entry.bytes,
+        DiskNode(name: entry.name, bytes: entry.bytes,
                  isDirectory: entry.isDirectory,
                  children: entry.children.map(node(from:)))
     }
