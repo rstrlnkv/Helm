@@ -15,6 +15,13 @@ features, PATCH = fixes.
   is switched on, no permission is asked for. Every step's text is the module's
   own name and summary, read from its descriptor, so the tour cannot go stale
   the way a second copy of nine descriptions would.
+  - **Each module's step carries a switch.** The screen that explains a module
+    is where you know whether you want it, so it can be kept or dropped as you
+    are introduced to it. The switch starts at what the module already defaults
+    to, which means Skip changes nothing and walking the tour is the deliberate
+    act — and it writes straight through to the same setting the Settings window
+    reads, so the tour keeps no second copy of the truth. The opening step asks
+    the one app-level question worth asking at that moment: launch at login.
   - **The first screen is a showcase.** Helm's mark, and every module's icon
     arriving in a stagger — the screen answers "what is this made of" before a
     word is read. One thing moves and the rest stands still; Reduce Motion
@@ -158,6 +165,15 @@ features, PATCH = fixes.
     move the footprint by 1 MB on the first and by nothing after it.
 
 ### Fixed
+- **Helm no longer asks for permissions on the first launch.** Every module
+  arrives enabled and the audit unions what the enabled ones need, so a
+  brand-new install requested Full Disk Access *and* Accessibility before the
+  person had asked for anything. The audit exists to catch a grant that went
+  away — granted yesterday, denied today — and that is a question you can only
+  ask the second time, so it now requires a previous version to compare
+  against. All eight modules that need a grant already show their own note with
+  a Grant button on their own page; that is where the asking belongs. The
+  version is still recorded on the first run, so the second one has a baseline.
 - **Two guards for the two things that could not be checked by hand.** The VPN
   spin's colour and the reset's deletion were both unverifiable on the
   development machine — the L2TP tunnel never comes up, so a firing never
