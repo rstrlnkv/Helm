@@ -50,6 +50,23 @@ enum DkStr {
         HelmConfirm.trash(Plural.items(count, language: AppLanguage.current.rawValue), size)
     }
     static func measured(_ ago: String) -> String { L("Measured \(ago)", [.ru: "Измерено \(ago)", .es: "Medido \(ago)", .fr: "Mesuré \(ago)", .de: "Gemessen \(ago)", .ja: "計測 \(ago)", .zh: "测量于 \(ago)", .pt: "Medido \(ago)"]) }
+    /// The third thing the ring can be showing, beside a fresh measurement and a
+    /// memory of one: a walk that was stopped.
+    ///
+    /// One word, and deliberately without the file count its siblings carry.
+    /// Measured against the widest existing statement at `.caption`, "Остановлено
+    /// — файлов: 263144" is 161 pt against a 122 pt budget — and the width the
+    /// `showsScanStatement` threshold was measured for is that budget, so at
+    /// windows just above it the line would arrive truncated. A warning with an
+    /// ellipsis in it is a poor warning; the count moved to the hint, which has no
+    /// width to answer to. `StoppedStatementWidthTests` holds the budget.
+    static var stopped: String { L("Stopped") }
+    /// Why that line matters, and how far the walk got. `TreeBuilder` charges a
+    /// directory as its files are found, so every folder in a stopped tree shows a
+    /// floor and not a total — which is the number somebody would be deciding to
+    /// delete on. Interpolated, so it keeps an inline table: the lookup would
+    /// otherwise be asked for a key with the count already in it.
+    static func stoppedHint(_ files: Int) -> String { L("The walk was stopped after \(files) files, so a folder may hold more than it shows.", [.ru: "Обход прерван, измерено файлов: \(files). Папка может содержать больше, чем показано.", .es: "El recorrido se detuvo tras \(files) archivos, así que una carpeta puede contener más de lo que muestra.", .fr: "L’analyse a été arrêtée après \(files) fichiers : un dossier peut contenir plus que ce qu’il affiche.", .de: "Der Durchlauf wurde nach \(files) Dateien gestoppt, daher kann ein Ordner mehr enthalten als angezeigt.", .ja: "\(files) ファイルで走査を停止したため、フォルダの実際の容量は表示より大きい場合があります。", .zh: "扫描在 \(files) 个文件后停止，文件夹的实际大小可能大于显示值。", .pt: "A varredura parou após \(files) arquivos, então uma pasta pode conter mais do que mostra."]) }
     static var advice: String { L("Recommendations") }
     static var adviceHint: String { L("What could be deleted") }
     static var adviceKindCache: String { L("Cache — safe to clear") }

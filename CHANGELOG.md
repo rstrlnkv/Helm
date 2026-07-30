@@ -187,6 +187,25 @@ features, PATCH = fixes.
   the same way — plus every container above them.
 
 ### Changed
+- **Stop keeps what the scan had measured.** Stopping a disk scan put the phase
+  back to the volume picker, so a minute of watching the ring grow ended with
+  nothing on screen — while the view model was still holding the tree those
+  partial snapshots had drawn. The tree stays now, and the header says
+  "Stopped" where it otherwise says how long the measurement took or how long
+  ago it was taken.
+  - **It is not saved for next time.** `TreeBuilder` charges a directory as its
+    files are found, so every folder in an unfinished tree shows a floor rather
+    than a total. Trashing something applies the removal to the tree in hand and
+    then saves it, which would leave the module reopening on that tree at every
+    launch and calling it a measurement — so a stopped tree is kept in memory and
+    never written to the store. The hover text on the header says a folder may
+    hold more than it shows.
+  - Stop before the first snapshot — inside the first third of a second — is the
+    volume picker as it always was: there is no tree to keep.
+  - The basket keeps its contents, because the tree they belong to is still on
+    screen. The clearing Stop used to do moved to where a tree is actually
+    replaced, which is a new measurement; without that move the bug where space
+    freed on one volume was credited to another comes back by another route.
 - **A scanned disk tree no longer stores a path on every node.** `DiskNode` held
   the full path beside the name; over 1.5 M nodes with realistic paths that pair
   measured 437.6 MB against 92 MB for the name alone, because Swift keeps a

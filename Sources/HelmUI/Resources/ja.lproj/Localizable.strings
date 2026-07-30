@@ -452,6 +452,8 @@
 "Stop scan" = "停止";
 "Stop stops the disk scan. Opening a folder mid-scan used to start a second one that took over, leaving the first walking the disk with nothing able to stop it and the ring flickering between the two. And the duplicate finder’s “freed” figure now counts the copies that actually leave." = "停止がディスクスキャンを確実に止めます。重複の「空き容量」は実際に消えるコピーを数えます。";
 "Stop watching" = "監視をやめる";
+"Stopped" = "停止";
+"Stopping a disk scan keeps what it measured. It used to throw the ring away and put you back at the volume picker, after a minute of watching it grow. The tree stays now, marked as stopped — and because a folder in an unfinished scan can hold more than it shows, it is not kept for next time." = "ディスクスキャンを停止しても、それまでに計測した内容が残ります。以前はリングが消えてボリューム選択に戻り、1 分かけて育つのを見ていた結果が失われていました。いまはツリーが「停止」の表示とともに残ります。未完了のスキャンではフォルダが表示より大きい場合があるため、次回のために保存はされません。";
 "Style" = "スタイル";
 "Switching VPN off and back on could leave the tile and the settings page silently frozen, answering nothing, until Helm was relaunched." = "VPN をオフにしてから再度オンにすると、Helm を再起動するまでタイルと設定ページが何も応答しないまま固まってしまうことがありました。";
 "Switching to another module and back no longer throws away what you were doing. The Uninstaller used to lose every tick, the whole review step, and the record of what macOS had refused, the moment you left its page; Login Items & Extensions restarted its scan — the slowest one in the app — the same way. Both remember now." = "別のモジュールに切り替えてから戻っても、作業内容が失われなくなりました。アンインストーラは以前、ページを離れた瞬間にすべてのチェック、確認ステップ全体、macOS が拒否した内容の記録を失っていました。ログイン項目と機能拡張も、アプリの中で最も時間がかかるスキャンを同じように最初からやり直していました。今はどちらも記憶しています。";
