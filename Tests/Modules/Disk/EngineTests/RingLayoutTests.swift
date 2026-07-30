@@ -3,7 +3,7 @@ import XCTest
 
 final class RingLayoutTests: XCTestCase {
     private func node(_ name: String, _ bytes: Int, children: [DiskNode] = []) -> DiskNode {
-        DiskNode(name: name, path: "/\(name)", bytes: bytes, isDirectory: !children.isEmpty || bytes == 0,
+        DiskNode(name: name, bytes: bytes, isDirectory: !children.isEmpty || bytes == 0,
                  children: children)
     }
 
@@ -11,7 +11,7 @@ final class RingLayoutTests: XCTestCase {
 
     func testSegmentsAreProportionalToBytes() {
         let root = node("root", 100, children: [node("a", 75), node("b", 25)])
-        let segments = RingLayout.layout(focus: root, depthLevels: 1, freeBytes: 0)
+        let segments = RingLayout.layout(focus: root, path: "/", depthLevels: 1, freeBytes: 0)
         XCTAssertEqual(segments.count, 2)
         let a = segments.first { $0.name == "a" }!
         let b = segments.first { $0.name == "b" }!
@@ -29,7 +29,7 @@ final class RingLayoutTests: XCTestCase {
             node("a", 80, children: [node("a1", 60), node("a2", 20)]),
             node("b", 20),
         ])
-        let segments = RingLayout.layout(focus: root, depthLevels: 2, freeBytes: 0)
+        let segments = RingLayout.layout(focus: root, path: "/", depthLevels: 2, freeBytes: 0)
         let a = segments.first { $0.name == "a" }!
         let a1 = segments.first { $0.name == "a1" }!
         let a2 = segments.first { $0.name == "a2" }!
@@ -50,7 +50,7 @@ final class RingLayoutTests: XCTestCase {
         var children = [node("big", 1000)]
         for i in 0..<50 { children.append(node("tiny\(i)", 1)) }
         let root = node("root", 1050, children: children)
-        let segments = RingLayout.layout(focus: root, depthLevels: 1, freeBytes: 0)
+        let segments = RingLayout.layout(focus: root, path: "/", depthLevels: 1, freeBytes: 0)
         XCTAssertLessThan(segments.count, 52)
         let other = segments.first { $0.isOther }
         XCTAssertNotNil(other)
@@ -60,7 +60,7 @@ final class RingLayoutTests: XCTestCase {
 
     func testNoOtherSegmentWhenEverythingIsVisible() {
         let root = node("root", 100, children: [node("a", 60), node("b", 40)])
-        let segments = RingLayout.layout(focus: root, depthLevels: 1, freeBytes: 0)
+        let segments = RingLayout.layout(focus: root, path: "/", depthLevels: 1, freeBytes: 0)
         XCTAssertFalse(segments.contains { $0.isOther })
     }
 
@@ -69,7 +69,7 @@ final class RingLayoutTests: XCTestCase {
     /// Only the volume root shows free space, as a dim sector after the data.
     func testFreeSpaceSectorAppendedAtRoot() {
         let root = node("root", 100, children: [node("a", 100)])
-        let segments = RingLayout.layout(focus: root, depthLevels: 1, freeBytes: 100)
+        let segments = RingLayout.layout(focus: root, path: "/", depthLevels: 1, freeBytes: 100)
         let free = segments.first { $0.isFreeSpace }
         XCTAssertNotNil(free)
         // Half the circle: 100 data + 100 free.
@@ -82,7 +82,7 @@ final class RingLayoutTests: XCTestCase {
 
     func testHitTestMapsPointToSegment() {
         let root = node("root", 100, children: [node("a", 50), node("b", 50)])
-        let segments = RingLayout.layout(focus: root, depthLevels: 1, freeBytes: 0)
+        let segments = RingLayout.layout(focus: root, path: "/", depthLevels: 1, freeBytes: 0)
         // Ring 0 occupies [innerRadius, innerRadius+thickness) in unit space.
         let geometry = RingGeometry(innerRadius: 0.30, thickness: 0.20, gap: 0.02)
         // 3 o'clock (angle 0) at ring-0 radius: that's inside "b"
@@ -101,7 +101,7 @@ final class RingLayoutTests: XCTestCase {
     /// Angles wrap: a point described as -3π/2 is the same as π/2.
     func testHitTestNormalizesAngle() {
         let root = node("root", 100, children: [node("a", 100)])
-        let segments = RingLayout.layout(focus: root, depthLevels: 1, freeBytes: 0)
+        let segments = RingLayout.layout(focus: root, path: "/", depthLevels: 1, freeBytes: 0)
         let geometry = RingGeometry(innerRadius: 0.30, thickness: 0.20, gap: 0.02)
         XCTAssertEqual(RingLayout.hitTest(segments: segments, geometry: geometry,
                                           angle: -3 * .pi / 2, radius: 0.35)?.name, "a")
@@ -109,6 +109,6 @@ final class RingLayoutTests: XCTestCase {
 
     func testEmptyFocusYieldsNoSegments() {
         let root = node("empty", 0)
-        XCTAssertTrue(RingLayout.layout(focus: root, depthLevels: 2, freeBytes: 0).isEmpty)
+        XCTAssertTrue(RingLayout.layout(focus: root, path: "/", depthLevels: 2, freeBytes: 0).isEmpty)
     }
 }

@@ -15,7 +15,7 @@ public final class TreeBuilder: @unchecked Sendable {
         self.rootPath = root
         self.foldThreshold = foldThreshold
         self.rootNode = DiskNode(name: (root as NSString).lastPathComponent,
-                                 path: root, bytes: 0, isDirectory: true)
+                                 bytes: 0, isDirectory: true)
         self.index = [root: rootNode]
     }
 
@@ -34,16 +34,16 @@ public final class TreeBuilder: @unchecked Sendable {
     }
 
     private func insert(path: String, bytes: Int, modified: TimeInterval) {
-        guard let parent = directory(for: (path as NSString).deletingLastPathComponent)
-        else { return }
+        let parentPath = (path as NSString).deletingLastPathComponent
+        guard let parent = directory(for: parentPath) else { return }
         if bytes < foldThreshold {
             foldedBucket(of: parent).bytes += bytes
         } else {
             parent.children.append(DiskNode(name: (path as NSString).lastPathComponent,
-                                            path: path, bytes: bytes, isDirectory: false,
+                                            bytes: bytes, isDirectory: false,
                                             modified: modified))
         }
-        charge(bytes, upFrom: parent)
+        charge(bytes, from: parentPath)
     }
 
     public func markNoAccess(path: String) {
@@ -69,7 +69,7 @@ public final class TreeBuilder: @unchecked Sendable {
             return nil
         }
         let node = DiskNode(name: (path as NSString).lastPathComponent,
-                            path: path, bytes: 0, isDirectory: true)
+                            bytes: 0, isDirectory: true)
         parent.children.append(node)
         index[path] = node
         return node
@@ -79,14 +79,16 @@ public final class TreeBuilder: @unchecked Sendable {
         if let bucket = parent.children.first(where: \.isFolded) {
             return bucket
         }
-        let bucket = DiskNode(name: "…", path: ScanPath.child(of: parent.path, name: "…"),
-                              bytes: 0, isDirectory: false, isFolded: true)
+        let bucket = DiskNode(name: "…", bytes: 0, isDirectory: false, isFolded: true)
         parent.children.append(bucket)
         return bucket
     }
 
-    private func charge(_ bytes: Int, upFrom node: DiskNode) {
-        var currentPath = node.path
+    /// Walks up by trimming the path rather than by following a parent
+    /// reference, which is what it always did — the index is keyed by path and
+    /// holds directories only, so this never needed the node to know its own.
+    private func charge(_ bytes: Int, from directoryPath: String) {
+        var currentPath = directoryPath
         while let current = index[currentPath] {
             current.bytes += bytes
             if currentPath == rootPath { break }

@@ -49,14 +49,20 @@ public enum RingLayout {
     /// Segments narrower than this fold into an "other" arc per parent.
     static let minimumVisibleAngle = 2.0 * .pi / 360.0 * 2.0   // 2°
 
-    public static func layout(focus: DiskNode, depthLevels: Int, freeBytes: Int) -> [RingSegment] {
+    /// `path` locates `focus`; every segment's path is composed down from it,
+    /// because `DiskNode` holds only the name. These strings are not decoration —
+    /// `RingSegment.path` is what a click puts in the basket and what
+    /// `RemovableScope` is later asked to judge, so a segment's path has to be
+    /// the same string the scan was handed. `DerivedPathTests` pins that.
+    public static func layout(focus: DiskNode, path: String,
+                              depthLevels: Int, freeBytes: Int) -> [RingSegment] {
         let dataBytes = focus.bytes
         let total = dataBytes + max(freeBytes, 0)
         guard total > 0, dataBytes > 0 else { return [] }
 
         let dataSpan = 2 * .pi * Double(dataBytes) / Double(total)
         var out: [RingSegment] = []
-        appendLevel(children: focus.children, parentStart: -.pi / 2,
+        appendLevel(children: focus.children, parentPath: path, parentStart: -.pi / 2,
                     parentSpan: dataSpan, parentBytes: dataBytes,
                     ring: 0, remainingLevels: depthLevels, into: &out)
 
@@ -70,7 +76,8 @@ public enum RingLayout {
         return out
     }
 
-    private static func appendLevel(children: [DiskNode], parentStart: Double,
+    private static func appendLevel(children: [DiskNode], parentPath: String,
+                                    parentStart: Double,
                                     parentSpan: Double, parentBytes: Int,
                                     ring: Int, remainingLevels: Int,
                                     into out: inout [RingSegment]) {
@@ -85,12 +92,13 @@ public enum RingLayout {
                 foldedBytes += child.bytes
                 continue
             }
-            out.append(RingSegment(name: child.name, path: child.path, bytes: child.bytes,
+            let childPath = ScanPath.child(of: parentPath, name: child.name)
+            out.append(RingSegment(name: child.name, path: childPath, bytes: child.bytes,
                                    startAngle: cursor, endAngle: cursor + span,
                                    ring: ring, isDirectory: child.isDirectory,
                                    isOther: false, isFreeSpace: false,
                                    noAccess: child.noAccess))
-            appendLevel(children: child.children, parentStart: cursor,
+            appendLevel(children: child.children, parentPath: childPath, parentStart: cursor,
                         parentSpan: span, parentBytes: child.bytes,
                         ring: ring + 1, remainingLevels: remainingLevels - 1,
                         into: &out)

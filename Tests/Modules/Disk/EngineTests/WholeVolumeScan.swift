@@ -21,17 +21,24 @@ final class WholeVolumeScan: XCTestCase {
         // can pass by luck — it did. Assert on structure instead: the Data-side
         // copies must be absent from the tree, and no path may carry the
         // doubled slash that made the skip set inert.
-        var stack = [tree].compactMap { $0 }
+        // A recursive descent, and not the stack of pending siblings this used to
+        // be. `DiskNode` no longer stores its path, so checking one means building
+        // it — and a stack would hold a composed string for every node still to
+        // visit, which on a real volume is the whole tree. Recursing keeps the
+        // live strings down to the depth of the walk.
         var doubled: String?
         var duplicate: String?
-        while let node = stack.popLast() {
-            if node.path.hasPrefix("//") { doubled = node.path }
-            if node.path.hasPrefix("/System/Volumes/Data/Users")
-                || node.path.hasPrefix("/System/Volumes/Data/Applications") {
-                duplicate = node.path
+        func check(_ node: DiskNode, path: String) {
+            if path.hasPrefix("//") { doubled = path }
+            if path.hasPrefix("/System/Volumes/Data/Users")
+                || path.hasPrefix("/System/Volumes/Data/Applications") {
+                duplicate = path
             }
-            stack.append(contentsOf: node.children)
+            for child in node.children {
+                check(child, path: ScanPath.child(of: path, name: child.name))
+            }
         }
+        if let tree { check(tree, path: "/") }
         XCTAssertNil(doubled, "path join produced a doubled slash")
         XCTAssertNil(duplicate, "the Data volume was walked a second time")
     }

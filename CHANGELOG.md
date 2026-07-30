@@ -187,6 +187,25 @@ features, PATCH = fixes.
   the same way — plus every container above them.
 
 ### Changed
+- **A scanned disk tree no longer stores a path on every node.** `DiskNode` held
+  the full path beside the name; over 1.5 M nodes with realistic paths that pair
+  measured 437.6 MB against 92 MB for the name alone, because Swift keeps a
+  string of up to 15 bytes inside the struct and a path never fits — so every
+  node paid a heap allocation for a string it shares almost entirely with its
+  parent. The path is composed instead by whichever traversal needs one, each of
+  which already walks down from a known root. On a real home directory the scan
+  went from 597 to 442–457 bytes per file walked, 149.7 MB down to 111 MB.
+  - The saving survives only because those traversals recurse. A stack of
+    pending `(node, path)` pairs — the mechanical way to carry a path through a
+    breadth-first walk — would hold a composed string for most of the tree at
+    once and hand the same memory back as a spike; `DiskAdvisor` and the
+    whole-volume test were both rewritten as descents, where the live strings
+    number the depth of the tree rather than its width.
+  - `DiskAdvisor` had been asking for one parameter where it needed two: the
+    volume walk hands it a `/`-rooted tree while home is somewhere inside, and
+    that only worked while the nodes carried their own paths. It takes the scan
+    root and the home directory separately now. The test that caught it is the
+    one guarding paths Helm must never advise deleting.
 - **The translations live in `.lproj` files now, not in the source.** Every
   user-visible string was a Swift dictionary at its call site; 663 of 700 moved
   into `Resources/<lang>.lproj/Localizable.strings`, eight files of 614 keys,

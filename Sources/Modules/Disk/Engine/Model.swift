@@ -77,13 +77,20 @@ public struct ScanResult: Codable, Equatable, Sendable {
 public extension DiskEntry {
     /// Depth-limited snapshot: the UI never draws more than a few rings, and
     /// encoding a million-node tree would cost more than the scan itself.
-    init(_ node: DiskNode, depth: Int) {
-        self.init(name: node.name, path: node.path, bytes: node.bytes,
+    ///
+    /// `path` is the path of `node` itself, which the caller knows — the scan
+    /// root at the top, and a composed child's path further down. `DiskNode`
+    /// stopped storing one because a full path per node cost ~345 MB on a large
+    /// volume; the depth limit is what makes composing them cheap here, since
+    /// only the few hundred nodes that reach the screen ever get a string.
+    init(_ node: DiskNode, depth: Int, path: String) {
+        self.init(name: node.name, path: path, bytes: node.bytes,
                   isDirectory: node.isDirectory, noAccess: node.noAccess,
                   children: depth <= 0 ? [] : node.children
                       .sorted { $0.bytes > $1.bytes }
                       .prefix(200)
-                      .map { DiskEntry($0, depth: depth - 1) },
+                      .map { DiskEntry($0, depth: depth - 1,
+                                       path: ScanPath.child(of: path, name: $0.name)) },
                   isFolded: node.isFolded)
     }
 }

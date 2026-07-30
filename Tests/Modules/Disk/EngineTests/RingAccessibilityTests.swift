@@ -12,7 +12,7 @@ import XCTest
 final class RingAccessibilityTests: XCTestCase {
 
     private func node(_ name: String, _ bytes: Int, children: [DiskNode] = []) -> DiskNode {
-        DiskNode(name: name, path: "/\(name)", bytes: bytes,
+        DiskNode(name: name, bytes: bytes,
                  isDirectory: !children.isEmpty, children: children)
     }
 
@@ -26,7 +26,7 @@ final class RingAccessibilityTests: XCTestCase {
         let root = node("root", 1000, children: [
             node("big", 989), node("sliver", 10), node("crumb", 1),
         ])
-        return RingLayout.layout(focus: root, depthLevels: 1, freeBytes: 1000)
+        return RingLayout.layout(focus: root, path: "/", depthLevels: 1, freeBytes: 1000)
     }
 
     // MARK: - Identity
@@ -56,7 +56,7 @@ final class RingAccessibilityTests: XCTestCase {
         let many = (0..<300).map { node("child\($0)", 1_000 + $0 * 5_000) }
         let segments = RingLayout.layout(focus: node("root", many.reduce(0) { $0 + $1.bytes },
                                                      children: many),
-                                         depthLevels: 3, freeBytes: 4_000_000)
+                                         path: "/", depthLevels: 3, freeBytes: 4_000_000)
         let ring = ringZero(segments)
         XCTAssertGreaterThan(ring.count, 3)
         XCTAssertEqual(Set(ring.map(\.startAngle)).count, ring.count)
@@ -110,7 +110,7 @@ final class RingAccessibilityTests: XCTestCase {
     /// with the drawing all over again.
     func testAWedgesShareIsOfTheFolderNotOfTheOtherWedges() {
         let focus = node("root", 1_000, children: [node("a", 300), node("b", 200)])
-        let ring = ringZero(RingLayout.layout(focus: focus, depthLevels: 1, freeBytes: 0))
+        let ring = ringZero(RingLayout.layout(focus: focus, path: "/", depthLevels: 1, freeBytes: 0))
         let listed = ring.reduce(0) { $0 + $1.bytes }
         XCTAssertEqual(listed, 500, "the fixture must hold back part of the folder")
 
@@ -127,7 +127,7 @@ final class RingAccessibilityTests: XCTestCase {
         let focus = node("root", 1_000, children: [
             node("a", 500), node("b", 300), node("c", 100), node("d", 2),
         ])
-        let segments = RingLayout.layout(focus: focus, depthLevels: 1, freeBytes: 1_000)
+        let segments = RingLayout.layout(focus: focus, path: "/", depthLevels: 1, freeBytes: 1_000)
         // Free space takes half the circle here, so the folder's arc is π.
         let folderArc = Double.pi
         for wedge in ringZero(segments) where !wedge.isFreeSpace {
@@ -142,7 +142,7 @@ final class RingAccessibilityTests: XCTestCase {
     func testTheFoldedBucketCarriesEveryByteItSwallowed() {
         let many = (0..<500).map { node("child\($0)", 1_000) }
         let segments = RingLayout.layout(focus: node("root", 500_000, children: many),
-                                         depthLevels: 1, freeBytes: 0)
+                                         path: "/", depthLevels: 1, freeBytes: 0)
         XCTAssertEqual(ringZero(segments).reduce(0) { $0 + $1.bytes }, 500_000)
     }
 
@@ -152,7 +152,7 @@ final class RingAccessibilityTests: XCTestCase {
     func testHundredsOfChildrenStayAHandfulOfElements() {
         let many = (0..<500).map { node("child\($0)", 1_000) }
         let segments = RingLayout.layout(focus: node("root", 500_000, children: many),
-                                         depthLevels: 1, freeBytes: 0)
+                                         path: "/", depthLevels: 1, freeBytes: 0)
         let ring = ringZero(segments)
         XCTAssertLessThanOrEqual(ring.count, 181,
                                  "a full circle holds at most 180 wedges of 2°, plus the fold")
@@ -164,21 +164,21 @@ final class RingAccessibilityTests: XCTestCase {
     /// No children and no bytes: the layout refuses before any arithmetic, so
     /// no percentage is ever computed against a zero total.
     func testAnEmptyFocusProducesNoElementsToLabel() {
-        XCTAssertTrue(RingLayout.layout(focus: node("root", 0), depthLevels: 3,
+        XCTAssertTrue(RingLayout.layout(focus: node("root", 0), path: "/", depthLevels: 3,
                                         freeBytes: 0).isEmpty)
         XCTAssertTrue(RingLayout.layout(focus: node("root", 0, children: [node("a", 0)]),
-                                        depthLevels: 3, freeBytes: 0).isEmpty)
+                                        path: "/", depthLevels: 3, freeBytes: 0).isEmpty)
         // Free space alone is not a ring: with no data there is nothing to
         // divide by, and the layout says so rather than drawing a whole circle
         // of something the folder does not contain.
-        XCTAssertTrue(RingLayout.layout(focus: node("root", 0), depthLevels: 3,
+        XCTAssertTrue(RingLayout.layout(focus: node("root", 0), path: "/", depthLevels: 3,
                                         freeBytes: 5_000).isEmpty)
     }
 
     /// One wedge and nothing else: the folder is the wedge, whole.
     func testASingleWedgeIsTheWholeFolder() {
         let ring = ringZero(RingLayout.layout(focus: node("root", 100, children: [node("a", 100)]),
-                                              depthLevels: 1, freeBytes: 0))
+                                              path: "/", depthLevels: 1, freeBytes: 0))
         XCTAssertEqual(ring.count, 1)
         XCTAssertEqual(ring[0].bytes, 100)
     }
@@ -189,7 +189,7 @@ final class RingAccessibilityTests: XCTestCase {
     func testAZeroByteChildNeverBecomesAnElement() {
         let ring = ringZero(RingLayout.layout(
             focus: node("root", 100, children: [node("a", 100), node("empty", 0)]),
-            depthLevels: 1, freeBytes: 0))
+            path: "/", depthLevels: 1, freeBytes: 0))
         XCTAssertEqual(ring.map(\.name), ["a"])
         XCTAssertTrue(ring.allSatisfy { $0.bytes > 0 })
     }
@@ -198,7 +198,7 @@ final class RingAccessibilityTests: XCTestCase {
     /// `statfs` does under pressure — must not open a wedge that runs backwards.
     func testNegativeFreeSpaceDrawsNoSector() {
         let segments = RingLayout.layout(focus: node("root", 100, children: [node("a", 100)]),
-                                         depthLevels: 1, freeBytes: -5_000)
+                                         path: "/", depthLevels: 1, freeBytes: -5_000)
         XCTAssertNil(segments.first { $0.isFreeSpace })
         XCTAssertTrue(segments.allSatisfy { $0.endAngle >= $0.startAngle },
                       "a wedge that ends before it starts is a hit-test that never matches")
