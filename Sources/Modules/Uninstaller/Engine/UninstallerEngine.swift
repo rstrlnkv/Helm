@@ -13,6 +13,7 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
     private let running: RunningAppsPort
     private let extensions: SystemExtensionPort
     private let store: NamespacedStore
+    private var watcher: FolderWatcher?
     private let localTransport: LocalTransport
     public let transport: EngineTransport
 
@@ -38,8 +39,36 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
         wireTransport()
     }
 
-    public func activate() {}
-    public func deactivate() {}
+    /// Watches `~/.Trash` so that an app dragged there while Helm is running is
+    /// noticed then, and not at the next launch.
+    ///
+    /// The watcher belongs to the engine and the judgement stays with it: the
+    /// host is told "look again", never "an app arrived", and it learns that
+    /// through the transport's event stream, which is the channel it is already
+    /// allowed to use. The sweep on activate stays — it is the only thing that
+    /// catches an app deleted while Helm was closed.
+    public func activate() {
+        let trash = home.appendingPathComponent(".Trash", isDirectory: true).path
+        let made = FolderWatcher { [weak self] changed in
+            guard let self, TrashArrival.namesAnApp(changed, trash: trash) else { return }
+            HelmLog.shared.info("uninstaller", "an app reached the Trash")
+            self.localTransport.emit(EngineEvent(name: Self.trashChangedEvent))
+        }
+        watcher = made
+        made.watch([trash])
+    }
+
+    /// Stopped here and not only in `deinit`: the stream holds this object, so a
+    /// `deinit` that waits for the stream to go away waits forever.
+    public func deactivate() {
+        watcher?.stop()
+        watcher = nil
+    }
+
+    /// "Look again" — it carries nothing, because what is in the Trash and
+    /// whether any of it is worth offering is answered by `trashedAppLeftovers`
+    /// and by nobody else.
+    public static let trashChangedEvent = "trashChanged"
 
     /// Runs blocking filesystem work on a dispatch queue so it never parks a
     /// Swift-concurrency pool thread (app-size scans walk whole bundles).

@@ -1,19 +1,25 @@
 import Foundation
 
-/// Tells the engine that something happened in a watched folder.
+/// Tells an engine that something happened in a watched folder.
+///
+/// Shared plumbing, in `HelmRuntime` because two modules now need it: Autopilot
+/// watches the folders its rules name, and the Uninstaller watches `~/.Trash` so
+/// that dragging an app there is noticed while Helm is running. It lived inside
+/// Autopilot until the second caller appeared — which is the point at which the
+/// house rule says it moves rather than being written twice.
 ///
 /// FSEvents rather than a poll, because "a file appeared and was sorted a
 /// moment later" is the behaviour the module is for. It is not enough on its
 /// own: a rule that says "older than 30 days" becomes true with nothing
 /// happening at all, and no event will ever fire for it — hence the sweep on a
 /// timer beside this. Two triggers, because neither one covers the other.
-final class FolderWatcher: @unchecked Sendable {
+public final class FolderWatcher: @unchecked Sendable {
     private let queue = DispatchQueue(label: "helm.rules.watcher")
     private var stream: FSEventStreamRef?
     private var paths: [String] = []
     private let onChange: @Sendable ([String]) -> Void
 
-    init(onChange: @escaping @Sendable ([String]) -> Void) {
+    public init(onChange: @escaping @Sendable ([String]) -> Void) {
         self.onChange = onChange
     }
 
@@ -22,7 +28,7 @@ final class FolderWatcher: @unchecked Sendable {
     /// Replaces whatever was being watched. Called when the folder list
     /// changes, which is rare enough that rebuilding the stream is simpler than
     /// adding to it — and an FSEvents stream cannot have paths added anyway.
-    func watch(_ folders: [String]) {
+    public func watch(_ folders: [String]) {
         queue.async { [self] in
             stopStream()
             paths = folders
@@ -31,7 +37,7 @@ final class FolderWatcher: @unchecked Sendable {
         }
     }
 
-    func stop() { queue.async { [self] in stopStream() } }
+    public func stop() { queue.async { [self] in stopStream() } }
 
     private func start(_ folders: [String]) {
         var context = FSEventStreamContext(
