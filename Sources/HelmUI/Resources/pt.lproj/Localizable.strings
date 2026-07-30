@@ -13,6 +13,7 @@
 "A rule is a decision made once and carried out from then on, so it is shown before it is switched on." = "Uma regra é uma decisão tomada uma vez e executada dali em diante, por isso ela é mostrada antes de ser ligada.";
 "A short token you type often, and what it stands for. It expands when you finish the word." = "Uma abreviação que você digita com frequência, e o que ela significa. Expande quando a palavra termina.";
 "A way out of a scan in Disk. The module opens on whatever it measured last, and the only button was “Scan again”, which measures the same place — so a scan of the wrong folder came back at every launch with no way to leave it. “Choose another…” beside it clears the screen and forgets the saved scan." = "Uma saída do escaneamento em Disco: o módulo abre no que mediu por último, e «Escolher outro…» limpa a tela e esquece o escaneamento salvo.";
+"A window lists what it left behind, while the app is still in the Trash to be identified." = "Uma janela mostra o que ele deixou, enquanto o app ainda está no Lixo e pode ser identificado.";
 "A word is checked when you finish it this way. Moving the caret or clicking elsewhere never converts — by then you have moved on." = "A palavra é verificada quando você a termina assim. Mover o cursor ou clicar em outro lugar nunca converte — você já saiu.";
 "A word is only changed when it is not a word as typed and is one once swapped. Anything valid is left alone." = "Uma palavra só muda se não for palavra como digitada e passar a ser após a troca. O que é válido fica.";
 "ACTIVE" = "ATIVAS";
@@ -227,6 +228,7 @@
 "Keep awake with the lid closed" = "Manter ativo com a tampa fechada";
 "Keep display on" = "Manter a tela ligada";
 "Keep the Mac from falling asleep" = "Impedir que o Mac durma.";
+"Keep these files" = "Manter estes arquivos";
 "Keyboard" = "Teclado";
 "Keyboard can show its own language indicator in the menu bar, with the choices the system’s one does not offer: letters plain, on a badge or in a frame, or a flag, at the size you pick, with a menu of your layouts. Off until you turn it on, since macOS shows its own." = "O Teclado pode mostrar seu próprio indicador de idioma na barra de menus, com opções que o do sistema não oferece: letras, preenchidas, com contorno, ou bandeira (emoji ou desenhada), no tamanho que quiser, e um menu com seus layouts. Desligado por padrão.";
 "Keyboard is one gesture now. Tap the key — right ⌘ unless you change it — and Helm fixes what is in front of you: the selected text if there is any, otherwise the last word, and tapping again puts it back. There were five shortcuts to set up and none of them was set. Any modifier can be the key — right or left — and on Macs with a 🌐︎ key, that too. Transliteration and changing case are gone: transliteration could not be undone reliably, and macOS already changes case in the Edit menu." = "O Teclado agora é um gesto só. Toque a tecla (⌘ direita por padrão) e o Helm corrige o que está à sua frente: a seleção, se houver; caso contrário, a última palavra — e tocar de novo desfaz. Antes eram cinco atalhos para configurar e nenhum estava definido. Transliteração e mudança de maiúsculas foram removidas.";
@@ -242,7 +244,6 @@
 "Launch agents, settings files, plug-ins and system extensions on this Mac. Leftovers can be removed; the rest is shown for context." = "Agentes de início, arquivos de ajustes, plug-ins e extensões do sistema neste Mac. Restos podem ser removidos; o resto é informativo.";
 "Launch automatically at startup" = "Abrir automaticamente ao ligar o Mac";
 "Launch daemons" = "Daemons de início";
-"Left behind by apps you moved to the Trash. Putting an app back does not bring its files back." = "Deixados por apps que você moveu para o Lixo. Restaurar um app não traz esses arquivos de volta.";
 "Left ⇧" = "⇧ esquerda";
 "Left ⌃" = "⌃ esquerda";
 "Left ⌘" = "⌘ esquerda";
@@ -333,6 +334,7 @@
 "OK" = "OK";
 "ON" = "ON";
 "Off" = "Desativada";
+"Offer to clean up when I trash an app" = "Oferecer limpeza quando eu mandar um app para o Lixo";
 "Old download" = "Download antigo";
 "On a wide window the settings no longer drift: every page starts at the same left edge, and switching between them stops shifting the content sideways." = "Em uma janela larga os ajustes não desalinham mais: todas as páginas começam na mesma borda esquerda.";
 "On launch and quit" = "Ao abrir e fechar";
@@ -371,6 +373,7 @@
 "Power" = "Energia";
 "Press keys…" = "Pressione teclas…";
 "Purple" = "Roxo";
+"Putting the app back from the Trash will not bring these files back." = "Restaurar o app do Lixo não traz esses arquivos de volta.";
 "Quick Look" = "Visualização rápida";
 "Quit" = "Sair";
 "Quit the running apps first, or allow a force quit." = "Encerre primeiro os apps em execução ou permita o encerramento forçado.";
@@ -593,7 +596,6 @@
 "begins with" = "começa com";
 "by kind" = "por tipo";
 "by month" = "por mês";
-"by name" = "por nome";
 "cask" = "cask";
 "collapsed" = "recolhido";
 "contains" = "contém";
@@ -601,6 +603,7 @@
 "expanded" = "expandido";
 "failed" = "falhou";
 "free" = "livre";
+"guess" = "suposição";
 "h" = "h";
 "is" = "é";
 "larger than" = "maior que";

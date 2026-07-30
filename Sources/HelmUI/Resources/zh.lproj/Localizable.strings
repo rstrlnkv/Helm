@@ -13,6 +13,7 @@
 "A rule is a decision made once and carried out from then on, so it is shown before it is switched on." = "规则是一次做出、此后一直执行的决定，所以在开启之前先展示它。";
 "A short token you type often, and what it stands for. It expands when you finish the word." = "你经常输入的简写，以及它代表的内容。在词输入完成时展开。";
 "A way out of a scan in Disk. The module opens on whatever it measured last, and the only button was “Scan again”, which measures the same place — so a scan of the wrong folder came back at every launch with no way to leave it. “Choose another…” beside it clears the screen and forgets the saved scan." = "“磁盘”中终于有了退出扫描的办法：“选择其他…”会清空界面并忘记已保存的扫描。";
+"A window lists what it left behind, while the app is still in the Trash to be identified." = "趁 App 还在废纸篓里、可以辨认，用窗口列出它留下的文件。";
 "A word is checked when you finish it this way. Moving the caret or clicking elsewhere never converts — by then you have moved on." = "以这些方式结束单词时才会判断。移动光标或点击别处从不转换——那时你已经离开了。";
 "A word is only changed when it is not a word as typed and is one once swapped. Anything valid is left alone." = "只有当按原样不是单词、转换后才是单词时才替换。有效的内容不会被改动。";
 "ACTIVE" = "已连接";
@@ -227,6 +228,7 @@
 "Keep awake with the lid closed" = "合盖时保持唤醒";
 "Keep display on" = "保持显示器常亮";
 "Keep the Mac from falling asleep" = "阻止 Mac 进入睡眠。";
+"Keep these files" = "保留这些文件";
 "Keyboard" = "键盘";
 "Keyboard can show its own language indicator in the menu bar, with the choices the system’s one does not offer: letters plain, on a badge or in a frame, or a flag, at the size you pick, with a menu of your layouts. Off until you turn it on, since macOS shows its own." = "“键盘”可在菜单栏显示自己的语言指示器，提供系统版本没有的选项：字母、填充、描边，或旗帜（表情／绘制），尺寸可选，并带布局菜单。默认关闭。";
 "Keyboard is one gesture now. Tap the key — right ⌘ unless you change it — and Helm fixes what is in front of you: the selected text if there is any, otherwise the last word, and tapping again puts it back. There were five shortcuts to set up and none of them was set. Any modifier can be the key — right or left — and on Macs with a 🌐︎ key, that too. Transliteration and changing case are gone: transliteration could not be undone reliably, and macOS already changes case in the Edit menu." = "“键盘”现在只有一个手势。敲一下按键（默认右 ⌘），Helm 就修正你眼前的东西：有选中文本就改选区，否则改上一个词，再敲一次还原。此前要设置五个快捷键，而且一个都没设。转写和改变大小写已移除。";
@@ -242,7 +244,6 @@
 "Launch agents, settings files, plug-ins and system extensions on this Mac. Leftovers can be removed; the rest is shown for context." = "本机的启动代理、设置文件、插件与系统扩展。残留项可删除，其余仅供参考。";
 "Launch automatically at startup" = "开机时自动启动";
 "Launch daemons" = "启动守护进程";
-"Left behind by apps you moved to the Trash. Putting an app back does not bring its files back." = "这些文件由你移到废纸篓的App留下。把App放回原处，这些文件不会一起恢复。";
 "Left ⇧" = "左 ⇧";
 "Left ⌃" = "左 ⌃";
 "Left ⌘" = "左 ⌘";
@@ -333,6 +334,7 @@
 "OK" = "完成";
 "ON" = "开";
 "Off" = "关闭";
+"Offer to clean up when I trash an app" = "把 App 移到废纸篓时提出清理";
 "Old download" = "旧下载";
 "On a wide window the settings no longer drift: every page starts at the same left edge, and switching between them stops shifting the content sideways." = "窗口拉宽时设置不再错位：所有页面从同一左边缘开始。";
 "On launch and quit" = "启动与退出时";
@@ -371,6 +373,7 @@
 "Power" = "电源";
 "Press keys…" = "请按下按键…";
 "Purple" = "紫色";
+"Putting the app back from the Trash will not bring these files back." = "把 App 从废纸篓放回原处，这些文件不会一并恢复。";
 "Quick Look" = "快速查看";
 "Quit" = "退出";
 "Quit the running apps first, or allow a force quit." = "请先退出运行中的应用，或允许强制退出。";
@@ -593,7 +596,6 @@
 "begins with" = "开头是";
 "by kind" = "按种类";
 "by month" = "按月份";
-"by name" = "按名称";
 "cask" = "cask";
 "collapsed" = "已折叠";
 "contains" = "包含";
@@ -601,6 +603,7 @@
 "expanded" = "已展开";
 "failed" = "失败";
 "free" = "可用";
+"guess" = "推测";
 "h" = "小时";
 "is" = "等于";
 "larger than" = "大于";

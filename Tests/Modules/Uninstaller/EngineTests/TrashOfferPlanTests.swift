@@ -173,6 +173,45 @@ final class TrashOfferPlanTests: XCTestCase {
             ["/a1"])
     }
 
+    // MARK: - Which apps a removal has actually answered for
+
+    /// A "no" is remembered for as long as the app sits in the Trash, and this
+    /// window is the only place some of these files are ever offered — a Group
+    /// Container, a cookie file, anything matched by name — because the module's
+    /// own Leftovers tab lists only bundle-id-named entries in nine folders. So
+    /// recording a refusal as somebody's answer takes the files off every screen
+    /// Helm has.
+
+    func testAppsWhosePathsAllMovedAreAnswered() {
+        let groups = [group("com.a", [leftover("/a1")]), group("com.b", [leftover("/b1")])]
+        let result = UninstallResult(trashed: ["/a1", "/b1"], failed: [], freedBytes: 20)
+        XCTAssertEqual(TrashOfferPlan.answered(groups, failed: Set(result.failed)).map(\.bundleID),
+                       ["com.a", "com.b"])
+    }
+
+    /// macOS refused, and a refusal is not a decision. The person may grant Full
+    /// Disk Access, unlock the file, quit whatever was holding it — and the offer
+    /// has to be able to come back.
+    func testAnAppWhosePathWasRefusedIsNotAnswered() {
+        let groups = [group("com.a", [leftover("/a1")]), group("com.b", [leftover("/b1")])]
+        XCTAssertEqual(TrashOfferPlan.answered(groups, failed: ["/a1"]).map(\.bundleID),
+                       ["com.b"], "an app macOS refused was filed as the person's no")
+    }
+
+    /// One refusal in a group is enough: the app still has something of its on
+    /// disk, and that is the state the offer exists for.
+    func testOneRefusalInAGroupHoldsTheWholeGroupOpen() {
+        let groups = [group("com.a", [leftover("/a1"), leftover("/a2")])]
+        XCTAssertTrue(TrashOfferPlan.answered(groups, failed: ["/a2"]).isEmpty)
+    }
+
+    /// A path the person left unticked is not a refusal — they saw it and said
+    /// no to that one. The app has been answered.
+    func testAnUntickedPathDoesNotHoldTheGroupOpen() {
+        let groups = [group("com.a", [leftover("/a1"), leftover("/a2", byName: true)])]
+        XCTAssertEqual(TrashOfferPlan.answered(groups, failed: []).map(\.bundleID), ["com.a"])
+    }
+
     /// A refresh that changes nothing must change nothing.
     func testTheSameGroupsKeepTheSameSelection() {
         let groups = [group("com.a", [leftover("/a1"), leftover("/a2")])]

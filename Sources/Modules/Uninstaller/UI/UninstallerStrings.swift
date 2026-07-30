@@ -38,8 +38,29 @@ enum UnStr {
     /// The one standing line in that window, and the honest cost of offering
     /// now rather than waiting for the Trash to be emptied: the app is in the
     /// Trash, not gone, and it can come back without these.
+    ///
+    /// One sentence, because the first half of the two it used to be was the
+    /// window's own title said again with more words. Naming the Trash carries
+    /// the provenance, so nothing was lost with it. It stays literally true after
+    /// the files are moved: they land beside the app, and restoring the app alone
+    /// still does not bring them.
     static var trashOfferNote: String {
-        L("Left behind by apps you moved to the Trash. Putting an app back does not bring its files back.")
+        L("Putting the app back from the Trash will not bring these files back.")
+    }
+    /// What Cancel really means here, said outright. The record holds for as long
+    /// as the app is in the Trash, and once the Trash is emptied there is nothing
+    /// left to ask about — so "Later" would be a lie and «Отменить» is the system
+    /// word for "make nothing happen", which this does not do.
+    static var trashOfferKeep: String { L("Keep these files") }
+    /// The switch on the Leftovers tab. Says what Helm will do, not what it will
+    /// watch: "watch the Trash" describes the mechanism and asks the reader to
+    /// work out the point of it.
+    static var watchTrash: String { L("Offer to clean up when I trash an app") }
+    /// Why the offer can only work at that moment, which is also why the module
+    /// cannot simply find these files later: the bundle in the Trash is what says
+    /// which app they belonged to.
+    static var watchTrashNote: String {
+        L("A window lists what it left behind, while the app is still in the Trash to be identified.")
     }
     static var tabApps: String { L("Apps") }
     static var tabOrphans: String { L("Leftovers") }
@@ -85,8 +106,13 @@ enum UnStr {
     /// started needing them too. Kept as a name the pages already call.
     static func failureReason(_ raw: String) -> String { TrashReasonText.sentence(raw) }
     /// Marks a leftover found by the app's display name rather than its
-    /// bundle id — a guess, so it is not ticked by default.
-    static var matchedByName: String { L("by name") }
+    /// bundle id, and it is not ticked by default.
+    ///
+    /// "by name" named the *method* and left the reader to work out what was
+    /// wrong with it — and two translators drifted to a noun for a category
+    /// («по названию», 名前一致), which is what an under-specified fragment does.
+    /// The word this app already uses for the thing is a guess.
+    static var matchedByName: String { L("guess") }
     static var showInFinder: String { L("Show in Finder") }
     static var openDiskAccess: String { L("Open Full Disk Access…") }
     static var openExtensions: String { L("Open Extensions…") }

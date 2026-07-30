@@ -53,6 +53,9 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { bundleID }
     /// Cancelled when the window goes away. A `for await` over a stream that
     /// never finishes outlives every reference to this object otherwise.
     private var watching: Task<Void, Never>?
+    /// Run when there is nothing left to ask about — every app was put back
+    /// while the window stood open. Set by the view that owns the close.
+    var onVoid: (() -> Void)?
 
     @Published private(set) var groups: [TrashedAppLeftovers] = []
     @Published var selected: Set<String> = []
@@ -98,6 +101,16 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { bundleID }
     private func refresh() async {
         guard !busy, outcome == nil else { return }
         let fresh: [TrashedAppLeftovers] = await client.request("trashedAppLeftovers") ?? []
+        // Everything went back: the person pressed Put Back in the Finder while
+        // this was open. The question is void, so the window goes rather than
+        // standing there empty, asking about files that are not there — and
+        // nothing is recorded as declined, because nobody declined anything.
+        if fresh.isEmpty {
+            groups = []
+            HelmLog.shared.info("uninstaller", "trash offer: the Trash gave everything back")
+            onVoid?()
+            return
+        }
         guard fresh != groups else { return }
         selected = TrashOfferPlan.selectionAfterRefresh(previous: groups,
                                                         selected: selected, current: fresh)
@@ -130,17 +143,22 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { bundleID }
         HelmLog.shared.info("uninstaller", "trash offer: trashing \(paths.count) path(s)")
         let result = await client.request("trashPaths", encoding: paths, as: UninstallResult.self)
         busy = false
-        // The question was asked and answered, so it is not asked again — for a
-        // removal that succeeded the next sweep finds nothing anyway, and for one
-        // macOS refused, asking again at every launch is the nagging the record
-        // exists to prevent. The files are still listed on the module's own page.
-        await answered(answering)
+        // Only the apps this actually answered for. A refusal from macOS is not
+        // the person's "no", and the record is final for as long as the app sits
+        // in the Trash — see `TrashOfferPlan.answered`.
+        await answered(TrashOfferPlan.answered(answering, failed: Set(result?.failed ?? [])))
+        // Said even when everything worked. The window vanishes on success, and
+        // an outcome nobody can read afterwards is the shape of the report that
+        // took two days to trace once already.
+        let leftUnticked = answering.flatMap(\.leftovers).count - paths.count
+        HelmLog.shared.info("uninstaller",
+                            "trash offer: \(result?.trashed.count ?? 0) moved, "
+                            + "\(Bytes(result?.freedBytes ?? 0)), "
+                            + "\(leftUnticked) left by choice, \(result?.failed.count ?? 0) refused")
         guard let result, !result.failures.isEmpty else { return true }
         failures = result.failures
         removedCount = result.trashed.count
         outcome = UnStr.movedToTrash(Bytes(result.freedBytes))
-        HelmLog.shared.warn("uninstaller",
-                            "trash offer: \(result.failed.count) path(s) stayed put")
         return false
     }
 
@@ -166,6 +184,9 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { bundleID }
 struct TrashedLeftoversView: View {
     @ObservedObject var model: TrashedLeftoversModel
     let onClose: () -> Void
+    /// The content's own height, so the window ends where its content does —
+    /// one file no longer leaves 35 pt of empty list under it.
+    @State private var contentHeight: CGFloat = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -189,11 +210,18 @@ struct TrashedLeftoversView: View {
             Divider()
             footer
         }
-        .frame(width: 520)
-        // The list grows when a second app lands in the Trash, so the window has
-        // to grow with it rather than hiding the newcomer below its own edge.
-        .animation(HelmMotion.interface, value: model.groups.count)
-        .onAppear { model.watchForMore() }
+        // 460, not 520: 520 was sized for a 465 pt path column that no longer
+        // exists. The widest thing left is a German group header, which fits.
+        .frame(width: 460)
+        // No growth animation. Measured at 120 Hz, the window went 374 -> 596 pt
+        // between consecutive samples: `NSHostingController` resizes the window
+        // in one step and a SwiftUI token cannot reach an `NSWindow` frame, so
+        // the animation that was here played no frames and only read as if it
+        // did.
+        .onAppear {
+            model.onVoid = onClose
+            model.watchForMore()
+        }
         // Every way out of this window is an answer, including the close button,
         // and an answer that is not recorded comes back at the next launch. The
         // one place that catches all three — Cancel, Move to Trash, and the red
@@ -216,79 +244,121 @@ struct TrashedLeftoversView: View {
             .padding(.horizontal, 20).padding(.vertical, 12)
     }
 
+    /// One card per app, rather than a `List` of sections.
+    ///
+    /// Measured, the `List` was drawing three things wrong that it does not let
+    /// anyone fix: a hairline under the *first* section header and none under the
+    /// second, so two identical groups looked different; rows out-dented from
+    /// their own header by 11.5 pt; and a height nothing could ask for, so it had
+    /// to be guessed from per-row constants that were 1.2 pt out and 35 pt out at
+    /// one file. The card is the house container and says "these belong to this
+    /// app" without a separator having to.
     private var list: some View {
-        List {
-            ForEach(model.groups) { group in
-                Section {
-                    ForEach(group.leftovers, id: \.path) { item in
-                        Toggle(isOn: binding(for: item.path)) {
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(item.path).font(.caption).lineLimit(1).truncationMode(.middle)
-                                HStack(spacing: 4) {
-                                    Text("\(UnStr.kind(item.kind)) · \(Bytes(item.sizeBytes))")
-                                    // A path found under the app's display name
-                                    // is a guess, and it arrives unticked. The
-                                    // tag says which rows those are.
-                                    if item.matchedByName {
-                                        HelmBadge(UnStr.matchedByName)
-                                    }
-                                }
-                                .font(.caption2).foregroundStyle(HelmText.quiet)
-                            }
-                        }
-                        .toggleStyle(.checkbox)
-                        .padding(.vertical, 2)
-                        .listRowSeparator(.hidden)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(model.groups) { group in
+                    VStack(alignment: .leading, spacing: 4) {
+                        groupHeader(group)
+                        ForEach(group.leftovers, id: \.path) { row($0, in: group) }
                     }
-                } header: {
-                    HStack(spacing: 8) {
-                        Image(nsImage: AppIconCache.icon(forFile: group.appPath))
-                            .resizable().frame(width: 24, height: 24)
-                            .accessibilityHidden(true)
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(group.name).font(.callout.weight(.medium))
-                            Text(group.bundleID).font(.caption2).foregroundStyle(HelmText.faint)
-                        }
-                        Spacer()
-                        Text(Bytes(group.totalBytes)).font(.caption).foregroundStyle(HelmText.quiet)
-                    }
-                    .padding(.vertical, 2)
+                    .helmCard(padding: 12)
                 }
             }
+            .padding(.horizontal, 20).padding(.vertical, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
         }
-        .listStyle(.inset)
-        .frame(height: listHeight)
+        .frame(height: min(max(contentHeight, 80), 420))
     }
 
-    /// Sized to what it holds, up to a ceiling: one app with two files in a
-    /// window built for ten is a window that looks like it lost something.
+    /// The app is the subject of this window and its files are the predicate, so
+    /// the name is what should be read first. The bundle id stays under it: it is
+    /// what tells two apps of the same name apart, and it is what every row below
+    /// was derived from.
+    private func groupHeader(_ group: TrashedAppLeftovers) -> some View {
+        HStack(spacing: 10) {
+            Image(nsImage: AppIconCache.icon(forFile: group.appPath))
+                .resizable().frame(width: 28, height: 28)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(group.name).font(.body.weight(.semibold)).lineLimit(1)
+                Text(group.bundleID).font(.caption2).foregroundStyle(HelmText.faint)
+                    .lineLimit(1).truncationMode(.middle)
+            }
+            Spacer(minLength: 8)
+            Text(Bytes(group.totalBytes)).helmFigure().foregroundStyle(HelmText.quiet)
+        }
+        .padding(.bottom, 2)
+    }
+
+    /// The row leads with the kind of file, not its path.
     ///
-    /// The figures are measured off a frame rather than guessed — 34 and 40 were
-    /// the guess, and they left the second group's only file below the fold, on a
-    /// window whose whole job is to say what an app left behind. A group that ends
-    /// exactly at the bottom edge reads as a group with nothing in it.
-    private var listHeight: CGFloat {
-        let rows = model.groups.reduce(0) { $0 + $1.leftovers.count }
-        let headers = model.groups.count
-        return min(max(CGFloat(rows) * 42 + CGFloat(headers) * 54 + 16, 120), 380)
+    /// Measured on a real window: the six paths carried 17 590 dark pixels
+    /// against 1 585 for the two app names, and a third of that ink was the same
+    /// `/Users/<name>/Library/` on every line — invariant by construction, since
+    /// `LeftoverMatcher` builds every candidate as library/kind/id. The kind is
+    /// that folder said in the person's own language, and the leaf is the bundle
+    /// id already printed in the header. The full path is one hover away, and
+    /// Show in Finder is one right-click away, which is more than the old row
+    /// offered: it could only be read, and only if it fitted.
+    private func row(_ item: Leftover, in group: TrashedAppLeftovers) -> some View {
+        Toggle(isOn: binding(for: item.path)) {
+            HStack(spacing: 6) {
+                Text(UnStr.kind(item.kind)).font(.callout).lineLimit(1)
+                if let leaf = distinguishingLeaf(item, in: group) {
+                    Text(leaf).font(.caption).foregroundStyle(HelmText.faint)
+                        .lineLimit(1).truncationMode(.head)
+                }
+                // A path found under the app's display name is a guess, and it
+                // arrives unticked. The tag says which rows those are.
+                if item.matchedByName { HelmBadge(UnStr.matchedByName) }
+                Spacer(minLength: 8)
+                Text(Bytes(item.sizeBytes)).helmFigure().foregroundStyle(HelmText.quiet)
+            }
+        }
+        .toggleStyle(.checkbox)
+        .help(item.path)
+        .contextMenu {
+            Button(UnStr.showInFinder) {
+                NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: item.path)])
+            }
+        }
+    }
+
+    /// The last path component, and only when the kind alone would name two rows
+    /// in one group — a prefix glob and the exact candidate it generalises both
+    /// land in Caches. Shown always, it would put the bundle id back on every
+    /// line, which is the ink this row was built to stop spending.
+    private func distinguishingLeaf(_ item: Leftover, in group: TrashedAppLeftovers) -> String? {
+        guard group.leftovers.filter({ $0.kind == item.kind }).count > 1 else { return nil }
+        return (item.path as NSString).lastPathComponent
     }
 
     private var footer: some View {
         HStack {
-            Button(UnStr.cancel) { onClose() }
+            Button(UnStr.trashOfferKeep) { onClose() }
             .keyboardShortcut(.cancelAction)
             .disabled(model.busy)
             Spacer()
+            if model.busy {
+                ProgressView().controlSize(.small)
+                Text(UnStr.removing).font(.caption).foregroundStyle(HelmText.quiet)
+            }
             if model.outcome == nil {
-                Text(UnStr.selectedSummary(model.selected.count, Bytes(model.totalBytes)))
-                    .font(.caption).foregroundStyle(HelmText.quiet)
+                if !model.busy {
+                    Text(UnStr.selectedSummary(model.selected.count, Bytes(model.totalBytes)))
+                        .font(.caption).foregroundStyle(HelmText.quiet)
+                }
                 Button(UnStr.moveToTrash) {
                     Task {
                         if await model.removeSelection() { onClose() }
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.defaultAction)
+                // No `.defaultAction`. This window arrives unasked, a second
+                // after a drag, and puts itself in front; a Return meant for
+                // whatever the person was typing must not be able to delete
+                // their files. Escape still cancels, which is the safe direction.
                 .disabled(model.selected.isEmpty || model.busy)
             } else {
                 Button(UnStr.done) { onClose() }

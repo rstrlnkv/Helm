@@ -18,6 +18,8 @@ struct OrphansView: View {
     @State private var busy = false
     @State private var confirming = false
     @State private var banner: String?
+    /// Read from the engine on appear; written straight through on a change.
+    @State private var watching = false
 
     private var selectedBytes: Int {
         groups.flatMap(\.leftovers).filter { selected.contains($0.path) }.reduce(0) { $0 + $1.sizeBytes }
@@ -47,6 +49,8 @@ struct OrphansView: View {
             // only after a scan moved the whole screen by its height and took
             // the hairline with it. The buttons are already disabled when there
             // is nothing to act on.
+            Divider()
+            watchRow
             Divider()
             footer
         }
@@ -99,6 +103,42 @@ struct OrphansView: View {
             }
             .listStyle(.inset)
             }
+    }
+
+    /// The switch that decides whether Helm speaks up on its own.
+    ///
+    /// It sits on this tab because this tab is already the answer to "what did an
+    /// app I removed leave behind" — the window asks the same question at the
+    /// moment of removal, when the bundle is still there to be identified. On the
+    /// Apps tab it would hang over a list it has nothing to do with.
+    ///
+    /// Off by default: a window that appears unasked is not something to hand
+    /// somebody without their say-so.
+    private var watchRow: some View {
+        HStack(alignment: .center, spacing: 16) {
+            // Label above its own explanation, switch hard right — the macOS
+            // order, and the one every other settings row in Helm keeps. Written
+            // as one HStack rather than a Toggle with a label because a label
+            // that wraps to two lines pushed the switch into the middle of the
+            // row, between the sentence and its own footnote.
+            VStack(alignment: .leading, spacing: 2) {
+                Text(UnStr.watchTrash).font(.callout)
+                Text(UnStr.watchTrashNote)
+                    .font(.caption).foregroundStyle(HelmText.quiet)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+            Toggle("", isOn: Binding(get: { watching },
+                                     set: { on in
+                                         watching = on
+                                         Task { await uvm.setWatchingTrash(on) }
+                                     }))
+                .toggleStyle(.switch)
+                .labelsHidden()
+                .accessibilityLabel(UnStr.watchTrash)
+        }
+        .padding(.horizontal, 20).padding(.vertical, 10)
+        .task { watching = await uvm.watchingTrash() }
     }
 
     private var allPaths: [String] { groups.flatMap(\.leftovers).map(\.path) }
