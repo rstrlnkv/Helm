@@ -46,7 +46,7 @@ or one that disagrees, is never installed silently: the release page opens inste
 Requires Xcode (macOS 26 SDK) and Swift 6.
 
 ```bash
-swift test                      # 1575 unit tests
+swift test                      # 1627 unit tests
 bash Scripts/package-app.sh     # build + sign → $TMPDIR/helm-package/Helm.app
 ```
 
@@ -55,12 +55,7 @@ checkout; the copy left in `build/` is for inspection only — install and packa
 the staged path. **Keep the checkout out from under a file provider** (iCloud Drive,
 Dropbox, and the like): a provider stamps `com.apple.FinderInfo` onto the bundles it
 manages and `codesign` refuses a bundle carrying it, so signing succeeds or fails by
-luck — see ARCHITECTURE.md § Dev loop.
+luck.
 
 Release packaging: `Scripts/make-dmg.sh` (manual install) and `Scripts/make-zip.sh`
 (the asset the in-app updater consumes). Versioning rules: [VERSIONING.md](VERSIONING.md).
-
-## Architecture
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) — the module system (descriptor/engine
-split, ports, transport), the UI shell, and the hard-won platform notes.
