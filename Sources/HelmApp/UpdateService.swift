@@ -81,7 +81,18 @@ import HelmRuntime
                     NSWorkspace.shared.open(rel.pageURL)
                     return
                 }
-                guard ReleaseDigest.matches(fileAt: tmp, expected: expected) else {
+                // Measured whichever way the comparison goes: a mismatch did the
+                // same hashing a match did, and the hash loop is the one place in
+                // the updater that reads a whole file. This is the pool defect's
+                // own scene — 1204 MB of growth hashing a 1200 MB file before the
+                // `autoreleasepool` went inside the `while` (ARCHITECTURE.md
+                // § Memory) — and until now it ran unattended with no label, so a
+                // silent update check could only ever appear in the trail as
+                // growth between two `idle` readings.
+                let digestMatches = ReleaseDigest.matches(fileAt: tmp, expected: expected)
+                MemoryReclaim.afterHeavyWork("update.digest")
+                HelmLog.shared.memory("update.digest")
+                guard digestMatches else {
                     HelmLog.shared.error("update", "digest mismatch for \(asset) — refusing to install")
                     installState = .failed
                     return

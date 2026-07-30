@@ -49,17 +49,30 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         return BrewStatus(installed: path != nil, brewPath: path)
     }
 
+    /// Labelled, like the scans in the other modules: reading and parsing the
+    /// whole installed set is bulk work, and an operation that is not named in the
+    /// memory trail cannot be blamed by it — nor does it hand its emptied regions
+    /// back to macOS when it ends, which is what the reclaim is for.
+    /// `HelmLog.memory` is silent below 8 MB of change, so a cheap call says
+    /// nothing (docs/superpowers/plans/2026-07-29-third-pass.md).
     public func listInstalled() -> [BrewPackage] {
         guard let brew = locator.brewPath() else { return [] }
         let f = runner.run(brew, ["list", "--versions", "--formula"], env: [:]).stdout
         let c = runner.run(brew, ["list", "--versions", "--cask"], env: [:]).stdout
-        return BrewListParser.parse(f, isCask: false) + BrewListParser.parse(c, isCask: true)
+        let packages = BrewListParser.parse(f, isCask: false)
+            + BrewListParser.parse(c, isCask: true)
+        MemoryReclaim.afterHeavyWork("homebrew.listInstalled")
+        HelmLog.shared.memory("homebrew.listInstalled")
+        return packages
     }
 
     public func outdated() -> [OutdatedPackage] {
         guard let brew = locator.brewPath() else { return [] }
         let out = runner.run(brew, ["outdated", "--json=v2"], env: [:]).stdout
-        return BrewOutdatedParser.parse(Data(out.utf8))
+        let parsed = BrewOutdatedParser.parse(Data(out.utf8))
+        MemoryReclaim.afterHeavyWork("homebrew.outdated")
+        HelmLog.shared.memory("homebrew.outdated")
+        return parsed
     }
 
     /// One `brew desc` call per kind covers a whole list of names.

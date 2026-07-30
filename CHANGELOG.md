@@ -187,6 +187,25 @@ features, PATCH = fixes.
   the same way — plus every container above them.
 
 ### Changed
+- **The diagnostics log can now name every phase that does bulk work.** Helm
+  records its own memory footprint per operation, which is how a 48 GB leak was
+  found — but only nine places called it, so Autopilot's timed sweep, Homebrew's
+  read of the whole installed set and the updater's digest check appeared in the
+  log as growth between two idle readings with nothing in between. They also
+  never handed their memory back to macOS at the moment the work ended, which is
+  the other half of what that call does. All three report now.
+  - Writing the coverage test for it found a hole nobody was looking for: the
+    duplicate finder's hashing phase — the loop the 48 GB incident came from —
+    handed its memory back without ever recording what it had taken, so a
+    regression there would not have shown up in the log at all.
+  - This also closes a two-day-old report of "+177 MB when the Uninstaller page
+    opens". The page is not what costs it: opening it, listing every installed
+    app and measuring all 38 bundles (26.9 GB, Xcode and iMovie included) grows
+    the process by 0.6 MB, and the settings window's own drawing machinery
+    accounts for single-digit megabytes. What the log actually shows is bursts of
+    small-object churn — a 1.4 GB peak against a 121 MB footprint, with 770 MB
+    sitting in emptied allocator regions — which is why the labels matter more
+    than another guess.
 - **Stop keeps what the scan had measured.** Stopping a disk scan put the phase
   back to the volume picker, so a minute of watching the ring grow ended with
   nothing on screen — while the view model was still holding the tree those
