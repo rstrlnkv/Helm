@@ -236,6 +236,18 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
         await client.request("scanOrphans") ?? []
     }
 
+    /// Whether Helm offers to clean up after an app the person drags to the
+    /// Trash. Read from the engine rather than from a store this page could reach
+    /// on its own: the engine is what acts on it, and one reader means the switch
+    /// and the behaviour cannot disagree.
+    public func watchingTrash() async -> Bool {
+        await client.request("watchingTrash") ?? false
+    }
+
+    public func setWatchingTrash(_ on: Bool) async {
+        await client.send("setWatchingTrash", encoding: on)
+    }
+
     /// Trash arbitrary leftover paths (used by the orphans view).
     public func trashPaths(_ paths: [String]) async -> UninstallResult? {
         await client.request("trashPaths", encoding: paths)

@@ -13,6 +13,7 @@
 "A rule is a decision made once and carried out from then on, so it is shown before it is switched on." = "Eine Regel ist eine einmal getroffene und danach immer ausgeführte Entscheidung — deshalb wird sie vor dem Einschalten gezeigt.";
 "A short token you type often, and what it stands for. It expands when you finish the word." = "Ein Kürzel, das du oft tippst, und wofür es steht. Es wird ersetzt, sobald das Wort fertig ist.";
 "A way out of a scan in Disk. The module opens on whatever it measured last, and the only button was “Scan again”, which measures the same place — so a scan of the wrong folder came back at every launch with no way to leave it. “Choose another…” beside it clears the screen and forgets the saved scan." = "Ein Ausgang aus dem Scan in Festplatte: das Modul öffnet mit dem zuletzt Gemessenen, und „Anderes wählen…“ leert den Bildschirm und vergisst den gespeicherten Scan.";
+"A window lists what it left behind, while the app is still in the Trash to be identified." = "Ein Fenster zeigt, was sie zurückgelassen hat — solange die App noch im Papierkorb liegt und erkennbar ist.";
 "A word is checked when you finish it this way. Moving the caret or clicking elsewhere never converts — by then you have moved on." = "Ein Wort wird geprüft, wenn du es so beendest. Cursor bewegen oder woanders klicken konvertiert nie — dann bist du schon weiter.";
 "A word is only changed when it is not a word as typed and is one once swapped. Anything valid is left alone." = "Ein Wort wird nur geändert, wenn es so getippt keines ist und nach dem Tausch eines wird. Gültiges bleibt.";
 "ACTIVE" = "AKTIV";
@@ -227,6 +228,7 @@
 "Keep awake with the lid closed" = "Bei geschlossenem Deckel wach halten";
 "Keep display on" = "Bildschirm anlassen";
 "Keep the Mac from falling asleep" = "Den Mac wach halten.";
+"Keep these files" = "Diese Dateien behalten";
 "Keyboard" = "Tastatur";
 "Keyboard can show its own language indicator in the menu bar, with the choices the system’s one does not offer: letters plain, on a badge or in a frame, or a flag, at the size you pick, with a menu of your layouts. Off until you turn it on, since macOS shows its own." = "Tastatur kann eine eigene Sprachanzeige in der Menüleiste zeigen, mit den Optionen, die die des Systems nicht bietet: Buchstaben, gefüllt, umrandet oder eine Flagge (Emoji oder gezeichnet), in der gewünschten Größe, samt Menü deiner Belegungen. Standardmäßig aus.";
 "Keyboard is one gesture now. Tap the key — right ⌘ unless you change it — and Helm fixes what is in front of you: the selected text if there is any, otherwise the last word, and tapping again puts it back. There were five shortcuts to set up and none of them was set. Any modifier can be the key — right or left — and on Macs with a 🌐︎ key, that too. Transliteration and changing case are gone: transliteration could not be undone reliably, and macOS already changes case in the Edit menu." = "Die Tastatur ist jetzt eine Geste. Tippe die Taste (standardmäßig rechte ⌘) und Helm korrigiert, was vor dir ist: die Auswahl, sonst das letzte Wort — noch einmal stellt es zurück. Vorher waren fünf Kurzbefehle einzurichten und keiner war gesetzt. Transliteration und Groß-/Kleinschreibung entfallen.";
@@ -242,7 +244,6 @@
 "Launch agents, settings files, plug-ins and system extensions on this Mac. Leftovers can be removed; the rest is shown for context." = "Startagenten, Einstellungsdateien, Plug-ins und Systemerweiterungen auf diesem Mac. Reste lassen sich entfernen, der Rest dient der Übersicht.";
 "Launch automatically at startup" = "Beim Starten des Mac automatisch öffnen";
 "Launch daemons" = "Start-Daemons";
-"Left behind by apps you moved to the Trash. Putting an app back does not bring its files back." = "Von Apps zurückgelassen, die Sie in den Papierkorb gelegt haben. Wenn Sie eine App zurücklegen, kommen diese Dateien nicht zurück.";
 "Left ⇧" = "Linke ⇧";
 "Left ⌃" = "Linke ⌃";
 "Left ⌘" = "Linke ⌘";
@@ -333,6 +334,7 @@
 "OK" = "Fertig";
 "ON" = "AN";
 "Off" = "Aus";
+"Offer to clean up when I trash an app" = "Aufräumen anbieten, wenn ich eine App in den Papierkorb lege";
 "Old download" = "Alter Download";
 "On a wide window the settings no longer drift: every page starts at the same left edge, and switching between them stops shifting the content sideways." = "In einem breiten Fenster verrutschen die Einstellungen nicht mehr: Alle Seiten beginnen an derselben linken Kante.";
 "On launch and quit" = "Beim Start und Beenden";
@@ -371,6 +373,7 @@
 "Power" = "Energie";
 "Press keys…" = "Tasten drücken…";
 "Purple" = "Violett";
+"Putting the app back from the Trash will not bring these files back." = "Wenn Sie die App aus dem Papierkorb zurücklegen, kommen diese Dateien nicht zurück.";
 "Quick Look" = "Übersicht";
 "Quit" = "Beenden";
 "Quit the running apps first, or allow a force quit." = "Beende zuerst die laufenden Apps oder erlaube das sofortige Beenden.";
@@ -593,7 +596,6 @@
 "begins with" = "beginnt mit";
 "by kind" = "nach Art";
 "by month" = "nach Monat";
-"by name" = "nach Namen";
 "cask" = "cask";
 "collapsed" = "reduziert";
 "contains" = "enthält";
@@ -601,6 +603,7 @@
 "expanded" = "erweitert";
 "failed" = "fehlgeschlagen";
 "free" = "frei";
+"guess" = "Vermutung";
 "h" = "Std.";
 "is" = "ist";
 "larger than" = "größer als";

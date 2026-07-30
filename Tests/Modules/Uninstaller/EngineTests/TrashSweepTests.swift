@@ -48,12 +48,18 @@ final class TrashSweepTests: XCTestCase {
 
     private let home = URL(fileURLWithPath: "/Users/ann")
 
+    /// `watching: true` unless a test says otherwise, because the offer is off
+    /// until somebody turns it on and every test below is about what happens once
+    /// they have. The one that checks the switch itself passes `false`.
     private func engine(_ lister: Lister,
-                        store: NamespacedStore? = nil) -> UninstallerEngine {
-        UninstallerEngine(home: home, apps: lister, fs: Everything(),
-                          trash: NoTrashing(), running: NothingRuns(),
-                          store: store ?? NamespacedStore(namespace: "uninstaller",
-                                                          backing: InMemoryKeyValueStore()))
+                        store: NamespacedStore? = nil,
+                        watching: Bool = true) -> UninstallerEngine {
+        let store = store ?? NamespacedStore(namespace: "uninstaller",
+                                             backing: InMemoryKeyValueStore())
+        store.set(watching, for: "watchTrash")
+        return UninstallerEngine(home: home, apps: lister, fs: Everything(),
+                                 trash: NoTrashing(), running: NothingRuns(),
+                                 store: store)
     }
 
     private func trashed(_ id: String, _ name: String) -> TrashedApp {
@@ -182,5 +188,25 @@ final class TrashSweepTests: XCTestCase {
         let again = await engine(Lister(trashed: [one]), store: store()).trashedAppLeftovers()
         XCTAssertEqual(again.count, 1,
                        "a second removal of the same app was never asked about")
+    }
+
+    // MARK: - The switch
+
+    /// Off is the default, and off means the engine has nothing to say — not that
+    /// the host is expected to keep quiet about an answer it was given. A window
+    /// that opens unasked has to be something somebody asked for, and the module
+    /// is where that is decided, the same way it decides everything else here.
+    func testNothingIsOfferedWhileTheOfferIsOff() async {
+        let lister = Lister(trashed: [trashed("com.a", "A")])
+        let groups = await engine(lister, watching: false).trashedAppLeftovers()
+        XCTAssertTrue(groups.isEmpty, "the offer answered while it was switched off")
+    }
+
+    /// And the same Trash, with the switch on, is an offer — so the test above is
+    /// about the switch and not about a Trash that had nothing in it.
+    func testTheSameTrashIsOfferedWhenItIsOn() async {
+        let lister = Lister(trashed: [trashed("com.a", "A")])
+        let groups = await engine(lister, watching: true).trashedAppLeftovers()
+        XCTAssertEqual(groups.count, 1)
     }
 }

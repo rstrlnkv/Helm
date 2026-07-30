@@ -72,6 +72,25 @@ public enum TrashOfferPlan {
         return out
     }
 
+    /// Which apps a removal has actually answered for, and may therefore be
+    /// remembered as declined.
+    ///
+    /// Not the ones whose files macOS refused. A refusal is not a decision — the
+    /// person can grant Full Disk Access, unlock the file, quit whatever was
+    /// holding it — and the record is otherwise final for as long as the app sits
+    /// in the Trash. That matters more here than anywhere else in the module,
+    /// because this window is the only place some of these files are ever
+    /// offered: the Leftovers tab lists bundle-id-named entries in nine folders,
+    /// so a refused Group Container or a name-matched folder is on no other
+    /// screen Helm has.
+    ///
+    /// A path the person simply left unticked is a different thing and does not
+    /// hold the group open: they were shown it and left it alone.
+    public static func answered(_ groups: [TrashedAppLeftovers],
+                                failed: Set<String>) -> [TrashedAppLeftovers] {
+        groups.filter { group in !group.leftovers.contains { failed.contains($0.path) } }
+    }
+
     /// The size under the list, counting what `paths` would send.
     public static func totalBytes(_ groups: [TrashedAppLeftovers], selected: Set<String>) -> Int {
         var seen: Set<String> = []

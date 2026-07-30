@@ -48,6 +48,24 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
     /// allowed to use. The sweep on activate stays — it is the only thing that
     /// catches an app deleted while Helm was closed.
     public func activate() {
+        startWatchingTrashIfAsked()
+    }
+
+    /// Off unless somebody turned it on. A window that opens unasked, a second
+    /// after a drag, is not something to hand people without their say-so — so the
+    /// default is silence, and the switch on the module's Leftovers tab is what
+    /// changes it.
+    private static let watchKey = "watchTrash"
+
+    private var watchingTrash: Bool { store.bool(Self.watchKey, default: false) }
+
+    private func startWatchingTrashIfAsked() {
+        watcher?.stop()
+        watcher = nil
+        guard watchingTrash else {
+            HelmLog.shared.info("uninstaller", "trash offer: off")
+            return
+        }
         let trash = home.appendingPathComponent(".Trash", isDirectory: true).path
         let made = FolderWatcher { [weak self] changed in
             guard let self, TrashArrival.namesAnApp(changed, trash: trash) else { return }
@@ -218,6 +236,10 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
     }
 
     private func trashedAppLeftoversSync() -> [TrashedAppLeftovers] {
+        // Judged here rather than by whoever asks. The engine is the module's one
+        // authority on what it will offer, and a host that had the answer and was
+        // trusted to keep quiet about it is a rule enforced in the wrong place.
+        guard watchingTrash else { return [] }
         let found = apps.trashedApps()
         // Four different outcomes used to look identical from outside — no
         // window — and one of them is a defect while three are the feature
@@ -264,6 +286,21 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
                             + "\(nothingLeft) left nothing behind, "
                             + "\(groups.count) to offer")
         return groups
+    }
+
+    /// The switch, read and written through the engine so that turning it on
+    /// starts the watcher in the same breath — a setting that only takes effect
+    /// at the next launch is a setting people report as broken.
+    ///
+    /// Turning it on also emits `trashChanged`, which makes the host sweep: the
+    /// person just asked to be told about apps in the Trash, and the ones already
+    /// sitting there are the first thing they meant.
+    public func setWatchingTrash(_ on: Bool) {
+        guard on != watchingTrash else { return }
+        store.set(on, for: Self.watchKey)
+        HelmLog.shared.info("uninstaller", "trash offer switched \(on ? "on" : "off")")
+        startWatchingTrashIfAsked()
+        if on { localTransport.emit(EngineEvent(name: Self.trashChangedEvent)) }
     }
 
     /// Cancel. Remembered so the window does not return for this app at the next
@@ -399,6 +436,11 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
                 return (try? JSONEncoder().encode(await self.scanOrphans())) ?? Data()
             case "trashedAppLeftovers":
                 return (try? JSONEncoder().encode(await self.trashedAppLeftovers())) ?? Data()
+            case "watchingTrash":
+                return (try? JSONEncoder().encode(self.watchingTrash)) ?? Data()
+            case "setWatchingTrash":
+                self.setWatchingTrash((try? JSONDecoder().decode(Bool.self, from: cmd.payload)) ?? false)
+                return Data()
             case "dismissTrashedApp":
                 self.dismissTrashedApp(bundleID: String(decoding: cmd.payload, as: UTF8.self))
                 return Data()
