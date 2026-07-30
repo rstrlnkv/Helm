@@ -31,10 +31,14 @@ features, PATCH = fixes.
   - **Cancel means no, and no sticks.** The declined app is remembered across
     launches and forgotten when it leaves the Trash, so restoring an app and
     deleting it again is a new question. Closing the window counts as the same no.
-  - A sweep when the Uninstaller is live, not a watcher: it needs nothing
-    unproven and already catches everything sitting in the Trash, including an app
-    deleted while Helm was closed. The module switched off is the whole answer —
-    no engine, no sweep, no window.
+  - **It happens as you drag, not at the next launch.** The module watches
+    `~/.Trash` and the window comes up about a second after the app lands there.
+    Two more triggers cover what a watcher cannot see: a sweep when Helm starts
+    (an app deleted while it was closed) and one when the module is switched on.
+    The module switched off is the whole answer — no engine, no watch, no window.
+  - Removing an app *through* Helm does not produce the window a moment later:
+    the watcher ignores the events Helm itself causes, so files somebody chose to
+    keep are not offered back to them.
 - **A welcome window, shown once.** Helm arrives as an icon in the menu bar and
   nine modules nobody has been introduced to; two of them — Autopilot and
   Duplicates — turned up in existing installations without a word. Ten steps,
