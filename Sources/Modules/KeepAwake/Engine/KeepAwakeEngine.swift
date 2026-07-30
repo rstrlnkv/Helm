@@ -171,14 +171,23 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 
         let r = Conditions.resolve(inputs)
 
+        // Logged on the transition and never on the recompute. `recompute()` runs
+        // from three observers — a display moving, the charger, an app launching —
+        // so a line here per call would be a stream, and the one trail that has to
+        // stay readable would be mostly this module. Whether sleep is held is the
+        // module's entire output and it changes rarely, which is exactly what a log
+        // is for.
         if r.isActive && !isActive {
             isActive = true
             assertions.preventSleep(display: settings.keepDisplayOn)
+            HelmLog.shared.info("keepawake", "holding sleep: \(ConditionLabel.of(r.conditions))"
+                                + (settings.keepDisplayOn ? ", display too" : ""))
             if settings.clamshellEnabled { engageClamshell() }
             if settings.jiggleEnabled { scheduleJiggle() }
             scheduleBatteryWatch()
         } else if !r.isActive && isActive {
             assertions.release()
+            HelmLog.shared.info("keepawake", "released")
             if clamshellActive { disengageClamshell() }
             cancelTimers()
             isActive = false
@@ -241,6 +250,10 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     private func handleExpiry() {
         switch TimerPolicy.onExpiry(hasAutoCondition: currentAutoConditionHolds(), suppressed: suppressed) {
         case .continueAsAuto:
+            // The timer ran out and the Mac stays awake anyway, because a display
+            // or the charger is holding it. Without this line the countdown simply
+            // disappears and nothing accounts for the assertion still being held.
+            HelmLog.shared.info("keepawake", "timer ended; an automatic condition still holds")
             manualOn = false
             endDate = nil
             startDate = nil
@@ -298,21 +311,32 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                                      startDate: storedStart, endDate: storedEnd,
                                      now: clock.now()) {
         case .none:
+            let hadOne = store.bool(SessionKey.on, default: false)
             manualOn = false
             startDate = nil
             endDate = nil
             // The record goes with it, so a later launch cannot find the same
             // spent deadline and weigh it again.
             rememberSession()
+            // Worth a line precisely because nothing visible happens: this is the
+            // answer to "why did my Mac sleep" when the app was gone longer than
+            // the session had left.
+            if hadOne {
+                HelmLog.shared.info("keepawake", "a stored session had already ended")
+            }
         case .indefinite:
             manualOn = true
             startDate = nil
             endDate = nil
+            HelmLog.shared.info("keepawake", "restored a session with no deadline")
         case .remaining(let left):
             manualOn = true
             startDate = storedStart
             endDate = storedEnd
             scheduleExpiry(after: left)
+            let whole = storedStart.map { storedEnd?.timeIntervalSince($0) ?? left } ?? left
+            HelmLog.shared.info("keepawake", "restored a session: "
+                                + "\(Int(left / 60)) of \(Int(whole / 60)) min left")
         }
     }
 
@@ -324,6 +348,10 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                                           isOnBattery: snap.onBattery,
                                           percent: snap.percent,
                                           threshold: settings.batteryGuardPercent) {
+            // The session ends without the person touching anything, so the log is
+            // the only place that can say who ended it and why.
+            HelmLog.shared.info("keepawake", "battery guard stopped the session at "
+                                + "\(snap.percent)% (floor \(settings.batteryGuardPercent)%)")
             stopSession()
         }
     }
@@ -409,12 +437,17 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         store.set(true, for: "clamshellGuard")
         _ = clamshell.setDisableSleep(true)
         clamshellActive = true
+        // A change to the system's own sleep setting, made through sudo and
+        // outliving the process — the one thing this module does that a crash can
+        // leave behind. Both ends of it belong in the trail.
+        HelmLog.shared.info("keepawake", "closed-lid sleep disabled")
     }
 
     private func disengageClamshell() {
         _ = clamshell.setDisableSleep(false)
         store.set(false, for: "clamshellGuard")
         clamshellActive = false
+        HelmLog.shared.info("keepawake", "closed-lid sleep restored")
     }
 
     private func cancelTimers() {
