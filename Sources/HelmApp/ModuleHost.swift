@@ -42,26 +42,49 @@ import HelmUI
         }
     }
 
+    /// Measured **around** the construction, which is the whole point.
+    ///
+    /// The reading used to be taken on the line before `makeEngine`, so
+    /// `module.disk.enable: 9 MB` was the process total *before* Disk existed and
+    /// said nothing whatever about Disk. Nine such lines at launch read like nine
+    /// per-module costs and were nine consecutive totals.
+    ///
+    /// What this can and cannot answer, so nobody reads more into it than it holds:
+    /// it is what switching the module on cost and what switching it off gave back.
+    /// It is **not** how much the module holds while it runs — every module lives in
+    /// one process and one malloc zone, and there is no per-subsystem accounting to
+    /// ask. The pair is still the signal that matters: 3 MB on and nothing back off
+    /// is the leak family `dropWhenDisabled` was written for.
     private func enable(_ d: any ModuleDescriptor) {
-        HelmLog.shared.info("host", "enable \(type(of: d).id.rawValue)")
-        HelmLog.shared.memory("module.\(type(of: d).id.rawValue).enable")
+        let key = type(of: d).id.rawValue
+        HelmLog.shared.info("host", "enable \(key)")
+        let before = MemoryFootprint.current()
         let s = store(for: d)
         let engine = d.makeEngine(store: s)
         engine.activate()
         let vm = ModuleViewModel(transport: engine.transport)
-        live[type(of: d).id.rawValue] = Live(descriptor: d, engine: engine, vm: vm, store: s)
+        live[key] = Live(descriptor: d, engine: engine, vm: vm, store: s)
+        if let before, let after = MemoryFootprint.current() {
+            HelmLog.shared.memory("module.\(key).enable", grewBy: after - before)
+        }
     }
 
     private func disable(_ d: any ModuleDescriptor) {
-        HelmLog.shared.info("host", "disable \(type(of: d).id.rawValue)")
         let key = type(of: d).id.rawValue
+        HelmLog.shared.info("host", "disable \(key)")
+        let before = MemoryFootprint.current()
         live[key]?.engine.deactivate()
         live[key] = nil
         // Whoever cached UI state for this module drops it, and then the pages
         // go back to the system rather than sitting in an emptied malloc zone.
         NotificationCenter.default.post(name: .helmModuleDisabled, object: key)
+        // The reclaim comes first: freeing returns memory to malloc and not to
+        // macOS, so a reading taken before it would report nothing given back
+        // however much the teardown released.
         MemoryReclaim.afterHeavyWork("module.\(key).disable")
-        HelmLog.shared.memory("module.\(key).disable")
+        if let before, let after = MemoryFootprint.current() {
+            HelmLog.shared.memory("module.\(key).disable", grewBy: after - before)
+        }
     }
 
     func liveModule(_ id: String) -> Live? { live[id] }

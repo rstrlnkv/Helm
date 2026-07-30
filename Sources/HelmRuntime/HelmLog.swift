@@ -168,6 +168,18 @@ public final class HelmLog: @unchecked Sendable {
         }
     }
 
+    /// What a bounded scope cost, from two readings taken around it.
+    ///
+    /// Different question from `memory(_:)`, which reports a running total against
+    /// the last sighting of the same label and stays quiet below 8 MB. Here the
+    /// cost *is* the question — building a module, tearing one down — the figure is
+    /// single-digit megabytes, and being small is the answer rather than a reason
+    /// to withhold it. Same `memory` category, so one filter still finds
+    /// everything about memory.
+    public func memory(_ label: String, grewBy bytes: Int) {
+        write(.info, "memory", "\(label): \(ScopeCost.line(grewBy: bytes))")
+    }
+
     public func warn(_ category: String, _ message: String,
                      fileID: String = #fileID, line: Int = #line,
                      function: String = #function) {
