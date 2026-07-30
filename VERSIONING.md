@@ -35,7 +35,7 @@ Release flow:
    Both packaging scripts read the **signed** bundle from `$TMPDIR/helm-package` and
    re-run `codesign --verify --deep --strict` before packaging — they exit non-zero
    rather than ship a bundle whose seal the sync folder broke. They never touch
-   `build/Helm.app`, which is a copy for inspection only (ARCHITECTURE.md § Dev loop).
+   `build/Helm.app`, which is a copy for inspection only.
 4. `git push` — **before** creating the release, or the tag lands on the old
    remote HEAD.
 5. `gh release create vX.Y.Z build/Helm-X.Y.Z.dmg build/Helm-X.Y.Z.zip --title "Helm X.Y.Z" --notes "…"`
