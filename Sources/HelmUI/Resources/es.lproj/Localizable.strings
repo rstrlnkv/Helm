@@ -163,6 +163,7 @@
 "File name" = "Nombre";
 "Files" = "Archivos";
 "Files from 1 MB. Hard links are one file and are never offered." = "Archivos desde 1 MB. Los enlaces duros son un solo archivo y nunca se ofrecen.";
+"Files left behind" = "Archivos que quedaron";
 "Files left behind by apps you no longer have. Only files named after an app’s bundle id are listed." = "Archivos dejados por apps que ya no tienes. Solo se listan los nombrados por el bundle id de una app.";
 "Files that exist more than once" = "Archivos que existen más de una vez";
 "Filled" = "Relleno";
@@ -241,6 +242,7 @@
 "Launch agents, settings files, plug-ins and system extensions on this Mac. Leftovers can be removed; the rest is shown for context." = "Agentes de inicio, archivos de ajustes, plug-ins y extensiones del sistema de este Mac. Los restos se pueden eliminar; el resto es informativo.";
 "Launch automatically at startup" = "Abrir automáticamente al iniciar el Mac";
 "Launch daemons" = "Demonios de inicio";
+"Left behind by apps you moved to the Trash. Putting an app back does not bring its files back." = "Los dejaron apps que trasladaste a la papelera. Si devuelves una app a su sitio, estos archivos no vuelven.";
 "Left ⇧" = "⇧ izquierda";
 "Left ⌃" = "⌃ izquierda";
 "Left ⌘" = "⌘ izquierda";

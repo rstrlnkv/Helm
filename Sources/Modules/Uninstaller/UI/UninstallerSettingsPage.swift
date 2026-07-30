@@ -7,9 +7,10 @@ import Module_Uninstaller_Engine
 extension InstalledApp: Identifiable { public var id: String { bundleID } }
 
 /// `NSWorkspace.icon(forFile:)` hits the disk; List rows re-render often, so
-/// icons are memoized per bundle path.
+/// icons are memoized per bundle path. Shared with the Trash offer window,
+/// which draws the same icons for bundles sitting in `~/.Trash`.
 @MainActor
-private enum AppIconCache {
+enum AppIconCache {
     static let cache = NSCache<NSString, NSImage>()
     static func icon(forFile path: String) -> NSImage {
         if let hit = cache.object(forKey: path as NSString) { return hit }

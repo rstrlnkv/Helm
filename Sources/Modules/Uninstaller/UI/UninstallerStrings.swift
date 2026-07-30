@@ -31,6 +31,16 @@ enum UnStr {
         case .launchAgent: return L("Launch agents")
         }
     }
+    /// The Trash offer's window title. Not "Leftovers" — that is the module's
+    /// own tab, for files whose app is already gone, and one English key means
+    /// one thing.
+    static var trashOfferTitle: String { L("Files left behind") }
+    /// The one standing line in that window, and the honest cost of offering
+    /// now rather than waiting for the Trash to be emptied: the app is in the
+    /// Trash, not gone, and it can come back without these.
+    static var trashOfferNote: String {
+        L("Left behind by apps you moved to the Trash. Putting an app back does not bring its files back.")
+    }
     static var tabApps: String { L("Apps") }
     static var tabOrphans: String { L("Leftovers") }
     static var orphansIntro: String { L("Files left behind by apps you no longer have. Only files named after an app’s bundle id are listed.") }

@@ -163,6 +163,7 @@
 "File name" = "名称";
 "Files" = "文件";
 "Files from 1 MB. Hard links are one file and are never offered." = "1 MB 以上的文件。硬链接是同一个文件，不会被列出。";
+"Files left behind" = "残留的文件";
 "Files left behind by apps you no longer have. Only files named after an app’s bundle id are listed." = "已卸载应用留下的文件。仅列出以应用 bundle id 命名的文件。";
 "Files that exist more than once" = "存在多份的文件";
 "Filled" = "实心";
@@ -241,6 +242,7 @@
 "Launch agents, settings files, plug-ins and system extensions on this Mac. Leftovers can be removed; the rest is shown for context." = "本机的启动代理、设置文件、插件与系统扩展。残留项可删除，其余仅供参考。";
 "Launch automatically at startup" = "开机时自动启动";
 "Launch daemons" = "启动守护进程";
+"Left behind by apps you moved to the Trash. Putting an app back does not bring its files back." = "这些文件由你移到废纸篓的App留下。把App放回原处，这些文件不会一起恢复。";
 "Left ⇧" = "左 ⇧";
 "Left ⌃" = "左 ⌃";
 "Left ⌘" = "左 ⌘";
