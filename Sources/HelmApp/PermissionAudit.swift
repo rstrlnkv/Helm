@@ -26,12 +26,12 @@ import HelmUI
 
             let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
             let lastSeen = AppSettings.store.string(seenKey, default: "")
+            // Recorded unconditionally, including on a first run: the audit
+            // has nothing to compare against yet, but the second run needs
+            // this as its baseline.
+            AppSettings.store.set(version, for: seenKey)
             guard PermissionAuditPlan.shouldSpeak(
                 lastSeenVersion: lastSeen, current: version) else { return }
-            // An empty `lastSeen` is the first launch, and telling someone that
-            // permissions must be granted "again" for something they have never
-            // granted is the app's first sentence being wrong.
-            let firstRun = lastSeen.isEmpty
 
             // Asked for only what an enabled module actually uses: a permission
             // request with no reason behind it is one people deny.
@@ -43,21 +43,20 @@ import HelmUI
                 needsFullDisk: needs.contains(.fullDisk),
                 needsAccessibility: needs.contains(.accessibility))
 
-            AppSettings.store.set(version, for: seenKey)
             guard !missing.isEmpty else { return }
-            present(missing, firstRun: firstRun)
+            present(missing)
         }
     }
 
     /// One sheet naming everything that stopped working, and a button per
     /// pane. Two separate alerts in a row is how a person learns to dismiss
     /// them without reading.
-    private static func present(_ missing: [PermissionNeed], firstRun: Bool) {
+    private static func present(_ missing: [PermissionNeed]) {
         let alert = NSAlert()
         // Named for the situation, not for one permission: the sheet is shown
         // for whichever ones lapsed, and titling it after Full Disk Access read
         // as nonsense when the missing one was Accessibility.
-        alert.messageText = firstRun ? AppStr.permissionsNeeded : AppStr.permissionsChanged
+        alert.messageText = AppStr.permissionsChanged
         alert.informativeText = missing.map(AppStr.permissionReason).joined(separator: "\n\n")
         for need in missing { alert.addButton(withTitle: AppStr.openPane(need)) }
         alert.addButton(withTitle: AppStr.later)
