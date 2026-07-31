@@ -32,6 +32,10 @@ public struct UninstallerSettingsPage: View {
     /// failure report — is on the view model. See `UninstallerViewModel.step`.
     @State private var diskAccess: PermissionState = .granted
     @State private var search = ""
+    /// Read from the engine so the page's one permission note can say what the
+    /// missing grant actually costs *here* — the Trash switch being on makes it
+    /// cost more than containers.
+    @State private var watchingTrash = false
 
     /// 0 = installed apps, 1 = leftovers from apps that are already gone.
     @State private var tab = 0
@@ -64,6 +68,7 @@ public struct UninstallerSettingsPage: View {
             .helmOnAppActive { diskAccess = PermissionCheck.currentFullDiskAccess() }
         .task {
                 diskAccess = PermissionCheck.currentFullDiskAccess()
+                watchingTrash = await uvm.watchingTrash()
                 await uvm.loadAppsIfNeeded()
             }
     }
@@ -112,8 +117,15 @@ public struct UninstallerSettingsPage: View {
 
             // Page level: the user used to tick apps, sit through a scan and
             // only then learn the removal would be refused.
+            // One note for one permission. There used to be a second under the
+            // Trash switch with its own Grant button — same grant, same pane,
+            // two rows a person has to work out are the same thing. What the
+            // switch adds is a consequence, not a notice, so it lands in this
+            // sentence instead.
             if diskAccess == .denied {
-                HelmPermissionNote(need: .fullDiskAccess, text: UnStr.removalNeedsAccess)
+                HelmPermissionNote(need: .fullDiskAccess,
+                                   text: watchingTrash ? UnStr.accessNeededWithWatch
+                                                       : UnStr.removalNeedsAccess)
                     .padding(.horizontal, 20).padding(.vertical, 10)
                 Divider()
             }
