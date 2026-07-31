@@ -114,7 +114,6 @@
 "Delete…" = "削除…";
 "Dev" = "Dev";
 "Dev builds always log. The file lives in ~/Library/Logs/Helm." = "Dev ビルドは常にログを記録します。ファイルは ~/Library/Logs/Helm。";
-"Diagnostics" = "診断";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "診断：Helm は動作のログを記録でき、問題時にすぐ共有できます。Dev ビルドでは常時オン。";
 "Disabled" = "オフ";
 "Disconnected" = "未接続";
@@ -298,6 +297,7 @@
 "Name" = "名前";
 "Name in menu bar" = "名前をメニューバーに";
 "Name pattern" = "名前のパターン";
+"Name without extension" = "拡張子なしの名前";
 "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works." = "「キーボード」が入力したテキストの配列を直し、「スリープ防止」がポインタを動かすために必要です。許可がないとどちらも機能しません。";
 "Needed to remove app containers and to read every folder when scanning the disk." = "アプリのコンテナ削除と、ディスクスキャン時に全フォルダを読むために必要です。";
 "Needs Accessibility, or the pointer will not move." = "アクセシビリティの許可が必要です。ないとポインタは動きません。";

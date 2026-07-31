@@ -49,6 +49,16 @@ public struct FileFacts: Equatable, Sendable {
     public var fileExtension: String {
         (name as NSString).pathExtension.lowercased()
     }
+
+    /// The name with its extension taken off — `report` for `report.pdf`, and
+    /// `archive.tar` for `archive.tar.gz`, because only the last dot is an
+    /// extension. A dotfile keeps its whole name: `.gitignore` is what the file
+    /// is called, not an empty name with an extension.
+    public var baseName: String {
+        let name = self.name
+        guard !name.hasPrefix(".") else { return name }
+        return (name as NSString).deletingPathExtension
+    }
 }
 
 /// The coarse buckets a person sorts by. Resolved from UTType at the point the

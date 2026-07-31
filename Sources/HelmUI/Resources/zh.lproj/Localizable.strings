@@ -114,7 +114,6 @@
 "Delete…" = "删除…";
 "Dev" = "Dev";
 "Dev builds always log. The file lives in ~/Library/Logs/Helm." = "开发版始终记录日志。文件位于 ~/Library/Logs/Helm。";
-"Diagnostics" = "诊断";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "诊断：Helm 可记录自身操作日志，出问题时随时分享。开发版始终开启。";
 "Disabled" = "已关闭";
 "Disconnected" = "已断开";
@@ -298,6 +297,7 @@
 "Name" = "名称";
 "Name in menu bar" = "名称显示在菜单栏";
 "Name pattern" = "名称模板";
+"Name without extension" = "不含扩展名的名称";
 "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works." = "“键盘”纠正你输入内容的布局、“保持唤醒”移动指针都需要此权限。未授予时两者都不起作用。";
 "Needed to remove app containers and to read every folder when scanning the disk." = "用于删除应用容器，以及扫描磁盘时读取所有文件夹。";
 "Needs Accessibility, or the pointer will not move." = "需要无障碍权限，否则指针不会移动。";

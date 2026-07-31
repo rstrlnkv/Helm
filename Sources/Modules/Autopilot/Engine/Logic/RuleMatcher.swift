@@ -20,6 +20,9 @@ public enum RuleMatcher {
         case let .name(comparison, value):
             return compare(facts.name, comparison, value)
 
+        case let .baseName(comparison, value):
+            return compare(facts.baseName, comparison, value)
+
         case let .fileExtension(list):
             let own = facts.fileExtension
             // A file with no extension matches no extension rule, rather than

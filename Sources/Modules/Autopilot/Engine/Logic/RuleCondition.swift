@@ -8,6 +8,11 @@ import Foundation
 /// same shapes the matcher reads.
 public enum RuleCondition: Codable, Equatable, Sendable {
     case name(TextComparison, String)
+    /// The name without its extension. A second condition rather than a changed
+    /// `.name`, because a rule saying "name contains .pdf" works today and
+    /// turning it into one that never fires is a break with no error and no
+    /// message — an Autopilot that simply stops tidying.
+    case baseName(TextComparison, String)
     /// Lowercase, no dots. A file matches if its own extension is in the list.
     case fileExtension([String])
     case kind(FileKind)

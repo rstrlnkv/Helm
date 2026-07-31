@@ -37,11 +37,12 @@ struct ConditionRow: View {
     // MARK: - The field
 
     enum Field: String, CaseIterable {
-        case name, fileExtension, kind, size, dateAdded, dateModified, source, tag
+        case name, baseName, fileExtension, kind, size, dateAdded, dateModified, source, tag
 
         var label: String {
             switch self {
             case .name: ApStr.fieldName
+            case .baseName: ApStr.fieldBaseName
             case .fileExtension: ApStr.fieldExtension
             case .kind: ApStr.fieldKind
             case .size: ApStr.fieldSize
@@ -58,6 +59,7 @@ struct ConditionRow: View {
         var blank: RuleCondition {
             switch self {
             case .name: .name(.contains, "")
+            case .baseName: .baseName(.contains, "")
             case .fileExtension: .fileExtension([])
             case .kind: .kind(.image)
             case .size: .size(.largerThan, megabytes: 10)
@@ -72,6 +74,7 @@ struct ConditionRow: View {
     private var field: Field {
         switch condition {
         case .name: .name
+        case .baseName: .baseName
         case .fileExtension: .fileExtension
         case .kind: .kind
         case .size: .size
@@ -105,6 +108,26 @@ struct ConditionRow: View {
                      ApStr.comparisonBegins, ApStr.comparisonEnds], minimum: 140))
             TextField("", text: Binding(get: { value },
                                         set: { condition = .name(comparison, $0) }))
+                .accessibilityLabel(ApStr.a11yValue)
+
+        case let .baseName(comparison, value):
+            // The same four comparisons: the field differs, the question does
+            // not, and two shapes for one question is how a screen teaches
+            // somebody that they are different when they are not.
+            Picker(ApStr.a11yComparison, selection: Binding(
+                get: { comparison },
+                set: { condition = .baseName($0, value) })) {
+                    Text(ApStr.comparisonIs).tag(TextComparison.is)
+                    Text(ApStr.comparisonContains).tag(TextComparison.contains)
+                    Text(ApStr.comparisonBegins).tag(TextComparison.beginsWith)
+                    Text(ApStr.comparisonEnds).tag(TextComparison.endsWith)
+                }
+                .labelsHidden()
+                .frame(width: HelmPickerWidth.fitting(
+                    [ApStr.comparisonIs, ApStr.comparisonContains,
+                     ApStr.comparisonBegins, ApStr.comparisonEnds], minimum: 140))
+            TextField("", text: Binding(get: { value },
+                                        set: { condition = .baseName(comparison, $0) }))
                 .accessibilityLabel(ApStr.a11yValue)
 
         case let .fileExtension(list):

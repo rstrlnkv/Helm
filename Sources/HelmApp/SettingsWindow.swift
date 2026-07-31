@@ -207,14 +207,12 @@ private struct SettingsSidebar: View {
                 }
             }
             Section {
-                // Gated on the build, never on the update channel: the channel
-                // picker is an ordinary control on the General page, so gating
-                // on it would show this to anyone impatient for updates on a
-                // shipped beta build.
-                if isDevBuild {
-                    sidebarRow(AppStr.logPane, "text.alignleft", .gray)
-                        .tag(SettingsSelection.log)
-                }
+                // Shown on every build. The live tail was dev-only while it was
+                // a curiosity; now it is where the log itself is turned on,
+                // read and copied, and that is the button somebody is told to
+                // press when they report a problem.
+                sidebarRow(AppStr.logPane, "text.alignleft", .gray)
+                    .tag(SettingsSelection.log)
                 sidebarRow(AppStr.aboutHelm, "info.circle", .gray)
                     .tag(SettingsSelection.about)
             }
@@ -596,33 +594,6 @@ private struct MenuBarSettingsView: View {
                                       : AppStr.permissionWhy(need),
                                   granted: granted) { need.openSettings() }
                 }
-            }
-            Section(AppStr.diagnostics) {
-                Toggle(AppStr.writeLog, isOn: $loggingOn)
-                    .onChange(of: loggingOn) { _, v in
-                        AppSettings.loggingOverride = v
-                        HelmLog.shared.setEnabled(v)
-                    }
-                Text(isDevBuild ? AppStr.logNoteDev : AppStr.logNoteStable)
-                    .font(.caption).foregroundStyle(HelmText.quiet)
-                HStack(spacing: 10) {
-                    Button {
-                        NSWorkspace.shared.activateFileViewerSelecting([HelmLog.fileURL])
-                    } label: {
-                        Label(AppStr.revealLog, systemImage: "doc.text.magnifyingglass")
-                    }
-                    Button {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(HelmLog.shared.currentText(), forType: .string)
-                    } label: {
-                        Label(AppStr.copyLog, systemImage: "doc.on.doc")
-                    }
-                    Button(AppStr.clearLog) { HelmLog.shared.clear() }
-                }
-                .controlSize(.small)
-                Text(AppStr.logRedactionNote)
-                    .font(.caption).foregroundStyle(HelmText.quiet)
-                    .fixedSize(horizontal: false, vertical: true)
             }
             Section(AppStr.resetSection) {
                 // `role: .destructive` alone draws as an ordinary link in a
