@@ -8,14 +8,21 @@ features, PATCH = fixes.
 ## [Unreleased] — 0.8.0
 
 ### Added
-- **The log, readable while it is being written** — dev builds only, as a
-  "Log" row in Settings. The same lines the app already writes, arriving as they
+- **The log, readable while it is being written** — a "Log" row in Settings,
+  on every build. The same lines the app already writes, arriving as they
   are written, with two filters: what went wrong (everything / warnings /
   errors) and which module is talking. The module menu lists the ones that have
   actually spoken rather than the nine that exist. "Follow" pins the view to the
   newest line; an empty result says the filters excluded everything rather than
   pretending the log is empty. It computes nothing and invents no figure — one
-  `write`, one format, and this is a window onto it.
+  `write`, one format, and this is a window onto it. It is also where logging is
+  switched on, where the file is revealed and where it is cleared: "Diagnostics"
+  used to be a separate block in Settings, so the place a person is told to open
+  when they report a problem was not the one named after it.
+- **A rule can ask for a file's name without its extension.** "Full name"
+  compares `report.pdf` whole, so a rule saying "name is report" never fired —
+  on a screen that offers Extension as its own field. Both fields exist now;
+  rules written against the full name keep working exactly as before.
 - **Leftovers, offered when an app reaches the Trash.** The Uninstaller could
   only clean up after an app removed *through Helm* — and almost nobody removes
   an app that way. Drag one to the Trash and a small window now lists what it
