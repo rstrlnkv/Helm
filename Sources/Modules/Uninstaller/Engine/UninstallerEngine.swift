@@ -103,7 +103,9 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
     /// folders and re-parsed every `Info.plist` seconds after `listApps()` did,
     /// for a list the caller was already holding.
     public func appSizes(_ list: [InstalledApp]) async -> [String: Int] {
-        let sizes = await offTheCooperativePool { self.apps.appSizes(list) }
+        let sizes = await HelmActivity.phase("uninstaller.appSizes") {
+            await offTheCooperativePool { self.apps.appSizes(list) }
+        }
         HelmLog.shared.memory("uninstaller.appSizes")
         return sizes
     }

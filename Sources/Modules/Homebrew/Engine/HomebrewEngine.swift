@@ -57,18 +57,21 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// nothing (docs/superpowers/plans/2026-07-29-third-pass.md).
     public func listInstalled() -> [BrewPackage] {
         guard let brew = locator.brewPath() else { return [] }
-        let f = runner.run(brew, ["list", "--versions", "--formula"], env: [:]).stdout
-        let c = runner.run(brew, ["list", "--versions", "--cask"], env: [:]).stdout
-        let packages = BrewListParser.parse(f, isCask: false)
-            + BrewListParser.parse(c, isCask: true)
+        let packages = HelmActivity.phase("homebrew.listInstalled") { () -> [BrewPackage] in
+            let f = runner.run(brew, ["list", "--versions", "--formula"], env: [:]).stdout
+            let c = runner.run(brew, ["list", "--versions", "--cask"], env: [:]).stdout
+            return BrewListParser.parse(f, isCask: false) + BrewListParser.parse(c, isCask: true)
+        }
         HelmLog.shared.memory("homebrew.listInstalled")
         return packages
     }
 
     public func outdated() -> [OutdatedPackage] {
         guard let brew = locator.brewPath() else { return [] }
-        let out = runner.run(brew, ["outdated", "--json=v2"], env: [:]).stdout
-        let parsed = BrewOutdatedParser.parse(Data(out.utf8))
+        let parsed = HelmActivity.phase("homebrew.outdated") { () -> [OutdatedPackage] in
+            let out = runner.run(brew, ["outdated", "--json=v2"], env: [:]).stdout
+            return BrewOutdatedParser.parse(Data(out.utf8))
+        }
         HelmLog.shared.memory("homebrew.outdated")
         return parsed
     }

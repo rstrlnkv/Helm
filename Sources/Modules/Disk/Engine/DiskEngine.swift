@@ -45,6 +45,11 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
         let scanner = DiskScanner()
         let token = scanners.add(scanner)
         defer { scanners.remove(token) }
+        // Registered for the whole scan, cancellation included: the `defer`
+        // inside `phase` is what closes it, which is why this is a scope and not
+        // a pair of calls somebody has to remember to balance.
+        HelmActivity.begin("disk.scan")
+        defer { HelmActivity.end("disk.scan") }
         let started = Date()
 
         let counter = FileCounter()

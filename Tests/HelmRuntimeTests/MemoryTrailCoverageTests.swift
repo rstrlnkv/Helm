@@ -5,8 +5,8 @@ import XCTest
 /// Which operations can name themselves in the memory trail.
 ///
 /// `HelmLog.memory(_:)` logs the process footprint as a delta against the last
-/// reading for the same label, plus an `idle` reading every fifteen seconds that
-/// belongs to no operation at all. That is how the 48 GB leak was found: the
+/// reading for the same label, plus a `sample` every fifteen seconds that belongs
+/// to no operation at all. That is how the 48 GB leak was found: the
 /// deltas said which phase stood between two totals.
 ///
 /// It only works for phases that have a label. On 2026-07-30 the app's own log
@@ -51,7 +51,7 @@ final class MemoryTrailCoverageTests: XCTestCase {
         ("homebrew.listInstalled", "Modules/Homebrew/Engine/HomebrewEngine.swift"),
         ("homebrew.outdated", "Modules/Homebrew/Engine/HomebrewEngine.swift"),
         ("update.digest", "HelmApp/UpdateService.swift"),
-        ("idle", "HelmApp/AppDelegate.swift"),
+        ("sample", "HelmApp/AppDelegate.swift"),
         ("launch", "HelmApp/AppDelegate.swift"),
     ]
 

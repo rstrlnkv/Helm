@@ -443,7 +443,9 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// (docs/superpowers/plans/2026-07-29-third-pass.md has the trail).
     @discardableResult
     public func sweepAll() -> [SweepReport] {
-        let reports = folders.filter(\.enabled).map { sweep($0) }
+        let reports = HelmActivity.phase("autopilot.sweep") {
+            folders.filter(\.enabled).map { sweep($0) }
+        }
         guard !reports.isEmpty else { return reports }
         HelmLog.shared.memory("autopilot.sweep")
         return reports

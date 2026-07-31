@@ -162,9 +162,18 @@ public final class HelmLog: @unchecked Sendable {
     /// when someone opens the log for this.
     public func memory(_ label: String) {
         guard let bytes = MemoryFootprint.current() else { return }
+        // Captured here, not on the queue: by the time the write happens the
+        // phase may be over, and a figure is worth having only beside what was
+        // running when it was taken.
+        // The timer sample asks about everything; a phase asks about everything
+        // *else*, because it is the one thing it already knows.
+        let isSample = label == "sample" || label == "launch"
+        let doing = HelmActivity.describe(HelmActivity.running,
+                                          excluding: isSample ? nil : label)
         footprintQueue.async {
             guard let report = self.footprint.report(label, bytes: bytes) else { return }
-            self.write(.info, "memory", "\(report.label): \(report.line)")
+            let beside = doing.isEmpty ? "" : " — \(doing)"
+            self.write(.info, "memory", "\(report.label): \(report.line)\(beside)")
         }
     }
 

@@ -189,6 +189,13 @@ import HelmUI
 
     /// The reading nothing else takes.
     ///
+    /// Called `idle` until 2026-07-31, which was a lie by omission: it is a
+    /// timer, and it fires whatever the app is doing. A run of `idle: 179 MB
+    /// (+120)` / `75 MB (-104)` was read as an app churning while sitting still,
+    /// by someone holding this app's own log — `listApps` and `appSizes` were
+    /// running between those lines. It is a sample, it says so, and it now
+    /// carries what was running when it was taken.
+    ///
     /// Every other `memory(_:)` call sits on an operation, which answers "what
     /// did that cost" — and says nothing at all about growth that happens while
     /// the app sits there. This one runs on a timer and is silent unless the
@@ -198,7 +205,7 @@ import HelmUI
     /// somebody can look at.
     private func startFootprintWatch() {
         footprintTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { _ in
-            HelmLog.shared.memory("idle")
+            HelmLog.shared.memory("sample")
         }
     }
     /// Quitting must not leave the machine changed.
