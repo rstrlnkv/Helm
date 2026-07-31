@@ -225,10 +225,16 @@ struct LogView: View {
         }
         .padding(.vertical, 2)
         .padding(.horizontal, 20)
-        .background(alignment: .leading) {
+        // The wash fills the row; the rule sits at its left edge. Written as
+        // two views inside `background(alignment:)` first, which stacks them
+        // with the *default* centre alignment — so the 3 pt rule landed in the
+        // middle of the line instead of beside it.
+        .background {
             if let signal {
-                signal.opacity(0.06)
-                Rectangle().fill(signal).frame(width: 3)
+                ZStack(alignment: .leading) {
+                    signal.opacity(0.06)
+                    Rectangle().fill(signal).frame(width: 3)
+                }
             }
         }
         .accessibilityElement(children: .combine)
