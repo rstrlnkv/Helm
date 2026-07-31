@@ -154,6 +154,35 @@ enum AppStr {
     static var moduleBlockedByPermission: String {
         L("Switched on, but macOS is withholding what it needs")
     }
+    // MARK: - The live log (dev builds only)
+
+    static var logPane: String { L("Log") }
+    static var logPaneSummary: String { L("What Helm is writing, as it writes it.") }
+    static var logLevel: String { L("What to show") }
+    static var logLevelAll: String { L("Everything") }
+    static var logLevelWarnings: String { L("Warnings") }
+    static var logLevelErrors: String { L("Errors") }
+    static var logAllModules: String { L("All modules") }
+    static func logSomeModules(_ n: Int) -> String {
+        L("\(n) modules", [.ru: "Модулей: \(n)", .es: "\(n) módulos", .fr: "\(n) modules",
+                           .de: "\(n) Module", .ja: "\(n) 個のモジュール", .zh: "\(n) 个模块",
+                           .pt: "\(n) módulos"])
+    }
+    /// Stays pinned to the newest line while it is on. Off is what somebody
+    /// wants the moment they see the line they were waiting for.
+    static var logFollow: String { L("Follow") }
+    static var logEmpty: String { L("Nothing logged yet.") }
+    static var logNothingMatches: String { L("Nothing matches these filters.") }
+    static func logCount(_ shown: Int, _ total: Int) -> String {
+        L("\(shown) of \(total) lines", [.ru: "Строк: \(shown) из \(total)",
+                                          .es: "\(shown) de \(total) líneas",
+                                          .fr: "\(shown) sur \(total) lignes",
+                                          .de: "\(shown) von \(total) Zeilen",
+                                          .ja: "\(total) 行中 \(shown) 行",
+                                          .zh: "\(total) 行中的 \(shown) 行",
+                                          .pt: "\(shown) de \(total) linhas"])
+    }
+
     static var aboutHelm: String { L("About Helm") }
     static var iconShape: String { L("Icon shape") }
     static var iconSize: String { L("Icon size") }

@@ -37,6 +37,7 @@
 "Add tag" = "Tag hinzufügen";
 "After an update Helm tells you which permissions stopped working and takes you straight to the right pane. An update always revokes them — the checkbox stays ticked while nothing works." = "Nach einem Update sagt Helm, welche Berechtigungen nicht mehr wirken, und führt direkt zum richtigen Bereich. Ein Update entzieht sie immer — das Häkchen bleibt, die Funktion nicht.";
 "All" = "Alle";
+"All modules" = "Alle Module";
 "Always" = "Immer";
 "An app can no longer claim other apps' files as its own leftovers by naming itself unusually." = "Eine App kann fremde Dateien nicht mehr als eigene Reste ausgeben, indem sie sich ungewöhnlich benennt.";
 "An app that keeps the Mac awake can now be narrowed to the situation you mean: only with an external display, only on power, or both." = "Eine App, die den Mac wach hält, lässt sich jetzt eingrenzen: nur mit externem Bildschirm, nur am Netzstrom oder beides.";
@@ -148,9 +149,11 @@
 "Edit" = "Bearbeiten";
 "Empty" = "Leeren";
 "Enable a module in Settings." = "Aktiviere ein Modul in den Einstellungen.";
+"Errors" = "Fehler";
 "Escape closes the menu-bar panel, the way it closes every other menu on the Mac. It could be opened with a keyboard shortcut and then only be closed with the mouse." = "Escape schließt das Menüleisten-Panel, so wie es jedes andere Menü am Mac schließt. Es ließ sich per Tastatur öffnen und nur mit der Maus schließen.";
 "Every change can be undone — tap the same key again, in the app it happened in. And there is a field on this page to try it in, before it touches anything real." = "Jede Änderung lässt sich zurücknehmen — tippe dieselbe Taste noch einmal, in der App, in der sie passiert ist. Und auf dieser Seite gibt es ein Feld zum Ausprobieren.";
 "Every layout has a real flag now. Helm drew them itself for a while, but a table of bands and crosses cannot hold Mexico’s eagle, Portugal’s armillary sphere or Korea’s trigrams — half a dozen flags were approximations because of it. These come from flag-icons under the MIT licence (credited on this page): rectangular, accurate, and legible down to the smallest badge size. A layout that names no country still keeps its letters." = "Jede Belegung hat jetzt eine echte Flagge: flag-icons unter MIT-Lizenz (auf dieser Seite genannt). Rechteckig, korrekt und bis zur kleinsten Größe lesbar. Eine Belegung ohne Land behält ihre Buchstaben.";
+"Everything" = "Alles";
 "Everything is up to date." = "Alles ist aktuell.";
 "Everything that landed in Helm, newest first." = "Alles, was in Helm gelandet ist — Neuestes zuerst.";
 "Expanded" = "Aufgeklappt";
@@ -175,6 +178,7 @@
 "Flag, system" = "Flagge, System";
 "Folder" = "Ordner";
 "Folders that keep themselves in order" = "Ordner, die sich selbst in Ordnung halten";
+"Follow" = "Mitlaufen";
 "Force quit and remove anyway" = "Sofort beenden und entfernen";
 "Full Disk Access" = "Festplattenvollzugriff";
 "Full disk access is off. Without it the disk scan cannot read every folder, and removing an app leaves its containers behind." = "Der Festplattenzugriff ist aus. Ohne ihn sieht die Analyse nicht alle Ordner, und beim Entfernen bleiben Container liegen.";
@@ -255,6 +259,7 @@
 "Letters on a filled badge" = "Buchstaben auf einer Fläche";
 "Lid closed — staying awake" = "Deckel zu — bleibt wach";
 "Light" = "Hell";
+"Log" = "Protokoll";
 "Login Items" = "Anmeldeobjekte";
 "Login Items & Extensions" = "Anmeldeobjekte & Erweiterungen";
 "Login Items & Extensions now lists system extensions themselves — what they are, whose they are, and which ones outlived the app that installed them." = "Anmeldeobjekte & Erweiterungen listet jetzt die Systemerweiterungen selbst: was sie sind, zu wem sie gehören und welche ihre App überlebt haben.";
@@ -327,6 +332,8 @@
 "Nothing in this folder." = "In diesem Ordner ist nichts.";
 "Nothing is selected by default — macOS loads these, so choose deliberately." = "Nichts ist vorausgewählt: macOS lädt diese Dateien — bewusst auswählen.";
 "Nothing listed. A few terminals and password managers are left alone already — add any others here." = "Nichts eingetragen. Einige Terminals und Passwortmanager bleiben schon außen vor — weitere kannst du hier ergänzen.";
+"Nothing logged yet." = "Noch nichts protokolliert.";
+"Nothing matches these filters." = "Nichts passt zu diesen Filtern.";
 "Nothing selected" = "Nichts ausgewählt";
 "Nothing was actually “freed” by trashing something — it just moved to the Trash, on the same volume. Disk, Duplicates, Login Items & Extensions and the Uninstaller now say so plainly (“Moved to the Trash — 4 KB”), and Disk stopped counting it as space regained until the Trash itself is emptied." = "Beim Verschieben in den Papierkorb wurde in Wirklichkeit nichts „freigegeben“ — die Datei landete nur dort, auf demselben Volume. Festplatte, Duplikate, Anmeldeobjekte & Erweiterungen und die Deinstallation sagen das jetzt so („In den Papierkorb gelegt — 4 KB“), und Festplatte zählt es erst als zurückgewonnenen Platz, wenn der Papierkorb geleert wird.";
 "Notification" = "Mitteilung";
@@ -558,9 +565,11 @@
 "VoiceOver can find Helm in the menu bar, and \"Reduce motion\" is respected throughout." = "VoiceOver findet Helm in der Menüleiste, und „Bewegung reduzieren“ wird überall beachtet.";
 "VoiceOver reads Helm properly: every icon button has a name, and a collapsed section is no longer read out." = "VoiceOver liest Helm richtig: Jeder Symbolknopf hat einen Namen, und ein zugeklappter Abschnitt wird nicht mehr vorgelesen.";
 "Warning and success colours, and the numbers in a metric strip, are legible in light appearance now, and the metric strip no longer occasionally reads the wrong appearance and darkens dark mode’s own colours to match." = "Warn- und Erfolgsfarben sowie die Zahlen in einem Messstreifen sind jetzt im hellen Erscheinungsbild lesbar, und der Messstreifen liest gelegentlich nicht mehr das falsche Erscheinungsbild und verdunkelt dabei die eigenen Farben des dunklen Modus.";
+"Warnings" = "Warnungen";
 "Warnings are legible in the light theme, the icon and colour swatches can be reached from the keyboard, and sizes and names follow macOS in every language — Russian abbreviates the byte the way the Finder does, French writes a lowercase ko, and each screen calls a permission by the name Settings gives it." = "Warnungen sind im hellen Erscheinungsbild lesbar, Symbol- und Farbfelder sind per Tastatur erreichbar, und Größen und Namen folgen macOS in jeder Sprache.";
 "Website data" = "Website-Daten";
 "Welcome to Helm" = "Willkommen bei Helm";
+"What Helm is writing, as it writes it." = "Was Helm gerade schreibt, Zeile für Zeile.";
 "What could be deleted" = "Was gelöscht werden könnte";
 "What is taking up space" = "Was den Speicherplatz belegt";
 "What to check" = "Was geprüft wird";

@@ -37,6 +37,7 @@
 "Add tag" = "タグを付ける";
 "After an update Helm tells you which permissions stopped working and takes you straight to the right pane. An update always revokes them — the checkbox stays ticked while nothing works." = "アップデート後、どの権限が効かなくなったかを伝え、該当の設定画面へ直接案内します。アップデートは必ず権限を失わせます（チェックは付いたままなのに動きません）。";
 "All" = "すべて";
+"All modules" = "すべてのモジュール";
 "Always" = "常に";
 "An app can no longer claim other apps' files as its own leftovers by naming itself unusually." = "アプリが異常な名前を名乗って他のアプリのファイルを自分の残存物として提示することはできなくなりました。";
 "An app that keeps the Mac awake can now be narrowed to the situation you mean: only with an external display, only on power, or both." = "Mac を起こし続けるアプリに条件を付けられます：外部ディスプレイ接続時のみ、電源接続時のみ、またはその両方。";
@@ -148,9 +149,11 @@
 "Edit" = "編集";
 "Empty" = "クリア";
 "Enable a module in Settings." = "設定でモジュールを有効にしてください。";
+"Errors" = "エラー";
 "Escape closes the menu-bar panel, the way it closes every other menu on the Mac. It could be opened with a keyboard shortcut and then only be closed with the mouse." = "Esc キーでメニューバーパネルを閉じられます。キーボードで開けるのに、閉じるにはマウスが必要でした。";
 "Every change can be undone — tap the same key again, in the app it happened in. And there is a field on this page to try it in, before it touches anything real." = "どの置き換えも取り消せます。起きたアプリで同じキーをもう一度叩いてください。このページには試すための入力欄もあります。";
 "Every layout has a real flag now. Helm drew them itself for a while, but a table of bands and crosses cannot hold Mexico’s eagle, Portugal’s armillary sphere or Korea’s trigrams — half a dozen flags were approximations because of it. These come from flag-icons under the MIT licence (credited on this page): rectangular, accurate, and legible down to the smallest badge size. A layout that names no country still keeps its letters." = "すべての配列に本物の旗が付きました。MIT ライセンスの flag-icons です（このページに表示）。長方形で正確、最小サイズでも読み取れます。国が定まらない配列は文字のままです。";
+"Everything" = "すべて";
 "Everything is up to date." = "すべて最新です。";
 "Everything that landed in Helm, newest first." = "Helm に追加されたすべて（新しい順）。";
 "Expanded" = "展開済み";
@@ -175,6 +178,7 @@
 "Flag, system" = "旗（システム）";
 "Folder" = "フォルダ";
 "Folders that keep themselves in order" = "自分で整った状態を保つフォルダ";
+"Follow" = "追従";
 "Force quit and remove anyway" = "強制終了して削除";
 "Full Disk Access" = "フルディスクアクセス";
 "Full disk access is off. Without it the disk scan cannot read every folder, and removing an app leaves its containers behind." = "ディスクへのアクセスがオフです。すべてのフォルダを読めず、アンインストーラ時にコンテナが残ります。";
@@ -255,6 +259,7 @@
 "Letters on a filled badge" = "文字（背景あり）";
 "Lid closed — staying awake" = "ふたを閉じてもスリープ防止";
 "Light" = "ライト";
+"Log" = "ログ";
 "Login Items" = "ログイン項目";
 "Login Items & Extensions" = "ログイン項目と機能拡張";
 "Login Items & Extensions now lists system extensions themselves — what they are, whose they are, and which ones outlived the app that installed them." = "「ログイン項目と機能拡張」がシステム機能拡張そのものを一覧表示：内容、提供元、そしてインストール元アプリが消えても残っているもの。";
@@ -327,6 +332,8 @@
 "Nothing in this folder." = "このフォルダには何もありません。";
 "Nothing is selected by default — macOS loads these, so choose deliberately." = "既定では未選択です。macOS が読み込むファイルなので慎重に選んでください。";
 "Nothing listed. A few terminals and password managers are left alone already — add any others here." = "一覧は空です。主なターミナルとパスワード管理アプリは最初から対象外です。ほかは自分で追加してください。";
+"Nothing logged yet." = "まだ記録はありません。";
+"Nothing matches these filters." = "この条件に一致する行はありません。";
 "Nothing selected" = "未選択";
 "Nothing was actually “freed” by trashing something — it just moved to the Trash, on the same volume. Disk, Duplicates, Login Items & Extensions and the Uninstaller now say so plainly (“Moved to the Trash — 4 KB”), and Disk stopped counting it as space regained until the Trash itself is emptied." = "ゴミ箱に入れても、実際には何も「解放」されていませんでした——同じボリューム上のゴミ箱に移動しただけです。「ディスク」「重複」「ログイン項目と機能拡張」「アンインストーラ」は今、そのとおりに表示します（「ゴミ箱に入れました — 4 KB」）。「ディスク」もゴミ箱を空にするまで空き容量として数えなくなりました。";
 "Notification" = "通知";
@@ -558,9 +565,11 @@
 "VoiceOver can find Helm in the menu bar, and \"Reduce motion\" is respected throughout." = "VoiceOver がメニューバーの Helm を認識し、「視差効果を減らす」を全体で尊重します。";
 "VoiceOver reads Helm properly: every icon button has a name, and a collapsed section is no longer read out." = "VoiceOver が Helm を正しく読み上げます。アイコンボタンに名前が付き、折りたたまれた項目は読まれません。";
 "Warning and success colours, and the numbers in a metric strip, are legible in light appearance now, and the metric strip no longer occasionally reads the wrong appearance and darkens dark mode’s own colours to match." = "警告色と成功色、および計器風の数値バーの数字は、ライトモードでも読みやすくなりました。バーが誤って外観を読み違え、ダークモード自身の色をさらに暗くしてしまうこともなくなりました。";
+"Warnings" = "警告";
 "Warnings are legible in the light theme, the icon and colour swatches can be reached from the keyboard, and sizes and names follow macOS in every language — Russian abbreviates the byte the way the Finder does, French writes a lowercase ko, and each screen calls a permission by the name Settings gives it." = "ライトテーマで警告が読めるようになり、アイコンと色の見本にキーボードで到達でき、単位や名称は各言語で macOS に合わせました。";
 "Website data" = "Webサイトのデータ";
 "Welcome to Helm" = "Helm へようこそ";
+"What Helm is writing, as it writes it." = "Helm が書いている内容を、書かれた順に。";
 "What could be deleted" = "削除できる候補";
 "What is taking up space" = "ディスクを占めているもの";
 "What to check" = "確認する項目";

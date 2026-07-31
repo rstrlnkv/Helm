@@ -128,6 +128,22 @@ public final class HelmLog: @unchecked Sendable {
         if on { write(.info, "app", "logging enabled") }
     }
 
+    /// The last lines, for a dev build that wants to watch them arrive rather
+    /// than open the file afterwards. Guarded by the same queue as the file, so
+    /// a reader never sees a half-written line.
+    private var tail = LogTail()
+
+    /// A snapshot, oldest first. Taken on the queue and handed back by value:
+    /// the page that draws it must not hold anything the logger is still
+    /// writing to.
+    public func recentEntries() -> [LogEntry] {
+        queue.sync { tail.entries }
+    }
+
+    public func clearTail() {
+        queue.async { self.tail.clear() }
+    }
+
     public func write(_ level: LogLevel, _ category: String, _ message: String,
                       site: LogSite? = nil) {
         // The timestamp is taken here, where the event happened; the line is
@@ -137,6 +153,10 @@ public final class HelmLog: @unchecked Sendable {
         let now = Date()
         queue.async {
             guard self.enabled else { return }
+            // The tail is filled from the same parts the line is spelled from,
+            // not by parsing the line back apart.
+            self.tail.append(LogEntry(date: now, level: level, category: category,
+                                      message: message))
             self.append(LogLine.format(date: now, level: level, category: category,
                                        message: message, site: site) + "\n")
         }

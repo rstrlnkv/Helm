@@ -37,6 +37,7 @@
 "Add tag" = "添加标签";
 "After an update Helm tells you which permissions stopped working and takes you straight to the right pane. An update always revokes them — the checkbox stays ticked while nothing works." = "更新后，Helm 会说明哪些权限已失效，并直接带你到对应面板。更新总会撤销权限——勾选还在，功能却没了。";
 "All" = "全部";
+"All modules" = "所有模块";
 "Always" = "始终";
 "An app can no longer claim other apps' files as its own leftovers by naming itself unusually." = "应用不能再通过使用异常名称，把其他应用的文件说成自己的残留。";
 "An app that keeps the Mac awake can now be narrowed to the situation you mean: only with an external display, only on power, or both." = "让 Mac 保持唤醒的应用现在可以限定条件：仅连接外接显示器时、仅接通电源时，或两者同时。";
@@ -148,9 +149,11 @@
 "Edit" = "编辑";
 "Empty" = "清空";
 "Enable a module in Settings." = "在设置中启用一个模块。";
+"Errors" = "错误";
 "Escape closes the menu-bar panel, the way it closes every other menu on the Mac. It could be opened with a keyboard shortcut and then only be closed with the mouse." = "按 Esc 键即可关闭菜单栏面板，就像关闭 Mac 上的其他菜单一样。此前可以用快捷键打开，却只能用鼠标关闭。";
 "Every change can be undone — tap the same key again, in the app it happened in. And there is a field on this page to try it in, before it touches anything real." = "任何替换都可以撤销——在发生替换的那个应用里再敲一次同一个键。本页还有一个可以先试试的输入框。";
 "Every layout has a real flag now. Helm drew them itself for a while, but a table of bands and crosses cannot hold Mexico’s eagle, Portugal’s armillary sphere or Korea’s trigrams — half a dozen flags were approximations because of it. These come from flag-icons under the MIT licence (credited on this page): rectangular, accurate, and legible down to the smallest badge size. A layout that names no country still keeps its letters." = "每个布局现在都有真正的旗帜：MIT 许可的 flag-icons（本页已署名）。矩形、准确，最小尺寸下依然清晰。没有国家归属的布局仍保持字母显示。";
+"Everything" = "全部";
 "Everything is up to date." = "全部已是最新。";
 "Everything that landed in Helm, newest first." = "Helm 的全部更新，最新在前。";
 "Expanded" = "已展开";
@@ -175,6 +178,7 @@
 "Flag, system" = "旗帜（系统）";
 "Folder" = "文件夹";
 "Folders that keep themselves in order" = "会自己保持整齐的文件夹";
+"Follow" = "跟随";
 "Force quit and remove anyway" = "强制退出并删除";
 "Full Disk Access" = "完全磁盘访问权限";
 "Full disk access is off. Without it the disk scan cannot read every folder, and removing an app leaves its containers behind." = "磁盘访问已关闭。扫描无法读取全部文件夹，卸载应用时容器会残留。";
@@ -255,6 +259,7 @@
 "Letters on a filled badge" = "字母（实心底）";
 "Lid closed — staying awake" = "合盖仍保持唤醒";
 "Light" = "浅色";
+"Log" = "日志";
 "Login Items" = "登录项";
 "Login Items & Extensions" = "登录项与扩展";
 "Login Items & Extensions now lists system extensions themselves — what they are, whose they are, and which ones outlived the app that installed them." = "“登录项与扩展”现在会列出系统扩展本身：它们是什么、属于谁，以及哪些在原应用被删除后仍然留着。";
@@ -327,6 +332,8 @@
 "Nothing in this folder." = "这个文件夹里没有内容。";
 "Nothing is selected by default — macOS loads these, so choose deliberately." = "默认未选择：这些文件由 macOS 加载，请谨慎选择。";
 "Nothing listed. A few terminals and password managers are left alone already — add any others here." = "列表为空。少数终端和密码管理器已经排除在外，其他的请自行添加。";
+"Nothing logged yet." = "暂无记录。";
+"Nothing matches these filters." = "没有符合这些筛选条件的行。";
 "Nothing selected" = "未选择任何项";
 "Nothing was actually “freed” by trashing something — it just moved to the Trash, on the same volume. Disk, Duplicates, Login Items & Extensions and the Uninstaller now say so plainly (“Moved to the Trash — 4 KB”), and Disk stopped counting it as space regained until the Trash itself is emptied." = "把东西移到废纸篓其实并没有真正“释放”任何空间——它只是移到了同一宗卷上的废纸篓里。“磁盘”“重复文件”“登录项与扩展”和“卸载器”现在都如实显示（“已移到废纸篓 — 4 KB”），“磁盘”也不再把它计入已释放的空间，直到废纸篓真正清空。";
 "Notification" = "通知";
@@ -558,9 +565,11 @@
 "VoiceOver can find Helm in the menu bar, and \"Reduce motion\" is respected throughout." = "VoiceOver 能在菜单栏中找到 Helm，且全程遵循“减弱动态效果”。";
 "VoiceOver reads Helm properly: every icon button has a name, and a collapsed section is no longer read out." = "VoiceOver 能正确朗读 Helm：每个图标按钮都有名称，折叠的区块不再被读出。";
 "Warning and success colours, and the numbers in a metric strip, are legible in light appearance now, and the metric strip no longer occasionally reads the wrong appearance and darkens dark mode’s own colours to match." = "警告色和成功色，以及指标条中的数字，在浅色外观下现在清晰可读；指标条也不会再偶尔误读外观、把深色模式本身的颜色进一步调暗了。";
+"Warnings" = "警告";
 "Warnings are legible in the light theme, the icon and colour swatches can be reached from the keyboard, and sizes and names follow macOS in every language — Russian abbreviates the byte the way the Finder does, French writes a lowercase ko, and each screen calls a permission by the name Settings gives it." = "浅色主题下的警告清晰可读，图标与颜色色块可用键盘抵达，尺寸和名称在每种语言下都与 macOS 一致。";
 "Website data" = "网站数据";
 "Welcome to Helm" = "欢迎使用 Helm";
+"What Helm is writing, as it writes it." = "Helm 正在写入的内容，边写边看。";
 "What could be deleted" = "可删除的内容";
 "What is taking up space" = "磁盘空间被什么占用";
 "What to check" = "检查什么";
