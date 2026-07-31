@@ -172,6 +172,16 @@ public enum HelmDates {
         cache.relative(language: language).localizedString(for: date, relativeTo: now)
     }
 
+    /// A log line's clock, to the second, in the app's own language-independent
+    /// form: the file writes `HH:mm:ss.SSS` and the live view must agree with it
+    /// digit for digit, or the same event reads as two.
+    public static func logTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter.string(from: date)
+    }
+
     /// Day and minute, short: a report covering thirty days needs the day, and a
     /// morning's worth of moves needs the minute.
     public static func dayAndMinute(_ date: Date,

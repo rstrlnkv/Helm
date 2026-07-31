@@ -66,6 +66,9 @@ enum SettingsSelection: Hashable {
     case general
     case module(String)
     case about
+    /// Dev builds only. Not a module: no store, no engine, no tour step, no
+    /// place in `ModuleOrder`, and nothing counts it among the nine.
+    case log
 }
 
 @MainActor final class SettingsModel: ObservableObject {
@@ -147,6 +150,13 @@ private struct SettingsSidebar: View {
         }
     }
 
+    /// The build, not the update channel: the channel is a picker anyone can
+    /// move, and a shipped beta build must not grow a diagnostics pane because
+    /// somebody wants updates sooner.
+    private var isDevBuild: Bool {
+        (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "").contains("-dev")
+    }
+
     /// Re-probed when the app comes forward: a grant is given in System
     /// Settings, which means this window is behind while it happens.
     @State private var diskAccess: PermissionState = .granted
@@ -197,6 +207,14 @@ private struct SettingsSidebar: View {
                 }
             }
             Section {
+                // Gated on the build, never on the update channel: the channel
+                // picker is an ordinary control on the General page, so gating
+                // on it would show this to anyone impatient for updates on a
+                // shipped beta build.
+                if isDevBuild {
+                    sidebarRow(AppStr.logPane, "text.alignleft", .gray)
+                        .tag(SettingsSelection.log)
+                }
                 sidebarRow(AppStr.aboutHelm, "info.circle", .gray)
                     .tag(SettingsSelection.about)
             }
@@ -260,6 +278,8 @@ private struct SettingsDetail: View {
             MenuBarSettingsView()
         case .about:
             AboutHelmView()
+        case .log:
+            LogView()
         case .module(let id):
             if let descriptor = ModuleRegistry.all.first(where: { $0.idRaw == id }) {
                 ModuleDetailView(host: model.host, descriptor: descriptor, id: id)

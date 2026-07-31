@@ -37,6 +37,7 @@
 "Add tag" = "Поставить тег";
 "After an update Helm tells you which permissions stopped working and takes you straight to the right pane. An update always revokes them — the checkbox stays ticked while nothing works." = "После обновления Helm говорит, какие разрешения перестали действовать, и ведёт прямо в нужную панель. Обновление всегда их сбрасывает: галочка остаётся стоять, а работать перестаёт.";
 "All" = "Все";
+"All modules" = "Все модули";
 "Always" = "Всегда";
 "An app can no longer claim other apps' files as its own leftovers by naming itself unusually." = "Программа больше не может выдать чужие файлы за свои остатки, назвавшись необычным образом.";
 "An app that keeps the Mac awake can now be narrowed to the situation you mean: only with an external display, only on power, or both." = "Приложение, не дающее Mac спать, теперь можно ограничить условием: только при внешнем дисплее, только при питании или и то и другое.";
@@ -148,9 +149,11 @@
 "Edit" = "Изменить";
 "Empty" = "Очистить";
 "Enable a module in Settings." = "Включите модуль в настройках.";
+"Errors" = "Ошибки";
 "Escape closes the menu-bar panel, the way it closes every other menu on the Mac. It could be opened with a keyboard shortcut and then only be closed with the mouse." = "Escape закрывает панель в строке меню — как закрывается любое меню на Mac. Открыть её можно было с клавиатуры, а закрыть только мышью.";
 "Every change can be undone — tap the same key again, in the app it happened in. And there is a field on this page to try it in, before it touches anything real." = "Любую замену можно отменить — нажмите ту же клавишу ещё раз, в том приложении, где она произошла. А на этой странице есть поле, где всё можно попробовать, прежде чем это коснётся настоящего текста.";
 "Every layout has a real flag now. Helm drew them itself for a while, but a table of bands and crosses cannot hold Mexico’s eagle, Portugal’s armillary sphere or Korea’s trigrams — half a dozen flags were approximations because of it. These come from flag-icons under the MIT licence (credited on this page): rectangular, accurate, and legible down to the smallest badge size. A layout that names no country still keeps its letters." = "У каждой раскладки теперь настоящий флаг. Helm какое-то время рисовал их сам, но таблица полос и крестов не вмещает мексиканского орла, португальскую армиллярную сферу и корейские триграммы — с полдюжины флагов из-за этого были приближениями. Теперь это flag-icons под лицензией MIT (указано на этой же странице): прямоугольные, точные и читаемые вплоть до самого мелкого размера значка. Раскладка без страны по-прежнему остаётся буквами.";
+"Everything" = "Всё";
 "Everything is up to date." = "Всё обновлено.";
 "Everything that landed in Helm, newest first." = "Всё, что появилось в Helm, начиная с последнего.";
 "Expanded" = "Развёрнуто";
@@ -175,6 +178,7 @@
 "Flag, system" = "Флаг, системный";
 "Folder" = "Папка";
 "Folders that keep themselves in order" = "Папки, которые держат себя в порядке";
+"Follow" = "Следить";
 "Force quit and remove anyway" = "Завершить принудительно и удалить";
 "Full Disk Access" = "Доступ к диску";
 "Full disk access is off. Without it the disk scan cannot read every folder, and removing an app leaves its containers behind." = "«Доступ к диску» выключен. Без него скан диска не видит часть папок, а при удалении приложения его контейнеры остаются.";
@@ -255,6 +259,7 @@
 "Letters on a filled badge" = "Буквы на плашке";
 "Lid closed — staying awake" = "Крышка закрыта — не спит";
 "Light" = "Светлое";
+"Log" = "Журнал";
 "Login Items" = "Объекты входа";
 "Login Items & Extensions" = "Объекты входа и расширения";
 "Login Items & Extensions now lists system extensions themselves — what they are, whose they are, and which ones outlived the app that installed them." = "«Объекты входа и расширения» теперь показывает и сами системные расширения: что это, чьё это и какие из них пережили удалённое приложение.";
@@ -327,6 +332,8 @@
 "Nothing in this folder." = "В этой папке ничего нет.";
 "Nothing is selected by default — macOS loads these, so choose deliberately." = "Ничего не выбрано заранее: эти файлы загружает macOS — выбирайте осознанно.";
 "Nothing listed. A few terminals and password managers are left alone already — add any others here." = "Список пуст. Несколько терминалов и менеджеров паролей Helm уже обходит стороной — остальные добавьте сами.";
+"Nothing logged yet." = "Пока ничего не записано.";
+"Nothing matches these filters." = "Под эти фильтры ничего не попало.";
 "Nothing selected" = "Ничего не выбрано";
 "Nothing was actually “freed” by trashing something — it just moved to the Trash, on the same volume. Disk, Duplicates, Login Items & Extensions and the Uninstaller now say so plainly (“Moved to the Trash — 4 KB”), and Disk stopped counting it as space regained until the Trash itself is emptied." = "Ничего на самом деле не «освобождалось» при перемещении в Корзину — файл просто оказывался в Корзине, на том же томе. «Диск», «Дубликаты», «Объекты входа и расширения» и «Удаление приложений» теперь так и говорят («Перемещено в Корзину — 4 КБ»), а «Диск» больше не считает это освобождённым местом, пока Корзина не очищена.";
 "Notification" = "Уведомление";
@@ -558,9 +565,11 @@
 "VoiceOver can find Helm in the menu bar, and \"Reduce motion\" is respected throughout." = "VoiceOver находит Helm в строке меню, а «Уменьшение движения» соблюдается везде.";
 "VoiceOver reads Helm properly: every icon button has a name, and a collapsed section is no longer read out." = "VoiceOver читает Helm как следует: у каждой иконочной кнопки есть имя, а свёрнутый блок больше не зачитывается.";
 "Warning and success colours, and the numbers in a metric strip, are legible in light appearance now, and the metric strip no longer occasionally reads the wrong appearance and darkens dark mode’s own colours to match." = "Предупреждающие и подтверждающие цвета, а также цифры в измерительной полоске теперь читаемы в светлом оформлении, и полоска больше не путает оформление и не затемняет собственные цвета тёмного режима.";
+"Warnings" = "Предупреждения";
 "Warnings are legible in the light theme, the icon and colour swatches can be reached from the keyboard, and sizes and names follow macOS in every language — Russian abbreviates the byte the way the Finder does, French writes a lowercase ko, and each screen calls a permission by the name Settings gives it." = "Предупреждения читаются в светлой теме, образцы иконок и цветов достижимы с клавиатуры, а размеры и названия совпадают с macOS: байт сокращён до «Б», каждый экран зовёт разрешение так же, как Настройки.";
 "Website data" = "Данные сайтов";
 "Welcome to Helm" = "Добро пожаловать в Helm";
+"What Helm is writing, as it writes it." = "Что Helm пишет — прямо сейчас, строка за строкой.";
 "What could be deleted" = "Что можно удалить";
 "What is taking up space" = "Что занимает место на диске";
 "What to check" = "Что проверять";
