@@ -5,7 +5,7 @@ enum HbStr {
     static var summary: String { L("Manage Homebrew packages") }
 
     static var notInstalledTitle: String { L("Homebrew isn’t installed") }
-    static var notInstalledBody: String { L("Install it from the official repository. You will be asked for your password once.") }
+    static var notInstalledBody: String { L("Helm downloads Homebrew’s own installer and runs it. macOS asks for an administrator password once, to create /opt/homebrew.") }
     static var installBrew: String { L("Install Homebrew") }
 
     static var segInstalled: String { L("Installed") }

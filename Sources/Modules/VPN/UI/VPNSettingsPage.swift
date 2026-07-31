@@ -259,6 +259,13 @@ public struct VPNSettingsPage: View {
                 .font(.callout)
                 .foregroundStyle(HelmText.quiet)
         }
+        // What the tunnel actually covers. Kept out of the `isEmpty` branch on
+        // purpose — the person with rules already configured is the one acting
+        // on the belief that only that app is routed.
+        Text(VPNStr.perAppScopeNote)
+            .font(.caption)
+            .foregroundStyle(HelmText.quiet)
+            .fixedSize(horizontal: false, vertical: true)
         ForEach(Array(sortedBundleIDs.enumerated()), id: \.element) { index, bundleID in
             if index > 0 { Divider() }
             appRuleRow(bundleID)

@@ -126,7 +126,7 @@ enum KAStr {
     /// against the same table rather than assumed.
     static var globalShortcut: String { L("Global shortcut") }
     static var toggleAction: String { L("Toggle Keep Awake") }
-    static var keepAwakeLidClosed: String { L("Keep awake with the lid closed") }
+    static var keepAwakeLidClosed: String { L("Keep going when the lid is closed") }
     /// What the person is about to face and what they get for it. `pmset` was
     /// the tool's name, which answers a question nobody asked: the two things
     /// worth knowing are that the password prompt is macOS's own — not this
@@ -134,11 +134,25 @@ enum KAStr {
     /// and Helm is not what keeps it. The wording for the password follows the
     /// system's own (SecurityPrivacyExtension.appex, "Require an administrator
     /// password to access system-wide settings").
-    static var adminNote: String { L("macOS asks for an administrator password once. The setting is system-wide and survives a restart.") }
+    /// Two questions, so two sentences: what Helm does to the Mac, and what it
+    /// costs. "The setting is system-wide" named no setting — what is system-wide
+    /// is `pmset disablesleep`, i.e. sleep is off for the whole machine — and
+    /// "once" was wrong, because the sudoers rule is removed when the toggle goes
+    /// off, so switching it off and on asks again.
+    static var adminNote: String {
+        L("macOS asks for an administrator password the first time Keep Awake runs with this on. If Helm is quit while sleep is off, it stays off until Helm runs again.")
+    }
     static var turnOffLowBattery: String { L("Turn off on low battery") }
-    static func belowPercent(_ n: Int) -> String { L("Below \(n)%", [.ru: "Ниже \(n) %", .es: "Por debajo del \(n) %", .fr: "En dessous de \(n) %", .de: "Unter \(n) %", .ja: "\(n)% 未満", .zh: "低于 \(n)%", .pt: "Abaixo de \(n)%"]) }
+    /// `BatteryGuard.shouldDeactivate` is `percent <= threshold`: at exactly the
+    /// figure shown, the session stops. Every language used to say "below" — and
+    /// ja/zh said it with 未満 / 低于, the strict operators, in languages that have
+    /// the inclusive one. The string named an operator the code does not use.
+    ///
+    /// The no-break space before the sign is macOS's own: every literal percent
+    /// in the system's own extension tables is joined.
+    static func belowPercent(_ n: Int) -> String { L("At \(n)% or less", [.ru: "При \(n)\u{00A0}% и ниже", .es: "Al \(n)\u{00A0}% o menos", .fr: "À \(n)\u{00A0}% ou moins", .de: "Bei \(n)\u{00A0}% oder weniger", .ja: "\(n)% 以下", .zh: "\(n)% 及以下", .pt: "Em \(n)\u{00A0}% ou menos"]) }
     static var activeIconColor: String { L("Active icon color") }
-    static var ringColorNote: String { L("Applies while Keep Awake is on; otherwise the shared menu-bar icon is used.") }
+    static var ringColorNote: String { L("Used while the Mac is being kept awake. At other times Helm’s shared menu-bar icon is shown.") }
     static var addApp: String { L("Add app…") }
     static var ringTimer: String { L("Countdown ring in the menu bar") }
     static var ringTimerNote: String { L("While a timer runs, the ring empties clockwise.") }

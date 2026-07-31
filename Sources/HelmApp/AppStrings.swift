@@ -20,7 +20,7 @@ enum AppStr {
     /// Section title inside that pane, for the menu-bar icon controls.
     static var menuBar: String { L("Menu Bar") }
     static var general: String { L("General") }
-    static var launchAtLogin: String { L("Launch automatically at startup") }
+    static var launchAtLogin: String { L("Open Helm at login") }
     static var checking: String { L("Checking…") }
     static var upToDate: String { L("You’re on the latest version.") }
     /// Said to somebody running a build the channel has not published yet —
@@ -47,7 +47,7 @@ enum AppStr {
     static var done: String { L("Done") }
     static var moduleOrderEditNote: String { L("Drag a row, or use the arrows.") }
     static var moduleOrderNote: String { L("Used by the panel, the sidebar, and the icon menu.") }
-    static var permissionsChanged: String { L("Some permissions need granting again") }
+    static var permissionsChanged: String { L("Helm is missing permissions it needs") }
     static var later: String { L("Later") }
     static var permissions: String { L("Permissions") }
     static var fullDiskAccess: String { L("Full Disk Access") }
@@ -75,10 +75,16 @@ enum AppStr {
     static var accessibilityWhy: String { L("Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works.") }
     static var diagnostics: String { L("Diagnostics") }
     static var writeLog: String { L("Write a log file") }
-    static var logNoteDev: String { L("Dev builds always log. The file lives in Library/Logs/Helm.") }
-    static var logNoteStable: String { L("Turn on before reporting a problem. The file lives in Library/Logs/Helm.") }
+    static var logNoteDev: String { L("Dev builds always log. The file lives in ~/Library/Logs/Helm.") }
+    static var logNoteStable: String { L("Turn on before reporting a problem. The file lives in ~/Library/Logs/Helm.") }
     static var revealLog: String { L("Show in Finder") }
     static var copyLog: String { L("Copy log") }
+    /// Next to the button whose whole purpose is pasting this into a bug report.
+    /// `HelmLog` puts every app name, VPN name and path through `Redact` before
+    /// writing, and that is a reason to press the button rather than a footnote.
+    static var logRedactionNote: String {
+        L("The log records what Helm did, not what you have: app names, VPN names and paths are replaced before anything is written.")
+    }
     static var clearLog: String { L("Clear") }
     static var whatsNewSummary: String { L("Everything that landed in Helm, newest first.") }
     static var settingsPaneSummary: String { L("Behaviour, module order, permissions, and diagnostics.") }
@@ -120,7 +126,7 @@ enum AppStr {
     static var retry: String { L("Try again") }
     /// Shown when a release publishes no digest for its asset: the updater
     /// refuses to swap a bundle it cannot check, and hands the user the page.
-    static var updateManualInstall: String { L("This release can’t be verified — install it from the release page.") }
+    static var updateManualInstall: String { L("This release published no checksum. Helm opened its download page instead.") }
     static var updateCheckFailed: String { L("Couldn’t check for updates.") }
     static func lastChecked(_ when: String) -> String { L("Checked \(when)", [.ru: "Проверялось \(when)", .es: "Comprobado \(when)", .fr: "Vérifié \(when)", .de: "Geprüft \(when)", .ja: "確認: \(when)", .zh: "检查于\(when)", .pt: "Verificado \(when)"]) }
     static var neverChecked: String { L("Not checked yet") }
@@ -183,7 +189,7 @@ enum AppStr {
         L("Reset all settings?")
     }
     static var resetConfirmBody: String {
-        L("Every preference, every module's saved state and the diagnostics log go to the Trash. Helm restarts and greets you as it did the first time.")
+        L("Each module’s saved data and the diagnostics log go to the Trash, where you can get them back. Your preferences — which modules are on, their order, your shortcuts — are forgotten for good. Helm restarts and greets you as it did the first time.")
     }
     static var resetConfirmAction: String {
         L("Reset and Restart")

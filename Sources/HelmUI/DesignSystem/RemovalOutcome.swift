@@ -93,10 +93,16 @@ public struct HelmRemovalOutcome: View {
                             .font(.caption2)
                             .lineLimit(1).truncationMode(.middle)
                         Text("·").font(.caption2).foregroundStyle(HelmText.faint)
+                        // Not `lineLimit(1)`. These sentences exist to say what
+                        // macOS refused and what to do about it, and measured at
+                        // 10 pt the Russian ran past the row in three of the four
+                        // reasons — so the half that named the next step was the
+                        // half that got truncated. Two lines, and the row grows.
                         Text(failure.reason)
                             .font(.caption2)
                             .foregroundStyle(HelmText.quiet)
-                            .lineLimit(1)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 4)
                         Button {
                             NSWorkspace.shared.activateFileViewerSelecting(

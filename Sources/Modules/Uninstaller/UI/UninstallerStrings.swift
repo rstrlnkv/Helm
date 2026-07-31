@@ -22,10 +22,10 @@ enum UnStr {
         case .preferences: return L("Settings files")
         case .containers: return L("Containers")
         case .groupContainers: return L("Group Containers")
-        case .savedState: return L("Saved State")
+        case .savedState: return L("Saved windows")
         case .logs: return L("Logs")
-        case .httpStorages: return L("HTTP Storage")
-        case .webKit: return L("WebKit")
+        case .httpStorages: return L("Network cache and cookies")
+        case .webKit: return L("Website data")
         case .cookies: return L("Cookies")
         case .appScripts: return L("Application Scripts")
         case .launchAgent: return L("Launch agents")
@@ -34,7 +34,7 @@ enum UnStr {
     /// The Trash offer's window title. Not "Leftovers" — that is the module's
     /// own tab, for files whose app is already gone, and one English key means
     /// one thing.
-    static var trashOfferTitle: String { L("Files left behind") }
+    static var trashOfferTitle: String { L("Files left in your Library") }
     /// The one standing line in that window, and the honest cost of offering
     /// now rather than waiting for the Trash to be emptied: the app is in the
     /// Trash, not gone, and it can come back without these.
@@ -72,11 +72,11 @@ enum UnStr {
     /// what says whose files these are. The sentence it used to open with was the
     /// label again in more words.
     static var watchTrashNote: String {
-        L("Only the app in the Trash can say which files belong to it.")
+        L("These files are named after the app, so emptying the Trash first leaves nothing to offer.")
     }
     static var tabApps: String { L("Apps") }
     static var tabOrphans: String { L("Leftovers") }
-    static var orphansIntro: String { L("Files left behind by apps you no longer have. Only files named after an app’s bundle id are listed.") }
+    static var orphansIntro: String { L("Files left in your Library by apps you no longer have. Only files named after an app’s bundle id are listed, so some leftovers will not appear.") }
     static var scanOrphans: String { L("Scan for leftovers") }
     static var scanningOrphans: String { L("Searching…") }
     static var noOrphans: String { L("No leftovers found.") }

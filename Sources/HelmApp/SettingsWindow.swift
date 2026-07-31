@@ -515,11 +515,15 @@ private struct MenuBarSettingsView: View {
                     let granted = need.state(accessibility: accessibility,
                                              fullDisk: diskAccess) == .granted
                     permissionRow(AppStr.permissionTitle(need),
-                                  // The ad-hoc caveat applies to every grant:
-                                  // macOS ties them to the exact binary, so a
-                                  // new build is a different app to it.
+                                  // Both, never one instead of the other: the
+                                  // ad-hoc caveat used to replace the sentence
+                                  // saying what the grant is for, and every build
+                                  // anybody runs is ad-hoc — so the Accessibility
+                                  // decision was made without the words "every
+                                  // keystroke in every app" ever being shown.
                                   detail: !granted && adHocBuild
-                                      ? AppStr.fullDiskAccessAdHoc
+                                      ? AppStr.permissionWhy(need) + "\n"
+                                          + AppStr.fullDiskAccessAdHoc
                                       : AppStr.permissionWhy(need),
                                   granted: granted) { need.openSettings() }
                 }
@@ -547,6 +551,9 @@ private struct MenuBarSettingsView: View {
                     Button(AppStr.clearLog) { HelmLog.shared.clear() }
                 }
                 .controlSize(.small)
+                Text(AppStr.logRedactionNote)
+                    .font(.caption).foregroundStyle(HelmText.quiet)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Section(AppStr.resetSection) {
                 // `role: .destructive` alone draws as an ordinary link in a
@@ -845,7 +852,7 @@ private struct AboutHelmView: View {
             } else if updater.lastMessage == "manual-install" {
                 HStack(spacing: 10) {
                     statusIcon("exclamationmark.triangle.fill", HelmSignal.warning)
-                    Text(AppStr.updateManualInstall).lineLimit(2)
+                    Text(AppStr.updateManualInstall).lineLimit(3)
                     Spacer()
                 }
             } else if updater.lastMessage == "error" {

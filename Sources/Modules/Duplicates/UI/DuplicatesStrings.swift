@@ -8,7 +8,7 @@ enum DupStr {
     static var search: String { L("Search now") }
     static var searchAgain: String { L("Search again") }
     static var startHint: String { L("Pick a folder and Helm will read what is in it, comparing content rather than names.") }
-    static var needsAccess: String { L("Without Full Disk Access the walk reads less, and a short answer looks exactly like a clean one.") }
+    static var needsAccess: String { L("Without Full Disk Access Helm cannot read every folder, and a short list of duplicates looks exactly like a folder that has none.") }
     static var stop: String { L("Stop scan") }
     static var basketContents: String { L("Show what is in the basket") }
     static var basket: String { L("To remove") }
@@ -34,7 +34,14 @@ enum DupStr {
     static func progressLine(_ done: Int, _ total: Int) -> String { L("\(done) of \(total) checks done", [.ru: "Проверок сделано: \(done) из \(total)", .es: "\(done) de \(total) comprobaciones hechas", .fr: "\(done) vérifications sur \(total)", .de: "\(done) von \(total) Prüfungen erledigt", .ja: "\(total) 件中 \(done) 件を確認済み", .zh: "已完成 \(done) / \(total) 项检查", .pt: "\(done) de \(total) verificações feitas"]) }
     static var none: String { L("No duplicates here. Every large file under this folder is one of a kind.") }
     static var floorNote: String { L("Files from 1 MB. Hard links are one file and are never offered.") }
-    static func found(_ groups: Int, _ wasted: String) -> String { L("Groups: \(groups) · \(wasted) recoverable", [.ru: "Групп: \(groups) · можно освободить \(wasted)", .es: "Grupos: \(groups) · \(wasted) recuperables", .fr: "Groupes : \(groups) · \(wasted) récupérables", .de: "Gruppen: \(groups) · \(wasted) freizugeben", .ja: "\(groups) グループ・\(wasted) 解放可能", .zh: "\(groups) 组 · 可释放 \(wasted)", .pt: "Grupos: \(groups) · \(wasted) recuperáveis"]) }
+    /// The size of the extra copies, not a promise about free space.
+    /// `DuplicateGroup.wasted` sums the allocated size of every copy after the
+    /// first — and an APFS clone, which is what Finder's Duplicate makes, shares
+    /// its blocks with the original: measured here, a file and its clone each
+    /// report 20 MB while the pair occupies 20 MB. So for clones the figure is
+    /// exactly double what deleting returns, and the copies go to the Trash on
+    /// the same volume anyway. Say what was measured.
+    static func found(_ groups: Int, _ wasted: String) -> String { L("Groups: \(groups) · \(wasted) in extra copies", [.ru: "Групп: \(groups) · лишние копии: \(wasted)", .es: "Grupos: \(groups) · copias de más: \(wasted)", .fr: "Groupes : \(groups) · copies en trop : \(wasted)", .de: "Gruppen: \(groups) · überzählige Kopien: \(wasted)", .ja: "\(groups) グループ・余分なコピー \(wasted)", .zh: "\(groups) 组 · 多余副本 \(wasted)", .pt: "Grupos: \(groups) · cópias extras: \(wasted)"]) }
     static var keepWhy: String { L("The copy that was there first. Helm never offers every copy of a file.") }
     static var keep: String { L("stays") }
     static var basketExtras: String { L("Extras to basket") }
