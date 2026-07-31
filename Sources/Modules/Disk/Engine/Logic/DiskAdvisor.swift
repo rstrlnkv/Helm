@@ -51,7 +51,9 @@ public enum DiskAdvisor {
         "Library/Caches",
         "Library/Developer/Xcode/DerivedData",
         "Library/Developer/CoreSimulator/Caches",
-        "Library/Logs",
+        // `Library/Logs` was here and drew "Cache — safe to clear" over a folder
+        // named Logs. Two different claims: a cache is rebuilt on demand, a log
+        // is the record somebody may still need to read.
     ]
 
     /// `rootPath` is where `root` was scanned from, and it is not `home`: the

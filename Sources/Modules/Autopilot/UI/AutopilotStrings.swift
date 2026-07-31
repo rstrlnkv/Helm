@@ -12,8 +12,8 @@ import Module_Autopilot_Engine
 enum ApStr {
     static var moduleName: String { L("Autopilot") }
     static var summary: String { L("Folders that keep themselves in order") }
-    static var startHint: String { L("Point Helm at a folder and give it rules. A file that arrives is checked against them in order, and the first rule that matches is the one that runs.") }
-    static var needsAccess: String { L("Without Full Disk Access a rule sees only some of the folder, and acts on only some of it.") }
+    static var startHint: String { L("Point Helm at a folder and give it rules. A file that arrives is checked against them in order and the first match wins — and every watched folder is checked again once an hour, so age rules come round.") }
+    static var needsAccess: String { L("Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do.") }
 
     // MARK: - Folders
 
@@ -45,7 +45,7 @@ enum ApStr {
 
     // MARK: - Fields
 
-    static var fieldName: String { L("File name") }
+    static var fieldName: String { L("Full name") }
     static var fieldExtension: String { L("Extension") }
     static var fieldKind: String { L("Kind") }
     static var fieldSize: String { L("Size") }

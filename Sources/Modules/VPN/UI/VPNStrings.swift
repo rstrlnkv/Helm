@@ -12,7 +12,7 @@ enum VPNStr {
         L("No VPNs configured")
     }
     static var noVPNsSystem: String {
-        L("No VPNs configured in System Settings.")
+        L("No VPNs set up yet. Add one in System Settings, under Network › VPN.")
     }
     static var connections: String {
         L("Connections")
@@ -20,8 +20,15 @@ enum VPNStr {
     static var perAppAutomation: String {
         L("Per-app automation")
     }
+    /// Always on screen, not only in the empty state: the section is headed
+    /// "per-app", and `connect(vpnName)` raises a *system* configuration — while
+    /// it is up, everything this Mac sends goes through it. A reader who has met
+    /// split tunnelling will otherwise read this section as that.
+    static var perAppScopeNote: String {
+        L("A VPN carries everything this Mac sends, not only that app, and it takes a few seconds to come up after the app starts.")
+    }
     static var perAppHint: String {
-        L("Add an app to automatically connect a VPN while that app is running.")
+        L("Add an app, and Helm connects a VPN when it launches.")
     }
     static var rulePickerVPN: String { L("VPN") }
     static var rulePickerWhen: String { L("Timing") }

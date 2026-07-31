@@ -13,11 +13,11 @@ public enum TrashReasonText {
         case "needsFullDiskAccess":
             return L("Helm needs Full Disk Access to move this.")
         case "activeSystemExtension":
-            return L("The app has an active system extension. Turn it off first.")
+            return L("Its system extension is still active — turn it off in Login Items & Extensions.")
         case TrashFailure.Reason.outOfScope.rawValue:
-            return L("Outside the folders Helm may clean — nothing was attempted.")
+            return L("Outside the folders Helm may clean — Helm did not touch it.")
         case "noPermission":
-            return L("No permission to move this item — it may be locked or in use.")
+            return L("The file is locked, or you are not its owner. Open Get Info in the Finder to unlock it or change its permissions.")
         default:
             return L("macOS refused to move this item.")
         }

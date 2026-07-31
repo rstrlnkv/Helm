@@ -9,7 +9,7 @@ enum LyStr {
     static var automatic: String { L("Fix as I type") }
     static var automaticNote: String { L("A word is only changed when it is not a word as typed and is one once swapped. Anything valid is left alone.") }
     static var needsAccessibility: String { L("Without Accessibility Helm cannot see what you type, and this does nothing.") }
-    static var suspended: String { L("Paused — the system is in secure input.") }
+    static var suspended: String { L("Paused — a password field is in front, and Helm never reads one.") }
     static var exceptions: String { L("Never change these words") }
     static var exceptionsHint: String { L("One per line.") }
     static var triggers: String { L("When to fix") }
@@ -17,7 +17,7 @@ enum LyStr {
     static var onSpace: String { L("When Space is pressed") }
     static var onReturn: String { L("When Return is pressed") }
     static var onPunctuation: String { L("When a punctuation mark is typed") }
-    static var noAppsYet: String { L("No apps listed — it works everywhere except terminals and password managers.") }
+    static var noAppsYet: String { L("Nothing listed. A few terminals and password managers are left alone already — add any others here.") }
     static var addApp: String { L("Add app…") }
     static var ruleOn: String { L("Fix") }
     static var ruleOff: String { L("Don’t fix") }
@@ -38,7 +38,7 @@ enum LyStr {
     static var introSubtitle: String { L("Before it starts changing what you type.") }
     static var introWhat: String { L("Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match.") }
     static var introWhen: String { L("Only when what you typed is not a word and becomes one once the layout is switched. Anything that is already a word is left alone.") }
-    static var introWhere: String { L("Never in terminals, password fields or password managers — there a strange-looking word is usually the right one.") }
+    static var introWhere: String { L("Never in a password field. And not in the terminals and password managers Helm knows — add any others in Settings.") }
     static var introUndo: String { L("Every change can be undone — tap the same key again, in the app it happened in. And there is a field on this page to try it in, before it touches anything real.") }
     static var introStart: String { L("Got it") }
     static var autoReplaceSection: String { L("Abbreviations") }

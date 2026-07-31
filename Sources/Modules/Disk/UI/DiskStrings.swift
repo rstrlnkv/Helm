@@ -69,7 +69,7 @@ enum DkStr {
     static func stoppedHint(_ files: Int) -> String { L("The walk was stopped after \(files) files, so a folder may hold more than it shows.", [.ru: "Обход прерван, измерено файлов: \(files). Папка может содержать больше, чем показано.", .es: "El recorrido se detuvo tras \(files) archivos, así que una carpeta puede contener más de lo que muestra.", .fr: "L’analyse a été arrêtée après \(files) fichiers : un dossier peut contenir plus que ce qu’il affiche.", .de: "Der Durchlauf wurde nach \(files) Dateien gestoppt, daher kann ein Ordner mehr enthalten als angezeigt.", .ja: "\(files) ファイルで走査を停止したため、フォルダの実際の容量は表示より大きい場合があります。", .zh: "扫描在 \(files) 个文件后停止，文件夹的实际大小可能大于显示值。", .pt: "A varredura parou após \(files) arquivos, então uma pasta pode conter mais do que mostra."]) }
     static var advice: String { L("Recommendations") }
     static var adviceHint: String { L("What could be deleted") }
-    static var adviceKindCache: String { L("Cache — safe to clear") }
+    static var adviceKindCache: String { L("Cache — apps rebuild it") }
     static var adviceKindOldDownload: String { L("Old download") }
     /// What the attribute actually says. The scanner reads `ATTR_CMN_MODTIME`,
     /// which is when the file was last *written*; the row used to claim
