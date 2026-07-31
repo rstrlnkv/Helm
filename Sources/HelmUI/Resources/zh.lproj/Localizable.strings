@@ -197,6 +197,7 @@
 "Helm lives in the menu bar and is made of modules. Each one does a single job, and you can switch off the ones you do not want." = "Helm 常驻菜单栏，由若干模块组成。每个模块只做一件事，不需要的可以关掉。";
 "Helm needs Full Disk Access to move this." = "移动此项需要完全磁盘访问权限。";
 "Helm returns to how it was just after installing. Access you granted in System Settings stays as it is." = "Helm 会回到刚安装完的状态。你在系统设置中授予的权限不受影响。";
+"Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by." = "Helm 会列出它留下的设置、缓存和支持文件，可直接删除。仅在 App 还在废纸篓里时有效——清倒之后就无法辨认这些文件了。";
 "Helm’s language now reaches the parts macOS draws for it. The folder picker, its sidebar and the menus on a text field were English whatever language you had chosen. Numbers and dates follow the language too: a count of files is grouped the way your language groups digits, and a date is written the way your language writes one." = "Helm 的语言现在也适用于 macOS 为它绘制的部分：选择文件夹的窗口、它的边栏以及文本框的菜单此前始终是英文。数字和日期也会按你的语言书写。";
 "Helm’s own copy of the menu-bar indicator, with the choices the system’s one does not offer. macOS shows its own — turn that one off in Keyboard settings, or you get two." = "菜单栏指示器的自有副本，带有系统版本没有的选项。系统的那个仍在：请在键盘设置中关闭，否则会有两个。";
 "Homebrew" = "Homebrew";
@@ -261,6 +262,7 @@
 "Login Items & Extensions: see everything that loads with your Mac, marked as in use, system, or leftover — and remove the leftovers." = "登录项与扩展：查看随 Mac 一起加载的所有项目，标记为使用中、系统或残留——并删除残留项。";
 "Login items can be switched off instead of only deleted. Helm uses the same list macOS itself uses, so the choice survives a reboot, needs no password, and can be undone here or in System Settings." = "登录项现在可以关闭，而不只是删除。Helm 使用 macOS 自身的列表：重启后依然有效，无需密码，可随时恢复。";
 "Logs" = "日志";
+"Look for leftovers automatically when an app goes to the Trash" = "App 移到废纸篓时自动查找残留文件";
 "Look inside" = "查看内部";
 "MB" = "MB";
 "MODULES" = "模块";
@@ -335,7 +337,6 @@
 "OK" = "完成";
 "ON" = "开";
 "Off" = "关闭";
-"Offer to remove a trashed app’s files" = "提议删除废纸篓中 App 的文件";
 "Old download" = "旧下载";
 "On a wide window the settings no longer drift: every page starts at the same left edge, and switching between them stops shifting the content sideways." = "窗口拉宽时设置不再错位：所有页面从同一左边缘开始。";
 "On launch and quit" = "启动与退出时";
@@ -502,7 +503,6 @@
 "The small labels above each module’s figures are legible again, in both light and dark." = "各模块数字上方的小标签重新变得清晰，浅色与深色模式皆是。";
 "The update status no longer claims you are current when no check has run — it shows when the last check happened." = "未执行检查时不再声称已是最新，而是显示上次检查时间。";
 "Then" = "则";
-"These files are named after the app, so emptying the Trash first leaves nothing to offer." = "这些文件以应用的名称命名；清倒废纸篓后就没有可提议的内容了。";
 "This decides the words. Whether the ring turns is the switch below." = "这里只决定文字。圆环是否转动由下面的开关决定。";
 "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word." = "这是你打字时会用到的键。按住或组合使用时一切照常，但不小心单独敲一下就会修正上一个词。";
 "This is the real thing, not a demonstration: it works here exactly as it does anywhere else." = "这是真实的输入框，不是演示：它在这里的行为和在别处完全一样。";

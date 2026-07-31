@@ -197,6 +197,7 @@
 "Helm lives in the menu bar and is made of modules. Each one does a single job, and you can switch off the ones you do not want." = "Helm lives in the menu bar and is made of modules. Each one does a single job, and you can switch off the ones you do not want.";
 "Helm needs Full Disk Access to move this." = "Helm needs Full Disk Access to move this.";
 "Helm returns to how it was just after installing. Access you granted in System Settings stays as it is." = "Helm returns to how it was just after installing. Access you granted in System Settings stays as it is.";
+"Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by." = "Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by.";
 "Helm’s language now reaches the parts macOS draws for it. The folder picker, its sidebar and the menus on a text field were English whatever language you had chosen. Numbers and dates follow the language too: a count of files is grouped the way your language groups digits, and a date is written the way your language writes one." = "Helm’s language now reaches the parts macOS draws for it. The folder picker, its sidebar and the menus on a text field were English whatever language you had chosen. Numbers and dates follow the language too: a count of files is grouped the way your language groups digits, and a date is written the way your language writes one.";
 "Helm’s own copy of the menu-bar indicator, with the choices the system’s one does not offer. macOS shows its own — turn that one off in Keyboard settings, or you get two." = "Helm’s own copy of the menu-bar indicator, with the choices the system’s one does not offer. macOS shows its own — turn that one off in Keyboard settings, or you get two.";
 "Homebrew" = "Homebrew";
@@ -261,6 +262,7 @@
 "Login Items & Extensions: see everything that loads with your Mac, marked as in use, system, or leftover — and remove the leftovers." = "Login Items & Extensions: see everything that loads with your Mac, marked as in use, system, or leftover — and remove the leftovers.";
 "Login items can be switched off instead of only deleted. Helm uses the same list macOS itself uses, so the choice survives a reboot, needs no password, and can be undone here or in System Settings." = "Login items can be switched off instead of only deleted. Helm uses the same list macOS itself uses, so the choice survives a reboot, needs no password, and can be undone here or in System Settings.";
 "Logs" = "Logs";
+"Look for leftovers automatically when an app goes to the Trash" = "Look for leftovers automatically when an app goes to the Trash";
 "Look inside" = "Look inside";
 "MB" = "MB";
 "MODULES" = "MODULES";
@@ -335,7 +337,6 @@
 "OK" = "OK";
 "ON" = "ON";
 "Off" = "Off";
-"Offer to remove a trashed app’s files" = "Offer to remove a trashed app’s files";
 "Old download" = "Old download";
 "On a wide window the settings no longer drift: every page starts at the same left edge, and switching between them stops shifting the content sideways." = "On a wide window the settings no longer drift: every page starts at the same left edge, and switching between them stops shifting the content sideways.";
 "On launch and quit" = "On launch and quit";
@@ -502,7 +503,6 @@
 "The small labels above each module’s figures are legible again, in both light and dark." = "The small labels above each module’s figures are legible again, in both light and dark.";
 "The update status no longer claims you are current when no check has run — it shows when the last check happened." = "The update status no longer claims you are current when no check has run — it shows when the last check happened.";
 "Then" = "Then";
-"These files are named after the app, so emptying the Trash first leaves nothing to offer." = "These files are named after the app, so emptying the Trash first leaves nothing to offer.";
 "This decides the words. Whether the ring turns is the switch below." = "This decides the words. Whether the ring turns is the switch below.";
 "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word." = "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word.";
 "This is the real thing, not a demonstration: it works here exactly as it does anywhere else." = "This is the real thing, not a demonstration: it works here exactly as it does anywhere else.";
