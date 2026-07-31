@@ -75,9 +75,15 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
                               advice: DiskAdvisor.advise(root: tree, rootPath: path,
                                                          home: NSHomeDirectory()))
         }
+        // The reclaim is owed whether the scan finished or was stopped — and Stop
+        // is pressed when the footprint is at its highest, because that is why
+        // the person pressed it. It used to sit inside `if let result`, so a
+        // cancelled walk of a volume handed nothing back to macOS and wrote
+        // nothing to the trail. Only the sentence about what was found belongs
+        // on the success path.
+        MemoryReclaim.afterHeavyWork("disk.scan")
+        HelmLog.shared.memory("disk.scan")
         if let result {
-            MemoryReclaim.afterHeavyWork("disk.scan")
-            HelmLog.shared.memory("disk.scan")
             HelmLog.shared.info("disk", "scanned \(LogRoot.label(path)): \(result.filesScanned) files in "
                                 + String(format: "%.1fs", result.seconds))
         }

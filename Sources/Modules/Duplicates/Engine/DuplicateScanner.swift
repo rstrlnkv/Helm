@@ -62,13 +62,17 @@ public final class DuplicateScanner: @unchecked Sendable {
                      onProgress: (@Sendable (DuplicateProgress) -> Void)? = nil)
     -> [DuplicateGroup]? {
         let files = walk(root, onProgress: onProgress)
+        // Before the cancellation check, not after it. Stop is pressed when the
+        // footprint is at its highest — that is why it is pressed — and the
+        // reclaim used to sit below this line, so the one run that most needed
+        // its memory handed back was the only run that never got it.
+        MemoryReclaim.afterHeavyWork("duplicates.walk")
+        HelmLog.shared.memory("duplicates.walk")
         if isCancelled { return nil }
 
         // A subtree the walk was refused is a hole in "what is duplicated", and
         // a hole nobody is told about reads as a clean folder.
         let refused = unreadablePaths
-        MemoryReclaim.afterHeavyWork("duplicates.walk")
-        HelmLog.shared.memory("duplicates.walk")
         HelmLog.shared.info("duplicates", "walked \(LogRoot.label(root)): "
                             + "\(files.count) files at or above the floor"
                             + (refused > 0 ? ", \(refused) unreadable" : ""))
@@ -120,18 +124,15 @@ public final class DuplicateScanner: @unchecked Sendable {
             }
             bucketLock.lock(); buckets[index] = found; bucketLock.unlock()
         }
+        // Same as the walk above: the hashing loop is the one that has already
+        // caused a 48 GB incident, and a stopped run is where it is biggest.
+        MemoryReclaim.afterHeavyWork("duplicates.hash")
+        HelmLog.shared.memory("duplicates.hash")
         if isCancelled { return nil }
         let groups = buckets.flatMap { $0 }.sorted { $0.wasted > $1.wasted }
         // Unreadable files leave the running silently by design; the count is
         // what tells a triage session whether "no duplicates" meant "none" or
         // "nothing could be read".
-        // Reclaimed *and* reported. This phase had the reclaim and not the
-        // reading, which left the one loop that has already caused a 48 GB
-        // incident handing its memory back without ever saying what it had taken
-        // — a regression here would not appear in the trail at all, while its
-        // sibling `duplicates.walk` two dozen lines up reports normally.
-        MemoryReclaim.afterHeavyWork("duplicates.hash")
-        HelmLog.shared.memory("duplicates.hash")
         let unreadable = progress.unreadableCount
         HelmLog.shared.info("duplicates", "\(groups.count) groups from \(total) candidates"
                             + (unreadable > 0 ? ", \(unreadable) unreadable" : ""))
