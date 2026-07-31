@@ -188,7 +188,6 @@
 "Group Containers" = "Групповые контейнеры";
 "Helm Settings" = "Настройки Helm";
 "Helm can be used with VoiceOver. Every control now says what it is — the rule editor was built from pop-up buttons and fields that announced nothing, so a rule could not be written at all without sight." = "Helm работает с VoiceOver. Каждый элемент управления теперь называет себя — редактор правил состоял из кнопок и полей, не сообщавших ничего, и правило нельзя было составить вслепую.";
-"Helm cannot see the Trash without Full Disk Access — switched on, this does nothing." = "Без «Доступа к диску» Helm не видит Корзину: включённый переключатель ничего не делает.";
 "Helm could crash outright when an application quit while the VPN module happened to be looking at the list of running programs. It was reading that list from the wrong thread, where macOS does not merely give a stale answer — it takes the process down." = "Helm мог аварийно завершиться, когда приложение закрывалось ровно в тот момент, когда модуль VPN смотрел на список запущенных. Список читался не из того потока, а macOS в этом случае не просто отдаёт устаревший ответ — она роняет процесс.";
 "Helm downloads Homebrew’s own installer and runs it. macOS asks for an administrator password once, to create /opt/homebrew." = "Helm скачает официальный установщик Homebrew и запустит его. macOS один раз запросит пароль администратора, чтобы создать /opt/homebrew.";
 "Helm introduces itself. On a new installation a short tour opens once: what Helm is, then one screen per module, with Back, Next and Skip. It only tells you what is there — nothing is switched on and no permission is asked for. If Helm was already installed, you get it once too, because Autopilot and Duplicates arrived without ever being introduced." = "Helm теперь представляется. При первой установке один раз открывается короткий тур: что такое Helm, затем по экрану на модуль, с кнопками «Назад», «Далее» и «Пропустить». Он только рассказывает — ничего не включает и никаких разрешений не просит. Если Helm уже стоял, тур покажется один раз и вам: «Автопилот» и «Дубликаты» появились, когда о них никто не рассказал.";
@@ -589,9 +588,10 @@
 "Without Accessibility Helm cannot see what you type, and this does nothing." = "Без универсального доступа Helm не видит набранное, и это не работает.";
 "Without Full Disk Access Helm cannot read every folder, and a short list of duplicates looks exactly like a folder that has none." = "Без «Доступа к диску» Helm прочитает не все папки: часть дубликатов не найдётся, а результат будет выглядеть так же, как чистая папка.";
 "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do." = "Без «Доступа к диску» защищённая папка читается пустой: ни одно правило не срабатывает — и это выглядит так же, как папка, где нечего делать.";
-"Without Full Disk Access an app’s containers stay behind." = "Без «Полного доступа к диску» контейнеры приложения останутся на диске.";
-"Without Full Disk Access some files cannot be moved." = "Без «Полного доступа к диску» часть файлов не удастся переместить.";
-"Without Full Disk Access some folders scan as empty." = "Без «Полного доступа к диску» часть папок будет показана пустыми.";
+"Without Full Disk Access an app’s containers stay behind, and Helm cannot see the Trash to look for leftovers." = "Без «Доступа к диску» контейнеры приложения останутся на диске, а Корзину Helm не увидит и остатки не найдёт.";
+"Without Full Disk Access an app’s containers stay behind." = "Без «Доступа к диску» контейнеры приложения останутся на диске.";
+"Without Full Disk Access some files cannot be moved." = "Без «Доступа к диску» часть файлов не удастся переместить.";
+"Without Full Disk Access some folders scan as empty." = "Без «Доступа к диску» часть папок будет показана пустыми.";
 "Wording and sizes reviewed across the app: shorter labels, one name per thing, and sizes in your language — “432,95 ГБ”, not “432,95 GB”." = "Пересмотрены надписи и размеры по всему приложению: короче формулировки, одно название на одну вещь, размеры на вашем языке — «432,95 ГБ», а не «432,95 GB».";
 "Write a log file" = "Вести журнал";
 "Yellow" = "Жёлтый";

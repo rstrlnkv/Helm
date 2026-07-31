@@ -8,6 +8,12 @@ enum UnStr {
     static var summary: String { L("Remove an app with all of its files") }
     static var searchApps: String { L("Search apps") }
     static var scanning: String { L("Scanning…") }
+    /// The same note when the Trash switch is on, because then the missing
+    /// grant costs two things rather than one — and one grant deserves one
+    /// notice, not a second row with its own Grant button saying the same.
+    static var accessNeededWithWatch: String {
+        L("Without Full Disk Access an app’s containers stay behind, and Helm cannot see the Trash to look for leftovers.")
+    }
     static var removalNeedsAccess: String { L("Without Full Disk Access an app’s containers stay behind.") }
     static var moveToTrash: String { L("Move to Trash") }
     static func confirmTrash(_ count: Int, _ size: String) -> String {
@@ -68,10 +74,6 @@ enum UnStr {
     /// emptying the Trash first leaves nothing to identify them by.
     static var watchTrashNote: String {
         L("Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by.")
-    }
-    /// Shown under the switch when it is on and the grant is not there.
-    static var watchTrashNeedsAccess: String {
-        L("Helm cannot see the Trash without Full Disk Access — switched on, this does nothing.")
     }
     static var tabApps: String { L("Apps") }
     static var tabOrphans: String { L("Leftovers") }
