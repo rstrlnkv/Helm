@@ -197,6 +197,7 @@
 "Helm lives in the menu bar and is made of modules. Each one does a single job, and you can switch off the ones you do not want." = "Helm はメニューバーに常駐し、モジュールでできています。それぞれが一つの仕事をし、要らないものはオフにできます。";
 "Helm needs Full Disk Access to move this." = "移動にはフルディスクアクセスが必要です。";
 "Helm returns to how it was just after installing. Access you granted in System Settings stays as it is." = "Helm はインストール直後の状態に戻ります。システム設定で許可したアクセスはそのままです。";
+"Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by." = "残された設定・キャッシュ・サポートファイルを表示し、そのまま削除できます。App がゴミ箱にある間だけです。空にすると、どのファイルか見分けられなくなります。";
 "Helm’s language now reaches the parts macOS draws for it. The folder picker, its sidebar and the menus on a text field were English whatever language you had chosen. Numbers and dates follow the language too: a count of files is grouped the way your language groups digits, and a date is written the way your language writes one." = "macOS が描く部分にも Helm の言語が届くようになりました。フォルダ選択画面やそのサイドバー、テキストフィールドのメニューは英語のままでした。数字や日付も言語に合わせて表記されます。";
 "Helm’s own copy of the menu-bar indicator, with the choices the system’s one does not offer. macOS shows its own — turn that one off in Keyboard settings, or you get two." = "システムの入力ソース表示を、設定できる形で複製したものです。システム側は残るので、キーボード設定でオフにしないと2つ並びます。";
 "Homebrew" = "Homebrew";
@@ -261,6 +262,7 @@
 "Login Items & Extensions: see everything that loads with your Mac, marked as in use, system, or leftover — and remove the leftovers." = "ログイン項目と機能拡張：Mac と一緒に読み込まれるものを「使用中」「システム」「残存物」の印付きで一覧表示し、残存物を削除できます。";
 "Login items can be switched off instead of only deleted. Helm uses the same list macOS itself uses, so the choice survives a reboot, needs no password, and can be undone here or in System Settings." = "ログイン項目は削除だけでなくオフにできます。macOS 自身と同じ一覧を使うため、再起動後も維持され、パスワード不要で元に戻せます。";
 "Logs" = "ログ";
+"Look for leftovers automatically when an app goes to the Trash" = "App がゴミ箱に入ったら、残ったファイルを自動で探す";
 "Look inside" = "中を見る";
 "MB" = "MB";
 "MODULES" = "モジュール";
@@ -335,7 +337,6 @@
 "OK" = "完了";
 "ON" = "オン";
 "Off" = "オフ";
-"Offer to remove a trashed app’s files" = "ゴミ箱にある App のファイル削除を提案";
 "Old download" = "古いダウンロード";
 "On a wide window the settings no longer drift: every page starts at the same left edge, and switching between them stops shifting the content sideways." = "ウィンドウを広げても設定がずれません。すべてのページが同じ左端から始まります。";
 "On launch and quit" = "起動時と終了時";
@@ -502,7 +503,6 @@
 "The small labels above each module’s figures are legible again, in both light and dark." = "各モジュールの数値の上にある小さなラベルが、ライトでもダークでも読めるようになりました。";
 "The update status no longer claims you are current when no check has run — it shows when the last check happened." = "未確認のまま「最新です」と表示せず、最後に確認した時刻を表示します。";
 "Then" = "その時";
-"These files are named after the app, so emptying the Trash first leaves nothing to offer." = "これらのファイルはアプリの名前で作られています。ゴミ箱を空にすると、提案できるものは残りません。";
 "This decides the words. Whether the ring turns is the switch below." = "ここで決まるのは文字だけです。リングが回るかどうかは下のスイッチで決まります。";
 "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word." = "これは入力に使うキーです。押しっぱなしや同時押しでは通常どおりですが、単独でうっかり叩くと直前の単語が修正されます。";
 "This is the real thing, not a demonstration: it works here exactly as it does anywhere else." = "これはデモではなく本物の入力欄です。ここでも他のアプリと同じように動きます。";

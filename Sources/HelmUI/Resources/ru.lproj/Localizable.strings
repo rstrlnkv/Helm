@@ -197,6 +197,7 @@
 "Helm lives in the menu bar and is made of modules. Each one does a single job, and you can switch off the ones you do not want." = "Helm живёт в строке меню и состоит из модулей. Каждый делает одно дело, и ненужные можно выключить.";
 "Helm needs Full Disk Access to move this." = "Для перемещения нужен «Доступ к диску».";
 "Helm returns to how it was just after installing. Access you granted in System Settings stays as it is." = "Helm вернётся к состоянию сразу после установки. Доступ, выданный в Системных настройках, останется как есть.";
+"Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by." = "Helm покажет оставшиеся настройки, кеши и служебные файлы — их можно сразу удалить. Только пока приложение в Корзине: если очистить её, опознать файлы будет уже не по чему.";
 "Helm’s language now reaches the parts macOS draws for it. The folder picker, its sidebar and the menus on a text field were English whatever language you had chosen. Numbers and dates follow the language too: a count of files is grouped the way your language groups digits, and a date is written the way your language writes one." = "Язык Helm теперь распространяется и на то, что рисует macOS. Окно выбора папки, его боковое меню и меню у текстового поля оставались английскими при любом выбранном языке. Числа и даты тоже следуют языку: количество файлов разделяется по разрядам, а дата пишется так, как её пишут в вашем языке.";
 "Helm’s own copy of the menu-bar indicator, with the choices the system’s one does not offer. macOS shows its own — turn that one off in Keyboard settings, or you get two." = "Своя копия индикатора в строке меню — с настройками, которых нет у системного. Системный никуда не девается: выключите его в настройках клавиатуры, иначе их будет два.";
 "Homebrew" = "Homebrew";
@@ -261,6 +262,7 @@
 "Login Items & Extensions: see everything that loads with your Mac, marked as in use, system, or leftover — and remove the leftovers." = "«Объекты входа и расширения»: видно всё, что грузится вместе с Mac, с пометками «используется», «системный» и «остаток» — остатки можно удалить.";
 "Login items can be switched off instead of only deleted. Helm uses the same list macOS itself uses, so the choice survives a reboot, needs no password, and can be undone here or in System Settings." = "Объекты входа теперь можно отключить, а не только удалить. Helm пользуется тем же списком, что и сама macOS: выбор переживает перезагрузку, пароль не нужен, вернуть можно здесь или в Системных настройках.";
 "Logs" = "Логи";
+"Look for leftovers automatically when an app goes to the Trash" = "Автоматически искать остатки, если приложение перемещено в Корзину";
 "Look inside" = "Заглянуть внутрь";
 "MB" = "МБ";
 "MODULES" = "МОДУЛИ";
@@ -335,7 +337,6 @@
 "OK" = "Готово";
 "ON" = "ВКЛ";
 "Off" = "Выключено";
-"Offer to remove a trashed app’s files" = "Предлагать удалить файлы, пока приложение в Корзине";
 "Old download" = "Старая загрузка";
 "On a wide window the settings no longer drift: every page starts at the same left edge, and switching between them stops shifting the content sideways." = "На широком окне настройки больше не разъезжаются: все страницы начинаются от одного левого края, и переключение между ними не сдвигает содержимое вбок.";
 "On launch and quit" = "При запуске и выходе";
@@ -502,7 +503,6 @@
 "The small labels above each module’s figures are legible again, in both light and dark." = "Мелкие подписи над показателями модулей снова читаются — и в светлой теме, и в тёмной.";
 "The update status no longer claims you are current when no check has run — it shows when the last check happened." = "Статус обновлений больше не утверждает, что версия последняя, если проверки не было — показывает, когда проверяли в последний раз.";
 "Then" = "То";
-"These files are named after the app, so emptying the Trash first leaves nothing to offer." = "Эти файлы названы по приложению, поэтому после очистки Корзины предлагать будет нечего.";
 "This decides the words. Whether the ring turns is the switch below." = "Это решает про слова. Вращается ли кольцо — переключатель ниже.";
 "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word." = "Это клавиша, которой вы печатаете. Зажатая или в сочетании она работает как обычно, но случайное одиночное нажатие исправит последнее слово.";
 "This is the real thing, not a demonstration: it works here exactly as it does anywhere else." = "Поле настоящее, а не демонстрация: здесь модуль работает точно так же, как в любом другом приложении.";

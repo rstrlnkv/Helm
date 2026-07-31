@@ -197,6 +197,7 @@
 "Helm lives in the menu bar and is made of modules. Each one does a single job, and you can switch off the ones you do not want." = "Helm vit dans la barre des menus et se compose de modules. Chacun fait une seule chose, et vous pouvez désactiver ceux dont vous ne voulez pas.";
 "Helm needs Full Disk Access to move this." = "Helm a besoin de l’accès complet au disque pour le déplacer.";
 "Helm returns to how it was just after installing. Access you granted in System Settings stays as it is." = "Helm revient à son état juste après l’installation. Les accès accordés dans Réglages Système ne changent pas.";
+"Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by." = "Helm montre les réglages, caches et fichiers de support laissés derrière, prêts à supprimer. Seulement tant que l’app est dans la corbeille : une fois vidée, plus rien ne permet de les identifier.";
 "Helm’s language now reaches the parts macOS draws for it. The folder picker, its sidebar and the menus on a text field were English whatever language you had chosen. Numbers and dates follow the language too: a count of files is grouped the way your language groups digits, and a date is written the way your language writes one." = "La langue de Helm atteint désormais ce que macOS dessine pour lui : le sélecteur de dossier, sa barre latérale et les menus d’un champ de texte restaient en anglais. Les nombres et les dates suivent aussi la langue.";
 "Helm’s own copy of the menu-bar indicator, with the choices the system’s one does not offer. macOS shows its own — turn that one off in Keyboard settings, or you get two." = "Une copie de l’indicateur avec les choix que celui du système n’offre pas. Celui du système reste : désactivez-le dans les réglages du clavier, sinon vous en aurez deux.";
 "Homebrew" = "Homebrew";
@@ -261,6 +262,7 @@
 "Login Items & Extensions: see everything that loads with your Mac, marked as in use, system, or leftover — and remove the leftovers." = "Ouverture et extensions : voyez tout ce qui se charge avec votre Mac, marqué en cours d’utilisation, système ou résidu — et supprimez les résidus.";
 "Login items can be switched off instead of only deleted. Helm uses the same list macOS itself uses, so the choice survives a reboot, needs no password, and can be undone here or in System Settings." = "Les éléments d’ouverture peuvent être désactivés, pas seulement supprimés. Helm utilise la liste de macOS : le choix survit au redémarrage, sans mot de passe, et se défait.";
 "Logs" = "Journaux";
+"Look for leftovers automatically when an app goes to the Trash" = "Chercher les restes automatiquement quand une app va à la corbeille";
 "Look inside" = "Regarder dedans";
 "MB" = "Mo";
 "MODULES" = "MODULES";
@@ -335,7 +337,6 @@
 "OK" = "OK";
 "ON" = "ACTIF";
 "Off" = "Désactivée";
-"Offer to remove a trashed app’s files" = "Proposer de supprimer les fichiers d’une app mise à la corbeille";
 "Old download" = "Téléchargement ancien";
 "On a wide window the settings no longer drift: every page starts at the same left edge, and switching between them stops shifting the content sideways." = "Sur une fenêtre large, les réglages ne dérivent plus : toutes les pages commencent au même bord gauche.";
 "On launch and quit" = "À l’ouverture et à la fermeture";
@@ -502,7 +503,6 @@
 "The small labels above each module’s figures are legible again, in both light and dark." = "Les petites étiquettes au-dessus des chiffres de chaque module sont de nouveau lisibles, en clair comme en sombre.";
 "The update status no longer claims you are current when no check has run — it shows when the last check happened." = "L’état des mises à jour n’affirme plus que vous êtes à jour sans vérification : il indique la dernière vérification.";
 "Then" = "Alors";
-"These files are named after the app, so emptying the Trash first leaves nothing to offer." = "Ces fichiers portent le nom de l’app : une fois la corbeille vidée, il n’y a plus rien à proposer.";
 "This decides the words. Whether the ring turns is the switch below." = "Ceci décide des mots. C’est l’interrupteur ci-dessous qui décide si l’anneau tourne.";
 "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word." = "C’est une touche dont vous vous servez en tapant. Maintenue ou combinée elle fonctionne normalement, mais une pression isolée par mégarde corrigera le dernier mot.";
 "This is the real thing, not a demonstration: it works here exactly as it does anywhere else." = "Ce champ est réel, pas une démonstration : le module s’y comporte comme partout ailleurs.";

@@ -52,27 +52,22 @@ enum UnStr {
     /// left to ask about — so "Later" would be a lie and «Отменить» is the system
     /// word for "make nothing happen", which this does not do.
     static var trashOfferKeep: String { L("Keep these files") }
-    /// The switch on the Leftovers tab. Says what Helm will do, not what it will
-    /// watch: "watch the Trash" describes the mechanism and asks the reader to
-    /// work out the point of it.
+    /// The switch on the Leftovers tab.
     ///
     /// Impersonal, like every other switch in Helm and — the reason that settles
-    /// it — like Finder's own Trash settings in all eight languages. The first
-    /// person it used to be ("when I trash an app") is the one string in the app
-    /// that read as somebody's diary, and it cost seven translators a politeness
-    /// decision they should never have been asked to make.
+    /// it — like Finder's own Trash settings in all eight languages.
     ///
-    /// "a trashed app's" rather than "when it goes to the Trash": the offer
-    /// covers the whole time the app sits there, including apps that arrived
-    /// before the switch was turned on — `setWatchingTrash` emits `trashChanged`
-    /// for exactly that. The clause described one second of it.
-    static var watchTrash: String { L("Offer to remove a trashed app’s files") }
-    /// The one fact the label cannot carry, and the only one with a consequence:
-    /// empty the Trash first and there is no offer at all, because the bundle is
-    /// what says whose files these are. The sentence it used to open with was the
-    /// label again in more words.
+    /// "when an app goes to the Trash" rather than a state: the person is being
+    /// asked to turn on a thing that happens *at a moment*, and the moment is
+    /// what they will recognise. The offer still covers apps already sitting
+    /// there when the switch goes on — `setWatchingTrash` emits `trashChanged`
+    /// for exactly that — but that is the caption's business, not the label's.
+    static var watchTrash: String { L("Look for leftovers automatically when an app goes to the Trash") }
+    /// What the feature does, and the one limit worth knowing before turning it
+    /// on: the bundle in the Trash is what says whose files these are, so
+    /// emptying the Trash first leaves nothing to identify them by.
     static var watchTrashNote: String {
-        L("These files are named after the app, so emptying the Trash first leaves nothing to offer.")
+        L("Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by.")
     }
     /// Shown under the switch when it is on and the grant is not there.
     static var watchTrashNeedsAccess: String {
