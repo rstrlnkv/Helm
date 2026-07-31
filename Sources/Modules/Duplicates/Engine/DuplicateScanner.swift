@@ -66,7 +66,6 @@ public final class DuplicateScanner: @unchecked Sendable {
         // footprint is at its highest — that is why it is pressed — and the
         // reclaim used to sit below this line, so the one run that most needed
         // its memory handed back was the only run that never got it.
-        MemoryReclaim.afterHeavyWork("duplicates.walk")
         HelmLog.shared.memory("duplicates.walk")
         if isCancelled { return nil }
 
@@ -126,7 +125,6 @@ public final class DuplicateScanner: @unchecked Sendable {
         }
         // Same as the walk above: the hashing loop is the one that has already
         // caused a 48 GB incident, and a stopped run is where it is biggest.
-        MemoryReclaim.afterHeavyWork("duplicates.hash")
         HelmLog.shared.memory("duplicates.hash")
         if isCancelled { return nil }
         let groups = buckets.flatMap { $0 }.sorted { $0.wasted > $1.wasted }

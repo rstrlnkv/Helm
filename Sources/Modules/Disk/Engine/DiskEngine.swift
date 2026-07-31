@@ -81,7 +81,6 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
         // cancelled walk of a volume handed nothing back to macOS and wrote
         // nothing to the trail. Only the sentence about what was found belongs
         // on the success path.
-        MemoryReclaim.afterHeavyWork("disk.scan")
         HelmLog.shared.memory("disk.scan")
         if let result {
             HelmLog.shared.info("disk", "scanned \(LogRoot.label(path)): \(result.filesScanned) files in "

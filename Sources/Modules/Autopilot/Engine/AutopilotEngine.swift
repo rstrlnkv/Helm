@@ -445,7 +445,6 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     public func sweepAll() -> [SweepReport] {
         let reports = folders.filter(\.enabled).map { sweep($0) }
         guard !reports.isEmpty else { return reports }
-        MemoryReclaim.afterHeavyWork("autopilot.sweep")
         HelmLog.shared.memory("autopilot.sweep")
         return reports
     }

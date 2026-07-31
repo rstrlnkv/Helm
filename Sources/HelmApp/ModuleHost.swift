@@ -85,7 +85,6 @@ import HelmUI
         // The reclaim comes first: freeing returns memory to malloc and not to
         // macOS, so a reading taken before it would report nothing given back
         // however much the teardown released.
-        MemoryReclaim.afterHeavyWork("module.\(key).disable")
         if let before, let after = MemoryFootprint.current() {
             HelmLog.shared.memory("module.\(key).disable", grewBy: after - before)
         }

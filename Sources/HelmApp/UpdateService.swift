@@ -97,7 +97,6 @@ import HelmRuntime
                 // silent update check could only ever appear in the trail as
                 // growth between two `idle` readings.
                 let digestMatches = ReleaseDigest.matches(fileAt: tmp, expected: expected)
-                MemoryReclaim.afterHeavyWork("update.digest")
                 HelmLog.shared.memory("update.digest")
                 guard digestMatches else {
                     HelmLog.shared.error("update", "digest mismatch for \(asset) — refusing to install")
