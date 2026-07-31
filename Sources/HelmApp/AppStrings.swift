@@ -41,6 +41,12 @@ enum AppStr {
     static var updateAndRelaunch: String { L("Update & Relaunch") }
     static var downloadingUpdate: String { L("Downloading…") }
     static var installingUpdate: String { L("Installing…") }
+    /// Not `updateFailed`. A download that does not match what the release
+    /// published is not a network hiccup, and Retry is the wrong offer: the
+    /// honest next step is to look at the release itself.
+    static var updateDigestMismatch: String {
+        L("The download did not match what the release published, so Helm did not install it.")
+    }
     static var updateFailed: String { L("Update failed") }
     static var moduleOrderSection: String { L("Module order") }
     static var edit: String { L("Edit") }
@@ -121,8 +127,12 @@ enum AppStr {
         }
     }
 
-    static var openDiskAccessPane: String { L("Open disk access…") }
-    static var openAccessibilityPane: String { L("Open accessibility…") }
+    /// The Uninstaller's button and this one open the same pane and said two
+    /// different things — and the seven translations of both were identical,
+    /// which is the proof they were one concept with two English spellings.
+    /// One key each, naming the pane the way System Settings does.
+    static var openDiskAccessPane: String { L("Open Full Disk Access…") }
+    static var openAccessibilityPane: String { L("Open Accessibility…") }
     static var retry: String { L("Try again") }
     /// Shown when a release publishes no digest for its asset: the updater
     /// refuses to swap a bundle it cannot check, and hands the user the page.

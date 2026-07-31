@@ -102,6 +102,13 @@ public extension PermissionCheck {
 public enum TrashFailure {
     public enum Reason: String, Codable, Sendable, Equatable, Hashable {
         case needsFullDiskAccess, activeSystemExtension, noPermission, systemRefused
+        /// The volume is mounted read-only — a disk image, a locked backup, a
+        /// share. Nothing about permissions will help, and the person can see
+        /// the cause the moment it is named.
+        case readOnlyVolume
+        /// No room left. It reads as nonsense until you know the Trash is a
+        /// folder on the same volume, so moving something there writes.
+        case diskFull
         /// Helm itself refused: the path is not inside a folder an app may
         /// leave things in. Not a macOS error — nothing was attempted.
         case outOfScope
@@ -109,12 +116,19 @@ public enum TrashFailure {
 
     /// Cocoa's "you may not write here" error.
     private static let noPermissionCode = 513   // NSFileWriteNoPermissionError
+    /// The two other Cocoa codes a move to the Trash actually produces, and
+    /// which used to arrive as the general refusal — a sentence with no cause
+    /// in it and no step out.
+    private static let readOnlyVolumeCode = 642 // NSFileWriteVolumeReadOnlyError
+    private static let outOfSpaceCode = 640     // NSFileWriteOutOfSpaceError
 
     /// Classifies using the error macOS returned, not the shape of the path:
     /// blaming Full Disk Access for every container failure sent users to a
     /// setting they had already granted.
     public static func reason(path: String, errorCode: Int, hasSystemExtension: Bool) -> Reason {
         if hasSystemExtension, path.hasSuffix(".app") { return .activeSystemExtension }
+        if errorCode == readOnlyVolumeCode { return .readOnlyVolume }
+        if errorCode == outOfSpaceCode { return .diskFull }
         guard errorCode == noPermissionCode else { return .systemRefused }
         let protected = path.contains("/Library/Containers/")
             || path.contains("/Library/Group Containers/")

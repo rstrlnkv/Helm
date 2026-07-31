@@ -37,7 +37,6 @@
 "Add tag" = "Tag hinzufügen";
 "After an update Helm tells you which permissions stopped working and takes you straight to the right pane. An update always revokes them — the checkbox stays ticked while nothing works." = "Nach einem Update sagt Helm, welche Berechtigungen nicht mehr wirken, und führt direkt zum richtigen Bereich. Ein Update entzieht sie immer — das Häkchen bleibt, die Funktion nicht.";
 "All" = "Alle";
-"All extras to basket" = "Alle Überzähligen in den Korb";
 "Always" = "Immer";
 "An app can no longer claim other apps' files as its own leftovers by naming itself unusually." = "Eine App kann fremde Dateien nicht mehr als eigene Reste ausgeben, indem sie sich ungewöhnlich benennt.";
 "An app that keeps the Mac awake can now be narrowed to the situation you mean: only with an external display, only on power, or both." = "Eine App, die den Mac wach hält, lässt sich jetzt eingrenzen: nur mit externem Bildschirm, nur am Netzstrom oder beides.";
@@ -267,7 +266,9 @@
 "Manage Homebrew packages" = "Homebrew-Pakete verwalten";
 "Manage…" = "Verwalten…";
 "Manual" = "Manuell";
+"Mark every extra copy" = "Alle Überzähligen markieren";
 "Mark for removal" = "Zum Entfernen markieren";
+"Mark the extra copies" = "Überzählige Kopien markieren";
 "Media" = "Medien";
 "Medium" = "Mittel";
 "Menu Bar" = "Menüleiste";
@@ -343,12 +344,11 @@
 "One key does both fixes. Pick right ⌘, ⌥, ⌃ or ⇧ and press it on its own: the first tap fixes the last word, the next puts it back. It keeps working as a modifier — held down, or pressed with anything else, it is an ordinary key again, so nothing you already use it for stops working." = "Eine Taste für beide Korrekturen: rechte ⌘, ⌥, ⌃ oder ⇧ wählen und allein drücken. Das erste Mal korrigiert das letzte Wort, das nächste stellt es zurück. Gehalten oder kombiniert bleibt sie ein gewöhnlicher Modifikator.";
 "One per line." = "Eines pro Zeile.";
 "Only when what you typed is not a word and becomes one once the layout is switched. Anything that is already a word is left alone." = "Nur wenn das Getippte kein Wort ist und nach dem Belegungswechsel eines wird. Was schon ein Wort ist, bleibt unberührt.";
+"Open Accessibility…" = "Bedienungshilfen öffnen…";
 "Open Extensions…" = "Erweiterungen öffnen…";
 "Open Full Disk Access…" = "Festplattenvollzugriff öffnen…";
 "Open Helm at login" = "Helm bei der Anmeldung öffnen";
 "Open Keyboard settings…" = "Tastatur-Einstellungen öffnen…";
-"Open accessibility…" = "Bedienungshilfen öffnen…";
-"Open disk access…" = "Festplattenvollzugriff öffnen…";
 "Or a key combination" = "Oder eine Tastenkombination";
 "Orange" = "Orange";
 "Other" = "Anderes";
@@ -479,10 +479,13 @@
 "The app itself — always removed" = "Die App selbst — wird immer entfernt";
 "The battery guard — which stops Keep Awake from running a session down to empty — now starts on for new installs, at 20%. It shipped off by default, beside a session length that defaults to indefinite." = "Der Akkuschutz — der verhindert, dass Wach halten den Akku ganz leert — ist bei Neuinstallationen jetzt standardmäßig bei 20 % aktiv. Er war standardmäßig aus, direkt neben einer Dauer, die standardmäßig „unbegrenzt“ ist.";
 "The copy that was there first. Helm never offers every copy of a file." = "Die Kopie, die am längsten da ist. Helm bietet nie alle Kopien einer Datei an.";
+"The disk is full. Moving to the Trash needs room, because the Trash is a folder on the same disk — empty it and try again." = "Das Volume ist voll. In den Papierkorb legen braucht Platz, denn der Papierkorb liegt auf demselben Volume — leere ihn und versuche es erneut.";
 "The disk list can be walked from the keyboard: arrow keys between rows, Return to go into a folder, ⌘↑ to come back out. And the screen now fits the width it has: on a narrow window the ring gives way to the list, which carries the same facts in less room." = "Die Festplattenliste lässt sich per Tastatur durchgehen: Pfeiltasten zwischen Zeilen, Return in einen Ordner hinein, ⌘↑ wieder heraus. Und die Leiste darüber passt wieder — die Scan-Angabe steht jetzt unter dem Ring.";
 "The disk map now answers VoiceOver: every wedge reads its name, its size and its share of the folder, and can be opened from there. Folders in the list beside it can be opened from the context menu too — the double-click still works and is no longer the only way." = "Die Festplattenkarte antwortet jetzt VoiceOver: Jedes Segment nennt Namen, Größe und Anteil und lässt sich von dort öffnen. Ordner in der Liste daneben lassen sich auch über das Kontextmenü öffnen.";
 "The disk ring grows into the folder you opened. It shows three levels at a time, and the level that arrived when you drilled in had nowhere to come from — it appeared all at once at the end of the animation. Now it slides in with the rest." = "Der Festplattenring wächst in den geöffneten Ordner hinein: die Ebene, die beim Hineingehen dazukam, erschien am Ende der Animation schlagartig und gleitet jetzt mit herein.";
 "The disk ring was measuring the wrong thing when you scanned a folder: it drew the volume's free space alongside the folder's contents, so a small folder came out as a blank grey circle. And “Scan again” now scans the same place again instead of sending you back to the volume list. In the duplicate finder, files that refused to move stay ticked, so you can fix the reason and try again without starting over. Homebrew search puts the name you typed first." = "Der Festplattenring maß beim Scannen eines Ordners das Falsche: Er zeichnete den freien Platz des Volumes neben den Inhalt, und ein kleiner Ordner wurde zu einem leeren grauen Kreis. «Erneut scannen» scannt jetzt dieselbe Stelle. In der Duplikatsuche bleiben abgelehnte Dateien angehakt. Die Homebrew-Suche stellt den getippten Namen nach vorn.";
+"The disk this is on is read-only. Eject it and unlock it, or copy what you need elsewhere." = "Das Volume ist schreibgeschützt. Wirf es aus und entsperre es, oder kopiere das Nötige woandershin.";
+"The download did not match what the release published, so Helm did not install it." = "Der Download stimmt nicht mit dem überein, was die Version veröffentlicht hat — Helm hat ihn nicht installiert.";
 "The duplicate finder is its own screen now, right after Disk. It used to search whatever folder the ring happened to be showing, so you could only look where you had already scanned; now you point it at a folder and it remembers it. It still compares content rather than names, still keeps one copy of every group, and still never offers a hard link." = "Die Duplikatsuche hat einen eigenen Bereich, direkt nach Festplatte. Bisher durchsuchte sie den Ordner, den gerade der Ring zeigte; jetzt wählst du den Ordner, und sie merkt ihn sich. Verglichen wird weiter der Inhalt statt der Namen, und eine Kopie bleibt immer.";
 "The duplicate finder no longer holds on to everything it reads. It compares files a megabyte at a time so a video never has to fit in memory — but the app kept every one of those megabytes until the scan ended, so the memory it used followed the size of the folder rather than the size of a slice. The background check for updates had the same defect in its own file check. Memory is also handed back to macOS when a scan finishes and when a module is switched off, instead of being kept for later." = "Die Duplikatsuche hält nicht mehr alles fest, was sie liest: der Speicher folgte der Größe des Ordners statt der eines Stücks. Die Prüfung auf Updates im Hintergrund hatte denselben Fehler in ihrer eigenen Dateiüberprüfung. Er wird jetzt auch nach einem Scan und beim Ausschalten eines Moduls an das System zurückgegeben.";
 "The file is locked, or you are not its owner. Open Get Info in the Finder to unlock it or change its permissions." = "Die Datei ist geschützt oder gehört dir nicht. Öffne „Informationen“ im Finder, um sie zu entsperren oder die Rechte zu ändern.";
@@ -613,7 +616,7 @@
 "macOS asks for an administrator password the first time Keep Awake runs with this on. If Helm is quit while sleep is off, it stays off until Helm runs again." = "macOS fragt beim ersten Mal nach einem Adminpasswort, wenn Wach halten damit läuft. Wird Helm beendet, während der Ruhezustand aus ist, bleibt er aus, bis Helm wieder läuft.";
 "macOS is not allowing notifications from Helm. The name will be shown in the menu bar instead." = "macOS lässt keine Mitteilungen von Helm zu. Stattdessen wird der Name in der Menüleiste angezeigt.";
 "macOS may already use 🌐︎ to switch input source, open emoji or start dictation. Set “Press 🌐︎ to: Do Nothing” in Keyboard settings, or it will do both. Keyboards without a 🌐︎ key never send it." = "macOS nutzt 🌐︎ vielleicht schon für Eingabequelle, Emoji oder Diktat. Stelle in den Tastatur-Einstellungen „🌐︎-Taste: Nichts tun“ ein, sonst passiert beides. Tastaturen ohne 🌐︎ senden sie nie.";
-"macOS refused to move this item." = "macOS hat das Verschieben abgelehnt.";
+"macOS would not move this. Show it in the Finder and try from there — the Finder says more about why." = "macOS hat das nicht verschoben. Zeig es im Finder und versuch es dort — der Finder sagt mehr dazu.";
 "min" = "Min.";
 "moved to" = "verschoben nach";
 "moved to Trash" = "in den Papierkorb gelegt";

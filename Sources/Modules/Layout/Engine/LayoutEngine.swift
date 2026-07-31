@@ -160,6 +160,21 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// middle of the sentence that had replaced it.
     ///
     /// Call with the lock held.
+    /// The layout to convert *into*.
+    ///
+    /// Not "the first other source": on a Mac with three layouts that is
+    /// whichever the system lists first, so the module converted into a language
+    /// the word has nothing to do with — and then switched the keyboard to it.
+    /// Each candidate is asked whether the result is a real word; `Fix` still
+    /// forces a conversion when none is (`OtherSource`).
+    private func target(for word: String, from: String) -> String? {
+        OtherSource.pick(current: from, installed: sources.installed()) { candidate in
+            guard let attempt = translation.translate(word, from: from, to: candidate)
+            else { return false }
+            return spell.isWord(attempt, sourceID: candidate) == true
+        }
+    }
+
     private func forgetTheWord() {
         buffer.clear()
         undo = nil
@@ -309,7 +324,12 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         let transform = SelectionTransform(convert: { [weak self] source in
             guard let self,
                   let current = self.sources.current(),
-                  let other = self.sources.installed().first(where: { $0 != current })
+                  // The same choice as a single word makes, judged on the first
+                  // word of the selection — a selection carries no record of the
+                  // layout it was typed with, so this is the only evidence there
+                  // is. `Fix` still forces a conversion when nothing fits.
+                  let firstWord = source.split(separator: " ").first.map(String.init),
+                  let other = self.target(for: firstWord, from: current)
             else { return nil }
             // Both ways round. A selection carries no record of the layout it
             // was typed with, so the active one is not evidence — see
@@ -358,8 +378,12 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             emitState()
             return
         }
+        // Not "the first other source": on a Mac with three layouts that is
+        // whichever the system lists first, and the module converted into a
+        // language the word has nothing to do with — then switched the keyboard
+        // to it. Ask each candidate whether the result is a word (`OtherSource`).
         guard let from = sources.current(),
-              let to = sources.installed().first(where: { $0 != from }),
+              let to = target(for: word, from: from),
               let translated = translation.translate(word, from: from, to: to)
         else { return }
 

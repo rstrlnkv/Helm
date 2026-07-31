@@ -209,7 +209,12 @@ public final class DuplicateScanner: @unchecked Sendable {
             files.append(FileFacts(path: item.path, bytes: size,
                                    fileID: UInt64(status.st_ino),
                                    added: values.addedToDirectoryDate,
-                                   allocated: values.totalFileAllocatedSize ?? size))
+                                   allocated: values.totalFileAllocatedSize ?? size,
+                                   // One `getattrlist` per candidate, and only
+                                   // for files already past the size floor. What
+                                   // it buys is the difference between the size
+                                   // of a copy and what removing it returns.
+                                   cloneFamily: CloneShare.familyID(ofFileAt: item.path)))
         }
         return files
     }
