@@ -56,13 +56,21 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// `HelmLog.memory` is silent below 8 MB of change, so a cheap call says
     /// nothing (docs/superpowers/plans/2026-07-29-third-pass.md).
     public func listInstalled() -> [BrewPackage] {
-        guard let brew = locator.brewPath() else { return [] }
+        guard let brew = locator.brewPath() else {
+            // The module's whole surface is empty in this case, and until now
+            // nothing said why: a person reads "no packages" as a clean machine.
+            HelmLog.shared.warn("homebrew", "brew is not installed — nothing to list")
+            return []
+        }
         let packages = HelmActivity.phase("homebrew.listInstalled") { () -> [BrewPackage] in
             let f = runner.run(brew, ["list", "--versions", "--formula"], env: [:]).stdout
             let c = runner.run(brew, ["list", "--versions", "--cask"], env: [:]).stdout
             return BrewListParser.parse(f, isCask: false) + BrewListParser.parse(c, isCask: true)
         }
         HelmLog.shared.memory("homebrew.listInstalled")
+        // Counts, never names: a list of installed packages is a description of
+        // somebody's machine and their work.
+        HelmLog.shared.info("homebrew", "installed: \(packages.count)")
         return packages
     }
 
@@ -73,6 +81,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             return BrewOutdatedParser.parse(Data(out.utf8))
         }
         HelmLog.shared.memory("homebrew.outdated")
+        HelmLog.shared.info("homebrew", "outdated: \(parsed.count)")
         return parsed
     }
 

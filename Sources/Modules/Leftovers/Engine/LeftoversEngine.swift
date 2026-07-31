@@ -39,6 +39,9 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
             await offTheCooperativePool { self.scanner.scan() }
         }
         HelmLog.shared.memory("leftovers.scan")
+        // Counts and kinds, no names: a login item names an app, and an app
+        // names a habit.
+        HelmLog.shared.info("leftovers", "found \(items.count) stale item(s)")
         return items
     }
 
@@ -54,6 +57,8 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
             // nothing: `localizedDescription` reached the screen untranslated,
             // so a refusal by Full Disk Access read as "The operation couldn't
             // be completed" with the domain, the code and the path thrown away.
+            HelmLog.shared.info("leftovers",
+                                "trashing \(allowed.count), refused \(refused.count) out of scope")
             let result = HelmTrash.remove(allowed: allowed, outOfScope: refused,
                                           module: "leftovers")
             return LeftoversRemoval(

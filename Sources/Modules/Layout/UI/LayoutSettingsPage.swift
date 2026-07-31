@@ -79,12 +79,19 @@ public struct LayoutSettingsPage: View {
 
     /// Three states, not two: watching, paused by secure input, and not
     /// watching at all because the grant is missing.
+    /// The grant comes first, because without it the module is not watching
+    /// anything and the switch above is the only thing that says otherwise.
+    /// Measured in this machine's log: 84 warnings of `no accessibility grant —
+    /// not watching`, against a page that said "On" in green throughout. The
+    /// state is what the module can do, not what the setting says.
     private var stateLabel: String {
+        if accessibility == .denied { return LyStr.notWatching }
         if !lvm.state.enabled { return LyStr.notWatching }
         return lvm.state.suspended ? LyStr.paused : LyStr.on
     }
 
     private var stateTint: Color {
+        if accessibility == .denied { return .orange }
         if !lvm.state.enabled { return .orange }
         return lvm.state.suspended ? .orange : .green
     }

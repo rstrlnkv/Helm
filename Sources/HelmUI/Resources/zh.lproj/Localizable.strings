@@ -461,6 +461,7 @@
 "Stopped" = "已停止";
 "Stopping a disk scan keeps what it measured. It used to throw the ring away and put you back at the volume picker, after a minute of watching it grow. The tree stays now, marked as stopped — and because a folder in an unfinished scan can hold more than it shows, it is not kept for next time." = "停止磁盘扫描后，已经测量的部分会保留。以前圆环会消失并退回到宗卷选择，看着它增长的那一分钟就白费了。现在树会保留并标记为「已停止」；由于未完成的扫描中文件夹的实际大小可能大于显示值，它不会留到下一次。";
 "Style" = "样式";
+"Switched on, but macOS is withholding what it needs" = "已开启，但 macOS 未授予它所需的权限";
 "Switching VPN off and back on could leave the tile and the settings page silently frozen, answering nothing, until Helm was relaunched." = "关闭再打开 VPN 后，图块和设置页面可能会悄悄卡死、毫无响应，直到重启 Helm 才恢复。";
 "Switching to another module and back no longer throws away what you were doing. The Uninstaller used to lose every tick, the whole review step, and the record of what macOS had refused, the moment you left its page; Login Items & Extensions restarted its scan — the slowest one in the app — the same way. Both remember now." = "切换到其他模块再切回来，不会再丢掉你正在做的事情了。以前，卸载器一旦离开页面，就会丢失所有勾选、整个审阅步骤，以及 macOS 拒绝了哪些内容的记录；“登录项与扩展”——应用里最慢的一项扫描——也会以同样的方式重新开始。现在两者都会记住。";
 "System" = "系统";

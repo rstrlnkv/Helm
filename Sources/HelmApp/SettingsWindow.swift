@@ -147,6 +147,33 @@ private struct SettingsSidebar: View {
         }
     }
 
+    /// Re-probed when the app comes forward: a grant is given in System
+    /// Settings, which means this window is behind while it happens.
+    @State private var diskAccess: PermissionState = .granted
+    @State private var accessibility: PermissionState = .granted
+
+    /// Whether a module has declared a permission macOS is currently withholding.
+    ///
+    /// Layout has been inert in every logged session on this machine — 84
+    /// warnings of `no accessibility grant — not watching` — and the sidebar
+    /// listed it exactly like the modules that work. The module's own page says
+    /// so, but only once you are on it: from the outside a module that cannot do
+    /// anything looks like a module with nothing to do.
+    private func isBlocked(_ descriptor: any ModuleDescriptor) -> Bool {
+        descriptor.moduleMetadata.permissions.contains { need in
+            switch need {
+            case .fullDisk: return diskAccess == .denied
+            case .accessibility: return accessibility == .denied
+            // Not probeable, and not withheld in the same sense: screen
+            // recording is asked for by the system at the moment it is needed,
+            // and the admin helper is a password prompt, not a grant that can
+            // silently go missing. A warning we cannot verify is worse than
+            // none.
+            case .screenRecording, .adminHelper: return false
+            }
+        }
+    }
+
     private var sidebarList: some View {
         List(selection: $model.selection) {
             Section {
@@ -162,7 +189,8 @@ private struct SettingsSidebar: View {
                             // short name; everything else shows the full one.
                             sidebarRow(descriptor.moduleMetadata.shortName,
                                        descriptor.moduleMetadata.sfSymbol,
-                                       categoryColor(category))
+                                       categoryColor(category),
+                                       blocked: isBlocked(descriptor))
                                 .tag(SettingsSelection.module(descriptor.idRaw))
                         }
                     }
@@ -175,6 +203,14 @@ private struct SettingsSidebar: View {
         }
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)   // let the AppKit sidebar material show
+        .task {
+            diskAccess = PermissionCheck.currentFullDiskAccess()
+            accessibility = PermissionCheck.currentAccessibility()
+        }
+        .helmOnAppActive {
+            diskAccess = PermissionCheck.currentFullDiskAccess()
+            accessibility = PermissionCheck.currentAccessibility()
+        }
     }
 
     /// The user's order, applied inside a category. The stored order is one
@@ -185,9 +221,22 @@ private struct SettingsSidebar: View {
         return ModuleGrouping.ordered(in: category)
     }
 
-    private func sidebarRow(_ title: String, _ symbol: String, _ color: Color) -> some View {
+    private func sidebarRow(_ title: String, _ symbol: String, _ color: Color,
+                            blocked: Bool = false) -> some View {
         Label {
-            Text(title)
+            HStack(spacing: 6) {
+                Text(title)
+                if blocked {
+                    // The module is on and cannot act. Not a badge with a count
+                    // and not a red dot — this is one fact, and the pane it
+                    // sends you to is where it is fixed.
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.caption2)
+                        .foregroundStyle(HelmSignal.warning)
+                        .help(AppStr.moduleBlockedByPermission)
+                        .accessibilityLabel(AppStr.moduleBlockedByPermission)
+                }
+            }
         } icon: {
             HelmIconPlate(symbol: symbol, tint: color, size: 22)
         }

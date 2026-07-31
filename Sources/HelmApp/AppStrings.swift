@@ -150,6 +150,10 @@ enum AppStr {
     static var devBadge: String { L("DEV") }
     static var betaBadge: String { L("BETA") }
     static var channelDevNote: String { L("Early builds with new features — expect rough edges.") }
+    /// The sidebar's warning next to a module macOS is currently blocking.
+    static var moduleBlockedByPermission: String {
+        L("Switched on, but macOS is withholding what it needs")
+    }
     static var aboutHelm: String { L("About Helm") }
     static var iconShape: String { L("Icon shape") }
     static var iconSize: String { L("Icon size") }
