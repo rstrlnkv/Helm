@@ -114,7 +114,6 @@
 "Delete…" = "Delete…";
 "Dev" = "Dev";
 "Dev builds always log. The file lives in ~/Library/Logs/Helm." = "Dev builds always log. The file lives in ~/Library/Logs/Helm.";
-"Diagnostics" = "Diagnostics";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds.";
 "Disabled" = "Disabled";
 "Disconnected" = "Disconnected";
@@ -298,6 +297,7 @@
 "Name" = "Name";
 "Name in menu bar" = "Name in menu bar";
 "Name pattern" = "Name pattern";
+"Name without extension" = "Name without extension";
 "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works." = "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works.";
 "Needed to remove app containers and to read every folder when scanning the disk." = "Needed to remove app containers and to read every folder when scanning the disk.";
 "Needs Accessibility, or the pointer will not move." = "Needs Accessibility, or the pointer will not move.";

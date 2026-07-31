@@ -21,6 +21,8 @@ enum RuleSummary {
         switch condition {
         case let .name(comparison, value):
             "\(ApStr.fieldName) \(describe(comparison)) \(Quoted(value))"
+        case let .baseName(comparison, value):
+            "\(ApStr.fieldBaseName) \(describe(comparison)) \(Quoted(value))"
         case let .fileExtension(list):
             "\(ApStr.fieldExtension) \(ApStr.comparisonIs) \(list.joined(separator: ", "))"
         case let .kind(kind):

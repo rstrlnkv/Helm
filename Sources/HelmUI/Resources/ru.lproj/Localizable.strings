@@ -114,7 +114,6 @@
 "Delete…" = "Удалить…";
 "Dev" = "Dev";
 "Dev builds always log. The file lives in ~/Library/Logs/Helm." = "В dev-сборках журнал всегда включён. Файл — в ~/Library/Logs/Helm.";
-"Diagnostics" = "Диагностика";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "Диагностика: Helm может вести журнал своих действий, чтобы было что прислать, если что-то пошло не так. В Dev-сборках включён всегда.";
 "Disabled" = "Отключено";
 "Disconnected" = "Отключено";
@@ -298,6 +297,7 @@
 "Name" = "Название";
 "Name in menu bar" = "Имя в строке меню";
 "Name pattern" = "Шаблон имени";
+"Name without extension" = "Имя без расширения";
 "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works." = "Нужен, чтобы «Клавиатура» исправляла раскладку набранного, а «Не спать» двигал указатель. Без него не работает ни то, ни другое.";
 "Needed to remove app containers and to read every folder when scanning the disk." = "Нужен, чтобы удалять контейнеры приложений и видеть все папки при сканировании диска.";
 "Needs Accessibility, or the pointer will not move." = "Нужен «Универсальный доступ», иначе указатель не двинется.";

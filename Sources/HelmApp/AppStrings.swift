@@ -79,7 +79,6 @@ enum AppStr {
     /// (`permissionReason`) already said so; this is the caption a person reads
     /// *while deciding*, and it described a mouse jiggle.
     static var accessibilityWhy: String { L("Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works.") }
-    static var diagnostics: String { L("Diagnostics") }
     static var writeLog: String { L("Write a log file") }
     static var logNoteDev: String { L("Dev builds always log. The file lives in ~/Library/Logs/Helm.") }
     static var logNoteStable: String { L("Turn on before reporting a problem. The file lives in ~/Library/Logs/Helm.") }

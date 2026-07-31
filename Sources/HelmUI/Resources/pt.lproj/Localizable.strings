@@ -114,7 +114,6 @@
 "Delete…" = "Excluir…";
 "Dev" = "Dev";
 "Dev builds always log. The file lives in ~/Library/Logs/Helm." = "Builds Dev sempre registram. O arquivo fica em ~/Library/Logs/Helm.";
-"Diagnostics" = "Diagnóstico";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "Diagnóstico: o Helm pode manter um registro do que faz, pronto para compartilhar se algo der errado. Sempre ativo em builds Dev.";
 "Disabled" = "Desativado";
 "Disconnected" = "Desconectado";
@@ -298,6 +297,7 @@
 "Name" = "Nome";
 "Name in menu bar" = "Nome na barra de menus";
 "Name pattern" = "Padrão do nome";
+"Name without extension" = "Nome sem extensão";
 "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works." = "Necessário para o Teclado corrigir o layout do que você digita e para o Manter ativo mover o ponteiro. Sem ele, nenhum dos dois funciona.";
 "Needed to remove app containers and to read every folder when scanning the disk." = "Necessário para remover contêineres de apps e ler todas as pastas ao escanear o disco.";
 "Needs Accessibility, or the pointer will not move." = "Precisa de Acessibilidade, senão o ponteiro não se move.";

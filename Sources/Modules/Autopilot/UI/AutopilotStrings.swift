@@ -46,6 +46,10 @@ enum ApStr {
     // MARK: - Fields
 
     static var fieldName: String { L("Full name") }
+    /// The name with the extension taken off. Sits next to "Full name" rather
+    /// than replacing it: a rule written against the full name is somebody's
+    /// working rule, and changing what it means would break it in silence.
+    static var fieldBaseName: String { L("Name without extension") }
     static var fieldExtension: String { L("Extension") }
     static var fieldKind: String { L("Kind") }
     static var fieldSize: String { L("Size") }

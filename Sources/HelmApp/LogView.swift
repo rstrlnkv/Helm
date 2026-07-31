@@ -12,10 +12,10 @@ import HelmUI
 /// the same truth — so that watching Helm misbehave does not mean leaving it,
 /// finding `~/Library/Logs/Helm` and reading what already happened.
 ///
-/// **Dev builds only, gated on the build and not on the update channel.** The
-/// channel picker is an ordinary control on the General page: gating on it would
-/// put this in front of anyone impatient for updates, on a shipped beta build.
-/// `SettingsWindow` already learned this distinction for the version badge.
+/// Shown on every build, because this is also where the log is switched on. It
+/// used to be dev-only, and the switch lived in Settings under "Diagnostics" —
+/// two places for one subject, and the one a person is told to press when they
+/// report a problem was not the one named after it.
 struct LogView: View {
     /// Polled rather than subscribed. A log has no interesting event to observe
     /// — it has a tail — and one timer that exists while the page is on screen
@@ -25,6 +25,13 @@ struct LogView: View {
     @State private var chosen: Set<String> = []
     @State private var following = true
     @State private var tick: RepeatingTick?
+    @State private var loggingOn = LogPolicy.isEnabled(
+        version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0",
+        override: AppSettings.loggingOverride)
+
+    private var isDevBuild: Bool {
+        (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "").contains("-dev")
+    }
 
     private var shown: [LogEntry] {
         LogFilter.apply(entries, minimumLevel: minimumLevel, categories: chosen)
@@ -34,6 +41,8 @@ struct LogView: View {
         VStack(spacing: 0) {
             HelmPageHeader(symbol: "text.alignleft", tint: .gray,
                            title: AppStr.logPane, subtitle: AppStr.logPaneSummary)
+            Divider()
+            writing
             Divider()
             filters
             Divider()
@@ -54,6 +63,38 @@ struct LogView: View {
             tick?.set(active: false)
             tick = nil
         }
+    }
+
+    /// Whether anything is written to the file at all, and what ends up in it.
+    /// Dev builds always log — the file is the evidence a build is triaged on —
+    /// so the switch is theirs to read, not to change.
+    private var writing: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 16) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(isDevBuild ? AppStr.logNoteDev : AppStr.logNoteStable)
+                    .font(.callout)
+                Text(AppStr.logRedactionNote)
+                    .font(.caption).foregroundStyle(HelmText.quiet)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+            Button {
+                NSWorkspace.shared.activateFileViewerSelecting([HelmLog.fileURL])
+            } label: {
+                Label(AppStr.revealLog, systemImage: "doc.text.magnifyingglass")
+            }
+            .controlSize(.small)
+            Toggle("", isOn: $loggingOn)
+                .toggleStyle(.switch)
+                .labelsHidden()
+                .accessibilityLabel(AppStr.writeLog)
+                .disabled(isDevBuild)
+                .onChange(of: loggingOn) { _, value in
+                    AppSettings.loggingOverride = value
+                    HelmLog.shared.setEnabled(value)
+                }
+        }
+        .padding(.horizontal, 20).padding(.vertical, 10)
     }
 
     private var filters: some View {
@@ -149,6 +190,9 @@ struct LogView: View {
                         .joined(separator: "\n"), forType: .string)
             }
             Button(AppStr.clearLog) {
+                // Both, because there is one Clear now and a person pressing it
+                // means the log, not the window onto it.
+                HelmLog.shared.clear()
                 HelmLog.shared.clearTail()
                 entries = []
             }
