@@ -3,6 +3,7 @@
    English text in a *Strings.swift file). */
 
 "1 hour" = "1 小时";
+"1 module" = "1 个模块";
 "2 hours" = "2 小时";
 "A Keep Awake session now survives Helm restarting. A two-hour session lived only in memory, so anything that ended the app — a silent update most often — cancelled it: the countdown vanished from the menu bar, the Mac was free to sleep, and nothing said so. It comes back with the time it had left. A session whose end passed while Helm was gone stays finished." = "防止睡眠的会话现在能在 Helm 重启后继续。两小时的会话只存在于内存中，因此任何结束应用的操作 —— 通常是静默更新 —— 都会取消它：菜单栏的倒计时消失，Mac 可以入睡，而且没有任何提示。现在它会带着剩余时间回来。若结束时间在 Helm 不在期间已过，会话保持结束状态。";
 "A VPN carries everything this Mac sends, not only that app, and it takes a few seconds to come up after the app starts." = "VPN 承载这台 Mac 的全部流量，不只是该应用的，而且隧道要在应用启动几秒后才建立。";

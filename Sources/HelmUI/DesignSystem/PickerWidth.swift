@@ -27,4 +27,17 @@ public enum HelmPickerWidth {
             .max() ?? 0
         return max(minimum, (widest + chrome).rounded(.up))
     }
+
+    /// A segmented control's chrome is per *segment*, not per control: about
+    /// 26 pt around each label. Hard-coded widths are what this type exists to
+    /// end — 260 was 3 pt from clipping in Russian and 110 pt too wide in
+    /// Chinese, and `.fixedSize()` is not the answer either, because SwiftUI's
+    /// fitting size for a segmented picker comes back at 404 pt in Russian.
+    public static func segmented(_ labels: [String], minimum: CGFloat = 180) -> CGFloat {
+        let font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
+        let ink = labels
+            .map { ($0 as NSString).size(withAttributes: [.font: font]).width }
+            .reduce(0, +)
+        return max(minimum, (ink + 26 * CGFloat(labels.count)).rounded(.up))
+    }
 }

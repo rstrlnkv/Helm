@@ -162,10 +162,15 @@ enum AppStr {
     static var logLevelWarnings: String { L("Warnings") }
     static var logLevelErrors: String { L("Errors") }
     static var logAllModules: String { L("All modules") }
+    /// Counted, because "1 modules" and „1 Module" are what a bare plural
+    /// produces — and this menu shows 1 more often than any other number.
     static func logSomeModules(_ n: Int) -> String {
-        L("\(n) modules", [.ru: "Модулей: \(n)", .es: "\(n) módulos", .fr: "\(n) modules",
-                           .de: "\(n) Module", .ja: "\(n) 個のモジュール", .zh: "\(n) 个模块",
-                           .pt: "\(n) módulos"])
+        L(n == 1 ? "1 module" : "\(n) modules", [.ru: n == 1 ? "1 модуль" : "Модулей: \(n)",
+                           .es: n == 1 ? "1 módulo" : "\(n) módulos",
+                           .fr: n == 1 ? "1 module" : "\(n) modules",
+                           .de: n == 1 ? "1 Modul" : "\(n) Module",
+                           .ja: "\(n) 個のモジュール", .zh: "\(n) 个模块",
+                           .pt: n == 1 ? "1 módulo" : "\(n) módulos"])
     }
     /// Stays pinned to the newest line while it is on. Off is what somebody
     /// wants the moment they see the line they were waiting for.
