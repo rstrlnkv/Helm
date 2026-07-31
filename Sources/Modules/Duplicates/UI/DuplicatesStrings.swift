@@ -10,10 +10,13 @@ enum DupStr {
     static var startHint: String { L("Pick a folder and Helm will read what is in it, comparing content rather than names.") }
     static var needsAccess: String { L("Without Full Disk Access Helm cannot read every folder, and a short list of duplicates looks exactly like a folder that has none.") }
     static var stop: String { L("Stop scan") }
-    static var basketContents: String { L("Show what is in the basket") }
+    /// "Basket" appears nowhere on screen in any language — the bar above these
+    /// controls is headed "To remove". Disk dropped the metaphor for the same
+    /// reason; these are the last four that kept it.
+    static var basketContents: String { L("Show what is marked for removal") }
     static var basket: String { L("To remove") }
     static var moveToTrash: String { L("Move to Trash") }
-    static var systemItem: String { L("System item") }
+    static var systemItem: String { L("System") }
     static var reveal: String { L("Show in Finder") }
     static var quickLook: String { L("Quick Look") }
     /// What happened, not what people hope happened: the copies went to the
@@ -41,15 +44,23 @@ enum DupStr {
     /// report 20 MB while the pair occupies 20 MB. So for clones the figure is
     /// exactly double what deleting returns, and the copies go to the Trash on
     /// the same volume anyway. Say what was measured.
-    static func found(_ groups: Int, _ wasted: String) -> String { L("Groups: \(groups) · \(wasted) in extra copies", [.ru: "Групп: \(groups) · лишние копии: \(wasted)", .es: "Grupos: \(groups) · copias de más: \(wasted)", .fr: "Groupes : \(groups) · copies en trop : \(wasted)", .de: "Gruppen: \(groups) · überzählige Kopien: \(wasted)", .ja: "\(groups) グループ・余分なコピー \(wasted)", .zh: "\(groups) 组 · 多余副本 \(wasted)", .pt: "Grupos: \(groups) · cópias extras: \(wasted)"]) }
+    /// Now that `wasted` counts what the disk actually gives back — clones
+    /// share their blocks, so a cloned copy returns nothing — the figure can
+    /// say so. It still names the Trash: the copies land there first, and the
+    /// space arrives when it is emptied, which is the rule Disk already keeps.
+    static func found(_ groups: Int, _ wasted: String) -> String { L("Groups: \(groups) · \(wasted) once the Trash is emptied", [.ru: "Групп: \(groups) · \(wasted) после очистки Корзины", .es: "Grupos: \(groups) · \(wasted) al vaciar la papelera", .fr: "Groupes : \(groups) · \(wasted) après avoir vidé la corbeille", .de: "Gruppen: \(groups) · \(wasted) nach dem Leeren des Papierkorbs", .ja: "\(groups) グループ・ゴミ箱を空にすると \(wasted)", .zh: "\(groups) 组 · 清倒废纸篓后 \(wasted)", .pt: "Grupos: \(groups) · \(wasted) ao esvaziar o Lixo"]) }
     static var keepWhy: String { L("The copy that was there first. Helm never offers every copy of a file.") }
     static var keep: String { L("stays") }
-    static var basketExtras: String { L("Extras to basket") }
+    /// One key used to label two different actions: a group button meaning
+    /// "mark this group's extras" and a row checkbox meaning "mark this copy".
+    /// One English key means one thing.
+    static var markRow: String { L("Mark for removal") }
+    static var markGroupExtras: String { L("Mark the extra copies") }
     /// Not "Select all", which invites exactly the reading this module
     /// refuses. A control that lies about its effect on files is the failure
     /// this page is most exposed to.
-    static var basketAllExtras: String { L("All extras to basket") }
-    static var clearBasket: String { L("Empty") }
+    static var basketAllExtras: String { L("Mark every extra copy") }
+    static var clearBasket: String { L("Clear selection") }
     static var cancel: String { L("Cancel") }
     static var close: String { L("Close") }
 }

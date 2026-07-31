@@ -16,10 +16,16 @@ public enum TrashReasonText {
             return L("Its system extension is still active — turn it off in Login Items & Extensions.")
         case TrashFailure.Reason.outOfScope.rawValue:
             return L("Outside the folders Helm may clean — Helm did not touch it.")
+        case TrashFailure.Reason.readOnlyVolume.rawValue:
+            return L("The disk this is on is read-only. Eject it and unlock it, or copy what you need elsewhere.")
+        case TrashFailure.Reason.diskFull.rawValue:
+            return L("The disk is full. Moving to the Trash needs room, because the Trash is a folder on the same disk — empty it and try again.")
         case "noPermission":
             return L("The file is locked, or you are not its owner. Open Get Info in the Finder to unlock it or change its permissions.")
         default:
-            return L("macOS refused to move this item.")
+            // The one case that cannot name a cause, because `TrashFailure`
+            // only classifies the codes it has seen. It can still name a step.
+            return L("macOS would not move this. Show it in the Finder and try from there — the Finder says more about why.")
         }
     }
 }

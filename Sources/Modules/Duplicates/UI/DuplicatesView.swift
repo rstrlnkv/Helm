@@ -34,7 +34,7 @@ struct DuplicatesView: View {
                         Text("\(Bytes(group.bytes)) × \(group.paths.count)")
                             .font(.caption.weight(.semibold))
                         Spacer()
-                        Button(DupStr.basketExtras) { dvm.basketExtras(of: group) }
+                        Button(DupStr.markGroupExtras) { dvm.basketExtras(of: group) }
                             .controlSize(.small)
                     }
                 }
@@ -128,12 +128,12 @@ struct DuplicatesView: View {
                 // the pixels. A checkbox that silently refuses to check is a
                 // control that lies, so out-of-scope paths are disabled and say
                 // why instead.
-                Toggle("\(DupStr.basketExtras): \((path as NSString).lastPathComponent)",
+                Toggle("\(DupStr.markRow): \((path as NSString).lastPathComponent)",
                        isOn: basketBinding(path))
                     .toggleStyle(.checkbox)
                     .labelsHidden()
                     .disabled(!UserFileScope.isRemovable(path))
-                    .help(UserFileScope.isRemovable(path) ? DupStr.basketExtras
+                    .help(UserFileScope.isRemovable(path) ? DupStr.markRow
                                                            : DupStr.systemItem)
             }
         }

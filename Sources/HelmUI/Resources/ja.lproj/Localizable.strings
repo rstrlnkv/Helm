@@ -37,7 +37,6 @@
 "Add tag" = "タグを付ける";
 "After an update Helm tells you which permissions stopped working and takes you straight to the right pane. An update always revokes them — the checkbox stays ticked while nothing works." = "アップデート後、どの権限が効かなくなったかを伝え、該当の設定画面へ直接案内します。アップデートは必ず権限を失わせます（チェックは付いたままなのに動きません）。";
 "All" = "すべて";
-"All extras to basket" = "余分をすべてバスケットへ";
 "Always" = "常に";
 "An app can no longer claim other apps' files as its own leftovers by naming itself unusually." = "アプリが異常な名前を名乗って他のアプリのファイルを自分の残存物として提示することはできなくなりました。";
 "An app that keeps the Mac awake can now be narrowed to the situation you mean: only with an external display, only on power, or both." = "Mac を起こし続けるアプリに条件を付けられます：外部ディスプレイ接続時のみ、電源接続時のみ、またはその両方。";
@@ -267,7 +266,9 @@
 "Manage Homebrew packages" = "Homebrew パッケージを管理";
 "Manage…" = "管理…";
 "Manual" = "手動";
+"Mark every extra copy" = "余分をすべて削除予定に";
 "Mark for removal" = "削除予定に追加";
+"Mark the extra copies" = "余分なコピーを削除予定に";
 "Media" = "メディア";
 "Medium" = "中";
 "Menu Bar" = "メニューバー";
@@ -343,12 +344,11 @@
 "One key does both fixes. Pick right ⌘, ⌥, ⌃ or ⇧ and press it on its own: the first tap fixes the last word, the next puts it back. It keeps working as a modifier — held down, or pressed with anything else, it is an ordinary key again, so nothing you already use it for stops working." = "ひとつのキーで両方。右の ⌘ / ⌥ / ⌃ / ⇧ を選んで単独で押すと、1 回目で直前の単語を修正し、もう一度で元に戻します。押しっぱなしや同時押しでは通常の修飾キーのままです。";
 "One per line." = "1行に1つ。";
 "Only when what you typed is not a word and becomes one once the layout is switched. Anything that is already a word is left alone." = "入力どおりでは単語でなく、配列を切り替えると単語になる場合だけです。すでに単語であるものには触れません。";
+"Open Accessibility…" = "アクセシビリティを開く…";
 "Open Extensions…" = "機能拡張を開く…";
 "Open Full Disk Access…" = "フルディスクアクセスを開く…";
 "Open Helm at login" = "ログイン時に Helm を開く";
 "Open Keyboard settings…" = "キーボード設定を開く…";
-"Open accessibility…" = "アクセシビリティを開く…";
-"Open disk access…" = "フルディスクアクセスを開く…";
 "Or a key combination" = "またはキーの組み合わせ";
 "Orange" = "オレンジ";
 "Other" = "その他";
@@ -479,10 +479,13 @@
 "The app itself — always removed" = "アプリ本体 — 必ず削除されます";
 "The battery guard — which stops Keep Awake from running a session down to empty — now starts on for new installs, at 20%. It shipped off by default, beside a session length that defaults to indefinite." = "バッテリー保護——「スリープ防止」がセッション中にバッテリーを使い切らないようにする機能——は、新規インストールでは既定で 20% でオンになります。以前は既定でオフになっており、そのすぐ隣には既定で「無期限」となる継続時間の設定がありました。";
 "The copy that was there first. Helm never offers every copy of a file." = "最初からあるコピーです。Helm がすべてのコピーを削除対象にすることはありません。";
+"The disk is full. Moving to the Trash needs room, because the Trash is a folder on the same disk — empty it and try again." = "ディスクの空きがありません。ゴミ箱は同じディスク上のフォルダなので、移動にも空き容量が要ります。ゴミ箱を空にしてからもう一度お試しください。";
 "The disk list can be walked from the keyboard: arrow keys between rows, Return to go into a folder, ⌘↑ to come back out. And the screen now fits the width it has: on a narrow window the ring gives way to the list, which carries the same facts in less room." = "ディスクの一覧をキーボードで操作できます。矢印キーで行を移動、Return でフォルダに入り、⌘↑ で戻ります。上のバーも収まるようになりました（スキャン情報はリングの下へ）。";
 "The disk map now answers VoiceOver: every wedge reads its name, its size and its share of the folder, and can be opened from there. Folders in the list beside it can be opened from the context menu too — the double-click still works and is no longer the only way." = "ディスクマップが VoiceOver に応答します。各セグメントが名前・サイズ・割合を読み上げ、そこから開けます。隣のリストのフォルダはコンテキストメニューからも開けます。";
 "The disk ring grows into the folder you opened. It shows three levels at a time, and the level that arrived when you drilled in had nowhere to come from — it appeared all at once at the end of the animation. Now it slides in with the rest." = "ディスクのリングが開いたフォルダへ滑らかに入ります。三層目がアニメーションの最後に突然現れることはなくなりました。";
 "The disk ring was measuring the wrong thing when you scanned a folder: it drew the volume's free space alongside the folder's contents, so a small folder came out as a blank grey circle. And “Scan again” now scans the same place again instead of sending you back to the volume list. In the duplicate finder, files that refused to move stay ticked, so you can fix the reason and try again without starting over. Homebrew search puts the name you typed first." = "フォルダをスキャンしたとき、ディスクのリングは中身と一緒にボリュームの空き容量まで描いていたため、小さなフォルダはただの灰色の円になっていました。「再スキャン」は同じ場所をもう一度測るようになりました。重複ファイル検索では、移動できなかったファイルのチェックが残ります。Homebrew の検索は入力した名前を先頭に出します。";
+"The disk this is on is read-only. Eject it and unlock it, or copy what you need elsewhere." = "このディスクは読み出し専用です。取り出してロックを解除するか、必要なものを別の場所にコピーしてください。";
+"The download did not match what the release published, so Helm did not install it." = "ダウンロードしたファイルがリリースの公開内容と一致しなかったため、Helm はインストールしませんでした。";
 "The duplicate finder is its own screen now, right after Disk. It used to search whatever folder the ring happened to be showing, so you could only look where you had already scanned; now you point it at a folder and it remembers it. It still compares content rather than names, still keeps one copy of every group, and still never offers a hard link." = "重複ファイル検索が独立した画面になり、「ディスク」の次に並びます。これまではリングが表示中のフォルダしか調べられませんでしたが、これからは自分でフォルダを指定でき、次回も覚えています。名前ではなく内容を比較し、各グループの 1 つは必ず残します。";
 "The duplicate finder no longer holds on to everything it reads. It compares files a megabyte at a time so a video never has to fit in memory — but the app kept every one of those megabytes until the scan ended, so the memory it used followed the size of the folder rather than the size of a slice. The background check for updates had the same defect in its own file check. Memory is also handed back to macOS when a scan finishes and when a module is switched off, instead of being kept for later." = "重複ファイル検索が読んだデータを持ち続けなくなりました。メモリ使用量がフォルダサイズに従って増えていました。バックグラウンドの更新確認にも、独自のファイル検証で同じ不具合がありました。スキャン完了時とモジュール無効化時にメモリを返します。";
 "The file is locked, or you are not its owner. Open Get Info in the Finder to unlock it or change its permissions." = "ファイルがロックされているか、あなたの所有物ではありません。Finder の「情報を見る」でロックを解除するか、アクセス権を変更してください。";
@@ -613,7 +616,7 @@
 "macOS asks for an administrator password the first time Keep Awake runs with this on. If Helm is quit while sleep is off, it stays off until Helm runs again." = "この設定で「スリープ防止」が初めて働くとき、macOS が管理者パスワードを求めます。スリープをオフにしたまま Helm を終了すると、次に Helm を起動するまでオフのままです。";
 "macOS is not allowing notifications from Helm. The name will be shown in the menu bar instead." = "macOS が Helm の通知を許可していません。代わりにメニューバーに名前を表示します。";
 "macOS may already use 🌐︎ to switch input source, open emoji or start dictation. Set “Press 🌐︎ to: Do Nothing” in Keyboard settings, or it will do both. Keyboards without a 🌐︎ key never send it." = "macOS が 🌐︎ を入力ソース切り替え・絵文字・音声入力に使っている場合があります。キーボード設定で「🌐︎ キーを押して: 何もしない」にしてください。🌐︎ のないキーボードはこのキーを送りません。";
-"macOS refused to move this item." = "macOS がこの項目の移動を拒否しました。";
+"macOS would not move this. Show it in the Finder and try from there — the Finder says more about why." = "macOS がこれを移動しませんでした。Finder で表示してそちらから試してください。理由は Finder のほうが詳しく教えてくれます。";
 "min" = "分";
 "moved to" = "移動先";
 "moved to Trash" = "ゴミ箱に入れた";

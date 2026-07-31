@@ -37,7 +37,6 @@
 "Add tag" = "Поставить тег";
 "After an update Helm tells you which permissions stopped working and takes you straight to the right pane. An update always revokes them — the checkbox stays ticked while nothing works." = "После обновления Helm говорит, какие разрешения перестали действовать, и ведёт прямо в нужную панель. Обновление всегда их сбрасывает: галочка остаётся стоять, а работать перестаёт.";
 "All" = "Все";
-"All extras to basket" = "Все лишние — к удалению";
 "Always" = "Всегда";
 "An app can no longer claim other apps' files as its own leftovers by naming itself unusually." = "Программа больше не может выдать чужие файлы за свои остатки, назвавшись необычным образом.";
 "An app that keeps the Mac awake can now be narrowed to the situation you mean: only with an external display, only on power, or both." = "Приложение, не дающее Mac спать, теперь можно ограничить условием: только при внешнем дисплее, только при питании или и то и другое.";
@@ -267,7 +266,9 @@
 "Manage Homebrew packages" = "Управление пакетами Homebrew";
 "Manage…" = "Управление…";
 "Manual" = "Вручную";
+"Mark every extra copy" = "Отметить все лишние копии";
 "Mark for removal" = "Отметить к удалению";
+"Mark the extra copies" = "Отметить лишние копии";
 "Media" = "Медиа";
 "Medium" = "Средний";
 "Menu Bar" = "Строка меню";
@@ -343,12 +344,11 @@
 "One key does both fixes. Pick right ⌘, ⌥, ⌃ or ⇧ and press it on its own: the first tap fixes the last word, the next puts it back. It keeps working as a modifier — held down, or pressed with anything else, it is an ordinary key again, so nothing you already use it for stops working." = "Одна клавиша на оба действия. Выберите правую ⌘, ⌥, ⌃ или ⇧ и нажмите её отдельно: первое нажатие исправляет последнее слово, второе возвращает как было. Модификатором она быть не перестаёт — зажатая или нажатая вместе с чем-то ещё, это обычная клавиша, и всё, для чего вы её уже используете, продолжает работать.";
 "One per line." = "По одному в строке.";
 "Only when what you typed is not a word and becomes one once the layout is switched. Anything that is already a word is left alone." = "Только если набранное — не слово, а после смены раскладки словом становится. Всё, что осмысленно как есть, остаётся нетронутым.";
+"Open Accessibility…" = "Открыть «Универсальный доступ»…";
 "Open Extensions…" = "Открыть «Расширения»…";
 "Open Full Disk Access…" = "Открыть «Доступ к диску»…";
 "Open Helm at login" = "Открывать Helm при входе";
 "Open Keyboard settings…" = "Открыть настройки клавиатуры…";
-"Open accessibility…" = "Открыть «Универсальный доступ»…";
-"Open disk access…" = "Открыть «Доступ к диску»…";
 "Or a key combination" = "Или сочетание клавиш";
 "Orange" = "Оранжевый";
 "Other" = "Другое";
@@ -479,10 +479,13 @@
 "The app itself — always removed" = "Само приложение удаляется всегда";
 "The battery guard — which stops Keep Awake from running a session down to empty — now starts on for new installs, at 20%. It shipped off by default, beside a session length that defaults to indefinite." = "Защита батареи — та, что не даёт «Не спать» разряжать её в ноль, — теперь при новой установке включена по умолчанию, на уровне 20%. Раньше она была выключена по умолчанию рядом с настройкой длительности, которая по умолчанию — «бессрочно».";
 "The copy that was there first. Helm never offers every copy of a file." = "Копия, появившаяся раньше остальных. Helm никогда не предлагает удалить все копии файла.";
+"The disk is full. Moving to the Trash needs room, because the Trash is a folder on the same disk — empty it and try again." = "На диске нет места. Перемещение в Корзину требует места: Корзина — папка на том же диске. Очистите её и попробуйте снова.";
 "The disk list can be walked from the keyboard: arrow keys between rows, Return to go into a folder, ⌘↑ to come back out. And the screen now fits the width it has: on a narrow window the ring gives way to the list, which carries the same facts in less room." = "По списку в «Диске» теперь можно ходить с клавиатуры: стрелки между строками, Return — войти в папку, ⌘↑ — вернуться. А экран подстраивается под ширину окна: когда её мало, кольцо уступает место списку — он несёт те же факты и требует меньше места.";
 "The disk map now answers VoiceOver: every wedge reads its name, its size and its share of the folder, and can be opened from there. Folders in the list beside it can be opened from the context menu too — the double-click still works and is no longer the only way." = "Карта диска теперь отвечает VoiceOver: каждый сегмент называет папку, размер и её долю, и оттуда же в неё можно провалиться. Папки в списке рядом открываются и через контекстное меню — двойной клик работает по-прежнему, но перестал быть единственным способом.";
 "The disk ring grows into the folder you opened. It shows three levels at a time, and the level that arrived when you drilled in had nowhere to come from — it appeared all at once at the end of the animation. Now it slides in with the rest." = "Кольцо «Диска» теперь врастает в папку, в которую вы вошли. Оно показывает три уровня сразу, и третий уровень появлялся резко в конце анимации — ему было просто неоткуда ехать. Теперь он въезжает вместе со всеми.";
 "The disk ring was measuring the wrong thing when you scanned a folder: it drew the volume's free space alongside the folder's contents, so a small folder came out as a blank grey circle. And “Scan again” now scans the same place again instead of sending you back to the volume list. In the duplicate finder, files that refused to move stay ticked, so you can fix the reason and try again without starting over. Homebrew search puts the name you typed first." = "Кольцо «Диска» мерило не то, когда вы сканировали папку: рядом с содержимым оно рисовало свободное место всего тома, и небольшая папка выходила пустым серым кругом. А «Сканировать заново» теперь и правда сканирует то же самое место, а не возвращает к списку томов. В поиске дубликатов файлы, которые не удалось переместить, остаются отмеченными — можно устранить причину и повторить, не начиная заново. Поиск в Homebrew ставит первым то имя, которое вы набрали.";
+"The disk this is on is read-only. Eject it and unlock it, or copy what you need elsewhere." = "Диск, на котором это лежит, — только для чтения. Извлеките его и снимите защиту или скопируйте нужное в другое место.";
+"The download did not match what the release published, so Helm did not install it." = "Загруженный файл не совпал с тем, что опубликовано в релизе, поэтому Helm его не установил.";
 "The duplicate finder is its own screen now, right after Disk. It used to search whatever folder the ring happened to be showing, so you could only look where you had already scanned; now you point it at a folder and it remembers it. It still compares content rather than names, still keeps one copy of every group, and still never offers a hard link." = "Поиск дубликатов теперь отдельный экран, сразу после «Диска». Раньше он искал в той папке, которую показывало кольцо, — то есть только там, где вы уже сканировали. Теперь вы сами указываете папку, и он её запоминает. Содержимое по-прежнему сравнивается вместо имён, одна копия в каждой группе остаётся, а жёсткие ссылки не предлагаются.";
 "The duplicate finder no longer holds on to everything it reads. It compares files a megabyte at a time so a video never has to fit in memory — but the app kept every one of those megabytes until the scan ended, so the memory it used followed the size of the folder rather than the size of a slice. The background check for updates had the same defect in its own file check. Memory is also handed back to macOS when a scan finishes and when a module is switched off, instead of being kept for later." = "Поиск дубликатов больше не держит всё, что прочитал. Файлы сравниваются по мегабайту, чтобы видео не приходилось целиком держать в памяти, но каждый такой мегабайт жил до конца скана — и память росла по размеру папки, а не по размеру куска. Та же беда была и у фоновой проверки обновлений, в её собственной проверке файла. Кроме того, память теперь возвращается системе после скана и при выключении модуля, а не придерживается на потом.";
 "The file is locked, or you are not its owner. Open Get Info in the Finder to unlock it or change its permissions." = "Файл защищён или принадлежит другому пользователю. Откройте «Свойства» в Finder: снимите защиту или измените права доступа.";
@@ -613,7 +616,7 @@
 "macOS asks for an administrator password the first time Keep Awake runs with this on. If Helm is quit while sleep is off, it stays off until Helm runs again." = "Когда «Не спать» впервые заработает с этой настройкой, macOS запросит пароль администратора. Если закрыть Helm, пока сон выключен, он включится только при следующем запуске Helm.";
 "macOS is not allowing notifications from Helm. The name will be shown in the menu bar instead." = "macOS не разрешает уведомления от Helm. Вместо этого имя будет показано в строке меню.";
 "macOS may already use 🌐︎ to switch input source, open emoji or start dictation. Set “Press 🌐︎ to: Do Nothing” in Keyboard settings, or it will do both. Keyboards without a 🌐︎ key never send it." = "macOS может уже использовать 🌐︎ — для смены языка, эмодзи или диктовки. Поставьте «Клавиша 🌐︎: ничего не делать» в настройках клавиатуры, иначе сработает и то и другое. Клавиатуры без 🌐︎ её не отправляют.";
-"macOS refused to move this item." = "macOS отказалась перемещать этот объект.";
+"macOS would not move this. Show it in the Finder and try from there — the Finder says more about why." = "macOS не дала это переместить. Покажите файл в Finder и попробуйте оттуда — Finder объясняет причину подробнее.";
 "min" = "мин";
 "moved to" = "перемещено в";
 "moved to Trash" = "отправлено в Корзину";

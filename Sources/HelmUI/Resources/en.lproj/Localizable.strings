@@ -37,7 +37,6 @@
 "Add tag" = "Add tag";
 "After an update Helm tells you which permissions stopped working and takes you straight to the right pane. An update always revokes them — the checkbox stays ticked while nothing works." = "After an update Helm tells you which permissions stopped working and takes you straight to the right pane. An update always revokes them — the checkbox stays ticked while nothing works.";
 "All" = "All";
-"All extras to basket" = "All extras to basket";
 "Always" = "Always";
 "An app can no longer claim other apps' files as its own leftovers by naming itself unusually." = "An app can no longer claim other apps' files as its own leftovers by naming itself unusually.";
 "An app that keeps the Mac awake can now be narrowed to the situation you mean: only with an external display, only on power, or both." = "An app that keeps the Mac awake can now be narrowed to the situation you mean: only with an external display, only on power, or both.";
@@ -267,7 +266,9 @@
 "Manage Homebrew packages" = "Manage Homebrew packages";
 "Manage…" = "Manage…";
 "Manual" = "Manual";
+"Mark every extra copy" = "Mark every extra copy";
 "Mark for removal" = "Mark for removal";
+"Mark the extra copies" = "Mark the extra copies";
 "Media" = "Media";
 "Medium" = "Medium";
 "Menu Bar" = "Menu Bar";
@@ -343,12 +344,11 @@
 "One key does both fixes. Pick right ⌘, ⌥, ⌃ or ⇧ and press it on its own: the first tap fixes the last word, the next puts it back. It keeps working as a modifier — held down, or pressed with anything else, it is an ordinary key again, so nothing you already use it for stops working." = "One key does both fixes. Pick right ⌘, ⌥, ⌃ or ⇧ and press it on its own: the first tap fixes the last word, the next puts it back. It keeps working as a modifier — held down, or pressed with anything else, it is an ordinary key again, so nothing you already use it for stops working.";
 "One per line." = "One per line.";
 "Only when what you typed is not a word and becomes one once the layout is switched. Anything that is already a word is left alone." = "Only when what you typed is not a word and becomes one once the layout is switched. Anything that is already a word is left alone.";
+"Open Accessibility…" = "Open accessibility…";
 "Open Extensions…" = "Open Extensions…";
 "Open Full Disk Access…" = "Open Full Disk Access…";
 "Open Helm at login" = "Open Helm at login";
 "Open Keyboard settings…" = "Open Keyboard settings…";
-"Open accessibility…" = "Open accessibility…";
-"Open disk access…" = "Open disk access…";
 "Or a key combination" = "Or a key combination";
 "Orange" = "Orange";
 "Other" = "Other";
@@ -479,10 +479,13 @@
 "The app itself — always removed" = "The app itself — always removed";
 "The battery guard — which stops Keep Awake from running a session down to empty — now starts on for new installs, at 20%. It shipped off by default, beside a session length that defaults to indefinite." = "The battery guard — which stops Keep Awake from running a session down to empty — now starts on for new installs, at 20%. It shipped off by default, beside a session length that defaults to indefinite.";
 "The copy that was there first. Helm never offers every copy of a file." = "The copy that was there first. Helm never offers every copy of a file.";
+"The disk is full. Moving to the Trash needs room, because the Trash is a folder on the same disk — empty it and try again." = "The disk is full. Moving to the Trash needs room, because the Trash is a folder on the same disk — empty it and try again.";
 "The disk list can be walked from the keyboard: arrow keys between rows, Return to go into a folder, ⌘↑ to come back out. And the screen now fits the width it has: on a narrow window the ring gives way to the list, which carries the same facts in less room." = "The disk list can be walked from the keyboard: arrow keys between rows, Return to go into a folder, ⌘↑ to come back out. And the screen now fits the width it has: on a narrow window the ring gives way to the list, which carries the same facts in less room.";
 "The disk map now answers VoiceOver: every wedge reads its name, its size and its share of the folder, and can be opened from there. Folders in the list beside it can be opened from the context menu too — the double-click still works and is no longer the only way." = "The disk map now answers VoiceOver: every wedge reads its name, its size and its share of the folder, and can be opened from there. Folders in the list beside it can be opened from the context menu too — the double-click still works and is no longer the only way.";
 "The disk ring grows into the folder you opened. It shows three levels at a time, and the level that arrived when you drilled in had nowhere to come from — it appeared all at once at the end of the animation. Now it slides in with the rest." = "The disk ring grows into the folder you opened. It shows three levels at a time, and the level that arrived when you drilled in had nowhere to come from — it appeared all at once at the end of the animation. Now it slides in with the rest.";
 "The disk ring was measuring the wrong thing when you scanned a folder: it drew the volume's free space alongside the folder's contents, so a small folder came out as a blank grey circle. And “Scan again” now scans the same place again instead of sending you back to the volume list. In the duplicate finder, files that refused to move stay ticked, so you can fix the reason and try again without starting over. Homebrew search puts the name you typed first." = "The disk ring was measuring the wrong thing when you scanned a folder: it drew the volume's free space alongside the folder's contents, so a small folder came out as a blank grey circle. And “Scan again” now scans the same place again instead of sending you back to the volume list. In the duplicate finder, files that refused to move stay ticked, so you can fix the reason and try again without starting over. Homebrew search puts the name you typed first.";
+"The disk this is on is read-only. Eject it and unlock it, or copy what you need elsewhere." = "The disk this is on is read-only. Eject it and unlock it, or copy what you need elsewhere.";
+"The download did not match what the release published, so Helm did not install it." = "The download did not match what the release published, so Helm did not install it.";
 "The duplicate finder is its own screen now, right after Disk. It used to search whatever folder the ring happened to be showing, so you could only look where you had already scanned; now you point it at a folder and it remembers it. It still compares content rather than names, still keeps one copy of every group, and still never offers a hard link." = "The duplicate finder is its own screen now, right after Disk. It used to search whatever folder the ring happened to be showing, so you could only look where you had already scanned; now you point it at a folder and it remembers it. It still compares content rather than names, still keeps one copy of every group, and still never offers a hard link.";
 "The duplicate finder no longer holds on to everything it reads. It compares files a megabyte at a time so a video never has to fit in memory — but the app kept every one of those megabytes until the scan ended, so the memory it used followed the size of the folder rather than the size of a slice. The background check for updates had the same defect in its own file check. Memory is also handed back to macOS when a scan finishes and when a module is switched off, instead of being kept for later." = "The duplicate finder no longer holds on to everything it reads. It compares files a megabyte at a time so a video never has to fit in memory — but the app kept every one of those megabytes until the scan ended, so the memory it used followed the size of the folder rather than the size of a slice. The background check for updates had the same defect in its own file check. Memory is also handed back to macOS when a scan finishes and when a module is switched off, instead of being kept for later.";
 "The file is locked, or you are not its owner. Open Get Info in the Finder to unlock it or change its permissions." = "The file is locked, or you are not its owner. Open Get Info in the Finder to unlock it or change its permissions.";
@@ -613,7 +616,7 @@
 "macOS asks for an administrator password the first time Keep Awake runs with this on. If Helm is quit while sleep is off, it stays off until Helm runs again." = "macOS asks for an administrator password the first time Keep Awake runs with this on. If Helm is quit while sleep is off, it stays off until Helm runs again.";
 "macOS is not allowing notifications from Helm. The name will be shown in the menu bar instead." = "macOS is not allowing notifications from Helm. The name will be shown in the menu bar instead.";
 "macOS may already use 🌐︎ to switch input source, open emoji or start dictation. Set “Press 🌐︎ to: Do Nothing” in Keyboard settings, or it will do both. Keyboards without a 🌐︎ key never send it." = "macOS may already use 🌐︎ to switch input source, open emoji or start dictation. Set “Press 🌐︎ to: Do Nothing” in Keyboard settings, or it will do both. Keyboards without a 🌐︎ key never send it.";
-"macOS refused to move this item." = "macOS refused to move this item.";
+"macOS would not move this. Show it in the Finder and try from there — the Finder says more about why." = "macOS would not move this. Show it in the Finder and try from there — the Finder says more about why.";
 "min" = "min";
 "moved to" = "moved to";
 "moved to Trash" = "moved to Trash";

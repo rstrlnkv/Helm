@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 /// One file, as the duplicate search needs it.
 public struct FileFacts: Hashable, Sendable {
@@ -21,14 +22,20 @@ public struct FileFacts: Hashable, Sendable {
     /// that with it when it is copied, so it would call the copy exactly as old
     /// as the original. nil on a volume that does not record it.
     public let added: Date?
+    /// The APFS clone family, when the volume has one. Files sharing it share
+    /// their blocks, so removing one of them frees nothing — the same reasoning
+    /// as `fileID` above, one level up: a hard link is one file with two names,
+    /// a clone is two files with one set of blocks.
+    public let cloneFamily: UInt64?
 
     public init(path: String, bytes: Int, fileID: UInt64, added: Date? = nil,
-                allocated: Int? = nil) {
+                allocated: Int? = nil, cloneFamily: UInt64? = nil) {
         self.path = path
         self.bytes = bytes
         self.fileID = fileID
         self.added = added
         self.allocated = allocated ?? bytes
+        self.cloneFamily = cloneFamily
     }
 }
 
@@ -45,10 +52,19 @@ public struct DuplicateGroup: Codable, Equatable, Sendable, Identifiable {
     public struct Copy: Codable, Equatable, Sendable {
         public let path: String
         public let bytes: Int
+        /// The APFS clone family this copy belongs to, when the volume has one.
+        ///
+        /// Two copies with the same id share their blocks, so removing one of
+        /// them returns nothing — and Finder's Duplicate command makes exactly
+        /// that. `nil` means no family, or a read that failed, and counts as a
+        /// file of its own: under-reporting space somebody really gets back is
+        /// the worse of the two errors.
+        public let cloneFamily: UInt64?
 
-        public init(path: String, bytes: Int) {
+        public init(path: String, bytes: Int, cloneFamily: UInt64? = nil) {
             self.path = path
             self.bytes = bytes
+            self.cloneFamily = cloneFamily
         }
     }
 
@@ -60,9 +76,19 @@ public struct DuplicateGroup: Codable, Equatable, Sendable, Identifiable {
     public var paths: [String] { copies.map(\.path) }
     /// The size of one copy: the one that stays.
     public var bytes: Int { copies.first?.bytes ?? 0 }
-    /// What deleting all but the first frees — those copies' own sizes, which
-    /// is the same measure `HelmTrash` reports back afterwards.
-    public var wasted: Int { copies.dropFirst().reduce(0) { $0 + $1.bytes } }
+    /// What deleting all but the first actually returns to the disk.
+    ///
+    /// Not the sum of their sizes. On APFS a clone shares its blocks with the
+    /// copy it was made from, so removing it frees nothing — measured here, a
+    /// 20 MB file cloned with `cp -c` cost 0 bytes of free space while a real
+    /// copy cost 20 MB, and `stat` reported the same allocated size for both.
+    /// Adding the sizes up promised space the disk would not give back, and the
+    /// promise was exactly double for a folder of Finder duplicates.
+    public var wasted: Int {
+        CloneShare.reclaimable(
+            removing: copies.dropFirst().map { (id: $0.cloneFamily, bytes: $0.bytes) },
+            keeping: copies.first.map { [$0.cloneFamily] } ?? [])
+    }
 
     public init(copies: [Copy]) {
         self.copies = copies
@@ -155,8 +181,11 @@ public enum Duplicates {
         // depending on which was reached first.
         let occupied = Dictionary(identical.map { ($0.path, $0.allocated) },
                                   uniquingKeysWith: { first, _ in first })
+        let families = Dictionary(identical.map { ($0.path, $0.cloneFamily) },
+                                  uniquingKeysWith: { first, _ in first })
         return DuplicateGroup(copies: SurvivingCopy.order(identical).map {
-            DuplicateGroup.Copy(path: $0, bytes: occupied[$0] ?? 0)
+            DuplicateGroup.Copy(path: $0, bytes: occupied[$0] ?? 0,
+                                cloneFamily: families[$0] ?? nil)
         })
     }
 

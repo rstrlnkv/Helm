@@ -18,7 +18,14 @@ import HelmRuntime
         let notes: String
     }
 
-    enum InstallState: Equatable { case idle, downloading, installing, failed }
+    enum InstallState: Equatable {
+        case idle, downloading, installing, failed
+        /// The download is not what the release published. A network error and
+        /// a file that does not match are the same red triangle to look at and
+        /// two different things to do about — and only one of them is a reason
+        /// not to press Retry.
+        case digestMismatch
+    }
 
     @Published private(set) var available: Release?
     /// What the channel's newest release is, when the running build is a
@@ -94,7 +101,7 @@ import HelmRuntime
                 HelmLog.shared.memory("update.digest")
                 guard digestMatches else {
                     HelmLog.shared.error("update", "digest mismatch for \(asset) — refusing to install")
-                    installState = .failed
+                    installState = .digestMismatch
                     return
                 }
                 installState = .installing

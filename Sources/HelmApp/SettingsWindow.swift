@@ -813,6 +813,21 @@ private struct AboutHelmView: View {
             statusLine(AppStr.downloadingUpdate, spinning: true)
         case .installing:
             statusLine(AppStr.installingUpdate, spinning: true)
+        case .digestMismatch:
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    statusIcon("exclamationmark.triangle.fill", HelmSignal.danger)
+                    Text(AppStr.updateDigestMismatch).lineLimit(3)
+                    Spacer()
+                }
+                // No Retry: downloading the same file again would produce the
+                // same answer. The release page is where a person can see what
+                // was published and decide.
+                if let rel = updater.available {
+                    Link(AppStr.download, destination: rel.pageURL)
+                        .font(.callout)
+                }
+            }
         case .failed:
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 10) {

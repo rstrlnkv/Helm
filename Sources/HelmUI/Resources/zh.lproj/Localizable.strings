@@ -37,7 +37,6 @@
 "Add tag" = "添加标签";
 "After an update Helm tells you which permissions stopped working and takes you straight to the right pane. An update always revokes them — the checkbox stays ticked while nothing works." = "更新后，Helm 会说明哪些权限已失效，并直接带你到对应面板。更新总会撤销权限——勾选还在，功能却没了。";
 "All" = "全部";
-"All extras to basket" = "所有多余的放入收集篮";
 "Always" = "始终";
 "An app can no longer claim other apps' files as its own leftovers by naming itself unusually." = "应用不能再通过使用异常名称，把其他应用的文件说成自己的残留。";
 "An app that keeps the Mac awake can now be narrowed to the situation you mean: only with an external display, only on power, or both." = "让 Mac 保持唤醒的应用现在可以限定条件：仅连接外接显示器时、仅接通电源时，或两者同时。";
@@ -267,7 +266,9 @@
 "Manage Homebrew packages" = "管理 Homebrew 软件包";
 "Manage…" = "管理…";
 "Manual" = "手动";
+"Mark every extra copy" = "全部多余副本标记为待删除";
 "Mark for removal" = "标记为待删除";
+"Mark the extra copies" = "标记多余副本为待删除";
 "Media" = "媒体";
 "Medium" = "中";
 "Menu Bar" = "菜单栏";
@@ -343,12 +344,11 @@
 "One key does both fixes. Pick right ⌘, ⌥, ⌃ or ⇧ and press it on its own: the first tap fixes the last word, the next puts it back. It keeps working as a modifier — held down, or pressed with anything else, it is an ordinary key again, so nothing you already use it for stops working." = "一个键完成两件事：选择右侧 ⌘、⌥、⌃ 或 ⇧ 并单独按下，第一次修正上一个词，再按一次还原。按住或与其他键同时按下时，它仍是普通修饰键。";
 "One per line." = "每行一个。";
 "Only when what you typed is not a word and becomes one once the layout is switched. Anything that is already a word is left alone." = "仅当按原样不是单词、切换布局后才是单词时才会改。已经是单词的一律不动。";
+"Open Accessibility…" = "打开无障碍…";
 "Open Extensions…" = "打开扩展…";
 "Open Full Disk Access…" = "打开完全磁盘访问权限…";
 "Open Helm at login" = "登录时打开 Helm";
 "Open Keyboard settings…" = "打开键盘设置…";
-"Open accessibility…" = "打开无障碍…";
-"Open disk access…" = "打开完全磁盘访问权限…";
 "Or a key combination" = "或使用组合键";
 "Orange" = "橙色";
 "Other" = "其他";
@@ -479,10 +479,13 @@
 "The app itself — always removed" = "应用本体 — 总是会被删除";
 "The battery guard — which stops Keep Awake from running a session down to empty — now starts on for new installs, at 20%. It shipped off by default, beside a session length that defaults to indefinite." = "电池保护功能——防止“保持唤醒”把电量耗到底——现在新安装时默认在 20% 处开启。此前它默认是关闭的，而紧挨着它的时长设置默认却是“无限期”。";
 "The copy that was there first. Helm never offers every copy of a file." = "最早存在的那份副本。Helm 绝不会把文件的所有副本都列为可删。";
+"The disk is full. Moving to the Trash needs room, because the Trash is a folder on the same disk — empty it and try again." = "磁盘已满。废纸篓就在同一块磁盘上，所以移入也需要空间——请先清倒废纸篓再试。";
 "The disk list can be walked from the keyboard: arrow keys between rows, Return to go into a folder, ⌘↑ to come back out. And the screen now fits the width it has: on a narrow window the ring gives way to the list, which carries the same facts in less room." = "磁盘列表现在可以用键盘浏览：方向键移动，Return 进入文件夹，⌘↑ 返回上层。上方的栏也重新放得下了——扫描信息移到了环形图下方。";
 "The disk map now answers VoiceOver: every wedge reads its name, its size and its share of the folder, and can be opened from there. Folders in the list beside it can be opened from the context menu too — the double-click still works and is no longer the only way." = "磁盘分布图现在支持 VoiceOver：每个扇区会读出名称、大小和占比，并可从那里打开。旁边列表中的文件夹也能通过右键菜单打开。";
 "The disk ring grows into the folder you opened. It shows three levels at a time, and the level that arrived when you drilled in had nowhere to come from — it appeared all at once at the end of the animation. Now it slides in with the rest." = "磁盘环形图会平滑地生长到你打开的文件夹：第三层不再在动画结束时突然出现。";
 "The disk ring was measuring the wrong thing when you scanned a folder: it drew the volume's free space alongside the folder's contents, so a small folder came out as a blank grey circle. And “Scan again” now scans the same place again instead of sending you back to the volume list. In the duplicate finder, files that refused to move stay ticked, so you can fix the reason and try again without starting over. Homebrew search puts the name you typed first." = "扫描文件夹时，磁盘环把整个卷的可用空间和文件夹内容画在一起，小文件夹就成了一个空白的灰圈。“重新扫描”现在会重新扫描同一位置。重复文件查找中，未能移动的文件保持勾选。Homebrew 搜索会把你输入的名称排在最前。";
+"The disk this is on is read-only. Eject it and unlock it, or copy what you need elsewhere." = "所在磁盘是只读的。请推出并解除锁定，或把需要的内容复制到别处。";
+"The download did not match what the release published, so Helm did not install it." = "下载的文件与该版本公布的内容不符，因此 Helm 没有安装它。";
 "The duplicate finder is its own screen now, right after Disk. It used to search whatever folder the ring happened to be showing, so you could only look where you had already scanned; now you point it at a folder and it remembers it. It still compares content rather than names, still keeps one copy of every group, and still never offers a hard link." = "重复文件查找现在是独立的一页，紧跟在“磁盘”之后。过去它只能搜索环形图当前显示的文件夹，现在由你指定文件夹，并且会记住。仍然比较内容而非文件名，每组也仍然保留一份。";
 "The duplicate finder no longer holds on to everything it reads. It compares files a megabyte at a time so a video never has to fit in memory — but the app kept every one of those megabytes until the scan ended, so the memory it used followed the size of the folder rather than the size of a slice. The background check for updates had the same defect in its own file check. Memory is also handed back to macOS when a scan finishes and when a module is switched off, instead of being kept for later." = "重复文件查找不再保留它读取的全部内容：内存占用曾随文件夹大小增长。后台检查更新时的文件校验也有同样的问题。扫描结束和关闭模块时会将内存交还系统。";
 "The file is locked, or you are not its owner. Open Get Info in the Finder to unlock it or change its permissions." = "文件已锁定，或不属于你。在访达中打开“显示简介”解锁，或修改其权限。";
@@ -613,7 +616,7 @@
 "macOS asks for an administrator password the first time Keep Awake runs with this on. If Helm is quit while sleep is off, it stays off until Helm runs again." = "启用后“保持唤醒”首次运行时，macOS 会要求输入管理员密码。若在睡眠关闭时退出 Helm，它会一直保持关闭，直到 Helm 再次启动。";
 "macOS is not allowing notifications from Helm. The name will be shown in the menu bar instead." = "macOS 不允许 Helm 发送通知。将改为在菜单栏显示名称。";
 "macOS may already use 🌐︎ to switch input source, open emoji or start dictation. Set “Press 🌐︎ to: Do Nothing” in Keyboard settings, or it will do both. Keyboards without a 🌐︎ key never send it." = "macOS 可能已把 🌐︎ 用于切换输入法、打开表情或听写。请在键盘设置中选择“按下 🌐︎ 键时：不执行任何操作”，否则两件事都会发生。没有 🌐︎ 键的键盘不会发送它。";
-"macOS refused to move this item." = "macOS 拒绝移动此项。";
+"macOS would not move this. Show it in the Finder and try from there — the Finder says more about why." = "macOS 未能移动它。请在访达中显示并从那里尝试——访达会给出更详细的原因。";
 "min" = "分钟";
 "moved to" = "移动到";
 "moved to Trash" = "移到废纸篓";

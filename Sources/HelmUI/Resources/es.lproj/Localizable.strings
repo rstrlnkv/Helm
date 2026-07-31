@@ -37,7 +37,6 @@
 "Add tag" = "Añadir etiqueta";
 "After an update Helm tells you which permissions stopped working and takes you straight to the right pane. An update always revokes them — the checkbox stays ticked while nothing works." = "Tras una actualización, Helm indica qué permisos dejaron de funcionar y te lleva al panel correcto. Una actualización siempre los revoca: la casilla sigue marcada y nada funciona.";
 "All" = "Todo";
-"All extras to basket" = "Todos los sobrantes a la cesta";
 "Always" = "Siempre";
 "An app can no longer claim other apps' files as its own leftovers by naming itself unusually." = "Una app ya no puede reclamar los archivos de otras como restos propios usando un nombre inusual.";
 "An app that keeps the Mac awake can now be narrowed to the situation you mean: only with an external display, only on power, or both." = "Una app que mantiene activo el Mac ahora puede limitarse: solo con pantalla externa, solo con corriente, o ambas.";
@@ -267,7 +266,9 @@
 "Manage Homebrew packages" = "Gestiona paquetes de Homebrew";
 "Manage…" = "Gestionar…";
 "Manual" = "Manual";
+"Mark every extra copy" = "Marcar todos los sobrantes";
 "Mark for removal" = "Marcar para eliminar";
+"Mark the extra copies" = "Marcar las copias de más";
 "Media" = "Multimedia";
 "Medium" = "Mediano";
 "Menu Bar" = "Barra de menús";
@@ -343,12 +344,11 @@
 "One key does both fixes. Pick right ⌘, ⌥, ⌃ or ⇧ and press it on its own: the first tap fixes the last word, the next puts it back. It keeps working as a modifier — held down, or pressed with anything else, it is an ordinary key again, so nothing you already use it for stops working." = "Una tecla para ambas correcciones: elige ⌘, ⌥, ⌃ o ⇧ derecha y púlsala sola. La primera vez corrige la última palabra, la siguiente la devuelve. Sigue siendo un modificador cuando la mantienes o la combinas.";
 "One per line." = "Uno por línea.";
 "Only when what you typed is not a word and becomes one once the layout is switched. Anything that is already a word is left alone." = "Solo cuando lo escrito no es una palabra y sí lo es al cambiar de distribución. Lo que ya es una palabra no se toca.";
+"Open Accessibility…" = "Abrir Accesibilidad…";
 "Open Extensions…" = "Abrir Extensiones…";
 "Open Full Disk Access…" = "Abrir Acceso total al disco…";
 "Open Helm at login" = "Abrir Helm al iniciar sesión";
 "Open Keyboard settings…" = "Abrir Ajustes de teclado…";
-"Open accessibility…" = "Abrir Accesibilidad…";
-"Open disk access…" = "Abrir Acceso total al disco…";
 "Or a key combination" = "O una combinación de teclas";
 "Orange" = "Naranja";
 "Other" = "Otro";
@@ -479,10 +479,13 @@
 "The app itself — always removed" = "La app en sí: siempre se elimina";
 "The battery guard — which stops Keep Awake from running a session down to empty — now starts on for new installs, at 20%. It shipped off by default, beside a session length that defaults to indefinite." = "La protección de batería — la que evita que Mantener activo la agote del todo — ahora viene activada de fábrica al 20% en instalaciones nuevas. Antes venía desactivada, junto a una duración cuyo valor predeterminado es indefinida.";
 "The copy that was there first. Helm never offers every copy of a file." = "La copia que lleva más tiempo ahí. Helm nunca ofrece todas las copias de un archivo.";
+"The disk is full. Moving to the Trash needs room, because the Trash is a folder on the same disk — empty it and try again." = "El disco está lleno. Trasladar a la papelera necesita espacio, porque la papelera es una carpeta del mismo disco: vacíala e inténtalo de nuevo.";
 "The disk list can be walked from the keyboard: arrow keys between rows, Return to go into a folder, ⌘↑ to come back out. And the screen now fits the width it has: on a narrow window the ring gives way to the list, which carries the same facts in less room." = "La lista del disco se puede recorrer con el teclado: flechas entre filas, Retorno para entrar en una carpeta, ⌘↑ para volver. Y la barra superior vuelve a caber: el dato del escaneo pasó debajo del anillo.";
 "The disk map now answers VoiceOver: every wedge reads its name, its size and its share of the folder, and can be opened from there. Folders in the list beside it can be opened from the context menu too — the double-click still works and is no longer the only way." = "El mapa del disco ahora responde a VoiceOver: cada sector dice su nombre, tamaño y porcentaje, y se puede abrir desde ahí. Las carpetas de la lista también se abren desde el menú contextual.";
 "The disk ring grows into the folder you opened. It shows three levels at a time, and the level that arrived when you drilled in had nowhere to come from — it appeared all at once at the end of the animation. Now it slides in with the rest." = "El anillo del disco crece hacia la carpeta que abriste: el nivel que llegaba al entrar aparecía de golpe al final de la animación y ahora entra deslizándose con los demás.";
 "The disk ring was measuring the wrong thing when you scanned a folder: it drew the volume's free space alongside the folder's contents, so a small folder came out as a blank grey circle. And “Scan again” now scans the same place again instead of sending you back to the volume list. In the duplicate finder, files that refused to move stay ticked, so you can fix the reason and try again without starting over. Homebrew search puts the name you typed first." = "El anillo del disco medía lo que no debía al escanear una carpeta: dibujaba el espacio libre del volumen junto al contenido, y una carpeta pequeña salía como un círculo gris vacío. «Escanear de nuevo» ahora escanea el mismo sitio. En duplicados, los archivos que no se pudieron mover siguen marcados. La búsqueda de Homebrew pone primero el nombre que escribiste.";
+"The disk this is on is read-only. Eject it and unlock it, or copy what you need elsewhere." = "El disco es de solo lectura. Expúlsalo y desbloquéalo, o copia lo que necesites en otro sitio.";
+"The download did not match what the release published, so Helm did not install it." = "La descarga no coincide con lo que publicó la versión, así que Helm no la instaló.";
 "The duplicate finder is its own screen now, right after Disk. It used to search whatever folder the ring happened to be showing, so you could only look where you had already scanned; now you point it at a folder and it remembers it. It still compares content rather than names, still keeps one copy of every group, and still never offers a hard link." = "El buscador de duplicados es ahora una pantalla propia, justo después de Disco. Antes buscaba en la carpeta que mostraba el anillo; ahora eliges la carpeta y la recuerda. Sigue comparando contenido y no nombres, y siempre conserva una copia.";
 "The duplicate finder no longer holds on to everything it reads. It compares files a megabyte at a time so a video never has to fit in memory — but the app kept every one of those megabytes until the scan ended, so the memory it used followed the size of the folder rather than the size of a slice. The background check for updates had the same defect in its own file check. Memory is also handed back to macOS when a scan finishes and when a module is switched off, instead of being kept for later." = "El buscador de duplicados ya no retiene todo lo que lee: la memoria seguía el tamaño de la carpeta en vez del de un fragmento. La comprobación de actualizaciones en segundo plano tenía el mismo defecto en su propia verificación de archivo. Además, la memoria se devuelve al sistema al terminar un escaneo y al apagar un módulo.";
 "The file is locked, or you are not its owner. Open Get Info in the Finder to unlock it or change its permissions." = "El archivo está bloqueado o no te pertenece. Abre “Obtener información” en el Finder para desbloquearlo o cambiar sus permisos.";
@@ -613,7 +616,7 @@
 "macOS asks for an administrator password the first time Keep Awake runs with this on. If Helm is quit while sleep is off, it stays off until Helm runs again." = "macOS solicita una contraseña de administración la primera vez que Mantener activo se ejecuta así. Si se sale de Helm con el reposo desactivado, seguirá desactivado hasta que Helm vuelva a abrirse.";
 "macOS is not allowing notifications from Helm. The name will be shown in the menu bar instead." = "macOS no permite notificaciones de Helm. En su lugar, el nombre se mostrará en la barra de menús.";
 "macOS may already use 🌐︎ to switch input source, open emoji or start dictation. Set “Press 🌐︎ to: Do Nothing” in Keyboard settings, or it will do both. Keyboards without a 🌐︎ key never send it." = "macOS quizá ya use 🌐︎ para cambiar de idioma, abrir emoji o dictar. Pon «Tecla 🌐︎: no hacer nada» en Ajustes de teclado, o hará las dos cosas. Los teclados sin 🌐︎ nunca la envían.";
-"macOS refused to move this item." = "macOS se negó a mover este elemento.";
+"macOS would not move this. Show it in the Finder and try from there — the Finder says more about why." = "macOS no movió esto. Muéstralo en el Finder e inténtalo desde ahí: el Finder explica mejor el motivo.";
 "min" = "min";
 "moved to" = "movido a";
 "moved to Trash" = "trasladado a la papelera";
