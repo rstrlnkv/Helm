@@ -15,8 +15,11 @@ import XCTest
 /// operation that could have caused it ran in a module that had none. Autopilot's
 /// sweep runs off a timer, Homebrew parses the whole installed set, and the
 /// updater hashes a downloaded archive; none of the three said anything, and none
-/// called `MemoryReclaim.afterHeavyWork`, so their emptied regions stayed
-/// resident until some later labelled operation happened to reclaim them.
+/// said anything at all, so the spike had no phase name against it.
+///
+/// (Those operations also called `MemoryReclaim.afterHeavyWork`, which was
+/// removed 2026-07-31 after four probes and five live operations measured it
+/// returning 0 MB every time — ARCHITECTURE.md § Memory.)
 /// docs/superpowers/plans/2026-07-29-third-pass.md has the trail and the vmmap.
 ///
 /// This is a coverage test, not a measurement: it asserts the labels exist in the
@@ -70,79 +73,5 @@ final class MemoryTrailCoverageTests: XCTestCase {
             was stuck in for two days:
             \(missing.joined(separator: "\n"))
             """)
-    }
-
-    /// A label without a reclaim leaves the emptied regions resident: freeing
-    /// returns memory to malloc and not to macOS, and the moment the work ends is
-    /// the only moment we know it is over. `idle` and `launch` are readings rather
-    /// than operations, so they are exempt.
-    func testEveryOperationThatIsMeasuredAlsoHandsTheMemoryBack() throws {
-        let readings: Set<String> = ["idle", "launch"]
-        var unreclaimed: [String] = []
-        for (label, file) in expected where !readings.contains(label) {
-            let url = sources.appendingPathComponent(file)
-            guard let source = try? String(contentsOf: url, encoding: .utf8) else { continue }
-            if !source.contains("afterHeavyWork(\"\(label)\")") {
-                unreclaimed.append("\(label) in \(file)")
-            }
-        }
-
-        XCTAssertEqual(unreclaimed, [], """
-            Measured but never reclaimed — the footprint will show the growth and \
-            then keep it, because a freed allocation goes back to malloc rather \
-            than to macOS (ARCHITECTURE.md § Memory):
-            \(unreclaimed.joined(separator: "\n"))
-            """)
-    }
-
-    /// The three phases that gave their memory back **only when they finished**.
-    ///
-    /// Found 2026-07-31: in each of these the reclaim and the reading sat inside
-    /// a conditional — after `if let result`, or below an `if isCancelled {
-    /// return nil }`. So a scan somebody stopped handed nothing back to macOS and
-    /// wrote nothing to the trail, and Stop is pressed exactly when the footprint
-    /// is at its highest, because that is why the person pressed it.
-    /// `duplicates.hash` is the loop that caused the 48 GB incident.
-    ///
-    /// Judged by indentation, which is the one textual signal that says "this is
-    /// inside a branch": a phase's reclaim belongs at its function's own level,
-    /// on every path out. `defer` would satisfy this too — it is not required,
-    /// because `DuplicateScanner` runs two phases in one function and a deferred
-    /// reclaim would fire at the wrong end of it.
-    func testTheCancellablePhasesReclaimOnEveryPathOut() throws {
-        let cancellable = [
-            ("disk.scan", "Modules/Disk/Engine/DiskEngine.swift"),
-            ("duplicates.walk", "Modules/Duplicates/Engine/DuplicateScanner.swift"),
-            ("duplicates.hash", "Modules/Duplicates/Engine/DuplicateScanner.swift"),
-        ]
-        var branched: [String] = []
-        for (label, file) in cancellable {
-            let url = sources.appendingPathComponent(file)
-            guard let source = try? String(contentsOf: url, encoding: .utf8) else {
-                branched.append("\(label): \(file) is not there"); continue
-            }
-            let call = "MemoryReclaim.afterHeavyWork(\"\(label)\")"
-            guard let line = source.split(separator: "\n", omittingEmptySubsequences: false)
-                .first(where: { $0.contains(call) }) else {
-                branched.append("\(label): no reclaim at all"); continue
-            }
-            let indent = line.prefix { $0 == " " }.count
-            // Eight spaces is a method body; deeper means a branch owns it, and a
-            // branch is a path the cancelled run does not take.
-            if indent > 8 {
-                branched.append("\(label): reclaim is \(indent) spaces in — a stopped run never reaches it")
-            }
-            // The other shape, and the one `DuplicateScanner` had: the reclaim
-            // sits at the right level but *below* the cancellation's own way out,
-            // so the stopped run returns before reaching it.
-            let lines = source.split(separator: "\n", omittingEmptySubsequences: false)
-            if let at = lines.firstIndex(where: { $0.contains(call) }) {
-                let above = lines[max(0, at - 10)..<at]
-                if above.contains(where: { $0.contains("return nil") }) {
-                    branched.append("\(label): a `return nil` stands between the work and the reclaim")
-                }
-            }
-        }
-        XCTAssertTrue(branched.isEmpty, "a stopped scan gives nothing back: \(branched)")
     }
 }

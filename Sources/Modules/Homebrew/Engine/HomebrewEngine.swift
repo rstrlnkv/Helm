@@ -61,7 +61,6 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         let c = runner.run(brew, ["list", "--versions", "--cask"], env: [:]).stdout
         let packages = BrewListParser.parse(f, isCask: false)
             + BrewListParser.parse(c, isCask: true)
-        MemoryReclaim.afterHeavyWork("homebrew.listInstalled")
         HelmLog.shared.memory("homebrew.listInstalled")
         return packages
     }
@@ -70,7 +69,6 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         guard let brew = locator.brewPath() else { return [] }
         let out = runner.run(brew, ["outdated", "--json=v2"], env: [:]).stdout
         let parsed = BrewOutdatedParser.parse(Data(out.utf8))
-        MemoryReclaim.afterHeavyWork("homebrew.outdated")
         HelmLog.shared.memory("homebrew.outdated")
         return parsed
     }
