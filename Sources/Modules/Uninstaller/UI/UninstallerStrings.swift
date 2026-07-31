@@ -74,6 +74,10 @@ enum UnStr {
     static var watchTrashNote: String {
         L("These files are named after the app, so emptying the Trash first leaves nothing to offer.")
     }
+    /// Shown under the switch when it is on and the grant is not there.
+    static var watchTrashNeedsAccess: String {
+        L("Helm cannot see the Trash without Full Disk Access — switched on, this does nothing.")
+    }
     static var tabApps: String { L("Apps") }
     static var tabOrphans: String { L("Leftovers") }
     static var orphansIntro: String { L("Files left in your Library by apps you no longer have. Only files named after an app’s bundle id are listed, so some leftovers will not appear.") }

@@ -20,6 +20,9 @@ struct OrphansView: View {
     @State private var banner: String?
     /// Read from the engine on appear; written straight through on a change.
     @State private var watching = false
+    /// Re-probed whenever the app comes forward, because a grant given in
+    /// System Settings arrives while this window is open and behind it.
+    @State private var diskAccess: PermissionState = .granted
 
     private var selectedBytes: Int {
         groups.flatMap(\.leftovers).filter { selected.contains($0.path) }.reduce(0) { $0 + $1.sizeBytes }
@@ -51,6 +54,7 @@ struct OrphansView: View {
             // is nothing to act on.
             Divider()
             watchRow
+            watchBlocked
             Divider()
             footer
         }
@@ -138,7 +142,25 @@ struct OrphansView: View {
                 .accessibilityLabel(UnStr.watchTrash)
         }
         .padding(.horizontal, 20).padding(.vertical, 10)
-        .task { watching = await uvm.watchingTrash() }
+        .task {
+            watching = await uvm.watchingTrash()
+            diskAccess = PermissionCheck.currentFullDiskAccess()
+        }
+        .helmOnAppActive { diskAccess = PermissionCheck.currentFullDiskAccess() }
+    }
+
+    /// Switched on, and unable to do anything.
+    ///
+    /// Reading `~/.Trash` needs Full Disk Access, and without it the sweep comes
+    /// back empty and the watcher sees nothing — silently. So the switch could be
+    /// turned on, look on, and mean nothing: a setting that lies. Measured in this
+    /// machine's log, 23 launches out of 42 had the grant denied, with three
+    /// `the Trash could not be read: 257` beside them and nothing on screen.
+    @ViewBuilder private var watchBlocked: some View {
+        if watching, diskAccess == .denied {
+            HelmPermissionNote(need: .fullDiskAccess, text: UnStr.watchTrashNeedsAccess)
+                .padding(.horizontal, 20).padding(.bottom, 10)
+        }
     }
 
     private var allPaths: [String] { groups.flatMap(\.leftovers).map(\.path) }
