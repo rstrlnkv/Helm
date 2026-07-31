@@ -8,6 +8,14 @@ features, PATCH = fixes.
 ## [Unreleased] — 0.8.0
 
 ### Added
+- **The log, readable while it is being written** — dev builds only, as a
+  "Log" row in Settings. The same lines the app already writes, arriving as they
+  are written, with two filters: what went wrong (everything / warnings /
+  errors) and which module is talking. The module menu lists the ones that have
+  actually spoken rather than the nine that exist. "Follow" pins the view to the
+  newest line; an empty result says the filters excluded everything rather than
+  pretending the log is empty. It computes nothing and invents no figure — one
+  `write`, one format, and this is a window onto it.
 - **Leftovers, offered when an app reaches the Trash.** The Uninstaller could
   only clean up after an app removed *through Helm* — and almost nobody removes
   an app that way. Drag one to the Trash and a small window now lists what it
