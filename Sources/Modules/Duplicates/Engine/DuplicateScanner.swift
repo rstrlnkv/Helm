@@ -61,7 +61,9 @@ public final class DuplicateScanner: @unchecked Sendable {
     public func find(under root: String,
                      onProgress: (@Sendable (DuplicateProgress) -> Void)? = nil)
     -> [DuplicateGroup]? {
+        HelmActivity.begin("duplicates.walk")
         let files = walk(root, onProgress: onProgress)
+        HelmActivity.end("duplicates.walk")
         // Before the cancellation check, not after it. Stop is pressed when the
         // footprint is at its highest — that is why it is pressed — and the
         // reclaim used to sit below this line, so the one run that most needed
@@ -89,6 +91,7 @@ public final class DuplicateScanner: @unchecked Sendable {
         // keep results ordered without the workers sharing an array.
         var buckets = [[DuplicateGroup]](repeating: [], count: candidates.count)
         let bucketLock = NSLock()
+        HelmActivity.begin("duplicates.hash")
         DispatchQueue.concurrentPerform(iterations: candidates.count) { index in
             if self.isCancelled { return }
             var found: [DuplicateGroup] = []
@@ -123,6 +126,7 @@ public final class DuplicateScanner: @unchecked Sendable {
             }
             bucketLock.lock(); buckets[index] = found; bucketLock.unlock()
         }
+        HelmActivity.end("duplicates.hash")
         // Same as the walk above: the hashing loop is the one that has already
         // caused a 48 GB incident, and a stopped run is where it is biggest.
         HelmLog.shared.memory("duplicates.hash")

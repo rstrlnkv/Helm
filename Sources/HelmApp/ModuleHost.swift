@@ -79,6 +79,9 @@ import HelmUI
         let before = MemoryFootprint.current()
         live[key]?.engine.deactivate()
         live[key] = nil
+        // A scan task can outlive the engine that started it, and an interval
+        // nobody closes would name a module that is no longer there.
+        HelmActivity.sweep(module: key)
         // Whoever cached UI state for this module drops it, and then the pages
         // go back to the system rather than sitting in an emptied malloc zone.
         NotificationCenter.default.post(name: .helmModuleDisabled, object: key)
