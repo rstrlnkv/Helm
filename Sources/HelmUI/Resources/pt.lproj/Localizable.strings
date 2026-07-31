@@ -3,6 +3,7 @@
    English text in a *Strings.swift file). */
 
 "1 hour" = "1 hora";
+"1 module" = "1 módulo";
 "2 hours" = "2 horas";
 "A Keep Awake session now survives Helm restarting. A two-hour session lived only in memory, so anything that ended the app — a silent update most often — cancelled it: the countdown vanished from the menu bar, the Mac was free to sleep, and nothing said so. It comes back with the time it had left. A session whose end passed while Helm was gone stays finished." = "Uma sessão de Manter Acordado agora sobrevive ao reinício do Helm. Uma sessão de duas horas vivia só na memória, então qualquer coisa que encerrasse o app — geralmente uma atualização silenciosa — a cancelava: a contagem desaparecia da barra de menus, o Mac podia dormir e nada avisava. Ela volta com o tempo que restava. Uma sessão cujo fim passou enquanto o Helm esteve fora permanece encerrada.";
 "A VPN carries everything this Mac sends, not only that app, and it takes a few seconds to come up after the app starts." = "Uma VPN leva todo o tráfego deste Mac, não só o desse app, e o túnel leva alguns segundos para subir depois que ele abre.";

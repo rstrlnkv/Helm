@@ -39,8 +39,12 @@ struct LogView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // `bleeds: true` like every other full-width page: without it the
+            // header caps at `HelmLayout.settingsColumn` and centres, which put
+            // its icon at x = 53 against the rows' x = 21 on this pane.
             HelmPageHeader(symbol: "text.alignleft", tint: .gray,
-                           title: AppStr.logPane, subtitle: AppStr.logPaneSummary)
+                           title: AppStr.logPane, subtitle: AppStr.logPaneSummary,
+                           bleeds: true)
             Divider()
             writing
             Divider()
@@ -97,15 +101,21 @@ struct LogView: View {
         .padding(.horizontal, 20).padding(.vertical, 10)
     }
 
+    private var levelLabels: [String] {
+        [AppStr.logLevelAll, AppStr.logLevelWarnings, AppStr.logLevelErrors]
+    }
+
     private var filters: some View {
         HStack(spacing: 12) {
             Picker(AppStr.logLevel, selection: $minimumLevel) {
-                Text(AppStr.logLevelAll).tag(LogLevel.info)
-                Text(AppStr.logLevelWarnings).tag(LogLevel.warn)
-                Text(AppStr.logLevelErrors).tag(LogLevel.error)
+                Text(levelLabels[0]).tag(LogLevel.info)
+                Text(levelLabels[1]).tag(LogLevel.warn)
+                Text(levelLabels[2]).tag(LogLevel.error)
             }
             .pickerStyle(.segmented).labelsHidden()
-            .frame(width: 260)
+            // Measured, not 260: that was 3 pt from clipping in Russian and
+            // 110 pt too wide in Chinese.
+            .frame(width: HelmPickerWidth.segmented(levelLabels))
 
             // Built from what has arrived, so it names the modules that spoke
             // rather than the nine that exist.
@@ -124,46 +134,88 @@ struct LogView: View {
                                     : AppStr.logSomeModules(chosen.count))
             }
             .menuStyle(.borderlessButton)
-            .frame(width: 200)
+            // 200 was never needed — the widest label wants 133 — and a
+            // borderless menu centres its label in whatever frame it is given,
+            // leaving 57 pt of gap and 59 pt of invisible clickable area.
+            .fixedSize()
 
-            Spacer(minLength: 0)
-            Toggle(AppStr.logFollow, isOn: $following)
-                .toggleStyle(.checkbox)
+            Spacer(minLength: 12)
+            // A button rather than a checkbox: three bezelled controls read as
+            // one row, and the Portuguese label wrapped to two lines inside a
+            // checkbox at the minimum window.
+            Toggle(isOn: $following) {
+                Label(AppStr.logFollow, systemImage: "arrow.down.to.line")
+            }
+            .toggleStyle(.button)
+            .fixedSize()
         }
         .padding(.horizontal, 20).padding(.vertical, 10)
     }
 
     @ViewBuilder private var lines: some View {
         if shown.isEmpty {
-            HelmEmptyState(symbol: "text.alignleft", tint: .gray,
-                           message: entries.isEmpty ? AppStr.logEmpty : AppStr.logNothingMatches) {}
+            // No symbol: the header already draws this exact mark 610 pt above,
+            // and `HelmEmptyState`'s own rule is that a statement is a sentence
+            // and nothing else.
+            HelmEmptyState(message: entries.isEmpty ? AppStr.logEmpty
+                                                    : AppStr.logNothingMatches) {
+                if !entries.isEmpty {
+                    Button(AppStr.logAllModules) {
+                        chosen = []
+                        minimumLevel = .info
+                    }
+                }
+            }
         } else {
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 2) {
+                    // Spacing on the row, not between rows, so a level's wash
+                    // is one block behind a wrapped line instead of a stripe.
+                    LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(shown) { entry in
                             row(entry).id(entry.id)
                         }
                     }
-                    .padding(.horizontal, 20).padding(.vertical, 10)
+                    .padding(.vertical, 8)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .onChange(of: shown.count) { _, _ in
+                // The identity of the newest line, not the count. `LogTail`
+                // caps at 1000, so once the buffer is full the count is 1000
+                // forever, `onChange` never fires again, and the pane stops
+                // following while the control still says it is — about a day of
+                // dev-build use.
+                .onChange(of: shown.last?.id) { _, _ in
                     guard following, let last = shown.last else { return }
-                    withAnimation(HelmMotion.interface) { proxy.scrollTo(last.id, anchor: .bottom) }
+                    proxy.scrollTo(last.id, anchor: .bottom)
                 }
             }
         }
     }
 
-    private func row(_ entry: LogEntry) -> some View {
+    /// One line. The level is a leading rule and a wash behind the whole row —
+    /// measured at 4.5:1 and better in both appearances for the rule, while the
+    /// category word it used to tint carried 3.8% of the row's ink and answered
+    /// the wrong question: the tint says "bad", the word says "who".
+    ///
+    /// The wash is 0.06 rather than 0.09 because `HelmText.faint` measured 3.47:1
+    /// on the heavier one — under what that token was solved for.
+    @ViewBuilder private func row(_ entry: LogEntry) -> some View {
+        let signal = tint(for: entry.level)
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(HelmDates.logTime(entry.date))
-                .helmFigure().foregroundStyle(HelmText.faint)
+            // One literal with two interpolations. Built as `"\(a)" + "\(b)"`
+            // first, which is String concatenation — so each `Text` was rendered
+            // through its own `description` and the row printed
+            // `Text(storage: SwiftUI.Text.Storage.verbatim("16:29:07")…)`.
+            Text("\(Text(HelmDates.logTime(entry.date)).foregroundStyle(HelmText.quiet))\(Text(HelmDates.logMillis(entry.date)).foregroundStyle(HelmText.faint))")
+                .helmFigure()
             Text(entry.category)
                 .font(.caption.weight(.medium))
-                .foregroundStyle(tint(for: entry.level))
-                .frame(width: 92, alignment: .leading)
+                .foregroundStyle(HelmText.faint)
+                // 116, and a limit: three categories in the source are longer
+                // than the old 92 — `homebrew.listInstalled` wrapped and made
+                // the row twice as tall with a blank half beside it.
+                .lineLimit(1).truncationMode(.tail)
+                .frame(width: 116, alignment: .leading)
             Text(entry.message)
                 .font(.caption)
                 .foregroundStyle(entry.level == .info ? HelmText.quiet : .primary)
@@ -171,11 +223,23 @@ struct LogView: View {
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
         }
+        .padding(.vertical, 2)
+        .padding(.horizontal, 20)
+        .background(alignment: .leading) {
+            if let signal {
+                signal.opacity(0.06)
+                Rectangle().fill(signal).frame(width: 3)
+            }
+        }
+        .accessibilityElement(children: .combine)
     }
 
-    private func tint(for level: LogLevel) -> Color {
+    /// Nil for an ordinary line, so an info row gains no layers at all: only
+    /// realised rows exist in a `LazyVStack`, and at the real 4.4% warning rate
+    /// that is one or two shapes on screen.
+    private func tint(for level: LogLevel) -> Color? {
         switch level {
-        case .info: return HelmText.faint
+        case .info: return nil
         case .warn: return HelmSignal.warning
         case .error: return HelmSignal.danger
         }
@@ -189,6 +253,7 @@ struct LogView: View {
                     shown.map { "\(HelmDates.logTime($0.date)) [\($0.category)] \($0.message)" }
                         .joined(separator: "\n"), forType: .string)
             }
+            .disabled(shown.isEmpty)
             Button(AppStr.clearLog) {
                 // Both, because there is one Clear now and a person pressing it
                 // means the log, not the window onto it.
@@ -196,6 +261,7 @@ struct LogView: View {
                 HelmLog.shared.clearTail()
                 entries = []
             }
+            .disabled(entries.isEmpty)
             Spacer()
             Text(AppStr.logCount(shown.count, entries.count))
                 .font(.caption).foregroundStyle(HelmText.quiet)
