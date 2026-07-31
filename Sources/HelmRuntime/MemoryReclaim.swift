@@ -27,9 +27,16 @@ public enum MemoryReclaim {
         malloc_zone_pressure_relief(nil, 0)
         guard let before, let after = MemoryFootprint.current() else { return }
         let mb = { (b: Int) in b / (1024 * 1024) }
-        // Only when it actually moved something: on a small operation this is
-        // a no-op and a line saying so is noise on every scan.
-        guard before - after >= 8 * 1024 * 1024 else { return }
+        // Said every time, including zero.
+        //
+        // The line used to be gated at 8 MB "because a no-op is noise", and the
+        // consequence was that the gate hid the answer: across 508 memory lines
+        // in this machine's log, `returned` never appeared once. Measured
+        // 2026-07-31 in two probes — 900k Swift objects, and 400k raw blocks of
+        // six sizes freed alternately — `malloc_zone_pressure_relief` moved the
+        // footprint by **0 MB** in every case, while `free` itself had already
+        // handed back 51 and 118 MB. A reclaim that gives nothing back is worth
+        // knowing about, and it can only be known if it says so.
         HelmLog.shared.info("memory", "\(label): returned \(mb(before - after)) MB, now \(mb(after)) MB")
     }
 }
