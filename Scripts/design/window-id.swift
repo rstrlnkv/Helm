@@ -1,4 +1,4 @@
-// window-id.swift <owner> — prints the CGWindowID of a process's standard window.
+// window-id.swift <owner> [layer] — prints the CGWindowID of a process's window.
 //
 // `screencapture -l<id>` then photographs that window wherever it is. The frame
 // arithmetic this replaces read the window's position out of System Events and
@@ -18,6 +18,11 @@ import Foundation
 // and the difference is invisible until a lookup silently finds nothing.
 let owner = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "Helm"
 
+// Layer 0 is an ordinary window — the settings window. The menu-bar panel is a
+// non-activating NSPanel and sits at 101, so the layer is what tells Helm's two
+// windows apart when both are on screen.
+let layer = CommandLine.arguments.count > 2 ? Int(CommandLine.arguments[2]) ?? 0 : 0
+
 guard let windows = CGWindowListCopyWindowInfo(
     [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]]
 else {
@@ -25,16 +30,15 @@ else {
     exit(1)
 }
 
-// Layer 0 is an ordinary window. The menu-bar panel sits above it, so asking
-// for layer 0 is what distinguishes the settings window from the panel.
 for window in windows {
     guard window[kCGWindowOwnerName as String] as? String == owner,
-          window[kCGWindowLayer as String] as? Int == 0,
+          window[kCGWindowLayer as String] as? Int == layer,
           let number = window[kCGWindowNumber as String] as? Int
     else { continue }
     print(number)
     exit(0)
 }
 
-FileHandle.standardError.write(Data("window-id: no layer-0 window owned by \(owner)\n".utf8))
+FileHandle.standardError.write(
+    Data("window-id: no layer-\(layer) window owned by \(owner)\n".utf8))
 exit(1)
