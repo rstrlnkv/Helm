@@ -14,12 +14,22 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 APP="$TMPDIR/helm-package/Helm.app"
 pkill -f 'MacOS/HelmApp' 2>/dev/null || true; sleep 1
 HELM_DEBUG_SHOT="$MODULE:$SIZE" open -a "$APP"
-sleep 3
-# The harness window opens behind whatever is frontmost; raise it first, or it
-# is photographed with another app's window drawn over it.
+# Wait for the window rather than sleeping at it. A fixed 3 s was enough for
+# eleven pages out of twelve and not for Duplicates, which reopens on a stored
+# scan before it draws — so one page in the run failed, and which page it was
+# depended on the machine's mood.
+WID=""
+for _ in $(seq 1 40); do
+  WID=$(swift "$HERE/window-id.swift" Helm 2>/dev/null) && [ -n "$WID" ] && break
+  sleep 0.5
+done
+[ -n "$WID" ] || { echo "no window found"; exit 1; }
+# The harness window opens behind whatever is frontmost; raise it, or it is
+# photographed with another app's window drawn over it.
 osascript -e 'tell application "System Events" to set frontmost of process "HelmApp" to true' >/dev/null 2>&1 || true
-sleep 1.2
-WID=$(swift "$HERE/window-id.swift" Helm) || { echo "no window found"; exit 1; }
+# Let the page settle: the reveal animations are springs and a photograph taken
+# mid-spring measures the animation, not the layout.
+sleep 1.5
 # -o drops the window shadow, so the image is the window and nothing else.
 screencapture -x -o -l"$WID" "$OUT"
 pkill -f 'MacOS/HelmApp' 2>/dev/null || true
