@@ -1,29 +1,26 @@
 #!/usr/bin/env bash
 # shoot.sh <module> <WxH> <out.png> — before/after evidence for a design change.
+#
+# The window is photographed by its CGWindowID, not by cropping a full-screen
+# capture to a frame read out of System Events. That earlier arithmetic was
+# correct on exactly one setup — a single display whose origin is (0, 0). With
+# an external screen attached the window sits at negative coordinates,
+# `screencapture` grabs the main display regardless of where the window is, and
+# `sips` clamps the negative crop offset to zero: twenty-four photographs of
+# empty desktop, and not one error out of any of the three programs involved.
 set -euo pipefail
 MODULE="${1:-disk}"; SIZE="${2:-940x660}"; OUT="${3:-/tmp/helm-shot.png}"
+HERE="$(cd "$(dirname "$0")" && pwd)"
 APP="$TMPDIR/helm-package/Helm.app"
 pkill -f 'MacOS/HelmApp' 2>/dev/null || true; sleep 1
 HELM_DEBUG_SHOT="$MODULE:$SIZE" open -a "$APP"
 sleep 3
-# The harness window opens behind whatever is frontmost; raise it first.
+# The harness window opens behind whatever is frontmost; raise it first, or it
+# is photographed with another app's window drawn over it.
 osascript -e 'tell application "System Events" to set frontmost of process "HelmApp" to true' >/dev/null 2>&1 || true
 sleep 1.2
-FRAME=$(osascript <<'OSA' 2>/dev/null || echo ""
-tell application "System Events" to tell process "HelmApp"
-  set w to first window whose subrole is "AXStandardWindow"
-  set p to position of w
-  set s to size of w
-  return (item 1 of p as text) & " " & (item 2 of p as text) & " " & ¬
-         (item 1 of s as text) & " " & (item 2 of s as text)
-end tell
-OSA
-)
-[ -z "$FRAME" ] && { echo "no window found"; exit 1; }
-read -r X Y W H <<< "$FRAME"
-screencapture -x -o "$OUT.full.png"
-sips -c $((H*2+80)) $((W*2+80)) --cropOffset $((Y*2-40)) $((X*2-40)) \
-     "$OUT.full.png" --out "$OUT" >/dev/null
-rm -f "$OUT.full.png"
+WID=$(swift "$HERE/window-id.swift" Helm) || { echo "no window found"; exit 1; }
+# -o drops the window shadow, so the image is the window and nothing else.
+screencapture -x -o -l"$WID" "$OUT"
 pkill -f 'MacOS/HelmApp' 2>/dev/null || true
-echo "$OUT  frame=$FRAME"
+echo "$OUT  window=$WID"
