@@ -24,9 +24,19 @@ for _ in $(seq 1 40); do
   sleep 0.5
 done
 [ -n "$WID" ] || { echo "no window found"; exit 1; }
-# The harness window opens behind whatever is frontmost; raise it, or it is
-# photographed with another app's window drawn over it.
-osascript -e 'tell application "System Events" to set frontmost of process "HelmApp" to true' >/dev/null 2>&1 || true
+# The harness window opens behind whatever is frontmost, and an *inactive*
+# macOS window draws its controls in greyscale: the traffic lights lose their
+# colour and a switch that is on looks exactly like one that is off apart from
+# where the knob sits. Photographs taken that way read as design defects that
+# do not exist, so the activation is asserted rather than attempted.
+FRONT=""
+for _ in $(seq 1 20); do
+  osascript -e 'tell application "System Events" to set frontmost of process "HelmApp" to true' >/dev/null 2>&1 || true
+  sleep 0.3
+  FRONT=$(osascript -e 'tell application "System Events" to get name of first process whose frontmost is true' 2>/dev/null || echo "")
+  [ "$FRONT" = "HelmApp" ] && break
+done
+[ "$FRONT" = "HelmApp" ] || { echo "could not bring HelmApp to the front (frontmost=$FRONT)"; exit 1; }
 # Let the page settle: the reveal animations are springs and a photograph taken
 # mid-spring measures the animation, not the layout.
 sleep 1.5
