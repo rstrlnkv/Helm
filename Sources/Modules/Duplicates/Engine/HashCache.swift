@@ -121,12 +121,22 @@ public final class HashCache: Codable, @unchecked Sendable {
     private func promote(_ key: String, _ read: (Digests) -> String?) -> String? {
         lock.withLock {
             if let entry = fresh[key], let digest = read(entry) { return digest }
-            guard let entry = settled[key], let digest = read(entry) else { return nil }
-            // The whole entry, not the half that was asked for: the prefix and
-            // the full digest are read in two passes, and promoting one at a
-            // time would leave the other behind in a segment about to be
-            // replaced.
-            fresh[key] = entry
+            guard let settledEntry = settled[key],
+                  let digest = read(settledEntry) else { return nil }
+            // **Merged, not assigned.** Both halves travel — the prefix and the
+            // full digest are read in two separate passes, so promoting only
+            // the one that was asked for strands the other in a segment about
+            // to be replaced.
+            //
+            // And the merge has to run the other way too, which an assignment
+            // got wrong: `fresh` may already hold a digest this scan computed
+            // while `settled` holds the other half, and `fresh[key] = entry`
+            // threw the newer one away — permanently, one compaction later.
+            // Whatever `fresh` has wins; `settled` fills the gaps.
+            var merged = fresh[key] ?? Digests()
+            merged.prefix = merged.prefix ?? settledEntry.prefix
+            merged.full = merged.full ?? settledEntry.full
+            fresh[key] = merged
             return digest
         }
     }
