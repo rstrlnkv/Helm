@@ -100,6 +100,51 @@ public enum ScanRoot {
         return path
     }
 
+    /// Application databases, by the extension macOS gives them.
+    ///
+    /// Finder draws each of these as one item because that is what it is: a
+    /// database an application owns, not a folder of somebody's files. Several
+    /// are TCC-protected as well.
+    public static let applicationLibraryExtensions: Set<String> = [
+        "photoslibrary", "photolibrary", "migratedphotolibrary", "aplibrary",
+        "musiclibrary", "tvlibrary", "imovielibrary", "theater", "fcpbundle",
+    ]
+
+    /// Whether a walk that nobody is watching must stop at this directory.
+    ///
+    /// **The root gate cannot answer this, and that is the whole reason it
+    /// exists.** `resolve` judges where a scan *begins*; on 2026-08-03 a
+    /// background scan of a legitimate root met
+    /// `~/Pictures/Photos Library.photoslibrary` several levels down, macOS
+    /// raised a Photos consent dialog, and it stood there until somebody came
+    /// back to an empty desk. **A prompt raised for an empty chair is a prompt
+    /// answered without reading** — whoever returns sees a question with no
+    /// context for what asked or why, and clicks something. Helm caused that.
+    ///
+    /// Had they clicked Allow, every filename inside would have landed in the
+    /// journal at 0600, readable by any process running as this user including
+    /// the ones macOS refuses — the laundering `refusedInHome` exists to stop,
+    /// arriving by the one route that gate does not watch. Of 3875 entries that
+    /// run recorded, 0 came from the library. That was luck: permission was not
+    /// granted.
+    ///
+    /// **Judged by name, not by asking the filesystem.** Reading the directory
+    /// to decide whether to read the directory is the prompt itself. It also
+    /// makes the rule pure, so every case above is a test rather than a machine
+    /// this happens to be true on. `.skipsPackageDescendants` is not a
+    /// substitute: it asks LaunchServices whether the bundle's type is
+    /// registered, which is an answer about *this* Mac's installed apps — a
+    /// library copied from another machine, or one whose app was removed, is a
+    /// plain directory to that flag and a database to everyone else.
+    ///
+    /// An *interactive* scan may still go in: the person chose the folder and
+    /// is watching. This is asked on the unattended path only.
+    public static func refusesDescent(into path: String) -> Bool {
+        let name = (path as NSString).lastPathComponent
+        let ext = (name as NSString).pathExtension.lowercased()
+        return applicationLibraryExtensions.contains(ext)
+    }
+
     // There is deliberately no `isAllowed(_:) -> Bool`.
     //
     // It existed, and it was the defect: a caller asked it about one string and

@@ -23,6 +23,13 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
     read nobody is watching, so it is bounded separately: inside the home, and
     never into the parts of `~/Library` macOS protects — walking those on a
     timer would copy what TCC guards into a file any process can read.
+  - **A scan nobody is watching stops at an application's database.** Photo,
+    Music, TV, iMovie and Final Cut libraries are not folders of files, and
+    walking into one asks macOS for permission — which, with nobody at the desk,
+    means a consent dialog waiting for whoever comes back, about a question they
+    were not there for. Helm does not ask it. A scan you start yourself still
+    measures them, because on the Disk screen the largest folder on the volume
+    must not quietly go missing.
   - **A history, and what changed since last time.** The last thirty scans per
     module are kept with what they found and how long they took, and two scans
     are compared: what appeared, what went, what stayed. A first scan says so

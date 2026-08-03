@@ -55,14 +55,20 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
     /// an unattended reader. The root here is the boot volume, named in this
     /// line rather than read from anywhere.
     public func backgroundScan() async -> ScanReport? {
-        guard let result = await scan(path: "/") else { return nil }
+        guard let result = await scan(path: "/", unattended: true) else { return nil }
         let items = result.advice.map { ScanItem(path: $0.path, bytes: $0.bytes) }
         return ScanReport(bytes: items.reduce(0) { $0 + $1.bytes },
                           count: items.count, items: items)
     }
 
-    public func scan(path: String, scan id: Int = 0) async -> ScanResult? {
-        let scanner = DiskScanner()
+    /// - Parameter unattended: nobody is watching, so the walk stops at an
+    ///   application's own database instead of asking macOS for permission to
+    ///   read it at an empty chair. Defaults to false: a scan a person started
+    ///   measures everything, because "where did the space go" must not quietly
+    ///   omit the largest folder on the volume.
+    public func scan(path: String, scan id: Int = 0,
+                     unattended: Bool = false) async -> ScanResult? {
+        let scanner = DiskScanner(unattended: unattended)
         let token = scanners.add(scanner)
         defer { scanners.remove(token) }
         // Registered for the whole scan, cancellation included. The pair is
