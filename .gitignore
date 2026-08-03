@@ -9,7 +9,18 @@ DerivedData/
 # person drives this repository, not something it ships. `/plugin marketplace
 # add ~/Projects/Claude/Helm` reads them from the working copy, so nothing about
 # installing them needed git.
-/.claude/agents/
+# `agents` and `plugins/helm-crew` are symbolic links into `.backstage` too, for
+# the same reason the documents are: they were copies, and copies of the crew
+# existed in four places at once — twice inside this tree, because a bare
+# `.claude/agents/` is not read when the crew is installed as a plugin and the
+# plugin copy is not what a plain checkout reads.
+#
+# No trailing slash on `agents`, and the reason is worth reading twice: `/docs/`
+# had exactly this bug an hour earlier. A pattern ending in `/` matches a
+# directory and not a link, so the moment a copy becomes a link it reappears in
+# `git status`. `/plugins/` keeps its slash because that one is still a real
+# directory — only what is inside it became a link.
+/.claude/agents
 /plugins/
 /.claude-plugin/
 
