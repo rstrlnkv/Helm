@@ -1,0 +1,3 @@
+[submodule ".backstage"]
+	path = .backstage
+	url = https://github.com/rstrlnkv/helm-backstage.git
