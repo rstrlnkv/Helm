@@ -179,7 +179,20 @@ import SwiftUI
     public func emptyBasket() async {
         let paths = basket
         guard !paths.isEmpty else { return }
-        let removal: DuplicateRemoval? = await client.request("trash", encoding: paths)
+        // Each removal travels with the copy it duplicates, so the engine can
+        // read the pair again before it moves anything. A group's first copy is
+        // the survivor — `SurvivingCopy`'s order — and a basket entry whose
+        // group has gone is dropped rather than sent unpaired: the engine would
+        // refuse it anyway, and unpaired is exactly the shape it cannot check.
+        let chosen = Set(paths)
+        let plans: [DuplicatePlan] = groups.flatMap { group -> [DuplicatePlan] in
+            guard let survivor = group.copies.first?.path else { return [] }
+            return group.copies.dropFirst()
+                .filter { chosen.contains($0.path) }
+                .map { DuplicatePlan(remove: $0.path, keep: survivor) }
+        }
+        guard !plans.isEmpty else { return }
+        let removal: DuplicateRemoval? = await client.request("trash", encoding: plans)
         guard let removal else { return }
         let gone = Set(removal.removed)
         groups = groups.compactMap { group in

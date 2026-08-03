@@ -112,6 +112,11 @@ public enum TrashFailure {
         /// Helm itself refused: the path is not inside a folder an app may
         /// leave things in. Not a macOS error — nothing was attempted.
         case outOfScope
+        /// Helm itself refused, again, and for the other reason it ever does:
+        /// the file is no longer what the scan said it was. Read again just
+        /// before the move, the pair no longer matches — edited since, or a
+        /// hard link, or one of them gone. Nothing was attempted.
+        case changedSinceScan
     }
 
     /// Cocoa's "you may not write here" error.

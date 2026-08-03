@@ -92,6 +92,52 @@ public final class DuplicatesEngine: ModuleEngine, @unchecked Sendable {
         }
     }
 
+    /// The same removal, with each copy named beside the one it duplicates.
+    ///
+    /// **Every pair is read again here**, immediately before anything moves.
+    /// The offer on screen is always older than the press that acts on it —
+    /// minutes when a person ran the search, a day when the timer did, longer
+    /// still once a cached digest stands in for a file. A pair that stopped
+    /// matching is refused with `changedSinceScan` and nothing is attempted;
+    /// `DuplicateVerification` says why it can stop matching.
+    ///
+    /// The scope gate still runs, and first: what may be deleted at all is a
+    /// different question from whether this particular deletion still makes
+    /// sense, and the engine has the last word on both.
+    public func trash(_ plans: [DuplicatePlan]) async -> DuplicateRemoval {
+        await offTheCooperativePool {
+            var byPath: [String: DuplicatePlan] = [:]
+            for plan in plans { byPath[plan.remove] = plan }
+            let (inScope, outOfScope) = UserFileScope.partition(Array(byPath.keys))
+
+            var allowed: [String] = []
+            var stale: [String] = []
+            for path in inScope {
+                guard let plan = byPath[path] else { continue }
+                switch DuplicateVerification.verify(remove: path, keep: plan.keep) {
+                case .identical: allowed.append(path)
+                case .changed, .unreadable: stale.append(path)
+                }
+            }
+            if !stale.isEmpty {
+                HelmLog.shared.info("duplicates",
+                                    "refused \(stale.count) — changed since the scan")
+            }
+            let result = HelmTrash.remove(allowed: allowed, outOfScope: outOfScope,
+                                          module: "duplicates")
+            // A new value rather than a mutation: `Result` is immutable on
+            // purpose, so a refusal cannot be quietly dropped from one after the
+            // fact. The stale ones join the scope refusals, and none of them is
+            // ever silently discarded — the house rule this module answers to.
+            return HelmTrash.Result(
+                removed: result.removed,
+                refused: result.refused + stale.map {
+                    HelmTrash.Refusal(path: $0, reason: .changedSinceScan)
+                },
+                freedBytes: result.freedBytes)
+        }
+    }
+
 
     // MARK: - Transport
 
@@ -112,9 +158,15 @@ public final class DuplicatesEngine: ModuleEngine, @unchecked Sendable {
                 self.finderBox.current?.cancel()
                 return Data()
             case "trash":
-                guard let paths = try? JSONDecoder().decode([String].self, from: command.payload)
+                // Plans, not paths. The old shape cannot be verified — the
+                // engine would be trusting the very reading it is meant to
+                // re-check — so there is no fallback to it: a caller sending
+                // bare paths gets nothing removed rather than something removed
+                // unchecked.
+                guard let plans = try? JSONDecoder().decode([DuplicatePlan].self,
+                                                            from: command.payload)
                 else { return Data() }
-                return (try? JSONEncoder().encode(await self.trash(paths))) ?? Data()
+                return (try? JSONEncoder().encode(await self.trash(plans))) ?? Data()
             default:
                 return Data()
             }
@@ -126,6 +178,24 @@ public final class DuplicatesEngine: ModuleEngine, @unchecked Sendable {
 /// and for the same reason. Its doc comment used to point at `DiskRemoval` for
 /// the explanation of a field, which is a type citing its own duplicate.
 public typealias DuplicateRemoval = HelmTrash.Result
+
+/// One removal, with the copy it duplicates named beside it.
+///
+/// The old command took bare paths, which is all the engine needed while it
+/// trusted the search that produced them. It cannot verify a pair it was never
+/// told about, so the survivor travels with the file — the view model has both,
+/// since a `DuplicateGroup` is exactly that pairing.
+public struct DuplicatePlan: Codable, Equatable, Sendable {
+    /// The copy going to the Trash.
+    public let remove: String
+    /// The copy that stays, and the thing `remove` has to still be identical to.
+    public let keep: String
+
+    public init(remove: String, keep: String) {
+        self.remove = remove
+        self.keep = keep
+    }
+}
 
 /// Serial box around the in-flight search, so cancel can reach it.
 ///
