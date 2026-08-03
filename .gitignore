@@ -20,3 +20,8 @@ DerivedData/
 /ARCHITECTURE.md
 /CLAUDE.md
 /docs/
+
+# Brainstorm sessions write HTML mockups here. They are working material for one
+# design conversation — the decisions that survive them land in `docs/`, and the
+# mockups themselves are worth keeping on disk and out of the history.
+/.superpowers/
