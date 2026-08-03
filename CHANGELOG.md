@@ -16,7 +16,11 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   due yet" is a different sentence from "waiting for mains" — and Helm subtracts
   the pointer movements Keep Awake makes itself, which otherwise reset the
   idleness counter and would mean a scan never runs for anyone using that
-  switch.
+  switch — and it counts the stillness itself rather than believing that
+  counter, so an hour away is an hour away however often Helm moved the pointer
+  in it. A scan that came back with nothing — a drive unplugged, a folder it
+  could not read — does not spend the day's allowance: it is tried again an hour
+  later.
   - **Where an unattended scan may start is its own question.** The folder a
     scan begins from is a stored setting, and until now it only ever changed
     with a person at an open panel. A background scan makes it the reach of a
