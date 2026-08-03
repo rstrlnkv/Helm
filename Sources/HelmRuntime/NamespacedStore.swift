@@ -84,6 +84,24 @@ public final class NamespacedStore {
 
     /// A per-app decision table: bundle id →
     /// yes/no, with absent meaning "no opinion".
+    /// The raw value, for the one question the typed accessors cannot answer:
+    /// **has this key ever been written?** They all take a default, so "never
+    /// set" and "set to the default" arrive the same — and a list whose empty
+    /// state is meaningful (nothing switched off) needs to tell those apart from
+    /// its own first launch.
+    public func object(_ key: String) -> Any? { backing.object(forKey: k(key)) }
+
+    /// A keyed table of numbers, beside `boolTable` and for the same reason:
+    /// per-scan bookkeeping is one entry per module, and a key per module would
+    /// be a namespace nobody can enumerate.
+    public func doubleTable(_ key: String) -> [String: Double] {
+        backing.object(forKey: k(key)) as? [String: Double] ?? [:]
+    }
+
+    public func intTable(_ key: String) -> [String: Int] {
+        backing.object(forKey: k(key)) as? [String: Int] ?? [:]
+    }
+
     public func boolTable(_ key: String) -> [String: Bool] {
         backing.object(forKey: k(key)) as? [String: Bool] ?? [:]
     }

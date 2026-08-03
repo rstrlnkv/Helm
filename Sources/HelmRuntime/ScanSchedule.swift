@@ -1,5 +1,14 @@
 import Foundation
 
+public extension Notification.Name {
+    /// Posted by Keep Awake each time it moves the pointer itself.
+    ///
+    /// Declared here rather than in that module because the listener is
+    /// `ScanCoordinator` in `HelmApp`, and neither target can see the other's:
+    /// a name shared by two strangers belongs to the runtime they both import.
+    static let helmPointerNudged = Notification.Name("helmPointerNudged")
+}
+
 /// Whether a background scan may run right now.
 ///
 /// Pure, and a function of its arguments alone: a day-long interval is then

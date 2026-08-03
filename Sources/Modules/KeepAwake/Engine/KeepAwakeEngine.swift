@@ -380,6 +380,14 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
               let b = pointer.displayBounds(containing: p),
               let t = JiggleTarget.nudge(from: p, in: b) else { return }
         pointer.move(to: t)
+        // Announced because the system cannot tell this from a hand on the
+        // trackpad. Measured: a synthetic `mouseMoved` took the idle counter
+        // from 284,97 s to 0,30 s. The default interval here is five minutes —
+        // exactly `ScanSchedule.idleThreshold` — so anything deciding "has the
+        // person left" from that counter alone would find the Mac permanently
+        // busy, and **no background scan would ever run** for anybody with this
+        // switch on. `ScanCoordinator` subtracts what it hears here.
+        NotificationCenter.default.post(name: .helmPointerNudged, object: nil)
     }
 
     // MARK: - Clamshell

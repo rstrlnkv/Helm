@@ -6,6 +6,10 @@ import HelmUI
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
     let host = ModuleHost.shared
     var statusController: StatusItemController!
+    /// Held, so the tick lives as long as the app does — and so `stop()` has
+    /// something to be called on at teardown rather than waiting for a `deinit`
+    /// that a running task would keep from firing.
+    private var scanCoordinator: ScanCoordinator?
     private var footprintTimer: Timer?
     /// Held for as long as it is on screen; dropped in its own close handler.
     private var welcomeWindow: WelcomeWindow?
@@ -32,6 +36,13 @@ import HelmUI
 
         host.bootstrap()
         statusController = StatusItemController(host: host)
+        // After bootstrap, because it asks the host for live modules. It does
+        // nothing at launch beyond starting a one-minute tick: `ScanSchedule`
+        // refuses a scan that already ran today, which is what stops somebody
+        // who opens and quits Helm five times an afternoon from re-reading the
+        // volume five times.
+        scanCoordinator = ScanCoordinator(host: host)
+        scanCoordinator?.start()
         // Accessory apps launched without activation can fail to render their
         // status item until first activation; kick it once (accessory = no Dock icon).
         NSApp.activate()
