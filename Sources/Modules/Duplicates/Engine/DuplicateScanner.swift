@@ -286,7 +286,11 @@ public final class DuplicateScanner: @unchecked Sendable {
         case failed
     }
 
-    private static func hash(_ path: String, limit: Int?, expecting: Int) -> String? {
+    /// Internal rather than private so `DuplicateVerification` can hash a file
+    /// exactly the way the search did. A verification that hashes differently
+    /// verifies something else — and this one stands between a stale offer and
+    /// a deleted file.
+    static func hash(_ path: String, limit: Int?, expecting: Int) -> String? {
         guard let handle = FileHandle(forReadingAtPath: path) else { return nil }
         defer { try? handle.close() }
         var hasher = SHA256()
