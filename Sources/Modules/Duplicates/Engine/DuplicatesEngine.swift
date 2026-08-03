@@ -14,10 +14,19 @@ public final class DuplicatesEngine: ModuleEngine, @unchecked Sendable {
     private let localTransport: LocalTransport
     public let transport: EngineTransport
     private let finderBox = FinderBox()
+    /// Where the person last pointed the search. Held here, not only in the view
+    /// model, because a background scan has no view model behind it — nobody is
+    /// looking at the page when the timer comes round.
+    ///
+    /// Optional so every existing caller and test keeps its zero-argument
+    /// initializer; without a store there is simply no background scan.
+    private let store: NamespacedStore?
 
-    public init(transport: LocalTransport = LocalTransport()) {
+    public init(transport: LocalTransport = LocalTransport(),
+                store: NamespacedStore? = nil) {
         self.localTransport = transport
         self.transport = transport
+        self.store = store
         wireTransport()
     }
 
@@ -41,6 +50,35 @@ public final class DuplicatesEngine: ModuleEngine, @unchecked Sendable {
             })
         }
         return groups
+    }
+
+    /// The same search the page runs, started by the timer instead of a person.
+    ///
+    /// **Nil rather than an empty report** whenever it cannot answer honestly: a
+    /// refused root, or a walk that was cancelled. An empty report means "we
+    /// looked and there was nothing", and a coordinator that could not tell the
+    /// two apart would record «проверено, чисто» about a folder nobody read.
+    ///
+    /// **The stored root is re-checked here.** An interactive scan has the
+    /// person's own open panel behind it; this one has a plist entry that any
+    /// process running as this user can rewrite, so it goes through `ScanRoot` —
+    /// the gate that exists for precisely this difference.
+    public func backgroundScan() async -> ScanReport? {
+        guard let root = store?.string("folder", default: ""),
+              ScanRoot.isAllowed(root) else {
+            HelmLog.shared.warn("scan", "duplicates: no stored root, or it was refused")
+            return nil
+        }
+        guard let groups = await find(under: root) else { return nil }
+        // Every copy but the survivor: that is what acting on the finding would
+        // remove. The bytes come from `wasted` rather than from adding the sizes
+        // up, because on APFS a clone shares its blocks and removing it returns
+        // nothing — the same arithmetic the page shows.
+        let items = groups.flatMap { group in
+            group.copies.dropFirst().map { ScanItem(path: $0.path, bytes: $0.bytes) }
+        }
+        return ScanReport(bytes: groups.reduce(0) { $0 + $1.wasted },
+                          count: items.count, items: items)
     }
 
     /// The engine has the last word on deletion, as everywhere else in Helm:
@@ -68,6 +106,8 @@ public final class DuplicatesEngine: ModuleEngine, @unchecked Sendable {
                                                               from: command.payload)
                 else { return Data() }
                 return (try? JSONEncoder().encode(await self.find(under: payload.path))) ?? Data()
+            case "backgroundScan":
+                return (try? JSONEncoder().encode(await self.backgroundScan())) ?? Data()
             case "cancel":
                 self.finderBox.current?.cancel()
                 return Data()
