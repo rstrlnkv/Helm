@@ -40,6 +40,13 @@ public final class HashCache: Codable, @unchecked Sendable {
         public var prefix: String?
         /// The whole file, which is what decides.
         public var full: String?
+        /// When this entry was last written or read.
+        ///
+        /// What makes the file bounded. A changed file takes a *new* key rather
+        /// than replacing its old one — the mtime is part of the key — so
+        /// without an expiry every state of every file ever hashed would stay
+        /// forever.
+        public var usedAt: TimeInterval = 0
     }
 
     private var entries: [String: Digests]
@@ -72,36 +79,83 @@ public final class HashCache: Codable, @unchecked Sendable {
 
     public var count: Int { lock.withLock { entries.count } }
 
-    public func prefix(fileID: UInt64, bytes: Int, modified: TimeInterval?) -> String? {
-        lock.withLock { entries[Self.key(fileID: fileID, bytes: bytes, modified: modified)]?.prefix }
+    /// **A read that writes.** Touching the entry is what keeps a file that is
+    /// still on the disk from expiring, so the freshness stamp cannot be updated
+    /// only on misses — a file that never changes would then age out and be
+    /// re-read every thirty days, which is the one case the cache exists for.
+    public func prefix(fileID: UInt64, bytes: Int, modified: TimeInterval?,
+                       now: TimeInterval = Date().timeIntervalSince1970) -> String? {
+        touch(Self.key(fileID: fileID, bytes: bytes, modified: modified), now) { $0.prefix }
     }
 
-    public func full(fileID: UInt64, bytes: Int, modified: TimeInterval?) -> String? {
-        lock.withLock { entries[Self.key(fileID: fileID, bytes: bytes, modified: modified)]?.full }
+    public func full(fileID: UInt64, bytes: Int, modified: TimeInterval?,
+                     now: TimeInterval = Date().timeIntervalSince1970) -> String? {
+        touch(Self.key(fileID: fileID, bytes: bytes, modified: modified), now) { $0.full }
+    }
+
+    private func touch(_ key: String, _ now: TimeInterval,
+                       _ read: (Digests) -> String?) -> String? {
+        lock.withLock {
+            guard let entry = entries[key], let digest = read(entry) else { return nil }
+            entries[key]?.usedAt = now
+            return digest
+        }
     }
 
     public func setPrefix(_ digest: String, fileID: UInt64, bytes: Int,
-                          modified: TimeInterval?) {
+                          modified: TimeInterval?,
+                          now: TimeInterval = Date().timeIntervalSince1970) {
         let key = Self.key(fileID: fileID, bytes: bytes, modified: modified)
-        lock.withLock { entries[key, default: Digests()].prefix = digest }
+        lock.withLock {
+            entries[key, default: Digests()].prefix = digest
+            entries[key]?.usedAt = now
+        }
     }
 
     public func setFull(_ digest: String, fileID: UInt64, bytes: Int,
-                        modified: TimeInterval?) {
+                        modified: TimeInterval?,
+                        now: TimeInterval = Date().timeIntervalSince1970) {
         let key = Self.key(fileID: fileID, bytes: bytes, modified: modified)
-        lock.withLock { entries[key, default: Digests()].full = digest }
+        lock.withLock {
+            entries[key, default: Digests()].full = digest
+            entries[key]?.usedAt = now
+        }
     }
 
-    /// Everything this search did not touch is dropped.
+    // MARK: - Keeping it bounded
+
+    /// Thirty days: a file untouched for a month is one the next scan can
+    /// afford to read again.
+    public static let maximumAge: TimeInterval = 30 * 24 * 3600
+
+    /// Twenty thousand entries, about **3,9 MB** at the measured 196 bytes each.
     ///
-    /// Without it the file grows forever: every version of every file ever
-    /// hashed keeps an entry, because a changed file gets a *new* key rather
-    /// than replacing the old one. Called with the keys the finished search
-    /// used, so the cache is always the size of the last scan and not of the
-    /// machine's history.
-    public func keeping(_ live: Set<String>) -> HashCache {
+    /// The age limit alone is not a ceiling — it is a *rate*. A disk whose files
+    /// churn faster than they expire grows without bound inside thirty days,
+    /// and the entries are worth roughly what they cost only while the file
+    /// stays smaller than the scan it saves. Measured: `~/Documents` produces
+    /// 6900 entries, so this is comfortable room above a real folder and a hard
+    /// stop above an unreasonable one.
+    public static let limit = 20_000
+
+    /// Drops what expired, then what does not fit, oldest first.
+    ///
+    /// Both, and in that order. Age is the rule; the count is the backstop for
+    /// the disk that outruns it.
+    public func pruned(now: TimeInterval = Date().timeIntervalSince1970,
+                       maximumAge: TimeInterval = HashCache.maximumAge,
+                       limit: Int = HashCache.limit) -> HashCache {
         let kept = HashCache()
-        kept.entries = lock.withLock { entries.filter { live.contains($0.key) } }
+        kept.entries = lock.withLock {
+            let fresh = entries.filter { now - $0.value.usedAt <= maximumAge }
+            guard fresh.count > limit else { return fresh }
+            // Most recently used first, then cut. A dictionary has no order, so
+            // without the sort the survivors would be whichever the hash table
+            // happened to yield.
+            return Dictionary(uniqueKeysWithValues:
+                fresh.sorted { $0.value.usedAt > $1.value.usedAt }.prefix(limit)
+                    .map { ($0.key, $0.value) })
+        }
         return kept
     }
 }
