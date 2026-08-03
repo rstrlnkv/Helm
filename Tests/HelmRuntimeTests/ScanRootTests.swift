@@ -8,57 +8,57 @@ final class ScanRootTests: XCTestCase {
     /// The commonest root there is, and the one `UserFileScope.isRemovable`
     /// refuses — which is why this gate exists separately.
     func testTheHomeItselfIsAllowed() {
-        XCTAssertTrue(ScanRoot.isAllowed(home))
+        XCTAssertNotNil(ScanRoot.resolve(home))
     }
 
     func testAFolderInsideTheHomeIsAllowed() {
-        XCTAssertTrue(ScanRoot.isAllowed(home + "/Downloads"))
-        XCTAssertTrue(ScanRoot.isAllowed(home + "/Documents"))
+        XCTAssertNotNil(ScanRoot.resolve(home + "/Downloads"))
+        XCTAssertNotNil(ScanRoot.resolve(home + "/Documents"))
     }
 
     /// The whole point. A rewritten plist naming the volume root would send an
     /// unattended reader across every file on the machine.
     func testTheVolumeRootIsRefused() {
-        XCTAssertFalse(ScanRoot.isAllowed("/"))
-        XCTAssertFalse(ScanRoot.isAllowed("/System"))
-        XCTAssertFalse(ScanRoot.isAllowed("/usr/bin"))
-        XCTAssertFalse(ScanRoot.isAllowed("/Library"))
+        XCTAssertNil(ScanRoot.resolve("/"))
+        XCTAssertNil(ScanRoot.resolve("/System"))
+        XCTAssertNil(ScanRoot.resolve("/usr/bin"))
+        XCTAssertNil(ScanRoot.resolve("/Library"))
     }
 
     /// Somebody else's home is not this person's to read, even unattended and
     /// even if the filesystem would allow it.
     func testAnotherUsersHomeIsRefused() {
-        XCTAssertFalse(ScanRoot.isAllowed("/Users"))
-        XCTAssertFalse(ScanRoot.isAllowed("/Users/somebody-else"))
+        XCTAssertNil(ScanRoot.resolve("/Users"))
+        XCTAssertNil(ScanRoot.resolve("/Users/somebody-else"))
     }
 
     /// A relative path resolves against the process's working directory, which
     /// is not a place anybody chose to scan.
     func testARelativePathIsRefused() {
-        XCTAssertFalse(ScanRoot.isAllowed("Downloads"))
-        XCTAssertFalse(ScanRoot.isAllowed(""))
-        XCTAssertFalse(ScanRoot.isAllowed("../.."))
+        XCTAssertNil(ScanRoot.resolve("Downloads"))
+        XCTAssertNil(ScanRoot.resolve(""))
+        XCTAssertNil(ScanRoot.resolve("../.."))
     }
 
     /// The spelling is not the path. A gate that tests strings must resolve
     /// before it tests.
     func testTraversalOutOfTheHomeIsRefused() {
-        XCTAssertFalse(ScanRoot.isAllowed(home + "/../.."))
-        XCTAssertFalse(ScanRoot.isAllowed(home + "/Documents/../../../System"))
+        XCTAssertNil(ScanRoot.resolve(home + "/../.."))
+        XCTAssertNil(ScanRoot.resolve(home + "/Documents/../../../System"))
     }
 
     /// `standardizingPath` resolves `..` and `~` and never case, and the boot
     /// volume is case-insensitive — so a prefix test alone is fooled by the
     /// home's own name in another case.
     func testTheHomeIsMatchedRegardlessOfCase() {
-        XCTAssertTrue(ScanRoot.isAllowed(home.uppercased()))
+        XCTAssertNotNil(ScanRoot.resolve(home.uppercased()))
     }
 
     /// A path that is not there is not a root. The scan would walk nothing and
     /// report a clean folder, which is the failure that must not look like an
     /// answer.
     func testAPathThatDoesNotExistIsRefused() {
-        XCTAssertFalse(ScanRoot.isAllowed(home + "/definitely-not-here-\(UUID().uuidString)"))
+        XCTAssertNil(ScanRoot.resolve(home + "/definitely-not-here-\(UUID().uuidString)"))
     }
 
     /// A file is not a folder to scan.
@@ -67,6 +67,6 @@ final class ScanRootTests: XCTestCase {
             .appendingPathComponent("scan-root-\(UUID().uuidString).txt")
         try Data("x".utf8).write(to: file)
         defer { try? FileManager.default.removeItem(at: file) }
-        XCTAssertFalse(ScanRoot.isAllowed(file.path))
+        XCTAssertNil(ScanRoot.resolve(file.path))
     }
 }
