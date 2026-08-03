@@ -330,7 +330,40 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
     /// path, and the bytes are its own. Unlike duplicates there is no survivor
     /// to keep — the app these belong to is already gone.
     public func backgroundScan() async -> ScanReport? {
+        // `FileSystemPort.children` answers "empty" for missing **and** for
+        // unreadable — its own doc says so — and `installedBundleIDs` has no
+        // error channel at all. Neither matters on the page, where a person is
+        // looking at the result and knows whether they granted the permission.
+        // With nobody watching, both failures wear the shape of an answer, and
+        // the two directions are not equally bad.
+        //
+        // Reporting nothing found is a lie about a folder nobody read. Reporting
+        // everything found is worse: `OrphanDetector.isOrphan` treats "not among
+        // the installed apps" as evidence, so an `installedBundleIDs()` that
+        // failed is indistinguishable from a Mac with no apps — and then every
+        // bundle-id-shaped folder under `~/Library` becomes a removal candidate,
+        // unattended.
+        //
+        // CLAUDE.md records that a local install drops the Full Disk Access
+        // grant **every time**, so an unreadable Library is the ordinary state
+        // after an update, not an exotic one.
+        let checks = await offTheCooperativePool { [apps, fs, library] in
+            (installed: apps.installedBundleIDs(),
+             library: fs.children(of: library).count)
+        }
+        guard checks.library > 0 else {
+            HelmLog.shared.warn("scan", "uninstaller: ~/Library unreadable — not a clean scan")
+            return nil
+        }
         let groups = await scanOrphans()
+        // A Library holding third-party folders while no app is installed is a
+        // contradiction, not a discovery.
+        guard !checks.installed.isEmpty || groups.isEmpty else {
+            HelmLog.shared.warn("scan",
+                                "uninstaller: no installed apps readable — refusing "
+                                + "\(groups.count) would-be orphans")
+            return nil
+        }
         let items = groups.flatMap { group in
             group.leftovers.map { ScanItem(path: $0.path, bytes: $0.sizeBytes) }
         }
