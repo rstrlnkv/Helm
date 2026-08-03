@@ -108,9 +108,10 @@ public final class DuplicatesEngine: ModuleEngine, @unchecked Sendable {
         // already accepted the wait, and the pay-off is on the run nobody sees.
         let cache = Self.loadCache() ?? HashCache()
         guard let groups = await findCaching(under: root, cache: cache) else { return nil }
-        // Pruned on the way out, never on the way in: a scan that is cut short
-        // would otherwise throw away entries it never got to touch.
-        Self.saveCache(cache.pruned())
+        // Compacted on the way out, never on the way in: a scan cut short would
+        // otherwise replace the settled segment with a fresh one holding only
+        // the files it reached before it stopped.
+        Self.saveCache(cache.compactedIfStale())
         // Every copy but the survivor: that is what acting on the finding would
         // remove. The bytes come from `wasted` rather than from adding the sizes
         // up, because on APFS a clone shares its blocks and removing it returns
