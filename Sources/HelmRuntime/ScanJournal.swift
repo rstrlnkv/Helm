@@ -101,9 +101,22 @@ public final class ScanJournal: @unchecked Sendable {
     }
 
     /// What changed between the two lists on disk.
+    ///
+    /// **A current list that cannot be read is not an empty one.** It is
+    /// missing, or corrupt, or a rotation was interrupted between the move and
+    /// the write — and `?? []` turned every one of those into "the last scan
+    /// found nothing", which the comparison then reports as the *entire*
+    /// previous list having been freed. The same nil-is-not-empty distinction
+    /// `ScanReport` is built around, one layer down.
+    ///
+    /// Answered as "nothing is known" rather than as a change: no previous, no
+    /// items, so a page draws no delta instead of a false one.
     public func change(module: String) -> ScanChange {
-        ScanComparison.between(previous: list(module: module, .previous),
-                               current: list(module: module, .current) ?? [])
+        guard let current = list(module: module, .current) else {
+            return ScanComparison.between(previous: nil, current: [])
+        }
+        return ScanComparison.between(previous: list(module: module, .previous),
+                                      current: current)
     }
 
     // MARK: - Writing
@@ -127,10 +140,23 @@ public final class ScanJournal: @unchecked Sendable {
             }
             write(items, to: current)
 
-            var kept = entries(module: module)
-            kept.append(entry)
-            kept.sort { $0.at > $1.at }
-            write(Array(kept.prefix(Self.limit)), to: entriesURL(module: module))
+            // **The entry just recorded always survives the trim.** Sorting
+            // everything by date and cutting the tail loses it in two ordinary
+            // situations: a clock that was fast yesterday leaves thirty
+            // future-stamped rows, so today's corrected one is the oldest of
+            // thirty-one and is dropped — while the *list* half of this same
+            // call already rotated and wrote. And `Array.sort` is documented as
+            // unstable, so thirty rows tied on `at` can drop whichever one they
+            // like, including the new one.
+            //
+            // So it goes first and the rest follow in date order. That is also
+            // the honest reading: it is the newest thing that *happened*,
+            // whatever the clock says about it.
+            let older = entries(module: module)
+                .filter { $0 != entry }
+                .sorted { $0.at > $1.at }
+            write(Array(([entry] + older).prefix(Self.limit)),
+                  to: entriesURL(module: module))
         }
     }
 
