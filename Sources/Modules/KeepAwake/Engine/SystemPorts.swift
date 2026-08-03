@@ -96,26 +96,21 @@ public final class IOPSPowerInfo: PowerInfoPort {
 
     public init() {}
 
+    /// The reading itself moved to `PowerSource` in `HelmRuntime` when
+    /// background scans needed it too — a second IOKit read written in the
+    /// coordinator is the duplication that target exists to stop.
+    ///
+    /// This port stays. It is what lets Keep Awake's tests hand the engine a
+    /// battery that does whatever the test needs, and the notification half
+    /// below has no equivalent in `PowerSource`: a scan asks once a minute and
+    /// has nothing to subscribe to.
+    ///
+    /// Nil still means "IOKit would not answer", and Keep Awake still reads that
+    /// as *not* on power — ending a session early is the safe failure here,
+    /// where for a scan the safe failure is the opposite.
     public func snapshot() -> (onBattery: Bool, percent: Int)? {
-        guard let blob = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
-              let sources = IOPSCopyPowerSourcesList(blob)?.takeRetainedValue() as? [CFTypeRef],
-              let firstSource = sources.first,
-              let description = IOPSGetPowerSourceDescription(blob, firstSource)?.takeUnretainedValue() as? [String: Any]
-        else {
-            return nil
-        }
-
-        let state = description[kIOPSPowerSourceStateKey] as? String
-        let onBattery = state == kIOPSBatteryPowerValue
-
-        // "I don't know" must not arrive as 0%. BatteryGuard reads a low
-        // reading as a critical battery and ends the session, so an incomplete
-        // IOKit dictionary used to stop Keep Awake for no reason at all.
-        guard let current = description[kIOPSCurrentCapacityKey] as? Int,
-              let max = description[kIOPSMaxCapacityKey] as? Int, max > 0 else { return nil }
-        let percent = Int((Double(current) / Double(max)) * 100.0)
-
-        return (onBattery: onBattery, percent: percent)
+        guard let reading = PowerSource.current() else { return nil }
+        return (onBattery: reading.onBattery, percent: reading.percent)
     }
 
     public func startObserving(_ onChange: @escaping @Sendable () -> Void) {
