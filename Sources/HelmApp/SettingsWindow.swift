@@ -66,8 +66,10 @@ enum SettingsSelection: Hashable {
     case general
     case module(String)
     case about
-    /// Dev builds only. Not a module: no store, no engine, no tour step, no
-    /// place in `ModuleOrder`, and nothing counts it among the nine.
+    /// On every build — the logging switch lives in this page, so gating the
+    /// page would hide the control that turns the log on. Not a module: no
+    /// store, no engine, no tour step, no place in `ModuleOrder`, and nothing
+    /// counts it among the nine.
     case log
 }
 

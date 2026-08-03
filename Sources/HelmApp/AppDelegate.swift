@@ -235,6 +235,10 @@ import HelmUI
     func applicationWillTerminate(_ notification: Notification) {
         HelmLog.shared.info("app", "terminating")
         trashEventsTask?.cancel()
+        // The coordinator owns a repeating tick and a notification observer, and
+        // neither goes through an engine's `deactivate()`. Stopped from outside,
+        // like every other observer the app starts itself.
+        scanCoordinator?.stop()
         for live in host.live.values { live.engine.deactivate() }
     }
 

@@ -67,9 +67,9 @@ public final class DuplicateScanner: @unchecked Sendable {
                      cache: HashCache? = nil,
                      onProgress: (@Sendable (DuplicateProgress) -> Void)? = nil)
     -> [DuplicateGroup]? {
-        HelmActivity.begin("duplicates.walk")
-        let files = walk(root, onProgress: onProgress)
-        HelmActivity.end("duplicates.walk")
+        let files = HelmActivity.phase("duplicates.walk") {
+            walk(root, onProgress: onProgress)
+        }
         // Before the cancellation check, not after it. Stop is pressed when the
         // footprint is at its highest — that is why it is pressed — and the
         // reclaim used to sit below this line, so the one run that most needed
@@ -97,61 +97,61 @@ public final class DuplicateScanner: @unchecked Sendable {
         // keep results ordered without the workers sharing an array.
         var buckets = [[DuplicateGroup]](repeating: [], count: candidates.count)
         let bucketLock = NSLock()
-        HelmActivity.begin("duplicates.hash")
-        DispatchQueue.concurrentPerform(iterations: candidates.count) { index in
-            if self.isCancelled { return }
-            var found: [DuplicateGroup] = []
-            let byPrefix = Duplicates.refine(candidates[index]) { file in
-                if self.isCancelled { return nil }
-                progress.bump()
-                // The cache first, and the file only if it misses. The walk has
-                // already seen this file, so nothing new can hide here — this
-                // skips the *reading*, not the looking.
-                if let known = cache?.prefix(fileID: file.fileID, bytes: file.bytes,
-                                             modified: file.modified) {
-                    return known
-                }
-                let digest = Self.hash(file.path, limit: Self.prefixBytes,
-                                       expecting: min(Self.prefixBytes, file.bytes))
-                if digest == nil { progress.noteUnreadable() }
-                if let digest {
-                    cache?.setPrefix(digest, fileID: file.fileID, bytes: file.bytes,
-                                     modified: file.modified)
-                }
-                return digest
-            }
-            for group in byPrefix {
-                // Files at or under the prefix size are already fully read:
-                // their prefix hash IS their full hash.
-                for identical in Duplicates.refine(group, by: { file in
+        HelmActivity.phase("duplicates.hash") {
+            DispatchQueue.concurrentPerform(iterations: candidates.count) { index in
+                if self.isCancelled { return }
+                var found: [DuplicateGroup] = []
+                let byPrefix = Duplicates.refine(candidates[index]) { file in
                     if self.isCancelled { return nil }
                     progress.bump()
-                    if let known = cache?.full(fileID: file.fileID, bytes: file.bytes,
-                                               modified: file.modified) {
+                    // The cache first, and the file only if it misses. The walk has
+                    // already seen this file, so nothing new can hide here — this
+                    // skips the *reading*, not the looking.
+                    if let known = cache?.prefix(fileID: file.fileID, bytes: file.bytes,
+                                                 modified: file.modified) {
                         return known
                     }
-                    let digest = file.bytes <= Self.prefixBytes
-                        ? Self.hash(file.path, limit: Self.prefixBytes,
-                                    expecting: file.bytes)
-                        : Self.hash(file.path, limit: nil, expecting: file.bytes)
-                    if let digest {
-                        cache?.setFull(digest, fileID: file.fileID, bytes: file.bytes,
-                                       modified: file.modified)
-                    }
-                    // The second pass fails too, and on the largest files —
-                    // where an unreadable file is most likely to be the whole
-                    // answer. Counting only the first pass undercounts exactly
-                    // there. (No double count: a file that failed the prefix
-                    // pass never reaches this one.)
+                    let digest = Self.hash(file.path, limit: Self.prefixBytes,
+                                           expecting: min(Self.prefixBytes, file.bytes))
                     if digest == nil { progress.noteUnreadable() }
+                    if let digest {
+                        cache?.setPrefix(digest, fileID: file.fileID, bytes: file.bytes,
+                                         modified: file.modified)
+                    }
                     return digest
-                }) {
-                    found.append(Duplicates.group(identical))
                 }
+                for group in byPrefix {
+                    // Files at or under the prefix size are already fully read:
+                    // their prefix hash IS their full hash.
+                    for identical in Duplicates.refine(group, by: { file in
+                        if self.isCancelled { return nil }
+                        progress.bump()
+                        if let known = cache?.full(fileID: file.fileID, bytes: file.bytes,
+                                                   modified: file.modified) {
+                            return known
+                        }
+                        let digest = file.bytes <= Self.prefixBytes
+                            ? Self.hash(file.path, limit: Self.prefixBytes,
+                                        expecting: file.bytes)
+                            : Self.hash(file.path, limit: nil, expecting: file.bytes)
+                        if let digest {
+                            cache?.setFull(digest, fileID: file.fileID, bytes: file.bytes,
+                                           modified: file.modified)
+                        }
+                        // The second pass fails too, and on the largest files —
+                        // where an unreadable file is most likely to be the whole
+                        // answer. Counting only the first pass undercounts exactly
+                        // there. (No double count: a file that failed the prefix
+                        // pass never reaches this one.)
+                        if digest == nil { progress.noteUnreadable() }
+                        return digest
+                    }) {
+                        found.append(Duplicates.group(identical))
+                    }
+                }
+                bucketLock.lock(); buckets[index] = found; bucketLock.unlock()
             }
-            bucketLock.lock(); buckets[index] = found; bucketLock.unlock()
         }
-        HelmActivity.end("duplicates.hash")
         // Same as the walk above: the hashing loop is the one that has already
         // caused a 48 GB incident, and a stopped run is where it is biggest.
         HelmLog.shared.memory("duplicates.hash")
