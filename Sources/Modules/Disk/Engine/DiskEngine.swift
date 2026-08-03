@@ -65,9 +65,11 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
         let scanner = DiskScanner()
         let token = scanners.add(scanner)
         defer { scanners.remove(token) }
-        // Registered for the whole scan, cancellation included: the `defer`
-        // inside `phase` is what closes it, which is why this is a scope and not
-        // a pair of calls somebody has to remember to balance.
+        // Registered for the whole scan, cancellation included. The pair is
+        // `begin` + `defer` rather than `HelmActivity.phase`, because the phase
+        // is this whole function body and wrapping it in a closure would put the
+        // `await` below inside one; the `defer` is what makes it a scope, and
+        // there must never be a `begin` without one.
         HelmActivity.begin("disk.scan")
         defer { HelmActivity.end("disk.scan") }
         let started = Date()
