@@ -41,6 +41,46 @@ extension Notification.Name {
         }
     }
 
+    /// Background scans the person switched off, by module id.
+    ///
+    /// An off-list rather than an on-list, so a scan added by a future version
+    /// arrives switched on without a migration — the same shape the module
+    /// enable flags use.
+    ///
+    /// Disk starts in it. The other two answer a question the person asked by
+    /// installing the module; Disk builds and refreshes an 8 MB index of every
+    /// filename on the volume, on machines whose owner never ran a disk scan.
+    static var disabledScans: Set<String> {
+        get {
+            guard let stored = store.object("disabledScans") as? [String] else {
+                return ["disk"]
+            }
+            return Set(stored)
+        }
+        set { store.set(Array(newValue).sorted(), for: "disabledScans") }
+    }
+
+    /// When each background scan last completed, by module id.
+    static var lastScanAt: [String: Date] {
+        get { store.doubleTable("lastScanAt").mapValues(Date.init(timeIntervalSince1970:)) }
+        set { store.set(newValue.mapValues(\.timeIntervalSince1970), for: "lastScanAt") }
+    }
+
+    /// How many times each scan ran today. Reset when the calendar day turns.
+    static var scanRunsToday: [String: Int] {
+        get { store.intTable("scanRunsToday") }
+        set { store.set(newValue, for: "scanRunsToday") }
+    }
+
+    /// The calendar day `scanRunsToday` is counting.
+    static var scanBudgetDay: Date? {
+        get {
+            let stored = store.double("scanBudgetDay", default: 0)
+            return stored > 0 ? Date(timeIntervalSince1970: stored) : nil
+        }
+        set { store.set(newValue?.timeIntervalSince1970 ?? 0, for: "scanBudgetDay") }
+    }
+
     /// Ids in the order the user arranged them in the panel.
     static var moduleOrder: [String] {
         get { store.stringArray("moduleOrder") }
