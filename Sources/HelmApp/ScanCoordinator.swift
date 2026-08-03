@@ -119,10 +119,32 @@ final class ScanCoordinator {
 
     // MARK: - Running
 
+    /// The last verdict logged for each module, so only changes are written.
+    ///
+    /// A line per module per tick is 4320 a day and would push everything else
+    /// out of `LogTail`, which is capped at 1000. Silence is the wrong answer
+    /// too — see `considerAll`.
+    private var lastLogged: [String: ScanSchedule.Verdict] = [:]
+
     private func considerAll() async {
         rollOverTheDayIfNeeded()
         for id in Self.scannableModules {
-            guard !inFlight.contains(id), case .run = verdict(for: id) else { continue }
+            guard !inFlight.contains(id) else { continue }
+            let verdict = verdict(for: id)
+            // **A refusal says why.** Without this the log is empty whether the
+            // schedule refused correctly or the timer never fired, and "no
+            // `[scan]` lines" — which is how this feature is meant to be
+            // verified on battery — cannot tell a working refusal from a dead
+            // coordinator. `ScanSchedule` names eight verdicts precisely so the
+            // reason can be said; saying none of them wasted the vocabulary.
+            //
+            // On change only. The state is steady for hours at a time, and a
+            // heartbeat is what makes a log unreadable.
+            if lastLogged[id] != verdict {
+                lastLogged[id] = verdict
+                HelmLog.shared.info("scan", "\(id): \(verdict)")
+            }
+            guard case .run = verdict else { continue }
             await run(id)
         }
     }
