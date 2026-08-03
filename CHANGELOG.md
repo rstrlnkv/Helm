@@ -1,13 +1,40 @@
 # Changelog
 
 All notable changes to Helm are documented here. The format is loosely based on
-[Keep a Changelog](https://keepachangelog.com/). Version-bump rules: see
-[VERSIONING.md](VERSIONING.md) — MAJOR = global changes, MINOR = new/polished
-features, PATCH = fixes.
+[Keep a Changelog](https://keepachangelog.com/). Version-bump rules: MAJOR =
+global changes, MINOR = new/polished features, PATCH = fixes. Every release
+bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 
 ## [Unreleased] — 0.8.0
 
 ### Added
+- **Scans that run while nobody is watching.** Disk, Duplicates and the
+  Uninstaller can measure on their own, so the answer is already there when the
+  page is opened. A scan waits for all of it at once: the switch on, five
+  minutes of real stillness, mains power, this session at the console with the
+  screen unlocked, and at most two runs a day. Every refusal has a name — "not
+  due yet" is a different sentence from "waiting for mains" — and Helm subtracts
+  the pointer movements Keep Awake makes itself, which otherwise reset the
+  idleness counter and would mean a scan never runs for anyone using that
+  switch.
+  - **Where an unattended scan may start is its own question.** The folder a
+    scan begins from is a stored setting, and until now it only ever changed
+    with a person at an open panel. A background scan makes it the reach of a
+    read nobody is watching, so it is bounded separately: inside the home, and
+    never into the parts of `~/Library` macOS protects — walking those on a
+    timer would copy what TCC guards into a file any process can read.
+  - **A history, and what changed since last time.** The last thirty scans per
+    module are kept with what they found and how long they took, and two scans
+    are compared: what appeared, what went, what stayed. A first scan says so
+    rather than drawing "since last time" against nothing.
+  - **Nothing found and nothing read are different answers.** A scan whose root
+    was refused, or that was cancelled, or that could not read a folder in
+    scope, is not recorded as "looked, and it was clean".
+- **The duplicate finder reads only what changed.** Digests are kept between
+  searches and matched by file identity, size and modification date, so a second
+  search of the same folder skips the reading rather than the looking. The cache
+  expires and has a ceiling, and both files of a pair are read again before
+  either is trashed — a copy edited since the scan is refused, not deleted.
 - **The log, readable while it is being written** — a "Log" row in Settings,
   on every build. The same lines the app already writes, arriving as they
   are written, with two filters: what went wrong (everything / warnings /
@@ -217,6 +244,11 @@ features, PATCH = fixes.
     move the footprint by 1 MB on the first and by nothing after it.
 
 ### Fixed
+- **A folder Helm could not read is no longer reported as a folder with nothing
+  in it.** The Uninstaller's sweep of `~/Library` and the lists a background
+  scan hands back both treated a refused read as an empty result, which reads as
+  "there is nothing left behind" — the one sentence that must not be guessed.
+  The refusal is now carried out of the scan and said.
 - **Helm no longer asks for permissions on the first launch.** Every module
   arrives enabled and the audit unions what the enabled ones need, so a
   brand-new install requested Full Disk Access *and* Accessibility before the
@@ -1611,8 +1643,8 @@ features, PATCH = fixes.
 - **Module reordering** — drag modules into the order they take in the panel.
 - **Diagnostics** — an optional log of what Helm does, reachable from Settings.
   Dev builds always log.
-- Update channels (Stable / Dev), and a dev-first release flow: see
-  [VERSIONING.md](VERSIONING.md).
+- Update channels (Stable / Dev), and a dev-first release flow. (The slower
+  channel was renamed Beta in 0.7.1.)
 
 ### Changed
 - Every screen leads with its icon and its own key figures, on one layout.

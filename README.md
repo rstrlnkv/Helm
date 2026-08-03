@@ -23,8 +23,10 @@ Deutsch, 日本語, Русский, Português.
 ## Channels
 
 Releases ship to the **Dev** channel first (`vX.Y.Z-dev.N` prereleases, always
-logging to `~/Library/Logs/Helm/helm.log`) and graduate to **Stable** when the
-known-problem count reaches zero. Switch channels in About.
+logging to `~/Library/Logs/Helm/helm.log`) and graduate to **Beta** when the
+known-problem count reaches zero. Switch channels in About. The slower channel
+is Beta rather than Stable because Helm is before 1.0 and nothing here has
+earned that word yet.
 
 ## Install
 
@@ -46,7 +48,7 @@ or one that disagrees, is never installed silently: the release page opens inste
 Requires Xcode (macOS 26 SDK) and Swift 6.
 
 ```bash
-swift test                      # 1627 unit tests
+swift test                      # 1883 unit tests
 bash Scripts/package-app.sh     # build + sign → $TMPDIR/helm-package/Helm.app
 ```
 
@@ -58,4 +60,15 @@ manages and `codesign` refuses a bundle carrying it, so signing succeeds or fail
 luck.
 
 Release packaging: `Scripts/make-dmg.sh` (manual install) and `Scripts/make-zip.sh`
-(the asset the in-app updater consumes). Versioning rules: [VERSIONING.md](VERSIONING.md).
+(the asset the in-app updater consumes).
+
+Versioning is SemVer-shaped: MAJOR for a milestone, MINOR for new or polished
+capability, PATCH for fixes only, and every release bumps the number — the
+updater compares versions, so two releases sharing one are invisible to it.
+Prereleases are the `-dev.N` lane and sort below their own release
+(`0.7.0` > `0.7.0-dev.2` > `0.6.1`).
+
+## Licence
+
+GPL-3.0 — see [LICENSE](LICENSE). Third-party artwork and its terms are in
+[NOTICE.md](NOTICE.md).
