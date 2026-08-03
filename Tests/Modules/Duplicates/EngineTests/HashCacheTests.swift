@@ -52,18 +52,68 @@ final class HashCacheTests: XCTestCase {
         XCTAssertEqual(cache.full(fileID: 1, bytes: 10, modified: 5), "f")
     }
 
-    /// Without pruning the file grows forever: an edited file takes a *new* key
-    /// rather than replacing its old one, so every version of every file ever
+    /// Without an expiry the file grows forever: an edited file takes a *new*
+    /// key rather than replacing its old one, so every state of every file ever
     /// hashed would stay.
-    func testPruningKeepsOnlyWhatTheScanTouched() {
+    func testEntriesOlderThanThirtyDaysAreDropped() {
+        let now: TimeInterval = 1_800_000_000
         let cache = HashCache()
-        cache.setFull("a", fileID: 1, bytes: 10, modified: 1)
-        cache.setFull("b", fileID: 2, bytes: 20, modified: 2)
-        let live: Set<String> = [HashCache.key(fileID: 2, bytes: 20, modified: 2)]
-        let pruned = cache.keeping(live)
+        cache.setFull("old", fileID: 1, bytes: 10, modified: 1,
+                      now: now - HashCache.maximumAge - 1)
+        cache.setFull("fresh", fileID: 2, bytes: 20, modified: 2, now: now)
+        let pruned = cache.pruned(now: now)
         XCTAssertEqual(pruned.count, 1)
-        XCTAssertEqual(pruned.full(fileID: 2, bytes: 20, modified: 2), "b")
-        XCTAssertNil(pruned.full(fileID: 1, bytes: 10, modified: 1))
+        XCTAssertEqual(pruned.full(fileID: 2, bytes: 20, modified: 2, now: now), "fresh")
+    }
+
+    /// Exactly thirty days is kept. `>` against `>=` is one character and a
+    /// scan's worth of re-reading.
+    func testExactlyTheLimitIsKept() {
+        let now: TimeInterval = 1_800_000_000
+        let cache = HashCache()
+        cache.setFull("d", fileID: 1, bytes: 10, modified: 1, now: now - HashCache.maximumAge)
+        XCTAssertEqual(cache.pruned(now: now).count, 1)
+    }
+
+    /// **A read has to postpone the expiry**, or a file that never changes ages
+    /// out and is re-read every thirty days — which is the one case the cache
+    /// exists for. This is the test that fails if the stamp is only written on
+    /// a miss.
+    func testReadingAnEntryKeepsItAlive() {
+        let now: TimeInterval = 1_800_000_000
+        let cache = HashCache()
+        cache.setFull("d", fileID: 1, bytes: 10, modified: 1,
+                      now: now - HashCache.maximumAge + 10)
+        // Read it just before it would have expired.
+        XCTAssertEqual(cache.full(fileID: 1, bytes: 10, modified: 1, now: now), "d")
+        // A month later it is still there, because the read moved it forward.
+        XCTAssertEqual(cache.pruned(now: now + HashCache.maximumAge).count, 1)
+    }
+
+    /// A miss must not create an entry. Otherwise every file the scan reads for
+    /// the first time is counted twice against the limit — once empty from the
+    /// lookup, once real from the write.
+    func testAMissLeavesNothingBehind() {
+        let cache = HashCache()
+        XCTAssertNil(cache.full(fileID: 99, bytes: 10, modified: 1))
+        XCTAssertEqual(cache.count, 0)
+    }
+
+    /// The age limit is a rate, not a ceiling: a disk that churns faster than
+    /// thirty days grows without bound inside them. The count is the backstop,
+    /// and it keeps the most recently used.
+    func testTheCountIsTheBackstopAndKeepsTheNewest() {
+        let now: TimeInterval = 1_800_000_000
+        let cache = HashCache()
+        for i in 0..<50 {
+            cache.setFull("d\(i)", fileID: UInt64(i), bytes: 10, modified: 1,
+                          now: now - TimeInterval(50 - i))
+        }
+        let pruned = cache.pruned(now: now, limit: 10)
+        XCTAssertEqual(pruned.count, 10)
+        // The newest ten are 40…49; the oldest are gone.
+        XCTAssertNotNil(pruned.full(fileID: 49, bytes: 10, modified: 1, now: now))
+        XCTAssertNil(pruned.full(fileID: 0, bytes: 10, modified: 1, now: now))
     }
 
     func testItSurvivesARoundTrip() throws {
