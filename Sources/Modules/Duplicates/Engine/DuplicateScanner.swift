@@ -58,7 +58,13 @@ public final class DuplicateScanner: @unchecked Sendable {
     /// Synchronous; run it via the module's `blocking` bridge. Returns nil
     /// when cancelled — a partial answer to "what is duplicated" is a wrong
     /// answer, not a smaller right one.
+    /// - Parameter cache: digests kept from the last search. Nil means read
+    ///   every candidate, which is what an interactive search does today and
+    ///   what any search does the first time. When one is supplied it is also
+    ///   **filled**: whatever this search reads is written back, so the caller
+    ///   can persist it and the next search reads less.
     public func find(under root: String,
+                     cache: HashCache? = nil,
                      onProgress: (@Sendable (DuplicateProgress) -> Void)? = nil)
     -> [DuplicateGroup]? {
         HelmActivity.begin("duplicates.walk")
@@ -98,9 +104,20 @@ public final class DuplicateScanner: @unchecked Sendable {
             let byPrefix = Duplicates.refine(candidates[index]) { file in
                 if self.isCancelled { return nil }
                 progress.bump()
+                // The cache first, and the file only if it misses. The walk has
+                // already seen this file, so nothing new can hide here — this
+                // skips the *reading*, not the looking.
+                if let known = cache?.prefix(fileID: file.fileID, bytes: file.bytes,
+                                             modified: file.modified) {
+                    return known
+                }
                 let digest = Self.hash(file.path, limit: Self.prefixBytes,
                                        expecting: min(Self.prefixBytes, file.bytes))
                 if digest == nil { progress.noteUnreadable() }
+                if let digest {
+                    cache?.setPrefix(digest, fileID: file.fileID, bytes: file.bytes,
+                                     modified: file.modified)
+                }
                 return digest
             }
             for group in byPrefix {
@@ -109,10 +126,18 @@ public final class DuplicateScanner: @unchecked Sendable {
                 for identical in Duplicates.refine(group, by: { file in
                     if self.isCancelled { return nil }
                     progress.bump()
+                    if let known = cache?.full(fileID: file.fileID, bytes: file.bytes,
+                                               modified: file.modified) {
+                        return known
+                    }
                     let digest = file.bytes <= Self.prefixBytes
                         ? Self.hash(file.path, limit: Self.prefixBytes,
                                     expecting: file.bytes)
                         : Self.hash(file.path, limit: nil, expecting: file.bytes)
+                    if let digest {
+                        cache?.setFull(digest, fileID: file.fileID, bytes: file.bytes,
+                                       modified: file.modified)
+                    }
                     // The second pass fails too, and on the largest files —
                     // where an unreadable file is most likely to be the whole
                     // answer. Counting only the first pass undercounts exactly
@@ -217,7 +242,11 @@ public final class DuplicateScanner: @unchecked Sendable {
                                    // for files already past the size floor. What
                                    // it buys is the difference between the size
                                    // of a copy and what removing it returns.
-                                   cloneFamily: CloneShare.familyID(ofFileAt: item.path)))
+                                   cloneFamily: CloneShare.familyID(ofFileAt: item.path),
+                                   // Free: the `lstat` above was already made
+                                   // for the inode and the device.
+                                   modified: TimeInterval(status.st_mtimespec.tv_sec)
+                                       + TimeInterval(status.st_mtimespec.tv_nsec) / 1_000_000_000))
         }
         return files
     }

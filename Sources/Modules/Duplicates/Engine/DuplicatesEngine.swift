@@ -52,6 +52,40 @@ public final class DuplicatesEngine: ModuleEngine, @unchecked Sendable {
         return groups
     }
 
+    /// The search, with digests carried over from the last one.
+    private func findCaching(under path: String, cache: HashCache) async -> [DuplicateGroup]? {
+        finderBox.current?.cancel()
+        let finder = DuplicateScanner()
+        let slot = finderBox.start(finder)
+        defer { slot.finish() }
+        return await offTheCooperativePool { finder.find(under: path, cache: cache) }
+    }
+
+    /// Beside the journal, and private for the same reason: the keys name
+    /// nothing but inodes, yet the file is a record of what was on this disk.
+    static func cacheURL() -> URL {
+        ScanJournal().directory(module: "duplicates")
+            .appendingPathComponent("hashes.json")
+    }
+
+    static func loadCache() -> HashCache? {
+        guard let data = try? Data(contentsOf: cacheURL()) else { return nil }
+        return try? JSONDecoder().decode(HashCache.self, from: data)
+    }
+
+    static func saveCache(_ cache: HashCache) {
+        let url = cacheURL()
+        let fm = FileManager.default
+        try? fm.createDirectory(at: url.deletingLastPathComponent(),
+                                withIntermediateDirectories: true,
+                                attributes: [.posixPermissions: 0o700])
+        guard let data = try? JSONEncoder().encode(cache) else { return }
+        try? data.write(to: url, options: .atomic)
+        // Every write, for the reason `ScanJournal` and `ScanStore` record:
+        // `.atomic` takes its mode from the umask or from the file it replaced.
+        try? fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+    }
+
     /// The same search the page runs, started by the timer instead of a person.
     ///
     /// **Nil rather than an empty report** whenever it cannot answer honestly: a
@@ -69,7 +103,12 @@ public final class DuplicatesEngine: ModuleEngine, @unchecked Sendable {
             HelmLog.shared.warn("scan", "duplicates: no stored root, or it was refused")
             return nil
         }
-        guard let groups = await find(under: root) else { return nil }
+        // The cache from the last background scan, filled by this one. An
+        // interactive search passes none: a person watching a progress bar has
+        // already accepted the wait, and the pay-off is on the run nobody sees.
+        let cache = Self.loadCache() ?? HashCache()
+        guard let groups = await findCaching(under: root, cache: cache) else { return nil }
+        Self.saveCache(cache)
         // Every copy but the survivor: that is what acting on the finding would
         // remove. The bytes come from `wasted` rather than from adding the sizes
         // up, because on APFS a clone shares its blocks and removing it returns

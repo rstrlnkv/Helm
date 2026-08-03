@@ -27,15 +27,24 @@ public struct FileFacts: Hashable, Sendable {
     /// as `fileID` above, one level up: a hard link is one file with two names,
     /// a clone is two files with one set of blocks.
     public let cloneFamily: UInt64?
+    /// When the contents last changed, to the resolution `lstat` reports.
+    ///
+    /// Part of what identifies a file to `HashCache`, together with the inode
+    /// and the size: a digest may only be reused while all three still hold.
+    /// Free to collect — the walk already calls `lstat` on every candidate for
+    /// the inode and the device.
+    public let modified: TimeInterval?
 
     public init(path: String, bytes: Int, fileID: UInt64, added: Date? = nil,
-                allocated: Int? = nil, cloneFamily: UInt64? = nil) {
+                allocated: Int? = nil, cloneFamily: UInt64? = nil,
+                modified: TimeInterval? = nil) {
         self.path = path
         self.bytes = bytes
         self.fileID = fileID
         self.added = added
         self.allocated = allocated ?? bytes
         self.cloneFamily = cloneFamily
+        self.modified = modified
     }
 }
 
