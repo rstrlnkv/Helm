@@ -55,13 +55,23 @@ public enum ScanComparison {
     public static func between(previous: [ScanItem]?, current: [ScanItem]) -> ScanChange {
         let before = Set(previous ?? [])
         let after = Set(current)
+        // Both sides de-duplicated, and by the same rule. `went` came from the
+        // set and said so; `appeared` and `stayed` were plain filters over the
+        // array, so one repeated entry in the newer list was counted twice in
+        // `appearedBytes` while the identical shape in the older list was not.
+        // One structure handled two ways is a rule somebody has to remember.
+        //
+        // The order of first appearance is kept: a page listing what appeared
+        // must not reshuffle between two draws of the same data.
+        var seen: Set<ScanItem> = []
+        let once = current.filter { seen.insert($0).inserted }
         return ScanChange(
-            appeared: current.filter { !before.contains($0) },
+            appeared: once.filter { !before.contains($0) },
             // From the set, so a previous list carrying the same entry twice
             // does not report one departure twice. Sorted, because a set has no
             // order and a page redrawing the same data must not reshuffle it.
             went: before.subtracting(after).sorted { $0.path < $1.path },
-            stayed: current.filter { before.contains($0) },
+            stayed: once.filter { before.contains($0) },
             hadPrevious: previous != nil)
     }
 }
