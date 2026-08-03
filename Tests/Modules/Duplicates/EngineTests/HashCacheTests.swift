@@ -3,6 +3,8 @@ import XCTest
 
 final class HashCacheTests: XCTestCase {
 
+    private let now: TimeInterval = 1_800_000_000
+
     func testADigestComesBackForTheSameFile() {
         let cache = HashCache()
         cache.setFull("abc", fileID: 42, bytes: 100, modified: 1_785_600_000)
@@ -11,7 +13,7 @@ final class HashCacheTests: XCTestCase {
 
     /// The three facts that make up identity, one at a time. Any of them
     /// changing means the digest on file describes a different state of the
-    /// world, and reusing it is exactly the mistake this key exists to prevent.
+    /// world, and reusing it is the mistake this key exists to prevent.
     func testAnyChangeInIdentityMissesTheCache() {
         let cache = HashCache()
         cache.setFull("abc", fileID: 42, bytes: 100, modified: 1_785_600_000)
@@ -20,8 +22,7 @@ final class HashCacheTests: XCTestCase {
         XCTAssertNil(cache.full(fileID: 42, bytes: 100, modified: 1_785_600_001), "mtime")
     }
 
-    /// A file with no readable modification time must not collide with every
-    /// other such file of the same size — but it must still be a stable key, or
+    /// A file with no readable modification time must still be a stable key, or
     /// nothing about it is ever cached.
     func testAMissingModificationTimeIsItsOwnKey() {
         let cache = HashCache()
@@ -30,18 +31,16 @@ final class HashCacheTests: XCTestCase {
         XCTAssertNil(cache.full(fileID: 42, bytes: 100, modified: 1_785_600_000))
     }
 
-    /// Sub-second resolution is kept. APFS records nanoseconds, and rounding to
-    /// whole seconds would let a file edited twice within one second reuse the
-    /// digest of its earlier state.
+    /// APFS records nanoseconds, and rounding to whole seconds would let a file
+    /// edited twice within one second reuse the digest of its earlier state.
     func testSubSecondChangesAreDistinct() {
         let cache = HashCache()
         cache.setFull("abc", fileID: 42, bytes: 100, modified: 1_785_600_000.100000)
         XCTAssertNil(cache.full(fileID: 42, bytes: 100, modified: 1_785_600_000.200000))
     }
 
-    /// The prefix and the full digest are separate slots for one file: the
-    /// search takes the prefix of everything and the full hash of only what
-    /// survives that pass.
+    /// The search takes the prefix of everything and the full hash of only what
+    /// survives that pass, so the two are separate slots for one file.
     func testPrefixAndFullAreIndependent() {
         let cache = HashCache()
         cache.setPrefix("p", fileID: 1, bytes: 10, modified: 5)
@@ -52,78 +51,69 @@ final class HashCacheTests: XCTestCase {
         XCTAssertEqual(cache.full(fileID: 1, bytes: 10, modified: 5), "f")
     }
 
-    /// Without an expiry the file grows forever: an edited file takes a *new*
-    /// key rather than replacing its old one, so every state of every file ever
-    /// hashed would stay.
-    func testEntriesOlderThanThirtyDaysAreDropped() {
-        let now: TimeInterval = 1_800_000_000
-        let cache = HashCache()
-        cache.setFull("old", fileID: 1, bytes: 10, modified: 1,
-                      now: now - HashCache.maximumAge - 1)
-        cache.setFull("fresh", fileID: 2, bytes: 20, modified: 2, now: now)
-        let pruned = cache.pruned(now: now)
-        XCTAssertEqual(pruned.count, 1)
-        XCTAssertEqual(pruned.full(fileID: 2, bytes: 20, modified: 2, now: now), "fresh")
+    // MARK: - The two segments
+
+    /// **The test the whole design turns on.** A file that never changes is only
+    /// ever *read* from the settled segment. If a hit does not copy it into the
+    /// fresh one, compaction — which is `settled := fresh` — forgets exactly the
+    /// files a cache is most valuable for.
+    func testAHitInTheSettledSegmentSurvivesCompaction() {
+        var cache = HashCache(now: now)
+        cache.setFull("f", fileID: 1, bytes: 10, modified: 5)
+        cache = cache.compacted(now: now)          // now it lives in `settled`
+        XCTAssertEqual(cache.full(fileID: 1, bytes: 10, modified: 5), "f", "still readable")
+        cache = cache.compacted(now: now)          // the read must have promoted it
+        XCTAssertEqual(cache.full(fileID: 1, bytes: 10, modified: 5), "f",
+                       "a file that never changed was forgotten")
     }
 
-    /// Exactly thirty days is kept. `>` against `>=` is one character and a
-    /// scan's worth of re-reading.
-    func testExactlyTheLimitIsKept() {
-        let now: TimeInterval = 1_800_000_000
-        let cache = HashCache()
-        cache.setFull("d", fileID: 1, bytes: 10, modified: 1, now: now - HashCache.maximumAge)
-        XCTAssertEqual(cache.pruned(now: now).count, 1)
+    /// A file nobody looked at through a whole cycle is gone, which is what
+    /// bounds the map by the disk rather than by history.
+    func testAnUntouchedEntryIsDroppedByCompaction() {
+        var cache = HashCache(now: now)
+        cache.setFull("gone", fileID: 1, bytes: 10, modified: 5)
+        cache.setFull("kept", fileID: 2, bytes: 20, modified: 6)
+        cache = cache.compacted(now: now)
+        _ = cache.full(fileID: 2, bytes: 20, modified: 6)   // only this one is seen
+        cache = cache.compacted(now: now)
+        XCTAssertEqual(cache.full(fileID: 2, bytes: 20, modified: 6), "kept")
+        XCTAssertNil(cache.full(fileID: 1, bytes: 10, modified: 5))
     }
 
-    /// **A read has to postpone the expiry**, or a file that never changes ages
-    /// out and is re-read every thirty days — which is the one case the cache
-    /// exists for. This is the test that fails if the stamp is only written on
-    /// a miss.
-    func testReadingAnEntryKeepsItAlive() {
-        let now: TimeInterval = 1_800_000_000
-        let cache = HashCache()
-        cache.setFull("d", fileID: 1, bytes: 10, modified: 1,
-                      now: now - HashCache.maximumAge + 10)
-        // Read it just before it would have expired.
-        XCTAssertEqual(cache.full(fileID: 1, bytes: 10, modified: 1, now: now), "d")
-        // A month later it is still there, because the read moved it forward.
-        XCTAssertEqual(cache.pruned(now: now + HashCache.maximumAge).count, 1)
+    /// Promotion carries the whole entry. The prefix and the full digest are
+    /// read in two separate passes, so promoting only the half that was asked
+    /// for would leave the other in a segment about to be replaced.
+    func testPromotionCarriesBothDigests() {
+        var cache = HashCache(now: now)
+        cache.setPrefix("p", fileID: 1, bytes: 10, modified: 5)
+        cache.setFull("f", fileID: 1, bytes: 10, modified: 5)
+        cache = cache.compacted(now: now)
+        _ = cache.prefix(fileID: 1, bytes: 10, modified: 5)  // only the prefix is asked for
+        cache = cache.compacted(now: now)
+        XCTAssertEqual(cache.full(fileID: 1, bytes: 10, modified: 5), "f",
+                       "the full digest was left behind")
     }
 
-    /// A miss must not create an entry. Otherwise every file the scan reads for
-    /// the first time is counted twice against the limit — once empty from the
-    /// lookup, once real from the write.
-    func testAMissLeavesNothingBehind() {
-        let cache = HashCache()
-        XCTAssertNil(cache.full(fileID: 99, bytes: 10, modified: 1))
-        XCTAssertEqual(cache.count, 0)
-    }
-
-    /// The age limit is a rate, not a ceiling: a disk that churns faster than
-    /// thirty days grows without bound inside them. The count is the backstop,
-    /// and it keeps the most recently used.
-    func testTheCountIsTheBackstopAndKeepsTheNewest() {
-        let now: TimeInterval = 1_800_000_000
-        let cache = HashCache()
-        for i in 0..<50 {
-            cache.setFull("d\(i)", fileID: UInt64(i), bytes: 10, modified: 1,
-                          now: now - TimeInterval(50 - i))
-        }
-        let pruned = cache.pruned(now: now, limit: 10)
-        XCTAssertEqual(pruned.count, 10)
-        // The newest ten are 40…49; the oldest are gone.
-        XCTAssertNotNil(pruned.full(fileID: 49, bytes: 10, modified: 1, now: now))
-        XCTAssertNil(pruned.full(fileID: 0, bytes: 10, modified: 1, now: now))
+    /// Deferring compaction is what makes a file that left and came back cheap:
+    /// its digest waits in the settled segment for up to a month.
+    func testCompactionWaitsUntilTheSegmentIsStale() {
+        let cache = HashCache(now: now)
+        cache.setFull("f", fileID: 1, bytes: 10, modified: 5)
+        XCTAssertTrue(cache.compactedIfStale(now: now + HashCache.maximumAge) === cache,
+                      "compacted early")
+        XCTAssertFalse(cache.compactedIfStale(now: now + HashCache.maximumAge + 1) === cache,
+                       "did not compact when stale")
     }
 
     func testItSurvivesARoundTrip() throws {
-        let cache = HashCache()
+        var cache = HashCache(now: now)
         cache.setPrefix("p", fileID: 7, bytes: 70, modified: 7)
-        cache.setFull("f", fileID: 7, bytes: 70, modified: 7)
-        let data = try JSONEncoder().encode(cache)
-        let back = try JSONDecoder().decode(HashCache.self, from: data)
-        XCTAssertEqual(back.prefix(fileID: 7, bytes: 70, modified: 7), "p")
-        XCTAssertEqual(back.full(fileID: 7, bytes: 70, modified: 7), "f")
+        cache = cache.compacted(now: now)
+        cache.setFull("f", fileID: 8, bytes: 80, modified: 8)
+        let back = try JSONDecoder().decode(HashCache.self,
+                                            from: try JSONEncoder().encode(cache))
+        XCTAssertEqual(back.prefix(fileID: 7, bytes: 70, modified: 7), "p", "settled segment")
+        XCTAssertEqual(back.full(fileID: 8, bytes: 80, modified: 8), "f", "fresh segment")
     }
 
     /// The search hashes under `concurrentPerform`, so every reader and writer
@@ -136,5 +126,18 @@ final class HashCacheTests: XCTestCase {
             _ = cache.full(fileID: UInt64(i), bytes: i, modified: TimeInterval(i))
         }
         XCTAssertEqual(cache.count, 500)
+    }
+
+    /// Promotion happens under the same lock, so a scan reading the settled
+    /// segment from every core at once must not lose or duplicate entries.
+    func testConcurrentPromotionIsSafe() {
+        var cache = HashCache(now: now)
+        for i in 0..<500 { cache.setFull("d\(i)", fileID: UInt64(i), bytes: i, modified: 1) }
+        cache = cache.compacted(now: now)
+        let settled = cache
+        DispatchQueue.concurrentPerform(iterations: 500) { i in
+            _ = settled.full(fileID: UInt64(i), bytes: i, modified: 1)
+        }
+        XCTAssertEqual(settled.count, 500)
     }
 }
