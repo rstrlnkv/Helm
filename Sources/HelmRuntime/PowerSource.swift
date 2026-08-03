@@ -7,6 +7,15 @@ import IOKit.ps
 /// know whether it would be reading the volume off a battery, and a second IOKit
 /// read written in the coordinator is the duplication this target exists to
 /// prevent.
+///
+/// Verified against the machine in both states on 2026-08-03, because a reading
+/// that is only ever checked while plugged in has never been checked at all:
+/// on mains it answered `onBattery=false percent=80` while `pmset` said
+/// `AC Power, 80%; AC attached`; with the cable out, `onBattery=true
+/// percent=80 mains=false` against `Battery Power, discharging`. Fed to
+/// `ScanSchedule` with every other condition favourable, the second state
+/// produced `.onBattery` — so the refusal this exists for fires on real
+/// hardware and not only in a test.
 public enum PowerSource {
 
     public struct Reading: Equatable, Sendable {
