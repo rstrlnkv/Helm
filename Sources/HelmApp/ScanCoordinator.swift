@@ -31,13 +31,9 @@ final class ScanCoordinator {
     /// has nothing to announce: nothing tells you that nothing happened.
     private static let pollInterval: TimeInterval = 60
 
-    /// Which modules have a background scan.
-    ///
-    /// A literal list far from the modules it names is how `OverviewPage.order`
-    /// went stale. It is spelled out anyway, because a module gaining a scan is
-    /// a decision with a cost — it reads the volume — and should take an edit
-    /// here rather than following from a protocol somebody conformed to.
-    static let scannableModules = ["duplicates", "uninstaller", "disk"]
+    /// Which modules have a background scan — `ScanRunner`'s list, so a test can
+    /// hold it against the registry from a target that has tests.
+    static var scannableModules: [String] { ScanRunner.scannableModules }
 
     init(host: ModuleHost) { self.host = host }
 
@@ -83,30 +79,35 @@ final class ScanCoordinator {
         return session["CGSSessionScreenIsLocked"] as? Int == 1
     }
 
-    /// The idle counter, minus what Helm did to it itself.
+    /// What the estimate concluded at the last tick. One reading of the counter
+    /// cannot answer this — `ScanRunner.advance` has the reasoning.
+    private var idle: ScanRunner.Idle?
+
+    /// How long the person has been away, which is not what the counter says
+    /// once Helm has nudged the pointer itself.
     ///
-    /// Measured: a synthetic `mouseMoved` takes the counter from 284,97 s to
-    /// 0,30 s, and Keep Awake's nudge is exactly that. Its default interval is
-    /// five minutes — `ScanSchedule.idleThreshold` — so trusting the raw number
-    /// means no background scan ever runs for anybody with that switch on.
-    ///
-    /// When the counter reset at about the moment of our own nudge, the reading
-    /// is measuring our event rather than the person, and how long since that
-    /// nudge is the better answer. Two seconds of tolerance because the
-    /// notification and the counter are not read at the same instant.
+    /// Reading the counter is this layer's job — it is a live system call, and
+    /// the only thing here that cannot be handed a number. Everything the
+    /// reading *means* is `ScanRunner`'s, where it is a test rather than an
+    /// argument.
     func effectiveIdleSeconds(now: Date = Date()) -> TimeInterval {
-        let system = SystemIdle.seconds()
-        guard let nudge = lastOwnNudge else { return system }
-        let sinceNudge = now.timeIntervalSince(nudge)
-        guard abs(sinceNudge - system) < 2 else { return system }
-        return sinceNudge + system
+        let next = ScanRunner.advance(idle, systemIdle: SystemIdle.seconds(),
+                                      lastOwnNudge: lastOwnNudge, now: now)
+        idle = next
+        return next.personSeconds
     }
 
-    func verdict(for id: String, now: Date = Date()) -> ScanSchedule.Verdict {
+    /// - Parameter idleSeconds: sampled once per tick by the caller, not read
+    ///   per module. `effectiveIdleSeconds` folds a reading into an estimate it
+    ///   keeps, so asking it three times a tick would be three folds of the same
+    ///   minute — the shape CLAUDE.md's rule about getters with side effects is
+    ///   about, and cheaper to avoid than to serialise.
+    func verdict(for id: String, idleSeconds: TimeInterval,
+                 now: Date = Date()) -> ScanSchedule.Verdict {
         ScanSchedule.verdict(.init(
             now: now,
             lastRun: AppSettings.lastScanAt[id],
-            idleSeconds: effectiveIdleSeconds(now: now),
+            idleSeconds: idleSeconds,
             // A desktop has no battery and is always on mains, and a source that
             // will not answer is treated the same way: never scanning on a Mac
             // whose hardware stays quiet is the worse of the two failures.
@@ -114,7 +115,8 @@ final class ScanCoordinator {
             runsToday: AppSettings.scanRunsToday[id] ?? 0,
             isEnabled: !AppSettings.disabledScans.contains(id),
             onConsole: Self.ownsTheConsole,
-            screenLocked: Self.screenIsLocked))
+            screenLocked: Self.screenIsLocked,
+            lastAttempt: AppSettings.lastScanAttemptAt[id]))
     }
 
     // MARK: - Running
@@ -128,9 +130,10 @@ final class ScanCoordinator {
 
     private func considerAll() async {
         rollOverTheDayIfNeeded()
+        let idleSeconds = effectiveIdleSeconds()
         for id in Self.scannableModules {
             guard !inFlight.contains(id) else { continue }
-            let verdict = verdict(for: id)
+            let verdict = verdict(for: id, idleSeconds: idleSeconds)
             // **A refusal says why.** Without this the log is empty whether the
             // schedule refused correctly or the timer never fired, and "no
             // `[scan]` lines" — which is how this feature is meant to be
@@ -156,10 +159,12 @@ final class ScanCoordinator {
 
         let started = Date()
         AppSettings.scanRunsToday[id, default: 0] += 1
-        // Written at the start as well as at the end. The end write is what
-        // makes tomorrow's schedule right; this one stops the next minute's tick
-        // treating a scan still running as one that never happened.
-        AppSettings.lastScanAt[id] = started
+        // The attempt is recorded before anything can go wrong with it, so a
+        // scan still running is never treated as one that never happened — and
+        // so a crash mid-walk costs the retry gap rather than the whole day.
+        // What it must NOT do is stand in for a completion: writing one figure
+        // for both is what made the day's second run unreachable.
+        AppSettings.lastScanAttemptAt[id] = started
 
         // The transport is lifted out of the closure rather than reached through
         // `live` inside it: this type is `@MainActor` and the request is not, so
@@ -175,7 +180,6 @@ final class ScanCoordinator {
         let report = await TransportClient(transport)
             .request("backgroundScan", as: ScanReport.self)
         let seconds = Date().timeIntervalSince(started)
-        AppSettings.lastScanAt[id] = Date()
 
         guard let report else {
             // Nil is not an empty report. A refused root or a cancelled walk
@@ -184,6 +188,8 @@ final class ScanCoordinator {
             HelmLog.shared.info("scan", "\(id): no answer after \(Int(seconds))s")
             return
         }
+        // Only here: a completion is what holds the module for the day.
+        AppSettings.lastScanAt[id] = Date()
         journal.record(ScanEntry(at: Date(), bytes: report.bytes, count: report.count,
                                  seconds: seconds, startedByHand: false),
                        items: report.items, module: id)
@@ -191,13 +197,13 @@ final class ScanCoordinator {
                             "\(id) finished in \(Int(seconds))s — \(report.count) items")
     }
 
-    /// Yesterday's budget is not today's. Compared against the calendar rather
-    /// than against multiples of 86 400 seconds, because days are not all the
-    /// same length — the rule `EventWindows` already follows.
-    private func rollOverTheDayIfNeeded() {
-        let today = Calendar.current.startOfDay(for: Date())
-        guard AppSettings.scanBudgetDay != today else { return }
-        AppSettings.scanBudgetDay = today
+    /// Yesterday's budget is not today's. Whether the day turned is
+    /// `ScanRunner.dayRolledOver`, against the calendar rather than multiples of
+    /// 86 400 seconds; what to write when it has is this line.
+    private func rollOverTheDayIfNeeded(now: Date = Date()) {
+        guard ScanRunner.dayRolledOver(storedDay: AppSettings.scanBudgetDay, now: now)
+        else { return }
+        AppSettings.scanBudgetDay = Calendar.current.startOfDay(for: now)
         AppSettings.scanRunsToday = [:]
     }
 }

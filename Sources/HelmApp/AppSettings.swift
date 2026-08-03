@@ -60,10 +60,27 @@ extension Notification.Name {
         set { store.set(Array(newValue).sorted(), for: "disabledScans") }
     }
 
-    /// When each background scan last completed, by module id.
+    /// When each background scan last **completed** — came back with a report.
+    ///
+    /// The comment used to say this while the coordinator wrote it at the start
+    /// of every attempt, which is what made the day's second run unreachable:
+    /// see `lastScanAttemptAt`.
     static var lastScanAt: [String: Date] {
         get { store.doubleTable("lastScanAt").mapValues(Date.init(timeIntervalSince1970:)) }
         set { store.set(newValue.mapValues(\.timeIntervalSince1970), for: "lastScanAt") }
+    }
+
+    /// When each background scan was last **started**, answered or not.
+    ///
+    /// A scan that comes back with nothing has measured nothing — a refused
+    /// root, a cancelled walk, a directory it could not read — so it must not
+    /// hold the module for a day; it holds it for `ScanSchedule.retryInterval`.
+    /// This is also what stops a second scan of the same module starting a
+    /// minute later if the app is restarted mid-walk, which `inFlight` cannot
+    /// answer for because it dies with the process.
+    static var lastScanAttemptAt: [String: Date] {
+        get { store.doubleTable("lastScanAttemptAt").mapValues(Date.init(timeIntervalSince1970:)) }
+        set { store.set(newValue.mapValues(\.timeIntervalSince1970), for: "lastScanAttemptAt") }
     }
 
     /// How many times each scan ran today. Reset when the calendar day turns.
