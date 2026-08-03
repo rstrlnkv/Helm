@@ -35,6 +35,15 @@ public final class ScanStore: @unchecked Sendable {
                                                    ofItemAtPath: directory.path)
             let data = try JSONEncoder().encode(Cached(result: result, savedAt: date))
             try data.write(to: fileURL, options: .atomic)
+            // Every write, not once at creation. `.atomic` writes a temporary
+            // file and renames it, so the mode comes from the process umask on a
+            // fresh write and from the replaced file on a subsequent one —
+            // measured at 0644 either way in a plain process. Until this line
+            // the privacy of an index of every filename on the volume was an
+            // accident of whichever umask the app happened to run under. The
+            // scan journal beside it answers to the same rule.
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600],
+                                                   ofItemAtPath: fileURL.path)
         } catch {
             // A cache that cannot be written is a missed optimisation, never a
             // reason to fail the scan the user asked for.
