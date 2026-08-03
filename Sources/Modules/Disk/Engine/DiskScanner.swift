@@ -20,9 +20,21 @@ public final class DiskScanner: @unchecked Sendable {
     /// table for the scan root.
     private let injectedSkip: Set<String>?
 
-    public init(foldThreshold: Int = 32 * 1024, skip: Set<String>? = nil) {
+    /// Stop at an application's own database rather than walking into it.
+    ///
+    /// Off for a scan a person asked for and is watching: this screen's whole
+    /// job is where the space went, and a photo library is often the largest
+    /// thing on the volume — refusing to measure it would be a lie of omission
+    /// in the one place that must not tell one. On for a scan nobody is
+    /// watching, where the cost of walking in is a consent dialog at an empty
+    /// chair (`ScanRoot.refusesDescent`).
+    private let unattended: Bool
+
+    public init(foldThreshold: Int = 32 * 1024, skip: Set<String>? = nil,
+                unattended: Bool = false) {
         self.foldThreshold = foldThreshold
         self.injectedSkip = skip
+        self.unattended = unattended
     }
 
     public func cancel() {
@@ -82,6 +94,14 @@ public final class DiskScanner: @unchecked Sendable {
                     case .entries(let entries):
                         for entry in entries {
                             if entry.isDirectory {
+                                // Before the device check, because that one
+                                // stats the path and the point is to touch an
+                                // application's database as little as reading
+                                // its parent already did.
+                                if self.unattended,
+                                   ScanRoot.refusesDescent(into: entry.path) {
+                                    continue
+                                }
                                 if !skip.contains(entry.path),
                                    self.deviceID(of: entry.path).matches(rootDev) {
                                     directories.append(entry.path)

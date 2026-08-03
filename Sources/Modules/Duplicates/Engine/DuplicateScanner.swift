@@ -222,6 +222,19 @@ public final class DuplicateScanner: @unchecked Sendable {
                     enumerator.skipDescendants()
                     continue
                 }
+                // An application's own database — a photo library, a Music
+                // library, a Final Cut bundle. `.skipsPackageDescendants` above
+                // covers these only while LaunchServices knows the type on
+                // *this* Mac; a library copied from another machine, or one
+                // whose application has been removed, is a plain directory to
+                // that flag. And what is inside is not a file somebody can
+                // delete: offering it as a duplicate is meaningless at best.
+                // The unattended case is worse than meaningless — see
+                // `ScanRoot.refusesDescent`.
+                if ScanRoot.refusesDescent(into: item.path) {
+                    enumerator.skipDescendants()
+                    continue
+                }
                 var dirStat = stat()
                 if let rootDevice, lstat(item.path, &dirStat) == 0,
                    dirStat.st_dev != rootDevice {
