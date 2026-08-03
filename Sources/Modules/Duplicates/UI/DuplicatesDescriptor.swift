@@ -15,7 +15,11 @@ import SwiftUI
 
     public init() {}
 
-    public func makeEngine(store: NamespacedStore) -> any ModuleEngine { DuplicatesEngine() }
+    /// The store reaches the engine because a background scan reads the folder
+    /// the person chose, and there is no view model awake when the timer fires.
+    public func makeEngine(store: NamespacedStore) -> any ModuleEngine {
+        DuplicatesEngine(store: store)
+    }
     public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { .utility }
     public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
         AnyView(DuplicatesSettingsPage(
