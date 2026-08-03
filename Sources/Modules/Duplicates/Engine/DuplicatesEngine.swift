@@ -98,9 +98,15 @@ public final class DuplicatesEngine: ModuleEngine, @unchecked Sendable {
     /// process running as this user can rewrite, so it goes through `ScanRoot` —
     /// the gate that exists for precisely this difference.
     public func backgroundScan() async -> ScanReport? {
-        guard let root = store?.string("folder", default: ""),
-              ScanRoot.isAllowed(root) else {
-            HelmLog.shared.warn("scan", "duplicates: no stored root, or it was refused")
+        // The walk uses what the gate returned, never what was stored. Judging
+        // one spelling and walking another is how `$HOME/link/.` got past a
+        // check that had already approved a different path.
+        guard let stored = store?.string("folder", default: ""), !stored.isEmpty else {
+            HelmLog.shared.info("scan", "duplicates: no folder chosen yet")
+            return nil
+        }
+        guard let root = ScanRoot.resolve(stored) else {
+            HelmLog.shared.warn("scan", "duplicates: stored root refused")
             return nil
         }
         // The cache from the last background scan, filled by this one. An
