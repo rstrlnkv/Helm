@@ -318,6 +318,26 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
         await offTheCooperativePool { self.scanOrphansSync() }
     }
 
+    /// The same orphan hunt the page runs, started by the timer.
+    ///
+    /// **No `ScanRoot` gate here, and that is not an oversight.** The other
+    /// unattended scan reads a folder the person chose and Helm stored, so a
+    /// rewritten plist would redirect it. This one walks `orphanScanDirs` under
+    /// `~/Library` — a list in the source, not a setting — so there is nothing
+    /// stored for anybody to point somewhere else.
+    ///
+    /// Every leftover is an item: what acting on the finding removes is each
+    /// path, and the bytes are its own. Unlike duplicates there is no survivor
+    /// to keep — the app these belong to is already gone.
+    public func backgroundScan() async -> ScanReport? {
+        let groups = await scanOrphans()
+        let items = groups.flatMap { group in
+            group.leftovers.map { ScanItem(path: $0.path, bytes: $0.sizeBytes) }
+        }
+        return ScanReport(bytes: items.reduce(0) { $0 + $1.bytes },
+                          count: items.count, items: items)
+    }
+
     private func scanOrphansSync() -> [OrphanGroup] {
         let installedIDs = apps.installedBundleIDs()
         var byID: [String: [Leftover]] = [:]
@@ -435,6 +455,8 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
                 return (try? JSONEncoder().encode(list)) ?? Data()
             case "scanOrphans":
                 return (try? JSONEncoder().encode(await self.scanOrphans())) ?? Data()
+            case "backgroundScan":
+                return (try? JSONEncoder().encode(await self.backgroundScan())) ?? Data()
             case "trashedAppLeftovers":
                 return (try? JSONEncoder().encode(await self.trashedAppLeftovers())) ?? Data()
             case "watchingTrash":

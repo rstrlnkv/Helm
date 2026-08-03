@@ -41,6 +41,26 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
     /// it produces. Two scans share one transport — the volume walk and the
     /// folder measurement a drill starts — and a snapshot that does not say
     /// which one it belongs to was drawn as though it belonged to the other.
+    /// The boot volume, walked by the timer instead of by a person.
+    ///
+    /// **The finding is the advice, not the tree.** A disk scan answers "what
+    /// occupies space", which is a picture rather than a list of things to
+    /// remove — mapping every node of it into a report would promise a decision
+    /// the module never made. `advice` is the part that already names specific
+    /// paths worth reclaiming: caches past their threshold, big downloads
+    /// nobody has touched in a month, huge files untouched for half a year.
+    ///
+    /// **No `ScanRoot` gate**, and not by omission. That gate guards a folder
+    /// the person chose and Helm stored, where a rewritten plist would redirect
+    /// an unattended reader. The root here is the boot volume, named in this
+    /// line rather than read from anywhere.
+    public func backgroundScan() async -> ScanReport? {
+        guard let result = await scan(path: "/") else { return nil }
+        let items = result.advice.map { ScanItem(path: $0.path, bytes: $0.bytes) }
+        return ScanReport(bytes: items.reduce(0) { $0 + $1.bytes },
+                          count: items.count, items: items)
+    }
+
     public func scan(path: String, scan id: Int = 0) async -> ScanResult? {
         let scanner = DiskScanner()
         let token = scanners.add(scanner)
@@ -137,6 +157,8 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
                 else { return Data() }
                 return (try? JSONEncoder().encode(await self.scan(path: payload.path,
                                                                   scan: payload.scan))) ?? Data()
+            case "backgroundScan":
+                return (try? JSONEncoder().encode(await self.backgroundScan())) ?? Data()
             case "cancel":
                 self.cancel()
                 return Data()
