@@ -642,3 +642,6 @@
 "{name}, {date} and {counter} are replaced. The extension is always the file’s own." = "{name}、{date} 和 {counter} 会被替换。扩展名始终保持文件本身的。";
 "ПРивет → Привет. Never ПРИВЕТ — that is shouting on purpose — and never a word with a digit in it." = "ПРивет → Привет。绝不改 ПРИВЕТ——那是刻意的强调；含数字的词也不改。";
 "🌐︎" = "🌐︎";
+
+/* Duplicates */
+"This file has changed since it was found, so it is no longer a duplicate — Helm did not touch it." = "此文件自被找到后已更改，不再是重复文件——Helm 未作处理。";

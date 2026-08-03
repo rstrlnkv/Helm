@@ -16,6 +16,11 @@ public enum TrashReasonText {
             return L("Its system extension is still active — turn it off in Login Items & Extensions.")
         case TrashFailure.Reason.outOfScope.rawValue:
             return L("Outside the folders Helm may clean — Helm did not touch it.")
+        case TrashFailure.Reason.changedSinceScan.rawValue:
+            // Names what changed rather than apologising for the refusal: the
+            // person chose this file on the strength of a scan, and the scan is
+            // what stopped being true.
+            return L("This file has changed since it was found, so it is no longer a duplicate — Helm did not touch it.")
         case TrashFailure.Reason.readOnlyVolume.rawValue:
             return L("The disk this is on is read-only. Eject it and unlock it, or copy what you need elsewhere.")
         case TrashFailure.Reason.diskFull.rawValue:

@@ -642,3 +642,6 @@
 "{name}, {date} and {counter} are replaced. The extension is always the file’s own." = "{name}, {date} y {counter} se sustituyen. La extensión siempre es la del archivo.";
 "ПРивет → Привет. Never ПРИВЕТ — that is shouting on purpose — and never a word with a digit in it." = "ПРивет → Привет. Nunca ПРИВЕТ, que es gritar a propósito, ni una palabra con dígitos.";
 "🌐︎" = "🌐︎";
+
+/* Duplicates */
+"This file has changed since it was found, so it is no longer a duplicate — Helm did not touch it." = "Este archivo ha cambiado desde que se encontró, así que ya no es un duplicado; Helm no lo tocó.";

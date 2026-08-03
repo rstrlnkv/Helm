@@ -642,3 +642,6 @@
 "{name}, {date} and {counter} are replaced. The extension is always the file’s own." = "{name}、{date}、{counter} が置き換わります。拡張子は常に元のままです。";
 "ПРивет → Привет. Never ПРИВЕТ — that is shouting on purpose — and never a word with a digit in it." = "ПРивет → Привет。ПРИВЕТ は意図した強調なので修正しません。数字を含む語も対象外です。";
 "🌐︎" = "🌐︎";
+
+/* Duplicates */
+"This file has changed since it was found, so it is no longer a duplicate — Helm did not touch it." = "このファイルは検出後に変更されたため、重複ではなくなりました。Helm は手を触れていません。";
