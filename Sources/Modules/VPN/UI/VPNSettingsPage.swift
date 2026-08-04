@@ -111,7 +111,12 @@ public struct VPNSettingsPage: View {
     @ViewBuilder
     private var noticePicker: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(VPNStr.noticeLabel)
+            // **No second heading inside the card.** The section already says
+            // what this decides, and "Notification style" over the cards made
+            // the only sub-heading *inside* a card anywhere in Helm — everywhere
+            // else a label sits over the card, on the page. The string is still
+            // the group's accessibility label, because a screen reader hears no
+            // section header at this depth.
             HelmChoiceCards(selection: Binding(
                 get: { notice },
                 set: { chosen in
@@ -126,6 +131,8 @@ public struct VPNSettingsPage: View {
                     .init(id: .system, label: VPNStr.noticeOption(.system),
                           preview: NoticePreview.strip(name: true, banner: true)),
                 ])
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(VPNStr.noticeLabel)
         }
         // Where the switch is, not only in the app's permission list: a mode
         // macOS refuses looks exactly like one it allows.
