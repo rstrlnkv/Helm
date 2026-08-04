@@ -131,7 +131,7 @@ public struct LayoutSettingsPage: View {
                 LabeledContent(LyStr.lastChange) {
                     HStack(spacing: 8) {
                         Text("\(last.before) → \(last.after)")
-                            .font(.system(size: 12, design: .monospaced))
+                            .font(HelmText.figureFont)
                             .lineLimit(1).truncationMode(.middle)
                         // Unlike undoing, this works from anywhere: it changes
                         // a list, not somebody else's text.

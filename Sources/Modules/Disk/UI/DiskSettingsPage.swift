@@ -108,7 +108,7 @@ public struct DiskSettingsPage: View {
                     Text(volume.name).font(.headline)
                     Spacer()
                     Text(formatted(volume.usedBytes) + " / " + formatted(volume.totalBytes))
-                        .font(.system(size: 12, design: .monospaced))
+                        .font(HelmText.figureFont)
                         .foregroundStyle(HelmText.quiet)
                 }
                 GeometryReader { proxy in
@@ -175,7 +175,7 @@ public struct DiskSettingsPage: View {
                     Text("\(DkStr.basket): \(dvm.basket.count) · " + formatted(dvm.basketBytes))
                         .contentTransition(.numericText())
                         .animation(HelmMotion.interface, value: dvm.basketBytes)
-                        .font(.system(size: 12, design: .monospaced))
+                        .font(HelmText.figureFont)
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()

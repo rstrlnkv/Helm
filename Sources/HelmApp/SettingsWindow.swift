@@ -798,7 +798,7 @@ private struct AboutHelmView: View {
                         Text(AppStr.updateReady).lineLimit(1)
                         Spacer()
                         Text(rel.version)
-                            .font(.system(size: 12, design: .monospaced))
+                            .font(HelmText.figureFont)
                             .foregroundStyle(HelmText.quiet)
                     }
                     Button(AppStr.updateAndRelaunch) { updater.downloadAndInstall() }

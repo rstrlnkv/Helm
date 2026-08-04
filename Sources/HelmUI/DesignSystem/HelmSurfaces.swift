@@ -210,6 +210,26 @@ public enum HelmText {
     /// unit at one rhythm. 11 pt is the size the strip's own figures scale
     /// from, one step under body.
     public static let figureFont = Font.system(size: 11, design: .monospaced)
+
+    // MARK: - The settings type scale
+    //
+    // **Four sizes, because the window had six.** Counted across the settings
+    // window and the block inside it: 10, 11, 12, 13 and 15 pt, in three
+    // weights, chosen a call site at a time. The ones below are what macOS's
+    // own settings use for the same jobs, so a Helm page and a System Settings
+    // pane read at the same rhythm — and a size that is not here is a decision
+    // somebody has to argue for rather than type.
+
+    /// A row's own name: the thing the row is about. macOS's settings rows.
+    public static let rowTitle = Font.system(size: 13)
+    /// The line under a row's name, and the note under a group: secondary copy
+    /// that a reader takes in after the thing it describes.
+    public static let rowDetail = Font.system(size: 11)
+    /// The heading over a card, on the page rather than inside it.
+    public static let sectionHeading = Font.system(size: 13, weight: .semibold)
+    /// The heading of a group *inside* a list — the sidebar's own section
+    /// labels, and the copies of them the composer draws.
+    public static let groupLabel = Font.system(size: 11, weight: .semibold)
 }
 
 public extension View {

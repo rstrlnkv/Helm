@@ -228,7 +228,7 @@ public struct DuplicatesSettingsPage: View {
                 Text("\(DupStr.basket): \(dvm.basket.count) · \(Bytes(dvm.basketBytes))")
                     .contentTransition(.numericText())
                     .animation(HelmMotion.interface, value: dvm.basketBytes)
-                    .font(.system(size: 12, design: .monospaced))
+                    .font(HelmText.figureFont)
             }
             .menuStyle(.borderlessButton)
             .fixedSize()
