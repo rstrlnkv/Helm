@@ -5,7 +5,7 @@ import HelmRuntime
 /// Orchestrates app listing, leftover scanning, and trashing against side-effecting
 /// ports. Request/response over `transport.send` (the handler's returned `Data` is
 /// the reply). Not a toggle — no active state, so it never tints the menu bar.
-public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
+public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @unchecked Sendable {
     private let home: URL
     private let apps: AppLister
     private let fs: FileSystemPort
@@ -488,7 +488,7 @@ public final class UninstallerEngine: ModuleEngine, @unchecked Sendable {
                 return (try? JSONEncoder().encode(list)) ?? Data()
             case "scanOrphans":
                 return (try? JSONEncoder().encode(await self.scanOrphans())) ?? Data()
-            case "backgroundScan":
+            case ScanCommand.backgroundScan:
                 return (try? JSONEncoder().encode(await self.backgroundScan())) ?? Data()
             case "trashedAppLeftovers":
                 return (try? JSONEncoder().encode(await self.trashedAppLeftovers())) ?? Data()

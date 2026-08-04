@@ -178,7 +178,7 @@ final class ScanCoordinator {
         HelmActivity.begin("scan.\(id)")
         defer { HelmActivity.end("scan.\(id)") }
         let report = await TransportClient(transport)
-            .request("backgroundScan", as: ScanReport.self)
+            .request(ScanCommand.backgroundScan, as: ScanReport.self)
         let seconds = Date().timeIntervalSince(started)
 
         guard let report else {

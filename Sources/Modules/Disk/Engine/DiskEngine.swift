@@ -4,7 +4,7 @@ import HelmRuntime
 
 /// Scans volumes and folders, and trashes what the user baskets. Long work
 /// goes through `blocking` so the concurrency pool is never parked.
-public final class DiskEngine: ModuleEngine, @unchecked Sendable {
+public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Sendable {
     private let localTransport: LocalTransport
     public let transport: EngineTransport
     /// Every scan in flight, not the last one started: drilling into a folder
@@ -165,7 +165,7 @@ public final class DiskEngine: ModuleEngine, @unchecked Sendable {
                 else { return Data() }
                 return (try? JSONEncoder().encode(await self.scan(path: payload.path,
                                                                   scan: payload.scan))) ?? Data()
-            case "backgroundScan":
+            case ScanCommand.backgroundScan:
                 return (try? JSONEncoder().encode(await self.backgroundScan())) ?? Data()
             case "cancel":
                 self.cancel()

@@ -10,7 +10,7 @@ import HelmRuntime
 /// had not first drawn a ring. Standing on its own, it takes a folder
 /// directly — which is what someone looking for duplicates actually wants —
 /// and Disk goes back to answering one question.
-public final class DuplicatesEngine: ModuleEngine, @unchecked Sendable {
+public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecked Sendable {
     private let localTransport: LocalTransport
     public let transport: EngineTransport
     private let finderBox = FinderBox()
@@ -200,7 +200,7 @@ public final class DuplicatesEngine: ModuleEngine, @unchecked Sendable {
                                                               from: command.payload)
                 else { return Data() }
                 return (try? JSONEncoder().encode(await self.find(under: payload.path))) ?? Data()
-            case "backgroundScan":
+            case ScanCommand.backgroundScan:
                 return (try? JSONEncoder().encode(await self.backgroundScan())) ?? Data()
             case "cancel":
                 self.finderBox.current?.cancel()
