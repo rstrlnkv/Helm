@@ -38,11 +38,20 @@ struct SidebarComposerTable: NSViewRepresentable {
     func makeNSView(context: Context) -> NSScrollView {
         let table = NSTableView()
         table.headerView = nil
-        table.style = .inset
+        // `.plain`, not `.inset`: the card this sits in already supplies the
+        // inset, and `.inset` would add a second one that no other row in the
+        // form has.
+        table.style = .plain
         table.backgroundColor = .clear
         table.usesAutomaticRowHeights = true
         table.selectionHighlightStyle = .none
-        table.intercellSpacing = NSSize(width: 0, height: 2)
+        // No gap between rows. A settings list separates rows with a hairline,
+        // not with air, and the hairline is drawn by the row so it can start
+        // past the plate the way every other Helm list does.
+        table.intercellSpacing = NSSize(width: 0, height: 0)
+        // A heading that sticks to the top while its modules scroll under it is
+        // for a list long enough to scroll. This one is sized to fit.
+        table.floatsGroupRows = false
         table.addTableColumn(NSTableColumn(identifier: .init("row")))
         table.dataSource = context.coordinator
         table.delegate = context.coordinator
@@ -172,6 +181,7 @@ private struct SidebarComposerRow: View {
     let host: ModuleHost
     let apply: (SidebarLayout) -> Void
     let rename: (SidebarLayout.Section) -> Void
+    @State private var hovering = false
 
     var body: some View {
         switch row {
@@ -189,7 +199,7 @@ private struct SidebarComposerRow: View {
     private func header(_ section: SidebarLayout.Section) -> some View {
         HStack(spacing: 6) {
             Text(AppStr.sectionTitle(section))
-                .font(.caption.weight(.semibold))
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(HelmText.quiet)
             Spacer()
             Menu {
@@ -212,10 +222,16 @@ private struct SidebarComposerRow: View {
             .menuIndicator(.hidden)
             .fixedSize()
             .accessibilityLabel(HelmA11y.moreActions)
+            // On hover, as a source list shows its accessories. Three dots
+            // parked at the edge of every heading is a row of controls where
+            // the eye is looking for a list of names.
+            .opacity(hovering ? 1 : 0)
         }
-        .padding(.horizontal, 8)
-        .padding(.top, 10)
-        .padding(.bottom, 2)
+        .padding(.horizontal, 10)
+        .padding(.top, 12)
+        .padding(.bottom, 4)
+        .contentShape(Rectangle())
+        .onHover { hovering = $0 }
     }
 
     private func module(_ descriptor: any ModuleDescriptor) -> some View {
@@ -237,10 +253,28 @@ private struct SidebarComposerRow: View {
             .toggleStyle(.switch)
             .labelsHidden()
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
         // Dimmed in place rather than sunk: sinking costs the position the
         // person chose, and they find out only when they switch it back on.
         .opacity(host.isEnabled(descriptor) ? 1 : 0.55)
+        // The hairline starts past the plate, as it does in every other list in
+        // the app — a rule running under the icon cuts the row in two.
+        .overlay(alignment: .bottom) {
+            if !isLastInSection {
+                Rectangle().fill(HelmSurface.hairline)
+                    .frame(height: 1)
+                    .padding(.leading, 40)
+            }
+        }
+    }
+
+    /// The last row of a section draws no rule: the next thing down is a
+    /// heading, which is its own separation.
+    private var isLastInSection: Bool {
+        guard case .module(let id, let sectionID) = row,
+              let section = layout.sections.first(where: { $0.id == sectionID })
+        else { return true }
+        return section.modules.last == id
     }
 }

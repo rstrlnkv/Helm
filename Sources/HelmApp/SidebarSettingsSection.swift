@@ -45,6 +45,9 @@ struct SidebarSettingsSection: View {
                 .font(.caption).foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
 
+            // The table sits in the same card every other grouped section in
+            // this form draws, so it reads as one of them rather than as a
+            // control that wandered in from another window.
             SidebarComposerTable(layout: layout, host: host,
                                  height: $tableHeight, apply: apply,
                                  rename: { section in
@@ -52,6 +55,12 @@ struct SidebarSettingsSection: View {
                                      renaming = section
                                  })
                 .frame(height: tableHeight)
+                .padding(.vertical, 2)
+                .background(
+                    RoundedRectangle(cornerRadius: HelmSurface.cardRadius, style: .continuous)
+                        .fill(HelmSurface.cardFill)
+                )
+                .listRowInsets(EdgeInsets())
 
             Button {
                 apply(layout.addingSection(named: AppStr.newSection))
