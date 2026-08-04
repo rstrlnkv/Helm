@@ -188,6 +188,15 @@ enum AppStr {
     }
 
     static var aboutHelm: String { L("About Helm") }
+    static var sidebarSections: String { L("Sidebar") }
+    static var newSection: String { L("New section") }
+    static var renameSection: String { L("Rename") }
+    static var removeSection: String { L("Remove section") }
+    static var useDefaultSectionName: String { L("Use the default name") }
+    static var moveToSection: String { L("Move to") }
+    static var sidebarSectionsNote: String {
+        L("Drag to reorder. A module can go into any section, and a section you remove hands its modules to its neighbour.")
+    }
     static var moduleIcons: String { L("Module icons") }
     static var moduleIconsColour: String { L("Colour") }
     static var moduleIconsPlain: String { L("Plain") }

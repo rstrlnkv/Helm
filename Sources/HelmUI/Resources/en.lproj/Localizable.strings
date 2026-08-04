@@ -648,3 +648,9 @@
 "Module icons" = "Module icons";
 "Colour" = "Colour";
 "Plain" = "Plain";
+"Sidebar" = "Sidebar";
+"New section" = "New section";
+"Remove section" = "Remove section";
+"Use the default name" = "Use the default name";
+"Move to" = "Move to";
+"Drag to reorder. A module can go into any section, and a section you remove hands its modules to its neighbour." = "Drag to reorder. A module can go into any section, and a section you remove hands its modules to its neighbour.";
