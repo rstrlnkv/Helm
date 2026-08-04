@@ -98,10 +98,8 @@ public enum Redact {
         guard SecRandomCopyBytes(kSecRandomDefault, fresh.count, &fresh) == errSecSuccess else {
             return []
         }
-        try? fm.createDirectory(at: HelmLog.directory, withIntermediateDirectories: true,
-                                attributes: [.posixPermissions: 0o700])
-        try? Data(fresh).write(to: url, options: [.atomic])
-        try? fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        PrivateFile.directory(at: HelmLog.directory)
+        PrivateFile.write(Data(fresh), to: url)
         return fresh
     }
 }

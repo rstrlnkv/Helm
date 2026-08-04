@@ -160,27 +160,11 @@ public final class ScanJournal: @unchecked Sendable {
         }
     }
 
-    private func makePrivateDirectory(_ url: URL) {
-        let fm = FileManager.default
-        try? fm.createDirectory(at: url, withIntermediateDirectories: true,
-                                attributes: [.posixPermissions: 0o700])
-        // `attributes:` only applies to directories this call creates, and an
-        // earlier build may have left one looser.
-        try? fm.setAttributes([.posixPermissions: 0o700], ofItemAtPath: url.path)
-    }
+    private func makePrivateDirectory(_ url: URL) { PrivateFile.directory(at: url) }
 
-    /// Every write sets the mode.
-    ///
-    /// These files name every path a scan found. `.atomic` writes a temporary
-    /// file and renames it, so the mode comes from the process umask — measured,
-    /// a fresh atomic write under the ordinary umask lands at **0644** — and a
-    /// write over an existing file *keeps that file's* mode. Either way the
-    /// privacy would be an accident of the environment rather than a property of
-    /// this code.
+    /// These files name every path a scan found; `PrivateFile` is why the mode
+    /// is set on every write rather than once at creation.
     private func write<T: Encodable>(_ value: T, to url: URL) {
-        guard let data = try? JSONEncoder().encode(value) else { return }
-        try? data.write(to: url, options: .atomic)
-        try? FileManager.default.setAttributes([.posixPermissions: 0o600],
-                                               ofItemAtPath: url.path)
+        PrivateFile.write(value, to: url)
     }
 }

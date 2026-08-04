@@ -75,15 +75,8 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
 
     static func saveCache(_ cache: HashCache) {
         let url = cacheURL()
-        let fm = FileManager.default
-        try? fm.createDirectory(at: url.deletingLastPathComponent(),
-                                withIntermediateDirectories: true,
-                                attributes: [.posixPermissions: 0o700])
-        guard let data = try? JSONEncoder().encode(cache) else { return }
-        try? data.write(to: url, options: .atomic)
-        // Every write, for the reason `ScanJournal` and `ScanStore` record:
-        // `.atomic` takes its mode from the umask or from the file it replaced.
-        try? fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        PrivateFile.directory(at: url.deletingLastPathComponent())
+        PrivateFile.write(cache, to: url)
     }
 
     /// The same search the page runs, started by the timer instead of a person.

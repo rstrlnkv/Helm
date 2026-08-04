@@ -117,8 +117,7 @@ public final class HelmLog: @unchecked Sendable {
         guard !fm.fileExists(atPath: marker.path) else { return }
         queue.async {
             for url in Self.allFileURLs { try? fm.removeItem(at: url) }
-            try? fm.createDirectory(at: Self.directory, withIntermediateDirectories: true,
-                                    attributes: [.posixPermissions: 0o700])
+            PrivateFile.directory(at: Self.directory)
             fm.createFile(atPath: marker.path, contents: Data())
         }
     }
@@ -252,14 +251,10 @@ public final class HelmLog: @unchecked Sendable {
     private func append(_ text: String) {
         let fm = FileManager.default
         let url = Self.fileURL
-        if !fm.fileExists(atPath: Self.directory.path) {
-            try? fm.createDirectory(at: Self.directory, withIntermediateDirectories: true)
-        }
-        // 0700 explicitly, and on every append: the folder may predate this
-        // rule, and `attributes:` above would only cover a folder created here.
-        // The log is diagnostic, not public — no other account needs to read it.
-        try? fm.setAttributes([.posixPermissions: 0o700],
-                              ofItemAtPath: Self.directory.path)
+        // On every append: the folder may predate this rule, and `attributes:`
+        // on a create call only covers a folder that call made. The log is
+        // diagnostic, not public — no other account needs to read it.
+        PrivateFile.directory(at: Self.directory)
         guard let data = text.data(using: .utf8) else { return }
         if let handle = try? FileHandle(forWritingTo: url) {
             defer { try? handle.close() }
