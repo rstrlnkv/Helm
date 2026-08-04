@@ -7,6 +7,13 @@ import HelmRuntime
     static var id: ModuleID { get }
     static var metadata: ModuleMetadata { get }
     static var category: ModuleCategory { get }
+    /// The colour this module is known by.
+    ///
+    /// Deliberately not defaulted. A default would let a module ship without a
+    /// colour of its own and inherit one silently — which is the defect this
+    /// replaces, where `ModuleCategory.tint` gave four «files» modules one
+    /// blue. The compiler asking is better than a test noticing.
+    static var tint: ModuleTint { get }
     /// Build the engine for this module (host owns lifecycle). `store` is the module's namespaced store.
     func makeEngine(store: NamespacedStore) -> any ModuleEngine
     func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution?

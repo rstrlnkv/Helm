@@ -17,6 +17,7 @@ import Module_KeepAwake_Engine
         // never told the grant had lapsed.
         sfSymbol: "moon.zzz.fill", permissions: [.adminHelper, .accessibility])
     public static let category: ModuleCategory = .power
+    public static let tint: ModuleTint = .keepAwake
 
     private var store: NamespacedStore?
     public init() {}

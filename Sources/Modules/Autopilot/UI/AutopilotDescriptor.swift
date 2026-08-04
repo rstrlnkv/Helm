@@ -10,6 +10,7 @@ import SwiftUI
         id: id, name: ApStr.moduleName, summary: ApStr.summary,
         sfSymbol: "location.north.circle", permissions: [.fullDisk])
     public static let category: ModuleCategory = .files
+    public static let tint: ModuleTint = .autopilot
     /// Folders and their rules span the pane; the header must not centre itself
     /// on the 744 pt form column.
     public var pageBleeds: Bool { true }
