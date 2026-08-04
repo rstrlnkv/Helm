@@ -24,6 +24,12 @@ struct SidebarSettingsSection: View {
     @State private var tableHeight: CGFloat = 200
     @State private var renaming: SidebarLayout.Section?
     @State private var draftName = ""
+    /// Two states, not one list with controls in it. At rest the block says
+    /// what the sidebar holds and takes the height of that; in edit it grows
+    /// the grips, the summaries, the section menus and the two buttons that
+    /// change the arrangement. Every switch stays live in both — turning a
+    /// module off is not rearranging it.
+    @State private var editing = false
 
     private var layout: SidebarLayout {
         _ = revision
@@ -62,22 +68,34 @@ struct SidebarSettingsSection: View {
                     Text(AppStr.sidebarSections)
                         .font(.system(size: 13, weight: .semibold))
                     Spacer()
-                    Button(AppStr.restoreSections) {
-                        apply(SidebarLayout.seeded(from: SidebarLayoutStore.registry()))
+                    if editing {
+                        Button(AppStr.restoreSections) {
+                            apply(SidebarLayout.seeded(from: SidebarLayoutStore.registry()))
+                        }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color.accentColor)
+                    }
+                    Button(editing ? AppStr.done : AppStr.edit) {
+                        withAnimation(HelmMotion.disclosure) { editing.toggle() }
                     }
                     .buttonStyle(.plain)
-                    .font(.system(size: 12))
+                    .font(.system(size: 12, weight: editing ? .semibold : .regular))
                     .foregroundStyle(Color.accentColor)
                 }
                 // Above the list, not under it. It says what the list is for,
                 // which is something to read *before* dragging rather than a
                 // note explaining what just happened.
-                Text(AppStr.sidebarSectionsNote)
-                    .font(.system(size: 11))
-                    .foregroundStyle(HelmText.quiet)
-                    .fixedSize(horizontal: false, vertical: true)
+                // Only while it is true. "Drag to reorder" over a list nothing
+                // drags is an instruction that fails when followed.
+                if editing {
+                    Text(AppStr.sidebarSectionsNote)
+                        .font(.system(size: 11))
+                        .foregroundStyle(HelmText.quiet)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
-                SidebarComposerTable(layout: layout, host: host,
+                SidebarComposerTable(layout: layout, host: host, editing: editing,
                                      height: $tableHeight, apply: apply,
                                      rename: { section in
                                          draftName = AppStr.sectionTitle(section)
@@ -93,17 +111,19 @@ struct SidebarSettingsSection: View {
                     // them, so the table takes it back.
                     .padding(.horizontal, -10)
 
-                Button {
-                    apply(layout.addingSection(named: AppStr.newSection))
-                } label: {
-                    Label(AppStr.newSection, systemImage: "plus")
-                        .font(.system(size: 12))
-                        .padding(.top, 4)
-                        .padding(.horizontal, 4)
-                        .contentShape(Rectangle())
+                if editing {
+                    Button {
+                        apply(layout.addingSection(named: AppStr.newSection))
+                    } label: {
+                        Label(AppStr.newSection, systemImage: "plus")
+                            .font(.system(size: 12))
+                            .padding(.top, 4)
+                            .padding(.horizontal, 4)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Color.accentColor)
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(Color.accentColor)
             }
             // A header sets its own weight and colour on everything inside it,
             // so a row's name came out bold. Reset once here rather than at

@@ -19,6 +19,12 @@ import HelmUI
 struct SidebarComposerTable: NSViewRepresentable {
     let layout: SidebarLayout
     let host: ModuleHost
+    /// At rest this is a list of what is in the sidebar; in edit it is the
+    /// thing you rearrange. The difference is not decoration — **the drag is
+    /// off at rest.** A row that lifts under the pointer when nothing said it
+    /// could is how an arrangement gets changed by somebody who meant to
+    /// scroll, and there is no undo here.
+    let editing: Bool
     /// Reported outward because a table inside a `Form` must not scroll: the
     /// page already scrolls, and a second scroll view inside it is a trap for
     /// the pointer. The height is measured after each reload rather than
@@ -71,7 +77,8 @@ struct SidebarComposerTable: NSViewRepresentable {
     }
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
-        context.coordinator.update(layout: layout, host: host, apply: apply, rename: rename)
+        context.coordinator.update(layout: layout, host: host, editing: editing,
+                                   apply: apply, rename: rename)
         context.coordinator.table?.reloadData()
         context.coordinator.reportHeight { height = $0 }
     }
@@ -86,15 +93,24 @@ struct SidebarComposerTable: NSViewRepresentable {
         private var apply: ((SidebarLayout) -> Void)?
         private var rename: ((SidebarLayout.Section) -> Void)?
         private var rows: [SidebarLayout.Row] = []
+        private var editing = false
 
-        func update(layout: SidebarLayout, host: ModuleHost,
+        func update(layout: SidebarLayout, host: ModuleHost, editing: Bool,
                     apply: @escaping (SidebarLayout) -> Void,
                     rename: @escaping (SidebarLayout.Section) -> Void) {
             self.layout = layout
             self.host = host
+            self.editing = editing
             self.apply = apply
             self.rename = rename
-            self.rows = layout.flattened
+            // An empty section is a heading with a place to drop something
+            // under it, which is a thing only edit mode has. At rest it would
+            // be a heading naming nothing — so it is not drawn at all, the way
+            // the sidebar itself does not draw it.
+            self.rows = editing ? layout.flattened : layout.flattened.filter { row in
+                guard case .section(let id) = row else { return true }
+                return !(layout.sections.first { $0.id == id }?.modules.isEmpty ?? true)
+            }
         }
 
         /// Measured after layout rather than computed from a row count: rows are
@@ -124,7 +140,8 @@ struct SidebarComposerTable: NSViewRepresentable {
                        row: Int) -> NSView? {
             guard rows.indices.contains(row), let host, let apply, let rename else { return nil }
             let content = SidebarComposerRow(row: rows[row], layout: layout,
-                                             host: host, apply: apply, rename: rename)
+                                             host: host, editing: editing,
+                                             apply: apply, rename: rename)
             let hosting = NSHostingView(rootView: AnyView(content))
             hosting.translatesAutoresizingMaskIntoConstraints = false
             let cell = NSView()
@@ -142,7 +159,10 @@ struct SidebarComposerTable: NSViewRepresentable {
 
         func tableView(_ tableView: NSTableView,
                        pasteboardWriterForRow row: Int) -> NSPasteboardWriting? {
-            guard rows.indices.contains(row) else { return nil }
+            // Refused at the source rather than at the drop: a row that lifts
+            // and then refuses to land has already told the person they could
+            // rearrange this, and taken it back after they tried.
+            guard editing, rows.indices.contains(row) else { return nil }
             let item = NSPasteboardItem()
             item.setString(rows[row].id, forType: SidebarComposerTable.rowType)
             return item
@@ -188,6 +208,7 @@ private struct SidebarComposerRow: View {
     let row: SidebarLayout.Row
     let layout: SidebarLayout
     let host: ModuleHost
+    let editing: Bool
     let apply: (SidebarLayout) -> Void
     let rename: (SidebarLayout.Section) -> Void
 
@@ -222,18 +243,18 @@ private struct SidebarComposerRow: View {
                     .font(.system(size: 10, weight: .semibold))
                     .kerning(0.8)
                     .foregroundStyle(HelmText.quiet)
-                if section.seed == nil {
+                if editing, section.seed == nil {
                     HelmBadge(AppStr.yourSection)
                 }
                 Spacer(minLength: 6)
-                menu(section)
+                if editing { menu(section) }
             }
             .padding(.horizontal, 4)
 
             // A section somebody just made is empty by definition, and an empty
             // section drawn as nothing is a heading followed by a heading with
             // no target between them. The card is still here; it just says so.
-            if section.modules.isEmpty {
+            if editing, section.modules.isEmpty {
                 Text(AppStr.dragModuleHere)
                     .font(.system(size: 13))
                     .foregroundStyle(HelmText.faint)
@@ -278,22 +299,32 @@ private struct SidebarComposerRow: View {
         return HStack(spacing: 10) {
             // Nine rows that can be dragged, and until now nothing said so. The
             // grip is the redesign's answer and it is also the only one that
-            // works before the pointer is already on the row.
-            Image(systemName: "line.3.horizontal")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(HelmText.faint)
-                .accessibilityHidden(true)
+            // works before the pointer is already on the row — and it appears
+            // exactly when the drag does, so the two never disagree.
+            if editing {
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(HelmText.faint)
+                    .accessibilityHidden(true)
+            }
             HelmIconPlate(symbol: descriptor.moduleMetadata.sfSymbol,
                           tint: descriptor.moduleTint.colour, size: 22,
                           active: host.isEnabled(descriptor))
             VStack(alignment: .leading, spacing: 1) {
                 Text(descriptor.moduleMetadata.name)
                     .font(.system(size: 13))
-                Text(descriptor.moduleMetadata.summary)
-                    .font(.system(size: 11))
-                    .foregroundStyle(HelmText.quiet)
-                    .lineLimit(1)
+                // The second line is what makes the list long, so it is the
+                // first thing to go: at rest this is a list of what is in the
+                // sidebar, and the person reading it already knows. It stays
+                // as the tooltip either way.
+                if editing {
+                    Text(descriptor.moduleMetadata.summary)
+                        .font(.system(size: 11))
+                        .foregroundStyle(HelmText.quiet)
+                        .lineLimit(1)
+                }
             }
+            .help(descriptor.moduleMetadata.summary)
             Spacer(minLength: 8)
             Toggle(descriptor.moduleMetadata.name, isOn: Binding(
                 get: { host.isEnabled(descriptor) },
@@ -303,7 +334,7 @@ private struct SidebarComposerRow: View {
             .labelsHidden()
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.vertical, editing ? 6 : 4)
         .frame(minHeight: 30)
         // Dimmed in place rather than sunk: sinking costs the position the
         // person chose, and they find out only when they switch it back on.
