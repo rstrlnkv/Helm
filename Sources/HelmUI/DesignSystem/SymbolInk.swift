@@ -16,6 +16,7 @@ import CoreGraphics
 /// | `sparkles`      | 112 |
 /// | `clock.arrow.circlepath` | 111 |
 /// | `shippingbox`   | 108 |
+/// | `text.alignleft`| 104 |
 /// | `gearshape`     | 107 |
 /// | `info.circle`   | 101 |
 /// | `chart.pie`     | 101 |
@@ -42,6 +43,7 @@ public enum SymbolInk {
         "clock.arrow.circlepath": 1.11,
         "wand.and.rays": 1.09,
         "shippingbox": 1.08,
+        "text.alignleft": 1.04,
         "gearshape": 1.07,
         "info.circle": 1.01,
         "location.north.circle": 1.01,
