@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 /// The last scan, kept on disk so reopening the module shows the ring instead
 /// of a minute-long progress bar. One slot: the ring shows one tree.
@@ -21,33 +22,16 @@ public final class ScanStore: @unchecked Sendable {
 
     public var fileURL: URL { directory.appendingPathComponent("last-scan.json") }
 
+    /// 0700 on the folder and 0600 on the file, through `PrivateFile`: this
+    /// cache is a full index of file names on the volume. `~/Library` is already
+    /// private, but that is the enclosing folder's doing, not this one's.
+    ///
+    /// A cache that cannot be written is a missed optimisation, never a reason
+    /// to fail the scan the user asked for, so the result is dropped rather than
+    /// raised.
     public func save(_ result: ScanResult, at date: Date = Date()) {
-        do {
-            // 0700: the cache is a full index of file names on the volume.
-            // ~/Library is already private, but that is the enclosing folder's
-            // doing, not this one's.
-            try FileManager.default.createDirectory(
-                at: directory, withIntermediateDirectories: true,
-                attributes: [.posixPermissions: 0o700])
-            // `attributes:` only applies to directories this call creates, and
-            // anyone who ran an earlier build already has one at 0755.
-            try? FileManager.default.setAttributes([.posixPermissions: 0o700],
-                                                   ofItemAtPath: directory.path)
-            let data = try JSONEncoder().encode(Cached(result: result, savedAt: date))
-            try data.write(to: fileURL, options: .atomic)
-            // Every write, not once at creation. `.atomic` writes a temporary
-            // file and renames it, so the mode comes from the process umask on a
-            // fresh write and from the replaced file on a subsequent one —
-            // measured at 0644 either way in a plain process. Until this line
-            // the privacy of an index of every filename on the volume was an
-            // accident of whichever umask the app happened to run under. The
-            // scan journal beside it answers to the same rule.
-            try? FileManager.default.setAttributes([.posixPermissions: 0o600],
-                                                   ofItemAtPath: fileURL.path)
-        } catch {
-            // A cache that cannot be written is a missed optimisation, never a
-            // reason to fail the scan the user asked for.
-        }
+        PrivateFile.directory(at: directory)
+        PrivateFile.write(Cached(result: result, savedAt: date), to: fileURL)
     }
 
     public func load() -> Cached? {
