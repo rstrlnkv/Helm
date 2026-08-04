@@ -363,13 +363,19 @@ private struct SidebarComposerRow: View {
         // up with the column of text above it, down the whole page.
         .padding(.horizontal, 10)
         .padding(.vertical, editing ? 6 : 4)
+        // The heights macOS gives the two lists this one is a version of,
+        // measured on this machine rather than remembered. One line, an icon
+        // and a switch — Privacy ▸ Accessibility — is **40 pt**: separators
+        // every 80 px down a 2× capture, with a 20 pt icon inset 10. Two lines
+        // — Login Items ▸ background activity — is **53 pt**, at 106 px.
+        //
         // `maxHeight` as well as `minHeight`, and the card is painted over the
-        // result. The cell the table gives a row is 32 pt where this content is
-        // 30 — measured, with `intercellSpacing` confirmed at zero — and a
+        // result. The cell the table gives a row came out 2 pt taller than this
+        // content — measured, with `intercellSpacing` confirmed at zero — and a
         // content that only sets a minimum sits centred in it, leaving 2 pt of
         // the *page* above and below. That is what broke each section's card
         // into a stack of slabs with a stripe of window between them.
-        .frame(minHeight: 30, maxHeight: .infinity)
+        .frame(minHeight: editing ? 53 : 40, maxHeight: .infinity)
         // Dimmed in place rather than sunk: sinking costs the position the
         // person chose, and they find out only when they switch it back on.
         .opacity(host.isEnabled(descriptor) ? 1 : 0.55)
