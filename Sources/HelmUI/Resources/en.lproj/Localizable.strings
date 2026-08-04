@@ -654,3 +654,6 @@
 "Use the default name" = "Use the default name";
 "Move to" = "Move to";
 "Drag to reorder. A module can go into any section, and a section you remove hands its modules to its neighbour." = "Drag to reorder. A module can go into any section, and a section you remove hands its modules to its neighbour.";
+"Drag a module here" = "Drag a module here";
+"your section" = "your section";
+"Restore defaults" = "Restore defaults";

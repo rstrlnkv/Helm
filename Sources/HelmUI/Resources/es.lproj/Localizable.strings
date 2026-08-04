@@ -654,3 +654,6 @@
 "Use the default name" = "Usar el nombre por omisión";
 "Move to" = "Mover a";
 "Drag to reorder. A module can go into any section, and a section you remove hands its modules to its neighbour." = "Arrastra para reordenar. Un módulo puede ir a cualquier sección, y una sección eliminada entrega sus módulos a la vecina.";
+"Drag a module here" = "Arrastra un módulo aquí";
+"your section" = "sección propia";
+"Restore defaults" = "Restaurar valores por omisión";

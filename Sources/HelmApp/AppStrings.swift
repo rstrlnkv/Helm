@@ -194,6 +194,15 @@ enum AppStr {
     static var removeSection: String { L("Remove section") }
     static var useDefaultSectionName: String { L("Use the default name") }
     static var moveToSection: String { L("Move to") }
+    /// The empty section's own row. A section somebody just made has no modules
+    /// and would otherwise be a heading followed by the next heading — nothing
+    /// to aim a drop at.
+    static var dragModuleHere: String { L("Drag a module here") }
+    /// Marks a section the person made, as against one seeded from a category.
+    static var yourSection: String { L("your section") }
+    /// Puts the seeded arrangement back. Not `reset`, which in this app means
+    /// every setting at once — one English key means one thing.
+    static var restoreSections: String { L("Restore defaults") }
     static var sidebarSectionsNote: String {
         L("Drag to reorder. A module can go into any section, and a section you remove hands its modules to its neighbour.")
     }

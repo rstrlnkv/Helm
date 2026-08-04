@@ -40,10 +40,43 @@ struct SidebarSettingsSection: View {
     }
 
     var body: some View {
+        // **The whole block is the section's header, and its content is empty.**
+        // The redesign puts a card on each sidebar section; a grouped `Form`
+        // section draws a card of its own around whatever it holds, and the two
+        // together are a card inside a card — measured on the shipped build at
+        // L 0.87137 inside L 0.93011 where the page is 1.0, a nesting that
+        // appears nowhere else in Helm.
+        //
+        // A header is the one part of a `Form` section macOS draws *outside*
+        // that card. Rendered all four candidates side by side before choosing:
+        // a plain section, `.listRowBackground(.clear)` on the content, the same
+        // on the `Section`, and this. The first three are pixel-identical — in a
+        // macOS grouped `Form`, `listRowBackground` does nothing at all.
         Section {
-            // Table and footer in one card, the way a system list carries its
-            // add button attached to the list rather than loose beneath it.
-            VStack(spacing: 0) {
+            EmptyView()
+        } header: {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline) {
+                    // Restated, because the reset below strips what a header
+                    // would have given it. Matched to the sections either side.
+                    Text(AppStr.sidebarSections)
+                        .font(.system(size: 13, weight: .semibold))
+                    Spacer()
+                    Button(AppStr.restoreSections) {
+                        apply(SidebarLayout.seeded(from: SidebarLayoutStore.registry()))
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color.accentColor)
+                }
+                // Above the list, not under it. It says what the list is for,
+                // which is something to read *before* dragging rather than a
+                // note explaining what just happened.
+                Text(AppStr.sidebarSectionsNote)
+                    .font(.system(size: 11))
+                    .foregroundStyle(HelmText.quiet)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 SidebarComposerTable(layout: layout, host: host,
                                      height: $tableHeight, apply: apply,
                                      rename: { section in
@@ -51,41 +84,37 @@ struct SidebarSettingsSection: View {
                                          renaming = section
                                      })
                     .frame(height: tableHeight)
-                    .padding(.vertical, 2)
+                    .padding(.top, 2)
+                    // A `Form` header is inset 10 pt further than the cards it
+                    // introduces — measured on this page, the system's card
+                    // edges are 540 and 1940 where the header's are 560 and
+                    // 1920. The heading text wants that inset; the section
+                    // cards want to line up with the cards above and below
+                    // them, so the table takes it back.
+                    .padding(.horizontal, -10)
 
-                Rectangle().fill(HelmSurface.hairline).frame(height: 1)
-
-                HStack(spacing: 0) {
-                    Button {
-                        apply(layout.addingSection(named: AppStr.newSection))
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 11, weight: .medium))
-                            .frame(width: 24, height: 20)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.borderless)
-                    .help(AppStr.newSection)
-                    .accessibilityLabel(AppStr.newSection)
-                    Spacer()
+                Button {
+                    apply(layout.addingSection(named: AppStr.newSection))
+                } label: {
+                    Label(AppStr.newSection, systemImage: "plus")
+                        .font(.system(size: 12))
+                        .padding(.top, 4)
+                        .padding(.horizontal, 4)
+                        .contentShape(Rectangle())
                 }
-                .padding(.horizontal, 4)
-                .padding(.vertical, 2)
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.accentColor)
             }
-            .background(
-                RoundedRectangle(cornerRadius: HelmSurface.cardRadius, style: .continuous)
-                    .fill(HelmSurface.cardFill)
-            )
-            .listRowInsets(EdgeInsets())
-        } header: {
-            Text(AppStr.sidebarSections)
-        } footer: {
-            // Under the group, not inside it. A sentence explaining a list is
-            // not a row of that list, and a card of its own put two cards where
-            // the form has one section.
-            Text(AppStr.sidebarSectionsNote)
-                .font(.caption).foregroundStyle(HelmText.quiet)
-                .fixedSize(horizontal: false, vertical: true)
+            // A header sets its own weight and colour on everything inside it,
+            // so a row's name came out bold. Reset once here rather than at
+            // every leaf; the parts that want something else still say so.
+            .font(.system(size: 13))
+            .fontWeight(.regular)
+            .foregroundStyle(.primary)
+            .textCase(nil)
+            // A header carries no gap to whatever the form draws next, because
+            // normally a card does. There is no card here.
+            .padding(.bottom, 14)
         }
         .alert(AppStr.renameSection, isPresented: Binding(
             get: { renaming != nil },
