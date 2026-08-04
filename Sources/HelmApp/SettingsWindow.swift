@@ -282,8 +282,16 @@ private struct SettingsSidebar: View {
                 // 1,27 of its square and `lock.shield` 0,99 — and the row that
                 // relies on shape alone is the row that can least afford the
                 // shapes to be different sizes.
+                //
+                // The base is 13, not the 14 this row used before the correction
+                // and not the 15 it was first given with it. Correction
+                // normalises to the table's mean of 1,088, so every glyph paints
+                // `base × 1,088` of ink: 14 reproduced the old *average* of 15,2
+                // and 15 came out at 16,3 — bigger than most of these symbols had
+                // ever been drawn, which is what "the same size, but too big"
+                // was. 13 paints 14,1, near the smallest the old row had.
                 Image(systemName: symbol)
-                    .font(.system(size: 15 * SymbolInk.correction(for: symbol), weight: .medium))
+                    .font(.system(size: 13 * SymbolInk.correction(for: symbol), weight: .medium))
                     .foregroundStyle(HelmText.quiet)
                     .frame(width: 22, height: 22)
             }
