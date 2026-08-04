@@ -22,4 +22,12 @@ import Combine
     public func send(_ name: String, payload: Data = Data()) {
         Task { _ = try? await transport.send(EngineCommand(name: name, payload: payload)) }
     }
+
+    /// The same, named by a module's own command enum rather than by a string
+    /// the engine may or may not recognise. `TransportClient` carries the same
+    /// pair of spellings and the same reason.
+    public func send<C: RawRepresentable>(_ command: C, payload: Data = Data())
+    where C.RawValue == String {
+        send(command.rawValue, payload: payload)
+    }
 }

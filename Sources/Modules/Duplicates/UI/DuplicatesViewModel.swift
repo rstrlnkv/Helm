@@ -124,7 +124,7 @@ import SwiftUI
         let mine = generation
         let path = folder.path
         Task {
-            let found: [DuplicateGroup]? = await client.request("find", encoding: ["path": path])
+            let found: [DuplicateGroup]? = await client.request(DuplicatesCommand.find, encoding: ["path": path])
             guard mine == generation else { return }
             // Cancelled comes back nil: go back to where we were rather than
             // announce a clean folder nobody finished checking.
@@ -136,7 +136,7 @@ import SwiftUI
 
     public func cancel() {
         generation += 1
-        Task { await client.send("cancel", encoding: [String]()) }
+        Task { await client.send(DuplicatesCommand.cancel, encoding: [String]()) }
         phase = folder == nil ? .start : .start
         progress = nil
     }
@@ -197,7 +197,7 @@ import SwiftUI
                 .map { DuplicatePlan(remove: $0.path, keep: survivor) }
         }
         guard !plans.isEmpty else { return }
-        let removal: DuplicateRemoval? = await client.request("trash", encoding: plans)
+        let removal: DuplicateRemoval? = await client.request(DuplicatesCommand.trash, encoding: plans)
         guard let removal else { return }
         let gone = Set(removal.removed)
         groups = groups.compactMap { group in

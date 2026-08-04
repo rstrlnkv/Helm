@@ -578,11 +578,11 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     private func wireTransport() {
         localTransport.setHandler { [weak self] command in
             guard let self else { return Data() }
-            switch command.name {
-            case "fix": self.fix()
-            case "convertSelection": self.transform(.convert)
-            case "settingsChanged": self.reloadSettings()
-            default: break
+            guard let name = LayoutCommand(rawValue: command.name) else { return Data() }
+            switch name {
+            case .fix: self.fix()
+            case .convertSelection: self.transform(.convert)
+            case .settingsChanged: self.reloadSettings()
             }
             return Data()
         }

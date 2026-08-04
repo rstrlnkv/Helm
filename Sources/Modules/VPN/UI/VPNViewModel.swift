@@ -167,7 +167,7 @@ import Module_VPN_Engine
             }
         }
         // Ask the engine to publish current state.
-        send("refresh")
+        send(VPNCommand.refresh)
     }
 
     /// Ends the event loop, which unregisters the transport subscriber.
@@ -179,7 +179,7 @@ import Module_VPN_Engine
     /// connects or disconnects, so a tunnel raised from the macOS menu bar,
     /// from System Settings, or one that simply dropped, left this showing
     /// yesterday's state for as long as the app ran.
-    public func refresh() { send("refresh") }
+    public func refresh() { send(VPNCommand.refresh) }
     /// The engine's own declaration — see the note on KeepAwake's.
     private typealias StatePayload = VPNEngine.StatePayload
     private func handle(_ e: EngineEvent) {
@@ -238,9 +238,14 @@ import Module_VPN_Engine
     public func send(_ name: String, payload: Data = Data()) {
         Task { _ = try? await transport.send(EngineCommand(name: name, payload: payload)) }
     }
-    public func connect(_ name: String) { send("connect", payload: nameData(name)) }
-    public func disconnect(_ name: String) { send("disconnect", payload: nameData(name)) }
-    public func toggleDefault() { send("toggle") }
+
+    /// Named by the engine's own enum, which is what every call site here uses.
+    public func send(_ command: VPNCommand, payload: Data = Data()) {
+        send(command.rawValue, payload: payload)
+    }
+    public func connect(_ name: String) { send(VPNCommand.connect, payload: nameData(name)) }
+    public func disconnect(_ name: String) { send(VPNCommand.disconnect, payload: nameData(name)) }
+    public func toggleDefault() { send(VPNCommand.toggle) }
     private func nameData(_ name: String) -> Data {
         struct P: Codable { let name: String }
         return (try? JSONEncoder().encode(P(name: name))) ?? Data()

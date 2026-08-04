@@ -19,3 +19,7 @@ import Module_Disk_Engine
     public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { .utility }
     public func settingsPage(_ vm: ModuleViewModel) -> AnyView { AnyView(DiskSettingsPage(vm: vm)) }
 }
+
+/// `DiskCommand`, where the host's tests can see it: the coordinator sends this
+/// module's background scan and no compiler sees both sides of that name.
+public typealias DiskCommand = Module_Disk_Engine.DiskCommand

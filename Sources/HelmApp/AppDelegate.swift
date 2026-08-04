@@ -2,6 +2,8 @@ import AppKit
 import HelmContract
 import HelmRuntime
 import HelmUI
+import Module_KeepAwake_UI
+import Module_Layout_UI
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
     let host = ModuleHost.shared
@@ -59,7 +61,7 @@ import HelmUI
         HotkeyManager.shared.register(
             "keep-awake.toggle",
             store: NamespacedStore(namespace: "keep-awake", backing: UserDefaults.standard),
-            action: send("toggle", to: "keep-awake"))
+            action: send(KeepAwakeCommand.toggle.rawValue, to: KeepAwakeDescriptor.id.rawValue))
         // One chord for the whole module, doing whatever the tap key does — for
         // keyboards with no right-hand modifier to tap. There were five: convert
         // the last word, undo, and one for each of three selection actions. The
@@ -71,7 +73,7 @@ import HelmUI
             "layout.fix",
             store: NamespacedStore(namespace: "layout", backing: UserDefaults.standard),
             prefix: "convertHotkey",
-            action: send("fix", to: "layout"))
+            action: send(LayoutCommand.fix.rawValue, to: LayoutDescriptor.id.rawValue))
         // Keeps the frontmost-app snapshot current, so every thread that asks
         // reads a value rather than reaching into AppKit for it.
         FrontmostApp.shared.startObserving()

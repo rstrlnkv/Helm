@@ -464,51 +464,50 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     private func wireTransport() {
         localTransport.setHandler { [weak self] cmd in
             guard let self else { return Data() }
-            switch cmd.name {
-            case "listApps":
+            guard let name = UninstallerCommand(rawValue: cmd.name) else { return Data() }
+            switch name {
+            case .listApps:
                 HelmLog.shared.info("uninstaller", "engine listApps start")
                 let list = await self.listApps()
                 HelmLog.shared.info("uninstaller", "engine listApps done: \(list.count)")
                 return (try? JSONEncoder().encode(list)) ?? Data()
-            case "appSizes":
+            case .appSizes:
                 guard let list = try? JSONDecoder().decode([InstalledApp].self, from: cmd.payload)
                 else { return Data() }
                 let sizes = await self.appSizes(list)
                 return (try? JSONEncoder().encode(sizes)) ?? Data()
-            case "scan":
+            case .scan:
                 guard let r = try? JSONDecoder().decode(ScanReq.self, from: cmd.payload) else { return Data() }
                 let res = try await self.scan(bundleID: r.bundleID, appPath: r.appPath, appName: r.appName)
                 return (try? JSONEncoder().encode(res)) ?? Data()
-            case "uninstall":
+            case .uninstall:
                 guard let r = try? JSONDecoder().decode(UninstallReq.self, from: cmd.payload) else { return Data() }
                 let res = try await self.uninstall(appPath: r.appPath, paths: r.paths)
                 return (try? JSONEncoder().encode(res)) ?? Data()
-            case "systemExtensions":
+            case .systemExtensions:
                 let list = await offTheCooperativePool { self.extensions.installedExtensions() }
                 return (try? JSONEncoder().encode(list)) ?? Data()
-            case "scanOrphans":
+            case .scanOrphans:
                 return (try? JSONEncoder().encode(await self.scanOrphans())) ?? Data()
-            case ScanCommand.backgroundScan:
+            case .backgroundScan:
                 return (try? JSONEncoder().encode(await self.backgroundScan())) ?? Data()
-            case "trashedAppLeftovers":
+            case .trashedAppLeftovers:
                 return (try? JSONEncoder().encode(await self.trashedAppLeftovers())) ?? Data()
-            case "watchingTrash":
+            case .watchingTrash:
                 return (try? JSONEncoder().encode(self.watchingTrash)) ?? Data()
-            case "setWatchingTrash":
+            case .setWatchingTrash:
                 self.setWatchingTrash((try? JSONDecoder().decode(Bool.self, from: cmd.payload)) ?? false)
                 return Data()
-            case "dismissTrashedApp":
+            case .dismissTrashedApp:
                 self.dismissTrashedApp(bundleID: String(decoding: cmd.payload, as: UTF8.self))
                 return Data()
-            case "trashPaths":
+            case .trashPaths:
                 guard let paths = try? JSONDecoder().decode([String].self, from: cmd.payload) else { return Data() }
                 return (try? JSONEncoder().encode(await self.trashPaths(paths))) ?? Data()
-            case "quit":
+            case .quit:
                 if let r = try? JSONDecoder().decode(QuitReq.self, from: cmd.payload) {
                     self.quit(bundleID: r.bundleID, force: r.force ?? false)
                 }
-                return Data()
-            default:
                 return Data()
             }
         }

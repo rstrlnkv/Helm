@@ -70,4 +70,10 @@ import Module_KeepAwake_Engine
     }
 
     public func send(_ name: String, payload: Data = Data()) { vm.send(name, payload: payload) }
+
+    /// Named by the engine's own enum. The string spelling stays for the panel
+    /// tile's generic paths; nothing new should use it.
+    public func send(_ command: KeepAwakeCommand, payload: Data = Data()) {
+        vm.send(command, payload: payload)
+    }
 }

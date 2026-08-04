@@ -243,7 +243,7 @@ public struct KeepAwakeSettingsPage: View {
 
     private func write(_ value: Any?, _ key: String) {
         store.set(value, for: key)
-        vm.send("settingsChanged")
+        vm.send(KeepAwakeCommand.settingsChanged)
     }
 
     // MARK: - App picker

@@ -157,25 +157,24 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
     private func wireTransport() {
         localTransport.setHandler { [weak self] command in
             guard let self else { return Data() }
-            switch command.name {
-            case "volumes":
+            guard let name = DiskCommand(rawValue: command.name) else { return Data() }
+            switch name {
+            case .volumes:
                 return (try? JSONEncoder().encode(self.volumes())) ?? Data()
-            case "scan":
+            case .scan:
                 guard let payload = try? JSONDecoder().decode(ScanRequest.self, from: command.payload)
                 else { return Data() }
                 return (try? JSONEncoder().encode(await self.scan(path: payload.path,
                                                                   scan: payload.scan))) ?? Data()
-            case ScanCommand.backgroundScan:
+            case .backgroundScan:
                 return (try? JSONEncoder().encode(await self.backgroundScan())) ?? Data()
-            case "cancel":
+            case .cancel:
                 self.cancel()
                 return Data()
-            case "trash":
+            case .trash:
                 guard let paths = try? JSONDecoder().decode([String].self, from: command.payload)
                 else { return Data() }
                 return (try? JSONEncoder().encode(await self.trash(paths))) ?? Data()
-            default:
-                return Data()
             }
         }
     }

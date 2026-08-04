@@ -248,24 +248,25 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         localTransport.setHandler { [weak self] cmd in
             guard let self else { return Data() }
             func json<T: Encodable>(_ v: T) -> Data { (try? JSONEncoder().encode(v)) ?? Data() }
-            switch cmd.name {
-            case "status":        return json(await offTheCooperativePool { self.status() })
-            case "listInstalled": return json(await offTheCooperativePool { self.listInstalled() })
-            case "outdated":      return json(await offTheCooperativePool { self.outdated() })
-            case "search":
+            guard let name = HomebrewCommand(rawValue: cmd.name) else { return Data() }
+            switch name {
+            case .status:        return json(await offTheCooperativePool { self.status() })
+            case .listInstalled: return json(await offTheCooperativePool { self.listInstalled() })
+            case .outdated:      return json(await offTheCooperativePool { self.outdated() })
+            case .search:
                 let query = String(decoding: cmd.payload, as: UTF8.self)
                 return json(await offTheCooperativePool { self.search(query) })
-            case "descriptions":
+            case .descriptions:
                 guard let r = try? JSONDecoder().decode(DescReq.self, from: cmd.payload) else { return Data() }
                 return json(await offTheCooperativePool { self.descriptions(names: r.names, isCask: r.isCask) })
-            case "install":
+            case .install:
                 if let r = try? JSONDecoder().decode(PkgReq.self, from: cmd.payload) { self.install(name: r.name, isCask: r.isCask) }
-            case "uninstall":
+            case .uninstall:
                 if let r = try? JSONDecoder().decode(PkgReq.self, from: cmd.payload) { self.uninstall(name: r.name, isCask: r.isCask) }
-            case "upgrade":
+            case .upgrade:
                 if let r = try? JSONDecoder().decode(NameReq.self, from: cmd.payload) { self.upgrade(name: r.name) }
-            case "upgradeAll": self.upgradeAll()
-            case "installBrew": self.installBrew()
+            case .upgradeAll: self.upgradeAll()
+            case .installBrew: self.installBrew()
             default: break
             }
             return Data()

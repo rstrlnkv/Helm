@@ -206,7 +206,7 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
 
     public func listApps() async -> [InstalledApp] {
         HelmLog.shared.info("uninstaller", "listApps requested")
-        let apps: [InstalledApp] = await client.request("listApps") ?? []
+        let apps: [InstalledApp] = await client.request(UninstallerCommand.listApps) ?? []
         HelmLog.shared.info("uninstaller", "listApps returned \(apps.count)")
         return apps
     }
@@ -216,24 +216,24 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
     /// with the request — the engine had been enumerating the app folders a
     /// second time to rebuild what the caller already had.
     public func appSizes(for list: [InstalledApp]) async -> [String: Int] {
-        await client.request("appSizes", encoding: list) ?? [:]
+        await client.request(UninstallerCommand.appSizes, encoding: list) ?? [:]
     }
 
     public func scan(_ app: InstalledApp) async -> ScanResult? {
-        await client.request("scan", encoding: ScanReq(bundleID: app.bundleID, appPath: app.path, appName: app.name))
+        await client.request(UninstallerCommand.scan, encoding: ScanReq(bundleID: app.bundleID, appPath: app.path, appName: app.name))
     }
 
     public func uninstall(appPath: String, paths: [String]) async -> UninstallResult? {
-        await client.request("uninstall", encoding: UninstallReq(appPath: appPath, paths: paths))
+        await client.request(UninstallerCommand.uninstall, encoding: UninstallReq(appPath: appPath, paths: paths))
     }
 
     /// Leftovers whose owning app is gone, grouped by bundle id.
     public func systemExtensions() async -> [SystemExtensionInfo] {
-        await client.request("systemExtensions") ?? []
+        await client.request(UninstallerCommand.systemExtensions) ?? []
     }
 
     public func scanOrphans() async -> [OrphanGroup] {
-        await client.request("scanOrphans") ?? []
+        await client.request(UninstallerCommand.scanOrphans) ?? []
     }
 
     /// Whether Helm offers to clean up after an app the person drags to the
@@ -241,19 +241,19 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
     /// on its own: the engine is what acts on it, and one reader means the switch
     /// and the behaviour cannot disagree.
     public func watchingTrash() async -> Bool {
-        await client.request("watchingTrash") ?? false
+        await client.request(UninstallerCommand.watchingTrash) ?? false
     }
 
     public func setWatchingTrash(_ on: Bool) async {
-        await client.send("setWatchingTrash", encoding: on)
+        await client.send(UninstallerCommand.setWatchingTrash, encoding: on)
     }
 
     /// Trash arbitrary leftover paths (used by the orphans view).
     public func trashPaths(_ paths: [String]) async -> UninstallResult? {
-        await client.request("trashPaths", encoding: paths)
+        await client.request(UninstallerCommand.trashPaths, encoding: paths)
     }
 
     public func quit(bundleID: String, force: Bool = false) async {
-        await client.send("quit", encoding: QuitReq(bundleID: bundleID, force: force))
+        await client.send(UninstallerCommand.quit, encoding: QuitReq(bundleID: bundleID, force: force))
     }
 }

@@ -83,7 +83,7 @@ import Module_Leftovers_Engine
     public func scan() async {
         scanning = true
         defer { scanning = false }
-        items = await client.request("scan") ?? []
+        items = await client.request(LeftoversCommand.scan) ?? []
         // Nothing is ticked by default: these files are load-bearing, so the
         // user chooses each one. But a rescan is not a fresh start — switching
         // one row off rescans, and clearing the set threw away every other tick
@@ -95,14 +95,14 @@ import Module_Leftovers_Engine
     /// Switches a login item off through launchd, then rescans so the row
     /// shows what actually happened rather than what we hoped.
     public func setDisabled(_ disabled: Bool, item: StaleItem) async {
-        await client.send("setDisabled",
+        await client.send(LeftoversCommand.setDisabled,
                           encoding: LeftoversToggle(label: item.identifier, disabled: disabled))
         await scan()
     }
 
     /// Deletes one item, in use or not — the row asks first when it matters.
     public func remove(_ item: StaleItem) async {
-        let result: LeftoversRemoval? = await client.request("trash", encoding: [item.path])
+        let result: LeftoversRemoval? = await client.request(LeftoversCommand.trash, encoding: [item.path])
         failures = result?.failed ?? []
         removedCount = result?.removed.count ?? 0
         banner = LfStr.movedToTrash(Bytes(result?.freedBytes ?? 0))
@@ -118,7 +118,7 @@ import Module_Leftovers_Engine
         // counted, is the one thing this module must not do.
         let paths = selectedItems.map(\.path)
         guard !paths.isEmpty else { return }
-        let result: LeftoversRemoval? = await client.request("trash", encoding: paths)
+        let result: LeftoversRemoval? = await client.request(LeftoversCommand.trash, encoding: paths)
         failures = result?.failed ?? []
         removedCount = result?.removed.count ?? 0
         banner = LfStr.movedToTrash(Bytes(result?.freedBytes ?? 0))
