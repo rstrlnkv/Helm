@@ -6,6 +6,10 @@ import HelmUI
 extension Notification.Name {
     /// Posted when the host menu-bar icon style changes so the status item redraws.
     static let helmMenuBarStyleChanged = Notification.Name("helmMenuBarStyleChanged")
+    /// Posted when the sidebar's appearance changes, so an open window redraws.
+    /// The setting is written from the window it changes, so nothing would
+    /// notice on its own: the sidebar reads a value SwiftUI cannot observe.
+    static let helmSidebarStyleChanged = Notification.Name("helmSidebarStyleChanged")
 }
 
 /// App-level (not per-module) settings, e.g. the menu-bar icon shape.
@@ -19,6 +23,18 @@ extension Notification.Name {
         set {
             store.set(newValue.rawValue, for: "appearance")
             applyAppearance()
+        }
+    }
+
+    /// Whether the sidebar draws each module on its own colour or as a plain
+    /// glyph. Defaulted through `SidebarStyle(stored:)` rather than a literal
+    /// here, so the fallback for an unknown value is written once and tested
+    /// once — see `SidebarStyleTests`.
+    static var sidebarStyle: SidebarStyle {
+        get { SidebarStyle(stored: store.string(SidebarStyle.storageKey, default: "")) }
+        set {
+            store.set(newValue.rawValue, for: SidebarStyle.storageKey)
+            NotificationCenter.default.post(name: .helmSidebarStyleChanged, object: nil)
         }
     }
 
