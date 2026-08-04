@@ -265,8 +265,14 @@ private struct SettingsSidebar: View {
                 // Not the module's colour at a smaller dose: a tinted glyph on
                 // the sidebar's own background reads as neither plate nor text.
                 // The plain look is grey, and the shape does the distinguishing.
+                //
+                // Corrected by `SymbolInk`, as the plate is. Without it one point
+                // size is 28% of visual size across this set — `keyboard` paints
+                // 1,27 of its square and `lock.shield` 0,99 — and the row that
+                // relies on shape alone is the row that can least afford the
+                // shapes to be different sizes.
                 Image(systemName: symbol)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: 15 * SymbolInk.correction(for: symbol), weight: .medium))
                     .foregroundStyle(HelmText.quiet)
                     .frame(width: 22, height: 22)
             }
