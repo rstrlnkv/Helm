@@ -22,13 +22,20 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     /// initializer; without a store there is simply no background scan.
     private let store: NamespacedStore?
 
+    /// - Parameter settings: how a stored setting is judged to be Helm's own.
+    ///   Injectable for the same reason every other port here is: the production
+    ///   answer is the login keychain, and a test must not write to the user's.
     public init(transport: LocalTransport = LocalTransport(),
-                store: NamespacedStore? = nil) {
+                store: NamespacedStore? = nil,
+                settings: SettingGuard = DuplicatesSettings.guardOfFolder) {
         self.localTransport = transport
         self.transport = transport
         self.store = store
+        self.settings = settings
         wireTransport()
     }
+
+    private let settings: SettingGuard
 
     public func activate() {}
     public func deactivate() { finderBox.current?.cancel() }
@@ -96,6 +103,26 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
         // check that had already approved a different path.
         guard let stored = store?.string("folder", default: ""), !stored.isEmpty else {
             HelmLog.shared.info("scan", "duplicates: no folder chosen yet")
+            return nil
+        }
+        // **The stored root is not evidence of anything on its own.** It is a
+        // plain string in a plist any process running as this user can rewrite,
+        // and here it decides how far a reader reaches with nobody at the desk.
+        // `ScanRoot` below bounds where it may point; this says whether Helm is
+        // the one who put it there.
+        let mac = store?.string(SettingGuard.macKey(for: "folder"), default: "")
+        switch settings.verdict(payload: Data(stored.utf8), mac: mac) {
+        case .sealed:
+            break
+        case .adopt:
+            // Chosen before sealing existed, on an installation that has never
+            // sealed anything. Accepted once and sealed, the same trust-on-first
+            // -use Autopilot's rules take.
+            store?.set(settings.seal(Data(stored.utf8)) ?? "",
+                       for: SettingGuard.macKey(for: "folder"))
+        case .broken:
+            HelmLog.shared.warn("scan", "duplicates: the stored folder is not Helm's own; "
+                                + "choose it again to scan in the background")
             return nil
         }
         guard let root = ScanRoot.resolve(stored) else {

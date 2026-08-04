@@ -50,15 +50,59 @@ extension Notification.Name {
     /// Disk starts in it. The other two answer a question the person asked by
     /// installing the module; Disk builds and refreshes an 8 MB index of every
     /// filename on the volume, on machines whose owner never ran a disk scan.
+    ///
+    /// **Sealed, because it decides whether an unattended reader reads at all.**
+    /// Any process running as this user can rewrite this plist, and taking Disk
+    /// out of the off-list turns on a walk of every filename on the volume with
+    /// nobody at the desk. A value that is not Helm's own is not "the person
+    /// changed their mind": it refuses every scan, which is the safe direction
+    /// and the one a person can see in the log.
     static var disabledScans: Set<String> {
         get {
             guard let stored = store.object("disabledScans") as? [String] else {
                 return ["disk"]
             }
-            return Set(stored)
+            switch scanGuard.verdict(payload: Self.payload(of: stored),
+                                     mac: store.string(SettingGuard.macKey(for: "disabledScans"),
+                                                       default: "")) {
+            case .sealed:
+                return Set(stored)
+            case .adopt:
+                // This installation has never sealed anything: the value predates
+                // sealing, so it is accepted once and sealed on the way out.
+                disabledScans = Set(stored)
+                return Set(stored)
+            case .broken:
+                HelmLog.shared.warn("scan", "the list of disabled scans is not Helm's own; "
+                                    + "every background scan is off until it is set again")
+                return Set(ScanRunner.scannableModules)
+            }
         }
-        set { store.set(Array(newValue).sorted(), for: "disabledScans") }
+        set {
+            let sorted = Array(newValue).sorted()
+            store.set(sorted, for: "disabledScans")
+            store.set(scanGuard.seal(Self.payload(of: sorted)) ?? "",
+                      for: SettingGuard.macKey(for: "disabledScans"))
+        }
     }
+
+    /// The bytes the seal is over. Sorted before sealing, so the same set never
+    /// hashes two ways and a re-ordering by anything else is not mistaken for a
+    /// forgery.
+    private static func payload(of ids: [String]) -> Data {
+        Data(ids.sorted().joined(separator: "\n").utf8)
+    }
+
+    /// One keychain item for the settings Helm seals in its own namespace.
+    /// Autopilot keeps its own — that item is deployed, and moving it would read
+    /// as "somebody rewrote your rules" on every Mac that has run it.
+    ///
+    /// A `var` for one reason, stated so nobody has to guess at it: a test must
+    /// not write to the person's login keychain, and this type is reached
+    /// statically from every page in the app. Nothing in the app assigns it.
+    static var scanGuard = SettingGuard(keys: KeychainSealKey(service: "com.helm.app",
+                                                              account: "settings-seal",
+                                                              category: "scan"))
 
     /// When each background scan last **completed** — came back with a report.
     ///
