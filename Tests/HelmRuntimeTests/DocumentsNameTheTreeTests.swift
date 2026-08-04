@@ -43,6 +43,8 @@ final class DocumentsNameTheTreeTests: XCTestCase {
     private static let knownAbsent: [String: String] = [
         "DiskSafety": "the disk module's private gate before it became UserFileScope",
         "HelmSurface.floatingEdge": "a token the documents claimed existed; grep found it only in the prose, and that paragraph is the correction",
+        "SidebarComposerTable": "the composer while it was an NSTableView; the passage is about what that cost and why it went back to a List",
+        "SidebarComposerRedraw": "the value that told that table what to do, and the paragraph naming it is its obituary",
     ]
 
     // MARK: - The tree
