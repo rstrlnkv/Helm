@@ -648,3 +648,9 @@
 "Module icons" = "模块图标";
 "Colour" = "彩色";
 "Plain" = "简约";
+"Sidebar" = "边栏";
+"New section" = "新建分组";
+"Remove section" = "删除分组";
+"Use the default name" = "使用默认名称";
+"Move to" = "移动到";
+"Drag to reorder. A module can go into any section, and a section you remove hands its modules to its neighbour." = "拖动可重新排序。模块可放入任意分组；删除分组后，其中的模块会移交给相邻分组。";

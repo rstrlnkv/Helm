@@ -648,3 +648,9 @@
 "Module icons" = "Иконки модулей";
 "Colour" = "Цветные";
 "Plain" = "Простые";
+"Sidebar" = "Боковое меню";
+"New section" = "Новый раздел";
+"Remove section" = "Удалить раздел";
+"Use the default name" = "Вернуть имя по умолчанию";
+"Move to" = "Переместить в";
+"Drag to reorder. A module can go into any section, and a section you remove hands its modules to its neighbour." = "Перетаскивайте, чтобы менять порядок. Модуль можно положить в любой раздел, а удалённый раздел отдаёт свои модули соседнему.";

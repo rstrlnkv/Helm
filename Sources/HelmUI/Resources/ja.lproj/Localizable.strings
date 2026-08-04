@@ -648,3 +648,9 @@
 "Module icons" = "モジュールのアイコン";
 "Colour" = "カラー";
 "Plain" = "シンプル";
+"Sidebar" = "サイドバー";
+"New section" = "新しいセクション";
+"Remove section" = "セクションを削除";
+"Use the default name" = "デフォルトの名前に戻す";
+"Move to" = "移動先";
+"Drag to reorder. A module can go into any section, and a section you remove hands its modules to its neighbour." = "ドラッグして並べ替えます。モジュールはどのセクションにも入れられ、削除したセクションのモジュールは隣に移ります。";

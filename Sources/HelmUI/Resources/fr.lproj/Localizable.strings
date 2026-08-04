@@ -648,3 +648,9 @@
 "Module icons" = "Icônes des modules";
 "Colour" = "En couleur";
 "Plain" = "Sobres";
+"Sidebar" = "Barre latérale";
+"New section" = "Nouvelle section";
+"Remove section" = "Supprimer la section";
+"Use the default name" = "Utiliser le nom par défaut";
+"Move to" = "Déplacer vers";
+"Drag to reorder. A module can go into any section, and a section you remove hands its modules to its neighbour." = "Faites glisser pour réordonner. Un module peut aller dans n’importe quelle section, et une section supprimée confie ses modules à sa voisine.";

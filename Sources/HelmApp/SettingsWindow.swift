@@ -372,11 +372,6 @@ private struct MenuBarSettingsView: View {
     @State private var sidebarStyle: SidebarStyle = AppSettings.sidebarStyle
     @State private var showSettingsButton = AppSettings.showSettingsButton
     @State private var showQuitButton = AppSettings.showQuitButton
-    @State private var orderedModules: [String] = ModuleHost.shared.orderedModuleIDs
-    /// The order is read far more often than it is changed, so the controls
-    /// for changing it are not on screen by default: eight rows of handles and
-    /// arrow pairs read as a list of controls rather than a list of modules.
-    @State private var editingOrder = false
     @State private var diskAccess: PermissionState = .granted
     @State private var accessibility: PermissionState = .granted
     @State private var confirmingReset = false
@@ -409,127 +404,6 @@ private struct MenuBarSettingsView: View {
             Divider()
             settingsForm
         }
-        .onAppear { orderedModules = ModuleHost.shared.orderedModuleIDs }
-    }
-
-    private func move(_ id: String, by offset: Int) {
-        guard let index = orderedModules.firstIndex(of: id) else { return }
-        let target = index + offset
-        guard orderedModules.indices.contains(target) else { return }
-        withAnimation(HelmMotion.interface) {
-            orderedModules = ModuleOrder.move(orderedModules, from: IndexSet(integer: index),
-                                              to: offset > 0 ? target + 1 : target)
-        }
-        AppSettings.moduleOrder = orderedModules
-    }
-
-    /// One module in the order list.
-    ///
-    /// Reading the order and rearranging it are different tasks, so the handle
-    /// and the arrows appear only while the section is being edited; otherwise
-    /// the row is the module and nothing else. The drag itself belongs to the
-    /// `List` — see `moduleOrderList` for why that matters.
-    @ViewBuilder
-    private func moduleOrderRow(_ id: String,
-                                _ descriptor: any ModuleDescriptor) -> some View {
-        HStack(spacing: 10) {
-            if editingOrder {
-                Image(systemName: "line.3.horizontal")
-                    .foregroundStyle(HelmText.faint)
-                    .accessibilityHidden(true)
-            }
-            HelmIconPlate(symbol: descriptor.moduleMetadata.sfSymbol,
-                          tint: descriptor.moduleTint.colour, size: 20)
-            Text(descriptor.moduleMetadata.name)
-            Spacer()
-            if editingOrder {
-                // The arrows are what a keyboard has instead of a drag.
-                Button {
-                    move(id, by: -1)
-                } label: { Image(systemName: "chevron.up") }
-                .buttonStyle(.borderless)
-                .accessibilityLabel("\(HelmA11y.moveUp), \(descriptor.moduleMetadata.name)")
-                .disabled(orderedModules.first == id)
-                Button {
-                    move(id, by: 1)
-                } label: { Image(systemName: "chevron.down") }
-                .buttonStyle(.borderless)
-                .accessibilityLabel("\(HelmA11y.moveDown), \(descriptor.moduleMetadata.name)")
-                .disabled(orderedModules.last == id)
-            }
-        }
-        // A floor rather than a fixed height: a row that cannot grow clips the
-        // module name outright at larger text sizes. What it actually comes to
-        // is reported upward, because the list around it has to be tall enough
-        // for the rows it really has — see `moduleOrderList`.
-        .frame(minHeight: Self.orderRowHeight)
-        .onGeometryChange(for: CGFloat.self, of: \.size.height) { height in
-            if orderRowHeights[id] != height { orderRowHeights[id] = height }
-        }
-        .contentShape(Rectangle())
-        // A `List` row is its content plus the style's own vertical inset, so
-        // the height set above is not the height that lands: at eight modules
-        // the guessed total was two rows short and the list clipped them.
-        // Zeroing the inset makes `count × orderRowHeight` exact.
-        .listRowInsets(EdgeInsets(top: 0, leading: 8, bottom: 0, trailing: 8))
-    }
-
-    /// The order list, and the reason it is a `List` rather than rows in the
-    /// `Form` around it.
-    ///
-    /// `.onMove` is inert outside a `List`, so the first version carried its own
-    /// `.onDrag`/`.onDrop` with an `NSItemProvider` of the row's id. That
-    /// reorders, but it is not the system's drag: no lift, no gap opening under
-    /// the cursor, no drop animation — the row simply appeared somewhere else
-    /// on release. A `List` gives all of it for free and is what every other
-    /// reorderable list on the machine does.
-    ///
-    /// It costs a fixed height: a `List` inside a `Form` would otherwise take
-    /// whatever it is offered and scroll inside it, which is a second scroll
-    /// view inside the page's own. Rows are a fixed height for the same reason,
-    /// so the arithmetic is exact rather than a guess.
-    /// The floor is 36 rather than 28 to match the rows in the card above it:
-    /// the same page carried two row heights, and the shorter one held the rows
-    /// with an icon in them, so the list with the most in it had the least air.
-    private static let orderRowHeight: CGFloat = 36
-
-    /// Measured heights per module id. The two halves of this used to disagree:
-    /// each row was given `minHeight` precisely so it could grow rather than
-    /// clip its name, and the list around it was then given a flat
-    /// `count × 28` — a total that assumes no row ever took the permission it
-    /// had just been granted. At larger system text the last rows were cut off.
-    @State private var orderRowHeights: [String: CGFloat] = [:]
-
-    /// Tall enough for the rows there actually are, falling back to the nominal
-    /// height for any row that has not reported yet (the first layout pass).
-    private var moduleOrderListHeight: CGFloat {
-        orderedModules.reduce(0) { $0 + (orderRowHeights[$1] ?? Self.orderRowHeight) }
-    }
-
-    private var moduleOrderList: some View {
-        // Spelled out rather than inlined: the ternary is an optional closure,
-        // which the type checker cannot infer inside a `List` builder.
-        var onMove: ((IndexSet, Int) -> Void)?
-        if editingOrder { onMove = { moveRows(from: $0, to: $1) } }
-        return List {
-            ForEach(orderedModules, id: \.self) { id in
-                if let descriptor = ModuleRegistry.all.first(where: { $0.idRaw == id }) {
-                    moduleOrderRow(id, descriptor)
-                }
-            }
-            .onMove(perform: onMove)
-        }
-        .listStyle(.plain)
-        .scrollDisabled(true)
-        .scrollContentBackground(.hidden)
-        .environment(\.defaultMinListRowHeight, Self.orderRowHeight)
-        .frame(height: moduleOrderListHeight)
-        .animation(HelmMotion.interface, value: orderedModules)
-    }
-
-    private func moveRows(from source: IndexSet, to destination: Int) {
-        orderedModules = ModuleOrder.move(orderedModules, from: source, to: destination)
-        AppSettings.moduleOrder = orderedModules
     }
 
     private func permissionRow(_ title: String, detail: String, granted: Bool,
@@ -569,28 +443,7 @@ private struct MenuBarSettingsView: View {
                 .pickerStyle(.segmented)
                 .onChange(of: sidebarStyle) { _, choice in AppSettings.sidebarStyle = choice }
             }
-            Section {
-                Text(editingOrder ? AppStr.moduleOrderEditNote : AppStr.moduleOrderNote)
-                    .font(.caption).foregroundStyle(HelmText.quiet)
-                moduleOrderList
-            } header: {
-                HStack {
-                    Text(AppStr.moduleOrderSection)
-                    Spacer()
-                    Button(editingOrder ? AppStr.done : AppStr.edit) {
-                        withAnimation(HelmMotion.interface) {
-                            editingOrder.toggle()
-                        }
-                    }
-                    .buttonStyle(.borderless)
-                    // A Form section header is styled secondary and small; a
-                    // control inside it inherits that and stops reading as a
-                    // control. The button says what it is instead.
-                    .font(.body)
-                    .foregroundStyle(Color.accentColor)
-                    .textCase(nil)
-                }
-            }
+            SidebarSettingsSection(host: ModuleHost.shared)
             Section(AppStr.menuBar) {
                 LabeledContent(AppStr.iconShape) {
                     IconShapePicker(selection: $style)
