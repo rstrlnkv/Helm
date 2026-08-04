@@ -237,13 +237,19 @@ public struct UninstallerSettingsPage: View {
                 .resizable().frame(width: 28, height: 28)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 1) {
-                Text(app.name).lineLimit(1)
+                // **Two lines in every row, whatever the row is.** The System
+                // mark used to be a third line, so the rows that had it stood
+                // taller than the rows that did not and the list went down the
+                // page in steps. It is a pill beside the name now — the house's
+                // one pill — which is where the eye is already looking for what
+                // a row *is*, and it costs the row no height at all.
+                HStack(spacing: 6) {
+                    Text(app.name).lineLimit(1)
+                    if system { HelmBadge(UnStr.systemApp) }
+                }
                 Text(app.path)
                     .font(.caption).foregroundStyle(HelmText.quiet).lineLimit(1)
                     .truncationMode(.middle)
-                if system {
-                    Text(UnStr.systemApp).font(.caption2).foregroundStyle(HelmText.faint)
-                }
             }
             // A name, a path and the System caption are one thing to read, in
             // the order they are drawn — three stops per row down a list that
@@ -253,7 +259,7 @@ public struct UninstallerSettingsPage: View {
             .accessibilityElement(children: .combine)
             Spacer()
             Text(Bytes(app.sizeBytes))
-                .font(.caption).foregroundStyle(HelmText.quiet).monospacedDigit()
+                .helmFigure().foregroundStyle(HelmText.quiet)
         }
         .frame(minHeight: 34)
         .contentShape(Rectangle())
@@ -353,7 +359,7 @@ public struct UninstallerSettingsPage: View {
             .accessibilityElement(children: .combine)
             Spacer()
             Text(Bytes(app.sizeBytes))
-                .font(.caption).foregroundStyle(HelmText.quiet).monospacedDigit()
+                .helmFigure().foregroundStyle(HelmText.quiet)
         }
         .frame(minHeight: 32)
     }
