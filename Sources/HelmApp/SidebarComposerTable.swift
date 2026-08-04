@@ -79,7 +79,7 @@ struct SidebarComposerTable: NSViewRepresentable {
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         context.coordinator.update(layout: layout, host: host, editing: editing,
                                    apply: apply, rename: rename)
-        context.coordinator.table?.reloadData()
+        context.coordinator.redraw()
         context.coordinator.reportHeight { height = $0 }
     }
 
@@ -94,10 +94,16 @@ struct SidebarComposerTable: NSViewRepresentable {
         private var rename: ((SidebarLayout.Section) -> Void)?
         private var rows: [SidebarLayout.Row] = []
         private var editing = false
+        /// True when the last update was a mode change over the same set of
+        /// rows — the one case the rows can be animated from what they were
+        /// into what they became, rather than replaced.
+        private var animatable = false
 
         func update(layout: SidebarLayout, host: ModuleHost, editing: Bool,
                     apply: @escaping (SidebarLayout) -> Void,
                     rename: @escaping (SidebarLayout.Section) -> Void) {
+            let wasEditing = self.editing
+            let previousRows = self.rows
             self.layout = layout
             self.host = host
             self.editing = editing
@@ -110,6 +116,42 @@ struct SidebarComposerTable: NSViewRepresentable {
             self.rows = editing ? layout.flattened : layout.flattened.filter { row in
                 guard case .section(let id) = row else { return true }
                 return !(layout.sections.first { $0.id == id }?.modules.isEmpty ?? true)
+            }
+            // Only when the same rows are still there in the same order. A drop
+            // or a new section changes which rows exist, and a row that has to
+            // appear or vanish is a different problem from a row that has to
+            // change shape — this animates the second and reloads for the first.
+            animatable = wasEditing != editing && previousRows.map(\.id) == rows.map(\.id)
+        }
+
+        /// Rebuilds the rows, in place where that is possible.
+        ///
+        /// `reloadData` throws every row view away and builds a new one, which
+        /// is instant by construction: there is no "before" left for anything
+        /// to animate from. Entering edit changes what a row *contains* — a
+        /// grip appears, a summary appears, the row grows from 40 pt to 53 —
+        /// and all of that is SwiftUI inside a hosting view that already
+        /// exists. Handing that view a new `rootView` inside an animation lets
+        /// SwiftUI do what it does with any other state change, and
+        /// `noteHeightOfRows` inside an `NSAnimationContext` moves the rows
+        /// underneath it by the same clock.
+        func redraw() {
+            guard let table else { return }
+            guard animatable else { table.reloadData(); return }
+
+            for row in 0..<table.numberOfRows {
+                guard let hosting = table.view(atColumn: 0, row: row, makeIfNecessary: false)?
+                    .subviews.first as? NSHostingView<AnyView>,
+                      let content = rowContent(row) else { continue }
+                withAnimation(HelmMotion.disclosure) { hosting.rootView = AnyView(content) }
+            }
+            NSAnimationContext.runAnimationGroup { context in
+                // The same clock `HelmMotion.disclosure` runs on, read from the
+                // same constant. Two clocks for one movement is what makes a
+                // transition look like two.
+                context.duration = HelmMotion.reduceMotion ? 0.01 : HelmMotion.disclosureSeconds
+                context.allowsImplicitAnimation = true
+                table.noteHeightOfRows(withIndexesChanged: IndexSet(0..<table.numberOfRows))
             }
         }
 
@@ -139,12 +181,33 @@ struct SidebarComposerTable: NSViewRepresentable {
                     sum + table.rect(ofRow: row).height
                 }
                 guard abs(total - previous) > 0.5 else { return }
-                report(max(total, 1))
+                // Inside the animation when the mode changed, and bare
+                // otherwise. This runs on a later turn of the run loop than the
+                // state change that caused it, so it is outside whatever
+                // transaction wrapped that change: reported plainly, the block
+                // jumped to its new height while everything inside it animated.
+                // Reported plainly on first layout too, and that is right —
+                // the block appearing at its own size is not a transition.
+                if self?.animatable == true {
+                    withAnimation(HelmMotion.disclosure) { report(max(total, 1)) }
+                } else {
+                    report(max(total, 1))
+                }
                 self?.measure(pass: pass + 1, previous: total, report: report)
             }
         }
 
         // MARK: - Rows
+
+        /// One row's SwiftUI, built the same way whether the table is asking
+        /// for a view it does not have or being handed a new one for a view it
+        /// already does.
+        private func rowContent(_ row: Int) -> SidebarComposerRow? {
+            guard rows.indices.contains(row), let host, let apply, let rename else { return nil }
+            return SidebarComposerRow(row: rows[row], layout: layout,
+                                      host: host, editing: editing,
+                                      apply: apply, rename: rename)
+        }
 
         func numberOfRows(in tableView: NSTableView) -> Int { rows.count }
 
@@ -156,10 +219,7 @@ struct SidebarComposerTable: NSViewRepresentable {
 
         func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?,
                        row: Int) -> NSView? {
-            guard rows.indices.contains(row), let host, let apply, let rename else { return nil }
-            let content = SidebarComposerRow(row: rows[row], layout: layout,
-                                             host: host, editing: editing,
-                                             apply: apply, rename: rename)
+            guard let content = rowContent(row) else { return nil }
             let hosting = NSHostingView(rootView: AnyView(content))
             // Without this the hosting view reserves a safe area of its own and
             // the cell comes out taller than the row it holds. Measured: the

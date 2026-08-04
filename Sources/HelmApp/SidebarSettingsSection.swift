@@ -30,6 +30,14 @@ struct SidebarSettingsSection: View {
     /// change the arrangement. Every switch stays live in both — turning a
     /// module off is not rearranging it.
     @State private var editing = false
+    /// Natural sizes of the parts only edit mode has, recorded while they are
+    /// on screen so they can be revealed by growing to them rather than by
+    /// fading in. A fade let the note and the two buttons draw on top of what
+    /// was already there — «Вернуть по умолчаниИзменить», legible as that for
+    /// a third of a second (ARCHITECTURE.md § Motion).
+    @State private var noteHeight: CGFloat = 0
+    @State private var newSectionHeight: CGFloat = 0
+    @State private var restoreWidth: CGFloat = 0
 
     private var layout: SidebarLayout {
         _ = revision
@@ -61,21 +69,38 @@ struct SidebarSettingsSection: View {
         Section {
             EmptyView()
         } header: {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .firstTextBaseline) {
+            // `spacing: 0`, with every gap written as padding on the thing
+            // above it. A collapsed reveal is a view of zero height, and a
+            // stack with spacing still puts its gap on both sides of one —
+            // so the block would keep 12 pt of air at rest for two things
+            // that are not there.
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .firstTextBaseline, spacing: 0) {
                     // Restated, because the reset below strips what a header
                     // would have given it. Matched to the sections either side.
                     Text(AppStr.sidebarSections)
                         .font(.system(size: 13, weight: .semibold))
-                    Spacer()
-                    if editing {
-                        Button(AppStr.restoreSections) {
-                            apply(SidebarLayout.seeded(from: SidebarLayoutStore.registry()))
-                        }
-                        .buttonStyle(.plain)
-                        .font(.system(size: 12))
-                        .foregroundStyle(Color.accentColor)
+                    Spacer(minLength: 8)
+                    // Revealed by width rather than faded in. Left to SwiftUI's
+                    // default this cross-faded on top of the button beside it,
+                    // and the two words were legible through each other in the
+                    // middle of the transition: «Вернуть по умолчаниИзменить».
+                    Button(AppStr.restoreSections) {
+                        apply(SidebarLayout.seeded(from: SidebarLayoutStore.registry()))
                     }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color.accentColor)
+                    .fixedSize()
+                    .padding(.trailing, 12)
+                    .onGeometryChange(for: CGFloat.self, of: \.size.width) { width in
+                        if width > 0 { restoreWidth = width }
+                    }
+                    .frame(width: editing ? restoreWidth : 0, alignment: .trailing)
+                    .clipped()
+                    .allowsHitTesting(editing)
+                    .accessibilityHidden(!editing)
+
                     Button(editing ? AppStr.done : AppStr.edit) {
                         withAnimation(HelmMotion.disclosure) { editing.toggle() }
                     }
@@ -83,17 +108,23 @@ struct SidebarSettingsSection: View {
                     .font(.system(size: 12, weight: editing ? .semibold : .regular))
                     .foregroundStyle(Color.accentColor)
                 }
+
                 // Above the list, not under it. It says what the list is for,
                 // which is something to read *before* dragging rather than a
-                // note explaining what just happened.
-                // Only while it is true. "Drag to reorder" over a list nothing
-                // drags is an instruction that fails when followed.
-                if editing {
-                    Text(AppStr.sidebarSectionsNote)
-                        .font(.system(size: 11))
-                        .foregroundStyle(HelmText.quiet)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                // note explaining what just happened — and only while it is
+                // true: "drag to reorder" over a list nothing drags is an
+                // instruction that fails when followed.
+                Text(AppStr.sidebarSectionsNote)
+                    .font(.system(size: 11))
+                    .foregroundStyle(HelmText.quiet)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 6)
+                    .onGeometryChange(for: CGFloat.self, of: \.size.height) { height in
+                        if height > 0 { noteHeight = height }
+                    }
+                    .frame(height: editing ? noteHeight : 0, alignment: .top)
+                    .clipped()
+                    .accessibilityHidden(!editing)
 
                 SidebarComposerTable(layout: layout, host: host, editing: editing,
                                      height: $tableHeight, apply: apply,
@@ -102,7 +133,7 @@ struct SidebarSettingsSection: View {
                                          renaming = section
                                      })
                     .frame(height: tableHeight)
-                    .padding(.top, 2)
+                    .padding(.top, 8)
                     // A `Form` header is inset 10 pt further than the cards it
                     // introduces — measured on this page, the system's card
                     // edges are 540 and 1940 where the header's are 560 and
@@ -111,19 +142,27 @@ struct SidebarSettingsSection: View {
                     // them, so the table takes it back.
                     .padding(.horizontal, -10)
 
-                if editing {
-                    Button {
-                        apply(layout.addingSection(named: AppStr.newSection))
-                    } label: {
-                        Label(AppStr.newSection, systemImage: "plus")
-                            .font(.system(size: 12))
-                            .padding(.top, 4)
-                            .padding(.horizontal, 4)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(Color.accentColor)
+                Button {
+                    apply(layout.addingSection(named: AppStr.newSection))
+                } label: {
+                    Label(AppStr.newSection, systemImage: "plus")
+                        .font(.system(size: 12))
+                        .padding(.top, 10)
+                        .padding(.horizontal, 4)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.accentColor)
+                // Its own size regardless of what the collapsed frame proposes,
+                // or the thing being measured is the measurement.
+                .fixedSize()
+                .onGeometryChange(for: CGFloat.self, of: \.size.height) { height in
+                    if height > 0 { newSectionHeight = height }
+                }
+                .frame(height: editing ? newSectionHeight : 0, alignment: .top)
+                .clipped()
+                .allowsHitTesting(editing)
+                .accessibilityHidden(!editing)
             }
             // A header sets its own weight and colour on everything inside it,
             // so a row's name came out bold. Reset once here rather than at
