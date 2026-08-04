@@ -228,23 +228,24 @@ private struct SidebarComposerRow: View {
             .opacity(hovering ? 1 : 0)
         }
         .padding(.horizontal, 10)
-        .padding(.top, 12)
-        .padding(.bottom, 4)
+        .padding(.top, 10)
+        .padding(.bottom, 3)
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
     }
 
     private func module(_ descriptor: any ModuleDescriptor) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             HelmIconPlate(symbol: descriptor.moduleMetadata.sfSymbol,
-                          tint: descriptor.moduleTint.colour, size: 20,
+                          tint: descriptor.moduleTint.colour, size: 18,
                           active: host.isEnabled(descriptor))
-            VStack(alignment: .leading, spacing: 1) {
-                Text(descriptor.moduleMetadata.name)
-                Text(descriptor.moduleMetadata.summary)
-                    .font(.caption).foregroundStyle(HelmText.quiet).lineLimit(1)
-            }
-            .accessibilityElement(children: .combine)
+            // One line, as the system's own sidebar customisation is. A summary
+            // under every row turns a list of nine names into a page of prose
+            // and doubles the height of the thing being arranged — and the
+            // person arranging their own sidebar knows what their modules do.
+            // It stays as the tooltip, where a reminder belongs.
+            Text(descriptor.moduleMetadata.name)
+                .help(descriptor.moduleMetadata.summary)
             Spacer(minLength: 8)
             Toggle(descriptor.moduleMetadata.name, isOn: Binding(
                 get: { host.isEnabled(descriptor) },
@@ -254,17 +255,19 @@ private struct SidebarComposerRow: View {
             .labelsHidden()
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .padding(.vertical, 5)
         // Dimmed in place rather than sunk: sinking costs the position the
         // person chose, and they find out only when they switch it back on.
         .opacity(host.isEnabled(descriptor) ? 1 : 0.55)
-        // The hairline starts past the plate, as it does in every other list in
-        // the app — a rule running under the icon cuts the row in two.
+        // Inset at both ends. A rule that runs under the icon cuts the row in
+        // two, and one that runs to the container's edge belongs to the
+        // container rather than to the list inside it.
         .overlay(alignment: .bottom) {
             if !isLastInSection {
                 Rectangle().fill(HelmSurface.hairline)
                     .frame(height: 1)
-                    .padding(.leading, 40)
+                    .padding(.leading, 36)
+                    .padding(.trailing, 10)
             }
         }
     }
