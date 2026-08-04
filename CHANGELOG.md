@@ -8,6 +8,28 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 ## [Unreleased] — 0.8.0
 
 ### Added
+- **The sidebar is an arrangement the person owns.** The list of modules was in
+  the order Helm shipped, in the groups Helm chose. It is now sections you make,
+  name and fill: drag a module anywhere, including into a section of your own,
+  rename one or take its default name back, delete one and its modules go to the
+  neighbour rather than into nothing. "Restore defaults" puts back the
+  arrangement Helm arrived with. The window's sidebar and the menu-bar icon's
+  menu draw the same arrangement, and it survives a restart and an upgrade —
+  a module that did not exist when the arrangement was written joins the section
+  its category belongs to.
+  - **The block that composes it has two states.** At rest it is a list of what
+    the sidebar holds, and every switch in it works. "Edit" grows the drag
+    handles, the section menus and the two buttons that change the arrangement —
+    so a row cannot be lifted by somebody who meant to scroll, and there is no
+    undo to need. The rows are the height macOS gives its own settings lists,
+    and they are that height in both states.
+  - **The drag is the system's own** — a lift, an insertion indicator between
+    any two rows, and a drop that animates, across section boundaries included.
+    SwiftUI's own reordering cannot cross a section, which is why the list is an
+    `NSTableView` with SwiftUI rows rather than a `List`.
+- **Module icons can be plain.** Settings → Icons draws the sidebar's symbols in
+  each module's colour or in none, for anyone who reads a list of nine tinted
+  plates as noise.
 - **Scans that run while nobody is watching.** Disk, Duplicates and the
   Uninstaller can measure on their own, so the answer is already there when the
   page is opened. A scan waits for all of it at once: the switch on, five
@@ -253,6 +275,22 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   - The spin is thirty redraws a second of the menu-bar icon, so its 36 frames
     are built once per style, size and tint and cached: ten firings in a row
     move the footprint by 1 MB on the first and by nothing after it.
+
+### Changed
+- **The Uninstaller's rows are one height.** An app macOS will not let you
+  remove carried the word "System" as a third line, so those rows stood taller
+  than the rest and a list of 250 went down the page in steps. The mark is a
+  pill beside the name now.
+- **Login Items no longer says the same thing in two bars.** A sentence in the
+  toolbar with a button at its end sat directly above the permission note, which
+  is a sentence with a button at its end. The toolbar carries controls; what the
+  page is about is in its empty state; and the line that matters — nothing is
+  ticked by default, because macOS loads these — is the page's own copy above
+  the list.
+- **The settings window keeps to four type sizes**, the ones macOS's own
+  settings use for the same jobs, where it had grown to six across three
+  weights. Every figure — a size, a count, a version — is in the one face Helm
+  reserves for figures; four screens had drifted a step off it.
 
 ### Fixed
 - **A folder Helm could not read is no longer reported as a folder with nothing
