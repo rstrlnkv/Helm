@@ -117,12 +117,12 @@ struct SidebarSettingsSection: View {
                     .clipped()
                     .accessibilityHidden(!editing)
 
-                SidebarComposerTable(layout: layout, host: host, editing: editing,
-                                     height: $tableHeight, apply: apply,
-                                     rename: { section in
-                                         draftName = AppStr.sectionTitle(section)
-                                         renaming = section
-                                     })
+                SidebarComposerList(layout: layout, host: host, editing: editing,
+                                    height: $tableHeight, apply: apply,
+                                    rename: { section in
+                                        draftName = AppStr.sectionTitle(section)
+                                        renaming = section
+                                    })
                     .frame(height: tableHeight)
                     .padding(.top, 8)
                     // A `Form` header is inset 10 pt further than the cards it
