@@ -645,3 +645,6 @@
 
 /* Duplicates */
 "This file has changed since it was found, so it is no longer a duplicate — Helm did not touch it." = "このファイルは検出後に変更されたため、重複ではなくなりました。Helm は手を触れていません。";
+"Module icons" = "モジュールのアイコン";
+"Colour" = "カラー";
+"Plain" = "シンプル";
