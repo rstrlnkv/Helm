@@ -163,12 +163,15 @@ import HelmUI
         // Only what is actually running: opening a disabled module's page just
         // to be told it is disabled is a dead end. The panel already did this.
         let live = Set(host.enabledModules.map { type(of: $0.descriptor).id.rawValue })
-        // Grouped the way the sidebar groups, and in the order the user set
-        // inside each group, so the two lists of the same nine modules do not
-        // disagree about which ones belong together.
-        let groups = ModuleCategory.allCases.map { category in
-            StatusMenuBuilder.Group(entries: ModuleGrouping.ordered(in: category)
-                .filter { live.contains($0.idRaw) }
+        // The person's own arrangement, not the category enum's: they compose
+        // the sidebar, and a menu of the same nine modules that disagreed with
+        // it would make the arrangement a setting that only half applies.
+        let layout = SidebarLayoutStore.read(from: AppSettings.store,
+                                             registry: SidebarLayoutStore.registry())
+        let groups = layout.sections.map { section in
+            StatusMenuBuilder.Group(entries: section.modules
+                .filter { live.contains($0) }
+                .compactMap { id in ModuleRegistry.all.first { $0.idRaw == id } }
                 .map { StatusMenuBuilder.Entry(id: $0.idRaw,
                                                title: $0.moduleMetadata.name,
                                                symbol: $0.moduleMetadata.sfSymbol) })
