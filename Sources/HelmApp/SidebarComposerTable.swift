@@ -115,14 +115,32 @@ struct SidebarComposerTable: NSViewRepresentable {
 
         /// Measured after layout rather than computed from a row count: rows are
         /// SwiftUI and grow with the system text size.
+        ///
+        /// **Measured until it stops changing, not once.**
+        /// `usesAutomaticRowHeights` sizes a row when it builds that row's
+        /// view, and it builds views lazily — only for the rows inside the
+        /// scroll view's current bounds. The view starts at the last height it
+        /// was given, so on the first pass the rows below the fold have
+        /// estimates rather than measurements and the total comes out short:
+        /// the table was handed a frame 21 pt smaller than its own rows and
+        /// clipped its last one, and everything below it on the page moved up.
+        /// Each pass reveals more rows, so the total converges upward; it is
+        /// bounded because it must be, not because a bound was ever reached.
         func reportHeight(_ report: @escaping (CGFloat) -> Void) {
-            guard let table else { return }
-            DispatchQueue.main.async {
+            measure(pass: 0, previous: 0, report: report)
+        }
+
+        private func measure(pass: Int, previous: CGFloat,
+                             report: @escaping (CGFloat) -> Void) {
+            guard let table, pass < 5 else { return }
+            DispatchQueue.main.async { [weak self] in
                 table.layoutSubtreeIfNeeded()
                 let total = (0..<table.numberOfRows).reduce(CGFloat(0)) { sum, row in
                     sum + table.rect(ofRow: row).height
                 }
+                guard abs(total - previous) > 0.5 else { return }
                 report(max(total, 1))
+                self?.measure(pass: pass + 1, previous: total, report: report)
             }
         }
 
@@ -143,6 +161,12 @@ struct SidebarComposerTable: NSViewRepresentable {
                                              host: host, editing: editing,
                                              apply: apply, rename: rename)
             let hosting = NSHostingView(rootView: AnyView(content))
+            // Without this the hosting view reserves a safe area of its own and
+            // the cell comes out taller than the row it holds. Measured: the
+            // content was 30 pt and the cell 32, so a 2 pt band of the *page*
+            // showed between one row and the next — which broke the section's
+            // card into a stack of slabs, the defect this is here to fix.
+            hosting.safeAreaRegions = []
             hosting.translatesAutoresizingMaskIntoConstraints = false
             let cell = NSView()
             cell.addSubview(hosting)
@@ -333,20 +357,40 @@ private struct SidebarComposerRow: View {
             .toggleStyle(.switch)
             .labelsHidden()
         }
-        .padding(.horizontal, 12)
+        // 10, not the specification's 12: the `Form` card above this one puts
+        // its labels 10 pt inside its own edge, and both cards start at the
+        // same x. Two pt of difference is a column of text that does not line
+        // up with the column of text above it, down the whole page.
+        .padding(.horizontal, 10)
         .padding(.vertical, editing ? 6 : 4)
-        .frame(minHeight: 30)
+        // `maxHeight` as well as `minHeight`, and the card is painted over the
+        // result. The cell the table gives a row is 32 pt where this content is
+        // 30 — measured, with `intercellSpacing` confirmed at zero — and a
+        // content that only sets a minimum sits centred in it, leaving 2 pt of
+        // the *page* above and below. That is what broke each section's card
+        // into a stack of slabs with a stripe of window between them.
+        .frame(minHeight: 30, maxHeight: .infinity)
         // Dimmed in place rather than sunk: sinking costs the position the
         // person chose, and they find out only when they switch it back on.
         .opacity(host.isEnabled(descriptor) ? 1 : 0.55)
         .background(card(top: first, bottom: isLastInSection(sectionID)))
-        // Full bleed and half a point, which is the redesign's rule and also
-        // the one the system follows: measured across three System Settings
-        // lists, a separator is inset 10/10 from the *card* and never dodges
-        // the icon. Here the card's own edge supplies that inset.
+        // Inset 10/10 and in the system's own separator colour, both measured
+        // off the `Form` card two inches up this same page: its rules run
+        // 560…1917 inside a card of 540…1937, and step the luminance by
+        // 0.00993 where a `HelmSurface.hairline` at half a point stepped it by
+        // 0.01970 — exactly twice.
+        //
+        // The redesign specifies a full-bleed rule at 10% instead. It is right
+        // on the specification's own page, which is not a `Form`; here the
+        // thing this block is compared against is directly above it.
         .overlay(alignment: .top) {
             if !first {
-                Rectangle().fill(HelmSurface.hairline).frame(height: 0.5)
+                // `Divider`, not a rectangle in a colour of our choosing.
+                // `HelmSurface.hairline` measured twice the system's step and
+                // `NSColor.separatorColor` measured 0.04231 against the form's
+                // 0.02843 — brighter still. The form does not draw its rules
+                // in either; it draws them in this.
+                Divider().padding(.horizontal, 10)
             }
         }
     }
