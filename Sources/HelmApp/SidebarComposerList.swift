@@ -70,6 +70,12 @@ struct SidebarComposerList: View {
         .scrollContentBackground(.hidden)
         .environment(\.defaultMinListRowHeight, 1)
         .frame(height: total)
+        // **Said explicitly, because the sum lands a pass late.** The rows
+        // report their measured heights during layout, so `total` changes after
+        // the transaction that flipped the mode has closed — and what animated
+        // it then was whatever transaction happened to be open, which is how the
+        // block came to trail its own rows by a tenth of a second.
+        .animation(HelmMotion.interface, value: total)
         .onChange(of: total) { _, now in height = now }
         .onAppear { height = total }
     }
