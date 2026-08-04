@@ -191,10 +191,10 @@ private struct SettingsSidebar: View {
                 sidebarRow(AppStr.settingsPane, "gearshape", .gray)
                     .tag(SettingsSelection.general)
             }
-            ForEach(ModuleCategory.allCases, id: \.self) { category in
-                let modules = orderedModules(in: category)
+            ForEach(layout.sections) { section in
+                let modules = visibleModules(in: section)
                 if !modules.isEmpty {
-                    Section(AppStr.categoryName(category)) {
+                    Section(AppStr.sectionTitle(section)) {
                         ForEach(modules, id: \.idRaw) { descriptor in
                             // The sidebar column is fixed, so it asks for the
                             // short name; everything else shows the full one.
@@ -233,12 +233,23 @@ private struct SettingsSidebar: View {
         }
     }
 
-    /// The user's order, applied inside a category. The stored order is one
-    /// flat list; the sidebar shows groups, so each group is sorted by the same
-    /// list and modules the user never dragged stay in registry order.
-    private func orderedModules(in category: ModuleCategory) -> [any ModuleDescriptor] {
+    /// The arrangement the person composed. Read rather than cached: it is
+    /// reconciled on every read, which is what keeps a module that arrived with
+    /// this build from being missing until something else is rearranged.
+    private var layout: SidebarLayout {
         _ = model.orderRevision                       // redraw when it changes
-        return ModuleGrouping.ordered(in: category)
+        return SidebarLayoutStore.read(from: AppSettings.store,
+                                       registry: SidebarLayoutStore.registry())
+    }
+
+    /// The sidebar shows only what is on; Settings shows everything. The two
+    /// answer different questions — this is where a module is used, and that is
+    /// where it is decided which modules exist at all.
+    private func visibleModules(in section: SidebarLayout.Section) -> [any ModuleDescriptor] {
+        section.modules.compactMap { id in
+            ModuleRegistry.all.first { $0.idRaw == id }
+        }
+        .filter { model.host.isEnabled($0) }
     }
 
     private func sidebarRow(_ title: String, _ symbol: String, _ color: Color,

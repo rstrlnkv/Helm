@@ -210,6 +210,17 @@ enum AppStr {
         L("The icon is white when idle and takes on the colour of whichever module is active.")
     }
 
+    /// A section's heading: the name somebody typed, or its seed translated.
+    ///
+    /// Never the stored string on its own — a seeded section has no stored
+    /// string precisely so that switching the app's language moves its heading
+    /// with it.
+    static func sectionTitle(_ section: SidebarLayout.Section) -> String {
+        if let name = section.name { return name }
+        guard let seed = section.seed, let category = ModuleCategory(rawValue: seed) else { return "" }
+        return categoryName(category)
+    }
+
     static func categoryName(_ c: ModuleCategory) -> String {
         switch c {
         case .power: return L("Power")
