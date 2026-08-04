@@ -41,34 +41,51 @@ struct SidebarSettingsSection: View {
 
     var body: some View {
         Section {
+            // Table and footer in one card, the way a system list carries its
+            // add button attached to the list rather than loose beneath it.
+            VStack(spacing: 0) {
+                SidebarComposerTable(layout: layout, host: host,
+                                     height: $tableHeight, apply: apply,
+                                     rename: { section in
+                                         draftName = AppStr.sectionTitle(section)
+                                         renaming = section
+                                     })
+                    .frame(height: tableHeight)
+                    .padding(.vertical, 2)
+
+                Rectangle().fill(HelmSurface.hairline).frame(height: 1)
+
+                HStack(spacing: 0) {
+                    Button {
+                        apply(layout.addingSection(named: AppStr.newSection))
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 11, weight: .medium))
+                            .frame(width: 24, height: 20)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.borderless)
+                    .help(AppStr.newSection)
+                    .accessibilityLabel(AppStr.newSection)
+                    Spacer()
+                }
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
+            }
+            .background(
+                RoundedRectangle(cornerRadius: HelmSurface.cardRadius, style: .continuous)
+                    .fill(HelmSurface.cardFill)
+            )
+            .listRowInsets(EdgeInsets())
+        } header: {
+            Text(AppStr.sidebarSections)
+        } footer: {
+            // Under the group, not inside it. A sentence explaining a list is
+            // not a row of that list, and a card of its own put two cards where
+            // the form has one section.
             Text(AppStr.sidebarSectionsNote)
                 .font(.caption).foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
-
-            // The table sits in the same card every other grouped section in
-            // this form draws, so it reads as one of them rather than as a
-            // control that wandered in from another window.
-            SidebarComposerTable(layout: layout, host: host,
-                                 height: $tableHeight, apply: apply,
-                                 rename: { section in
-                                     draftName = AppStr.sectionTitle(section)
-                                     renaming = section
-                                 })
-                .frame(height: tableHeight)
-                .padding(.vertical, 2)
-                .background(
-                    RoundedRectangle(cornerRadius: HelmSurface.cardRadius, style: .continuous)
-                        .fill(HelmSurface.cardFill)
-                )
-                .listRowInsets(EdgeInsets())
-
-            Button {
-                apply(layout.addingSection(named: AppStr.newSection))
-            } label: {
-                Label(AppStr.newSection, systemImage: "plus")
-            }
-        } header: {
-            Text(AppStr.sidebarSections)
         }
         .alert(AppStr.renameSection, isPresented: Binding(
             get: { renaming != nil },
