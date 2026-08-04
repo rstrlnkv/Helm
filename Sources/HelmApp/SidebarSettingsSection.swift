@@ -24,20 +24,21 @@ struct SidebarSettingsSection: View {
     @State private var tableHeight: CGFloat = 200
     @State private var renaming: SidebarLayout.Section?
     @State private var draftName = ""
-    /// Two states, not one list with controls in it. At rest the block says
-    /// what the sidebar holds and takes the height of that; in edit it grows
-    /// the grips, the summaries, the section menus and the two buttons that
-    /// change the arrangement. Every switch stays live in both — turning a
-    /// module off is not rearranging it.
+    /// Two states, not one list with controls in it. At rest the block is a
+    /// list of what the sidebar holds; in edit it grows the note, the grips,
+    /// the section menus and the row of buttons that change the arrangement.
+    /// **The rows themselves are the same height in both** — the mode changes
+    /// what a row contains, never how tall it is, so nothing below the block
+    /// moves except by the note and that one row of buttons. Every switch stays
+    /// live in both: turning a module off is not rearranging it.
     @State private var editing = false
     /// Natural sizes of the parts only edit mode has, recorded while they are
     /// on screen so they can be revealed by growing to them rather than by
-    /// fading in. A fade let the note and the two buttons draw on top of what
-    /// was already there — «Вернуть по умолчаниИзменить», legible as that for
-    /// a third of a second (ARCHITECTURE.md § Motion).
+    /// fading in. A fade let the note draw on top of what was already there
+    /// (ARCHITECTURE.md § Motion).
     @State private var noteHeight: CGFloat = 0
-    @State private var newSectionHeight: CGFloat = 0
-    @State private var restoreWidth: CGFloat = 0
+    /// The height of the row of edit-mode buttons under the list.
+    @State private var actionsHeight: CGFloat = 0
 
     private var layout: SidebarLayout {
         _ = revision
@@ -79,34 +80,24 @@ struct SidebarSettingsSection: View {
                     // Restated, because the reset below strips what a header
                     // would have given it. Matched to the sections either side.
                     Text(AppStr.sidebarSections)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(HelmText.sectionHeading)
                     Spacer(minLength: 8)
-                    // Revealed by width rather than faded in. Left to SwiftUI's
-                    // default this cross-faded on top of the button beside it,
-                    // and the two words were legible through each other in the
-                    // middle of the transition: «Вернуть по умолчаниИзменить».
-                    Button(AppStr.restoreSections) {
-                        apply(SidebarLayout.seeded(from: SidebarLayoutStore.registry()))
+                    // The one control that is here in both states, so it is the
+                    // one that is drawn as a button. The other two belong to
+                    // edit mode and live at the foot of the list with it.
+                    Button {
+                        withAnimation(HelmMotion.interface) { editing.toggle() }
+                    } label: {
+                        // A cut, not a cross-fade. One word replacing another
+                        // over 300 ms is the two of them legible through each
+                        // other in the middle — photographed as «ИЗмОетНоИвТЬ»
+                        // — and there is nothing here that needs to travel:
+                        // the button does not move, only its word changes.
+                        Text(editing ? AppStr.done : AppStr.edit)
+                            .contentTransition(.identity)
                     }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 12))
-                    .foregroundStyle(Color.accentColor)
-                    .fixedSize()
-                    .padding(.trailing, 12)
-                    .onGeometryChange(for: CGFloat.self, of: \.size.width) { width in
-                        if width > 0 { restoreWidth = width }
-                    }
-                    .frame(width: editing ? restoreWidth : 0, alignment: .trailing)
-                    .clipped()
-                    .allowsHitTesting(editing)
-                    .accessibilityHidden(!editing)
-
-                    Button(editing ? AppStr.done : AppStr.edit) {
-                        withAnimation(HelmMotion.disclosure) { editing.toggle() }
-                    }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 12, weight: editing ? .semibold : .regular))
-                    .foregroundStyle(Color.accentColor)
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                 }
 
                 // Above the list, not under it. It says what the list is for,
@@ -115,7 +106,7 @@ struct SidebarSettingsSection: View {
                 // true: "drag to reorder" over a list nothing drags is an
                 // instruction that fails when followed.
                 Text(AppStr.sidebarSectionsNote)
-                    .font(.system(size: 11))
+                    .font(HelmText.rowDetail)
                     .foregroundStyle(HelmText.quiet)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 6)
@@ -142,24 +133,35 @@ struct SidebarSettingsSection: View {
                     // them, so the table takes it back.
                     .padding(.horizontal, -10)
 
-                Button {
-                    apply(layout.addingSection(named: AppStr.newSection))
-                } label: {
-                    Label(AppStr.newSection, systemImage: "plus")
-                        .font(.system(size: 12))
-                        .padding(.top, 10)
-                        .padding(.horizontal, 4)
-                        .contentShape(Rectangle())
+                // **Both of edit mode's actions, on one row under the list.**
+                // "Restore defaults" used to sit in the heading beside Edit,
+                // where it had to appear out of nothing next to a button that
+                // was already there. Down here it arrives with the row it
+                // belongs to: one thing grows, and the two buttons are inside
+                // it — adding a section on the left, undoing every arrangement
+                // on the right, as far from each other as the row allows.
+                HStack(spacing: 8) {
+                    Button {
+                        apply(layout.addingSection(named: AppStr.newSection))
+                    } label: {
+                        Label(AppStr.newSection, systemImage: "plus")
+                    }
+                    Spacer(minLength: 8)
+                    Button(AppStr.restoreSections) {
+                        apply(SidebarLayout.seeded(from: SidebarLayoutStore.registry()))
+                    }
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(Color.accentColor)
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .padding(.top, 10)
+                .padding(.horizontal, 4)
                 // Its own size regardless of what the collapsed frame proposes,
                 // or the thing being measured is the measurement.
-                .fixedSize()
+                .fixedSize(horizontal: false, vertical: true)
                 .onGeometryChange(for: CGFloat.self, of: \.size.height) { height in
-                    if height > 0 { newSectionHeight = height }
+                    if height > 0 { actionsHeight = height }
                 }
-                .frame(height: editing ? newSectionHeight : 0, alignment: .top)
+                .frame(height: editing ? actionsHeight : 0, alignment: .top)
                 .clipped()
                 .allowsHitTesting(editing)
                 .accessibilityHidden(!editing)
@@ -167,13 +169,21 @@ struct SidebarSettingsSection: View {
             // A header sets its own weight and colour on everything inside it,
             // so a row's name came out bold. Reset once here rather than at
             // every leaf; the parts that want something else still say so.
-            .font(.system(size: 13))
+            .font(HelmText.rowTitle)
             .fontWeight(.regular)
             .foregroundStyle(.primary)
             .textCase(nil)
             // A header carries no gap to whatever the form draws next, because
             // normally a card does. There is no card here.
-            .padding(.bottom, 14)
+            //
+            // **24, not 14: the last card needs the air the others get.** Inside
+            // the list a section's card is followed by the next section's
+            // heading, which brings 29 pt of its own. The last card has nothing
+            // after it but the next block of the page, and at 14 pt it read as
+            // cut off rather than finished — reported as "Клавиатура обрезается"
+            // and measured as a row of exactly its full height, flush against
+            // whatever the form drew next.
+            .padding(.bottom, 24)
         }
         .alert(AppStr.renameSection, isPresented: Binding(
             get: { renaming != nil },

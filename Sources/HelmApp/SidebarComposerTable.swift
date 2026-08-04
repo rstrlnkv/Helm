@@ -49,7 +49,13 @@ struct SidebarComposerTable: NSViewRepresentable {
         // form has.
         table.style = .plain
         table.backgroundColor = .clear
-        table.usesAutomaticRowHeights = true
+        // **Measured here, not by the table.** `usesAutomaticRowHeights` sizes a
+        // row from its view and hands the answer straight to the layout, which
+        // is a jump: `noteHeightOfRows` inside an `NSAnimationContext` has
+        // nothing to interpolate because the row is already the new height by
+        // the time the animation group opens. A height this side of the
+        // delegate is a number AppKit animates like any other.
+        table.usesAutomaticRowHeights = false
         table.selectionHighlightStyle = .none
         // No gap between rows. A settings list separates rows with a hairline,
         // not with air, and the hairline is drawn by the row so it can start
@@ -85,30 +91,76 @@ struct SidebarComposerTable: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
+    /// What every row reads, as one object they all observe.
+    ///
+    /// **A row cannot be animated from outside it, in either sense.** Handing an
+    /// `NSHostingView` a new `rootView` inside `withAnimation` replaces the tree
+    /// rather than changing it: measured with the duration at 4 s, the rows
+    /// arrived at their new shape in a single frame while the note above them
+    /// took the whole four seconds. A published property gets the new value into
+    /// each row's own tree, which fixes *that* — but it does not carry an
+    /// animation with it either. The `withAnimation` that flips `editing` runs
+    /// on the coordinator's stack, and every row is a separate hosting view with
+    /// a renderer of its own; measured by anchoring on a row's icon plate
+    /// through a ten-second transition, it moved 608 px → 654 in one frame with
+    /// nothing in between, and `.animation(_:value:)` did not change that.
+    /// Each row animates itself, from state it owns — see
+    /// `SidebarComposerRow.shown`.
+    @MainActor
+    final class Model: ObservableObject {
+        @Published var editing: Bool
+        @Published var layout: SidebarLayout
+        let host: ModuleHost
+        var apply: (SidebarLayout) -> Void
+        var rename: (SidebarLayout.Section) -> Void
+
+        init(editing: Bool, layout: SidebarLayout, host: ModuleHost,
+             apply: @escaping (SidebarLayout) -> Void,
+             rename: @escaping (SidebarLayout.Section) -> Void) {
+            self.editing = editing
+            self.layout = layout
+            self.host = host
+            self.apply = apply
+            self.rename = rename
+        }
+    }
+
     @MainActor
     final class Coordinator: NSObject, NSTableViewDataSource, NSTableViewDelegate {
         weak var table: NSTableView?
-        private var layout = SidebarLayout(sections: [])
-        private var host: ModuleHost?
-        private var apply: ((SidebarLayout) -> Void)?
-        private var rename: ((SidebarLayout.Section) -> Void)?
+        /// Made on the first update, because it needs the host, and kept for
+        /// the life of the table: the rows observe it, and a new one would be
+        /// a new tree to animate from nothing.
+        private var model: Model?
+        private var layout: SidebarLayout { model?.layout ?? SidebarLayout(sections: []) }
         private var rows: [SidebarLayout.Row] = []
         private var editing = false
-        /// True when the last update was a mode change over the same set of
-        /// rows — the one case the rows can be animated from what they were
-        /// into what they became, rather than replaced.
-        private var animatable = false
+        /// What the table is showing, and what the last update asked of it.
+        ///
+        /// **The comparison has to be a value, because `updateNSView` is not a
+        /// signal.** SwiftUI runs it for every change in the block around the
+        /// table — and the block changes when the table reports its own height,
+        /// so one click on Edit arrives as three or four updates. Judging each
+        /// one on its own reloaded the table 31 ms into the transition.
+        private var state = SidebarComposerState.none
+        private var pending = SidebarComposerRedraw.nothing
+        /// One measurement per (what the row says, which mode, how wide).
+        private var heights: [String: CGFloat] = [:]
+        private var measuredWidth: CGFloat = 0
+        /// The last height handed to the block, so an update that changes
+        /// nothing about it does not schedule a write to its state.
+        private var reportedHeight: CGFloat = 0
 
         func update(layout: SidebarLayout, host: ModuleHost, editing: Bool,
                     apply: @escaping (SidebarLayout) -> Void,
                     rename: @escaping (SidebarLayout.Section) -> Void) {
-            let wasEditing = self.editing
-            let previousRows = self.rows
-            self.layout = layout
-            self.host = host
+            let model = self.model ?? Model(editing: editing, layout: layout, host: host,
+                                            apply: apply, rename: rename)
+            self.model = model
+            model.apply = apply
+            model.rename = rename
+            model.layout = layout
             self.editing = editing
-            self.apply = apply
-            self.rename = rename
             // An empty section is a heading with a place to drop something
             // under it, which is a thing only edit mode has. At rest it would
             // be a heading naming nothing — so it is not drawn at all, the way
@@ -117,83 +169,109 @@ struct SidebarComposerTable: NSViewRepresentable {
                 guard case .section(let id) = row else { return true }
                 return !(layout.sections.first { $0.id == id }?.modules.isEmpty ?? true)
             }
-            // Only when the same rows are still there in the same order. A drop
-            // or a new section changes which rows exist, and a row that has to
-            // appear or vanish is a different problem from a row that has to
-            // change shape — this animates the second and reloads for the first.
-            animatable = wasEditing != editing && previousRows.map(\.id) == rows.map(\.id)
+            let next = snapshot()
+            pending = .between(state, next)
+            state = next
         }
 
-        /// Rebuilds the rows, in place where that is possible.
-        ///
-        /// `reloadData` throws every row view away and builds a new one, which
-        /// is instant by construction: there is no "before" left for anything
-        /// to animate from. Entering edit changes what a row *contains* — a
-        /// grip appears, a summary appears, the row grows from 40 pt to 53 —
-        /// and all of that is SwiftUI inside a hosting view that already
-        /// exists. Handing that view a new `rootView` inside an animation lets
-        /// SwiftUI do what it does with any other state change, and
-        /// `noteHeightOfRows` inside an `NSAnimationContext` moves the rows
-        /// underneath it by the same clock.
-        func redraw() {
-            guard let table else { return }
-            guard animatable else { table.reloadData(); return }
+        /// Everything the rows draw, as one comparable value: which rows there
+        /// are, which mode they are in, and what each one says.
+        private func snapshot() -> SidebarComposerState {
+            SidebarComposerState(rowIDs: rows.map(\.id), editing: editing,
+                                 content: rows.map(describe))
+        }
 
-            for row in 0..<table.numberOfRows {
-                guard let hosting = table.view(atColumn: 0, row: row, makeIfNecessary: false)?
-                    .subviews.first as? NSHostingView<AnyView>,
-                      let content = rowContent(row) else { continue }
-                withAnimation(HelmMotion.disclosure) { hosting.rootView = AnyView(content) }
+        private func describe(_ row: SidebarLayout.Row) -> String {
+            switch row {
+            case .section(let id):
+                guard let section = layout.sections.first(where: { $0.id == id }) else { return id }
+                return "s:\(AppStr.sectionTitle(section)):\(section.seed ?? ""):\(section.modules.count)"
+            case .module(let id, let sectionID):
+                let section = layout.sections.first { $0.id == sectionID }
+                let enabled = ModuleRegistry.all.first { $0.idRaw == id }
+                    .map { model?.host.isEnabled($0) ?? false } ?? false
+                return "m:\(id):\(enabled):\(section?.modules.first == id):\(section?.modules.last == id)"
             }
-            NSAnimationContext.runAnimationGroup { context in
-                // The same clock `HelmMotion.disclosure` runs on, read from the
-                // same constant. Two clocks for one movement is what makes a
-                // transition look like two.
-                context.duration = HelmMotion.reduceMotion ? 0.01 : HelmMotion.disclosureSeconds
-                context.allowsImplicitAnimation = true
+        }
+
+        /// Shows the new state, doing as little as it takes.
+        ///
+        /// **The two halves of a row's height move on one clock.** What a row
+        /// *contains* is SwiftUI's — the grip, the summary and the row's own
+        /// minimum height animate because `editing` is published and the rows
+        /// observe it. How tall the *cell* is is AppKit's, and it animates
+        /// because the height comes from the delegate rather than from
+        /// `usesAutomaticRowHeights`. Both are told the same duration and the
+        /// same shape of curve; `.smooth` is a spring with the bounce set to
+        /// zero, which is ease-in-ease-out with a name.
+        ///
+        /// The two are also written so that a disagreement between them is
+        /// invisible rather than ugly: nothing in a row sets a height of its
+        /// own, so the content is laid out into whatever the cell currently is
+        /// and a cell a pixel ahead of its contents crops nothing anyone reads.
+        func redraw() {
+            guard let table, let model else { return }
+            switch pending {
+            case .nothing:
+                return
+            case .refresh:
+                // The rows are watching the model, so a rename or a switch has
+                // already redrawn itself — but a longer name is a taller row,
+                // and the table only asks again when it is told to.
+                table.noteHeightOfRows(withIndexesChanged: IndexSet(0..<table.numberOfRows))
+            case .reload:
+                model.editing = editing
+                table.reloadData()
+            case .animate:
+                withAnimation(HelmMotion.interface) { model.editing = editing }
+                // Plainly, and not inside an `NSAnimationContext`: a row is the
+                // same height in both modes, so there is nothing here for Core
+                // Animation to interpolate. The call stays because a heading
+                // can still change height — a longer name, a larger system text
+                // size — and the table only re-asks when it is told to.
                 table.noteHeightOfRows(withIndexesChanged: IndexSet(0..<table.numberOfRows))
             }
         }
 
-        /// Measured after layout rather than computed from a row count: rows are
-        /// SwiftUI and grow with the system text size.
+        /// How tall the block around the table has to be, added up from the same
+        /// numbers the table gives its own rows.
         ///
-        /// **Measured until it stops changing, not once.**
-        /// `usesAutomaticRowHeights` sizes a row when it builds that row's
-        /// view, and it builds views lazily — only for the rows inside the
-        /// scroll view's current bounds. The view starts at the last height it
-        /// was given, so on the first pass the rows below the fold have
-        /// estimates rather than measurements and the total comes out short:
-        /// the table was handed a frame 21 pt smaller than its own rows and
-        /// clipped its last one, and everything below it on the page moved up.
-        /// Each pass reveals more rows, so the total converges upward; it is
-        /// bounded because it must be, not because a bound was ever reached.
+        /// **Added up now, delivered on the next turn.** The sum is exact the
+        /// moment the update is handled — every row's height is measured off
+        /// screen whether that row is on screen or not — but it is a `@State`
+        /// of the block above, and writing to that from inside `updateNSView`
+        /// is writing to state during a view update: SwiftUI drops it. Measured
+        /// by doing it: the table kept the height it had, and everything past
+        /// the fifth row was clipped.
+        ///
+        /// So it is handed over one turn later, which is a transaction of its
+        /// own and therefore carries its own `withAnimation`. That used to cost
+        /// about 30 ms, because the total was read back off the laid-out table
+        /// and had to be re-read until it stopped changing —
+        /// `usesAutomaticRowHeights` built row views lazily and the rows below
+        /// the fold answered with estimates, once with a total 21 pt short.
+        /// Now there is nothing to wait for and the turn is the whole delay.
         func reportHeight(_ report: @escaping (CGFloat) -> Void) {
-            measure(pass: 0, previous: 0, report: report)
-        }
-
-        private func measure(pass: Int, previous: CGFloat,
-                             report: @escaping (CGFloat) -> Void) {
-            guard let table, pass < 5 else { return }
-            DispatchQueue.main.async { [weak self] in
-                table.layoutSubtreeIfNeeded()
-                let total = (0..<table.numberOfRows).reduce(CGFloat(0)) { sum, row in
-                    sum + table.rect(ofRow: row).height
-                }
-                guard abs(total - previous) > 0.5 else { return }
-                // Inside the animation when the mode changed, and bare
-                // otherwise. This runs on a later turn of the run loop than the
-                // state change that caused it, so it is outside whatever
-                // transaction wrapped that change: reported plainly, the block
-                // jumped to its new height while everything inside it animated.
-                // Reported plainly on first layout too, and that is right —
-                // the block appearing at its own size is not a transition.
-                if self?.animatable == true {
-                    withAnimation(HelmMotion.disclosure) { report(max(total, 1)) }
+            guard let table, table.bounds.width > 0 else {
+                // First layout, before the table has been given a width: there
+                // is nothing to measure against. The next update has the width.
+                return
+            }
+            let total = max((0..<rows.count).reduce(CGFloat(0)) { sum, row in
+                sum + tableView(table, heightOfRow: row)
+            }, 1)
+            guard total != reportedHeight else { return }
+            reportedHeight = total
+            let animate = pending == .animate
+            DispatchQueue.main.async {
+                // Inside the animation when the mode changed, bare otherwise —
+                // a block appearing at its own size on first layout is not a
+                // transition.
+                if animate {
+                    withAnimation(HelmMotion.interface) { report(total) }
                 } else {
-                    report(max(total, 1))
+                    report(total)
                 }
-                self?.measure(pass: pass + 1, previous: total, report: report)
             }
         }
 
@@ -203,13 +281,51 @@ struct SidebarComposerTable: NSViewRepresentable {
         /// for a view it does not have or being handed a new one for a view it
         /// already does.
         private func rowContent(_ row: Int) -> SidebarComposerRow? {
-            guard rows.indices.contains(row), let host, let apply, let rename else { return nil }
-            return SidebarComposerRow(row: rows[row], layout: layout,
-                                      host: host, editing: editing,
-                                      apply: apply, rename: rename)
+            guard rows.indices.contains(row), let model else { return nil }
+            return SidebarComposerRow(row: rows[row], model: model, host: model.host)
         }
 
         func numberOfRows(in tableView: NSTableView) -> Int { rows.count }
+
+        /// The height a row's own SwiftUI comes to, measured off screen.
+        ///
+        /// Measured rather than tabulated: a row is type, and type grows with
+        /// the system text size.
+        ///
+        /// **Measured against a model of its own, sitting still.** The live
+        /// model is mid-animation when this is asked, and an animating height
+        /// is not the height to animate *towards*. Cached by what the row says,
+        /// which mode it is in and how wide it is drawn — the table asks for
+        /// every row's height on every pass of the layout.
+        func tableView(_ tableView: NSTableView, heightOfRow row: Int) -> CGFloat {
+            guard rows.indices.contains(row), let model else { return 40 }
+            let width = tableView.bounds.width
+            // A new width invalidates every measurement rather than adding a
+            // second set beside them: the window is resizable, and a cache with
+            // a row of history per pixel dragged is a leak with a lookup.
+            if width != measuredWidth {
+                heights.removeAll()
+                measuredWidth = width
+            }
+            let said = state.content.indices.contains(row) ? state.content[row] : ""
+            // The system's text size is in the key because a row is type: at a
+            // larger size the same row is a taller row, and a cache that does
+            // not say so hands back yesterday's height for the rest of the run.
+            let key = "\(said)|\(editing)|\(width)|\(NSFont.systemFontSize)"
+            if let known = heights[key] { return known }
+            let still = Model(editing: editing, layout: model.layout, host: model.host,
+                              apply: model.apply, rename: model.rename)
+            let probe = NSHostingView(rootView: AnyView(
+                SidebarComposerRow(row: rows[row], model: still, host: model.host)))
+            probe.safeAreaRegions = []
+            probe.frame.size.width = width
+            var height = probe.fittingSize.height
+            if case .module = rows[row] {
+                height = max(height, SidebarComposerRow.height)
+            }
+            heights[key] = height
+            return height
+        }
 
         func tableView(_ tableView: NSTableView, isGroupRow row: Int) -> Bool {
             guard rows.indices.contains(row) else { return false }
@@ -269,8 +385,8 @@ struct SidebarComposerTable: NSViewRepresentable {
                        row: Int, dropOperation: NSTableView.DropOperation) -> Bool {
             guard let id = info.draggingPasteboard.string(forType: SidebarComposerTable.rowType),
                   let dragged = rows.first(where: { $0.id == id }),
-                  let apply else { return false }
-            apply(layout.applyingDrag(of: dragged, toFlatIndex: row))
+                  let model else { return false }
+            model.apply(layout.applyingDrag(of: dragged, toFlatIndex: row))
             return true
         }
     }
@@ -290,18 +406,65 @@ struct SidebarComposerTable: NSViewRepresentable {
 @MainActor
 private struct SidebarComposerRow: View {
     let row: SidebarLayout.Row
-    let layout: SidebarLayout
-    let host: ModuleHost
-    let editing: Bool
-    let apply: (SidebarLayout) -> Void
-    let rename: (SidebarLayout.Section) -> Void
+    /// Observed, not passed by value: the mode has to change *inside* this view
+    /// for SwiftUI to animate it. See `SidebarComposerTable.Model`.
+    @ObservedObject var model: SidebarComposerTable.Model
+    /// Observed as well, so a switch redraws its own row rather than waiting
+    /// for the table to be told about it.
+    @ObservedObject var host: ModuleHost
+
+    private var layout: SidebarLayout { model.layout }
+    private var editing: Bool { model.editing }
+    private var apply: (SidebarLayout) -> Void { model.apply }
+    private var rename: (SidebarLayout.Section) -> Void { model.rename }
+
+    /// Natural sizes of the parts only edit mode has, recorded while they are
+    /// on screen so they can be revealed by growing to them rather than by
+    /// fading in (ARCHITECTURE.md § Motion).
+    @State private var gripWidth: CGFloat = 0
+    @State private var menuWidth: CGFloat = 0
+    /// **The mode again, in the row's own hand.**
+    ///
+    /// `editing` arrives from the shared model, and a change to it does not
+    /// bring an animation with it: the `withAnimation` that flipped it ran on
+    /// the coordinator's stack, and each row is a separate `NSHostingView` with
+    /// a renderer of its own. Measured by anchoring on the icon plate and
+    /// reading its x across a ten-second transition — 608 px in one frame,
+    /// 654 in the next, and nothing in between. `.animation(_:value:)` did not
+    /// help either. What does is a `withAnimation` *here*, in the row's own
+    /// update, over a piece of state the row owns.
+    @State private var shown = false
 
     /// The gap between one section's card and the next heading. It is the
     /// heading's own top padding rather than table spacing, because
     /// `intercellSpacing` would put it between *every* pair of rows.
     private let sectionGap: CGFloat = 10
 
+    /// The height macOS gives the list this one is a version of, measured on
+    /// this machine rather than remembered: one line, an icon and a switch —
+    /// Privacy ▸ Accessibility — is **40 pt**, separators every 80 px down a 2×
+    /// capture with a 20 pt icon inset 10.
+    ///
+    /// **One number, not one per mode.** Edit mode used to grow every row to
+    /// 53 pt to fit a second line, which moved everything below the block by
+    /// 117 pt and was the whole reason two animation systems had to agree about
+    /// height. The rows are the same in both modes now; what edit changes is
+    /// what a row *contains*, and none of it is taller than the row.
+    static let height: CGFloat = 40
+
     var body: some View {
+        content
+            // Set without an animation the first time, so a row built while the
+            // table is already in edit is drawn in edit rather than animating
+            // into it — a row that appears has nothing to animate *from*.
+            .onAppear { shown = editing }
+            .onChange(of: editing) { _, now in
+                withAnimation(HelmMotion.interface) { shown = now }
+            }
+    }
+
+    @ViewBuilder
+    private var content: some View {
         switch row {
         case .section(let id):
             if let section = layout.sections.first(where: { $0.id == id }) {
@@ -323,15 +486,33 @@ private struct SidebarComposerRow: View {
                 // `HelmText.quiet` and *not* at the mockup's extra `opacity:.75`
                 // — 0.64 measures 4.56:1 and 0.48 would not come near it, and
                 // small uppercase type needs more contrast than body, not less.
-                Text(AppStr.sectionTitle(section).uppercased())
-                    .font(.system(size: 10, weight: .semibold))
-                    .kerning(0.8)
+                // **The same label the sidebar draws, because this is a
+                // picture of the sidebar.** It was 10 pt uppercase with the
+                // redesign's own tracking, which made three styles of group
+                // label in one window: the system's in the sidebar beside it,
+                // the form's over the cards above it, and this.
+                Text(AppStr.sectionTitle(section))
+                    .font(HelmText.groupLabel)
                     .foregroundStyle(HelmText.quiet)
                 if editing, section.seed == nil {
                     HelmBadge(AppStr.yourSection)
                 }
                 Spacer(minLength: 6)
-                if editing { menu(section) }
+                // Revealed by width, like everything else that only edit mode
+                // has: a fade would draw the menu on top of the heading beside
+                // it for a third of a second.
+                menu(section)
+                    .onGeometryChange(for: CGFloat.self, of: \.size.width) { width in
+                        if width > 0 { menuWidth = width }
+                    }
+                    .frame(width: shown ? menuWidth : 0, alignment: .trailing)
+                    .clipped()
+                    // Width and ink together, like the grip: a glyph 14 pt wide
+                    // has too little room to travel for the growth alone to be
+                    // seen as motion rather than as an appearance.
+                    .opacity(shown ? 1 : 0)
+                    .allowsHitTesting(editing)
+                    .accessibilityHidden(!editing)
             }
             .padding(.horizontal, 4)
 
@@ -340,7 +521,7 @@ private struct SidebarComposerRow: View {
             // no target between them. The card is still here; it just says so.
             if editing, section.modules.isEmpty {
                 Text(AppStr.dragModuleHere)
-                    .font(.system(size: 13))
+                    .font(HelmText.rowTitle)
                     .foregroundStyle(HelmText.faint)
                     .frame(maxWidth: .infinity, minHeight: 30)
                     .background(card(top: true, bottom: true))
@@ -367,7 +548,7 @@ private struct SidebarComposerRow: View {
             .disabled(layout.sections.count == 1)
         } label: {
             Image(systemName: "ellipsis")
-                .font(.system(size: 11, weight: .medium))
+                .font(HelmText.rowDetail.weight(.medium))
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
@@ -380,36 +561,47 @@ private struct SidebarComposerRow: View {
 
     private func module(_ descriptor: any ModuleDescriptor, in sectionID: String) -> some View {
         let first = isFirstInSection(sectionID)
-        return HStack(spacing: 10) {
+        // `spacing: 0`, with every gap written as trailing padding *inside* the
+        // thing it follows. A collapsed reveal is a view of zero width, and a
+        // stack with spacing still puts its gap on both sides of one — so at
+        // rest the icon would sit 10 pt further in than it does in the sidebar
+        // this list is a picture of.
+        return HStack(spacing: 0) {
             // Nine rows that can be dragged, and until now nothing said so. The
             // grip is the redesign's answer and it is also the only one that
             // works before the pointer is already on the row — and it appears
             // exactly when the drag does, so the two never disagree.
-            if editing {
-                Image(systemName: "line.3.horizontal")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(HelmText.faint)
-                    .accessibilityHidden(true)
-            }
+            //
+            // Revealed by width rather than faded in, and by the same rule as
+            // the buttons above the list: a fade puts the grip on top of the
+            // icon plate for the length of the transition.
+            Image(systemName: "line.3.horizontal")
+                .font(HelmText.rowDetail.weight(.medium))
+                .foregroundStyle(HelmText.faint)
+                .accessibilityHidden(true)
+                .fixedSize()
+                .padding(.trailing, 10)
+                .onGeometryChange(for: CGFloat.self, of: \.size.width) { width in
+                    if width > 0 { gripWidth = width }
+                }
+                .frame(width: shown ? gripWidth : 0)
+                .clipped()
+                // Width *and* ink. Eleven points of travel is over before the
+                // eye follows it, so the grow alone read as a pop; the fade
+                // gives the same 300 ms something to show.
+                .opacity(shown ? 1 : 0)
             HelmIconPlate(symbol: descriptor.moduleMetadata.sfSymbol,
                           tint: descriptor.moduleTint.colour, size: 22,
                           active: host.isEnabled(descriptor))
-            VStack(alignment: .leading, spacing: 1) {
-                Text(descriptor.moduleMetadata.name)
-                    .font(.system(size: 13))
-                // The second line is what makes the list long, so it is the
-                // first thing to go: at rest this is a list of what is in the
-                // sidebar, and the person reading it already knows. It stays
-                // as the tooltip either way.
-                if editing {
-                    Text(descriptor.moduleMetadata.summary)
-                        .font(.system(size: 11))
-                        .foregroundStyle(HelmText.quiet)
-                        .lineLimit(1)
-                }
-            }
-            .help(descriptor.moduleMetadata.summary)
-            Spacer(minLength: 8)
+                .padding(.trailing, 10)
+            // **One line in both states.** The summary was the whole reason the
+            // rows changed height, and a list that grows 9 rows by 13 pt each
+            // moves everything below it by 117 — for a sentence the person had
+            // already read on the module's own page. It stays as the tooltip.
+            Text(descriptor.moduleMetadata.name)
+                .font(HelmText.rowTitle)
+                .help(descriptor.moduleMetadata.summary)
+            Spacer(minLength: 28)
             Toggle(descriptor.moduleMetadata.name, isOn: Binding(
                 get: { host.isEnabled(descriptor) },
                 set: { host.setEnabled(descriptor, $0) }
@@ -422,22 +614,18 @@ private struct SidebarComposerRow: View {
         // same x. Two pt of difference is a column of text that does not line
         // up with the column of text above it, down the whole page.
         .padding(.horizontal, 10)
-        .padding(.vertical, editing ? 6 : 4)
-        // The heights macOS gives the two lists this one is a version of,
-        // measured on this machine rather than remembered. One line, an icon
-        // and a switch — Privacy ▸ Accessibility — is **40 pt**: separators
-        // every 80 px down a 2× capture, with a 20 pt icon inset 10. Two lines
-        // — Login Items ▸ background activity — is **53 pt**, at 106 px.
+        .padding(.vertical, 4)
+        // `maxHeight`, and the card is painted over the result. The cell the
+        // table gives a row came out 2 pt taller than this content — measured,
+        // with `intercellSpacing` confirmed at zero — and a content that does
+        // not fill it sits centred, leaving 2 pt of the *page* above and below.
+        // That is what broke each section's card into a stack of slabs with a
+        // stripe of window between them.
         //
-        // `maxHeight` as well as `minHeight`, and the card is painted over the
-        // result. The cell the table gives a row came out 2 pt taller than this
-        // content — measured, with `intercellSpacing` confirmed at zero — and a
-        // content that only sets a minimum sits centred in it, leaving 2 pt of
-        // the *page* above and below. That is what broke each section's card
-        // into a stack of slabs with a stripe of window between them.
-        .frame(minHeight: editing ? 53 : 40, maxHeight: .infinity)
-        // Dimmed in place rather than sunk: sinking costs the position the
-        // person chose, and they find out only when they switch it back on.
+        // **The height is the table's, and it is the same in both modes.** It
+        // lives in `SidebarComposerRow.height`, which the delegate applies. A
+        // minimum here as well would be a second opinion about one number.
+        .frame(maxHeight: .infinity)
         .opacity(host.isEnabled(descriptor) ? 1 : 0.55)
         .background(card(top: first, bottom: isLastInSection(sectionID)))
         // Inset 10/10 and in the system's own separator colour, both measured
