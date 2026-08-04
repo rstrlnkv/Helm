@@ -44,6 +44,17 @@ public struct LeftoversSettingsPage: View {
                     .padding(.horizontal, 20).padding(.vertical, 10)
                 Divider()
             }
+            // The safety line, where the thing it is about is: over the list,
+            // in the page's own copy rather than in its chrome. It says nothing
+            // is ticked by default *because macOS loads these*, which is the
+            // one sentence on this screen a person must not miss.
+            if !lvm.items.isEmpty {
+                Text(LfStr.reviewNote)
+                    .font(.caption).foregroundStyle(HelmText.quiet)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 20).padding(.top, 10)
+            }
             content
             Divider()
             actionBar
@@ -65,15 +76,13 @@ public struct LeftoversSettingsPage: View {
     }
 
     private var toolbar: some View {
+        // **Controls, and no prose.** The sentence used to live here, beside
+        // the scan button — a quiet caption at one end of a strip and a button
+        // at the other, which is exactly the shape of the permission note
+        // underneath it. Two bars of the same weight, stacked, read as one
+        // thing said twice. Every other list screen puts controls here and
+        // nothing else; this one does now too.
         HStack(spacing: 10) {
-            Text(lvm.items.isEmpty ? LfStr.intro : LfStr.reviewNote)
-                .font(.caption).foregroundStyle(HelmText.quiet)
-                .fixedSize(horizontal: false, vertical: true)
-                // Two lines, then truncate. Unbounded, the Spanish intro takes
-                // four at the minimum window width and the toolbar grows to
-                // about 100 pt — a caption pushing the content it introduces
-                // off the screen.
-                .lineLimit(2)
             Spacer(minLength: 8)
             if !lvm.items.isEmpty {
                 // What the scan found, beside the control that filters it. It
@@ -126,9 +135,13 @@ public struct LeftoversSettingsPage: View {
 
     @ViewBuilder private var content: some View {
         if lvm.items.isEmpty {
+            // Before the first scan the page has nothing to show and room to
+            // explain itself, so the sentence that was in the toolbar is here,
+            // under the call to action it belongs to.
             HelmEmptyState(symbol: lvm.scanned ? "checkmark.circle" : "wand.and.rays",
                            tint: ModuleCategory.utilities.tint,
-                           message: lvm.scanned ? LfStr.nothingFound : LfStr.notScannedYet)
+                           message: lvm.scanned ? LfStr.nothingFound : LfStr.notScannedYet,
+                           note: lvm.scanned ? nil : LfStr.intro)
             // A bounded minimum: enough to centre the message, without the
             // unbounded height that made the window grow to fill the screen.
             .frame(maxWidth: .infinity, minHeight: 260)
