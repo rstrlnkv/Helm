@@ -346,7 +346,7 @@ private struct UtilitiesSection: View {
         } label: {
             HStack(spacing: 8) {
                 HelmIconPlate(symbol: meta.sfSymbol,
-                              tint: live.descriptor.moduleCategory.tint, size: 20)
+                              tint: live.descriptor.moduleTint.colour, size: 20)
                 Text(meta.name).font(.callout).lineLimit(1)
                 Spacer()
                 Image(systemName: "arrow.up.forward")

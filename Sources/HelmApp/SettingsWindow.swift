@@ -136,14 +136,13 @@ final class SettingsSplitViewController: NSSplitViewController {
     }
 }
 
-// MARK: - Category tint
-
-private func categoryColor(_ category: ModuleCategory) -> Color { category.tint }
-
 // MARK: - Sidebar
 
 private struct SettingsSidebar: View {
     @ObservedObject var model: SettingsModel
+    /// Re-read on notification rather than observed: the value lives in
+    /// `UserDefaults` through `AppSettings`, which SwiftUI cannot watch.
+    @State private var style = AppSettings.sidebarStyle
 
     var body: some View {
         VStack(spacing: 0) {
@@ -201,7 +200,7 @@ private struct SettingsSidebar: View {
                             // short name; everything else shows the full one.
                             sidebarRow(descriptor.moduleMetadata.shortName,
                                        descriptor.moduleMetadata.sfSymbol,
-                                       categoryColor(category),
+                                       descriptor.moduleTint.colour,
                                        blocked: isBlocked(descriptor))
                                 .tag(SettingsSelection.module(descriptor.idRaw))
                         }
@@ -221,6 +220,9 @@ private struct SettingsSidebar: View {
         }
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)   // let the AppKit sidebar material show
+        .onReceive(NotificationCenter.default.publisher(for: .helmSidebarStyleChanged)) { _ in
+            style = AppSettings.sidebarStyle
+        }
         .task {
             diskAccess = PermissionCheck.currentFullDiskAccess()
             accessibility = PermissionCheck.currentAccessibility()
@@ -256,7 +258,18 @@ private struct SettingsSidebar: View {
                 }
             }
         } icon: {
-            HelmIconPlate(symbol: symbol, tint: color, size: 22)
+            switch style {
+            case .colour:
+                HelmIconPlate(symbol: symbol, tint: color, size: 22)
+            case .plain:
+                // Not the module's colour at a smaller dose: a tinted glyph on
+                // the sidebar's own background reads as neither plate nor text.
+                // The plain look is grey, and the shape does the distinguishing.
+                Image(systemName: symbol)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(HelmText.quiet)
+                    .frame(width: 22, height: 22)
+            }
         }
     }
 }
@@ -300,7 +313,7 @@ private struct ModuleDetailView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HelmPageHeader(symbol: descriptor.moduleMetadata.sfSymbol,
-                           tint: categoryColor(descriptor.moduleCategory),
+                           tint: descriptor.moduleTint.colour,
                            title: descriptor.moduleMetadata.name,
                            subtitle: descriptor.moduleMetadata.summary,
                            bleeds: descriptor.pageBleeds) {
@@ -320,7 +333,7 @@ private struct ModuleDetailView: View {
                 // nor where to turn it on. Say what it is, then offer the
                 // action where the eye already is.
                 HelmEmptyState(symbol: descriptor.moduleMetadata.sfSymbol,
-                               tint: categoryColor(descriptor.moduleCategory),
+                               tint: descriptor.moduleTint.colour,
                                title: descriptor.moduleMetadata.name,
                                message: descriptor.moduleMetadata.summary) {
                     Button(AppStr.turnOn) { host.setEnabled(descriptor, true) }
@@ -339,6 +352,7 @@ private struct MenuBarSettingsView: View {
     @State private var size: String = AppSettings.menuBarIconSize
     @State private var launchAtLogin: Bool = LoginItem.isEnabled
     @State private var appearance: AppAppearance = AppSettings.appearance
+    @State private var sidebarStyle: SidebarStyle = AppSettings.sidebarStyle
     @State private var showSettingsButton = AppSettings.showSettingsButton
     @State private var showQuitButton = AppSettings.showQuitButton
     @State private var orderedModules: [String] = ModuleHost.shared.orderedModuleIDs
@@ -408,7 +422,7 @@ private struct MenuBarSettingsView: View {
                     .accessibilityHidden(true)
             }
             HelmIconPlate(symbol: descriptor.moduleMetadata.sfSymbol,
-                          tint: descriptor.moduleCategory.tint, size: 20)
+                          tint: descriptor.moduleTint.colour, size: 20)
             Text(descriptor.moduleMetadata.name)
             Spacer()
             if editingOrder {
@@ -529,6 +543,14 @@ private struct MenuBarSettingsView: View {
                     }
                 }
                 .onChange(of: appearance) { _, choice in AppSettings.appearance = choice }
+                // Worth offering only because the tint is the module's own: a
+                // choice between four modules in one blue and grey is not one.
+                Picker(AppStr.moduleIcons, selection: $sidebarStyle) {
+                    Text(AppStr.moduleIconsColour).tag(SidebarStyle.colour)
+                    Text(AppStr.moduleIconsPlain).tag(SidebarStyle.plain)
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: sidebarStyle) { _, choice in AppSettings.sidebarStyle = choice }
             }
             Section {
                 Text(editingOrder ? AppStr.moduleOrderEditNote : AppStr.moduleOrderNote)

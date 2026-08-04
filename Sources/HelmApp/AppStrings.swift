@@ -188,6 +188,9 @@ enum AppStr {
     }
 
     static var aboutHelm: String { L("About Helm") }
+    static var moduleIcons: String { L("Module icons") }
+    static var moduleIconsColour: String { L("Colour") }
+    static var moduleIconsPlain: String { L("Plain") }
     static var iconShape: String { L("Icon shape") }
     static var iconSize: String { L("Icon size") }
     static var settings: String { L("Settings…") }

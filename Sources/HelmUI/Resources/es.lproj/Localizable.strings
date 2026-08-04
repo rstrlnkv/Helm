@@ -645,3 +645,6 @@
 
 /* Duplicates */
 "This file has changed since it was found, so it is no longer a duplicate — Helm did not touch it." = "Este archivo ha cambiado desde que se encontró, así que ya no es un duplicado; Helm no lo tocó.";
+"Module icons" = "Iconos de módulos";
+"Colour" = "En color";
+"Plain" = "Sencillos";

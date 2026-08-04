@@ -645,3 +645,6 @@
 
 /* Duplicates */
 "This file has changed since it was found, so it is no longer a duplicate — Helm did not touch it." = "此文件自被找到后已更改，不再是重复文件——Helm 未作处理。";
+"Module icons" = "模块图标";
+"Colour" = "彩色";
+"Plain" = "简约";
