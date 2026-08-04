@@ -104,22 +104,22 @@ import Module_Homebrew_Engine
     /// from "asked, and brew is not installed".
     @Published public private(set) var loadedStatus = false
     public func refreshStatus() async {
-        status = await client.request("status") ?? status
+        status = await client.request(HomebrewCommand.status) ?? status
         loadedStatus = true
     }
     public func refreshInstalled() async {
-        installed = await client.request("listInstalled") ?? []
+        installed = await client.request(HomebrewCommand.listInstalled) ?? []
         loadedInstalled = true
         await loadDescriptions(formulae: installed.filter { !$0.isCask }.map(\.name),
                                casks: installed.filter(\.isCask).map(\.name))
     }
     public func refreshOutdated() async {
-        outdated = await client.request("outdated") ?? []
+        outdated = await client.request(HomebrewCommand.outdated) ?? []
         loadedOutdated = true
     }
     @Published public private(set) var loadedOutdated = false
     public func search(_ q: String) async {
-        searchHits = await client.request("search", payload: Data(q.utf8)) ?? []
+        searchHits = await client.request(HomebrewCommand.search, payload: Data(q.utf8)) ?? []
         await loadDescriptions(formulae: searchHits.filter { !$0.isCask }.map(\.name),
                                casks: searchHits.filter(\.isCask).map(\.name))
     }
@@ -135,11 +135,11 @@ import Module_Homebrew_Engine
         let newF = formulae.filter { descriptions["f:" + $0] == nil }
         let newC = casks.filter { descriptions["c:" + $0] == nil }
         if !newF.isEmpty,
-           let d: [String: String] = await client.request("descriptions", encoding: DescReq(names: newF, isCask: false)) {
+           let d: [String: String] = await client.request(HomebrewCommand.descriptions, encoding: DescReq(names: newF, isCask: false)) {
             for (k, v) in d { descriptions["f:" + k] = v }
         }
         if !newC.isEmpty,
-           let d: [String: String] = await client.request("descriptions", encoding: DescReq(names: newC, isCask: true)) {
+           let d: [String: String] = await client.request(HomebrewCommand.descriptions, encoding: DescReq(names: newC, isCask: true)) {
             for (k, v) in d { descriptions["c:" + k] = v }
         }
     }
@@ -149,11 +149,11 @@ import Module_Homebrew_Engine
     private struct PkgReq: Codable { let name: String; let isCask: Bool }
     private struct NameReq: Codable { let name: String }
 
-    public func install(_ hit: SearchHit) { client.fire("install", encoding: PkgReq(name: hit.name, isCask: hit.isCask)) }
-    public func uninstall(_ pkg: BrewPackage) { client.fire("uninstall", encoding: PkgReq(name: pkg.name, isCask: pkg.isCask)) }
-    public func upgrade(_ pkg: OutdatedPackage) { client.fire("upgrade", encoding: NameReq(name: pkg.name)) }
-    public func upgradeAll() { client.fire("upgradeAll") }
-    public func installBrew() { consoleLines.removeAll(); client.fire("installBrew") }
+    public func install(_ hit: SearchHit) { client.fire(HomebrewCommand.install, encoding: PkgReq(name: hit.name, isCask: hit.isCask)) }
+    public func uninstall(_ pkg: BrewPackage) { client.fire(HomebrewCommand.uninstall, encoding: PkgReq(name: pkg.name, isCask: pkg.isCask)) }
+    public func upgrade(_ pkg: OutdatedPackage) { client.fire(HomebrewCommand.upgrade, encoding: NameReq(name: pkg.name)) }
+    public func upgradeAll() { client.fire(HomebrewCommand.upgradeAll) }
+    public func installBrew() { consoleLines.removeAll(); client.fire(HomebrewCommand.installBrew) }
 
     public func clearConsole() { consoleLines.removeAll() }
 }

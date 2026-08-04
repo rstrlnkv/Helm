@@ -206,7 +206,7 @@ import Module_Disk_Engine
     public var showsRemovalBar: Bool { !basket.isEmpty || banner != nil }
 
     public func loadVolumes() async {
-        volumes = await client.request("volumes") ?? []
+        volumes = await client.request(DiskCommand.volumes) ?? []
     }
 
     public func scan(path: String) async {
@@ -233,7 +233,7 @@ import Module_Disk_Engine
         completedAt = nil
         let mine = nextScanID()
         showingScan = mine
-        let scan: ScanResult? = await client.request("scan",
+        let scan: ScanResult? = await client.request(DiskCommand.scan,
                                                      encoding: ScanRequest(path: path, scan: mine))
         // Withdrawn while this was suspended: the screen has moved on and none
         // of what follows is about it.
@@ -291,7 +291,7 @@ import Module_Disk_Engine
         // already have finished walking, in which case the command below
         // changes nothing and only this line keeps the answer off the screen.
         showingScan = nextScanID()
-        Task { await client.send("cancel", encoding: [String]()) }
+        Task { await client.send(DiskCommand.cancel, encoding: [String]()) }
         let wasWalking = live
         live = false
         // There is a tree worth keeping only when a walk was actually running and
@@ -375,7 +375,7 @@ import Module_Disk_Engine
         // volume. Only its final tree is wanted, and only if the tree it is
         // grafted into is still the one on screen.
         let owner = showingScan
-        let scan: ScanResult? = await client.request("scan",
+        let scan: ScanResult? = await client.request(DiskCommand.scan,
                                                      encoding: ScanRequest(path: path,
                                                                            scan: nextScanID()))
         guard owner == showingScan, let scan, let current = result else { return }
@@ -444,7 +444,7 @@ import Module_Disk_Engine
     public func emptyBasket() async {
         let paths = basket.map(\.path)
         guard !paths.isEmpty else { return }
-        let removal: DiskRemoval? = await client.request("trash", encoding: paths)
+        let removal: DiskRemoval? = await client.request(DiskCommand.trash, encoding: paths)
         let freed = removal?.freedBytes ?? 0
         failures = removal?.refused ?? []
         removedCount = removal?.removed.count ?? 0

@@ -33,3 +33,6 @@ import Module_Uninstaller_Engine
     }
     // statusAppearance: default (.inactive) — not a toggle, never tints the menu bar.
 }
+
+/// The same, for the uninstaller.
+public typealias UninstallerCommand = Module_Uninstaller_Engine.UninstallerCommand

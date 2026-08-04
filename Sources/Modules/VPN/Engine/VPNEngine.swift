@@ -399,23 +399,22 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     private func wireTransport() {
         localTransport.setHandler { [weak self] cmd in
             guard let self else { return Data() }
-            switch cmd.name {
-            case "toggle":
+            guard let name = VPNCommand(rawValue: cmd.name) else { return Data() }
+            switch name {
+            case .toggle:
                 self.toggleDefault()
-            case "connect":
+            case .connect:
                 if let payload = try? JSONDecoder().decode(NamePayload.self, from: cmd.payload) {
                     self.connect(payload.name)
                 }
-            case "disconnect":
+            case .disconnect:
                 if let payload = try? JSONDecoder().decode(NamePayload.self, from: cmd.payload) {
                     self.disconnect(payload.name)
                 }
-            case "refresh":
+            case .refresh:
                 self.refresh()
-            case "reloadRules":
+            case .reloadRules:
                 self.reloadRules()
-            default:
-                break
             }
             return Data()
         }

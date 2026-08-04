@@ -90,7 +90,7 @@ public struct KeepAwakePanelTile: View {
                 }
             }
             Spacer()
-            Toggle("", isOn: Binding(get: { vm.isActive }, set: { _ in vm.send("toggle") }))
+            Toggle("", isOn: Binding(get: { vm.isActive }, set: { _ in vm.send(KeepAwakeCommand.toggle) }))
                 .toggleStyle(.switch)
                 .labelsHidden()
                 .controlSize(.small)
@@ -132,7 +132,7 @@ public struct KeepAwakePanelTile: View {
 
     private func presetPill(_ label: String, _ minutes: Int) -> some View {
         Button {
-            vm.send("start", payload: startPayload(minutes))
+            vm.send(KeepAwakeCommand.start, payload: startPayload(minutes))
         } label: {
             pillLabel(Text(label))
         }
@@ -199,7 +199,7 @@ public struct KeepAwakePanelTile: View {
                     .popover(isPresented: $showCustomTime, arrowEdge: .bottom) { customTimeEditor }
 
                     Button(KAStr.start) {
-                        vm.send("start", payload: startPayload(customMinutes))
+                        vm.send(KeepAwakeCommand.start, payload: startPayload(customMinutes))
                         withAnimation(HelmMotion.disclosure) { showMore = false }
                     }
                     .controlSize(.small)
@@ -304,7 +304,7 @@ public struct KeepAwakePanelTile: View {
 
     private func writeSetting(_ value: Any?, _ key: String) {
         store.set(value, for: key)
-        vm.send("settingsChanged")
+        vm.send(KeepAwakeCommand.settingsChanged)
     }
 
     // MARK: - Active countdown
@@ -322,12 +322,12 @@ public struct KeepAwakePanelTile: View {
                 Spacer()
                 Button("+" + Self.durationLabel(15, compact: true)) {
                     let newMinutes = Int(ceil(remaining / 60)) + 15
-                    vm.send("start", payload: startPayload(newMinutes))
+                    vm.send(KeepAwakeCommand.start, payload: startPayload(newMinutes))
                 }
                 .controlSize(.small)
                 // Ends the timed session; the header toggle is the all-or-nothing
                 // switch, this stops just the countdown.
-                Button(KAStr.stop) { vm.send("stop") }
+                Button(KAStr.stop) { vm.send(KeepAwakeCommand.stop) }
                     .controlSize(.small)
                 // The automation controls must stay reachable while a timer runs.
                 // A fixed width, not fixedSize(): the pill stretches inside the

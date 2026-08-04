@@ -48,7 +48,7 @@ or one that disagrees, is never installed silently: the release page opens inste
 Requires Xcode (macOS 26 SDK) and Swift 6.
 
 ```bash
-swift test                      # 1937 unit tests
+swift test                      # 1938 unit tests
 bash Scripts/package-app.sh     # build + sign → $TMPDIR/helm-package/Helm.app
 ```
 

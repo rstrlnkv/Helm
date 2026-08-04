@@ -73,22 +73,21 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
     private func wireTransport() {
         localTransport.setHandler { [weak self] command in
             guard let self else { return Data() }
-            switch command.name {
-            case "scan":
+            guard let name = LeftoversCommand(rawValue: command.name) else { return Data() }
+            switch name {
+            case .scan:
                 return (try? JSONEncoder().encode(await self.scan())) ?? Data()
-            case "setDisabled":
+            case .setDisabled:
                 guard let request = try? JSONDecoder().decode(LeftoversToggle.self,
                                                               from: command.payload)
                 else { return Data() }
                 await offTheCooperativePool { self.extensions.setDisabled(request.disabled,
                                                                   label: request.label) }
                 return Data()
-            case "trash":
+            case .trash:
                 guard let paths = try? JSONDecoder().decode([String].self, from: command.payload)
                 else { return Data() }
                 return (try? JSONEncoder().encode(await self.trash(paths))) ?? Data()
-            default:
-                return Data()
             }
         }
     }

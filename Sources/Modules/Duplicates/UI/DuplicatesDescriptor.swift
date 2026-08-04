@@ -27,3 +27,6 @@ import SwiftUI
                                            backing: UserDefaults.standard)))
     }
 }
+
+/// The same, for the duplicate finder.
+public typealias DuplicatesCommand = Module_Duplicates_Engine.DuplicatesCommand

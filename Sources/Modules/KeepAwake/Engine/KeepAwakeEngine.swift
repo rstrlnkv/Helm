@@ -489,21 +489,23 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             // and the timer dates were written from two threads with no lock —
             // and the class carried `@unchecked Sendable` without saying why.
             await MainActor.run {
-            switch cmd.name {
-            case "toggle":
+            // Inside `MainActor.run`, which returns nothing: an unknown name
+            // leaves without doing anything, and the empty reply below is the
+            // same answer the caller would have got from a `default`.
+            guard let name = KeepAwakeCommand(rawValue: cmd.name) else { return }
+            switch name {
+            case .toggle:
                 self.toggleSession()
-            case "start":
+            case .start:
                 if let payload = try? JSONDecoder().decode(StartPayload.self, from: cmd.payload) {
                     self.startSession(minutes: payload.minutes)
                 }
-            case "stop":
+            case .stop:
                 self.stopSession()
-            case "settingsChanged":
+            case .settingsChanged:
                 self.recompute()
                 self.reconcileActiveSettings()
                 self.releaseSudoersIfUnneeded()
-            default:
-                break
             }
             }
             return Data()

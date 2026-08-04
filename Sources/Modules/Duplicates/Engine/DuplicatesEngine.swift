@@ -214,18 +214,21 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     private func wireTransport() {
         localTransport.setHandler { [weak self] command in
             guard let self else { return Data() }
-            switch command.name {
-            case "find":
+            // A name this engine does not know is a refusal here, once, rather
+            // than a `default` at the bottom of a switch nobody re-reads.
+            guard let name = DuplicatesCommand(rawValue: command.name) else { return Data() }
+            switch name {
+            case .find:
                 guard let payload = try? JSONDecoder().decode(PathPayload.self,
                                                               from: command.payload)
                 else { return Data() }
                 return (try? JSONEncoder().encode(await self.find(under: payload.path))) ?? Data()
-            case ScanCommand.backgroundScan:
+            case .backgroundScan:
                 return (try? JSONEncoder().encode(await self.backgroundScan())) ?? Data()
-            case "cancel":
+            case .cancel:
                 self.finderBox.current?.cancel()
                 return Data()
-            case "trash":
+            case .trash:
                 // Plans, not paths. The old shape cannot be verified — the
                 // engine would be trusting the very reading it is meant to
                 // re-check — so there is no fallback to it: a caller sending
@@ -235,8 +238,6 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
                                                             from: command.payload)
                 else { return Data() }
                 return (try? JSONEncoder().encode(await self.trash(plans))) ?? Data()
-            default:
-                return Data()
             }
         }
     }

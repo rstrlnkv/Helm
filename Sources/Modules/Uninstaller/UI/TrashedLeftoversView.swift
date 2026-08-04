@@ -73,7 +73,7 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { bundleID }
     }
 
     func load() async {
-        groups = await client.request("trashedAppLeftovers") ?? []
+        groups = await client.request(UninstallerCommand.trashedAppLeftovers) ?? []
         selected = Set(TrashOfferPlan.defaultSelection(groups))
     }
 
@@ -100,7 +100,7 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { bundleID }
     /// that is mid-change, and the outcome screen is what comes next anyway.
     private func refresh() async {
         guard !busy, outcome == nil else { return }
-        let fresh: [TrashedAppLeftovers] = await client.request("trashedAppLeftovers") ?? []
+        let fresh: [TrashedAppLeftovers] = await client.request(UninstallerCommand.trashedAppLeftovers) ?? []
         // Everything went back: the person pressed Put Back in the Finder while
         // this was open. The question is void, so the window goes rather than
         // standing there empty, asking about files that are not there — and
@@ -141,7 +141,7 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { bundleID }
         guard !paths.isEmpty else { return true }
         busy = true
         HelmLog.shared.info("uninstaller", "trash offer: trashing \(paths.count) path(s)")
-        let result = await client.request("trashPaths", encoding: paths, as: UninstallResult.self)
+        let result = await client.request(UninstallerCommand.trashPaths, encoding: paths, as: UninstallResult.self)
         busy = false
         // Only the apps this actually answered for. A refusal from macOS is not
         // the person's "no", and the record is final for as long as the app sits
@@ -172,7 +172,7 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { bundleID }
     /// been declined by anybody.
     func answered(_ answering: [TrashedAppLeftovers]? = nil) async {
         for group in answering ?? groups {
-            await client.send("dismissTrashedApp", payload: Data(group.bundleID.utf8))
+            await client.send(UninstallerCommand.dismissTrashedApp, payload: Data(group.bundleID.utf8))
         }
     }
 }

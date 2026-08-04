@@ -218,7 +218,7 @@ public struct LayoutSettingsPage: View {
                     Button {
                         abbreviations.removeAll { $0.from == entry.from }
                         AutoReplaceStore.save(abbreviations, to: store)
-                        lvm.vm.send("settingsChanged")
+                        lvm.vm.send(LayoutCommand.settingsChanged)
                     } label: {
                         Image(systemName: "minus.circle.fill").foregroundStyle(HelmText.quiet)
                     }
@@ -263,7 +263,7 @@ public struct LayoutSettingsPage: View {
         AutoReplaceStore.save(abbreviations, to: store)
         // Announced rather than written through a spare key: the table is
         // already saved, and the engine needs to be told to re-read it.
-        lvm.vm.send("settingsChanged")
+        lvm.vm.send(LayoutCommand.settingsChanged)
         newShort = ""
         newLong = ""
     }
@@ -383,6 +383,6 @@ public struct LayoutSettingsPage: View {
 
     private func write(_ value: Any, _ key: String) {
         store.set(value, for: key)
-        lvm.vm.send("settingsChanged")
+        lvm.vm.send(LayoutCommand.settingsChanged)
     }
 }

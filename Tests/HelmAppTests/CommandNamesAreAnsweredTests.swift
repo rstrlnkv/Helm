@@ -1,85 +1,69 @@
+import HelmRuntime
+import Module_Disk_UI
+import Module_Duplicates_UI
+import Module_Uninstaller_UI
 import XCTest
+@testable import HelmApp
 
-/// A command name a caller sends must be one its engine handles.
+/// A command name is a type now, and this keeps it one.
 ///
-/// **A typo is silence, and silence already means something else here.** A name
-/// the engine does not recognise falls to `default: return Data()`; the caller
-/// decodes nothing and gets `nil`, which this codebase reads as "the module
-/// could not answer". So a misspelling is indistinguishable from a refusal, and
-/// the only symptom is a feature that quietly does nothing.
+/// **This file used to scan for the defect it now cannot happen.** A command was
+/// a string on both sides of the transport: a caller's typo fell through the
+/// engine's `default`, the reply was empty, the caller read `nil` — which this
+/// codebase spells "the module could not answer" — so a misspelling was
+/// indistinguishable from a refusal. The scan compared, per module, the names
+/// sent against the names handled. Then every module got its own command enum
+/// and its engine switched over it exhaustively, at which point the scan had
+/// nothing left to compare: **the literals it read are gone, so a green result
+/// meant only that it had stopped looking.**
 ///
-/// The typed cure is an enum per module — 43 distinct names across nine modules
-/// and 61 call sites, which is a day of churn and a real improvement. A *global*
-/// enum is the wrong shape: every engine handles its own subset, so no switch
-/// over it could be exhaustive, and the compiler would stay silent exactly where
-/// this test speaks. Until the per-module enums exist, this scan closes the same
-/// defect for the price of an hour.
-///
-/// **Per module, because a name means nothing on its own.** `"scan"` is a Disk
-/// command and a Duplicates command and they are different commands; the
-/// question is only ever whether *this* module's engine answers what *this*
-/// module's UI sends.
+/// What is left worth checking is the two things the compiler still cannot see.
 final class CommandNamesAreAnsweredTests: XCTestCase {
 
-    private var modules: URL {
+    private var sources: URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()    // HelmAppTests
             .deletingLastPathComponent()    // Tests
             .deletingLastPathComponent()    // repo
-            .appendingPathComponent("Sources/Modules")
+            .appendingPathComponent("Sources")
     }
 
-    private func swiftFiles(under url: URL) -> [URL] {
-        guard let walk = FileManager.default.enumerator(at: url,
+    /// **Nothing goes back to a literal.** The enum only helps while call sites
+    /// use it; one `client.request("scan")` typed out of habit is the old defect
+    /// back in one module, and it would compile.
+    func testNoModuleSendsACommandAsAStringLiteral() throws {
+        let modules = sources.appendingPathComponent("Modules")
+        guard let walk = FileManager.default.enumerator(at: modules,
                                                         includingPropertiesForKeys: nil,
                                                         options: [.skipsHiddenFiles])
-        else { return [] }
-        return walk.compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
-    }
-
-    private func matches(_ pattern: String, in text: String) -> Set<String> {
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
-        let range = NSRange(text.startIndex..., in: text)
-        return Set(regex.matches(in: text, range: range).compactMap { match in
-            Range(match.range(at: 1), in: text).map { String(text[$0]) }
-        })
-    }
-
-    func testEveryCommandAModuleSendsIsOneItsEngineHandles() throws {
-        let moduleDirectories = try FileManager.default
-            .contentsOfDirectory(at: modules, includingPropertiesForKeys: nil)
-            .filter { $0.hasDirectoryPath }
-        XCTAssertEqual(moduleDirectories.count, 9, "the modules moved; this test walks Sources/Modules")
-
-        for module in moduleDirectories {
-            var asked: Set<String> = []
-            var handled: Set<String> = []
-            for file in swiftFiles(under: module) {
-                guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
-                if file.pathComponents.contains("Engine") {
-                    handled.formUnion(matches("case\\s+\"([A-Za-z][A-Za-z0-9.]*)\"\\s*:", in: text))
-                } else {
-                    // A literal on the calling side. A name written as a shared
-                    // constant — `ScanCommand.backgroundScan` — appears in
-                    // neither set, which is the point of spelling it that way:
-                    // there is one string and both sides read it.
-                    asked.formUnion(matches("\\b(?:request|fire|send)\\(\\s*\"([A-Za-z][A-Za-z0-9.]*)\"",
-                                            in: text))
+        else { return XCTFail("Sources/Modules is not where this test thinks it is") }
+        let literal = try NSRegularExpression(
+            pattern: "\\b(?:request|fire|send)\\(\\s*\"[A-Za-z][A-Za-z0-9.]*\"")
+        var offenders: [String] = []
+        for case let file as URL in walk where file.pathExtension == "swift" {
+            // The engines' own `send` is the transport's, not a command's.
+            guard !file.pathComponents.contains("Engine"),
+                  let text = try? String(contentsOf: file, encoding: .utf8)
+            else { continue }
+            for (index, line) in text.components(separatedBy: .newlines).enumerated() {
+                let range = NSRange(line.startIndex..., in: line)
+                if literal.firstMatch(in: line, range: range) != nil {
+                    offenders.append("\(file.lastPathComponent):\(index + 1) \(line.trimmingCharacters(in: .whitespaces))")
                 }
             }
-            for name in asked.sorted() where !handled.contains(name) {
-                XCTFail("\(module.lastPathComponent) sends `\(name)` and its engine has no case for it")
-            }
         }
+        XCTAssertTrue(offenders.isEmpty,
+                      "a command sent as a string, where its module has an enum for it:\n"
+                      + offenders.joined(separator: "\n"))
     }
 
-    // There is deliberately no check the other way — a `case` nothing sends.
-    //
-    // Four of VPN's nine and two of Layout's three are handled without a literal
-    // caller in the module, and "dead" is not the only explanation: the host
-    // sends some, and a caller may spell the name through a constant. A guard
-    // that would need each of those investigated before it could go green is a
-    // guard that goes in with exceptions already in it, which is how a ledger
-    // starts excusing things. The asked-not-handled direction is the one with a
-    // known failure mode behind it.
+    /// **The one name that crosses a target boundary.** The coordinator sends
+    /// `ScanCommand.backgroundScan` from `HelmApp`; three engines answer it from
+    /// their own enums, and no compiler sees both sides. Two spellings of one
+    /// string is exactly the shape this whole change removes elsewhere.
+    func testTheThreeScannersSpellTheScanCommandTheSameWay() {
+        XCTAssertEqual(DiskCommand.backgroundScan.rawValue, ScanCommand.backgroundScan)
+        XCTAssertEqual(DuplicatesCommand.backgroundScan.rawValue, ScanCommand.backgroundScan)
+        XCTAssertEqual(UninstallerCommand.backgroundScan.rawValue, ScanCommand.backgroundScan)
+    }
 }

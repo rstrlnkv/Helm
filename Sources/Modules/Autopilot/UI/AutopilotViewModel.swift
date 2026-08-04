@@ -29,7 +29,7 @@ import SwiftUI
     }
 
     public func load() async {
-        folders = await client.request("folders", encoding: [String]()) ?? []
+        folders = await client.request(AutopilotCommand.folders, encoding: [String]()) ?? []
         await loadHistory()
     }
 
@@ -41,19 +41,19 @@ import SwiftUI
     /// own queue and on FSEvents, and a page that is not open does not need
     /// telling.
     public func loadHistory() async {
-        history = await client.request("history", encoding: [String]()) ?? []
+        history = await client.request(AutopilotCommand.history, encoding: [String]()) ?? []
     }
 
     public func clearHistory() {
         Task {
-            await client.send("clearHistory", encoding: [String]())
+            await client.send(AutopilotCommand.clearHistory, encoding: [String]())
             await loadHistory()
         }
     }
 
     private func save() {
         let list = folders
-        Task { await client.send("setFolders", encoding: list) }
+        Task { await client.send(AutopilotCommand.setFolders, encoding: list) }
     }
 
     // MARK: - Folders
@@ -141,7 +141,7 @@ import SwiftUI
         probe.rules = [enabled(rule)]
         // A folder with a single enabled rule: the dry run is about this rule,
         // and a rule above it in the real list would otherwise take the files.
-        let rows: [PreviewRow]? = await client.request("previewDraft", encoding: probe)
+        let rows: [PreviewRow]? = await client.request(AutopilotCommand.previewDraft, encoding: probe)
         guard previewingRuleID == rule.id else { return }
         preview = rows ?? []
     }
@@ -159,7 +159,7 @@ import SwiftUI
 
     public func runNow(_ folder: WatchedFolder) async {
         struct FolderID: Codable { let id: String }
-        let report: SweepReport? = await client.request("runNow",
+        let report: SweepReport? = await client.request(AutopilotCommand.runNow,
                                                         encoding: FolderID(id: folder.id))
         guard let report else { return }
         bannerFolderID = folder.id

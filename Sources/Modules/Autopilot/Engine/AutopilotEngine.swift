@@ -540,21 +540,22 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     private func wireTransport() {
         localTransport.setHandler { [weak self] command in
             guard let self else { return Data() }
-            switch command.name {
-            case "folders":
+            guard let name = AutopilotCommand(rawValue: command.name) else { return Data() }
+            switch name {
+            case .folders:
                 return (try? JSONEncoder().encode(self.folders)) ?? Data()
-            case "history":
+            case .history:
                 return (try? JSONEncoder().encode(self.history)) ?? Data()
-            case "clearHistory":
+            case .clearHistory:
                 self.clearHistory()
                 return Data()
-            case "setFolders":
+            case .setFolders:
                 guard let list = try? JSONDecoder().decode([WatchedFolder].self,
                                                            from: command.payload)
                 else { return Data() }
                 self.folders = list
                 return Data()
-            case "preview":
+            case .preview:
                 guard let payload = try? JSONDecoder().decode(FolderPayload.self,
                                                               from: command.payload),
                       let folder = self.folders.first(where: { $0.id == payload.id })
@@ -563,7 +564,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
                 // will happen to it, which is what `PreviewRow` is.
                 let rows = await self.offQueue { self.preview(folder).map(PreviewRow.init) }
                 return (try? JSONEncoder().encode(rows)) ?? Data()
-            case "previewDraft":
+            case .previewDraft:
                 // The folder arrives as a draft rather than by id: a rule being
                 // written has not been saved, and a preview of the saved
                 // version would answer a question nobody asked.
@@ -573,7 +574,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
                 // Runs on every keystroke in the rule editor.
                 let rows = await self.offQueue { self.preview(draft).map(PreviewRow.init) }
                 return (try? JSONEncoder().encode(rows)) ?? Data()
-            case "runNow":
+            case .runNow:
                 guard let payload = try? JSONDecoder().decode(FolderPayload.self,
                                                               from: command.payload),
                       let folder = self.folders.first(where: { $0.id == payload.id })
@@ -582,8 +583,6 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
                 // with the hourly sweep, which is reachable at the same moment.
                 let report = await self.offQueue { self.sweep(folder) }
                 return (try? JSONEncoder().encode(report)) ?? Data()
-            default:
-                return Data()
             }
         }
     }

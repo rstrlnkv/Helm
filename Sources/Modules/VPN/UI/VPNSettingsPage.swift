@@ -349,7 +349,7 @@ public struct VPNSettingsPage: View {
 
     private func persist() {
         store.set(VPNRules.encode(rules), for: "vpnAppRules")
-        vm.send("reloadRules")
+        vm.send(VPNCommand.reloadRules)
     }
 
     private func pickApp() {
