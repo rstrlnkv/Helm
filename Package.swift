@@ -133,6 +133,7 @@ let package = Package(
             dependencies: ["Module_Disk_UI"],
             path: "Tests/Modules/Disk/UITests"),
         .testTarget(name: "HelmContractTests", dependencies: ["HelmContract"]),
+        .testTarget(name: "HelmAppTests", dependencies: ["HelmApp", "HelmContract", "HelmRuntime", "HelmUI"]),
         .testTarget(name: "HelmRuntimeTests", dependencies: ["HelmRuntime"]),
         .testTarget(name: "HelmUITests", dependencies: ["HelmUI"]),
         .testTarget(
