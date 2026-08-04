@@ -11,6 +11,7 @@ import Module_VPN_Engine
         id: id, name: "VPN", summary: VPNStr.summary,
         sfSymbol: "lock.shield", permissions: [])
     public static let category: ModuleCategory = .network
+    public static let tint: ModuleTint = .vpn
 
     private var store: NamespacedStore?
     private var cached: (vm: ModuleViewModel, model: VPNViewModel)?

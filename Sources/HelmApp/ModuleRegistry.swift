@@ -22,4 +22,5 @@ extension ModuleDescriptor {
     var idRaw: String { type(of: self).id.rawValue }
     var moduleMetadata: HelmContract.ModuleMetadata { type(of: self).metadata }
     var moduleCategory: HelmUI.ModuleCategory { type(of: self).category }
+    var moduleTint: HelmUI.ModuleTint { type(of: self).tint }
 }

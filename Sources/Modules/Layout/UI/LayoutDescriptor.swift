@@ -10,6 +10,7 @@ import Module_Layout_Engine
         id: id, name: LyStr.moduleName, summary: LyStr.summary,
         sfSymbol: "keyboard", permissions: [.accessibility])
     public static let category: ModuleCategory = .utilities
+    public static let tint: ModuleTint = .keyboard
 
     private var store: NamespacedStore?
     private var indicator: LanguageIndicator?
