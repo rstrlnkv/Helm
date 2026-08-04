@@ -654,3 +654,6 @@
 "Use the default name" = "使用默认名称";
 "Move to" = "移动到";
 "Drag to reorder. A module can go into any section, and a section you remove hands its modules to its neighbour." = "拖动可重新排序。模块可放入任意分组；删除分组后，其中的模块会移交给相邻分组。";
+"Drag a module here" = "将模块拖到此处";
+"your section" = "自定分区";
+"Restore defaults" = "恢复默认值";

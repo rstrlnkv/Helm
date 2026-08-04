@@ -654,3 +654,6 @@
 "Use the default name" = "Вернуть имя по умолчанию";
 "Move to" = "Переместить в";
 "Drag to reorder. A module can go into any section, and a section you remove hands its modules to its neighbour." = "Перетаскивайте, чтобы менять порядок. Модуль можно положить в любой раздел, а удалённый раздел отдаёт свои модули соседнему.";
+"Drag a module here" = "Перетащите сюда модуль";
+"your section" = "свой раздел";
+"Restore defaults" = "Вернуть по умолчанию";

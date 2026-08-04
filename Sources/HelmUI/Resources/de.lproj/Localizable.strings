@@ -654,3 +654,6 @@
 "Use the default name" = "Standardnamen verwenden";
 "Move to" = "Verschieben nach";
 "Drag to reorder. A module can go into any section, and a section you remove hands its modules to its neighbour." = "Zum Umsortieren ziehen. Ein Modul kann in jeden Bereich, und ein entfernter Bereich übergibt seine Module dem Nachbarn.";
+"Drag a module here" = "Modul hierher ziehen";
+"your section" = "eigener Bereich";
+"Restore defaults" = "Standard wiederherstellen";

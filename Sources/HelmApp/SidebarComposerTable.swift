@@ -174,6 +174,15 @@ struct SidebarComposerTable: NSViewRepresentable {
 
 /// One line of the composer: a section's heading with its menu, or a module
 /// with its switch.
+///
+/// **The card belongs to the section, and the rows draw it.** The redesign puts
+/// each section on its own card (`shell.html`, `.section > .card`), which reads
+/// as one table of many if you let AppKit host a table per section — and then a
+/// module dragged from one card to another is a drag between two table views,
+/// which is a different mechanism with different failure modes. Instead there
+/// is still exactly one table: the first module of a section rounds the top
+/// corners, the last rounds the bottom, and the heading above them draws no
+/// card at all. The drag never learns that the card exists.
 @MainActor
 private struct SidebarComposerRow: View {
     let row: SidebarLayout.Row
@@ -181,7 +190,11 @@ private struct SidebarComposerRow: View {
     let host: ModuleHost
     let apply: (SidebarLayout) -> Void
     let rename: (SidebarLayout.Section) -> Void
-    @State private var hovering = false
+
+    /// The gap between one section's card and the next heading. It is the
+    /// heading's own top padding rather than table spacing, because
+    /// `intercellSpacing` would put it between *every* pair of rows.
+    private let sectionGap: CGFloat = 10
 
     var body: some View {
         switch row {
@@ -189,63 +202,98 @@ private struct SidebarComposerRow: View {
             if let section = layout.sections.first(where: { $0.id == id }) {
                 header(section)
             }
-        case .module(let id, _):
+        case .module(let id, let sectionID):
             if let descriptor = ModuleRegistry.all.first(where: { $0.idRaw == id }) {
-                module(descriptor)
+                module(descriptor, in: sectionID)
             }
         }
     }
+
+    // MARK: - A section's heading
 
     private func header(_ section: SidebarLayout.Section) -> some View {
-        HStack(spacing: 6) {
-            Text(AppStr.sectionTitle(section))
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(HelmText.quiet)
-            Spacer()
-            Menu {
-                Button(AppStr.renameSection) { rename(section) }
-                if section.seed != nil, section.name != nil {
-                    Button(AppStr.useDefaultSectionName) {
-                        apply(layout.renaming(section.id, to: nil))
-                    }
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 6) {
+                // Uppercase at 10 pt with the redesign's own tracking. Left at
+                // `HelmText.quiet` and *not* at the mockup's extra `opacity:.75`
+                // — 0.64 measures 4.56:1 and 0.48 would not come near it, and
+                // small uppercase type needs more contrast than body, not less.
+                Text(AppStr.sectionTitle(section).uppercased())
+                    .font(.system(size: 10, weight: .semibold))
+                    .kerning(0.8)
+                    .foregroundStyle(HelmText.quiet)
+                if section.seed == nil {
+                    HelmBadge(AppStr.yourSection)
                 }
-                Button(AppStr.removeSection, role: .destructive) {
-                    apply(layout.removingSection(section.id))
-                }
-                // Offered and refused rather than hidden: the last section holds
-                // every module, and an absent item explains nothing.
-                .disabled(layout.sections.count == 1)
-            } label: {
-                Image(systemName: "ellipsis")
+                Spacer(minLength: 6)
+                menu(section)
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .accessibilityLabel(HelmA11y.moreActions)
-            // On hover, as a source list shows its accessories. Three dots
-            // parked at the edge of every heading is a row of controls where
-            // the eye is looking for a list of names.
-            .opacity(hovering ? 1 : 0)
+            .padding(.horizontal, 4)
+
+            // A section somebody just made is empty by definition, and an empty
+            // section drawn as nothing is a heading followed by a heading with
+            // no target between them. The card is still here; it just says so.
+            if section.modules.isEmpty {
+                Text(AppStr.dragModuleHere)
+                    .font(.system(size: 13))
+                    .foregroundStyle(HelmText.faint)
+                    .frame(maxWidth: .infinity, minHeight: 30)
+                    .background(card(top: true, bottom: true))
+            }
         }
-        .padding(.horizontal, 10)
-        .padding(.top, 10)
-        .padding(.bottom, 3)
+        .padding(.top, sectionGap)
+        .padding(.bottom, section.modules.isEmpty ? 0 : 5)
         .contentShape(Rectangle())
-        .onHover { hovering = $0 }
     }
 
-    private func module(_ descriptor: any ModuleDescriptor) -> some View {
-        HStack(spacing: 8) {
+    private func menu(_ section: SidebarLayout.Section) -> some View {
+        Menu {
+            Button(AppStr.renameSection) { rename(section) }
+            if section.seed != nil, section.name != nil {
+                Button(AppStr.useDefaultSectionName) {
+                    apply(layout.renaming(section.id, to: nil))
+                }
+            }
+            Button(AppStr.removeSection, role: .destructive) {
+                apply(layout.removingSection(section.id))
+            }
+            // Offered and refused rather than hidden: the last section holds
+            // every module, and an absent item explains nothing.
+            .disabled(layout.sections.count == 1)
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 11, weight: .medium))
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .foregroundStyle(Color.accentColor)
+        .accessibilityLabel(HelmA11y.moreActions)
+    }
+
+    // MARK: - A module
+
+    private func module(_ descriptor: any ModuleDescriptor, in sectionID: String) -> some View {
+        let first = isFirstInSection(sectionID)
+        return HStack(spacing: 10) {
+            // Nine rows that can be dragged, and until now nothing said so. The
+            // grip is the redesign's answer and it is also the only one that
+            // works before the pointer is already on the row.
+            Image(systemName: "line.3.horizontal")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(HelmText.faint)
+                .accessibilityHidden(true)
             HelmIconPlate(symbol: descriptor.moduleMetadata.sfSymbol,
-                          tint: descriptor.moduleTint.colour, size: 18,
+                          tint: descriptor.moduleTint.colour, size: 22,
                           active: host.isEnabled(descriptor))
-            // One line, as the system's own sidebar customisation is. A summary
-            // under every row turns a list of nine names into a page of prose
-            // and doubles the height of the thing being arranged — and the
-            // person arranging their own sidebar knows what their modules do.
-            // It stays as the tooltip, where a reminder belongs.
-            Text(descriptor.moduleMetadata.name)
-                .help(descriptor.moduleMetadata.summary)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(descriptor.moduleMetadata.name)
+                    .font(.system(size: 13))
+                Text(descriptor.moduleMetadata.summary)
+                    .font(.system(size: 11))
+                    .foregroundStyle(HelmText.quiet)
+                    .lineLimit(1)
+            }
             Spacer(minLength: 8)
             Toggle(descriptor.moduleMetadata.name, isOn: Binding(
                 get: { host.isEnabled(descriptor) },
@@ -254,28 +302,45 @@ private struct SidebarComposerRow: View {
             .toggleStyle(.switch)
             .labelsHidden()
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 5)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .frame(minHeight: 30)
         // Dimmed in place rather than sunk: sinking costs the position the
         // person chose, and they find out only when they switch it back on.
         .opacity(host.isEnabled(descriptor) ? 1 : 0.55)
-        // Inset at both ends. A rule that runs under the icon cuts the row in
-        // two, and one that runs to the container's edge belongs to the
-        // container rather than to the list inside it.
-        .overlay(alignment: .bottom) {
-            if !isLastInSection {
-                Rectangle().fill(HelmSurface.hairline)
-                    .frame(height: 1)
-                    .padding(.leading, 36)
-                    .padding(.trailing, 10)
+        .background(card(top: first, bottom: isLastInSection(sectionID)))
+        // Full bleed and half a point, which is the redesign's rule and also
+        // the one the system follows: measured across three System Settings
+        // lists, a separator is inset 10/10 from the *card* and never dodges
+        // the icon. Here the card's own edge supplies that inset.
+        .overlay(alignment: .top) {
+            if !first {
+                Rectangle().fill(HelmSurface.hairline).frame(height: 0.5)
             }
         }
     }
 
-    /// The last row of a section draws no rule: the next thing down is a
-    /// heading, which is its own separation.
-    private var isLastInSection: Bool {
-        guard case .module(let id, let sectionID) = row,
+    /// The section's card, rounded only where the section actually ends.
+    private func card(top: Bool, bottom: Bool) -> some View {
+        UnevenRoundedRectangle(
+            topLeadingRadius: top ? HelmSurface.cardRadius : 0,
+            bottomLeadingRadius: bottom ? HelmSurface.cardRadius : 0,
+            bottomTrailingRadius: bottom ? HelmSurface.cardRadius : 0,
+            topTrailingRadius: top ? HelmSurface.cardRadius : 0,
+            style: .continuous
+        )
+        .fill(HelmSurface.cardFill)
+    }
+
+    private func isFirstInSection(_ sectionID: String) -> Bool {
+        guard case .module(let id, _) = row,
+              let section = layout.sections.first(where: { $0.id == sectionID })
+        else { return true }
+        return section.modules.first == id
+    }
+
+    private func isLastInSection(_ sectionID: String) -> Bool {
+        guard case .module(let id, _) = row,
               let section = layout.sections.first(where: { $0.id == sectionID })
         else { return true }
         return section.modules.last == id
