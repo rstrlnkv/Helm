@@ -34,6 +34,7 @@ final class DocumentsNameTheTreeTests: XCTestCase {
         "QuartzCore": "likewise",
         "LoginItems.appex": "a macOS bundle Helm reads a pane's own name out of",
         "PrivacySecurity.searchTerms": "a key inside a macOS settings bundle, and the rule is about not trusting it",
+        "CAMediaTimingFunction": "Core Animation's curve, named where the documents explain why a spring cannot be handed to it",
     ]
 
     /// Names the documents carry **because** they are gone. An entry is a
