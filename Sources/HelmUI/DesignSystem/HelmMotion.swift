@@ -28,9 +28,17 @@ public enum HelmMotion {
     }
     private static let instant = Animation.linear(duration: 0.01)
 
+    /// How long `disclosure` takes, as a number.
+    ///
+    /// AppKit needs the figure and not the `Animation`: a table animating its
+    /// own row heights takes an `NSAnimationContext` duration, and the rows and
+    /// the block around them have to move on one clock. It was written twice —
+    /// which is the arrangement where one of them gets changed.
+    public static let disclosureSeconds: Double = 0.30
+
     /// Opening and closing measured-height sections. No overshoot by design.
     public static var disclosure: Animation {
-        reduced ? instant : .smooth(duration: 0.30)
+        reduced ? instant : .smooth(duration: disclosureSeconds)
     }
 
     /// Small state changes: reordering rows, toggling a filter, moving a
