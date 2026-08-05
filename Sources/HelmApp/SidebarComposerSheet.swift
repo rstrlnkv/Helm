@@ -25,6 +25,9 @@ struct SidebarComposerSheet: View {
     @State private var renaming: SidebarLayout.Section?
     @State private var draftName = ""
 
+    /// Everything the sheet draws that is not the list.
+    private static let chromeHeight: CGFloat = 196
+
     private var layout: SidebarLayout {
         _ = revision
         return SidebarLayoutStore.read(from: AppSettings.store,
@@ -95,7 +98,13 @@ struct SidebarComposerSheet: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
         }
-        .frame(width: 460, height: 560)
+        // Sized to the arrangement rather than to a number, up to a cap: at a
+        // fixed 560 the list was cut mid-row against the footer, which reads
+        // as broken rather than as scrollable. `tableHeight` is what the
+        // composer measured; the rest is this sheet's own chrome — title,
+        // note, two dividers, the actions row and the padding around them.
+        .frame(width: 460,
+               height: min(max(360, tableHeight + Self.chromeHeight), 620))
         .alert(AppStr.renameSection, isPresented: Binding(
             get: { renaming != nil },
             set: { if !$0 { renaming = nil } }

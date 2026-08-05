@@ -452,18 +452,18 @@ private struct MenuBarSettingsView: View {
 
     private var settingsForm: some View {
         Form {
-            // What Helm does on its own.
+            // What Helm does on its own, and which modules it has. One card:
+            // the arrangement was in a section of its own with no heading,
+            // which under a heading of its own reads as a stray card rather
+            // than as part of anything.
+            //
+            // The composing happens in a sheet. As a block it was the largest
+            // thing on this page by a distance and 10 pt wider than everything
+            // around it, because it was drawn as a section *header* to avoid a
+            // card inside a card.
             Section(AppStr.behaviour) {
                 Toggle(AppStr.launchAtLogin, isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, v in LoginItem.setEnabled(v) }
-            }
-
-            // Which modules there are, and how they are arranged. One row of
-            // the page's own width, and the composing happens in a sheet: as a
-            // block it was the largest thing here by a distance and 10 pt
-            // wider than everything around it, because it was drawn as a
-            // section *header* to avoid a card inside a card.
-            Section {
                 SidebarComposerRow(host: ModuleHost.shared, composing: $composing)
             }
 
