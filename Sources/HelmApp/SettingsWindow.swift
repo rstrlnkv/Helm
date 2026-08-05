@@ -104,7 +104,7 @@ final class SettingsSplitViewController: NSSplitViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        let sidebar = NSHostingController(rootView: SettingsSidebar(model: model))
+        let sidebar = NSHostingController(rootView: SettingsSidebar(model: model, host: model.host))
         // Own the top strip ourselves: with the automatic titlebar safe area the
         // list scrolls under the traffic lights and gets the system scroll-edge
         // fade; dropping the safe area and reserving a fixed strip in the view
@@ -140,6 +140,18 @@ final class SettingsSplitViewController: NSSplitViewController {
 
 private struct SettingsSidebar: View {
     @ObservedObject var model: SettingsModel
+    /// Observed, not reached through the model.
+    ///
+    /// The list filters by `isEnabled`, and switching a module off in Settings
+    /// calls `ModuleHost.setEnabled` directly — no `.helmModuleOrderChanged`,
+    /// which is the only thing this view was listening for. `model.host` is a
+    /// plain `let`, so nothing here heard the change and the row of a module
+    /// that had just been switched off stayed in the sidebar until something
+    /// else happened to invalidate the view.
+    ///
+    /// `isEnabled` reads the store rather than `live`, so this is not about
+    /// where the value comes from — it is about being redrawn at all.
+    @ObservedObject var host: ModuleHost
     /// Re-read on notification rather than observed: the value lives in
     /// `UserDefaults` through `AppSettings`, which SwiftUI cannot watch.
     @State private var style = AppSettings.sidebarStyle
