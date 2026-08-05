@@ -65,6 +65,23 @@ public struct IconShapePicker: View {
     /// carry a colour of its own.
     private var neutral: Bool { tintToken == "primary" }
 
+    /// The glyph with room after it, baked into the image.
+    ///
+    /// A pop-up button is an `NSMenuItem` drawn by AppKit, which lays out the
+    /// image and the title itself and ignores what a SwiftUI `Label` asks for
+    /// between them — padding on the `Text` changed nothing, and the closed
+    /// button read «○Кольцо». The space has to be part of the picture, so it
+    /// is drawn into a canvas six points wider with the glyph at the left.
+    private func spaced(_ image: NSImage) -> NSImage {
+        let gap: CGFloat = 6
+        let out = NSImage(size: NSSize(width: image.size.width + gap, height: image.size.height))
+        out.lockFocus()
+        image.draw(at: .zero, from: .zero, operation: .sourceOver, fraction: 1)
+        out.unlockFocus()
+        out.isTemplate = image.isTemplate
+        return out
+    }
+
     public var body: some View {
         Picker(title, selection: $selection) {
             ForEach(MenuBarIconStyle.allCases, id: \.rawValue) { style in
@@ -82,8 +99,8 @@ public struct IconShapePicker: View {
                 Label {
                     Text(style.label)
                 } icon: {
-                    HelmIconGlyph(image: MenuBarIcon.make(style: style, size: .small,
-                                                          tintToken: neutral ? nil : tintToken),
+                    HelmIconGlyph(image: spaced(MenuBarIcon.make(style: style, size: .small,
+                                                                 tintToken: neutral ? nil : tintToken)),
                                   neutral: neutral)
                 }
                 .tag(style.rawValue)
