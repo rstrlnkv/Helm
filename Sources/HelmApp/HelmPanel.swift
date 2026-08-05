@@ -252,7 +252,17 @@ struct HelmPanelContent: View {
     private func widgets(_ byID: [String: ModuleHost.Live]) -> [Widget] {
         let slots = layout.tabs.indices.contains(tabIndex) ? layout.tabs[tabIndex].widgets : []
         let placed: [Widget] = slots.compactMap { slot in
-            guard let live = byID[slot.widget] else { return nil }
+            guard let live = byID[slot.widget] else {
+                // A module that is switched off keeps its place and says so.
+                // Dropping the tile would take the arrangement apart and leave
+                // nobody able to say where the block went — and switching a
+                // module off is not a request to rearrange the panel.
+                guard let descriptor = ModuleRegistry.all.first(where: { $0.idRaw == slot.widget }),
+                      !ModuleHost.shared.isEnabled(descriptor) else { return nil }
+                return Widget(id: slot.widget,
+                              view: AnyView(DisabledModuleWidget(descriptor: descriptor)),
+                              size: slot.size)
+            }
             let offered = live.descriptor.panelWidgetSizes(live.vm)
             guard let size = PanelGrid.resolve(slot.size, offered: offered),
                   let view = live.descriptor.panelWidget(size, live.vm) else { return nil }
@@ -836,6 +846,37 @@ private struct PermissionsWidget: View {
                     .controlSize(.small)
                 }
             }
+        }
+    }
+}
+
+/// The tile of a module that is switched off.
+///
+/// It keeps its place: dropping it would take the arrangement apart and leave
+/// nobody able to say where the block went, and switching a module off is not
+/// a request to rearrange the panel. The plate is drawn inactive, and the one
+/// button is the way back.
+private struct DisabledModuleWidget: View {
+    let descriptor: any ModuleDescriptor
+
+    var body: some View {
+        HelmWidgetBody {
+            HStack(spacing: 8) {
+                HelmIconPlate(symbol: descriptor.moduleMetadata.sfSymbol,
+                              tint: descriptor.moduleTint.colour, size: 18, active: false)
+                Text(descriptor.moduleMetadata.shortName)
+                    .font(HelmText.rowTitle.weight(.medium))
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+            }
+            Text(AppStr.moduleIsOff)
+                .font(HelmText.rowDetail)
+                .foregroundStyle(HelmText.quiet)
+            Button(AppStr.turnOn) {
+                ModuleHost.shared.setEnabled(descriptor, true)
+                NotificationCenter.default.post(name: .helmModuleOrderChanged, object: nil)
+            }
+            .controlSize(.small)
         }
     }
 }
