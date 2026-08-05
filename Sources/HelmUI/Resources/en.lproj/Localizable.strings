@@ -672,3 +672,7 @@
 "Switched off — adding it turns it on" = "Switched off — adding it turns it on";
 "Everything is already on this tab." = "Everything is already on this tab.";
 "The permissions notice cannot be removed. It leaves when the grant is given." = "The permissions notice cannot be removed. It leaves when the grant is given.";
+"Main" = "Main";
+"New tab" = "New tab";
+"Close tab" = "Close tab";
+"Tab" = "Tab";

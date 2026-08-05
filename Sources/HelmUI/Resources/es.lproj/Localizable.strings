@@ -672,3 +672,7 @@
 "Switched off — adding it turns it on" = "Desactivado: al añadirlo se activa";
 "Everything is already on this tab." = "Todo está ya en esta pestaña.";
 "The permissions notice cannot be removed. It leaves when the grant is given." = "Este aviso no se puede quitar. Desaparece cuando se concede el permiso.";
+"Main" = "Principal";
+"New tab" = "Pestaña nueva";
+"Close tab" = "Cerrar la pestaña";
+"Tab" = "Pestaña";

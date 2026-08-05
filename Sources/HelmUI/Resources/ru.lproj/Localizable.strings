@@ -672,3 +672,7 @@
 "Switched off — adding it turns it on" = "Выключен: поставьте, и он включится";
 "Everything is already on this tab." = "Всё уже на этой вкладке.";
 "The permissions notice cannot be removed. It leaves when the grant is given." = "Это извещение нельзя убрать. Оно уйдёт, когда разрешение будет выдано.";
+"Main" = "Главная";
+"New tab" = "Новая вкладка";
+"Close tab" = "Закрыть вкладку";
+"Tab" = "Вкладка";

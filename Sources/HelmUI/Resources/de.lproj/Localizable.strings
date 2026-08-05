@@ -672,3 +672,7 @@
 "Switched off — adding it turns it on" = "Aus — beim Hinzufügen wird es eingeschaltet";
 "Everything is already on this tab." = "Alles ist bereits auf diesem Tab.";
 "The permissions notice cannot be removed. It leaves when the grant is given." = "Dieser Hinweis lässt sich nicht entfernen. Er verschwindet mit der Berechtigung.";
+"Main" = "Haupt";
+"New tab" = "Neuer Tab";
+"Close tab" = "Tab schließen";
+"Tab" = "Tab";

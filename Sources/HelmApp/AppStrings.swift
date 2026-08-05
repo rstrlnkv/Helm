@@ -298,6 +298,15 @@ enum AppStr {
         L("Only a full-width widget can grow downwards.")
     }
     static var addWidget: String { L("Add widget") }
+    static var newTab: String { L("New tab") }
+    static var closeTab: String { L("Close tab") }
+    static var tabLabel: String { L("Tab") }
+    /// The name of the tab Helm seeds, read in the reader's language rather
+    /// than stored in whichever language it was created in.
+    static var mainTab: String { L("Main") }
+    static func tabTitle(_ tab: PanelLayout.Tab) -> String {
+        tab.name ?? (tab.seed == "main" ? mainTab : tabLabel)
+    }
     static var moduleIsOff: String { L("Module is off") }
     static var addingTurnsItOn: String { L("Switched off — adding it turns it on") }
     static var everythingIsHere: String { L("Everything is already on this tab.") }

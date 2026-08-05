@@ -672,3 +672,7 @@
 "Switched off — adding it turns it on" = "Desligado — ao adicionar, liga";
 "Everything is already on this tab." = "Tudo já está nesta aba.";
 "The permissions notice cannot be removed. It leaves when the grant is given." = "Este aviso não pode ser removido. Ele sai quando a permissão for concedida.";
+"Main" = "Principal";
+"New tab" = "Nova aba";
+"Close tab" = "Fechar a aba";
+"Tab" = "Aba";
