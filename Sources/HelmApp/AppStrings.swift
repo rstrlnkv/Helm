@@ -223,6 +223,26 @@ enum AppStr {
     static var sidebarSectionsNote: String {
         L("Drag to reorder. A module can go into any section, and a section you remove hands its modules to its neighbour.")
     }
+    /// What the sheet is for, said once at the top of it. The block on the
+    /// page carried this note in its edit mode, where it was only ever read by
+    /// somebody who had already worked out what to do.
+    static var sidebarComposerNote: String { sidebarSectionsNote }
+
+    /// What is arranged, without opening anything. Counted from the
+    /// arrangement rather than from the registry: a section somebody emptied
+    /// is still a section they made.
+    static func sidebarSummary(modules: Int, sections: Int) -> String {
+        L("\(modules) modules in \(sections) sections",
+          [.ru: "\(modules) " + Plural.russian(modules, "модуль", "модуля", "модулей")
+                + " в " + "\(sections) " + Plural.russian(sections, "разделе", "разделах", "разделах"),
+           .es: "\(modules) módulos en \(sections) secciones",
+           .fr: "\(modules) modules dans \(sections) sections",
+           .de: "\(modules) Module in \(sections) Abschnitten",
+           .ja: "\(sections) 個のセクションに \(modules) 個のモジュール",
+           .zh: "\(sections) 个分组中的 \(modules) 个模块",
+           .pt: "\(modules) módulos em \(sections) seções"])
+    }
+
     static var moduleIcons: String { L("Module icons") }
     static var moduleIconsColour: String { L("Colour") }
     static var moduleIconsPlain: String { L("Plain") }

@@ -391,6 +391,7 @@ private struct ModuleDetailView: View {
 }
 
 private struct MenuBarSettingsView: View {
+    @State private var composing = false
     @State private var style: String = AppSettings.menuBarIconStyle
     @State private var size: String = AppSettings.menuBarIconSize
     @State private var launchAtLogin: Bool = LoginItem.isEnabled
@@ -457,9 +458,14 @@ private struct MenuBarSettingsView: View {
                     .onChange(of: launchAtLogin) { _, v in LoginItem.setEnabled(v) }
             }
 
-            // Which modules there are, and how they are arranged. Not a
-            // setting — a composition — so it keeps its own block.
-            SidebarSettingsSection(host: ModuleHost.shared)
+            // Which modules there are, and how they are arranged. One row of
+            // the page's own width, and the composing happens in a sheet: as a
+            // block it was the largest thing here by a distance and 10 pt
+            // wider than everything around it, because it was drawn as a
+            // section *header* to avoid a card inside a card.
+            Section {
+                SidebarComposerRow(host: ModuleHost.shared, composing: $composing)
+            }
 
             // Everything that decides how Helm looks, in one list. It was
             // three: the theme and the module icons under «General», the
@@ -541,6 +547,9 @@ private struct MenuBarSettingsView: View {
                     .foregroundStyle(HelmText.quiet)
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+        .sheet(isPresented: $composing) {
+            SidebarComposerSheet(host: ModuleHost.shared)
         }
         .formStyle(.grouped)
         // A grouped Form caps its content at 704 pt and centres it, so past a
