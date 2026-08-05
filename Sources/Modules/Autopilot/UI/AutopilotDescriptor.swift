@@ -21,7 +21,18 @@ import SwiftUI
         AutopilotEngine(store: store)
     }
 
-    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { .utility }
+    /// Not a utility any more: how many folders it watches and what it did
+    /// today are figures worth a glance, which is the whole test for whether a
+    /// module belongs in the panel rather than behind a disclosure in it.
+    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? {
+        MenuBarContribution(panelTile: AnyView(AutopilotWidget(vm: vm, size: .wide)))
+    }
+
+    /// All three. 1×1 is how many folders; 2×1 adds what happened today; 2×N
+    /// says why that number is what it is, by naming the rules that fired.
+    public func panelWidget(_ size: PanelWidgetSize, _ vm: ModuleViewModel) -> AnyView? {
+        AnyView(AutopilotWidget(vm: vm, size: size))
+    }
 
     public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
         AnyView(AutopilotSettingsPage(vm: vm))
