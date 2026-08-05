@@ -158,6 +158,24 @@ extension Notification.Name {
         set { store.set(newValue?.timeIntervalSince1970 ?? 0, for: "scanBudgetDay") }
     }
 
+    /// How wide the panel is drawn, in points.
+    ///
+    /// Not free-form: 300 is what Helm has always shipped, and the other two
+    /// are where a column is actually bought — `PanelGrid` gives 2 columns at
+    /// 300 and 400 and 3 at 480, so a slider would spend most of its travel
+    /// changing nothing but the tile width.
+    static var panelWidth: CGFloat {
+        get {
+            let stored = store.double("panelWidth", default: 0)
+            return panelWidths.contains(stored) ? stored : 300
+        }
+        set {
+            store.set(newValue, for: "panelWidth")
+            NotificationCenter.default.post(name: .helmPanelWidthChanged, object: nil)
+        }
+    }
+    static let panelWidths: [CGFloat] = [300, 400, 480]
+
     static var menuBarIconStyle: String {
         get { store.string("menuBarIconStyle", default: "ring") }
         set {
@@ -168,21 +186,7 @@ extension Notification.Name {
 
     /// Optional shortcuts in the panel footer; both actions are always available
     /// from the status item's right-click menu, so these default to off.
-    static var showSettingsButton: Bool {
-        get { store.bool("showSettingsButton", default: false) }
-        set {
-            store.set(newValue, for: "showSettingsButton")
-            NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
-        }
-    }
 
-    static var showQuitButton: Bool {
-        get { store.bool("showQuitButton", default: false) }
-        set {
-            store.set(newValue, for: "showQuitButton")
-            NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
-        }
-    }
 
     static var menuBarIconSize: String {
         get { store.string("menuBarIconSize", default: "small") }

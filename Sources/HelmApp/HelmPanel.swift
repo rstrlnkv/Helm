@@ -27,7 +27,10 @@ private final class KeyablePanel: NSPanel {
 }
 
 /// One width for the strip window and the card content inside it.
-private let helmPanelWidth: CGFloat = 300
+///
+/// Chosen in the panel's own setup rather than fixed, because the column count
+/// follows from it: 300 and 400 both give two columns and 480 gives three.
+@MainActor private var helmPanelWidth: CGFloat { AppSettings.panelWidth }
 /// Room on each side of the card for the glass to cast into.
 ///
 /// A window shadow is drawn by the window server *outside* the frame, so the
@@ -89,6 +92,7 @@ private let helmPanelShadowMargin: CGFloat = 28
         ) { [weak self] _ in
             Task { @MainActor in self?.hide() }
         }
+        observeWidth()
     }
 
     var isVisible: Bool { panel.isVisible }
@@ -101,15 +105,7 @@ private let helmPanelShadowMargin: CGFloat = 28
         guard let buttonWindow = statusButton.window else { return }
         statusButtonScreenFrame = buttonWindow.convertToScreen(statusButton.frame)
         anchorScreen = buttonWindow.screen ?? NSScreen.main
-        let visible = anchorScreen?.visibleFrame ?? .zero
-        let margin: CGFloat = 8
-        let width = helmPanelWidth + helmPanelShadowMargin * 2
-        var x = statusButtonScreenFrame.midX - width / 2
-        x = min(max(x, visible.minX + margin), visible.maxX - width - margin)
-        let top = statusButtonScreenFrame.minY - 4
-        let bottom = visible.minY + margin
-        panel.setFrame(NSRect(x: x, y: bottom, width: width, height: max(top - bottom, 120)),
-                       display: true, animate: false)
+        reframe()
         panel.orderFrontRegardless()
         // Key focus (no app activation) is what makes SwiftUI animations tick.
         panel.makeKey()
@@ -121,10 +117,40 @@ private let helmPanelShadowMargin: CGFloat = 28
         panel.orderOut(nil)
     }
 
+    /// The strip, sized and clamped to the screen the panel was opened on.
+    ///
+    /// Pulled out of `toggle` when the width became a setting: changing it
+    /// while the panel is open has to move the window, and re-deriving the
+    /// frame from the anchor is the only way that stays centred on the status
+    /// item rather than growing off one edge.
+    private func reframe() {
+        let visible = anchorScreen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? .zero
+        let margin: CGFloat = 8
+        let width = helmPanelWidth + helmPanelShadowMargin * 2
+        var x = statusButtonScreenFrame.midX - width / 2
+        x = min(max(x, visible.minX + margin), visible.maxX - width - margin)
+        let top = statusButtonScreenFrame.minY - 4
+        let bottom = visible.minY + margin
+        panel.setFrame(NSRect(x: x, y: bottom, width: width, height: max(top - bottom, 120)),
+                       display: true, animate: false)
+    }
+
 
 
     /// Close the panel when the user clicks outside it (but not on the status
     /// item itself — that click re-toggles through the normal path).
+    /// Kept for the lifetime of the panel: the width can change while it is
+    /// open, from its own setup bar.
+    private func observeWidth() {
+        NotificationCenter.default.addObserver(forName: .helmPanelWidthChanged,
+                                               object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, self.panel.isVisible else { return }
+                self.reframe()
+            }
+        }
+    }
+
     private func installDismissMonitor() {
         removeDismissMonitor()
         dismissMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
@@ -146,30 +172,251 @@ private let helmPanelShadowMargin: CGFloat = 28
 extension Notification.Name {
     /// Posted when the transparent area under the card is clicked.
     static let helmPanelDismissRequested = Notification.Name("helmPanelDismissRequested")
+    /// Posted when the panel's width changes, so the window follows the card.
+    static let helmPanelWidthChanged = Notification.Name("helmPanelWidthChanged")
 }
 
 private struct HelmPanelContent: View {
     @ObservedObject var host: ModuleHost
     @State private var utilitiesExpanded = false
-    @State private var showSettingsButton = AppSettings.showSettingsButton
-    @State private var showQuitButton = AppSettings.showQuitButton
-    /// Bumped when the user reorders modules so the panel rebuilds its rows.
+    /// The panel is being arranged rather than read.
+    @State private var editing = false
+    @State private var layout = PanelLayout(tabs: [])
+    /// The one refusal the layout makes, shown where the attempt was made.
+    @State private var refusal: String?
+    @State private var width = AppSettings.panelWidth
+    /// Bumped when the arrangement changes so the panel rebuilds its rows.
     @State private var orderTick = 0
 
-    /// Optional shortcuts; both actions also live in the status item's
-    /// right-click menu, so they stay off by default. Rendered as a card row so
-    /// they read as part of the panel rather than loose text under it.
-    private var footer: some View {
-        HStack(spacing: 8) {
-            if showSettingsButton {
-                footerButton(AppStr.settingsPane, "gearshape") {
-                    NotificationCenter.default.post(name: .helmOpenSettings, object: nil)
+    /// One widget, at the size it ended up with.
+    private struct Widget: Identifiable {
+        let id: String
+        let view: AnyView
+        let size: PanelWidgetSize
+        /// A module that is switched off keeps its place and says so.
+        let off: Bool
+    }
+
+    // MARK: - What the panel can draw right now
+
+    /// Modules that offer a widget, and the ones whose UI lives in Settings.
+    /// One pass — building a widget builds a view, so each module is asked once.
+    private var candidates: (byID: [String: ModuleHost.Live], order: [String],
+                             utilities: [ModuleHost.Live]) {
+        var byID: [String: ModuleHost.Live] = [:]
+        var order: [String] = []
+        var utilities: [ModuleHost.Live] = []
+        for live in host.enabledModules {
+            guard let contribution = live.descriptor.menuBar(live.vm) else { continue }
+            if contribution.isUtility { utilities.append(live); continue }
+            byID[live.descriptor.idRaw] = live
+            order.append(live.descriptor.idRaw)
+        }
+        return (byID, order, utilities)
+    }
+
+    /// The stored arrangement decides what is drawn and in what order; the live
+    /// modules decide what *can* be drawn.
+    private func widgets(_ byID: [String: ModuleHost.Live]) -> [Widget] {
+        layout.allSlots.compactMap { slot in
+            guard let live = byID[slot.widget] else { return nil }
+            let offered = live.descriptor.panelWidgetSizes(live.vm)
+            guard let size = PanelGrid.resolve(slot.size, offered: offered),
+                  let view = live.descriptor.panelWidget(size, live.vm) else { return nil }
+            return Widget(id: slot.widget, view: view, size: size, off: false)
+        }
+    }
+
+    private func reload() {
+        layout = PanelLayoutStore.read(from: AppSettings.store, offered: candidates.order)
+    }
+
+    private func apply(_ next: PanelLayout) {
+        layout = next
+        // On every change, never on «Done». There is no Done to wait for: the
+        // panel closes when it loses focus, which is most of the ways out of it.
+        PanelLayoutStore.write(next, to: AppSettings.store)
+    }
+
+    // MARK: - The grid
+
+    /// Rows of widgets, packed by `PanelGrid`.
+    ///
+    /// SwiftUI has no column span, so a full-width widget is a row of its own
+    /// and compact ones share. `LazyVGrid` cannot express that at all, which is
+    /// why this is rows of `HStack` rather than a grid view.
+    @ViewBuilder
+    private func grid(_ items: [Widget]) -> some View {
+        let columns = PanelGrid.columns(for: width)
+        let rows = PanelGrid.rows(sizes: items.map(\.size), columns: columns)
+        ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+            HStack(alignment: .top, spacing: PanelGrid.gap) {
+                ForEach(row, id: \.self) { index in
+                    cell(items[index], among: items)
+                }
+                // A part-filled last row keeps its tiles their own width
+                // instead of stretching them across the gap.
+                if row.count < columns, !row.contains(where: { items[$0].size.isFullWidth }) {
+                    ForEach(row.count..<columns, id: \.self) { _ in
+                        Color.clear.frame(maxWidth: .infinity)
+                    }
                 }
             }
-            if showSettingsButton && showQuitButton { Spacer() }
-            if showQuitButton {
-                footerButton(AppStr.quit, "power") { NSApp.terminate(nil) }
+        }
+    }
+
+    @ViewBuilder
+    private func cell(_ widget: Widget, among items: [Widget]) -> some View {
+        widget.view
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .modifier(EditChrome(active: editing, widget: widget.id, size: widget.size,
+                                 sizes: offeredSizes(widget.id),
+                                 refused: { layout.refusal(growing: widget.id, to: $0) != nil },
+                                 resize: { size in
+                                     if let why = layout.refusal(growing: widget.id, to: size) {
+                                         refusal = message(for: why)
+                                     } else {
+                                         refusal = nil
+                                         apply(layout.resizing(widget.id, to: size))
+                                     }
+                                 },
+                                 remove: { apply(layout.removing(widget.id)) },
+                                 move: { offset in nudge(widget.id, by: offset, among: items) }))
+            .modifier(DragToReorder(active: editing, widget: widget.id) { dropped in
+                guard let target = layout.placement(of: widget.id) else { return }
+                apply(layout.moving(dropped, toTab: target.tab, at: target.index))
+            })
+    }
+
+    private func offeredSizes(_ id: String) -> [PanelWidgetSize] {
+        guard let live = candidates.byID[id] else { return [] }
+        let offered = live.descriptor.panelWidgetSizes(live.vm)
+        return PanelWidgetSize.allCases.filter { offered.contains($0) }
+    }
+
+    private func message(for refusal: PanelLayout.Refusal) -> String {
+        switch refusal {
+        case .tallNeedsFullWidth: AppStr.tallNeedsFullWidth
+        }
+    }
+
+    /// Keyboard reordering. The panel is reachable from the keyboard and the
+    /// edit mode must not be the one place that is not.
+    private func nudge(_ id: String, by offset: Int, among items: [Widget]) {
+        guard let at = layout.placement(of: id) else { return }
+        apply(layout.moving(id, toTab: at.tab, at: max(0, at.index + offset)))
+    }
+
+    // MARK: - Chrome
+
+    /// The bar above the grid while the panel is being arranged.
+    private var editBar: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Text(AppStr.panelSetup).font(.subheadline.weight(.semibold))
+                Spacer(minLength: 8)
+                Button(AppStr.done) { editing = false; refusal = nil }
+                    .controlSize(.small)
+                    .buttonStyle(.borderedProminent)
             }
+            Picker(AppStr.panelWidth, selection: $width) {
+                ForEach(AppSettings.panelWidths, id: \.self) { option in
+                    Text("\(Int(option))").tag(option)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .onChange(of: width) { _, chosen in AppSettings.panelWidth = chosen }
+            Text(AppStr.panelGeometry(columns: PanelGrid.columns(for: width),
+                                      tile: Int(PanelGrid.tileWidth(for: width).rounded())))
+                .font(HelmText.rowDetail)
+                .foregroundStyle(HelmText.quiet)
+            if let refusal {
+                Text(refusal)
+                    .font(HelmText.rowDetail)
+                    .foregroundStyle(HelmSignal.warning)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .helmPanelCard()
+    }
+
+    /// Everything not on this tab, as ghosts to press.
+    @ViewBuilder
+    private func gallery(_ byID: [String: ModuleHost.Live]) -> some View {
+        let placed = Set(layout.allSlots.map(\.widget))
+        let rest = candidates.order.filter { !placed.contains($0) }
+        VStack(alignment: .leading, spacing: 6) {
+            Text(AppStr.addWidget)
+                .font(HelmText.rowDetail)
+                .foregroundStyle(HelmText.quiet)
+            if rest.isEmpty {
+                Text(AppStr.everythingIsHere)
+                    .font(HelmText.rowDetail)
+                    .foregroundStyle(HelmText.faint)
+            } else {
+                let columns = PanelGrid.columns(for: width)
+                ForEach(Array(stride(from: 0, to: rest.count, by: columns)), id: \.self) { start in
+                    HStack(spacing: PanelGrid.gap) {
+                        ForEach(rest[start..<min(start + columns, rest.count)], id: \.self) { id in
+                            ghost(id, byID[id])
+                        }
+                        ForEach(0..<max(0, columns - (min(start + columns, rest.count) - start)),
+                                id: \.self) { _ in Color.clear.frame(maxWidth: .infinity) }
+                    }
+                }
+            }
+        }
+        .helmPanelCard()
+    }
+
+    private func ghost(_ id: String, _ live: ModuleHost.Live?) -> some View {
+        Button {
+            apply(layout.adding(id, toTab: 0))
+        } label: {
+            VStack(spacing: 4) {
+                if let live {
+                    HelmIconPlate(symbol: live.descriptor.moduleMetadata.sfSymbol,
+                                  tint: live.descriptor.moduleTint.colour, size: 20)
+                    Text(live.descriptor.moduleMetadata.shortName)
+                        .font(HelmText.rowDetail)
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: 56)
+            .background(RoundedRectangle(cornerRadius: HelmSurface.cardRadius, style: .continuous)
+                .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                .foregroundStyle(HelmText.faint))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Not an option any more.
+    ///
+    /// `showSettingsButton` and `showQuitButton` both defaulted to false, which
+    /// is how a clean install ended up with no way into settings from the panel
+    /// it was given — and no way to find the switch that would have added one.
+    private var footer: some View {
+        HStack(spacing: 8) {
+            footerButton(AppStr.settingsPane, "gearshape") {
+                NotificationCenter.default.post(name: .helmOpenSettings, object: nil)
+            }
+            Spacer(minLength: 8)
+            footerButton(editing ? AppStr.done : AppStr.configurePanel,
+                         editing ? "checkmark" : "square.grid.2x2") {
+                withAnimation(HelmMotion.interface) { editing.toggle() }
+                refusal = nil
+            }
+            Spacer(minLength: 8)
+            Button { NSApp.terminate(nil) } label: {
+                Image(systemName: "power")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(HelmText.quiet)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(AppStr.quit)
         }
         .helmPanelCard()
     }
@@ -188,82 +435,9 @@ private struct HelmPanelContent: View {
         .buttonStyle(.plain)
     }
 
-    /// One widget, at the size it ended up with.
-    private struct Widget {
-        let view: AnyView
-        let size: PanelWidgetSize
-    }
-
-    /// Modules split by how they present in the panel: widgets stay visible,
-    /// utilities collapse behind one row so the panel stays compact. One pass
-    /// — building a widget builds a view, so each module is asked once.
-    ///
-    /// Every widget is `wide` today, because that is the one size a module
-    /// offers until it writes the others: the grid below is therefore exactly
-    /// the stack of full-width tiles this panel has always been. The
-    /// arithmetic is real from this commit, and the arrangement that will use
-    /// it is not stored yet.
-    private var split: (widgets: [Widget], utilities: [ModuleHost.Live]) {
-        var buildable: [String: ModuleHost.Live] = [:]
-        var order: [String] = []
-        var utilities: [ModuleHost.Live] = []
-        for live in host.enabledModules {
-            guard let contribution = live.descriptor.menuBar(live.vm) else { continue }
-            if contribution.isUtility {
-                utilities.append(live)
-                continue
-            }
-            buildable[live.descriptor.idRaw] = live
-            order.append(live.descriptor.idRaw)
-        }
-
-        // The stored arrangement decides what is drawn and in what order; the
-        // live modules decide what *can* be drawn. A slot this build cannot
-        // build — a module switched off, or one a downgrade has taken away —
-        // is skipped here rather than dropped from the layout, so the panel
-        // fills back in when it comes back.
-        let layout = PanelLayoutStore.read(from: AppSettings.store, offered: order)
-        var widgets: [Widget] = []
-        for slot in layout.allSlots {
-            guard let live = buildable[slot.widget] else { continue }
-            let offered = live.descriptor.panelWidgetSizes(live.vm)
-            guard let size = PanelGrid.resolve(slot.size, offered: offered),
-                  let view = live.descriptor.panelWidget(size, live.vm) else { continue }
-            widgets.append(Widget(view: view, size: size))
-        }
-        return (widgets, utilities)
-    }
-
-    /// The widgets as rows, packed by `PanelGrid`.
-    ///
-    /// SwiftUI has no column span, so a full-width widget is a row of its own
-    /// and compact ones share. `LazyVGrid` cannot express that at all, which is
-    /// why this is rows of `HStack` rather than a grid view.
-    @ViewBuilder
-    private func grid(_ widgets: [Widget]) -> some View {
-        let columns = PanelGrid.columns(for: helmPanelWidth)
-        let rows = PanelGrid.rows(sizes: widgets.map(\.size), columns: columns)
-        ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-            HStack(alignment: .top, spacing: PanelGrid.gap) {
-                ForEach(row, id: \.self) { index in
-                    widgets[index].view
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
-                }
-                // A part-filled last row keeps its tiles their own width
-                // instead of stretching them across the gap.
-                if row.count < columns, !row.contains(where: { widgets[$0].size.isFullWidth }) {
-                    ForEach(row.count..<columns, id: \.self) { _ in
-                        Color.clear.frame(maxWidth: .infinity)
-                    }
-                }
-            }
-        }
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             card
-                .id(orderTick)
             // Transparent filler: the window spans a strip, so a click below the
             // card should dismiss (a menu behaves the same way).
             Color.clear
@@ -275,37 +449,41 @@ private struct HelmPanelContent: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .onReceive(NotificationCenter.default.publisher(for: .helmModuleOrderChanged)) { _ in
             orderTick &+= 1
+            reload()
         }
     }
 
     private var card: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if host.enabledModules.isEmpty {
+        let parts = candidates
+        let items = widgets(parts.byID)
+        return VStack(alignment: .leading, spacing: 8) {
+            if parts.order.isEmpty && items.isEmpty && !editing {
                 VStack(spacing: 8) {
                     Image(systemName: "square.grid.2x2")
                         .font(.system(size: 30))
                         .foregroundStyle(HelmText.quiet)
                     Text(AppStr.noModules).font(.headline)
                     Text(AppStr.noModulesHint)
-                        .font(.caption).foregroundStyle(HelmText.quiet)
+                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                         .multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
             } else {
-                let (widgets, utilities) = split
-                grid(widgets)
-                if !utilities.isEmpty {
-                    UtilitiesSection(modules: utilities, expanded: $utilitiesExpanded)
+                if editing { editBar }
+                grid(items)
+                if editing { gallery(parts.byID) }
+                if !parts.utilities.isEmpty {
+                    UtilitiesSection(modules: parts.utilities, expanded: $utilitiesExpanded)
                 }
-                if showSettingsButton || showQuitButton { footer }
             }
+            footer
         }
         .padding(12)
-        .frame(width: helmPanelWidth)
-        .onReceive(NotificationCenter.default.publisher(for: .helmMenuBarStyleChanged)) { _ in
-            showSettingsButton = AppSettings.showSettingsButton
-            showQuitButton = AppSettings.showQuitButton
+        .frame(width: width)
+        .onAppear { reload() }
+        .onReceive(NotificationCenter.default.publisher(for: .helmPanelWidthChanged)) { _ in
+            width = AppSettings.panelWidth
         }
         // Liquid Glass, and no border of our own: glass supplies its specular
         // edge, and a hand-drawn hairline on top of it doubles the line. 26 pt
@@ -323,6 +501,97 @@ private struct HelmPanelContent: View {
         // sizes momentarily disagree, the slack stays at the transparent bottom
         // instead of the default centering, which read as the card dropping.
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+}
+
+/// What a widget grows while the panel is being arranged: a dashed frame, a
+/// way out, and its three proportions.
+///
+/// A modifier rather than a wrapper view so the module's own tile keeps its
+/// place in the grid — anything that puts a container around it changes how the
+/// row measures.
+private struct EditChrome: ViewModifier {
+    let active: Bool
+    let widget: String
+    let size: PanelWidgetSize
+    let sizes: [PanelWidgetSize]
+    let refused: (PanelWidgetSize) -> Bool
+    let resize: (PanelWidgetSize) -> Void
+    let remove: () -> Void
+    let move: (Int) -> Void
+
+    func body(content: Content) -> some View {
+        if !active { content } else {
+            content
+                .overlay {
+                    RoundedRectangle(cornerRadius: HelmSurface.cardRadius, style: .continuous)
+                        .strokeBorder(Color.accentColor,
+                                      style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                }
+                .overlay(alignment: .topLeading) {
+                    Button(action: remove) {
+                        Image(systemName: "minus")
+                            .font(.system(size: 9, weight: .black))
+                            .foregroundStyle(.white)
+                            .frame(width: 17, height: 17)
+                            .background(Circle().fill(HelmSignal.danger))
+                    }
+                    .buttonStyle(.plain)
+                    .offset(x: -6, y: -6)
+                    .accessibilityLabel(AppStr.removeWidget)
+                }
+                .overlay(alignment: .bottomTrailing) {
+                    HStack(spacing: 2) {
+                        ForEach(sizes, id: \.self) { option in
+                            Button { resize(option) } label: {
+                                Text(option.label)
+                                    .font(.system(size: 9, weight: .semibold))
+                                    .foregroundStyle(option == size ? Color.white
+                                                     : refused(option) ? HelmText.faint : HelmText.quiet)
+                                    .padding(.horizontal, 5).padding(.vertical, 3)
+                                    .background(RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                        .fill(option == size ? Color.accentColor : HelmSurface.wellFill))
+                            }
+                            .buttonStyle(.plain)
+                            .help(refused(option) ? AppStr.tallNeedsFullWidth : option.label)
+                        }
+                    }
+                    .padding(4)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityLabel(AppStr.widgetSize)
+                }
+                // Focusable and movable by arrow keys, so the arrangement is
+                // not the one part of the panel a keyboard cannot reach.
+                .focusable()
+                .onMoveCommand { direction in
+                    switch direction {
+                    case .left, .up: move(-1)
+                    case .right, .down: move(1)
+                    default: break
+                    }
+                }
+        }
+    }
+}
+
+/// Reordering by dragging. Off unless the panel is being arranged: a tile that
+/// lifts under a pointer that meant to press a button is an arrangement nobody
+/// asked to change, and there is no undo here.
+private struct DragToReorder: ViewModifier {
+    let active: Bool
+    let widget: String
+    let dropped: (String) -> Void
+
+    func body(content: Content) -> some View {
+        if !active { content } else {
+            content
+                .draggable(widget)
+                .dropDestination(for: String.self) { items, _ in
+                    guard let first = items.first, first != widget else { return false }
+                    dropped(first)
+                    return true
+                }
+        }
     }
 }
 

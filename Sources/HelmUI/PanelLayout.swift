@@ -106,4 +106,77 @@ public struct PanelLayout: Equatable, Codable, Sendable {
         tabs[0].widgets.append(contentsOf: fresh.map { Slot(widget: $0, size: .wide) })
         return PanelLayout(tabs: tabs)
     }
+
+    // MARK: - Rearranging
+
+    /// Where a widget is, if it is anywhere.
+    public func placement(of widget: String) -> (tab: Int, index: Int)? {
+        for (t, tab) in tabs.enumerated() {
+            if let i = tab.widgets.firstIndex(where: { $0.widget == widget }) { return (t, i) }
+        }
+        return nil
+    }
+
+    public func size(of widget: String) -> PanelWidgetSize? {
+        placement(of: widget).map { tabs[$0.tab].widgets[$0.index].size }
+    }
+
+    /// Moves a widget to `index` within `tab`.
+    ///
+    /// Removed from wherever it was *first*, so a move inside one tab is the
+    /// same call as a move between two and neither can leave a copy behind —
+    /// the mistake the sidebar's own move was written to avoid.
+    public func moving(_ widget: String, toTab tab: Int, at index: Int) -> PanelLayout {
+        guard let from = placement(of: widget), tabs.indices.contains(tab) else { return self }
+        var copy = self
+        let slot = copy.tabs[from.tab].widgets.remove(at: from.index)
+        let bound = max(0, min(index, copy.tabs[tab].widgets.count))
+        copy.tabs[tab].widgets.insert(slot, at: bound)
+        return copy
+    }
+
+    /// Why a widget cannot take a size, or nil if it can.
+    ///
+    /// **The refusal lives here rather than in a disabled button.** A greyed
+    /// control says «not this»; a refusal can say what to do instead, and this
+    /// one has something to say: go through `wide` first. Two steps, both of
+    /// which show what they did.
+    public func refusal(growing widget: String, to size: PanelWidgetSize) -> Refusal? {
+        guard let current = self.size(of: widget) else { return nil }
+        if size == .tall, current == .compact { return .tallNeedsFullWidth }
+        return nil
+    }
+
+    public enum Refusal: Equatable, Sendable {
+        /// Only a full-width widget may grow downwards: a tall narrow one opens
+        /// a hole beside itself that nothing fills without masonry.
+        case tallNeedsFullWidth
+    }
+
+    /// Refused sizes leave the layout untouched — the caller asks `refusal`
+    /// first and says why, rather than watching nothing happen.
+    public func resizing(_ widget: String, to size: PanelWidgetSize) -> PanelLayout {
+        guard let at = placement(of: widget), refusal(growing: widget, to: size) == nil
+        else { return self }
+        var copy = self
+        copy.tabs[at.tab].widgets[at.index].size = size
+        return copy
+    }
+
+    public func removing(_ widget: String) -> PanelLayout {
+        guard let at = placement(of: widget) else { return self }
+        var copy = self
+        copy.tabs[at.tab].widgets.remove(at: at.index)
+        return copy
+    }
+
+    /// Adds a widget to the end of a tab, at `wide`. Never twice: a widget
+    /// already in the panel is moved rather than copied.
+    public func adding(_ widget: String, toTab tab: Int) -> PanelLayout {
+        guard tabs.indices.contains(tab) else { return self }
+        let copy = removing(widget)
+        var next = copy
+        next.tabs[tab].widgets.append(Slot(widget: widget, size: .wide))
+        return next
+    }
 }

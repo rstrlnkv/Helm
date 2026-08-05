@@ -6,7 +6,12 @@ import HelmUI
 /// breaks the invariant.
 @MainActor
 enum PanelLayoutStore {
-    static let key = "panelLayout"
+    /// **Not `panelLayout`.** That key is in `ObsoleteDefaults.retired` — a
+    /// grid the app had once and rolled back — so it is deleted at every launch
+    /// and a layout stored under it would live exactly until the next start.
+    /// The name also carried a different format, and a value left on somebody's
+    /// disk would decode as nothing at all.
+    static let key = "panelWidgets"
 
     /// Always reconciled, never trusted: the bytes were written by a build that
     /// is not necessarily this one, so a module that arrived with this update
