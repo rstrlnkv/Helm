@@ -213,11 +213,22 @@ public enum MenuBarIcon {
     /// and runs anti-clockwise is not wrong by a little — it is a clock going
     /// backwards — so the orientation is established here rather than trusted.
     static func perimeter(of path: NSBezierPath) -> [CGPoint] {
-        // Finer than the default 0.6, which turned a 15 pt circle into an
+        // Finer than the default 0.6, which turns a 15 pt circle into an
         // octagon: the walk is only ever a *part* of the outline, so it has to
         // agree with the whole one drawn under it.
+        //
+        // **On the class, not on the path.** `flattened` ignores the instance's
+        // own `flatness` and reads `NSBezierPath.defaultFlatness` — measured on
+        // a 15 pt ring: 9 points with `copy.flatness = 0.02`, which is what
+        // this line used to say, and 65 with the class value set. So the fix
+        // that was supposed to stop the countdown being an octagon changed
+        // nothing at all, and every round shape kept its corners the moment a
+        // timer started. Restored immediately: it is global state, and it is
+        // only ours for the length of one flatten.
         let copy = path.copy() as! NSBezierPath
-        copy.flatness = 0.02
+        let previousFlatness = NSBezierPath.defaultFlatness
+        NSBezierPath.defaultFlatness = 0.02
+        defer { NSBezierPath.defaultFlatness = previousFlatness }
         let flat = copy.flattened
         var points: [CGPoint] = []
         var buffer = [CGPoint](repeating: .zero, count: 3)

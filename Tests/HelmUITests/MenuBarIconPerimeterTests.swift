@@ -111,4 +111,63 @@ final class MenuBarIconPerimeterTests: XCTestCase {
                                  "\(style) is a quarter of the way round on the left")
         }
     }
+
+    // MARK: - The walk has to be as round as the curve drawn under it
+
+    private func walkLength(_ style: MenuBarIconStyle) -> CGFloat {
+        let points = walk(style)
+        return points.indices.reduce(CGFloat(0)) { total, index in
+            let next = points[(index + 1) % points.count]
+            return total + hypot(next.x - points[index].x, next.y - points[index].y)
+        }
+    }
+
+    private func meanRadius(_ style: MenuBarIconStyle) -> CGFloat {
+        let centre = CGPoint(x: size / 2, y: size / 2)
+        let points = walk(style)
+        return points.map { hypot($0.x - centre.x, $0.y - centre.y) }.reduce(0, +)
+            / CGFloat(points.count)
+    }
+
+    /// A round shape stays round while a timer is running.
+    ///
+    /// The countdown strokes a *part* of the outline from this walk, over the
+    /// whole outline drawn as the real curve. If the walk is coarse the two
+    /// disagree and the visible arc has corners — which shipped twice. The
+    /// first fix set `flatness` on the path; `flattened` reads the class's
+    /// `defaultFlatness` and ignored it, so nothing changed and nothing failed.
+    ///
+    /// **Length, not «is every point on the circle».** That was written first
+    /// and cannot fail: flattening puts its points *on* the curve, so an
+    /// octagon's vertices sit exactly on the circle too — as does a hexagon's,
+    /// which is how the control below caught it. What a polygon loses is the
+    /// bulge between its vertices, and that shows up in the perimeter: an
+    /// octagon is 2.5% short of its circle, a walk fine enough to draw is
+    /// under a tenth of one percent.
+    func testARingsWalkIsAsLongAsItsCircumference() {
+        for style in [MenuBarIconStyle.ring, .doubleRing, .ringDot] {
+            let circumference = 2 * CGFloat.pi * meanRadius(style)
+            XCTAssertEqual(walkLength(style), circumference, accuracy: 0.005 * circumference,
+                           "\(style) walks \(walkLength(style)) where its circle is \(circumference)")
+        }
+    }
+
+    /// The control. The assertion above passes on any check that always passes,
+    /// and this is the shape that proves it does not: a hexagon's corners are
+    /// on the same circle its walk is measured against, and its perimeter is
+    /// 17% short of it.
+    func testTheLengthCheckCanTellAHexagonFromARing() {
+        let circumference = 2 * CGFloat.pi * meanRadius(.hexagon)
+        XCTAssertLessThan(walkLength(.hexagon), circumference * 0.995,
+                          "a hexagon measured as round, so this check measures nothing")
+    }
+
+    /// Global state, borrowed and given back. `perimeter` sets the class's
+    /// `defaultFlatness` because that is the only value `flattened` reads —
+    /// and anything drawing after it must find the value it had.
+    func testTheClassFlatnessIsPutBack() {
+        let before = NSBezierPath.defaultFlatness
+        _ = walk(.ring)
+        XCTAssertEqual(NSBezierPath.defaultFlatness, before)
+    }
 }
