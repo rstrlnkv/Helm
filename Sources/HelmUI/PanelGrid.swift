@@ -7,7 +7,7 @@ import Foundation
 /// changed width — with no error and nothing to notice. The mockups made this
 /// rule executable before it was written here: seven live panels, resizable,
 /// and none of them holds a number that can go stale.
-public enum PanelWidgetSize: String, CaseIterable, Sendable {
+public enum PanelWidgetSize: String, CaseIterable, Codable, Sendable {
     /// One column. A figure, and nothing to press.
     case compact
     /// Every column, one row. A figure and the one thing to do about it.
