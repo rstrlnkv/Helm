@@ -177,7 +177,10 @@ extension Notification.Name {
     static let helmPanelWidthChanged = Notification.Name("helmPanelWidthChanged")
 }
 
-private struct HelmPanelContent: View {
+/// Internal rather than private so a test can render it: the panel is a
+/// menu-bar window over Liquid Glass, and there is no other way to look at it
+/// without a screenshot of somebody's screen.
+struct HelmPanelContent: View {
     @ObservedObject var host: ModuleHost
     @State private var utilitiesExpanded = false
     /// The panel is being arranged rather than read.
