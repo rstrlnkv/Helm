@@ -204,7 +204,8 @@ private struct HelmPanelContent: View {
     /// arithmetic is real from this commit, and the arrangement that will use
     /// it is not stored yet.
     private var split: (widgets: [Widget], utilities: [ModuleHost.Live]) {
-        var widgets: [Widget] = []
+        var buildable: [String: ModuleHost.Live] = [:]
+        var order: [String] = []
         var utilities: [ModuleHost.Live] = []
         for live in host.enabledModules {
             guard let contribution = live.descriptor.menuBar(live.vm) else { continue }
@@ -212,8 +213,21 @@ private struct HelmPanelContent: View {
                 utilities.append(live)
                 continue
             }
+            buildable[live.descriptor.idRaw] = live
+            order.append(live.descriptor.idRaw)
+        }
+
+        // The stored arrangement decides what is drawn and in what order; the
+        // live modules decide what *can* be drawn. A slot this build cannot
+        // build — a module switched off, or one a downgrade has taken away —
+        // is skipped here rather than dropped from the layout, so the panel
+        // fills back in when it comes back.
+        let layout = PanelLayoutStore.read(from: AppSettings.store, offered: order)
+        var widgets: [Widget] = []
+        for slot in layout.allSlots {
+            guard let live = buildable[slot.widget] else { continue }
             let offered = live.descriptor.panelWidgetSizes(live.vm)
-            guard let size = PanelGrid.resolve(.wide, offered: offered),
+            guard let size = PanelGrid.resolve(slot.size, offered: offered),
                   let view = live.descriptor.panelWidget(size, live.vm) else { continue }
             widgets.append(Widget(view: view, size: size))
         }
