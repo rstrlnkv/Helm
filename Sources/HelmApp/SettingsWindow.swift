@@ -486,10 +486,10 @@ private struct MenuBarSettingsView: View {
                 }
                 .pickerStyle(.segmented)
                 .onChange(of: sidebarStyle) { _, choice in AppSettings.sidebarStyle = choice }
-                LabeledContent(AppStr.iconShape) {
-                    IconShapePicker(selection: $style)
-                        .onChange(of: style) { _, v in AppSettings.menuBarIconStyle = v }
-                }
+                // No `LabeledContent`: the picker carries its own title now,
+                // and a labelled control inside a labelled row says it twice.
+                IconShapePicker(selection: $style, title: AppStr.iconShape)
+                    .onChange(of: style) { _, v in AppSettings.menuBarIconStyle = v }
                 LabeledContent(AppStr.iconSize) {
                     IconSizePicker(selection: $size)
                         .onChange(of: size) { _, v in AppSettings.menuBarIconSize = v }

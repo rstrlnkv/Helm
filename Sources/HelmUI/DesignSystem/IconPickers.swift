@@ -1,16 +1,13 @@
 import SwiftUI
 
-/// One button in a row of choices, for the two pickers that sit one above the
-/// other in Settings.
+/// One button in a row of choices. Used by the size picker, which is three of
+/// them.
 ///
-/// They were two classes of control doing one job: the shape was six 50 pt
-/// boxes with a name underneath, the size three 24 pt buttons pushed to the
-/// right margin — measured on the page, 80 pt of row against 24. Adjacent rows
-/// that ask the same question ("pick one of these") and answer at a third of
-/// each other's weight read as two different kinds of setting.
-///
-/// So both are this: a 26 pt tall button, filled when chosen. The glyph or the
-/// letter is what differs, which is the only thing that should.
+/// Written when the shape picker was a row of swatches too and the two
+/// disagreed about how much of a row a choice deserves — 80 pt against 26.
+/// The shape is a pop-up menu now, so this has one caller; kept as its own
+/// type because three letters in a row is still a control with a state, and
+/// the alternative is that state spelled out inline three times.
 struct HelmChoiceButton<Label: View>: View {
     let selected: Bool
     let action: () -> Void
@@ -40,21 +37,27 @@ struct HelmChoiceButton<Label: View>: View {
     }
 }
 
-/// Six shapes in a row, each drawn as itself. `selection` is a
-/// `MenuBarIconStyle` rawValue. Shared by the global menu-bar settings and any
-/// module that offers its own icon (e.g. Keep Awake's active-state icon).
+/// The menu-bar shape, as a pop-up menu — the control macOS uses for a choice
+/// between named things, and the one the appearance row beside it already is.
 ///
-/// The name of the chosen shape used to sit on a line of its own under the
-/// row. It cost the same height as the swatches to say what the highlighted
-/// swatch already said, and with six shapes it read as an orphan under the
-/// middle of a row it did not belong to. It is the tooltip and the
-/// accessibility label now, which is where a name for a picture belongs.
+/// It was six swatches in a row. Six is where a row of swatches stops working:
+/// each one shrinks to hold the row, and what a swatch is *for* is being big
+/// enough to recognise. A menu gives every shape its full name and a glyph at
+/// the size it is drawn in the bar, and gives the row back its height.
+///
+/// `selection` is a `MenuBarIconStyle` rawValue. Shared by the global menu-bar
+/// settings and any module that offers its own icon — Keep Awake's
+/// active-state shape, which had no label at all until this carried one.
 public struct IconShapePicker: View {
     @Binding private var selection: String
+    private let title: String
     private let tintToken: String
 
-    public init(selection: Binding<String>, tintToken: String = "primary") {
+    public init(selection: Binding<String>,
+                title: String = L("Icon shape"),
+                tintToken: String = "primary") {
         self._selection = selection
+        self.title = title
         self.tintToken = tintToken
     }
 
@@ -63,33 +66,23 @@ public struct IconShapePicker: View {
     private var neutral: Bool { tintToken == "primary" }
 
     public var body: some View {
-        HStack(spacing: 4) {
+        Picker(title, selection: $selection) {
             ForEach(MenuBarIconStyle.allCases, id: \.rawValue) { style in
-                let selected = selection == style.rawValue
-                HelmChoiceButton(selected: selected) {
-                    selection = style.rawValue
-                } label: {
-                    // A neutral glyph is drawn white and rendered as a
-                    // template, so its colour comes from `foregroundStyle` at
-                    // draw time. Baking `labelColor` into the bitmap could not
-                    // work: `MenuBarIcon` draws with `lockFocus`, which
-                    // resolves the dynamic colour once against whatever
-                    // `NSAppearance.current` happened to be — and in a light
-                    // window that produced white glyphs on a white swatch.
-                    //
-                    // Drawn at the largest size Helm offers, which is not the
-                    // size the person picked: this picker is about the shape.
-                    HelmIconGlyph(image: MenuBarIcon.make(style: style, size: .small,
-                                                          tintToken: neutral ? nil : tintToken),
-                                  neutral: neutral)
-                        .frame(width: 16, height: 16)
-                        .foregroundStyle(selected ? Color.white : Color.primary)
-                }
-                .help(style.label)
-                .accessibilityLabel(style.label)
+                // Glyph and name, not one or the other: the name is what a
+                // menu is good at and the glyph is what the setting is about.
+                //
+                // A neutral glyph is drawn white and rendered as a template so
+                // its colour comes from the menu at draw time. Baking
+                // `labelColor` in could not work: `MenuBarIcon` draws with
+                // `lockFocus`, which resolves a dynamic colour once against
+                // whatever appearance happened to be current — in a light
+                // window that produced white on white.
+                HelmIconGlyph(image: MenuBarIcon.make(style: style, size: .small,
+                                                      tintToken: neutral ? nil : tintToken),
+                              neutral: neutral)
+                Text(style.label)
             }
         }
-        .animation(HelmMotion.interface, value: selection)
     }
 }
 
