@@ -68,6 +68,13 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 - The size picker's white-on-accent measured 3.22:1, the one piece of text on the
   page under the floor every other colour was solved against. It is the system's
   segmented control now.
+- **A round menu-bar icon stayed round while a timer ran.** The countdown strokes
+  part of the outline from a flattened walk, over the whole outline drawn as the
+  real curve, and `NSBezierPath.flattened` ignores the instance's own `flatness`
+  and reads the class's `defaultFlatness` — so a fix that set it on the path
+  changed nothing and every round shape grew corners the moment a session
+  started. Measured on a 15 pt ring: 9 points either way, 65 once the class value
+  is set. *(0.9.0-dev.1 only.)*
 
 ### Added
 - **The sidebar is an arrangement the person owns.** The list of modules was in
