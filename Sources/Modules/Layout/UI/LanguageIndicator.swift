@@ -64,7 +64,7 @@ import Module_Layout_Engine
     private func redraw() {
         guard let button = item?.button else { return }
         let style = BadgeStyle.from(store.string(LayoutKey.badgeStyle, default: BadgeStyle.default.rawValue))
-        let size = MenuBarIconSize(rawValue: store.string(LayoutKey.badgeSize, default: "small")) ?? .small
+        let size = MenuBarIconSize(stored: store.string(LayoutKey.badgeSize, default: "small"))
         let source = InputSourceInfo.current()
         button.image = BadgeImage.make(label: source.badge, flag: source.emojiFlag,
                                        region: source.region, style: style,

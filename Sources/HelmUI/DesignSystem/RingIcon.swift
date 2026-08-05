@@ -2,42 +2,73 @@ import AppKit
 
 /// Menu-bar icon shape. The host icon is configurable; Keep Awake tints it while active.
 public enum MenuBarIconStyle: String, CaseIterable, Sendable {
-    case ring, doubleRing, ringDot, disc, dot
+    case ring, doubleRing, ringDot
 
     public var label: String {
         switch self {
         case .ring: return L("Ring")
         case .doubleRing: return L("Double ring")
         case .ringDot: return L("Ring + dot")
-        case .disc: return L("Filled")
-        case .dot: return L("Dot")
+        }
+    }
+
+    /// A value read back from disk, including one this build no longer offers.
+    ///
+    /// `disc` and `dot` are gone. Both were shapes with no outer ring of their
+    /// own, and the ring is what the countdown and the spinner replace — so on
+    /// those two the timer setting sat on the page beside them and meant
+    /// nothing. Whoever had one keeps an icon: they get the ring rather than
+    /// the default, because a shape silently becoming the factory setting is
+    /// indistinguishable from the app forgetting.
+    public init(stored: String) {
+        switch stored {
+        case "disc", "dot": self = .ring
+        default: self = MenuBarIconStyle(rawValue: stored) ?? .ring
         }
     }
 }
 
 /// Menu-bar icon size (canvas point size).
 public enum MenuBarIconSize: String, CaseIterable, Sendable {
-    // rawValues kept stable for stored-settings compatibility; the small end was
-    // extended (xxSmall/xxxSmall) and the large end dropped per design.
-    case xxxSmall, xxSmall, extraSmall, small, medium
+    // rawValues kept stable for stored-settings compatibility. Five sizes
+    // became three: 9 pt was smaller than the menu bar's own glyphs and 18 pt
+    // was larger, so both ends were choices that made Helm look wrong beside
+    // everything else in the bar rather than choices about Helm.
+    case xxSmall, extraSmall, small
 
     public var points: CGFloat {
         switch self {
-        case .xxxSmall: return 9
         case .xxSmall: return 11
         case .extraSmall: return 13
         case .small: return 15
-        case .medium: return 18
         }
     }
-    /// Human, localized size name (shown once for the selected size in the picker).
+
+    /// A value read back from disk, including the two this build dropped.
+    ///
+    /// Mapped to the nearest survivor rather than to the default: somebody who
+    /// chose the smallest icon wanted a small icon, and answering that with
+    /// the middle one is the app overruling them. `xxxSmall` was 9 and becomes
+    /// 11; `medium` was 18 and becomes 15.
+    public init(stored: String) {
+        switch stored {
+        case "xxxSmall": self = .xxSmall
+        case "medium": self = .small
+        default: self = MenuBarIconSize(rawValue: stored) ?? .extraSmall
+        }
+    }
+    /// S, M, L — and not translated, because they are not words.
+    ///
+    /// The five names they replace were: Tiny, Very small, Small, Medium,
+    /// Large. Two of them read as absolute claims that were untrue — «Medium»
+    /// was the largest but one, and «Large» was 18 pt — and every one of them
+    /// had to be read to be compared. Three letters compare at a glance and
+    /// mean the same in eight languages.
     public var label: String {
         switch self {
-        case .xxxSmall: return L("Tiny")
-        case .xxSmall: return L("Very small")
-        case .extraSmall: return L("Small")
-        case .small: return L("Medium")
-        case .medium: return L("Large")
+        case .xxSmall: return "S"
+        case .extraSmall: return "M"
+        case .small: return "L"
         }
     }
 }
@@ -177,12 +208,6 @@ public enum RingIcon {
             ring.stroke()
         case .ringDot:
             fillCentred(diameter: s * 0.24, in: s)
-        case .disc:
-            // Inset clear of the arc, so the arc stays legible against it.
-            NSBezierPath(ovalIn: NSRect(x: inner, y: inner,
-                                        width: s - 2 * inner, height: s - 2 * inner)).fill()
-        case .dot:
-            fillCentred(diameter: s * 0.5, in: s)
         }
     }
 
@@ -241,11 +266,6 @@ public enum RingIcon {
         case .ringDot:
             strokeOval(inset: inset, lineWidth: lineWidth, size: dim)
             let d = s * 0.24
-            NSBezierPath(ovalIn: NSRect(x: (s - d) / 2, y: (s - d) / 2, width: d, height: d)).fill()
-        case .disc:
-            NSBezierPath(ovalIn: NSRect(x: inset, y: inset, width: s - 2 * inset, height: s - 2 * inset)).fill()
-        case .dot:
-            let d = s * 0.5
             NSBezierPath(ovalIn: NSRect(x: (s - d) / 2, y: (s - d) / 2, width: d, height: d)).fill()
         }
         img.unlockFocus()

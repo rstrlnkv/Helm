@@ -102,9 +102,9 @@ import HelmUI
         let appearance = StatusPlan.choose(
             host.enabledModules.map { $0.descriptor.statusAppearance($0.vm) }, now: now)
         let token = appearance.tintToken
-        let globalStyle = MenuBarIconStyle(rawValue: AppSettings.menuBarIconStyle) ?? .ring
+        let globalStyle = MenuBarIconStyle(stored: AppSettings.menuBarIconStyle)
         let style = appearance.iconStyle.flatMap(MenuBarIconStyle.init(rawValue:)) ?? globalStyle
-        let size = MenuBarIconSize(rawValue: AppSettings.menuBarIconSize) ?? .medium
+        let size = MenuBarIconSize(stored: AppSettings.menuBarIconSize)
         let progress = appearance.timerProgress
         // Read fresh, the way `HelmMotion` does: the setting can be switched on
         // while a spin is running, and a cached answer would keep it moving.

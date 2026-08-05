@@ -14,7 +14,7 @@ public struct IconShapePicker: View {
         self.tintToken = tintToken
     }
 
-    private var current: MenuBarIconStyle { MenuBarIconStyle(rawValue: selection) ?? .ring }
+    private var current: MenuBarIconStyle { MenuBarIconStyle(stored: selection) }
 
     public var body: some View {
         VStack(spacing: 10) {
@@ -57,7 +57,9 @@ public struct IconShapePicker: View {
             // `lockFocus`, which resolves the dynamic colour once against whatever
             // `NSAppearance.current` happened to be — and in a light window that
             // produced white glyphs on a white swatch.
-            HelmIconGlyph(image: RingIcon.make(style: s, size: .medium,
+            // The shape swatch draws at the largest size Helm offers, which is
+            // not the size the person picked — this picker is about the shape.
+            HelmIconGlyph(image: RingIcon.make(style: s, size: .small,
                                                tintToken: neutral ? nil : tintToken),
                           neutral: neutral)
                 .frame(width: 26, height: 26)
@@ -92,7 +94,7 @@ public struct IconSizePicker: View {
         self.tintToken = tintToken
     }
 
-    private var current: MenuBarIconSize { MenuBarIconSize(rawValue: selection) ?? .medium }
+    private var current: MenuBarIconSize { MenuBarIconSize(stored: selection) }
 
     public var body: some View {
         VStack(spacing: 10) {
