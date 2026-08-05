@@ -41,7 +41,39 @@ struct SidebarComposerList: View {
     }
 
     private var total: CGFloat {
-        max(rows.reduce(0) { $0 + (heights[$1.id] ?? SidebarComposerListRow.height) }, 1)
+        max(rows.reduce(0) { $0 + (heights[$1.id] ?? Self.estimate(of: $1, in: layout, editing: editing)) }, 1)
+    }
+
+    /// What a row will be, before anything has been drawn.
+    ///
+    /// Measuring is more accurate and it arrives too late for the one caller
+    /// that cannot wait: a sheet's window is sized by AppKit at presentation,
+    /// so a height that lands a turn of the run loop later leaves the window at
+    /// whatever the first frame asked for. `tableHeight` started at a flat 200,
+    /// which put the sheet at its 360 pt floor while its content wanted 631 —
+    /// title, Done, both footer buttons and the last two modules outside the
+    /// window, and Escape the only way out.
+    ///
+    /// Pinned by `SidebarComposerHeightTests`, which draws the real list in a
+    /// real window and compares. That test is the reason this is allowed to be
+    /// a second opinion about a height rather than a number that drifts.
+    static func estimate(of row: SidebarLayout.Row, in layout: SidebarLayout,
+                         editing: Bool) -> CGFloat {
+        switch row {
+        case .module: return SidebarComposerListRow.height
+        case .section(let id):
+            let empty = layout.sections.first { $0.id == id }?.modules.isEmpty ?? true
+            return SidebarComposerListRow.headerHeight(empty: empty, editing: editing)
+        }
+    }
+
+    /// The whole list, for a caller that has to know before it draws.
+    static func estimatedHeight(of layout: SidebarLayout, editing: Bool) -> CGFloat {
+        let rows = editing ? layout.flattened : layout.flattened.filter { row in
+            guard case .section(let id) = row else { return true }
+            return !(layout.sections.first { $0.id == id }?.modules.isEmpty ?? true)
+        }
+        return max(rows.reduce(0) { $0 + estimate(of: $1, in: layout, editing: editing) }, 1)
     }
 
     var body: some View {
@@ -90,7 +122,7 @@ struct SidebarComposerList: View {
 /// switch. The drawing is the table's, unchanged — what changes is who owns the
 /// renderer it draws into.
 @MainActor
-private struct SidebarComposerListRow: View {
+struct SidebarComposerListRow: View {
     let row: SidebarLayout.Row
     let layout: SidebarLayout
     @ObservedObject var host: ModuleHost
@@ -102,7 +134,23 @@ private struct SidebarComposerListRow: View {
     /// icon and a switch — Privacy ▸ Accessibility — is 40 pt.
     static let height: CGFloat = 40
     /// The gap between one section's card and the next heading.
-    private let sectionGap: CGFloat = 10
+    private static let sectionGap: CGFloat = 10
+    private var sectionGap: CGFloat { Self.sectionGap }
+    /// An 11 pt semibold line, as `HelmText.groupLabel` draws it.
+    private static let headerLabelHeight: CGFloat = 13
+    /// The drop target an empty section shows while editing, and the 5 pt the
+    /// header's own `VStack` puts above it.
+    private static let dropZoneHeight: CGFloat = 30
+
+    /// A heading row, without drawing it. Same arithmetic as `header(_:)`
+    /// directly below — kept beside it so the two are read together.
+    static func headerHeight(empty: Bool, editing: Bool) -> CGFloat {
+        let showsDropZone = empty && editing
+        return sectionGap                              // .padding(.top)
+            + headerLabelHeight
+            + (showsDropZone ? 5 + dropZoneHeight : 0) // VStack spacing + the zone
+            + (empty ? 0 : 5)                          // .padding(.bottom)
+    }
 
     var body: some View {
         switch row {

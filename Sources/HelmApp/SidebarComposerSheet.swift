@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import HelmUI
 import HelmRuntime
 
@@ -21,15 +22,59 @@ struct SidebarComposerSheet: View {
     /// Bumped on every write so the sheet redraws from the stored value rather
     /// than from a copy that can drift away from it.
     @State private var revision = 0
-    @State private var tableHeight: CGFloat = 200
+    /// Seeded from the arrangement, not from a placeholder.
+    ///
+    /// This started at a flat 200. A sheet's window is sized by AppKit at
+    /// presentation, and the measured height arrives a turn of the run loop
+    /// later — so the window took `200 + chrome`, clamped up to the 360 pt
+    /// floor, while the content asked for 631. What you saw was the middle
+    /// band of the sheet: no title, no «Готово», no footer buttons, the last
+    /// two modules below the window's edge, and Escape the only way out that
+    /// nothing on screen mentioned.
+    @State private var tableHeight: CGFloat
+    /// Measured once, at init: `chromeHeight` builds a hosting controller to
+    /// see how the note wraps, and the sheet's body is evaluated on every
+    /// keystroke of a rename.
+    private let chrome: CGFloat
+
+    init(host: ModuleHost) {
+        self.host = host
+        self.chrome = Self.chromeHeight
+        let layout = SidebarLayoutStore.read(from: AppSettings.store,
+                                             registry: SidebarLayoutStore.registry())
+        _tableHeight = State(initialValue:
+            SidebarComposerList.estimatedHeight(of: layout, editing: true))
+    }
+
     @State private var renaming: SidebarLayout.Section?
     @State private var draftName = ""
 
-    /// Everything the sheet draws that is not the list: the title row, the
-    /// note, two dividers, the actions row and the padding around them.
-    /// Measured off the shipped sheet at 2x — 126 pt — plus the 29 the scroll
-    /// view puts above and below its content.
-    private static let chromeHeight: CGFloat = 155
+    /// Everything the sheet draws that is not the list and not the note: the
+    /// title row, two dividers, the actions row, the padding around them, and
+    /// the 29 pt the scroll view puts above and below its content. Measured off
+    /// the shipped sheet at 2x.
+    private static let fixedChrome: CGFloat = 129
+    /// The sheet's width, and the note's, less the 20 pt gutter on each side.
+    static let width: CGFloat = 460
+
+    /// The note, measured rather than guessed.
+    ///
+    /// It was folded into one constant that held while the note wrapped to two
+    /// lines in seven languages and one in Chinese — and then it moved from
+    /// `.caption` to `HelmText.rowDetail` and grew a sentence, and the constant
+    /// was wrong twice in an afternoon. `sizeThatFits` sees wrapping, which is
+    /// exactly what the guess could not, and it answers for whichever language
+    /// is actually running.
+    private static var noteHeight: CGFloat {
+        let note = Text(AppStr.sidebarComposerNote + " " + AppStr.moduleSwitchNote)
+            .font(HelmText.rowDetail)
+            .fixedSize(horizontal: false, vertical: true)
+        return NSHostingController(rootView: note)
+            .sizeThatFits(in: CGSize(width: Self.width - 40, height: .greatestFiniteMagnitude))
+            .height
+    }
+
+    static var chromeHeight: CGFloat { fixedChrome + noteHeight }
 
     private var layout: SidebarLayout {
         _ = revision
@@ -58,8 +103,8 @@ struct SidebarComposerSheet: View {
             .padding(.top, 18)
             .padding(.bottom, 10)
 
-            Text(AppStr.sidebarComposerNote)
-                .font(.caption)
+            Text(AppStr.sidebarComposerNote + " " + AppStr.moduleSwitchNote)
+                .font(HelmText.rowDetail)
                 .foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 20)
@@ -117,13 +162,13 @@ struct SidebarComposerSheet: View {
         // so the standard arrangement never scrolls; a person who makes more
         // sections than that gets a scroll bar rather than a sheet taller than
         // the window it sits in.
-        .frame(width: 460,
-               height: min(max(360, tableHeight + Self.chromeHeight), 660))
+        .frame(width: Self.width,
+               height: min(max(360, tableHeight + chrome), 660))
         .alert(AppStr.renameSection, isPresented: Binding(
             get: { renaming != nil },
             set: { if !$0 { renaming = nil } }
         )) {
-            TextField(AppStr.sidebarSections, text: $draftName)
+            TextField(AppStr.renameSection, text: $draftName)
             Button(AppStr.done) {
                 if let section = renaming { apply(layout.renaming(section.id, to: draftName)) }
                 renaming = nil
@@ -154,7 +199,7 @@ struct SidebarComposerRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(AppStr.sidebarSections)
                 Text(summary)
-                    .font(.caption)
+                    .font(HelmText.rowDetail)
                     .foregroundStyle(HelmText.quiet)
             }
             // A minimum, not a bare `Spacer`: at a narrow width the summary
@@ -174,7 +219,10 @@ struct SidebarComposerRow: View {
         _ = revision
         let layout = SidebarLayoutStore.read(from: AppSettings.store,
                                              registry: SidebarLayoutStore.registry())
-        let modules = layout.sections.reduce(0) { $0 + $1.modules.count }
-        return AppStr.sidebarSummary(modules: modules, sections: layout.sections.count)
+        let ids = layout.sections.flatMap(\.modules)
+        let on = ids.filter { id in
+            ModuleRegistry.all.first { $0.idRaw == id }.map { host.isEnabled($0) } ?? false
+        }.count
+        return AppStr.sidebarSummary(on: on, of: ids.count, sections: layout.sections.count)
     }
 }

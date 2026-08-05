@@ -175,15 +175,25 @@ private struct SettingsSidebar: View {
     @State private var diskAccess: PermissionState = .granted
     @State private var accessibility: PermissionState = .granted
 
-    /// Whether a module has declared a permission macOS is currently withholding.
+    /// Whether a module has declared it can do nothing without a permission
+    /// macOS is currently withholding.
     ///
     /// Layout has been inert in every logged session on this machine — 84
     /// warnings of `no accessibility grant — not watching` — and the sidebar
     /// listed it exactly like the modules that work. The module's own page says
     /// so, but only once you are on it: from the outside a module that cannot do
     /// anything looks like a module with nothing to do.
+    ///
+    /// **`inertWithout`, not `permissions`.** Reading the wider list put the
+    /// triangle on seven of the nine rows — the four Full Disk modules, which
+    /// work and find less, and Keep Awake, which declares Accessibility for a
+    /// pointer nudge that ships switched off and never asks for it otherwise.
+    /// Seven marks are wallpaper; the row where the warning was true was the
+    /// one nobody would read any more. And since an ad-hoc build loses its
+    /// grants on every update, that sidebar was what every user saw after every
+    /// update.
     private func isBlocked(_ descriptor: any ModuleDescriptor) -> Bool {
-        descriptor.moduleMetadata.permissions.contains { need in
+        descriptor.moduleMetadata.inertWithout.contains { need in
             switch need {
             case .fullDisk: return diskAccess == .denied
             case .accessibility: return accessibility == .denied
@@ -338,7 +348,7 @@ private struct SettingsDetail: View {
             LogView()
         case .module(let id):
             if let descriptor = ModuleRegistry.all.first(where: { $0.idRaw == id }) {
-                ModuleDetailView(host: model.host, descriptor: descriptor, id: id)
+                ModuleDetailView(model: model, host: model.host, descriptor: descriptor, id: id)
             } else {
                 // A selection can outlive its module (removed build, stale
                 // state). Falling back beats showing an empty pane.
@@ -349,6 +359,7 @@ private struct SettingsDetail: View {
 }
 
 private struct ModuleDetailView: View {
+    @ObservedObject var model: SettingsModel
     @ObservedObject var host: ModuleHost
     let descriptor: any ModuleDescriptor
     let id: String
@@ -362,7 +373,19 @@ private struct ModuleDetailView: View {
                            bleeds: descriptor.pageBleeds) {
                 Toggle(descriptor.moduleMetadata.name, isOn: Binding(
                     get: { host.isEnabled(descriptor) },
-                    set: { host.setEnabled(descriptor, $0) }
+                    set: { on in
+                        host.setEnabled(descriptor, on)
+                        // The sidebar shows only what is on, so switching a
+                        // module off from its own page removed its row and left
+                        // the selection pointing at nothing: no highlight
+                        // anywhere, and a pane still showing the module you had
+                        // just turned off. Go where the sidebar can follow.
+                        //
+                        // Not «dim the row instead» — the sidebar deliberately
+                        // lists what is on, and dimming gives a nine-row
+                        // sidebar to somebody who wanted three.
+                        if !on { model.selection = .general }
+                    }
                 ))
                 .toggleStyle(.switch)
                 .labelsHidden()
@@ -440,7 +463,7 @@ private struct MenuBarSettingsView: View {
                 .foregroundStyle(granted ? HelmSignal.success : HelmSignal.warning)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                Text(detail).font(.caption).foregroundStyle(HelmText.quiet)
+                Text(detail).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
@@ -489,14 +512,16 @@ private struct MenuBarSettingsView: View {
                 .onChange(of: sidebarStyle) { _, choice in AppSettings.sidebarStyle = choice }
                 // No `LabeledContent`: the picker carries its own title now,
                 // and a labelled control inside a labelled row says it twice.
-                IconShapePicker(selection: $style, title: AppStr.iconShape)
+                // Given the chosen size, so its glyph is the icon as it will
+                // be drawn in the bar rather than a sample at a fixed size.
+                IconShapePicker(selection: $style, title: AppStr.iconShape, size: size)
                     .onChange(of: style) { _, v in AppSettings.menuBarIconStyle = v }
                 LabeledContent(AppStr.iconSize) {
                     IconSizePicker(selection: $size)
                         .onChange(of: size) { _, v in AppSettings.menuBarIconSize = v }
                 }
                 Text(AppStr.menuBarNote)
-                    .font(.caption).foregroundStyle(HelmText.quiet)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
             }
 
             // «Menu bar and panel» until the menu-bar icon's shape and size
@@ -510,10 +535,18 @@ private struct MenuBarSettingsView: View {
                 Toggle(AppStr.showQuitButton, isOn: $showQuitButton)
                     .onChange(of: showQuitButton) { _, v in AppSettings.showQuitButton = v }
                 Text(AppStr.panelButtonsNote)
-                    .font(.caption).foregroundStyle(HelmText.quiet)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
             }
 
-            Section(AppStr.permissions) {
+            // Only when there is one. `neededPermissions` filters to what the
+            // *enabled* modules declare, so switching off the five that ask for
+            // something emptied it — and a `Section` with an empty body still
+            // draws its heading. The result was a heading with no card under
+            // it, 71.5 pt of gap instead of the page's uniform 56, and «Сброс»
+            // 7.5 pt below it reading as its subtitle: the destructive card
+            // looked like what Permissions contained.
+            if !neededPermissions.isEmpty {
+                Section(AppStr.permissions) {
                 // Driven by the table, so a new permission shows up here
                 // without anyone remembering to add a row — but only the ones
                 // an enabled module actually uses. Listing all of them asked
@@ -537,6 +570,7 @@ private struct MenuBarSettingsView: View {
                                       : AppStr.permissionWhy(need),
                                   granted: granted) { need.openSettings() }
                 }
+                }
             }
             Section(AppStr.resetSection) {
                 // `role: .destructive` alone draws as an ordinary link in a
@@ -547,7 +581,7 @@ private struct MenuBarSettingsView: View {
                 Button(AppStr.resetAll, role: .destructive) { confirmingReset = true }
                     .foregroundStyle(HelmSignal.danger)
                 Text(AppStr.resetNote)
-                    .font(.caption)
+                    .font(HelmText.rowDetail)
                     .foregroundStyle(HelmText.quiet)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -779,7 +813,7 @@ private struct AboutHelmView: View {
                     .onChange(of: channel) { _, newValue in updater.setChannel(newValue) }
                 }
                 Text(channel == .dev ? AppStr.channelDevNote : AppStr.channelBetaNote)
-                    .font(.caption)
+                    .font(HelmText.rowDetail)
                     .foregroundStyle(HelmText.quiet)
                     .fixedSize(horizontal: false, vertical: true)
             }

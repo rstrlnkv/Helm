@@ -95,17 +95,27 @@ import HelmUI
 
     func liveModule(_ id: String) -> Live? { live[id] }
 
-    /// `live` entries in the user's chosen order (Settings → Panel), falling
-    /// back to registry order for modules they never arranged.
-    var enabledModules: [Live] {
-        let registry = ModuleRegistry.all.map { type(of: $0).id.rawValue }
-        return ModuleOrder.apply(saved: AppSettings.moduleOrder, to: registry)
-            .compactMap { live[$0] }
-    }
+    /// `live` entries in the arrangement the person composed.
+    var enabledModules: [Live] { orderedModuleIDs.compactMap { live[$0] } }
 
-    /// Every module id in the user's order — the settings list reorders this.
+    /// Every module id in the arrangement — one order for the sidebar, the
+    /// panel and the icon menu.
+    ///
+    /// It used to be `AppSettings.moduleOrder`, and that key stopped being
+    /// written when the «Module order» section was deleted: nothing in the tree
+    /// assigned it, so the panel had been frozen in registry order for everyone
+    /// while the composer quietly rearranged the settings sidebar alone. The
+    /// person who wanted VPN above Keep Awake in the panel — the surface they
+    /// open twenty times a day — had no control at all.
+    ///
+    /// `reconciled` runs on every read, so a module that arrived with this
+    /// build is in the list without anything being rearranged first.
     var orderedModuleIDs: [String] {
-        ModuleOrder.apply(saved: AppSettings.moduleOrder,
-                          to: ModuleRegistry.all.map { type(of: $0).id.rawValue })
+        SidebarLayoutStore.read(from: AppSettings.store,
+                                registry: SidebarLayoutStore.registry())
+            .flattened.compactMap { row in
+                if case .module(let id, _) = row { return id }
+                return nil
+            }
     }
 }

@@ -138,7 +138,6 @@
 "Download" = "下载";
 "Downloaded from" = "下载来源";
 "Downloading…" = "下载中…";
-"Drag a row, or use the arrows." = "拖动某一行，或使用箭头。";
 "Drag modules into the order you want them in the menu-bar panel." = "拖动模块即可调整其在菜单栏面板中的顺序。";
 "Duplicates" = "重复文件";
 "Duplicates can basket every extra at once, and Space shows you a file before you bin it. “All extras to basket” does across every group what the per-group button did — one copy of everything always stays, which is why it is not called “Select all”. Beside “Move to Trash” there is now a “Clear”, so one press can undo one press." = "「重复文件」可以一次把所有多余的副本放入收集篮，按空格键可在删除前预览文件。每组始终保留一份，所以按钮不叫“全选”。“移到废纸篓”旁边新增了“清空”。";
@@ -278,7 +277,6 @@
 "Mark the extra copies" = "标记多余副本为待删除";
 "Media" = "媒体";
 "Medium" = "中";
-"Menu Bar" = "菜单栏";
 "Menu-bar icon" = "菜单栏图标";
 "Menu-bar panel and a System Settings-style window, the Liquid Glass icon, eight languages." = "菜单栏面板与系统设置风格窗口、Liquid Glass 图标、八种语言。";
 "Menu-bar spin" = "图标转动";
@@ -287,7 +285,6 @@
 "Minutes" = "分钟";
 "Miscellaneous" = "其他";
 "Modular tools in your menu bar." = "菜单栏里的模块化工具。";
-"Module order" = "模块顺序";
 "More actions" = "更多操作";
 "Move down" = "下移";
 "Move pointer periodically" = "定期移动指针";
@@ -552,7 +549,6 @@
 "Upgrade" = "升级";
 "Upgrade all" = "全部升级";
 "Use this module" = "使用此模块";
-"Used by the panel, the sidebar, and the icon menu." = "适用于面板、侧边栏和图标菜单。";
 "Used while the Mac is being kept awake. At other times Helm’s shared menu-bar icon is shown." = "在保持 Mac 唤醒期间生效；其余时间使用通用图标。";
 "Utilities" = "实用工具";
 "Utilities live in a collapsible panel section; optional Settings and Quit buttons; the right-click menu jumps straight to any module." = "实用工具收纳于面板可折叠区；可选“设置/退出”按钮；右键菜单直达任意模块。";
@@ -648,20 +644,19 @@
 "Module icons" = "模块图标";
 "Colour" = "彩色";
 "Plain" = "简约";
-"Sidebar" = "边栏";
 "New section" = "新建分组";
 "Remove section" = "删除分组";
 "Use the default name" = "使用默认名称";
-"Move to" = "移动到";
 "Drag to reorder. A module can go into any section, and a section you remove hands its modules to its neighbour." = "拖动可重新排序。模块可放入任意分组；删除分组后，其中的模块会移交给相邻分组。";
 "Drag a module here" = "将模块拖到此处";
 "your section" = "自定分区";
 "Restore defaults" = "恢复默认值";
 "Behaviour" = "行为";
 "Light or dark" = "浅色或深色";
-"Menu bar and panel" = "菜单栏与面板";
 "Square" = "方形";
 "Hexagon" = "六边形";
 "Capsule" = "胶囊";
 "Modules" = "模块";
 "Behaviour, appearance, permissions and what Helm may remove." = "行为、外观、权限，以及 Helm 可以删除什么。";
+"Order and sections" = "顺序与分组";
+"A switch turns the module off everywhere in Helm." = "开关会在整个 Helm 中停用该模块。";

@@ -138,7 +138,6 @@
 "Download" = "Descargar";
 "Downloaded from" = "Descargado de";
 "Downloading…" = "Descargando…";
-"Drag a row, or use the arrows." = "Arrastra una fila o usa las flechas.";
 "Drag modules into the order you want them in the menu-bar panel." = "Arrastra los módulos para ordenarlos en el panel de la barra de menús.";
 "Duplicates" = "Duplicados";
 "Duplicates can basket every extra at once, and Space shows you a file before you bin it. “All extras to basket” does across every group what the per-group button did — one copy of everything always stays, which is why it is not called “Select all”. Beside “Move to Trash” there is now a “Clear”, so one press can undo one press." = "Duplicados puede mandar a la cesta todos los sobrantes de una vez, y la barra espaciadora muestra el archivo antes de borrarlo. Siempre queda una copia, por eso el botón no se llama “Seleccionar todo”. Junto a “Trasladar a la papelera” ahora hay “Vaciar”.";
@@ -278,7 +277,6 @@
 "Mark the extra copies" = "Marcar las copias de más";
 "Media" = "Multimedia";
 "Medium" = "Mediano";
-"Menu Bar" = "Barra de menús";
 "Menu-bar icon" = "Icono en la barra de menús";
 "Menu-bar panel and a System Settings-style window, the Liquid Glass icon, eight languages." = "Panel en la barra y ventana al estilo Ajustes del Sistema, icono Liquid Glass, ocho idiomas.";
 "Menu-bar spin" = "Giro del icono";
@@ -287,7 +285,6 @@
 "Minutes" = "Minutos";
 "Miscellaneous" = "Otros";
 "Modular tools in your menu bar." = "Herramientas modulares en tu barra de menús.";
-"Module order" = "Orden de los módulos";
 "More actions" = "Más acciones";
 "Move down" = "Mover abajo";
 "Move pointer periodically" = "Mover el puntero periódicamente";
@@ -552,7 +549,6 @@
 "Upgrade" = "Actualizar";
 "Upgrade all" = "Actualizar todo";
 "Use this module" = "Usar este módulo";
-"Used by the panel, the sidebar, and the icon menu." = "Se aplica al panel, la barra lateral y el menú del icono.";
 "Used while the Mac is being kept awake. At other times Helm’s shared menu-bar icon is shown." = "Se aplica mientras el Mac se mantiene activo; el resto del tiempo se usa el icono común.";
 "Utilities" = "Utilidades";
 "Utilities live in a collapsible panel section; optional Settings and Quit buttons; the right-click menu jumps straight to any module." = "Las utilidades viven en una sección plegable del panel; botones opcionales de Ajustes y Salir; el menú contextual salta directo a un módulo.";
@@ -648,20 +644,19 @@
 "Module icons" = "Iconos de módulos";
 "Colour" = "En color";
 "Plain" = "Sencillos";
-"Sidebar" = "Barra lateral";
 "New section" = "Nueva sección";
 "Remove section" = "Eliminar sección";
 "Use the default name" = "Usar el nombre por omisión";
-"Move to" = "Mover a";
 "Drag to reorder. A module can go into any section, and a section you remove hands its modules to its neighbour." = "Arrastra para reordenar. Un módulo puede ir a cualquier sección, y una sección eliminada entrega sus módulos a la vecina.";
 "Drag a module here" = "Arrastra un módulo aquí";
 "your section" = "sección propia";
 "Restore defaults" = "Restaurar valores por omisión";
 "Behaviour" = "Comportamiento";
 "Light or dark" = "Claro u oscuro";
-"Menu bar and panel" = "Barra de menús y panel";
 "Square" = "Cuadrado";
 "Hexagon" = "Hexágono";
 "Capsule" = "Cápsula";
 "Modules" = "Módulos";
 "Behaviour, appearance, permissions and what Helm may remove." = "Comportamiento, apariencia, permisos y lo que Helm puede eliminar.";
+"Order and sections" = "Orden y secciones";
+"A switch turns the module off everywhere in Helm." = "El interruptor desactiva el módulo en todo Helm.";

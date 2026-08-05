@@ -8,7 +8,10 @@ import Module_Layout_Engine
     public static let id = ModuleID("layout")
     public static let metadata = ModuleMetadata(
         id: id, name: LyStr.moduleName, summary: LyStr.summary,
-        sfSymbol: "keyboard", permissions: [.accessibility])
+        sfSymbol: "keyboard", permissions: [.accessibility],
+        // Without the grant it watches nothing: 84 logged warnings of
+        // `no accessibility grant — not watching` and no other way to work.
+        inertWithout: [.accessibility])
     public static let category: ModuleCategory = .utilities
     public static let tint: ModuleTint = .keyboard
 

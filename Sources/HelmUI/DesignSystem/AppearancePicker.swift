@@ -31,7 +31,14 @@ public struct AppearancePicker: View {
     private static let order: [AppAppearance] = [.light, .dark, .system]
 
     public var body: some View {
-        LabeledContent(title) {
+        // Built by hand rather than as a `LabeledContent`, for the reason
+        // `SidebarComposerRow` was: that control aligns its two halves on the
+        // label's *first baseline*, so «Оформление» sat 22 pt above the middle
+        // of the pictures it names — the only row in the card not centred to
+        // within a quarter point.
+        HStack(alignment: .center) {
+            Text(title)
+            Spacer(minLength: 12)
             HStack(alignment: .top, spacing: 12) {
                 ForEach(Self.order, id: \.self) { mode in
                     swatch(mode)
@@ -49,13 +56,22 @@ public struct AppearancePicker: View {
                 AppearanceThumbnail(mode: mode)
                     .frame(width: 74, height: 46)
                     .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                    // A ring on the chosen one and nothing on the others, as
-                    // System Settings does it. A hairline round all three read
-                    // as three framed pictures, and the frame is what says
-                    // «this is the one».
+                    // The accent ring on the chosen one; a hairline on all
+                    // three so the unchosen ones have an edge at all.
+                    //
+                    // The thumbnails bake literal colours, and the one that
+                    // matches the window's own appearance disappears into the
+                    // card behind it: in light mode the light thumbnail's
+                    // window body and the card measured the *same pixel value*,
+                    // 1.00:1, leaving a pale blue L with three lights floating
+                    // in nothing. Dark against dark measured 1.12:1 — the same
+                    // failure, symmetric. A 0.5 pt hairline is not a card
+                    // border; this is a picture of a window, and the ring is
+                    // still what says which one is chosen.
                     .overlay {
                         RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .strokeBorder(Color.accentColor, lineWidth: selected ? 2.5 : 0)
+                            .strokeBorder(selected ? Color.accentColor : HelmSurface.hairline,
+                                          lineWidth: selected ? 2.5 : 0.5)
                     }
                 Text(AppearanceNames.of(mode))
                     .font(.caption)

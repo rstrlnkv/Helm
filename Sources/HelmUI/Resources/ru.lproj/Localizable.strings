@@ -138,7 +138,6 @@
 "Download" = "Скачать";
 "Downloaded from" = "Откуда скачано";
 "Downloading…" = "Скачивание…";
-"Drag a row, or use the arrows." = "Перетащите строку или используйте стрелки.";
 "Drag modules into the order you want them in the menu-bar panel." = "Перетаскивайте модули, чтобы задать их порядок в панели строки меню.";
 "Duplicates" = "Дубликаты";
 "Duplicates can basket every extra at once, and Space shows you a file before you bin it. “All extras to basket” does across every group what the per-group button did — one copy of everything always stays, which is why it is not called “Select all”. Beside “Move to Trash” there is now a “Clear”, so one press can undo one press." = "«Дубликаты» умеют отправить в корзину все лишние копии сразу, а по пробелу показывают файл, прежде чем вы его удалите. «Все лишние — к удалению» делает по всем группам то же, что делала кнопка одной группы: одна копия всегда остаётся, поэтому кнопка и не называется «Выделить все». Рядом с «Переместить в Корзину» появилась «Очистить» — одно нажатие отменяется одним нажатием.";
@@ -278,7 +277,6 @@
 "Mark the extra copies" = "Отметить лишние копии";
 "Media" = "Медиа";
 "Medium" = "Средний";
-"Menu Bar" = "Строка меню";
 "Menu-bar icon" = "Иконка в строке меню";
 "Menu-bar panel and a System Settings-style window, the Liquid Glass icon, eight languages." = "Панель в строке меню и окно в стиле Системных настроек, иконка Liquid Glass, восемь языков.";
 "Menu-bar spin" = "Вращение значка";
@@ -287,7 +285,6 @@
 "Minutes" = "Минуты";
 "Miscellaneous" = "Прочее";
 "Modular tools in your menu bar." = "Модульные утилиты в строке меню.";
-"Module order" = "Порядок модулей";
 "More actions" = "Ещё действия";
 "Move down" = "Переместить вниз";
 "Move pointer periodically" = "Периодически двигать указателем";
@@ -552,7 +549,6 @@
 "Upgrade" = "Обновить";
 "Upgrade all" = "Обновить всё";
 "Use this module" = "Использовать этот модуль";
-"Used by the panel, the sidebar, and the icon menu." = "Применяется в панели, боковом меню и меню иконки.";
 "Used while the Mac is being kept awake. At other times Helm’s shared menu-bar icon is shown." = "Действует, пока Mac не даёт себе уснуть; в остальное время значок общий.";
 "Utilities" = "Утилиты";
 "Utilities live in a collapsible panel section; optional Settings and Quit buttons; the right-click menu jumps straight to any module." = "Утилиты — в раскрывающейся секции панели; опциональные кнопки «Настройки» и «Выход»; меню правого клика ведёт сразу в модуль.";
@@ -648,20 +644,19 @@
 "Module icons" = "Иконки модулей";
 "Colour" = "Цветные";
 "Plain" = "Простые";
-"Sidebar" = "Боковое меню";
 "New section" = "Новый раздел";
 "Remove section" = "Удалить раздел";
 "Use the default name" = "Вернуть имя по умолчанию";
-"Move to" = "Переместить в";
 "Drag to reorder. A module can go into any section, and a section you remove hands its modules to its neighbour." = "Перетаскивайте, чтобы менять порядок. Модуль можно положить в любой раздел, а удалённый раздел отдаёт свои модули соседнему.";
 "Drag a module here" = "Перетащите сюда модуль";
 "your section" = "свой раздел";
 "Restore defaults" = "Вернуть по умолчанию";
 "Behaviour" = "Поведение";
 "Light or dark" = "Светлая или тёмная";
-"Menu bar and panel" = "Меню-бар и панель";
 "Square" = "Квадрат";
 "Hexagon" = "Шестиугольник";
 "Capsule" = "Капсула";
 "Modules" = "Модули";
 "Behaviour, appearance, permissions and what Helm may remove." = "Поведение, внешний вид, разрешения и что Helm может удалять.";
+"Order and sections" = "Порядок и разделы";
+"A switch turns the module off everywhere in Helm." = "Переключатель выключает модуль во всём Helm.";
