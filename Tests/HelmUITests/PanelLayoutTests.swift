@@ -198,4 +198,58 @@ final class PanelLayoutTests: XCTestCase {
         XCTAssertEqual(before.moving("nope", toTab: 0, at: 0), before)
         XCTAssertEqual(before.adding("a", toTab: 7), before)
     }
+
+    // MARK: - Tabs
+
+    /// The strip is worth its row only once there is a second tab.
+    func testOneTabShowsNoStrip() {
+        XCTAssertFalse(layout([("a", .wide)]).showsTabBar)
+        XCTAssertTrue(layout([("a", .wide)]).addingTab(id: "t2").showsTabBar)
+    }
+
+    /// Closing a tab hands its widgets to the neighbour rather than dropping
+    /// them: somebody arranged those, and taking six widgets with the tab is a
+    /// second and larger action nobody asked for.
+    func testClosingATabHandsItsWidgetsToTheNeighbour() {
+        let before = PanelLayout(tabs: [
+            .init(id: "a", widgets: [.init(widget: "vpn", size: .wide)]),
+            .init(id: "b", widgets: [.init(widget: "disk", size: .compact)]),
+        ])
+        let after = before.removingTab("b")
+        XCTAssertEqual(after.tabs.count, 1)
+        XCTAssertEqual(after.allSlots.map(\.widget), ["vpn", "disk"])
+    }
+
+    /// Closing the first hands them to the right, which is the tab about to be
+    /// looked at.
+    func testClosingTheFirstTabHandsThemRight() {
+        let before = PanelLayout(tabs: [
+            .init(id: "a", widgets: [.init(widget: "vpn", size: .wide)]),
+            .init(id: "b", widgets: [.init(widget: "disk", size: .compact)]),
+        ])
+        let after = before.removingTab("a")
+        XCTAssertEqual(after.allSlots.map(\.widget), ["disk", "vpn"])
+    }
+
+    /// The last tab cannot be closed: a panel with no tabs has nowhere to put
+    /// anything, and `reconciled` would have to invent one back.
+    func testTheLastTabCannotBeClosed() {
+        let only = layout([("vpn", .wide)])
+        XCTAssertEqual(only.removingTab("t"), only)
+    }
+
+    /// An empty name is not a name — it is the default, asked for again.
+    func testAnEmptyNameIsTheDefaultName() {
+        let named = layout([]).renamingTab("t", to: "Работа")
+        XCTAssertEqual(named.tabs[0].name, "Работа")
+        XCTAssertNil(named.renamingTab("t", to: "   ").tabs[0].name)
+    }
+
+    /// The control: renaming and closing find their tab by id, and a call that
+    /// names none changes nothing.
+    func testATabCallThatMatchesNothingChangesNothing() {
+        let before = layout([("vpn", .wide)])
+        XCTAssertEqual(before.renamingTab("nope", to: "x"), before)
+        XCTAssertEqual(before.removingTab("nope"), before)
+    }
 }

@@ -186,6 +186,12 @@ private struct HelmPanelContent: View {
     /// The one refusal the layout makes, shown where the attempt was made.
     @State private var refusal: String?
     @State private var width = AppSettings.panelWidth
+    /// Which tab is being looked at. Session state, not stored: the panel is
+    /// opened for a glance, and opening it on the tab somebody happened to
+    /// leave last week is a panel that answers a question nobody asked.
+    @State private var activeTab = 0
+    @State private var renaming: String?
+    @State private var draftName = ""
     @State private var diskAccess: PermissionState = .granted
     @State private var accessibility: PermissionState = .granted
     /// Bumped when the arrangement changes so the panel rebuilds its rows.
@@ -238,8 +244,11 @@ private struct HelmPanelContent: View {
                       size: .wide, pinned: true)
     }
 
+    private var tabIndex: Int { min(max(0, activeTab), max(0, layout.tabs.count - 1)) }
+
     private func widgets(_ byID: [String: ModuleHost.Live]) -> [Widget] {
-        let placed: [Widget] = layout.allSlots.compactMap { slot in
+        let slots = layout.tabs.indices.contains(tabIndex) ? layout.tabs[tabIndex].widgets : []
+        let placed: [Widget] = slots.compactMap { slot in
             guard let live = byID[slot.widget] else { return nil }
             let offered = live.descriptor.panelWidgetSizes(live.vm)
             guard let size = PanelGrid.resolve(slot.size, offered: offered),
@@ -349,6 +358,62 @@ private struct HelmPanelContent: View {
 
     // MARK: - Chrome
 
+    /// The strip, and it is the first row of the card **in both modes**.
+    ///
+    /// In the mockups' first version it stood first when reading and second
+    /// when editing, so entering the mode moved every tab out from under the
+    /// cursor that had just pressed one.
+    @ViewBuilder
+    private var tabStrip: some View {
+        if layout.showsTabBar || editing {
+            HStack(spacing: 4) {
+                ForEach(Array(layout.tabs.enumerated()), id: \.element.id) { index, tab in
+                    Button {
+                        activeTab = index
+                    } label: {
+                        Text(AppStr.tabTitle(tab))
+                            .font(HelmText.rowDetail.weight(index == tabIndex ? .semibold : .regular))
+                            .foregroundStyle(index == tabIndex ? Color.primary : HelmText.quiet)
+                            .lineLimit(1)
+                            .padding(.horizontal, 8).padding(.vertical, 4)
+                            .background(RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(index == tabIndex ? HelmSurface.wellFill : .clear))
+                    }
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        Button(AppStr.renameSection) {
+                            draftName = AppStr.tabTitle(tab)
+                            renaming = tab.id
+                        }
+                        Button(AppStr.closeTab, role: .destructive) {
+                            apply(layout.removingTab(tab.id))
+                            activeTab = min(tabIndex, max(0, layout.tabs.count - 1))
+                        }
+                        .disabled(layout.tabs.count == 1)
+                    }
+                    // ⌘1…⌘9, as every tabbed window on the machine.
+                    .keyboardShortcut(index < 9 ? KeyEquivalent(Character("\(index + 1)")) : "0",
+                                      modifiers: .command)
+                }
+                if editing {
+                    Button {
+                        let id = "tab.\(layout.tabs.count + 1).\(layout.allSlots.count)"
+                        apply(layout.addingTab(id: id))
+                        activeTab = layout.tabs.count - 1
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(HelmText.quiet)
+                            .padding(.horizontal, 6).padding(.vertical, 4)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(AppStr.newTab)
+                }
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
     /// The bar above the grid while the panel is being arranged.
     private var editBar: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -384,7 +449,7 @@ private struct HelmPanelContent: View {
     /// Everything not on this tab, as ghosts to press.
     @ViewBuilder
     private func gallery(_ byID: [String: ModuleHost.Live]) -> some View {
-        let placed = Set(layout.allSlots.map(\.widget))
+        let placed = Set(layout.allSlots.map(\.widget))   // not just this tab: a widget lives in one place
         let rest = candidates.order.filter { !placed.contains($0) }
         VStack(alignment: .leading, spacing: 6) {
             Text(AppStr.addWidget)
@@ -412,7 +477,7 @@ private struct HelmPanelContent: View {
 
     private func ghost(_ id: String, _ live: ModuleHost.Live?) -> some View {
         Button {
-            apply(layout.adding(id, toTab: 0))
+            apply(layout.adding(id, toTab: tabIndex))
         } label: {
             VStack(spacing: 4) {
                 if let live {
@@ -510,6 +575,7 @@ private struct HelmPanelContent: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
             } else {
+                tabStrip
                 if editing { editBar }
                 grid(items)
                 if editing { gallery(parts.byID) }
@@ -521,6 +587,16 @@ private struct HelmPanelContent: View {
         }
         .padding(12)
         .frame(width: width)
+        .alert(AppStr.renameSection, isPresented: Binding(
+            get: { renaming != nil }, set: { if !$0 { renaming = nil } }
+        )) {
+            TextField(AppStr.tabLabel, text: $draftName)
+            Button(AppStr.done) {
+                if let id = renaming { apply(layout.renamingTab(id, to: draftName)) }
+                renaming = nil
+            }
+            Button(AppStr.cancel, role: .cancel) { renaming = nil }
+        }
         .onAppear {
             reload()
             diskAccess = PermissionCheck.currentFullDiskAccess()

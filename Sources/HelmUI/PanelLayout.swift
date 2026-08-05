@@ -179,4 +179,44 @@ public struct PanelLayout: Equatable, Codable, Sendable {
         next.tabs[tab].widgets.append(Slot(widget: widget, size: .wide))
         return next
     }
+
+    // MARK: - Tabs
+
+    /// A tab is only worth its strip once there is a second one. Until then the
+    /// panel is a grid and nothing on screen says a tab exists.
+    public var showsTabBar: Bool { tabs.count > 1 }
+
+    public func addingTab(id: String) -> PanelLayout {
+        var copy = self
+        copy.tabs.append(Tab(id: id, seed: nil, name: nil, widgets: []))
+        return copy
+    }
+
+    public func renamingTab(_ id: String, to name: String?) -> PanelLayout {
+        guard let index = tabs.firstIndex(where: { $0.id == id }) else { return self }
+        var copy = self
+        let trimmed = name?.trimmingCharacters(in: .whitespacesAndNewlines)
+        copy.tabs[index].name = (trimmed?.isEmpty ?? true) ? nil : trimmed
+        return copy
+    }
+
+    /// Closing a tab hands its widgets to the neighbour rather than dropping
+    /// them.
+    ///
+    /// Somebody arranged those; «close» is about the tab, and taking six
+    /// widgets with it is a second, larger action nobody asked for. The
+    /// neighbour is the tab to the left, or the one to the right if this was
+    /// the first — the one that is about to be looked at either way.
+    ///
+    /// The last tab cannot be closed: a panel with no tabs has nowhere to put
+    /// anything.
+    public func removingTab(_ id: String) -> PanelLayout {
+        guard tabs.count > 1, let index = tabs.firstIndex(where: { $0.id == id })
+        else { return self }
+        var copy = self
+        let orphans = copy.tabs.remove(at: index).widgets
+        let neighbour = max(0, index - 1)
+        copy.tabs[neighbour].widgets.append(contentsOf: orphans)
+        return copy
+    }
 }
