@@ -51,6 +51,19 @@ import Module_VPN_Engine
     public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? {
         MenuBarContribution(panelTile: AnyView(VPNPanelTile(vm: viewModel(vm))))
     }
+    /// Three sizes. The middle one is the tile this module has always drawn;
+    /// 1×1 is how many are up out of how many exist, and 2×N is the tile with
+    /// every connection listed under it — which is the case that makes somebody
+    /// open the panel at all: one of them is connected and it is not the one
+    /// they expected.
+    public func panelWidget(_ size: PanelWidgetSize, _ vm: ModuleViewModel) -> AnyView? {
+        switch size {
+        case .compact: return AnyView(VPNCompactWidget(vm: viewModel(vm)))
+        case .wide: return AnyView(VPNPanelTile(vm: viewModel(vm)))
+        case .tall: return AnyView(VPNTallWidget(vm: viewModel(vm)))
+        }
+    }
+
     /// Without this the host reads `statusAppearance` only when something else
     /// redraws the icon, and a rule firing by itself is precisely the case
     /// where nothing else does.

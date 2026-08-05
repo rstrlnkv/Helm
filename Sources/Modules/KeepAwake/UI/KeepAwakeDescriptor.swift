@@ -38,6 +38,19 @@ import Module_KeepAwake_Engine
         return MenuBarContribution(panelTile: AnyView(KeepAwakePanelTile(vm: vm, store: s)))
     }
 
+    /// Three sizes, and the middle one is the tile this module has always
+    /// drawn. 1×1 is the countdown alone; 2×N is the tile with the two
+    /// automation conditions unfolded under it, which at 2×1 are behind a
+    /// disclosure because the tile has to stay short.
+    public func panelWidget(_ size: PanelWidgetSize, _ vm: ModuleViewModel) -> AnyView? {
+        let s = store ?? NamespacedStore(namespace: "keep-awake", backing: UserDefaults.standard)
+        switch size {
+        case .compact: return AnyView(KeepAwakeCompactWidget(vm: vm))
+        case .wide: return AnyView(KeepAwakePanelTile(vm: vm, store: s))
+        case .tall: return AnyView(KeepAwakeTallWidget(vm: vm, store: s))
+        }
+    }
+
     public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
         AnyView(KeepAwakeSettingsPage(vm: vm, store: store ?? NamespacedStore(namespace: "keep-awake", backing: UserDefaults.standard)))
     }
