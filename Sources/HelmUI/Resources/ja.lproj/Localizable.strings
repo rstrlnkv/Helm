@@ -660,3 +660,4 @@
 "Behaviour, appearance, permissions and what Helm may remove." = "動作、外観、アクセス権、そしてHelmが削除してよいもの。";
 "Order and sections" = "並び順とセクション";
 "A switch turns the module off everywhere in Helm." = "スイッチを切ると、そのモジュールは Helm 全体で無効になります。";
+"Show" = "表示";

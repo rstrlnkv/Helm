@@ -63,6 +63,31 @@ enum AppStr {
     static var fullDiskAccessWhy: String { L("Needed to remove app containers and to read every folder when scanning the disk.") }
     static var fullDiskAccessAdHoc: String { L("Access is tied to one exact copy of Helm, so grant it again after every update: remove Helm with “−”, then add it with “+”.") }
     static var grant: String { L("Grant…") }
+    static var show: String { L("Show") }
+
+    /// The one thing on the settings page that is wrong right now, said above
+    /// everything else. Counted from `permissions` rather than `inertWithout`:
+    /// the sidebar's triangle marks a module that can do nothing, and this line
+    /// is about every module a missing grant reaches.
+    static func permissionsWithheld(count: Int, modules: Int) -> String {
+        let en = "\(count) " + (count == 1 ? "permission" : "permissions")
+            + " not granted · \(modules) " + (modules == 1 ? "module" : "modules") + " affected"
+        return L(en,
+          [.ru: "Не выдано \(count) "
+                + Plural.russian(count, "разрешение", "разрешения", "разрешений")
+                + " · затронуто \(modules) "
+                + Plural.russian(modules, "модуль", "модуля", "модулей"),
+           .es: "Faltan \(count) " + (count == 1 ? "permiso" : "permisos")
+                + " · \(modules) " + (modules == 1 ? "módulo afectado" : "módulos afectados"),
+           .fr: "\(count) " + (count == 1 ? "autorisation manquante" : "autorisations manquantes")
+                + " · \(modules) " + (modules == 1 ? "module concerné" : "modules concernés"),
+           .de: "\(count) " + (count == 1 ? "Berechtigung fehlt" : "Berechtigungen fehlen")
+                + " · \(modules) " + (modules == 1 ? "Modul betroffen" : "Module betroffen"),
+           .ja: "\(count) 件の許可が未付与 · \(modules) 個のモジュールに影響",
+           .zh: "\(count) 项权限未授予 · 影响 \(modules) 个模块",
+           .pt: "\(count) " + (count == 1 ? "permissão não concedida" : "permissões não concedidas")
+                + " · \(modules) " + (modules == 1 ? "módulo afetado" : "módulos afetados")])
+    }
     /// The localized face of `PermissionNeed`; the runtime carries English.
     static func permissionTitle(_ need: PermissionNeed) -> String {
         switch need {

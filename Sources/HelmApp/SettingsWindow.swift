@@ -348,7 +348,7 @@ private struct SettingsDetail: View {
             LogView()
         case .module(let id):
             if let descriptor = ModuleRegistry.all.first(where: { $0.idRaw == id }) {
-                ModuleDetailView(model: model, host: model.host, descriptor: descriptor, id: id)
+                ModuleDetailView(host: model.host, descriptor: descriptor, id: id)
             } else {
                 // A selection can outlive its module (removed build, stale
                 // state). Falling back beats showing an empty pane.
@@ -359,7 +359,6 @@ private struct SettingsDetail: View {
 }
 
 private struct ModuleDetailView: View {
-    @ObservedObject var model: SettingsModel
     @ObservedObject var host: ModuleHost
     let descriptor: any ModuleDescriptor
     let id: String
@@ -370,26 +369,17 @@ private struct ModuleDetailView: View {
                            tint: descriptor.moduleTint.colour,
                            title: descriptor.moduleMetadata.name,
                            subtitle: descriptor.moduleMetadata.summary,
-                           bleeds: descriptor.pageBleeds) {
-                Toggle(descriptor.moduleMetadata.name, isOn: Binding(
-                    get: { host.isEnabled(descriptor) },
-                    set: { on in
-                        host.setEnabled(descriptor, on)
-                        // The sidebar shows only what is on, so switching a
-                        // module off from its own page removed its row and left
-                        // the selection pointing at nothing: no highlight
-                        // anywhere, and a pane still showing the module you had
-                        // just turned off. Go where the sidebar can follow.
-                        //
-                        // Not «dim the row instead» — the sidebar deliberately
-                        // lists what is on, and dimming gives a nine-row
-                        // sidebar to somebody who wanted three.
-                        if !on { model.selection = .general }
-                    }
-                ))
-                .toggleStyle(.switch)
-                .labelsHidden()
-            }
+                           bleeds: descriptor.pageBleeds)
+            // No switch here. It was the third one in the app for the same
+            // fact — the composer sheet's column and the empty state's
+            // «Включить» being the other two — and it was the only one that
+            // could act on the page you were standing on: the sidebar lists
+            // what is on, so switching a module off from its own header
+            // removed its row, left the selection pointing at nothing, and
+            // went on showing the module you had just turned off.
+            //
+            // Whether a module exists at all is a settings question, and it
+            // is asked where the sidebar is arranged.
             Divider()
             if let live = host.liveModule(id) {
                 descriptor.settingsPage(live.vm)
@@ -426,6 +416,32 @@ private struct MenuBarSettingsView: View {
     @State private var accessibility: PermissionState = .granted
     @State private var confirmingReset = false
     private let adHocBuild = PermissionCheck.isAdHocSigned()
+
+    /// The needed permissions macOS is currently withholding.
+    private var withheldPermissions: [PermissionNeed] {
+        neededPermissions.filter {
+            $0.state(accessibility: accessibility, fullDisk: diskAccess) != .granted
+        }
+    }
+
+    /// Enabled modules that declared one of the withheld permissions. Counted
+    /// from `permissions` rather than `inertWithout`: the sidebar's triangle is
+    /// about a module that can do nothing, and this line is about every module
+    /// the gap reaches — the four Full Disk ones do work, and they find less.
+    private var affectedModuleCount: Int {
+        let withheld = withheldPermissions
+        return ModuleRegistry.all.filter { descriptor in
+            ModuleHost.shared.isEnabled(descriptor)
+                && descriptor.moduleMetadata.permissions.contains { declared in
+                    withheld.contains { need in
+                        switch need {
+                        case .fullDiskAccess: return declared == .fullDisk
+                        case .accessibility: return declared == .accessibility
+                        }
+                    }
+                }
+        }.count
+    }
 
     /// The permissions an enabled module actually uses, in table order.
     private var neededPermissions: [PermissionNeed] {
@@ -474,7 +490,41 @@ private struct MenuBarSettingsView: View {
     }
 
     private var settingsForm: some View {
+        ScrollViewReader { scroll in
         Form {
+            // Above everything, because it is the only thing on this page that
+            // is *wrong right now* — and because the section that answers it
+            // was 919 pt down a form in a 587 pt viewport, entirely below the
+            // fold at the default window. The sidebar's triangle sends people
+            // here; this is the first thing they see when they arrive.
+            //
+            // Only when something is withheld. A row saying everything is
+            // granted is a row teaching people to ignore this space.
+            if !withheldPermissions.isEmpty {
+                Section {
+                    HStack(spacing: 10) {
+                        Image(systemName: "exclamationmark.circle.fill")
+                            .foregroundStyle(HelmSignal.warning)
+                        Text(AppStr.permissionsWithheld(count: withheldPermissions.count,
+                                                        modules: affectedModuleCount))
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 12)
+                        // One withheld grant has one place to go, so go there.
+                        // Several do not, and a button that picks one of them
+                        // for you is a button that lies about what it opened.
+                        if withheldPermissions.count == 1, let only = withheldPermissions.first {
+                            Button(AppStr.grant) { only.openSettings() }
+                                .controlSize(.small)
+                        } else {
+                            Button(AppStr.show) {
+                                withAnimation { scroll.scrollTo(Self.permissionsAnchor, anchor: .top) }
+                            }
+                            .controlSize(.small)
+                        }
+                    }
+                }
+            }
+
             // What Helm does on its own.
             Section(AppStr.behaviour) {
                 Toggle(AppStr.launchAtLogin, isOn: $launchAtLogin)
@@ -571,6 +621,7 @@ private struct MenuBarSettingsView: View {
                                   granted: granted) { need.openSettings() }
                 }
                 }
+                .id(Self.permissionsAnchor)
             }
             Section(AppStr.resetSection) {
                 // `role: .destructive` alone draws as an ordinary link in a
@@ -615,8 +666,11 @@ private struct MenuBarSettingsView: View {
         } message: {
             Text(AppStr.resetConfirmBody)
         }
+        }
     }
 
+    /// What the counter line at the top scrolls to.
+    private static let permissionsAnchor = "settings.permissions"
 }
 
 private struct AboutHelmView: View {
