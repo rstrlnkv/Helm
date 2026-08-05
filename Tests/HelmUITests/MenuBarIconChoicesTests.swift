@@ -41,22 +41,27 @@ final class MenuBarIconChoicesTests: XCTestCase {
 
     // MARK: - Shapes
 
-    func testThreeShapes() {
-        XCTAssertEqual(MenuBarIconStyle.allCases, [.squircle, .hexagon, .capsule])
+    func testSixShapes() {
+        XCTAssertEqual(MenuBarIconStyle.allCases,
+                       [.ring, .doubleRing, .ringDot, .squircle, .hexagon, .capsule])
     }
 
-    /// The circle is gone and there is no nearest survivor to map to — the
-    /// family changed, not the members. Every shape Helm has shipped lands on
-    /// the square, which is the shape of its own icon and of every module
-    /// plate, so the menu bar and the app agree.
-    func testEveryShapeEverShippedLandsOnTheSquare() {
-        for raw in ["ring", "doubleRing", "ringDot", "disc", "dot"] {
-            XCTAssertEqual(MenuBarIconStyle(stored: raw), .squircle,
-                           "\(raw) reads back as nothing this build can draw")
+    /// The three circles stayed; only `disc` and `dot` went, and they go to
+    /// the ring rather than to whatever the default happens to be that day.
+    func testTheTwoDroppedShapesBecomeTheRing() {
+        XCTAssertEqual(MenuBarIconStyle(stored: "disc"), .ring)
+        XCTAssertEqual(MenuBarIconStyle(stored: "dot"), .ring)
+    }
+
+    func testEveryShapeEverShippedStillReadsBack() {
+        for raw in ["ring", "doubleRing", "ringDot", "disc", "dot",
+                    "squircle", "hexagon", "capsule"] {
+            XCTAssertTrue(MenuBarIconStyle.allCases.contains(MenuBarIconStyle(stored: raw)),
+                          "\(raw) reads back as nothing this build can draw")
         }
     }
 
-    func testTheThreeShapesReadBackAsThemselves() {
+    func testEveryShapeReadsBackAsItself() {
         for style in MenuBarIconStyle.allCases {
             XCTAssertEqual(MenuBarIconStyle(stored: style.rawValue), style)
         }

@@ -2,35 +2,40 @@ import AppKit
 
 /// The shape Helm wears in the menu bar.
 ///
-/// It was three variations on a circle, and the circle was not decoration: the
-/// countdown was drawn *as* the ring and the spinner as a quarter of it
-/// turning, so every shape had to have a ring to give up. That is why `disc`
-/// and `dot` were awkward and why the interior was redrawn on top of every
-/// arc.
+/// Six: the three circles it has always had, and three that are not circles.
 ///
-/// Now the shape is an outline and nothing else. The countdown is a fraction
-/// of that outline's perimeter and the spin is a segment travelling along it,
-/// which works for any closed path — so the family can be anything, and is
-/// three silhouettes rather than three circles.
+/// The circle used to be structural rather than chosen. The countdown was
+/// drawn *as* the ring and the spinner as a quarter of it turning, so a shape
+/// with no ring — `disc`, `dot` — had nothing for the timer to consume, and
+/// those two are gone for that reason. Adding a square meant answering the
+/// same question in general: a countdown is now a fraction of whatever the
+/// outline is, walked from the top, which works for any closed path.
 public enum MenuBarIconStyle: String, CaseIterable, Sendable {
-    case squircle, hexagon, capsule
+    case ring, doubleRing, ringDot, squircle, hexagon, capsule
 
     public var label: String {
         switch self {
+        case .ring: return L("Ring")
+        case .doubleRing: return L("Double ring")
+        case .ringDot: return L("Ring + dot")
         case .squircle: return L("Square")
         case .hexagon: return L("Hexagon")
         case .capsule: return L("Capsule")
         }
     }
 
-    /// A value read back from disk, including every shape Helm has shipped.
+    /// A value read back from disk, including two this build no longer offers.
     ///
-    /// `ring`, `doubleRing`, `ringDot`, `disc` and `dot` are all gone, and
-    /// there is no nearest survivor to map them to — the family changed, not
-    /// the members. They land on the square, which is the shape of Helm's own
-    /// icon and of every module plate, so the menu bar and the app agree.
+    /// `disc` and `dot` had no outer ring, and the ring is what the countdown
+    /// and the spinner replace — so on those two the timer setting sat on the
+    /// page beside them and meant nothing. Whoever had one gets the ring
+    /// rather than the default of the day: a shape silently becoming the
+    /// factory setting is indistinguishable from the app forgetting.
     public init(stored: String) {
-        self = MenuBarIconStyle(rawValue: stored) ?? .squircle
+        switch stored {
+        case "disc", "dot": self = .ring
+        default: self = MenuBarIconStyle(rawValue: stored) ?? .ring
+        }
     }
 }
 
@@ -93,6 +98,7 @@ public enum MenuBarIcon {
             let width = lineWidth(s)
             guard let progress else {
                 stroke(points, from: 0, to: 1, width: width, colour: colour, closed: true)
+                interior(style: style, size: s, colour: colour)
                 return
             }
             stroke(points, from: 0, to: 1, width: width,
@@ -101,6 +107,7 @@ public enum MenuBarIcon {
             if remaining > 0 {
                 stroke(points, from: 0, to: remaining, width: width, colour: colour, closed: false)
             }
+            interior(style: style, size: s, colour: colour)
         }
     }
 
@@ -119,6 +126,7 @@ public enum MenuBarIcon {
                    colour: colour.withAlphaComponent(0.25), closed: true)
             let head = (phase * 2).truncatingRemainder(dividingBy: 1)
             stroke(points, from: head, to: head + 0.25, width: width, colour: colour, closed: false)
+            interior(style: style, size: s, colour: colour)
         }
     }
 
@@ -144,10 +152,17 @@ public enum MenuBarIcon {
 
     /// The closed outline, inset by half its own stroke so the shape ends at
     /// the canvas edge rather than half a line beyond it.
+    ///
+    /// This is what the countdown and the spin travel along. Anything a shape
+    /// draws *inside* it is `interior`, and is redrawn on top of every arc —
+    /// without that, a double ring collapsed to a plain ring the moment a
+    /// timed session started.
     static func outline(style: MenuBarIconStyle, size s: CGFloat) -> NSBezierPath {
         let w = lineWidth(s)
         let rect = NSRect(x: w / 2, y: w / 2, width: s - w, height: s - w)
         switch style {
+        case .ring, .doubleRing, .ringDot:
+            return NSBezierPath(ovalIn: rect)
         case .squircle:
             return NSBezierPath(roundedRect: rect, xRadius: s * 0.28, yRadius: s * 0.28)
         case .hexagon:
@@ -164,6 +179,26 @@ public enum MenuBarIcon {
             let h = s * 0.62
             let capsule = NSRect(x: w / 2, y: (s - h) / 2, width: s - w, height: h)
             return NSBezierPath(roundedRect: capsule, xRadius: h / 2, yRadius: h / 2)
+        }
+    }
+
+    /// What a shape puts inside its outline, drawn over whatever the arc left.
+    static func interior(style: MenuBarIconStyle, size s: CGFloat, colour: NSColor) {
+        let w = lineWidth(s)
+        colour.setStroke()
+        colour.setFill()
+        switch style {
+        case .ring, .squircle, .hexagon, .capsule:
+            break
+        case .doubleRing:
+            let inset = s * 0.2 + w
+            let inner = NSBezierPath(ovalIn: NSRect(x: inset, y: inset,
+                                                    width: s - 2 * inset, height: s - 2 * inset))
+            inner.lineWidth = max(1, w * 0.7)
+            inner.stroke()
+        case .ringDot:
+            let d = s * 0.24
+            NSBezierPath(ovalIn: NSRect(x: (s - d) / 2, y: (s - d) / 2, width: d, height: d)).fill()
         }
     }
 
