@@ -474,12 +474,11 @@ private struct MenuBarSettingsView: View {
             // menu-bar glyph under «Menu Bar» — so choosing how the app looks
             // meant visiting two headings and knowing which held what.
             Section(AppStr.appearance) {
-                Picker(AppStr.lightOrDark, selection: $appearance) {
-                    ForEach(AppAppearance.allCases, id: \.self) { choice in
-                        Text(AppStr.appearanceName(choice)).tag(choice)
-                    }
-                }
-                .onChange(of: appearance) { _, choice in AppSettings.appearance = choice }
+                // Three pictures, the way System Settings asks the same
+                // question. It was a pop-up of three accurate words that are
+                // not what anybody is choosing between.
+                AppearancePicker(selection: $appearance, title: AppStr.lightOrDark)
+                    .onChange(of: appearance) { _, choice in AppSettings.appearance = choice }
                 // Worth offering only because the tint is the module's own: a
                 // choice between four modules in one blue and grey is not one.
                 Picker(AppStr.moduleIcons, selection: $sidebarStyle) {
