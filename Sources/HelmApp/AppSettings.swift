@@ -194,7 +194,7 @@ extension Notification.Name {
     }
 
     static var menuBarIconSize: String {
-        get { store.string("menuBarIconSize", default: "medium") }
+        get { store.string("menuBarIconSize", default: "extraSmall") }
         set {
             store.set(newValue, for: "menuBarIconSize")
             NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)

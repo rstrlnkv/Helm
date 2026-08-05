@@ -7,7 +7,7 @@ import AppKit
 /// different phases do not.
 final class RingSpinnerTests: XCTestCase {
     private func png(_ phase: Double) throws -> Data {
-        let image = RingIcon.makeSpinner(style: .ring, size: .medium,
+        let image = RingIcon.makeSpinner(style: .ring, size: .small,
                                           tintToken: "green", phase: phase)
         let tiff = try XCTUnwrap(image.tiffRepresentation)
         let rep = try XCTUnwrap(NSBitmapImageRep(data: tiff))
@@ -31,16 +31,16 @@ final class RingSpinnerTests: XCTestCase {
     }
 
     func testTheIconKeepsItsFootprint() {
-        let still = RingIcon.make(style: .ring, size: .medium, tintToken: "green")
-        let spinning = RingIcon.makeSpinner(style: .ring, size: .medium,
+        let still = RingIcon.make(style: .ring, size: .small, tintToken: "green")
+        let spinning = RingIcon.makeSpinner(style: .ring, size: .small,
                                              tintToken: "green", phase: 0.3)
         XCTAssertEqual(still.size, spinning.size, "the menu bar would jump")
     }
 
     /// Thirty-six images, not one per frame at 30 Hz in the menu bar.
     func testFramesAreBuiltOnceAndReused() {
-        let first = RingIcon.spinnerFrames(style: .ring, size: .medium, tintToken: "green")
-        let second = RingIcon.spinnerFrames(style: .ring, size: .medium, tintToken: "green")
+        let first = RingIcon.spinnerFrames(style: .ring, size: .small, tintToken: "green")
+        let second = RingIcon.spinnerFrames(style: .ring, size: .small, tintToken: "green")
         XCTAssertEqual(first.count, 36)
         XCTAssertTrue(first[10] === second[10], "the frame cache is not returning the same objects")
     }
@@ -48,7 +48,7 @@ final class RingSpinnerTests: XCTestCase {
 
     /// Mean colour of the bright pixels — the ring, not the transparent field.
     private func ringColour(_ token: String) throws -> (r: Double, g: Double, b: Double) {
-        let image = RingIcon.spinnerFrames(style: .ring, size: .medium, tintToken: token)[4]
+        let image = RingIcon.spinnerFrames(style: .ring, size: .small, tintToken: token)[4]
         let tiff = try XCTUnwrap(image.tiffRepresentation)
         let rep = try XCTUnwrap(NSBitmapImageRep(data: tiff))
         var rs = 0.0, gs = 0.0, bs = 0.0, n = 0.0
@@ -80,9 +80,9 @@ final class RingSpinnerTests: XCTestCase {
     /// Two tokens must not draw the same picture — the cache is keyed by tint,
     /// and a key that ignored it would serve one colour for both.
     func testTwoTintsAreTwoPictures() throws {
-        let a = try XCTUnwrap(RingIcon.spinnerFrames(style: .ring, size: .medium,
+        let a = try XCTUnwrap(RingIcon.spinnerFrames(style: .ring, size: .small,
                                                      tintToken: "cyan")[4].tiffRepresentation)
-        let b = try XCTUnwrap(RingIcon.spinnerFrames(style: .ring, size: .medium,
+        let b = try XCTUnwrap(RingIcon.spinnerFrames(style: .ring, size: .small,
                                                      tintToken: "red")[4].tiffRepresentation)
         XCTAssertNotEqual(a, b, "the tint is not reaching the cache key")
     }

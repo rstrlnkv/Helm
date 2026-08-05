@@ -40,7 +40,7 @@ public struct LayoutSettingsPage: View {
         _badgeStyle = State(initialValue:
             BadgeStyle.from(store.string(LayoutKey.badgeStyle, default: BadgeStyle.default.rawValue)))
         _badgeSize = State(initialValue:
-            MenuBarIconSize(rawValue: store.string(LayoutKey.badgeSize, default: "small")) ?? .small)
+            MenuBarIconSize(stored: store.string(LayoutKey.badgeSize, default: "small")))
         _tapKey = State(initialValue: TapKey.from(store.string(LayoutKey.tapKey, default: TapKey.rightCommand.rawValue)))
         _convertKey = StateObject(wrappedValue:
             HelmHotkeyRecorder(store: store, prefix: "convertHotkey"))

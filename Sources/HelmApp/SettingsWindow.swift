@@ -558,7 +558,7 @@ private struct MenuBarSettingsView: View {
     }
 
     private var currentStyle: MenuBarIconStyle {
-        MenuBarIconStyle(rawValue: style) ?? .ring
+        MenuBarIconStyle(stored: style)
     }
 }
 
