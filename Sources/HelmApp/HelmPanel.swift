@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import HelmRuntime
 import HelmUI
 
 /// Borderless, non-activating panel shown below the status item; stacks each
@@ -185,6 +186,8 @@ private struct HelmPanelContent: View {
     /// The one refusal the layout makes, shown where the attempt was made.
     @State private var refusal: String?
     @State private var width = AppSettings.panelWidth
+    @State private var diskAccess: PermissionState = .granted
+    @State private var accessibility: PermissionState = .granted
     /// Bumped when the arrangement changes so the panel rebuilds its rows.
     @State private var orderTick = 0
 
@@ -193,9 +196,14 @@ private struct HelmPanelContent: View {
         let id: String
         let view: AnyView
         let size: PanelWidgetSize
-        /// A module that is switched off keeps its place and says so.
-        let off: Bool
+        /// Arrives by itself and cannot be taken off — the permissions notice
+        /// is the only one, and it leaves when the grant is given.
+        var pinned = false
     }
+
+    /// The one widget that belongs to no module. This is why `Slot.widget` is
+    /// an id rather than a module id.
+    static let permissionsWidget = "helm.permissions"
 
     // MARK: - What the panel can draw right now
 
@@ -217,14 +225,30 @@ private struct HelmPanelContent: View {
 
     /// The stored arrangement decides what is drawn and in what order; the live
     /// modules decide what *can* be drawn.
+    /// Never stored: it arrives while a grant is missing and leaves with it,
+    /// so putting it in the layout would mean writing a row that has to be
+    /// deleted again the moment somebody presses Grant — and deciding, on
+    /// every read, whether an absent one was removed or never added.
+    private var permissionsWidget: Widget? {
+        let missing = PermissionSummary.withheld(accessibility: accessibility, fullDisk: diskAccess)
+        guard !missing.isEmpty else { return nil }
+        return Widget(id: Self.permissionsWidget,
+                      view: AnyView(PermissionsWidget(withheld: missing,
+                                                      modules: PermissionSummary.affected(by: missing))),
+                      size: .wide, pinned: true)
+    }
+
     private func widgets(_ byID: [String: ModuleHost.Live]) -> [Widget] {
-        layout.allSlots.compactMap { slot in
+        let placed: [Widget] = layout.allSlots.compactMap { slot in
             guard let live = byID[slot.widget] else { return nil }
             let offered = live.descriptor.panelWidgetSizes(live.vm)
             guard let size = PanelGrid.resolve(slot.size, offered: offered),
                   let view = live.descriptor.panelWidget(size, live.vm) else { return nil }
-            return Widget(id: slot.widget, view: view, size: size, off: false)
+            return Widget(id: slot.widget, view: view, size: size)
         }
+        // At the top, always. It is the only thing in the panel that is wrong
+        // right now, and a notice somebody has to scroll to is a notice.
+        return [permissionsWidget].compactMap { $0 } + placed
     }
 
     private func reload() {
@@ -267,6 +291,21 @@ private struct HelmPanelContent: View {
 
     @ViewBuilder
     private func cell(_ widget: Widget, among items: [Widget]) -> some View {
+        if widget.pinned {
+            widget.view
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .overlay(alignment: .topLeading) {
+                    if editing {
+                        Image(systemName: "pin.fill")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 17, height: 17)
+                            .background(Circle().fill(HelmText.quiet))
+                            .offset(x: -6, y: -6)
+                            .help(AppStr.permissionsWidgetPinned)
+                    }
+                }
+        } else {
         widget.view
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .modifier(EditChrome(active: editing, widget: widget.id, size: widget.size,
@@ -286,6 +325,7 @@ private struct HelmPanelContent: View {
                 guard let target = layout.placement(of: widget.id) else { return }
                 apply(layout.moving(dropped, toTab: target.tab, at: target.index))
             })
+        }
     }
 
     private func offeredSizes(_ id: String) -> [PanelWidgetSize] {
@@ -481,7 +521,11 @@ private struct HelmPanelContent: View {
         }
         .padding(12)
         .frame(width: width)
-        .onAppear { reload() }
+        .onAppear {
+            reload()
+            diskAccess = PermissionCheck.currentFullDiskAccess()
+            accessibility = PermissionCheck.currentAccessibility()
+        }
         .onReceive(NotificationCenter.default.publisher(for: .helmPanelWidthChanged)) { _ in
             width = AppSettings.panelWidth
         }
@@ -677,5 +721,42 @@ private struct UtilitiesSection: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// The notice that arrives by itself: macOS is withholding something, and
+/// these modules are the ones it reaches.
+///
+/// Not removable, and it is not in the layout at all. Storing it would mean
+/// writing a row that has to be deleted the moment somebody presses Grant —
+/// and deciding, on every read, whether an absent one was taken off or never
+/// added. It is a fact about the machine, so it is computed from the machine.
+private struct PermissionsWidget: View {
+    let withheld: [PermissionNeed]
+    let modules: Int
+
+    var body: some View {
+        HelmWidgetBody {
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.circle.fill")
+                    .foregroundStyle(HelmSignal.warning)
+                Text(AppStr.permissionsWithheld(count: withheld.count, modules: modules))
+                    .font(HelmText.rowDetail)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 8)
+                // One withheld grant has one place to go, so go there. Several
+                // do not, and a button that picks one of them silently is a
+                // button that lies about what it opened.
+                if withheld.count == 1, let only = withheld.first {
+                    Button(AppStr.grant) { only.openSettings() }
+                        .controlSize(.small)
+                } else {
+                    Button(AppStr.show) {
+                        NotificationCenter.default.post(name: .helmOpenSettings, object: nil)
+                    }
+                    .controlSize(.small)
+                }
+            }
+        }
     }
 }

@@ -671,3 +671,4 @@
 "Module is off" = "Module désactivé";
 "Switched off — adding it turns it on" = "Désactivé — l’ajouter l’active";
 "Everything is already on this tab." = "Tout est déjà sur cet onglet.";
+"The permissions notice cannot be removed. It leaves when the grant is given." = "Cet avis ne peut pas être retiré. Il disparaît une fois l’autorisation accordée.";

@@ -417,42 +417,16 @@ private struct MenuBarSettingsView: View {
 
     /// The needed permissions macOS is currently withholding.
     private var withheldPermissions: [PermissionNeed] {
-        neededPermissions.filter {
-            $0.state(accessibility: accessibility, fullDisk: diskAccess) != .granted
-        }
+        PermissionSummary.withheld(accessibility: accessibility, fullDisk: diskAccess)
     }
 
-    /// Enabled modules that declared one of the withheld permissions. Counted
-    /// from `permissions` rather than `inertWithout`: the sidebar's triangle is
-    /// about a module that can do nothing, and this line is about every module
-    /// the gap reaches — the four Full Disk ones do work, and they find less.
     private var affectedModuleCount: Int {
-        let withheld = withheldPermissions
-        return ModuleRegistry.all.filter { descriptor in
-            ModuleHost.shared.isEnabled(descriptor)
-                && descriptor.moduleMetadata.permissions.contains { declared in
-                    withheld.contains { need in
-                        switch need {
-                        case .fullDiskAccess: return declared == .fullDisk
-                        case .accessibility: return declared == .accessibility
-                        }
-                    }
-                }
-        }.count
+        PermissionSummary.affected(by: withheldPermissions)
     }
 
     /// The permissions an enabled module actually uses, in table order.
-    private var neededPermissions: [PermissionNeed] {
-        let declared = ModuleRegistry.all
-            .filter { ModuleHost.shared.isEnabled($0) }
-            .flatMap { $0.moduleMetadata.permissions }
-        return PermissionNeed.allCases.filter { need in
-            switch need {
-            case .fullDiskAccess: return declared.contains(.fullDisk)
-            case .accessibility: return declared.contains(.accessibility)
-            }
-        }
-    }
+    private var neededPermissions: [PermissionNeed] { PermissionSummary.needed() }
+
     @State private var loggingOn = LogPolicy.isEnabled(
         version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0",
         override: AppSettings.loggingOverride)

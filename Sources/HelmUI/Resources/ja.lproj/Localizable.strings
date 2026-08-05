@@ -671,3 +671,4 @@
 "Module is off" = "モジュールはオフです";
 "Switched off — adding it turns it on" = "オフです。追加するとオンになります";
 "Everything is already on this tab." = "すべてこのタブにあります。";
+"The permissions notice cannot be removed. It leaves when the grant is given." = "この通知は外せません。許可を与えると消えます。";
