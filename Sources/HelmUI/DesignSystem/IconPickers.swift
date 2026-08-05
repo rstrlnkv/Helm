@@ -70,10 +70,20 @@ public struct IconShapePicker: View {
     /// A pop-up button is an `NSMenuItem` drawn by AppKit, which lays out the
     /// image and the title itself and ignores what a SwiftUI `Label` asks for
     /// between them — padding on the `Text` changed nothing, and the closed
-    /// button read «○Кольцо». The space has to be part of the picture, so it
-    /// is drawn into a canvas six points wider with the glyph at the left.
+    /// button read «○Кольцо». So the space is part of the picture.
+    ///
+    /// **Four, not six, and it is a compromise between two places that get
+    /// different treatment.** AppKit gives an *open* menu's items a gap of its
+    /// own — measured at 2x, about 9 pt — and gives the closed button none. One
+    /// image serves both, so six made the button right and the list read at 15.
+    /// Four leaves the button with a gap and the list a few points loose, and
+    /// the button is the one on screen all the time.
+    ///
+    /// The way out of the compromise is a hand-built `Menu` whose closed label
+    /// is ours and whose items are plain — and it costs the selection tick,
+    /// which a `Picker` draws and a `Menu` of buttons does not.
     private func spaced(_ image: NSImage) -> NSImage {
-        let gap: CGFloat = 6
+        let gap: CGFloat = 4
         let out = NSImage(size: NSSize(width: image.size.width + gap, height: image.size.height))
         out.lockFocus()
         image.draw(at: .zero, from: .zero, operation: .sourceOver, fraction: 1)
