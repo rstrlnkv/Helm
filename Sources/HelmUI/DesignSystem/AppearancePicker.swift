@@ -128,13 +128,11 @@ private struct AppearanceThumbnail: View {
                 RoundedRectangle(cornerRadius: w * 0.06, style: .continuous)
                     .fill(dark ? Color(white: 0.17) : Color(white: 0.97))
                     .overlay(alignment: .topLeading) {
-                        VStack(alignment: .leading, spacing: h * 0.08) {
-                            // The selected row: the one thing in the picture
-                            // that is the accent colour, because it is the one
-                            // thing in a Mac window that is.
-                            Capsule()
-                                .fill(Color.accentColor)
-                                .frame(width: w * 0.42, height: h * 0.13)
+                        // Lights first, then the row. They were the other way
+                        // round, which is not a Mac window: the traffic lights
+                        // live in the title bar, and anything selected is in
+                        // the content below them.
+                        VStack(alignment: .leading, spacing: h * 0.09) {
                             HStack(spacing: w * 0.045) {
                                 ForEach([Color(red: 0.99, green: 0.37, blue: 0.34),
                                          Color(red: 0.99, green: 0.74, blue: 0.18),
@@ -142,6 +140,12 @@ private struct AppearanceThumbnail: View {
                                     Circle().fill(tint).frame(width: h * 0.11, height: h * 0.11)
                                 }
                             }
+                            // The selected row: the one thing in the picture
+                            // that is the accent colour, because it is the one
+                            // thing in a Mac window that is.
+                            Capsule()
+                                .fill(Color.accentColor)
+                                .frame(width: w * 0.42, height: h * 0.13)
                         }
                         .padding(.leading, w * 0.09)
                         .padding(.top, h * 0.14)
