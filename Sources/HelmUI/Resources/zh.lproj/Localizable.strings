@@ -663,3 +663,5 @@
 "Square" = "方形";
 "Hexagon" = "六边形";
 "Capsule" = "胶囊";
+"Modules" = "模块";
+"Behaviour, appearance, permissions and what Helm may remove." = "行为、外观、权限，以及 Helm 可以删除什么。";

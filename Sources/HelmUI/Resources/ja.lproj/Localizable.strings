@@ -663,3 +663,5 @@
 "Square" = "四角";
 "Hexagon" = "六角形";
 "Capsule" = "カプセル";
+"Modules" = "モジュール";
+"Behaviour, appearance, permissions and what Helm may remove." = "動作、外観、アクセス権、そしてHelmが削除してよいもの。";

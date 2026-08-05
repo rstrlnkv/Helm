@@ -33,9 +33,11 @@ enum AppStr {
     /// identically is how a person stops seeing the heading at all, so the row
     /// says what it chooses between.
     static var lightOrDark: String { L("Light or dark") }
-    /// One place. The panel opens from the menu-bar icon, and splitting them
-    /// asked somebody to know which of the two a setting belonged to before
-    /// they could find it.
+    /// Declared and unused. It was the heading over the panel's buttons while
+    /// the menu-bar icon lived there too; the icon moved to Appearance with
+    /// everything else that decides how Helm looks, and the section went back
+    /// to being the panel. Left here because the key is in eight tables and
+    /// removing it to save a line is the trade the wrong way round.
     static var menuBarAndPanel: String { L("Menu bar and panel") }
     static var launchAtLogin: String { L("Open Helm at login") }
     static var checking: String { L("Checking…") }
@@ -109,7 +111,14 @@ enum AppStr {
     }
     static var clearLog: String { L("Clear") }
     static var whatsNewSummary: String { L("Everything that landed in Helm, newest first.") }
-    static var settingsPaneSummary: String { L("Behaviour, module order, permissions, and diagnostics.") }
+    /// The four headings under it, in order. It said «module order… and
+    /// diagnostics»: the order is one row now and diagnostics is a page of its
+    /// own, so the subtitle named one thing that had moved and one that was
+    /// not here.
+    static var settingsPaneSummary: String {
+        L("Behaviour, appearance, permissions and what Helm may remove.")
+    }
+    static var modulesSection: String { L("Modules") }
     static var tagline: String { L("Modular tools in your menu bar.") }
     static var metricVersion: String { L("VERSION") }
     static var metricBuild: String { L("BUILD") }

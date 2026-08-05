@@ -452,18 +452,20 @@ private struct MenuBarSettingsView: View {
 
     private var settingsForm: some View {
         Form {
-            // What Helm does on its own, and which modules it has. One card:
-            // the arrangement was in a section of its own with no heading,
-            // which under a heading of its own reads as a stray card rather
-            // than as part of anything.
+            // What Helm does on its own.
+            Section(AppStr.behaviour) {
+                Toggle(AppStr.launchAtLogin, isOn: $launchAtLogin)
+                    .onChange(of: launchAtLogin) { _, v in LoginItem.setEnabled(v) }
+            }
+
+            // Which modules there are and how they are grouped, which is not
+            // behaviour — it was under that heading and did not belong to it.
             //
             // The composing happens in a sheet. As a block it was the largest
             // thing on this page by a distance and 10 pt wider than everything
             // around it, because it was drawn as a section *header* to avoid a
             // card inside a card.
-            Section(AppStr.behaviour) {
-                Toggle(AppStr.launchAtLogin, isOn: $launchAtLogin)
-                    .onChange(of: launchAtLogin) { _, v in LoginItem.setEnabled(v) }
+            Section(AppStr.modulesSection) {
                 SidebarComposerRow(host: ModuleHost.shared, composing: $composing)
             }
 
@@ -498,9 +500,12 @@ private struct MenuBarSettingsView: View {
                     .font(.caption).foregroundStyle(HelmText.quiet)
             }
 
-            // The panel opens from the menu-bar icon, so the two were never
-            // two places to a person — only to whoever wrote the headings.
-            Section(AppStr.menuBarAndPanel) {
+            // «Menu bar and panel» until the menu-bar icon's shape and size
+            // moved into Appearance with everything else that decides how Helm
+            // looks. What is left is the panel's two buttons, and a heading
+            // naming a menu bar it no longer holds anything about is a heading
+            // that sends people to the wrong section.
+            Section(AppStr.panel) {
                 Toggle(AppStr.showSettingsButton, isOn: $showSettingsButton)
                     .onChange(of: showSettingsButton) { _, v in AppSettings.showSettingsButton = v }
                 Toggle(AppStr.showQuitButton, isOn: $showQuitButton)
@@ -579,9 +584,6 @@ private struct MenuBarSettingsView: View {
         }
     }
 
-    private var currentStyle: MenuBarIconStyle {
-        MenuBarIconStyle(stored: style)
-    }
 }
 
 private struct AboutHelmView: View {
