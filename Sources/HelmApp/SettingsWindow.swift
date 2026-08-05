@@ -187,10 +187,11 @@ private struct SettingsSidebar: View {
 
     private var sidebarList: some View {
         List(selection: $model.selection) {
-            Section {
-                sidebarRow(AppStr.settingsPane, "gearshape", .gray)
-                    .tag(SettingsSelection.general)
-            }
+            // The modules first. The sidebar is where you go to *use* one, and
+            // the three pages under them are about Helm rather than about
+            // anything it does — Settings was above the whole arrangement,
+            // which put the least-visited page of the window in the first row
+            // and pushed every module down by one.
             ForEach(layout.sections) { section in
                 let modules = visibleModules(in: section)
                 if !modules.isEmpty {
@@ -207,7 +208,12 @@ private struct SettingsSidebar: View {
                     }
                 }
             }
+            // Helm itself, at the foot: settings, the log, and what this build
+            // is. Three pages a person opens on purpose and rarely, kept
+            // together and out of the way of the ones they came for.
             Section {
+                sidebarRow(AppStr.settingsPane, "gearshape", .gray)
+                    .tag(SettingsSelection.general)
                 // Shown on every build. The live tail was dev-only while it was
                 // a curiosity; now it is where the log itself is turned on,
                 // read and copied, and that is the button somebody is told to
