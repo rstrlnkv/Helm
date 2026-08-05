@@ -158,15 +158,6 @@ extension Notification.Name {
         set { store.set(newValue?.timeIntervalSince1970 ?? 0, for: "scanBudgetDay") }
     }
 
-    /// Ids in the order the user arranged them in the panel.
-    static var moduleOrder: [String] {
-        get { store.stringArray("moduleOrder") }
-        set {
-            store.set(newValue, for: "moduleOrder")
-            NotificationCenter.default.post(name: .helmModuleOrderChanged, object: nil)
-        }
-    }
-
     static var menuBarIconStyle: String {
         get { store.string("menuBarIconStyle", default: "ring") }
         set {

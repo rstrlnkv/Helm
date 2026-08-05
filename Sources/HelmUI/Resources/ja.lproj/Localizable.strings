@@ -138,7 +138,6 @@
 "Download" = "ダウンロード";
 "Downloaded from" = "ダウンロード元";
 "Downloading…" = "ダウンロード中…";
-"Drag a row, or use the arrows." = "行をドラッグするか、矢印を使います。";
 "Drag modules into the order you want them in the menu-bar panel." = "モジュールをドラッグしてメニューバーパネルでの順序を変更できます。";
 "Duplicates" = "重複";
 "Duplicates can basket every extra at once, and Space shows you a file before you bin it. “All extras to basket” does across every group what the per-group button did — one copy of everything always stays, which is why it is not called “Select all”. Beside “Move to Trash” there is now a “Clear”, so one press can undo one press." = "「重複」で余分なコピーをまとめてバスケットに入れられます。スペースキーで削除前にファイルを確認できます。各グループのコピーは必ず 1 つ残るので、ボタン名は「すべて選択」ではありません。「ゴミ箱に入れる」の横に「クリア」が付きました。";
@@ -278,7 +277,6 @@
 "Mark the extra copies" = "余分なコピーを削除予定に";
 "Media" = "メディア";
 "Medium" = "中";
-"Menu Bar" = "メニューバー";
 "Menu-bar icon" = "メニューバーのアイコン";
 "Menu-bar panel and a System Settings-style window, the Liquid Glass icon, eight languages." = "メニューバーパネルとシステム設定風ウインドウ、Liquid Glass アイコン、8 言語対応。";
 "Menu-bar spin" = "アイコンの回転";
@@ -287,7 +285,6 @@
 "Minutes" = "分";
 "Miscellaneous" = "その他";
 "Modular tools in your menu bar." = "メニューバーのモジュール式ツール。";
-"Module order" = "モジュールの並び順";
 "More actions" = "その他の操作";
 "Move down" = "下へ移動";
 "Move pointer periodically" = "定期的にポインタを動かす";
@@ -552,7 +549,6 @@
 "Upgrade" = "更新";
 "Upgrade all" = "すべて更新";
 "Use this module" = "このモジュールを使う";
-"Used by the panel, the sidebar, and the icon menu." = "パネル、サイドバー、アイコンメニューに適用されます。";
 "Used while the Mac is being kept awake. At other times Helm’s shared menu-bar icon is shown." = "Mac をスリープさせていない間に適用されます。それ以外のときは共通アイコンです。";
 "Utilities" = "ユーティリティ";
 "Utilities live in a collapsible panel section; optional Settings and Quit buttons; the right-click menu jumps straight to any module." = "ユーティリティはパネルの折りたたみセクションに。設定/終了ボタンを追加可能。右クリックメニューから各モジュールへ直行。";
@@ -648,20 +644,19 @@
 "Module icons" = "モジュールのアイコン";
 "Colour" = "カラー";
 "Plain" = "シンプル";
-"Sidebar" = "サイドバー";
 "New section" = "新しいセクション";
 "Remove section" = "セクションを削除";
 "Use the default name" = "デフォルトの名前に戻す";
-"Move to" = "移動先";
 "Drag to reorder. A module can go into any section, and a section you remove hands its modules to its neighbour." = "ドラッグして並べ替えます。モジュールはどのセクションにも入れられ、削除したセクションのモジュールは隣に移ります。";
 "Drag a module here" = "モジュールをここにドラッグ";
 "your section" = "自分のセクション";
 "Restore defaults" = "デフォルトに戻す";
 "Behaviour" = "動作";
 "Light or dark" = "ライトかダーク";
-"Menu bar and panel" = "メニューバーとパネル";
 "Square" = "四角";
 "Hexagon" = "六角形";
 "Capsule" = "カプセル";
 "Modules" = "モジュール";
 "Behaviour, appearance, permissions and what Helm may remove." = "動作、外観、アクセス権、そしてHelmが削除してよいもの。";
+"Order and sections" = "並び順とセクション";
+"A switch turns the module off everywhere in Helm." = "スイッチを切ると、そのモジュールは Helm 全体で無効になります。";

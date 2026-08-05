@@ -138,7 +138,6 @@
 "Download" = "Download";
 "Downloaded from" = "Downloaded from";
 "Downloading…" = "Downloading…";
-"Drag a row, or use the arrows." = "Drag a row, or use the arrows.";
 "Drag modules into the order you want them in the menu-bar panel." = "Drag modules into the order you want them in the menu-bar panel.";
 "Duplicates" = "Duplicates";
 "Duplicates can basket every extra at once, and Space shows you a file before you bin it. “All extras to basket” does across every group what the per-group button did — one copy of everything always stays, which is why it is not called “Select all”. Beside “Move to Trash” there is now a “Clear”, so one press can undo one press." = "Duplicates can basket every extra at once, and Space shows you a file before you bin it. “All extras to basket” does across every group what the per-group button did — one copy of everything always stays, which is why it is not called “Select all”. Beside “Move to Trash” there is now a “Clear”, so one press can undo one press.";
@@ -278,7 +277,6 @@
 "Mark the extra copies" = "Mark the extra copies";
 "Media" = "Media";
 "Medium" = "Medium";
-"Menu Bar" = "Menu Bar";
 "Menu-bar icon" = "Menu-bar icon";
 "Menu-bar panel and a System Settings-style window, the Liquid Glass icon, eight languages." = "Menu-bar panel and a System Settings-style window, the Liquid Glass icon, eight languages.";
 "Menu-bar spin" = "Menu-bar spin";
@@ -287,7 +285,6 @@
 "Minutes" = "Minutes";
 "Miscellaneous" = "Miscellaneous";
 "Modular tools in your menu bar." = "Modular tools in your menu bar.";
-"Module order" = "Module order";
 "More actions" = "More actions";
 "Move down" = "Move down";
 "Move pointer periodically" = "Move pointer periodically";
@@ -552,7 +549,6 @@
 "Upgrade" = "Upgrade";
 "Upgrade all" = "Upgrade all";
 "Use this module" = "Use this module";
-"Used by the panel, the sidebar, and the icon menu." = "Used by the panel, the sidebar, and the icon menu.";
 "Used while the Mac is being kept awake. At other times Helm’s shared menu-bar icon is shown." = "Used while the Mac is being kept awake. At other times Helm’s shared menu-bar icon is shown.";
 "Utilities" = "Utilities";
 "Utilities live in a collapsible panel section; optional Settings and Quit buttons; the right-click menu jumps straight to any module." = "Utilities live in a collapsible panel section; optional Settings and Quit buttons; the right-click menu jumps straight to any module.";
@@ -648,20 +644,19 @@
 "Module icons" = "Module icons";
 "Colour" = "Colour";
 "Plain" = "Plain";
-"Sidebar" = "Sidebar";
 "New section" = "New section";
 "Remove section" = "Remove section";
 "Use the default name" = "Use the default name";
-"Move to" = "Move to";
 "Drag to reorder. A module can go into any section, and a section you remove hands its modules to its neighbour." = "Drag to reorder. A module can go into any section, and a section you remove hands its modules to its neighbour.";
 "Drag a module here" = "Drag a module here";
 "your section" = "your section";
 "Restore defaults" = "Restore defaults";
 "Behaviour" = "Behaviour";
 "Light or dark" = "Light or dark";
-"Menu bar and panel" = "Menu bar and panel";
 "Square" = "Square";
 "Hexagon" = "Hexagon";
 "Capsule" = "Capsule";
 "Modules" = "Modules";
 "Behaviour, appearance, permissions and what Helm may remove." = "Behaviour, appearance, permissions and what Helm may remove.";
+"Order and sections" = "Order and sections";
+"A switch turns the module off everywhere in Helm." = "A switch turns the module off everywhere in Helm.";

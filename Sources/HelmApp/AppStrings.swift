@@ -17,13 +17,6 @@ enum AppStr {
     }
     /// Sidebar entry for the app-level pane (login item, panel layout, menu-bar icon).
     static var settingsPane: String { L("Settings") }
-    /// Section title inside that pane, for the menu-bar icon controls.
-    /// No longer a section heading — appearance took its two rows and the
-    /// panel took its name. Left declared because `menuBarNote` still speaks
-    /// about the menu-bar icon and something may want to name it again;
-    /// removing the key from eight tables to save one line is the trade the
-    /// other way round.
-    static var menuBar: String { L("Menu Bar") }
     /// What Helm does on its own. `General` was the name when the section held
     /// three unrelated decisions — a login item, a theme and a colour choice —
     /// and a heading that promises nothing is a heading nobody reads.
@@ -33,12 +26,6 @@ enum AppStr {
     /// identically is how a person stops seeing the heading at all, so the row
     /// says what it chooses between.
     static var lightOrDark: String { L("Light or dark") }
-    /// Declared and unused. It was the heading over the panel's buttons while
-    /// the menu-bar icon lived there too; the icon moved to Appearance with
-    /// everything else that decides how Helm looks, and the section went back
-    /// to being the panel. Left here because the key is in eight tables and
-    /// removing it to save a line is the trade the wrong way round.
-    static var menuBarAndPanel: String { L("Menu bar and panel") }
     static var launchAtLogin: String { L("Open Helm at login") }
     static var checking: String { L("Checking…") }
     static var upToDate: String { L("You’re on the latest version.") }
@@ -67,11 +54,8 @@ enum AppStr {
         L("The download did not match what the release published, so Helm did not install it.")
     }
     static var updateFailed: String { L("Update failed") }
-    static var moduleOrderSection: String { L("Module order") }
     static var edit: String { L("Edit") }
     static var done: String { L("Done") }
-    static var moduleOrderEditNote: String { L("Drag a row, or use the arrows.") }
-    static var moduleOrderNote: String { L("Used by the panel, the sidebar, and the icon menu.") }
     static var permissionsChanged: String { L("Helm is missing permissions it needs") }
     static var later: String { L("Later") }
     static var permissions: String { L("Permissions") }
@@ -214,12 +198,18 @@ enum AppStr {
     }
 
     static var aboutHelm: String { L("About Helm") }
-    static var sidebarSections: String { L("Sidebar") }
+    /// Not «Sidebar» any more: the same arrangement now orders the panel and
+    /// the icon menu, so naming one of the three places it shows up was the
+    /// kind of half-truth that sends somebody looking for a second control
+    /// that does not exist.
+    static var sidebarSections: String { L("Order and sections") }
+    /// The one thing the sheet did not say. Every explanatory word in it was
+    /// about dragging and sections; the column of switches carried none.
+    static var moduleSwitchNote: String { L("A switch turns the module off everywhere in Helm.") }
     static var newSection: String { L("New section") }
     static var renameSection: String { L("Rename") }
     static var removeSection: String { L("Remove section") }
     static var useDefaultSectionName: String { L("Use the default name") }
-    static var moveToSection: String { L("Move to") }
     /// The empty section's own row. A section somebody just made has no modules
     /// and would otherwise be a heading followed by the next heading — nothing
     /// to aim a drop at.
@@ -240,16 +230,26 @@ enum AppStr {
     /// What is arranged, without opening anything. Counted from the
     /// arrangement rather than from the registry: a section somebody emptied
     /// is still a section they made.
-    static func sidebarSummary(modules: Int, sections: Int) -> String {
-        L("\(modules) modules in \(sections) sections",
-          [.ru: "\(modules) " + Plural.russian(modules, "модуль", "модуля", "модулей")
-                + " в " + "\(sections) " + Plural.russian(sections, "разделе", "разделах", "разделах"),
-           .es: "\(modules) módulos en \(sections) secciones",
-           .fr: "\(modules) modules dans \(sections) sections",
-           .de: "\(modules) Module in \(sections) Abschnitten",
-           .ja: "\(sections) 個のセクションに \(modules) 個のモジュール",
-           .zh: "\(sections) 个分组中的 \(modules) 个模块",
-           .pt: "\(modules) módulos em \(sections) seções"])
+    static func sidebarSummary(on: Int, of total: Int, sections: Int) -> String {
+        // «9 modules in 4 sections» was `ModuleRegistry.all.count` rendered as
+        // if it were state: `reconciled` guarantees every registered module
+        // appears in exactly one section, so the number could not change. Turn
+        // four modules off and the row still said nine. What a person wants to
+        // know from a summary is what they have done, and how many are on is
+        // the only number here that is theirs.
+        func sectionWord(_ n: Int, _ one: String, _ many: String) -> String {
+            n == 1 ? "\(n) \(one)" : "\(n) \(many)"
+        }
+        let en = "\(on) of \(total) on · " + sectionWord(sections, "section", "sections")
+        return L(en,
+          [.ru: "\(on) из \(total) включено · \(sections) "
+                + Plural.russian(sections, "раздел", "раздела", "разделов"),
+           .es: "\(on) de \(total) activados · " + sectionWord(sections, "sección", "secciones"),
+           .fr: "\(on) sur \(total) activés · " + sectionWord(sections, "section", "sections"),
+           .de: "\(on) von \(total) aktiv · " + sectionWord(sections, "Abschnitt", "Abschnitte"),
+           .ja: "\(total) 個中 \(on) 個が有効 · \(sections) セクション",
+           .zh: "\(total) 个中 \(on) 个已启用 · \(sections) 个分组",
+           .pt: "\(on) de \(total) ativados · " + sectionWord(sections, "seção", "seções")])
     }
 
     static var moduleIcons: String { L("Module icons") }

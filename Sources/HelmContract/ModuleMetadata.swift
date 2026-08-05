@@ -11,11 +11,29 @@ public struct ModuleMetadata: Sendable {
     public let shortName: String
     public let summary: String
     public let sfSymbol: String
+    /// What the module uses if macOS grants it.
     public let permissions: [ModulePermission]
+    /// The subset without which the module can do *nothing*.
+    ///
+    /// `permissions` answers a different question — what a module would use —
+    /// and the sidebar was reading it as if it answered this one. That marked
+    /// seven of nine rows with «Enabled, but macOS is withholding the access it
+    /// needs»: true of Layout, which is inert without Accessibility, and false
+    /// of the four Full Disk modules, which work and find less; false of Keep
+    /// Awake, which holds a power assertion and never touches Accessibility
+    /// unless the pointer nudge is switched on, and that ships off. A mark on
+    /// 78% of the rows is wallpaper, and it cost the one row where it was
+    /// exactly right.
+    ///
+    /// Empty by default, so a module that says nothing is never accused of
+    /// being broken.
+    public let inertWithout: [ModulePermission]
     public init(id: ModuleID, name: String, shortName: String? = nil, summary: String,
-                sfSymbol: String, permissions: [ModulePermission] = []) {
+                sfSymbol: String, permissions: [ModulePermission] = [],
+                inertWithout: [ModulePermission] = []) {
         self.id = id; self.name = name; self.shortName = shortName ?? name
         self.summary = summary
         self.sfSymbol = sfSymbol; self.permissions = permissions
+        self.inertWithout = inertWithout
     }
 }
