@@ -31,14 +31,17 @@ public struct AppearancePicker: View {
     private static let order: [AppAppearance] = [.light, .dark, .system]
 
     public var body: some View {
-        // Built by hand rather than as a `LabeledContent`, for the reason
-        // `SidebarComposerRow` was: that control aligns its two halves on the
-        // label's *first baseline*, so «Оформление» sat 22 pt above the middle
-        // of the pictures it names — the only row in the card not centred to
-        // within a quarter point.
-        HStack(alignment: .center) {
-            Text(title)
-            Spacer(minLength: 12)
+        // `LabeledContent`, and the label stays on the first baseline.
+        //
+        // It was hand-built for a while, to centre the label against the whole
+        // block the way `SidebarComposerRow` centres its button. Measured, that
+        // was the consistent choice — 22 pt off against every other row in the
+        // card — and looked at, it was not: a button is one small thing beside
+        // a label and belongs level with it, while this is a 62 pt block of
+        // pictures with names under them, and a label floating at its middle
+        // reads as attached to nothing. On the first line it introduces what
+        // follows, which is what the pictures are arranged as.
+        LabeledContent(title) {
             HStack(alignment: .top, spacing: 12) {
                 ForEach(Self.order, id: \.self) { mode in
                     swatch(mode)
