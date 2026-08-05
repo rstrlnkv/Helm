@@ -18,8 +18,25 @@ enum AppStr {
     /// Sidebar entry for the app-level pane (login item, panel layout, menu-bar icon).
     static var settingsPane: String { L("Settings") }
     /// Section title inside that pane, for the menu-bar icon controls.
+    /// No longer a section heading — appearance took its two rows and the
+    /// panel took its name. Left declared because `menuBarNote` still speaks
+    /// about the menu-bar icon and something may want to name it again;
+    /// removing the key from eight tables to save one line is the trade the
+    /// other way round.
     static var menuBar: String { L("Menu Bar") }
-    static var general: String { L("General") }
+    /// What Helm does on its own. `General` was the name when the section held
+    /// three unrelated decisions — a login item, a theme and a colour choice —
+    /// and a heading that promises nothing is a heading nobody reads.
+    static var behaviour: String { L("Behaviour") }
+    /// The light/dark control, which macOS itself calls «Appearance» — the same
+    /// word as the section it now sits in. A section and its first row reading
+    /// identically is how a person stops seeing the heading at all, so the row
+    /// says what it chooses between.
+    static var lightOrDark: String { L("Light or dark") }
+    /// One place. The panel opens from the menu-bar icon, and splitting them
+    /// asked somebody to know which of the two a setting belonged to before
+    /// they could find it.
+    static var menuBarAndPanel: String { L("Menu bar and panel") }
     static var launchAtLogin: String { L("Open Helm at login") }
     static var checking: String { L("Checking…") }
     static var upToDate: String { L("You’re on the latest version.") }
