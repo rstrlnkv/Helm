@@ -13,6 +13,19 @@ final class MenuBarIconChoicesTests: XCTestCase {
 
     // MARK: - Sizes
 
+    /// The three that stayed are the three that were there, under new names:
+    /// S is what «Very small» was, M is «Small», L is «Medium». Pinned because
+    /// a letter says nothing about which point size it is, so the only place
+    /// that mapping exists is here.
+    func testTheLettersAreTheOldSizes() {
+        XCTAssertEqual(MenuBarIconSize.xxSmall.points, 11)      // was "Very small"
+        XCTAssertEqual(MenuBarIconSize.extraSmall.points, 13)   // was "Small"
+        XCTAssertEqual(MenuBarIconSize.small.points, 15)        // was "Medium"
+        XCTAssertEqual(MenuBarIconSize.xxSmall.label, "S")
+        XCTAssertEqual(MenuBarIconSize.extraSmall.label, "M")
+        XCTAssertEqual(MenuBarIconSize.small.label, "L")
+    }
+
     func testThreeSizes() {
         XCTAssertEqual(MenuBarIconSize.allCases.map(\.label), ["S", "M", "L"])
         XCTAssertEqual(MenuBarIconSize.allCases.map(\.points), [11, 13, 15])

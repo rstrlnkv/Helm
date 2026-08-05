@@ -27,9 +27,9 @@ struct SidebarComposerSheet: View {
 
     /// Everything the sheet draws that is not the list: the title row, the
     /// note, two dividers, the actions row and the padding around them.
-    /// Measured off the shipped sheet at 2x — 126 pt — plus the 20 the scroll
+    /// Measured off the shipped sheet at 2x — 126 pt — plus the 29 the scroll
     /// view puts above and below its content.
-    private static let chromeHeight: CGFloat = 146
+    private static let chromeHeight: CGFloat = 155
 
     private var layout: SidebarLayout {
         _ = revision
@@ -86,7 +86,12 @@ struct SidebarComposerSheet: View {
                     // probe that would have measured it returned an empty
                     // bitmap. Header at 20, cards at 28.5.
                     .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
+                    // Not symmetric, so that what you see is. The list opens
+                    // with a section gap of 10 above its first heading and
+                    // closes with 5 under its last row, so equal padding here
+                    // produced 20 above and 15 below.
+                    .padding(.top, 12)
+                    .padding(.bottom, 17)
             }
 
             Divider()
