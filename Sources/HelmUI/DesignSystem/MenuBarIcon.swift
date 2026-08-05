@@ -94,18 +94,18 @@ public enum MenuBarIcon {
     public static func make(style: MenuBarIconStyle, size: MenuBarIconSize,
                             tintToken: String?, progress: Double? = nil) -> NSImage {
         draw(size: size, tintToken: tintToken) { s, colour in
-            let points = perimeter(of: outline(style: style, size: s))
+            let path = outline(style: style, size: s)
             let width = lineWidth(s)
             guard let progress else {
-                stroke(points, from: 0, to: 1, width: width, colour: colour, closed: true)
+                strokeWhole(path, width: width, colour: colour)
                 interior(style: style, size: s, colour: colour)
                 return
             }
-            stroke(points, from: 0, to: 1, width: width,
-                   colour: colour.withAlphaComponent(0.25), closed: true)
+            strokeWhole(path, width: width, colour: colour.withAlphaComponent(0.25))
             let remaining = min(1, max(0, progress))
             if remaining > 0 {
-                stroke(points, from: 0, to: remaining, width: width, colour: colour, closed: false)
+                stroke(perimeter(of: path), from: 0, to: remaining,
+                       width: width, colour: colour)
             }
             interior(style: style, size: s, colour: colour)
         }
@@ -120,12 +120,12 @@ public enum MenuBarIcon {
     public static func makeSpinner(style: MenuBarIconStyle, size: MenuBarIconSize,
                                    tintToken: String?, phase: Double) -> NSImage {
         draw(size: size, tintToken: tintToken) { s, colour in
-            let points = perimeter(of: outline(style: style, size: s))
+            let path = outline(style: style, size: s)
             let width = lineWidth(s)
-            stroke(points, from: 0, to: 1, width: width,
-                   colour: colour.withAlphaComponent(0.25), closed: true)
+            strokeWhole(path, width: width, colour: colour.withAlphaComponent(0.25))
             let head = (phase * 2).truncatingRemainder(dividingBy: 1)
-            stroke(points, from: head, to: head + 0.25, width: width, colour: colour, closed: false)
+            stroke(perimeter(of: path), from: head, to: head + 0.25,
+                   width: width, colour: colour)
             interior(style: style, size: s, colour: colour)
         }
     }
@@ -213,7 +213,12 @@ public enum MenuBarIcon {
     /// and runs anti-clockwise is not wrong by a little — it is a clock going
     /// backwards — so the orientation is established here rather than trusted.
     static func perimeter(of path: NSBezierPath) -> [CGPoint] {
-        let flat = path.flattened
+        // Finer than the default 0.6, which turned a 15 pt circle into an
+        // octagon: the walk is only ever a *part* of the outline, so it has to
+        // agree with the whole one drawn under it.
+        let copy = path.copy() as! NSBezierPath
+        copy.flatness = 0.02
+        let flat = copy.flattened
         var points: [CGPoint] = []
         var buffer = [CGPoint](repeating: .zero, count: 3)
         for index in 0..<flat.elementCount {
@@ -264,22 +269,25 @@ public enum MenuBarIcon {
         return Array(points[start...] + points[..<start])
     }
 
+    /// The whole outline, drawn as the curve it is.
+    ///
+    /// Not as the flattened walk: `NSBezierPath.flattened` uses a default
+    /// flatness of 0.6, which at 15 pt turns a circle into an eight-sided
+    /// polygon. Stroking the polyline made every round shape faceted — and it
+    /// shipped in one build, visible in a contact sheet nobody read closely
+    /// enough. The walk is for parts of the outline; this is for all of it.
+    static func strokeWhole(_ path: NSBezierPath, width: CGFloat, colour: NSColor) {
+        path.lineWidth = width
+        path.lineJoinStyle = .round
+        colour.setStroke()
+        path.stroke()
+    }
+
     /// Stroke the fraction of the perimeter between `from` and `to`, both 0…1,
     /// wrapping past 1.
     static func stroke(_ points: [CGPoint], from: Double, to: Double,
-                       width: CGFloat, colour: NSColor, closed: Bool) {
+                       width: CGFloat, colour: NSColor) {
         guard points.count > 1 else { return }
-        if closed {
-            let path = NSBezierPath()
-            path.move(to: points[0])
-            points.dropFirst().forEach { path.line(to: $0) }
-            path.close()
-            path.lineWidth = width
-            path.lineJoinStyle = .round
-            colour.setStroke()
-            path.stroke()
-            return
-        }
         let lengths = points.indices.map { index -> CGFloat in
             let next = points[(index + 1) % points.count]
             return hypot(next.x - points[index].x, next.y - points[index].y)
