@@ -660,3 +660,4 @@
 "Behaviour, appearance, permissions and what Helm may remove." = "Comportement, apparence, autorisations et ce que Helm peut supprimer.";
 "Order and sections" = "Ordre et sections";
 "A switch turns the module off everywhere in Helm." = "L’interrupteur désactive le module partout dans Helm.";
+"Show" = "Afficher";

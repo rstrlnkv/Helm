@@ -660,3 +660,4 @@
 "Behaviour, appearance, permissions and what Helm may remove." = "行为、外观、权限，以及 Helm 可以删除什么。";
 "Order and sections" = "顺序与分组";
 "A switch turns the module off everywhere in Helm." = "开关会在整个 Helm 中停用该模块。";
+"Show" = "显示";

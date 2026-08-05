@@ -660,3 +660,4 @@
 "Behaviour, appearance, permissions and what Helm may remove." = "Поведение, внешний вид, разрешения и что Helm может удалять.";
 "Order and sections" = "Порядок и разделы";
 "A switch turns the module off everywhere in Helm." = "Переключатель выключает модуль во всём Helm.";
+"Show" = "Показать";
