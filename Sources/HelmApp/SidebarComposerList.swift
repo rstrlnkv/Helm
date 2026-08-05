@@ -181,8 +181,14 @@ private struct SidebarComposerListRow: View {
             HelmIconPlate(symbol: descriptor.moduleMetadata.sfSymbol,
                           tint: descriptor.moduleTint.colour, size: 22,
                           active: host.isEnabled(descriptor))
+            // 6 more than the stack's own 10, because a letter does not start
+            // where its box does: measured at 2x, the plate-to-glyph gap read
+            // 7.5 pt where the handle-to-plate gap beside it read 11, and the
+            // difference is the side bearing of whatever letter the name
+            // begins with. The eye compares the two gaps, not the numbers.
             Text(descriptor.moduleMetadata.name)
                 .font(HelmText.rowTitle)
+                .padding(.leading, 6)
                 .help(descriptor.moduleMetadata.summary)
             Spacer(minLength: 18)
             Toggle(descriptor.moduleMetadata.name, isOn: Binding(
