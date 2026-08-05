@@ -25,8 +25,11 @@ struct SidebarComposerSheet: View {
     @State private var renaming: SidebarLayout.Section?
     @State private var draftName = ""
 
-    /// Everything the sheet draws that is not the list.
-    private static let chromeHeight: CGFloat = 196
+    /// Everything the sheet draws that is not the list: the title row, the
+    /// note, two dividers, the actions row and the padding around them.
+    /// Measured off the shipped sheet at 2x — 126 pt — plus the 20 the scroll
+    /// view puts above and below its content.
+    private static let chromeHeight: CGFloat = 146
 
     private var layout: SidebarLayout {
         _ = revision
@@ -76,8 +79,14 @@ struct SidebarComposerSheet: View {
                                         renaming = section
                                     })
                     .frame(height: tableHeight)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 14)
+                    // 20 like the header and the footer, less the 8 pt a plain
+                    // `List` insets its own content by. Measured off a
+                    // screenshot at 2x rather than offscreen: a `List` is an
+                    // AppKit table and draws nothing without a window, so the
+                    // probe that would have measured it returned an empty
+                    // bitmap. Header at 20, cards at 28.5.
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
             }
 
             Divider()
@@ -98,13 +107,13 @@ struct SidebarComposerSheet: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
         }
-        // Sized to the arrangement rather than to a number, up to a cap: at a
-        // fixed 560 the list was cut mid-row against the footer, which reads
-        // as broken rather than as scrollable. `tableHeight` is what the
-        // composer measured; the rest is this sheet's own chrome — title,
-        // note, two dividers, the actions row and the padding around them.
+        // Sized to the arrangement, up to a cap. The cap is what the nine
+        // modules and four sections Helm ships with need — 485 pt of list —
+        // so the standard arrangement never scrolls; a person who makes more
+        // sections than that gets a scroll bar rather than a sheet taller than
+        // the window it sits in.
         .frame(width: 460,
-               height: min(max(360, tableHeight + Self.chromeHeight), 620))
+               height: min(max(360, tableHeight + Self.chromeHeight), 660))
         .alert(AppStr.renameSection, isPresented: Binding(
             get: { renaming != nil },
             set: { if !$0 { renaming = nil } }

@@ -68,8 +68,10 @@ public struct IconShapePicker: View {
     public var body: some View {
         Picker(title, selection: $selection) {
             ForEach(MenuBarIconStyle.allCases, id: \.rawValue) { style in
-                // Glyph and name, not one or the other: the name is what a
-                // menu is good at and the glyph is what the setting is about.
+                // One `Label`, not a glyph and a `Text` side by side. Two
+                // views inside a `Picker`'s `ForEach` are two menu items, so
+                // every shape appeared twice — once as a picture and once as a
+                // name, each with its own tick.
                 //
                 // A neutral glyph is drawn white and rendered as a template so
                 // its colour comes from the menu at draw time. Baking
@@ -77,10 +79,14 @@ public struct IconShapePicker: View {
                 // `lockFocus`, which resolves a dynamic colour once against
                 // whatever appearance happened to be current — in a light
                 // window that produced white on white.
-                HelmIconGlyph(image: MenuBarIcon.make(style: style, size: .small,
-                                                      tintToken: neutral ? nil : tintToken),
-                              neutral: neutral)
-                Text(style.label)
+                Label {
+                    Text(style.label)
+                } icon: {
+                    HelmIconGlyph(image: MenuBarIcon.make(style: style, size: .small,
+                                                          tintToken: neutral ? nil : tintToken),
+                                  neutral: neutral)
+                }
+                .tag(style.rawValue)
             }
         }
     }
