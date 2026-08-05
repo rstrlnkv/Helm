@@ -451,10 +451,22 @@ private struct MenuBarSettingsView: View {
 
     private var settingsForm: some View {
         Form {
-            Section(AppStr.general) {
+            // What Helm does on its own.
+            Section(AppStr.behaviour) {
                 Toggle(AppStr.launchAtLogin, isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, v in LoginItem.setEnabled(v) }
-                Picker(AppStr.appearance, selection: $appearance) {
+            }
+
+            // Which modules there are, and how they are arranged. Not a
+            // setting — a composition — so it keeps its own block.
+            SidebarSettingsSection(host: ModuleHost.shared)
+
+            // Everything that decides how Helm looks, in one list. It was
+            // three: the theme and the module icons under «General», the
+            // menu-bar glyph under «Menu Bar» — so choosing how the app looks
+            // meant visiting two headings and knowing which held what.
+            Section(AppStr.appearance) {
+                Picker(AppStr.lightOrDark, selection: $appearance) {
                     ForEach(AppAppearance.allCases, id: \.self) { choice in
                         Text(AppStr.appearanceName(choice)).tag(choice)
                     }
@@ -468,9 +480,6 @@ private struct MenuBarSettingsView: View {
                 }
                 .pickerStyle(.segmented)
                 .onChange(of: sidebarStyle) { _, choice in AppSettings.sidebarStyle = choice }
-            }
-            SidebarSettingsSection(host: ModuleHost.shared)
-            Section(AppStr.menuBar) {
                 LabeledContent(AppStr.iconShape) {
                     IconShapePicker(selection: $style)
                         .onChange(of: style) { _, v in AppSettings.menuBarIconStyle = v }
@@ -482,7 +491,10 @@ private struct MenuBarSettingsView: View {
                 Text(AppStr.menuBarNote)
                     .font(.caption).foregroundStyle(HelmText.quiet)
             }
-            Section(AppStr.panel) {
+
+            // The panel opens from the menu-bar icon, so the two were never
+            // two places to a person — only to whoever wrote the headings.
+            Section(AppStr.menuBarAndPanel) {
                 Toggle(AppStr.showSettingsButton, isOn: $showSettingsButton)
                     .onChange(of: showSettingsButton) { _, v in AppSettings.showSettingsButton = v }
                 Toggle(AppStr.showQuitButton, isOn: $showQuitButton)
@@ -490,6 +502,7 @@ private struct MenuBarSettingsView: View {
                 Text(AppStr.panelButtonsNote)
                     .font(.caption).foregroundStyle(HelmText.quiet)
             }
+
             Section(AppStr.permissions) {
                 // Driven by the table, so a new permission shows up here
                 // without anyone remembering to add a row — but only the ones
