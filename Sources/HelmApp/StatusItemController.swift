@@ -110,7 +110,7 @@ import HelmUI
         // while a spin is running, and a cached answer would keep it moving.
         let spinning = StatusPlan.spins(appearance, now: now, reduceMotion: HelmMotion.reduceMotion)
         let frame = spinning ? StatusPlan.frame(spinUntil: appearance.spinUntil, now: now,
-                                                frameCount: RingIcon.frameCount) : nil
+                                                frameCount: MenuBarIcon.frameCount) : nil
         timerTick.set(active: progress != nil)
         // Tied to the frame rather than to `spinning`: what keeps the tick alive
         // is exactly what it has left to draw.
@@ -126,17 +126,17 @@ import HelmUI
         guard key != lastIconKey else { return }
         lastIconKey = key
         if let frame {
-            button.image = RingIcon.spinnerFrames(style: style, size: size,
+            button.image = MenuBarIcon.spinnerFrames(style: style, size: size,
                                                   tintToken: spinTint)[frame]
         } else {
-            button.image = RingIcon.make(style: style, size: size, tintToken: token, progress: progress)
+            button.image = MenuBarIcon.make(style: style, size: size, tintToken: token, progress: progress)
         }
         // Countdown text sits after the glyph, in the tint the module asked for.
         if let title {
             button.imagePosition = .imageLeading
             button.attributedTitle = NSAttributedString(string: " " + title, attributes: [
                 .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .medium),
-                .foregroundColor: RingIcon.nsColor(forTintToken: token),
+                .foregroundColor: MenuBarIcon.nsColor(forTintToken: token),
             ])
         } else {
             button.imagePosition = .imageOnly

@@ -12,10 +12,10 @@ import XCTest
 ///
 /// Compared as pixels, because that is the only thing that says two icons look
 /// different.
-final class RingIconCountdownTests: XCTestCase {
+final class MenuBarIconCountdownTests: XCTestCase {
 
     private func pixels(_ style: MenuBarIconStyle, progress: Double?) -> Data {
-        let image = RingIcon.make(style: style, size: .small,
+        let image = MenuBarIcon.make(style: style, size: .small,
                                   tintToken: "orange", progress: progress)
         guard let tiff = image.tiffRepresentation,
               let rep = NSBitmapImageRep(data: tiff),
