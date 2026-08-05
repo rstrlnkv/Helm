@@ -142,13 +142,25 @@ struct SidebarComposerRow: View {
     @State private var revision = 0
 
     var body: some View {
-        LabeledContent {
+        // Built by hand rather than as a `LabeledContent`. That control aligns
+        // its two halves on the label's *first* baseline, which is right for a
+        // one-line label and a switch; with a summary underneath it parked the
+        // button against the title and left the second line hanging below it.
+        //
+        // A `LabeledContentStyle` cannot fix it either — `configuration.label`
+        // hands the two `Text`s over as one opaque view, and outside the
+        // default style they lay themselves out side by side.
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(AppStr.sidebarSections)
+                Text(summary)
+                    .font(.caption)
+                    .foregroundStyle(HelmText.quiet)
+            }
+            // A minimum, not a bare `Spacer`: at a narrow width the summary
+            // would otherwise run into the button.
+            Spacer(minLength: 12)
             Button(AppStr.edit) { composing = true }
-        } label: {
-            Text(AppStr.sidebarSections)
-            Text(summary)
-                .font(.caption)
-                .foregroundStyle(HelmText.quiet)
         }
         .onReceive(NotificationCenter.default.publisher(for: .helmModuleOrderChanged)) { _ in
             revision &+= 1
