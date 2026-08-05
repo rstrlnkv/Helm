@@ -301,6 +301,9 @@ enum AppStr {
     static var moduleIsOff: String { L("Module is off") }
     static var addingTurnsItOn: String { L("Switched off — adding it turns it on") }
     static var everythingIsHere: String { L("Everything is already on this tab.") }
+    static var permissionsWidgetPinned: String {
+        L("The permissions notice cannot be removed. It leaves when the grant is given.")
+    }
 
     /// What the width buys, said in the units the choice is about.
     static func panelGeometry(columns: Int, tile: Int) -> String {
