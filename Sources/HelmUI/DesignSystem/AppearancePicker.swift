@@ -13,9 +13,9 @@ import HelmRuntime
 ///
 /// **Drawn rather than borrowed.** The system's thumbnails are private assets
 /// of System Settings; these are the same idea in Helm's own hand — a
-/// wallpaper, a window, a selected row and three lights — and the automatic
-/// one is the two of them split down the middle, which is the convention macOS
-/// itself uses for that case.
+/// wallpaper and a window with its three lights — and the automatic one is the
+/// two of them split down the middle, which is the convention macOS itself
+/// uses for that case.
 public struct AppearancePicker: View {
     @Binding private var selection: AppAppearance
     private let title: String
@@ -84,7 +84,7 @@ enum AppearanceNames {
     }
 }
 
-/// A Mac, small: wallpaper, a window, a selected row and three lights.
+/// A Mac, small: wallpaper, a window, three lights.
 ///
 /// Everything is a fraction of the frame rather than a point size, so the same
 /// drawing serves the 74 pt swatch and anything larger that wants it later.
@@ -125,33 +125,28 @@ private struct AppearanceThumbnail: View {
 
                 // The window, offset down and right so the wallpaper shows on
                 // two sides — the same asymmetry the system's own thumbnail has.
-                RoundedRectangle(cornerRadius: w * 0.06, style: .continuous)
+                // Padded on two edges only, so it always runs exactly to the
+                // right and bottom of the frame.
+                RoundedRectangle(cornerRadius: w * 0.068, style: .continuous)
                     .fill(dark ? Color(white: 0.17) : Color(white: 0.97))
                     .overlay(alignment: .topLeading) {
-                        // Lights first, then the row. They were the other way
-                        // round, which is not a Mac window: the traffic lights
-                        // live in the title bar, and anything selected is in
-                        // the content below them.
-                        VStack(alignment: .leading, spacing: h * 0.09) {
-                            HStack(spacing: w * 0.045) {
-                                ForEach([Color(red: 0.99, green: 0.37, blue: 0.34),
-                                         Color(red: 0.99, green: 0.74, blue: 0.18),
-                                         Color(red: 0.24, green: 0.79, blue: 0.33)], id: \.self) { tint in
-                                    Circle().fill(tint).frame(width: h * 0.11, height: h * 0.11)
-                                }
+                        // Three lights in the corner of the title bar, and
+                        // nothing else. There was a selected row under them in
+                        // the accent colour; at 74 pt it was a blue bar with
+                        // no list for it to be a row of, and it read as the
+                        // window's content rather than as one item in it.
+                        HStack(spacing: w * 0.045) {
+                            ForEach([Color(red: 0.99, green: 0.37, blue: 0.34),
+                                     Color(red: 0.99, green: 0.74, blue: 0.18),
+                                     Color(red: 0.24, green: 0.79, blue: 0.33)], id: \.self) { tint in
+                                Circle().fill(tint).frame(width: h * 0.11, height: h * 0.11)
                             }
-                            // The selected row: the one thing in the picture
-                            // that is the accent colour, because it is the one
-                            // thing in a Mac window that is.
-                            Capsule()
-                                .fill(Color.accentColor)
-                                .frame(width: w * 0.42, height: h * 0.13)
                         }
-                        .padding(.leading, w * 0.09)
-                        .padding(.top, h * 0.14)
+                        .padding(.leading, w * 0.04)
+                        .padding(.top, h * 0.065)
                     }
-                    .padding(.leading, w * 0.13)
-                    .padding(.top, h * 0.16)
+                    .padding(.leading, w * 0.135)
+                    .padding(.top, h * 0.152)
             }
         }
     }
