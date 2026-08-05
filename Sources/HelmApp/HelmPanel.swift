@@ -188,23 +188,62 @@ private struct HelmPanelContent: View {
         .buttonStyle(.plain)
     }
 
-    private struct Tile { let view: AnyView }
+    /// One widget, at the size it ended up with.
+    private struct Widget {
+        let view: AnyView
+        let size: PanelWidgetSize
+    }
 
-    /// Modules split by how they present in the panel: interactive tiles stay
-    /// visible, utilities collapse behind one row so the panel stays compact.
-    /// One pass — `menuBar` builds a view, so it is asked once per module.
-    private var split: (tiles: [Tile], utilities: [ModuleHost.Live]) {
-        var tiles: [Tile] = []
+    /// Modules split by how they present in the panel: widgets stay visible,
+    /// utilities collapse behind one row so the panel stays compact. One pass
+    /// — building a widget builds a view, so each module is asked once.
+    ///
+    /// Every widget is `wide` today, because that is the one size a module
+    /// offers until it writes the others: the grid below is therefore exactly
+    /// the stack of full-width tiles this panel has always been. The
+    /// arithmetic is real from this commit, and the arrangement that will use
+    /// it is not stored yet.
+    private var split: (widgets: [Widget], utilities: [ModuleHost.Live]) {
+        var widgets: [Widget] = []
         var utilities: [ModuleHost.Live] = []
         for live in host.enabledModules {
             guard let contribution = live.descriptor.menuBar(live.vm) else { continue }
             if contribution.isUtility {
                 utilities.append(live)
-            } else if let tile = contribution.panelTile {
-                tiles.append(Tile(view: tile))
+                continue
+            }
+            let offered = live.descriptor.panelWidgetSizes(live.vm)
+            guard let size = PanelGrid.resolve(.wide, offered: offered),
+                  let view = live.descriptor.panelWidget(size, live.vm) else { continue }
+            widgets.append(Widget(view: view, size: size))
+        }
+        return (widgets, utilities)
+    }
+
+    /// The widgets as rows, packed by `PanelGrid`.
+    ///
+    /// SwiftUI has no column span, so a full-width widget is a row of its own
+    /// and compact ones share. `LazyVGrid` cannot express that at all, which is
+    /// why this is rows of `HStack` rather than a grid view.
+    @ViewBuilder
+    private func grid(_ widgets: [Widget]) -> some View {
+        let columns = PanelGrid.columns(for: helmPanelWidth)
+        let rows = PanelGrid.rows(sizes: widgets.map(\.size), columns: columns)
+        ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+            HStack(alignment: .top, spacing: PanelGrid.gap) {
+                ForEach(row, id: \.self) { index in
+                    widgets[index].view
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+                // A part-filled last row keeps its tiles their own width
+                // instead of stretching them across the gap.
+                if row.count < columns, !row.contains(where: { widgets[$0].size.isFullWidth }) {
+                    ForEach(row.count..<columns, id: \.self) { _ in
+                        Color.clear.frame(maxWidth: .infinity)
+                    }
+                }
             }
         }
-        return (tiles, utilities)
     }
 
     var body: some View {
@@ -240,10 +279,8 @@ private struct HelmPanelContent: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
             } else {
-                let (tiles, utilities) = split
-                ForEach(Array(tiles.enumerated()), id: \.offset) { _, tile in
-                    tile.view
-                }
+                let (widgets, utilities) = split
+                grid(widgets)
                 if !utilities.isEmpty {
                     UtilitiesSection(modules: utilities, expanded: $utilitiesExpanded)
                 }

@@ -28,6 +28,17 @@ import HelmRuntime
     func statusChanges(_ vm: ModuleViewModel) -> AnyPublisher<Void, Never>?
     /// See the default implementation below.
     var pageBleeds: Bool { get }
+    /// The widget this module puts in the panel at a given size, or nil if it
+    /// has nothing worth saying at that size.
+    ///
+    /// A size is a different question, not a smaller answer: 1×1 says how
+    /// much, 2×1 says how much and what to do about it, 2×N says why it is
+    /// that much. A module that only knows the middle answer says so by
+    /// returning nil for the other two, and the panel clamps somebody's stored
+    /// choice to what is actually offered rather than dropping the widget.
+    func panelWidget(_ size: PanelWidgetSize, _ vm: ModuleViewModel) -> AnyView?
+    /// Which sizes the above answers for. See the default.
+    func panelWidgetSizes(_ vm: ModuleViewModel) -> Set<PanelWidgetSize>
 }
 public extension ModuleDescriptor {
     /// True when the page draws across the whole pane instead of inside the
@@ -35,4 +46,23 @@ public extension ModuleDescriptor {
     var pageBleeds: Bool { false }
     func statusAppearance(_ vm: ModuleViewModel) -> StatusAppearance { .inactive }
     func statusChanges(_ vm: ModuleViewModel) -> AnyPublisher<Void, Never>? { nil }
+
+    /// Every module already draws one panel tile the width of the card, and
+    /// that is exactly `wide`. So the default answers `wide` with the tile it
+    /// already has and nil for the rest — the panel becomes a grid of
+    /// one-size widgets on the day this lands, identical to what it was, and
+    /// each module grows its other two sizes when somebody writes them. No
+    /// flag day, and no nine-module commit before anything can be seen.
+    func panelWidget(_ size: PanelWidgetSize, _ vm: ModuleViewModel) -> AnyView? {
+        guard size == .wide else { return nil }
+        return menuBar(vm)?.panelTile
+    }
+
+    /// Probed from `panelWidget`, so a module that overrides one gets the
+    /// other for free. Worth overriding only where building the view is
+    /// expensive enough to matter — answering this is asked once per layout
+    /// pass and building a widget is not.
+    func panelWidgetSizes(_ vm: ModuleViewModel) -> Set<PanelWidgetSize> {
+        Set(PanelWidgetSize.allCases.filter { panelWidget($0, vm) != nil })
+    }
 }
