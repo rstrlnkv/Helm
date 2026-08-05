@@ -33,8 +33,10 @@ public struct AutopilotWidget: View {
                 // Nothing measured, and nothing wrong: this module does not
                 // watch anything until somebody points it at a folder, and
                 // «0 today» would read as a quiet day rather than as an empty
-                // one.
-                HelmWidgetUnmeasured(ApStr.startHint)
+                // one. Four words, not the module's own opening paragraph —
+                // measured offscreen, that ran to seven lines in a tile 144 pt
+                // wide.
+                HelmWidgetUnmeasured(L("No folders watched yet"))
             } else {
                 HStack(alignment: .top, spacing: 10) {
                     HelmWidgetFigure("\(watched)", L("FOLDERS"), small: size == .compact)
