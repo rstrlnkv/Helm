@@ -485,7 +485,7 @@ private struct MenuBarSettingsView: View {
                         .onChange(of: style) { _, v in AppSettings.menuBarIconStyle = v }
                 }
                 LabeledContent(AppStr.iconSize) {
-                    IconSizePicker(selection: $size, style: currentStyle)
+                    IconSizePicker(selection: $size)
                         .onChange(of: size) { _, v in AppSettings.menuBarIconSize = v }
                 }
                 Text(AppStr.menuBarNote)

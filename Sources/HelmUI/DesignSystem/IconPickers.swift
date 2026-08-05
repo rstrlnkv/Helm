@@ -53,13 +53,13 @@ public struct IconShapePicker: View {
         } label: {
             // A neutral glyph is drawn white and rendered as a template, so its
             // colour comes from `foregroundStyle` at draw time. Baking
-            // `labelColor` into the bitmap could not work: `RingIcon` draws with
+            // `labelColor` into the bitmap could not work: `MenuBarIcon` draws with
             // `lockFocus`, which resolves the dynamic colour once against whatever
             // `NSAppearance.current` happened to be — and in a light window that
             // produced white glyphs on a white swatch.
             // The shape swatch draws at the largest size Helm offers, which is
             // not the size the person picked — this picker is about the shape.
-            HelmIconGlyph(image: RingIcon.make(style: s, size: .small,
+            HelmIconGlyph(image: MenuBarIcon.make(style: s, size: .small,
                                                tintToken: neutral ? nil : tintToken),
                           neutral: neutral)
                 .frame(width: 26, height: 26)
@@ -83,68 +83,49 @@ public struct IconShapePicker: View {
 /// preview is the actual on-screen result rather than an abstract label; the
 /// selected size's localized name is shown once below the row. `selection` is a
 /// `MenuBarIconSize` rawValue.
+///
+/// Three letters, no drawings.
+///
+/// It used to draw the glyph at each of the five sizes, which sounds like the
+/// honest way to show a size and is not: the swatches are 48 pt tall and the
+/// difference between the choices is 2 pt, so the row spent most of its height
+/// saying nothing and the thing it was meant to show was the one part too
+/// small to see. The name under it — «Medium» — did the work, and it is
+/// shorter as a letter.
 public struct IconSizePicker: View {
     @Binding private var selection: String
-    private let style: MenuBarIconStyle
-    private let tintToken: String
 
-    public init(selection: Binding<String>, style: MenuBarIconStyle, tintToken: String = "primary") {
+    public init(selection: Binding<String>) {
         self._selection = selection
-        self.style = style
-        self.tintToken = tintToken
     }
-
-    private var current: MenuBarIconSize { MenuBarIconSize(stored: selection) }
 
     public var body: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 8) {
-                ForEach(MenuBarIconSize.allCases, id: \.rawValue) { sz in
-                    swatch(sz)
-                }
+        HStack(spacing: 4) {
+            ForEach(MenuBarIconSize.allCases, id: \.rawValue) { size in
+                Button(size.label) { selection = size.rawValue }
+                    .buttonStyle(.borderless)
+                    .frame(width: 34, height: 24)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(selection == size.rawValue
+                                  ? Color.accentColor.opacity(0.9)
+                                  : HelmSurface.wellFill))
+                    .foregroundStyle(selection == size.rawValue ? Color.white : Color.primary)
+                    .accessibilityLabel(size.label)
+                    .accessibilityAddTraits(selection == size.rawValue ? [.isSelected] : [])
             }
-            Text(current.label)
-                .font(.callout)
-                .foregroundStyle(HelmText.quiet)
-                .animation(HelmMotion.interface, value: selection)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 4)
-    }
-
-    private var neutral: Bool { tintToken == "primary" }
-
-    private func swatch(_ sz: MenuBarIconSize) -> some View {
-        let selected = selection == sz.rawValue
-        return Button {
-            selection = sz.rawValue
-        } label: {
-            // No .resizable(): the image draws at its natural point size, so the
-            // sizes differ visibly across the row.
-            HelmIconGlyph(image: RingIcon.make(style: style, size: sz,
-                                               tintToken: neutral ? nil : tintToken),
-                          neutral: neutral)
-                .frame(width: 28, height: 28)
-                .frame(maxWidth: .infinity)
-                .frame(height: 48)
-                .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(selected ? Color.accentColor.opacity(0.16) : HelmSurface.wellFill))
-                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 1.5))
-                .contentShape(RoundedRectangle(cornerRadius: 10))
-        }
-        .buttonStyle(.plain)
-        .help(sz.label)
-        .accessibilityAddTraits(selected ? [.isSelected] : [])
-        .accessibilityLabel(sz.label)
+        .animation(HelmMotion.interface, value: selection)
     }
 }
 
-/// One glyph, drawn either in its own colour or in the window's.
+/// A menu-bar glyph shown inside the app rather than in the bar.
 ///
-/// The template branch exists because a bitmap cannot hold a dynamic colour:
-/// `labelColor` baked at `lockFocus` time is whatever the appearance was when
-/// the image was made, and that is not the appearance it is shown in.
+/// A neutral glyph is drawn white and rendered as a template, so its colour
+/// comes from `foregroundStyle` at draw time. Baking `labelColor` into the
+/// bitmap could not work: `MenuBarIcon` draws with `lockFocus`, which resolves
+/// the dynamic colour once against whatever `NSAppearance.current` happened to
+/// be — and in a light window that produced white glyphs on a white swatch.
 private struct HelmIconGlyph: View {
     let image: NSImage
     let neutral: Bool

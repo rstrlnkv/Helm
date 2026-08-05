@@ -42,18 +42,21 @@ final class MenuBarIconChoicesTests: XCTestCase {
     // MARK: - Shapes
 
     func testThreeShapes() {
-        XCTAssertEqual(MenuBarIconStyle.allCases, [.ring, .doubleRing, .ringDot])
+        XCTAssertEqual(MenuBarIconStyle.allCases, [.squircle, .hexagon, .capsule])
     }
 
-    /// `disc` and `dot` had no outer ring, and the ring is what the countdown
-    /// and the spinner replace — so on those two the timer setting sat beside
-    /// them on the page and meant nothing.
-    func testTheTwoDroppedShapesBecomeTheRing() {
-        XCTAssertEqual(MenuBarIconStyle(stored: "disc"), .ring)
-        XCTAssertEqual(MenuBarIconStyle(stored: "dot"), .ring)
+    /// The circle is gone and there is no nearest survivor to map to — the
+    /// family changed, not the members. Every shape Helm has shipped lands on
+    /// the square, which is the shape of its own icon and of every module
+    /// plate, so the menu bar and the app agree.
+    func testEveryShapeEverShippedLandsOnTheSquare() {
+        for raw in ["ring", "doubleRing", "ringDot", "disc", "dot"] {
+            XCTAssertEqual(MenuBarIconStyle(stored: raw), .squircle,
+                           "\(raw) reads back as nothing this build can draw")
+        }
     }
 
-    func testTheThreeShapesThatStayedAreUnchanged() {
+    func testTheThreeShapesReadBackAsThemselves() {
         for style in MenuBarIconStyle.allCases {
             XCTAssertEqual(MenuBarIconStyle(stored: style.rawValue), style)
         }
@@ -63,21 +66,17 @@ final class MenuBarIconChoicesTests: XCTestCase {
     /// on an initialiser that returns one constant.
     func testTheInitialiserIsNotAnsweringOneThingToEverything() {
         XCTAssertNotEqual(MenuBarIconSize(stored: "xxSmall"), MenuBarIconSize(stored: "small"))
-        XCTAssertNotEqual(MenuBarIconStyle(stored: "doubleRing"),
-                          MenuBarIconStyle(stored: "ringDot"))
+        XCTAssertNotEqual(MenuBarIconStyle(stored: "hexagon"),
+                          MenuBarIconStyle(stored: "capsule"))
     }
 
-    /// Every raw value the app has ever written still reads back as something.
-    /// The list is the shipped one, not `allCases` — the point is the values
-    /// that are no longer cases.
-    func testEveryValueEverShippedStillReadsBack() {
-        let everShipped = ["xxxSmall", "xxSmall", "extraSmall", "small", "medium"]
-        for raw in everShipped {
+    /// Every size the app has ever written still reads back as something it
+    /// can draw. The list is the shipped one, not `allCases` — the point is
+    /// the values that are no longer cases.
+    func testEverySizeEverShippedStillReadsBack() {
+        for raw in ["xxxSmall", "xxSmall", "extraSmall", "small", "medium"] {
             XCTAssertTrue(MenuBarIconSize.allCases.contains(MenuBarIconSize(stored: raw)),
                           "\(raw) reads back as nothing this build can draw")
-        }
-        for raw in ["ring", "doubleRing", "ringDot", "disc", "dot"] {
-            XCTAssertTrue(MenuBarIconStyle.allCases.contains(MenuBarIconStyle(stored: raw)))
         }
     }
 }
