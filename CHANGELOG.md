@@ -5,7 +5,69 @@ All notable changes to Helm are documented here. The format is loosely based on
 global changes, MINOR = new/polished features, PATCH = fixes. Every release
 bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 
-## [Unreleased] — 0.8.0
+## [Unreleased] — 0.9.0
+
+> 0.8.0 never shipped a final. Everything that had accumulated under it is
+> carried here: the version moved to 0.9.0 with the settings redesign, which is
+> a MINOR bump under this file's own rule.
+
+### Added
+- **Settings says what is missing before you scroll.** A line above everything
+  else counts the withheld permissions and the modules they reach. The section
+  that answers it starts 919 pt down a form with a 587 pt viewport, so at the
+  default window it was entirely below the fold — including the Grant button the
+  sidebar's warning triangle sends people to. One withheld grant has one place to
+  go and the button goes there; several do not, and that button scrolls to the
+  section rather than silently picking one.
+- **Light, dark or automatic is three pictures.** It was a pop-up menu of three
+  accurate words that are not what anybody is choosing between. The automatic one
+  is the light and dark faces split down the middle, the convention macOS uses
+  for the same case.
+
+### Changed
+- **One arrangement for everything.** The order and sections composed in Settings
+  now decide the panel as well as the window's sidebar and the icon menu. The
+  panel had been frozen in registry order for everyone since the «Module order»
+  section was deleted — nothing wrote the key it read.
+- **The menu-bar icon has six shapes and three sizes.** Squircle, hexagon and
+  capsule join the three rings; the five sizes became S, M and L, and anyone's
+  stored choice maps to its nearest survivor rather than to a default. The shape
+  menu draws each shape at the size that is chosen, so the page shows the icon as
+  the bar will get it.
+- **The module switch is in one place.** It was in three — the page header, the
+  composer's column, and the empty state — and the header's was the only one that
+  could act on the page you were standing on: the sidebar lists what is on, so
+  switching a module off from its own header removed its row and left the
+  selection pointing at nothing.
+- **The composer is a sheet.** On the page it was the largest block by a distance
+  and 10 pt wider than everything around it, because it was drawn as a section
+  header to avoid a card inside a card. The page keeps one row that says what is
+  arranged.
+
+### Fixed
+- **The warning triangle marks a module that can do nothing, not one that would
+  like a permission.** It read the list of permissions a module *uses*, which put
+  it on seven of the nine rows — including Keep Awake, which holds a power
+  assertion and never touches Accessibility unless the pointer nudge is on, and
+  that ships off. A mark on 78% of the rows is wallpaper, and it cost the one row
+  where the warning was true.
+- **The composer sheet could open with its own Done button outside the window.**
+  Its height started at a placeholder and was corrected a turn of the run loop
+  later, but a sheet's window is sized by AppKit once, at presentation — so the
+  window took its 360 pt floor while the content wanted 631. No title, no Done,
+  no footer buttons, the last two modules unreachable, and Escape the only way
+  out that nothing on screen mentioned.
+- **An empty Permissions section drew a heading with no card**, and the next
+  heading read as its subtitle — so the reset card appeared to be what Permissions
+  contained.
+- **«9 modules in 4 sections» could not change.** It was the registry's count
+  rendered as if it were state. It counts what is on.
+- Both appearance thumbnails that match the window's own appearance had no edge —
+  in light mode the light thumbnail's body and the card behind it measured the
+  same pixel value.
+- The size picker's white-on-accent measured 3.22:1, the one piece of text on the
+  page under the floor every other colour was solved against. It is the system's
+  segmented control now.
 
 ### Added
 - **The sidebar is an arrangement the person owns.** The list of modules was in
