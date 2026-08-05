@@ -113,4 +113,89 @@ final class PanelLayoutTests: XCTestCase {
         let decoded = try JSONDecoder().decode(PanelLayout.self, from: Data(json.utf8))
         XCTAssertEqual(decoded.allSlots.first?.size, .tall)
     }
+
+    // MARK: - Rearranging
+
+    func testMovingWithinATabDoesNotLeaveACopy() {
+        let before = layout([("a", .wide), ("b", .wide), ("c", .wide)])
+        let after = before.moving("c", toTab: 0, at: 0)
+        XCTAssertEqual(after.allSlots.map(\.widget), ["c", "a", "b"])
+    }
+
+    func testMovingBetweenTabsTakesTheSizeWithIt() {
+        let before = PanelLayout(tabs: [
+            .init(id: "a", widgets: [.init(widget: "vpn", size: .tall)]),
+            .init(id: "b", widgets: []),
+        ])
+        let after = before.moving("vpn", toTab: 1, at: 0)
+        XCTAssertEqual(after.tabs[0].widgets.count, 0)
+        XCTAssertEqual(after.tabs[1].widgets.first?.size, .tall)
+    }
+
+    /// An index past the end lands at the end rather than trapping.
+    func testAnIndexPastTheEndIsTheEnd() {
+        let before = layout([("a", .wide), ("b", .wide)])
+        XCTAssertEqual(before.moving("a", toTab: 0, at: 99).allSlots.map(\.widget), ["b", "a"])
+    }
+
+    // MARK: - Sizes, and the one refusal
+
+    /// Only a full-width widget may grow downwards: a tall narrow one opens a
+    /// hole beside it that nothing fills without masonry.
+    func testACompactWidgetIsRefusedTall() {
+        let before = layout([("vpn", .compact)])
+        XCTAssertEqual(before.refusal(growing: "vpn", to: .tall), .tallNeedsFullWidth)
+        XCTAssertEqual(before.resizing("vpn", to: .tall).allSlots.first?.size, .compact)
+    }
+
+    /// And the way through it — the refusal has something to say, which is why
+    /// it is a refusal rather than a greyed button.
+    func testGoingThroughWideIsAllowed() {
+        var l = layout([("vpn", .compact)])
+        l = l.resizing("vpn", to: .wide)
+        XCTAssertNil(l.refusal(growing: "vpn", to: .tall))
+        XCTAssertEqual(l.resizing("vpn", to: .tall).allSlots.first?.size, .tall)
+    }
+
+    /// The control: everything else is allowed, so the refusal is about the one
+    /// case and not about resizing in general.
+    func testEveryOtherSizeChangeIsAllowed() {
+        for from: PanelWidgetSize in PanelWidgetSize.allCases {
+            for to: PanelWidgetSize in PanelWidgetSize.allCases where !(from == .compact && to == .tall) {
+                let l = layout([("vpn", from)])
+                XCTAssertNil(l.refusal(growing: "vpn", to: to), "\(from) → \(to) was refused")
+                XCTAssertEqual(l.resizing("vpn", to: to).allSlots.first?.size, to)
+            }
+        }
+    }
+
+    // MARK: - Adding and removing
+
+    func testRemovingTakesOnlyThatWidget() {
+        let after = layout([("a", .wide), ("b", .compact)]).removing("a")
+        XCTAssertEqual(after.allSlots.map(\.widget), ["b"])
+    }
+
+    /// A widget already in the panel is moved, not copied — the gallery only
+    /// offers what is missing, but a layout that could hold two of one thing
+    /// would draw it twice.
+    func testAddingSomethingAlreadyThereMovesIt() {
+        let after = layout([("a", .compact), ("b", .wide)]).adding("a", toTab: 0)
+        XCTAssertEqual(after.allSlots.map(\.widget), ["b", "a"])
+    }
+
+    func testAddingArrivesAtFullWidth() {
+        let after = layout([]).adding("vpn", toTab: 0)
+        XCTAssertEqual(after.allSlots.first?.size, .wide)
+    }
+
+    /// The control for all of the above: a mutation that finds nothing to do
+    /// returns the layout it was given, rather than an empty one.
+    func testAMutationThatMatchesNothingChangesNothing() {
+        let before = layout([("a", .wide)])
+        XCTAssertEqual(before.removing("nope"), before)
+        XCTAssertEqual(before.resizing("nope", to: .tall), before)
+        XCTAssertEqual(before.moving("nope", toTab: 0, at: 0), before)
+        XCTAssertEqual(before.adding("a", toTab: 7), before)
+    }
 }

@@ -661,3 +661,13 @@
 "Order and sections" = "Order and sections";
 "A switch turns the module off everywhere in Helm." = "A switch turns the module off everywhere in Helm.";
 "Show" = "Show";
+"Configure panel" = "Configure panel";
+"Panel setup" = "Panel setup";
+"Panel width" = "Panel width";
+"Remove widget" = "Remove widget";
+"Widget size" = "Widget size";
+"Only a full-width widget can grow downwards." = "Only a full-width widget can grow downwards.";
+"Add widget" = "Add widget";
+"Module is off" = "Module is off";
+"Switched off — adding it turns it on" = "Switched off — adding it turns it on";
+"Everything is already on this tab." = "Everything is already on this tab.";

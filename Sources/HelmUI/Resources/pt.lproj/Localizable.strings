@@ -661,3 +661,13 @@
 "Order and sections" = "Ordem e seções";
 "A switch turns the module off everywhere in Helm." = "O interruptor desativa o módulo em todo o Helm.";
 "Show" = "Mostrar";
+"Configure panel" = "Configurar o painel";
+"Panel setup" = "Configuração do painel";
+"Panel width" = "Largura do painel";
+"Remove widget" = "Remover o widget";
+"Widget size" = "Tamanho do widget";
+"Only a full-width widget can grow downwards." = "Só um widget de largura total pode crescer para baixo.";
+"Add widget" = "Adicionar widget";
+"Module is off" = "O módulo está desligado";
+"Switched off — adding it turns it on" = "Desligado — ao adicionar, liga";
+"Everything is already on this tab." = "Tudo já está nesta aba.";

@@ -661,3 +661,13 @@
 "Order and sections" = "顺序与分组";
 "A switch turns the module off everywhere in Helm." = "开关会在整个 Helm 中停用该模块。";
 "Show" = "显示";
+"Configure panel" = "设置面板";
+"Panel setup" = "面板设置";
+"Panel width" = "面板宽度";
+"Remove widget" = "移除小组件";
+"Widget size" = "小组件尺寸";
+"Only a full-width widget can grow downwards." = "只有整行宽的小组件才能向下展开。";
+"Add widget" = "添加小组件";
+"Module is off" = "模块已关闭";
+"Switched off — adding it turns it on" = "已关闭 — 添加后会自动开启";
+"Everything is already on this tab." = "所有内容都已在此标签页中。";

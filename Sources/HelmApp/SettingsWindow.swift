@@ -410,8 +410,6 @@ private struct MenuBarSettingsView: View {
     @State private var launchAtLogin: Bool = LoginItem.isEnabled
     @State private var appearance: AppAppearance = AppSettings.appearance
     @State private var sidebarStyle: SidebarStyle = AppSettings.sidebarStyle
-    @State private var showSettingsButton = AppSettings.showSettingsButton
-    @State private var showQuitButton = AppSettings.showQuitButton
     @State private var diskAccess: PermissionState = .granted
     @State private var accessibility: PermissionState = .granted
     @State private var confirmingReset = false
@@ -571,20 +569,6 @@ private struct MenuBarSettingsView: View {
                         .onChange(of: size) { _, v in AppSettings.menuBarIconSize = v }
                 }
                 Text(AppStr.menuBarNote)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-            }
-
-            // «Menu bar and panel» until the menu-bar icon's shape and size
-            // moved into Appearance with everything else that decides how Helm
-            // looks. What is left is the panel's two buttons, and a heading
-            // naming a menu bar it no longer holds anything about is a heading
-            // that sends people to the wrong section.
-            Section(AppStr.panel) {
-                Toggle(AppStr.showSettingsButton, isOn: $showSettingsButton)
-                    .onChange(of: showSettingsButton) { _, v in AppSettings.showSettingsButton = v }
-                Toggle(AppStr.showQuitButton, isOn: $showQuitButton)
-                    .onChange(of: showQuitButton) { _, v in AppSettings.showQuitButton = v }
-                Text(AppStr.panelButtonsNote)
                     .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
             }
 

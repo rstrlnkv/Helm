@@ -284,10 +284,36 @@ enum AppStr {
     static var iconSize: String { L("Icon size") }
     static var settings: String { L("Settings…") }
     static var panel: String { L("Panel") }
-    static var showSettingsButton: String { L("Show Settings button") }
-    static var showQuitButton: String { L("Show Quit button") }
-    static var panelButtonsNote: String { L("Both actions are always available from the icon’s right-click menu.") }
     static var utilities: String { L("Utilities") }
+
+    // MARK: - The panel, arranged
+
+    static var configurePanel: String { L("Configure panel") }
+    static var panelSetup: String { L("Panel setup") }
+    static var panelWidth: String { L("Panel width") }
+    static var removeWidget: String { L("Remove widget") }
+    static var widgetSize: String { L("Widget size") }
+    /// The one refusal the layout makes, said as what to do instead.
+    static var tallNeedsFullWidth: String {
+        L("Only a full-width widget can grow downwards.")
+    }
+    static var addWidget: String { L("Add widget") }
+    static var moduleIsOff: String { L("Module is off") }
+    static var addingTurnsItOn: String { L("Switched off — adding it turns it on") }
+    static var everythingIsHere: String { L("Everything is already on this tab.") }
+
+    /// What the width buys, said in the units the choice is about.
+    static func panelGeometry(columns: Int, tile: Int) -> String {
+        L("\(columns) columns · \(tile) pt tiles",
+          [.ru: "\(columns) " + Plural.russian(columns, "колонка", "колонки", "колонок")
+                + " · плитка \(tile) pt",
+           .es: "\(columns) columnas · celdas de \(tile) pt",
+           .fr: "\(columns) colonnes · tuiles de \(tile) pt",
+           .de: "\(columns) Spalten · Kacheln zu \(tile) pt",
+           .ja: "\(columns) 列 · タイル \(tile) pt",
+           .zh: "\(columns) 列 · 每格 \(tile) pt",
+           .pt: "\(columns) colunas · blocos de \(tile) pt"])
+    }
     static var noModules: String { L("No modules enabled") }
     static var noModulesHint: String { L("Enable a module in Settings.") }
     static var whatsNew: String { L("What’s New") }
