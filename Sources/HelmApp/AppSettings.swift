@@ -168,7 +168,7 @@ extension Notification.Name {
     }
 
     static var menuBarIconStyle: String {
-        get { store.string("menuBarIconStyle", default: "squircle") }
+        get { store.string("menuBarIconStyle", default: "ring") }
         set {
             store.set(newValue, for: "menuBarIconStyle")
             NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
