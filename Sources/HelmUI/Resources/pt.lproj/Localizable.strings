@@ -663,3 +663,5 @@
 "Square" = "Quadrado";
 "Hexagon" = "Hexágono";
 "Capsule" = "Cápsula";
+"Modules" = "Módulos";
+"Behaviour, appearance, permissions and what Helm may remove." = "Comportamento, aparência, permissões e o que o Helm pode remover.";
