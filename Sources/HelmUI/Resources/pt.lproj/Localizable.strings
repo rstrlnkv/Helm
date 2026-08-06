@@ -695,3 +695,6 @@
 "Media" = "Mídia";
 "Nature" = "Natureza";
 "Category" = "Categoria";
+"Show Settings button" = "Mostrar o botão de ajustes";
+"Show Quit button" = "Mostrar o botão de sair";
+"All three are also in the menu-bar icon’s right-click menu." = "Os três também estão no menu de contexto do ícone.";

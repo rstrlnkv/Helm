@@ -291,8 +291,12 @@ enum AppStr {
     static var configurePanel: String { L("Configure panel") }
     static var editWidgets: String { L("Edit widgets") }
     static var showPanelEditButton: String { L("Show the edit button in the panel") }
+    static var showSettingsButton: String { L("Show Settings button") }
+    static var showQuitButton: String { L("Show Quit button") }
+    /// Why any of these may be hidden at all: none of them is the only way to
+    /// what it does.
     static var panelEditButtonNote: String {
-        L("It is also in the menu-bar icon’s right-click menu.")
+        L("All three are also in the menu-bar icon’s right-click menu.")
     }
     static var panelSetup: String { L("Panel setup") }
     static var removeWidget: String { L("Remove widget") }

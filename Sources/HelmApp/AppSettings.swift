@@ -158,6 +158,32 @@ extension Notification.Name {
         set { store.set(newValue?.timeIntervalSince1970 ?? 0, for: "scanBudgetDay") }
     }
 
+    /// Whether the panel's footer carries these at all.
+    ///
+    /// **Default true**, which is the whole difference from the version of
+    /// these settings that was deleted. Those defaulted to *false*, so a clean
+    /// install got a panel with no way into settings and no way to find the
+    /// switch that would have added one. The switches were never the problem.
+    ///
+    /// Safe to hide now because none of the three is the only way to what it
+    /// does: the menu-bar icon's right-click menu carries all of them, and that
+    /// menu cannot be switched off.
+    static var showSettingsButton: Bool {
+        get { store.bool("showSettingsButton", default: true) }
+        set {
+            store.set(newValue, for: "showSettingsButton")
+            NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
+        }
+    }
+
+    static var showQuitButton: Bool {
+        get { store.bool("showQuitButton", default: true) }
+        set {
+            store.set(newValue, for: "showQuitButton")
+            NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
+        }
+    }
+
     /// Whether the panel's footer offers the way into its setup mode.
     ///
     /// Optional in a way the settings and quit buttons were not: those were the
