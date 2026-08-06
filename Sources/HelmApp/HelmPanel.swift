@@ -240,14 +240,20 @@ struct HelmPanelContent: View {
         var utilities: [ModuleHost.Live] = []
         for live in host.enabledModules {
             guard let contribution = live.descriptor.menuBar(live.vm) else { continue }
-            if contribution.isUtility {
-                // The drawer is the person's too: a utility they took off stays
-                // off until they put it back from the gallery.
-                if !layout.isDismissed(live.descriptor.idRaw) { utilities.append(live) }
+            let id = live.descriptor.idRaw
+            // Out of the panel entirely: neither a tile nor a row.
+            if layout.isHidden(id) { continue }
+            // The drawer holds everything that is not a tile — a module with no
+            // widget, and a module whose widget was taken off. «Not a tile» and
+            // «not here» are different answers, and one list saying both is
+            // what made taking a widget off look like deleting the module.
+            if contribution.isUtility || layout.isDismissed(id) {
+                utilities.append(live)
+                if !contribution.isUtility { byID[id] = live }   // it can be promoted back
                 continue
             }
-            byID[live.descriptor.idRaw] = live
-            order.append(live.descriptor.idRaw)
+            byID[id] = live
+            order.append(id)
         }
         return (byID, order, utilities)
     }
@@ -475,15 +481,12 @@ struct HelmPanelContent: View {
     /// Everything not on this tab, as ghosts to press.
     @ViewBuilder
     private func gallery(_ byID: [String: ModuleHost.Live]) -> some View {
-        let placed = Set(layout.allSlots.map(\.widget))   // not just this tab: a widget lives in one place
-        // Both kinds: widgets that are not on a tab, and utilities that were
-        // taken out of the drawer. From here they look the same — something
-        // the panel could be showing and is not.
-        let takenOut = ModuleRegistry.all
-            .filter { layout.isDismissed($0.idRaw) && byID[$0.idRaw] == nil
-                      && ModuleHost.shared.isEnabled($0) }
+        // Only what was taken off the panel altogether. Everything else that
+        // is not a tile is one row down, in the drawer, where it can be
+        // promoted — so the gallery is not a second copy of that list.
+        let rest = ModuleRegistry.all
+            .filter { layout.isHidden($0.idRaw) && ModuleHost.shared.isEnabled($0) }
             .map(\.idRaw)
-        let rest = candidates.order.filter { !placed.contains($0) } + takenOut
         VStack(alignment: .leading, spacing: 6) {
             Text(AppStr.addWidget)
                 .font(HelmText.rowDetail)
@@ -511,9 +514,10 @@ struct HelmPanelContent: View {
     private func ghost(_ id: String, _ live: ModuleHost.Live?) -> some View {
         let descriptor = live?.descriptor ?? ModuleRegistry.all.first { $0.idRaw == id }
         return Button {
-            // A widget goes into the grid; a utility only stops being refused,
-            // because there is no slot for a module that draws nothing.
-            apply(live == nil ? layout.restoring(id) : layout.adding(id, toTab: tabIndex))
+            // Back into the drawer, not straight into the grid: the gallery
+            // says «put this back in the panel», and where it belongs in the
+            // panel is the next decision, taken one row down.
+            apply(layout.restoring(id))
         } label: {
             VStack(spacing: 4) {
                 if let descriptor {
@@ -657,7 +661,12 @@ struct HelmPanelContent: View {
                 if !parts.utilities.isEmpty {
                     UtilitiesSection(modules: parts.utilities, expanded: $utilitiesExpanded,
                                      editing: editing,
-                                     remove: { apply(layout.dismissing($0)) })
+                                     // A row that can be a tile offers to become
+                                     // one; the minus on a row is the second
+                                     // press, and that one does mean «not here».
+                                     promotable: { parts.byID[$0] != nil },
+                                     promote: { apply(layout.adding($0, toTab: tabIndex)) },
+                                     remove: { apply(layout.hiding($0)) })
                 }
             }
     }
@@ -884,6 +893,8 @@ private struct UtilitiesSection: View {
     /// is on, every row offers a way out. It is also held open — a list you
     /// have to disclose before you can edit it is a list nobody edits.
     let editing: Bool
+    let promotable: (String) -> Bool
+    let promote: (String) -> Void
     let remove: (String) -> Void
     private var open: Bool { expanded || editing }
     /// Natural height of the rows, measured so the disclosure animates between
@@ -930,6 +941,16 @@ private struct UtilitiesSection: View {
                     HStack(spacing: 6) {
                         utilityRow(live)
                         if editing {
+                            if promotable(live.descriptor.idRaw) {
+                                Button { promote(live.descriptor.idRaw) } label: {
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.system(size: 13))
+                                        .foregroundStyle(Color.accentColor)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(AppStr.addWidget)
+                                .help(AppStr.addWidget)
+                            }
                             Button { remove(live.descriptor.idRaw) } label: {
                                 Image(systemName: "minus.circle.fill")
                                     .font(.system(size: 13))

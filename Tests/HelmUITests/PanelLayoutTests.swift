@@ -189,11 +189,15 @@ final class PanelLayoutTests: XCTestCase {
         XCTAssertEqual(after.allSlots.first?.size, .wide)
     }
 
-    /// The control for all of the above: a mutation that finds nothing to do
+    /// The control for all of the above: a mutation that finds nothing to move
     /// returns the layout it was given, rather than an empty one.
+    ///
+    /// `removing` is not among them, and deliberately. It stopped being «take
+    /// this slot out» and became «this is not a tile», which is a statement
+    /// worth recording whether or not there was a slot to take out — a module
+    /// in the drawer has no slot and can still be refused a tile.
     func testAMutationThatMatchesNothingChangesNothing() {
         let before = layout([("a", .wide)])
-        XCTAssertEqual(before.removing("nope"), before)
         XCTAssertEqual(before.resizing("nope", to: .tall), before)
         XCTAssertEqual(before.moving("nope", toTab: 0, at: 0), before)
         XCTAssertEqual(before.adding("a", toTab: 7), before)
@@ -313,46 +317,78 @@ final class PanelLayoutTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(PanelLayout.self, from: data).dismissed, ["disk"])
     }
 
-    // MARK: - The drawer is the person's too
+    // MARK: - Not a tile is not the same as not here
 
-    /// A utility module was never in a tab, so `removing` — which takes a
-    /// widget out of one — cannot express «I do not want this». `dismissing`
-    /// can, and the same list answers for both kinds, because from the
-    /// person's side it is one fact.
-    func testAUtilityCanBeRefusedWithoutBeingInATab() {
-        let after = layout([("vpn", .wide)]).dismissing("homebrew")
-        XCTAssertTrue(after.isDismissed("homebrew"))
-        XCTAssertEqual(after.allSlots.map(\.widget), ["vpn"],
-                       "refusing a drawer row moved something in the grid")
-    }
-
-    /// And it does not come back when the panel is read again.
-    func testARefusedUtilityStaysRefused() {
-        var l = layout([("vpn", .wide)]).dismissing("homebrew")
-        for _ in 0..<5 { l = l.reconciled(arriving: ["vpn"]) }
-        XCTAssertTrue(l.isDismissed("homebrew"))
-    }
-
-    /// Putting it back is only «stop refusing it»: there is no slot for a
-    /// module that draws nothing, and inventing one would put an empty tile in
-    /// the grid.
-    func testRestoringAUtilityAddsNoSlot() {
-        let after = layout([("vpn", .wide)]).dismissing("homebrew").restoring("homebrew")
-        XCTAssertFalse(after.isDismissed("homebrew"))
+    /// The report that produced this distinction, in one test: «I want to take
+    /// the keyboard widget off but keep it in the utilities.» Removing a widget
+    /// stops it being a tile and nothing more — the drawer holds everything
+    /// that is not one.
+    func testTakingAWidgetOffLeavesItInThePanel() {
+        let after = layout([("layout", .wide), ("vpn", .wide)]).removing("layout")
+        XCTAssertTrue(after.isDismissed("layout"), "it would come back as a tile")
+        XCTAssertFalse(after.isHidden("layout"), "it was taken out of the panel entirely")
         XCTAssertEqual(after.allSlots.map(\.widget), ["vpn"])
     }
 
-    /// The control: refusing one thing refuses one thing.
-    func testRefusingOneDoesNotRefuseTheRest() {
-        let after = layout([]).dismissing("homebrew")
-        XCTAssertFalse(after.isDismissed("leftovers"))
-        XCTAssertFalse(after.isDismissed("vpn"))
+    /// And the second press, on a row that is already only a row, does mean
+    /// «not here».
+    func testTheSecondPressTakesItOutOfThePanel() {
+        let after = layout([("layout", .wide)]).removing("layout").hiding("layout")
+        XCTAssertTrue(after.isHidden("layout"))
     }
 
-    /// Twice is once: a list that grew a duplicate every time somebody pressed
-    /// minus would be a list that grows forever.
-    func testRefusingTwiceIsRefusingOnce() {
-        let after = layout([]).dismissing("homebrew").dismissing("homebrew")
-        XCTAssertEqual(after.dismissed, ["homebrew"])
+    /// Hiding something that was never a tile works the same way: `removing`
+    /// no longer needs to find a slot before it can record anything.
+    func testAModuleWithNoTileCanBeHidden() {
+        let after = layout([("vpn", .wide)]).hiding("homebrew")
+        XCTAssertTrue(after.isHidden("homebrew"))
+        XCTAssertEqual(after.allSlots.map(\.widget), ["vpn"], "the grid was disturbed")
+    }
+
+    /// The gallery puts it back in the panel, not straight into the grid:
+    /// where it belongs there is the next decision, taken in the drawer.
+    func testRestoringPutsItBackInTheDrawerOnly() {
+        let after = layout([]).hiding("homebrew").restoring("homebrew")
+        XCTAssertFalse(after.isHidden("homebrew"))
+        XCTAssertEqual(after.allSlots.count, 0)
+    }
+
+    /// Promoting answers both refusals at once, or a widget added from the
+    /// drawer would need adding again after every update.
+    func testPromotingClearsBothRefusals() {
+        let after = layout([]).removing("layout").hiding("layout").adding("layout", toTab: 0)
+        XCTAssertFalse(after.isDismissed("layout"))
+        XCTAssertFalse(after.isHidden("layout"))
+        XCTAssertEqual(after.allSlots.map(\.widget), ["layout"])
+    }
+
+    /// Neither list re-adds a tile on the next read.
+    func testNeitherRefusalIsUndoneByAReread() {
+        var l = layout([("layout", .wide), ("vpn", .wide)]).removing("layout").hiding("homebrew")
+        for _ in 0..<5 { l = l.reconciled(arriving: ["layout", "vpn", "homebrew"]) }
+        XCTAssertEqual(l.allSlots.map(\.widget), ["vpn"])
+        XCTAssertTrue(l.isHidden("homebrew"))
+    }
+
+    /// The control: refusing one thing refuses one thing, and the two lists do
+    /// not answer for each other.
+    func testTheTwoListsAreNotOneList() {
+        let after = layout([("layout", .wide)]).removing("layout")
+        XCTAssertFalse(after.isHidden("layout"))
+        XCTAssertFalse(after.isDismissed("vpn"))
+        let gone = layout([("layout", .wide)]).hiding("layout")
+        XCTAssertTrue(gone.isDismissed("layout"), "hidden must also stop being a tile")
+    }
+
+    /// A layout written before either list existed still decodes — the
+    /// synthesised decoder throws on a missing key and takes the document with
+    /// it.
+    func testALayoutFromBeforeEitherListDecodes() throws {
+        let json = """
+        {"tabs":[{"id":"t","widgets":[{"widget":"vpn","size":"wide"}]}]}
+        """
+        let decoded = try JSONDecoder().decode(PanelLayout.self, from: Data(json.utf8))
+        XCTAssertTrue(decoded.dismissed.isEmpty)
+        XCTAssertTrue(decoded.hidden.isEmpty)
     }
 }
