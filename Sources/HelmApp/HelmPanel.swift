@@ -781,8 +781,20 @@ struct HelmPanelContent: View {
                 VStack(alignment: .leading, spacing: 8) {
                     scrollable(parts, items)
                 }
+                // Written **inside** a transaction, which is the whole fix.
+                //
+                // `onGeometryChange` hands its measurement over outside the one
+                // that is running, so the card's height arrived unanimated
+                // while the rows it measured were still sliding: the list
+                // unfolded over 0.3 s and the panel reached its full height in
+                // one frame. `.animation(_, value:)` on the frame does not
+                // rescue it — measured against the real view, that variant is
+                // indistinguishable from no animation at all, and only the
+                // explicit transaction ramps. `DisclosureProbe` holds both.
                 .onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
-                    if measured > 0, gridHeight != measured { gridHeight = measured }
+                    if measured > 0, gridHeight != measured {
+                        withAnimation(HelmMotion.disclosure) { gridHeight = measured }
+                    }
                 }
             }
             // An explicit height, not a `maxHeight`. A `ScrollView`'s ideal
@@ -791,16 +803,6 @@ struct HelmPanelContent: View {
             // through a widget while the card had room to spare. This is the
             // smaller of what the grid needs and what the strip has left.
             .frame(height: gridHeight > 0 ? min(gridHeight, availableForGrid) : nil)
-            // On the same clock as whatever inside it is opening.
-            //
-            // `onGeometryChange` writes its measurement *outside* the current
-            // transaction, so the height the card is built from arrived
-            // unanimated while the rows it measured were still sliding: the
-            // utilities list unfolded over 0.3 s and the panel jumped to its
-            // final height in one frame. Animating on the measured value puts
-            // the two back on one clock — the same fix, and the same reason, as
-            // the disclosure inside the list.
-            .animation(HelmMotion.disclosure, value: gridHeight)
             .scrollIndicators(.automatic)
             footer
                 .onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
@@ -1005,7 +1007,7 @@ private struct DragToReorder: ViewModifier {
 
 /// One collapsed row listing the modules whose UI lives in Settings. Expanding
 /// reveals compact rows; clicking one opens Settings on that module.
-private struct UtilitiesSection: View {
+struct UtilitiesSection: View {
     let modules: [ModuleHost.Live]
     @Binding var expanded: Bool
     /// The drawer is arranged like everything else in the panel: while the mode
