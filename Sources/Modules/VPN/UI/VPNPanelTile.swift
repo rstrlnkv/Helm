@@ -41,10 +41,8 @@ public struct VPNPanelTile: View {
     }
 
     private var header: some View {
-        HStack(spacing: 10) {
-            HelmIconBadge(symbol: "lock.shield", color: .indigo, active: anyConnected)
-            Text("VPN").font(.headline)
-            Spacer()
+        HelmWidgetHeader(symbol: "lock.shield", tint: .indigo, name: "VPN",
+                         active: anyConnected) {
             HelmStatusDot(active: anyConnected)
         }
     }

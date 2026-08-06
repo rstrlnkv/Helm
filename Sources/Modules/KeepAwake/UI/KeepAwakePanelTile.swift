@@ -81,15 +81,10 @@ public struct KeepAwakePanelTile: View {
     // MARK: - Header
 
     private var header: some View {
-        HStack(spacing: 10) {
-            HelmIconBadge(symbol: "moon.zzz.fill", color: .orange, active: vm.isActive)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(KAStr.moduleName).font(.headline)
-                if let subtitle = activeSubtitle {
-                    Text(subtitle).font(.caption).foregroundStyle(HelmText.quiet)
-                }
-            }
-            Spacer()
+        // The shared widget header, not a fourth arrangement of a plate and a
+        // name: five widgets in one panel, one heading.
+        HelmWidgetHeader(symbol: "moon.zzz.fill", tint: .orange, name: KAStr.moduleName,
+                         subtitle: activeSubtitle, active: vm.isActive) {
             Toggle("", isOn: Binding(get: { vm.isActive }, set: { _ in vm.send(KeepAwakeCommand.toggle) }))
                 .toggleStyle(.switch)
                 .labelsHidden()
