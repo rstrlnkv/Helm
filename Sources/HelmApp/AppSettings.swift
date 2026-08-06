@@ -158,6 +158,20 @@ extension Notification.Name {
         set { store.set(newValue?.timeIntervalSince1970 ?? 0, for: "scanBudgetDay") }
     }
 
+    /// Whether the panel's footer offers the way into its setup mode.
+    ///
+    /// Optional in a way the settings and quit buttons were not: those were the
+    /// only way in from a panel that had never been configured, and this one
+    /// has a twin in the menu-bar icon's right-click menu. Hiding it costs
+    /// nothing but the glyph.
+    static var showPanelEditButton: Bool {
+        get { store.bool("showPanelEditButton", default: true) }
+        set {
+            store.set(newValue, for: "showPanelEditButton")
+            NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
+        }
+    }
+
     static var menuBarIconStyle: String {
         get { store.string("menuBarIconStyle", default: "ring") }
         set {

@@ -289,6 +289,11 @@ enum AppStr {
     // MARK: - The panel, arranged
 
     static var configurePanel: String { L("Configure panel") }
+    static var editWidgets: String { L("Edit widgets") }
+    static var showPanelEditButton: String { L("Show the edit button in the panel") }
+    static var panelEditButtonNote: String {
+        L("It is also in the menu-bar icon’s right-click menu.")
+    }
     static var panelSetup: String { L("Panel setup") }
     static var removeWidget: String { L("Remove widget") }
     static var widgetSize: String { L("Widget size") }

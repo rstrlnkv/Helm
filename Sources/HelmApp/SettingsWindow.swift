@@ -410,6 +410,7 @@ private struct MenuBarSettingsView: View {
     @State private var launchAtLogin: Bool = LoginItem.isEnabled
     @State private var appearance: AppAppearance = AppSettings.appearance
     @State private var sidebarStyle: SidebarStyle = AppSettings.sidebarStyle
+    @State private var showPanelEditButton = AppSettings.showPanelEditButton
     @State private var diskAccess: PermissionState = .granted
     @State private var accessibility: PermissionState = .granted
     @State private var confirmingReset = false
@@ -543,6 +544,17 @@ private struct MenuBarSettingsView: View {
                         .onChange(of: size) { _, v in AppSettings.menuBarIconSize = v }
                 }
                 Text(AppStr.menuBarNote)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+            }
+
+            // The panel keeps its own arrangement, so there is exactly one
+            // thing about it to decide here: whether the way in is on it.
+            Section(AppStr.panel) {
+                Toggle(AppStr.showPanelEditButton, isOn: $showPanelEditButton)
+                    .onChange(of: showPanelEditButton) { _, v in
+                        AppSettings.showPanelEditButton = v
+                    }
+                Text(AppStr.panelEditButtonNote)
                     .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
             }
 

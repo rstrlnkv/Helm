@@ -182,7 +182,9 @@ import HelmUI
             target: self,
             openSettings: #selector(openSettings),
             openModule: #selector(openModuleSettings(_:)),
-            quit: #selector(quit))
+            quit: #selector(quit),
+            editTitle: AppStr.editWidgets,
+            editWidgets: #selector(editWidgets))
 
         // Hand placement to the status item: popUp(at:) with a hand-computed
         // point stopped fitting once the module entries were added, and the menu
@@ -190,6 +192,16 @@ import HelmUI
         statusItem.menu = menu
         button.performClick(nil)
         statusItem.menu = nil
+    }
+
+    /// Opens the panel if it is closed, then asks it to arrange itself.
+    ///
+    /// Not `togglePanel()`: the panel is shut while its own menu is up, but a
+    /// toggle would close it in whatever case it was not — and «edit» would
+    /// then mean «put it away».
+    @objc private func editWidgets() {
+        if !panel.isShown { togglePanel() }
+        NotificationCenter.default.post(name: .helmPanelEditRequested, object: nil)
     }
 
     @objc private func openModuleSettings(_ sender: NSMenuItem) {

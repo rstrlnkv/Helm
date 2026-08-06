@@ -678,3 +678,6 @@
 "Paused" = "已暂停";
 "FOLDERS" = "文件夹";
 "No folders watched yet" = "尚未监视任何文件夹";
+"Edit widgets" = "编辑小组件";
+"Show the edit button in the panel" = "在面板中显示编辑按钮";
+"It is also in the menu-bar icon’s right-click menu." = "它也在菜单栏图标的右键菜单里。";

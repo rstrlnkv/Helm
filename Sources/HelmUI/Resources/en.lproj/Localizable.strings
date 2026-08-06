@@ -678,3 +678,6 @@
 "Paused" = "Paused";
 "FOLDERS" = "FOLDERS";
 "No folders watched yet" = "No folders watched yet";
+"Edit widgets" = "Edit widgets";
+"Show the edit button in the panel" = "Show the edit button in the panel";
+"It is also in the menu-bar icon’s right-click menu." = "It is also in the menu-bar icon’s right-click menu.";

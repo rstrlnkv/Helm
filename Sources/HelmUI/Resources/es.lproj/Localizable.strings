@@ -678,3 +678,6 @@
 "Paused" = "En pausa";
 "FOLDERS" = "CARPETAS";
 "No folders watched yet" = "Aún ninguna carpeta";
+"Edit widgets" = "Editar los widgets";
+"Show the edit button in the panel" = "Mostrar el botón de edición en el panel";
+"It is also in the menu-bar icon’s right-click menu." = "También está en el menú contextual del icono.";

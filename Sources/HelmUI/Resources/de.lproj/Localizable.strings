@@ -678,3 +678,6 @@
 "Paused" = "Pausiert";
 "FOLDERS" = "ORDNER";
 "No folders watched yet" = "Noch keine Ordner";
+"Edit widgets" = "Widgets bearbeiten";
+"Show the edit button in the panel" = "Bearbeiten-Taste im Panel zeigen";
+"It is also in the menu-bar icon’s right-click menu." = "Er liegt auch im Kontextmenü des Menüleistensymbols.";

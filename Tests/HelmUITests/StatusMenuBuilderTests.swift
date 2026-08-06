@@ -63,4 +63,31 @@ final class StatusMenuBuilderTests: XCTestCase {
         let menu = build([[], []])
         XCTAssertEqual(menu.items.map(\.isSeparatorItem), [false, true, false])
     }
+
+    /// The way into the panel's setup mode is in the icon's menu, because the
+    /// button that duplicates it in the panel's footer can be switched off — a
+    /// mode with exactly one door is a mode somebody can lock themselves out of.
+    func testTheEditItemIsThereWhenAskedFor() {
+        let menu = StatusMenuBuilder.menu(
+            settingsTitle: "Settings", quitTitle: "Quit", groups: [], target: nil,
+            openSettings: #selector(NSObject.description as () -> String),
+            openModule: #selector(NSObject.description as () -> String),
+            quit: #selector(NSObject.description as () -> String),
+            editTitle: "Edit widgets",
+            editWidgets: #selector(NSObject.description as () -> String))
+        XCTAssertTrue(menu.items.contains { $0.title == "Edit widgets" })
+    }
+
+    /// The control: it is asked for, not assumed. A caller that does not offer
+    /// the mode must not get a menu item that does nothing.
+    func testWithoutATitleThereIsNoEditItem() {
+        let menu = StatusMenuBuilder.menu(
+            settingsTitle: "Settings", quitTitle: "Quit", groups: [], target: nil,
+            openSettings: #selector(NSObject.description as () -> String),
+            openModule: #selector(NSObject.description as () -> String),
+            quit: #selector(NSObject.description as () -> String))
+        // Settings, a separator, Quit — and nothing between the first two.
+        XCTAssertEqual(menu.items.count, 3, "an item appeared that nobody asked for")
+        XCTAssertFalse(menu.items.contains { $0.title == "Edit widgets" })
+    }
 }
