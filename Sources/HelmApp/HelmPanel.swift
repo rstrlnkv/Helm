@@ -311,21 +311,24 @@ struct HelmPanelContent: View {
     @ViewBuilder
     private func cell(_ widget: Widget, among items: [Widget]) -> some View {
         if widget.pinned {
-            VStack(alignment: .leading, spacing: 4) {
-                widget.view.frame(maxWidth: .infinity, alignment: .topLeading)
-                if editing {
-                    HStack(spacing: 4) {
+            widget.view
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                // A pin where the others have a minus, and it says why rather
+                // than offering a control that would only refuse.
+                .overlay(alignment: .topLeading) {
+                    if editing {
                         Image(systemName: "pin.fill")
                             .font(.system(size: 9, weight: .semibold))
-                        Text(AppStr.permissionsWidgetPinned)
-                            .font(.system(size: 10))
-                            .fixedSize(horizontal: false, vertical: true)
-                        Spacer(minLength: 0)
+                            .foregroundStyle(.white)
+                            .frame(width: 18, height: 18)
+                            .background(Circle().fill(HelmText.quiet))
+                            .shadow(radius: 1, y: 0.5)
+                            .offset(x: -7, y: -7)
+                            .help(AppStr.permissionsWidgetPinned)
+                            .accessibilityLabel(AppStr.permissionsWidgetPinned)
                     }
-                    .foregroundStyle(HelmText.quiet)
                 }
-            }
-            .padding(4)
+                .padding(editing ? 7 : 0)
         } else {
         widget.view
             .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -625,17 +628,23 @@ struct HelmPanelContent: View {
     }
 }
 
-/// What a widget grows while the panel is being arranged: a dashed frame, its
-/// three proportions, and a way out.
+/// What a widget grows while the panel is being arranged: a dashed frame, a
+/// minus at the top left, and its proportions at the top right.
 ///
-/// **A wrapper, not an overlay.** The first version hung the controls *over*
-/// the tile — the size chips at its bottom-right corner and a minus floating
-/// past its top-left — which put them on top of whatever the module had drawn
-/// there: Keep Awake's «⋯», VPN's switch, the Disk widget's «415 ГБ / 494 ГБ».
-/// A tile is a module's own rectangle, and the panel does not get to write in
-/// it. The chrome takes its own strip underneath, and the dashed frame goes
-/// round both, so it also stops being 10 pt wider than the card it was meant
-/// to be tracing.
+/// **Both float at the corners, half outside the tile.** That is where macOS
+/// has put «remove» since the first jiggling icon, and the reason it works is
+/// the reason it is not an overlay *on* the content: the corner of a card is
+/// the one place a module never draws anything, so a control parked there
+/// costs nothing. An earlier version put the chips inside the tile's
+/// bottom-right corner instead and they landed on the VPN switch, Keep Awake's
+/// «⋯» and the Disk widget's used-of-total.
+///
+/// **The size control is one chip until you point at it.** Three chips on
+/// every tile is a row of controls competing with the tile for attention, on a
+/// panel whose whole job is to be read at a glance; one chip says what the size
+/// *is*, which is the part worth showing all the time. It opens on hover and
+/// on focus — hover alone would put a control on the panel that a keyboard
+/// cannot reach.
 private struct EditChrome: ViewModifier {
     let active: Bool
     let widget: String
@@ -646,57 +655,81 @@ private struct EditChrome: ViewModifier {
     let remove: () -> Void
     let move: (Int) -> Void
 
+    @State private var hovering = false
+    @FocusState private var focused: Bool
+
+    private var open: Bool { hovering || focused }
+
     func body(content: Content) -> some View {
         if !active { content } else {
-            VStack(alignment: .leading, spacing: 4) {
-                content
-                HStack(spacing: 4) {
-                    ForEach(sizes, id: \.self) { option in
-                        Button { resize(option) } label: {
-                            Text(option.label)
-                                .font(.system(size: 10, weight: .semibold))
-                                .monospacedDigit()
-                                .foregroundStyle(option == size ? Color.white
-                                                 : refused(option) ? HelmText.faint : HelmText.quiet)
-                                .padding(.horizontal, 6).padding(.vertical, 3)
-                                .background(RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                    .fill(option == size ? Color.accentColor : HelmSurface.wellFill))
-                        }
-                        .buttonStyle(.plain)
-                        .help(refused(option) ? AppStr.tallNeedsFullWidth : option.label)
-                    }
-                    Spacer(minLength: 8)
+            content
+                .overlay {
+                    // 14, the tile's own radius: concentric, not merely near.
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(Color.accentColor,
+                                      style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                }
+                .overlay(alignment: .topLeading) {
                     Button(action: remove) {
-                        Image(systemName: "minus.circle.fill")
-                            .font(.system(size: 14))
-                            .foregroundStyle(HelmSignal.danger)
+                        Image(systemName: "minus")
+                            .font(.system(size: 9, weight: .black))
+                            .foregroundStyle(.white)
+                            .frame(width: 18, height: 18)
+                            .background(Circle().fill(HelmSignal.danger))
+                            .shadow(radius: 1, y: 0.5)
                     }
                     .buttonStyle(.plain)
+                    .offset(x: -7, y: -7)
                     .accessibilityLabel(AppStr.removeWidget)
                 }
-                .accessibilityElement(children: .contain)
-                .accessibilityLabel(AppStr.widgetSize)
-            }
-            .padding(4)
-            .overlay {
-                // 18 = the card's own 14 plus the 4 pt of padding around it, so
-                // the dashed line stays concentric with the tile rather than
-                // cutting its corners.
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(Color.accentColor,
-                                  style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
-            }
-            // Focusable and movable by arrow keys, so the arrangement is not
-            // the one part of the panel a keyboard cannot reach.
-            .focusable()
-            .onMoveCommand { direction in
-                switch direction {
-                case .left, .up: move(-1)
-                case .right, .down: move(1)
-                default: break
+                .overlay(alignment: .topTrailing) { sizeControl.offset(x: 7, y: -7) }
+                // Room for the two of them to hang outside the card without
+                // being cut off by the row above.
+                .padding(7)
+                .focusable()
+                .onMoveCommand { direction in
+                    switch direction {
+                    case .left, .up: move(-1)
+                    case .right, .down: move(1)
+                    default: break
+                    }
                 }
+        }
+    }
+
+    /// Grows leftwards from the corner it is anchored to, which is what a
+    /// trailing-aligned stack does by itself.
+    private var sizeControl: some View {
+        HStack(spacing: 2) {
+            ForEach(open ? sizes : [size], id: \.self) { option in
+                Button { resize(option) } label: {
+                    // The accent marks *which of the three*, so it appears
+                    // only when there are three. Closed, the chip is one label
+                    // saying what the size is, and a blue pill on every tile
+                    // would be the loudest thing in a panel meant to be read
+                    // at a glance.
+                    Text(option.label)
+                        .font(.system(size: 10, weight: .semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(open && option == size ? Color.white
+                                         : refused(option) ? HelmText.faint : HelmText.quiet)
+                        .padding(.horizontal, 5).padding(.vertical, 2)
+                        .background(RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .fill(open && option == size ? Color.accentColor : .clear))
+                }
+                .buttonStyle(.plain)
+                .help(refused(option) ? AppStr.tallNeedsFullWidth : option.label)
             }
         }
+        .padding(2)
+        .background(Capsule().fill(.regularMaterial))
+        .overlay(Capsule().strokeBorder(HelmSurface.hairline))
+        .focusable()
+        .focused($focused)
+        .onHover { hovering = $0 }
+        .animation(HelmMotion.interface, value: open)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(AppStr.widgetSize)
     }
 }
 
