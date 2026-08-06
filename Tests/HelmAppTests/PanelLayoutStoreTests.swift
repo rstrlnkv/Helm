@@ -65,4 +65,18 @@ final class PanelLayoutStoreTests: XCTestCase {
         XCTAssertEqual(PanelLayoutStore.read(from: s, offered: ["vpn"]).allSlots.map(\.widget),
                        ["vpn"])
     }
+
+    /// End to end, which is how this was reported: take a widget off, quit,
+    /// come back — and it is still off. The store is where the two halves meet,
+    /// so it is where the regression is pinned as well as in the model.
+    func testAWidgetTakenOffIsStillOffAfterARestart() {
+        let s = store()
+        let offered = ["vpn", "disk", "keep-awake"]
+        let first = PanelLayoutStore.read(from: s, offered: offered)
+        PanelLayoutStore.write(first.removing("disk"), to: s)
+
+        // A second launch: same store, same modules, nothing else happened.
+        let second = PanelLayoutStore.read(from: s, offered: offered)
+        XCTAssertEqual(second.allSlots.map(\.widget), ["vpn", "keep-awake"])
+    }
 }

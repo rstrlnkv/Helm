@@ -252,4 +252,64 @@ final class PanelLayoutTests: XCTestCase {
         XCTAssertEqual(before.renamingTab("nope", to: "x"), before)
         XCTAssertEqual(before.removingTab("nope"), before)
     }
+
+    // MARK: - A widget that was taken off stays off
+
+    /// The bug this was written for: removing a widget was undone by the next
+    /// read. `reconciled` adds any id this build can draw that the layout does
+    /// not hold — which is how a new module joins — and a widget just removed
+    /// is exactly that. It came back at every launch.
+    func testARemovedWidgetDoesNotComeBackOnTheNextRead() {
+        let after = layout([("vpn", .wide), ("disk", .wide)])
+            .removing("disk")
+            .reconciled(arriving: ["vpn", "disk"])
+        XCTAssertEqual(after.allSlots.map(\.widget), ["vpn"])
+    }
+
+    /// And it does not come back on the tenth read either — the note is part
+    /// of what gets written, not something recomputed from what is on screen.
+    func testItStaysOffAcrossManyReads() {
+        var l = layout([("vpn", .wide), ("disk", .wide)]).removing("disk")
+        for _ in 0..<10 { l = l.reconciled(arriving: ["vpn", "disk"]) }
+        XCTAssertEqual(l.allSlots.map(\.widget), ["vpn"])
+    }
+
+    /// The control, and the thing that must not break: a module that has
+    /// genuinely never been on the panel still arrives.
+    func testAModuleNobodyRemovedStillArrives() {
+        let after = layout([("vpn", .wide)])
+            .removing("vpn")
+            .reconciled(arriving: ["vpn", "homebrew"])
+        XCTAssertEqual(after.allSlots.map(\.widget), ["homebrew"],
+                       "dismissing one widget silenced the others")
+    }
+
+    /// Putting it back answers the removal, so an update does not make somebody
+    /// add it again.
+    func testAddingItBackClearsTheNote() {
+        let back = layout([("vpn", .wide)])
+            .removing("vpn")
+            .adding("vpn", toTab: 0)
+        XCTAssertTrue(back.dismissed.isEmpty)
+        XCTAssertEqual(back.reconciled(arriving: ["vpn"]).allSlots.map(\.widget), ["vpn"])
+    }
+
+    /// A panel arranged before this build has no `dismissed` key, and the
+    /// synthesised decoder would have thrown on it — taking the whole layout
+    /// with it, because `JSONDecoder` gives up on the document rather than the
+    /// field.
+    func testALayoutFromBeforeThisBuildStillDecodes() throws {
+        let json = """
+        {"tabs":[{"id":"t","widgets":[{"widget":"vpn","size":"tall"}]}]}
+        """
+        let decoded = try JSONDecoder().decode(PanelLayout.self, from: Data(json.utf8))
+        XCTAssertEqual(decoded.allSlots.map(\.widget), ["vpn"])
+        XCTAssertTrue(decoded.dismissed.isEmpty)
+    }
+
+    func testTheNoteSurvivesTheRoundTrip() throws {
+        let before = layout([("vpn", .wide), ("disk", .wide)]).removing("disk")
+        let data = try JSONEncoder().encode(before)
+        XCTAssertEqual(try JSONDecoder().decode(PanelLayout.self, from: data).dismissed, ["disk"])
+    }
 }
