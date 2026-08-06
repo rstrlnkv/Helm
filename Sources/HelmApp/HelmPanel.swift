@@ -230,6 +230,8 @@ struct HelmPanelContent: View {
     /// with the mode, and the grid gets whatever is left.
     @State private var topChrome: CGFloat = 0
     @State private var footerHeight: CGFloat = 0
+    /// The widget under the pointer during a drag.
+    @State private var dragging: String?
     /// The tab whose glyph is being chosen, if any.
     @State private var pickingGlyph: String?
     @State private var renaming: String?
@@ -456,10 +458,22 @@ struct HelmPanelContent: View {
                                  },
                                  remove: { apply(layout.removing(widget.id)) },
                                  move: { offset in nudge(widget.id, by: offset, among: items) }))
-            .modifier(DragToReorder(active: editing, widget: widget.id) { dropped in
-                guard let target = layout.placement(of: widget.id) else { return }
-                apply(layout.moving(dropped, toTab: target.tab, at: target.index))
-            })
+            .modifier(DragToReorder(
+                active: editing, widget: widget.id,
+                lifted: dragging == widget.id,
+                begin: { dragging = widget.id },
+                // Live, on the way in rather than on the drop: the tiles move
+                // aside as the pointer crosses them, so where the widget will
+                // land is where the hole is. It used to be answered only after
+                // letting go.
+                enter: {
+                    guard let carried = dragging, carried != widget.id,
+                          let target = layout.placement(of: widget.id) else { return }
+                    withAnimation(HelmMotion.interface) {
+                        apply(layout.moving(carried, toTab: target.tab, at: target.index))
+                    }
+                },
+                end: { dragging = nil }))
         }
     }
 
@@ -1147,7 +1161,13 @@ private struct EditChrome: ViewModifier {
                 // badge with a slice taken off it. Offset and padding are the
                 // same number for that reason.
                 .padding(4)
+                // Focusable and movable by arrow keys, so the arrangement is
+                // not the one part of the panel a keyboard cannot reach — and
+                // without the system ring, which is drawn round the frame and
+                // came out as a second rectangle outside the dashed one already
+                // saying «this tile». The dashed frame is the focus indication.
                 .focusable()
+                .focusEffectDisabled()
                 .onMoveCommand { direction in
                     switch direction {
                     case .left, .up: move(-1)
@@ -1227,15 +1247,30 @@ private struct EditChrome: ViewModifier {
 private struct DragToReorder: ViewModifier {
     let active: Bool
     let widget: String
-    let dropped: (String) -> Void
+    let lifted: Bool
+    let begin: () -> Void
+    let enter: () -> Void
+    let end: () -> Void
 
     func body(content: Content) -> some View {
         if !active { content } else {
             content
-                .draggable(widget)
-                .dropDestination(for: String.self) { items, _ in
-                    guard let first = items.first, first != widget else { return false }
-                    dropped(first)
+                // The tile being carried is dimmed, so what is on screen is the
+                // arrangement *without* it — which is what the space the other
+                // tiles leave is showing.
+                .opacity(lifted ? 0.45 : 1)
+                // `onDrag` rather than `draggable`: this one has a closure that
+                // fires when the drag *starts*, and knowing which tile is in the
+                // air is the whole basis of moving the others out of its way.
+                .onDrag {
+                    begin()
+                    return NSItemProvider(object: widget as NSString)
+                }
+                .onDrop(of: [.text], isTargeted: Binding(
+                    get: { false },
+                    set: { over in if over { enter() } }
+                )) { _ in
+                    end()
                     return true
                 }
         }
