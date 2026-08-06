@@ -12,6 +12,13 @@ import Foundation
 public struct PanelLayout: Equatable, Codable, Sendable {
 
     public struct Tab: Equatable, Codable, Sendable, Identifiable {
+        /// What a tab can be marked with. Eight, because a strip that holds
+        /// more than that has a bigger problem than its glyphs.
+        public static let glyphs = [
+            "square.grid.2x2", "bolt", "gauge.with.dots.needle.33percent",
+            "folder", "wrench.and.screwdriver", "network", "moon", "star",
+        ]
+
         public var id: String
         /// Set on the tab Helm seeds, so a rename can be undone and a fresh
         /// install's tab is named in the reader's language rather than in
@@ -20,9 +27,25 @@ public struct PanelLayout: Equatable, Codable, Sendable {
         /// The name the person gave it. `nil` means the seeded one.
         public var name: String?
         public var widgets: [Slot]
+        /// An SF Symbol name. Optional because a tab made before glyphs existed
+        /// has none, and because «no glyph» is a state the strip can draw.
+        public var glyph: String?
 
-        public init(id: String, seed: String? = nil, name: String? = nil, widgets: [Slot]) {
-            self.id = id; self.seed = seed; self.name = name; self.widgets = widgets
+        public init(id: String, seed: String? = nil, name: String? = nil,
+                    widgets: [Slot], glyph: String? = nil) {
+            self.id = id; self.seed = seed; self.name = name
+            self.widgets = widgets; self.glyph = glyph
+        }
+
+        /// A tab written before glyphs existed decodes with none, rather than
+        /// taking the whole layout down with it.
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            id = try c.decode(String.self, forKey: .id)
+            seed = try c.decodeIfPresent(String.self, forKey: .seed)
+            name = try c.decodeIfPresent(String.self, forKey: .name)
+            widgets = try c.decode([Slot].self, forKey: .widgets)
+            glyph = try c.decodeIfPresent(String.self, forKey: .glyph)
         }
     }
 
@@ -106,7 +129,8 @@ public struct PanelLayout: Equatable, Codable, Sendable {
     /// panel Helm has always drawn, in the order the person arranged.
     public static func seeded(from widgets: [String]) -> PanelLayout {
         PanelLayout(tabs: [Tab(id: "seed.main", seed: "main", name: nil,
-                               widgets: widgets.map { Slot(widget: $0, size: .wide) })])
+                               widgets: widgets.map { Slot(widget: $0, size: .wide) },
+                               glyph: Tab.glyphs[0])])
     }
 
     // MARK: - The invariant
@@ -256,9 +280,28 @@ public struct PanelLayout: Equatable, Codable, Sendable {
     /// panel is a grid and nothing on screen says a tab exists.
     public var showsTabBar: Bool { tabs.count > 1 }
 
+    /// A tab whose id is already taken is not added.
+    ///
+    /// `ForEach` keyed on that id draws one row for two tabs and puts the
+    /// second one's widgets somewhere nobody can reach — which is what a panel
+    /// with a duplicate looks like: a tab that vanished. Found by a probe that
+    /// had run twice against the same store.
     public func addingTab(id: String) -> PanelLayout {
+        guard !tabs.contains(where: { $0.id == id }) else { return self }
         var copy = self
-        copy.tabs.append(Tab(id: id, seed: nil, name: nil, widgets: []))
+        // A different glyph from the ones already used, so a strip showing only
+        // glyphs is a strip you can tell apart. It runs out at eight, and then
+        // repeats rather than refusing to make a tab.
+        let taken = Set(copy.tabs.compactMap(\.glyph))
+        let glyph = Tab.glyphs.first { !taken.contains($0) } ?? Tab.glyphs[copy.tabs.count % Tab.glyphs.count]
+        copy.tabs.append(Tab(id: id, seed: nil, name: nil, widgets: [], glyph: glyph))
+        return copy
+    }
+
+    public func settingGlyph(_ glyph: String?, onTab id: String) -> PanelLayout {
+        guard let index = tabs.firstIndex(where: { $0.id == id }) else { return self }
+        var copy = self
+        copy.tabs[index].glyph = glyph
         return copy
     }
 

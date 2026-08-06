@@ -307,6 +307,15 @@ enum AppStr {
     /// panel altogether.
     static var takenOffThePanel: String { L("Taken off the panel") }
     static var chooseUtilities: String { L("Choose what is in the list") }
+    static var tabLabels: String { L("Tab labels") }
+    static var tabIcon: String { L("Icon") }
+    static func tabLabelStyle(_ style: TabLabelStyle) -> String {
+        switch style {
+        case .text: L("Text")
+        case .glyphAndText: L("Glyph and text")
+        case .glyph: L("Glyph")
+        }
+    }
     static var newTab: String { L("New tab") }
     static var closeTab: String { L("Close tab") }
     static var tabLabel: String { L("Tab") }
