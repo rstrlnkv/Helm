@@ -225,6 +225,8 @@ struct HelmPanelContent: View {
     /// with the mode, and the grid gets whatever is left.
     @State private var topChrome: CGFloat = 0
     @State private var footerHeight: CGFloat = 0
+    /// The tab whose glyph is being chosen, if any.
+    @State private var pickingGlyph: String?
     @State private var renaming: String?
     @State private var draftName = ""
     @State private var diskAccess: PermissionState = .granted
@@ -536,24 +538,21 @@ struct HelmPanelContent: View {
                             draftName = AppStr.tabTitle(tab)
                             renaming = tab.id
                         }
-                        Menu(AppStr.tabIcon) {
-                            ForEach(PanelLayout.Tab.glyphs, id: \.self) { glyph in
-                                Button {
-                                    apply(layout.settingGlyph(glyph, onTab: tab.id))
-                                } label: {
-                                    Label(glyph, systemImage: glyph)
-                                }
-                            }
-                        }
+                        Button(AppStr.tabIcon) { pickingGlyph = tab.id }
                         Button(AppStr.closeTab, role: .destructive) {
                             apply(layout.removingTab(tab.id))
                             activeTab = min(tabIndex, max(0, layout.tabs.count - 1))
                         }
                         .disabled(layout.tabs.count == 1)
                     }
-                    // ⌘1…⌘9, as every tabbed window on the machine.
-                    .keyboardShortcut(index < 9 ? KeyEquivalent(Character("\(index + 1)")) : "0",
-                                      modifiers: .command)
+                    .popover(isPresented: Binding(get: { pickingGlyph == tab.id },
+                                                  set: { if !$0 { pickingGlyph = nil } }),
+                             arrowEdge: .bottom) {
+                        HelmGlyphPicker(selected: tab.glyph) { glyph in
+                            apply(layout.settingGlyph(glyph, onTab: tab.id))
+                            pickingGlyph = nil
+                        }
+                    }
                 }
                 if editing {
                     Button {
@@ -576,6 +575,21 @@ struct HelmPanelContent: View {
                     .accessibilityLabel(AppStr.newTab)
                 }
                 Spacer(minLength: 0)
+            }
+            // ⌘1…⌘9, as every tabbed window on the machine — on buttons of
+            // their own rather than on the tabs.
+            //
+            // A `keyboardShortcut` on a button decorates that button's *context
+            // menu* as well, so every item of the tab's menu — Rename, Icon,
+            // Close — was drawn with a «⌘2» it did not have and would not obey.
+            .background {
+                ForEach(0..<min(layout.tabs.count, 9), id: \.self) { index in
+                    Button("") { withAnimation(HelmMotion.interface) { activeTab = index } }
+                        .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .command)
+                        .opacity(0)
+                        .frame(width: 0, height: 0)
+                        .accessibilityHidden(true)
+                }
             }
         }
     }
