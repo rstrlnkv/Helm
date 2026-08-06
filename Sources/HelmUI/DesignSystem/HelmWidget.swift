@@ -14,25 +14,43 @@ public struct HelmWidgetHeader: View {
     private let symbol: String
     private let tint: Color
     private let name: String
+    private let subtitle: String?
+    private let active: Bool
     private let trailing: AnyView?
 
-    public init(symbol: String, tint: Color, name: String) {
-        self.symbol = symbol; self.tint = tint; self.name = name; self.trailing = nil
+    public init(symbol: String, tint: Color, name: String,
+                subtitle: String? = nil, active: Bool = true) {
+        self.symbol = symbol; self.tint = tint; self.name = name
+        self.subtitle = subtitle; self.active = active; self.trailing = nil
     }
 
     public init<T: View>(symbol: String, tint: Color, name: String,
+                         subtitle: String? = nil, active: Bool = true,
                          @ViewBuilder trailing: () -> T) {
         self.symbol = symbol; self.tint = tint; self.name = name
+        self.subtitle = subtitle; self.active = active
         self.trailing = AnyView(trailing())
     }
 
     public var body: some View {
-        HStack(spacing: 8) {
-            HelmIconPlate(symbol: symbol, tint: tint, size: 18)
-            Text(name)
-                .font(HelmText.rowTitle.weight(.medium))
-                .lineLimit(1)
-                .truncationMode(.tail)
+        // 26 and `.headline`, which is what the two tiles this app shipped with
+        // have always used. The widgets written since used 18 and a medium 13,
+        // so a panel holding both had two sizes of the same plate one card
+        // apart — the sort of difference nobody can name and everybody sees.
+        HStack(spacing: 10) {
+            HelmIconBadge(symbol: symbol, color: tint, active: active)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(name)
+                    .font(.headline)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(HelmText.rowDetail)
+                        .foregroundStyle(HelmText.quiet)
+                        .lineLimit(1)
+                }
+            }
             Spacer(minLength: 4)
             if let trailing { trailing }
         }

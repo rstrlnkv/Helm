@@ -855,7 +855,10 @@ struct HelmPanelContent: View {
     private var availableForGrid: CGFloat {
         let strip = stripHeight > 0 ? stripHeight : PanelGrid.maximumHeight
         let ceiling = min(strip, PanelGrid.maximumHeight)
-        return max(120, ceiling - topChrome - footerHeight - 24 - 16)
+        // The pinned bars are not always there. Their last measurement is,
+        // which would keep reserving room for a strip that is no longer drawn.
+        let pinned = (layout.showsTabBar || editing) ? topChrome : 0
+        return max(120, ceiling - pinned - footerHeight - 24 - 16)
     }
 
     private var card: some View {
@@ -868,12 +871,18 @@ struct HelmPanelContent: View {
             // scroll to, and in edit mode every widget grows a frame and a pair
             // of corner controls, which is what pushed the footer off the
             // bottom of the screen.
-            VStack(alignment: .leading, spacing: 8) {
-                tabStrip
-                if editing { editBar }
-            }
-            .onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
-                if measured > 0, topChrome != measured { topChrome = measured }
+            // Only when there is something pinned. An empty `VStack` has no
+            // height, but the stack around it still puts its 8 pt gap after it
+            // — so a panel with one tab and nothing being arranged opened with
+            // 20 pt above its first widget where every other edge has 12.
+            if layout.showsTabBar || editing {
+                VStack(alignment: .leading, spacing: 8) {
+                    tabStrip
+                    if editing { editBar }
+                }
+                .onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
+                    if measured > 0, topChrome != measured { topChrome = measured }
+                }
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
