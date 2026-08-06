@@ -665,7 +665,6 @@
 "Widget size" = "Размер виджета";
 "Add widget" = "Добавить виджет";
 "Module is off" = "Модуль выключен";
-"The permissions notice cannot be removed. It leaves when the grant is given." = "Это извещение нельзя убрать. Оно уйдёт, когда разрешение будет выдано.";
 "Main" = "Главная";
 "New tab" = "Новая вкладка";
 "Close tab" = "Закрыть вкладку";

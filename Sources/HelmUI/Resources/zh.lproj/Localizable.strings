@@ -665,7 +665,6 @@
 "Widget size" = "小组件尺寸";
 "Add widget" = "添加小组件";
 "Module is off" = "模块已关闭";
-"The permissions notice cannot be removed. It leaves when the grant is given." = "该提示无法移除，授予权限后会自行消失。";
 "Main" = "主要";
 "New tab" = "新建标签页";
 "Close tab" = "关闭标签页";
