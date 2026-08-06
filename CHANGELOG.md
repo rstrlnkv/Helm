@@ -25,6 +25,13 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   for the same case.
 
 ### Changed
+- **The panel is arranged in the panel.** «Настроить панель» in the footer turns
+  the grid into something you can rearrange: each widget grows a size control
+  (1×1, 2×1, 2×N) and a way out, a gallery under it offers what is not there,
+  and tabs appear from the second one. Keep Awake, VPN, Autopilot, Disk and
+  Layout answer at more than one size; Disk shows how much room is left out of
+  how much, which costs a `statfs` rather than a scan. The permissions notice
+  arrives by itself and leaves with the grant.
 - **One arrangement for everything.** The order and sections composed in Settings
   now decide the panel as well as the window's sidebar and the icon menu. The
   panel had been frozen in registry order for everyone since the «Module order»
@@ -68,6 +75,10 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 - The size picker's white-on-accent measured 3.22:1, the one piece of text on the
   page under the floor every other colour was solved against. It is the system's
   segmented control now.
+- **A widget you take off the panel stays off.** Removing one was undone by the
+  next read: the same rule that lets a module arriving with an update join the
+  panel could not tell «new» from «taken off», so everything came back at the
+  next launch. *(0.9.0-dev.2 only.)*
 - **A round menu-bar icon stayed round while a timer ran.** The countdown strokes
   part of the outline from a flattened walk, over the whole outline drawn as the
   real curve, and `NSBezierPath.flattened` ignores the instance's own `flatness`
