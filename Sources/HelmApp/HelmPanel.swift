@@ -758,6 +758,16 @@ struct HelmPanelContent: View {
             // through a widget while the card had room to spare. This is the
             // smaller of what the grid needs and what the strip has left.
             .frame(height: gridHeight > 0 ? min(gridHeight, availableForGrid) : nil)
+            // On the same clock as whatever inside it is opening.
+            //
+            // `onGeometryChange` writes its measurement *outside* the current
+            // transaction, so the height the card is built from arrived
+            // unanimated while the rows it measured were still sliding: the
+            // utilities list unfolded over 0.3 s and the panel jumped to its
+            // final height in one frame. Animating on the measured value puts
+            // the two back on one clock — the same fix, and the same reason, as
+            // the disclosure inside the list.
+            .animation(HelmMotion.disclosure, value: gridHeight)
             .scrollIndicators(.automatic)
             footer
                 .onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
