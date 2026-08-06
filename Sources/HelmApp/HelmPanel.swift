@@ -215,6 +215,7 @@ struct HelmPanelContent: View {
     /// The drawer is choosing its rows rather than showing them.
     @State private var choosingUtilities = false
     @State private var showEditButton = AppSettings.showPanelEditButton
+    @State private var tabLabels = AppSettings.tabLabelStyle
     @State private var stripHeight: CGFloat = 0
     /// The grid's natural height, so the scroll view never grows past its own
     /// content — otherwise a panel holding two widgets would be as tall as the
@@ -488,27 +489,61 @@ struct HelmPanelContent: View {
     /// In the mockups' first version it stood first when reading and second
     /// when editing, so entering the mode moved every tab out from under the
     /// cursor that had just pressed one.
+    /// The namespace the selection travels in.
+    @Namespace private var tabSelection
+
     @ViewBuilder
     private var tabStrip: some View {
         if layout.showsTabBar || editing {
             HStack(spacing: 4) {
                 ForEach(Array(layout.tabs.enumerated()), id: \.element.id) { index, tab in
                     Button {
-                        activeTab = index
+                        // The strip and the grid move together: the selection
+                        // slides while the widgets under it cross-fade, on one
+                        // transaction rather than two.
+                        withAnimation(HelmMotion.interface) { activeTab = index }
                     } label: {
-                        Text(AppStr.tabTitle(tab))
-                            .font(HelmText.rowDetail.weight(index == tabIndex ? .semibold : .regular))
-                            .foregroundStyle(index == tabIndex ? Color.primary : HelmText.quiet)
-                            .lineLimit(1)
-                            .padding(.horizontal, 8).padding(.vertical, 4)
-                            .background(RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .fill(index == tabIndex ? HelmSurface.wellFill : .clear))
+                        HStack(spacing: 5) {
+                            if tabLabels.showsGlyph, let glyph = tab.glyph {
+                                Image(systemName: glyph)
+                                    .font(.system(size: 11, weight: .medium))
+                            }
+                            if tabLabels.showsText {
+                                Text(AppStr.tabTitle(tab))
+                                    .font(HelmText.rowDetail.weight(index == tabIndex ? .semibold : .regular))
+                                    .lineLimit(1)
+                            }
+                        }
+                        .foregroundStyle(index == tabIndex ? Color.primary : HelmText.quiet)
+                        .padding(.horizontal, 8).padding(.vertical, 4)
+                        .background {
+                            if index == tabIndex {
+                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    .fill(HelmSurface.wellFill)
+                                    // One shape that moves between tabs rather
+                                    // than one appearing while another goes.
+                                    .matchedGeometryEffect(id: "tab.selection", in: tabSelection)
+                            }
+                        }
                     }
                     .buttonStyle(.plain)
+                    // Glyph-only tabs have nowhere to put their name; the
+                    // pointer is where it goes.
+                    .help(AppStr.tabTitle(tab))
+                    .accessibilityLabel(AppStr.tabTitle(tab))
                     .contextMenu {
                         Button(AppStr.renameSection) {
                             draftName = AppStr.tabTitle(tab)
                             renaming = tab.id
+                        }
+                        Menu(AppStr.tabIcon) {
+                            ForEach(PanelLayout.Tab.glyphs, id: \.self) { glyph in
+                                Button {
+                                    apply(layout.settingGlyph(glyph, onTab: tab.id))
+                                } label: {
+                                    Label(glyph, systemImage: glyph)
+                                }
+                            }
                         }
                         Button(AppStr.closeTab, role: .destructive) {
                             apply(layout.removingTab(tab.id))
@@ -522,8 +557,14 @@ struct HelmPanelContent: View {
                 }
                 if editing {
                     Button {
-                        let id = "tab.\(layout.tabs.count + 1).\(layout.allSlots.count)"
-                        apply(layout.addingTab(id: id))
+                        // The lowest number nobody is using. Counting the
+                        // tabs breaks the moment one in the middle is closed:
+                        // three tabs minus the second is two, and the next new
+                        // one would ask for an id the third already has.
+                        let taken = Set(layout.tabs.map(\.id))
+                        var n = 2
+                        while taken.contains("tab.\(n)") { n += 1 }
+                        apply(layout.addingTab(id: "tab.\(n)"))
                         activeTab = layout.tabs.count - 1
                     } label: {
                         Image(systemName: "plus")
@@ -548,6 +589,17 @@ struct HelmPanelContent: View {
                 Button(AppStr.done) { editing = false; refusal = nil; choosingUtilities = false }
                     .controlSize(.small)
                     .buttonStyle(.borderedProminent)
+            }
+            // Only once there is a strip to label.
+            if layout.showsTabBar {
+                Picker(AppStr.tabLabels, selection: $tabLabels) {
+                    ForEach(TabLabelStyle.allCases, id: \.self) { style in
+                        Text(AppStr.tabLabelStyle(style)).tag(style)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .onChange(of: tabLabels) { _, chosen in AppSettings.tabLabelStyle = chosen }
             }
             if let refusal {
                 Text(refusal)
@@ -732,6 +784,7 @@ struct HelmPanelContent: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .helmMenuBarStyleChanged)) { _ in
             showEditButton = AppSettings.showPanelEditButton
+            tabLabels = AppSettings.tabLabelStyle
         }
         // Every opening, not only the first: the view is built once and stays
         // mounted between them, so `onAppear` fires exactly once in a session
@@ -774,6 +827,10 @@ struct HelmPanelContent: View {
                 .padding(.vertical, 24)
             } else {
                 grid(items)
+                    // Keyed to the tab, so switching is a swap the transition
+                    // can see rather than a list that happens to differ.
+                    .id(layout.tabs.indices.contains(tabIndex) ? layout.tabs[tabIndex].id : "none")
+                    .transition(.opacity)
                 if editing { gallery(parts.byID) }
             }
     }

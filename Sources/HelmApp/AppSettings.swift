@@ -172,6 +172,17 @@ extension Notification.Name {
         }
     }
 
+    /// How the panel's tabs are labelled. App-wide rather than per tab: it is
+    /// a question about the strip, and a strip where one tab shows a word and
+    /// the next shows a symbol is not a strip.
+    static var tabLabelStyle: TabLabelStyle {
+        get { TabLabelStyle(stored: store.string("tabLabelStyle", default: TabLabelStyle.text.rawValue)) }
+        set {
+            store.set(newValue.rawValue, for: "tabLabelStyle")
+            NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
+        }
+    }
+
     static var menuBarIconStyle: String {
         get { store.string("menuBarIconStyle", default: "ring") }
         set {

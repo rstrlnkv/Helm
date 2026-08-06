@@ -391,4 +391,34 @@ final class PanelLayoutTests: XCTestCase {
         XCTAssertTrue(decoded.dismissed.isEmpty)
         XCTAssertTrue(decoded.hidden.isEmpty)
     }
+
+    /// A tab whose id is already taken is not added. `ForEach` keyed on that id
+    /// draws one row for two tabs and puts the second one's widgets where
+    /// nobody can reach them — the panel looks like it lost a tab.
+    func testATabIdIsNotAddedTwice() {
+        let once = layout([]).addingTab(id: "t2")
+        XCTAssertEqual(once.addingTab(id: "t2"), once)
+        XCTAssertEqual(once.tabs.count, 2)
+    }
+
+    /// New tabs are marked with different glyphs, so a strip showing only
+    /// glyphs is a strip you can tell apart.
+    func testNewTabsGetDifferentGlyphs() {
+        // The helper's tab carries none — a layout from before glyphs — so the
+        // count is of the ones that were handed out, not of the tabs.
+        let two = layout([]).addingTab(id: "a").addingTab(id: "b")
+        let handed = two.tabs.compactMap(\.glyph)
+        XCTAssertEqual(handed.count, 2)
+        XCTAssertEqual(Set(handed).count, 2, "two tabs were marked the same")
+    }
+
+    /// A tab written before glyphs existed decodes with none rather than
+    /// taking the layout with it.
+    func testATabFromBeforeGlyphsDecodes() throws {
+        let json = """
+        {"tabs":[{"id":"t","widgets":[{"widget":"vpn","size":"wide"}]}]}
+        """
+        let decoded = try JSONDecoder().decode(PanelLayout.self, from: Data(json.utf8))
+        XCTAssertNil(decoded.tabs.first?.glyph)
+    }
 }
