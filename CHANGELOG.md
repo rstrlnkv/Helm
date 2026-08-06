@@ -79,6 +79,24 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 - The size picker's white-on-accent measured 3.22:1, the one piece of text on the
   page under the floor every other colour was solved against. It is the system's
   segmented control now.
+- **The panel is arranged by hand, and it moves like it.** Pick a widget up and
+  it rides the pointer at full weight, lifted and shadowed, above everything and
+  clipped by nothing; the tiles it crosses slide aside on a spring as it passes
+  their centre; letting go glides it into its slot and hands over exactly, and
+  the grey placeholder melts out from under it. Resizing stretches the tile
+  rather than dissolving it, and entering or leaving the edit mode animates
+  instead of snapping.
+- **Tabs look like the mockups' tabs** — a glyph from a picker of six
+  categories, three label styles (text, glyph and text, glyph alone) chosen in
+  Settings → Panel, a selection that travels between tabs rather than blinking,
+  and an unnamed tab that is numbered so a strip cannot read «Вкладка ·
+  Вкладка».
+- **The panel's footer buttons can be hidden again** — Settings, the pencil into
+  the edit mode, Quit — each in Settings → Panel, defaulting to shown. The
+  earlier version of these defaulted to *hidden*, which is how a clean install
+  ended up with no way into settings; the switches were never the problem.
+- **«Редактировать виджеты» in the menu-bar icon's right-click menu**, so the
+  mode has a door that cannot be switched off.
 - **The utilities list is a widget, and its corner control is a pencil.** It was
   a block bolted under the grid — not draggable, not orderable, not removable.
   It has a slot in the layout like everything else, at one size (2×N), and where
@@ -121,6 +139,19 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   used-of-total. They have their own strip under the tile now, inside the
   dashed frame, which also stopped that frame being 10 pt wider than the card
   it traced. And there is one «Готово» rather than two. *(0.9.0-dev.3 only.)*
+- **The panel is 320 pt**, so its own 144 pt tile floor is a rule rather than a
+  sentence: at 300 it bought two columns of 134, and the test that guarded the
+  floor excused exactly that width.
+- **A 1×1 tile's name goes under its plate.** In a row it had 70 pt, and 56 in
+  the edit mode — measured across eight languages, that truncated the module's
+  own name in 14 of 40 pairs, and 21 while editing.
+- **«Показать» on the permissions notice shows the permissions.** It posted no
+  selection, so the window came forward on whatever page had been read last.
+- **2×N is only offered where it says something new.** VPN's tall widget printed
+  its connection list a second time with the switches removed; Keep Awake's drew
+  the two automation conditions read-only, which the tile already carries as
+  working toggles. Disk and Autopilot withhold the size when it would add no
+  rows.
 - **A widget you take off the panel stays off.** Removing one was undone by the
   next read: the same rule that lets a module arriving with an update join the
   panel could not tell «new» from «taken off», so everything came back at the
