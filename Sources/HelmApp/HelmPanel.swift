@@ -1209,6 +1209,16 @@ private struct EditChrome: ViewModifier {
                 // without the system ring, which is drawn round the frame and
                 // came out as a second rectangle outside the dashed one already
                 // saying «this tile». The dashed frame is the focus indication.
+                // Lifted while it is being carried. Nothing follows the
+                // pointer — the layout moves the tile instead — so without this
+                // the widget teleports between slots and never looks held. A
+                // little bigger, above its neighbours, casting a shadow: what
+                // «in my hand» looks like on a surface made of glass.
+                .scaleEffect(lifted ? 1.035 : 1)
+                .shadow(color: .black.opacity(lifted ? 0.28 : 0),
+                        radius: lifted ? 10 : 0, y: lifted ? 4 : 0)
+                .zIndex(lifted ? 1 : 0)
+                .animation(HelmMotion.reorder, value: lifted)
                 .focusable()
                 .focusEffectDisabled()
                 .onMoveCommand { direction in
