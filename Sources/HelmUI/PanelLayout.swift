@@ -59,22 +59,29 @@ public struct PanelLayout: Equatable, Codable, Sendable {
 
     public var tabs: [Tab]
 
-    /// Widgets the person took off the panel.
+    /// Modules the person does not want **as a widget**.
     ///
-    /// **Without this, removing one was undone by the next read.** `reconciled`
-    /// adds any id this build can draw that the layout does not hold — which is
-    /// how a module that arrives with an update joins the panel — and a widget
-    /// somebody has just removed is exactly that: an id this build can draw
-    /// that the layout does not hold. So it came back on the next launch, and
-    /// the panel looked like it had forgotten.
+    /// They are still in the panel — they fall to the utilities drawer, which
+    /// holds everything that is not a tile. That is the whole difference
+    /// between this list and `hidden`, and it took somebody saying «I want to
+    /// take the keyboard widget off but keep it in the utilities» to notice
+    /// that one list was answering two questions.
     ///
-    /// «Arrived» and «taken off» are different facts and neither can be
-    /// inferred from the other, so the second one is written down.
+    /// **Without it, removing a widget was undone by the next read.**
+    /// `reconciled` adds any id this build can draw that the layout does not
+    /// hold — which is how a module that arrives with an update joins the panel
+    /// — and a widget somebody has just removed is exactly that. So it came
+    /// back on the next launch, and the panel looked like it had forgotten.
     public var dismissed: [String]
 
-    public init(tabs: [Tab], dismissed: [String] = []) {
+    /// Modules the person does not want in the panel **at all** — no tile, no
+    /// row in the drawer. Only the gallery offers them back.
+    public var hidden: [String]
+
+    public init(tabs: [Tab], dismissed: [String] = [], hidden: [String] = []) {
         self.tabs = tabs
         self.dismissed = dismissed
+        self.hidden = hidden
     }
 
     /// A layout written before `dismissed` existed decodes with none.
@@ -87,6 +94,7 @@ public struct PanelLayout: Equatable, Codable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         tabs = try container.decode([Tab].self, forKey: .tabs)
         dismissed = try container.decodeIfPresent([String].self, forKey: .dismissed) ?? []
+        hidden = try container.decodeIfPresent([String].self, forKey: .hidden) ?? []
     }
 
     /// Every widget in the panel, tab by tab.
@@ -133,9 +141,10 @@ public struct PanelLayout: Equatable, Codable, Sendable {
         // Not everything absent is missing: the ones taken off were absent on
         // purpose.
         let taken = Set(dismissed)
-        let fresh = arriving.filter { !seen.contains($0) && !taken.contains($0) }
+        let away = Set(hidden)
+        let fresh = arriving.filter { !seen.contains($0) && !taken.contains($0) && !away.contains($0) }
         tabs[0].widgets.append(contentsOf: fresh.map { Slot(widget: $0, size: .wide) })
-        return PanelLayout(tabs: tabs, dismissed: dismissed)
+        return PanelLayout(tabs: tabs, dismissed: dismissed, hidden: hidden)
     }
 
     // MARK: - Rearranging
@@ -194,11 +203,13 @@ public struct PanelLayout: Equatable, Codable, Sendable {
         return copy
     }
 
-    /// Taking a widget off is remembered, or the next read puts it back.
+    /// Stops being a tile. It is still in the panel: the drawer holds
+    /// everything that is not one.
+    ///
+    /// Remembered, or the next read would put the tile back.
     public func removing(_ widget: String) -> PanelLayout {
-        guard let at = placement(of: widget) else { return self }
         var copy = self
-        copy.tabs[at.tab].widgets.remove(at: at.index)
+        if let at = placement(of: widget) { copy.tabs[at.tab].widgets.remove(at: at.index) }
         if !copy.dismissed.contains(widget) { copy.dismissed.append(widget) }
         return copy
     }
@@ -208,40 +219,36 @@ public struct PanelLayout: Equatable, Codable, Sendable {
     public func adding(_ widget: String, toTab tab: Int) -> PanelLayout {
         guard tabs.indices.contains(tab) else { return self }
         var next = removing(widget)
-        // Putting it back is the answer to having taken it off, so the note
-        // that it was taken off goes with it. Otherwise a widget added from the
-        // gallery would be one somebody had to add again after every update.
+        // Promoting answers both refusals at once: it is a tile again, so it is
+        // neither «not a tile» nor «not here». Otherwise a widget added from
+        // the drawer would be one somebody had to add again after every update.
         next.dismissed.removeAll { $0 == widget }
+        next.hidden.removeAll { $0 == widget }
         next.tabs[tab].widgets.append(Slot(widget: widget, size: .wide))
         return next
     }
 
-    /// Refused, without a place to remove it from.
-    ///
-    /// `removing` only knows how to take a widget out of a tab, and a module in
-    /// the utilities drawer was never in one — so taking it off the panel is
-    /// this rather than that.
-    public func dismissing(_ widget: String) -> PanelLayout {
-        guard !dismissed.contains(widget) else { return self }
-        var copy = self
-        copy.dismissed.append(widget)
+    /// Out of the panel altogether — the second press, on a row that is
+    /// already only a row.
+    public func hiding(_ widget: String) -> PanelLayout {
+        var copy = removing(widget)
+        if !copy.hidden.contains(widget) { copy.hidden.append(widget) }
         return copy
     }
 
-    /// Wanted again, without a place in the grid.
-    ///
-    /// The utilities drawer holds modules that have no widget, so «put it back»
-    /// cannot mean «add a slot». It means only: stop refusing it. The same
-    /// `dismissed` list answers for both, because from the person's side it is
-    /// one fact — this is not something I want in the panel.
+    /// Back into the drawer, from the gallery. Not back into the grid: a
+    /// module with no widget has no tile to be given, and one that has a widget
+    /// is promoted by `adding` instead.
     public func restoring(_ widget: String) -> PanelLayout {
         var copy = self
-        copy.dismissed.removeAll { $0 == widget }
+        copy.hidden.removeAll { $0 == widget }
         return copy
     }
 
-    /// Whether the person has taken this off the panel.
+    /// Not a tile — which is not the same as not in the panel.
     public func isDismissed(_ widget: String) -> Bool { dismissed.contains(widget) }
+    /// Not in the panel at all.
+    public func isHidden(_ widget: String) -> Bool { hidden.contains(widget) }
 
     // MARK: - Tabs
 
