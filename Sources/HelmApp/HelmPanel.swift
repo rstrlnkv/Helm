@@ -113,6 +113,7 @@ private let helmPanelShadowMargin: CGFloat = 28
         panel.orderFrontRegardless()
         // Key focus (no app activation) is what makes SwiftUI animations tick.
         panel.makeKey()
+        NotificationCenter.default.post(name: .helmPanelDidShow, object: nil)
         installDismissMonitor()
     }
 
@@ -170,6 +171,10 @@ extension Notification.Name {
     static let helmPanelDismissRequested = Notification.Name("helmPanelDismissRequested")
     /// Posted by the icon's menu: open the panel and arrange it.
     static let helmPanelEditRequested = Notification.Name("helmPanelEditRequested")
+    /// Posted when the panel is put on screen. The view is built once and
+    /// stays, so there is no `onAppear` for a second opening — this is how it
+    /// knows to play its entrance.
+    static let helmPanelDidShow = Notification.Name("helmPanelDidShow")
 }
 
 /// Internal rather than private so a test can render it: the panel is a
@@ -198,6 +203,15 @@ struct HelmPanelContent: View {
     @State private var activeTab = 0
     /// The strip the panel is drawn in, top to bottom of the screen. The card
     /// may not be taller than it, and the grid is what gives way.
+    /// The card has played its entrance. Set false for the one frame the
+    /// entrance animates from, then true again.
+    ///
+    /// **True to begin with**, not false. If the notification that plays the
+    /// entrance ever failed to arrive — a probe hosting this view, a path that
+    /// shows the window without going through `toggle` — starting at false
+    /// would leave a panel drawn at zero opacity, which is a missing panel. The
+    /// worst this way round is a missing animation.
+    @State private var revealed = true
     /// The drawer is choosing its rows rather than showing them.
     @State private var choosingUtilities = false
     @State private var showEditButton = AppSettings.showPanelEditButton
@@ -719,6 +733,19 @@ struct HelmPanelContent: View {
         .onReceive(NotificationCenter.default.publisher(for: .helmMenuBarStyleChanged)) { _ in
             showEditButton = AppSettings.showPanelEditButton
         }
+        // Every opening, not only the first: the view is built once and stays
+        // mounted between them, so `onAppear` fires exactly once in a session
+        // and a transition would never play again.
+        //
+        // Two turns, deliberately. Setting the start state and animating to the
+        // end in one update is one update — SwiftUI coalesces them and there is
+        // nothing to interpolate from.
+        .onReceive(NotificationCenter.default.publisher(for: .helmPanelDidShow)) { _ in
+            revealed = false
+            DispatchQueue.main.async {
+                withAnimation(HelmMotion.interface) { revealed = true }
+            }
+        }
         // Asked for from the icon's menu, which is the door that cannot be
         // switched off.
         .onReceive(NotificationCenter.default.publisher(for: .helmPanelEditRequested)) { _ in
@@ -819,6 +846,12 @@ struct HelmPanelContent: View {
         }
         .padding(12)
         .frame(width: helmPanelWidth)
+        // Down from the top edge, the way a menu opens — the panel hangs off
+        // the status item, so that is the edge it is attached to. A scale
+        // rather than a height: the card's height is measured, and animating
+        // the thing the measurement feeds would fight the measurement.
+        .scaleEffect(revealed ? 1 : 0.94, anchor: .top)
+        .opacity(revealed ? 1 : 0)
         // No `maxHeight` here, and that is the point. `maxHeight` is greedy: it
         // takes the smaller of the maximum and whatever the parent proposes,
         // and the parent is a strip running to the bottom of the screen — so a
