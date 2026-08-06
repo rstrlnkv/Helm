@@ -242,6 +242,11 @@ struct HelmPanelContent: View {
     /// True for the landing: the overlay is gliding into its slot and the
     /// lift comes off.
     @State private var dropping = false
+    /// The slot showing the grey well. Separate from `dragging` because the
+    /// well outlives the drag: the exact handover swaps the content with
+    /// animations disabled, and the well has to be free to fade on its own
+    /// clock *after* that.
+    @State private var well: String?
     /// Every tile's rectangle in the grid's space, which is how the drag knows
     /// what it is over.
     @State private var frames: [String: CGRect] = [:]
@@ -464,6 +469,7 @@ struct HelmPanelContent: View {
             .modifier(EditChrome(active: editing, widget: widget.id, size: widget.size,
                                  sizes: offeredSizes(widget.id),
                                  lifted: dragging?.id == widget.id,
+                                 wellVisible: well == widget.id,
                                  // The drawer's rows must stay pressable while
                                  // its pencil is choosing them; everything else
                                  // is arrangement, not use.
@@ -581,6 +587,7 @@ struct HelmPanelContent: View {
                                         height: value.startLocation.y - content.minY)
                     dropping = false
                     withAnimation(HelmMotion.reorder) { dragging = widget }
+                    well = widget.id
                 }
                 guard let carried = dragging else { return }
                 dragLocation = value.location
@@ -660,6 +667,12 @@ struct HelmPanelContent: View {
                         dragging = nil
                         dropping = false
                     }
+                    // Outside the disabled transaction, on purpose: the content
+                    // must swap exactly, and the grey well under it must not —
+                    // it fades out on its own clock, through the scoped
+                    // animation that watches it. Killing both with one
+                    // transaction was why the placeholder vanished in a frame.
+                    well = nil
                 }
             }
     }
@@ -1302,6 +1315,9 @@ private struct EditChrome: ViewModifier {
     /// This tile is the one being carried, so it is a slot: no content, and no
     /// controls hanging off a corner that has nothing behind it.
     let lifted: Bool
+    /// The slot's grey well — on its own flag, not on `lifted`, because it
+    /// outlives the drag and fades after the exact handover.
+    let wellVisible: Bool
     /// The mode is arrangement, not use: a clear layer over the tile's own
     /// controls, so a drag can start anywhere on it — a toggle that still
     /// worked would claim the mouse-down and make half of every tile
@@ -1337,10 +1353,13 @@ private struct EditChrome: ViewModifier {
                 // Opacity, not insertion: an `if` is a structural change, and a
                 // transition's animation is whatever transaction happens to be
                 // running — the pickup's quarter-second spring. A plain opacity
-                // is governed by the scoped animation below, always.
+                // is governed by its scoped animation, always — including at
+                // the drop, where the content above it swaps inside a
+                // transaction that has animations off.
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(HelmSurface.wellFill)
-                    .opacity(lifted ? 1 : 0)
+                    .opacity(wellVisible ? 1 : 0)
+                    .animation(.easeOut(duration: 0.4), value: wellVisible)
             }
             // Slow on purpose — slower than the hand.
             //
