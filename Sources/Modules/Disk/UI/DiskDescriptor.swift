@@ -17,7 +17,19 @@ import Module_Disk_Engine
     public init() {}
 
     public func makeEngine(store: NamespacedStore) -> any ModuleEngine { DiskEngine() }
-    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { .utility }
+    /// Not a utility any more. It has two figures worth a glance — how much
+    /// room is left and out of how much — and both cost a `statfs` rather than
+    /// a walk.
+    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? {
+        MenuBarContribution(panelTile: AnyView(DiskWidget(vm: vm, size: .wide)))
+    }
+
+    /// All three. 1×1 is what is free; 2×1 adds how much of the disk that is;
+    /// 2×N lists the other volumes, because the space somebody is looking for
+    /// is often on one of them.
+    public func panelWidget(_ size: PanelWidgetSize, _ vm: ModuleViewModel) -> AnyView? {
+        AnyView(DiskWidget(vm: vm, size: size))
+    }
     public func settingsPage(_ vm: ModuleViewModel) -> AnyView { AnyView(DiskSettingsPage(vm: vm)) }
 }
 
