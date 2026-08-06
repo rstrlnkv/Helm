@@ -416,8 +416,14 @@ struct HelmPanelContent: View {
         // a tile travel. This is the fix the two previous attempts were missing.
         ForEach(rows, id: \.self) { row in
             HStack(alignment: .top, spacing: PanelGrid.gap) {
-                ForEach(row, id: \.self) { index in
-                    cell(items[index], among: items)
+                // By the widget, not by the index. An index is a *position*,
+                // and a reorder changes what position holds what — so every
+                // reorder rebuilt the cells, resetting any state a tile kept
+                // and killing any gesture that lived on one mid-drag. That is
+                // how a carried widget could be left hanging in the air: the
+                // gesture's view died under it and `onEnded` never came.
+                ForEach(row.map { items[$0] }) { item in
+                    cell(item, among: items)
                         // Two 1×1s in one row are one height. They were 95 and
                         // 89 — six points of ragged edge in a grid whose sizes
                         // are named after squares.
@@ -426,13 +432,8 @@ struct HelmPanelContent: View {
                         // *moves* the tile: a widget going from half a row to a
                         // whole one slides and stretches rather than vanishing
                         // from one place and appearing in another.
-                        .matchedGeometryEffect(id: items[index].id, in: widgetShapes)
-                        // Identity by widget, not by position. A cell keyed on
-                        // its index in the row is a different cell the moment
-                        // anything above it changes, and a different cell has
-                        // different `@State` — which here is the measured
-                        // height an open list animates between.
-                        .id(items[index].id)
+                        .matchedGeometryEffect(id: item.id, in: widgetShapes)
+
                 }
                 // A part-filled last row keeps its tiles their own width
                 // instead of stretching them across the gap.
@@ -460,6 +461,11 @@ struct HelmPanelContent: View {
             .modifier(EditChrome(active: editing, widget: widget.id, size: widget.size,
                                  sizes: offeredSizes(widget.id),
                                  lifted: dragging?.id == widget.id,
+                                 // The drawer's rows must stay pressable while
+                                 // its pencil is choosing them; everything else
+                                 // is arrangement, not use.
+                                 shielded: editing && !(widget.id == Self.utilitiesWidget
+                                                        && choosingUtilities),
 
                                  // The drawer chooses contents, not proportions.
                                  choose: widget.id == Self.utilitiesWidget
@@ -478,13 +484,13 @@ struct HelmPanelContent: View {
                                  },
                                  remove: { apply(layout.removing(widget.id)) },
                                  move: { offset in nudge(widget.id, by: offset, among: items) }))
-            // Its rectangle, so the drag knows what it is over — and where
-            // the landing glide ends.
+            // Its rectangle, so the container's drag knows what is where —
+            // both for picking a tile up and for knowing what the pointer is
+            // over.
             .onGeometryChange(for: CGRect.self,
                               of: { $0.frame(in: .named(Self.gridSpace)) }) { rect in
                 if frames[widget.id] != rect { frames[widget.id] = rect }
             }
-            .gesture(editing ? dragGesture(for: widget) : nil)
         }
     }
 
@@ -532,59 +538,71 @@ struct HelmPanelContent: View {
 
     static let gridSpace = "panel.grid"
 
-    /// Carrying a tile: the second try at a hand-driven drag, and what makes
-    /// it work where the first one did not.
+    /// Carrying a tile — third architecture, and the reasons each of the first
+    /// two failed are what this one is made of.
     ///
-    /// The first try moved the tile itself and re-derived its offset from a
-    /// frame that `onGeometryChange` had not delivered yet — one frame of
-    /// mismatch per reorder, which read as leaping. This one never moves the
-    /// tile at all: the slot steps aside into a quiet well, and the thing
-    /// under the pointer is an **overlay** drawn above the grid at the
-    /// pointer's own coordinates. The overlay depends on nothing the layout
-    /// does, so no amount of repacking can make it stutter — and unlike
-    /// `onDrag`, whose translucent system snapshot cannot be reached from
-    /// SwiftUI, it is ours: full weight, lifted, shadowed.
-    private func dragGesture(for widget: Widget) -> some Gesture {
-        DragGesture(minimumDistance: 6, coordinateSpace: .named(Self.gridSpace))
+    /// The first moved the tile itself and stuttered, because its offset was
+    /// re-derived from frames a geometry callback had not delivered yet. The
+    /// second drew an overlay — right — but hung its gesture on the cell, and a
+    /// reorder rebuilt the cells: the gesture died under the pointer, `onEnded`
+    /// never came, and the widget was left hanging in the air.
+    ///
+    /// So: the overlay rides the pointer, and the gesture lives on the **grid
+    /// container**, which nothing rebuilds. Which tile was picked up is read
+    /// from the frames at the start location; the cleanup is an animation
+    /// completion rather than a timer.
+    private func gridDrag(items: [Widget]) -> some Gesture {
+        DragGesture(minimumDistance: 4, coordinateSpace: .named(Self.gridSpace))
             .onChanged { value in
-                if dragging?.id != widget.id {
-                    guard let frame = frames[widget.id] else { return }
+                if dragging == nil {
+                    guard let hit = frames.first(where: {
+                              $0.key != Self.permissionsWidget
+                                  && $0.value.contains(value.startLocation)
+                          })?.key,
+                          let widget = items.first(where: { $0.id == hit }),
+                          let frame = frames[hit]
+                    else { return }
                     dragSize = frame.size
                     grabOffset = CGSize(width: value.startLocation.x - frame.minX,
                                         height: value.startLocation.y - frame.minY)
                     dropping = false
                     withAnimation(HelmMotion.reorder) { dragging = widget }
                 }
+                guard let carried = dragging else { return }
                 dragLocation = value.location
 
-                // The slot the pointer is over, if it is a different one.
-                // Checked against live frames, so the boundary between two
+                // The slot under the pointer, if it is a different one —
+                // checked against live frames, so the boundary between two
                 // tiles is exactly where the neighbour starts to move.
-                guard let over = frames.first(where: { $0.key != widget.id
-                                                       && $0.value.contains(value.location) })?.key,
+                guard let over = frames.first(where: {
+                          $0.key != carried.id && $0.key != Self.permissionsWidget
+                              && $0.value.contains(value.location)
+                      })?.key,
                       let target = layout.placement(of: over),
-                      let here = layout.placement(of: widget.id),
+                      let here = layout.placement(of: carried.id),
                       here.tab != target.tab || here.index != target.index else { return }
                 withAnimation(HelmMotion.reorder) {
-                    apply(layout.moving(widget.id, toTab: target.tab, at: target.index))
+                    apply(layout.moving(carried.id, toTab: target.tab, at: target.index))
                 }
             }
             .onEnded { _ in
-                // The glide home: the overlay is animated to the slot the
-                // layout has already given the widget, the lift comes off on
-                // the way, and only then does the slot take its content back —
-                // at the position the overlay just reached, so the handover is
-                // invisible.
-                let id = widget.id
-                if let home = frames[id] {
-                    withAnimation(HelmMotion.reorder) {
-                        dropping = true
+                guard let carried = dragging else { return }
+                // The glide home: to the slot the layout has already assigned,
+                // lift coming off on the way. The handover to the real tile
+                // happens in the completion — a timer used to do this, and a
+                // timer neither knows when the spring is done nor whether a new
+                // drag has started since.
+                let home = frames[carried.id]
+                withAnimation(HelmMotion.reorder, completionCriteria: .logicallyComplete) {
+                    dropping = true
+                    if let home {
                         dragLocation = CGPoint(x: home.minX + grabOffset.width,
                                                y: home.minY + grabOffset.height)
                     }
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.24) {
-                    guard dragging?.id == id else { return }
+                } completion: {
+                    // `dropping` is false if a new drag began mid-glide; the
+                    // new drag owns the state now.
+                    guard dropping else { return }
                     dragging = nil
                     dropping = false
                 }
@@ -773,7 +791,15 @@ struct HelmPanelContent: View {
         HStack(spacing: 8) {
             Text(AppStr.panelSetup).font(.subheadline.weight(.semibold))
             Spacer(minLength: 8)
-            Button(AppStr.done) { editing = false; choosingUtilities = false }
+            Button(AppStr.done) {
+                // The same curve as the way in. This was a bare assignment, so
+                // entering the mode animated and leaving it cut — every cell
+                // dropping its padding and its corner controls in one frame.
+                withAnimation(HelmMotion.disclosure) {
+                    editing = false
+                    choosingUtilities = false
+                }
+            }
                 .controlSize(.small)
                 .buttonStyle(.borderedProminent)
         }
@@ -1086,6 +1112,8 @@ struct HelmPanelContent: View {
                     scrollable(parts, items)
                 }
                 .coordinateSpace(name: Self.gridSpace)
+                // On the container, which nothing rebuilds — see `gridDrag`.
+                .gesture(editing ? gridDrag(items: items) : nil)
                 .overlay(alignment: .topLeading) { dragOverlay }
                 // Written **inside** a transaction, which is the whole fix.
                 //
@@ -1208,6 +1236,11 @@ private struct EditChrome: ViewModifier {
     /// This tile is the one being carried, so it is a slot: no content, and no
     /// controls hanging off a corner that has nothing behind it.
     let lifted: Bool
+    /// The mode is arrangement, not use: a clear layer over the tile's own
+    /// controls, so a drag can start anywhere on it — a toggle that still
+    /// worked would claim the mouse-down and make half of every tile
+    /// ungrabbable. The chrome sits above the shield and stays pressable.
+    let shielded: Bool
 
     /// Non-nil for a widget whose corner control chooses something other than a
     /// size — the drawer, which chooses its rows.
@@ -1238,6 +1271,11 @@ private struct EditChrome: ViewModifier {
                 if lifted {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .fill(HelmSurface.wellFill)
+                }
+            }
+            .overlay {
+                if shielded {
+                    Color.clear.contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
             }
             .overlay(alignment: .topLeading) {
