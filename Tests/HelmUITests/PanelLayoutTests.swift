@@ -312,4 +312,47 @@ final class PanelLayoutTests: XCTestCase {
         let data = try JSONEncoder().encode(before)
         XCTAssertEqual(try JSONDecoder().decode(PanelLayout.self, from: data).dismissed, ["disk"])
     }
+
+    // MARK: - The drawer is the person's too
+
+    /// A utility module was never in a tab, so `removing` — which takes a
+    /// widget out of one — cannot express «I do not want this». `dismissing`
+    /// can, and the same list answers for both kinds, because from the
+    /// person's side it is one fact.
+    func testAUtilityCanBeRefusedWithoutBeingInATab() {
+        let after = layout([("vpn", .wide)]).dismissing("homebrew")
+        XCTAssertTrue(after.isDismissed("homebrew"))
+        XCTAssertEqual(after.allSlots.map(\.widget), ["vpn"],
+                       "refusing a drawer row moved something in the grid")
+    }
+
+    /// And it does not come back when the panel is read again.
+    func testARefusedUtilityStaysRefused() {
+        var l = layout([("vpn", .wide)]).dismissing("homebrew")
+        for _ in 0..<5 { l = l.reconciled(arriving: ["vpn"]) }
+        XCTAssertTrue(l.isDismissed("homebrew"))
+    }
+
+    /// Putting it back is only «stop refusing it»: there is no slot for a
+    /// module that draws nothing, and inventing one would put an empty tile in
+    /// the grid.
+    func testRestoringAUtilityAddsNoSlot() {
+        let after = layout([("vpn", .wide)]).dismissing("homebrew").restoring("homebrew")
+        XCTAssertFalse(after.isDismissed("homebrew"))
+        XCTAssertEqual(after.allSlots.map(\.widget), ["vpn"])
+    }
+
+    /// The control: refusing one thing refuses one thing.
+    func testRefusingOneDoesNotRefuseTheRest() {
+        let after = layout([]).dismissing("homebrew")
+        XCTAssertFalse(after.isDismissed("leftovers"))
+        XCTAssertFalse(after.isDismissed("vpn"))
+    }
+
+    /// Twice is once: a list that grew a duplicate every time somebody pressed
+    /// minus would be a list that grows forever.
+    func testRefusingTwiceIsRefusingOnce() {
+        let after = layout([]).dismissing("homebrew").dismissing("homebrew")
+        XCTAssertEqual(after.dismissed, ["homebrew"])
+    }
 }

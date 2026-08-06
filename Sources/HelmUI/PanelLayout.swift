@@ -216,6 +216,33 @@ public struct PanelLayout: Equatable, Codable, Sendable {
         return next
     }
 
+    /// Refused, without a place to remove it from.
+    ///
+    /// `removing` only knows how to take a widget out of a tab, and a module in
+    /// the utilities drawer was never in one — so taking it off the panel is
+    /// this rather than that.
+    public func dismissing(_ widget: String) -> PanelLayout {
+        guard !dismissed.contains(widget) else { return self }
+        var copy = self
+        copy.dismissed.append(widget)
+        return copy
+    }
+
+    /// Wanted again, without a place in the grid.
+    ///
+    /// The utilities drawer holds modules that have no widget, so «put it back»
+    /// cannot mean «add a slot». It means only: stop refusing it. The same
+    /// `dismissed` list answers for both, because from the person's side it is
+    /// one fact — this is not something I want in the panel.
+    public func restoring(_ widget: String) -> PanelLayout {
+        var copy = self
+        copy.dismissed.removeAll { $0 == widget }
+        return copy
+    }
+
+    /// Whether the person has taken this off the panel.
+    public func isDismissed(_ widget: String) -> Bool { dismissed.contains(widget) }
+
     // MARK: - Tabs
 
     /// A tab is only worth its strip once there is a second one. Until then the
