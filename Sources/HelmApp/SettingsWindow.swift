@@ -810,8 +810,8 @@ private struct AboutHelmView: View {
                 .foregroundStyle(HelmText.quiet)
             Spacer(minLength: 8)
             Text(AppStr.authorName)
-            Link(destination: URL(string: "https://t.me/r.strlnkv")!) {
-                Label("@r.strlnkv", systemImage: "paperplane.fill")
+            Link(destination: URL(string: "https://t.me/r_strlnkv")!) {
+                Label("@r_strlnkv", systemImage: "paperplane.fill")
                     .labelStyle(.titleAndIcon)
                     .font(HelmText.rowDetail)
             }
