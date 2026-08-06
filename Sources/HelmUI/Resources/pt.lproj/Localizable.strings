@@ -665,7 +665,6 @@
 "Widget size" = "Tamanho do widget";
 "Add widget" = "Adicionar widget";
 "Module is off" = "O módulo está desligado";
-"The permissions notice cannot be removed. It leaves when the grant is given." = "Este aviso não pode ser removido. Ele sai quando a permissão for concedida.";
 "Main" = "Principal";
 "New tab" = "Nova aba";
 "Close tab" = "Fechar a aba";

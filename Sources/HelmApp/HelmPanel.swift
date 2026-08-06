@@ -422,28 +422,12 @@ struct HelmPanelContent: View {
     @ViewBuilder
     private func cell(_ widget: Widget, among items: [Widget]) -> some View {
         if widget.pinned {
+            // No badge in edit mode. It said «this cannot be removed», which is
+            // a sentence about a control that is not there — and it hung off
+            // the corner where every other widget has a minus, so the one tile
+            // you cannot act on was the one wearing an extra mark.
             body(of: widget)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
-                // A pin where the others have a minus, and it says why rather
-                // than offering a control that would only refuse.
-                .overlay(alignment: .topLeading) {
-                    if editing {
-                        Image(systemName: "pin.fill")
-                            .font(.system(size: 9, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .frame(width: 18, height: 18)
-                            // An opaque fill, like the minus beside it.
-                            // `HelmText.quiet` is a *text* token — 64% of the
-                            // label colour — and a white glyph on it measured
-                            // 1.46:1 over dark glass, which is a blank disc.
-                            .background(Circle().fill(Color.gray))
-                            .shadow(radius: 1, y: 0.5)
-                            .offset(x: -5, y: -5)
-                            .help(AppStr.permissionsWidgetPinned)
-                            .accessibilityLabel(AppStr.permissionsWidgetPinned)
-                    }
-                }
-                .padding(editing ? 4 : 0)
         } else {
         body(of: widget)
             .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -1094,7 +1078,7 @@ private struct EditChrome: ViewModifier {
                             .shadow(radius: 1, y: 0.5)
                     }
                     .buttonStyle(.plain)
-                    .offset(x: -5, y: -5)
+                    .offset(x: -4, y: -4)
                     .accessibilityLabel(AppStr.removeWidget)
                 }
                 .overlay(alignment: .topTrailing) {
@@ -1116,13 +1100,13 @@ private struct EditChrome: ViewModifier {
                             sizeControl
                         }
                     }
-                    .offset(x: 5, y: -5)
+                    .offset(x: 4, y: -4)
                 }
-                // Room for the two of them to hang outside the card. 4 rather
-                // than 7: at seven, every cell paid 14 pt and the edit mode
-                // needed 751 pt of grid where the strip had 612 — the last tile
-                // was cut through the middle with its dashed frame left open,
-                // which reads as broken rather than as «there is more».
+                // Exactly the room the corner controls overhang by, and not a
+                // point less: the grid lives in a `ScrollView`, which clips at
+                // its own bounds, so a badge offset 5 into a 4 pt margin was a
+                // badge with a slice taken off it. Offset and padding are the
+                // same number for that reason.
                 .padding(4)
                 .focusable()
                 .onMoveCommand { direction in

@@ -333,9 +333,6 @@ enum AppStr {
     static var moduleIsOff: String { L("Module is off") }
     static var nothingOnThisTab: String { L("Nothing on this tab yet") }
     static var nothingOnThisTabHint: String { L("Press the pencil below to add a widget.") }
-    static var permissionsWidgetPinned: String {
-        L("The permissions notice cannot be removed. It leaves when the grant is given.")
-    }
 
     static var noModules: String { L("No modules enabled") }
     static var noModulesHint: String { L("Enable a module in Settings.") }

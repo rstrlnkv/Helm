@@ -665,7 +665,6 @@
 "Widget size" = "ウィジェットの大きさ";
 "Add widget" = "ウィジェットを追加";
 "Module is off" = "モジュールはオフです";
-"The permissions notice cannot be removed. It leaves when the grant is given." = "この通知は外せません。許可を与えると消えます。";
 "Main" = "メイン";
 "New tab" = "新しいタブ";
 "Close tab" = "タブを閉じる";
