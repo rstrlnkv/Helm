@@ -507,28 +507,46 @@ struct HelmPanelContent: View {
                         // transaction rather than two.
                         withAnimation(HelmMotion.interface) { activeTab = index }
                     } label: {
-                        HStack(spacing: 5) {
+                        // The mockup's tab: 4 pt between glyph and text, 4×8
+                        // of padding, a 10 pt corner, and 11 pt type that does
+                        // **not** change weight when selected.
+                        //
+                        // Weight was the first thing tried and it is the one
+                        // thing a tab cannot do: bold is wider than regular, so
+                        // every tab in the strip moved whenever another was
+                        // picked. Selection is a background and a colour.
+                        HStack(spacing: 4) {
                             if tabLabels.showsGlyph, let glyph = tab.glyph {
                                 Image(systemName: glyph)
-                                    .font(.system(size: 11, weight: .medium))
+                                    .font(.system(size: 13, weight: .medium))
                             }
                             if tabLabels.showsText {
                                 Text(AppStr.tabTitle(tab))
-                                    .font(HelmText.rowDetail.weight(index == tabIndex ? .semibold : .regular))
+                                    .font(HelmText.rowDetail)
                                     .lineLimit(1)
+                            }
+                            // The way to a tab's own settings, on the tab that
+                            // is open. The context menu has the same three
+                            // items; a chevron is what says they are there.
+                            if editing, index == tabIndex {
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 8, weight: .semibold))
+                                    .foregroundStyle(HelmText.quiet)
                             }
                         }
                         .foregroundStyle(index == tabIndex ? Color.primary : HelmText.quiet)
                         .padding(.horizontal, 8).padding(.vertical, 4)
                         .background {
                             if index == tabIndex {
-                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
                                     .fill(HelmSurface.wellFill)
+                                    .shadow(color: .black.opacity(0.12), radius: 1, y: 1)
                                     // One shape that moves between tabs rather
                                     // than one appearing while another goes.
                                     .matchedGeometryEffect(id: "tab.selection", in: tabSelection)
                             }
                         }
+                        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     }
                     .buttonStyle(.plain)
                     // Glyph-only tabs have nowhere to put their name; the
@@ -569,9 +587,9 @@ struct HelmPanelContent: View {
                         activeTab = layout.tabs.count - 1
                     } label: {
                         Image(systemName: "plus")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(HelmText.quiet)
-                            .padding(.horizontal, 6).padding(.vertical, 4)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Color.accentColor)
+                            .padding(.horizontal, 8).padding(.vertical, 4)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(AppStr.newTab)

@@ -661,8 +661,6 @@
 "Order and sections" = "Порядок и разделы";
 "A switch turns the module off everywhere in Helm." = "Переключатель выключает модуль во всём Helm.";
 "Show" = "Показать";
-"Configure panel" = "Настроить панель";
-"Panel setup" = "Настройка панели";
 "Remove widget" = "Убрать виджет";
 "Widget size" = "Размер виджета";
 "Only a full-width widget can grow downwards." = "Раскрыться по высоте может только виджет во всю ширину.";
@@ -698,3 +696,5 @@
 "Show Settings button" = "Показывать кнопку «Настройки»";
 "Show Quit button" = "Показывать кнопку «Завершить»";
 "All three are also in the menu-bar icon’s right-click menu." = "Все три есть и в меню по правому клику на иконку.";
+"Edit panel" = "Редактировать панель";
+"Editing the panel" = "Редактирование панели";

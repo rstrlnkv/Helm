@@ -661,8 +661,6 @@
 "Order and sections" = "Order and sections";
 "A switch turns the module off everywhere in Helm." = "A switch turns the module off everywhere in Helm.";
 "Show" = "Show";
-"Configure panel" = "Configure panel";
-"Panel setup" = "Panel setup";
 "Remove widget" = "Remove widget";
 "Widget size" = "Widget size";
 "Only a full-width widget can grow downwards." = "Only a full-width widget can grow downwards.";
@@ -698,3 +696,5 @@
 "Show Settings button" = "Show Settings button";
 "Show Quit button" = "Show Quit button";
 "All three are also in the menu-bar icon’s right-click menu." = "All three are also in the menu-bar icon’s right-click menu.";
+"Edit panel" = "Edit panel";
+"Editing the panel" = "Editing the panel";

@@ -661,8 +661,6 @@
 "Order and sections" = "Orden y secciones";
 "A switch turns the module off everywhere in Helm." = "El interruptor desactiva el módulo en todo Helm.";
 "Show" = "Mostrar";
-"Configure panel" = "Configurar el panel";
-"Panel setup" = "Configuración del panel";
 "Remove widget" = "Quitar el widget";
 "Widget size" = "Tamaño del widget";
 "Only a full-width widget can grow downwards." = "Solo un widget de ancho completo puede crecer hacia abajo.";
@@ -698,3 +696,5 @@
 "Show Settings button" = "Mostrar el botón de ajustes";
 "Show Quit button" = "Mostrar el botón de salida";
 "All three are also in the menu-bar icon’s right-click menu." = "Los tres están también en el menú contextual del icono.";
+"Edit panel" = "Editar el panel";
+"Editing the panel" = "Edición del panel";

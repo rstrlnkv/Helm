@@ -288,7 +288,7 @@ enum AppStr {
 
     // MARK: - The panel, arranged
 
-    static var configurePanel: String { L("Configure panel") }
+    static var configurePanel: String { L("Edit panel") }
     static var editWidgets: String { L("Edit widgets") }
     static var showPanelEditButton: String { L("Show the edit button in the panel") }
     static var showSettingsButton: String { L("Show Settings button") }
@@ -298,7 +298,7 @@ enum AppStr {
     static var panelEditButtonNote: String {
         L("All three are also in the menu-bar icon’s right-click menu.")
     }
-    static var panelSetup: String { L("Panel setup") }
+    static var panelSetup: String { L("Editing the panel") }
     static var removeWidget: String { L("Remove widget") }
     static var widgetSize: String { L("Widget size") }
     /// The one refusal the layout makes, said as what to do instead.
