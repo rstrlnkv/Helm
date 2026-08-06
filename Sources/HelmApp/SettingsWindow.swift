@@ -668,6 +668,8 @@ private struct AboutHelmView: View {
             hero
             Spacer(minLength: 22).frame(maxHeight: 30)
             instrumentRow
+                .padding(.bottom, 10)
+            authorRow
                 .padding(.bottom, 20)
             updateCard
             HStack(spacing: 10) {
@@ -795,6 +797,28 @@ private struct AboutHelmView: View {
     }
 
     // MARK: - Instrument row
+
+    /// Who wrote it, and where to say something about it.
+    ///
+    /// Under the version and the build rather than in the small print at the
+    /// foot: the licence and the flag credit down there are obligations, and
+    /// this is not one — it is the answer to «who made this», which is a
+    /// question people actually ask of a menu-bar app they were handed.
+    private var authorRow: some View {
+        HStack(spacing: 8) {
+            Text(AppStr.author)
+                .foregroundStyle(HelmText.quiet)
+            Spacer(minLength: 8)
+            Text(AppStr.authorName)
+            Link(destination: URL(string: "https://t.me/r.strlnkv")!) {
+                Label("@r.strlnkv", systemImage: "paperplane.fill")
+                    .labelStyle(.titleAndIcon)
+                    .font(HelmText.rowDetail)
+            }
+        }
+        .font(HelmText.rowTitle)
+        .helmCard(padding: 12)
+    }
 
     private var instrumentRow: some View {
         HelmMetricStrip([

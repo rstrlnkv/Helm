@@ -325,6 +325,14 @@ enum AppStr {
     static var noModules: String { L("No modules enabled") }
     static var noModulesHint: String { L("Enable a module in Settings.") }
     static var whatsNew: String { L("What’s New") }
+
+    static var author: String { L("Author") }
+    /// A name, so it is written the way it is written — in Cyrillic where the
+    /// reader has an alphabet for it, transliterated where they do not. Not a
+    /// translation: nobody translates a name, they only spell it.
+    static var authorName: String {
+        L("Rostislav Strelnikov", [.ru: "Ростислав Стрельников"])
+    }
     static var close: String { L("Close") }
     static var quit: String { L("Quit") }
     /// Explains the tint rule without naming a specific module (the icon is no
