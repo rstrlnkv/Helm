@@ -277,20 +277,19 @@ struct HelmPanelContent: View {
 
     /// What a fresh install is handed.
     ///
-    /// Every widget used to be seeded at 2×1, which is the stack of full-width
-    /// tiles this grid replaced — about 680 pt on a 800 pt screen, and not one
-    /// 1×1 anywhere. So the only thing the grid is *for* was invisible unless
-    /// somebody entered the edit mode and unfolded a size control in a corner.
+    /// Disk was seeded at 1×1 for a day, on the argument that a square shows
+    /// what the grid is for — and that argument was about *pairing*: two
+    /// squares sharing a row. When Autopilot and Layout went back to being rows
+    /// in the list there was nothing left to pair it with, so the square sat
+    /// alone with its right half empty, which demonstrates the grid by showing
+    /// a hole in it.
     ///
-    /// A module with a control keeps its width; a module that is one figure
-    /// takes a square, and two of them share a row. That is the arrangement
-    /// this panel is arguing for, so it is the one to hand over.
+    /// Three widgets, three full widths. 1×1 is a choice somebody makes when
+    /// they have two things worth putting side by side.
     ///
     /// Only ever read when there is no stored layout at all: nobody's panel is
     /// rearranged by an update.
-    static let seededSizes: [String: PanelWidgetSize] = [
-        "disk": .compact, utilitiesWidget: .tall,
-    ]
+    static let seededSizes: [String: PanelWidgetSize] = [utilitiesWidget: .tall]
 
     // MARK: - What the panel can draw right now
 
