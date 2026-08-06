@@ -230,8 +230,21 @@ struct HelmPanelContent: View {
     /// with the mode, and the grid gets whatever is left.
     @State private var topChrome: CGFloat = 0
     @State private var footerHeight: CGFloat = 0
-    /// The widget under the pointer during a drag.
-    @State private var dragging: String?
+    /// The tile in the air, and everything the overlay needs to draw it.
+    @State private var dragging: Widget?
+    /// Pointer location in the grid's own space.
+    @State private var dragLocation: CGPoint = .zero
+    /// Where inside the tile it was picked up, so the tile stays in the hand
+    /// rather than snapping its corner to the pointer.
+    @State private var grabOffset: CGSize = .zero
+    /// The tile's size at pickup — the overlay draws at exactly this.
+    @State private var dragSize: CGSize = .zero
+    /// True for the landing: the overlay is gliding into its slot and the
+    /// lift comes off.
+    @State private var dropping = false
+    /// Every tile's rectangle in the grid's space, which is how the drag knows
+    /// what it is over.
+    @State private var frames: [String: CGRect] = [:]
     /// The tab whose glyph is being chosen, if any.
     @State private var pickingGlyph: String?
     @State private var renaming: String?
@@ -446,7 +459,7 @@ struct HelmPanelContent: View {
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .modifier(EditChrome(active: editing, widget: widget.id, size: widget.size,
                                  sizes: offeredSizes(widget.id),
-                                 lifted: dragging == widget.id,
+                                 lifted: dragging?.id == widget.id,
 
                                  // The drawer chooses contents, not proportions.
                                  choose: widget.id == Self.utilitiesWidget
@@ -465,30 +478,13 @@ struct HelmPanelContent: View {
                                  },
                                  remove: { apply(layout.removing(widget.id)) },
                                  move: { offset in nudge(widget.id, by: offset, among: items) }))
-            .modifier(DragToReorder(
-                active: editing, widget: widget.id,
-                begin: { dragging = widget.id },
-                // Live, on the way in rather than on the drop: the tiles move
-                // aside as the pointer crosses them, so where the widget will
-                // land is where the hole is. It used to be answered only after
-                // letting go.
-                enter: {
-                    guard let carried = dragging, carried != widget.id,
-                          let target = layout.placement(of: widget.id) else { return }
-                    // Only when it changes something. `isTargeted` fires on
-                    // every mouse move inside the tile, not once on the way in,
-                    // so this ran dozens of times a second — each one starting
-                    // a fresh animation from wherever the last had reached,
-                    // which is what the judder was.
-                    guard layout.placement(of: carried)?.index != target.index
-                            || layout.placement(of: carried)?.tab != target.tab else { return }
-                    withAnimation(HelmMotion.reorder) {
-                        apply(layout.moving(carried, toTab: target.tab, at: target.index))
-                    }
-                },
-                // The drop is a transaction too, or the tile's content snaps
-                // back into a slot that had spent the whole drag animating.
-                end: { withAnimation(HelmMotion.reorder) { dragging = nil } }))
+            // Its rectangle, so the drag knows what it is over — and where
+            // the landing glide ends.
+            .onGeometryChange(for: CGRect.self,
+                              of: { $0.frame(in: .named(Self.gridSpace)) }) { rect in
+                if frames[widget.id] != rect { frames[widget.id] = rect }
+            }
+            .gesture(editing ? dragGesture(for: widget) : nil)
         }
     }
 
@@ -532,6 +528,84 @@ struct HelmPanelContent: View {
         .transition(.asymmetric(
             insertion: .scale(scale: 0.94, anchor: .topLeading).combined(with: .opacity),
             removal: .opacity))
+    }
+
+    static let gridSpace = "panel.grid"
+
+    /// Carrying a tile: the second try at a hand-driven drag, and what makes
+    /// it work where the first one did not.
+    ///
+    /// The first try moved the tile itself and re-derived its offset from a
+    /// frame that `onGeometryChange` had not delivered yet — one frame of
+    /// mismatch per reorder, which read as leaping. This one never moves the
+    /// tile at all: the slot steps aside into a quiet well, and the thing
+    /// under the pointer is an **overlay** drawn above the grid at the
+    /// pointer's own coordinates. The overlay depends on nothing the layout
+    /// does, so no amount of repacking can make it stutter — and unlike
+    /// `onDrag`, whose translucent system snapshot cannot be reached from
+    /// SwiftUI, it is ours: full weight, lifted, shadowed.
+    private func dragGesture(for widget: Widget) -> some Gesture {
+        DragGesture(minimumDistance: 6, coordinateSpace: .named(Self.gridSpace))
+            .onChanged { value in
+                if dragging?.id != widget.id {
+                    guard let frame = frames[widget.id] else { return }
+                    dragSize = frame.size
+                    grabOffset = CGSize(width: value.startLocation.x - frame.minX,
+                                        height: value.startLocation.y - frame.minY)
+                    dropping = false
+                    withAnimation(HelmMotion.reorder) { dragging = widget }
+                }
+                dragLocation = value.location
+
+                // The slot the pointer is over, if it is a different one.
+                // Checked against live frames, so the boundary between two
+                // tiles is exactly where the neighbour starts to move.
+                guard let over = frames.first(where: { $0.key != widget.id
+                                                       && $0.value.contains(value.location) })?.key,
+                      let target = layout.placement(of: over),
+                      let here = layout.placement(of: widget.id),
+                      here.tab != target.tab || here.index != target.index else { return }
+                withAnimation(HelmMotion.reorder) {
+                    apply(layout.moving(widget.id, toTab: target.tab, at: target.index))
+                }
+            }
+            .onEnded { _ in
+                // The glide home: the overlay is animated to the slot the
+                // layout has already given the widget, the lift comes off on
+                // the way, and only then does the slot take its content back —
+                // at the position the overlay just reached, so the handover is
+                // invisible.
+                let id = widget.id
+                if let home = frames[id] {
+                    withAnimation(HelmMotion.reorder) {
+                        dropping = true
+                        dragLocation = CGPoint(x: home.minX + grabOffset.width,
+                                               y: home.minY + grabOffset.height)
+                    }
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.24) {
+                    guard dragging?.id == id else { return }
+                    dragging = nil
+                    dropping = false
+                }
+            }
+    }
+
+    /// The one full-weight copy of the tile in the air, above the grid, under
+    /// the pointer.
+    @ViewBuilder
+    private var dragOverlay: some View {
+        if let carried = dragging {
+            body(of: carried)
+                .frame(width: dragSize.width, height: dragSize.height)
+                .scaleEffect(dropping ? 1 : 1.035)
+                .shadow(color: .black.opacity(dropping ? 0 : 0.28),
+                        radius: dropping ? 0 : 10, y: dropping ? 0 : 4)
+                .offset(x: dragLocation.x - grabOffset.width,
+                        y: dragLocation.y - grabOffset.height)
+                .allowsHitTesting(false)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
     }
 
     private func offeredSizes(_ id: String) -> [PanelWidgetSize] {
@@ -1011,6 +1085,8 @@ struct HelmPanelContent: View {
                 VStack(alignment: .leading, spacing: 8) {
                     scrollable(parts, items)
                 }
+                .coordinateSpace(name: Self.gridSpace)
+                .overlay(alignment: .topLeading) { dragOverlay }
                 // Written **inside** a transaction, which is the whole fix.
                 //
                 // `onGeometryChange` hands its measurement over outside the one
@@ -1147,88 +1223,83 @@ private struct EditChrome: ViewModifier {
     private var open: Bool { hovering || focused }
 
     func body(content: Content) -> some View {
-        if !active { content } else {
-            content
-                // No dashed accent frame, and no hole where the tile was.
-                //
-                // The layout moves the widget as you drag, so the tile is
-                // already drawn where it is going — it travels with you. A
-                // faded copy left behind, or a gap, was the panel showing the
-                // same widget twice and asking which one to believe.
-                .overlay(alignment: .topLeading) {
-                    // No controls on a tile that is in the air: it is a slot,
-                    // and a slot with a minus hanging off it invites a press on
-                    // something that is not there.
-                    if !lifted {
-                        Button {
-                            withAnimation(HelmMotion.disclosure) { remove() }
-                        } label: {
-                            Image(systemName: "minus")
-                                .font(.system(size: 9, weight: .black))
-                                .foregroundStyle(.white)
-                                .frame(width: 18, height: 18)
-                                .background(Circle().fill(HelmSignal.danger))
-                                .shadow(radius: 1, y: 0.5)
+        // **One branch, whatever the mode.** This used to be `if !active {
+        // content } else { content.decorated }`, and the two branches are two
+        // identities to SwiftUI — entering the edit mode tore every tile down
+        // and rebuilt it, so there was nothing to interpolate and the whole
+        // grid snapped. That was the judder that survived four animation
+        // fixes: it was never the animation, it was the identity.
+        content
+            // The slot of a tile that is being carried: the content steps
+            // aside, a quiet well marks the place, and the overlay above the
+            // grid is the one full-weight copy under the pointer.
+            .opacity(lifted ? 0 : 1)
+            .background {
+                if lifted {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(HelmSurface.wellFill)
+                }
+            }
+            .overlay(alignment: .topLeading) {
+                if active, !lifted {
+                    Button {
+                        withAnimation(HelmMotion.disclosure) { remove() }
+                    } label: {
+                        Image(systemName: "minus")
+                            .font(.system(size: 9, weight: .black))
+                            .foregroundStyle(.white)
+                            .frame(width: 18, height: 18)
+                            .background(Circle().fill(HelmSignal.danger))
+                            .shadow(radius: 1, y: 0.5)
+                    }
+                    .buttonStyle(.plain)
+                    .offset(x: -4, y: -4)
+                    .accessibilityLabel(AppStr.removeWidget)
+                    .transition(.scale.combined(with: .opacity))
+                }
+            }
+            .overlay(alignment: .topTrailing) {
+                Group {
+                    if !active || lifted {
+                        EmptyView()
+                    } else if let choose {
+                        Button(action: choose) {
+                            Image(systemName: choosing ? "checkmark" : "pencil")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(choosing ? Color.white : HelmText.quiet)
+                                .padding(.horizontal, 6).padding(.vertical, 3)
+                                .background(Capsule().fill(choosing ? AnyShapeStyle(Color.accentColor)
+                                                           : AnyShapeStyle(.regularMaterial)))
+                                .overlay(Capsule().strokeBorder(HelmSurface.hairline))
                         }
                         .buttonStyle(.plain)
-                        .offset(x: -4, y: -4)
-                        .accessibilityLabel(AppStr.removeWidget)
+                        .help(AppStr.chooseUtilities)
+                        .accessibilityLabel(AppStr.chooseUtilities)
+                    } else {
+                        sizeControl
                     }
                 }
-                .overlay(alignment: .topTrailing) {
-                    Group {
-                        if lifted {
-                            EmptyView()
-                        } else if let choose {
-                            Button(action: choose) {
-                                Image(systemName: choosing ? "checkmark" : "pencil")
-                                    .font(.system(size: 10, weight: .semibold))
-                                    .foregroundStyle(choosing ? Color.white : HelmText.quiet)
-                                    .padding(.horizontal, 6).padding(.vertical, 3)
-                                    .background(Capsule().fill(choosing ? AnyShapeStyle(Color.accentColor)
-                                                               : AnyShapeStyle(.regularMaterial)))
-                                    .overlay(Capsule().strokeBorder(HelmSurface.hairline))
-                            }
-                            .buttonStyle(.plain)
-                            .help(AppStr.chooseUtilities)
-                            .accessibilityLabel(AppStr.chooseUtilities)
-                        } else {
-                            sizeControl
-                        }
-                    }
-                    .offset(x: 4, y: -4)
+                .offset(x: 4, y: -4)
+                .transition(.scale.combined(with: .opacity))
+            }
+            // The room the corner controls overhang by, exactly: the grid
+            // lives in a `ScrollView`, which clips at its own bounds. Animated
+            // by the mode's own transaction, since it is part of what the mode
+            // changes.
+            .padding(active ? 4 : 0)
+            // Movable by arrow keys, so the arrangement is not the one part of
+            // the panel a keyboard cannot reach. No system ring: it is drawn
+            // round the frame and arrived as a hard rectangle over glass.
+            .focusable(active)
+            .focusEffectDisabled()
+            .onMoveCommand { direction in
+                guard active else { return }
+                switch direction {
+                case .left, .up: move(-1)
+                case .right, .down: move(1)
+                default: break
                 }
-                // Exactly the room the corner controls overhang by, and not a
-                // point less: the grid lives in a `ScrollView`, which clips at
-                // its own bounds, so a badge offset 5 into a 4 pt margin was a
-                // badge with a slice taken off it. Offset and padding are the
-                // same number for that reason.
-                .padding(4)
-                // Focusable and movable by arrow keys, so the arrangement is
-                // not the one part of the panel a keyboard cannot reach — and
-                // without the system ring, which is drawn round the frame and
-                // came out as a second rectangle outside the dashed one already
-                // saying «this tile». The dashed frame is the focus indication.
-                // Lifted while it is being carried. Nothing follows the
-                // pointer — the layout moves the tile instead — so without this
-                // the widget teleports between slots and never looks held. A
-                // little bigger, above its neighbours, casting a shadow: what
-                // «in my hand» looks like on a surface made of glass.
-                .scaleEffect(lifted ? 1.035 : 1)
-                .shadow(color: .black.opacity(lifted ? 0.28 : 0),
-                        radius: lifted ? 10 : 0, y: lifted ? 4 : 0)
-                .zIndex(lifted ? 1 : 0)
-                .animation(HelmMotion.reorder, value: lifted)
-                .focusable()
-                .focusEffectDisabled()
-                .onMoveCommand { direction in
-                    switch direction {
-                    case .left, .up: move(-1)
-                    case .right, .down: move(1)
-                    default: break
-                    }
-                }
-        }
+            }
     }
 
     /// Grows leftwards from the corner it is anchored to, which is what a
@@ -1297,68 +1368,6 @@ private struct EditChrome: ViewModifier {
 /// Reordering by dragging. Off unless the panel is being arranged: a tile that
 /// lifts under a pointer that meant to press a button is an arrangement nobody
 /// asked to change, and there is no undo here.
-/// Reordering by dragging, through `onDrag` and a drop target.
-///
-/// A gesture-driven version was tried and reverted. It solved the one thing
-/// this cannot — AppKit draws its own translucent snapshot of the view and
-/// carries that, and nothing in SwiftUI reaches it — and it was worse to use:
-/// moving a tile by hand means owning the pointer, and everything the system
-/// does for free (the pick-up, the autoscroll, the spring-back, the cursor) has
-/// to be rebuilt and none of it was as good.
-///
-/// The ghost is the platform's convention for a thing in transit. Keeping it
-/// costs less than the alternative did.
-private struct DragToReorder: ViewModifier {
-    let active: Bool
-    let widget: String
-    let begin: () -> Void
-    let enter: () -> Void
-    let end: () -> Void
-
-    func body(content: Content) -> some View {
-        if !active { content } else {
-            content
-                // `onDrag` rather than `draggable`: this one has a closure that
-                // fires when the drag *starts*, and knowing which tile is in the
-                // air is the whole basis of moving the others out of its way.
-                .onDrag {
-                    begin()
-                    return NSItemProvider(object: widget as NSString)
-                } preview: {
-                    // Nothing. AppKit carries a snapshot of the view and draws
-                    // it a few points off the original, so a frame of the
-                    // recording showed every plate and every row twice, half a
-                    // centimetre apart — which reads as a smear rather than as
-                    // a thing being carried.
-                    //
-                    // The tile is already moving: the layout reorders live, so
-                    // what the person is dragging is on screen, in the grid,
-                    // full weight. The system does not need to draw a second
-                    // one, and a 1 pt clear square is how you say so.
-                    Color.clear.frame(width: 1, height: 1)
-                }
-                // The target reaches into the gutters.
-                //
-                // A drop destination is exactly the tile's rectangle, so the
-                // 8 pt between two tiles belonged to neither and a pointer
-                // crossing it triggered nothing until it was well inside the
-                // next tile — which is the lateness. Grown by half a gutter
-                // plus a little on every side, so the boundary between two
-                // tiles is what reacts, and taken back again immediately so
-                // the layout is unchanged.
-                .padding(-10)
-                .onDrop(of: [.text], isTargeted: Binding(
-                    get: { false },
-                    set: { over in if over { enter() } }
-                )) { _ in
-                    end()
-                    return true
-                }
-                .padding(10)
-        }
-    }
-}
-
 /// One collapsed row listing the modules whose UI lives in Settings. Expanding
 /// reveals compact rows; clicking one opens Settings on that module.
 struct UtilitiesSection: View {
