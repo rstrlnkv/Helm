@@ -1205,6 +1205,15 @@ private struct EditChrome: ViewModifier {
         .overlay(Capsule().strokeBorder(HelmSurface.hairline))
         .focusable()
         .focused($focused)
+        // The system ring is drawn round the view's *frame*, and this view is a
+        // capsule inside one — so it came out as a rounded rectangle floating
+        // around a pill, at a different radius and a different size.
+        //
+        // Turned off rather than reshaped, because this control already shows
+        // its focus by doing something better than a ring: it opens. Three
+        // chips where there was one is a clearer «you are here» than a line
+        // round the outside, and it is the same signal a pointer gets.
+        .focusEffectDisabled()
         .onHover { hovering = $0 }
         .animation(HelmMotion.interface, value: open)
         .accessibilityElement(children: .contain)
