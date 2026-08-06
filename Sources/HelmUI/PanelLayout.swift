@@ -12,12 +12,12 @@ import Foundation
 public struct PanelLayout: Equatable, Codable, Sendable {
 
     public struct Tab: Equatable, Codable, Sendable, Identifiable {
-        /// What a tab can be marked with. Eight, because a strip that holds
-        /// more than that has a bigger problem than its glyphs.
-        public static let glyphs = [
-            "square.grid.2x2", "bolt", "gauge.with.dots.needle.33percent",
-            "folder", "wrench.and.screwdriver", "network", "moon", "star",
-        ]
+        /// What a new tab is marked with, in the order they are handed out.
+        ///
+        /// The picker's first category rather than a list of its own: two lists
+        /// of symbols is two lists to keep in step, and the one somebody sees
+        /// when they go looking should be the one they were given from.
+        public static var glyphs: [String] { HelmGlyphCatalogue.categories[0].symbols }
 
         public var id: String
         /// Set on the tab Helm seeds, so a rename can be undone and a fresh
