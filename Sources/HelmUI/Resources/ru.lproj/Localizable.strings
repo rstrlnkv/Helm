@@ -695,3 +695,6 @@
 "Media" = "Медиа";
 "Nature" = "Природа";
 "Category" = "Категория";
+"Show Settings button" = "Показывать кнопку «Настройки»";
+"Show Quit button" = "Показывать кнопку «Завершить»";
+"All three are also in the menu-bar icon’s right-click menu." = "Все три есть и в меню по правому клику на иконку.";

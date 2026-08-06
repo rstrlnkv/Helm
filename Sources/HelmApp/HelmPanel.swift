@@ -215,6 +215,8 @@ struct HelmPanelContent: View {
     /// The drawer is choosing its rows rather than showing them.
     @State private var choosingUtilities = false
     @State private var showEditButton = AppSettings.showPanelEditButton
+    @State private var showSettingsButton = AppSettings.showSettingsButton
+    @State private var showQuitButton = AppSettings.showQuitButton
     @State private var tabLabels = AppSettings.tabLabelStyle
     @State private var stripHeight: CGFloat = 0
     /// The grid's natural height, so the scroll view never grows past its own
@@ -712,10 +714,16 @@ struct HelmPanelContent: View {
     /// `showSettingsButton` and `showQuitButton` both defaulted to false, which
     /// is how a clean install ended up with no way into settings from the panel
     /// it was given — and no way to find the switch that would have added one.
+    @ViewBuilder
     private var footer: some View {
+        // Nothing pinned means nothing to pin: three hidden buttons would
+        // otherwise leave an empty card at the foot of the panel.
+        if showSettingsButton || showQuitButton || showEditButton {
         HStack(spacing: 8) {
-            footerButton(AppStr.settingsPane, "gearshape") {
-                NotificationCenter.default.post(name: .helmOpenSettings, object: nil)
+            if showSettingsButton {
+                footerButton(AppStr.settingsPane, "gearshape") {
+                    NotificationCenter.default.post(name: .helmOpenSettings, object: nil)
+                }
             }
             Spacer(minLength: 8)
             // Only on the way in. While the setup bar is on screen it carries
@@ -738,9 +746,12 @@ struct HelmPanelContent: View {
                     refusal = nil
                 }
             }
-            footerGlyph("power", AppStr.quit) { NSApp.terminate(nil) }
+            if showQuitButton {
+                footerGlyph("power", AppStr.quit) { NSApp.terminate(nil) }
+            }
         }
         .helmPanelCard()
+        }
     }
 
     /// A footer action with no room for its name: the name is the tooltip and
@@ -798,6 +809,8 @@ struct HelmPanelContent: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .helmMenuBarStyleChanged)) { _ in
             showEditButton = AppSettings.showPanelEditButton
+            showSettingsButton = AppSettings.showSettingsButton
+            showQuitButton = AppSettings.showQuitButton
             tabLabels = AppSettings.tabLabelStyle
         }
         // Every opening, not only the first: the view is built once and stays

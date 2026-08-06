@@ -695,3 +695,6 @@
 "Media" = "メディア";
 "Nature" = "自然";
 "Category" = "カテゴリ";
+"Show Settings button" = "「設定」ボタンを表示";
+"Show Quit button" = "「終了」ボタンを表示";
+"All three are also in the menu-bar icon’s right-click menu." = "三つともメニューバーアイコンの右クリックメニューにあります。";
