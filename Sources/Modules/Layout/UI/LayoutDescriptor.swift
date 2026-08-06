@@ -62,16 +62,13 @@ import Module_Layout_Engine
     /// Not a utility any more: it has a figure worth a glance — how many
     /// words it put right today — and that is the whole test for whether a
     /// module belongs in the panel rather than behind a disclosure in it.
-    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? {
-        MenuBarContribution(panelTile: AnyView(LayoutWidget(vm: vm, size: .wide)))
-    }
-
-    /// Two sizes, and no 2×N — see `LayoutWidget`. A stored `tall` clamps down
-    /// to `wide` rather than the widget vanishing.
-    public func panelWidget(_ size: PanelWidgetSize, _ vm: ModuleViewModel) -> AnyView? {
-        guard size != .tall else { return nil }
-        return AnyView(LayoutWidget(vm: vm, size: size))
-    }
+    /// A row in the utilities list, not a tile.
+    ///
+    /// It had a widget for a while — the count of watched folders, the words
+    /// put right today — and both are numbers without a question behind them:
+    /// nobody opens a menu bar to find out how many folders are watched. A tile
+    /// has to earn its 90 pt, and this one was earning it by existing.
+    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { .utility }
 
     public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
         AnyView(LayoutSettingsPage(

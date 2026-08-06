@@ -202,29 +202,16 @@ public struct PanelLayout: Equatable, Codable, Sendable {
         return copy
     }
 
-    /// Why a widget cannot take a size, or nil if it can.
+    /// Any offered size, including 1×1 straight to 2×N.
     ///
-    /// **The refusal lives here rather than in a disabled button.** A greyed
-    /// control says «not this»; a refusal can say what to do instead, and this
-    /// one has something to say: go through `wide` first. Two steps, both of
-    /// which show what they did.
-    public func refusal(growing widget: String, to size: PanelWidgetSize) -> Refusal? {
-        guard let current = self.size(of: widget) else { return nil }
-        if size == .tall, current == .compact { return .tallNeedsFullWidth }
-        return nil
-    }
-
-    public enum Refusal: Equatable, Sendable {
-        /// Only a full-width widget may grow downwards: a tall narrow one opens
-        /// a hole beside itself that nothing fills without masonry.
-        case tallNeedsFullWidth
-    }
-
-    /// Refused sizes leave the layout untouched — the caller asks `refusal`
-    /// first and says why, rather than watching nothing happen.
+    /// There used to be a refusal here: only a full-width widget could grow
+    /// downwards, because a tall narrow one opens a hole beside it that nothing
+    /// fills without masonry. The reasoning is sound about a *narrow* tall tile
+    /// — and `tall` is full width by definition, so the case it guarded cannot
+    /// arise. What it did instead was make one chip in three do nothing when
+    /// pressed, with the explanation in a bar the tile had scrolled away from.
     public func resizing(_ widget: String, to size: PanelWidgetSize) -> PanelLayout {
-        guard let at = placement(of: widget), refusal(growing: widget, to: size) == nil
-        else { return self }
+        guard let at = placement(of: widget) else { return self }
         var copy = self
         copy.tabs[at.tab].widgets[at.index].size = size
         return copy

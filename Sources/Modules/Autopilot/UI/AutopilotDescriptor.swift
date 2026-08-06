@@ -24,25 +24,13 @@ import SwiftUI
     /// Not a utility any more: how many folders it watches and what it did
     /// today are figures worth a glance, which is the whole test for whether a
     /// module belongs in the panel rather than behind a disclosure in it.
-    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? {
-        MenuBarContribution(panelTile: AnyView(AutopilotWidget(vm: vm, size: .wide)))
-    }
-
-    /// All three. 1×1 is how many folders; 2×1 adds what happened today; 2×N
-    /// says why that number is what it is, by naming the rules that fired.
-    public func panelWidget(_ size: PanelWidgetSize, _ vm: ModuleViewModel) -> AnyView? {
-        // Same rule as Disk's: 2×N lists the rules that fired today, and on a
-        // day nothing fired — which is most days — it is 2×1 with a taller
-        // frame. A stored `tall` clamps down rather than vanishing.
-        if size == .tall, !AutopilotDescriptor.firedToday(vm) { return nil }
-        return AnyView(AutopilotWidget(vm: vm, size: size))
-    }
-
-    /// Whether anything happened today, without building a view to find out.
-    @MainActor static func firedToday(_ vm: ModuleViewModel) -> Bool {
-        let start = Calendar.current.startOfDay(for: Date())
-        return AutopilotViewModel.shared(vm: vm).history.contains { $0.at >= start }
-    }
+    /// A row in the utilities list, not a tile.
+    ///
+    /// It had a widget for a while — the count of watched folders, the words
+    /// put right today — and both are numbers without a question behind them:
+    /// nobody opens a menu bar to find out how many folders are watched. A tile
+    /// has to earn its 90 pt, and this one was earning it by existing.
+    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { .utility }
 
     public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
         AnyView(AutopilotSettingsPage(vm: vm))

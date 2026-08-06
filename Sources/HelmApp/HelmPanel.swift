@@ -200,8 +200,6 @@ struct HelmPanelContent: View {
         _editing = State(initialValue: editing)
     }
     @State private var layout = PanelLayout(tabs: [])
-    /// The one refusal the layout makes, shown where the attempt was made.
-    @State private var refusal: String?
     /// Which tab is being looked at. Session state, not stored: the panel is
     /// opened for a glance, and opening it on the tab somebody happened to
     /// leave last week is a panel that answers a question nobody asked.
@@ -291,8 +289,7 @@ struct HelmPanelContent: View {
     /// Only ever read when there is no stored layout at all: nobody's panel is
     /// rearranged by an update.
     static let seededSizes: [String: PanelWidgetSize] = [
-        "disk": .compact, "autopilot": .compact, "layout": .compact,
-        utilitiesWidget: .tall,
+        "disk": .compact, utilitiesWidget: .tall,
     ]
 
     // MARK: - What the panel can draw right now
@@ -453,20 +450,12 @@ struct HelmPanelContent: View {
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .modifier(EditChrome(active: editing, widget: widget.id, size: widget.size,
                                  sizes: offeredSizes(widget.id),
-                                 removable: widget.id != Self.utilitiesWidget,
+
                                  // The drawer chooses contents, not proportions.
                                  choose: widget.id == Self.utilitiesWidget
                                      ? { choosingUtilities.toggle() } : nil,
                                  choosing: choosingUtilities,
-                                 refused: { layout.refusal(growing: widget.id, to: $0) != nil },
-                                 resize: { size in
-                                     if let why = layout.refusal(growing: widget.id, to: size) {
-                                         refusal = message(for: why)
-                                     } else {
-                                         refusal = nil
-                                         apply(layout.resizing(widget.id, to: size))
-                                     }
-                                 },
+                                 resize: { size in apply(layout.resizing(widget.id, to: size)) },
                                  remove: { apply(layout.removing(widget.id)) },
                                  move: { offset in nudge(widget.id, by: offset, among: items) }))
             .modifier(DragToReorder(active: editing, widget: widget.id) { dropped in
@@ -506,11 +495,6 @@ struct HelmPanelContent: View {
         return PanelWidgetSize.allCases.filter { offered.contains($0) }
     }
 
-    private func message(for refusal: PanelLayout.Refusal) -> String {
-        switch refusal {
-        case .tallNeedsFullWidth: AppStr.tallNeedsFullWidth
-        }
-    }
 
     /// Keyboard reordering. The panel is reachable from the keyboard and the
     /// edit mode must not be the one place that is not.
@@ -660,7 +644,7 @@ struct HelmPanelContent: View {
             HStack(spacing: 8) {
                 Text(AppStr.panelSetup).font(.subheadline.weight(.semibold))
                 Spacer(minLength: 8)
-                Button(AppStr.done) { editing = false; refusal = nil; choosingUtilities = false }
+                Button(AppStr.done) { editing = false; choosingUtilities = false }
                     .controlSize(.small)
                     .buttonStyle(.borderedProminent)
             }
@@ -674,12 +658,6 @@ struct HelmPanelContent: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .onChange(of: tabLabels) { _, chosen in AppSettings.tabLabelStyle = chosen }
-            }
-            if let refusal {
-                Text(refusal)
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmSignal.warning)
-                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .helmPanelCard()
@@ -805,7 +783,6 @@ struct HelmPanelContent: View {
             if !editing && showEditButton {
                 footerGlyph("pencil", AppStr.configurePanel) {
                     withAnimation(HelmMotion.interface) { editing = true }
-                    refusal = nil
                 }
             }
             if showQuitButton {
@@ -897,7 +874,6 @@ struct HelmPanelContent: View {
         // switched off.
         .onReceive(NotificationCenter.default.publisher(for: .helmPanelEditRequested)) { _ in
             withAnimation(HelmMotion.interface) { editing = true }
-            refusal = nil
         }
     }
 
@@ -1090,14 +1066,11 @@ private struct EditChrome: ViewModifier {
     let widget: String
     let size: PanelWidgetSize
     let sizes: [PanelWidgetSize]
-    /// False for the utilities list: see the overlay below.
-    let removable: Bool
 
     /// Non-nil for a widget whose corner control chooses something other than a
     /// size — the drawer, which chooses its rows.
     let choose: (() -> Void)?
     let choosing: Bool
-    let refused: (PanelWidgetSize) -> Bool
     let resize: (PanelWidgetSize) -> Void
     let remove: () -> Void
     let move: (Int) -> Void
@@ -1117,12 +1090,6 @@ private struct EditChrome: ViewModifier {
                                       style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
                 }
                 .overlay(alignment: .topLeading) {
-                    if removable {
-                    // The utilities list has no minus. It is not a widget that
-                    // holds a figure — it is the panel's residue, and taking it
-                    // off takes the only presence six modules have with it, in
-                    // one click, in a mode with no undo. Its pencil is where its
-                    // contents are decided.
                     Button(action: remove) {
                         Image(systemName: "minus")
                             .font(.system(size: 9, weight: .black))
@@ -1134,7 +1101,6 @@ private struct EditChrome: ViewModifier {
                     .buttonStyle(.plain)
                     .offset(x: -5, y: -5)
                     .accessibilityLabel(AppStr.removeWidget)
-                    }
                 }
                 .overlay(alignment: .topTrailing) {
                     Group {
@@ -1189,13 +1155,13 @@ private struct EditChrome: ViewModifier {
                         .font(.system(size: 10, weight: .semibold))
                         .monospacedDigit()
                         .foregroundStyle(open && option == size ? Color.white
-                                         : refused(option) ? HelmText.faint : HelmText.quiet)
+                                         : HelmText.quiet)
                         .padding(.horizontal, 5).padding(.vertical, 2)
                         .background(RoundedRectangle(cornerRadius: 4, style: .continuous)
                             .fill(open && option == size ? Color.accentColor : .clear))
                 }
                 .buttonStyle(.plain)
-                .help(refused(option) ? AppStr.tallNeedsFullWidth : option.label)
+                .help(option.label)
             }
         }
         .padding(2)
