@@ -28,7 +28,11 @@ import Module_Disk_Engine
     /// 2×N lists the other volumes, because the space somebody is looking for
     /// is often on one of them.
     public func panelWidget(_ size: PanelWidgetSize, _ vm: ModuleViewModel) -> AnyView? {
-        AnyView(DiskWidget(vm: vm, size: size))
+        // 2×N is «why that number is that number», and on a Mac with one
+        // volume there is no why — the tall card added a list of the other
+        // volumes and there were none, so it was 2×1 with a taller frame.
+        if size == .tall, DiskViewModel.shared(vm: vm).volumes.count < 2 { return nil }
+        return AnyView(DiskWidget(vm: vm, size: size))
     }
     public func settingsPage(_ vm: ModuleViewModel) -> AnyView { AnyView(DiskSettingsPage(vm: vm)) }
 }

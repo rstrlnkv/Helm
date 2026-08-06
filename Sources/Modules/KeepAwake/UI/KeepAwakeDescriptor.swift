@@ -47,7 +47,11 @@ import Module_KeepAwake_Engine
         switch size {
         case .compact: return AnyView(KeepAwakeCompactWidget(vm: vm))
         case .wide: return AnyView(KeepAwakePanelTile(vm: vm, store: s))
-        case .tall: return AnyView(KeepAwakeTallWidget(vm: vm, store: s))
+        // No 2×N. It was the tile plus the two automation conditions drawn
+        // read-only — and the tile already carries them behind ⋯ as working
+        // toggles. A card that shows the same two rows with a tick you cannot
+        // press is not a third answer; it is the second one, disabled.
+        case .tall: return nil
         }
     }
 

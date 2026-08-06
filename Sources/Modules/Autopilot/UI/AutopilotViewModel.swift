@@ -22,6 +22,24 @@ import SwiftUI
     let vm: ModuleViewModel
     private let client: TransportClient
 
+    private static var cached: AutopilotViewModel?
+
+    /// One instance per host view model.
+    ///
+    /// It asks the engine for the folders and the history when it is built, so
+    /// a caller that constructs its own — a widget rebuilt on every body pass,
+    /// or a descriptor asked whether anything fired today — would send those
+    /// two requests again every time. Keyed to the view model, because turning
+    /// the module off and on builds a new one and the old cache would be
+    /// talking to a deallocated engine.
+    public static func shared(vm: ModuleViewModel) -> AutopilotViewModel {
+        if let cached, cached.vm === vm { return cached }
+        let created = AutopilotViewModel(vm: vm)
+        cached = created
+        ModuleUICache.dropWhenDisabled(AutopilotDescriptor.id.rawValue) { cached = nil }
+        return created
+    }
+
     public init(vm: ModuleViewModel) {
         self.vm = vm
         self.client = TransportClient(vm.transport)

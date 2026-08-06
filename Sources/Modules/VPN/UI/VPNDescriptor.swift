@@ -60,7 +60,11 @@ import Module_VPN_Engine
         switch size {
         case .compact: return AnyView(VPNCompactWidget(vm: viewModel(vm)))
         case .wide: return AnyView(VPNPanelTile(vm: viewModel(vm)))
-        case .tall: return AnyView(VPNTallWidget(vm: viewModel(vm)))
+        // No 2×N. The 2×1 tile already lists every connection with a switch,
+        // so the tall one printed the same list a second time underneath —
+        // four VPNs came out as eight rows, four of them dead. The doc comment
+        // that justified it described a tile this repo does not have.
+        case .tall: return nil
         }
     }
 
