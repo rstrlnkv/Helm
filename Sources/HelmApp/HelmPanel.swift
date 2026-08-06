@@ -825,7 +825,14 @@ struct HelmPanelContent: View {
             // rather than as something that never needed one.
             if !editing && showEditButton {
                 footerGlyph("pencil", AppStr.configurePanel) {
-                    withAnimation(HelmMotion.interface) { editing = true }
+                    // The same curve the card's measured height animates on.
+                    // Entering the mode grows every cell by 8 pt and adds two
+                    // controls to each, so the grid's height changes with it —
+                    // and on `interface` (0.22 snappy) against the height's
+                    // `disclosure` (0.30 smooth) the tiles and the card they
+                    // are in were running two different animations of the same
+                    // event. That is the judder.
+                    withAnimation(HelmMotion.disclosure) { editing = true }
                 }
             }
             if showQuitButton {
@@ -916,7 +923,7 @@ struct HelmPanelContent: View {
         // Asked for from the icon's menu, which is the door that cannot be
         // switched off.
         .onReceive(NotificationCenter.default.publisher(for: .helmPanelEditRequested)) { _ in
-            withAnimation(HelmMotion.interface) { editing = true }
+            withAnimation(HelmMotion.disclosure) { editing = true }
         }
     }
 
@@ -1298,6 +1305,18 @@ private struct DragToReorder: ViewModifier {
                 .onDrag {
                     begin()
                     return NSItemProvider(object: widget as NSString)
+                } preview: {
+                    // Nothing. AppKit carries a snapshot of the view and draws
+                    // it a few points off the original, so a frame of the
+                    // recording showed every plate and every row twice, half a
+                    // centimetre apart — which reads as a smear rather than as
+                    // a thing being carried.
+                    //
+                    // The tile is already moving: the layout reorders live, so
+                    // what the person is dragging is on screen, in the grid,
+                    // full weight. The system does not need to draw a second
+                    // one, and a 1 pt clear square is how you say so.
+                    Color.clear.frame(width: 1, height: 1)
                 }
                 // The target reaches into the gutters.
                 //
