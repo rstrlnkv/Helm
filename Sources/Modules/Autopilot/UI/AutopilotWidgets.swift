@@ -5,15 +5,16 @@ import Module_Autopilot_Engine
 /// Autopilot in the panel: how many folders it is watching, and what it has
 /// done today.
 ///
-/// The view model is a `@StateObject` rather than one built per redraw: it asks
-/// the engine for the folders and the history when it is created, and a widget
-/// that rebuilt it in every body pass would ask again on every frame.
+/// The view model is the module's shared one: it asks the engine for the
+/// folders and the history when it is built, so a widget that made its own
+/// would send those two requests again on every body pass — and the descriptor
+/// asks the same instance whether anything fired today.
 public struct AutopilotWidget: View {
-    @StateObject private var vm: AutopilotViewModel
+    @ObservedObject private var vm: AutopilotViewModel
     private let size: PanelWidgetSize
 
     public init(vm: ModuleViewModel, size: PanelWidgetSize) {
-        _vm = StateObject(wrappedValue: AutopilotViewModel(vm: vm))
+        self.vm = AutopilotViewModel.shared(vm: vm)
         self.size = size
     }
 

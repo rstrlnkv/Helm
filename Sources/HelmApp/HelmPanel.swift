@@ -740,7 +740,8 @@ struct HelmPanelContent: View {
         HStack(spacing: 8) {
             if showSettingsButton {
                 footerButton(AppStr.settingsPane, "gearshape") {
-                    NotificationCenter.default.post(name: .helmOpenSettings, object: nil)
+                    NotificationCenter.default.post(name: .helmOpenSettings,
+                                                    object: SettingsWindow.settingsPage)
                 }
             }
             Spacer(minLength: 8)
@@ -839,6 +840,11 @@ struct HelmPanelContent: View {
         // end in one update is one update — SwiftUI coalesces them and there is
         // nothing to interpolate from.
         .onReceive(NotificationCenter.default.publisher(for: .helmPanelDidShow)) { _ in
+            // Back to the first tab. The comment on `activeTab` has always
+            // said the panel is opened for a glance and must not answer a
+            // question nobody asked — but this view is mounted once at launch,
+            // so «the session» was the whole time the app had been running.
+            activeTab = 0
             revealed = false
             DispatchQueue.main.async {
                 withAnimation(HelmMotion.panelEntrance) { revealed = true }
@@ -1292,7 +1298,8 @@ private struct PermissionsWidget: View {
                         .controlSize(.small)
                 } else {
                     Button(AppStr.show) {
-                        NotificationCenter.default.post(name: .helmOpenSettings, object: nil)
+                        NotificationCenter.default.post(name: .helmOpenSettings,
+                                                        object: SettingsWindow.settingsPage)
                     }
                     .controlSize(.small)
                 }

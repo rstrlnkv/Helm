@@ -31,7 +31,17 @@ import SwiftUI
     /// All three. 1×1 is how many folders; 2×1 adds what happened today; 2×N
     /// says why that number is what it is, by naming the rules that fired.
     public func panelWidget(_ size: PanelWidgetSize, _ vm: ModuleViewModel) -> AnyView? {
-        AnyView(AutopilotWidget(vm: vm, size: size))
+        // Same rule as Disk's: 2×N lists the rules that fired today, and on a
+        // day nothing fired — which is most days — it is 2×1 with a taller
+        // frame. A stored `tall` clamps down rather than vanishing.
+        if size == .tall, !AutopilotDescriptor.firedToday(vm) { return nil }
+        return AnyView(AutopilotWidget(vm: vm, size: size))
+    }
+
+    /// Whether anything happened today, without building a view to find out.
+    @MainActor static func firedToday(_ vm: ModuleViewModel) -> Bool {
+        let start = Calendar.current.startOfDay(for: Date())
+        return AutopilotViewModel.shared(vm: vm).history.contains { $0.at >= start }
     }
 
     public func settingsPage(_ vm: ModuleViewModel) -> AnyView {

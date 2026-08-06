@@ -48,8 +48,21 @@ import HelmUI
     }
 
     /// `selecting` opens the window on that module's page (used by panel utility rows).
+    /// `helm.settings` asks for the settings page itself rather than a module.
+    ///
+    /// Without it, «Показать» on the panel's permissions notice posted
+    /// `.helmOpenSettings` with no object, `show(selecting:)` left the
+    /// selection alone, and the window came forward on whatever page somebody
+    /// had been reading last — a button that says «Показать» and shows you the
+    /// Homebrew package list.
+    static let settingsPage = "helm.settings"
+
     func show(selecting moduleID: String? = nil) {
-        if let moduleID { model.selection = .module(moduleID) }
+        if moduleID == Self.settingsPage {
+            model.selection = .general
+        } else if let moduleID {
+            model.selection = .module(moduleID)
+        }
         NSApp.setActivationPolicy(.regular)
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)

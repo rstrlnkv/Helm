@@ -31,32 +31,3 @@ public struct VPNCompactWidget: View {
         }
     }
 }
-
-/// VPN at 2×N: the control, and every connection it could be talking about.
-///
-/// The 2×1 tile answers for one — the default, or the one that is up. The
-/// height is for the case that makes somebody open the panel at all: which of
-/// the four is connected, and it is not the one they expected.
-public struct VPNTallWidget: View {
-    @ObservedObject private var vm: VPNViewModel
-
-    public init(vm: VPNViewModel) { self.vm = vm }
-
-    public var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            VPNPanelTile(vm: vm)
-            if !vm.connections.isEmpty {
-                HelmWidgetBody {
-                    ForEach(vm.connections) { connection in
-                        HStack(spacing: 6) {
-                            Circle()
-                                .fill(connection.status.isUp ? HelmSignal.success : HelmText.faint)
-                                .frame(width: 6, height: 6)
-                            HelmWidgetRow(connection.name, connection.kind)
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
