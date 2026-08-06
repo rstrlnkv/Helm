@@ -138,33 +138,19 @@ final class PanelLayoutTests: XCTestCase {
         XCTAssertEqual(before.moving("a", toTab: 0, at: 99).allSlots.map(\.widget), ["b", "a"])
     }
 
-    // MARK: - Sizes, and the one refusal
+    // MARK: - Sizes
 
-    /// Only a full-width widget may grow downwards: a tall narrow one opens a
-    /// hole beside it that nothing fills without masonry.
-    func testACompactWidgetIsRefusedTall() {
-        let before = layout([("vpn", .compact)])
-        XCTAssertEqual(before.refusal(growing: "vpn", to: .tall), .tallNeedsFullWidth)
-        XCTAssertEqual(before.resizing("vpn", to: .tall).allSlots.first?.size, .compact)
-    }
-
-    /// And the way through it — the refusal has something to say, which is why
-    /// it is a refusal rather than a greyed button.
-    func testGoingThroughWideIsAllowed() {
-        var l = layout([("vpn", .compact)])
-        l = l.resizing("vpn", to: .wide)
-        XCTAssertNil(l.refusal(growing: "vpn", to: .tall))
-        XCTAssertEqual(l.resizing("vpn", to: .tall).allSlots.first?.size, .tall)
-    }
-
-    /// The control: everything else is allowed, so the refusal is about the one
-    /// case and not about resizing in general.
-    func testEveryOtherSizeChangeIsAllowed() {
-        for from: PanelWidgetSize in PanelWidgetSize.allCases {
-            for to: PanelWidgetSize in PanelWidgetSize.allCases where !(from == .compact && to == .tall) {
+    /// Any offered size, in any order, including 1×1 straight to 2×N.
+    ///
+    /// There was a refusal here — 2×N only from full width — and it made one
+    /// chip in three do nothing when pressed. `tall` is full width by
+    /// definition, so the hole it guarded against cannot open.
+    func testEverySizeChangeIsAllowed() {
+        for from in PanelWidgetSize.allCases {
+            for to in PanelWidgetSize.allCases {
                 let l = layout([("vpn", from)])
-                XCTAssertNil(l.refusal(growing: "vpn", to: to), "\(from) → \(to) was refused")
-                XCTAssertEqual(l.resizing("vpn", to: to).allSlots.first?.size, to)
+                XCTAssertEqual(l.resizing("vpn", to: to).allSlots.first?.size, to,
+                               "\(from) → \(to) did nothing")
             }
         }
     }

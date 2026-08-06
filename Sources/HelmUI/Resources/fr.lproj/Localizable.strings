@@ -663,7 +663,6 @@
 "Show" = "Afficher";
 "Remove widget" = "Retirer le widget";
 "Widget size" = "Taille du widget";
-"Only a full-width widget can grow downwards." = "Seul un widget pleine largeur peut s’étendre vers le bas.";
 "Add widget" = "Ajouter un widget";
 "Module is off" = "Module désactivé";
 "The permissions notice cannot be removed. It leaves when the grant is given." = "Cet avis ne peut pas être retiré. Il disparaît une fois l’autorisation accordée.";

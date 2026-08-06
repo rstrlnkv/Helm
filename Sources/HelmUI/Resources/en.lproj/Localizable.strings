@@ -663,7 +663,6 @@
 "Show" = "Show";
 "Remove widget" = "Remove widget";
 "Widget size" = "Widget size";
-"Only a full-width widget can grow downwards." = "Only a full-width widget can grow downwards.";
 "Add widget" = "Add widget";
 "Module is off" = "Module is off";
 "The permissions notice cannot be removed. It leaves when the grant is given." = "The permissions notice cannot be removed. It leaves when the grant is given.";

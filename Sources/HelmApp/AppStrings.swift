@@ -301,10 +301,6 @@ enum AppStr {
     static var panelSetup: String { L("Editing the panel") }
     static var removeWidget: String { L("Remove widget") }
     static var widgetSize: String { L("Widget size") }
-    /// The one refusal the layout makes, said as what to do instead.
-    static var tallNeedsFullWidth: String {
-        L("Only a full-width widget can grow downwards.")
-    }
     static var addWidget: String { L("Add widget") }
     /// The gallery's heading. Not «Add widget» any more: adding a widget is the
     /// plus on a drawer row, and this block holds only what was taken off the

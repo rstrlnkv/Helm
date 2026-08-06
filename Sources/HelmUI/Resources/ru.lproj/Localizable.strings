@@ -663,7 +663,6 @@
 "Show" = "Показать";
 "Remove widget" = "Убрать виджет";
 "Widget size" = "Размер виджета";
-"Only a full-width widget can grow downwards." = "Раскрыться по высоте может только виджет во всю ширину.";
 "Add widget" = "Добавить виджет";
 "Module is off" = "Модуль выключен";
 "The permissions notice cannot be removed. It leaves when the grant is given." = "Это извещение нельзя убрать. Оно уйдёт, когда разрешение будет выдано.";
