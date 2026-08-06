@@ -306,6 +306,7 @@ enum AppStr {
     /// plus on a drawer row, and this block holds only what was taken off the
     /// panel altogether.
     static var takenOffThePanel: String { L("Taken off the panel") }
+    static var chooseUtilities: String { L("Choose what is in the list") }
     static var newTab: String { L("New tab") }
     static var closeTab: String { L("Close tab") }
     static var tabLabel: String { L("Tab") }

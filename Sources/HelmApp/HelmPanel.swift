@@ -198,6 +198,8 @@ struct HelmPanelContent: View {
     @State private var activeTab = 0
     /// The strip the panel is drawn in, top to bottom of the screen. The card
     /// may not be taller than it, and the grid is what gives way.
+    /// The drawer is choosing its rows rather than showing them.
+    @State private var choosingUtilities = false
     @State private var showEditButton = AppSettings.showPanelEditButton
     @State private var stripHeight: CGFloat = 0
     /// The grid's natural height, so the scroll view never grows past its own
@@ -228,34 +230,41 @@ struct HelmPanelContent: View {
     /// The one widget that belongs to no module. This is why `Slot.widget` is
     /// an id rather than a module id.
     static let permissionsWidget = "helm.permissions"
+    /// The drawer, which is a widget too: it is dragged, ordered and taken off
+    /// like the others, and the only thing it does differently is that its
+    /// corner control chooses *contents* rather than proportions.
+    static let utilitiesWidget = "helm.utilities"
 
     // MARK: - What the panel can draw right now
 
     /// Modules that offer a widget, and the ones whose UI lives in Settings.
     /// One pass — building a widget builds a view, so each module is asked once.
     private var candidates: (byID: [String: ModuleHost.Live], order: [String],
-                             utilities: [ModuleHost.Live]) {
+                             utilities: [ModuleHost.Live], choosable: [ModuleHost.Live]) {
         var byID: [String: ModuleHost.Live] = [:]
         var order: [String] = []
         var utilities: [ModuleHost.Live] = []
+        /// Everything the drawer *could* hold, ticked or not — what the pencil
+        /// offers. Its rows are the same rows; the difference is that a hidden
+        /// module is in this list and not in the other.
+        var choosable: [ModuleHost.Live] = []
         for live in host.enabledModules {
             guard let contribution = live.descriptor.menuBar(live.vm) else { continue }
             let id = live.descriptor.idRaw
-            // Out of the panel entirely: neither a tile nor a row.
-            if layout.isHidden(id) { continue }
             // The drawer holds everything that is not a tile — a module with no
             // widget, and a module whose widget was taken off. «Not a tile» and
             // «not here» are different answers, and one list saying both is
             // what made taking a widget off look like deleting the module.
             if contribution.isUtility || layout.isDismissed(id) {
-                utilities.append(live)
+                choosable.append(live)
+                if !layout.isHidden(id) { utilities.append(live) }
                 if !contribution.isUtility { byID[id] = live }   // it can be promoted back
                 continue
             }
             byID[id] = live
             order.append(id)
         }
-        return (byID, order, utilities)
+        return (byID, order, utilities, choosable)
     }
 
     /// The stored arrangement decides what is drawn and in what order; the live
@@ -278,6 +287,11 @@ struct HelmPanelContent: View {
     private func widgets(_ byID: [String: ModuleHost.Live]) -> [Widget] {
         let slots = layout.tabs.indices.contains(tabIndex) ? layout.tabs[tabIndex].widgets : []
         let placed: [Widget] = slots.compactMap { slot in
+            if slot.widget == Self.utilitiesWidget {
+                // One size. «How much room does the list of everything else
+                // take» is not a question with three answers.
+                return Widget(id: slot.widget, view: AnyView(utilitiesWidget), size: .tall)
+            }
             guard let live = byID[slot.widget] else {
                 // A module that is switched off keeps its place and says so.
                 // Dropping the tile would take the arrangement apart and leave
@@ -300,7 +314,8 @@ struct HelmPanelContent: View {
     }
 
     private func reload() {
-        layout = PanelLayoutStore.read(from: AppSettings.store, offered: candidates.order)
+        layout = PanelLayoutStore.read(from: AppSettings.store,
+                                       offered: candidates.order + [Self.utilitiesWidget])
     }
 
     private func apply(_ next: PanelLayout) {
@@ -363,6 +378,10 @@ struct HelmPanelContent: View {
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .modifier(EditChrome(active: editing, widget: widget.id, size: widget.size,
                                  sizes: offeredSizes(widget.id),
+                                 // The drawer chooses contents, not proportions.
+                                 choose: widget.id == Self.utilitiesWidget
+                                     ? { choosingUtilities.toggle() } : nil,
+                                 choosing: choosingUtilities,
                                  refused: { layout.refusal(growing: widget.id, to: $0) != nil },
                                  resize: { size in
                                      if let why = layout.refusal(growing: widget.id, to: size) {
@@ -379,6 +398,22 @@ struct HelmPanelContent: View {
                 apply(layout.moving(dropped, toTab: target.tab, at: target.index))
             })
         }
+    }
+
+    /// The drawer, at the one size it has.
+    private var utilitiesWidget: some View {
+        let parts = candidates
+        return UtilitiesSection(modules: choosingUtilities ? parts.choosable : parts.utilities,
+                                expanded: $utilitiesExpanded,
+                                editing: editing,
+                                choosing: choosingUtilities,
+                                isOn: { !layout.isHidden($0) },
+                                toggle: { id in
+                                    apply(layout.isHidden(id) ? layout.restoring(id)
+                                                              : layout.hiding(id))
+                                },
+                                promotable: { parts.byID[$0] != nil },
+                                promote: { apply(layout.adding($0, toTab: tabIndex)) })
     }
 
     private func offeredSizes(_ id: String) -> [PanelWidgetSize] {
@@ -464,7 +499,7 @@ struct HelmPanelContent: View {
             HStack(spacing: 8) {
                 Text(AppStr.panelSetup).font(.subheadline.weight(.semibold))
                 Spacer(minLength: 8)
-                Button(AppStr.done) { editing = false; refusal = nil }
+                Button(AppStr.done) { editing = false; refusal = nil; choosingUtilities = false }
                     .controlSize(.small)
                     .buttonStyle(.borderedProminent)
             }
@@ -484,9 +519,11 @@ struct HelmPanelContent: View {
         // Only what was taken off the panel altogether. Everything else that
         // is not a tile is one row down, in the drawer, where it can be
         // promoted — so the gallery is not a second copy of that list.
-        let rest = ModuleRegistry.all
-            .filter { layout.isHidden($0.idRaw) && ModuleHost.shared.isEnabled($0) }
-            .map(\.idRaw)
+        // Only the drawer can end up here now: a module taken off a tile falls
+        // into the drawer, and one unticked in the drawer's own list is put
+        // back from there. What is left is the drawer itself.
+        let rest = layout.isDismissed(Self.utilitiesWidget) || layout.isHidden(Self.utilitiesWidget)
+            ? [Self.utilitiesWidget] : []
         // Shown only when there is something in it. Since a widget taken off a
         // tile falls to the drawer rather than out of the panel, this block was
         // empty for everybody — a heading and a sentence saying there was
@@ -515,14 +552,22 @@ struct HelmPanelContent: View {
 
     private func ghost(_ id: String, _ live: ModuleHost.Live?) -> some View {
         let descriptor = live?.descriptor ?? ModuleRegistry.all.first { $0.idRaw == id }
+        let isDrawer = id == Self.utilitiesWidget
         return Button {
-            // Back into the drawer, not straight into the grid: the gallery
-            // says «put this back in the panel», and where it belongs in the
-            // panel is the next decision, taken one row down.
-            apply(layout.restoring(id))
+            // A tile again: `adding` clears both refusals and gives it a slot,
+            // which is what the drawer needs — it *is* a tile, and one that
+            // only came here because somebody took it off.
+            apply(layout.adding(id, toTab: tabIndex))
         } label: {
             VStack(spacing: 4) {
-                if let descriptor {
+                if isDrawer {
+                    Image(systemName: "wrench.and.screwdriver")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(HelmText.quiet)
+                    Text(AppStr.utilities)
+                        .font(HelmText.rowDetail)
+                        .lineLimit(1)
+                } else if let descriptor {
                     HelmIconPlate(symbol: descriptor.moduleMetadata.sfSymbol,
                                   tint: descriptor.moduleTint.colour, size: 20)
                     Text(descriptor.moduleMetadata.shortName)
@@ -643,7 +688,7 @@ struct HelmPanelContent: View {
     /// Everything between the pinned bars: the grid, the gallery, the drawer.
     @ViewBuilder
     private func scrollable(_ parts: (byID: [String: ModuleHost.Live], order: [String],
-                                      utilities: [ModuleHost.Live]),
+                                      utilities: [ModuleHost.Live], choosable: [ModuleHost.Live]),
                             _ items: [Widget]) -> some View {
             if parts.order.isEmpty && items.isEmpty && !editing {
                 VStack(spacing: 8) {
@@ -660,16 +705,6 @@ struct HelmPanelContent: View {
             } else {
                 grid(items)
                 if editing { gallery(parts.byID) }
-                if !parts.utilities.isEmpty {
-                    UtilitiesSection(modules: parts.utilities, expanded: $utilitiesExpanded,
-                                     editing: editing,
-                                     // A row that can be a tile offers to become
-                                     // one; the minus on a row is the second
-                                     // press, and that one does mean «not here».
-                                     promotable: { parts.byID[$0] != nil },
-                                     promote: { apply(layout.adding($0, toTab: tabIndex)) },
-                                     remove: { apply(layout.hiding($0)) })
-                }
             }
     }
 
@@ -787,6 +822,10 @@ private struct EditChrome: ViewModifier {
     let widget: String
     let size: PanelWidgetSize
     let sizes: [PanelWidgetSize]
+    /// Non-nil for a widget whose corner control chooses something other than a
+    /// size — the drawer, which chooses its rows.
+    let choose: (() -> Void)?
+    let choosing: Bool
     let refused: (PanelWidgetSize) -> Bool
     let resize: (PanelWidgetSize) -> Void
     let remove: () -> Void
@@ -819,7 +858,27 @@ private struct EditChrome: ViewModifier {
                     .offset(x: -7, y: -7)
                     .accessibilityLabel(AppStr.removeWidget)
                 }
-                .overlay(alignment: .topTrailing) { sizeControl.offset(x: 7, y: -7) }
+                .overlay(alignment: .topTrailing) {
+                    Group {
+                        if let choose {
+                            Button(action: choose) {
+                                Image(systemName: choosing ? "checkmark" : "pencil")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundStyle(choosing ? Color.white : HelmText.quiet)
+                                    .padding(.horizontal, 6).padding(.vertical, 3)
+                                    .background(Capsule().fill(choosing ? AnyShapeStyle(Color.accentColor)
+                                                               : AnyShapeStyle(.regularMaterial)))
+                                    .overlay(Capsule().strokeBorder(HelmSurface.hairline))
+                            }
+                            .buttonStyle(.plain)
+                            .help(AppStr.chooseUtilities)
+                            .accessibilityLabel(AppStr.chooseUtilities)
+                        } else {
+                            sizeControl
+                        }
+                    }
+                    .offset(x: 7, y: -7)
+                }
                 // Room for the two of them to hang outside the card without
                 // being cut off by the row above.
                 .padding(7)
@@ -900,9 +959,12 @@ private struct UtilitiesSection: View {
     /// is on, every row offers a way out. It is also held open — a list you
     /// have to disclose before you can edit it is a list nobody edits.
     let editing: Bool
+    /// The pencil is pressed: every row is a choice rather than a shortcut.
+    let choosing: Bool
+    let isOn: (String) -> Bool
+    let toggle: (String) -> Void
     let promotable: (String) -> Bool
     let promote: (String) -> Void
-    let remove: (String) -> Void
     private var open: Bool { expanded || editing }
     /// Natural height of the rows, measured so the disclosure animates between
     /// 0 and a concrete value.
@@ -947,7 +1009,16 @@ private struct UtilitiesSection: View {
                 ForEach(modules, id: \.descriptor.idRaw) { live in
                     HStack(spacing: 6) {
                         utilityRow(live)
-                        if editing {
+                        if choosing {
+                            Button { toggle(live.descriptor.idRaw) } label: {
+                                Image(systemName: isOn(live.descriptor.idRaw)
+                                      ? "checkmark.circle.fill" : "circle")
+                                    .font(.system(size: 14))
+                                    .foregroundStyle(isOn(live.descriptor.idRaw)
+                                                     ? Color.accentColor : HelmText.faint)
+                            }
+                            .buttonStyle(.plain)
+                        } else if editing {
                             if promotable(live.descriptor.idRaw) {
                                 Button { promote(live.descriptor.idRaw) } label: {
                                     Image(systemName: "plus.circle.fill")
@@ -958,13 +1029,6 @@ private struct UtilitiesSection: View {
                                 .accessibilityLabel(AppStr.addWidget)
                                 .help(AppStr.addWidget)
                             }
-                            Button { remove(live.descriptor.idRaw) } label: {
-                                Image(systemName: "minus.circle.fill")
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(HelmSignal.danger)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(AppStr.removeWidget)
                         }
                     }
                 }
