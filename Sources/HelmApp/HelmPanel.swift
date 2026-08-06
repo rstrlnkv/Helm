@@ -1299,6 +1299,16 @@ private struct DragToReorder: ViewModifier {
                     begin()
                     return NSItemProvider(object: widget as NSString)
                 }
+                // The target reaches into the gutters.
+                //
+                // A drop destination is exactly the tile's rectangle, so the
+                // 8 pt between two tiles belonged to neither and a pointer
+                // crossing it triggered nothing until it was well inside the
+                // next tile — which is the lateness. Grown by half a gutter
+                // plus a little on every side, so the boundary between two
+                // tiles is what reacts, and taken back again immediately so
+                // the layout is unchanged.
+                .padding(-10)
                 .onDrop(of: [.text], isTargeted: Binding(
                     get: { false },
                     set: { over in if over { enter() } }
@@ -1306,6 +1316,7 @@ private struct DragToReorder: ViewModifier {
                     end()
                     return true
                 }
+                .padding(10)
         }
     }
 }
