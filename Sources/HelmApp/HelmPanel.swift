@@ -1337,8 +1337,17 @@ private struct EditChrome: ViewModifier {
                 if lifted {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .fill(HelmSurface.wellFill)
+                        .transition(.opacity)
                 }
             }
+            // The slot dims on its own clock, slower than the pickup. The lift
+            // is on `reorder` — a quarter-second spring, right for a tile
+            // answering a hand — but the same curve on the fade read as the
+            // content being switched off. What empties out behind your hand is
+            // background, and background takes its time. Scoped here so only
+            // the fade and the well take it; the tile's geometry stays on the
+            // transaction that moves it.
+            .animation(HelmMotion.disclosure, value: lifted)
             .overlay {
                 if shielded {
                     Color.clear.contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
