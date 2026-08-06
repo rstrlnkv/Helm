@@ -217,10 +217,28 @@ struct HelmPanelContent: View {
     /// Bumped when the arrangement changes so the panel rebuilds its rows.
     @State private var orderTick = 0
 
+    /// What a widget is made of.
+    ///
+    /// The utilities list is **not** an `AnyView`, and that is the whole point
+    /// of this enum. `AnyView` erases the type, so SwiftUI cannot match the old
+    /// subtree to the new one between updates — it rebuilds it, and the
+    /// `@State` inside goes with it. That state is the measured height the
+    /// list's disclosure animates between, so it was reset to zero on every
+    /// pass and the list opened by jumping from nothing to its full size,
+    /// taking the card with it.
+    ///
+    /// A module's tile can stay erased: it is handed over as `AnyView` by the
+    /// descriptor and nothing here can un-erase it. What matters is that the
+    /// one view *this file* owns is not.
+    private enum WidgetContent {
+        case module(AnyView)
+        case utilities
+    }
+
     /// One widget, at the size it ended up with.
     private struct Widget: Identifiable {
         let id: String
-        let view: AnyView
+        let content: WidgetContent
         let size: PanelWidgetSize
         /// Arrives by itself and cannot be taken off — the permissions notice
         /// is the only one, and it leaves when the grant is given.
@@ -277,8 +295,8 @@ struct HelmPanelContent: View {
         let missing = PermissionSummary.withheld(accessibility: accessibility, fullDisk: diskAccess)
         guard !missing.isEmpty else { return nil }
         return Widget(id: Self.permissionsWidget,
-                      view: AnyView(PermissionsWidget(withheld: missing,
-                                                      modules: PermissionSummary.affected(by: missing))),
+                      content: .module(AnyView(PermissionsWidget(
+                          withheld: missing, modules: PermissionSummary.affected(by: missing)))),
                       size: .wide, pinned: true)
     }
 
@@ -290,7 +308,7 @@ struct HelmPanelContent: View {
             if slot.widget == Self.utilitiesWidget {
                 // One size. «How much room does the list of everything else
                 // take» is not a question with three answers.
-                return Widget(id: slot.widget, view: AnyView(utilitiesWidget), size: .tall)
+                return Widget(id: slot.widget, content: .utilities, size: .tall)
             }
             guard let live = byID[slot.widget] else {
                 // A module that is switched off keeps its place and says so.
@@ -300,13 +318,13 @@ struct HelmPanelContent: View {
                 guard let descriptor = ModuleRegistry.all.first(where: { $0.idRaw == slot.widget }),
                       !ModuleHost.shared.isEnabled(descriptor) else { return nil }
                 return Widget(id: slot.widget,
-                              view: AnyView(DisabledModuleWidget(descriptor: descriptor)),
+                              content: .module(AnyView(DisabledModuleWidget(descriptor: descriptor))),
                               size: slot.size)
             }
             let offered = live.descriptor.panelWidgetSizes(live.vm)
             guard let size = PanelGrid.resolve(slot.size, offered: offered),
                   let view = live.descriptor.panelWidget(size, live.vm) else { return nil }
-            return Widget(id: slot.widget, view: view, size: size)
+            return Widget(id: slot.widget, content: .module(view), size: size)
         }
         // At the top, always. It is the only thing in the panel that is wrong
         // right now, and a notice somebody has to scroll to is a notice.
@@ -340,6 +358,12 @@ struct HelmPanelContent: View {
             HStack(alignment: .top, spacing: PanelGrid.gap) {
                 ForEach(row, id: \.self) { index in
                     cell(items[index], among: items)
+                        // Identity by widget, not by position. A cell keyed on
+                        // its index in the row is a different cell the moment
+                        // anything above it changes, and a different cell has
+                        // different `@State` — which here is the measured
+                        // height an open list animates between.
+                        .id(items[index].id)
                 }
                 // A part-filled last row keeps its tiles their own width
                 // instead of stretching them across the gap.
@@ -355,7 +379,7 @@ struct HelmPanelContent: View {
     @ViewBuilder
     private func cell(_ widget: Widget, among items: [Widget]) -> some View {
         if widget.pinned {
-            widget.view
+            body(of: widget)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
                 // A pin where the others have a minus, and it says why rather
                 // than offering a control that would only refuse.
@@ -374,7 +398,7 @@ struct HelmPanelContent: View {
                 }
                 .padding(editing ? 7 : 0)
         } else {
-        widget.view
+        body(of: widget)
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .modifier(EditChrome(active: editing, widget: widget.id, size: widget.size,
                                  sizes: offeredSizes(widget.id),
@@ -413,6 +437,15 @@ struct HelmPanelContent: View {
                                                               : layout.hiding(id))
                                 },
                                 )
+    }
+
+    /// The one branch that keeps a concrete type — see `WidgetContent`.
+    @ViewBuilder
+    private func body(of widget: Widget) -> some View {
+        switch widget.content {
+        case .module(let view): view
+        case .utilities: utilitiesWidget
+        }
     }
 
     private func offeredSizes(_ id: String) -> [PanelWidgetSize] {
