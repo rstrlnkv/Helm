@@ -16,6 +16,9 @@ public enum ObsoleteDefaults {
         "module.island.shelfBookmarks",
         // Replaced by permissionAuditVersion, which re-arms after an update.
         "module.app.permissionAuditShown",
+        // The panel's width was a setting for one night. 480 pt buys a third
+        // column, and that is not a reason to ask.
+        "module.app.panelWidth",
     ]
 
     public static func purge(from store: KeyValueStore) {

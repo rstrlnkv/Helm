@@ -663,7 +663,6 @@
 "Show" = "Показать";
 "Configure panel" = "Настроить панель";
 "Panel setup" = "Настройка панели";
-"Panel width" = "Ширина панели";
 "Remove widget" = "Убрать виджет";
 "Widget size" = "Размер виджета";
 "Only a full-width widget can grow downwards." = "Раскрыться по высоте может только виджет во всю ширину.";

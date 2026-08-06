@@ -29,9 +29,13 @@ private final class KeyablePanel: NSPanel {
 
 /// One width for the strip window and the card content inside it.
 ///
-/// Chosen in the panel's own setup rather than fixed, because the column count
-/// follows from it: 300 and 400 both give two columns and 480 gives three.
-@MainActor private var helmPanelWidth: CGFloat { AppSettings.panelWidth }
+/// It was briefly a setting, on the argument that the column count follows from
+/// it. It does — 480 buys a third column — and that is not a reason to ask:
+/// three columns of 147 pt in a menu-bar panel is a grid nobody wants and a
+/// question everybody has to answer once. The panel is 300 pt, as it has always
+/// been, and `PanelGrid` still derives the columns from the number rather than
+/// holding one of its own.
+private let helmPanelWidth: CGFloat = 300
 /// Room on each side of the card for the glass to cast into.
 ///
 /// A window shadow is drawn by the window server *outside* the frame, so the
@@ -93,7 +97,6 @@ private let helmPanelShadowMargin: CGFloat = 28
         ) { [weak self] _ in
             Task { @MainActor in self?.hide() }
         }
-        observeWidth()
     }
 
     var isVisible: Bool { panel.isVisible }
@@ -140,18 +143,6 @@ private let helmPanelShadowMargin: CGFloat = 28
 
     /// Close the panel when the user clicks outside it (but not on the status
     /// item itself — that click re-toggles through the normal path).
-    /// Kept for the lifetime of the panel: the width can change while it is
-    /// open, from its own setup bar.
-    private func observeWidth() {
-        NotificationCenter.default.addObserver(forName: .helmPanelWidthChanged,
-                                               object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated {
-                guard let self, self.panel.isVisible else { return }
-                self.reframe()
-            }
-        }
-    }
-
     private func installDismissMonitor() {
         removeDismissMonitor()
         dismissMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
@@ -173,8 +164,6 @@ private let helmPanelShadowMargin: CGFloat = 28
 extension Notification.Name {
     /// Posted when the transparent area under the card is clicked.
     static let helmPanelDismissRequested = Notification.Name("helmPanelDismissRequested")
-    /// Posted when the panel's width changes, so the window follows the card.
-    static let helmPanelWidthChanged = Notification.Name("helmPanelWidthChanged")
 }
 
 /// Internal rather than private so a test can render it: the panel is a
@@ -188,7 +177,6 @@ struct HelmPanelContent: View {
     @State private var layout = PanelLayout(tabs: [])
     /// The one refusal the layout makes, shown where the attempt was made.
     @State private var refusal: String?
-    @State private var width = AppSettings.panelWidth
     /// Which tab is being looked at. Session state, not stored: the panel is
     /// opened for a glance, and opening it on the tab somebody happened to
     /// leave last week is a panel that answers a question nobody asked.
@@ -293,7 +281,7 @@ struct HelmPanelContent: View {
     /// why this is rows of `HStack` rather than a grid view.
     @ViewBuilder
     private func grid(_ items: [Widget]) -> some View {
-        let columns = PanelGrid.columns(for: width)
+        let columns = PanelGrid.columns(for: helmPanelWidth)
         let rows = PanelGrid.rows(sizes: items.map(\.size), columns: columns)
         ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
             HStack(alignment: .top, spacing: PanelGrid.gap) {
@@ -437,18 +425,6 @@ struct HelmPanelContent: View {
                     .controlSize(.small)
                     .buttonStyle(.borderedProminent)
             }
-            Picker(AppStr.panelWidth, selection: $width) {
-                ForEach(AppSettings.panelWidths, id: \.self) { option in
-                    Text("\(Int(option))").tag(option)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .onChange(of: width) { _, chosen in AppSettings.panelWidth = chosen }
-            Text(AppStr.panelGeometry(columns: PanelGrid.columns(for: width),
-                                      tile: Int(PanelGrid.tileWidth(for: width).rounded())))
-                .font(HelmText.rowDetail)
-                .foregroundStyle(HelmText.quiet)
             if let refusal {
                 Text(refusal)
                     .font(HelmText.rowDetail)
@@ -473,7 +449,7 @@ struct HelmPanelContent: View {
                     .font(HelmText.rowDetail)
                     .foregroundStyle(HelmText.faint)
             } else {
-                let columns = PanelGrid.columns(for: width)
+                let columns = PanelGrid.columns(for: helmPanelWidth)
                 ForEach(Array(stride(from: 0, to: rest.count, by: columns)), id: \.self) { start in
                     HStack(spacing: PanelGrid.gap) {
                         ForEach(rest[start..<min(start + columns, rest.count)], id: \.self) { id in
@@ -599,7 +575,7 @@ struct HelmPanelContent: View {
             footer
         }
         .padding(12)
-        .frame(width: width)
+        .frame(width: helmPanelWidth)
         .alert(AppStr.renameSection, isPresented: Binding(
             get: { renaming != nil }, set: { if !$0 { renaming = nil } }
         )) {
@@ -614,9 +590,6 @@ struct HelmPanelContent: View {
             reload()
             diskAccess = PermissionCheck.currentFullDiskAccess()
             accessibility = PermissionCheck.currentAccessibility()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .helmPanelWidthChanged)) { _ in
-            width = AppSettings.panelWidth
         }
         // Liquid Glass, and no border of our own: glass supplies its specular
         // edge, and a hand-drawn hairline on top of it doubles the line. 26 pt
