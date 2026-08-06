@@ -75,6 +75,21 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 - The size picker's white-on-accent measured 3.22:1, the one piece of text on the
   page under the floor every other colour was solved against. It is the system's
   segmented control now.
+- **The utilities list is a widget, and its corner control is a pencil.** It was
+  a block bolted under the grid — not draggable, not orderable, not removable.
+  It has a slot in the layout like everything else, at one size (2×N), and where
+  the others have size chips it has a pencil that chooses its rows: every row
+  becomes a tick, and the list grows to include what was unticked, which is the
+  only way to tick it again.
+- **Two questions, two places.** Whether a module is a tile is answered by the
+  gallery — everything that could be one and is not, the utilities widget among
+  them. Whether it is a row in that list is answered by the list's own pencil. A
+  module can be both a row and a gallery entry at once, because «not a tile» and
+  «not in the list» are different refusals.
+- **A panel holding one widget drew a card 768 pt tall**, with the footer
+  floating in the middle. `.frame(maxHeight:)` takes whatever the parent
+  proposes, and the parent is a strip running to the bottom of the screen.
+  *(0.9.0-dev.5 and dev.6.)*
 - **The utilities drawer is the person's too.** It listed every enabled module
   whose UI lives in Settings and there was no way to say «not that one». Each
   row has a minus while the panel is being arranged, and the gallery offers back
