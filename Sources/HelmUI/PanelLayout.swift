@@ -59,7 +59,35 @@ public struct PanelLayout: Equatable, Codable, Sendable {
 
     public var tabs: [Tab]
 
-    public init(tabs: [Tab]) { self.tabs = tabs }
+    /// Widgets the person took off the panel.
+    ///
+    /// **Without this, removing one was undone by the next read.** `reconciled`
+    /// adds any id this build can draw that the layout does not hold — which is
+    /// how a module that arrives with an update joins the panel — and a widget
+    /// somebody has just removed is exactly that: an id this build can draw
+    /// that the layout does not hold. So it came back on the next launch, and
+    /// the panel looked like it had forgotten.
+    ///
+    /// «Arrived» and «taken off» are different facts and neither can be
+    /// inferred from the other, so the second one is written down.
+    public var dismissed: [String]
+
+    public init(tabs: [Tab], dismissed: [String] = []) {
+        self.tabs = tabs
+        self.dismissed = dismissed
+    }
+
+    /// A layout written before `dismissed` existed decodes with none.
+    ///
+    /// Synthesised `Decodable` does not use a property's default value — it
+    /// throws on the missing key, and `JSONDecoder` gives up on the whole
+    /// document — so every panel arranged before this build would have read as
+    /// no panel at all.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        tabs = try container.decode([Tab].self, forKey: .tabs)
+        dismissed = try container.decodeIfPresent([String].self, forKey: .dismissed) ?? []
+    }
 
     /// Every widget in the panel, tab by tab.
     public var allSlots: [Slot] { tabs.flatMap(\.widgets) }
@@ -102,9 +130,12 @@ public struct PanelLayout: Equatable, Codable, Sendable {
             return copy
         }
         if tabs.isEmpty { tabs = [Tab(id: "seed.main", seed: "main", name: nil, widgets: [])] }
-        let fresh = arriving.filter { !seen.contains($0) }
+        // Not everything absent is missing: the ones taken off were absent on
+        // purpose.
+        let taken = Set(dismissed)
+        let fresh = arriving.filter { !seen.contains($0) && !taken.contains($0) }
         tabs[0].widgets.append(contentsOf: fresh.map { Slot(widget: $0, size: .wide) })
-        return PanelLayout(tabs: tabs)
+        return PanelLayout(tabs: tabs, dismissed: dismissed)
     }
 
     // MARK: - Rearranging
@@ -163,10 +194,12 @@ public struct PanelLayout: Equatable, Codable, Sendable {
         return copy
     }
 
+    /// Taking a widget off is remembered, or the next read puts it back.
     public func removing(_ widget: String) -> PanelLayout {
         guard let at = placement(of: widget) else { return self }
         var copy = self
         copy.tabs[at.tab].widgets.remove(at: at.index)
+        if !copy.dismissed.contains(widget) { copy.dismissed.append(widget) }
         return copy
     }
 
@@ -174,8 +207,11 @@ public struct PanelLayout: Equatable, Codable, Sendable {
     /// already in the panel is moved rather than copied.
     public func adding(_ widget: String, toTab tab: Int) -> PanelLayout {
         guard tabs.indices.contains(tab) else { return self }
-        let copy = removing(widget)
-        var next = copy
+        var next = removing(widget)
+        // Putting it back is the answer to having taken it off, so the note
+        // that it was taken off goes with it. Otherwise a widget added from the
+        // gallery would be one somebody had to add again after every update.
+        next.dismissed.removeAll { $0 == widget }
         next.tabs[tab].widgets.append(Slot(widget: widget, size: .wide))
         return next
     }
