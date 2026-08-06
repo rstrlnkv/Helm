@@ -12,6 +12,10 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 > a MINOR bump under this file's own rule.
 
 ### Added
+- **About Helm says who wrote it** — «Автор · Ростислав Стрельников», with a
+  Telegram link, under the version and the build rather than in the small print
+  at the foot. The licence and the flag credit down there are obligations; this
+  is the answer to «who made this».
 - **Settings says what is missing before you scroll.** A line above everything
   else counts the withheld permissions and the modules they reach. The section
   that answers it starts 919 pt down a form with a 587 pt viewport, so at the
