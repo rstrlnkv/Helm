@@ -34,13 +34,25 @@ public enum StatusMenuBuilder {
 
     public static func menu(settingsTitle: String, quitTitle: String, groups: [Group],
                      target: AnyObject?,
-                     openSettings: Selector, openModule: Selector, quit: Selector) -> NSMenu {
+                     openSettings: Selector, openModule: Selector, quit: Selector,
+                     editTitle: String? = nil, editWidgets: Selector? = nil) -> NSMenu {
         let menu = NSMenu()
 
         let settings = NSMenuItem(title: settingsTitle, action: openSettings, keyEquivalent: ",")
         settings.target = target
         settings.image = glyph("gearshape")
         menu.addItem(settings)
+
+        // Next to Settings, because it is the same kind of thing — a way to
+        // change Helm rather than to use it — and because the button it
+        // duplicates in the panel's footer can be switched off. A mode with
+        // exactly one door is a mode somebody can lock themselves out of.
+        if let editTitle, let editWidgets {
+            let edit = NSMenuItem(title: editTitle, action: editWidgets, keyEquivalent: "")
+            edit.target = target
+            edit.image = glyph("pencil")
+            menu.addItem(edit)
+        }
 
         for group in groups where !group.entries.isEmpty {
             menu.addItem(.separator())

@@ -678,3 +678,6 @@
 "Paused" = "Пауза";
 "FOLDERS" = "ПАПКИ";
 "No folders watched yet" = "Пока ни одной папки";
+"Edit widgets" = "Редактировать виджеты";
+"Show the edit button in the panel" = "Показывать кнопку настройки в панели";
+"It is also in the menu-bar icon’s right-click menu." = "Он также есть в меню по правому клику на иконку.";

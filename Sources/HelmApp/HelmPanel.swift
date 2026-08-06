@@ -116,6 +116,10 @@ private let helmPanelShadowMargin: CGFloat = 28
         installDismissMonitor()
     }
 
+    /// Whether the panel is on screen, for a caller that wants it open rather
+    /// than toggled.
+    var isShown: Bool { panel.isVisible }
+
     private func hide() {
         removeDismissMonitor()
         panel.orderOut(nil)
@@ -164,6 +168,8 @@ private let helmPanelShadowMargin: CGFloat = 28
 extension Notification.Name {
     /// Posted when the transparent area under the card is clicked.
     static let helmPanelDismissRequested = Notification.Name("helmPanelDismissRequested")
+    /// Posted by the icon's menu: open the panel and arrange it.
+    static let helmPanelEditRequested = Notification.Name("helmPanelEditRequested")
 }
 
 /// Internal rather than private so a test can render it: the panel is a
@@ -192,6 +198,7 @@ struct HelmPanelContent: View {
     @State private var activeTab = 0
     /// The strip the panel is drawn in, top to bottom of the screen. The card
     /// may not be taller than it, and the grid is what gives way.
+    @State private var showEditButton = AppSettings.showPanelEditButton
     @State private var stripHeight: CGFloat = 0
     /// The grid's natural height, so the scroll view never grows past its own
     /// content — otherwise a panel holding two widgets would be as tall as the
@@ -548,12 +555,14 @@ struct HelmPanelContent: View {
             // A pencil is the one glyph macOS uses for exactly this, and the
             // name is still there for a pointer that rests on it and for
             // VoiceOver.
-            if !editing {
+            // Both glyphs at the right edge, together. A lone icon floating
+            // in the middle of a footer reads as something that lost its label
+            // rather than as something that never needed one.
+            if !editing && showEditButton {
                 footerGlyph("pencil", AppStr.configurePanel) {
                     withAnimation(HelmMotion.interface) { editing = true }
                     refusal = nil
                 }
-                Spacer(minLength: 8)
             }
             footerGlyph("power", AppStr.quit) { NSApp.terminate(nil) }
         }
@@ -612,6 +621,15 @@ struct HelmPanelContent: View {
         .onReceive(NotificationCenter.default.publisher(for: .helmModuleOrderChanged)) { _ in
             orderTick &+= 1
             reload()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .helmMenuBarStyleChanged)) { _ in
+            showEditButton = AppSettings.showPanelEditButton
+        }
+        // Asked for from the icon's menu, which is the door that cannot be
+        // switched off.
+        .onReceive(NotificationCenter.default.publisher(for: .helmPanelEditRequested)) { _ in
+            withAnimation(HelmMotion.interface) { editing = true }
+            refusal = nil
         }
     }
 
