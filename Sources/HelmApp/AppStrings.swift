@@ -302,6 +302,10 @@ enum AppStr {
         L("Only a full-width widget can grow downwards.")
     }
     static var addWidget: String { L("Add widget") }
+    /// The gallery's heading. Not «Add widget» any more: adding a widget is the
+    /// plus on a drawer row, and this block holds only what was taken off the
+    /// panel altogether.
+    static var takenOffThePanel: String { L("Taken off the panel") }
     static var newTab: String { L("New tab") }
     static var closeTab: String { L("Close tab") }
     static var tabLabel: String { L("Tab") }
@@ -313,7 +317,6 @@ enum AppStr {
     }
     static var moduleIsOff: String { L("Module is off") }
     static var addingTurnsItOn: String { L("Switched off — adding it turns it on") }
-    static var everythingIsHere: String { L("Everything is already on this tab.") }
     static var permissionsWidgetPinned: String {
         L("The permissions notice cannot be removed. It leaves when the grant is given.")
     }

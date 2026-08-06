@@ -669,7 +669,6 @@
 "Add widget" = "添加小组件";
 "Module is off" = "模块已关闭";
 "Switched off — adding it turns it on" = "已关闭 — 添加后会自动开启";
-"Everything is already on this tab." = "所有内容都已在此标签页中。";
 "The permissions notice cannot be removed. It leaves when the grant is given." = "该提示无法移除，授予权限后会自行消失。";
 "Main" = "主要";
 "New tab" = "新建标签页";
@@ -681,3 +680,4 @@
 "Edit widgets" = "编辑小组件";
 "Show the edit button in the panel" = "在面板中显示编辑按钮";
 "It is also in the menu-bar icon’s right-click menu." = "它也在菜单栏图标的右键菜单里。";
+"Taken off the panel" = "已移出面板";
