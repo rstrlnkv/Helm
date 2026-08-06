@@ -743,7 +743,7 @@ struct HelmPanelContent: View {
         .onReceive(NotificationCenter.default.publisher(for: .helmPanelDidShow)) { _ in
             revealed = false
             DispatchQueue.main.async {
-                withAnimation(HelmMotion.interface) { revealed = true }
+                withAnimation(HelmMotion.panelEntrance) { revealed = true }
             }
         }
         // Asked for from the icon's menu, which is the door that cannot be
@@ -846,11 +846,10 @@ struct HelmPanelContent: View {
         }
         .padding(12)
         .frame(width: helmPanelWidth)
-        // Down from the top edge, the way a menu opens — the panel hangs off
-        // the status item, so that is the edge it is attached to. A scale
-        // rather than a height: the card's height is measured, and animating
-        // the thing the measurement feeds would fight the measurement.
-        .scaleEffect(revealed ? 1 : 0.94, anchor: .top)
+        // A fade, and nothing else. macOS menus and menu-bar extras do not
+        // grow, scale or slide into place — they are there, over a fade quick
+        // enough that the fade is not the thing you notice. The scale from the
+        // top edge that was here read as a web popover.
         .opacity(revealed ? 1 : 0)
         // No `maxHeight` here, and that is the point. `maxHeight` is greedy: it
         // takes the smaller of the maximum and whatever the parent proposes,
