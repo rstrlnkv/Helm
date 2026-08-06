@@ -75,6 +75,16 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 - The size picker's white-on-accent measured 3.22:1, the one piece of text on the
   page under the floor every other colour was solved against. It is the system's
   segmented control now.
+- **The panel scrolls instead of running off the screen.** In edit mode every
+  widget grows a frame and a pair of corner controls, and five of them plus the
+  gallery was taller than the strip the panel is drawn in — the footer was cut
+  in half. The tab strip, the setup bar and the footer are pinned now and only
+  the grid scrolls, up to a ceiling of 768 pt or whatever the screen has.
+  *(0.9.0-dev.3 and dev.4.)*
+- **The remove button is back at the tile's top-left corner** and the size
+  control moved to the top-right, where it is one chip that opens into three on
+  hover or focus. Both float half outside the tile: the corner of a card is the
+  one place a module never draws.
 - **The panel's edit controls stopped writing on the module's tile.** The size
   chips and the remove button were an overlay, drawn over whatever the module
   had put in that corner — the VPN switch, Keep Awake's «⋯», the Disk widget's
