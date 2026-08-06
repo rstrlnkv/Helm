@@ -438,7 +438,17 @@ struct HelmPanelContent: View {
                                  choose: widget.id == Self.utilitiesWidget
                                      ? { choosingUtilities.toggle() } : nil,
                                  choosing: choosingUtilities,
-                                 resize: { size in apply(layout.resizing(widget.id, to: size)) },
+                                 // One transaction for the whole move. A size
+                                 // change is three things at once — the tile
+                                 // swaps its content, the row it is in repacks,
+                                 // and every tile below shifts — and they have
+                                 // to be one gesture or the panel reads as
+                                 // three separate jumps.
+                                 resize: { size in
+                                     withAnimation(HelmMotion.disclosure) {
+                                         apply(layout.resizing(widget.id, to: size))
+                                     }
+                                 },
                                  remove: { apply(layout.removing(widget.id)) },
                                  move: { offset in nudge(widget.id, by: offset, among: items) }))
             .modifier(DragToReorder(active: editing, widget: widget.id) { dropped in
@@ -466,10 +476,18 @@ struct HelmPanelContent: View {
     /// The one branch that keeps a concrete type — see `WidgetContent`.
     @ViewBuilder
     private func body(of widget: Widget) -> some View {
-        switch widget.content {
-        case .module(let view): view
-        case .utilities: utilitiesWidget
+        Group {
+            switch widget.content {
+            case .module(let view): view
+            case .utilities: utilitiesWidget
+            }
         }
+        // 1×1 and 2×1 are different views, not one view at two widths, so a
+        // resize is an insert and a removal to SwiftUI. Keyed on the size, it
+        // is a cross-fade; without the key the old content vanishes on the
+        // frame the new one appears.
+        .id(widget.size)
+        .transition(.opacity)
     }
 
     private func offeredSizes(_ id: String) -> [PanelWidgetSize] {
