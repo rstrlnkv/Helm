@@ -401,6 +401,11 @@ struct HelmPanelContent: View {
                         // 89 — six points of ragged edge in a grid whose sizes
                         // are named after squares.
                         .frame(maxHeight: .infinity)
+                        // One rectangle across the change, so repacking the row
+                        // *moves* the tile: a widget going from half a row to a
+                        // whole one slides and stretches rather than vanishing
+                        // from one place and appearing in another.
+                        .matchedGeometryEffect(id: items[index].id, in: widgetShapes)
                         // Identity by widget, not by position. A cell keyed on
                         // its index in the row is a different cell the moment
                         // anything above it changes, and a different cell has
@@ -482,12 +487,22 @@ struct HelmPanelContent: View {
             case .utilities: utilitiesWidget
             }
         }
-        // 1×1 and 2×1 are different views, not one view at two widths, so a
-        // resize is an insert and a removal to SwiftUI. Keyed on the size, it
-        // is a cross-fade; without the key the old content vanishes on the
-        // frame the new one appears.
-        .id(widget.size)
-        .transition(.opacity)
+        // **No key on the size**, deliberately.
+        //
+        // Keying it made every resize a removal and an insertion, so the tile
+        // cross-faded: two pictures dissolving where somebody had asked a
+        // rectangle to change shape. A widget that takes its size as a
+        // parameter — Disk does — is the *same view type* at 1×1 and 2×1, and
+        // left unkeyed SwiftUI matches it and interpolates: the plate stays
+        // put, the bar and the row grow out of the card, the card stretches.
+        //
+        // Where the two sizes are genuinely different types — Keep Awake's
+        // compact figure against its full tile — there is nothing to
+        // interpolate, so the new content scales up from the corner the card is
+        // anchored by rather than arriving at full size.
+        .transition(.asymmetric(
+            insertion: .scale(scale: 0.94, anchor: .topLeading).combined(with: .opacity),
+            removal: .opacity))
     }
 
     private func offeredSizes(_ id: String) -> [PanelWidgetSize] {
@@ -513,6 +528,8 @@ struct HelmPanelContent: View {
     /// cursor that had just pressed one.
     /// The namespace the selection travels in.
     @Namespace private var tabSelection
+    /// And the one the tiles travel in.
+    @Namespace private var widgetShapes
 
     @ViewBuilder
     private var tabStrip: some View {
