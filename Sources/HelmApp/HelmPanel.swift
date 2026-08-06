@@ -792,9 +792,17 @@ struct HelmPanelContent: View {
                 // indistinguishable from no animation at all, and only the
                 // explicit transaction ramps. `DisclosureProbe` holds both.
                 .onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
-                    if measured > 0, gridHeight != measured {
-                        withAnimation(HelmMotion.disclosure) { gridHeight = measured }
-                    }
+                    guard measured > 0, gridHeight != measured else { return }
+                    // The first measurement is not a change, it is the answer.
+                    //
+                    // Until it lands the scroll view has no height of its own
+                    // and takes everything it is offered — the whole strip —
+                    // so animating that first write plays the card collapsing
+                    // from full height to its content while the card is pinned
+                    // at the top. Opening the panel looked like the block
+                    // unfolding from its middle in both directions.
+                    if gridHeight == 0 { gridHeight = measured }
+                    else { withAnimation(HelmMotion.disclosure) { gridHeight = measured } }
                 }
             }
             // An explicit height, not a `maxHeight`. A `ScrollView`'s ideal
