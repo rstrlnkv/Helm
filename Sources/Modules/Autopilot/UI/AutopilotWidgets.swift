@@ -29,7 +29,13 @@ public struct AutopilotWidget: View {
         HelmWidgetBody {
             HelmWidgetHeader(symbol: "location.north.circle",
                              tint: AutopilotDescriptor.tint.colour,
-                             name: AutopilotDescriptor.metadata.shortName)
+                             // Always coloured. `active` means «this module is
+                             // doing something», not «this module has data» —
+                             // a plate that greys out because nobody has added
+                             // a folder yet reads as a module that is switched
+                             // off, which it is not.
+                             name: AutopilotDescriptor.metadata.shortName,
+                             compact: size == .compact)
             if vm.folders.isEmpty {
                 // Nothing measured, and nothing wrong: this module does not
                 // watch anything until somebody points it at a folder, and
@@ -40,9 +46,9 @@ public struct AutopilotWidget: View {
                 HelmWidgetUnmeasured(L("No folders watched yet"))
             } else {
                 HStack(alignment: .top, spacing: 10) {
-                    HelmWidgetFigure("\(watched)", L("FOLDERS"), small: size == .compact)
+                    HelmWidgetFigure("\(watched)", L("FOLDERS"), size)
                     if size != .compact {
-                        HelmWidgetFigure("\(today.count)", L("TODAY"), small: false)
+                        HelmWidgetFigure("\(today.count)", L("TODAY"), size)
                     }
                 }
                 if size == .tall {

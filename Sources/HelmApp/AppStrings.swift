@@ -326,11 +326,21 @@ enum AppStr {
     /// The name of the tab Helm seeds, read in the reader's language rather
     /// than stored in whichever language it was created in.
     static var mainTab: String { L("Main") }
-    static func tabTitle(_ tab: PanelLayout.Tab) -> String {
-        tab.name ?? (tab.seed == "main" ? mainTab : tabLabel)
+    /// An unnamed tab is numbered.
+    ///
+    /// Every unnamed tab used to answer «Вкладка», so a strip of three read
+    /// «Главная · Вкладка · Вкладка» — and the care `addingTab` takes to hand
+    /// out a different glyph is invisible at the default label style, which is
+    /// text.
+    static func tabTitle(_ tab: PanelLayout.Tab, number: Int? = nil) -> String {
+        if let name = tab.name { return name }
+        if tab.seed == "main" { return mainTab }
+        guard let number else { return tabLabel }
+        return tabLabel + " " + "\(number)"
     }
     static var moduleIsOff: String { L("Module is off") }
-    static var addingTurnsItOn: String { L("Switched off — adding it turns it on") }
+    static var nothingOnThisTab: String { L("Nothing on this tab yet") }
+    static var nothingOnThisTabHint: String { L("Press the pencil below to add a widget.") }
     static var permissionsWidgetPinned: String {
         L("The permissions notice cannot be removed. It leaves when the grant is given.")
     }

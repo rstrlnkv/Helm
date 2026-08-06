@@ -21,11 +21,12 @@ enum PanelLayoutStore {
     /// `offered` is the ids this build can draw right now, in the order the
     /// person arranged them — the sidebar's arrangement, which is the one
     /// order Helm has.
-    static func read(from store: NamespacedStore, offered: [String]) -> PanelLayout {
+    static func read(from store: NamespacedStore, offered: [String],
+                     sizes: [String: PanelWidgetSize] = [:]) -> PanelLayout {
         let stored = store.data(key).flatMap {
             try? JSONDecoder().decode(PanelLayout.self, from: $0)
         }
-        guard let stored else { return PanelLayout.seeded(from: offered) }
+        guard let stored else { return PanelLayout.seeded(from: offered, sizes: sizes) }
         return stored.reconciled(arriving: offered)
     }
 
