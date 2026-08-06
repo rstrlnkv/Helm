@@ -663,7 +663,6 @@
 "Show" = "显示";
 "Configure panel" = "设置面板";
 "Panel setup" = "面板设置";
-"Panel width" = "面板宽度";
 "Remove widget" = "移除小组件";
 "Widget size" = "小组件尺寸";
 "Only a full-width widget can grow downwards." = "只有整行宽的小组件才能向下展开。";

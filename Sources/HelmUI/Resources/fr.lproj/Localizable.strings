@@ -663,7 +663,6 @@
 "Show" = "Afficher";
 "Configure panel" = "Configurer le panneau";
 "Panel setup" = "Configuration du panneau";
-"Panel width" = "Largeur du panneau";
 "Remove widget" = "Retirer le widget";
 "Widget size" = "Taille du widget";
 "Only a full-width widget can grow downwards." = "Seul un widget pleine largeur peut s’étendre vers le bas.";

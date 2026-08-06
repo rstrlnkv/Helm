@@ -663,7 +663,6 @@
 "Show" = "表示";
 "Configure panel" = "パネルを設定";
 "Panel setup" = "パネルの設定";
-"Panel width" = "パネルの幅";
 "Remove widget" = "ウィジェットを外す";
 "Widget size" = "ウィジェットの大きさ";
 "Only a full-width widget can grow downwards." = "下に伸びられるのは横幅いっぱいのウィジェットだけです。";

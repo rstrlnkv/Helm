@@ -158,24 +158,6 @@ extension Notification.Name {
         set { store.set(newValue?.timeIntervalSince1970 ?? 0, for: "scanBudgetDay") }
     }
 
-    /// How wide the panel is drawn, in points.
-    ///
-    /// Not free-form: 300 is what Helm has always shipped, and the other two
-    /// are where a column is actually bought — `PanelGrid` gives 2 columns at
-    /// 300 and 400 and 3 at 480, so a slider would spend most of its travel
-    /// changing nothing but the tile width.
-    static var panelWidth: CGFloat {
-        get {
-            let stored = store.double("panelWidth", default: 0)
-            return panelWidths.contains(stored) ? stored : 300
-        }
-        set {
-            store.set(newValue, for: "panelWidth")
-            NotificationCenter.default.post(name: .helmPanelWidthChanged, object: nil)
-        }
-    }
-    static let panelWidths: [CGFloat] = [300, 400, 480]
-
     static var menuBarIconStyle: String {
         get { store.string("menuBarIconStyle", default: "ring") }
         set {
