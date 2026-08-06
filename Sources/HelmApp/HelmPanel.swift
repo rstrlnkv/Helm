@@ -245,6 +245,9 @@ struct HelmPanelContent: View {
     /// Every tile's rectangle in the grid's space, which is how the drag knows
     /// what it is over.
     @State private var frames: [String: CGRect] = [:]
+    /// Where the grid sits in the strip, so the overlay — which lives outside
+    /// the scroll view — can translate pointer coordinates into its own.
+    @State private var gridOrigin: CGPoint = .zero
     /// The tab whose glyph is being chosen, if any.
     @State private var pickingGlyph: String?
     @State private var renaming: String?
@@ -537,6 +540,7 @@ struct HelmPanelContent: View {
     }
 
     static let gridSpace = "panel.grid"
+    static let stripSpace = "panel.strip"
 
     /// Carrying a tile — third architecture, and the reasons each of the first
     /// two failed are what this one is made of.
@@ -578,9 +582,27 @@ struct HelmPanelContent: View {
                           $0.key != carried.id && $0.key != Self.permissionsWidget
                               && $0.value.contains(value.location)
                       })?.key,
+                      let overFrame = frames[over],
                       let target = layout.placement(of: over),
                       let here = layout.placement(of: carried.id),
                       here.tab != target.tab || here.index != target.index else { return }
+
+                // Past the middle, not merely inside. Containment alone
+                // oscillates against a tall neighbour: entering its top edge
+                // swaps, the swap puts the pointer in its *bottom* half, which
+                // reads as entered again — and the utilities list bounced in
+                // place under a slowly moving pointer. Requiring the centre to
+                // be crossed, on the axis the move is happening along, is the
+                // hysteresis: after a swap the pointer is on the near side of
+                // the centre, and nothing fires until it truly travels.
+                let slot = frames[carried.id] ?? overFrame
+                let sameRow = abs(overFrame.midY - slot.midY) < 4
+                let crossed = sameRow
+                    ? (overFrame.midX > slot.midX ? value.location.x > overFrame.midX
+                                                  : value.location.x < overFrame.midX)
+                    : (overFrame.midY > slot.midY ? value.location.y > overFrame.midY
+                                                  : value.location.y < overFrame.midY)
+                guard crossed else { return }
                 withAnimation(HelmMotion.reorder) {
                     apply(layout.moving(carried.id, toTab: target.tab, at: target.index))
                 }
@@ -619,8 +641,8 @@ struct HelmPanelContent: View {
                 .scaleEffect(dropping ? 1 : 1.035)
                 .shadow(color: .black.opacity(dropping ? 0 : 0.28),
                         radius: dropping ? 0 : 10, y: dropping ? 0 : 4)
-                .offset(x: dragLocation.x - grabOffset.width,
-                        y: dragLocation.y - grabOffset.height)
+                .offset(x: gridOrigin.x + dragLocation.x - grabOffset.width,
+                        y: gridOrigin.y + dragLocation.y - grabOffset.height)
                 .allowsHitTesting(false)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
@@ -985,6 +1007,12 @@ struct HelmPanelContent: View {
                 }
         }
         .frame(maxHeight: .infinity, alignment: .top)
+        .coordinateSpace(name: Self.stripSpace)
+        // Above everything and clipped by nothing. It used to live inside the
+        // scroll view, whose bounds cut the carried tile off at the grid's
+        // edge — a thing in your hand disappearing behind the furniture it is
+        // being carried over.
+        .overlay(alignment: .topLeading) { dragOverlay }
         // The strip runs from the status item to the bottom of the screen, so
         // this is how much room the card actually has — measured rather than
         // assumed, because it is a different number on every display and on
@@ -1114,7 +1142,12 @@ struct HelmPanelContent: View {
                 .coordinateSpace(name: Self.gridSpace)
                 // On the container, which nothing rebuilds — see `gridDrag`.
                 .gesture(editing ? gridDrag(items: items) : nil)
-                .overlay(alignment: .topLeading) { dragOverlay }
+                // Where the grid is, in the strip's space: the overlay draws
+                // out there, past the scroll view's clip.
+                .onGeometryChange(for: CGPoint.self,
+                                  of: { $0.frame(in: .named(Self.stripSpace)).origin }) { origin in
+                    if gridOrigin != origin { gridOrigin = origin }
+                }
                 // Written **inside** a transaction, which is the whole fix.
                 //
                 // `onGeometryChange` hands its measurement over outside the one
