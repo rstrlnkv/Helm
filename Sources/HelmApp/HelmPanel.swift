@@ -437,9 +437,16 @@ struct HelmPanelContent: View {
                 .frame(maxWidth: .infinity, alignment: .topLeading)
         } else {
         body(of: widget)
+            // Gone, not dimmed. AppKit already draws the tile you are carrying
+            // and drags it under the pointer, so a 45% copy left in the slot
+            // meant the same widget was on screen twice — the ghost you are
+            // moving and a faded one refusing to leave. What stays behind is
+            // the dashed frame, which is the shape of the hole.
+            .opacity(dragging == widget.id ? 0 : 1)
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .modifier(EditChrome(active: editing, widget: widget.id, size: widget.size,
                                  sizes: offeredSizes(widget.id),
+                                 lifted: dragging == widget.id,
 
                                  // The drawer chooses contents, not proportions.
                                  choose: widget.id == Self.utilitiesWidget
@@ -460,7 +467,6 @@ struct HelmPanelContent: View {
                                  move: { offset in nudge(widget.id, by: offset, among: items) }))
             .modifier(DragToReorder(
                 active: editing, widget: widget.id,
-                lifted: dragging == widget.id,
                 begin: { dragging = widget.id },
                 // Live, on the way in rather than on the drop: the tiles move
                 // aside as the pointer crosses them, so where the widget will
@@ -1098,6 +1104,9 @@ private struct EditChrome: ViewModifier {
     let widget: String
     let size: PanelWidgetSize
     let sizes: [PanelWidgetSize]
+    /// This tile is the one being carried, so it is a slot: no content, and no
+    /// controls hanging off a corner that has nothing behind it.
+    let lifted: Bool
 
     /// Non-nil for a widget whose corner control chooses something other than a
     /// size — the drawer, which chooses its rows.
@@ -1122,21 +1131,30 @@ private struct EditChrome: ViewModifier {
                                       style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
                 }
                 .overlay(alignment: .topLeading) {
-                    Button(action: remove) {
-                        Image(systemName: "minus")
-                            .font(.system(size: 9, weight: .black))
-                            .foregroundStyle(.white)
-                            .frame(width: 18, height: 18)
-                            .background(Circle().fill(HelmSignal.danger))
-                            .shadow(radius: 1, y: 0.5)
+                    // No controls on a tile that is in the air: it is a slot,
+                    // and a slot with a minus hanging off it invites a press on
+                    // something that is not there.
+                    if !lifted {
+                        Button {
+                            withAnimation(HelmMotion.disclosure) { remove() }
+                        } label: {
+                            Image(systemName: "minus")
+                                .font(.system(size: 9, weight: .black))
+                                .foregroundStyle(.white)
+                                .frame(width: 18, height: 18)
+                                .background(Circle().fill(HelmSignal.danger))
+                                .shadow(radius: 1, y: 0.5)
+                        }
+                        .buttonStyle(.plain)
+                        .offset(x: -4, y: -4)
+                        .accessibilityLabel(AppStr.removeWidget)
                     }
-                    .buttonStyle(.plain)
-                    .offset(x: -4, y: -4)
-                    .accessibilityLabel(AppStr.removeWidget)
                 }
                 .overlay(alignment: .topTrailing) {
                     Group {
-                        if let choose {
+                        if lifted {
+                            EmptyView()
+                        } else if let choose {
                             Button(action: choose) {
                                 Image(systemName: choosing ? "checkmark" : "pencil")
                                     .font(.system(size: 10, weight: .semibold))
@@ -1247,7 +1265,6 @@ private struct EditChrome: ViewModifier {
 private struct DragToReorder: ViewModifier {
     let active: Bool
     let widget: String
-    let lifted: Bool
     let begin: () -> Void
     let enter: () -> Void
     let end: () -> Void
@@ -1255,10 +1272,6 @@ private struct DragToReorder: ViewModifier {
     func body(content: Content) -> some View {
         if !active { content } else {
             content
-                // The tile being carried is dimmed, so what is on screen is the
-                // arrangement *without* it — which is what the space the other
-                // tiles leave is showing.
-                .opacity(lifted ? 0.45 : 1)
                 // `onDrag` rather than `draggable`: this one has a closure that
                 // fires when the drag *starts*, and knowing which tile is in the
                 // air is the whole basis of moving the others out of its way.
