@@ -47,6 +47,21 @@ public enum HelmMotion {
         reduced ? instant : .snappy(duration: 0.22)
     }
 
+    /// A panel arriving on screen from the menu bar.
+    ///
+    /// Short and eased-out, and **nothing but opacity**. macOS menus and
+    /// menu-bar extras do not grow, scale or slide: they are simply there, over
+    /// a fade fast enough that the fade is not what you notice. A scale from
+    /// the top edge was tried and reads as a web popover — the motion is not
+    /// wrong in itself, it is just not something this operating system does.
+    ///
+    /// 0.12 s: long enough that the card does not appear to blink into
+    /// existence, short enough that a panel opened to read one number is not
+    /// something you wait for.
+    public static var panelEntrance: Animation {
+        reduced ? instant : .easeOut(duration: 0.12)
+    }
+
     /// Large morphs where the shape itself changes — a pill growing into a
     /// card. Bouncy enough to read as fluid.
     public static var emphasis: Animation {
