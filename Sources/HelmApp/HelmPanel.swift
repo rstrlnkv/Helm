@@ -190,6 +190,17 @@ struct HelmPanelContent: View {
     /// opened for a glance, and opening it on the tab somebody happened to
     /// leave last week is a panel that answers a question nobody asked.
     @State private var activeTab = 0
+    /// The strip the panel is drawn in, top to bottom of the screen. The card
+    /// may not be taller than it, and the grid is what gives way.
+    @State private var stripHeight: CGFloat = 0
+    /// The grid's natural height, so the scroll view never grows past its own
+    /// content — otherwise a panel holding two widgets would be as tall as the
+    /// screen.
+    @State private var gridHeight: CGFloat = 0
+    /// The pinned parts, measured rather than derived: what is pinned changes
+    /// with the mode, and the grid gets whatever is left.
+    @State private var topChrome: CGFloat = 0
+    @State private var footerHeight: CGFloat = 0
     @State private var renaming: String?
     @State private var draftName = ""
     @State private var diskAccess: PermissionState = .granted
@@ -559,16 +570,25 @@ struct HelmPanelContent: View {
                 }
         }
         .frame(maxHeight: .infinity, alignment: .top)
+        // The strip runs from the status item to the bottom of the screen, so
+        // this is how much room the card actually has — measured rather than
+        // assumed, because it is a different number on every display and on
+        // every position of the menu-bar icon.
+        .onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
+            if measured > 0, stripHeight != measured { stripHeight = measured }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .helmModuleOrderChanged)) { _ in
             orderTick &+= 1
             reload()
         }
     }
 
-    private var card: some View {
-        let parts = candidates
-        let items = widgets(parts.byID)
-        return VStack(alignment: .leading, spacing: 8) {
+
+    /// Everything between the pinned bars: the grid, the gallery, the drawer.
+    @ViewBuilder
+    private func scrollable(_ parts: (byID: [String: ModuleHost.Live], order: [String],
+                                      utilities: [ModuleHost.Live]),
+                            _ items: [Widget]) -> some View {
             if parts.order.isEmpty && items.isEmpty && !editing {
                 VStack(spacing: 8) {
                     Image(systemName: "square.grid.2x2")
@@ -582,18 +602,67 @@ struct HelmPanelContent: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
             } else {
-                tabStrip
-                if editing { editBar }
                 grid(items)
                 if editing { gallery(parts.byID) }
                 if !parts.utilities.isEmpty {
                     UtilitiesSection(modules: parts.utilities, expanded: $utilitiesExpanded)
                 }
             }
+    }
+
+    /// What the grid may take: the strip, less the pinned bars, the card's own
+    /// padding and the two gaps between the three blocks. Never less than one
+    /// row, so a very short strip still shows something to scroll.
+    private var availableForGrid: CGFloat {
+        let strip = stripHeight > 0 ? stripHeight : PanelGrid.maximumHeight
+        let ceiling = min(strip, PanelGrid.maximumHeight)
+        return max(120, ceiling - topChrome - footerHeight - 24 - 16)
+    }
+
+    private var card: some View {
+        let parts = candidates
+        let items = widgets(parts.byID)
+        return VStack(alignment: .leading, spacing: 8) {
+
+            // Pinned: the strip, the setup bar and the footer. Only the grid
+            // scrolls — the way out of a mode must not be something you have to
+            // scroll to, and in edit mode every widget grows a frame and a pair
+            // of corner controls, which is what pushed the footer off the
+            // bottom of the screen.
+            VStack(alignment: .leading, spacing: 8) {
+                tabStrip
+                if editing { editBar }
+            }
+            .onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
+                if measured > 0, topChrome != measured { topChrome = measured }
+            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    scrollable(parts, items)
+                }
+                .onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
+                    if measured > 0, gridHeight != measured { gridHeight = measured }
+                }
+            }
+            // An explicit height, not a `maxHeight`. A `ScrollView`'s ideal
+            // height is not its content's, so in a stack that is free to be
+            // short it took a few hundred points and clipped the grid halfway
+            // through a widget while the card had room to spare. This is the
+            // smaller of what the grid needs and what the strip has left.
+            .frame(height: gridHeight > 0 ? min(gridHeight, availableForGrid) : nil)
+            .scrollIndicators(.automatic)
             footer
+                .onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
+                    if measured > 0, footerHeight != measured { footerHeight = measured }
+                }
         }
         .padding(12)
         .frame(width: helmPanelWidth)
+        // The mockups' ceiling — 800 pt of screen less the menu bar and a
+        // margin — and never more than the strip actually has.
+        .frame(maxHeight: min(PanelGrid.maximumHeight,
+                              stripHeight > 0 ? stripHeight : PanelGrid.maximumHeight),
+               alignment: .top)
         .alert(AppStr.renameSection, isPresented: Binding(
             get: { renaming != nil }, set: { if !$0 { renaming = nil } }
         )) {
