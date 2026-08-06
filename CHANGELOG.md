@@ -75,6 +75,12 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 - The size picker's white-on-accent measured 3.22:1, the one piece of text on the
   page under the floor every other colour was solved against. It is the system's
   segmented control now.
+- **The panel's edit controls stopped writing on the module's tile.** The size
+  chips and the remove button were an overlay, drawn over whatever the module
+  had put in that corner — the VPN switch, Keep Awake's «⋯», the Disk widget's
+  used-of-total. They have their own strip under the tile now, inside the
+  dashed frame, which also stopped that frame being 10 pt wider than the card
+  it traced. And there is one «Готово» rather than two. *(0.9.0-dev.3 only.)*
 - **A widget you take off the panel stays off.** Removing one was undone by the
   next read: the same rule that lets a module arriving with an update join the
   panel could not tell «new» from «taken off», so everything came back at the
