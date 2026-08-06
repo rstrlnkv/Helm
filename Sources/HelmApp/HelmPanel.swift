@@ -924,13 +924,10 @@ struct HelmPanelContent: View {
             // — so a panel with one tab and nothing being arranged opened with
             // 20 pt above its first widget where every other edge has 12.
             if layout.showsTabBar || editing {
-                VStack(alignment: .leading, spacing: 8) {
-                    tabStrip
-                    if editing { editBar }
-                }
-                .onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
-                    if measured > 0, topChrome != measured { topChrome = measured }
-                }
+                tabStrip
+                    .onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
+                        if measured > 0, topChrome != measured { topChrome = measured }
+                    }
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
@@ -967,10 +964,17 @@ struct HelmPanelContent: View {
             // smaller of what the grid needs and what the strip has left.
             .frame(height: gridHeight > 0 ? min(gridHeight, availableForGrid) : nil)
             .scrollIndicators(.automatic)
-            footer
-                .onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
-                    if measured > 0, footerHeight != measured { footerHeight = measured }
-                }
+            // The way out sits with the other two ways out, at the foot of the
+            // panel. It was pinned to the top, a hundred points from «Настройки»
+            // and «Завершить» — three exits from the same card, two of them
+            // together and one on its own at the other end.
+            VStack(alignment: .leading, spacing: 8) {
+                if editing { editBar }
+                footer
+            }
+            .onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
+                if measured > 0, footerHeight != measured { footerHeight = measured }
+            }
         }
         .padding(12)
         .frame(width: helmPanelWidth)
@@ -1136,7 +1140,13 @@ private struct EditChrome: ViewModifier {
                         .foregroundStyle(open && option == size ? Color.white
                                          : HelmText.quiet)
                         .padding(.horizontal, 5).padding(.vertical, 2)
-                        .background(RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        // A capsule inside a capsule. The container is one, and
+                        // a 4 pt rounded rectangle inside it is concentric with
+                        // nothing — the corner of the chip cut across the curve
+                        // of the pill it sat in. A capsule's radius is half its
+                        // own height, so the two are concentric whatever the
+                        // type size does to them.
+                        .background(Capsule()
                             .fill(open && option == size ? Color.accentColor : .clear))
                 }
                 .buttonStyle(.plain)
