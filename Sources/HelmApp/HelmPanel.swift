@@ -541,6 +541,9 @@ struct HelmPanelContent: View {
 
     static let gridSpace = "panel.grid"
     static let stripSpace = "panel.strip"
+    /// What `EditChrome` pads a tile by while the mode is on — the frames are
+    /// measured outside it, and the drag needs the content rectangle.
+    static let chromeInset: CGFloat = 4
 
     /// Carrying a tile — third architecture, and the reasons each of the first
     /// two failed are what this one is made of.
@@ -566,9 +569,16 @@ struct HelmPanelContent: View {
                           let widget = items.first(where: { $0.id == hit }),
                           let frame = frames[hit]
                     else { return }
-                    dragSize = frame.size
-                    grabOffset = CGSize(width: value.startLocation.x - frame.minX,
-                                        height: value.startLocation.y - frame.minY)
+                    // The frames are measured outside `EditChrome`, which pads
+                    // every tile by 4 pt in this mode — so the raw frame is the
+                    // tile plus 8 pt each way. The overlay draws the *content*,
+                    // and drawing it at the padded size inflated the carried
+                    // tile just enough to be visibly bigger than the slot it
+                    // lands in, with a snap down at the handover.
+                    let content = frame.insetBy(dx: Self.chromeInset, dy: Self.chromeInset)
+                    dragSize = content.size
+                    grabOffset = CGSize(width: value.startLocation.x - content.minX,
+                                        height: value.startLocation.y - content.minY)
                     dropping = false
                     withAnimation(HelmMotion.reorder) { dragging = widget }
                 }
@@ -614,7 +624,7 @@ struct HelmPanelContent: View {
                 // happens in the completion — a timer used to do this, and a
                 // timer neither knows when the spring is done nor whether a new
                 // drag has started since.
-                let home = frames[carried.id]
+                let home = frames[carried.id]?.insetBy(dx: Self.chromeInset, dy: Self.chromeInset)
                 // `.removed`, not `.logicallyComplete`: the logical end comes
                 // before the spring's visible tail, so the handover used to
                 // happen while the overlay was still settling — a cut in the
@@ -642,7 +652,8 @@ struct HelmPanelContent: View {
                     var settle = Transaction()
                     settle.disablesAnimations = true
                     withTransaction(settle) {
-                        if let home = frames[carried.id] {
+                        if let frame = frames[carried.id] {
+                            let home = frame.insetBy(dx: Self.chromeInset, dy: Self.chromeInset)
                             dragLocation = CGPoint(x: home.minX + grabOffset.width,
                                                    y: home.minY + grabOffset.height)
                         }
