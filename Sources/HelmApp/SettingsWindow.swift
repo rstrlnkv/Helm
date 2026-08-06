@@ -423,6 +423,7 @@ private struct MenuBarSettingsView: View {
     @State private var launchAtLogin: Bool = LoginItem.isEnabled
     @State private var appearance: AppAppearance = AppSettings.appearance
     @State private var sidebarStyle: SidebarStyle = AppSettings.sidebarStyle
+    @State private var tabLabels = AppSettings.tabLabelStyle
     @State private var showPanelEditButton = AppSettings.showPanelEditButton
     @State private var showSettingsButton = AppSettings.showSettingsButton
     @State private var showQuitButton = AppSettings.showQuitButton
@@ -579,6 +580,15 @@ private struct MenuBarSettingsView: View {
                     }
                 Text(AppStr.panelEditButtonNote)
                     .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                // Here rather than in the panel's own edit mode: it is how the
+                // panel *looks*, decided once, and that mode is about which
+                // widgets are on it.
+                Picker(AppStr.tabLabels, selection: $tabLabels) {
+                    ForEach(TabLabelStyle.allCases, id: \.self) { style in
+                        Text(AppStr.tabLabelStyle(style)).tag(style)
+                    }
+                }
+                .onChange(of: tabLabels) { _, chosen in AppSettings.tabLabelStyle = chosen }
             }
 
             // Only when there is one. `neededPermissions` filters to what the

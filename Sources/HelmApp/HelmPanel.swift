@@ -638,26 +638,22 @@ struct HelmPanelContent: View {
     }
 
     /// The bar above the grid while the panel is being arranged.
+    /// The bar says one thing: you are editing, and here is the way out.
+    ///
+    /// It carried the tab-label picker for a while — a full-width segmented
+    /// control, the heaviest thing in the panel, for a decision somebody makes
+    /// once, inside a mode that is about arranging widgets. It also appeared
+    /// and vanished with the number of tabs, so it flickered on state it had
+    /// nothing to do with, and it argued with «Готово» for the same row. It
+    /// lives in Settings → Panel now, beside the other three switches about how
+    /// this panel looks.
     private var editBar: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                Text(AppStr.panelSetup).font(.subheadline.weight(.semibold))
-                Spacer(minLength: 8)
-                Button(AppStr.done) { editing = false; choosingUtilities = false }
-                    .controlSize(.small)
-                    .buttonStyle(.borderedProminent)
-            }
-            // Only once there is a strip to label.
-            if layout.showsTabBar {
-                Picker(AppStr.tabLabels, selection: $tabLabels) {
-                    ForEach(TabLabelStyle.allCases, id: \.self) { style in
-                        Text(AppStr.tabLabelStyle(style)).tag(style)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .onChange(of: tabLabels) { _, chosen in AppSettings.tabLabelStyle = chosen }
-            }
+        HStack(spacing: 8) {
+            Text(AppStr.panelSetup).font(.subheadline.weight(.semibold))
+            Spacer(minLength: 8)
+            Button(AppStr.done) { editing = false; choosingUtilities = false }
+                .controlSize(.small)
+                .buttonStyle(.borderedProminent)
         }
         .helmPanelCard()
     }
