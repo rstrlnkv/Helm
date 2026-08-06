@@ -1271,6 +1271,17 @@ private struct EditChrome: ViewModifier {
 /// Reordering by dragging. Off unless the panel is being arranged: a tile that
 /// lifts under a pointer that meant to press a button is an arrangement nobody
 /// asked to change, and there is no undo here.
+/// Reordering by dragging, through `onDrag` and a drop target.
+///
+/// A gesture-driven version was tried and reverted. It solved the one thing
+/// this cannot — AppKit draws its own translucent snapshot of the view and
+/// carries that, and nothing in SwiftUI reaches it — and it was worse to use:
+/// moving a tile by hand means owning the pointer, and everything the system
+/// does for free (the pick-up, the autoscroll, the spring-back, the cursor) has
+/// to be rebuilt and none of it was as good.
+///
+/// The ghost is the platform's convention for a thing in transit. Keeping it
+/// costs less than the alternative did.
 private struct DragToReorder: ViewModifier {
     let active: Bool
     let widget: String
