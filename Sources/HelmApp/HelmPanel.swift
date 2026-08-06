@@ -629,14 +629,26 @@ struct HelmPanelContent: View {
                     // `dropping` is false if a new drag began mid-glide; the
                     // new drag owns the state now.
                     guard dropping else { return }
-                    // A cross-fade, not a swap. The overlay leaves and the slot
-                    // takes its content back in one short transaction, so the
-                    // two trade places under a fade — which also absorbs the
-                    // few points by which the glide's target can be stale, when
-                    // the last reorder's spring was still moving the slot as
-                    // the target was read.
-                    withAnimation(.easeOut(duration: 0.12)) { dragging = nil }
-                    dropping = false
+                    // An exact handover, with no fade at all.
+                    //
+                    // The cross-fade that was here read as a dip: two copies at
+                    // half alpha do not add back to one over a background, so
+                    // the tile dimmed for six frames on landing. A fade was
+                    // covering for a position that might be a few points out —
+                    // so fix the position instead. The slot's frame is re-read
+                    // *now*, after every spring has settled, the overlay is put
+                    // exactly there, and the swap happens in a transaction with
+                    // animation off: the same pixels, drawn by someone else.
+                    var settle = Transaction()
+                    settle.disablesAnimations = true
+                    withTransaction(settle) {
+                        if let home = frames[carried.id] {
+                            dragLocation = CGPoint(x: home.minX + grabOffset.width,
+                                                   y: home.minY + grabOffset.height)
+                        }
+                        dragging = nil
+                        dropping = false
+                    }
                 }
             }
     }
@@ -655,7 +667,6 @@ struct HelmPanelContent: View {
                         y: gridOrigin.y + dragLocation.y - grabOffset.height)
                 .allowsHitTesting(false)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .transition(.opacity)
         }
     }
 
