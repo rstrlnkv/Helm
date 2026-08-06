@@ -996,8 +996,15 @@ struct HelmPanelContent: View {
             // 20 pt above its first widget where every other edge has 12.
             if layout.showsTabBar || editing {
                 tabStrip
+                    // In a transaction, like the grid's height. These two were
+                    // the last raw writes left, and they are exactly the ones
+                    // that change when the mode is entered — the strip appears,
+                    // the edit bar appears — so the panel animated its middle
+                    // and snapped its ends.
                     .onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
-                        if measured > 0, topChrome != measured { topChrome = measured }
+                        guard measured > 0, topChrome != measured else { return }
+                        if topChrome == 0 { topChrome = measured }
+                        else { withAnimation(HelmMotion.disclosure) { topChrome = measured } }
                     }
             }
             ScrollView {
@@ -1044,7 +1051,9 @@ struct HelmPanelContent: View {
                 footer
             }
             .onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
-                if measured > 0, footerHeight != measured { footerHeight = measured }
+                guard measured > 0, footerHeight != measured else { return }
+                if footerHeight == 0 { footerHeight = measured }
+                else { withAnimation(HelmMotion.disclosure) { footerHeight = measured } }
             }
         }
         .padding(12)
