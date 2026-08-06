@@ -412,8 +412,7 @@ struct HelmPanelContent: View {
                                     apply(layout.isHidden(id) ? layout.restoring(id)
                                                               : layout.hiding(id))
                                 },
-                                promotable: { parts.byID[$0] != nil },
-                                promote: { apply(layout.adding($0, toTab: tabIndex)) })
+                                )
     }
 
     private func offeredSizes(_ id: String) -> [PanelWidgetSize] {
@@ -513,24 +512,35 @@ struct HelmPanelContent: View {
         .helmPanelCard()
     }
 
+    /// Everything that could be a tile and is not one, in registry order so the
+    /// row does not reshuffle itself between openings — and the drawer among
+    /// them, because it is a widget like the others.
+    ///
+    /// Two independent questions, and this is the first: *is it a tile*. The
+    /// second — is it a row in the utilities list — is asked by that widget's
+    /// own pencil. A module can be both a row there and an entry here, because
+    /// «not a tile» and «not in the list» are not the same refusal.
+    ///
+    /// Plain, not a `@ViewBuilder`: a builder reads `if` as a view, and an
+    /// `append` inside one is a statement returning `()`, which is not a view.
+    private func galleryIDs(_ byID: [String: ModuleHost.Live]) -> [String] {
+        let placed = Set(layout.allSlots.map(\.widget))
+        var rest = ModuleRegistry.all.map(\.idRaw)
+            .filter { byID[$0] != nil && !placed.contains($0) }
+        if !placed.contains(Self.utilitiesWidget) { rest.append(Self.utilitiesWidget) }
+        return rest
+    }
+
     /// Everything not on this tab, as ghosts to press.
     @ViewBuilder
     private func gallery(_ byID: [String: ModuleHost.Live]) -> some View {
-        // Only what was taken off the panel altogether. Everything else that
-        // is not a tile is one row down, in the drawer, where it can be
-        // promoted — so the gallery is not a second copy of that list.
-        // Only the drawer can end up here now: a module taken off a tile falls
-        // into the drawer, and one unticked in the drawer's own list is put
-        // back from there. What is left is the drawer itself.
-        let rest = layout.isDismissed(Self.utilitiesWidget) || layout.isHidden(Self.utilitiesWidget)
-            ? [Self.utilitiesWidget] : []
-        // Shown only when there is something in it. Since a widget taken off a
-        // tile falls to the drawer rather than out of the panel, this block was
-        // empty for everybody — a heading and a sentence saying there was
-        // nothing to do, on the one screen where every row is doing something.
+        let rest = galleryIDs(byID)
+        // Shown only when there is something in it: a heading over a sentence
+        // saying there is nothing to do belongs on no screen, least of all the
+        // one where every other row is doing something.
         if !rest.isEmpty {
         VStack(alignment: .leading, spacing: 6) {
-            Text(AppStr.takenOffThePanel)
+            Text(AppStr.addWidget)
                 .font(HelmText.rowDetail)
                 .foregroundStyle(HelmText.quiet)
             do {
@@ -963,8 +973,6 @@ private struct UtilitiesSection: View {
     let choosing: Bool
     let isOn: (String) -> Bool
     let toggle: (String) -> Void
-    let promotable: (String) -> Bool
-    let promote: (String) -> Void
     private var open: Bool { expanded || editing }
     /// Natural height of the rows, measured so the disclosure animates between
     /// 0 and a concrete value.
@@ -1018,17 +1026,6 @@ private struct UtilitiesSection: View {
                                                      ? Color.accentColor : HelmText.faint)
                             }
                             .buttonStyle(.plain)
-                        } else if editing {
-                            if promotable(live.descriptor.idRaw) {
-                                Button { promote(live.descriptor.idRaw) } label: {
-                                    Image(systemName: "plus.circle.fill")
-                                        .font(.system(size: 13))
-                                        .foregroundStyle(Color.accentColor)
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel(AppStr.addWidget)
-                                .help(AppStr.addWidget)
-                            }
                         }
                     }
                 }
