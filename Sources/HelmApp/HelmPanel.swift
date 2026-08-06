@@ -233,7 +233,12 @@ struct HelmPanelContent: View {
         var utilities: [ModuleHost.Live] = []
         for live in host.enabledModules {
             guard let contribution = live.descriptor.menuBar(live.vm) else { continue }
-            if contribution.isUtility { utilities.append(live); continue }
+            if contribution.isUtility {
+                // The drawer is the person's too: a utility they took off stays
+                // off until they put it back from the gallery.
+                if !layout.isDismissed(live.descriptor.idRaw) { utilities.append(live) }
+                continue
+            }
             byID[live.descriptor.idRaw] = live
             order.append(live.descriptor.idRaw)
         }
@@ -464,7 +469,14 @@ struct HelmPanelContent: View {
     @ViewBuilder
     private func gallery(_ byID: [String: ModuleHost.Live]) -> some View {
         let placed = Set(layout.allSlots.map(\.widget))   // not just this tab: a widget lives in one place
-        let rest = candidates.order.filter { !placed.contains($0) }
+        // Both kinds: widgets that are not on a tab, and utilities that were
+        // taken out of the drawer. From here they look the same — something
+        // the panel could be showing and is not.
+        let takenOut = ModuleRegistry.all
+            .filter { layout.isDismissed($0.idRaw) && byID[$0.idRaw] == nil
+                      && ModuleHost.shared.isEnabled($0) }
+            .map(\.idRaw)
+        let rest = candidates.order.filter { !placed.contains($0) } + takenOut
         VStack(alignment: .leading, spacing: 6) {
             Text(AppStr.addWidget)
                 .font(HelmText.rowDetail)
@@ -490,14 +502,17 @@ struct HelmPanelContent: View {
     }
 
     private func ghost(_ id: String, _ live: ModuleHost.Live?) -> some View {
-        Button {
-            apply(layout.adding(id, toTab: tabIndex))
+        let descriptor = live?.descriptor ?? ModuleRegistry.all.first { $0.idRaw == id }
+        return Button {
+            // A widget goes into the grid; a utility only stops being refused,
+            // because there is no slot for a module that draws nothing.
+            apply(live == nil ? layout.restoring(id) : layout.adding(id, toTab: tabIndex))
         } label: {
             VStack(spacing: 4) {
-                if let live {
-                    HelmIconPlate(symbol: live.descriptor.moduleMetadata.sfSymbol,
-                                  tint: live.descriptor.moduleTint.colour, size: 20)
-                    Text(live.descriptor.moduleMetadata.shortName)
+                if let descriptor {
+                    HelmIconPlate(symbol: descriptor.moduleMetadata.sfSymbol,
+                                  tint: descriptor.moduleTint.colour, size: 20)
+                    Text(descriptor.moduleMetadata.shortName)
                         .font(HelmText.rowDetail)
                         .lineLimit(1)
                 }
@@ -622,7 +637,9 @@ struct HelmPanelContent: View {
                 grid(items)
                 if editing { gallery(parts.byID) }
                 if !parts.utilities.isEmpty {
-                    UtilitiesSection(modules: parts.utilities, expanded: $utilitiesExpanded)
+                    UtilitiesSection(modules: parts.utilities, expanded: $utilitiesExpanded,
+                                     editing: editing,
+                                     remove: { apply(layout.dismissing($0)) })
                 }
             }
     }
@@ -845,6 +862,12 @@ private struct DragToReorder: ViewModifier {
 private struct UtilitiesSection: View {
     let modules: [ModuleHost.Live]
     @Binding var expanded: Bool
+    /// The drawer is arranged like everything else in the panel: while the mode
+    /// is on, every row offers a way out. It is also held open — a list you
+    /// have to disclose before you can edit it is a list nobody edits.
+    let editing: Bool
+    let remove: (String) -> Void
+    private var open: Bool { expanded || editing }
     /// Natural height of the rows, measured so the disclosure animates between
     /// 0 and a concrete value.
     @State private var rowsHeight: CGFloat = 0
@@ -864,7 +887,7 @@ private struct UtilitiesSection: View {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(HelmText.faint)
-                        .rotationEffect(.degrees(expanded ? 90 : 0))
+                        .rotationEffect(.degrees(open ? 90 : 0))
                 }
                 .contentShape(Rectangle())
             }
@@ -876,7 +899,7 @@ private struct UtilitiesSection: View {
             // open/closed state with it — a disclosure that will not say
             // whether it is open answers its own button press with silence.
             .accessibilityLabel(AppStr.utilities)
-            .accessibilityValue("\(Count(modules.count)), \(HelmA11y.expanded(expanded))")
+            .accessibilityValue("\(Count(modules.count)), \(HelmA11y.expanded(open))")
 
             // Measured height rather than `if expanded`: with the rows removed
             // from the hierarchy the card's background collapsed instantly
@@ -886,20 +909,31 @@ private struct UtilitiesSection: View {
             // pattern Keep Awake's inline block uses.
             VStack(spacing: 2) {
                 ForEach(modules, id: \.descriptor.idRaw) { live in
-                    utilityRow(live)
+                    HStack(spacing: 6) {
+                        utilityRow(live)
+                        if editing {
+                            Button { remove(live.descriptor.idRaw) } label: {
+                                Image(systemName: "minus.circle.fill")
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(HelmSignal.danger)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(AppStr.removeWidget)
+                        }
+                    }
                 }
             }
             .padding(.top, 8)
             .onGeometryChange(for: CGFloat.self, of: \.size.height) { height in
                 if height > 0 { rowsHeight = height }
             }
-            .frame(height: expanded ? rowsHeight : 0, alignment: .top)
+            .frame(height: open ? rowsHeight : 0, alignment: .top)
             // Height + clipping only: fading would isolate these rows in their
             // own layer and their materials would stop blending with the card.
             .clipped()
-            .allowsHitTesting(expanded)
+            .allowsHitTesting(open)
         // `.clipped()` hides it from the eye, not from the accessibility tree.
-        .accessibilityHidden(!expanded)
+        .accessibilityHidden(!open)
         }
         .helmPanelCard()
     }
