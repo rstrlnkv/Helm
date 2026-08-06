@@ -18,22 +18,53 @@ public struct HelmWidgetHeader: View {
     private let active: Bool
     private let trailing: AnyView?
 
+    private let compact: Bool
+
     public init(symbol: String, tint: Color, name: String,
-                subtitle: String? = nil, active: Bool = true) {
+                subtitle: String? = nil, active: Bool = true, compact: Bool = false) {
         self.symbol = symbol; self.tint = tint; self.name = name
-        self.subtitle = subtitle; self.active = active; self.trailing = nil
+        self.subtitle = subtitle; self.active = active; self.compact = compact
+        self.trailing = nil
     }
 
     public init<T: View>(symbol: String, tint: Color, name: String,
-                         subtitle: String? = nil, active: Bool = true,
+                         subtitle: String? = nil, active: Bool = true, compact: Bool = false,
                          @ViewBuilder trailing: () -> T) {
         self.symbol = symbol; self.tint = tint; self.name = name
-        self.subtitle = subtitle; self.active = active
+        self.subtitle = subtitle; self.active = active; self.compact = compact
         self.trailing = AnyView(trailing())
     }
 
     public var body: some View {
-        // 26 and `.headline`, which is what the two tiles this app shipped with
+        if compact { stacked } else { inARow }
+    }
+
+    /// 1×1: the name goes **under** the plate, as it does in a small widget on
+    /// iOS.
+    ///
+    /// In a row it had 70 pt — 134 of tile less the card's padding, the plate,
+    /// the gap and the spacer — and 58 with a trailing mark. Measured against
+    /// `.headline` in eight languages, that truncates the module's own name in
+    /// 14 of 40 pairs: «Автоп…», «Кла…». In edit mode the corner controls take
+    /// another 14 and even «Не спать» became «Не с…» — a mode meant to show you
+    /// your arrangement was changing what the tiles said. Stacked, the name has
+    /// the tile's whole width.
+    private var stacked: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                HelmIconBadge(symbol: symbol, color: tint, active: active)
+                Spacer(minLength: 0)
+                if let trailing { trailing }
+            }
+            Text(name)
+                .font(HelmText.sectionHeading)
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
+    }
+
+    private var inARow: some View {
+        // 26 and 13 semibold, which is what the two tiles this app shipped with
         // have always used. The widgets written since used 18 and a medium 13,
         // so a panel holding both had two sizes of the same plate one card
         // apart — the sort of difference nobody can name and everybody sees.
@@ -41,7 +72,10 @@ public struct HelmWidgetHeader: View {
             HelmIconBadge(symbol: symbol, color: tint, active: active)
             VStack(alignment: .leading, spacing: 1) {
                 Text(name)
-                    .font(.headline)
+                    // `HelmText.sectionHeading`, not `.headline`: the same
+                    // 13 pt, one weight apart. `.headline` resolves to
+                    // SF Bold and the app's own token at that size is semibold.
+                    .font(HelmText.sectionHeading)
                     .lineLimit(1)
                     .truncationMode(.tail)
                 if let subtitle {
@@ -66,8 +100,14 @@ public struct HelmWidgetFigure: View {
     private let label: String
     private let small: Bool
 
-    public init(_ value: String, _ label: String, small: Bool = false) {
-        self.value = value; self.label = label; self.small = small
+    /// The size decides, not the call site.
+    ///
+    /// Three widgets passed `small: size == .compact` and two passed nothing,
+    /// so a 1×1 row held an 18 pt digit beside an 11 pt one — 34% apart, in the
+    /// same grid. A parameter that every caller has to remember to compute is a
+    /// parameter that half of them will not.
+    public init(_ value: String, _ label: String, _ size: PanelWidgetSize) {
+        self.value = value; self.label = label; self.small = size == .compact
     }
 
     public var body: some View {

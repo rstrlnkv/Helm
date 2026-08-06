@@ -29,9 +29,9 @@ public struct DiskWidget: View {
     public var body: some View {
         HelmWidgetBody {
             HelmWidgetHeader(symbol: "chart.pie", tint: DiskDescriptor.tint.colour,
-                             name: DkStr.moduleName)
+                             name: DkStr.moduleName, compact: size == .compact)
             if let main {
-                HelmWidgetFigure(Bytes(main.freeBytes), DkStr.free, small: size == .compact)
+                HelmWidgetFigure(Bytes(main.freeBytes), DkStr.free, size)
                 if size != .compact {
                     CapacityBar(volume: main)
                     HelmWidgetRow(main.name, Bytes(main.usedBytes) + " / " + Bytes(main.totalBytes))

@@ -18,7 +18,8 @@ public struct VPNCompactWidget: View {
     public var body: some View {
         HelmWidgetBody {
             HelmWidgetHeader(symbol: "lock.shield", tint: VPNDescriptor.tint.colour,
-                             name: VPNDescriptor.metadata.name) {
+                             name: VPNDescriptor.metadata.name,
+                             active: up > 0, compact: true) {
                 if up > 0 {
                     Circle().fill(HelmSignal.success).frame(width: 6, height: 6)
                 }
@@ -26,7 +27,7 @@ public struct VPNCompactWidget: View {
             if vm.connections.isEmpty {
                 HelmWidgetUnmeasured(VPNStr.noVPNs)
             } else {
-                HelmWidgetFigure("\(up)/\(vm.connections.count)", VPNStr.connections)
+                HelmWidgetFigure("\(up)/\(vm.connections.count)", VPNStr.connections, .compact)
             }
         }
     }

@@ -32,10 +32,15 @@ private final class KeyablePanel: NSPanel {
 /// It was briefly a setting, on the argument that the column count follows from
 /// it. It does — 480 buys a third column — and that is not a reason to ask:
 /// three columns of 147 pt in a menu-bar panel is a grid nobody wants and a
-/// question everybody has to answer once. The panel is 300 pt, as it has always
-/// been, and `PanelGrid` still derives the columns from the number rather than
-/// holding one of its own.
-private let helmPanelWidth: CGFloat = 300
+/// question everybody has to answer once.
+///
+/// **320, not the 300 it shipped at.** `PanelGrid.minimumTile` is 144 and the
+/// prose under it argues the floor properly — «below it a button already costs
+/// the figure it sits under» — and then 300 pt bought two columns of 134. Every
+/// 1×1 in the app was 10 pt under a floor the app itself had written down. 320
+/// is the width the mockups always used, and it makes the rule true: two tiles
+/// of exactly 144.
+private let helmPanelWidth: CGFloat = 320
 /// Room on each side of the card for the glass to cast into.
 ///
 /// A window shadow is drawn by the window server *outside* the frame, so the
@@ -272,6 +277,24 @@ struct HelmPanelContent: View {
     /// corner control chooses *contents* rather than proportions.
     static let utilitiesWidget = "helm.utilities"
 
+    /// What a fresh install is handed.
+    ///
+    /// Every widget used to be seeded at 2×1, which is the stack of full-width
+    /// tiles this grid replaced — about 680 pt on a 800 pt screen, and not one
+    /// 1×1 anywhere. So the only thing the grid is *for* was invisible unless
+    /// somebody entered the edit mode and unfolded a size control in a corner.
+    ///
+    /// A module with a control keeps its width; a module that is one figure
+    /// takes a square, and two of them share a row. That is the arrangement
+    /// this panel is arguing for, so it is the one to hand over.
+    ///
+    /// Only ever read when there is no stored layout at all: nobody's panel is
+    /// rearranged by an update.
+    static let seededSizes: [String: PanelWidgetSize] = [
+        "disk": .compact, "autopilot": .compact, "layout": .compact,
+        utilitiesWidget: .tall,
+    ]
+
     // MARK: - What the panel can draw right now
 
     /// Modules that offer a widget, and the ones whose UI lives in Settings.
@@ -352,7 +375,8 @@ struct HelmPanelContent: View {
 
     private func reload() {
         layout = PanelLayoutStore.read(from: AppSettings.store,
-                                       offered: candidates.order + [Self.utilitiesWidget])
+                                       offered: candidates.order + [Self.utilitiesWidget],
+                                       sizes: Self.seededSizes)
     }
 
     private func apply(_ next: PanelLayout) {
@@ -377,6 +401,10 @@ struct HelmPanelContent: View {
             HStack(alignment: .top, spacing: PanelGrid.gap) {
                 ForEach(row, id: \.self) { index in
                     cell(items[index], among: items)
+                        // Two 1×1s in one row are one height. They were 95 and
+                        // 89 — six points of ragged edge in a grid whose sizes
+                        // are named after squares.
+                        .frame(maxHeight: .infinity)
                         // Identity by widget, not by position. A cell keyed on
                         // its index in the row is a different cell the moment
                         // anything above it changes, and a different cell has
@@ -408,19 +436,24 @@ struct HelmPanelContent: View {
                             .font(.system(size: 9, weight: .semibold))
                             .foregroundStyle(.white)
                             .frame(width: 18, height: 18)
-                            .background(Circle().fill(HelmText.quiet))
+                            // An opaque fill, like the minus beside it.
+                            // `HelmText.quiet` is a *text* token — 64% of the
+                            // label colour — and a white glyph on it measured
+                            // 1.46:1 over dark glass, which is a blank disc.
+                            .background(Circle().fill(Color.gray))
                             .shadow(radius: 1, y: 0.5)
-                            .offset(x: -7, y: -7)
+                            .offset(x: -5, y: -5)
                             .help(AppStr.permissionsWidgetPinned)
                             .accessibilityLabel(AppStr.permissionsWidgetPinned)
                     }
                 }
-                .padding(editing ? 7 : 0)
+                .padding(editing ? 4 : 0)
         } else {
         body(of: widget)
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .modifier(EditChrome(active: editing, widget: widget.id, size: widget.size,
                                  sizes: offeredSizes(widget.id),
+                                 removable: widget.id != Self.utilitiesWidget,
                                  // The drawer chooses contents, not proportions.
                                  choose: widget.id == Self.utilitiesWidget
                                      ? { choosingUtilities.toggle() } : nil,
@@ -521,7 +554,7 @@ struct HelmPanelContent: View {
                                     .font(.system(size: 13, weight: .medium))
                             }
                             if tabLabels.showsText {
-                                Text(AppStr.tabTitle(tab))
+                                Text(AppStr.tabTitle(tab, number: index + 1))
                                     .font(HelmText.rowDetail)
                                     .lineLimit(1)
                             }
@@ -538,9 +571,16 @@ struct HelmPanelContent: View {
                         .padding(.horizontal, 8).padding(.vertical, 4)
                         .background {
                             if index == tabIndex {
+                                // A material, not a 5% overlay. `wellFill`
+                                // measured 1.23:1 over the panel's glass and
+                                // 1.04:1 in light — and the shadow under it was
+                                // cast by a shape with 5% alpha, so it was
+                                // ~0.6% black, which is nothing. A material
+                                // composites against whatever is behind it,
+                                // which is what a raised segment is.
                                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .fill(HelmSurface.wellFill)
-                                    .shadow(color: .black.opacity(0.12), radius: 1, y: 1)
+                                    .fill(.regularMaterial)
+                                    .shadow(color: .black.opacity(0.18), radius: 1.5, y: 1)
                                     // One shape that moves between tabs rather
                                     // than one appearing while another goes.
                                     .matchedGeometryEffect(id: "tab.selection", in: tabSelection)
@@ -551,11 +591,11 @@ struct HelmPanelContent: View {
                     .buttonStyle(.plain)
                     // Glyph-only tabs have nowhere to put their name; the
                     // pointer is where it goes.
-                    .help(AppStr.tabTitle(tab))
-                    .accessibilityLabel(AppStr.tabTitle(tab))
+                    .help(AppStr.tabTitle(tab, number: index + 1))
+                    .accessibilityLabel(AppStr.tabTitle(tab, number: index + 1))
                     .contextMenu {
                         Button(AppStr.renameSection) {
-                            draftName = AppStr.tabTitle(tab)
+                            draftName = AppStr.tabTitle(tab, number: index + 1)
                             renaming = tab.id
                         }
                         Button(AppStr.tabIcon) { pickingGlyph = tab.id }
@@ -711,8 +751,11 @@ struct HelmPanelContent: View {
                         .font(HelmText.rowDetail)
                         .lineLimit(1)
                 } else if let descriptor {
+                    // 26, as the widget header draws it. The same module 200 pt
+                    // apart in two sizes is the defect `HelmWidgetHeader` was
+                    // unified to kill, reappearing in the gallery.
                     HelmIconPlate(symbol: descriptor.moduleMetadata.sfSymbol,
-                                  tint: descriptor.moduleTint.colour, size: 20)
+                                  tint: descriptor.moduleTint.colour, size: 26)
                     Text(descriptor.moduleMetadata.shortName)
                         .font(HelmText.rowDetail)
                         .lineLimit(1)
@@ -864,18 +907,17 @@ struct HelmPanelContent: View {
     private func scrollable(_ parts: (byID: [String: ModuleHost.Live], order: [String],
                                       utilities: [ModuleHost.Live], choosable: [ModuleHost.Live]),
                             _ items: [Widget]) -> some View {
-            if parts.order.isEmpty && items.isEmpty && !editing {
-                VStack(spacing: 8) {
-                    Image(systemName: "square.grid.2x2")
-                        .font(.system(size: 30))
-                        .foregroundStyle(HelmText.quiet)
-                    Text(AppStr.noModules).font(.headline)
-                    Text(AppStr.noModulesHint)
-                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 24)
+            // Two different sentences. `order` excludes what was taken off a
+            // tile, so a person who had emptied their panel was told no modules
+            // were enabled — false, with nine running — and sent to Settings
+            // when the way back is the pencil twelve points below. A tab made
+            // with «+» landed in the same place, and it was worse: it got no
+            // sentence at all, because the grid was simply empty.
+            if parts.byID.isEmpty && items.isEmpty && !editing {
+                emptyState("square.grid.2x2", AppStr.noModules, AppStr.noModulesHint)
+            } else if items.isEmpty && !editing {
+                emptyState("rectangle.on.rectangle", AppStr.nothingOnThisTab,
+                           AppStr.nothingOnThisTabHint)
             } else {
                 grid(items)
                     // Keyed to the tab, so switching is a swap the transition
@@ -884,6 +926,20 @@ struct HelmPanelContent: View {
                     .transition(.opacity)
                 if editing { gallery(parts.byID) }
             }
+    }
+
+    private func emptyState(_ symbol: String, _ title: String, _ hint: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: symbol)
+                .font(.system(size: 30))
+                .foregroundStyle(HelmText.quiet)
+            Text(title).font(HelmText.sectionHeading)
+            Text(hint)
+                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
     }
 
     /// What the grid may take: the strip, less the pinned bars, the card's own
@@ -1034,6 +1090,9 @@ private struct EditChrome: ViewModifier {
     let widget: String
     let size: PanelWidgetSize
     let sizes: [PanelWidgetSize]
+    /// False for the utilities list: see the overlay below.
+    let removable: Bool
+
     /// Non-nil for a widget whose corner control chooses something other than a
     /// size — the drawer, which chooses its rows.
     let choose: (() -> Void)?
@@ -1058,6 +1117,12 @@ private struct EditChrome: ViewModifier {
                                       style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
                 }
                 .overlay(alignment: .topLeading) {
+                    if removable {
+                    // The utilities list has no minus. It is not a widget that
+                    // holds a figure — it is the panel's residue, and taking it
+                    // off takes the only presence six modules have with it, in
+                    // one click, in a mode with no undo. Its pencil is where its
+                    // contents are decided.
                     Button(action: remove) {
                         Image(systemName: "minus")
                             .font(.system(size: 9, weight: .black))
@@ -1067,8 +1132,9 @@ private struct EditChrome: ViewModifier {
                             .shadow(radius: 1, y: 0.5)
                     }
                     .buttonStyle(.plain)
-                    .offset(x: -7, y: -7)
+                    .offset(x: -5, y: -5)
                     .accessibilityLabel(AppStr.removeWidget)
+                    }
                 }
                 .overlay(alignment: .topTrailing) {
                     Group {
@@ -1089,11 +1155,14 @@ private struct EditChrome: ViewModifier {
                             sizeControl
                         }
                     }
-                    .offset(x: 7, y: -7)
+                    .offset(x: 5, y: -5)
                 }
-                // Room for the two of them to hang outside the card without
-                // being cut off by the row above.
-                .padding(7)
+                // Room for the two of them to hang outside the card. 4 rather
+                // than 7: at seven, every cell paid 14 pt and the edit mode
+                // needed 751 pt of grid where the strip had 612 — the last tile
+                // was cut through the middle with its dashed frame left open,
+                // which reads as broken rather than as «there is more».
+                .padding(4)
                 .focusable()
                 .onMoveCommand { direction in
                     switch direction {

@@ -13,8 +13,7 @@ final class PanelGridTests: XCTestCase {
 
     /// The width decides how many columns fit, never how narrow a tile gets.
     func testColumnsAtTheWidthsThatMatter() {
-        XCTAssertEqual(PanelGrid.columns(for: 300), 2)   // the panel Helm ships
-        XCTAssertEqual(PanelGrid.columns(for: 320), 2)
+        XCTAssertEqual(PanelGrid.columns(for: 320), 2)   // the panel Helm ships
         XCTAssertEqual(PanelGrid.columns(for: 400), 2)   // 3 would be 120 pt a tile
         XCTAssertEqual(PanelGrid.columns(for: 480), 3)
     }
@@ -28,14 +27,25 @@ final class PanelGridTests: XCTestCase {
     }
 
     /// The floor the column count is argued from: a tile is never narrower
-    /// than 144 pt *because another column was fitted in*.
-    func testAnExtraColumnIsNeverBoughtBelowTheFloor() {
-        for width in stride(from: CGFloat(300), through: 900, by: 4) {
+    /// than 144 pt.
+    ///
+    /// **The `columns == 2` escape is gone.** It was there because two columns
+    /// is the minimum and a narrow panel cannot honour the floor — which is
+    /// true, and it exempted every width the app actually uses: at the 300 pt
+    /// the panel shipped at, two columns are 134 pt and the assertion could not
+    /// fail. A test that names a rule and then excuses the only case it governs
+    /// is a comment with a `func` in front of it.
+    func testATileIsNeverNarrowerThanTheFloor() {
+        for width in stride(from: PanelGrid.narrowestPanel, through: 900, by: 4) {
             let tile = PanelGrid.tileWidth(for: width)
-            let columns = PanelGrid.columns(for: width)
-            XCTAssertTrue(columns == 2 || tile >= PanelGrid.minimumTile,
-                          "\(width) pt buys \(columns) columns of \(tile) pt")
+            XCTAssertGreaterThanOrEqual(tile, PanelGrid.minimumTile,
+                                        "\(width) pt buys \(PanelGrid.columns(for: width)) columns of \(tile) pt")
         }
+    }
+
+    /// And the width the panel is actually drawn at is one of those.
+    func testTheShippedWidthClearsIt() {
+        XCTAssertGreaterThanOrEqual(PanelGrid.tileWidth(for: 320), PanelGrid.minimumTile)
     }
 
     // MARK: - A size that is no longer offered

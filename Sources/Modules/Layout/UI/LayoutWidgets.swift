@@ -28,7 +28,8 @@ public struct LayoutWidget: View {
     public var body: some View {
         HelmWidgetBody {
             HelmWidgetHeader(symbol: "keyboard", tint: LayoutDescriptor.tint.colour,
-                             name: LayoutDescriptor.metadata.shortName) {
+                             name: LayoutDescriptor.metadata.shortName,
+                             active: vm.state.enabled, compact: size == .compact) {
                 // Silence needs a visible reason: while secure input is on the
                 // module is deliberately doing nothing, and a widget reading
                 // «0 today» would be reporting that as a quiet day.
@@ -38,8 +39,7 @@ public struct LayoutWidget: View {
                         .foregroundStyle(HelmSignal.warning)
                 }
             }
-            HelmWidgetFigure("\(vm.state.conversionsToday)", LyStr.metricToday,
-                             small: size == .compact)
+            HelmWidgetFigure("\(vm.state.conversionsToday)", LyStr.metricToday, size)
             if size != .compact {
                 HelmWidgetRow(LyStr.metricState, stateWord)
             }

@@ -666,7 +666,6 @@
 "Only a full-width widget can grow downwards." = "Раскрыться по высоте может только виджет во всю ширину.";
 "Add widget" = "Добавить виджет";
 "Module is off" = "Модуль выключен";
-"Switched off — adding it turns it on" = "Выключен: поставьте, и он включится";
 "The permissions notice cannot be removed. It leaves when the grant is given." = "Это извещение нельзя убрать. Оно уйдёт, когда разрешение будет выдано.";
 "Main" = "Главная";
 "New tab" = "Новая вкладка";
@@ -698,3 +697,5 @@
 "All three are also in the menu-bar icon’s right-click menu." = "Все три есть и в меню по правому клику на иконку.";
 "Edit panel" = "Редактировать панель";
 "Editing the panel" = "Редактирование панели";
+"Nothing on this tab yet" = "На этой вкладке пока пусто";
+"Press the pencil below to add a widget." = "Нажмите карандаш внизу, чтобы добавить виджет.";

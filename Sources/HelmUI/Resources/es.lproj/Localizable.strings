@@ -666,7 +666,6 @@
 "Only a full-width widget can grow downwards." = "Solo un widget de ancho completo puede crecer hacia abajo.";
 "Add widget" = "Añadir un widget";
 "Module is off" = "El módulo está desactivado";
-"Switched off — adding it turns it on" = "Desactivado: al añadirlo se activa";
 "The permissions notice cannot be removed. It leaves when the grant is given." = "Este aviso no se puede quitar. Desaparece cuando se concede el permiso.";
 "Main" = "Principal";
 "New tab" = "Pestaña nueva";
@@ -698,3 +697,5 @@
 "All three are also in the menu-bar icon’s right-click menu." = "Los tres están también en el menú contextual del icono.";
 "Edit panel" = "Editar el panel";
 "Editing the panel" = "Edición del panel";
+"Nothing on this tab yet" = "Esta pestaña está vacía";
+"Press the pencil below to add a widget." = "Pulse el lápiz de abajo para añadir un widget.";

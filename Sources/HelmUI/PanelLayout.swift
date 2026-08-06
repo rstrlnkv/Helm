@@ -127,9 +127,12 @@ public struct PanelLayout: Equatable, Codable, Sendable {
 
     /// One tab holding everything offered, at `wide` — which is exactly the
     /// panel Helm has always drawn, in the order the person arranged.
-    public static func seeded(from widgets: [String]) -> PanelLayout {
+    /// `sizes` is what each widget is worth at rest. Everything not named is
+    /// full width, which is what a module with a control needs.
+    public static func seeded(from widgets: [String],
+                              sizes: [String: PanelWidgetSize] = [:]) -> PanelLayout {
         PanelLayout(tabs: [Tab(id: "seed.main", seed: "main", name: nil,
-                               widgets: widgets.map { Slot(widget: $0, size: .wide) },
+                               widgets: widgets.map { Slot(widget: $0, size: sizes[$0] ?? .wide) },
                                glyph: Tab.glyphs[0])])
     }
 

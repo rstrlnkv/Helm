@@ -49,6 +49,13 @@ public enum PanelGrid {
     /// a margin. Past it the grid scrolls and the footer stays.
     public static let maximumHeight: CGFloat = 768
 
+    /// The narrowest panel two 144 pt tiles fit in: 2 × 144 + 8 + 2 × 12.
+    ///
+    /// Below it the floor cannot be honoured at all, because two columns is the
+    /// minimum. The panel is drawn at exactly this width, which is what makes
+    /// the floor a rule rather than a sentence.
+    public static let narrowestPanel: CGFloat = 2 * minimumTile + gap + 2 * padding
+
     /// Columns at a given panel width — never fewer than two.
     ///
     /// The width decides how many columns fit, never how narrow a tile may

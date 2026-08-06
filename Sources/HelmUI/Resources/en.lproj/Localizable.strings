@@ -666,7 +666,6 @@
 "Only a full-width widget can grow downwards." = "Only a full-width widget can grow downwards.";
 "Add widget" = "Add widget";
 "Module is off" = "Module is off";
-"Switched off — adding it turns it on" = "Switched off — adding it turns it on";
 "The permissions notice cannot be removed. It leaves when the grant is given." = "The permissions notice cannot be removed. It leaves when the grant is given.";
 "Main" = "Main";
 "New tab" = "New tab";
@@ -698,3 +697,5 @@
 "All three are also in the menu-bar icon’s right-click menu." = "All three are also in the menu-bar icon’s right-click menu.";
 "Edit panel" = "Edit panel";
 "Editing the panel" = "Editing the panel";
+"Nothing on this tab yet" = "Nothing on this tab yet";
+"Press the pencil below to add a widget." = "Press the pencil below to add a widget.";

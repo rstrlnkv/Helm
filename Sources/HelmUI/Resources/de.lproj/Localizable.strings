@@ -666,7 +666,6 @@
 "Only a full-width widget can grow downwards." = "Nur ein Widget über die volle Breite kann nach unten wachsen.";
 "Add widget" = "Widget hinzufügen";
 "Module is off" = "Modul ist aus";
-"Switched off — adding it turns it on" = "Aus — beim Hinzufügen wird es eingeschaltet";
 "The permissions notice cannot be removed. It leaves when the grant is given." = "Dieser Hinweis lässt sich nicht entfernen. Er verschwindet mit der Berechtigung.";
 "Main" = "Haupt";
 "New tab" = "Neuer Tab";
@@ -698,3 +697,5 @@
 "All three are also in the menu-bar icon’s right-click menu." = "Alle drei liegen auch im Kontextmenü des Menüleistensymbols.";
 "Edit panel" = "Panel bearbeiten";
 "Editing the panel" = "Panel wird bearbeitet";
+"Nothing on this tab yet" = "Auf diesem Tab ist noch nichts";
+"Press the pencil below to add a widget." = "Zum Hinzufügen unten auf den Stift tippen.";
