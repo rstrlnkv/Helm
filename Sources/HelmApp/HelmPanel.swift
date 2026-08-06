@@ -173,7 +173,16 @@ struct HelmPanelContent: View {
     @ObservedObject var host: ModuleHost
     @State private var utilitiesExpanded = false
     /// The panel is being arranged rather than read.
-    @State private var editing = false
+    ///
+    /// Settable at construction only so a probe can render the mode: it is a
+    /// menu-bar panel over Liquid Glass, and a mode nothing can draw offscreen
+    /// is a mode nobody can measure.
+    @State private var editing: Bool
+
+    init(host: ModuleHost, editing: Bool = false) {
+        self.host = host
+        _editing = State(initialValue: editing)
+    }
     @State private var layout = PanelLayout(tabs: [])
     /// The one refusal the layout makes, shown where the attempt was made.
     @State private var refusal: String?
@@ -302,19 +311,21 @@ struct HelmPanelContent: View {
     @ViewBuilder
     private func cell(_ widget: Widget, among items: [Widget]) -> some View {
         if widget.pinned {
-            widget.view
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-                .overlay(alignment: .topLeading) {
-                    if editing {
+            VStack(alignment: .leading, spacing: 4) {
+                widget.view.frame(maxWidth: .infinity, alignment: .topLeading)
+                if editing {
+                    HStack(spacing: 4) {
                         Image(systemName: "pin.fill")
                             .font(.system(size: 9, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .frame(width: 17, height: 17)
-                            .background(Circle().fill(HelmText.quiet))
-                            .offset(x: -6, y: -6)
-                            .help(AppStr.permissionsWidgetPinned)
+                        Text(AppStr.permissionsWidgetPinned)
+                            .font(.system(size: 10))
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
                     }
+                    .foregroundStyle(HelmText.quiet)
                 }
+            }
+            .padding(4)
         } else {
         widget.view
             .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -497,12 +508,16 @@ struct HelmPanelContent: View {
                 NotificationCenter.default.post(name: .helmOpenSettings, object: nil)
             }
             Spacer(minLength: 8)
-            footerButton(editing ? AppStr.done : AppStr.configurePanel,
-                         editing ? "checkmark" : "square.grid.2x2") {
-                withAnimation(HelmMotion.interface) { editing.toggle() }
-                refusal = nil
+            // Only on the way in. While the setup bar is on screen it carries
+            // «Готово», and two of them a hundred points apart is one of them
+            // asking whether the other did something else.
+            if !editing {
+                footerButton(AppStr.configurePanel, "square.grid.2x2") {
+                    withAnimation(HelmMotion.interface) { editing = true }
+                    refusal = nil
+                }
+                Spacer(minLength: 8)
             }
-            Spacer(minLength: 8)
             Button { NSApp.terminate(nil) } label: {
                 Image(systemName: "power")
                     .font(.system(size: 12, weight: .semibold))
@@ -610,12 +625,17 @@ struct HelmPanelContent: View {
     }
 }
 
-/// What a widget grows while the panel is being arranged: a dashed frame, a
-/// way out, and its three proportions.
+/// What a widget grows while the panel is being arranged: a dashed frame, its
+/// three proportions, and a way out.
 ///
-/// A modifier rather than a wrapper view so the module's own tile keeps its
-/// place in the grid — anything that puts a container around it changes how the
-/// row measures.
+/// **A wrapper, not an overlay.** The first version hung the controls *over*
+/// the tile — the size chips at its bottom-right corner and a minus floating
+/// past its top-left — which put them on top of whatever the module had drawn
+/// there: Keep Awake's «⋯», VPN's switch, the Disk widget's «415 ГБ / 494 ГБ».
+/// A tile is a module's own rectangle, and the panel does not get to write in
+/// it. The chrome takes its own strip underneath, and the dashed frame goes
+/// round both, so it also stops being 10 pt wider than the card it was meant
+/// to be tracing.
 private struct EditChrome: ViewModifier {
     let active: Bool
     let widget: String
@@ -628,54 +648,54 @@ private struct EditChrome: ViewModifier {
 
     func body(content: Content) -> some View {
         if !active { content } else {
-            content
-                .overlay {
-                    RoundedRectangle(cornerRadius: HelmSurface.cardRadius, style: .continuous)
-                        .strokeBorder(Color.accentColor,
-                                      style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
-                }
-                .overlay(alignment: .topLeading) {
+            VStack(alignment: .leading, spacing: 4) {
+                content
+                HStack(spacing: 4) {
+                    ForEach(sizes, id: \.self) { option in
+                        Button { resize(option) } label: {
+                            Text(option.label)
+                                .font(.system(size: 10, weight: .semibold))
+                                .monospacedDigit()
+                                .foregroundStyle(option == size ? Color.white
+                                                 : refused(option) ? HelmText.faint : HelmText.quiet)
+                                .padding(.horizontal, 6).padding(.vertical, 3)
+                                .background(RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                    .fill(option == size ? Color.accentColor : HelmSurface.wellFill))
+                        }
+                        .buttonStyle(.plain)
+                        .help(refused(option) ? AppStr.tallNeedsFullWidth : option.label)
+                    }
+                    Spacer(minLength: 8)
                     Button(action: remove) {
-                        Image(systemName: "minus")
-                            .font(.system(size: 9, weight: .black))
-                            .foregroundStyle(.white)
-                            .frame(width: 17, height: 17)
-                            .background(Circle().fill(HelmSignal.danger))
+                        Image(systemName: "minus.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(HelmSignal.danger)
                     }
                     .buttonStyle(.plain)
-                    .offset(x: -6, y: -6)
                     .accessibilityLabel(AppStr.removeWidget)
                 }
-                .overlay(alignment: .bottomTrailing) {
-                    HStack(spacing: 2) {
-                        ForEach(sizes, id: \.self) { option in
-                            Button { resize(option) } label: {
-                                Text(option.label)
-                                    .font(.system(size: 9, weight: .semibold))
-                                    .foregroundStyle(option == size ? Color.white
-                                                     : refused(option) ? HelmText.faint : HelmText.quiet)
-                                    .padding(.horizontal, 5).padding(.vertical, 3)
-                                    .background(RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                        .fill(option == size ? Color.accentColor : HelmSurface.wellFill))
-                            }
-                            .buttonStyle(.plain)
-                            .help(refused(option) ? AppStr.tallNeedsFullWidth : option.label)
-                        }
-                    }
-                    .padding(4)
-                    .accessibilityElement(children: .contain)
-                    .accessibilityLabel(AppStr.widgetSize)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(AppStr.widgetSize)
+            }
+            .padding(4)
+            .overlay {
+                // 18 = the card's own 14 plus the 4 pt of padding around it, so
+                // the dashed line stays concentric with the tile rather than
+                // cutting its corners.
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(Color.accentColor,
+                                  style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+            }
+            // Focusable and movable by arrow keys, so the arrangement is not
+            // the one part of the panel a keyboard cannot reach.
+            .focusable()
+            .onMoveCommand { direction in
+                switch direction {
+                case .left, .up: move(-1)
+                case .right, .down: move(1)
+                default: break
                 }
-                // Focusable and movable by arrow keys, so the arrangement is
-                // not the one part of the panel a keyboard cannot reach.
-                .focusable()
-                .onMoveCommand { direction in
-                    switch direction {
-                    case .left, .up: move(-1)
-                    case .right, .down: move(1)
-                    default: break
-                    }
-                }
+            }
         }
     }
 }
