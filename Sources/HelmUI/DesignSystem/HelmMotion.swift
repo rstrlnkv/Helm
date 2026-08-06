@@ -62,6 +62,17 @@ public enum HelmMotion {
         reduced ? instant : .easeOut(duration: 0.12)
     }
 
+    /// A tile moving out of the way of one being dragged over it.
+    ///
+    /// A spring, and the one place in this app where the overshoot is the
+    /// point: a card that slides aside and settles reads as a physical thing
+    /// being pushed, which is exactly the claim a drag makes. Small enough not
+    /// to wobble — 0.28 with a high damping is one soft landing, not a bounce
+    /// anybody has to wait out.
+    public static var reorder: Animation {
+        reduced ? instant : .spring(response: 0.28, dampingFraction: 0.72)
+    }
+
     /// Large morphs where the shape itself changes — a pill growing into a
     /// card. Bouncy enough to read as fluid.
     public static var emphasis: Animation {

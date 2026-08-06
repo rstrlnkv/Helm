@@ -395,7 +395,13 @@ struct HelmPanelContent: View {
     private func grid(_ items: [Widget]) -> some View {
         let columns = PanelGrid.columns(for: helmPanelWidth)
         let rows = PanelGrid.rows(sizes: items.map(\.size), columns: columns)
-        ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+        // Keyed by the widgets in the row, not by the row's position.
+        //
+        // With `id: \.offset` a reorder changed what row 2 *contained*, and to
+        // SwiftUI that is a different row 2 — it replaced the subtree instead of
+        // moving anything, so no amount of animation on the outside could make
+        // a tile travel. This is the fix the two previous attempts were missing.
+        ForEach(rows, id: \.self) { row in
             HStack(alignment: .top, spacing: PanelGrid.gap) {
                 ForEach(row, id: \.self) { index in
                     cell(items[index], among: items)
@@ -437,12 +443,6 @@ struct HelmPanelContent: View {
                 .frame(maxWidth: .infinity, alignment: .topLeading)
         } else {
         body(of: widget)
-            // Gone, not dimmed. AppKit already draws the tile you are carrying
-            // and drags it under the pointer, so a 45% copy left in the slot
-            // meant the same widget was on screen twice — the ghost you are
-            // moving and a faded one refusing to leave. What stays behind is
-            // the dashed frame, which is the shape of the hole.
-            .opacity(dragging == widget.id ? 0 : 1)
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .modifier(EditChrome(active: editing, widget: widget.id, size: widget.size,
                                  sizes: offeredSizes(widget.id),
@@ -482,13 +482,13 @@ struct HelmPanelContent: View {
                     // which is what the judder was.
                     guard layout.placement(of: carried)?.index != target.index
                             || layout.placement(of: carried)?.tab != target.tab else { return }
-                    withAnimation(HelmMotion.interface) {
+                    withAnimation(HelmMotion.reorder) {
                         apply(layout.moving(carried, toTab: target.tab, at: target.index))
                     }
                 },
                 // The drop is a transaction too, or the tile's content snaps
                 // back into a slot that had spent the whole drag animating.
-                end: { withAnimation(HelmMotion.interface) { dragging = nil } }))
+                end: { withAnimation(HelmMotion.reorder) { dragging = nil } }))
         }
     }
 
@@ -1133,22 +1133,12 @@ private struct EditChrome: ViewModifier {
     func body(content: Content) -> some View {
         if !active { content } else {
             content
-                // No dashed accent frame. A marching blue outline round every
-                // tile is a 2005 idea of «editable», and on Liquid Glass it is
-                // a hard-edged rectangle drawn over a surface whose whole point
-                // is that it has no hard edges. The corner controls say the mode
-                // is on; the tiles do not need to shout it as well.
+                // No dashed accent frame, and no hole where the tile was.
                 //
-                // The tile in the air is the one thing that does need a mark,
-                // and it gets a well rather than an outline: a shallow dent
-                // where the widget was, which is what a hole in a stack of
-                // glass looks like.
-                .background {
-                    if lifted {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(HelmSurface.wellFill)
-                    }
-                }
+                // The layout moves the widget as you drag, so the tile is
+                // already drawn where it is going — it travels with you. A
+                // faded copy left behind, or a gap, was the panel showing the
+                // same widget twice and asking which one to believe.
                 .overlay(alignment: .topLeading) {
                     // No controls on a tile that is in the air: it is a slot,
                     // and a slot with a minus hanging off it invites a press on
