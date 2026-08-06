@@ -669,7 +669,6 @@
 "Add widget" = "Adicionar widget";
 "Module is off" = "O módulo está desligado";
 "Switched off — adding it turns it on" = "Desligado — ao adicionar, liga";
-"Everything is already on this tab." = "Tudo já está nesta aba.";
 "The permissions notice cannot be removed. It leaves when the grant is given." = "Este aviso não pode ser removido. Ele sai quando a permissão for concedida.";
 "Main" = "Principal";
 "New tab" = "Nova aba";
@@ -681,3 +680,4 @@
 "Edit widgets" = "Editar os widgets";
 "Show the edit button in the panel" = "Mostrar o botão de edição no painel";
 "It is also in the menu-bar icon’s right-click menu." = "Ele também está no menu de contexto do ícone.";
+"Taken off the panel" = "Removido do painel";

@@ -487,15 +487,16 @@ struct HelmPanelContent: View {
         let rest = ModuleRegistry.all
             .filter { layout.isHidden($0.idRaw) && ModuleHost.shared.isEnabled($0) }
             .map(\.idRaw)
+        // Shown only when there is something in it. Since a widget taken off a
+        // tile falls to the drawer rather than out of the panel, this block was
+        // empty for everybody — a heading and a sentence saying there was
+        // nothing to do, on the one screen where every row is doing something.
+        if !rest.isEmpty {
         VStack(alignment: .leading, spacing: 6) {
-            Text(AppStr.addWidget)
+            Text(AppStr.takenOffThePanel)
                 .font(HelmText.rowDetail)
                 .foregroundStyle(HelmText.quiet)
-            if rest.isEmpty {
-                Text(AppStr.everythingIsHere)
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmText.faint)
-            } else {
+            do {
                 let columns = PanelGrid.columns(for: helmPanelWidth)
                 ForEach(Array(stride(from: 0, to: rest.count, by: columns)), id: \.self) { start in
                     HStack(spacing: PanelGrid.gap) {
@@ -509,6 +510,7 @@ struct HelmPanelContent: View {
             }
         }
         .helmPanelCard()
+        }
     }
 
     private func ghost(_ id: String, _ live: ModuleHost.Live?) -> some View {
@@ -719,11 +721,16 @@ struct HelmPanelContent: View {
         }
         .padding(12)
         .frame(width: helmPanelWidth)
-        // The mockups' ceiling — 800 pt of screen less the menu bar and a
-        // margin — and never more than the strip actually has.
-        .frame(maxHeight: min(PanelGrid.maximumHeight,
-                              stripHeight > 0 ? stripHeight : PanelGrid.maximumHeight),
-               alignment: .top)
+        // No `maxHeight` here, and that is the point. `maxHeight` is greedy: it
+        // takes the smaller of the maximum and whatever the parent proposes,
+        // and the parent is a strip running to the bottom of the screen — so a
+        // panel holding one widget drew a card 768 pt tall with the footer
+        // floating in the middle of it.
+        //
+        // The ceiling is already kept where it belongs: the scroll view is the
+        // one thing allowed to give way, and `availableForGrid` is what the
+        // strip has left after the pinned bars. Everything else is its own
+        // size, so the card is the sum of its parts.
         .alert(AppStr.renameSection, isPresented: Binding(
             get: { renaming != nil }, set: { if !$0 { renaming = nil } }
         )) {
@@ -985,7 +992,9 @@ private struct UtilitiesSection: View {
             HStack(spacing: 8) {
                 HelmIconPlate(symbol: meta.sfSymbol,
                               tint: live.descriptor.moduleTint.colour, size: 20)
-                Text(meta.name).font(.callout).lineLimit(1)
+                // The short name, as the sidebar asks for: this column is
+                // fixed and «Объекты входа и расширения» is cut mid-word in it.
+                Text(meta.shortName).font(.callout).lineLimit(1)
                 Spacer()
                 Image(systemName: "arrow.up.forward")
                     .font(.system(size: 9, weight: .semibold))
