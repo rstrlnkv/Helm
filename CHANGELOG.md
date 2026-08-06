@@ -75,6 +75,17 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 - The size picker's white-on-accent measured 3.22:1, the one piece of text on the
   page under the floor every other colour was solved against. It is the system's
   segmented control now.
+- **The utilities drawer is the person's too.** It listed every enabled module
+  whose UI lives in Settings and there was no way to say «not that one». Each
+  row has a minus while the panel is being arranged, and the gallery offers back
+  what was taken out — through the same list the grid already uses, so it is
+  remembered across launches by the machinery built for the widgets.
+- **The way into the panel's setup mode is a pencil at the right edge**, beside
+  the quit button. It was the longest label in the footer and the least often
+  pressed, and at 300 pt it truncated to «Настроить па…». It can be switched off
+  in Settings → Panel, because it now has a twin: «Редактировать виджеты» in the
+  menu-bar icon's right-click menu. A mode with exactly one door is a mode
+  somebody can lock themselves out of.
 - **The panel scrolls instead of running off the screen.** In edit mode every
   widget grows a frame and a pair of corner controls, and five of them plus the
   gallery was taller than the strip the panel is drawn in — the footer was cut
