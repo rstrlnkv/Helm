@@ -1334,20 +1334,25 @@ private struct EditChrome: ViewModifier {
             // grid is the one full-weight copy under the pointer.
             .opacity(lifted ? 0 : 1)
             .background {
-                if lifted {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(HelmSurface.wellFill)
-                        .transition(.opacity)
-                }
+                // Opacity, not insertion: an `if` is a structural change, and a
+                // transition's animation is whatever transaction happens to be
+                // running — the pickup's quarter-second spring. A plain opacity
+                // is governed by the scoped animation below, always.
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(HelmSurface.wellFill)
+                    .opacity(lifted ? 1 : 0)
             }
-            // The slot dims on its own clock, slower than the pickup. The lift
-            // is on `reorder` — a quarter-second spring, right for a tile
-            // answering a hand — but the same curve on the fade read as the
-            // content being switched off. What empties out behind your hand is
-            // background, and background takes its time. Scoped here so only
-            // the fade and the well take it; the tile's geometry stays on the
-            // transaction that moves it.
-            .animation(HelmMotion.disclosure, value: lifted)
+            // Slow on purpose — slower than the hand.
+            //
+            // The fade starts under the overlay, which sits exactly on top of
+            // the slot from the first frame: whatever happens in the first
+            // 150 ms is invisible, because the tile's own copy is covering it.
+            // A 0.3 s fade was over by the time a quick drag moved off the
+            // slot, so what the eye met was the end state — a dark hole,
+            // arrived instantly. Half a second means the slot is still dimming
+            // as it comes out from under the hand, which is the part that can
+            // actually be seen.
+            .animation(.easeOut(duration: 0.5), value: lifted)
             .overlay {
                 if shielded {
                     Color.clear.contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
