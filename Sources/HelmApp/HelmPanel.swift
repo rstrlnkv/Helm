@@ -615,7 +615,11 @@ struct HelmPanelContent: View {
                 // timer neither knows when the spring is done nor whether a new
                 // drag has started since.
                 let home = frames[carried.id]
-                withAnimation(HelmMotion.reorder, completionCriteria: .logicallyComplete) {
+                // `.removed`, not `.logicallyComplete`: the logical end comes
+                // before the spring's visible tail, so the handover used to
+                // happen while the overlay was still settling — a cut in the
+                // last frame of the landing.
+                withAnimation(HelmMotion.reorder, completionCriteria: .removed) {
                     dropping = true
                     if let home {
                         dragLocation = CGPoint(x: home.minX + grabOffset.width,
@@ -625,7 +629,13 @@ struct HelmPanelContent: View {
                     // `dropping` is false if a new drag began mid-glide; the
                     // new drag owns the state now.
                     guard dropping else { return }
-                    dragging = nil
+                    // A cross-fade, not a swap. The overlay leaves and the slot
+                    // takes its content back in one short transaction, so the
+                    // two trade places under a fade — which also absorbs the
+                    // few points by which the glide's target can be stale, when
+                    // the last reorder's spring was still moving the slot as
+                    // the target was read.
+                    withAnimation(.easeOut(duration: 0.12)) { dragging = nil }
                     dropping = false
                 }
             }
@@ -645,6 +655,7 @@ struct HelmPanelContent: View {
                         y: gridOrigin.y + dragLocation.y - grabOffset.height)
                 .allowsHitTesting(false)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .transition(.opacity)
         }
     }
 
