@@ -525,23 +525,40 @@ struct HelmPanelContent: View {
             // Only on the way in. While the setup bar is on screen it carries
             // «Готово», and two of them a hundred points apart is one of them
             // asking whether the other did something else.
+            //
+            // A glyph, not a word. «Настроить панель» is the longest label in
+            // the footer and the least often pressed — it is the door to a mode
+            // somebody enters once and then leaves alone — and at 300 pt it was
+            // the label that ran out of room and truncated to «Настроить па…».
+            // A pencil is the one glyph macOS uses for exactly this, and the
+            // name is still there for a pointer that rests on it and for
+            // VoiceOver.
             if !editing {
-                footerButton(AppStr.configurePanel, "square.grid.2x2") {
+                footerGlyph("pencil", AppStr.configurePanel) {
                     withAnimation(HelmMotion.interface) { editing = true }
                     refusal = nil
                 }
                 Spacer(minLength: 8)
             }
-            Button { NSApp.terminate(nil) } label: {
-                Image(systemName: "power")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(HelmText.quiet)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(AppStr.quit)
+            footerGlyph("power", AppStr.quit) { NSApp.terminate(nil) }
         }
         .helmPanelCard()
+    }
+
+    /// A footer action with no room for its name: the name is the tooltip and
+    /// the accessibility label, which is the whole of what the word was doing.
+    private func footerGlyph(_ symbol: String, _ name: String,
+                             action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(HelmText.quiet)
+                .frame(width: 22, height: 18)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(name)
+        .accessibilityLabel(name)
     }
 
     private func footerButton(_ title: String, _ symbol: String,
