@@ -475,11 +475,20 @@ struct HelmPanelContent: View {
                 enter: {
                     guard let carried = dragging, carried != widget.id,
                           let target = layout.placement(of: widget.id) else { return }
+                    // Only when it changes something. `isTargeted` fires on
+                    // every mouse move inside the tile, not once on the way in,
+                    // so this ran dozens of times a second — each one starting
+                    // a fresh animation from wherever the last had reached,
+                    // which is what the judder was.
+                    guard layout.placement(of: carried)?.index != target.index
+                            || layout.placement(of: carried)?.tab != target.tab else { return }
                     withAnimation(HelmMotion.interface) {
                         apply(layout.moving(carried, toTab: target.tab, at: target.index))
                     }
                 },
-                end: { dragging = nil }))
+                // The drop is a transaction too, or the tile's content snaps
+                // back into a slot that had spent the whole drag animating.
+                end: { withAnimation(HelmMotion.interface) { dragging = nil } }))
         }
     }
 
@@ -1124,11 +1133,21 @@ private struct EditChrome: ViewModifier {
     func body(content: Content) -> some View {
         if !active { content } else {
             content
-                .overlay {
-                    // 14, the tile's own radius: concentric, not merely near.
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(Color.accentColor,
-                                      style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                // No dashed accent frame. A marching blue outline round every
+                // tile is a 2005 idea of «editable», and on Liquid Glass it is
+                // a hard-edged rectangle drawn over a surface whose whole point
+                // is that it has no hard edges. The corner controls say the mode
+                // is on; the tiles do not need to shout it as well.
+                //
+                // The tile in the air is the one thing that does need a mark,
+                // and it gets a well rather than an outline: a shallow dent
+                // where the widget was, which is what a hole in a stack of
+                // glass looks like.
+                .background {
+                    if lifted {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(HelmSurface.wellFill)
+                    }
                 }
                 .overlay(alignment: .topLeading) {
                     // No controls on a tile that is in the air: it is a slot,
