@@ -230,8 +230,15 @@ struct HelmPanelContent: View {
     /// with the mode, and the grid gets whatever is left.
     @State private var topChrome: CGFloat = 0
     @State private var footerHeight: CGFloat = 0
-    /// The widget under the pointer during a drag.
+    /// The widget being carried, and where it is relative to where it lives.
     @State private var dragging: String?
+    @State private var dragOffset: CGSize = .zero
+    /// Where inside the tile it was picked up, so it stays under the pointer
+    /// when the layout moves the tile out from under it.
+    @State private var grabPoint: CGPoint = .zero
+    /// Every tile's rectangle in the grid's own space, which is how the drag
+    /// knows what it is over.
+    @State private var frames: [String: CGRect] = [:]
     /// The tab whose glyph is being chosen, if any.
     @State private var pickingGlyph: String?
     @State private var renaming: String?
@@ -465,30 +472,14 @@ struct HelmPanelContent: View {
                                  },
                                  remove: { apply(layout.removing(widget.id)) },
                                  move: { offset in nudge(widget.id, by: offset, among: items) }))
-            .modifier(DragToReorder(
-                active: editing, widget: widget.id,
-                begin: { dragging = widget.id },
-                // Live, on the way in rather than on the drop: the tiles move
-                // aside as the pointer crosses them, so where the widget will
-                // land is where the hole is. It used to be answered only after
-                // letting go.
-                enter: {
-                    guard let carried = dragging, carried != widget.id,
-                          let target = layout.placement(of: widget.id) else { return }
-                    // Only when it changes something. `isTargeted` fires on
-                    // every mouse move inside the tile, not once on the way in,
-                    // so this ran dozens of times a second — each one starting
-                    // a fresh animation from wherever the last had reached,
-                    // which is what the judder was.
-                    guard layout.placement(of: carried)?.index != target.index
-                            || layout.placement(of: carried)?.tab != target.tab else { return }
-                    withAnimation(HelmMotion.reorder) {
-                        apply(layout.moving(carried, toTab: target.tab, at: target.index))
-                    }
-                },
-                // The drop is a transaction too, or the tile's content snaps
-                // back into a slot that had spent the whole drag animating.
-                end: { withAnimation(HelmMotion.reorder) { dragging = nil } }))
+            // Its rectangle, so the drag knows what it is over.
+            .onGeometryChange(for: CGRect.self,
+                              of: { $0.frame(in: .named(Self.gridSpace)) }) { rect in
+                if frames[widget.id] != rect { frames[widget.id] = rect }
+            }
+            .zIndex(dragging == widget.id ? 1 : 0)
+            .offset(dragging == widget.id ? dragOffset : .zero)
+            .gesture(editing ? dragGesture(widget.id) : nil)
         }
     }
 
@@ -532,6 +523,60 @@ struct HelmPanelContent: View {
         .transition(.asymmetric(
             insertion: .scale(scale: 0.94, anchor: .topLeading).combined(with: .opacity),
             removal: .opacity))
+    }
+
+    static let gridSpace = "panel.grid"
+
+    /// Carrying a tile, by hand rather than by `onDrag`.
+    ///
+    /// AppKit's drag draws its own image of the view — a translucent snapshot
+    /// that floats under the pointer — and nothing in SwiftUI can make it
+    /// opaque. So the whole thing was the panel showing one widget twice: the
+    /// system's ghost above, and whatever the tile was doing below.
+    ///
+    /// A gesture gives the tile itself: it moves with the pointer, at full
+    /// weight, above its neighbours, and they slide aside as it crosses them.
+    private func dragGesture(_ id: String) -> some Gesture {
+        DragGesture(minimumDistance: 6, coordinateSpace: .named(Self.gridSpace))
+            .onChanged { value in
+                if dragging != id {
+                    dragging = id
+                    // Where in the tile it was taken hold of. Without this the
+                    // tile jumps so its corner is under the pointer.
+                    let origin = frames[id]?.origin ?? .zero
+                    grabPoint = CGPoint(x: value.startLocation.x - origin.x,
+                                        y: value.startLocation.y - origin.y)
+                }
+                follow(id, to: value.location)
+
+                // What is under the pointer, and is it somewhere else?
+                guard let over = frames.first(where: { $0.key != id && $0.value.contains(value.location) })?.key,
+                      let target = layout.placement(of: over),
+                      let here = layout.placement(of: id),
+                      here.tab != target.tab || here.index != target.index else { return }
+                withAnimation(HelmMotion.reorder) {
+                    apply(layout.moving(id, toTab: target.tab, at: target.index))
+                }
+                // The tile has a new home, so the offset that kept it under the
+                // pointer is measured from the wrong place. Re-derive it from
+                // where it now lives — this is what stops the carried tile from
+                // leaping every time the row repacks.
+                follow(id, to: value.location)
+            }
+            .onEnded { _ in
+                withAnimation(HelmMotion.reorder) {
+                    dragging = nil
+                    dragOffset = .zero
+                }
+            }
+    }
+
+    /// Keeps the carried tile under the pointer, wherever the layout has since
+    /// decided the tile belongs.
+    private func follow(_ id: String, to location: CGPoint) {
+        let origin = frames[id]?.origin ?? .zero
+        dragOffset = CGSize(width: location.x - grabPoint.x - origin.x,
+                            height: location.y - grabPoint.y - origin.y)
     }
 
     private func offeredSizes(_ id: String) -> [PanelWidgetSize] {
@@ -1268,39 +1313,6 @@ private struct EditChrome: ViewModifier {
     }
 }
 
-/// Reordering by dragging. Off unless the panel is being arranged: a tile that
-/// lifts under a pointer that meant to press a button is an arrangement nobody
-/// asked to change, and there is no undo here.
-private struct DragToReorder: ViewModifier {
-    let active: Bool
-    let widget: String
-    let begin: () -> Void
-    let enter: () -> Void
-    let end: () -> Void
-
-    func body(content: Content) -> some View {
-        if !active { content } else {
-            content
-                // `onDrag` rather than `draggable`: this one has a closure that
-                // fires when the drag *starts*, and knowing which tile is in the
-                // air is the whole basis of moving the others out of its way.
-                .onDrag {
-                    begin()
-                    return NSItemProvider(object: widget as NSString)
-                }
-                .onDrop(of: [.text], isTargeted: Binding(
-                    get: { false },
-                    set: { over in if over { enter() } }
-                )) { _ in
-                    end()
-                    return true
-                }
-        }
-    }
-}
-
-/// One collapsed row listing the modules whose UI lives in Settings. Expanding
-/// reveals compact rows; clicking one opens Settings on that module.
 struct UtilitiesSection: View {
     let modules: [ModuleHost.Live]
     @Binding var expanded: Bool
