@@ -302,10 +302,6 @@ enum AppStr {
     static var removeWidget: String { L("Remove widget") }
     static var widgetSize: String { L("Widget size") }
     static var addWidget: String { L("Add widget") }
-    /// The gallery's heading. Not «Add widget» any more: adding a widget is the
-    /// plus on a drawer row, and this block holds only what was taken off the
-    /// panel altogether.
-    static var takenOffThePanel: String { L("Taken off the panel") }
     static var chooseUtilities: String { L("Choose what is in the list") }
     static var tabLabels: String { L("Tab labels") }
     static var tabIcon: String { L("Icon") }
