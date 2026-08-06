@@ -1163,7 +1163,19 @@ private struct EditChrome: ViewModifier {
     private var sizeControl: some View {
         HStack(spacing: 2) {
             ForEach(open ? sizes : [size], id: \.self) { option in
-                Button { resize(option) } label: {
+                Button {
+                    // Shut on the way out, and say so *before* the resize.
+                    //
+                    // The tile changes shape under the pointer, so the control
+                    // slides out from under it and `onHover(false)` never
+                    // arrives — the pill stayed open, with the chip it had just
+                    // chosen lit blue, until something else moved. Clicking also
+                    // leaves the button focused, and focus is the other half of
+                    // «open».
+                    hovering = false
+                    focused = false
+                    resize(option)
+                } label: {
                     // The accent marks *which of the three*, so it appears
                     // only when there are three. Closed, the chip is one label
                     // saying what the size is, and a blue pill on every tile
