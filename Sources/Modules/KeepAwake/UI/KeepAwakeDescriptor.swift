@@ -34,7 +34,7 @@ import Module_KeepAwake_Engine
     }
 
     public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? {
-        let s = store ?? NamespacedStore(namespace: "keep-awake", backing: UserDefaults.standard)
+        let s = store ?? NamespacedStore(namespace: KeepAwakeDescriptor.id.rawValue, backing: UserDefaults.standard)
         return MenuBarContribution(panelTile: AnyView(KeepAwakePanelTile(vm: vm, store: s)))
     }
 
@@ -43,7 +43,7 @@ import Module_KeepAwake_Engine
     /// automation conditions unfolded under it, which at 2×1 are behind a
     /// disclosure because the tile has to stay short.
     public func panelWidget(_ size: PanelWidgetSize, _ vm: ModuleViewModel) -> AnyView? {
-        let s = store ?? NamespacedStore(namespace: "keep-awake", backing: UserDefaults.standard)
+        let s = store ?? NamespacedStore(namespace: KeepAwakeDescriptor.id.rawValue, backing: UserDefaults.standard)
         switch size {
         case .compact: return AnyView(KeepAwakeCompactWidget(vm: vm))
         case .wide: return AnyView(KeepAwakePanelTile(vm: vm, store: s))
@@ -56,7 +56,7 @@ import Module_KeepAwake_Engine
     }
 
     public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
-        AnyView(KeepAwakeSettingsPage(vm: vm, store: store ?? NamespacedStore(namespace: "keep-awake", backing: UserDefaults.standard)))
+        AnyView(KeepAwakeSettingsPage(vm: vm, store: store ?? NamespacedStore(namespace: KeepAwakeDescriptor.id.rawValue, backing: UserDefaults.standard)))
     }
 
     public func statusChanges(_ vm: ModuleViewModel) -> AnyPublisher<Void, Never>? {

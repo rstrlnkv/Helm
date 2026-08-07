@@ -70,7 +70,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         let made = FolderWatcher { [weak self] changed in
             guard let self, TrashArrival.namesAnApp(changed, trash: trash) else { return }
             HelmLog.shared.info("uninstaller", "an app reached the Trash")
-            self.localTransport.emit(EngineEvent(name: Self.trashChangedEvent))
+            self.localTransport.emit(EngineEvent(name: UninstallerEvent.trashChanged.rawValue))
         }
         watcher = made
         made.watch([trash])
@@ -86,7 +86,6 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// "Look again" — it carries nothing, because what is in the Trash and
     /// whether any of it is worth offering is answered by `trashedAppLeftovers`
     /// and by nobody else.
-    public static let trashChangedEvent = "trashChanged"
 
     /// Where every leftover this module knows about lives.
     ///
@@ -306,7 +305,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         store.set(on, for: Self.watchKey)
         HelmLog.shared.info("uninstaller", "trash offer switched \(on ? "on" : "off")")
         startWatchingTrashIfAsked()
-        if on { localTransport.emit(EngineEvent(name: Self.trashChangedEvent)) }
+        if on { localTransport.emit(EngineEvent(name: UninstallerEvent.trashChanged.rawValue)) }
     }
 
     /// Cancel. Remembered so the window does not return for this app at the next

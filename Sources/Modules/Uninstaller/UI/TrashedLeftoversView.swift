@@ -82,7 +82,7 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { bundleID }
         watching?.cancel()
         watching = Task { [weak self] in
             guard let events = self?.events else { return }
-            for await event in events where event.name == UninstallerEngine.trashChangedEvent {
+            for await event in events where event.name == UninstallerEvent.trashChanged.rawValue {
                 await self?.refresh()
             }
         }

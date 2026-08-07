@@ -73,7 +73,7 @@ import Module_Layout_Engine
     public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
         AnyView(LayoutSettingsPage(
             vm: vm,
-            store: store ?? NamespacedStore(namespace: "layout", backing: UserDefaults.standard)))
+            store: store ?? NamespacedStore(namespace: LayoutDescriptor.id.rawValue, backing: UserDefaults.standard)))
     }
 }
 
