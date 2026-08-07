@@ -61,6 +61,11 @@ public struct DuplicatesSettingsPage: View {
         .task { diskAccess = PermissionCheck.currentFullDiskAccess() }
         .animation(HelmMotion.interface, value: dvm.phase)
         .animation(HelmMotion.interface, value: dvm.basket.isEmpty)
+        // And on the groups themselves, which is the change somebody actually
+        // makes here: the other two cover the state around the list, so
+        // emptying the basket animated the bar and dropped the rows it emptied
+        // in one frame. The same line Leftovers already has.
+        .animation(HelmMotion.interface, value: dvm.groups.count)
         .confirmationDialog(DupStr.confirmTrash(dvm.basket.count, Bytes(dvm.basketBytes)),
                             isPresented: $confirming, titleVisibility: .visible) {
             Button(DupStr.moveToTrash, role: .destructive) {

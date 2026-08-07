@@ -73,6 +73,34 @@ public enum HelmMotion {
         reduced ? instant : .spring(response: 0.28, dampingFraction: 0.72)
     }
 
+    /// The two fades a carried tile leaves behind it, both deliberately slower
+    /// than the hand.
+    ///
+    /// They were inline `.easeOut` curves, which is the one thing a curve in
+    /// this app may not be: an inline animation cannot be found by anyone
+    /// looking for the app's vocabulary, and — the part that matters — it does
+    /// not collapse under Reduce Motion, so the one gesture in Helm that fades
+    /// two surfaces was also the one that kept fading with the setting on.
+    /// The numbers are unchanged, and the reason for each is on it.
+    ///
+    /// `slotFade`: the tile's own content stepping aside as it is picked up.
+    /// The overlay sits exactly on top of the slot from the first frame, so
+    /// whatever happens in the first 150 ms is invisible; at 0.3 s the fade was
+    /// over before a quick drag cleared the slot, and what the eye met was a
+    /// dark hole that had arrived instantly. Half a second means the slot is
+    /// still dimming as it comes out from under the hand.
+    public static var slotFade: Animation {
+        reduced ? instant : .easeOut(duration: 0.5)
+    }
+
+    /// `wellFade`: the grey well marking where the carried tile came from. It
+    /// outlives the drag — the handover swaps the tile inside a transaction
+    /// with animations off, and the well has to go on fading through it — so it
+    /// is a shade quicker than the slot it sits in.
+    public static var wellFade: Animation {
+        reduced ? instant : .easeOut(duration: 0.4)
+    }
+
     /// Large morphs where the shape itself changes — a pill growing into a
     /// card. Bouncy enough to read as fluid.
     public static var emphasis: Animation {
@@ -111,6 +139,18 @@ public enum HelmMotion {
     public static func steadyRotation(seconds: Double) -> Animation {
         guard !reduced else { return .linear(duration: 0) }
         return .linear(duration: seconds).repeatForever(autoreverses: false)
+    }
+
+    /// How a wheel that was turning comes to rest: a short coast forward, never
+    /// a rewind.
+    ///
+    /// The About bezel used to stop with `withAnimation(interface) { angle = 0 }`
+    /// — a retarget from wherever the dial had got to back to zero, so the wheel
+    /// visibly *un*-spun, with a snappy spring's overshoot at the end. A thing
+    /// with momentum does not do that. Two dozen degrees is enough to read as
+    /// deceleration and short enough that the check still feels finished.
+    public static var spinDown: Animation {
+        reduced ? instant : .easeOut(duration: 0.55)
     }
 
     /// Whether an indefinite symbol spin may run.

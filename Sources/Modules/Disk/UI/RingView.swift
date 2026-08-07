@@ -248,10 +248,18 @@ struct RingView: View {
             Text(Bytes(focusBytes))
                 .font(.system(size: 19, weight: .medium, design: .monospaced))
                 .contentTransition(.numericText())
-                // The same curve and the same length as the arcs around it.
-                // On its own token it settled a quarter-second before they did,
-                // and the eye read one move as two.
-                .animation(HelmMotion.ringMorph(), value: focusBytes)
+                // The same curve **and the same length** as the arcs around it.
+                //
+                // `ringMorph()` alone is always one level, so a breadcrumb jump
+                // three levels back gave the arcs 0.82 s and this figure 0.50 —
+                // it stopped 320 ms early, which is the two-moves-for-one-event
+                // the note above says was fixed. The levels have to travel with
+                // it: `foldingBackFrom` is still set in the update where
+                // `focusBytes` changes on the way out, and nil on a drill-in,
+                // which is exactly the distinction the arcs make.
+                .animation(HelmMotion.ringMorph(levels: foldingBackFrom != nil
+                                                ? foldingBackLevels : 1),
+                           value: focusBytes)
             if growing {
                 Text(DkStr.scanning + "…")
                     .font(.caption2)

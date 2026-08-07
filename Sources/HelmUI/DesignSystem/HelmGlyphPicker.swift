@@ -67,9 +67,11 @@ public struct HelmGlyphPicker: View {
         }?.id ?? HelmGlyphCatalogue.categories[0].id)
     }
 
-    private var symbols: [String] {
-        HelmGlyphCatalogue.categories.first { $0.id == category }?.symbols ?? []
+    private var group: HelmGlyphCatalogue.Category? {
+        HelmGlyphCatalogue.categories.first { $0.id == category }
     }
+
+    private var symbols: [String] { group?.symbols ?? [] }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -81,7 +83,7 @@ public struct HelmGlyphPicker: View {
             .labelsHidden()
             LazyVGrid(columns: Array(repeating: GridItem(.fixed(40), spacing: 6), count: 4),
                       spacing: 6) {
-                ForEach(symbols, id: \.self) { symbol in
+                ForEach(Array(symbols.enumerated()), id: \.element) { index, symbol in
                     Button { choose(symbol) } label: {
                         Image(systemName: symbol)
                             .font(.system(size: 15, weight: .medium))
@@ -92,8 +94,16 @@ public struct HelmGlyphPicker: View {
                                       : AnyShapeStyle(HelmSurface.wellFill)))
                     }
                     .buttonStyle(.plain)
-                    .help(symbol)
-                    .accessibilityLabel(symbol)
+                    // The category and the place in it, not the symbol's name.
+                    //
+                    // The name was the only label the grid offered, so VoiceOver
+                    // read «gauge dot with dot dots dot needle dot 33 percent»
+                    // — an identifier for the drawing, in a picker whose whole
+                    // argument is that you choose these by looking rather than
+                    // by reading names. Neither part needs its own string: the
+                    // category is already translated and the rest is a number.
+                    .accessibilityLabel("\(group?.title ?? "") \(index + 1)")
+                    .accessibilityAddTraits(symbol == selected ? [.isSelected] : [])
                 }
             }
         }

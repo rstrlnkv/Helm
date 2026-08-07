@@ -36,11 +36,20 @@ public struct KeepAwakePanelTile: View {
         // strip under the presets.
         VStack(alignment: .leading, spacing: 0) {
             header
-            if vm.isActive, let end = vm.endDate {
-                countdownRow(end).padding(.top, 10)
-            } else {
-                presetRow.padding(.top, 10)
+            // The swap the tile is for, and it was the one thing in it with no
+            // motion: a bare `if` between two rows of different heights, inside
+            // a card whose own height is ramping on `disclosure` around it. The
+            // rows are different view types, so there is nothing to
+            // interpolate — a cross-fade on one clock is the honest answer.
+            Group {
+                if vm.isActive, let end = vm.endDate {
+                    countdownRow(end).transition(.opacity)
+                } else {
+                    presetRow.transition(.opacity)
+                }
             }
+            .padding(.top, 10)
+            .animation(HelmMotion.disclosure, value: vm.isActive)
             // Canonical accordion, available in both states: the block always
             // exists, its natural height is measured, and the animation
             // interpolates between 0 and that number (SwiftUI can't animate to
@@ -83,7 +92,12 @@ public struct KeepAwakePanelTile: View {
     private var header: some View {
         // The shared widget header, not a fourth arrangement of a plate and a
         // name: five widgets in one panel, one heading.
-        HelmWidgetHeader(symbol: "moon.zzz.fill", tint: .orange, name: KAStr.moduleName,
+        // The token, not `.orange`. The 1×1 widget draws the module's own
+        // #DE7A21 and this drew the system colour, so resizing a tile between
+        // the two repainted its plate in place — which is the very defect
+        // `HelmWidgetHeader` was written to end.
+        HelmWidgetHeader(symbol: "moon.zzz.fill", tint: KeepAwakeDescriptor.tint.colour,
+                         name: KAStr.moduleName,
                          subtitle: activeSubtitle, active: vm.isActive) {
             Toggle("", isOn: Binding(get: { vm.isActive }, set: { _ in vm.send(KeepAwakeCommand.toggle) }))
                 .toggleStyle(.switch)

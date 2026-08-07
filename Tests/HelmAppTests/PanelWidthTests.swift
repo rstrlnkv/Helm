@@ -10,8 +10,14 @@ final class PanelWidthTests: XCTestCase {
     /// Two columns, at the width Helm ships. The grid still derives the count
     /// from a number rather than holding one of its own — that is the rule from
     /// step one — and this is the only number it is ever given.
+    ///
+    /// **Read from the constant, not written out.** It said 300, the panel
+    /// moved to 320, and the test went on passing because both answer two — a
+    /// check that cannot fail for the thing it is named after. Reading
+    /// `helmPanelWidth` is what makes it a check at all: change the panel to a
+    /// width that buys a third column and this is what says so.
     func testTheShippedWidthGivesTwoColumns() {
-        XCTAssertEqual(PanelGrid.columns(for: 300), 2)
+        XCTAssertEqual(PanelGrid.columns(for: helmPanelWidth), 2)
     }
 
     /// What a wider panel would have bought, kept as an assertion rather than

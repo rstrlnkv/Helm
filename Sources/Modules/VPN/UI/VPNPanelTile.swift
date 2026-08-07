@@ -41,7 +41,8 @@ public struct VPNPanelTile: View {
     }
 
     private var header: some View {
-        HelmWidgetHeader(symbol: "lock.shield", tint: .indigo, name: "VPN",
+        // The token, not `.indigo` — see the same note on Keep Awake's tile.
+        HelmWidgetHeader(symbol: "lock.shield", tint: VPNDescriptor.tint.colour, name: "VPN",
                          active: anyConnected) {
             HelmStatusDot(active: anyConnected)
         }
