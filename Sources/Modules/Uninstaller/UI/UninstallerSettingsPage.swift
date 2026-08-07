@@ -74,6 +74,10 @@ public struct UninstallerSettingsPage: View {
     }
 
     private var pageBody: some View {
+        // The module had no motion at all: three steps and two lists, and
+        // moving between them — or losing the app you just removed — happened
+        // in a single frame. One token on the three things that change, the
+        // same one the other list screens use.
         VStack(spacing: 0) {
             // One toolbar row instead of a metric panel, a segmented row and a
             // search row stacked on top of each other.
@@ -143,6 +147,9 @@ public struct UninstallerSettingsPage: View {
                 OrphansView(uvm: uvm)
             }
         }
+        .animation(HelmMotion.interface, value: step)
+        .animation(HelmMotion.interface, value: tab)
+        .animation(HelmMotion.interface, value: apps.count)
     }
 
     /// Counts read as a quiet status line instead of a panel of dials.

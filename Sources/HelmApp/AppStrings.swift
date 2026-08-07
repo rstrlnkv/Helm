@@ -333,6 +333,13 @@ enum AppStr {
     static var moduleIsOff: String { L("Module is off") }
     static var nothingOnThisTab: String { L("Nothing on this tab yet") }
     static var nothingOnThisTabHint: String { L("Press the pencil below to add a widget.") }
+    /// The same sentence for a panel whose pencil has been switched off. It
+    /// pointed at the button either way, so with the button hidden the hint
+    /// named a control that was not on screen — and the door it did not
+    /// mention is the one that cannot be closed.
+    static var nothingOnThisTabHintNoButton: String {
+        L("Right-click the menu-bar icon to add a widget.")
+    }
 
     static var noModules: String { L("No modules enabled") }
     static var noModulesHint: String { L("Enable a module in Settings.") }

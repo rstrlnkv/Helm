@@ -114,6 +114,12 @@ struct RuleEditor: View {
                     Text("\(rvm.preview.count)")
                         .font(.caption).foregroundStyle(HelmText.faint)
                         .contentTransition(.numericText())
+                        // A `contentTransition` outside a transaction is a
+                        // decoration that cannot fire: measured on a digit
+                        // changing, the bare modifier draws one value and the
+                        // same view with this line draws twelve. Every other
+                        // rolling figure in the app already carries it.
+                        .animation(HelmMotion.interface, value: rvm.preview.count)
                 }
             }
             Text(ApStr.dryRunNote)

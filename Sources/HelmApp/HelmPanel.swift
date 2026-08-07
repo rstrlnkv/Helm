@@ -40,7 +40,12 @@ private final class KeyablePanel: NSPanel {
 /// 1×1 in the app was 10 pt under a floor the app itself had written down. 320
 /// is the width the mockups always used, and it makes the rule true: two tiles
 /// of exactly 144.
-private let helmPanelWidth: CGFloat = 320
+///
+/// Internal rather than `private` so `PanelWidthTests` can read it. Written out
+/// as 300, that test went on passing after the panel moved to 320 — both answer
+/// two columns — which is a check that cannot fail for the thing it is named
+/// after.
+let helmPanelWidth: CGFloat = 320
 /// Room on each side of the card for the glass to cast into.
 ///
 /// A window shadow is drawn by the window server *outside* the frame, so the
@@ -259,8 +264,6 @@ struct HelmPanelContent: View {
     @State private var draftName = ""
     @State private var diskAccess: PermissionState = .granted
     @State private var accessibility: PermissionState = .granted
-    /// Bumped when the arrangement changes so the panel rebuilds its rows.
-    @State private var orderTick = 0
 
     /// What a widget is made of.
     ///
@@ -277,7 +280,9 @@ struct HelmPanelContent: View {
     /// one view *this file* owns is not.
     private enum WidgetContent {
         case module(AnyView)
-        case utilities
+        /// The rows it holds travel with it, so nothing downstream has to ask
+        /// `candidates` a second time to draw a widget it was already handed.
+        case utilities([ModuleHost.Live])
     }
 
     /// One widget, at the size it ended up with.
@@ -285,9 +290,27 @@ struct HelmPanelContent: View {
         let id: String
         let content: WidgetContent
         let size: PanelWidgetSize
+        /// The sizes this module offers, in the grid's order — asked once,
+        /// where the widget is built.
+        ///
+        /// It used to be a function the size control called, and that function
+        /// opened with `candidates`: a `UserDefaults` read, a JSON decode and a
+        /// tile built for every module, per widget, per pass. `body` re-runs on
+        /// every pointer move of a drag.
+        var offered: [PanelWidgetSize] = []
         /// Arrives by itself and cannot be taken off — the permissions notice
         /// is the only one, and it leaves when the grant is given.
         var pinned = false
+    }
+
+    /// What the panel can draw right now, computed once per pass in `body` and
+    /// handed down. Never a computed property read from a subview: see
+    /// `Widget.offered`.
+    private struct Candidates {
+        var byID: [String: ModuleHost.Live] = [:]
+        var order: [String] = []
+        var utilities: [ModuleHost.Live] = []
+        var choosable: [ModuleHost.Live] = []
     }
 
     /// The one widget that belongs to no module. This is why `Slot.widget` is
@@ -318,8 +341,7 @@ struct HelmPanelContent: View {
 
     /// Modules that offer a widget, and the ones whose UI lives in Settings.
     /// One pass — building a widget builds a view, so each module is asked once.
-    private var candidates: (byID: [String: ModuleHost.Live], order: [String],
-                             utilities: [ModuleHost.Live], choosable: [ModuleHost.Live]) {
+    private var candidates: Candidates {
         var byID: [String: ModuleHost.Live] = [:]
         var order: [String] = []
         var utilities: [ModuleHost.Live] = []
@@ -343,7 +365,8 @@ struct HelmPanelContent: View {
             byID[id] = live
             order.append(id)
         }
-        return (byID, order, utilities, choosable)
+        return Candidates(byID: byID, order: order,
+                          utilities: utilities, choosable: choosable)
     }
 
     /// The stored arrangement decides what is drawn and in what order; the live
@@ -352,6 +375,11 @@ struct HelmPanelContent: View {
     /// so putting it in the layout would mean writing a row that has to be
     /// deleted again the moment somebody presses Grant — and deciding, on
     /// every read, whether an absent one was removed or never added.
+    ///
+    /// «Leaves with it» is true because the two grants are re-read on every
+    /// opening. It was not: the probes ran from `onAppear`, this view is
+    /// mounted once for the life of the app, and a notice that had been
+    /// answered stayed pinned to the top of the panel until the next launch.
     private var permissionsWidget: Widget? {
         let missing = PermissionSummary.withheld(accessibility: accessibility, fullDisk: diskAccess)
         guard !missing.isEmpty else { return nil }
@@ -363,15 +391,18 @@ struct HelmPanelContent: View {
 
     private var tabIndex: Int { min(max(0, activeTab), max(0, layout.tabs.count - 1)) }
 
-    private func widgets(_ byID: [String: ModuleHost.Live]) -> [Widget] {
+    private func widgets(_ parts: Candidates) -> [Widget] {
         let slots = layout.tabs.indices.contains(tabIndex) ? layout.tabs[tabIndex].widgets : []
         let placed: [Widget] = slots.compactMap { slot in
             if slot.widget == Self.utilitiesWidget {
                 // One size. «How much room does the list of everything else
                 // take» is not a question with three answers.
-                return Widget(id: slot.widget, content: .utilities, size: .tall)
+                return Widget(id: slot.widget,
+                              content: .utilities(choosingUtilities ? parts.choosable
+                                                                    : parts.utilities),
+                              size: .tall)
             }
-            guard let live = byID[slot.widget] else {
+            guard let live = parts.byID[slot.widget] else {
                 // A module that is switched off keeps its place and says so.
                 // Dropping the tile would take the arrangement apart and leave
                 // nobody able to say where the block went — and switching a
@@ -385,7 +416,8 @@ struct HelmPanelContent: View {
             let offered = live.descriptor.panelWidgetSizes(live.vm)
             guard let size = PanelGrid.resolve(slot.size, offered: offered),
                   let view = live.descriptor.panelWidget(size, live.vm) else { return nil }
-            return Widget(id: slot.widget, content: .module(view), size: size)
+            return Widget(id: slot.widget, content: .module(view), size: size,
+                          offered: PanelWidgetSize.allCases.filter { offered.contains($0) })
         }
         // At the top, always. It is the only thing in the panel that is wrong
         // right now, and a notice somebody has to scroll to is a notice.
@@ -416,22 +448,28 @@ struct HelmPanelContent: View {
     private func grid(_ items: [Widget]) -> some View {
         let columns = PanelGrid.columns(for: helmPanelWidth)
         let rows = PanelGrid.rows(sizes: items.map(\.size), columns: columns)
-        // Keyed by the widgets in the row, not by the row's position.
+        // **Rows are keyed by position, and cannot be otherwise.** `rows` is
+        // `[[Int]]` — indices into `items` — so `id: \.self` keys a row by the
+        // slots it occupies, which for a panel of full-width tiles is exactly
+        // its position. A reorder therefore does rebuild the rows, and a widget
+        // moving between them is torn down and built again.
         //
-        // With `id: \.offset` a reorder changed what row 2 *contained*, and to
-        // SwiftUI that is a different row 2 — it replaced the subtree instead of
-        // moving anything, so no amount of animation on the outside could make
-        // a tile travel. This is the fix the two previous attempts were missing.
+        // What carries a tile across a reorder is `matchedGeometryEffect`
+        // below: one rectangle either side of the change, so the frame travels
+        // even though the view does not. Do not delete it as redundant — it is
+        // the whole of the mechanism.
+        //
+        // The consequence to remember is that a tile's `@State` does not
+        // survive a move between rows. The drawer's measured height is the one
+        // that shows: reparented, it starts from zero again.
         ForEach(rows, id: \.self) { row in
             HStack(alignment: .top, spacing: PanelGrid.gap) {
-                // By the widget, not by the index. An index is a *position*,
-                // and a reorder changes what position holds what — so every
-                // reorder rebuilt the cells, resetting any state a tile kept
-                // and killing any gesture that lived on one mid-drag. That is
-                // how a carried widget could be left hanging in the air: the
-                // gesture's view died under it and `onEnded` never came.
+                // By the widget, not by the index. Within a row this is what
+                // keeps a cell's identity across a repack — and the gesture
+                // that used to die mid-drag lives on the container now
+                // (see `gridDrag`), which is the load-bearing half of that fix.
                 ForEach(row.map { items[$0] }) { item in
-                    cell(item, among: items)
+                    cell(item)
                         // Two 1×1s in one row are one height. They were 95 and
                         // 89 — six points of ragged edge in a grid whose sizes
                         // are named after squares.
@@ -455,7 +493,7 @@ struct HelmPanelContent: View {
     }
 
     @ViewBuilder
-    private func cell(_ widget: Widget, among items: [Widget]) -> some View {
+    private func cell(_ widget: Widget) -> some View {
         if widget.pinned {
             // No badge in edit mode. It said «this cannot be removed», which is
             // a sentence about a control that is not there — and it hung off
@@ -467,7 +505,7 @@ struct HelmPanelContent: View {
         body(of: widget)
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .modifier(EditChrome(active: editing, widget: widget.id, size: widget.size,
-                                 sizes: offeredSizes(widget.id),
+                                 sizes: widget.offered,
                                  lifted: dragging?.id == widget.id,
                                  wellVisible: well == widget.id,
                                  // The drawer's rows must stay pressable while
@@ -477,8 +515,13 @@ struct HelmPanelContent: View {
                                                         && choosingUtilities),
 
                                  // The drawer chooses contents, not proportions.
+                                 // On a transaction, because the pencil swaps
+                                 // the row set — two rows for nine — and the
+                                 // block's measured height animates around it.
                                  choose: widget.id == Self.utilitiesWidget
-                                     ? { choosingUtilities.toggle() } : nil,
+                                     ? { withAnimation(HelmMotion.disclosure) {
+                                             choosingUtilities.toggle()
+                                         } } : nil,
                                  choosing: choosingUtilities,
                                  // One transaction for the whole move. A size
                                  // change is three things at once — the tile
@@ -491,8 +534,12 @@ struct HelmPanelContent: View {
                                          apply(layout.resizing(widget.id, to: size))
                                      }
                                  },
-                                 remove: { apply(layout.removing(widget.id)) },
-                                 move: { offset in nudge(widget.id, by: offset, among: items) }))
+                                 remove: {
+                                     withAnimation(HelmMotion.disclosure) {
+                                         apply(layout.removing(widget.id))
+                                     }
+                                 },
+                                 move: { offset in nudge(widget.id, by: offset) }))
             // Its rectangle, so the container's drag knows what is where —
             // both for picking a tile up and for knowing what the pointer is
             // over.
@@ -503,19 +550,25 @@ struct HelmPanelContent: View {
         }
     }
 
-    /// The drawer, at the one size it has.
-    private var utilitiesWidget: some View {
-        let parts = candidates
-        return UtilitiesSection(modules: choosingUtilities ? parts.choosable : parts.utilities,
-                                expanded: $utilitiesExpanded,
-                                editing: editing,
-                                choosing: choosingUtilities,
-                                isOn: { !layout.isHidden($0) },
-                                toggle: { id in
-                                    apply(layout.isHidden(id) ? layout.restoring(id)
-                                                              : layout.hiding(id))
-                                },
-                                )
+    /// The drawer, at the one size it has. Its rows arrive with the widget —
+    /// asking `candidates` from here is what made a computed property run once
+    /// per widget per pass.
+    private func utilitiesSection(_ modules: [ModuleHost.Live]) -> some View {
+        UtilitiesSection(modules: modules,
+                         expanded: $utilitiesExpanded,
+                         editing: editing,
+                         choosing: choosingUtilities,
+                         isOn: { !layout.isHidden($0) },
+                         toggle: { id in
+                             // A tick removes or restores a row, and the block
+                             // measures its own height: without a transaction
+                             // the rows below it jump.
+                             withAnimation(HelmMotion.disclosure) {
+                                 apply(layout.isHidden(id) ? layout.restoring(id)
+                                                           : layout.hiding(id))
+                             }
+                         },
+                         )
     }
 
     /// The one branch that keeps a concrete type — see `WidgetContent`.
@@ -524,7 +577,7 @@ struct HelmPanelContent: View {
         Group {
             switch widget.content {
             case .module(let view): view
-            case .utilities: utilitiesWidget
+            case .utilities(let modules): utilitiesSection(modules)
             }
         }
         // **No key on the size**, deliberately.
@@ -567,10 +620,26 @@ struct HelmPanelContent: View {
     private func gridDrag(items: [Widget]) -> some Gesture {
         DragGesture(minimumDistance: 4, coordinateSpace: .named(Self.gridSpace))
             .onChanged { value in
+                // **Frames of tiles that are no longer drawn, thrown away here
+                // because nothing else will.**
+                //
+                // `onGeometryChange` does not fire on disappearance — measured:
+                // a removed view leaves its last rectangle in the dictionary
+                // verbatim. Both lookups below are `first(where:)` over a
+                // dictionary whose iteration order Swift does not define, so a
+                // stale rectangle is not an occasional wrong answer: with two
+                // tabs whose top slots occupy the same rectangle, the tile
+                // under the pointer could resolve to the *other* tab's widget,
+                // and `apply` writes that move to disk immediately. A removed
+                // tile also made whatever took its place unpickable, because
+                // the hit resolved to an id no longer in `items`.
+                let live = Set(items.map(\.id))
+                if frames.keys.contains(where: { !live.contains($0) }) {
+                    frames = frames.filter { live.contains($0.key) }
+                }
                 if dragging == nil {
                     guard let hit = frames.first(where: {
-                              $0.key != Self.permissionsWidget
-                                  && $0.value.contains(value.startLocation)
+                              $0.value.contains(value.startLocation)
                           })?.key,
                           let widget = items.first(where: { $0.id == hit }),
                           let frame = frames[hit]
@@ -596,8 +665,7 @@ struct HelmPanelContent: View {
                 // checked against live frames, so the boundary between two
                 // tiles is exactly where the neighbour starts to move.
                 guard let over = frames.first(where: {
-                          $0.key != carried.id && $0.key != Self.permissionsWidget
-                              && $0.value.contains(value.location)
+                          $0.key != carried.id && $0.value.contains(value.location)
                       })?.key,
                       let overFrame = frames[over],
                       let target = layout.placement(of: over),
@@ -631,17 +699,28 @@ struct HelmPanelContent: View {
                 // happens in the completion — a timer used to do this, and a
                 // timer neither knows when the spring is done nor whether a new
                 // drag has started since.
-                let home = frames[carried.id]?.insetBy(dx: Self.chromeInset, dy: Self.chromeInset)
+                // The slot can be gone: switch a module off in Settings with
+                // its tile in the air and `reload` takes the widget out from
+                // under the drag. There is nowhere to glide to, so the copy in
+                // the hand fades instead of being cut — the one exit from a
+                // drag that had no motion at all.
+                guard let home = frames[carried.id]?
+                        .insetBy(dx: Self.chromeInset, dy: Self.chromeInset) else {
+                    withAnimation(HelmMotion.interface) {
+                        dragging = nil
+                        dropping = false
+                    }
+                    well = nil
+                    return
+                }
                 // `.removed`, not `.logicallyComplete`: the logical end comes
                 // before the spring's visible tail, so the handover used to
                 // happen while the overlay was still settling — a cut in the
                 // last frame of the landing.
                 withAnimation(HelmMotion.reorder, completionCriteria: .removed) {
                     dropping = true
-                    if let home {
-                        dragLocation = CGPoint(x: home.minX + grabOffset.width,
-                                               y: home.minY + grabOffset.height)
-                    }
+                    dragLocation = CGPoint(x: home.minX + grabOffset.width,
+                                           y: home.minY + grabOffset.height)
                 } completion: {
                     // `dropping` is false if a new drag began mid-glide; the
                     // new drag owns the state now.
@@ -694,18 +773,17 @@ struct HelmPanelContent: View {
         }
     }
 
-    private func offeredSizes(_ id: String) -> [PanelWidgetSize] {
-        guard let live = candidates.byID[id] else { return [] }
-        let offered = live.descriptor.panelWidgetSizes(live.vm)
-        return PanelWidgetSize.allCases.filter { offered.contains($0) }
-    }
-
-
     /// Keyboard reordering. The panel is reachable from the keyboard and the
     /// edit mode must not be the one place that is not.
-    private func nudge(_ id: String, by offset: Int, among items: [Widget]) {
+    ///
+    /// The same curve the pointer gets. It was a bare assignment, so the one
+    /// path through the edit mode that did not animate at all was the keyboard:
+    /// dragged, a tile travels on `reorder`; nudged, it teleported.
+    private func nudge(_ id: String, by offset: Int) {
         guard let at = layout.placement(of: id) else { return }
-        apply(layout.moving(id, toTab: at.tab, at: max(0, at.index + offset)))
+        withAnimation(HelmMotion.reorder) {
+            apply(layout.moving(id, toTab: at.tab, at: max(0, at.index + offset)))
+        }
     }
 
     // MARK: - Chrome
@@ -791,8 +869,14 @@ struct HelmPanelContent: View {
                         }
                         Button(AppStr.tabIcon) { pickingGlyph = tab.id }
                         Button(AppStr.closeTab, role: .destructive) {
-                            apply(layout.removingTab(tab.id))
-                            activeTab = min(tabIndex, max(0, layout.tabs.count - 1))
+                            // The token the tab buttons use. Bare, the content
+                            // cut while the card's measured height went on
+                            // ramping around it — its own transaction — so
+                            // closing a tab looked unlike switching to one.
+                            withAnimation(HelmMotion.interface) {
+                                apply(layout.removingTab(tab.id))
+                                activeTab = min(tabIndex, max(0, layout.tabs.count - 1))
+                            }
                         }
                         .disabled(layout.tabs.count == 1)
                     }
@@ -814,8 +898,10 @@ struct HelmPanelContent: View {
                         let taken = Set(layout.tabs.map(\.id))
                         var n = 2
                         while taken.contains("tab.\(n)") { n += 1 }
-                        apply(layout.addingTab(id: "tab.\(n)"))
-                        activeTab = layout.tabs.count - 1
+                        withAnimation(HelmMotion.interface) {
+                            apply(layout.addingTab(id: "tab.\(n)"))
+                            activeTab = layout.tabs.count - 1
+                        }
                     } label: {
                         Image(systemName: "plus")
                             .font(.system(size: 12, weight: .semibold))
@@ -929,7 +1015,9 @@ struct HelmPanelContent: View {
             // A tile again: `adding` clears both refusals and gives it a slot,
             // which is what the drawer needs — it *is* a tile, and one that
             // only came here because somebody took it off.
-            apply(layout.adding(id, toTab: tabIndex))
+            withAnimation(HelmMotion.disclosure) {
+                apply(layout.adding(id, toTab: tabIndex))
+            }
         } label: {
             VStack(spacing: 4) {
                 if isDrawer {
@@ -957,6 +1045,12 @@ struct HelmPanelContent: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        // The same namespace the tiles travel in, so pressing a ghost *moves*
+        // it into the grid instead of ending it here and starting it there.
+        // Safe because the two can never be on screen together: `galleryIDs`
+        // offers only what no tab holds, and a tile is drawn only where it is
+        // held — so this id has exactly one view at any moment.
+        .matchedGeometryEffect(id: id, in: widgetShapes)
     }
 
     /// Not an option any more.
@@ -1042,8 +1136,15 @@ struct HelmPanelContent: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            card
+        // **Once per pass, here.** `candidates` walks every enabled module,
+        // reads `UserDefaults`, decodes the sidebar's layout and builds a tile
+        // for each — and it used to be read from `cell`, from `offeredSizes`
+        // and from the drawer, so a six-widget panel paid for all of that seven
+        // times over on every pointer move of a drag.
+        let parts = candidates
+        let items = widgets(parts)
+        return VStack(spacing: 0) {
+            card(parts, items)
             // Transparent filler: the window spans a strip, so a click below the
             // card should dismiss (a menu behaves the same way).
             Color.clear
@@ -1067,7 +1168,6 @@ struct HelmPanelContent: View {
             if measured > 0, stripHeight != measured { stripHeight = measured }
         }
         .onReceive(NotificationCenter.default.publisher(for: .helmModuleOrderChanged)) { _ in
-            orderTick &+= 1
             reload()
         }
         .onReceive(NotificationCenter.default.publisher(for: .helmMenuBarStyleChanged)) { _ in
@@ -1090,6 +1190,19 @@ struct HelmPanelContent: View {
             // so «the session» was the whole time the app had been running.
             activeTab = 0
             revealed = false
+            // Everything else that used to run from `onAppear` and therefore
+            // ran once for the life of the app.
+            //
+            // `reload` because a module switched on in Settings posts
+            // `.helmModuleEnabled`, not `.helmModuleOrderChanged`: without this
+            // its widget had no slot until the next launch, and the store's own
+            // comment promises it appears the first time the panel is opened.
+            // The two probes because a grant given — or taken back — while the
+            // app was running was never noticed, so the notice at the top of
+            // the panel outlived the thing it was reporting.
+            reload()
+            diskAccess = PermissionCheck.currentFullDiskAccess()
+            accessibility = PermissionCheck.currentAccessibility()
             DispatchQueue.main.async {
                 withAnimation(HelmMotion.panelEntrance) { revealed = true }
             }
@@ -1104,9 +1217,7 @@ struct HelmPanelContent: View {
 
     /// Everything between the pinned bars: the grid, the gallery, the drawer.
     @ViewBuilder
-    private func scrollable(_ parts: (byID: [String: ModuleHost.Live], order: [String],
-                                      utilities: [ModuleHost.Live], choosable: [ModuleHost.Live]),
-                            _ items: [Widget]) -> some View {
+    private func scrollable(_ parts: Candidates, _ items: [Widget]) -> some View {
             // Two different sentences. `order` excludes what was taken off a
             // tile, so a person who had emptied their panel was told no modules
             // were enabled — false, with nine running — and sent to Settings
@@ -1117,7 +1228,8 @@ struct HelmPanelContent: View {
                 emptyState("square.grid.2x2", AppStr.noModules, AppStr.noModulesHint)
             } else if items.isEmpty && !editing {
                 emptyState("rectangle.on.rectangle", AppStr.nothingOnThisTab,
-                           AppStr.nothingOnThisTabHint)
+                           showEditButton ? AppStr.nothingOnThisTabHint
+                                          : AppStr.nothingOnThisTabHintNoButton)
             } else {
                 grid(items)
                     // Keyed to the tab, so switching is a swap the transition
@@ -1150,14 +1262,21 @@ struct HelmPanelContent: View {
         let ceiling = min(strip, PanelGrid.maximumHeight)
         // The pinned bars are not always there. Their last measurement is,
         // which would keep reserving room for a strip that is no longer drawn.
+        //
+        // Both of them. The mask went on the strip and not on the foot, so
+        // switching the last footer button off left 38 pt reserved under a
+        // footer that had stopped being drawn — and a grid that had exactly
+        // fitted began to scroll. SwiftUI does report the collapse; the
+        // writer's `guard measured > 0` throws that report away, which is
+        // correct there and is why the reader has to do this.
         let pinned = (layout.showsTabBar || editing) ? topChrome : 0
-        return max(120, ceiling - pinned - footerHeight - 24 - 16)
+        let foot = (editing || showSettingsButton || showQuitButton || showEditButton)
+            ? footerHeight : 0
+        return max(120, ceiling - pinned - foot - 24 - 16)
     }
 
-    private var card: some View {
-        let parts = candidates
-        let items = widgets(parts.byID)
-        return VStack(alignment: .leading, spacing: 8) {
+    private func card(_ parts: Candidates, _ items: [Widget]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
 
             // Pinned: the strip, the setup bar and the footer. Only the grid
             // scrolls — the way out of a mode must not be something you have to
@@ -1359,19 +1478,12 @@ private struct EditChrome: ViewModifier {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(HelmSurface.wellFill)
                     .opacity(wellVisible ? 1 : 0)
-                    .animation(.easeOut(duration: 0.4), value: wellVisible)
+                    .animation(HelmMotion.wellFade, value: wellVisible)
             }
-            // Slow on purpose — slower than the hand.
-            //
-            // The fade starts under the overlay, which sits exactly on top of
-            // the slot from the first frame: whatever happens in the first
-            // 150 ms is invisible, because the tile's own copy is covering it.
-            // A 0.3 s fade was over by the time a quick drag moved off the
-            // slot, so what the eye met was the end state — a dark hole,
-            // arrived instantly. Half a second means the slot is still dimming
-            // as it comes out from under the hand, which is the part that can
-            // actually be seen.
-            .animation(.easeOut(duration: 0.5), value: lifted)
+            // Slow on purpose — slower than the hand. Both durations and the
+            // reasons for them live on `HelmMotion.slotFade` / `.wellFade`,
+            // which is also where they learned to stop under Reduce Motion.
+            .animation(HelmMotion.slotFade, value: lifted)
             .overlay {
                 if shielded {
                     Color.clear.contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -1577,7 +1689,15 @@ struct UtilitiesSection: View {
             }
             .padding(.top, 8)
             .onGeometryChange(for: CGFloat.self, of: \.size.height) { height in
-                if height > 0 { rowsHeight = height }
+                guard height > 0, rowsHeight != height else { return }
+                // The first measurement is the answer, not a change. Every one
+                // after it is a change the block has to be seen making — the
+                // pencil swaps three rows for nine — and `onGeometryChange`
+                // hands its value over *outside* the running transaction, so
+                // the write has to carry its own. Measured: 102 → 298 pt in a
+                // single frame without this, a ramp with it.
+                if rowsHeight == 0 { rowsHeight = height }
+                else { withAnimation(HelmMotion.disclosure) { rowsHeight = height } }
             }
             .frame(height: open ? rowsHeight : 0, alignment: .top)
             // Height + clipping only: fading would isolate these rows in their

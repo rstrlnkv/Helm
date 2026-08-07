@@ -89,7 +89,16 @@ struct SidebarComposerList: View {
                 SidebarComposerListRow(row: row, layout: layout, host: host,
                                        editing: editing, apply: apply, rename: rename)
                     .onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
-                        if measured > 0, heights[row.id] != measured { heights[row.id] = measured }
+                        guard measured > 0, heights[row.id] != measured else { return }
+                        // The first measurement of a row is the answer, not a
+                        // change — `total` already counted it, by estimate.
+                        // Every later one is a correction the list has to be
+                        // seen making, and `onGeometryChange` hands its value
+                        // over outside whatever transaction caused it.
+                        if heights[row.id] == nil { heights[row.id] = measured }
+                        else {
+                            withAnimation(HelmMotion.interface) { heights[row.id] = measured }
+                        }
                     }
                     .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                     .listRowSeparator(.hidden)
@@ -108,7 +117,12 @@ struct SidebarComposerList: View {
         // it then was whatever transaction happened to be open, which is how the
         // block came to trail its own rows by a tenth of a second.
         .animation(HelmMotion.interface, value: total)
-        .onChange(of: total) { _, now in height = now }
+        // The sheet's own window is sized from this, so it has to travel in the
+        // same transaction as the list inside it. Written raw, the list ramped
+        // inside a window that jumped.
+        .onChange(of: total) { _, now in
+            withAnimation(HelmMotion.interface) { height = now }
+        }
         .onAppear { height = total }
     }
 

@@ -84,7 +84,12 @@ struct SidebarComposerSheet: View {
 
     private func apply(_ next: SidebarLayout) {
         SidebarLayoutStore.write(next, to: AppSettings.store)
-        revision &+= 1
+        // The list is built from `revision`, so this is the transaction every
+        // change to the arrangement has to travel in. Without it the list's
+        // measured height went from 476 to 536 in one frame — the variant
+        // `DisclosureProbe` already proved dead, with `.animation(_, value:)`
+        // sitting on the frame and the row heights written raw underneath.
+        withAnimation(HelmMotion.interface) { revision &+= 1 }
         // The sidebar and the icon menu read the same value and cannot observe
         // UserDefaults; this is the notification both already listen for.
         NotificationCenter.default.post(name: .helmModuleOrderChanged, object: nil)

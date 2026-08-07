@@ -98,7 +98,13 @@ enum SettingsSelection: Hashable {
         // needs no teardown — and a deinit cannot touch main-actor state.
         NotificationCenter.default.addObserver(
             forName: .helmModuleOrderChanged, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.orderRevision += 1 }
+            // In a transaction: the sidebar behind the composer sheet is that
+            // sheet's live preview, and a raw bump made its rows appear,
+            // vanish and reorder in a single frame while the list in front of
+            // them animated. Two lists disagreeing about what just happened.
+            MainActor.assumeIsolated {
+                withAnimation(HelmMotion.interface) { self?.orderRevision += 1 }
+            }
         }
     }
 }
@@ -506,7 +512,16 @@ private struct MenuBarSettingsView: View {
                                 .controlSize(.small)
                         } else {
                             Button(AppStr.show) {
-                                withAnimation { scroll.scrollTo(Self.permissionsAnchor, anchor: .top) }
+                                // A token, and the only bare `withAnimation`
+                                // left in the app. The default is a spring
+                                // nobody chose, and — the reason this one
+                                // matters more than most — it does not stop
+                                // under Reduce Motion, which is a 900 pt
+                                // scroll flung past somebody who asked the
+                                // machine not to do that.
+                                withAnimation(HelmMotion.interface) {
+                                    scroll.scrollTo(Self.permissionsAnchor, anchor: .top)
+                                }
                             }
                             .controlSize(.small)
                         }
@@ -1034,9 +1049,48 @@ private struct AboutHelmView: View {
 /// longer. It rotates only while an update check is in flight.
 private struct HelmBezel: View {
     var active: Bool
-    @State private var angle: Double = 0
+    /// Where the dial stands when nothing is driving it.
+    @State private var resting: Double = 0
+    /// When the current turn began — the angle is a **function of time**, not a
+    /// value being animated towards.
+    ///
+    /// It was the latter, and that is why stopping rewound the wheel: with
+    /// `repeatForever` the model sits at 360 while the dial is somewhere inside
+    /// the turn, so retargeting to 0 runs backwards from wherever it happens to
+    /// be. Driven from a clock there is no target to retarget — the stop reads
+    /// the angle actually reached and coasts forward from there.
+    @State private var since: Date?
+
+    private static let secondsPerTurn: Double = 6
+
+    private func angle(_ now: Date) -> Double {
+        guard let since else { return resting }
+        return resting + now.timeIntervalSince(since) / Self.secondsPerTurn * 360
+    }
 
     var body: some View {
+        // Paused rather than switched away from: an `if` here would swap the
+        // view's identity at the moment of stopping, and a newly inserted view
+        // has no previous angle to interpolate from — the coast would not play.
+        TimelineView(.animation(paused: since == nil)) { timeline in
+            dial.rotationEffect(.degrees(angle(timeline.date)))
+        }
+        .onChange(of: active) { _, running in
+            if running {
+                // Reduce Motion: no spin at all, rather than a fast one.
+                guard !HelmMotion.reduceMotion else { return }
+                since = .now
+            } else if since != nil {
+                let reached = angle(.now)
+                since = nil
+                resting = reached
+                withAnimation(HelmMotion.spinDown) { resting = reached + 24 }
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var dial: some View {
         Canvas { context, size in
             let center = CGPoint(x: size.width / 2, y: size.height / 2)
             let radius = min(size.width, size.height) / 2
@@ -1056,17 +1110,6 @@ private struct HelmBezel: View {
                                lineWidth: long ? 1.4 : 1)
             }
         }
-        .rotationEffect(.degrees(angle))
-        .onChange(of: active) { _, running in
-            if running {
-                withAnimation(HelmMotion.steadyRotation(seconds: 6)) {
-                    angle += 360
-                }
-            } else {
-                withAnimation(HelmMotion.interface) { angle = 0 }
-            }
-        }
-        .accessibilityHidden(true)
     }
 }
 

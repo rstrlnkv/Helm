@@ -22,24 +22,18 @@ import SwiftUI
     let vm: ModuleViewModel
     private let client: TransportClient
 
-    private static var cached: AutopilotViewModel?
-
-    /// One instance per host view model.
+    /// **No shared instance, deliberately.**
     ///
-    /// It asks the engine for the folders and the history when it is built, so
-    /// a caller that constructs its own — a widget rebuilt on every body pass,
-    /// or a descriptor asked whether anything fired today — would send those
-    /// two requests again every time. Keyed to the view model, because turning
-    /// the module off and on builds a new one and the old cache would be
-    /// talking to a deallocated engine.
-    public static func shared(vm: ModuleViewModel) -> AutopilotViewModel {
-        if let cached, cached.vm === vm { return cached }
-        let created = AutopilotViewModel(vm: vm)
-        cached = created
-        ModuleUICache.dropWhenDisabled(AutopilotDescriptor.id.rawValue) { cached = nil }
-        return created
-    }
-
+    /// There was one, cached and keyed to the host view model, justified by «a
+    /// widget rebuilt on every body pass». Autopilot has no widget — its
+    /// descriptor answers `.utility` — and nothing ever called it, so the cache
+    /// was never filled and the `dropWhenDisabled` registration never happened.
+    /// The one real caller is the settings page, whose `StateObject` already
+    /// builds this exactly once for the life of the page.
+    ///
+    /// If Autopilot does get a tile, the thing to bring back is this cache: the
+    /// initialiser asks the engine for the folders and the history, and a view
+    /// that rebuilds would send both requests again every time.
     public init(vm: ModuleViewModel) {
         self.vm = vm
         self.client = TransportClient(vm.transport)
