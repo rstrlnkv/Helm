@@ -230,13 +230,6 @@ public final class HelmLog: @unchecked Sendable {
               site: LogSite(fileID: fileID, line: line, function: function))
     }
 
-    /// The current log, newest last — used by the in-app diagnostics view.
-    public func currentText(maxBytes: Int = 256 * 1024) -> String {
-        guard let data = try? Data(contentsOf: Self.fileURL) else { return "" }
-        let tail = data.count > maxBytes ? data.suffix(maxBytes) : data
-        return String(decoding: tail, as: UTF8.self)
-    }
-
     public func clear() {
         queue.async {
             // All of it. Clearing only `helm.log` left the rollover behind, so
