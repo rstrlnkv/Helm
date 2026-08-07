@@ -41,7 +41,7 @@ import SwiftUI
     }
 
     public func load() async {
-        folders = await client.request(AutopilotCommand.folders, encoding: [String]()) ?? []
+        folders = await client.request(AutopilotCommand.folders) ?? []
         await loadHistory()
     }
 
@@ -53,12 +53,12 @@ import SwiftUI
     /// own queue and on FSEvents, and a page that is not open does not need
     /// telling.
     public func loadHistory() async {
-        history = await client.request(AutopilotCommand.history, encoding: [String]()) ?? []
+        history = await client.request(AutopilotCommand.history) ?? []
     }
 
     public func clearHistory() {
         Task {
-            await client.send(AutopilotCommand.clearHistory, encoding: [String]())
+            await client.send(AutopilotCommand.clearHistory)
             await loadHistory()
         }
     }
@@ -170,9 +170,9 @@ import SwiftUI
     }
 
     public func runNow(_ folder: WatchedFolder) async {
-        struct FolderID: Codable { let id: String }
+        // The engine's own type — it was declared here, inside this function.
         let report: SweepReport? = await client.request(AutopilotCommand.runNow,
-                                                        encoding: FolderID(id: folder.id))
+                                                        encoding: WatchedFolderRef(id: folder.id))
         guard let report else { return }
         bannerFolderID = folder.id
         banner = ApStr.swept(report.acted, report.examined)

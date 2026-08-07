@@ -152,14 +152,6 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
 
     // MARK: - The pipeline
 
-    /// Everything a later gesture could use to edit text that is no longer in
-    /// front of the caret. A blind edit measured against a word must not
-    /// outlive the word — four paths used to clear two of these three and leave
-    /// the third standing, so a refused conversion, an expanded abbreviation or
-    /// a corrected capital left a word the gesture would then delete out of the
-    /// middle of the sentence that had replaced it.
-    ///
-    /// Call with the lock held.
     /// The layout to convert *into*.
     ///
     /// Not "the first other source": on a Mac with three layouts that is
@@ -175,6 +167,17 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         }
     }
 
+    /// Drops everything a later gesture could use to edit text that is no
+    /// longer in front of the caret. A blind edit measured against a word must
+    /// not outlive the word — four paths used to clear two of these three and
+    /// leave the third standing, so a refused conversion, an expanded
+    /// abbreviation or a corrected capital left a word the gesture would then
+    /// delete out of the middle of the sentence that had replaced it.
+    ///
+    /// **Call with the lock held.** This paragraph and that sentence were
+    /// sitting above `target(for:from:)` directly overhead, which needs no lock
+    /// and clears nothing — so the contract was posted on the wrong door and
+    /// this function, the one that has it, carried no comment at all.
     private func forgetTheWord() {
         buffer.clear()
         undo = nil
@@ -600,7 +603,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                                 conversionsToday: conversions.value(on: Date()))
         lock.unlock()
         if let data = try? JSONEncoder().encode(state) {
-            localTransport.emit(EngineEvent(name: "layoutState", payload: data))
+            localTransport.emit(EngineEvent(name: LayoutEvent.layoutState.rawValue, payload: data))
         }
     }
 }

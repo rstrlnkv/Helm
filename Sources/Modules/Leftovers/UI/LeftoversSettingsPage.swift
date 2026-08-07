@@ -93,7 +93,7 @@ public struct LeftoversSettingsPage: View {
                     .lineLimit(1).fixedSize()
                 Menu {
                     ForEach(StaleKind.allCases, id: \.self) { kind in
-                        Toggle(LfStr.kindName(kind.rawValue), isOn: Binding(
+                        Toggle(LfStr.kindName(kind), isOn: Binding(
                             get: { !lvm.hiddenKinds.contains(kind) },
                             set: { on in
                                 if on { lvm.hiddenKinds.remove(kind) } else { lvm.hiddenKinds.insert(kind) }
@@ -148,7 +148,7 @@ public struct LeftoversSettingsPage: View {
         } else {
             List {
                 ForEach(grouped, id: \.kind) { group in
-                    Section(LfStr.kindName(group.kind.rawValue)) {
+                    Section(LfStr.kindName(group.kind)) {
                         ForEach(group.items) { item in
                             row(item)
                         }

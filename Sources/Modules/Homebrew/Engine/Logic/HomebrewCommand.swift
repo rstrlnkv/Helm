@@ -18,3 +18,19 @@ public enum HomebrewCommand: String, CaseIterable, Sendable {
     case upgradeAll
     case installBrew
 }
+
+/// Everything the module's engine says while a long operation runs.
+///
+/// **A name that crosses a target boundary is a constant both sides read.** The
+/// engine spelled `"opLog"` and `"opState"` into `EngineEvent`, and the view
+/// model spelled them again in the `switch` that receives them — the same
+/// literal typed twice, which is an error nowhere. Rename one and the console
+/// simply stops filling: the events keep arriving, the `switch` keeps not
+/// matching, and nothing anywhere says so. The engine and the UI target both
+/// import this file, so there is no reason for two spellings.
+public enum HomebrewEvent: String, Sendable {
+    /// One line of the tool's output, as it arrives.
+    case opLog
+    /// Where the operation is now: running, done or failed.
+    case opState
+}

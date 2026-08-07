@@ -2,14 +2,24 @@ import SwiftUI
 import HelmUI
 import Module_Homebrew_Engine
 
-extension BrewPackage: Identifiable { public var id: String { (isCask ? "c:" : "f:") + name } }
-extension OutdatedPackage: Identifiable { public var id: String { (isCask ? "c:" : "f:") + name } }
-extension SearchHit: Identifiable { public var id: String { (isCask ? "c:" : "f:") + name } }
+// The three `Identifiable` conformances that used to sit here are on the models
+// themselves now, spelled once through `BrewKey` — the same key the description
+// cache is read by, which is the half that has to agree with the row.
 
 public struct HomebrewSettingsPage: View {
+    /// Which list is on screen — and therefore which one Refresh reloads.
+    ///
+    /// It was an `Int`, tagged 0/1/2 in the picker, switched on in the body and
+    /// switched on again in `refresh`, where the third value fell through a
+    /// `default`. A fourth segment would have been drawn and would have
+    /// refreshed nothing, silently. Over an enum both switches are exhaustive.
+    private enum Segment: Hashable, CaseIterable {
+        case installed, updates, search
+    }
+
     @ObservedObject private var hb: HomebrewViewModel
     @State private var pendingUninstall: BrewPackage?
-    @State private var segment = 0
+    @State private var segment: Segment = .installed
     @State private var query = ""
 
     public init(vm: ModuleViewModel) { hb = HomebrewViewModel.shared(vm: vm) }
@@ -17,7 +27,7 @@ public struct HomebrewSettingsPage: View {
     public var body: some View {
         VStack(spacing: 0) {
             if hb.status.installed {
-                manager
+                managerBody
             } else {
                 installScreen
             }
@@ -74,8 +84,6 @@ public struct HomebrewSettingsPage: View {
 
     // MARK: - Manager
 
-    private var manager: some View { managerBody }
-
     /// Counts as a quiet status line rather than a panel of dials.
     private var statusLine: String {
         // A count that has not arrived is not a count of zero. The list reloads
@@ -91,18 +99,18 @@ public struct HomebrewSettingsPage: View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
                 Picker(HelmA11y.whatToShow, selection: $segment) {
-                    Text(HbStr.segInstalled).tag(0)
-                    Text(HbStr.segUpdates).tag(1)
-                    Text(HbStr.segSearch).tag(2)
+                    Text(HbStr.segInstalled).tag(Segment.installed)
+                    Text(HbStr.segUpdates).tag(Segment.updates)
+                    Text(HbStr.segSearch).tag(Segment.search)
                 }
                 .pickerStyle(.segmented).labelsHidden()
                 .frame(width: 300)
                 .onChange(of: segment) { _, seg in
-                    Task { await refresh(segment: seg) }
+                    Task { await refresh(seg) }
                 }
                 Spacer(minLength: 0)
                 Button {
-                    Task { await refresh(segment: segment) }
+                    Task { await refresh(segment) }
                 } label: {
                     Image(systemName: "arrow.clockwise")
                         .helmSteadySpin(hb.running)
@@ -116,9 +124,9 @@ public struct HomebrewSettingsPage: View {
             Divider()
             Group {
                 switch segment {
-                case 1: updatesList
-                case 2: searchView
-                default: installedList
+                case .installed: installedList
+                case .updates: updatesList
+                case .search: searchView
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -282,11 +290,13 @@ public struct HomebrewSettingsPage: View {
     /// The switcher's answer is the right one — Search has nothing cached to
     /// refresh, and a button that quietly reloads a list you are not looking at
     /// is a button that did nothing.
-    private func refresh(segment: Int) async {
+    private func refresh(_ segment: Segment) async {
         switch segment {
-        case 0: await hb.refreshInstalled()
-        case 1: await hb.refreshOutdated()
-        default: break
+        case .installed: await hb.refreshInstalled()
+        case .updates: await hb.refreshOutdated()
+        // Nothing cached to reload: the hits belong to a query, and reloading
+        // the installed list behind a search is a button that did nothing.
+        case .search: break
         }
     }
 
@@ -303,7 +313,7 @@ public struct HomebrewSettingsPage: View {
             } else {
                 List(items) { row($0) }
                     .listStyle(.inset)
-                                .padding(.horizontal, 12)
+                    .padding(.horizontal, 12)
             }
         }
     }

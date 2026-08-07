@@ -124,7 +124,8 @@ import SwiftUI
         let mine = generation
         let path = folder.path
         Task {
-            let found: [DuplicateGroup]? = await client.request(DuplicatesCommand.find, encoding: ["path": path])
+            let found: [DuplicateGroup]? = await client.request(DuplicatesCommand.find,
+                                                                 encoding: DuplicateSearchRequest(path: path))
             guard mine == generation else { return }
             // Cancelled comes back nil: go back to where we were rather than
             // announce a clean folder nobody finished checking.
@@ -136,8 +137,14 @@ import SwiftUI
 
     public func cancel() {
         generation += 1
-        Task { await client.send(DuplicatesCommand.cancel, encoding: [String]()) }
-        phase = folder == nil ? .start : .start
+        // No payload. It used to encode an empty `[String]` the engine never
+        // decodes — two bytes of JSON standing where «nothing» was meant.
+        Task { await client.send(DuplicatesCommand.cancel) }
+        // Back to the start, whether or not a folder is chosen. This was
+        // `folder == nil ? .start : .start` — a ternary whose two branches are
+        // the same value, which is a decision somebody meant to make and did
+        // not, wearing the shape of one that was made.
+        phase = .start
         progress = nil
     }
 
@@ -231,7 +238,7 @@ import SwiftUI
     // MARK: - Events
 
     private func handle(_ event: EngineEvent) async {
-        guard event.name == "progress" else { return }
+        guard DuplicatesEvent(rawValue: event.name) == .progress else { return }
         if let update = try? JSONDecoder().decode(DuplicateProgress.self,
                                                   from: event.payload) {
             progress = update

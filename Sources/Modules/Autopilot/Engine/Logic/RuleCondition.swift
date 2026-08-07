@@ -102,6 +102,15 @@ public extension RuleCondition {
             let clamped = Self.clamp(value)
             return Self.accepts(clamped) ? clamped : nil
         }
+        // **Every case named, and no `default`.** The three that carry a number
+        // are repaired; the six that carry text or a kind have nothing to
+        // repair and say so by name. A `default: return self` stood here, and
+        // of all the places in this app to swallow an unhandled case this was
+        // the worst one: a tenth condition carrying a `Double` would fall
+        // through it unrepaired, and the paragraph three lines above records
+        // what that costs — a single `1e999` makes `JSONEncoder` throw, the
+        // rules are one JSON value, and the save takes *every folder* the
+        // person has with it. Adding such a case is now a build error.
         switch self {
         case let .size(comparison, megabytes):
             return repaired(megabytes).map { .size(comparison, megabytes: $0) }
@@ -109,7 +118,7 @@ public extension RuleCondition {
             return repaired(days).map { .dateAdded(comparison, days: $0) }
         case let .dateModified(comparison, days):
             return repaired(days).map { .dateModified(comparison, days: $0) }
-        default:
+        case .name, .baseName, .fileExtension, .kind, .downloadedFrom, .tag:
             return self
         }
     }

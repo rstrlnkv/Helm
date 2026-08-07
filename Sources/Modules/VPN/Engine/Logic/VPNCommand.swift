@@ -13,3 +13,29 @@ public enum VPNCommand: String, CaseIterable, Sendable {
     case refresh
     case reloadRules
 }
+
+/// Everything the engine says about itself.
+///
+/// One name, and it was a literal in the engine's `emit` and a literal again in
+/// the view model's `guard e.name == …`. This module has the sharper version of
+/// what that costs written down already: `KeepAwakeViewModel`'s own doc records
+/// five properties sitting at their defaults forever because the *host* view
+/// model decoded a payload named `state` that this module also emits, under a
+/// different shape. The name is shared here; the shape is each module's own.
+public enum VPNEvent: String, Sendable {
+    /// Connections, what Helm raised, and the last rule firing.
+    case state
+}
+
+/// Which connection a command is about.
+///
+/// It crossed the transport as a `private struct NamePayload` in the engine and
+/// a `struct P { let name: String }` declared inside `nameData` in the view
+/// model. The third module found with that pair — Keep Awake's `StartPayload`
+/// and Homebrew's `PkgReq` were the others — and the failure is the same every
+/// time: rename the field on one side and the decode returns nil, the handler
+/// does nothing, and the button is simply inert.
+public struct VPNConnectionRef: Codable, Sendable {
+    public let name: String
+    public init(name: String) { self.name = name }
+}

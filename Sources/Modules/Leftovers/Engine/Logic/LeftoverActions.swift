@@ -16,14 +16,24 @@ public enum LeftoverAction: Hashable, Sendable {
 }
 
 public enum LeftoverActions {
-    public static func available(for item: StaleItem, writable: Bool) -> Set<LeftoverAction> {
+    /// **One argument, and it is the item.**
+    ///
+    /// This took `writable:` beside the item that already carries it, and every
+    /// caller in the app passed `item.writable` because there is nothing else to
+    /// pass. What the parameter bought was the ability to disagree: a test could
+    /// — and did — hand over an item whose own `writable` was true and ask what
+    /// the actions are when it is false, so the assertion described a shape a
+    /// scan cannot produce. `LaunchctlDisabled.canToggle` was deleted for the
+    /// same family of reason, one argument the other way round: it took a
+    /// `status` and never read it.
+    public static func available(for item: StaleItem) -> Set<LeftoverAction> {
         if item.kind == .systemExtension { return [.systemSettings] }
         if item.identifier.hasPrefix("com.apple.") || item.status == .protectedItem {
             return [.reveal]
         }
         var actions: Set<LeftoverAction> = [.reveal]
         if item.kind == .launchAgent, !item.identifier.isEmpty { actions.insert(.turnOff) }
-        if item.kind != .launchDaemon, writable { actions.insert(.delete) }
+        if item.kind != .launchDaemon, item.writable { actions.insert(.delete) }
         return actions
     }
 

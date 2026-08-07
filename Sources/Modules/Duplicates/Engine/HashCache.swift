@@ -99,11 +99,11 @@ public final class HashCache: Codable, @unchecked Sendable {
     // MARK: - Use
 
     /// Entries in `fresh` — the files this map believes still exist.
+    ///
+    /// A `storedCount` sat beside this — everything across both segments, «what
+    /// the file on disk costs» — and nothing in the app or the tests ever asked
+    /// it. A figure nobody reads is not a diagnostic.
     public var count: Int { lock.withLock { fresh.count } }
-    /// Everything held, across both segments. What the file on disk costs.
-    public var storedCount: Int {
-        lock.withLock { Set(settled.keys).union(fresh.keys).count }
-    }
 
     public func prefix(fileID: UInt64, bytes: Int, modified: TimeInterval?) -> String? {
         promote(Self.key(fileID: fileID, bytes: bytes, modified: modified)) { $0.prefix }
