@@ -163,6 +163,46 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   changed nothing and every round shape grew corners the moment a session
   started. Measured on a 15 pt ring: 9 points either way, 65 once the class value
   is set. *(0.9.0-dev.1 only.)*
+- **A widget could walk to a tab you were not looking at.** The panel remembers
+  where every tile is drawn, and it never forgot a tile that had stopped being
+  drawn — so with two tabs whose top slots sit in the same place, dragging on the
+  second one could pick up the first one's widget and move it there, saved
+  immediately and with no undo. The same stale memory made the tile that took a
+  removed widget's place impossible to pick up at all until the panel was
+  reopened.
+- **The permissions notice leaves when the permission is given.** It was checked
+  once per launch, so granting Full Disk Access with Helm running left the pinned
+  notice at the top of the panel until the next start — and a permission taken
+  away was never shown at all. Both are re-read every time the panel opens.
+- **A module switched on in Settings appears in the panel.** It had a place in
+  the gallery and no tile until the next launch.
+- **Hiding the last footer button stops the panel reserving room for it.** 38 pt
+  of empty space stayed under the grid, and a panel that had fitted exactly began
+  to scroll.
+- **Keep Awake and VPN keep their colour when resized.** Their large tiles drew
+  the system orange and indigo while their small ones drew the module's own
+  colours, so changing a widget's size repainted its badge.
+- **The panel moves everywhere it changes.** Reordering with the arrow keys —
+  the one path through the edit mode with no animation at all — removing a
+  widget, adding one from the gallery, which now flies into the grid instead of
+  appearing in it, closing and opening tabs, the utilities pencil, and Keep
+  Awake's row of presets giving way to the countdown.
+- **The disk ring's figure stops when the ring does.** On a breadcrumb jump of
+  several levels the number in the middle settled a third of a second before the
+  arcs around it.
+- **The About wheel no longer un-spins.** At the end of an update check it ran
+  backwards to where it started; it coasts to a stop now.
+- **Editing the sidebar animates on both sides of the sheet.** The list in front
+  and the sidebar behind it disagreed for a frame on every change, and the sheet's
+  own height jumped.
+- **The icon picker can be used with VoiceOver.** Every icon was read out as its
+  internal name — «gauge dot with dot dots dot needle dot 33 percent» — in a
+  picker whose whole point is choosing by looking. It reads the category and the
+  position, and says which one is chosen.
+- **The empty tab's hint points at a door that exists.** It named the pencil even
+  when the pencil had been switched off in Settings.
+- Deleting from Duplicates settles the list instead of dropping rows in a frame,
+  and the Uninstaller — which had no motion anywhere — moves between its steps.
 
 ### Added
 - **The sidebar is an arrangement the person owns.** The list of modules was in
