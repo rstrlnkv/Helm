@@ -69,10 +69,8 @@
 "Back" = "Voltar";
 "Before it starts changing what you type." = "Antes de começar a mudar o que você digita.";
 "Behavior" = "Comportamento";
-"Behaviour, module order, permissions, and diagnostics." = "Comportamento, ordem dos módulos, permissões e diagnóstico.";
 "Beta" = "Beta";
 "Blue" = "Azul";
-"Both actions are always available from the icon’s right-click menu." = "Ambas as ações estão sempre no menu de contexto do ícone.";
 "CONNECTIONS" = "CONEXÕES";
 "Cache — apps rebuild it" = "Cache — os apps recriam";
 "Caches" = "Caches";
@@ -133,7 +131,6 @@
 "Document" = "Documento";
 "Done" = "Concluído";
 "Don’t fix" = "Não corrigir";
-"Dot" = "Ponto";
 "Double ring" = "Anel duplo";
 "Download" = "Baixar";
 "Downloaded from" = "Baixado de";
@@ -146,7 +143,6 @@
 "Each module’s saved data and the diagnostics log go to the Trash, where you can get them back. Your preferences — which modules are on, their order, your shortcuts — are forgotten for good. Helm restarts and greets you as it did the first time." = "Os dados salvos de cada módulo e o registro de diagnóstico vão para o Lixo, de onde você pode recuperá-los. Os ajustes em si (quais módulos estão ativos, a ordem deles, seus atalhos) são esquecidos para sempre. O Helm reinicia e recebe você como da primeira vez.";
 "Early builds with new features — expect rough edges." = "Builds iniciais com novidades — pode haver arestas.";
 "Edit" = "Editar";
-"Empty" = "Limpar";
 "Enable a module in Settings." = "Ative um módulo nos Ajustes.";
 "Errors" = "Erros";
 "Escape closes the menu-bar panel, the way it closes every other menu on the Mac. It could be opened with a keyboard shortcut and then only be closed with the mouse." = "Esc fecha o painel da barra de menus, como fecha qualquer outro menu no Mac. Dava para abrir pelo teclado e só fechar com o mouse.";
@@ -159,14 +155,12 @@
 "Extension" = "Extensão";
 "Extensions, separated by commas" = "Extensões separadas por vírgulas";
 "External display" = "Tela externa";
-"Extras to basket" = "Excedentes para a cesta";
 "Failed" = "Falhou";
 "Files" = "Arquivos";
 "Files from 1 MB. Hard links are one file and are never offered." = "Arquivos a partir de 1 MB. Links físicos são um só arquivo e nunca são oferecidos.";
 "Files left in your Library" = "Arquivos que ficaram na Biblioteca";
 "Files left in your Library by apps you no longer have. Only files named after an app’s bundle id are listed, so some leftovers will not appear." = "Arquivos deixados na sua Biblioteca por apps que você não tem mais. Só são listados os nomeados pelo bundle id de um app, então alguns restos não vão aparecer.";
 "Files that exist more than once" = "Arquivos que existem mais de uma vez";
-"Filled" = "Preenchido";
 "Fix" = "Corrigir";
 "Fix a capital held too long" = "Corrigir maiúscula mantida demais";
 "Fix as I type" = "Corrigir enquanto digito";
@@ -239,7 +233,6 @@
 "Keyboard: a word typed in the wrong keyboard layout is fixed as you type — ghbdtn becomes привет — and the input source follows. Only when the word is not a word as typed and is one once swapped, so anything valid is left alone." = "Teclado: uma palavra digitada no layout errado é corrigida enquanto você digita, e a fonte de entrada acompanha. Só quando não é palavra como digitada e passa a ser após a troca.";
 "Kind" = "Tipo";
 "Language indicator" = "Indicador de idioma";
-"Large" = "Grande";
 "Last 30 days" = "Últimos 30 dias";
 "Last change" = "Última alteração";
 "Later" = "Depois";
@@ -276,7 +269,6 @@
 "Mark for removal" = "Marcar para remoção";
 "Mark the extra copies" = "Marcar as cópias extras";
 "Media" = "Mídia";
-"Medium" = "Médio";
 "Menu-bar icon" = "Ícone na barra de menus";
 "Menu-bar panel and a System Settings-style window, the Liquid Glass icon, eight languages." = "Painel na barra e janela no estilo Ajustes do Sistema, ícone Liquid Glass, oito idiomas.";
 "Menu-bar spin" = "Giro do ícone";
@@ -443,7 +435,6 @@
 "Show in Finder" = "Mostrar no Finder";
 "Show it in the menu bar" = "Mostrar na barra de menus";
 "Show remaining time in the menu bar" = "Mostrar o tempo restante na barra de menus";
-"Show what is in the basket" = "Ver o que está na cesta";
 "Show what is marked for removal" = "Ver o que está marcado para remoção";
 "Silent in-app updates: Update & Relaunch downloads, installs and restarts with no Gatekeeper prompt." = "Atualizações silenciosas: Atualizar e reiniciar baixa, instala e reinicia sem avisos do Gatekeeper.";
 "Silent update cleans up its temporary files after installing." = "A atualização silenciosa limpa os arquivos temporários após instalar.";
@@ -452,7 +443,6 @@
 "Size in megabytes" = "Tamanho em megabytes";
 "Sizes are right where they were nearly right. A file just under a round number was shown with the unit below it — \"1000 KB\" instead of \"1 MB\" — on every screen that names a size. And removing a folder now reports what the folder held, where it used to report nothing at all." = "Os tamanhos estão certos onde quase estavam: «1000 KB» em vez de «1 MB», em todas as telas. E apagar uma pasta informa o que ela continha.";
 "Skip" = "Pular";
-"Small" = "Pequeno";
 "Smaller items" = "Itens menores";
 "Sort into subfolder" = "Organizar em subpasta";
 "Stands for" = "Significado";
@@ -471,7 +461,6 @@
 "Switching to another module and back no longer throws away what you were doing. The Uninstaller used to lose every tick, the whole review step, and the record of what macOS had refused, the moment you left its page; Login Items & Extensions restarted its scan — the slowest one in the app — the same way. Both remember now." = "Trocar para outro módulo e voltar não descarta mais o que você estava fazendo. O Desinstalador costumava perder cada marcação, toda a etapa de revisão e o registro do que o macOS havia recusado assim que você saía da página; Itens de início e extensões reiniciava seu escaneamento — o mais lento do app — da mesma forma. Agora os dois lembram.";
 "System" = "Do sistema";
 "System extensions" = "Extensões do sistema";
-"System item" = "Item do sistema";
 "TIMER" = "TIMER";
 "TODAY" = "HOJE";
 "Tag" = "Etiqueta";
@@ -514,8 +503,6 @@
 "Timer" = "Timer";
 "Timer color" = "Cor do timer";
 "Timing" = "Quando";
-"Tiny" = "Minúsculo";
-"To remove" = "Para remover";
 "Toggle Keep Awake" = "Ativar ou desativar Manter ativo";
 "Tools for your Mac" = "Ferramentas para o seu Mac";
 "Try again" = "Tentar de novo";
@@ -557,7 +544,6 @@
 "VPN module: connect and disconnect system VPNs with per-app auto-connect rules." = "Módulo VPN: conecta e desconecta VPNs do sistema com regras por app.";
 "VPN rows no longer show an endless spinner: the status is re-checked until the connection settles." = "As linhas de VPN não mostram mais um indicador infinito: o estado é verificado novamente até a conexão estabilizar.";
 "Value to match" = "Valor a corresponder";
-"Very small" = "Muito pequeno";
 "Video" = "Vídeo";
 "VoiceOver can find Helm in the menu bar, and \"Reduce motion\" is respected throughout." = "O VoiceOver encontra o Helm na barra de menus, e “Reduzir movimento” é respeitado em todo o app.";
 "VoiceOver reads Helm properly: every icon button has a name, and a collapsed section is no longer read out." = "O VoiceOver lê o Helm direito: todo botão de ícone tem nome, e uma seção recolhida não é mais lida.";
@@ -670,11 +656,8 @@
 "Close tab" = "Fechar a aba";
 "Tab" = "Aba";
 "Paused" = "Em pausa";
-"FOLDERS" = "PASTAS";
-"No folders watched yet" = "Nenhuma pasta ainda";
 "Edit widgets" = "Editar os widgets";
 "Show the edit button in the panel" = "Mostrar o botão de edição no painel";
-"It is also in the menu-bar icon’s right-click menu." = "Ele também está no menu de contexto do ícone.";
 "Choose what is in the list" = "Escolher os itens da lista";
 "Author" = "Autor";
 "Tab labels" = "Rótulos das abas";

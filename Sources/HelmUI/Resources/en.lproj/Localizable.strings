@@ -69,10 +69,8 @@
 "Back" = "Back";
 "Before it starts changing what you type." = "Before it starts changing what you type.";
 "Behavior" = "Behavior";
-"Behaviour, module order, permissions, and diagnostics." = "Behaviour, module order, permissions, and diagnostics.";
 "Beta" = "Beta";
 "Blue" = "Blue";
-"Both actions are always available from the icon’s right-click menu." = "Both actions are always available from the icon’s right-click menu.";
 "CONNECTIONS" = "CONNECTIONS";
 "Cache — apps rebuild it" = "Cache — apps rebuild it";
 "Caches" = "Caches";
@@ -133,7 +131,6 @@
 "Document" = "Document";
 "Done" = "Done";
 "Don’t fix" = "Don’t fix";
-"Dot" = "Dot";
 "Double ring" = "Double ring";
 "Download" = "Download";
 "Downloaded from" = "Downloaded from";
@@ -146,7 +143,6 @@
 "Each module’s saved data and the diagnostics log go to the Trash, where you can get them back. Your preferences — which modules are on, their order, your shortcuts — are forgotten for good. Helm restarts and greets you as it did the first time." = "Each module’s saved data and the diagnostics log go to the Trash, where you can get them back. Your preferences — which modules are on, their order, your shortcuts — are forgotten for good. Helm restarts and greets you as it did the first time.";
 "Early builds with new features — expect rough edges." = "Early builds with new features — expect rough edges.";
 "Edit" = "Edit";
-"Empty" = "Empty";
 "Enable a module in Settings." = "Enable a module in Settings.";
 "Errors" = "Errors";
 "Escape closes the menu-bar panel, the way it closes every other menu on the Mac. It could be opened with a keyboard shortcut and then only be closed with the mouse." = "Escape closes the menu-bar panel, the way it closes every other menu on the Mac. It could be opened with a keyboard shortcut and then only be closed with the mouse.";
@@ -159,14 +155,12 @@
 "Extension" = "Extension";
 "Extensions, separated by commas" = "Extensions, separated by commas";
 "External display" = "External display";
-"Extras to basket" = "Extras to basket";
 "Failed" = "Failed";
 "Files" = "Files";
 "Files from 1 MB. Hard links are one file and are never offered." = "Files from 1 MB. Hard links are one file and are never offered.";
 "Files left in your Library" = "Files left in your Library";
 "Files left in your Library by apps you no longer have. Only files named after an app’s bundle id are listed, so some leftovers will not appear." = "Files left in your Library by apps you no longer have. Only files named after an app’s bundle id are listed, so some leftovers will not appear.";
 "Files that exist more than once" = "Files that exist more than once";
-"Filled" = "Filled";
 "Fix" = "Fix";
 "Fix a capital held too long" = "Fix a capital held too long";
 "Fix as I type" = "Fix as I type";
@@ -239,7 +233,6 @@
 "Keyboard: a word typed in the wrong keyboard layout is fixed as you type — ghbdtn becomes привет — and the input source follows. Only when the word is not a word as typed and is one once swapped, so anything valid is left alone." = "Keyboard: a word typed in the wrong keyboard layout is fixed as you type — ghbdtn becomes привет — and the input source follows. Only when the word is not a word as typed and is one once swapped, so anything valid is left alone.";
 "Kind" = "Kind";
 "Language indicator" = "Language indicator";
-"Large" = "Large";
 "Last 30 days" = "Last 30 days";
 "Last change" = "Last change";
 "Later" = "Later";
@@ -276,7 +269,6 @@
 "Mark for removal" = "Mark for removal";
 "Mark the extra copies" = "Mark the extra copies";
 "Media" = "Media";
-"Medium" = "Medium";
 "Menu-bar icon" = "Menu-bar icon";
 "Menu-bar panel and a System Settings-style window, the Liquid Glass icon, eight languages." = "Menu-bar panel and a System Settings-style window, the Liquid Glass icon, eight languages.";
 "Menu-bar spin" = "Menu-bar spin";
@@ -443,7 +435,6 @@
 "Show in Finder" = "Show in Finder";
 "Show it in the menu bar" = "Show it in the menu bar";
 "Show remaining time in the menu bar" = "Show remaining time in the menu bar";
-"Show what is in the basket" = "Show what is in the basket";
 "Show what is marked for removal" = "Show what is marked for removal";
 "Silent in-app updates: Update & Relaunch downloads, installs and restarts with no Gatekeeper prompt." = "Silent in-app updates: Update & Relaunch downloads, installs and restarts with no Gatekeeper prompt.";
 "Silent update cleans up its temporary files after installing." = "Silent update cleans up its temporary files after installing.";
@@ -452,7 +443,6 @@
 "Size in megabytes" = "Size in megabytes";
 "Sizes are right where they were nearly right. A file just under a round number was shown with the unit below it — \"1000 KB\" instead of \"1 MB\" — on every screen that names a size. And removing a folder now reports what the folder held, where it used to report nothing at all." = "Sizes are right where they were nearly right. A file just under a round number was shown with the unit below it — \"1000 KB\" instead of \"1 MB\" — on every screen that names a size. And removing a folder now reports what the folder held, where it used to report nothing at all.";
 "Skip" = "Skip";
-"Small" = "Small";
 "Smaller items" = "Smaller items";
 "Sort into subfolder" = "Sort into subfolder";
 "Stands for" = "Stands for";
@@ -471,7 +461,6 @@
 "Switching to another module and back no longer throws away what you were doing. The Uninstaller used to lose every tick, the whole review step, and the record of what macOS had refused, the moment you left its page; Login Items & Extensions restarted its scan — the slowest one in the app — the same way. Both remember now." = "Switching to another module and back no longer throws away what you were doing. The Uninstaller used to lose every tick, the whole review step, and the record of what macOS had refused, the moment you left its page; Login Items & Extensions restarted its scan — the slowest one in the app — the same way. Both remember now.";
 "System" = "System";
 "System extensions" = "System extensions";
-"System item" = "System item";
 "TIMER" = "TIMER";
 "TODAY" = "TODAY";
 "Tag" = "Tag";
@@ -514,8 +503,6 @@
 "Timer" = "Timer";
 "Timer color" = "Timer color";
 "Timing" = "Timing";
-"Tiny" = "Tiny";
-"To remove" = "To remove";
 "Toggle Keep Awake" = "Toggle Keep Awake";
 "Tools for your Mac" = "Tools for your Mac";
 "Try again" = "Try again";
@@ -557,7 +544,6 @@
 "VPN module: connect and disconnect system VPNs with per-app auto-connect rules." = "VPN module: connect and disconnect system VPNs with per-app auto-connect rules.";
 "VPN rows no longer show an endless spinner: the status is re-checked until the connection settles." = "VPN rows no longer show an endless spinner: the status is re-checked until the connection settles.";
 "Value to match" = "Value to match";
-"Very small" = "Very small";
 "Video" = "Video";
 "VoiceOver can find Helm in the menu bar, and \"Reduce motion\" is respected throughout." = "VoiceOver can find Helm in the menu bar, and \"Reduce motion\" is respected throughout.";
 "VoiceOver reads Helm properly: every icon button has a name, and a collapsed section is no longer read out." = "VoiceOver reads Helm properly: every icon button has a name, and a collapsed section is no longer read out.";
@@ -670,11 +656,8 @@
 "Close tab" = "Close tab";
 "Tab" = "Tab";
 "Paused" = "Paused";
-"FOLDERS" = "FOLDERS";
-"No folders watched yet" = "No folders watched yet";
 "Edit widgets" = "Edit widgets";
 "Show the edit button in the panel" = "Show the edit button in the panel";
-"It is also in the menu-bar icon’s right-click menu." = "It is also in the menu-bar icon’s right-click menu.";
 "Choose what is in the list" = "Choose what is in the list";
 "Author" = "Author";
 "Tab labels" = "Tab labels";

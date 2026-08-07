@@ -69,10 +69,8 @@
 "Back" = "戻る";
 "Before it starts changing what you type." = "入力した文字を書き換える前に。";
 "Behavior" = "動作";
-"Behaviour, module order, permissions, and diagnostics." = "動作、モジュールの並び順、アクセス権、診断。";
 "Beta" = "Beta";
 "Blue" = "青";
-"Both actions are always available from the icon’s right-click menu." = "どちらの操作もアイコンの右クリックメニューから常に利用できます。";
 "CONNECTIONS" = "接続";
 "Cache — apps rebuild it" = "キャッシュ — アプリが作り直します";
 "Caches" = "キャッシュ";
@@ -133,7 +131,6 @@
 "Document" = "書類";
 "Done" = "完了";
 "Don’t fix" = "修正しない";
-"Dot" = "点";
 "Double ring" = "二重リング";
 "Download" = "ダウンロード";
 "Downloaded from" = "ダウンロード元";
@@ -146,7 +143,6 @@
 "Each module’s saved data and the diagnostics log go to the Trash, where you can get them back. Your preferences — which modules are on, their order, your shortcuts — are forgotten for good. Helm restarts and greets you as it did the first time." = "各モジュールの保存データと診断ログはゴミ箱に移動するので、あとで戻せます。設定そのもの（オンのモジュール、その並び順、ショートカット）は完全に失われます。Helm は再起動し、初回と同じように迎えます。";
 "Early builds with new features — expect rough edges." = "新機能を含む早期ビルド。不具合があるかもしれません。";
 "Edit" = "編集";
-"Empty" = "クリア";
 "Enable a module in Settings." = "設定でモジュールを有効にしてください。";
 "Errors" = "エラー";
 "Escape closes the menu-bar panel, the way it closes every other menu on the Mac. It could be opened with a keyboard shortcut and then only be closed with the mouse." = "Esc キーでメニューバーパネルを閉じられます。キーボードで開けるのに、閉じるにはマウスが必要でした。";
@@ -159,14 +155,12 @@
 "Extension" = "拡張子";
 "Extensions, separated by commas" = "拡張子（カンマ区切り）";
 "External display" = "外部ディスプレイ";
-"Extras to basket" = "余分をバスケットへ";
 "Failed" = "失敗";
 "Files" = "ファイル";
 "Files from 1 MB. Hard links are one file and are never offered." = "1 MB 以上のファイルが対象。ハードリンクは同一ファイルなので提案されません。";
 "Files left in your Library" = "ライブラリに残ったファイル";
 "Files left in your Library by apps you no longer have. Only files named after an app’s bundle id are listed, so some leftovers will not appear." = "すでにないアプリがライブラリに残したファイル。アプリの bundle id を名前に持つファイルだけを表示するため、見つからない残存ファイルもあります。";
 "Files that exist more than once" = "複数存在するファイル";
-"Filled" = "塗りつぶし";
 "Fix" = "修正する";
 "Fix a capital held too long" = "単語の先頭 2 文字の大文字を修正";
 "Fix as I type" = "入力しながら修正";
@@ -239,7 +233,6 @@
 "Keyboard: a word typed in the wrong keyboard layout is fixed as you type — ghbdtn becomes привет — and the input source follows. Only when the word is not a word as typed and is one once swapped, so anything valid is left alone." = "「キーボード」：誤った配列で入力した単語を入力中に修正し、入力ソースも切り替えます。入力どおりでは単語でなく、変換すると単語になる場合のみです。";
 "Kind" = "種類";
 "Language indicator" = "入力ソース表示";
-"Large" = "大";
 "Last 30 days" = "過去30日間";
 "Last change" = "直近の変更";
 "Later" = "後で";
@@ -276,7 +269,6 @@
 "Mark for removal" = "削除予定に追加";
 "Mark the extra copies" = "余分なコピーを削除予定に";
 "Media" = "メディア";
-"Medium" = "中";
 "Menu-bar icon" = "メニューバーのアイコン";
 "Menu-bar panel and a System Settings-style window, the Liquid Glass icon, eight languages." = "メニューバーパネルとシステム設定風ウインドウ、Liquid Glass アイコン、8 言語対応。";
 "Menu-bar spin" = "アイコンの回転";
@@ -443,7 +435,6 @@
 "Show in Finder" = "Finderに表示";
 "Show it in the menu bar" = "メニューバーに表示";
 "Show remaining time in the menu bar" = "残り時間をメニューバーに表示";
-"Show what is in the basket" = "バスケットの中身を表示";
 "Show what is marked for removal" = "削除予定の項目を表示";
 "Silent in-app updates: Update & Relaunch downloads, installs and restarts with no Gatekeeper prompt." = "サイレント更新：「更新して再起動」がダウンロード・インストール・再起動まで自動で行います。";
 "Silent update cleans up its temporary files after installing." = "サイレントアップデートがインストール後に一時ファイルを削除します。";
@@ -452,7 +443,6 @@
 "Size in megabytes" = "サイズ（メガバイト）";
 "Sizes are right where they were nearly right. A file just under a round number was shown with the unit below it — \"1000 KB\" instead of \"1 MB\" — on every screen that names a size. And removing a folder now reports what the folder held, where it used to report nothing at all." = "サイズ表示を修正しました。「1 MB」となるべき場面で「1000 KB」と出ていました。フォルダを削除したときの解放量も正しくなりました。";
 "Skip" = "スキップ";
-"Small" = "小";
 "Smaller items" = "小さい項目";
 "Sort into subfolder" = "サブフォルダに整理";
 "Stands for" = "展開後";
@@ -471,7 +461,6 @@
 "Switching to another module and back no longer throws away what you were doing. The Uninstaller used to lose every tick, the whole review step, and the record of what macOS had refused, the moment you left its page; Login Items & Extensions restarted its scan — the slowest one in the app — the same way. Both remember now." = "別のモジュールに切り替えてから戻っても、作業内容が失われなくなりました。アンインストーラは以前、ページを離れた瞬間にすべてのチェック、確認ステップ全体、macOS が拒否した内容の記録を失っていました。ログイン項目と機能拡張も、アプリの中で最も時間がかかるスキャンを同じように最初からやり直していました。今はどちらも記憶しています。";
 "System" = "システム";
 "System extensions" = "システム機能拡張";
-"System item" = "システム項目";
 "TIMER" = "タイマー";
 "TODAY" = "本日";
 "Tag" = "タグ";
@@ -514,8 +503,6 @@
 "Timer" = "タイマー";
 "Timer color" = "タイマーの色";
 "Timing" = "タイミング";
-"Tiny" = "極小";
-"To remove" = "削除予定";
 "Toggle Keep Awake" = "「スリープ防止」を切り替え";
 "Tools for your Mac" = "Mac のための道具";
 "Try again" = "再試行";
@@ -557,7 +544,6 @@
 "VPN module: connect and disconnect system VPNs with per-app auto-connect rules." = "VPN モジュール：システム VPN の接続/切断とアプリ別自動接続。";
 "VPN rows no longer show an endless spinner: the status is re-checked until the connection settles." = "VPN の行でスピナーが回り続けなくなりました。接続が安定するまで状態を再確認します。";
 "Value to match" = "一致させる値";
-"Very small" = "とても小さい";
 "Video" = "ビデオ";
 "VoiceOver can find Helm in the menu bar, and \"Reduce motion\" is respected throughout." = "VoiceOver がメニューバーの Helm を認識し、「視差効果を減らす」を全体で尊重します。";
 "VoiceOver reads Helm properly: every icon button has a name, and a collapsed section is no longer read out." = "VoiceOver が Helm を正しく読み上げます。アイコンボタンに名前が付き、折りたたまれた項目は読まれません。";
@@ -670,11 +656,8 @@
 "Close tab" = "タブを閉じる";
 "Tab" = "タブ";
 "Paused" = "一時停止";
-"FOLDERS" = "フォルダ";
-"No folders watched yet" = "まだフォルダはありません";
 "Edit widgets" = "ウィジェットを編集";
 "Show the edit button in the panel" = "パネルに編集ボタンを表示";
-"It is also in the menu-bar icon’s right-click menu." = "メニューバーアイコンの右クリックメニューにもあります。";
 "Choose what is in the list" = "一覧の項目を選ぶ";
 "Author" = "作者";
 "Tab labels" = "タブの表示";
