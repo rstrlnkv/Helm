@@ -1,3 +1,4 @@
+import HelmRuntime
 import XCTest
 @testable import Module_KeepAwake_Engine
 
@@ -80,14 +81,17 @@ final class SudoersRuleTests: XCTestCase {
         XCTAssertFalse(command.contains("me' ALL=(ALL) NOPASSWD: ALL #"))
     }
 
+    /// The escaping lives in `AppleScript` (HelmRuntime) now — it was here and
+    /// in Homebrew's privileged runner, two copies of the one thing standing
+    /// between a command root runs and a command somebody appends to.
     func test_apple_script_literal_escapes_backslash_and_quote() {
-        XCTAssertEqual(SudoersRule.appleScriptLiteral(#"a\b"c"#), #"a\\b\"c"#)
+        XCTAssertEqual(AppleScript.literal(#"a\b"c"#), #"a\\b\"c"#)
     }
 
     func test_privileged_script_is_one_escaped_literal_and_asks_for_admin() {
         let command = SudoersRule.installCommand(user: user)
         let script = SudoersRule.installScript(user: user)
-        XCTAssertEqual(script, "do shell script \"\(SudoersRule.appleScriptLiteral(command))\" "
+        XCTAssertEqual(script, "do shell script \"\(AppleScript.literal(command))\" "
                              + "with administrator privileges")
         // Nothing between the literal's own quotes may close it early: the only
         // unescaped double quotes in the script are the two that delimit it.

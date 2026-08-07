@@ -26,12 +26,8 @@ struct LogView: View {
     @State private var following = true
     @State private var tick: RepeatingTick?
     @State private var loggingOn = LogPolicy.isEnabled(
-        version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0",
+        version: AppBuild.shortVersion ?? "0",
         override: AppSettings.loggingOverride)
-
-    private var isDevBuild: Bool {
-        (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "").contains("-dev")
-    }
 
     private var shown: [LogEntry] {
         LogFilter.apply(entries, minimumLevel: minimumLevel, categories: chosen)
@@ -75,7 +71,7 @@ struct LogView: View {
     private var writing: some View {
         HStack(alignment: .firstTextBaseline, spacing: 16) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(isDevBuild ? AppStr.logNoteDev : AppStr.logNoteStable)
+                Text(AppBuild.isDev ? AppStr.logNoteDev : AppStr.logNoteStable)
                     .font(.callout)
                 Text(AppStr.logRedactionNote)
                     .font(.caption).foregroundStyle(HelmText.quiet)
@@ -92,7 +88,7 @@ struct LogView: View {
                 .toggleStyle(.switch)
                 .labelsHidden()
                 .accessibilityLabel(AppStr.writeLog)
-                .disabled(isDevBuild)
+                .disabled(AppBuild.isDev)
                 .onChange(of: loggingOn) { _, value in
                     AppSettings.loggingOverride = value
                     HelmLog.shared.setEnabled(value)

@@ -33,7 +33,7 @@ import Module_Layout_UI
         AppSettings.applyAppearance()
         // Dev builds always log: the file is the evidence we triage before a
         // build graduates to the stable channel.
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
+        let version = AppBuild.shortVersion ?? "0"
         HelmLog.shared.start(version: version, override: AppSettings.loggingOverride)
 
         host.bootstrap()

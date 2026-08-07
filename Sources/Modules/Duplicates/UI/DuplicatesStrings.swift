@@ -14,7 +14,15 @@ enum DupStr {
     /// controls is headed "To remove". Disk dropped the metaphor for the same
     /// reason; these are the last four that kept it.
     static var basketContents: String { L("Show what is marked for removal") }
-    static var basket: String { L("To remove") }
+    /// `HelmBasket` in HelmUI: Disk draws the same bar and had the same two
+    /// lines assembled inside its view. Fixing it here and copying the fix
+    /// there is what this pass exists to undo.
+    static func basketLine(_ count: Int, _ size: String) -> String {
+        HelmBasket.line(count: count, size: size)
+    }
+    static func basketItem(_ name: String, _ size: String) -> String {
+        HelmBasket.item(name: name, size: size)
+    }
     static var moveToTrash: String { L("Move to Trash") }
     static var systemItem: String { L("System") }
     static var reveal: String { L("Show in Finder") }

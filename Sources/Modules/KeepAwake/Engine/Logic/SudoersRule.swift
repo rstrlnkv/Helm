@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 /// The sudoers rule that lets Keep Awake run `pmset disablesleep`, and the
 /// exact command root is asked to run to put it there.
@@ -50,18 +51,14 @@ public enum SudoersRule {
 
     // MARK: -
 
+    /// `AppleScript` in HelmRuntime, which is where the escaping went: it was
+    /// written out here and again in Homebrew's `OSAPrivilegedRunner`, under a
+    /// comment calling that duplication deliberate «until there is a shared
+    /// privileged runner to put them in». Of everything in this app written
+    /// twice, this was the pair standing between a command root runs and a
+    /// command somebody appends to.
     private static func privilegedScript(_ command: String) -> String {
-        "do shell script \"\(appleScriptLiteral(command))\" with administrator privileges"
-    }
-
-    /// AppleScript's own string escaping, which nothing here did before: a `"`
-    /// or a `\` in the command ended the literal and the rest was AppleScript.
-    /// Homebrew's `OSAPrivilegedRunner.runAdmin` carries the same two lines —
-    /// deliberate duplication, until there is a shared privileged runner to put
-    /// them in.
-    public static func appleScriptLiteral(_ text: String) -> String {
-        text.replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
+        AppleScript.administratorShellScript(command)
     }
 
     /// Single quotes, with the one character that can end them turned into a
