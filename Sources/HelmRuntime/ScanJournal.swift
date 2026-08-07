@@ -58,18 +58,76 @@ public final class ScanJournal: @unchecked Sendable {
     /// `XCTestConfigurationFilePath` is set by Xcode and not by `swift test`,
     /// which is how an earlier isolation guard read clean while the suite went
     /// on writing into the real store.
+    /// The prefix of a per-process test journal, shared by the maker and the
+    /// sweeper below so the two cannot disagree about what one looks like.
+    static let testDirectoryPrefix = "helm-scan-journal-"
+
     public static let defaultDirectory: URL = {
         if NSClassFromString("XCTestCase") != nil {
-            return URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-                .appendingPathComponent(
-                    "helm-scan-journal-\(ProcessInfo.processInfo.processIdentifier)",
-                    isDirectory: true)
+            let base = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            sweepAbandonedTestJournals(under: base)
+            return base.appendingPathComponent(
+                "\(testDirectoryPrefix)\(ProcessInfo.processInfo.processIdentifier)",
+                isDirectory: true)
         }
         let base = FileManager.default.urls(for: .applicationSupportDirectory,
                                             in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSHomeDirectory() + "/Library/Application Support")
         return base.appendingPathComponent("Helm/Scans", isDirectory: true)
     }()
+
+    /// Which of these names belong to test processes that have exited.
+    ///
+    /// Pure, and separated from the removal, because the decision is the part
+    /// worth testing: the removal is one `FileManager` call and the judgement
+    /// is what must never say yes about a living process. A name that is not a
+    /// journal, or whose tail is not a number, is not this function's business.
+    ///
+    /// **The sanity check on the number lives here, not in the caller.** It sat
+    /// beside `kill` first, so this function would happily have returned
+    /// `helm-scan-journal-0` and `helm-scan-journal--1` for removal on the word
+    /// of any liveness answer — a decision looser than the code it stands in
+    /// front of, which is the defect `RemovableScope` records in its own
+    /// comments. `0` and negatives are process *groups* to `kill`, not
+    /// processes.
+    static func abandonedTestJournals(_ names: [String],
+                                      isAlive: (Int32) -> Bool) -> [String] {
+        names.filter { name in
+            guard name.hasPrefix(testDirectoryPrefix),
+                  let pid = Int32(name.dropFirst(testDirectoryPrefix.count)),
+                  pid > 0
+            else { return false }
+            return !isAlive(pid)
+        }
+    }
+
+    /// Takes back what earlier test processes left here.
+    ///
+    /// The redirection above is deliberate — a suite must not write into the
+    /// person's real `Application Support`, and an earlier attempt at it keyed
+    /// on `XCTestConfigurationFilePath`, which `swift test` does not set, and so
+    /// read clean while the suite went on writing into their store. What it did
+    /// not have was an end: one directory per process, kept for ever, and 452
+    /// of them had accumulated in `$TMPDIR` by the time anyone counted.
+    ///
+    /// **Liveness is asked of the kernel, not of the clock.** `kill(pid, 0)`
+    /// sends no signal; it only answers whether that process is there. `EPERM`
+    /// means it is there and belongs to somebody else, which is still there —
+    /// treating it as gone would delete the journal of a suite running beside
+    /// this one, which on a build machine is the ordinary case.
+    private static func sweepAbandonedTestJournals(under base: URL) {
+        let fm = FileManager.default
+        guard let names = try? fm.contentsOfDirectory(atPath: base.path) else { return }
+        for name in abandonedTestJournals(names, isAlive: processExists) {
+            try? fm.removeItem(at: base.appendingPathComponent(name))
+        }
+    }
+
+    private static func processExists(_ pid: Int32) -> Bool {
+        guard pid > 0 else { return true }
+        if kill(pid, 0) == 0 { return true }
+        return errno == EPERM
+    }
 
     // MARK: - Where things live
 
