@@ -11,6 +11,16 @@ import HelmRuntime
 final class StaleRemovalIsRefusedTests: XCTestCase {
 
     private var directory: URL!
+    /// Names of everything this test may have moved to the Trash.
+    ///
+    /// The removal below is real — `HelmTrash.remove` calls
+    /// `FileManager.trashItem` — so a file the engine takes leaves `directory`
+    /// and lands in `~/.Trash`, where removing `directory` cannot reach it.
+    /// `trashItem` is passed `resultingItemURL: nil`, so the name is all a
+    /// cleanup has to go on, which is why every name below carries a UUID: a
+    /// cleanup that removed `~/.Trash/remove.bin` would be deleting somebody's
+    /// file. `HelmTrashNestedBatchTests` is where this pattern is written down.
+    private var trashedNames: [String] = []
 
     override func setUpWithError() throws {
         try super.setUpWithError()
@@ -23,14 +33,25 @@ final class StaleRemovalIsRefusedTests: XCTestCase {
     }
 
     override func tearDown() {
-        try? FileManager.default.removeItem(at: directory)
+        let fm = FileManager.default
+        try? fm.removeItem(at: directory)
+        let home = URL(fileURLWithPath: NSHomeDirectory())
+        let trash = (try? fm.url(for: .trashDirectory, in: .userDomainMask,
+                                 appropriateFor: home, create: false))
+            ?? home.appendingPathComponent(".Trash")
+        for name in trashedNames { try? fm.removeItem(at: trash.appendingPathComponent(name)) }
+        trashedNames = []
         super.tearDown()
     }
 
+    /// A unique name, so the Trash cleanup above never names a file it does not
+    /// own.
     @discardableResult
     private func write(_ name: String, _ contents: String) throws -> String {
-        let url = directory.appendingPathComponent(name)
+        let unique = "\(name)-\(UUID().uuidString)"
+        let url = directory.appendingPathComponent(unique)
         try Data(contents.utf8).write(to: url)
+        trashedNames.append(unique)
         return url.path
     }
 

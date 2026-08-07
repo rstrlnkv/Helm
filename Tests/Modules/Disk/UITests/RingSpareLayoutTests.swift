@@ -28,8 +28,7 @@ final class RingSpareLayoutTests: XCTestCase {
     }
 
     func testTheLayoutCarriesOneLevelMoreThanTheRingDraws() async throws {
-        let store = ScanStore(directory: FileManager.default.temporaryDirectory
-            .appendingPathComponent("helm-ring-spare-store-\(UUID().uuidString)"))
+        let store = ScanStore(directory: temporaryStoreDirectory("ring-spare-store"))
         store.save(fourDeep())
 
         let model = DiskViewModel(vm: ModuleViewModel(transport: LocalTransport()), store: store)

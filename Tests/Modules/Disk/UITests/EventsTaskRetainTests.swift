@@ -26,8 +26,7 @@ final class EventsTaskRetainTests: XCTestCase {
     func testDiskViewModelIsReleasedOnceNothingElseHoldsIt() async {
         let transport = LocalTransport()
         let vm = ModuleViewModel(transport: transport)
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("helm-disk-retain-\(UUID().uuidString)")
+        let directory = temporaryStoreDirectory("disk-retain")
         var dvm: DiskViewModel? = DiskViewModel(vm: vm, store: ScanStore(directory: directory))
         weak var weakDvm = dvm
 

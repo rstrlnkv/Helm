@@ -114,10 +114,7 @@ final class StopKeepsWhatItMeasuredTests: XCTestCase {
                    freeBytes: 100, filesScanned: files, seconds: 0)
     }
 
-    private var storeDirectory: URL {
-        FileManager.default.temporaryDirectory
-            .appendingPathComponent("helm-disk-stopkeep-\(UUID().uuidString)")
-    }
+    private var storeDirectory: URL { temporaryStoreDirectory("disk-stopkeep") }
 
     private func model(_ transport: HeldTransport) -> (DiskViewModel, ScanStore) {
         // A store of its own: the module's real one is the person's last scan,

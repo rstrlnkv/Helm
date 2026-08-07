@@ -91,9 +91,7 @@ final class TrashIsNotFreedSpaceTests: XCTestCase {
                                                 refused: [], freedBytes: 600))
         // A store of its own: the module's real one is the person's last scan,
         // and a harness must leave nothing behind.
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("helm-disk-trash-\(UUID().uuidString)")
-        addTeardownBlock { try? FileManager.default.removeItem(at: directory) }
+        let directory = temporaryStoreDirectory("disk-trash")
         let dvm = DiskViewModel(vm: ModuleViewModel(transport: transport),
                                 store: ScanStore(directory: directory))
         await dvm.loadVolumes()

@@ -16,23 +16,33 @@ final class HelmTrashBatchInvariantTests: XCTestCase {
     private var root: URL!
 
     override func setUpWithError() throws {
-        root = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-trash-batch-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        root = trashScratchDirectory("trash-batch")
     }
 
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: root)
-    }
-
+    /// A file this batch will really trash. The teardown that used to sit here
+    /// removed `url.path` — the *source*, which the move has already emptied —
+    /// so it reclaimed nothing while reading as though it did (`TrashScratch`).
     @discardableResult
-    private func write(_ relative: String, bytes: Int = 4_096) throws -> String {
-        let url = root.appendingPathComponent(relative)
-        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
-                                                withIntermediateDirectories: true)
+    private func write(_ name: String, bytes: Int = 4_096) throws -> String {
+        let leaf = unownableLeaf(name)
+        let url = root.appendingPathComponent(leaf)
         try Data(repeating: 0x41, count: bytes).write(to: url)
-        addTeardownBlock { try? FileManager.default.removeItem(atPath: url.path) }
+        reclaimFromTrash(leaf)
         return url.path
+    }
+
+    /// A folder with one file in it. The **folder** is what goes to the Trash,
+    /// so it is the folder's name that has to be unownable; the child travels
+    /// inside it and keeps its own.
+    private func folderWithChild(_ name: String, child: String, bytes: Int = 4_096)
+    throws -> (folder: String, child: String) {
+        let leaf = unownableLeaf(name)
+        let directory = root.appendingPathComponent(leaf)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let file = directory.appendingPathComponent(child)
+        try Data(repeating: 0x41, count: bytes).write(to: file)
+        reclaimFromTrash(leaf)
+        return (directory.path, file.path)
     }
 
     /// The duplicated input. A basket assembled from two screens, or a list a
@@ -70,12 +80,9 @@ final class HelmTrashBatchInvariantTests: XCTestCase {
     /// started", which is the one case the new branch deliberately refuses, so
     /// somebody is sent looking for a file that is in the Trash.
     func testAFolderWithATrailingSlashStillTakesItsChildrenWithIt() throws {
-        try write("folder/inside.bin")
-        let folder = root.appendingPathComponent("folder").path
-        let child = root.appendingPathComponent("folder/inside.bin").path
+        let (folder, child) = try folderWithChild("folder", child: "inside.bin")
 
         let result = HelmTrash.remove(allowed: [folder + "/", child], module: "test")
-        addTeardownBlock { try? FileManager.default.removeItem(atPath: folder) }
 
         XCTAssertTrue(result.refused.isEmpty,
                       "the child went with its parent in this very batch, and was reported "
