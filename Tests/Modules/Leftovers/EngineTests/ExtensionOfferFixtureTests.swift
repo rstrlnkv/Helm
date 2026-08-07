@@ -4,7 +4,7 @@ import HelmRuntime
 @testable import Module_Leftovers_Engine
 
 private struct SilentFiles: LeftoversFilePort {
-    func isWritable(_ url: URL) -> Bool { true }
+    func isWritableDirectory(_ url: URL) -> Bool { true }
     func children(of url: URL) -> [URL] { [] }
     func exists(_ path: String) -> Bool { false }
     func size(_ url: URL) -> Int { 100 }
@@ -19,12 +19,11 @@ private struct NoApps: InstalledAppsPort {
 /// The port as the existing suite fakes it. `ids` is a stored property and
 /// nothing reads it: `installedExtensions()` answers `installed`, which is a
 /// different field.
-private struct FakeExtensions: ExtensionsPort {
+private struct FakeExtensions: LoadedItemsPort {
     var installed: [SystemExtensionInfo] = []
     var disabled: Set<String> = []
     func installedExtensions() -> [SystemExtensionInfo] { installed }
     func disabledLabels() -> Set<String> { disabled }
-    func setDisabled(_ disabled: Bool, label: String) {}
 }
 
 /// `LeftoversScanTests.testExtensionsOfMissingAppsAreOfferedUnlessStillActive`

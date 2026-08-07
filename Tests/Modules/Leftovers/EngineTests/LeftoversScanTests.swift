@@ -4,7 +4,7 @@ import HelmRuntime
 
 private struct FakeFiles: LeftoversFilePort {
     var writable = true
-    func isWritable(_ url: URL) -> Bool { writable }
+    func isWritableDirectory(_ url: URL) -> Bool { writable }
 
     var listing: [String: [String]] = [:]
     var existing: Set<String> = []
@@ -22,12 +22,11 @@ private struct FakeApps: InstalledAppsPort {
     func installedBundleIDs() -> Set<String> { ids }
 }
 
-private struct FakeExtensions: ExtensionsPort {
+private struct FakeExtensions: LoadedItemsPort {
     var installed: [SystemExtensionInfo] = []
     func installedExtensions() -> [SystemExtensionInfo] { installed }
     var disabled: Set<String> = []
     func disabledLabels() -> Set<String> { disabled }
-    func setDisabled(_ disabled: Bool, label: String) {}
 }
 
 final class LeftoversScanTests: XCTestCase {
@@ -182,5 +181,42 @@ final class LeftoversScanTests: XCTestCase {
                             extensions: FakeExtensions(installed: [info])).scan()
         let ext = items.first { $0.kind == .systemExtension }
         XCTAssertEqual(ext?.removable, false)
+    }
+}
+
+/// Two rows can carry the same name, and the list has to put them somewhere.
+///
+/// A launchd label is unique inside one directory and not across the three the
+/// scan reads: `com.vendor.updater` sits in `~/Library/LaunchAgents` and in
+/// `/Library/LaunchAgents` on plenty of Macs — one agent per user, one for
+/// everybody. The scan sorted by identifier alone, and Swift's sort is not
+/// stable, so those two came back in whichever order the algorithm happened to
+/// leave them: pressing «Scan again» could swap the pair, in a list where the
+/// row above a checkbox is the whole of what the tick means.
+final class ScanOrderIsTotalTests: XCTestCase {
+    private let home = URL(fileURLWithPath: "/Users/x")
+
+    private func twoAgentsSharingALabel() -> [StaleItem] {
+        var files = FakeFiles()
+        // The user's copy is read first, so a sort that does not break the tie
+        // has every reason to leave it first.
+        files.listing["/Users/x/Library/LaunchAgents"] = ["com.vendor.updater.plist"]
+        files.listing["/Library/LaunchAgents"] = ["com.vendor.updater.plist"]
+        for path in ["/Users/x/Library/LaunchAgents/com.vendor.updater.plist",
+                     "/Library/LaunchAgents/com.vendor.updater.plist"] {
+            files.plists[path] = PlistData(["Label": "com.vendor.updater"])
+        }
+        return LeftoversScanner(home: home, files: files, apps: FakeApps(ids: []),
+                                extensions: FakeExtensions()).scan()
+    }
+
+    func testRowsSharingAnIdentifierAreOrderedByPath() throws {
+        let items = twoAgentsSharingALabel()
+        XCTAssertEqual(items.count, 2, "precondition: both copies of the label were found")
+        XCTAssertEqual(items.map(\.identifier), ["com.vendor.updater", "com.vendor.updater"])
+        XCTAssertEqual(items.map(\.path),
+                       ["/Library/LaunchAgents/com.vendor.updater.plist",
+                        "/Users/x/Library/LaunchAgents/com.vendor.updater.plist"],
+                       "the identifier alone does not decide this pair, so the path has to")
     }
 }

@@ -9,7 +9,7 @@ private struct FakeFiles: LeftoversFilePort {
     var existing: Set<String> = []
     var plists: [String: PlistData] = [:]
 
-    func isWritable(_ url: URL) -> Bool { writable }
+    func isWritableDirectory(_ url: URL) -> Bool { writable }
     func children(of url: URL) -> [URL] {
         (listing[url.path] ?? []).map { url.appendingPathComponent($0) }
     }
@@ -23,10 +23,9 @@ private struct FakeApps: InstalledAppsPort {
     func installedBundleIDs() -> Set<String> { ids }
 }
 
-private struct FakeExtensions: ExtensionsPort {
+private struct FakeExtensions: LoadedItemsPort {
     func installedExtensions() -> [SystemExtensionInfo] { [] }
     func disabledLabels() -> Set<String> { [] }
-    func setDisabled(_ disabled: Bool, label: String) {}
 }
 
 /// A row on this page makes two offers, and they are computed by two different
