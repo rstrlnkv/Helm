@@ -110,7 +110,7 @@ import Module_Disk_Engine
         // hundreds of megabytes of nodes that nobody can reach afterwards. The
         // on-disk cache still holds the scan, so this drops the copy in memory,
         // not the result.
-        ModuleUICache.dropWhenDisabled("disk") { cached = nil }
+        ModuleUICache.dropWhenDisabled(DiskDescriptor.id.rawValue) { cached = nil }
         return created
     }
 
@@ -481,13 +481,13 @@ import Module_Disk_Engine
     // MARK: - Events
 
     private func handle(_ event: EngineEvent) async {
-        switch event.name {
-        case "progress":
+        switch DiskEvent(rawValue: event.name) {
+        case .progress:
             if let update = try? JSONDecoder().decode(ScanTick.self, from: event.payload),
                update.scan == showingScan {
                 tick = update
             }
-        case "partial":
+        case .partial:
             // Whose snapshot this is decides everything: a folder
             // measurement's tree drawn as the volume collapses the focus,
             // keeps the volume's name and title, and draws the volume's
@@ -501,7 +501,7 @@ import Module_Disk_Engine
             focusPath = DiskFocus.resolve(paths: focusPath.map(\.path), in: snapshot.result.root)
             phase = .result
             recomputeSegments()
-        default:
+        case .none:
             return
         }
     }

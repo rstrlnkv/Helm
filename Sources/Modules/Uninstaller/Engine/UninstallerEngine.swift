@@ -88,8 +88,13 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// and by nobody else.
     public static let trashChangedEvent = "trashChanged"
 
-    /// Runs blocking filesystem work on a dispatch queue so it never parks a
-    /// Swift-concurrency pool thread (app-size scans walk whole bundles).
+    /// Where every leftover this module knows about lives.
+    ///
+    /// It carried a doc comment about running blocking work on a dispatch queue
+    /// so a pool thread is never parked — true of this engine, and about
+    /// `offTheCooperativePool`, which the operations below call directly. The
+    /// helper that sentence described is gone and the sentence stayed, over the
+    /// next declaration it found. Homebrew's engine had the same orphan.
     private var library: URL { home.appendingPathComponent("Library") }
 
     // MARK: - Operations
@@ -457,10 +462,6 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
 
     // MARK: - Transport (request/response)
 
-    private struct ScanReq: Codable { let bundleID: String; let appPath: String; let appName: String }
-    private struct UninstallReq: Codable { let appPath: String; let paths: [String] }
-    private struct QuitReq: Codable { let bundleID: String; let force: Bool? }
-
     private func wireTransport() {
         localTransport.setHandler { [weak self] cmd in
             guard let self else { return Data() }
@@ -477,11 +478,11 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                 let sizes = await self.appSizes(list)
                 return (try? JSONEncoder().encode(sizes)) ?? Data()
             case .scan:
-                guard let r = try? JSONDecoder().decode(ScanReq.self, from: cmd.payload) else { return Data() }
+                guard let r = try? JSONDecoder().decode(UninstallScanRequest.self, from: cmd.payload) else { return Data() }
                 let res = try await self.scan(bundleID: r.bundleID, appPath: r.appPath, appName: r.appName)
                 return (try? JSONEncoder().encode(res)) ?? Data()
             case .uninstall:
-                guard let r = try? JSONDecoder().decode(UninstallReq.self, from: cmd.payload) else { return Data() }
+                guard let r = try? JSONDecoder().decode(UninstallRequest.self, from: cmd.payload) else { return Data() }
                 let res = try await self.uninstall(appPath: r.appPath, paths: r.paths)
                 return (try? JSONEncoder().encode(res)) ?? Data()
             case .systemExtensions:
@@ -505,8 +506,8 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                 guard let paths = try? JSONDecoder().decode([String].self, from: cmd.payload) else { return Data() }
                 return (try? JSONEncoder().encode(await self.trashPaths(paths))) ?? Data()
             case .quit:
-                if let r = try? JSONDecoder().decode(QuitReq.self, from: cmd.payload) {
-                    self.quit(bundleID: r.bundleID, force: r.force ?? false)
+                if let r = try? JSONDecoder().decode(QuitRequest.self, from: cmd.payload) {
+                    self.quit(bundleID: r.bundleID, force: r.force)
                 }
                 return Data()
             }

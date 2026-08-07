@@ -112,7 +112,7 @@ public struct KeepAwakePanelTile: View {
 
     /// True while an automation condition (not just manual/timer) is active.
     private var autoDriven: Bool {
-        !vm.activeConditions.isDisjoint(with: ["externalDisplay", "power", "app"])
+        !vm.activeConditions.isDisjoint(with: ActiveCondition.automatic)
     }
 
     /// Line under the title while active: the auto conditions and a lid hint,
@@ -348,7 +348,8 @@ public struct KeepAwakePanelTile: View {
 
 }
 
+/// The engine's own type — it was declared again here, a `struct P` matched
+/// to the other by field name across a JSON hop.
 private func startPayload(_ minutes: Int) -> Data {
-    struct P: Codable { let minutes: Int }
-    return (try? JSONEncoder().encode(P(minutes: minutes))) ?? Data()
+    (try? JSONEncoder().encode(KeepAwakeStart(minutes: minutes))) ?? Data()
 }

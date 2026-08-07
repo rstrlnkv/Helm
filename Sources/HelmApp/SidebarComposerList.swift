@@ -33,12 +33,20 @@ struct SidebarComposerList: View {
 
     /// At rest an empty section is a heading naming nothing, so it is not
     /// drawn — the sidebar itself does not draw it either.
-    private var rows: [SidebarLayout.Row] {
-        editing ? layout.flattened : layout.flattened.filter { row in
+    ///
+    /// One spelling, read by the view and by `estimatedHeight`. It was written
+    /// out in both, which is the pair that decides what is drawn and the pair
+    /// that decides how tall it will be: the two disagreeing is a sheet sized
+    /// for rows it does not show.
+    static func rows(of layout: SidebarLayout, editing: Bool) -> [SidebarLayout.Row] {
+        guard !editing else { return layout.flattened }
+        return layout.flattened.filter { row in
             guard case .section(let id) = row else { return true }
             return !(layout.sections.first { $0.id == id }?.modules.isEmpty ?? true)
         }
     }
+
+    private var rows: [SidebarLayout.Row] { Self.rows(of: layout, editing: editing) }
 
     private var total: CGFloat {
         max(rows.reduce(0) { $0 + (heights[$1.id] ?? Self.estimate(of: $1, in: layout, editing: editing)) }, 1)
@@ -69,11 +77,8 @@ struct SidebarComposerList: View {
 
     /// The whole list, for a caller that has to know before it draws.
     static func estimatedHeight(of layout: SidebarLayout, editing: Bool) -> CGFloat {
-        let rows = editing ? layout.flattened : layout.flattened.filter { row in
-            guard case .section(let id) = row else { return true }
-            return !(layout.sections.first { $0.id == id }?.modules.isEmpty ?? true)
-        }
-        return max(rows.reduce(0) { $0 + estimate(of: $1, in: layout, editing: editing) }, 1)
+        max(rows(of: layout, editing: editing)
+                .reduce(0) { $0 + estimate(of: $1, in: layout, editing: editing) }, 1)
     }
 
     var body: some View {
@@ -149,7 +154,6 @@ struct SidebarComposerListRow: View {
     static let height: CGFloat = 40
     /// The gap between one section's card and the next heading.
     private static let sectionGap: CGFloat = 10
-    private var sectionGap: CGFloat { Self.sectionGap }
     /// An 11 pt semibold line, as `HelmText.groupLabel` draws it.
     private static let headerLabelHeight: CGFloat = 13
     /// The drop target an empty section shows while editing, and the 5 pt the
@@ -201,7 +205,7 @@ struct SidebarComposerListRow: View {
                     .background(card(top: true, bottom: true))
             }
         }
-        .padding(.top, sectionGap)
+        .padding(.top, Self.sectionGap)
         .padding(.bottom, section.modules.isEmpty ? 0 : 5)
         .contentShape(Rectangle())
     }

@@ -9,9 +9,31 @@ import Foundation
 public enum AutopilotCommand: String, CaseIterable, Sendable {
     case folders
     case setFolders
-    case preview
+    /// The preview of a folder being **written**, which is the only preview
+    /// anybody asks for.
+    ///
+    /// A `preview` case sat beside this, taking a folder by id and reading the
+    /// saved version. Nothing sent it — not the page, not a test, not the host
+    /// — and the comment on its handler explained why: a rule being written has
+    /// not been saved, so a preview of the stored copy answers a question
+    /// nobody asked. It was the superseded half of a pair, kept whole with a
+    /// working handler behind it.
     case previewDraft
     case runNow
     case history
     case clearHistory
+}
+
+/// Which watched folder a command is about.
+///
+/// It crossed the transport as a `private struct FolderPayload` in the engine —
+/// read by two of the commands — and a `struct FolderID` declared **inside**
+/// `runNow` in the view model. The fifth module found with that pair, after
+/// Homebrew, Keep Awake, VPN and the uninstaller, where one of the three copies
+/// had already stopped matching the other. The failure never announces itself:
+/// the decode returns nil, the handler answers `Data()`, and a preview simply
+/// comes back empty.
+public struct WatchedFolderRef: Codable, Sendable {
+    public let id: String
+    public init(id: String) { self.id = id }
 }

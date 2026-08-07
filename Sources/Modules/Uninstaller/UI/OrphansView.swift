@@ -84,7 +84,7 @@ struct OrphansView: View {
                             Toggle(isOn: binding(for: item.path)) {
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(item.path).font(.caption).lineLimit(1).truncationMode(.middle)
-                                    Text("\(UnStr.kind(item.kind)) · \(Bytes(item.sizeBytes))")
+                                    Text(UnStr.kindAndSize(item.kind, Bytes(item.sizeBytes)))
                                         .font(.caption2).foregroundStyle(HelmText.quiet)
                                 }
                             }

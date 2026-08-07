@@ -67,14 +67,19 @@ enum KAStr {
         L("Lid closed — staying awake")
     }
 
-    static func condition(_ wire: String) -> String {
-        switch wire {
-        case "manual": return L("Manual")
-        case "timer": return L("Timer")
-        case "externalDisplay": return L("External display")
-        case "power": return L("On power")
-        case "app": return L("App")
-        default: return wire
+    /// **The case, not its spelling.** This took the wire string and ended in
+    /// `default: return wire` — so a condition this build did not know was
+    /// drawn on screen as `externalDisplay`, in every language, and a renamed
+    /// case would have shown its identifier to the person rather than failing
+    /// anywhere. Over the enum the switch is exhaustive and a new case is a
+    /// build error.
+    static func condition(_ condition: ActiveCondition) -> String {
+        switch condition {
+        case .manual: return L("Manual")
+        case .timer: return L("Timer")
+        case .externalDisplay: return L("External display")
+        case .power: return L("On power")
+        case .app: return L("App")
         }
     }
 

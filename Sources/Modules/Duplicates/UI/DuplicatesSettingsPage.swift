@@ -226,11 +226,12 @@ public struct DuplicatesSettingsPage: View {
                     Button {
                         dvm.toggleBasket(path)
                     } label: {
-                        Text("\((path as NSString).lastPathComponent)  ·  \(Bytes(dvm.bytes(of: path)))  ✕")
+                        Text(DupStr.basketItem((path as NSString).lastPathComponent,
+                                               Bytes(dvm.bytes(of: path))))
                     }
                 }
             } label: {
-                Text("\(DupStr.basket): \(dvm.basket.count) · \(Bytes(dvm.basketBytes))")
+                Text(DupStr.basketLine(dvm.basket.count, Bytes(dvm.basketBytes)))
                     .contentTransition(.numericText())
                     .animation(HelmMotion.interface, value: dvm.basketBytes)
                     .font(HelmText.figureFont)

@@ -22,3 +22,25 @@ public enum DuplicatesCommand: String, CaseIterable, Sendable {
     /// targets and neither compiler sees both.
     case backgroundScan
 }
+
+/// Everything the engine says while a search runs.
+///
+/// The one name it emits was a literal in the engine and a literal again in the
+/// view model's `guard event.name == …`. Both targets import this file, so a
+/// spelling they must agree on has no reason to be written twice — and the
+/// failure is the quiet kind: the search still runs, the sheet's bar simply
+/// never moves.
+public enum DuplicatesEvent: String, Sendable {
+    /// How far the walk and the hashing have got.
+    case progress
+}
+
+/// Which folder to search. It crossed the transport as a `["path": …]`
+/// dictionary from the view model and a `PathPayload` struct inside the engine
+/// — the same shape agreed on by habit, where renaming the field on one side
+/// leaves the other encoding a key nobody reads and the search answering
+/// nothing at all.
+public struct DuplicateSearchRequest: Codable, Sendable {
+    public let path: String
+    public init(path: String) { self.path = path }
+}

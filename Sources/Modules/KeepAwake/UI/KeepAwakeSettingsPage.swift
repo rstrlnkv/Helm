@@ -131,7 +131,7 @@ public struct KeepAwakeSettingsPage: View {
                 // carries `manual` and `timer`, so turning Keep Awake on by
                 // hand — with no rule configured at all — used to report
                 // "AUTOMATIC 1". The panel already counts it this way.
-                .init("\(vm.activeConditions.intersection(["externalDisplay", "power", "app"]).count)",
+                .init("\(vm.activeConditions.intersection(ActiveCondition.automatic).count)",
                       KAStr.metricRules),
             ])
             }

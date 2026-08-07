@@ -65,8 +65,13 @@ private let helmPanelShadowMargin: CGFloat = 28
     private var anchorScreen: NSScreen?
 
     init(host: ModuleHost) {
+        // A placeholder — `reframe()` sets the real frame before every open —
+        // but spelled from the width rather than left at the 300 the panel
+        // shipped at before it went to 320. A stale number in a placeholder is
+        // the next person's evidence about what the panel is.
         let panel = KeyablePanel(
-            contentRect: NSRect(x: 0, y: 0, width: 300, height: 200),
+            contentRect: NSRect(x: 0, y: 0,
+                                width: helmPanelWidth + helmPanelShadowMargin * 2, height: 200),
             styleMask: [.nonactivatingPanel, .borderless],
             backing: .buffered,
             defer: false
@@ -109,8 +114,6 @@ private let helmPanelShadowMargin: CGFloat = 28
         }
     }
 
-    var isVisible: Bool { panel.isVisible }
-
     func toggle(relativeTo statusButton: NSStatusBarButton) {
         if panel.isVisible {
             hide()
@@ -128,7 +131,8 @@ private let helmPanelShadowMargin: CGFloat = 28
     }
 
     /// Whether the panel is on screen, for a caller that wants it open rather
-    /// than toggled.
+    /// than toggled. The one accessor: a second one spelled `isVisible` sat
+    /// beside this saying the same thing and was read by nobody.
     var isShown: Bool { panel.isVisible }
 
     private func hide() {
@@ -153,8 +157,6 @@ private let helmPanelShadowMargin: CGFloat = 28
         panel.setFrame(NSRect(x: x, y: bottom, width: width, height: max(top - bottom, 120)),
                        display: true, animate: false)
     }
-
-
 
     /// Close the panel when the user clicks outside it (but not on the status
     /// item itself — that click re-toggles through the normal path).
@@ -1614,9 +1616,6 @@ private struct EditChrome: ViewModifier {
     }
 }
 
-/// Reordering by dragging. Off unless the panel is being arranged: a tile that
-/// lifts under a pointer that meant to press a button is an arrangement nobody
-/// asked to change, and there is no undo here.
 /// One collapsed row listing the modules whose UI lives in Settings. Expanding
 /// reveals compact rows; clicking one opens Settings on that module.
 struct UtilitiesSection: View {

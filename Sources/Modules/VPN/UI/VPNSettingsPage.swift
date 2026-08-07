@@ -219,11 +219,21 @@ public struct VPNSettingsPage: View {
             HelmStatusDot(active: active)
             VStack(alignment: .leading, spacing: 1) {
                 Text(c.name)
+                // The separator belongs to the pair, not to the status.
+                // Written as `Text("· \(status)")` it was drawn whether or not
+                // there was a kind in front of it, so a connection whose
+                // protocol could not be read — `scutil` printing `[]`, which
+                // `prettyKind` answers nil for — showed a line opening on a
+                // stray middle dot. Latent rather than live: the parser's
+                // fallback almost always finds a word. It is also the one
+                // piece of punctuation on this row that never went through
+                // `L()`, and `·` is not what CJK sets between two words.
                 HStack(spacing: 6) {
                     if let kind = prettyKind(c.kind) {
                         Text(kind)
+                        Text(VPNStr.separator)
                     }
-                    Text("· \(statusText(c.status))")
+                    Text(statusText(c.status))
                 }
                 .font(.caption)
                 .foregroundStyle(HelmText.quiet)

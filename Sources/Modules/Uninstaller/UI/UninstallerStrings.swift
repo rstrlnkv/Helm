@@ -21,6 +21,18 @@ enum UnStr {
     }
     static var cancel: String { L("Cancel") }
 
+    /// A leftover's kind and its size, as one caption.
+    ///
+    /// It was assembled in `OrphansView` as `"\(kind) · \(size)"`: the kind
+    /// went through `L()` and the dot between them did not, so every language
+    /// got a Latin middle dot. The same shape turned up in Duplicates' basket
+    /// bar and VPN's connection row; `DupStr.found` sets `・` for Japanese and
+    /// this now does too.
+    static func kindAndSize(_ kind: LeftoverKind, _ size: String) -> String {
+        let name = self.kind(kind)
+        return L("\(name) · \(size)", [.ru: "\(name) · \(size)", .es: "\(name) · \(size)", .fr: "\(name) · \(size)", .de: "\(name) · \(size)", .ja: "\(name)・\(size)", .zh: "\(name) · \(size)", .pt: "\(name) · \(size)"])
+    }
+
     static func kind(_ k: LeftoverKind) -> String {
         switch k {
         case .appSupport: return L("Application Support")

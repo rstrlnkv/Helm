@@ -217,10 +217,6 @@ extension Notification.Name {
         }
     }
 
-    /// Optional shortcuts in the panel footer; both actions are always available
-    /// from the status item's right-click menu, so these default to off.
-
-
     static var menuBarIconSize: String {
         get { store.string("menuBarIconSize", default: "small") }
         set {

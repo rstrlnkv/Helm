@@ -244,13 +244,17 @@ enum AppStr {
     /// Puts the seeded arrangement back. Not `reset`, which in this app means
     /// every setting at once — one English key means one thing.
     static var restoreSections: String { L("Restore defaults") }
-    static var sidebarSectionsNote: String {
-        L("Drag to reorder. A module can go into any section, and a section you remove hands its modules to its neighbour.")
-    }
     /// What the sheet is for, said once at the top of it. The block on the
     /// page carried this note in its edit mode, where it was only ever read by
     /// somebody who had already worked out what to do.
-    static var sidebarComposerNote: String { sidebarSectionsNote }
+    ///
+    /// One name. It was two — `sidebarSectionsNote` holding the sentence and
+    /// this forwarding to it — with nothing but the sheet calling either. A
+    /// rename that stopped halfway leaves the old name reachable, and the next
+    /// person has to work out which of the two is the one to change.
+    static var sidebarComposerNote: String {
+        L("Drag to reorder. A module can go into any section, and a section you remove hands its modules to its neighbour.")
+    }
 
     /// What is arranged, without opening anything. Counted from the
     /// arrangement rather than from the registry: a section somebody emptied

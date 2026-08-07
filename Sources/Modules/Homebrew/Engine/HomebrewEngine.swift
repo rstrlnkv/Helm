@@ -40,8 +40,6 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     public func activate() {}
     public func deactivate() {}
 
-    /// Runs blocking work (Process + waitUntilExit, file IO) on a dispatch
-    /// queue so it never parks a Swift-concurrency pool thread for seconds.
     // MARK: - Queries
 
     public func status() -> BrewStatus {
@@ -50,11 +48,15 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     }
 
     /// Labelled, like the scans in the other modules: reading and parsing the
-    /// whole installed set is bulk work, and an operation that is not named in the
-    /// memory trail cannot be blamed by it — nor does it hand its emptied regions
-    /// back to macOS when it ends, which is what the reclaim is for.
-    /// `HelmLog.memory` is silent below 8 MB of change, so a cheap call says
-    /// nothing (docs/superpowers/plans/2026-07-29-third-pass.md).
+    /// whole installed set is bulk work, and an operation that is not named in
+    /// the memory trail cannot be blamed by it.
+    ///
+    /// This used to close with two things that are no longer true, and both
+    /// were reasons not to trust the reading. `MemoryReclaim.afterHeavyWork` was
+    /// measured returning 0 MB in nine probes and removed on 2026-07-31, so
+    /// there is no reclaim for a phase to be missing; and `HelmLog.memory`
+    /// prints on every call now rather than above 8 MB, because a gate that
+    /// hides zero hides the answer (ARCHITECTURE.md § Memory).
     public func listInstalled() -> [BrewPackage] {
         guard let brew = locator.brewPath() else {
             // The module's whole surface is empty in this case, and until now
@@ -122,8 +124,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         // both stays two distinguishable rows.
         let formulae = runner.run(brew, ["search", "--formula", "--", query], env: [:]).stdout
         let casks = runner.run(brew, ["search", "--cask", "--", query], env: [:]).stdout
-        let hits = BrewSearchParser.parse(formulae, kind: false)
-                 + BrewSearchParser.parse(casks, kind: true)
+        let hits = BrewSearchParser.parse(formulae, isCask: false)
+                 + BrewSearchParser.parse(casks, isCask: true)
         // brew answers alphabetically, which buries the obvious one.
         return SearchRanking.rank(hits, query: query)
     }
@@ -139,10 +141,12 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     private func endBusy() { lock.lock(); busy = false; lock.unlock() }
 
     private func emitLog(_ line: String) {
-        localTransport.emit(EngineEvent(name: "opLog", payload: Data(line.utf8)))
+        localTransport.emit(EngineEvent(name: HomebrewEvent.opLog.rawValue,
+                                        payload: Data(line.utf8)))
     }
     private func emitState(_ s: OpState) {
-        localTransport.emit(EngineEvent(name: "opState", payload: (try? JSONEncoder().encode(s)) ?? Data()))
+        localTransport.emit(EngineEvent(name: HomebrewEvent.opState.rawValue,
+                                        payload: (try? JSONEncoder().encode(s)) ?? Data()))
     }
 
     /// `verb` is what happened; `subject` is the package it happened to, kept
@@ -240,10 +244,12 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     // MARK: - Transport
 
-    private struct PkgReq: Codable { let name: String; let isCask: Bool }
-    private struct DescReq: Codable { let names: [String]; let isCask: Bool }
-    private struct NameReq: Codable { let name: String }
-
+    /// **No `default`.** Every case of `HomebrewCommand` has an arm, which is
+    /// what the enum's own doc comment promises — and a `default: break` sat at
+    /// the bottom making that promise false: a case added to the enum would have
+    /// fallen through it and answered `Data()`, which this codebase reads as
+    /// «the module could not answer». The unknown-name door is one line above,
+    /// where it belongs.
     private func wireTransport() {
         localTransport.setHandler { [weak self] cmd in
             guard let self else { return Data() }
@@ -257,17 +263,22 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
                 let query = String(decoding: cmd.payload, as: UTF8.self)
                 return json(await offTheCooperativePool { self.search(query) })
             case .descriptions:
-                guard let r = try? JSONDecoder().decode(DescReq.self, from: cmd.payload) else { return Data() }
+                guard let r = try? JSONDecoder().decode(DescriptionsRequest.self,
+                                                        from: cmd.payload) else { return Data() }
                 return json(await offTheCooperativePool { self.descriptions(names: r.names, isCask: r.isCask) })
             case .install:
-                if let r = try? JSONDecoder().decode(PkgReq.self, from: cmd.payload) { self.install(name: r.name, isCask: r.isCask) }
+                if let r = try? JSONDecoder().decode(PackageRef.self, from: cmd.payload) {
+                    self.install(name: r.name, isCask: r.isCask)
+                }
             case .uninstall:
-                if let r = try? JSONDecoder().decode(PkgReq.self, from: cmd.payload) { self.uninstall(name: r.name, isCask: r.isCask) }
-            case .upgrade:
-                if let r = try? JSONDecoder().decode(NameReq.self, from: cmd.payload) { self.upgrade(name: r.name) }
+                if let r = try? JSONDecoder().decode(PackageRef.self, from: cmd.payload) {
+                    self.uninstall(name: r.name, isCask: r.isCask)
+                }
+            // A bare name, like `search` — the one-field struct that used to
+            // wrap it bought nothing and cost a second declaration.
+            case .upgrade: self.upgrade(name: String(decoding: cmd.payload, as: UTF8.self))
             case .upgradeAll: self.upgradeAll()
             case .installBrew: self.installBrew()
-            default: break
             }
             return Data()
         }

@@ -95,6 +95,17 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         // and what that drops is this engine and everything it owns. An
         // observer left armed is a pointer into freed memory the next time the
         // charger moves.
+        //
+        // **Only this one, and the other two are not an oversight.** The power
+        // port hands IOKit an *unretained* pointer to itself as the callback
+        // context (`IOPSNotificationCreateRunLoopSource`), so a callback already
+        // scheduled would resolve a context that is going away — which is why
+        // its `stopObserving` invalidates the source as well as removing it.
+        // `ScreenParamsObserver` and `WorkspaceAppPort` register blocks that
+        // capture the caller's closure and never `self`; each clears its own
+        // token at the top of `startObserving` and again in `deinit`, so
+        // dropping the engine takes them with it. Read as a general rule, this
+        // line says the other two were forgotten. They were not.
         power.stopObserving()
         if isActive { assertions.release() }
         if clamshellActive { disengageClamshell() }
@@ -277,7 +288,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     ///
     /// `deactivate()` looks like the place for it and is the one place it must not
     /// go: `applicationWillTerminate` calls it on every live engine
-    /// (`HelmApp/AppDelegate.swift:127`), so recording "off" there would erase the
+    /// (`HelmApp/AppDelegate.swift:237`), so recording "off" there would erase the
     /// session on every quit — including the silent updater's, which is the
     /// relaunch this whole thing exists for. It would have been a fix that
     /// changed nothing.
@@ -465,7 +476,6 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 
     // MARK: - Transport
 
-    private struct StartPayload: Codable { let minutes: Int }
     /// Public because the page decodes it. It was typed out again over there,
     /// matched to this one by field names across a JSON hop with no compiler
     /// in between — and a field that stops matching does not fail, it silently
@@ -497,7 +507,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             case .toggle:
                 self.toggleSession()
             case .start:
-                if let payload = try? JSONDecoder().decode(StartPayload.self, from: cmd.payload) {
+                if let payload = try? JSONDecoder().decode(KeepAwakeStart.self, from: cmd.payload) {
                     self.startSession(minutes: payload.minutes)
                 }
             case .stop:
@@ -514,24 +524,12 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 
     private func emitState() {
         let payload = StatePayload(isActive: isActive,
-                                    conditions: activeConditions.map(\.wireName).sorted(),
+                                    conditions: activeConditions.map(\.rawValue).sorted(),
                                     clamshellActive: clamshellActive,
                                     endDate: endDate,
                                     startDate: startDate)
         if let data = try? JSONEncoder().encode(payload) {
-            localTransport.emit(EngineEvent(name: "state", payload: data))
-        }
-    }
-}
-
-private extension ActiveCondition {
-    var wireName: String {
-        switch self {
-        case .manual: return "manual"
-        case .timer: return "timer"
-        case .externalDisplay: return "externalDisplay"
-        case .power: return "power"
-        case .app: return "app"
+            localTransport.emit(EngineEvent(name: KeepAwakeEvent.state.rawValue, payload: data))
         }
     }
 }

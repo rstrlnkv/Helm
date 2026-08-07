@@ -3,6 +3,14 @@ import Module_VPN_Engine
 
 /// Localized strings for the VPN module UI. "VPN" itself stays untranslated.
 enum VPNStr {
+    /// Between a connection's protocol and its state. A middle dot in the
+    /// Latin languages; CJK sets `・` instead, which is what `DupStr.found`
+    /// and `LfStr.selectedLine` already do. It was written into the view as
+    /// part of the status text.
+    static var separator: String {
+        L("·", [.ru: "·", .es: "·", .fr: "·", .de: "·", .ja: "・", .zh: "·", .pt: "·"])
+    }
+
     static var summary: String {
         // No full stop, in any of them: a module subtitle is a label, and the
         // English base carries none in any of the nine.
