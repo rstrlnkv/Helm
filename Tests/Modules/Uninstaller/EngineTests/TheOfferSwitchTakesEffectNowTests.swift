@@ -86,7 +86,7 @@ final class TheOfferSwitchTakesEffectNowTests: XCTestCase {
         engine.setWatchingTrash(true)
 
         let names = await emittedNames(transport)
-        XCTAssertTrue(names.contains(UninstallerEngine.trashChangedEvent),
+        XCTAssertTrue(names.contains(UninstallerEvent.trashChanged.rawValue),
                       "the switch went on and nothing asked the host to look — the apps "
                       + "already in the Trash stay unmentioned until the next launch")
     }
@@ -99,7 +99,7 @@ final class TheOfferSwitchTakesEffectNowTests: XCTestCase {
         engine.setWatchingTrash(false)
 
         let names = await emittedNames(transport)
-        XCTAssertFalse(names.contains(UninstallerEngine.trashChangedEvent),
+        XCTAssertFalse(names.contains(UninstallerEvent.trashChanged.rawValue),
                        "switching the offer off asked the host to sweep")
     }
 
@@ -113,7 +113,7 @@ final class TheOfferSwitchTakesEffectNowTests: XCTestCase {
         engine.setWatchingTrash(true)
 
         let names = await emittedNames(transport)
-        XCTAssertFalse(names.contains(UninstallerEngine.trashChangedEvent),
+        XCTAssertFalse(names.contains(UninstallerEvent.trashChanged.rawValue),
                        "a switch that was already on asked for a sweep anyway")
     }
 

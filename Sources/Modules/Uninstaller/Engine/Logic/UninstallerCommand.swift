@@ -25,6 +25,25 @@ public enum UninstallerCommand: String, CaseIterable, Sendable {
     case watchingTrash
 }
 
+/// What the uninstaller's engine says without being asked.
+///
+/// An enum for the same reason every other module has one: the name crosses two
+/// target boundaries and nothing on either side of a literal would notice it
+/// changing. It was a `static let` on the engine, which the module's own two
+/// sides could share — but the **host** could not, and wrote `"trashChanged"`
+/// as a string under a comment explaining that the boundary left it no choice.
+/// It did: `UninstallerDescriptor` re-exports this the way the descriptors
+/// already re-export their command enums for the hotkeys, and the host says the
+/// name rather than spelling it.
+///
+/// What a silent break costs here is a feature going quiet: drag an app to the
+/// Trash and Helm simply never offers to clear up after it.
+public enum UninstallerEvent: String, Sendable {
+    /// Something reached `~/.Trash` that could have been an app, or the offer
+    /// was switched on and what is already there deserves an answer.
+    case trashChanged
+}
+
 // MARK: - What the commands carry
 //
 // **Three request shapes, and each was declared twice.** `ScanReq`,
