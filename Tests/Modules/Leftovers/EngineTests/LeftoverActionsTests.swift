@@ -6,17 +6,22 @@ import XCTest
 /// work is worse than no button, and a missing button that could have worked
 /// is the complaint that produced this file.
 final class LeftoverActionsTests: XCTestCase {
+    /// `writable` is the item's own now, not a second argument handed to
+    /// `available`. It used to be both, and these tests set the two apart: an
+    /// item built writable was asked what it may do when it is not.
     private func item(_ kind: StaleKind, _ status: ItemStatus,
                       id: String = "com.acme.helper",
-                      path: String = "/Users/x/Library/LaunchAgents/com.acme.helper.plist")
+                      path: String = "/Users/x/Library/LaunchAgents/com.acme.helper.plist",
+                      writable: Bool = true)
         -> StaleItem {
-        StaleItem(path: path, identifier: id, kind: kind, sizeBytes: 1, status: status)
+        StaleItem(path: path, identifier: id, kind: kind, sizeBytes: 1, status: status,
+                  writable: writable)
     }
 
     // MARK: - Turning off
 
     func testUserAgentCanBeTurnedOff() {
-        let actions = LeftoverActions.available(for: item(.launchAgent, .inUse), writable: true)
+        let actions = LeftoverActions.available(for: item(.launchAgent, .inUse))
         XCTAssertTrue(actions.contains(.turnOff))
     }
 
@@ -25,39 +30,41 @@ final class LeftoverActionsTests: XCTestCase {
     /// touched.
     func testSystemWideAgentCanBeTurnedOffButNotDeleted() {
         let system = item(.launchAgent, .inUse,
-                          path: "/Library/LaunchAgents/com.acme.helper.plist")
-        let actions = LeftoverActions.available(for: system, writable: false)
+                          path: "/Library/LaunchAgents/com.acme.helper.plist",
+                          writable: false)
+        let actions = LeftoverActions.available(for: system)
         XCTAssertTrue(actions.contains(.turnOff))
         XCTAssertFalse(actions.contains(.delete))
     }
 
     func testDaemonsOfferNothingButReveal() {
-        let actions = LeftoverActions.available(for: item(.launchDaemon, .inUse), writable: false)
+        let actions = LeftoverActions.available(for: item(.launchDaemon, .inUse, writable: false))
         XCTAssertEqual(actions, [.reveal])
     }
 
     // MARK: - Deleting
 
     func testInUseUserAgentCanBeDeleted() {
-        XCTAssertTrue(LeftoverActions.available(for: item(.launchAgent, .inUse), writable: true)
+        XCTAssertTrue(LeftoverActions.available(for: item(.launchAgent, .inUse))
             .contains(.delete))
     }
 
     func testUnwritableItemCannotBeDeleted() {
-        XCTAssertFalse(LeftoverActions.available(for: item(.preference, .orphaned), writable: false)
+        XCTAssertFalse(LeftoverActions.available(for: item(.preference, .orphaned, writable: false))
             .contains(.delete))
     }
 
     func testAppleItemsAreNeverTouched() {
         let apple = item(.launchAgent, .protectedItem, id: "com.apple.Siri.agent")
-        XCTAssertEqual(LeftoverActions.available(for: apple, writable: true), [.reveal])
+        XCTAssertEqual(LeftoverActions.available(for: apple), [.reveal])
     }
 
     /// A system extension is not a file: nothing here applies, and the row
     /// sends the user to System Settings instead.
     func testSystemExtensionsHaveNoFileActions() {
-        let ext = item(.systemExtension, .orphaned, path: "com.acme.app.network")
-        XCTAssertEqual(LeftoverActions.available(for: ext, writable: false), [.systemSettings])
+        let ext = item(.systemExtension, .orphaned, path: "com.acme.app.network",
+                       writable: false)
+        XCTAssertEqual(LeftoverActions.available(for: ext), [.systemSettings])
     }
 
     /// Deleting something that is in use is a different promise from clearing
@@ -87,7 +94,7 @@ final class OneToggleRuleTests: XCTestCase {
         let protected = item(kind: .launchAgent, status: .protectedItem, identifier: "com.vendor.tool")
         XCTAssertFalse(protected.canToggle,
                        "the row's menu refuses this and the checkbox's rule allowed it")
-        XCTAssertFalse(LeftoverActions.available(for: protected, writable: true).contains(.turnOff))
+        XCTAssertFalse(LeftoverActions.available(for: protected).contains(.turnOff))
     }
 
     /// And the two agree on every shape a scan can produce.
@@ -98,7 +105,7 @@ final class OneToggleRuleTests: XCTestCase {
                     let subject = item(kind: kind, status: status, identifier: identifier)
                     XCTAssertEqual(
                         subject.canToggle,
-                        LeftoverActions.available(for: subject, writable: true).contains(.turnOff),
+                        LeftoverActions.available(for: subject).contains(.turnOff),
                         "\(kind)/\(status)/\(identifier.isEmpty ? "<no id>" : identifier)")
                 }
             }

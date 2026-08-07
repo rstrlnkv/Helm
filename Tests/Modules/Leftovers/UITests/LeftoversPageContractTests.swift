@@ -29,11 +29,15 @@ final class LeftoversPageContractTests: XCTestCase {
             lock.lock(); defer { lock.unlock() }; return removal
         }
 
+        /// The enum, not the two literals this used to switch on. A fake that
+        /// answers names of its own is a fake that goes on answering after the
+        /// module renames one — and what it answers then is `Data()`, which this
+        /// codebase spells «the module could not answer».
         func send(_ command: EngineCommand) async throws -> Data {
-            switch command.name {
-            case "scan": return (try? JSONEncoder().encode(current)) ?? Data()
-            case "trash": return (try? JSONEncoder().encode(currentRemoval)) ?? Data()
-            default: return Data()
+            switch LeftoversCommand(rawValue: command.name) {
+            case .scan: return (try? JSONEncoder().encode(current)) ?? Data()
+            case .trash: return (try? JSONEncoder().encode(currentRemoval)) ?? Data()
+            case .setDisabled, .none: return Data()
             }
         }
     }

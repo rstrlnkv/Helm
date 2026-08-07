@@ -13,7 +13,7 @@ final class BrewParserShapeTests: XCTestCase {
     /// because a row is a button that runs `brew uninstall`.
     func testNoParserInventsRowsFromEmptyOrBlankOutput() {
         for output in ["", "\n", "   ", "\n\n\n", "\t\n \n"] {
-            XCTAssertEqual(BrewSearchParser.parse(output).count, 0, output.debugDescription)
+            XCTAssertEqual(BrewSearchParser.parse(output, isCask: false).count, 0, output.debugDescription)
             XCTAssertEqual(BrewDescParser.parse(output).count, 0, output.debugDescription)
         }
         XCTAssertEqual(BrewOutdatedParser.parse(Data()).count, 0)
@@ -94,7 +94,7 @@ final class BrewParserShapeTests: XCTestCase {
         firefox
         firefox@beta
         """
-        let hits = BrewSearchParser.parse(out)
+        let hits = BrewSearchParser.parse(out, isCask: false)
         XCTAssertEqual(hits.filter { !$0.isCask }.map(\.name), ["firefoxpwa"])
         XCTAssertEqual(hits.filter(\.isCask).map(\.name), ["firefox", "firefox@beta"])
     }
@@ -112,7 +112,7 @@ final class BrewParserShapeTests: XCTestCase {
     /// live cross-check in `BrewSearchKindLiveScan` as the actual gate.
     func testHeaderlessSearchOutputIsWhatCurrentBrewEmits() {
         let out = "firefoxpwa\nfirefly\n\nfirefox\nfirefox@beta\n"
-        let hits = BrewSearchParser.parse(out)
+        let hits = BrewSearchParser.parse(out, isCask: false)
         XCTAssertEqual(hits.map(\.name), ["firefoxpwa", "firefly", "firefox", "firefox@beta"],
                        "the blank separator must not become a row")
         XCTAssertTrue(hits.allSatisfy { !$0.isCask },
@@ -124,7 +124,7 @@ final class BrewParserShapeTests: XCTestCase {
     /// formulae or casks found for …" is what 6.0.12 prints for a miss, and it
     /// arrives on stdout in the same string the parser is handed.
     func testBrewsNoResultsProseIsNotAPackage() {
-        XCTAssertEqual(BrewSearchParser.parse("Error: No formulae or casks found for \"zzqqxx\".").count, 0)
+        XCTAssertEqual(BrewSearchParser.parse("Error: No formulae or casks found for \"zzqqxx\".", isCask: false).count, 0)
     }
 }
 
@@ -150,8 +150,8 @@ final class BrewSearchKindLiveScan: XCTestCase {
         let query = "firefox"
         // The same two calls the engine makes: brew no longer labels a flat
         // list, so the kind comes from which call produced the name.
-        let hits = BrewSearchParser.parse(try brew(["search", "--formula", query]), kind: false)
-                 + BrewSearchParser.parse(try brew(["search", "--cask", query]), kind: true)
+        let hits = BrewSearchParser.parse(try brew(["search", "--formula", query]), isCask: false)
+                 + BrewSearchParser.parse(try brew(["search", "--cask", query]), isCask: true)
         let casks = Set(try brew(["search", "--cask", query])
             .split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty && !$0.hasPrefix("==>") })
