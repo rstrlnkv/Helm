@@ -24,7 +24,7 @@ import HelmUI
                                 "full disk access: \(fullDisk.rawValue), "
                                 + "accessibility: \(accessibility.rawValue)")
 
-            let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+            let version = AppBuild.shortVersion ?? ""
             let lastSeen = AppSettings.store.string(seenKey, default: "")
             // Recorded unconditionally, including on a first run: the audit
             // has nothing to compare against yet, but the second run needs

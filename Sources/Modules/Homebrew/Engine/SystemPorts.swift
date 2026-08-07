@@ -156,10 +156,9 @@ public struct ShellProcessRunner: ProcessRunner {
 public struct OSAPrivilegedRunner: PrivilegedRunner {
     public init() {}
     public func runAdmin(_ script: String) -> Bool {
-        let esc = script
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-        let osa = "do shell script \"\(esc)\" with administrator privileges"
+        // `AppleScript` in HelmRuntime — the escaping was written out here and
+        // in `SudoersRule`, and Keep Awake's copy carried the comment saying so.
+        let osa = AppleScript.administratorShellScript(script)
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
         p.arguments = ["-e", osa]
