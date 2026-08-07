@@ -108,9 +108,7 @@ final class StopLeavesNothingBehindTests: XCTestCase {
     private func model(_ transport: AnsweringTransport) -> DiskViewModel {
         // A store of its own: the module's real one is the person's last scan,
         // and a harness must leave nothing behind.
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("helm-disk-stop-\(UUID().uuidString)")
-        addTeardownBlock { try? FileManager.default.removeItem(at: directory) }
+        let directory = temporaryStoreDirectory("disk-stop")
         return DiskViewModel(vm: ModuleViewModel(transport: transport),
                              store: ScanStore(directory: directory))
     }

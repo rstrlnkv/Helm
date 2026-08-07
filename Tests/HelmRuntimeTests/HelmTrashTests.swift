@@ -8,18 +8,17 @@ final class HelmTrashTests: XCTestCase {
     private var root: URL!
 
     override func setUpWithError() throws {
-        root = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-trash-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        root = trashScratchDirectory("trash")
     }
 
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: root)
-    }
-
+    /// A file this test is going to trash for real, so its name is one nobody
+    /// else could own and it is reclaimed by name afterwards — `TrashScratch`
+    /// says why the parent directory's UUID does not do that job.
     private func file(_ name: String, bytes: Int = 16) throws -> String {
-        let url = root.appendingPathComponent(name)
+        let leaf = unownableLeaf(name)
+        let url = root.appendingPathComponent(leaf)
         try Data(repeating: 0x41, count: bytes).write(to: url)
+        reclaimFromTrash(leaf)
         return url.path
     }
 
@@ -93,45 +92,45 @@ final class HelmTrashFolderSizeTests: XCTestCase {
     private var root: URL!
 
     override func setUpWithError() throws {
-        root = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-trash-size-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        root = trashScratchDirectory("trash-size")
     }
 
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: root)
+    /// The item that will be trashed, named so the cleanup can find it in the
+    /// Trash. Whatever is written *inside* it keeps its ordinary name — only
+    /// the moved item's own name survives the move.
+    private func trashable(_ name: String) -> (url: URL, path: String) {
+        let leaf = unownableLeaf(name)
+        let url = root.appendingPathComponent(leaf)
+        reclaimFromTrash(leaf)
+        return (url, url.path)
     }
 
-    private func write(_ relative: String, bytes: Int) throws {
-        let url = root.appendingPathComponent(relative)
+    private func write(_ url: URL, bytes: Int) throws {
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
                                                 withIntermediateDirectories: true)
         try Data(repeating: 0x41, count: bytes).write(to: url)
     }
 
     func testAFolderFreesWhatIsInsideIt() throws {
-        try write("bundle/Contents/payload.bin", bytes: 400_000)
-        try write("bundle/Contents/Info.plist", bytes: 2_000)
-        let bundle = root.appendingPathComponent("bundle").path
+        let bundle = trashable("bundle")
+        try write(bundle.url.appendingPathComponent("Contents/payload.bin"), bytes: 400_000)
+        try write(bundle.url.appendingPathComponent("Contents/Info.plist"), bytes: 2_000)
 
-        let result = HelmTrash.remove(allowed: [bundle], module: "test")
+        let result = HelmTrash.remove(allowed: [bundle.path], module: "test")
 
-        XCTAssertEqual(result.removed, [bundle])
+        XCTAssertEqual(result.removed, [bundle.path])
         XCTAssertGreaterThan(result.freedBytes, 400_000,
                              "a folder reported the size of its directory entry, not its contents")
-        // Trashed, so put it back out of the Trash rather than leaving it there.
-        addTeardownBlock { try? FileManager.default.removeItem(atPath: bundle) }
     }
 
     /// And a plain file still reports itself, not zero and not something else.
     func testAFileStillFreesItsOwnSize() throws {
-        try write("one.bin", bytes: 300_000)
-        let file = root.appendingPathComponent("one.bin").path
+        let file = trashable("one.bin")
+        try write(file.url, bytes: 300_000)
 
-        let result = HelmTrash.remove(allowed: [file], module: "test")
+        let result = HelmTrash.remove(allowed: [file.path], module: "test")
 
-        XCTAssertEqual(result.removed, [file])
+        XCTAssertEqual(result.removed, [file.path])
         XCTAssertGreaterThanOrEqual(result.freedBytes, 300_000)
-        addTeardownBlock { try? FileManager.default.removeItem(atPath: file) }
     }
 }

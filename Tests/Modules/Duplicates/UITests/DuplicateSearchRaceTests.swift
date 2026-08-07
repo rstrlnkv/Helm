@@ -60,9 +60,21 @@ final class DuplicateSearchRaceTests: XCTestCase {
         }
     }
 
+    /// **In memory, never `UserDefaults.standard`** — the rule
+    /// `ListsAgreeWithTheTreeTests` states and this test broke in the way that
+    /// costs most: a fresh UUID namespace per call means the same key is never
+    /// overwritten, so every invocation left one behind for good.
+    ///
+    /// `UserDefaults.standard` inside a test process is not Helm's domain, it
+    /// is `com.apple.dt.xctest.tool` — the runner's own, shared with every
+    /// package tested on the machine. Measured on this one before the fix:
+    /// **3028 keys named `module.test.duplicates.<uuid>.folder`, 288 KB**, none
+    /// of which anything would ever read again. The house rule is that a
+    /// harness leaves nothing behind, and a fresh in-memory store is isolated
+    /// by construction, which is what the UUID was reaching for.
     private func model(_ transport: HeldTransport) -> DuplicatesViewModel {
-        let store = NamespacedStore(namespace: "test.duplicates.\(UUID().uuidString)",
-                                    backing: UserDefaults.standard)
+        let store = NamespacedStore(namespace: "test.duplicates",
+                                    backing: InMemoryKeyValueStore())
         store.set("/some/folder", for: "folder")
         return DuplicatesViewModel(vm: ModuleViewModel(transport: transport), store: store)
     }

@@ -16,8 +16,11 @@ import Module_Duplicates_Engine
 final class EventsTaskRetainTests: XCTestCase {
     func testDuplicatesViewModelIsReleasedOnceNothingElseHoldsIt() async {
         let transport = LocalTransport()
-        let store = NamespacedStore(namespace: "test.duplicates.retain.\(UUID().uuidString)",
-                                    backing: UserDefaults.standard)
+        // In memory, like the race test next door: this one writes nothing, so
+        // it left no key — but it named the same shared domain, and the next
+        // person to add a `store.set` here would not have noticed.
+        let store = NamespacedStore(namespace: "test.duplicates.retain",
+                                    backing: InMemoryKeyValueStore())
         var dvm: DuplicatesViewModel? = DuplicatesViewModel(
             vm: ModuleViewModel(transport: transport), store: store)
         weak var weakDvm = dvm

@@ -23,8 +23,7 @@ final class ScanResetTests: XCTestCase {
             .appendingPathComponent("helm-reset-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: root.appendingPathComponent("a"),
                                                 withIntermediateDirectories: true)
-        storeDirectory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("helm-reset-store-\(UUID().uuidString)")
+        storeDirectory = temporaryStoreDirectory("reset-store")
     }
 
     override func tearDownWithError() throws {

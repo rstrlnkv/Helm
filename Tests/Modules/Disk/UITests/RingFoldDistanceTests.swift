@@ -72,8 +72,7 @@ final class RingFoldDistanceTests: XCTestCase {
         let c = entry(root.appendingPathComponent("a/b/c"), [])
         let b = entry(root.appendingPathComponent("a/b"), [c])
         let a = entry(root.appendingPathComponent("a"), [b])
-        let store = ScanStore(directory: FileManager.default.temporaryDirectory
-            .appendingPathComponent("helm-ring-fold-store-\(UUID().uuidString)"))
+        let store = ScanStore(directory: temporaryStoreDirectory("ring-fold-store"))
         store.save(ScanResult(root: entry(root, [a]), freeBytes: 0, filesScanned: 4, seconds: 1))
 
         let model = DiskViewModel(vm: ModuleViewModel(transport: LocalTransport()), store: store)

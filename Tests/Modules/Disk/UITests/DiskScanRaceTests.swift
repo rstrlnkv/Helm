@@ -97,8 +97,7 @@ final class DiskScanRaceTests: XCTestCase {
 
     private func model(_ transport: HeldTransport) -> DiskViewModel {
         // A store of its own: the module's real one is the user's last scan.
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("helm-disk-race-\(UUID().uuidString)")
+        let directory = temporaryStoreDirectory("disk-race")
         return DiskViewModel(vm: ModuleViewModel(transport: transport),
                              store: ScanStore(directory: directory))
     }
