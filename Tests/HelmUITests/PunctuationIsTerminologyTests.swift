@@ -26,21 +26,32 @@ final class PunctuationIsTerminologyTests: XCTestCase {
         return dict
     }
 
-    /// The marks a language never writes, so a value carrying one is a mark
-    /// somebody translated instead of looking up.
-    private static let foreignMarks: [AppLanguage: [Character]] = [
-        .es: ["«", "»"],
-        .pt: ["«", "»"],
-        .de: ["«", "»"],   // „…“, and the guillemets were strays
-        .zh: ["「", "」"],  // “…”, and the corner brackets were strays
-        .fr: ["“", "”"],   // «…», the one language that keeps them
-    ]
+    /// A language's own marks, asked of `Quoted` rather than written down here.
+    ///
+    /// `Quoted` is the ruling — eight languages, each counted in macOS's
+    /// bundles, with the counts in its doc comment — and a second copy of it in
+    /// a test is a second thing to keep in step. Wrapping the empty string
+    /// leaves exactly the pair, plus French's unbreakable spaces, which are the
+    /// other test's subject.
+    private func marks(of language: AppLanguage) -> Set<Character> {
+        Set(Quoted("", language: language).filter { !$0.isWhitespace })
+    }
+
+    /// Japanese is left out of both sides: it neither has to obey its own
+    /// ruling here nor gets to make 「…」 foreign to the other seven.
+    private var checked: [AppLanguage] { AppLanguage.allCases.filter { $0 != .ja } }
 
     func testNoLanguageQuotesWithAnotherLanguagesMarks() throws {
+        // Every mark any of the seven writes, plus the corner brackets, which
+        // none of them do and three Chinese values had.
+        let every = checked.reduce(into: Set<Character>(["「", "」"])) {
+            $0.formUnion(marks(of: $1))
+        }
         var offenders: [(AppLanguage, Character, String)] = []
-        for (language, marks) in Self.foreignMarks {
+        for language in checked {
+            let foreign = every.subtracting(marks(of: language))
             for (key, value) in try table(for: language) {
-                for mark in marks where value.contains(mark) {
+                for mark in foreign where value.contains(mark) {
                     offenders.append((language, mark, key))
                 }
             }

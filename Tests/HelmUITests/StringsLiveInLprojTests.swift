@@ -43,6 +43,13 @@ final class StringsLiveInLprojTests: XCTestCase {
         }
     }
 
+    private func table(for language: AppLanguage) throws -> [String: String] {
+        let path = try XCTUnwrap(Localized.stringsFile(for: language)?.path)
+        let table = try XCTUnwrap(NSDictionary(contentsOfFile: path) as? [String: String])
+        XCTAssertGreaterThan(table.count, 100, "\(language.rawValue).lproj carries almost nothing")
+        return table
+    }
+
     /// Every `L("…")` in a source, with whether a table follows the literal.
     ///
     /// Walked character by character rather than matched with a pattern: the
@@ -194,10 +201,7 @@ final class StringsLiveInLprojTests: XCTestCase {
     func testNoTranslationIsJustTheEnglishAgainUnlessItIsMeantTo() throws {
         var untranslated: [(AppLanguage, String)] = []
         for language in AppLanguage.allCases where language != .en {
-            let path = try XCTUnwrap(Localized.stringsFile(for: language)?.path)
-            let table = try XCTUnwrap(NSDictionary(contentsOfFile: path) as? [String: String])
-            XCTAssertGreaterThan(table.count, 100, "\(language.rawValue).lproj carries almost nothing")
-            for (key, value) in table where key == value {
+            for (key, value) in try table(for: language) where key == value {
                 guard Self.deliberateIdentities[key]?.contains(language) != true else { continue }
                 untranslated.append((language, key))
             }
@@ -218,8 +222,7 @@ final class StringsLiveInLprojTests: XCTestCase {
     func testEveryAllowedIdentityIsStillOne() throws {
         var stale: [String] = []
         for language in AppLanguage.allCases where language != .en {
-            let path = try XCTUnwrap(Localized.stringsFile(for: language)?.path)
-            let table = try XCTUnwrap(NSDictionary(contentsOfFile: path) as? [String: String])
+            let table = try table(for: language)
             for (key, languages) in Self.deliberateIdentities where languages.contains(language) {
                 guard let value = table[key] else {
                     stale.append("\(language.rawValue): \"\(key)\" is not in the file at all")
