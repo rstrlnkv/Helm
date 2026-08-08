@@ -258,6 +258,10 @@ public struct KeepAwakePanelTile: View {
     /// keeps the keys the engine never acts on.
     static let panelTimerMinutes = "panelTimerMinutes"
 
+    /// What the countdown's one button adds, in its label and in what it asks
+    /// for — the two were the same literal twice, one of them inside a string.
+    private static let extraMinutes = 15
+
     /// The longest timer this tile offers, for the typed entry and for the
     /// stored choice alike. Neither needs a floor: both are read behind a
     /// `> 0`, where anything smaller already means "nothing chosen" rather
@@ -344,9 +348,10 @@ public struct KeepAwakePanelTile: View {
                     .contentTransition(.numericText(countsDown: true))
                     .animation(HelmMotion.interface, value: remaining)
                 Spacer()
-                Button("+" + KAStr.duration(15, compact: true)) {
-                    let newMinutes = Int(ceil(remaining / 60)) + 15
-                    vm.send(KeepAwakeCommand.start, payload: startPayload(newMinutes))
+                Button("+" + KAStr.duration(Self.extraMinutes, compact: true)) {
+                    vm.send(KeepAwakeCommand.start, payload: startPayload(
+                        TimerPolicy.extendedMinutes(remaining: remaining,
+                                                    adding: Self.extraMinutes)))
                 }
                 .controlSize(.small)
                 // Ends the timed session; the header toggle is the all-or-nothing

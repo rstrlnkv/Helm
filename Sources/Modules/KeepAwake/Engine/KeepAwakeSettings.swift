@@ -75,7 +75,7 @@ public struct KeepAwakeSettings {
     /// further apart than that is indistinguishable from the switch being off,
     /// and the stepper's own top is 60.
     public var jiggleIntervalMinutes: Int {
-        store.int(Key.jiggleIntervalMinutes, default: 5).clamped(to: 1...Self.aDayInMinutes)
+        store.int(Key.jiggleIntervalMinutes, default: 5).clamped(to: 1...TimerPolicy.longestSessionMinutes)
     }
     public func setJiggleIntervalMinutes(_ minutes: Int) {
         store.set(minutes, for: Key.jiggleIntervalMinutes)
@@ -108,13 +108,9 @@ public struct KeepAwakeSettings {
     /// with the same trapping multiply, and it is reached from the panel tile's
     /// main button.
     public var defaultDurationMinutes: Int {
-        store.int(Key.defaultDurationMinutes, default: 0).clamped(to: 0...Self.aDayInMinutes)
+        store.int(Key.defaultDurationMinutes, default: 0).clamped(to: 0...TimerPolicy.longestSessionMinutes)
     }
     public func setDefaultDurationMinutes(_ minutes: Int) {
         store.set(minutes, for: Key.defaultDurationMinutes)
     }
-
-    /// The ceiling both durations share: past a day neither setting means
-    /// anything a person could have asked for.
-    private static let aDayInMinutes = 24 * 60
 }

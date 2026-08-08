@@ -82,13 +82,73 @@ final class SessionRestoreTests: XCTestCase {
                        .remaining(1800))
     }
 
-    /// And without a start date there is nothing to bound it with, so the
-    /// remaining time is taken at face value. Recorded rather than asserted as
-    /// desirable: every path that writes an `endDate` writes a `startDate` beside
-    /// it, so this combination only arises from a store somebody edited.
-    func testWithoutAStartDateTheDeadlineIsTakenAtFaceValue() {
+    /// Without a start date there is nothing *relative* to bound it with, and a
+    /// deadline inside what this module can start is taken at face value. Every
+    /// path that writes an `endDate` writes a `startDate` beside it, so this
+    /// combination only arises from a store somebody edited — which is why the
+    /// absolute bound below is the one that matters here.
+    func testWithoutAStartDateAReachableDeadlineIsTakenAtFaceValue() {
         XCTAssertEqual(SessionRestore.decide(manualOn: true, startDate: nil,
                                              endDate: now.addingTimeInterval(120), now: now),
                        .remaining(120))
+    }
+
+    // MARK: - A deadline no session could have produced
+
+    /// The bound above is **relative**, and it was the only one: a stored
+    /// duration that is itself absurd is bounded by itself and comes back
+    /// whole. Both of these reach `Int(left / 60)` in
+    /// `KeepAwakeEngine.restoreSession`, which **traps** — "Double value cannot
+    /// be converted to Int because the result would be greater than Int.max" —
+    /// so the app terminates on launch, before anything is drawn, with no way
+    /// back in to switch the session off. `<real>1e300</real>` is a legal plist
+    /// and `UserDefaults` hands it straight back as a `Double`.
+    ///
+    /// Refused rather than clamped: nothing this module can start produces a
+    /// deadline out here, so the value is not a long session, it is not a
+    /// session. Clamping it to the ceiling would hold the Mac awake for a day
+    /// on the strength of a number nobody wrote.
+    func testADeadlineLongerThanAnySessionCouldBeIsRefused() {
+        XCTAssertEqual(SessionRestore.decide(manualOn: true, startDate: nil,
+                                             endDate: Date(timeIntervalSinceReferenceDate: 1e300),
+                                             now: now),
+                       .none)
+    }
+
+    /// And a start date does not rescue it. `min(left, endDate - startDate)` is
+    /// a bound *by the stored duration*, so when that duration is the absurd
+    /// number the bound is the absurd number — the missing condition was an
+    /// absolute one, on both branches rather than on the second.
+    func testAStartDateDoesNotRescueADeadlineThatIsItselfAbsurd() {
+        XCTAssertEqual(SessionRestore.decide(manualOn: true,
+                                             startDate: now.addingTimeInterval(-60),
+                                             endDate: Date(timeIntervalSinceReferenceDate: 1e300),
+                                             now: now),
+                       .none)
+    }
+
+    /// `<real>inf</real>` reaches the same conversion. A date is not a number
+    /// the module can subtract its way out of.
+    func testANonFiniteDeadlineIsRefused() {
+        XCTAssertEqual(SessionRestore.decide(manualOn: true, startDate: nil,
+                                             endDate: Date(timeIntervalSinceReferenceDate: .infinity),
+                                             now: now),
+                       .none)
+    }
+
+    /// The control, so the refusal above is a bound and not a blanket: the
+    /// longest session anything in this module can start still comes back
+    /// whole. `KeepAwakeSettings` caps both of its durations at a day, and the
+    /// panel tile's own entry caps below that.
+    ///
+    /// The day is spelled out here rather than read from `TimerPolicy`: a test
+    /// that asks the subject what its own bound is passes whatever the bound
+    /// becomes.
+    func testTheLongestSessionThisModuleCanStartStillComesBack() {
+        let aDay: TimeInterval = 24 * 60 * 60
+        XCTAssertEqual(SessionRestore.decide(manualOn: true,
+                                             startDate: now,
+                                             endDate: now.addingTimeInterval(aDay), now: now),
+                       .remaining(aDay))
     }
 }

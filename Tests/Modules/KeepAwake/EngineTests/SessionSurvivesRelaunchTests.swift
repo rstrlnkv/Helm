@@ -152,6 +152,62 @@ final class SessionSurvivesRelaunchTests: XCTestCase {
         XCTAssertFalse(after.isActive)
     }
 
+    // MARK: - A session the store cannot mean
+
+    /// `~/Library/Preferences` is not a trusted input, and this is the read that
+    /// happens *before anything is drawn*: `activate()` runs at launch, and
+    /// `restoreSession` logs the session it restored with `Int(left / 60)`.
+    /// `Int(_:)` of a `Double` past `Int.max` **traps** — the app terminates
+    /// with exit 133 on every launch, and there is no window to go and switch
+    /// the session off from.
+    ///
+    /// `<real>1e300</real>` is a legal plist and `UserDefaults` hands it back as
+    /// a `Double`. The engine's own writer always writes `sessionStartedAt`
+    /// beside `sessionEndsAt`, so this pair says the file was written by
+    /// something other than Helm — and the answer to that is no session, not a
+    /// session of some length nobody asked for.
+    func testAStoredDeadlineThatCannotBeMeantIsRefusedRatherThanTrapped() {
+        store.set(true, for: KeepAwakeEngine.SessionKey.on)
+        store.set(0.0, for: KeepAwakeEngine.SessionKey.startedAt)
+        store.set(1e300, for: KeepAwakeEngine.SessionKey.endsAt)
+
+        let assertions = FakeAssertions()
+        let after = engine(assertions: assertions)
+        after.activate()
+
+        XCTAssertFalse(after.isActive)
+        XCTAssertNil(after.endDate)
+        XCTAssertFalse(assertions.held)
+    }
+
+    /// And the deadline the engine comes back holding is the one it decided on,
+    /// not the one it read.
+    ///
+    /// A stored pair can be credible as a *duration* and absurd as a pair of
+    /// dates: `sessionStartedAt` and `sessionEndsAt` an hour apart out at 1e19
+    /// bound each other to an hour, so the session restores — and the engine
+    /// then kept the stored `endsAt` as its `endDate`. Every countdown surface
+    /// draws `TimerProgress.label(remaining: end.timeIntervalSinceNow)`, which
+    /// converts that `Double` to an `Int`, so the menu bar, the panel widget and
+    /// the settings page each trap on the next redraw. The expiry the engine
+    /// schedules is measured from the decision, so the two disagreed anyway —
+    /// on a Mac whose clock had moved, the countdown showed a day while the
+    /// timer was set for half an hour.
+    func testTheRestoredDeadlineIsTheOneTheModuleDecidedOn() throws {
+        store.set(true, for: KeepAwakeEngine.SessionKey.on)
+        store.set(1e19 - 4096, for: KeepAwakeEngine.SessionKey.startedAt)
+        store.set(1e19, for: KeepAwakeEngine.SessionKey.endsAt)
+
+        let after = engine()
+        after.activate()
+
+        let restored = try XCTUnwrap(after.endDate, "precondition: the pair bounds itself to an hour")
+        XCTAssertLessThanOrEqual(restored.timeIntervalSince(clock.current),
+                                 TimeInterval(24 * 60 * 60),
+                                 "the countdown is drawn from this date, and converting it to "
+                                 + "an Int is what every surface does with it")
+    }
+
     /// The control: none of the above may be satisfied by an engine that simply
     /// never activates a session.
     func testTheHarnessCanHoldASessionAtAll() {
