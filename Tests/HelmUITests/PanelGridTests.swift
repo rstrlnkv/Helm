@@ -188,6 +188,15 @@ final class PanelGridTests: XCTestCase {
 
     /// The bars come off the ceiling, and so do the card's own padding and the
     /// gaps between its blocks — the panel is 12 pt inside and 8 pt between.
+    ///
+    /// **Both sides read the same constant, and that is now the point rather
+    /// than the hole.** It used to be the hole: the card wrote `spacing: 8` and
+    /// `.padding(12)` as literals in another target, so moving it to
+    /// `.padding(14)` left this green while the grid was handed 4 pt it did not
+    /// have. The card reads `PanelGrid.padding` and `PanelGrid.gap` now, and
+    /// `CardEdgesAreTheGridsConstantsTests` fails if it goes back to spelling
+    /// either one itself — so agreeing with the constants is agreeing with the
+    /// card, which is what this line always claimed to be checking.
     func testTheCardsOwnEdgesComeOffToo() {
         let room = PanelGrid.roomForGrid(strip: 500, top: nil, foot: nil)
         XCTAssertEqual(room, 500 - PanelGrid.padding * 2 - PanelGrid.gap)
