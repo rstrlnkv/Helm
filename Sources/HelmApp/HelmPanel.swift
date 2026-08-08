@@ -619,32 +619,24 @@ struct HelmPanelContent: View {
     /// container**, which nothing rebuilds. Which tile was picked up is read
     /// from the frames at the start location; the cleanup is an animation
     /// completion rather than a timer.
+    ///
+    /// The three decisions inside — which frames are still real, which tile is
+    /// under the pointer, and whether the pointer has travelled far enough to
+    /// swap — are `PanelDrag`, where they can be argued with in a test. What
+    /// stays here is the state and the order it changes in.
     private func gridDrag(items: [Widget]) -> some Gesture {
         DragGesture(minimumDistance: 4, coordinateSpace: .named(Self.gridSpace))
             .onChanged { value in
-                // **Frames of tiles that are no longer drawn, thrown away here
-                // because nothing else will.**
-                //
-                // `onGeometryChange` does not fire on disappearance — measured:
-                // a removed view leaves its last rectangle in the dictionary
-                // verbatim. Both lookups below are `first(where:)` over a
-                // dictionary whose iteration order Swift does not define, so a
-                // stale rectangle is not an occasional wrong answer: with two
-                // tabs whose top slots occupy the same rectangle, the tile
-                // under the pointer could resolve to the *other* tab's widget,
-                // and `apply` writes that move to disk immediately. A removed
-                // tile also made whatever took its place unpickable, because
-                // the hit resolved to an id no longer in `items`.
-                let live = Set(items.map(\.id))
-                if frames.keys.contains(where: { !live.contains($0) }) {
-                    frames = frames.filter { live.contains($0.key) }
+                // Frames of tiles that are no longer drawn, thrown away here
+                // because nothing else will — `PanelDrag.pruned` carries the
+                // reason, and answers nothing when there is nothing to throw
+                // away, which is every move but the one after a tile goes.
+                if let kept = PanelDrag.pruned(frames: frames, live: Set(items.map(\.id))) {
+                    frames = kept
                 }
                 if dragging == nil {
-                    guard let hit = frames.first(where: {
-                              $0.value.contains(value.startLocation)
-                          })?.key,
-                          let widget = items.first(where: { $0.id == hit }),
-                          let frame = frames[hit]
+                    guard let hit = PanelDrag.hit(frames: frames, at: value.startLocation),
+                          let widget = items.first(where: { $0.id == hit.id })
                     else { return }
                     // The frames are measured outside `EditChrome`, which pads
                     // every tile by 4 pt in this mode — so the raw frame is the
@@ -652,7 +644,7 @@ struct HelmPanelContent: View {
                     // and drawing it at the padded size inflated the carried
                     // tile just enough to be visibly bigger than the slot it
                     // lands in, with a snap down at the handover.
-                    let content = frame.insetBy(dx: Self.chromeInset, dy: Self.chromeInset)
+                    let content = hit.frame.insetBy(dx: Self.chromeInset, dy: Self.chromeInset)
                     dragSize = content.size
                     grabOffset = CGSize(width: value.startLocation.x - content.minX,
                                         height: value.startLocation.y - content.minY)
@@ -666,30 +658,18 @@ struct HelmPanelContent: View {
                 // The slot under the pointer, if it is a different one —
                 // checked against live frames, so the boundary between two
                 // tiles is exactly where the neighbour starts to move.
-                guard let over = frames.first(where: {
-                          $0.key != carried.id && $0.value.contains(value.location)
-                      })?.key,
-                      let overFrame = frames[over],
-                      let target = layout.placement(of: over),
+                guard let over = PanelDrag.hit(frames: frames,
+                                               at: value.location,
+                                               excluding: carried.id),
+                      let target = layout.placement(of: over.id),
                       let here = layout.placement(of: carried.id),
                       here.tab != target.tab || here.index != target.index else { return }
 
-                // Past the middle, not merely inside. Containment alone
-                // oscillates against a tall neighbour: entering its top edge
-                // swaps, the swap puts the pointer in its *bottom* half, which
-                // reads as entered again — and the utilities list bounced in
-                // place under a slowly moving pointer. Requiring the centre to
-                // be crossed, on the axis the move is happening along, is the
-                // hysteresis: after a swap the pointer is on the near side of
-                // the centre, and nothing fires until it truly travels.
-                let slot = frames[carried.id] ?? overFrame
-                let sameRow = abs(overFrame.midY - slot.midY) < 4
-                let crossed = sameRow
-                    ? (overFrame.midX > slot.midX ? value.location.x > overFrame.midX
-                                                  : value.location.x < overFrame.midX)
-                    : (overFrame.midY > slot.midY ? value.location.y > overFrame.midY
-                                                  : value.location.y < overFrame.midY)
-                guard crossed else { return }
+                // Past the middle, not merely inside — `PanelDrag.crossed` is
+                // the hysteresis, and the oscillation it stops.
+                let slot = frames[carried.id] ?? over.frame
+                guard PanelDrag.crossed(from: slot, to: over.frame,
+                                        pointer: value.location) else { return }
                 withAnimation(HelmMotion.reorder) {
                     apply(layout.moving(carried.id, toTab: target.tab, at: target.index))
                 }
