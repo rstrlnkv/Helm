@@ -99,11 +99,24 @@ public enum StatusPlan {
     /// countdown moves by far less than a pixel per tick. The spin's own
     /// colour is part of it too: it is drawn instead of the tint while a spin
     /// runs, so two colours at the same frame index must not compare equal.
+    ///
+    /// **The bucket is bounded before it is converted**, the way `frame` above
+    /// is and for the same reason: `Int(_:)` of a `Double` traps outside
+    /// `Int`'s range and on a value that is not a number, and this line runs
+    /// first — a status tick reaches it about once a second, before
+    /// `MenuBarIcon.make` sees the same number. `timerProgress` is a field of a
+    /// public struct any module's descriptor fills in, and nothing between
+    /// that and here says how large it may be.
+    ///
+    /// The bounds are the ones the icon draws with, so the key still says what
+    /// the icon shows: `MenuBarIcon.make` clamps to 0…1, and it strokes no arc
+    /// for a value that is not a number — the same nothing it draws at 0.
     public static func redrawKey(style: String, size: String, tint: String?,
                                  progress: Double?, title: String?, frame: Int?,
                                  spinTint: String? = nil) -> String {
         let part = { (value: String?) in value.map { "=" + $0 } ?? "-" }
-        let bucket = progress.map { "=\(Int(($0 * 100).rounded()))" } ?? "-"
+        let drawn = { (p: Double) in p.isNaN ? 0 : min(max(p, 0), 1) }
+        let bucket = progress.map { "=\(Int((drawn($0) * 100).rounded()))" } ?? "-"
         return [style, size, part(tint), bucket, part(title),
                 frame.map { "=\($0)" } ?? "-", part(spinTint)].joined(separator: "|")
     }
