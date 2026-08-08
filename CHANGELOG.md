@@ -56,6 +56,14 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   arranged.
 
 ### Fixed
+- **A module cannot bring the app down through the menu bar's spinner.** The
+  status item works out which still of the spin belongs to now, and it bounded
+  the result *after* converting it to an integer — where the bounds protect
+  nothing, because the conversion is what fails. `spinUntil` reaches the host
+  from a module as a date over JSON, and a date is a count of seconds with
+  nothing between the payload and that line to say how large. It now bounds the
+  number and then converts, so an absurd spin draws the first frame instead of
+  ending the process.
 - **The test suite no longer writes into the log a build is triaged against.**
   `~/Library/Logs/Helm/helm.log` is a product surface — it is what a dev build is
   judged by before it ships — and running the suite filled it with `[error]`
