@@ -92,6 +92,32 @@ final class SidebarComposerHeightTests: XCTestCase {
                              "the note is being counted as a single line")
     }
 
+    // MARK: - The window the numbers are turned into
+
+    func testTheSheetIsSizedToItsContentBetweenTheFloorAndTheCap() {
+        XCTAssertEqual(SidebarComposerSheet.windowHeight(table: 300, chrome: 129), 429)
+        XCTAssertEqual(SidebarComposerSheet.windowHeight(table: 10, chrome: 129), 360)
+        XCTAssertEqual(SidebarComposerSheet.windowHeight(table: 5_000, chrome: 129), 660)
+    }
+
+    /// A height that is not a number is a window AppKit cannot make, and
+    /// `.frame(height:)` is where it would find that out. The clamp this line
+    /// used to be — `min(max(360, table + chrome), 660)` — answered the floor
+    /// for one, because `Swift.max(360, .nan)` is 360; the shared `clamped`
+    /// hands the NaN back instead. The floor is kept as the answer: it is what
+    /// this sheet has always opened at when it knew nothing, and it is the size
+    /// the seeded estimate is corrected up from a turn of the run loop later.
+    func testAHeightThatIsNotANumberOpensAtTheFloor() {
+        XCTAssertEqual(SidebarComposerSheet.windowHeight(table: .nan, chrome: 129), 360)
+    }
+
+    /// An *infinite* height is a different sentence: it has a place on the
+    /// number line and the cap is the answer for a sheet taller than the
+    /// window it sits in, which is the cap's whole job.
+    func testAnInfiniteHeightOpensAtTheCap() {
+        XCTAssertEqual(SidebarComposerSheet.windowHeight(table: .infinity, chrome: 129), 660)
+    }
+
     /// The control. Every assertion above passes on an estimator that returns
     /// one constant.
     func testTheEstimateFollowsTheArrangement() {

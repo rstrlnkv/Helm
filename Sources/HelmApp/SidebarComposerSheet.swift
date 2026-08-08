@@ -93,6 +93,24 @@ struct SidebarComposerSheet: View {
 
     static var chromeHeight: CGFloat { fixedChrome + noteHeight }
 
+    /// Sized to the arrangement, up to a cap. The cap is what the nine modules
+    /// and four sections Helm ships with need — 485 pt of list — so the
+    /// standard arrangement never scrolls; a person who makes more sections
+    /// than that gets a scroll bar rather than a sheet taller than the window
+    /// it sits in.
+    ///
+    /// The floor is also the answer for a height that is not a number, which is
+    /// what this line gave as `min(max(360, table + chrome), 660)` —
+    /// `Swift.max(360, .nan)` is 360 — and the shared clamp hands the NaN back
+    /// instead. `.frame(height:)` is not where a window should find out it has
+    /// no size, and the floor is where this sheet opens whenever it does not
+    /// yet know its content: the seeded estimate is corrected upward a turn of
+    /// the run loop later. A height that is merely enormous keeps the cap,
+    /// which is what a cap is for.
+    static func windowHeight(table: CGFloat, chrome: CGFloat) -> CGFloat {
+        (table + chrome).clamped(to: 360...660, whenNotANumber: 360)
+    }
+
     private var layout: SidebarLayout {
         _ = revision
         return SidebarLayoutStore.read(from: AppSettings.store,
@@ -180,13 +198,7 @@ struct SidebarComposerSheet: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
         }
-        // Sized to the arrangement, up to a cap. The cap is what the nine
-        // modules and four sections Helm ships with need — 485 pt of list —
-        // so the standard arrangement never scrolls; a person who makes more
-        // sections than that gets a scroll bar rather than a sheet taller than
-        // the window it sits in.
-        .frame(width: Self.width,
-               height: (tableHeight + chrome).clamped(to: 360...660))
+        .frame(width: Self.width, height: Self.windowHeight(table: tableHeight, chrome: chrome))
         .alert(AppStr.renameSection, isPresented: Binding(
             get: { renaming != nil },
             set: { if !$0 { renaming = nil } }

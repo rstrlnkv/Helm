@@ -37,4 +37,21 @@ public extension FloatingPoint {
     func clampedIfFinite(to range: ClosedRange<Self>) -> Self? {
         isFinite ? clamped(to: range) : nil
     }
+
+    /// The same clamp for a caller who already knows what a value that is not
+    /// a number means to them — a drawn fraction, an opacity, the height of a
+    /// window.
+    ///
+    /// This is the repair for a site that used to be spelled `min(hi, max(lo,
+    /// x))` or `max(lo, min(x, hi))`. Those two **absorb** a NaN, at the low
+    /// bound and at the high bound respectively, by an accident of which
+    /// argument `Swift.min` and `Swift.max` return when a comparison is false;
+    /// `clamped(to:)` does not, and four call sites quietly lost their answer
+    /// when they moved to it. `clampedIfFinite` is not that repair: it refuses
+    /// infinity as well, and infinity *has* a place on the number line — it is
+    /// precisely the value a bound knows what to do with, and collapsing both
+    /// ends onto one fallback is a second wrong answer beside the first.
+    func clamped(to range: ClosedRange<Self>, whenNotANumber fallback: Self) -> Self {
+        isNaN ? fallback : clamped(to: range)
+    }
 }

@@ -11,11 +11,14 @@ public enum TimerProgress {
     /// 0` cannot see that coming. What comes out of here is
     /// `StatusAppearance.timerProgress`, which the host converts to an `Int`
     /// once a second.
+    ///
+    /// Only NaN: an infinite fraction is more of the session left than the
+    /// session ever was, and the bound already answers that with a full ring.
     public static func remainingFraction(now: Date, start: Date, end: Date) -> Double {
         let total = end.timeIntervalSince(start)
         guard total > 0 else { return 0 }
         let left = end.timeIntervalSince(now)
-        return (left / total).clampedIfFinite(to: 0...1) ?? 0
+        return (left / total).clamped(to: 0...1, whenNotANumber: 0)
     }
 
     /// Compact remaining-time label: "9:05" under an hour, "1:04:09" above it,

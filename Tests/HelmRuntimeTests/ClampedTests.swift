@@ -90,6 +90,31 @@ final class ClampedTests: XCTestCase {
         XCTAssertEqual(1e300.clampedIfFinite(to: 0...1), 1)
     }
 
+    // MARK: - The caller who has an answer for NaN
+
+    /// Four call sites were written as `min(1, max(0, x))` or `max(0, min(1,
+    /// x))` — spellings that **absorb** a NaN, at 0 and at 1 respectively —
+    /// and moving them to `clamped(to:)` turned every one of them into a NaN
+    /// sink that leaks. `clampedIfFinite` is the wrong repair for them: they
+    /// have an answer for a number that is not a number, and they do not want
+    /// one for infinity, which has a place on the number line and is exactly
+    /// what a bound is for.
+    func testTheFallbackIsUsedForNaNOnly() {
+        XCTAssertEqual(Double.nan.clamped(to: 0...1, whenNotANumber: 0.25), 0.25)
+        XCTAssertEqual(Double.signalingNaN.clamped(to: 0...1, whenNotANumber: 0.25), 0.25)
+    }
+
+    func testInfinityStillClampsToTheBoundItIsPast() {
+        XCTAssertEqual(Double.infinity.clamped(to: 0...1, whenNotANumber: 0.25), 1)
+        XCTAssertEqual((-Double.infinity).clamped(to: 0...1, whenNotANumber: 0.25), 0)
+    }
+
+    func testAnOrdinaryNumberIsTheSameClamp() {
+        XCTAssertEqual(0.5.clamped(to: 0...1, whenNotANumber: 0.25), 0.5)
+        XCTAssertEqual((-2.0).clamped(to: 0...1, whenNotANumber: 0.25), 0)
+        XCTAssertEqual(1e300.clamped(to: 0...1, whenNotANumber: 0.25), 1)
+    }
+
     /// The size of the numbers this exists for. `Int(1e300 / 60)` **traps** —
     /// "Double value cannot be converted to Int because the result would be
     /// greater than Int.max" — and a plist holding `<real>1e300</real>` is a

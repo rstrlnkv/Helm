@@ -47,6 +47,18 @@ final class TimerProgressTests: XCTestCase {
         let ago = Date(timeIntervalSinceReferenceDate: -.greatestFiniteMagnitude)
         XCTAssertEqual(TimerProgress.remainingFraction(now: ago, start: ago, end: far), 0)
     }
+
+    /// And a fraction that *is* a number keeps the bound rather than the
+    /// answer for NaN. `left / total` overflows to +infinity when the deadline
+    /// is far enough past `now`, which means more of the session is left than
+    /// the session ever was — a full ring, which is what the bound already
+    /// says. Refusing every non-finite value alike would draw that as an empty
+    /// one.
+    func testAFractionPastEveryBoundIsAFullRing() {
+        let far = Date(timeIntervalSinceReferenceDate: .greatestFiniteMagnitude)
+        let ago = Date(timeIntervalSinceReferenceDate: -.greatestFiniteMagnitude)
+        XCTAssertEqual(TimerProgress.remainingFraction(now: ago, start: start, end: far), 1)
+    }
 }
 
 /// One countdown, wherever it is read.
