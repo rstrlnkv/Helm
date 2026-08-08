@@ -13,6 +13,10 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     private let running: RunningAppsPort
     private let extensions: SystemExtensionPort
     private let store: NamespacedStore
+    /// The only mutable field here, and main-actor confinement is what makes the
+    /// `@unchecked Sendable` above true. `activate` and `deactivate` are called
+    /// from `ModuleHost`, which is `@MainActor`; the `setWatchingTrash` arm of
+    /// the transport handler hops there for the same reason.
     private var watcher: FolderWatcher?
     private let localTransport: LocalTransport
     public let transport: EngineTransport
@@ -518,7 +522,12 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
             case .watchingTrash:
                 return (try? JSONEncoder().encode(self.watchingTrash)) ?? Data()
             case .setWatchingTrash:
-                self.setWatchingTrash((try? JSONDecoder().decode(Bool.self, from: cmd.payload)) ?? false)
+                // The one arm that writes `watcher`, so it goes where the other
+                // two writers already are. `send` runs this handler on the
+                // caller's own executor, and nobody awaits this reply — the
+                // sweep it asks for arrives as `trashChanged`.
+                let on = (try? JSONDecoder().decode(Bool.self, from: cmd.payload)) ?? false
+                await MainActor.run { self.setWatchingTrash(on) }
                 return Data()
             case .dismissTrashedApp:
                 self.dismissTrashedApp(bundleID: String(decoding: cmd.payload, as: UTF8.self))
