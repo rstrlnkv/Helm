@@ -1,4 +1,5 @@
 import Foundation
+import XCTest
 @testable import Module_Uninstaller_Engine
 
 // The uninstaller engine's doubles, in one place because they are the target's
@@ -97,33 +98,40 @@ final class FakeRunning: RunningAppsPort, @unchecked Sendable {
 /// not the test is about removal, and most of these are about which apps are
 /// offered — the removal has its own tests, behind `RemovableScope`.
 ///
-/// Answering `.success` unconditionally is exactly as much as that claim needs
-/// and no more: this cannot stand in for a refusal, and any test that wants one
-/// wants `FakeTrash(failing:)`, `MovingTrash` or `BlamingTrash` instead.
+/// A test that wants a refusal, or wants to know what was asked for, wants
+/// `FakeTrash(failing:)`, `MovingTrash` or `BlamingTrash` instead.
 ///
-/// **That sharing this is safe was measured, not assumed.** Made to refuse
-/// everything with 513, it changes no result in this target — so no test using
-/// it reaches `trashItem` at all, which is the only condition under which one
-/// answer can serve them all. If a test using this ever starts caring what the
-/// trash said, that mutation will start failing and the test wants a double of
-/// its own.
+/// **The claim is enforced rather than measured once.** It used to say that
+/// making this refuse everything with 513 changed no result in this target —
+/// which was true, was measured by hand on one afternoon, and had nothing to
+/// keep it true. `XCTFail` is that same measurement with a runner behind it: a
+/// test that starts reaching `trashItem` says so on the run that starts it,
+/// instead of quietly taking a `.success` it was never entitled to. The return
+/// is unreachable by the time it is read.
 struct NoTrash: TrashPort {
-    func trashItem(_ url: URL) -> TrashOutcome { .success }
+    func trashItem(_ url: URL) -> TrashOutcome {
+        XCTFail("no test here trashes — this test wants a trash double of its own")
+        return .success
+    }
 }
 
 /// **Nothing here is running**, and nothing is asked to quit.
 ///
 /// Not `FakeRunning(running: [])`, which is the same answer for a different
 /// reason: that one is a machine whose apps can start, stop and refuse to stop,
-/// asked at a moment when none of them is up. This is a test that never asks —
-/// so `quit` records nothing, because a quit nobody counts is the honest shape
-/// of "this file is not about quitting".
+/// asked at a moment when none of them is up. This is a test that never asks.
 ///
-/// Measured the same way: made to answer `true` to everything it changes no
-/// result here either. A test that wants an app which is up, and which can go
-/// down after being asked, wants `FakeRunning` — with a `quitAfter`, or a wait
-/// for it is over before it is reached.
+/// The two halves are deliberately different shapes. `isRunning` answers
+/// `false` because that is a real answer to a real question — nothing here is
+/// up, and tests do ask. `quit` is not an answer at all: it used to record
+/// nothing under the same hand-measurement as `NoTrash`, and now it fails,
+/// because a quit nobody counts and a quit nobody expected are the same
+/// silence. A test that wants an app which is up and can go down after being
+/// asked wants `FakeRunning` — with a `quitAfter`, or a wait for it is over
+/// before it is reached.
 struct NoRunning: RunningAppsPort {
     func isRunning(bundleID: String) -> Bool { false }
-    func quit(bundleID: String, force: Bool) {}
+    func quit(bundleID: String, force: Bool) {
+        XCTFail("no test here quits anything — this test wants FakeRunning")
+    }
 }
