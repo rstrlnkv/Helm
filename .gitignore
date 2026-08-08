@@ -4,7 +4,7 @@ build/
 *.xcodeproj/xcuserdata/
 DerivedData/
 
-# The crew is local. Fourteen agent definitions and the plugin that installs
+# The crew is local. The agent definitions and the plugin that installs
 # them live on disk and are not part of the project's history: they are how one
 # person drives this repository, not something it ships. `/plugin marketplace
 # add ~/Projects/Claude/Helm` reads them from the working copy, so nothing about
