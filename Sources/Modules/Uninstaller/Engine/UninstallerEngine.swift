@@ -6,6 +6,17 @@ import HelmRuntime
 /// ports. Request/response over `transport.send` (the handler's returned `Data` is
 /// the reply). Not a toggle — no active state, so it never tints the menu bar.
 public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @unchecked Sendable {
+    /// This module's id, and the only place it is written down.
+    ///
+    /// It reaches disk in shapes nothing would flag if they disagreed: the
+    /// `module.uninstaller.*` keys of a store, the directory `ScanJournal` names after
+    /// it, and the removal attributed to it in the log. `UninstallerDescriptor.id`
+    /// is built from this rather than repeating it, the direction the
+    /// descriptors already carry their command enums, so the two spellings are
+    /// one. **The string itself never changes** — it names folders and stored
+    /// settings that are already on people's machines.
+    public static let moduleID = "uninstaller"
+
     private let home: URL
     private let apps: AppLister
     private let fs: FileSystemPort
@@ -28,7 +39,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     public init(home: URL, apps: AppLister, fs: FileSystemPort, trash: TrashPort,
                 running: RunningAppsPort,
                 extensions: SystemExtensionPort = NoSystemExtensions(),
-                store: NamespacedStore = NamespacedStore(namespace: "uninstaller",
+                store: NamespacedStore = NamespacedStore(namespace: UninstallerEngine.moduleID,
                                                         backing: InMemoryKeyValueStore()),
                 transport: LocalTransport = LocalTransport()) {
         self.home = home
@@ -455,7 +466,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         // behind it, so this module keeps it as it goes past.
         var saidByPath: [String: String] = [:]
         let result = HelmTrash.remove(
-            allowed: allowed, outOfScope: refused, module: "uninstaller",
+            allowed: allowed, outOfScope: refused, module: Self.moduleID,
             hasSystemExtension: { path in
                 guard path.hasSuffix(".app") else { return false }
                 let hosts = extensionHosts ?? self.extensions.activeExtensionHosts()

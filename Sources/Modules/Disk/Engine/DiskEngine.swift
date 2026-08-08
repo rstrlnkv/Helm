@@ -5,6 +5,17 @@ import HelmRuntime
 /// Scans volumes and folders, and trashes what the user baskets. Long work
 /// goes through `blocking` so the concurrency pool is never parked.
 public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Sendable {
+    /// This module's id, and the only place it is written down.
+    ///
+    /// It reaches disk in shapes nothing would flag if they disagreed: the
+    /// `module.disk.*` keys of a store, the directory `ScanJournal` names after
+    /// it, and the removal attributed to it in the log. `DiskDescriptor.id`
+    /// is built from this rather than repeating it, the direction the
+    /// descriptors already carry their command enums, so the two spellings are
+    /// one. **The string itself never changes** — it names folders and stored
+    /// settings that are already on people's machines.
+    public static let moduleID = "disk"
+
     private let localTransport: LocalTransport
     public let transport: EngineTransport
     /// Every scan in flight, not the last one started: drilling into a folder
@@ -146,7 +157,7 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
             // misleading symptom, and the duplicate finder shipped one
             // (ARCHITECTURE.md § Removal scope).
             let (allowed, refused) = UserFileScope.partition(Array(Set(paths)))
-            return HelmTrash.remove(allowed: allowed, outOfScope: refused, module: "disk")
+            return HelmTrash.remove(allowed: allowed, outOfScope: refused, module: Self.moduleID)
         }
     }
 

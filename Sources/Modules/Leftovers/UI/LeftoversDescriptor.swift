@@ -5,7 +5,7 @@ import HelmUI
 import Module_Leftovers_Engine
 
 @MainActor public final class LeftoversDescriptor: ModuleDescriptor {
-    public static let id = ModuleID("leftovers")
+    public static let id = ModuleID(LeftoversEngine.moduleID)
     public static let metadata = ModuleMetadata(
         id: id, name: LfStr.moduleName, shortName: LfStr.moduleNameShort,
         summary: LfStr.summary,

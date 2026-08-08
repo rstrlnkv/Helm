@@ -11,6 +11,17 @@ import HelmRuntime
 /// directly — which is what someone looking for duplicates actually wants —
 /// and Disk goes back to answering one question.
 public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecked Sendable {
+    /// This module's id, and the only place it is written down.
+    ///
+    /// It reaches disk in shapes nothing would flag if they disagreed: the
+    /// `module.duplicates.*` keys of a store, the directory `ScanJournal` names after
+    /// it, and the removal attributed to it in the log. `DuplicatesDescriptor.id`
+    /// is built from this rather than repeating it, the direction the
+    /// descriptors already carry their command enums, so the two spellings are
+    /// one. **The string itself never changes** — it names folders and stored
+    /// settings that are already on people's machines.
+    public static let moduleID = "duplicates"
+
     private let localTransport: LocalTransport
     public let transport: EngineTransport
     private let finderBox = FinderBox()
@@ -76,7 +87,7 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     /// Beside the journal, and private for the same reason: the keys name
     /// nothing but inodes, yet the file is a record of what was on this disk.
     static func cacheURL() -> URL {
-        ScanJournal().directory(module: "duplicates")
+        ScanJournal().directory(module: moduleID)
             .appendingPathComponent("hashes.json")
     }
 
@@ -199,7 +210,7 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
                                     "refused \(stale.count) — changed since the scan")
             }
             let result = HelmTrash.remove(allowed: allowed, outOfScope: outOfScope,
-                                          module: "duplicates")
+                                          module: Self.moduleID)
             // A new value rather than a mutation: `Result` is immutable on
             // purpose, so a refusal cannot be quietly dropped from one after the
             // fact. The stale ones join the scope refusals, and none of them is
