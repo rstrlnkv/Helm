@@ -64,6 +64,13 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   your Documents, say — so the move would land there instead. Helm now looks
   again at where each path leads in the instant before it moves it, and refuses
   anything that changed.
+- **«Показать в Finder» on a missing file can no longer launch anything.** When
+  the file is already gone, Helm falls back to showing the folder it was in. If
+  that folder was itself an app or a library — a stale row can point inside a
+  `.app` or a `.photoslibrary` — opening it *ran* or *mounted* it. Helm now
+  highlights such a bundle in Finder without opening it, and reveals a plain
+  folder as before. On an ejected disk, where there is nothing to show at all, it
+  now does nothing visibly rather than half-acting.
 - **A tile could swap places under a pointer that was not moving.** Switch a
   module off in Settings while its tile is in the hand and the panel loses the
   rectangle it was carrying; it then asked whether the pointer had crossed from
