@@ -184,10 +184,6 @@ public struct PanelLayout: Equatable, Codable, Sendable {
         return nil
     }
 
-    public func size(of widget: String) -> PanelWidgetSize? {
-        placement(of: widget).map { tabs[$0.tab].widgets[$0.index].size }
-    }
-
     /// Moves a widget to `index` within `tab`.
     ///
     /// Removed from wherever it was *first*, so a move inside one tab is the

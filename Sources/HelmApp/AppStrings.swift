@@ -134,15 +134,6 @@ enum AppStr {
     static var metricModules: String { L("MODULES") }
     static var checkNow: String { L("Check") }
     static var appearance: String { L("Appearance") }
-    /// Named the way System Settings names them, so the choice reads the same
-    /// in both places.
-    static func appearanceName(_ choice: AppAppearance) -> String {
-        switch choice {
-        case .system: return L("Auto")
-        case .light: return L("Light")
-        case .dark: return L("Dark")
-        }
-    }
     /// Why Helm wants a permission, named per permission. An unexplained
     /// request is one people deny.
     static func permissionReason(_ need: PermissionNeed) -> String {
