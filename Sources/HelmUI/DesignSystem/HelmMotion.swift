@@ -14,7 +14,7 @@ import AppKit
 /// the bounce set to zero: physical timing, no overshoot.
 public enum HelmMotion {
     /// "Reduce motion" is a medical setting, not a preference: springs that
-    /// overshoot and a bezel that spins forever are exactly what it exists to
+    /// overshoot and a glyph that turns forever are exactly what it exists to
     /// stop. SwiftUI does not honour it for us. Read fresh each time — AppKit
     /// keeps this current, so a change applies to the next animation without a
     /// relaunch — and collapse to an instant cut rather than removing the state

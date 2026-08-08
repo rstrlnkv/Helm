@@ -19,8 +19,8 @@ enum Installer {
         try fm.createDirectory(at: work, withIntermediateDirectories: true)
 
         // Unzip with ditto (handles the ditto-produced archive + preserves the signature).
-        let unzip = HelmProcess.run("/usr/bin/ditto", ["-x", "-k", zipURL.path, work.path])
-        guard unzip.status == 0 else { throw InstallError.unzipFailed }
+        guard HelmProcess.run("/usr/bin/ditto", ["-x", "-k", zipURL.path, work.path]).status == 0
+        else { throw InstallError.unzipFailed }
 
         // The downloaded archive is consumed — drop it now so it never lingers.
         try? fm.removeItem(at: zipURL)
