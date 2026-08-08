@@ -56,6 +56,13 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   arranged.
 
 ### Fixed
+- **A tile could swap places under a pointer that was not moving.** Switch a
+  module off in Settings while its tile is in the hand and the panel loses the
+  rectangle it was carrying; it then asked whether the pointer had crossed from
+  that rectangle into itself, and answered yes for the whole left half of the
+  tile. Two full-width tiles have the same centre sideways, so a tile growing
+  out of a reveal could reach the same answer without a module being switched
+  off at all. A swap is written to the layout immediately and there is no undo.
 - **Pressing «Move to Trash» twice no longer reports the first removal as having
   failed.** What dims those buttons — an empty basket, an empty selection — is
   not emptied until the answer comes back, so the button stayed live for the

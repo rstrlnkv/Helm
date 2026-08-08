@@ -18,14 +18,6 @@ import XCTest
 /// over the whole input instead.
 final class PanelDragAdversarialTests: XCTestCase {
 
-    /// Two tests below reproduce defects the code still has. They are gated
-    /// rather than deleted or weakened: `HELM_PINNED_DEFECTS=1 swift test` runs
-    /// them, and each says in its skip message what it reproduces and where the
-    /// app reaches it. An ordinary run stays green, so the suite keeps meaning
-    /// "no regressions" while these keep meaning "still not fixed".
-    static let pinnedDefectsRun =
-        ProcessInfo.processInfo.environment["HELM_PINNED_DEFECTS"] == "1"
-
     /// The panel's real geometry: a two-column grid of 148 pt slots, 8 pt apart.
     private func slot(column: Int, row: Int) -> CGRect {
         CGRect(x: CGFloat(column) * 156, y: CGFloat(row) * 156, width: 148, height: 148)
@@ -196,16 +188,10 @@ final class PanelDragAdversarialTests: XCTestCase {
     /// least sure what it is holding, and a layout write with no undo is decided
     /// by which half of the target the pointer happens to be in.
     ///
-    /// DEFECT (pinned, skipped): `crossed` answers `true` for the whole left
-    /// half. `sameRow` is true (the centres are 0 apart), `to.midX > from.midX`
-    /// is false for equal rectangles, so the arm taken is `pointer.x < to.midX`.
-    func testARectangleIsNeverCrossedWithItself() throws {
-        try XCTSkipUnless(PanelDragAdversarialTests.pinnedDefectsRun,
-                          "DEFECT: PanelDrag.crossed(from:to:) reports a crossing for two "
-                          + "identical rectangles whenever the pointer is left of their shared "
-                          + "centre. Reached from HelmPanel.gridDrag's `frames[carried.id] ?? "
-                          + "over.frame` after pruned() drops the carried tile mid-gesture.")
-
+    /// It answered `true` for the whole left half: `sameRow` is true (the centres
+    /// are 0 apart), `to.midX > from.midX` is false for equal rectangles, so the
+    /// arm taken was `pointer.x < to.midX`.
+    func testARectangleIsNeverCrossedWithItself() {
         let tile = slot(column: 1, row: 2)
         for x in stride(from: tile.minX, through: tile.maxX, by: 7) {
             for y in stride(from: tile.minY, through: tile.maxY, by: 7) {
@@ -227,15 +213,10 @@ final class PanelDragAdversarialTests: XCTestCase {
     /// compared **sideways**: two rectangles with the same `midX`, which is the
     /// equal-rectangle case again.
     ///
-    /// DEFECT (pinned, skipped): the same half-plane answer. Nothing has been
-    /// travelled past on the x axis when the two centres are level on it, so a
-    /// swap fires from a pointer standing still in the left half of the panel.
-    func testTwoTilesWithLevelCentresOnTheComparedAxisHaveNothingToCross() throws {
-        try XCTSkipUnless(PanelDragAdversarialTests.pinnedDefectsRun,
-                          "DEFECT: same root as testARectangleIsNeverCrossedWithItself — when "
-                          + "the two centres are level on the axis being compared, `crossed` "
-                          + "degenerates to a half-plane test with no travel required.")
-
+    /// The same half-plane answer. Nothing has been travelled past on the x axis
+    /// when the two centres are level on it, so a swap fired from a pointer
+    /// standing still in the left half of the panel.
+    func testTwoTilesWithLevelCentresOnTheComparedAxisHaveNothingToCross() {
         // Two full-width tiles, one of them 3 pt into a reveal: same midX, and
         // their midY are inside the 4 pt tolerance, so the pair is compared on x.
         let carried = CGRect(x: 0, y: 0, width: 304, height: 148)

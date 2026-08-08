@@ -68,7 +68,31 @@ public enum PanelDrag {
     public static func crossed(from: CGRect, to: CGRect, pointer: CGPoint) -> Bool {
         let sameRow = abs(to.midY - from.midY) < sameRowTolerance
         return sameRow
-            ? (to.midX > from.midX ? pointer.x > to.midX : pointer.x < to.midX)
-            : (to.midY > from.midY ? pointer.y > to.midY : pointer.y < to.midY)
+            ? travelled(from: from.midX, past: to.midX, pointer: pointer.x)
+            : travelled(from: from.midY, past: to.midY, pointer: pointer.y)
+    }
+
+    /// One axis of the above: the pointer is past `target` when it is on the far
+    /// side of it *from where the tile started*.
+    ///
+    /// **Two centres level on the axis being compared have no far side**, and
+    /// that is not a corner case anybody has to arrange. `HelmPanel.gridDrag`
+    /// falls back to `frames[carried.id] ?? over.frame` when pruning has just
+    /// dropped the carried tile — a module switched off in Settings mid-drag —
+    /// and then asks whether the pointer has crossed from a rectangle into
+    /// itself. Every full-width tile shares `midX` with every other, so a tile
+    /// growing out of a reveal passes through the 4 pt row tolerance and is
+    /// compared sideways against one it is exactly under. Answering the
+    /// half-plane test there fires a swap from a pointer that has not moved, and
+    /// the panel writes the layout to disk with no undo.
+    ///
+    /// Non-finite coordinates fall out of the same three comparisons: every one
+    /// of them is false against a `nan`, so a bounced scroll picks nothing up.
+    private static func travelled(from origin: CGFloat,
+                                  past target: CGFloat,
+                                  pointer: CGFloat) -> Bool {
+        if target > origin { return pointer > target }
+        if target < origin { return pointer < target }
+        return false
     }
 }
