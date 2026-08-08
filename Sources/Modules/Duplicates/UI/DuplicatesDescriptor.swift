@@ -5,7 +5,7 @@ import Module_Duplicates_Engine
 import SwiftUI
 
 @MainActor public final class DuplicatesDescriptor: ModuleDescriptor {
-    public static let id = ModuleID("duplicates")
+    public static let id = ModuleID(DuplicatesEngine.moduleID)
     public static let metadata = ModuleMetadata(
         id: id, name: DupStr.moduleName, summary: DupStr.summary,
         sfSymbol: "doc.on.doc", permissions: [.fullDisk])

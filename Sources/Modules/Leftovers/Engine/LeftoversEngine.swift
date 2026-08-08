@@ -6,6 +6,17 @@ import HelmRuntime
 /// the ones the user picks. Scanning walks many directories, so it runs off the
 /// concurrency pool via `blocking`.
 public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
+    /// This module's id, and the only place it is written down.
+    ///
+    /// It reaches disk in shapes nothing would flag if they disagreed: the
+    /// `module.leftovers.*` keys of a store, the directory `ScanJournal` names after
+    /// it, and the removal attributed to it in the log. `LeftoversDescriptor.id`
+    /// is built from this rather than repeating it, the direction the
+    /// descriptors already carry their command enums, so the two spellings are
+    /// one. **The string itself never changes** — it names folders and stored
+    /// settings that are already on people's machines.
+    public static let moduleID = "leftovers"
+
     private let scanner: LeftoversScanner
     /// The one the scan uses. The removal gate used to fall back to the
     /// process's own home, so an engine built for a different one scanned
@@ -61,7 +72,7 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
             // be completed" with the domain, the code and the path thrown away.
             HelmLog.shared.info("leftovers",
                                 "trashing \(allowed.count), refused \(refused.count) out of scope")
-            return HelmTrash.remove(allowed: allowed, outOfScope: refused, module: "leftovers")
+            return HelmTrash.remove(allowed: allowed, outOfScope: refused, module: Self.moduleID)
         }
     }
 

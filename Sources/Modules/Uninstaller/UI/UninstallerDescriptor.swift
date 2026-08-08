@@ -5,7 +5,7 @@ import HelmUI
 import Module_Uninstaller_Engine
 
 @MainActor public final class UninstallerDescriptor: ModuleDescriptor {
-    public static let id = ModuleID("uninstaller")
+    public static let id = ModuleID(UninstallerEngine.moduleID)
     public static let metadata = ModuleMetadata(
         id: id, name: UnStr.moduleName, summary: UnStr.summary,
         sfSymbol: "trash", permissions: [.fullDisk])
