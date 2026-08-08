@@ -277,7 +277,7 @@ struct TrashedLeftoversView: View {
     /// was derived from.
     private func groupHeader(_ group: TrashedAppLeftovers) -> some View {
         HStack(spacing: 10) {
-            Image(nsImage: AppIconCache.icon(forFile: group.appPath))
+            Image(nsImage: AppInfo.icon(forFile: group.appPath))
                 .resizable().frame(width: 28, height: 28)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 0) {
