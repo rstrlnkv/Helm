@@ -2,11 +2,11 @@ import Foundation
 import HelmRuntime
 
 public struct FileSystemLeftovers: LeftoversFilePort {
-    public func isWritable(_ url: URL) -> Bool {
-        FileManager.default.isWritableFile(atPath: url.deletingLastPathComponent().path)
-    }
-
     public init() {}
+
+    public func isWritableDirectory(_ url: URL) -> Bool {
+        FileManager.default.isWritableFile(atPath: url.path)
+    }
 
     public func children(of url: URL) -> [URL] { DirectoryListing.children(of: url) }
 
@@ -46,21 +46,31 @@ public struct WorkspaceInstalledApps: InstalledAppsPort {
         let items = (try? FileManager.default.contentsOfDirectory(
             at: dir, includingPropertiesForKeys: [.isDirectoryKey])) ?? []
         for item in items {
-            if item.pathExtension == "app" {
-                let info = item.appendingPathComponent("Contents/Info.plist")
-                if let id = NSDictionary(contentsOf: info)?["CFBundleIdentifier"] as? String {
-                    ids.insert(id)
+            // One `Info.plist` per application, over four directories two levels
+            // deep — a bulk read of file contents, so the pool goes inside the
+            // iteration (ARCHITECTURE.md § Memory).
+            autoreleasepool {
+                if item.pathExtension == "app" {
+                    let info = item.appendingPathComponent("Contents/Info.plist")
+                    if let id = NSDictionary(contentsOf: info)?["CFBundleIdentifier"] as? String {
+                        ids.insert(id)
+                    }
+                } else if (try? item.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
+                    collect(item, depth: depth + 1, into: &ids)
                 }
-            } else if (try? item.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
-                collect(item, depth: depth + 1, into: &ids)
             }
         }
     }
 }
 
-/// Extensions currently activated, via the shared tested parser — this file
-/// used to carry its own ad-hoc line splitter.
-public struct ActiveExtensions: ExtensionsPort {
+/// What macOS has loaded, and the one switch that changes it. Reading goes
+/// through the shared tested parser — this file used to carry its own ad-hoc
+/// line splitter.
+///
+/// One type for both protocols because both are `launchctl` and
+/// `systemextensionsctl` on this machine; the split is about what a *caller*
+/// may do, and the scanner is handed only the reading half.
+public struct ActiveExtensions: LoadedItemsPort, LoginItemSwitchPort {
     public init() {}
     public func installedExtensions() -> [SystemExtensionInfo] {
         SystemExtensionCLI.installed()

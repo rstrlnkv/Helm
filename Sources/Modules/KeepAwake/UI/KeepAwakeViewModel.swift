@@ -17,7 +17,13 @@ import Module_KeepAwake_Engine
 /// the descriptor, the panel tile and the settings page must all see one object.
 @MainActor public final class KeepAwakeViewModel: ObservableObject {
     @Published public private(set) var isActive = false
-    @Published public private(set) var activeConditions: Set<String> = []
+    /// The engine's own cases, not the strings they travel as. Held as
+    /// `Set<String>`, every view that asked a question about them had to spell
+    /// the wire names again — `["externalDisplay", "power", "app"]`, twice —
+    /// and `KAStr` switched over five more literals to turn one back into a
+    /// word. A name that stops matching is not an error anywhere; the row just
+    /// goes quiet.
+    @Published public private(set) var activeConditions: Set<ActiveCondition> = []
     @Published public private(set) var clamshellActive = false
     @Published public private(set) var endDate: Date?
     /// Start of the current timed session, for progress rendering.
@@ -35,7 +41,7 @@ import Module_KeepAwake_Engine
         if let cached, cached.vm === vm { return cached }
         let created = KeepAwakeViewModel(vm: vm)
         cached = created
-        ModuleUICache.dropWhenDisabled("keep-awake") { cached = nil }
+        ModuleUICache.dropWhenDisabled(KeepAwakeDescriptor.id.rawValue) { cached = nil }
         return created
     }
 
@@ -60,19 +66,25 @@ import Module_KeepAwake_Engine
     private typealias StatePayload = KeepAwakeEngine.StatePayload
 
     private func handle(_ event: EngineEvent) {
-        guard event.name == "state",
+        guard KeepAwakeEvent(rawValue: event.name) == .state,
               let p = try? JSONDecoder().decode(StatePayload.self, from: event.payload) else { return }
         isActive = p.isActive
-        activeConditions = Set(p.conditions)
+        // A name this build does not know is dropped rather than carried as a
+        // string nothing can match — the wire is the engine's enum either way.
+        activeConditions = Set(p.conditions.compactMap(ActiveCondition.init(rawValue:)))
         clamshellActive = p.clamshellActive
         endDate = p.endDate
         startDate = p.startDate
     }
 
-    public func send(_ name: String, payload: Data = Data()) { vm.send(name, payload: payload) }
-
-    /// Named by the engine's own enum. The string spelling stays for the panel
-    /// tile's generic paths; nothing new should use it.
+    /// Named by the engine's own enum, and only that.
+    ///
+    /// A `send(_ name: String, …)` sat beside this under a comment saying the
+    /// string spelling stayed «for the panel tile's generic paths; nothing new
+    /// should use it». There are no such paths left — every call site in both
+    /// screens names `KeepAwakeCommand` — so what remained was a door back to
+    /// the defect the enum was introduced to close, held open by its own
+    /// promise not to be used.
     public func send(_ command: KeepAwakeCommand, payload: Data = Data()) {
         vm.send(command, payload: payload)
     }

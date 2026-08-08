@@ -3,13 +3,16 @@ import Foundation
 /// The arithmetic a background scan runs on.
 ///
 /// **Here rather than in the coordinator, and that is the whole point.**
-/// `ScanCoordinator` lives in `HelmApp`, an `executableTarget` with no test
-/// target anywhere in `Package.swift`; `ScanSchedule` lives here and has a test
-/// per verdict with its ordering mutation-checked. Same feature, one layer
-/// apart, and the difference in rigour was entirely the target the code was put
-/// in — four defects found in the coordinator on 2026-08-03 could be argued
-/// about and not pinned. What is left up there is the clock, the observer and
-/// the transport call: the parts that genuinely need a running app.
+/// `ScanCoordinator` lives in `HelmApp` and this lives here, where a test per
+/// verdict holds it with its ordering mutation-checked — four defects found in
+/// the coordinator on 2026-08-03 could be argued about and not pinned. What is
+/// left up there is the clock, the observer and the transport call: the parts
+/// that genuinely need a running app.
+///
+/// This paragraph used to say `HelmApp` had no test target anywhere in
+/// `Package.swift`. It has one — `HelmAppTests`, line 136 — and the assumption
+/// is what `ListsAgreeWithTheTreeTests` was written to disprove. Pure logic
+/// still belongs here; the reason is the rigour, not an impossibility.
 public enum ScanRunner {
 
     /// Which modules have a background scan.

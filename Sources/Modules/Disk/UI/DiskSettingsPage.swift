@@ -168,11 +168,11 @@ public struct DiskSettingsPage: View {
                         Button {
                             dvm.toggleBasket(entry)
                         } label: {
-                            Text("\(entry.name)  ·  \(Bytes(entry.bytes))  ✕")
+                            Text(DkStr.basketItem(entry.name, Bytes(entry.bytes)))
                         }
                     }
                 } label: {
-                    Text("\(DkStr.basket): \(dvm.basket.count) · " + formatted(dvm.basketBytes))
+                    Text(DkStr.basketLine(dvm.basket.count, Bytes(dvm.basketBytes)))
                         .contentTransition(.numericText())
                         .animation(HelmMotion.interface, value: dvm.basketBytes)
                         .font(HelmText.figureFont)
@@ -182,6 +182,7 @@ public struct DiskSettingsPage: View {
                 .help(DkStr.basketContents)
                 Spacer()
                 Button(DkStr.moveToTrash) { confirming = true }
+                    .disabled(dvm.busy)
                     .buttonStyle(.borderedProminent)
             }
         }

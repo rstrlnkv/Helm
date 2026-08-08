@@ -124,7 +124,8 @@ import SwiftUI
         let mine = generation
         let path = folder.path
         Task {
-            let found: [DuplicateGroup]? = await client.request(DuplicatesCommand.find, encoding: ["path": path])
+            let found: [DuplicateGroup]? = await client.request(DuplicatesCommand.find,
+                                                                 encoding: DuplicateSearchRequest(path: path))
             guard mine == generation else { return }
             // Cancelled comes back nil: go back to where we were rather than
             // announce a clean folder nobody finished checking.
@@ -136,8 +137,14 @@ import SwiftUI
 
     public func cancel() {
         generation += 1
-        Task { await client.send(DuplicatesCommand.cancel, encoding: [String]()) }
-        phase = folder == nil ? .start : .start
+        // No payload. It used to encode an empty `[String]` the engine never
+        // decodes — two bytes of JSON standing where «nothing» was meant.
+        Task { await client.send(DuplicatesCommand.cancel) }
+        // Back to the start, whether or not a folder is chosen. This was
+        // `folder == nil ? .start : .start` — a ternary whose two branches are
+        // the same value, which is a decision somebody meant to make and did
+        // not, wearing the shape of one that was made.
+        phase = .start
         progress = nil
     }
 
@@ -181,6 +188,9 @@ import SwiftUI
         basket.removeAll()
     }
 
+    /// A removal is running. The page dims what would start a second one.
+    @Published public private(set) var busy = false
+
     public func emptyBasket() async {
         let paths = basket
         guard !paths.isEmpty else { return }
@@ -197,6 +207,15 @@ import SwiftUI
                 .map { DuplicatePlan(remove: $0.path, keep: survivor) }
         }
         guard !plans.isEmpty else { return }
+        // **One removal at a time**, the rule `UninstallerViewModel` already
+        // follows. The basket is not emptied until the answer comes back, so
+        // between the press and that moment the button is live and the same
+        // paths are still in it. The second round is not a second deletion —
+        // the files are already in the Trash — it is a refusal per path, and
+        // the lines below overwrite the report of the removal that worked.
+        guard !busy else { return }
+        busy = true
+        defer { busy = false }
         let removal: DuplicateRemoval? = await client.request(DuplicatesCommand.trash, encoding: plans)
         guard let removal else { return }
         let gone = Set(removal.removed)
@@ -231,7 +250,7 @@ import SwiftUI
     // MARK: - Events
 
     private func handle(_ event: EngineEvent) async {
-        guard event.name == "progress" else { return }
+        guard DuplicatesEvent(rawValue: event.name) == .progress else { return }
         if let update = try? JSONDecoder().decode(DuplicateProgress.self,
                                                   from: event.payload) {
             progress = update

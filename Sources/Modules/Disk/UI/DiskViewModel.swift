@@ -110,7 +110,7 @@ import Module_Disk_Engine
         // hundreds of megabytes of nodes that nobody can reach afterwards. The
         // on-disk cache still holds the scan, so this drops the copy in memory,
         // not the result.
-        ModuleUICache.dropWhenDisabled("disk") { cached = nil }
+        ModuleUICache.dropWhenDisabled(DiskDescriptor.id.rawValue) { cached = nil }
         return created
     }
 
@@ -441,9 +441,21 @@ import Module_Disk_Engine
         basket.contains { $0.path == entry.path }
     }
 
+    /// A removal is running. The page dims what would start a second one.
+    @Published public private(set) var busy = false
+
     public func emptyBasket() async {
         let paths = basket.map(\.path)
         guard !paths.isEmpty else { return }
+        // **One removal at a time**, the rule `UninstallerViewModel` already
+        // follows. The basket is not emptied until the answer comes back, so
+        // between the press and that moment the button is live and the same
+        // paths are still in it. The second round is not a second deletion —
+        // the files are already in the Trash — it is a refusal per path, and
+        // the lines below overwrite the report of the removal that worked.
+        guard !busy else { return }
+        busy = true
+        defer { busy = false }
         let removal: DiskRemoval? = await client.request(DiskCommand.trash, encoding: paths)
         let freed = removal?.freedBytes ?? 0
         failures = removal?.refused ?? []
@@ -481,13 +493,13 @@ import Module_Disk_Engine
     // MARK: - Events
 
     private func handle(_ event: EngineEvent) async {
-        switch event.name {
-        case "progress":
+        switch DiskEvent(rawValue: event.name) {
+        case .progress:
             if let update = try? JSONDecoder().decode(ScanTick.self, from: event.payload),
                update.scan == showingScan {
                 tick = update
             }
-        case "partial":
+        case .partial:
             // Whose snapshot this is decides everything: a folder
             // measurement's tree drawn as the volume collapses the focus,
             // keeps the volume's name and title, and draws the volume's
@@ -501,7 +513,7 @@ import Module_Disk_Engine
             focusPath = DiskFocus.resolve(paths: focusPath.map(\.path), in: snapshot.result.root)
             phase = .result
             recomputeSegments()
-        default:
+        case .none:
             return
         }
     }

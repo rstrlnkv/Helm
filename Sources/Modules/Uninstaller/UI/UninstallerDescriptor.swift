@@ -37,3 +37,6 @@ import Module_Uninstaller_Engine
 
 /// The same, for the uninstaller.
 public typealias UninstallerCommand = Module_Uninstaller_Engine.UninstallerCommand
+/// So the host can say the event name instead of spelling it — the same
+/// re-export the hotkeys already rely on for their command enums.
+public typealias UninstallerEvent = Module_Uninstaller_Engine.UninstallerEvent

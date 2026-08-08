@@ -40,17 +40,23 @@ final class BrewOutdatedParserTests: XCTestCase {
 final class BrewSearchParserTests: XCTestCase {
     func testSectionedOutput() {
         let out = "==> Formulae\nwget\nwget2\n\n==> Casks\nwget-gui\n"
-        let hits = BrewSearchParser.parse(out)
+        let hits = BrewSearchParser.parse(out, isCask: false)
         XCTAssertEqual(hits, [SearchHit(name: "wget", isCask: false),
                               SearchHit(name: "wget2", isCask: false),
                               SearchHit(name: "wget-gui", isCask: true)])
     }
-    func testFlatListIsFormulae() {
-        XCTAssertEqual(BrewSearchParser.parse("wget\nwget2\n"),
+    /// A flat list carries no kind, so the rows take the caller's — which is
+    /// the kind it asked brew for. This used to read `parse("…")` with the kind
+    /// defaulted, and «a flat list is formulae» was then a property of the
+    /// parser rather than of the question.
+    func testAFlatListTakesTheKindTheCallerAskedFor() {
+        XCTAssertEqual(BrewSearchParser.parse("wget\nwget2\n", isCask: false),
                        [SearchHit(name: "wget", isCask: false), SearchHit(name: "wget2", isCask: false)])
+        XCTAssertEqual(BrewSearchParser.parse("wget-gui\n", isCask: true),
+                       [SearchHit(name: "wget-gui", isCask: true)])
     }
     func testNoResults() {
-        XCTAssertTrue(BrewSearchParser.parse("No formulae or casks found for \"zzz\".\n").isEmpty)
-        XCTAssertTrue(BrewSearchParser.parse("").isEmpty)
+        XCTAssertTrue(BrewSearchParser.parse("No formulae or casks found for \"zzz\".\n", isCask: false).isEmpty)
+        XCTAssertTrue(BrewSearchParser.parse("", isCask: false).isEmpty)
     }
 }

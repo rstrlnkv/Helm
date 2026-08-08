@@ -31,9 +31,11 @@ final class ScanCoordinator {
     /// has nothing to announce: nothing tells you that nothing happened.
     private static let pollInterval: TimeInterval = 60
 
-    /// Which modules have a background scan — `ScanRunner`'s list, so a test can
-    /// hold it against the registry from a target that has tests.
-    static var scannableModules: [String] { ScanRunner.scannableModules }
+    /// Which modules have a background scan. `ScanRunner` owns the list and
+    /// `ListsAgreeWithTheTreeTests` holds *that* against the registry — this is
+    /// only the reading `considerAll` does, so it is private. It was internal,
+    /// with a comment saying a test read it through here; no test ever did.
+    private static var scannableModules: [String] { ScanRunner.scannableModules }
 
     init(host: ModuleHost) { self.host = host }
 
@@ -97,26 +99,67 @@ final class ScanCoordinator {
         return next.personSeconds
     }
 
+    /// Everything a tick reads that cannot differ between the modules in it.
+    ///
+    /// **Sampled once, not once per module.** Every field here was read inside
+    /// `verdict(for:)`, so a tick over three modules paid for each answer three
+    /// times: three `SecItemCopyMatching` round trips into securityd, because
+    /// `AppSettings.disabledScans` verifies its seal on every read and
+    /// `KeychainSealKey` caches nothing; three power readings; and six
+    /// `CGSessionCopyCurrentDictionary` calls, since `ownsTheConsole` and
+    /// `screenIsLocked` each make their own. Measured on this machine at
+    /// 0,1785 ms for the keychain read and 0,1071 ms for the session
+    /// dictionary — about 1,2 ms a tick against 0,4 hoisted, which is small and
+    /// is not the reason.
+    ///
+    /// The reason is that they were three *different* readings. Lock the screen
+    /// between the first module and the third and the same tick judged them
+    /// against two different machines; re-seal `disabledScans` mid-tick and the
+    /// `.adopt` branch could write while a later module read what it wrote. One
+    /// snapshot cannot disagree with itself.
+    struct Conditions {
+        let now: Date
+        let idleSeconds: TimeInterval
+        /// A desktop has no battery and is always on mains, and a source that
+        /// will not answer is treated the same way: never scanning on a Mac
+        /// whose hardware stays quiet is the worse of the two failures.
+        let onMains: Bool
+        let onConsole: Bool
+        let screenLocked: Bool
+        let disabledScans: Set<String>
+        let lastRun: [String: Date]
+        let lastAttempt: [String: Date]
+        let runsToday: [String: Int]
+    }
+
     /// - Parameter idleSeconds: sampled once per tick by the caller, not read
     ///   per module. `effectiveIdleSeconds` folds a reading into an estimate it
     ///   keeps, so asking it three times a tick would be three folds of the same
     ///   minute — the shape CLAUDE.md's rule about getters with side effects is
     ///   about, and cheaper to avoid than to serialise.
-    func verdict(for id: String, idleSeconds: TimeInterval,
-                 now: Date = Date()) -> ScanSchedule.Verdict {
+    func conditions(idleSeconds: TimeInterval, now: Date = Date()) -> Conditions {
+        Conditions(now: now,
+                   idleSeconds: idleSeconds,
+                   onMains: PowerSource.isOnMains,
+                   onConsole: Self.ownsTheConsole,
+                   screenLocked: Self.screenIsLocked,
+                   disabledScans: AppSettings.disabledScans,
+                   lastRun: AppSettings.lastScanAt,
+                   lastAttempt: AppSettings.lastScanAttemptAt,
+                   runsToday: AppSettings.scanRunsToday)
+    }
+
+    func verdict(for id: String, in conditions: Conditions) -> ScanSchedule.Verdict {
         ScanSchedule.verdict(.init(
-            now: now,
-            lastRun: AppSettings.lastScanAt[id],
-            idleSeconds: idleSeconds,
-            // A desktop has no battery and is always on mains, and a source that
-            // will not answer is treated the same way: never scanning on a Mac
-            // whose hardware stays quiet is the worse of the two failures.
-            onMains: PowerSource.isOnMains,
-            runsToday: AppSettings.scanRunsToday[id] ?? 0,
-            isEnabled: !AppSettings.disabledScans.contains(id),
-            onConsole: Self.ownsTheConsole,
-            screenLocked: Self.screenIsLocked,
-            lastAttempt: AppSettings.lastScanAttemptAt[id]))
+            now: conditions.now,
+            lastRun: conditions.lastRun[id],
+            idleSeconds: conditions.idleSeconds,
+            onMains: conditions.onMains,
+            runsToday: conditions.runsToday[id] ?? 0,
+            isEnabled: !conditions.disabledScans.contains(id),
+            onConsole: conditions.onConsole,
+            screenLocked: conditions.screenLocked,
+            lastAttempt: conditions.lastAttempt[id]))
     }
 
     // MARK: - Running
@@ -130,10 +173,11 @@ final class ScanCoordinator {
 
     private func considerAll() async {
         rollOverTheDayIfNeeded()
-        let idleSeconds = effectiveIdleSeconds()
+        // One reading of the machine for the whole tick — see `Conditions`.
+        var sampled = conditions(idleSeconds: effectiveIdleSeconds())
         for id in Self.scannableModules {
             guard !inFlight.contains(id) else { continue }
-            let verdict = verdict(for: id, idleSeconds: idleSeconds)
+            let verdict = verdict(for: id, in: sampled)
             // **A refusal says why.** Without this the log is empty whether the
             // schedule refused correctly or the timer never fired, and "no
             // `[scan]` lines" — which is how this feature is meant to be
@@ -149,6 +193,15 @@ final class ScanCoordinator {
             }
             guard case .run = verdict else { continue }
             await run(id)
+            // A scan is minutes, not milliseconds, and the loop is suspended for
+            // all of it: whatever was sampled before it is history by now. The
+            // person may have come back to the keyboard, unplugged the machine
+            // or locked the screen — and `notAtTheConsole` is a refusal the next
+            // module is entitled to. The snapshot is for the modules judged in
+            // the same instant, never for the ones judged after a walk of the
+            // volume. Before this the reading was only ever taken once, so a
+            // second scan could start against a minute that had long passed.
+            sampled = conditions(idleSeconds: effectiveIdleSeconds())
         }
     }
 

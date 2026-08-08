@@ -10,8 +10,15 @@ import Foundation
 /// behind every cask in the results: the CLI tool got installed instead of the
 /// app, and cask descriptions never loaded because they were looked up under
 /// the wrong prefix.
+/// **`isCask` is required, and it used to be `kind: Bool = false`.** Two things
+/// were wrong with that signature and both are the defect above wearing a
+/// different hat. The name said nothing — `parse(casks, kind: true)` reads as
+/// «kind is true» — and the default meant a caller who forgot to say got
+/// «formula» for an answer, silently, which is precisely the guess this parser
+/// exists not to make. The one place that may still decide a kind on its own is
+/// a `==> Casks` header, because that is brew saying it.
 public enum BrewSearchParser {
-    public static func parse(_ output: String, kind: Bool = false) -> [SearchHit] {
+    public static func parse(_ output: String, isCask kind: Bool) -> [SearchHit] {
         var isCask = kind
         var hits: [SearchHit] = []
         for raw in output.split(separator: "\n", omittingEmptySubsequences: false) {

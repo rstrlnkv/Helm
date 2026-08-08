@@ -39,7 +39,7 @@ import HelmRuntime
 
     private let repo = "rstrlnkv/Helm"
     private var currentVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
+        AppBuild.shortVersion ?? "0.0.0"
     }
 
     /// Check at most once per day on launch (silent — only sets `available`).

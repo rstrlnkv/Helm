@@ -173,8 +173,11 @@ public final class DuplicateScanner: @unchecked Sendable {
     /// .app bundle as "a duplicate" invites breaking the app — and the walk
     /// stays on the root's volume: descending into a mounted backup drive
     /// means reading gigabytes over whatever bus it hangs from.
-    private func walk(_ root: String,
-                      onProgress: (@Sendable (DuplicateProgress) -> Void)?) -> [FileFacts] {
+    /// Internal rather than private so `WalkFootprintTests` can measure it apart
+    /// from the hashing — the two are the module's two bulk loops and they have
+    /// different answers about memory. `find` is its only caller in the app.
+    func walk(_ root: String,
+              onProgress: (@Sendable (DuplicateProgress) -> Void)?) -> [FileFacts] {
         let url = URL(fileURLWithPath: root)
         var rootStat = stat()
         let rootDevice: Int32? = lstat(root, &rootStat) == 0 ? rootStat.st_dev : nil

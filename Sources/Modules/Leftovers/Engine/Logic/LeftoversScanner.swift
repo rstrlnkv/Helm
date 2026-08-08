@@ -9,10 +9,11 @@ public struct LeftoversScanner: Sendable {
     private let home: URL
     private let files: LeftoversFilePort
     private let apps: InstalledAppsPort
-    private let extensions: ExtensionsPort
+    /// Reading only — a scan never switches anything off.
+    private let extensions: LoadedItemsPort
 
     public init(home: URL, files: LeftoversFilePort,
-                apps: InstalledAppsPort, extensions: ExtensionsPort) {
+                apps: InstalledAppsPort, extensions: LoadedItemsPort) {
         self.home = home
         self.files = files
         self.apps = apps
@@ -33,7 +34,18 @@ public struct LeftoversScanner: Sendable {
         out += preferences(installed: installed)
         out += plugins(installed: installed)
         out += systemExtensions(extensionList, installed: installed)
-        return out.sorted { $0.identifier < $1.identifier }
+        // **The path breaks the tie, because the identifier does not always.**
+        // A label is not unique across the three launch directories — the same
+        // `com.vendor.updater` sits in `~/Library/LaunchAgents` and
+        // `/Library/LaunchAgents` on plenty of Macs — and Swift's sort is not
+        // stable, so two such rows could come back in either order. Pressing
+        // «Scan again» then reshuffled them for no reason a person could see,
+        // in a list where the row above a checkbox is the whole of what the tick
+        // means. The path is unique by construction: it is the item's `id`.
+        return out.sorted {
+            $0.identifier == $1.identifier ? $0.path < $1.path
+                                           : $0.identifier < $1.identifier
+        }
     }
 
     // MARK: - System extensions
@@ -71,9 +83,17 @@ public struct LeftoversScanner: Sendable {
             (URL(fileURLWithPath: "/Library/LaunchDaemons"), .launchDaemon),
         ]
         return sources.flatMap { directory, kind in
-            files.children(of: directory)
+            // Once for the directory, not once per job — see `isWritableDirectory`.
+            // This is what tells `~/Library/LaunchAgents` from
+            // `/Library/LaunchAgents`, which is the whole of the distinction.
+            let writable = files.isWritableDirectory(directory)
+            return files.children(of: directory)
                 .filter { $0.pathExtension == "plist" }
                 .map { url -> StaleItem in
+                    // A plist read per job, and the read hands back autoreleased
+                    // Foundation objects — ARCHITECTURE.md § Memory. Inside the
+                    // iteration, never around it.
+                    autoreleasepool {
                     let info = LaunchAgentReader.read(plist: files.readPlist(url)?.raw ?? [:], path: url.path)
                     let targetAlive = info.program.map(files.exists) ?? false
                     let status = self.status(identifier: info.identifier, path: url.path,
@@ -84,7 +104,8 @@ public struct LeftoversScanner: Sendable {
                                      missingTarget: targetAlive ? nil : info.program,
                                      runAtLoad: info.runAtLoad, status: status,
                                      disabled: disabled.contains(info.identifier),
-                                     writable: files.isWritable(url))
+                                     writable: writable)
+                    }
                 }
         }
     }
@@ -93,18 +114,25 @@ public struct LeftoversScanner: Sendable {
 
     private func preferences(installed: Set<String>) -> [StaleItem] {
         let directory = home.appendingPathComponent("Library/Preferences")
+        // 542 plists on the machine this was measured on, one answer between
+        // them: asked per item this was the most expensive step of the scan.
+        let writable = files.isWritableDirectory(directory)
         return files.children(of: directory)
             .filter { $0.pathExtension == "plist" }
             .map { url in
+                // 542 of these here, each asking Foundation for resource values
+                // — the bulk case the house rule is written for.
+                autoreleasepool {
                 let identifier = url.deletingPathExtension().lastPathComponent
                 return StaleItem(path: url.path, identifier: identifier,
                                  kind: .preference, sizeBytes: files.size(url),
                                  status: status(identifier: identifier, path: url.path,
                                                 installed: installed, inUse: false),
                                  // Asked, not assumed. The initialiser defaults
-                                 // this to true, which offered a locked or
-                                 // root-owned plist to "Select all".
-                                 writable: files.isWritable(url))
+                                 // this to true, which offered a plist in a
+                                 // folder Helm cannot write to "Select all".
+                                 writable: writable)
+                }
             }
     }
 
@@ -117,14 +145,24 @@ public struct LeftoversScanner: Sendable {
         ].map { home.appendingPathComponent($0) }
 
         return directories.flatMap { directory in
-            files.children(of: directory).compactMap { url -> StaleItem? in
-                let info = files.readPlist(url.appendingPathComponent("Contents/Info.plist"))
-                guard let identifier = info?.raw["CFBundleIdentifier"] as? String else { return nil }
-                return StaleItem(path: url.path, identifier: identifier,
-                                 kind: .plugin, sizeBytes: files.size(url),
-                                 status: status(identifier: identifier, path: url.path,
-                                                installed: installed, inUse: false),
-                                 writable: files.isWritable(url))
+            // A plug-in is a bundle, and moving a bundle is still unlinking it
+            // from the folder it sits in.
+            let writable = files.isWritableDirectory(directory)
+            return files.children(of: directory).compactMap { url -> StaleItem? in
+                // The heaviest iteration in the scan: an `Info.plist` read and
+                // a walk of the whole bundle for its size, both handing back
+                // autoreleased Foundation objects.
+                autoreleasepool { () -> StaleItem? in
+                    let info = files.readPlist(url.appendingPathComponent("Contents/Info.plist"))
+                    guard let identifier = info?.raw["CFBundleIdentifier"] as? String else {
+                        return nil
+                    }
+                    return StaleItem(path: url.path, identifier: identifier,
+                                     kind: .plugin, sizeBytes: files.size(url),
+                                     status: status(identifier: identifier, path: url.path,
+                                                    installed: installed, inUse: false),
+                                     writable: writable)
+                }
             }
         }
     }

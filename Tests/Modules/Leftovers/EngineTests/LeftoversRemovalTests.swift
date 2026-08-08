@@ -17,6 +17,20 @@ final class LeftoversRemovalTests: XCTestCase {
 
     private var home: URL!
     private var engine: LeftoversEngine!
+    /// Names of everything this test may have moved to the Trash.
+    ///
+    /// **The removal here is real**: `HelmTrash.remove` calls
+    /// `FileManager.trashItem`, so a file the engine takes leaves the temporary
+    /// home below and lands in `~/.Trash`, where deleting the temp directory
+    /// cannot reach it. Six removals a run, kept for good, on the machine of
+    /// whoever runs `swift test`.
+    ///
+    /// `trashItem` is called with `resultingItemURL: nil`, so the name is all
+    /// the cleanup has to go on — which is why every name `write` makes carries
+    /// a UUID. A cleanup that removed `~/.Trash/cache.bin` would be deleting
+    /// somebody's file. `HelmTrashNestedBatchTests` is where this pattern is
+    /// written down; this file is one of the eight that did not follow it.
+    private var trashedNames: [String] = []
 
     override func setUpWithError() throws {
         // A temporary directory the engine is told is home. `RemovableScope`
@@ -31,17 +45,37 @@ final class LeftoversRemovalTests: XCTestCase {
     }
 
     override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: home)
+        let fm = FileManager.default
+        try? fm.removeItem(at: home)
+        let userHome = URL(fileURLWithPath: NSHomeDirectory())
+        let trash = (try? fm.url(for: .trashDirectory, in: .userDomainMask,
+                                 appropriateFor: userHome, create: false))
+            ?? userHome.appendingPathComponent(".Trash")
+        for name in trashedNames { try? fm.removeItem(at: trash.appendingPathComponent(name)) }
+        trashedNames = []
     }
 
+    /// A unique leaf under `relative`, so the Trash cleanup above can name what
+    /// it removes without ever naming somebody else's file.
     @discardableResult
-    private func write(_ relative: String, bytes: Int) throws -> String {
-        let url = home.appendingPathComponent(relative)
+    private func write(_ relative: String, named leaf: String, bytes: Int) throws -> String {
+        let name = "\(leaf)-\(UUID().uuidString)"
+        let url = home.appendingPathComponent(relative).appendingPathComponent(name)
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
                                                 withIntermediateDirectories: true)
         try Data(repeating: 0x41, count: bytes).write(to: url)
+        trashedNames.append(name)
         addTeardownBlock { try? FileManager.default.removeItem(at: url) }
         return url.path
+    }
+
+    /// A folder with a unique name, for the case that trashes the folder itself.
+    private func folder(_ relative: String, named leaf: String) throws -> URL {
+        let name = "\(leaf)-\(UUID().uuidString)"
+        let url = home.appendingPathComponent(relative).appendingPathComponent(name)
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        trashedNames.append(name)
+        return url
     }
 
     // MARK: - The gate
@@ -49,7 +83,7 @@ final class LeftoversRemovalTests: XCTestCase {
     /// The engine has the last word. A path outside the scope is refused here
     /// even though the view model would never offer it.
     func testAPathOutsideTheScopeIsRefusedAndNotSilentlyDropped() async throws {
-        let inside = try write("Library/Application Support/Ghost/cache.bin", bytes: 4_000)
+        let inside = try write("Library/Application Support/Ghost", named: "cache", bytes: 4_000)
         let outside = home.appendingPathComponent("Documents/thesis.txt").path
 
         let result = await engine.trash([inside, outside])
@@ -63,8 +97,8 @@ final class LeftoversRemovalTests: XCTestCase {
     /// The count and the list have to agree: every path handed in comes back
     /// either removed or refused, exactly once.
     func testEveryPathComesBackExactlyOnce() async throws {
-        let a = try write("Library/Caches/Ghost/one.bin", bytes: 1_000)
-        let b = try write("Library/Caches/Ghost/two.bin", bytes: 1_000)
+        let a = try write("Library/Caches/Ghost", named: "one", bytes: 1_000)
+        let b = try write("Library/Caches/Ghost", named: "two", bytes: 1_000)
         let outside = home.appendingPathComponent("thesis.txt").path
 
         let result = await engine.trash([a, b, outside, a])   // one repeated
@@ -76,7 +110,7 @@ final class LeftoversRemovalTests: XCTestCase {
     // MARK: - What it says was freed
 
     func testFreedCountsOnlyWhatWasActuallyRemoved() async throws {
-        let removed = try write("Library/Application Support/Ghost/big.bin", bytes: 500_000)
+        let removed = try write("Library/Application Support/Ghost", named: "big", bytes: 500_000)
         let outside = home.appendingPathComponent("Documents/keep.bin").path
 
         let result = await engine.trash([removed, outside])
@@ -89,9 +123,14 @@ final class LeftoversRemovalTests: XCTestCase {
     /// folders. A folder that reports its directory entry rather than its
     /// contents reports zero, which is the one number this screen exists for.
     func testAFolderFreesWhatIsInsideIt() async throws {
-        try write("Library/Application Support/Ghost/Contents/payload.bin", bytes: 700_000)
-        try write("Library/Application Support/Ghost/Contents/Info.plist", bytes: 1_000)
-        let bundle = home.appendingPathComponent("Library/Application Support/Ghost").path
+        // The folder is what goes, so it is the one that needs the unique
+        // name; what is inside it travels with it.
+        let ghost = try folder("Library/Application Support", named: "Ghost")
+        try Data(repeating: 0x41, count: 700_000)
+            .write(to: ghost.appendingPathComponent("payload.bin"))
+        try Data(repeating: 0x41, count: 1_000)
+            .write(to: ghost.appendingPathComponent("Info.plist"))
+        let bundle = ghost.path
 
         let result = await engine.trash([bundle])
 

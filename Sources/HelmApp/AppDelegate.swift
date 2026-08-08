@@ -4,6 +4,7 @@ import HelmRuntime
 import HelmUI
 import Module_KeepAwake_UI
 import Module_Layout_UI
+import Module_Uninstaller_UI
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
     let host = ModuleHost.shared
@@ -33,7 +34,7 @@ import Module_Layout_UI
         AppSettings.applyAppearance()
         // Dev builds always log: the file is the evidence we triage before a
         // build graduates to the stable channel.
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
+        let version = AppBuild.shortVersion ?? "0"
         HelmLog.shared.start(version: version, override: AppSettings.loggingOverride)
 
         host.bootstrap()
@@ -60,7 +61,7 @@ import Module_Layout_UI
         }
         HotkeyManager.shared.register(
             "keep-awake.toggle",
-            store: NamespacedStore(namespace: "keep-awake", backing: UserDefaults.standard),
+            store: NamespacedStore(namespace: KeepAwakeDescriptor.id.rawValue, backing: UserDefaults.standard),
             action: send(KeepAwakeCommand.toggle.rawValue, to: KeepAwakeDescriptor.id.rawValue))
         // One chord for the whole module, doing whatever the tap key does — for
         // keyboards with no right-hand modifier to tap. There were five: convert
@@ -71,7 +72,7 @@ import Module_Layout_UI
         // could assemble itself.
         HotkeyManager.shared.register(
             "layout.fix",
-            store: NamespacedStore(namespace: "layout", backing: UserDefaults.standard),
+            store: NamespacedStore(namespace: LayoutDescriptor.id.rawValue, backing: UserDefaults.standard),
             prefix: "convertHotkey",
             action: send(LayoutCommand.fix.rawValue, to: LayoutDescriptor.id.rawValue))
         // Keeps the frontmost-app snapshot current, so every thread that asks
@@ -119,7 +120,7 @@ import Module_Layout_UI
         // module that answers this question did not exist a second ago.
         moduleEnabledObserver = NotificationCenter.default.addObserver(
             forName: .helmModuleEnabled, object: nil, queue: .main) { [weak self] note in
-                guard note.object as? String == "uninstaller" else { return }
+                guard note.object as? String == UninstallerDescriptor.id.rawValue else { return }
                 MainActor.assumeIsolated {
                     self?.offerTrashLeftovers()
                     // A new engine means a new transport: the old subscription
@@ -129,7 +130,7 @@ import Module_Layout_UI
             }
         moduleDisabledObserver = NotificationCenter.default.addObserver(
             forName: .helmModuleDisabled, object: nil, queue: .main) { [weak self] note in
-                guard note.object as? String == "uninstaller" else { return }
+                guard note.object as? String == UninstallerDescriptor.id.rawValue else { return }
                 MainActor.assumeIsolated {
                     self?.trashEventsTask?.cancel()
                     self?.trashEventsTask = nil
@@ -166,7 +167,7 @@ import Module_Layout_UI
             HelmLog.shared.info("app", "trash arrival goes to the open window")
             return
         }
-        guard let live = host.liveModule("uninstaller") else {
+        guard let live = host.liveModule(UninstallerDescriptor.id.rawValue) else {
             HelmLog.shared.info("app", "trash sweep skipped: the uninstaller is off")
             return
         }
@@ -188,13 +189,16 @@ import Module_Layout_UI
     /// the one way it can — the same sweep it runs at launch.
     private func watchTrashArrivals() {
         trashEventsTask?.cancel()
-        guard let live = host.liveModule("uninstaller") else { return }
+        guard let live = host.liveModule(UninstallerDescriptor.id.rawValue) else { return }
         let events = live.engine.transport.events
-        // The name is a string here because the host cannot import the engine
-        // that spells it (`UninstallerEngine.trashChangedEvent`); the transport
-        // is the boundary and strings are what crosses it.
+        // A string is what crosses the transport; it is not what the host has
+        // to type. `UninstallerDescriptor` re-exports `UninstallerEvent` the
+        // way the descriptors already re-export their command enums for the
+        // hotkeys two screens up, so this name is one declaration rather than a
+        // literal on each side. Spelled by hand, a rename in the engine would
+        // be an error nowhere and the offer would simply stop appearing.
         trashEventsTask = Task { [weak self] in
-            for await event in events where event.name == "trashChanged" {
+            for await event in events where event.name == UninstallerEvent.trashChanged.rawValue {
                 self?.offerTrashLeftovers()
             }
         }

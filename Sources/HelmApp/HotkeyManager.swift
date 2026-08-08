@@ -42,8 +42,6 @@ import HelmUI
         order.append(name)
     }
 
-    func status(_ name: String) -> Status { bindings[name]?.status ?? .none }
-
     func start() {
         installHandler()
         reload()

@@ -2,22 +2,29 @@ import CoreGraphics
 import XCTest
 @testable import HelmRuntime
 
-/// `ScanCoordinator.considerAll` calls `verdict(for:)` once per scannable
-/// module (three today: duplicates, uninstaller, disk), and each call reads
-/// `SystemIdle.seconds()`, `PowerSource.isOnMains` and — inside it,
-/// `ownsTheConsole` and `screenIsLocked` each call `CGSessionCopyCurrentDictionary`
-/// separately — twice. So one tick is 3 idle reads, 3 power reads and 6 session
-/// reads, none of which change between the calls within one tick: the same
-/// answer is fetched, and discarded, per module.
+/// What one tick of `ScanCoordinator.considerAll` costs to *decide*, and what
+/// the decision used to cost.
 ///
-/// This measures the primitives directly — `ScanCoordinator` itself lives in
-/// the `HelmApp` executable target, which has no test target, so its own
-/// `verdict(for:)` cannot be called from here. What is measured is exactly
-/// what it calls.
+/// **The hoist this file measured has been applied.** `verdict(for:)` was
+/// called once per scannable module and read the machine each time, so a tick
+/// over three modules was 3 idle reads, 3 power reads and 6
+/// `CGSessionCopyCurrentDictionary` calls — `ownsTheConsole` and
+/// `screenIsLocked` each make their own — plus three `SecItemCopyMatching`
+/// round trips, because `AppSettings.disabledScans` verifies its seal on every
+/// read. None of those answers can differ inside one tick. The coordinator now
+/// samples them once into `ScanCoordinator.Conditions` and hands the same
+/// snapshot to every module.
 ///
-/// Report only — `SystemIdle` is already documented at 0.0000 ms warm; this
-/// asks whether the two calls this file adds (power, session) change that
-/// answer.
+/// So `testOneTickAcrossThreeModules` is the *before and after* rather than a
+/// description of the code: `asIs` is the shape that shipped until the hoist,
+/// `hoisted` is the shape that ships now. It asserts nothing and cannot — it
+/// times system calls, and a number is not a threshold anybody can defend on
+/// another Mac. What guards the hoist is the type: `verdict(for:in:)` takes a
+/// snapshot and has no way to read the machine itself.
+///
+/// The primitives are measured here rather than through the coordinator because
+/// this is `HelmRuntimeTests` and `verdict(for:in:)` is in `HelmApp`. (`HelmApp`
+/// does have a test target — `HelmAppTests` — which this file used to deny.)
 ///
 /// `HELM_BENCH=1 swift test --filter ScanConditionsPerTickBenchmark`
 final class ScanConditionsPerTickBenchmark: XCTestCase {
@@ -42,9 +49,9 @@ final class ScanConditionsPerTickBenchmark: XCTestCase {
         }
     }
 
-    /// One tick, as `considerAll` actually drives it: three modules, each
-    /// calling `verdict(for:)` which reads idle once, power once, and the
-    /// session dictionary twice (`ownsTheConsole`, then `screenIsLocked`).
+    /// One tick over three modules, the way it used to be driven against the
+    /// way it is driven now. `asIs` is the retired shape — `verdict(for:)` per
+    /// module, each reading idle, power and the session dictionary twice.
     func testOneTickAcrossThreeModules() throws {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["HELM_BENCH"] == "1")
         _ = SystemIdle.seconds() // warm, as the app's first launch already paid this

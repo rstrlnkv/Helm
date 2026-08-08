@@ -2,13 +2,36 @@ import CoreGraphics
 import Foundation
 @testable import Module_KeepAwake_Engine
 
+/// Two assertions, because the real port holds two.
+///
+/// This was a single `held` flag plus a record of the last `display:` argument,
+/// which made the interesting state **unrepresentable**: `IOKitSleepAssertions`
+/// takes an IOKit assertion per kind, and a display assertion outliving the
+/// setting that asked for it is what "the display never sleeps" looks like from
+/// the inside. A fake simpler than the thing it stands for cannot fail the way
+/// the thing can, and the one test that touched `display` only asked whether
+/// the argument had been passed.
 final class FakeAssertions: SleepAssertions {
+    /// Whether the system assertion is up. `held` is kept as its old name
+    /// because every existing test reads it and it means the same thing.
     var held = false
+    /// Whether the *display* assertion is up — the half that used to be a
+    /// record of an argument rather than a state.
+    var displayHeld = false
     var lastDisplay: Bool?
     var preventCount = 0
     var releaseCount = 0
-    func preventSleep(display: Bool) { held = true; lastDisplay = display; preventCount += 1 }
-    func release() { held = false; releaseCount += 1 }
+    func preventSleep(display: Bool) {
+        held = true
+        displayHeld = display
+        lastDisplay = display
+        preventCount += 1
+    }
+    func release() {
+        held = false
+        displayHeld = false
+        releaseCount += 1
+    }
 }
 
 final class FakeDisplayInfo: DisplayInfoPort {

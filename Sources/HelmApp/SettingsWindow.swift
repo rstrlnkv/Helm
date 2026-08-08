@@ -182,13 +182,6 @@ private struct SettingsSidebar: View {
         }
     }
 
-    /// The build, not the update channel: the channel is a picker anyone can
-    /// move, and a shipped beta build must not grow a diagnostics pane because
-    /// somebody wants updates sooner.
-    private var isDevBuild: Bool {
-        (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "").contains("-dev")
-    }
-
     /// Re-probed when the app comes forward: a grant is given in System
     /// Settings, which means this window is behind while it happens.
     @State private var diskAccess: PermissionState = .granted
@@ -450,14 +443,6 @@ private struct MenuBarSettingsView: View {
     /// The permissions an enabled module actually uses, in table order.
     private var neededPermissions: [PermissionNeed] { PermissionSummary.needed() }
 
-    @State private var loggingOn = LogPolicy.isEnabled(
-        version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0",
-        override: AppSettings.loggingOverride)
-
-    private var isDevBuild: Bool {
-        (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "").contains("-dev")
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             HelmPageHeader(symbol: "gearshape", tint: .gray,
@@ -697,10 +682,10 @@ private struct AboutHelmView: View {
     @ObservedObject private var updater = UpdateService.shared
 
     private var shortVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0"
+        AppBuild.shortVersion ?? "0.1.0"
     }
     private var buildNumber: String {
-        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        AppBuild.buildNumber ?? "1"
     }
     private var moduleCount: Int { ModuleRegistry.all.count }
 
@@ -831,17 +816,17 @@ private struct AboutHelmView: View {
     /// above it went on offering dev releases, because a preference is not a
     /// binary. The badge describes the build; the picker below it describes
     /// what will be offered next, and those are allowed to differ.
-    private var isDevBuild: Bool { shortVersion.contains("-dev") }
-
+    /// `AppBuild.isDev`, which is where that argument now lives — it was written
+    /// out here and twice more, and both other copies had stopped being read.
     private var badge: some View {
-        HelmBadge(isDevBuild ? AppStr.devBadge : AppStr.betaBadge,
-                  tint: isDevBuild ? .blue : .orange,
+        HelmBadge(AppBuild.isDev ? AppStr.devBadge : AppStr.betaBadge,
+                  tint: AppBuild.isDev ? .blue : .orange,
                   emphasis: .prominent)
-            .help(isDevBuild ? AppStr.channelDevNote : AppStr.channelBetaNote)
+            .help(AppBuild.isDev ? AppStr.channelDevNote : AppStr.channelBetaNote)
     }
 
     private var badgeAccessibilityLabel: String {
-        "Helm, \(isDevBuild ? AppStr.devBadge : AppStr.betaBadge)"
+        "Helm, \(AppBuild.isDev ? AppStr.devBadge : AppStr.betaBadge)"
     }
 
     // MARK: - Instrument row
@@ -923,9 +908,9 @@ private struct AboutHelmView: View {
     private var updateRow: some View {
         switch updater.installState {
         case .downloading:
-            statusLine(AppStr.downloadingUpdate, spinning: true)
+            statusLine(AppStr.downloadingUpdate)
         case .installing:
-            statusLine(AppStr.installingUpdate, spinning: true)
+            statusLine(AppStr.installingUpdate)
         case .digestMismatch:
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 10) {
@@ -959,7 +944,7 @@ private struct AboutHelmView: View {
             }
         case .idle:
             if updater.checking {
-                statusLine(AppStr.checking, spinning: true)
+                statusLine(AppStr.checking)
             } else if let rel = updater.available {
                 // The offer is the card's main action, so it gets full width
                 // instead of being squeezed next to the label.
@@ -1030,7 +1015,10 @@ private struct AboutHelmView: View {
         return AppStr.lastChecked(when)
     }
 
-    private func statusLine(_ text: String, spinning: Bool) -> some View {
+    /// Always spinning: every state that draws this line is work in flight. It
+    /// took a `spinning:` flag that all three call sites passed `true` and the
+    /// body never read.
+    private func statusLine(_ text: String) -> some View {
         HStack(spacing: 10) {
             ProgressView().controlSize(.small)
             Text(text).foregroundStyle(HelmText.quiet)

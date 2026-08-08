@@ -75,8 +75,16 @@ final class SidebarComposerHeightTests: XCTestCase {
 
     /// The note is measured, not guessed — twice in one afternoon a constant
     /// for it went stale, once when the font changed and once when a sentence
-    /// was added. Nothing here pins a number; it pins that a number is being
-    /// taken from the text that is actually drawn.
+    /// was added. Nothing here pins a number; it pins that the chrome accounts
+    /// for a note that wraps.
+    ///
+    /// **It does not pin what it used to claim**, which was that the number
+    /// comes from the text actually drawn. It cannot: the assertion below
+    /// passes for any measured note, including one whose font stopped matching
+    /// the drawn one — and the sheet measured a second declaration of the note
+    /// until `SidebarComposerSheet.note` became the single value that both
+    /// `noteHeight` and `body` read. That is what makes the stronger sentence
+    /// true, and it is true by construction rather than by this test.
     func testTheChromeAccountsForANoteThatWraps() {
         let oneLine = NSHostingController(rootView: Text("x").font(HelmText.rowDetail))
             .sizeThatFits(in: CGSize(width: 420, height: CGFloat.greatestFiniteMagnitude)).height

@@ -5,8 +5,9 @@ import XCTest
 /// could test it.
 ///
 /// Every case here was unreachable while these lines lived in
-/// `ScanCoordinator`: `HelmApp` is an `executableTarget` with no test target, so
-/// four defects found on 2026-08-03 could only be argued about.
+/// `ScanCoordinator`, and four defects found on 2026-08-03 could only be argued
+/// about. Not because `HelmApp` cannot be tested — `HelmAppTests` exists — but
+/// because the clock and the transport call were in the way of the arithmetic.
 final class ScanRunnerTests: XCTestCase {
 
     private let t0 = Date(timeIntervalSinceReferenceDate: 800_000_000)

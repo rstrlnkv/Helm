@@ -18,3 +18,17 @@ public enum DiskCommand: String, CaseIterable, Sendable {
     case cancel
     case trash
 }
+
+/// Everything the engine says while a scan runs.
+///
+/// Two names, and each was a literal in the engine's `emit` and a literal again
+/// in the view model's `switch`. The sixth module found that way. What it costs
+/// here is the whole screen: `partial` is what draws the ring while the walk is
+/// still going, so a name that stops matching leaves a spinner over a scan that
+/// is working perfectly.
+public enum DiskEvent: String, Sendable {
+    /// How far the walk has got — files seen, bytes so far.
+    case progress
+    /// A tree good enough to draw, before the walk has finished.
+    case partial
+}

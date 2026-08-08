@@ -40,32 +40,39 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     public func activate() {}
     public func deactivate() { finderBox.current?.cancel() }
 
+    /// The one place a search is started.
+    ///
     /// Synchronous work on the module's own queue; nil when cancelled, because
-    /// a partial answer to "what is duplicated" is a wrong answer rather than
-    /// a smaller right one.
-    public func find(under path: String) async -> [DuplicateGroup]? {
+    /// a partial answer to "what is duplicated" is a wrong answer rather than a
+    /// smaller right one.
+    ///
+    /// **Written twice until now** — once for the page and once for the timer —
+    /// differing only in whether progress is reported and whether digests are
+    /// carried over. What the two copies shared was the box dance, and that is
+    /// the part that must not drift: `FinderBox`'s own comment records what a
+    /// slot cleared by the wrong search cost, which was a Stop button that
+    /// reached nothing and a `deactivate()` that left the hashing running.
+    private func run(under path: String, cache: HashCache?,
+                     onProgress: (@Sendable (DuplicateProgress) -> Void)?)
+    async -> [DuplicateGroup]? {
         // A new search supersedes any still running.
         finderBox.current?.cancel()
         let finder = DuplicateScanner()
         let slot = finderBox.start(finder)
         defer { slot.finish() }
-        let groups: [DuplicateGroup]? = await offTheCooperativePool {
-            finder.find(under: path, onProgress: { progress in
-                if let data = try? JSONEncoder().encode(progress) {
-                    self.localTransport.emit(EngineEvent(name: "progress", payload: data))
-                }
-            })
+        return await offTheCooperativePool {
+            finder.find(under: path, cache: cache, onProgress: onProgress)
         }
-        return groups
     }
 
-    /// The search, with digests carried over from the last one.
-    private func findCaching(under path: String, cache: HashCache) async -> [DuplicateGroup]? {
-        finderBox.current?.cancel()
-        let finder = DuplicateScanner()
-        let slot = finderBox.start(finder)
-        defer { slot.finish() }
-        return await offTheCooperativePool { finder.find(under: path, cache: cache) }
+    /// The search a person is watching: no cache — they have already accepted
+    /// the wait — and every tick of progress crosses the transport.
+    public func find(under path: String) async -> [DuplicateGroup]? {
+        await run(under: path, cache: nil, onProgress: { progress in
+            guard let data = try? JSONEncoder().encode(progress) else { return }
+            self.localTransport.emit(EngineEvent(name: DuplicatesEvent.progress.rawValue,
+                                                 payload: data))
+        })
     }
 
     /// Beside the journal, and private for the same reason: the keys name
@@ -132,8 +139,10 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
         // The cache from the last background scan, filled by this one. An
         // interactive search passes none: a person watching a progress bar has
         // already accepted the wait, and the pay-off is on the run nobody sees.
+        // No progress: nobody is watching, so every tick would cross the
+        // transport to a view model that may not exist.
         let cache = Self.loadCache() ?? HashCache()
-        guard let groups = await findCaching(under: root, cache: cache) else { return nil }
+        guard let groups = await run(under: root, cache: cache, onProgress: nil) else { return nil }
         // Compacted on the way out, never on the way in: a scan cut short would
         // otherwise replace the settled segment with a fresh one holding only
         // the files it reached before it stopped.
@@ -152,15 +161,15 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     /// The engine has the last word on deletion, as everywhere else in Helm:
     /// the view model builds the list, and this decides what may go.
     /// Refusals come back in `failed`, never dropped.
-    public func trash(_ paths: [String]) async -> DuplicateRemoval {
-        await offTheCooperativePool {
-            let unique = Array(Set(paths))
-            let (allowed, refused) = UserFileScope.partition(unique)
-            return HelmTrash.remove(allowed: allowed, outOfScope: refused, module: "duplicates")
-        }
-    }
-
-    /// The same removal, with each copy named beside the one it duplicates.
+    ///
+    /// **There was a `trash(_ paths: [String])` beside this**, and it was worse
+    /// than dead. Nothing called it — the transport sends plans, the view model
+    /// builds plans, and its three remaining callers in the tests were passing
+    /// `[DuplicatePlan]` and resolving to this overload. What it was, was a
+    /// public entrance that deleted on the strength of the scan alone: the
+    /// comment on `.trash` below says a caller sending bare paths must get
+    /// nothing removed rather than something removed unchecked, and this method
+    /// was exactly the bare-paths caller's way in.
     ///
     /// **Every pair is read again here**, immediately before anything moves.
     /// The offer on screen is always older than the press that acts on it —
@@ -209,8 +218,6 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
 
     // MARK: - Transport
 
-    private struct PathPayload: Codable { let path: String }
-
     private func wireTransport() {
         localTransport.setHandler { [weak self] command in
             guard let self else { return Data() }
@@ -219,7 +226,7 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
             guard let name = DuplicatesCommand(rawValue: command.name) else { return Data() }
             switch name {
             case .find:
-                guard let payload = try? JSONDecoder().decode(PathPayload.self,
+                guard let payload = try? JSONDecoder().decode(DuplicateSearchRequest.self,
                                                               from: command.payload)
                 else { return Data() }
                 return (try? JSONEncoder().encode(await self.find(under: payload.path))) ?? Data()

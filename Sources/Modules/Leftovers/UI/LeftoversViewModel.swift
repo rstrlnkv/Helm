@@ -13,6 +13,9 @@ import Module_Leftovers_Engine
     @Published public private(set) var failures: [TrashFailureDetail] = []
     /// How many actually moved — see `DiskViewModel.removedCount`.
     @Published public private(set) var removedCount = 0
+    /// A removal is running. The page dims what would start a second one — see
+    /// `trash`, where the cost of the second is a wrong report about the first.
+    @Published public private(set) var busy = false
 
     private let client: TransportClient
     let vm: ModuleViewModel
@@ -102,11 +105,7 @@ import Module_Leftovers_Engine
 
     /// Deletes one item, in use or not — the row asks first when it matters.
     public func remove(_ item: StaleItem) async {
-        let result: LeftoversRemoval? = await client.request(LeftoversCommand.trash, encoding: [item.path])
-        failures = result?.failed ?? []
-        removedCount = result?.removed.count ?? 0
-        banner = LfStr.movedToTrash(Bytes(result?.freedBytes ?? 0))
-        await scan()
+        await trash([item.path])
     }
 
     public func removeSelected() async {
@@ -116,9 +115,32 @@ import Module_Leftovers_Engine
         // screen were computed over what was visible — and this then trashed it
         // anyway. Deleting something the person cannot see, and did not see
         // counted, is the one thing this module must not do.
-        let paths = selectedItems.map(\.path)
+        await trash(selectedItems.map(\.path))
+    }
+
+    /// The one way anything leaves: ask the engine, then report what it says and
+    /// rescan so the list shows what happened rather than what was hoped.
+    ///
+    /// Both callers had these four lines written out, which is four chances for
+    /// the row's outcome and the bar's outcome to come to mean different things
+    /// — and the banner is the only place a refusal is ever named.
+    private func trash(_ paths: [String]) async {
         guard !paths.isEmpty else { return }
-        let result: LeftoversRemoval? = await client.request(LeftoversCommand.trash, encoding: paths)
+        // **One removal at a time.** The buttons dim only on an empty selection,
+        // and the selection is not emptied until the rescan that follows this
+        // has come back — so between the press and that moment the button is
+        // live and the paths are still ticked. A second press does not delete
+        // anything twice; the files are already in the Trash. It comes back
+        // with a refusal *per file*, because a path that is no longer there is
+        // a refusal with a reason, and the three lines below then overwrite the
+        // report of the removal that worked. The person is told nothing moved
+        // and shown a list of everything that did — in the one place this
+        // module ever names a refusal.
+        guard !busy else { return }
+        busy = true
+        defer { busy = false }
+        let result: LeftoversRemoval? = await client.request(LeftoversCommand.trash,
+                                                            encoding: paths)
         failures = result?.failed ?? []
         removedCount = result?.removed.count ?? 0
         banner = LfStr.movedToTrash(Bytes(result?.freedBytes ?? 0))

@@ -15,17 +15,19 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
     private let files: LeftoversFilePort
     private let localTransport: LocalTransport
     public let transport: EngineTransport
-    private let extensions: ExtensionsPort
+    /// The write half. The scan gets `loaded` and cannot reach this.
+    private let switcher: LoginItemSwitchPort
 
     public init(home: URL = FileManager.default.homeDirectoryForCurrentUser,
                 files: LeftoversFilePort = FileSystemLeftovers(),
                 apps: InstalledAppsPort = WorkspaceInstalledApps(),
-                extensions: ExtensionsPort = ActiveExtensions(),
+                loaded: LoadedItemsPort = ActiveExtensions(),
+                switcher: LoginItemSwitchPort = ActiveExtensions(),
                 transport: LocalTransport = LocalTransport()) {
         self.files = files
-        self.extensions = extensions
+        self.switcher = switcher
         self.home = home.path
-        self.scanner = LeftoversScanner(home: home, files: files, apps: apps, extensions: extensions)
+        self.scanner = LeftoversScanner(home: home, files: files, apps: apps, extensions: loaded)
         self.localTransport = transport
         self.transport = transport
         wireTransport()
@@ -81,8 +83,8 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
                 guard let request = try? JSONDecoder().decode(LeftoversToggle.self,
                                                               from: command.payload)
                 else { return Data() }
-                await offTheCooperativePool { self.extensions.setDisabled(request.disabled,
-                                                                  label: request.label) }
+                await offTheCooperativePool { self.switcher.setDisabled(request.disabled,
+                                                                        label: request.label) }
                 return Data()
             case .trash:
                 guard let paths = try? JSONDecoder().decode([String].self, from: command.payload)
