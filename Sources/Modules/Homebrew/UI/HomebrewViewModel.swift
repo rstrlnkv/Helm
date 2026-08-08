@@ -15,6 +15,9 @@ import Module_Homebrew_Engine
     @Published public private(set) var loadedInstalled = false
     @Published public private(set) var outdated: [OutdatedPackage] = []
     @Published public private(set) var searchHits: [SearchHit] = []
+    /// The last of what `brew` said, not all of it. 1000 is `LogTail`'s bound
+    /// and this is the same problem: a running record somebody reads the end of.
+    public static let consoleLimit = 1000
     @Published public private(set) var consoleLines: [String] = []
     @Published public private(set) var op: OpState = .idle
     /// Package descriptions keyed by "f:name" / "c:name", fetched in batches
@@ -81,6 +84,21 @@ import Module_Homebrew_Engine
         switch HomebrewEvent(rawValue: e.name) {
         case .opLog:
             consoleLines.append(String(decoding: e.payload, as: UTF8.self))
+            // Bounded, the way `LogTail` is. Nothing trimmed this: it is
+            // cleared by pressing Clear and by starting an install, so on the
+            // ordinary path — upgrade, upgrade again, search — it only grew,
+            // for the life of the app, since this view model is cached per host
+            // view model. The engine keeps stderr on purpose because a console
+            // should show what the tool says, and a `brew` command passes 64 KB
+            // of deprecation warnings without trying. Each line is also a view:
+            // the page renders a `ForEach` over the whole array and scrolls on
+            // every count change, so the cost is paid twice.
+            //
+            // From the front, which is what a terminal's scrollback does: the
+            // end is the half a person is reading.
+            if consoleLines.count > Self.consoleLimit {
+                consoleLines.removeFirst(consoleLines.count - Self.consoleLimit)
+            }
         case .opState:
             guard let s = try? JSONDecoder().decode(OpState.self, from: e.payload) else { return }
             op = s
