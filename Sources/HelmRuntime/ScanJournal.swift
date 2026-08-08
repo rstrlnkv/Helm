@@ -53,17 +53,14 @@ public final class ScanJournal: @unchecked Sendable {
     public convenience init() { self.init(directory: ScanJournal.defaultDirectory) }
 
     /// A temporary directory under `swift test`, Application Support in the app.
+    /// `TestProcess` decides which, and says why it is the question it is.
     ///
-    /// The test is whether XCTest is loaded, **not** an environment variable:
-    /// `XCTestConfigurationFilePath` is set by Xcode and not by `swift test`,
-    /// which is how an earlier isolation guard read clean while the suite went
-    /// on writing into the real store.
     /// The prefix of a per-process test journal, shared by the maker and the
     /// sweeper below so the two cannot disagree about what one looks like.
     static let testDirectoryPrefix = "helm-scan-journal-"
 
     public static let defaultDirectory: URL = {
-        if NSClassFromString("XCTestCase") != nil {
+        if TestProcess.isRunning {
             let base = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
             sweepAbandonedTestJournals(under: base)
             return base.appendingPathComponent(

@@ -56,6 +56,14 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   arranged.
 
 ### Fixed
+- **The test suite no longer writes into the log a build is triaged against.**
+  `~/Library/Logs/Helm/helm.log` is a product surface — it is what a dev build is
+  judged by before it ships — and running the suite filled it with `[error]`
+  lines from tests that exercise the failures the app logs. They read exactly
+  like real faults, and were investigated as one. The log resolves its folder
+  through `LogDestination` now, which answers somewhere else entirely under a
+  test runner; a guard fails if a logged line ever reaches the shipping file
+  again.
 - **A removal cannot be redirected onto a file it was never meant to touch.**
   Helm checks that everything it is about to trash sits inside a folder it may
   clean, and it did that check once, up front. Between the check and the move it
