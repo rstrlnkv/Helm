@@ -225,6 +225,9 @@ public enum MenuBarIcon {
         // nothing at all, and every round shape kept its corners the moment a
         // timer started. Restored immediately: it is global state, and it is
         // only ours for the length of one flatten.
+        // `copy()` comes from `NSCopying` typed `Any`; `NSBezierPath.copy()`
+        // returns an `NSBezierPath` by contract, so this cannot fail.
+        // swiftlint:disable:next force_cast
         let copy = path.copy() as! NSBezierPath
         let previousFlatness = NSBezierPath.defaultFlatness
         NSBezierPath.defaultFlatness = 0.02

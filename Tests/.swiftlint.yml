@@ -1,0 +1,8 @@
+# A force-try in a test IS the assertion: if the setup throws, the test fails,
+# which is exactly what a fixture that cannot be built should do. Same for a
+# force-cast down to a known fixture type. So these two rules are off under
+# Tests/ only — in Sources they still fire, and every Sources site is either a
+# safe `as?` or carries its own inline carve-out with a reason.
+disabled_rules:
+  - force_try
+  - force_cast
