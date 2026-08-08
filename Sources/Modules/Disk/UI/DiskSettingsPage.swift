@@ -182,6 +182,7 @@ public struct DiskSettingsPage: View {
                 .help(DkStr.basketContents)
                 Spacer()
                 Button(DkStr.moveToTrash) { confirming = true }
+                    .disabled(dvm.busy)
                     .buttonStyle(.borderedProminent)
             }
         }

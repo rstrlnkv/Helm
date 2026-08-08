@@ -441,9 +441,21 @@ import Module_Disk_Engine
         basket.contains { $0.path == entry.path }
     }
 
+    /// A removal is running. The page dims what would start a second one.
+    @Published public private(set) var busy = false
+
     public func emptyBasket() async {
         let paths = basket.map(\.path)
         guard !paths.isEmpty else { return }
+        // **One removal at a time**, the rule `UninstallerViewModel` already
+        // follows. The basket is not emptied until the answer comes back, so
+        // between the press and that moment the button is live and the same
+        // paths are still in it. The second round is not a second deletion —
+        // the files are already in the Trash — it is a refusal per path, and
+        // the lines below overwrite the report of the removal that worked.
+        guard !busy else { return }
+        busy = true
+        defer { busy = false }
         let removal: DiskRemoval? = await client.request(DiskCommand.trash, encoding: paths)
         let freed = removal?.freedBytes ?? 0
         failures = removal?.refused ?? []
