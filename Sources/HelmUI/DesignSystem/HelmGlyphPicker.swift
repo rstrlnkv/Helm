@@ -24,7 +24,11 @@ public enum HelmGlyphCatalogue {
                 "folder", "doc", "tray", "archivebox",
                 "calendar", "clock", "checklist", "briefcase",
             ]),
-            .init(id: "system", title: L("System"), symbols: [
+            // Not "System": that word is a tag on four other screens, meaning a
+            // file macOS owns — and its translations are adjectival there
+            // («Системный», "Del sistema"). One English key means one thing, and
+            // these eight symbols are hardware anyway.
+            .init(id: "hardware", title: L("Hardware"), symbols: [
                 "gearshape", "wrench.and.screwdriver", "cpu", "memorychip",
                 "internaldrive", "externaldrive", "gauge.with.dots.needle.33percent", "battery.100",
             ]),

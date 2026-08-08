@@ -646,7 +646,6 @@
 "Behaviour, appearance, permissions and what Helm may remove." = "行为、外观、权限，以及 Helm 可以删除什么。";
 "Order and sections" = "顺序与分组";
 "A switch turns the module off everywhere in Helm." = "开关会在整个 Helm 中停用该模块。";
-"Show" = "显示";
 "Remove widget" = "移除小组件";
 "Widget size" = "小组件尺寸";
 "Add widget" = "添加小组件";
@@ -655,7 +654,6 @@
 "New tab" = "新建标签页";
 "Close tab" = "关闭标签页";
 "Tab" = "标签页";
-"Paused" = "已暂停";
 "Edit widgets" = "编辑小组件";
 "Show the edit button in the panel" = "在面板中显示编辑按钮";
 "Choose what is in the list" = "选择列表中的项目";
@@ -665,15 +663,9 @@
 "Glyph and text" = "图形与文字";
 "Glyph" = "图形";
 "Icon" = "图标";
-"General" = "通用";
 "Work" = "工作";
-"System" = "系统";
-"Network" = "网络";
-"Media" = "媒体";
 "Nature" = "自然";
 "Category" = "类别";
-"Show Settings button" = "显示“设置”按钮";
-"Show Quit button" = "显示“退出”按钮";
 "All three are also in the menu-bar icon’s right-click menu." = "这三项也都在菜单栏图标的右键菜单里。";
 "Edit panel" = "编辑面板";
 "Editing the panel" = "正在编辑面板";
@@ -700,3 +692,5 @@
 "Drag an app to the Trash and Helm offers to clear up after it, a second later — once you switch it on under Uninstaller → Leftovers. The app stays where you put it — Helm lists the settings, caches and support files it left behind, already ticked, and anything matched only by the app’s name arrives unticked. Say no and it does not ask about that app again." = "把 App 移到废纸篓，Helm 会立刻提出替你清理——需先在“卸载”→“残留”里打开。App 留在原处；它留下的设置、缓存和支持文件会列出来并默认勾选，仅靠名称匹配到的则不勾选。你说不，它就不会再问这个 App。";
 "The welcome tour lets you pick what you want. Each module’s screen now carries a switch, so you can keep or drop it while you are being introduced to it — and the opening screen asks whether Helm should start with your Mac. The switch starts where the module already stood, so skipping the tour changes nothing." = "欢迎引导现在让你挑选。每个模块的页面都有开关，第一屏会问你是否跟随 Mac 启动 Helm。开关的初始位置就是模块原有的状态，所以跳过不会改变任何东西。";
 "Helm no longer asks for permissions the moment you install it. It used to request Full Disk Access and Accessibility on the very first launch, before you had asked it to do anything. Each module now asks for what it needs on its own page, when it needs it — and the old notice still appears if a permission you had granted goes away." = "Helm 不再在安装后立即索要权限。以前它会在首次启动时就请求完全磁盘访问和辅助功能权限。现在每个模块在自己的页面上按需索要。而如果你已授予的权限消失了，原来的提示依然会出现。";
+"Hardware" = "硬件";
+"Show permissions" = "显示权限";

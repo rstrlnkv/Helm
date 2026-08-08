@@ -145,6 +145,19 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 - **An empty Permissions section drew a heading with no card**, and the next
   heading read as its subtitle — so the reset card appeared to be what Permissions
   contained.
+- **Eight labels were showing a word written for somewhere else.** `General`,
+  `Media`, `Network`, `Paused`, `Show`, `Show Quit button`, `Show Settings
+  button` and `System` were each written twice in every translation file, and
+  macOS keeps the second of two entries silently — so which translation appeared
+  was decided by the order of the lines. In Russian the Login Items filter said
+  «Показать» where it chooses what to keep showing, and the «System» tag on an
+  app, a folder, a duplicate and a login item said «Система» where the row means
+  «системный»; the same tag read "Sistema" in Spanish and Portuguese instead of
+  "Del sistema" and "Do sistema"; German, Spanish and Portuguese had a second,
+  clumsier wording of the two panel-footer switches. Two of the eight were one
+  English word doing two jobs and are now two: the permissions notice says «Показать
+  разрешения» rather than a bare «Показать», and the tab-icon category of gears,
+  chips and drives is «Оборудование» rather than «Система».
 - **«9 modules in 4 sections» could not change.** It was the registry's count
   rendered as if it were state. It counts what is on.
 - Both appearance thumbnails that match the window's own appearance had no edge —

@@ -646,7 +646,6 @@
 "Behaviour, appearance, permissions and what Helm may remove." = "動作、外観、アクセス権、そしてHelmが削除してよいもの。";
 "Order and sections" = "並び順とセクション";
 "A switch turns the module off everywhere in Helm." = "スイッチを切ると、そのモジュールは Helm 全体で無効になります。";
-"Show" = "表示";
 "Remove widget" = "ウィジェットを外す";
 "Widget size" = "ウィジェットの大きさ";
 "Add widget" = "ウィジェットを追加";
@@ -655,7 +654,6 @@
 "New tab" = "新しいタブ";
 "Close tab" = "タブを閉じる";
 "Tab" = "タブ";
-"Paused" = "一時停止";
 "Edit widgets" = "ウィジェットを編集";
 "Show the edit button in the panel" = "パネルに編集ボタンを表示";
 "Choose what is in the list" = "一覧の項目を選ぶ";
@@ -665,15 +663,9 @@
 "Glyph and text" = "記号と文字";
 "Glyph" = "記号";
 "Icon" = "アイコン";
-"General" = "一般";
 "Work" = "仕事";
-"System" = "システム";
-"Network" = "ネットワーク";
-"Media" = "メディア";
 "Nature" = "自然";
 "Category" = "カテゴリ";
-"Show Settings button" = "「設定」ボタンを表示";
-"Show Quit button" = "「終了」ボタンを表示";
 "All three are also in the menu-bar icon’s right-click menu." = "三つともメニューバーアイコンの右クリックメニューにあります。";
 "Edit panel" = "パネルを編集";
 "Editing the panel" = "パネルの編集";
@@ -700,3 +692,5 @@
 "Drag an app to the Trash and Helm offers to clear up after it, a second later — once you switch it on under Uninstaller → Leftovers. The app stays where you put it — Helm lists the settings, caches and support files it left behind, already ticked, and anything matched only by the app’s name arrives unticked. Say no and it does not ask about that app again." = "App をゴミ箱に入れると、Helm がすぐに後片づけを申し出ます（アンインストーラの「残存物」でオンにした場合）。App 自体はそのままです。残された設定・キャッシュ・サポートファイルが選択済みで並び、名前だけで見つかったものは未選択です。断れば、その App について再び尋ねません。";
 "The welcome tour lets you pick what you want. Each module’s screen now carries a switch, so you can keep or drop it while you are being introduced to it — and the opening screen asks whether Helm should start with your Mac. The switch starts where the module already stood, so skipping the tour changes nothing." = "歓迎ツアーで選べるようになりました。各モジュールの画面にスイッチがあり、最初の画面では Mac と一緒に Helm を起動するかを尋ねます。初期状態はもとのままなので、スキップしても何も変わりません。";
 "Helm no longer asks for permissions the moment you install it. It used to request Full Disk Access and Accessibility on the very first launch, before you had asked it to do anything. Each module now asks for what it needs on its own page, when it needs it — and the old notice still appears if a permission you had granted goes away." = "インストール直後に権限を求めることはなくなりました。以前は初回起動時にフルディスクアクセスとアクセシビリティを要求していました。今は各モジュールが必要なときに自分のページで尋ねます。そして、いったん与えた許可がなくなったときは、これまでどおり通知が出ます。";
+"Hardware" = "ハードウェア";
+"Show permissions" = "アクセス権を表示";

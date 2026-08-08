@@ -176,7 +176,7 @@
 "Full Disk Access" = "Доступ к диску";
 "Full disk access is off. Without it the disk scan cannot read every folder, and removing an app leaves its containers behind." = "«Доступ к диску» выключен. Без него скан диска не видит часть папок, а при удалении приложения его контейнеры остаются.";
 "Full name" = "Полное имя";
-"General" = "Основные";
+"General" = "Общее";
 "GitHub update check and the What’s New window." = "Проверка обновлений через GitHub и окно «Что нового».";
 "Global shortcut" = "Глобальное сочетание клавиш";
 "Got it" = "Понятно";
@@ -646,7 +646,6 @@
 "Behaviour, appearance, permissions and what Helm may remove." = "Поведение, внешний вид, разрешения и что Helm может удалять.";
 "Order and sections" = "Порядок и разделы";
 "A switch turns the module off everywhere in Helm." = "Переключатель выключает модуль во всём Helm.";
-"Show" = "Показать";
 "Remove widget" = "Убрать виджет";
 "Widget size" = "Размер виджета";
 "Add widget" = "Добавить виджет";
@@ -655,7 +654,6 @@
 "New tab" = "Новая вкладка";
 "Close tab" = "Закрыть вкладку";
 "Tab" = "Вкладка";
-"Paused" = "Пауза";
 "Edit widgets" = "Редактировать виджеты";
 "Show the edit button in the panel" = "Показывать кнопку редактирования панели";
 "Choose what is in the list" = "Выбрать пункты списка";
@@ -665,15 +663,9 @@
 "Glyph and text" = "Глиф и текст";
 "Glyph" = "Глиф";
 "Icon" = "Значок";
-"General" = "Общее";
 "Work" = "Работа";
-"System" = "Система";
-"Network" = "Сеть";
-"Media" = "Медиа";
 "Nature" = "Природа";
 "Category" = "Категория";
-"Show Settings button" = "Показывать кнопку «Настройки»";
-"Show Quit button" = "Показывать кнопку «Завершить»";
 "All three are also in the menu-bar icon’s right-click menu." = "Все три есть и в меню по правому клику на иконку.";
 "Edit panel" = "Редактировать панель";
 "Editing the panel" = "Редактирование панели";
@@ -700,3 +692,5 @@
 "Drag an app to the Trash and Helm offers to clear up after it, a second later — once you switch it on under Uninstaller → Leftovers. The app stays where you put it — Helm lists the settings, caches and support files it left behind, already ticked, and anything matched only by the app’s name arrives unticked. Say no and it does not ask about that app again." = "Перетащите приложение в Корзину — и Helm тут же предложит убрать за ним, если включить это в «Удаление приложений» → «Остатки». Само приложение остаётся там, куда вы его положили: Helm показывает настройки, кеши и служебные файлы, которые от него остались, уже отмеченными. Найденное только по названию — без галочки. Откажетесь — про это приложение больше не спросят.";
 "The welcome tour lets you pick what you want. Each module’s screen now carries a switch, so you can keep or drop it while you are being introduced to it — and the opening screen asks whether Helm should start with your Mac. The switch starts where the module already stood, so skipping the tour changes nothing." = "В приветственном туре можно сразу выбрать нужное. На экране каждого модуля есть переключатель — оставить или отключить, пока вам о нём рассказывают. А на первом экране спрашивают, запускать ли Helm вместе с Mac. Переключатель стоит там, где модуль и был, поэтому «Пропустить» ничего не меняет.";
 "Helm no longer asks for permissions the moment you install it. It used to request Full Disk Access and Accessibility on the very first launch, before you had asked it to do anything. Each module now asks for what it needs on its own page, when it needs it — and the old notice still appears if a permission you had granted goes away." = "Helm больше не просит разрешений сразу после установки. Раньше на самом первом запуске он запрашивал «Полный доступ к диску» и «Универсальный доступ» ещё до того, как вы о чём-то попросили. Теперь каждый модуль просит нужное на своей странице и тогда, когда это нужно. А если выданное ранее разрешение пропадёт, старое уведомление по-прежнему придёт.";
+"Hardware" = "Оборудование";
+"Show permissions" = "Показать разрешения";

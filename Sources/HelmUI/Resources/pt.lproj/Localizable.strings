@@ -646,7 +646,6 @@
 "Behaviour, appearance, permissions and what Helm may remove." = "Comportamento, aparência, permissões e o que o Helm pode remover.";
 "Order and sections" = "Ordem e seções";
 "A switch turns the module off everywhere in Helm." = "O interruptor desativa o módulo em todo o Helm.";
-"Show" = "Mostrar";
 "Remove widget" = "Remover o widget";
 "Widget size" = "Tamanho do widget";
 "Add widget" = "Adicionar widget";
@@ -655,7 +654,6 @@
 "New tab" = "Nova aba";
 "Close tab" = "Fechar a aba";
 "Tab" = "Aba";
-"Paused" = "Em pausa";
 "Edit widgets" = "Editar os widgets";
 "Show the edit button in the panel" = "Mostrar o botão de edição no painel";
 "Choose what is in the list" = "Escolher os itens da lista";
@@ -665,15 +663,9 @@
 "Glyph and text" = "Glifo e texto";
 "Glyph" = "Glifo";
 "Icon" = "Ícone";
-"General" = "Geral";
 "Work" = "Trabalho";
-"System" = "Sistema";
-"Network" = "Rede";
-"Media" = "Mídia";
 "Nature" = "Natureza";
 "Category" = "Categoria";
-"Show Settings button" = "Mostrar o botão de ajustes";
-"Show Quit button" = "Mostrar o botão de sair";
 "All three are also in the menu-bar icon’s right-click menu." = "Os três também estão no menu de contexto do ícone.";
 "Edit panel" = "Editar o painel";
 "Editing the panel" = "Edição do painel";
@@ -700,3 +692,5 @@
 "Drag an app to the Trash and Helm offers to clear up after it, a second later — once you switch it on under Uninstaller → Leftovers. The app stays where you put it — Helm lists the settings, caches and support files it left behind, already ticked, and anything matched only by the app’s name arrives unticked. Say no and it does not ask about that app again." = "Arraste um app para o Lixo e o Helm se oferece na hora para limpar o que ficou, depois de você ativar em Desinstalador → Restos. O app fica onde você o colocou; o Helm lista os ajustes, caches e arquivos de suporte que sobraram, já marcados — o que foi encontrado só pelo nome vem desmarcado. Se você recusar, ele não pergunta de novo sobre esse app.";
 "The welcome tour lets you pick what you want. Each module’s screen now carries a switch, so you can keep or drop it while you are being introduced to it — and the opening screen asks whether Helm should start with your Mac. The switch starts where the module already stood, so skipping the tour changes nothing." = "O tour de boas-vindas deixa você escolher. A tela de cada módulo tem um interruptor, e a primeira pergunta se o Helm deve iniciar com o Mac. Ele começa onde o módulo já estava, então pular o tour não muda nada.";
 "Helm no longer asks for permissions the moment you install it. It used to request Full Disk Access and Accessibility on the very first launch, before you had asked it to do anything. Each module now asks for what it needs on its own page, when it needs it — and the old notice still appears if a permission you had granted goes away." = "O Helm não pede mais permissões assim que você o instala. Antes pedia Acesso Total ao Disco e Acessibilidade no primeiro início, antes de você pedir qualquer coisa. Agora cada módulo pede o que precisa na sua própria página, quando precisa. E se uma permissão que você já havia concedido desaparecer, o aviso de sempre continua aparecendo.";
+"Hardware" = "Hardware";
+"Show permissions" = "Mostrar permissões";
