@@ -51,9 +51,9 @@ enum Changelog {
     static var entries: [ChangelogEntry] {
         [
             ChangelogEntry(version: "0.9.0", date: "2026-08-06", items: [
-                ChangeItem(kind: .new, text: L("The panel is arranged by hand. Pick a widget up and it follows the pointer; the others slide aside; letting go sets it down where the space opened. Sizes, tabs with icons, and a list of everything that is not a tile.")),
+                ChangeItem(kind: .new, text: L("Widgets are moved by hand. Pick one up and it follows the pointer; the others slide aside; letting go sets it down where the space opened.")),
                 ChangeItem(kind: .new, text: L("About Helm says who wrote it, with a way to reach him.")),
-                ChangeItem(kind: .new, text: L("The panel is arranged in the panel. \u{201C}Configure panel\u{201D} in its footer: give a widget one of three sizes, take one off, add one from the gallery, make a tab. Keep Awake, VPN, Autopilot, Disk and Layout answer at more than one size, and Disk shows how much room is left out of how much.")),
+                ChangeItem(kind: .new, text: L("The panel is arranged in the panel. \u{201C}Edit panel\u{201D} in its footer: give a widget one of three sizes, take one off, add one from the gallery, make a tab. Keep Awake, VPN, Autopilot, Disk and Keyboard come in more than one size, and Disk shows how much of the disk is still free.")),
                 ChangeItem(kind: .new, text: L("Light, dark or automatic is three pictures now, not a menu of three words \u{2014} the way macOS asks the same question.")),
                 ChangeItem(kind: .new, text: L("Settings says what is missing before you scroll: a line at the top counts the permissions macOS is withholding and the modules they reach.")),
                 ChangeItem(kind: .upd, text: L("One arrangement for everything. The order and sections you compose now decide the panel as well, not just the window\u{2019}s sidebar.")),
