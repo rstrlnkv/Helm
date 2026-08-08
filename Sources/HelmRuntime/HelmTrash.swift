@@ -15,18 +15,20 @@ import Foundation
 /// module's own question (`RemovableScope`, `UserFileScope`, `WatchScope`),
 /// and this type takes paths that have already passed it.
 ///
-/// Four of the five call it: Disk, Duplicates, Leftovers and the uninstaller.
-/// The seam that let the last of those in is `trashing` — the move itself,
-/// which the uninstaller takes as a port so its tests can run without a
-/// filesystem. Adding it was declined once, on the grounds that it changed this
-/// for every caller to serve one; what the copy it left in place then cost was
-/// three rules stated in the comments below and missing there — a child taken
-/// with its parent reported as neither moved nor refused, a hard link's bytes
-/// counted once per name, and a batch whose order decided its own answer.
+/// Every batch removal in the app comes through here — `grep -rn
+/// 'HelmTrash.remove' Sources` says which, and a number written down in this
+/// paragraph would not. The last one in was the uninstaller, through `trashing`:
+/// the move itself, which that module takes as a port so its tests can run
+/// without a filesystem. The seam was declined once, on the grounds that it
+/// changed this for every caller to serve one; what the copy it left in place
+/// then cost was three rules stated in the comments below and missing there — a
+/// child taken with its parent reported as neither moved nor refused, a hard
+/// link's bytes counted once per name, and a batch whose order decided its own
+/// answer.
 ///
-/// `RuleRunner` is the one still outside, and it is a different shape: one file
-/// at a time inside a rule it has already decided, with no batch for any of the
-/// rules here to be about.
+/// `RuleRunner` is the one path still outside, and it is a different shape: one
+/// file at a time inside a rule it has already decided, with no batch for any of
+/// the rules here to be about.
 public enum HelmTrash {
 
     /// What happened to one path.
