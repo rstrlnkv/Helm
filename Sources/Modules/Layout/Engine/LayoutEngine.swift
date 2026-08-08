@@ -602,8 +602,6 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                                 lastConversion: undo?.event,
                                 conversionsToday: conversions.value(on: Date()))
         lock.unlock()
-        if let data = try? JSONEncoder().encode(state) {
-            localTransport.emit(EngineEvent(name: LayoutEvent.layoutState.rawValue, payload: data))
-        }
+        localTransport.emit(LayoutEvent.layoutState, encoding: state)
     }
 }

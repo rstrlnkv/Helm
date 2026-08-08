@@ -71,18 +71,17 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
             guard let name = LeftoversCommand(rawValue: command.name) else { return Data() }
             switch name {
             case .scan:
-                return (try? JSONEncoder().encode(await self.scan())) ?? Data()
+                return EngineReply.encode(await self.scan(), for: command)
             case .setDisabled:
-                guard let request = try? JSONDecoder().decode(LeftoversToggle.self,
-                                                              from: command.payload)
+                guard let request = EngineReply.decode(LeftoversToggle.self, from: command)
                 else { return Data() }
                 await offTheCooperativePool { self.switcher.setDisabled(request.disabled,
                                                                         label: request.label) }
                 return Data()
             case .trash:
-                guard let paths = try? JSONDecoder().decode([String].self, from: command.payload)
+                guard let paths = EngineReply.decode([String].self, from: command)
                 else { return Data() }
-                return (try? JSONEncoder().encode(await self.trash(paths))) ?? Data()
+                return EngineReply.encode(await self.trash(paths), for: command)
             }
         }
     }

@@ -7,7 +7,10 @@ let package = Package(
     platforms: [.macOS("26.0")],
     targets: [
         .target(name: "HelmContract"),
-        .target(name: "HelmRuntime"),
+        // One edge, and only this direction: `EngineReply` is engine-side wire
+        // plumbing that logs, and the log lives here. The contract stays free of
+        // everything.
+        .target(name: "HelmRuntime", dependencies: ["HelmContract"]),
         .target(name: "HelmUI", dependencies: ["HelmContract", "HelmRuntime"],
                 resources: [.process("Resources")]),
         .target(
@@ -134,7 +137,7 @@ let package = Package(
             path: "Tests/Modules/Disk/UITests"),
         .testTarget(name: "HelmContractTests", dependencies: ["HelmContract"]),
         .testTarget(name: "HelmAppTests", dependencies: ["HelmApp", "HelmContract", "HelmRuntime", "HelmUI"]),
-        .testTarget(name: "HelmRuntimeTests", dependencies: ["HelmRuntime"]),
+        .testTarget(name: "HelmRuntimeTests", dependencies: ["HelmRuntime", "HelmContract"]),
         .testTarget(name: "HelmUITests", dependencies: ["HelmUI"]),
         .testTarget(
             name: "Module_KeepAwake_EngineTests",

@@ -496,47 +496,48 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                 HelmLog.shared.info("uninstaller", "engine listApps start")
                 let list = await self.listApps()
                 HelmLog.shared.info("uninstaller", "engine listApps done: \(list.count)")
-                return (try? JSONEncoder().encode(list)) ?? Data()
+                return EngineReply.encode(list, for: cmd)
             case .appSizes:
-                guard let list = try? JSONDecoder().decode([InstalledApp].self, from: cmd.payload)
+                guard let list = EngineReply.decode([InstalledApp].self, from: cmd)
                 else { return Data() }
-                let sizes = await self.appSizes(list)
-                return (try? JSONEncoder().encode(sizes)) ?? Data()
+                return EngineReply.encode(await self.appSizes(list), for: cmd)
             case .scan:
-                guard let r = try? JSONDecoder().decode(UninstallScanRequest.self, from: cmd.payload) else { return Data() }
+                guard let r = EngineReply.decode(UninstallScanRequest.self, from: cmd)
+                else { return Data() }
                 let res = try await self.scan(bundleID: r.bundleID, appPath: r.appPath, appName: r.appName)
-                return (try? JSONEncoder().encode(res)) ?? Data()
+                return EngineReply.encode(res, for: cmd)
             case .uninstall:
-                guard let r = try? JSONDecoder().decode(UninstallRequest.self, from: cmd.payload) else { return Data() }
+                guard let r = EngineReply.decode(UninstallRequest.self, from: cmd)
+                else { return Data() }
                 let res = try await self.uninstall(appPath: r.appPath, paths: r.paths)
-                return (try? JSONEncoder().encode(res)) ?? Data()
+                return EngineReply.encode(res, for: cmd)
             case .systemExtensions:
                 let list = await offTheCooperativePool { self.extensions.installedExtensions() }
-                return (try? JSONEncoder().encode(list)) ?? Data()
+                return EngineReply.encode(list, for: cmd)
             case .scanOrphans:
-                return (try? JSONEncoder().encode(await self.scanOrphans())) ?? Data()
+                return EngineReply.encode(await self.scanOrphans(), for: cmd)
             case .backgroundScan:
-                return (try? JSONEncoder().encode(await self.backgroundScan())) ?? Data()
+                return EngineReply.encode(await self.backgroundScan(), for: cmd)
             case .trashedAppLeftovers:
-                return (try? JSONEncoder().encode(await self.trashedAppLeftovers())) ?? Data()
+                return EngineReply.encode(await self.trashedAppLeftovers(), for: cmd)
             case .watchingTrash:
-                return (try? JSONEncoder().encode(self.watchingTrash)) ?? Data()
+                return EngineReply.encode(self.watchingTrash, for: cmd)
             case .setWatchingTrash:
                 // The one arm that writes `watcher`, so it goes where the other
                 // two writers already are. `send` runs this handler on the
                 // caller's own executor, and nobody awaits this reply — the
                 // sweep it asks for arrives as `trashChanged`.
-                let on = (try? JSONDecoder().decode(Bool.self, from: cmd.payload)) ?? false
+                let on = EngineReply.decode(Bool.self, from: cmd) ?? false
                 await MainActor.run { self.setWatchingTrash(on) }
                 return Data()
             case .dismissTrashedApp:
                 self.dismissTrashedApp(bundleID: String(decoding: cmd.payload, as: UTF8.self))
                 return Data()
             case .trashPaths:
-                guard let paths = try? JSONDecoder().decode([String].self, from: cmd.payload) else { return Data() }
-                return (try? JSONEncoder().encode(await self.trashPaths(paths))) ?? Data()
+                guard let paths = EngineReply.decode([String].self, from: cmd) else { return Data() }
+                return EngineReply.encode(await self.trashPaths(paths), for: cmd)
             case .quit:
-                if let r = try? JSONDecoder().decode(QuitRequest.self, from: cmd.payload) {
+                if let r = EngineReply.decode(QuitRequest.self, from: cmd) {
                     self.quit(bundleID: r.bundleID, force: r.force)
                     // The command returns when the app is gone, so the caller
                     // does not have to guess how long that takes.

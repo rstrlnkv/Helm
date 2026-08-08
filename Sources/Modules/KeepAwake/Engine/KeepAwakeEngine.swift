@@ -507,7 +507,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             case .toggle:
                 self.toggleSession()
             case .start:
-                if let payload = try? JSONDecoder().decode(KeepAwakeStart.self, from: cmd.payload) {
+                if let payload = EngineReply.decode(KeepAwakeStart.self, from: cmd) {
                     self.startSession(minutes: payload.minutes)
                 }
             case .stop:
@@ -528,8 +528,6 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                                     clamshellActive: clamshellActive,
                                     endDate: endDate,
                                     startDate: startDate)
-        if let data = try? JSONEncoder().encode(payload) {
-            localTransport.emit(EngineEvent(name: KeepAwakeEvent.state.rawValue, payload: data))
-        }
+        localTransport.emit(KeepAwakeEvent.state, encoding: payload)
     }
 }
