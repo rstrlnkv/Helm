@@ -1,4 +1,5 @@
 import SwiftUI
+import HelmRuntime
 import HelmUI
 import Module_Disk_Engine
 
@@ -405,7 +406,7 @@ private struct RingCanvas: View, @MainActor Animatable {
                 start = segment.startAngle
                 end = segment.endAngle
                 ring = RingUnfold.arrivingRing(segment.ring, progress: progress)
-                opacity = min(max(progress, 0), 1)
+                opacity = progress.clamped(to: 0...1)
             }
             guard opacity > 0.001 else { continue }
             let (r0, r1) = geometry.radialRange(ring: ring)

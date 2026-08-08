@@ -75,7 +75,7 @@ public struct KeepAwakeSettings {
     /// further apart than that is indistinguishable from the switch being off,
     /// and the stepper's own top is 60.
     public var jiggleIntervalMinutes: Int {
-        Self.clamped(store.int(Key.jiggleIntervalMinutes, default: 5), to: 1...Self.aDayInMinutes)
+        store.int(Key.jiggleIntervalMinutes, default: 5).clamped(to: 1...Self.aDayInMinutes)
     }
     public func setJiggleIntervalMinutes(_ minutes: Int) {
         store.set(minutes, for: Key.jiggleIntervalMinutes)
@@ -97,7 +97,7 @@ public struct KeepAwakeSettings {
     /// ends an unattended session. A stored 101 ends every session on battery
     /// the moment it starts, which reads as the feature being broken.
     public var batteryGuardPercent: Int {
-        Self.clamped(store.int(Key.batteryGuardPercent, default: 20), to: 5...50)
+        store.int(Key.batteryGuardPercent, default: 20).clamped(to: 5...50)
     }
     public func setBatteryGuardPercent(_ percent: Int) {
         store.set(percent, for: Key.batteryGuardPercent)
@@ -108,7 +108,7 @@ public struct KeepAwakeSettings {
     /// with the same trapping multiply, and it is reached from the panel tile's
     /// main button.
     public var defaultDurationMinutes: Int {
-        Self.clamped(store.int(Key.defaultDurationMinutes, default: 0), to: 0...Self.aDayInMinutes)
+        store.int(Key.defaultDurationMinutes, default: 0).clamped(to: 0...Self.aDayInMinutes)
     }
     public func setDefaultDurationMinutes(_ minutes: Int) {
         store.set(minutes, for: Key.defaultDurationMinutes)
@@ -117,8 +117,4 @@ public struct KeepAwakeSettings {
     /// The ceiling both durations share: past a day neither setting means
     /// anything a person could have asked for.
     private static let aDayInMinutes = 24 * 60
-
-    private static func clamped(_ value: Int, to range: ClosedRange<Int>) -> Int {
-        min(max(value, range.lowerBound), range.upperBound)
-    }
 }

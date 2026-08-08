@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 /// The angular transform that turns one wedge into the whole ring.
 ///
@@ -57,7 +58,7 @@ public enum RingUnfold {
     /// same progress, which is 0 exactly where it is invisible anyway.
     public static func opacity(isPivot: Bool, isDescendant: Bool, isSpare: Bool = false,
                                progress t: Double) -> Double {
-        if isSpare { return isDescendant ? max(0, min(1, t)) : 0 }
+        if isSpare { return isDescendant ? t.clamped(to: 0...1) : 0 }
         if isDescendant { return 1 }
         return max(0, 1 - t)
     }
@@ -77,14 +78,14 @@ public enum RingUnfold {
     /// makes the last frame of the animation equal to the first frame after it,
     /// which is the only definition of "not a jump" that holds.
     public static func toward(_ from: Double, _ to: Double, progress t: Double) -> Double {
-        from + (to - from) * min(max(t, 0), 1)
+        from + (to - from) * t.clamped(to: 0...1)
     }
 
     /// An arc that has no counterpart in the layout being entered — the level
     /// that was never drawn, and the buckets a different fold produced — slides
     /// in from one ring further out and fades up, rather than appearing.
     public static func arrivingRing(_ ring: Int, progress t: Double) -> Double {
-        Double(ring) + (1 - min(max(t, 0), 1))
+        Double(ring) + (1 - t.clamped(to: 0...1))
     }
 
     /// True while an arc is still inside the visible circle. Past the unfold

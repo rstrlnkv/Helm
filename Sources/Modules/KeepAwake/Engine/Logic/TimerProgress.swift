@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 /// Fraction of a timed session that is still remaining (1 → just started,
 /// 0 → finished). Drives the menu-bar ring drawn as a countdown arc.
@@ -7,7 +8,7 @@ public enum TimerProgress {
         let total = end.timeIntervalSince(start)
         guard total > 0 else { return 0 }
         let left = end.timeIntervalSince(now)
-        return min(1, max(0, left / total))
+        return (left / total).clamped(to: 0...1)
     }
 
     /// Compact remaining-time label. The app has one, read by the menu bar, the

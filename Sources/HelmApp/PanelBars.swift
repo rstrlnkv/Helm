@@ -155,7 +155,7 @@ struct PanelTabStrip: View {
                 // to one.
                 withAnimation(HelmMotion.interface) {
                     apply(layout.removingTab(tab.id))
-                    activeTab = min(tabIndex, max(0, layout.tabs.count - 1))
+                    activeTab = tabIndex.clamped(to: 0...max(0, layout.tabs.count - 1))
                 }
             }
             .disabled(layout.tabs.count == 1)

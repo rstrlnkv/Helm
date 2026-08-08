@@ -1,4 +1,5 @@
 import AppKit
+import HelmRuntime
 
 /// The shape Helm wears in the menu bar.
 ///
@@ -102,7 +103,7 @@ public enum MenuBarIcon {
                 return
             }
             strokeWhole(path, width: width, colour: colour.withAlphaComponent(0.25))
-            let remaining = min(1, max(0, progress))
+            let remaining = progress.clamped(to: 0...1)
             if remaining > 0 {
                 stroke(perimeter(of: path), from: 0, to: remaining,
                        width: width, colour: colour)

@@ -205,7 +205,7 @@ struct HelmPanelContent: View {
                       size: .wide, pinned: true)
     }
 
-    private var tabIndex: Int { min(max(0, activeTab), max(0, layout.tabs.count - 1)) }
+    private var tabIndex: Int { activeTab.clamped(to: 0...max(0, layout.tabs.count - 1)) }
 
     private func widgets(_ parts: Candidates) -> [Widget] {
         let slots = layout.tabs.indices.contains(tabIndex) ? layout.tabs[tabIndex].widgets : []

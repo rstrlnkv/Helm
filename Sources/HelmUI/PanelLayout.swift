@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 /// What the panel holds: tabs, their widgets, and the size each one takes.
 ///
@@ -193,8 +194,7 @@ public struct PanelLayout: Equatable, Codable, Sendable {
         guard let from = placement(of: widget), tabs.indices.contains(tab) else { return self }
         var copy = self
         let slot = copy.tabs[from.tab].widgets.remove(at: from.index)
-        let bound = max(0, min(index, copy.tabs[tab].widgets.count))
-        copy.tabs[tab].widgets.insert(slot, at: bound)
+        copy.tabs[tab].widgets.insert(slot, at: index.clamped(to: 0...copy.tabs[tab].widgets.count))
         return copy
     }
 

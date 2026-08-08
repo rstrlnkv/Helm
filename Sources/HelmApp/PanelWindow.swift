@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import HelmRuntime
 import HelmUI
 
 /// Borderless, non-activating panel shown below the status item; stacks each
@@ -149,8 +150,13 @@ private let helmPanelShadowMargin: CGFloat = 28
         let visible = anchorScreen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? .zero
         let margin: CGFloat = 8
         let width = helmPanelWidth + helmPanelShadowMargin * 2
-        var x = statusButtonScreenFrame.midX - width / 2
-        x = min(max(x, visible.minX + margin), visible.maxX - width - margin)
+        let leftmost = visible.minX + margin
+        // Raised to the left edge before the range is formed: with no screen
+        // attached `visible` is `.zero`, and a range whose upper bound is below
+        // its lower one traps on its own initialiser. The panel then sits at the
+        // left edge rather than off it.
+        let rightmost = max(leftmost, visible.maxX - width - margin)
+        let x = (statusButtonScreenFrame.midX - width / 2).clamped(to: leftmost...rightmost)
         let top = statusButtonScreenFrame.minY - 4
         let bottom = visible.minY + margin
         panel.setFrame(NSRect(x: x, y: bottom, width: width, height: max(top - bottom, 120)),

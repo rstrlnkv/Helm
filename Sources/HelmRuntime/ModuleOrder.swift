@@ -20,7 +20,7 @@ public enum ModuleOrder {
         // Remove from the back so earlier indices stay valid.
         for index in source.sorted(by: >) { out.remove(at: index) }
         let landing = destination - source.filter { $0 < destination }.count
-        out.insert(contentsOf: moved, at: min(max(landing, 0), out.count))
+        out.insert(contentsOf: moved, at: landing.clamped(to: 0...out.count))
         return out
     }
 }

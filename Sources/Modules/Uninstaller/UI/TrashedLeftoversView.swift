@@ -268,7 +268,7 @@ struct TrashedLeftoversView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
         }
-        .frame(height: min(max(contentHeight, 80), 420))
+        .frame(height: contentHeight.clamped(to: 80...420))
     }
 
     /// The app is the subject of this window and its files are the predicate, so

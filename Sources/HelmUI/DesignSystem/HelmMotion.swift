@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import HelmRuntime
 
 /// One vocabulary of motion for the whole app.
 ///
@@ -120,7 +121,7 @@ public enum HelmMotion {
     /// time to show it; at the same duration it read as a cut with a blur.
     public static func ringMorph(levels: Int = 1) -> Animation {
         guard !reduced else { return instant }
-        let distance = Double(max(1, min(levels, 4)))
+        let distance = Double(levels.clamped(to: 1...4))
         return .easeInOut(duration: 0.50 + 0.16 * (distance - 1))
     }
 
