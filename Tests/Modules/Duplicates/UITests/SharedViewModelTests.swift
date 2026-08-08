@@ -18,52 +18,12 @@ import Module_Duplicates_Engine
 @MainActor
 final class SharedViewModelTests: XCTestCase {
 
-    /// Parks every "find" until the test releases it, so the interleaving is
-    /// chosen rather than raced.
-    private final class HeldTransport: EngineTransport, @unchecked Sendable {
-        private let lock = NSLock()
-        private var parked: [CheckedContinuation<Data, Never>] = []
-
-        var events: AsyncStream<EngineEvent> { AsyncStream { _ in } }
-
-        func send(_ command: EngineCommand) async throws -> Data {
-            guard command.name == "find" else { return Data() }
-            return await withCheckedContinuation { continuation in
-                lock.lock(); parked.append(continuation); lock.unlock()
-            }
-        }
-
-        var parkedCount: Int { lock.lock(); defer { lock.unlock() }; return parked.count }
-
-        func release(_ index: Int, folder: String) {
-            lock.lock()
-            guard parked.indices.contains(index) else { lock.unlock(); return }
-            let continuation = parked.remove(at: index)
-            lock.unlock()
-            let group = DuplicateGroup(bytes: 1_000_000,
-                                       paths: ["/\(folder)/a", "/\(folder)/b"])
-            continuation.resume(returning: (try? JSONEncoder().encode([group])) ?? Data())
-        }
-    }
-
-    /// In memory: the module's real store is the person's remembered folder,
-    /// and a harness must leave nothing behind.
-    private func store() -> NamespacedStore {
-        let store = NamespacedStore(namespace: "duplicates", backing: InMemoryKeyValueStore())
-        store.set("/some/folder", for: "folder")
-        return store
-    }
-
-    private func untilParked(_ transport: HeldTransport, count: Int) async {
-        for _ in 0..<1000 where transport.parkedCount < count { await Task.yield() }
-    }
-
     /// Two visits to the page, one view model.
     func testTheSameHostViewModelAlwaysGetsTheSameInstance() {
         let host = ModuleViewModel(transport: HeldTransport())
 
-        let first = DuplicatesViewModel.shared(vm: host, store: store())
-        let second = DuplicatesViewModel.shared(vm: host, store: store())
+        let first = DuplicatesViewModel.shared(vm: host, store: duplicatesStore())
+        let second = DuplicatesViewModel.shared(vm: host, store: duplicatesStore())
 
         XCTAssertTrue(first === second,
                       "a second visit to the page built a second view model, "
@@ -75,10 +35,10 @@ final class SharedViewModelTests: XCTestCase {
     /// empty Data from then on. Keyed to the host, not merely "exists".
     func testANewHostViewModelIsNotAnsweredByTheOldInstance() {
         let old = ModuleViewModel(transport: HeldTransport())
-        let first = DuplicatesViewModel.shared(vm: old, store: store())
+        let first = DuplicatesViewModel.shared(vm: old, store: duplicatesStore())
 
         let new = ModuleViewModel(transport: HeldTransport())
-        let second = DuplicatesViewModel.shared(vm: new, store: store())
+        let second = DuplicatesViewModel.shared(vm: new, store: duplicatesStore())
 
         XCTAssertFalse(first === second, "the page came back talking to a dead engine")
         XCTAssertTrue(second.vm === new, "the cached instance is not the one this page hosts")
@@ -90,13 +50,13 @@ final class SharedViewModelTests: XCTestCase {
     func testASearchRunningWhenThePageLeavesLandsInTheInstanceThePageComesBackTo() async {
         let transport = HeldTransport()
         let host = ModuleViewModel(transport: transport)
-        var page: DuplicatesViewModel? = DuplicatesViewModel.shared(vm: host, store: store())
+        var page: DuplicatesViewModel? = DuplicatesViewModel.shared(vm: host, store: duplicatesStore())
         page?.search()
         await untilParked(transport, count: 1)
         XCTAssertEqual(page?.phase, .searching)
 
         page = nil                                  // the sidebar click
-        let returned = DuplicatesViewModel.shared(vm: host, store: store())
+        let returned = DuplicatesViewModel.shared(vm: host, store: duplicatesStore())
         transport.release(0, folder: "kept")
         for _ in 0..<200 { await Task.yield() }
 
@@ -109,7 +69,7 @@ final class SharedViewModelTests: XCTestCase {
     /// large folder is nobody's once the module is gone.
     func testSwitchingTheModuleOffDropsTheCachedInstance() async {
         let host = ModuleViewModel(transport: HeldTransport())
-        let first = DuplicatesViewModel.shared(vm: host, store: store())
+        let first = DuplicatesViewModel.shared(vm: host, store: duplicatesStore())
 
         NotificationCenter.default.post(name: .helmModuleDisabled,
                                         object: DuplicatesDescriptor.id.rawValue)
@@ -119,7 +79,7 @@ final class SharedViewModelTests: XCTestCase {
         var second = first
         for _ in 0..<1000 where second === first {
             await Task.yield()
-            second = DuplicatesViewModel.shared(vm: host, store: store())
+            second = DuplicatesViewModel.shared(vm: host, store: duplicatesStore())
         }
         XCTAssertFalse(first === second,
                        "the module was switched off and its cached view model stayed reachable")
