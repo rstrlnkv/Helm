@@ -47,6 +47,12 @@ public enum HelmReveal {
     /// it is a package, so the bundle decision is testable without a real `.app`.
     /// It returns `nil` for a folder that is not there — an unmounted volume,
     /// most often — and then there is nothing to reveal.
+    ///
+    /// **This is also the answer to "will the button do anything".** `nil` here
+    /// is the whole of "nothing can be shown", it is pure, and it can be asked
+    /// *before* the button is drawn — which is worth more than a report after
+    /// somebody has pressed one. `inFinder` used to return a `Bool` for that
+    /// purpose and no caller ever read it.
     public static func target(
         for path: String,
         exists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) },
@@ -71,30 +77,32 @@ public enum HelmReveal {
         return t.isDirectory && !t.isPackage ? .open(folder) : .select(folder)
     }
 
-    /// Reveal `path`, and bring Finder forward whichever way it went. Returns
-    /// whether anything could be shown: `false` when the path and its enclosing
-    /// folder are both gone (an unmounted volume), so a caller can say so rather
-    /// than press a button that does nothing.
+    /// Reveal `path`, and bring Finder forward whichever way it went.
+    ///
+    /// It answers nothing, because it has nothing to answer with. This returned
+    /// a `Bool` documented as "whether anything could be shown, so a caller can
+    /// say so" — and all ten call sites dropped it, with `@discardableResult`
+    /// there to make sure no build ever mentioned that. The half of it that
+    /// could be true is `target(for:)`'s, and that one is pure, tested, and
+    /// available before the button is drawn; the half that was measured here
+    /// could not be, because `activateFileViewerSelecting` reports nothing at
+    /// all, so the selecting arm answered `true` by writing `true`.
     ///
     /// Finder is activated by name rather than by `NSWorkspace.shared.open`ing
     /// it: activating the running instance raises the window that was just
     /// opened, and asking to open Finder again does not.
-    @MainActor @discardableResult public static func inFinder(_ path: String) -> Bool {
-        let shown: Bool
+    @MainActor public static func inFinder(_ path: String) {
         switch target(for: path) {
         case .select(let url):
             NSWorkspace.shared.activateFileViewerSelecting([url])
-            shown = true
         case .open(let folder):
             // `open` launches nothing here — `target` only ever hands `.open` a
-            // plain directory. Its Bool is the honest answer for an unmounted
-            // volume, which selecting cannot report.
-            shown = NSWorkspace.shared.open(folder)
+            // plain directory.
+            NSWorkspace.shared.open(folder)
         case nil:
-            return false
+            return
         }
         NSRunningApplication.runningApplications(
             withBundleIdentifier: "com.apple.finder").first?.activate()
-        return shown
     }
 }
