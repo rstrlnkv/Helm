@@ -24,7 +24,14 @@ MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
 
 echo "==> Building release binary"
-swift build -c release
+# The product, not the package. A bare `swift build -c release` builds every
+# target in the manifest, and one of them is `HelmTestSupport` — a plain target
+# that imports XCTest, which resolves out of the Xcode-only framework path. So a
+# release build needed a full Xcode install where a toolchain had been enough,
+# and HelmTestSupport.swiftmodule landed in Release beside HelmApp. Declaring
+# `products:` does not fix this by itself (measured: a bare build still builds
+# all 466 steps); naming the product is what does — 187 steps, and no harness.
+swift build -c release --product HelmApp
 
 echo "==> Assembling $APP_DIR (idempotent)"
 rm -rf "$APP_DIR"
