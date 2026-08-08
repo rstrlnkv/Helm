@@ -693,4 +693,4 @@
 "The welcome tour lets you pick what you want. Each module’s screen now carries a switch, so you can keep or drop it while you are being introduced to it — and the opening screen asks whether Helm should start with your Mac. The switch starts where the module already stood, so skipping the tour changes nothing." = "欢迎引导现在让你挑选。每个模块的页面都有开关，第一屏会问你是否跟随 Mac 启动 Helm。开关的初始位置就是模块原有的状态，所以跳过不会改变任何东西。";
 "Helm no longer asks for permissions the moment you install it. It used to request Full Disk Access and Accessibility on the very first launch, before you had asked it to do anything. Each module now asks for what it needs on its own page, when it needs it — and the old notice still appears if a permission you had granted goes away." = "Helm 不再在安装后立即索要权限。以前它会在首次启动时就请求完全磁盘访问和辅助功能权限。现在每个模块在自己的页面上按需索要。而如果你已授予的权限消失了，原来的提示依然会出现。";
 "Hardware" = "硬件";
-"Show permissions" = "显示权限";
+"Show all" = "全部显示";

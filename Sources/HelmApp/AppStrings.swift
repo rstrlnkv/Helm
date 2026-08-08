@@ -67,7 +67,16 @@ enum AppStr {
     /// filter menu that way, where the word is a standing choice rather than an
     /// action — Russian tells the two apart («Показывать» against «Показать»)
     /// and one key cannot hold both.
-    static var showPermissions: String { L("Show permissions") }
+    ///
+    /// **"All", not "permissions": the word is already in the line beside it.**
+    /// `Show permissions` was measured in English only. Hosted offscreen at the
+    /// panel's 276 pt across all eight, the German button took 154 pt of it and
+    /// left the notice 91 pt and four lines; French 151, Russian 141, and five
+    /// of the eight wrapped to three lines or more. `Show all` is 94 pt at its
+    /// widest (Spanish), leaves the notice 151 pt, and wraps to two lines in
+    /// seven languages and one in Chinese — and the count it sits beside
+    /// already says permissions.
+    static var showPermissions: String { L("Show all") }
 
     /// The one thing on the settings page that is wrong right now, said above
     /// everything else. Counted from `permissions` rather than `inertWithout`:

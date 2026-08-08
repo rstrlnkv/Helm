@@ -693,4 +693,4 @@
 "The welcome tour lets you pick what you want. Each module’s screen now carries a switch, so you can keep or drop it while you are being introduced to it — and the opening screen asks whether Helm should start with your Mac. The switch starts where the module already stood, so skipping the tour changes nothing." = "歓迎ツアーで選べるようになりました。各モジュールの画面にスイッチがあり、最初の画面では Mac と一緒に Helm を起動するかを尋ねます。初期状態はもとのままなので、スキップしても何も変わりません。";
 "Helm no longer asks for permissions the moment you install it. It used to request Full Disk Access and Accessibility on the very first launch, before you had asked it to do anything. Each module now asks for what it needs on its own page, when it needs it — and the old notice still appears if a permission you had granted goes away." = "インストール直後に権限を求めることはなくなりました。以前は初回起動時にフルディスクアクセスとアクセシビリティを要求していました。今は各モジュールが必要なときに自分のページで尋ねます。そして、いったん与えた許可がなくなったときは、これまでどおり通知が出ます。";
 "Hardware" = "ハードウェア";
-"Show permissions" = "アクセス権を表示";
+"Show all" = "すべて表示";
