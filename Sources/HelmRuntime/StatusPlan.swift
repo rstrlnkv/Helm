@@ -1,11 +1,20 @@
 import Foundation
+import HelmContract
 
 /// Which module's appearance the menu bar draws, and whether it moves.
 ///
 /// Pulled out of `StatusItemController` so it can be asked questions without a
-/// status bar, a run loop or a real module. It lives beside `StatusAppearance`
-/// rather than in `HelmRuntime` because `HelmRuntime` does not depend on
-/// `HelmContract`, and one decision function is not worth that edge.
+/// status bar, a run loop or a real module.
+///
+/// It lived in `HelmContract` under a note saying `HelmRuntime` does not depend
+/// on `HelmContract`, which is the edge the other way round: `HelmRuntime` has
+/// depended on the contract since `EngineReply` needed to log, and
+/// `ARCHITECTURE.md` § Targets calls that "that one edge, never the other way".
+/// Nothing here is a wire type. It is four decisions the *host* makes about the
+/// menu bar out of what modules reported, which is the plumbing `HelmRuntime`
+/// is for — and every consumer already imports it. What it cost while it sat on
+/// the wrong side of that edge is two clamps spelled out by hand under
+/// paragraphs explaining that the shared one could not be reached.
 public enum StatusPlan {
     /// How long a spin lasts. The module that asks for one uses this to compute
     /// `spinUntil`; the host needs it to know which frame belongs to now. One
@@ -78,16 +87,19 @@ public enum StatusPlan {
     /// ran first. `spinUntil` arrives from a module over JSON as a `Date`, which
     /// is a `Double` of seconds; nothing between that payload and this line
     /// bounds it, so the same family of crashes that `Clamped` was written for
-    /// reached the menu bar. The helper cannot be used here — `HelmRuntime`
-    /// depends on this target — so the order is spelled out instead.
+    /// reached the menu bar. That is `clamped(to:)`, and it is called rather
+    /// than spelled out now that this file is on the same side of the edge.
     ///
     /// The empty array is refused first for the same arithmetic: `phase` is
     /// infinite for a wild `spinUntil`, `infinity * 0` is NaN, and a NaN passes
-    /// through `min` and `max` untouched to trap at the conversion anyway.
+    /// through `min` and `max` untouched — through `clamped(to:)` too, which
+    /// says so about itself — to trap at the conversion anyway. Past that guard
+    /// `frameCount` is at least 1, so the product is infinite at worst and the
+    /// plain clamp is the whole answer.
     public static func frame(spinUntil: Date?, now: Date, frameCount: Int) -> Int? {
         guard let spinUntil, spinUntil > now, frameCount > 0 else { return nil }
         let phase = 1 - spinUntil.timeIntervalSince(now) / spinDuration
-        return Int(min(max(phase * Double(frameCount), 0), Double(frameCount - 1)))
+        return Int((phase * Double(frameCount)).clamped(to: 0...Double(frameCount - 1)))
     }
 
     /// Everything that changes the drawn icon, in one string, so the host can
@@ -111,16 +123,14 @@ public enum StatusPlan {
     /// The bounds are the ones the icon draws with, so the key still says what
     /// the icon shows: `MenuBarIcon.make` clamps to 0…1, and it strokes no arc
     /// for a value that is not a number — the same nothing it draws at 0.
-    /// `HelmRuntime`'s `clamped(to:whenNotANumber:)` is that sentence in one
-    /// call and cannot be used here, because `HelmRuntime` depends on this
-    /// target; as with `frame`, the order is spelled out instead.
+    /// `clamped(to:whenNotANumber:)` is that sentence in one call, and it is
+    /// the call now rather than the sentence.
     public static func redrawKey(style: String, size: String, tint: String?,
                                  progress: Double?, title: String?, frame: Int?,
                                  spinTint: String? = nil) -> String {
         let part = { (value: String?) in value.map { "=" + $0 } ?? "-" }
         let bucket = progress.map { p in
-            let drawn = p.isNaN ? 0 : min(max(p, 0), 1)
-            return "=\(Int((drawn * 100).rounded()))"
+            "=\(Int((p.clamped(to: 0...1, whenNotANumber: 0) * 100).rounded()))"
         } ?? "-"
         return [style, size, part(tint), bucket, part(title),
                 frame.map { "=\($0)" } ?? "-", part(spinTint)].joined(separator: "|")

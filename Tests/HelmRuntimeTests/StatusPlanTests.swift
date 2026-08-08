@@ -1,5 +1,6 @@
 import XCTest
-@testable import HelmContract
+import HelmContract
+@testable import HelmRuntime
 
 final class StatusPlanTests: XCTestCase {
     private let now = Date(timeIntervalSince1970: 2_000_000)
