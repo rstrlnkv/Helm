@@ -341,10 +341,14 @@ struct AboutHelmView: View {
 
     /// "Checked 2 hours ago" from the stored timestamp, or a never-checked note.
     private var lastCheckedText: String {
-        let stamp = AppSettings.store.int("lastUpdateCheck", default: 0)
-        guard stamp > 0 else { return AppStr.neverChecked }
-        let when = HelmDates.relative(Date(timeIntervalSince1970: TimeInterval(stamp)))
-        return AppStr.lastChecked(when)
+        let stamp = AppSettings.store.int(UpdateService.lastCheckKey, default: 0)
+        // The same reading `checkOnLaunch` makes of the same key, so the line
+        // cannot say "checked 2 hours ago" about a number that stopped the
+        // check from running.
+        guard let when = UpdateCheck.lastChecked(stored: stamp, now: Date()) else {
+            return AppStr.neverChecked
+        }
+        return AppStr.lastChecked(HelmDates.relative(when))
     }
 
     /// Always spinning: every state that draws this line is work in flight. It

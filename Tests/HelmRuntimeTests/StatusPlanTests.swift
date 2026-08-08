@@ -1,5 +1,6 @@
 import XCTest
-@testable import HelmContract
+import HelmContract
+@testable import HelmRuntime
 
 final class StatusPlanTests: XCTestCase {
     private let now = Date(timeIntervalSince1970: 2_000_000)
@@ -257,6 +258,43 @@ final class StatusPlanTests: XCTestCase {
                                                      progress: 0.5, title: "12:00", frame: nil))
         XCTAssertNotEqual(base, StatusPlan.redrawKey(style: "ring", size: "medium", tint: "green",
                                                      progress: 0.5, title: "11:59", frame: nil))
+    }
+
+    /// The defect the `frame` fix closed, fifteen lines below it. The bucket is
+    /// `Int((progress * 100).rounded())` and `Int(_:)` of a `Double` **traps**
+    /// outside `Int`'s range and on a value that is not a number — before
+    /// `MenuBarIcon.make` is reached, so the key traps first, on a status tick
+    /// that runs once a second.
+    ///
+    /// `timerProgress` is a field of a public struct that any module's
+    /// descriptor fills in; nothing between that and this line says how large
+    /// it may be, which is the argument `frame` already makes about
+    /// `spinUntil`.
+    ///
+    /// The bounds are the ones the icon draws with, so the key says what the
+    /// icon shows: `MenuBarIcon.make` clamps to 0…1 and refuses to stroke an
+    /// arc for a value that is not a number, which is the same nothing it draws
+    /// at 0.
+    func testAProgressNoModuleCouldMeanIsStillOneKey() {
+        let key = { (progress: Double) in
+            StatusPlan.redrawKey(style: "ring", size: "medium", tint: "green",
+                                 progress: progress, title: nil, frame: nil)
+        }
+        XCTAssertEqual(key(.nan), key(0), "a NaN draws no arc, which is what 0 draws")
+        XCTAssertEqual(key(1e300), key(1), "past the bound is the bound, as the ring draws it")
+        XCTAssertEqual(key(.infinity), key(1))
+        XCTAssertEqual(key(-.infinity), key(0))
+    }
+
+    /// And the control, so the bounding above cannot be satisfied by a key that
+    /// has stopped reading the countdown at all.
+    func testTheBucketStillFollowsAnOrdinaryCountdown() {
+        let key = { (progress: Double) in
+            StatusPlan.redrawKey(style: "ring", size: "medium", tint: "green",
+                                 progress: progress, title: nil, frame: nil)
+        }
+        XCTAssertNotEqual(key(0), key(1))
+        XCTAssertNotEqual(key(0.25), key(0.75))
     }
 
     /// A title that ends and a title that reads "-" are different icons; so are

@@ -142,8 +142,19 @@ public enum HelmTrash {
 
         for (index, path) in ordered.enumerated() {
             let url = URL(fileURLWithPath: path)
+            // Weighed against a slate of this path's own, folded into the
+            // batch's ledger only where the path really goes.
+            //
+            // Weighing *writes* — that is how an allocation wearing several
+            // names is charged once — and it happens before the recheck below,
+            // which cannot move: being the last thing before the move is the
+            // whole of its value. So a path that is then refused had already
+            // spent the ledger, and the next name for the same allocation was
+            // weighed as something already counted and added 0 — a batch
+            // reporting that it freed nothing about a file it really did trash.
+            var slate = counted
             // Read before the move: afterwards the URL points at nothing.
-            let size = FileWeight.allocated(of: url, countingOnce: &counted)
+            let size = FileWeight.allocated(of: url, countingOnce: &slate)
             // Read the ancestry again, now, against what the gate approved. A
             // swapped symlink lands on a *different existing* directory object, so
             // a redirected subtree stops here rather than in someone's Documents.
@@ -164,6 +175,9 @@ public enum HelmTrash {
             do {
                 try trashing(url)
                 removed.append(path)
+                // The one place the batch's ledger grows: what it has charged
+                // is exactly what it has taken.
+                counted = slate
                 freed += size
             } catch let error as NSError
                 where error.code == NSFileNoSuchFileError

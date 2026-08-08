@@ -3,6 +3,7 @@
 
 import Foundation
 import HelmContract
+import HelmRuntime
 
 /// One firing of a VPN rule: Helm raised or dropped a tunnel by itself.
 ///

@@ -58,7 +58,14 @@ public enum RingUnfold {
     /// same progress, which is 0 exactly where it is invisible anyway.
     public static func opacity(isPivot: Bool, isDescendant: Bool, isSpare: Bool = false,
                                progress t: Double) -> Double {
-        if isSpare { return isDescendant ? t.clamped(to: 0...1) : 0 }
+        // Solid for a progress that is not a number, which is what this line
+        // answered as `max(0, min(1, t))` — `Swift.min(1, .nan)` is 1 — and
+        // what the shared clamp stopped answering, because `min(max(…))` hands
+        // a NaN back. The spare level is what the person is about to be looking
+        // at; an unreadable progress is not a reason to draw a hole where they
+        // drilled. An infinite one keeps its bound, which is the same 0 and 1
+        // the old spelling gave.
+        if isSpare { return isDescendant ? t.clamped(to: 0...1, whenNotANumber: 1) : 0 }
         if isDescendant { return 1 }
         return max(0, 1 - t)
     }

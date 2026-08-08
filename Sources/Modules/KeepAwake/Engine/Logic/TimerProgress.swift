@@ -4,11 +4,21 @@ import HelmRuntime
 /// Fraction of a timed session that is still remaining (1 → just started,
 /// 0 → finished). Drives the menu-bar ring drawn as a countdown arc.
 public enum TimerProgress {
+    /// Not a number is *finished*, which is what this line answered while it
+    /// was spelled `min(1, max(0, x))`: `Swift.max(0, .nan)` is 0, and the
+    /// shared clamp hands NaN back instead. Two dates far enough apart overflow
+    /// their own subtraction, `left / total` is then `inf / inf`, and `total >
+    /// 0` cannot see that coming. What comes out of here is
+    /// `StatusAppearance.timerProgress`, which the host converts to an `Int`
+    /// once a second.
+    ///
+    /// Only NaN: an infinite fraction is more of the session left than the
+    /// session ever was, and the bound already answers that with a full ring.
     public static func remainingFraction(now: Date, start: Date, end: Date) -> Double {
         let total = end.timeIntervalSince(start)
         guard total > 0 else { return 0 }
         let left = end.timeIntervalSince(now)
-        return (left / total).clamped(to: 0...1)
+        return (left / total).clamped(to: 0...1, whenNotANumber: 0)
     }
 
     /// Compact remaining-time label: "9:05" under an hour, "1:04:09" above it,

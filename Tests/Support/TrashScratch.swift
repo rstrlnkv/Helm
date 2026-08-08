@@ -42,8 +42,16 @@ public extension XCTestCase {
     /// *leaves* it — but a teardown that only fires once is the shape this
     /// suite has already paid for twice, and there is no second shape worth
     /// keeping for the sake of 200 syscalls.
-    func trashScratchDirectory(_ label: String) -> URL {
-        scratchDirectory(label)
+    ///
+    /// **The blame is forwarded, or it stops here.** `scratchDirectory`'s
+    /// teardown asserts against the `file:`/`line:` it was called with, and a
+    /// wrapper that lets them default reports every leak in the four trash
+    /// tests at this line instead of at the test that leaked — measured, by
+    /// inverting that assertion: `TrashScratch.swift:46` four times over.
+    func trashScratchDirectory(_ label: String,
+                               file: StaticString = #filePath,
+                               line: UInt = #line) -> URL {
+        scratchDirectory(label, file: file, line: line)
     }
 
     /// `"one.bin"` → `"one-<uuid>.bin"`, keeping the extension so a test about

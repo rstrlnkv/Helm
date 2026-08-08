@@ -29,12 +29,12 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   for the same case.
 
 ### Changed
-- **The panel is arranged in the panel.** «Настроить панель» in the footer turns
+- **The panel is arranged in the panel.** “Edit panel” in the footer turns
   the grid into something you can rearrange: each widget grows a size control
   (1×1, 2×1, 2×N) and a way out, a gallery under it offers what is not there,
   and tabs appear from the second one. Keep Awake, VPN, Autopilot, Disk and
-  Layout answer at more than one size; Disk shows how much room is left out of
-  how much, which costs a `statfs` rather than a scan. The permissions notice
+  Keyboard come in more than one size; Disk shows how much of the disk is still
+  free, which costs a `statfs` rather than a scan. The permissions notice
   arrives by itself and leaves with the grant.
 - **One arrangement for everything.** The order and sections composed in Settings
   now decide the panel as well as the window's sidebar and the icon menu. The
@@ -56,6 +56,12 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   arranged.
 
 ### Fixed
+- **A panel with one tab stops 8 pt short of the screen no more.** The card
+  reserved room for a gap under the tab strip whether or not the strip was
+  drawn, and one tab draws none — so a panel tall enough to need scrolling
+  started scrolling 8 pt earlier than it had to, and the tile at the bottom was
+  clipped that much higher, with the card leaving a strip of empty screen
+  underneath it.
 - **A module cannot bring the app down through the menu bar's spinner.** The
   status item works out which still of the spin belongs to now, and it bounded
   the result *after* converting it to an integer — where the bounds protect
@@ -119,6 +125,14 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   Duplicates have counted a file once per batch since their own pass; the
   Uninstaller kept a removal loop of its own and never learned it. All four share
   the loop now, which is also where the two fixes above come from.
+- **And a removal that refused one item no longer understates what the rest
+  freed.** Counting a file once per batch means keeping a note of what has been
+  counted, and the note was written when a path was *weighed* — which happens
+  before Helm's last look at where the path leads, and so before it can be
+  refused. A refused item therefore used up the note: another name for the same
+  file, later in the same batch, was treated as already counted and added
+  nothing, and a removal that really did trash something could report freeing
+  0 B. Only what actually leaves is counted now.
 - **Removing an app that is still running waits for it to quit.** `quit` only
   asks, and the bundle was moved after a fixed 800 ms — a number standing where
   an answer was available. macOS lets a running app's bundle be moved: a slow app

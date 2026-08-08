@@ -26,10 +26,19 @@ public enum HelmGlyphCatalogue {
             ]),
             // Not "System": that word is a tag on four other screens, meaning a
             // file macOS owns — and its translations are adjectival there
-            // («Системный», "Del sistema"). One English key means one thing, and
-            // these eight symbols are hardware anyway.
+            // («Системный», "Del sistema"). One English key means one thing.
+            //
+            // The name is kept and the two symbols that were not hardware are
+            // the ones that went: a gear and a wrench were the only members a
+            // reader would have had to excuse. They are also Helm's own chrome
+            // — `gearshape` marks the Settings page in the sidebar, in its
+            // header and in the panel's footer, `wrench.and.screwdriver` the
+            // panel's edit button — so a tab wearing one read as a control of
+            // the app rather than as somebody's tab. A keyboard and a display
+            // in their place, which keeps every category at two full rows of
+            // the four-wide grid.
             .init(id: "hardware", title: L("Hardware"), symbols: [
-                "gearshape", "wrench.and.screwdriver", "cpu", "memorychip",
+                "keyboard", "display", "cpu", "memorychip",
                 "internaldrive", "externaldrive", "gauge.with.dots.needle.33percent", "battery.100",
             ]),
             .init(id: "network", title: L("Network"), symbols: [

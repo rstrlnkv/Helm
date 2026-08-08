@@ -31,6 +31,34 @@ final class TimerProgressTests: XCTestCase {
     func testZeroLengthSessionIsFinished() {
         XCTAssertEqual(TimerProgress.remainingFraction(now: start, start: start, end: start), 0, accuracy: 0.001)
     }
+
+    /// A division of two dates is not always a number. Dates far enough apart
+    /// overflow their own subtraction to infinity, and `left / total` is then
+    /// `inf / inf` — **NaN**, which `total > 0` cannot see coming and which
+    /// `min`/`max` hand straight back. This fraction becomes
+    /// `StatusAppearance.timerProgress`, and the host's `redrawKey` converts it
+    /// to an `Int` on every status tick.
+    ///
+    /// Zero, because that is what this line answered for four releases as
+    /// `min(1, max(0, x))` — `Swift.max(0, .nan)` is 0 — and because an empty
+    /// ring is the honest drawing for a countdown nobody can measure.
+    func testDatesThatDoNotDivideReadAsFinished() {
+        let far = Date(timeIntervalSinceReferenceDate: .greatestFiniteMagnitude)
+        let ago = Date(timeIntervalSinceReferenceDate: -.greatestFiniteMagnitude)
+        XCTAssertEqual(TimerProgress.remainingFraction(now: ago, start: ago, end: far), 0)
+    }
+
+    /// And a fraction that *is* a number keeps the bound rather than the
+    /// answer for NaN. `left / total` overflows to +infinity when the deadline
+    /// is far enough past `now`, which means more of the session is left than
+    /// the session ever was — a full ring, which is what the bound already
+    /// says. Refusing every non-finite value alike would draw that as an empty
+    /// one.
+    func testAFractionPastEveryBoundIsAFullRing() {
+        let far = Date(timeIntervalSinceReferenceDate: .greatestFiniteMagnitude)
+        let ago = Date(timeIntervalSinceReferenceDate: -.greatestFiniteMagnitude)
+        XCTAssertEqual(TimerProgress.remainingFraction(now: ago, start: start, end: far), 1)
+    }
 }
 
 /// One countdown, wherever it is read.

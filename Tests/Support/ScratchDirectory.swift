@@ -30,6 +30,15 @@ public extension XCTestCase {
     /// directory is gone**: gone now is not gone, and the yields are what give a
     /// pending write its chance to arrive while somebody is still watching.
     ///
+    /// `ScratchDirectoryDrainTests` is what makes the count a rule. Until it
+    /// existed `0..<200` could be `0..<1` — the shape all 42 hand-written
+    /// teardowns had — with the whole suite still green, because nothing in it
+    /// wrote into a scratch directory late enough to need a second pass. Note
+    /// what that test had to do to see it: the assertion below can *pass* while
+    /// the directory is left behind, since the write arrives after it, so the
+    /// proof lives in a teardown registered before this one and therefore run
+    /// after it.
+    ///
     /// The directory is created before it is handed over, because a test that
     /// writes into it should not have to; a caller that wants it absent — a
     /// store that makes its own — is unaffected, since making it twice is not

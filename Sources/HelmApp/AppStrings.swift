@@ -67,7 +67,16 @@ enum AppStr {
     /// filter menu that way, where the word is a standing choice rather than an
     /// action — Russian tells the two apart («Показывать» against «Показать»)
     /// and one key cannot hold both.
-    static var showPermissions: String { L("Show permissions") }
+    ///
+    /// **"All", not "permissions": the word is already in the line beside it.**
+    /// `Show permissions` was measured in English only. Hosted offscreen at the
+    /// panel's 276 pt across all eight, the German button took 154 pt of it and
+    /// left the notice 91 pt and four lines; French 151, Russian 141, and five
+    /// of the eight wrapped to three lines or more. `Show all` is 94 pt at its
+    /// widest (Spanish), leaves the notice 151 pt, and wraps to two lines in
+    /// seven languages and one in Chinese — and the count it sits beside
+    /// already says permissions.
+    static var showPermissions: String { L("Show all") }
 
     /// The one thing on the settings page that is wrong right now, said above
     /// everything else. Counted from `permissions` rather than `inertWithout`:
@@ -348,9 +357,12 @@ enum AppStr {
     /// A name, so it is written the way it is written — in Cyrillic where the
     /// reader has an alphabet for it, transliterated where they do not. Not a
     /// translation: nobody translates a name, they only spell it.
-    static var authorName: String {
-        L("Rostislav Strelnikov", [.ru: "Ростислав Стрельников"])
-    }
+    ///
+    /// In the `.lproj` files like everything else. It was an inline table with
+    /// one row in it, which is six languages absent from a table nothing
+    /// guards — the exact shape the changelog's twenty tables had when one of
+    /// them shipped English to six languages.
+    static var authorName: String { L("Rostislav Strelnikov") }
     static var close: String { L("Close") }
     static var quit: String { L("Quit") }
     /// Explains the tint rule without naming a specific module (the icon is no

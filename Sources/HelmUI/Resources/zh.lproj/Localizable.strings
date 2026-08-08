@@ -137,7 +137,7 @@
 "Downloading…" = "下载中…";
 "Drag modules into the order you want them in the menu-bar panel." = "拖动模块即可调整其在菜单栏面板中的顺序。";
 "Duplicates" = "重复文件";
-"Duplicates can basket every extra at once, and Space shows you a file before you bin it. “All extras to basket” does across every group what the per-group button did — one copy of everything always stays, which is why it is not called “Select all”. Beside “Move to Trash” there is now a “Clear”, so one press can undo one press." = "「重复文件」可以一次把所有多余的副本放入收集篮，按空格键可在删除前预览文件。每组始终保留一份，所以按钮不叫“全选”。“移到废纸篓”旁边新增了“清空”。";
+"Duplicates can basket every extra at once, and Space shows you a file before you bin it. “All extras to basket” does across every group what the per-group button did — one copy of everything always stays, which is why it is not called “Select all”. Beside “Move to Trash” there is now a “Clear”, so one press can undo one press." = "“重复文件”可以一次把所有多余的副本放入收集篮，按空格键可在删除前预览文件。每组始终保留一份，所以按钮不叫“全选”。“移到废纸篓”旁边新增了“清空”。";
 "Duplicates keeps the copy that was there first, by the same \"Date Added\" the Finder shows. It used to keep whichever path came first alphabetically, so a copy on the Desktop beat the filed original and Helm offered the wrong one for deletion." = "“重复文件”会保留更早存在的那份，依据访达同样的“添加日期”，而不是路径的字母顺序。";
 "Each login item now offers what is actually possible: turn it off, show it in Finder, or delete it — with a word about why, when a password would be needed." = "每个登录项只提供实际可行的操作：关闭、在访达中显示或删除——需要密码时会说明原因。";
 "Each module’s saved data and the diagnostics log go to the Trash, where you can get them back. Your preferences — which modules are on, their order, your shortcuts — are forgotten for good. Helm restarts and greets you as it did the first time." = "每个模块保存的数据和诊断日志会移到废纸篓，你可以从那里取回。设置本身（哪些模块已开启、它们的顺序、你的快捷键）则会被永久遗忘。Helm 会重启，并像第一次那样迎接你。";
@@ -390,7 +390,7 @@
 "Rename" = "重命名";
 "Renaming scheme" = "重命名方式";
 "Reset" = "重置";
-"Reset all settings, in Settings → Settings. Helm goes back to how it was just after installing: preferences forgotten, each module’s saved state and the diagnostics log in the Trash — not deleted outright, so you can get them back — and the welcome tour again at the next launch. Access you granted in System Settings is macOS’s and is left alone." = "在设置 → 「设置」中可以重置所有设置。Helm 会回到刚安装完的状态；已保存的内容会移到废纸篓，而不是直接删除。你在系统设置中授予的权限不受影响。";
+"Reset all settings, in Settings → Settings. Helm goes back to how it was just after installing: preferences forgotten, each module’s saved state and the diagnostics log in the Trash — not deleted outright, so you can get them back — and the welcome tour again at the next launch. Access you granted in System Settings is macOS’s and is left alone." = "在设置 → “设置”中可以重置所有设置。Helm 会回到刚安装完的状态；已保存的内容会移到废纸篓，而不是直接删除。你在系统设置中授予的权限不受影响。";
 "Reset all settings?" = "要重置所有设置吗？";
 "Reset all settings…" = "重置所有设置…";
 "Reset and Restart" = "重置并重启";
@@ -454,7 +454,7 @@
 "Stop stops the disk scan. Opening a folder mid-scan used to start a second one that took over, leaving the first walking the disk with nothing able to stop it and the ring flickering between the two. And the duplicate finder’s “freed” figure now counts the copies that actually leave." = "停止能真正停止磁盘扫描；重复文件的“可释放”数字按实际会删除的副本计算。";
 "Stop watching" = "停止监视";
 "Stopped" = "已停止";
-"Stopping a disk scan keeps what it measured. It used to throw the ring away and put you back at the volume picker, after a minute of watching it grow. The tree stays now, marked as stopped — and because a folder in an unfinished scan can hold more than it shows, it is not kept for next time." = "停止磁盘扫描后，已经测量的部分会保留。以前圆环会消失并退回到宗卷选择，看着它增长的那一分钟就白费了。现在树会保留并标记为「已停止」；由于未完成的扫描中文件夹的实际大小可能大于显示值，它不会留到下一次。";
+"Stopping a disk scan keeps what it measured. It used to throw the ring away and put you back at the volume picker, after a minute of watching it grow. The tree stays now, marked as stopped — and because a folder in an unfinished scan can hold more than it shows, it is not kept for next time." = "停止磁盘扫描后，已经测量的部分会保留。以前圆环会消失并退回到宗卷选择，看着它增长的那一分钟就白费了。现在树会保留并标记为“已停止”；由于未完成的扫描中文件夹的实际大小可能大于显示值，它不会留到下一次。";
 "Style" = "样式";
 "Switched on, but macOS is withholding what it needs" = "已开启，但 macOS 未授予它所需的权限";
 "Switching VPN off and back on could leave the tile and the settings page silently frozen, answering nothing, until Helm was relaunched." = "关闭再打开 VPN 后，图块和设置页面可能会悄悄卡死、毫无响应，直到重启 Helm 才恢复。";
@@ -672,9 +672,9 @@
 "Nothing on this tab yet" = "此标签页还是空的";
 "Press the pencil below to add a widget." = "点按下方的铅笔即可添加小组件。";
 "Right-click the menu-bar icon to add a widget." = "右键点按菜单栏图标即可添加小组件。";
-"The panel is arranged by hand. Pick a widget up and it follows the pointer; the others slide aside; letting go sets it down where the space opened. Sizes, tabs with icons, and a list of everything that is not a tile." = "面板可以直接用手编排：拿起一个小组件，它会跟着指针走，其他小组件让开，松手后它落在空出的位置。还有尺寸、带图标的标签页，以及一份列出所有不是小组件的清单。";
+"Widgets are moved by hand. Pick one up and it follows the pointer; the others slide aside; letting go sets it down where the space opened." = "小组件可以直接用手挪动：拿起一个，它会跟着指针走，其他小组件让开，松手后它落在空出的位置。";
 "About Helm says who wrote it, with a way to reach him." = "“关于 Helm”写明了作者，并提供联系方式。";
-"The panel is arranged in the panel. “Configure panel” in its footer: give a widget one of three sizes, take one off, add one from the gallery, make a tab. Keep Awake, VPN, Autopilot, Disk and Layout answer at more than one size, and Disk shows how much room is left out of how much." = "面板就在面板里编排。底部的“设置面板”：给小组件选三种尺寸之一、移除、从图库添加、新建标签页。“保持唤醒”、VPN、“自动整理”、“磁盘”和“键盘”支持不止一种尺寸，“磁盘”还会显示总共多少、还剩多少。";
+"The panel is arranged in the panel. “Edit panel” in its footer: give a widget one of three sizes, take one off, add one from the gallery, make a tab. Keep Awake, VPN, Autopilot, Disk and Keyboard come in more than one size, and Disk shows how much of the disk is still free." = "面板就在面板里编排。底部的“编辑面板”：给小组件选三种尺寸之一、移除、从图库添加、新建标签页。“保持唤醒”、VPN、“自动整理”、“磁盘”和“键盘”支持不止一种尺寸，“磁盘”还会显示磁盘还剩多少可用空间。";
 "Light, dark or automatic is three pictures now, not a menu of three words — the way macOS asks the same question." = "浅色、深色或自动现在是三张图片，而不是三个词的菜单 — 与 macOS 提出同一问题的方式一致。";
 "Settings says what is missing before you scroll: a line at the top counts the permissions macOS is withholding and the modules they reach." = "设置在你滚动之前就说明缺少什么：顶部一行统计 macOS 未授予的权限以及受影响的模块。";
 "One arrangement for everything. The order and sections you compose now decide the panel as well, not just the window’s sidebar." = "一套排列。你编排的顺序与分组现在也决定面板，而不只是窗口边栏。";
@@ -693,4 +693,6 @@
 "The welcome tour lets you pick what you want. Each module’s screen now carries a switch, so you can keep or drop it while you are being introduced to it — and the opening screen asks whether Helm should start with your Mac. The switch starts where the module already stood, so skipping the tour changes nothing." = "欢迎引导现在让你挑选。每个模块的页面都有开关，第一屏会问你是否跟随 Mac 启动 Helm。开关的初始位置就是模块原有的状态，所以跳过不会改变任何东西。";
 "Helm no longer asks for permissions the moment you install it. It used to request Full Disk Access and Accessibility on the very first launch, before you had asked it to do anything. Each module now asks for what it needs on its own page, when it needs it — and the old notice still appears if a permission you had granted goes away." = "Helm 不再在安装后立即索要权限。以前它会在首次启动时就请求完全磁盘访问和辅助功能权限。现在每个模块在自己的页面上按需索要。而如果你已授予的权限消失了，原来的提示依然会出现。";
 "Hardware" = "硬件";
-"Show permissions" = "显示权限";
+"Show all" = "全部显示";
+"Rostislav Strelnikov" = "Rostislav Strelnikov";
+"·" = "·";

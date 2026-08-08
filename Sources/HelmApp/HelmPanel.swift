@@ -767,7 +767,7 @@ struct HelmPanelContent: View {
     }
 
     private func card(_ parts: Candidates, _ items: [Widget]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: PanelGrid.gap) {
 
             // Pinned: the strip, the setup bar and the footer. Only the grid
             // scrolls — the way out of a mode must not be something you have to
@@ -799,7 +799,7 @@ struct HelmPanelContent: View {
                     }
             }
             ScrollView {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: PanelGrid.gap) {
                     scrollable(parts, items)
                 }
                 .coordinateSpace(name: Self.gridSpace)
@@ -846,7 +846,7 @@ struct HelmPanelContent: View {
             // panel. It was pinned to the top, a hundred points from «Настройки»
             // and «Завершить» — three exits from the same card, two of them
             // together and one on its own at the other end.
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: PanelGrid.gap) {
                 if editing {
                     PanelEditBar {
                         // The same curve as the way in. This was a bare
@@ -879,7 +879,7 @@ struct HelmPanelContent: View {
                 else { withAnimation(HelmMotion.disclosure) { footerHeight = measured } }
             }
         }
-        .padding(12)
+        .padding(PanelGrid.padding)
         .frame(width: helmPanelWidth)
         // A fade, and nothing else. macOS menus and menu-bar extras do not
         // grow, scale or slide into place — they are there, over a fade quick

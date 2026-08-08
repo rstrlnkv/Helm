@@ -76,9 +76,12 @@ import HelmUI
             guard var binding = bindings[name] else { continue }
             if let ref = binding.ref { UnregisterEventHotKey(ref); binding.ref = nil }
 
+            // What a stored pair may be is Carbon's question, not this loop's:
+            // the guard that stood here converted it with `UInt32(_:)`, which
+            // traps. `HotkeyCombination` has the argument and the bounds.
             let keyCode = binding.store.int("\(binding.prefix)KeyCode", default: -1)
             let modifiers = binding.store.int("\(binding.prefix)Modifiers", default: 0)
-            guard keyCode >= 0, modifiers != 0 else {
+            guard let combination = HotkeyCombination(keyCode: keyCode, modifiers: modifiers) else {
                 binding.status = .none
                 bindings[name] = binding
                 continue
@@ -86,7 +89,7 @@ import HelmUI
 
             var ref: EventHotKeyRef?
             let hotKeyID = EventHotKeyID(signature: OSType(0x484C_4D31), id: binding.id)
-            let status = RegisterEventHotKey(UInt32(keyCode), UInt32(modifiers), hotKeyID,
+            let status = RegisterEventHotKey(combination.code, combination.modifiers, hotKeyID,
                                              GetApplicationEventTarget(), 0, &ref)
             // Kept, not discarded: `eventHotKeyExistsErr` means another app owns
             // the combination, and the row that shows it must say so.

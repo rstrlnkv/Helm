@@ -41,6 +41,27 @@ final class RingSpareLevelTests: XCTestCase {
         }
     }
 
+    /// An opacity is handed to SwiftUI, which has no answer for a value that
+    /// is not a number. This line was `max(0, min(1, t))` and gave 1 for one —
+    /// `Swift.min(1, .nan)` is 1 — and the shared `clamped` is `min(max(…))`,
+    /// which hands the NaN back. Solid is kept as the answer: the spare level
+    /// is what the person is about to be looking at, and a progress nobody can
+    /// read is not a reason to draw the ring they drilled into as a hole.
+    func testAProgressThatIsNotANumberLeavesTheSpareSolid() {
+        XCTAssertEqual(RingUnfold.opacity(isPivot: false, isDescendant: true,
+                                          isSpare: true, progress: .nan), 1)
+    }
+
+    /// An infinite progress is not the same sentence: it is past a bound, and
+    /// the bounds are 0 and 1 — which is what the old spelling gave and what
+    /// refusing every non-finite value alike would have taken away.
+    func testAnInfiniteProgressKeepsItsBound() {
+        XCTAssertEqual(RingUnfold.opacity(isPivot: false, isDescendant: true,
+                                          isSpare: true, progress: .infinity), 1)
+        XCTAssertEqual(RingUnfold.opacity(isPivot: false, isDescendant: true,
+                                          isSpare: true, progress: -.infinity), 0)
+    }
+
     func testTheLevelsThatWereAlreadyRightAreUnchanged() {
         XCTAssertEqual(RingUnfold.opacity(isPivot: false, isDescendant: true, progress: 0.5), 1)
         XCTAssertEqual(RingUnfold.opacity(isPivot: true, isDescendant: false, progress: 0), 1)

@@ -7,9 +7,11 @@ enum VPNStr {
     /// Latin languages; CJK sets `・` instead, which is what `DupStr.found`
     /// and `LfStr.selectedLine` already do. It was written into the view as
     /// part of the status text.
-    static var separator: String {
-        L("·", [.ru: "·", .es: "·", .fr: "·", .de: "·", .ja: "・", .zh: "·", .pt: "·"])
-    }
+    ///
+    /// In the `.lproj` files, not in a table here: seven rows of which six only
+    /// said what English says, standing outside everything those files are
+    /// guarded by.
+    static var separator: String { L("·") }
 
     static var summary: String {
         // No full stop, in any of them: a module subtitle is a label, and the

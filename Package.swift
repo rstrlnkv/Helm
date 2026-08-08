@@ -101,6 +101,12 @@ let foundation: [Target] = [
 /// what it is — nothing in `Sources/` may import it, and nothing can, since no
 /// product lists it.
 ///
+/// **And a release build must not reach it either.** It imports XCTest, which
+/// resolves out of the Xcode-only framework path, so building the whole package
+/// in Release made a full Xcode install a requirement of packaging the app —
+/// and put `HelmTestSupport.swiftmodule` in Release beside `HelmApp`.
+/// `ReleaseBuildsTheProductTests` holds the packaging script to the product.
+///
 /// What lives here is what was written once per test file until it was written
 /// wrong: a scratch directory whose teardown **drains**, and the file-of-N-bytes
 /// every filesystem test needs. `Tests/Support/ScratchDirectory.swift` carries
@@ -134,6 +140,18 @@ let package = Package(
     name: "Helm",
     defaultLocalization: "en",
     platforms: [.macOS("26.0")],
+    // One product: the app. Declared so `--product HelmApp` in
+    // `Scripts/package-app.sh` names something this file says exists, rather
+    // than the product SwiftPM synthesises for an executable target — a rename
+    // of that target would otherwise break the release build silently.
+    //
+    // It is not what keeps the harness out of Release. Measured: with this list
+    // in place a bare `swift build -c release` still builds every target,
+    // `HelmTestSupport` included. Naming the product on the command line is
+    // what prunes the graph.
+    products: [
+        .executable(name: "HelmApp", targets: ["HelmApp"]),
+    ],
     targets: foundation
         + modules.flatMap(\.sourceTargets)
         + support

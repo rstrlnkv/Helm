@@ -136,6 +136,44 @@ final class SessionRestoreTests: XCTestCase {
                        .none)
     }
 
+    /// The same trap entered through the *other* stored field. Every test above
+    /// moves the deadline; the bound is `min(left, endDate - startDate)`, so a
+    /// start date **after** the end date makes that subtraction negative and the
+    /// ceiling above waves it through — `isFinite` is true of -1e300 and it is
+    /// certainly under a day. It then reaches the same `Int(left / 60)` in
+    /// `KeepAwakeEngine.restoreSession` and traps at the other end: "the result
+    /// would be less than Int.min". `<real>1e300</real>` in `sessionStartedAt`
+    /// is as legal a plist as it is in `sessionEndsAt`.
+    func testAStartDateAfterTheDeadlineIsRefused() {
+        XCTAssertEqual(SessionRestore.decide(manualOn: true,
+                                             startDate: Date(timeIntervalSinceReferenceDate: 1e300),
+                                             endDate: now.addingTimeInterval(1800),
+                                             now: now),
+                       .none)
+    }
+
+    /// And the modest version, which does not trap and is worse for it: a start
+    /// a minute past the deadline restores `.remaining(-60)`, so the module
+    /// holds the IOKit assertion for a session that ended before it began and
+    /// every surface draws 0:00 over it. A negative duration is not a session.
+    func testASessionThatEndedBeforeItBeganIsRefused() {
+        let ends = now.addingTimeInterval(1800)
+        XCTAssertEqual(SessionRestore.decide(manualOn: true,
+                                             startDate: ends.addingTimeInterval(60),
+                                             endDate: ends, now: now),
+                       .none)
+    }
+
+    /// Nor is a session of no length one. The two dates equal is the boundary
+    /// between the refusal above and the control below, and it belongs to the
+    /// refusal: there is nothing left to keep the Mac awake for.
+    func testASessionOfNoLengthIsRefused() {
+        let ends = now.addingTimeInterval(1800)
+        XCTAssertEqual(SessionRestore.decide(manualOn: true, startDate: ends,
+                                             endDate: ends, now: now),
+                       .none)
+    }
+
     /// The control, so the refusal above is a bound and not a blanket: the
     /// longest session anything in this module can start still comes back
     /// whole. `KeepAwakeSettings` caps both of its durations at a day, and the
