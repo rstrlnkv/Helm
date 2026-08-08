@@ -137,7 +137,7 @@
 "Downloading…" = "下载中…";
 "Drag modules into the order you want them in the menu-bar panel." = "拖动模块即可调整其在菜单栏面板中的顺序。";
 "Duplicates" = "重复文件";
-"Duplicates can basket every extra at once, and Space shows you a file before you bin it. “All extras to basket” does across every group what the per-group button did — one copy of everything always stays, which is why it is not called “Select all”. Beside “Move to Trash” there is now a “Clear”, so one press can undo one press." = "「重复文件」可以一次把所有多余的副本放入收集篮，按空格键可在删除前预览文件。每组始终保留一份，所以按钮不叫“全选”。“移到废纸篓”旁边新增了“清空”。";
+"Duplicates can basket every extra at once, and Space shows you a file before you bin it. “All extras to basket” does across every group what the per-group button did — one copy of everything always stays, which is why it is not called “Select all”. Beside “Move to Trash” there is now a “Clear”, so one press can undo one press." = "“重复文件”可以一次把所有多余的副本放入收集篮，按空格键可在删除前预览文件。每组始终保留一份，所以按钮不叫“全选”。“移到废纸篓”旁边新增了“清空”。";
 "Duplicates keeps the copy that was there first, by the same \"Date Added\" the Finder shows. It used to keep whichever path came first alphabetically, so a copy on the Desktop beat the filed original and Helm offered the wrong one for deletion." = "“重复文件”会保留更早存在的那份，依据访达同样的“添加日期”，而不是路径的字母顺序。";
 "Each login item now offers what is actually possible: turn it off, show it in Finder, or delete it — with a word about why, when a password would be needed." = "每个登录项只提供实际可行的操作：关闭、在访达中显示或删除——需要密码时会说明原因。";
 "Each module’s saved data and the diagnostics log go to the Trash, where you can get them back. Your preferences — which modules are on, their order, your shortcuts — are forgotten for good. Helm restarts and greets you as it did the first time." = "每个模块保存的数据和诊断日志会移到废纸篓，你可以从那里取回。设置本身（哪些模块已开启、它们的顺序、你的快捷键）则会被永久遗忘。Helm 会重启，并像第一次那样迎接你。";
@@ -390,7 +390,7 @@
 "Rename" = "重命名";
 "Renaming scheme" = "重命名方式";
 "Reset" = "重置";
-"Reset all settings, in Settings → Settings. Helm goes back to how it was just after installing: preferences forgotten, each module’s saved state and the diagnostics log in the Trash — not deleted outright, so you can get them back — and the welcome tour again at the next launch. Access you granted in System Settings is macOS’s and is left alone." = "在设置 → 「设置」中可以重置所有设置。Helm 会回到刚安装完的状态；已保存的内容会移到废纸篓，而不是直接删除。你在系统设置中授予的权限不受影响。";
+"Reset all settings, in Settings → Settings. Helm goes back to how it was just after installing: preferences forgotten, each module’s saved state and the diagnostics log in the Trash — not deleted outright, so you can get them back — and the welcome tour again at the next launch. Access you granted in System Settings is macOS’s and is left alone." = "在设置 → “设置”中可以重置所有设置。Helm 会回到刚安装完的状态；已保存的内容会移到废纸篓，而不是直接删除。你在系统设置中授予的权限不受影响。";
 "Reset all settings?" = "要重置所有设置吗？";
 "Reset all settings…" = "重置所有设置…";
 "Reset and Restart" = "重置并重启";
@@ -454,7 +454,7 @@
 "Stop stops the disk scan. Opening a folder mid-scan used to start a second one that took over, leaving the first walking the disk with nothing able to stop it and the ring flickering between the two. And the duplicate finder’s “freed” figure now counts the copies that actually leave." = "停止能真正停止磁盘扫描；重复文件的“可释放”数字按实际会删除的副本计算。";
 "Stop watching" = "停止监视";
 "Stopped" = "已停止";
-"Stopping a disk scan keeps what it measured. It used to throw the ring away and put you back at the volume picker, after a minute of watching it grow. The tree stays now, marked as stopped — and because a folder in an unfinished scan can hold more than it shows, it is not kept for next time." = "停止磁盘扫描后，已经测量的部分会保留。以前圆环会消失并退回到宗卷选择，看着它增长的那一分钟就白费了。现在树会保留并标记为「已停止」；由于未完成的扫描中文件夹的实际大小可能大于显示值，它不会留到下一次。";
+"Stopping a disk scan keeps what it measured. It used to throw the ring away and put you back at the volume picker, after a minute of watching it grow. The tree stays now, marked as stopped — and because a folder in an unfinished scan can hold more than it shows, it is not kept for next time." = "停止磁盘扫描后，已经测量的部分会保留。以前圆环会消失并退回到宗卷选择，看着它增长的那一分钟就白费了。现在树会保留并标记为“已停止”；由于未完成的扫描中文件夹的实际大小可能大于显示值，它不会留到下一次。";
 "Style" = "样式";
 "Switched on, but macOS is withholding what it needs" = "已开启，但 macOS 未授予它所需的权限";
 "Switching VPN off and back on could leave the tile and the settings page silently frozen, answering nothing, until Helm was relaunched." = "关闭再打开 VPN 后，图块和设置页面可能会悄悄卡死、毫无响应，直到重启 Helm 才恢复。";
