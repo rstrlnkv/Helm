@@ -162,6 +162,10 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
 
     public func removeSelection() async {
         guard UninstallPlan.readiness(groups, forceQuit: forceQuit) == .ready else { return }
+        // The model refuses a second run itself rather than trusting the page
+        // to have dimmed the button: `.disabled(model.busy)` is a redraw away,
+        // and the row menu reaches this by another road.
+        guard !busy else { return }
         busy = true
         defer { busy = false }
 

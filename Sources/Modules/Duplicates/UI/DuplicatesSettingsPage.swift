@@ -243,6 +243,7 @@ public struct DuplicatesSettingsPage: View {
             Button(DupStr.clearBasket) { dvm.clearBasket() }
                 .controlSize(.small)
             Button(DupStr.moveToTrash) { confirming = true }
+                    .disabled(dvm.busy)
                 .buttonStyle(.borderedProminent)
         }
     }
