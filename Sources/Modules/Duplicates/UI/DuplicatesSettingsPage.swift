@@ -202,10 +202,7 @@ public struct DuplicatesSettingsPage: View {
             HelmRemovalOutcome(
                 succeededText: dvm.banner ?? "",
                 removed: dvm.removedCount,
-                failures: dvm.failures.map {
-                    HelmRemovalFailure(path: $0.path,
-                                       reason: TrashReasonText.sentence($0.reason.rawValue))
-                },
+                failures: dvm.failures.map(HelmRemovalFailure.init),
                 needsFullDiskAccess: diskAccess == .denied)
                 // Bounded, as Leftovers bounds it: unbounded, each named
                 // failure's Reveal button ran to the right edge and sat under

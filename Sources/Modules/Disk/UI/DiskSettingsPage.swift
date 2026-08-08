@@ -150,10 +150,7 @@ public struct DiskSettingsPage: View {
                     HelmRemovalOutcome(
                         succeededText: banner,
                         removed: dvm.removedCount,
-                        failures: dvm.failures.map {
-                            HelmRemovalFailure(path: $0.path,
-                                               reason: TrashReasonText.sentence($0.reason.rawValue))
-                        },
+                        failures: dvm.failures.map(HelmRemovalFailure.init),
                         needsFullDiskAccess: diskAccess == .denied)
                 } else {
                     Text(DkStr.emptyBasket)

@@ -18,6 +18,18 @@ public struct HelmRemovalFailure: Identifiable, Equatable, Sendable {
         self.path = path
         self.reason = reason
     }
+
+    /// A refusal as it comes back from `HelmTrash`, with its reason put into the
+    /// reader's language.
+    ///
+    /// Disk, Duplicates and Leftovers each spelled this map out — the same two
+    /// lines, reaching past this type to `TrashReasonText` for the sentence. The
+    /// lookup belongs beside the sentences, and the third copy of it arrived the
+    /// day Leftovers stopped carrying a refusal shape of its own.
+    public init(_ refusal: HelmTrash.Refusal) {
+        self.init(path: refusal.path,
+                  reason: TrashReasonText.sentence(refusal.reason.rawValue))
+    }
 }
 
 public struct HelmRemovalOutcome: View {
