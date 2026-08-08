@@ -123,14 +123,14 @@ final class PanelGridTests: XCTestCase {
     /// including the zero a stub returns, and a check that cannot fail is not a
     /// check.
     func testAnUnmeasuredStripIsTheWholeCeiling() {
-        let ceiling = PanelGrid.maximumHeight - PanelGrid.padding * 2 - PanelGrid.gap * 2
+        let ceiling = PanelGrid.maximumHeight - PanelGrid.padding * 2 - PanelGrid.gap
         XCTAssertEqual(PanelGrid.roomForGrid(strip: 0, top: nil, foot: nil), ceiling)
     }
 
     /// A tall display does not buy a taller panel: past `maximumHeight` the
     /// grid scrolls.
     func testTheCeilingHoldsOnATallDisplay() {
-        let ceiling = PanelGrid.maximumHeight - PanelGrid.padding * 2 - PanelGrid.gap * 2
+        let ceiling = PanelGrid.maximumHeight - PanelGrid.padding * 2 - PanelGrid.gap
         XCTAssertEqual(PanelGrid.roomForGrid(strip: 4000, top: nil, foot: nil), ceiling)
     }
 
@@ -141,11 +141,44 @@ final class PanelGridTests: XCTestCase {
     /// reserved under a footer that had stopped being drawn, and a grid that had
     /// exactly fitted began to scroll. `nil` is the bar's absence; its last
     /// measurement is not an answer about a bar nobody draws.
+    ///
+    /// The strip gives back its gap along with its height, because the block
+    /// itself goes away with it; the footer block's height is all it has to
+    /// give, because the block is drawn empty. The next two tests are each of
+    /// those halves on its own.
     func testABarThatIsNotDrawnReservesNothing() {
         let both = PanelGrid.roomForGrid(strip: 600, top: 30, foot: 38)
         XCTAssertEqual(PanelGrid.roomForGrid(strip: 600, top: 30, foot: nil), both + 38)
-        XCTAssertEqual(PanelGrid.roomForGrid(strip: 600, top: nil, foot: 38), both + 30)
-        XCTAssertEqual(PanelGrid.roomForGrid(strip: 600, top: nil, foot: nil), both + 68)
+        XCTAssertEqual(PanelGrid.roomForGrid(strip: 600, top: nil, foot: 38), both + 38)
+        XCTAssertEqual(PanelGrid.roomForGrid(strip: 600, top: nil, foot: nil), both + 76)
+    }
+
+    /// **And it does not reserve the gap that bar would have made either.**
+    ///
+    /// The card is three blocks with 8 pt between them, and only the tab strip
+    /// is conditional — so the gaps *drawn* are two when the strip is there and
+    /// one when it is not, while the arithmetic took two unconditionally. The
+    /// default panel is one tab, which is no strip: it was handed 8 pt less
+    /// than the card had, and paid for it with a scrollbar and a clipped tile.
+    ///
+    /// Stated as a difference between two calls rather than as the formula
+    /// again: a term spelled twice agrees with itself whatever it is.
+    func testAStripThatIsNotDrawnTakesItsGapWithIt() {
+        let drawn = PanelGrid.roomForGrid(strip: 600, top: 30, foot: 38)
+        let absent = PanelGrid.roomForGrid(strip: 600, top: nil, foot: 38)
+        XCTAssertEqual(absent - drawn, 30 + PanelGrid.gap,
+                       "the grid still pays 8 pt for a gap under a strip nobody draws")
+    }
+
+    /// The footer block is the other way round, and that asymmetry is the
+    /// point. It is drawn unconditionally — an empty `VStack` with no height —
+    /// and the stack still spends its neighbour's spacing on it, so its gap is
+    /// there whether or not anything is in it. `foot` says how *tall* it is,
+    /// never whether the gap above it exists.
+    func testTheFooterBlocksGapIsThereEvenWhenTheFooterIsNot() {
+        let full = PanelGrid.roomForGrid(strip: 600, top: 30, foot: 38)
+        let empty = PanelGrid.roomForGrid(strip: 600, top: 30, foot: nil)
+        XCTAssertEqual(empty - full, 38)
     }
 
     /// A very short strip still shows something to scroll rather than a sliver.
@@ -157,7 +190,7 @@ final class PanelGridTests: XCTestCase {
     /// gaps between its blocks — the panel is 12 pt inside and 8 pt between.
     func testTheCardsOwnEdgesComeOffToo() {
         let room = PanelGrid.roomForGrid(strip: 500, top: nil, foot: nil)
-        XCTAssertEqual(room, 500 - PanelGrid.padding * 2 - PanelGrid.gap * 2)
+        XCTAssertEqual(room, 500 - PanelGrid.padding * 2 - PanelGrid.gap)
     }
 
     /// The control's control: a row never holds more than the grid has room

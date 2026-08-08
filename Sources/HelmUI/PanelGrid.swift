@@ -110,9 +110,22 @@ public enum PanelGrid {
     /// A strip of 0 is a strip nothing has measured yet, not a strip with no
     /// room: it falls back to the ceiling, which is the only answer that draws
     /// a panel at all before the first geometry callback lands.
+    ///
+    /// **And a bar nobody draws takes its gap with it.** The card is three
+    /// blocks with `gap` between them, of which only the tab strip is
+    /// conditional, so the gaps drawn are two when the strip is there and one
+    /// when it is not — measured, `PanelCardGapsProbe`. This read `gap * 2`
+    /// unconditionally from the day it was four lines in the card, and the
+    /// seeded panel is one tab, which is no strip: rendered at a 320 pt strip
+    /// the card stopped 8 pt short of the strip it had been given and the grid
+    /// scrolled for exactly those 8 pt. The footer block is the other case and is
+    /// why the term hangs on `top` alone: it is drawn whether or not anything
+    /// is in it, and an empty `VStack` still costs its neighbour's spacing, so
+    /// `foot` says how tall it is and never whether its gap exists.
     public static func roomForGrid(strip: CGFloat, top: CGFloat?, foot: CGFloat?) -> CGFloat {
         let ceiling = min(strip > 0 ? strip : maximumHeight, maximumHeight)
-        return max(minimumGrid, ceiling - (top ?? 0) - (foot ?? 0) - padding * 2 - gap * 2)
+        let gaps = gap * (top == nil ? 1 : 2)
+        return max(minimumGrid, ceiling - (top ?? 0) - (foot ?? 0) - padding * 2 - gaps)
     }
 
     /// The least the grid is ever given: one row, rather than a sliver of one.

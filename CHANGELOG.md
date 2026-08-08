@@ -56,6 +56,12 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   arranged.
 
 ### Fixed
+- **A panel with one tab stops 8 pt short of the screen no more.** The card
+  reserved room for a gap under the tab strip whether or not the strip was
+  drawn, and one tab draws none — so a panel tall enough to need scrolling
+  started scrolling 8 pt earlier than it had to, and the tile at the bottom was
+  clipped that much higher, with the card leaving a strip of empty screen
+  underneath it.
 - **A module cannot bring the app down through the menu bar's spinner.** The
   status item works out which still of the spin belongs to now, and it bounded
   the result *after* converting it to an integer — where the bounds protect
