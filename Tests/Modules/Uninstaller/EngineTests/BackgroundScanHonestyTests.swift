@@ -27,15 +27,6 @@ private struct StubApps: AppLister {
     func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
 }
 
-private struct NoTrash: TrashPort {
-    func trashItem(_ url: URL) -> TrashOutcome { .success }
-}
-
-private struct NothingRunning: RunningAppsPort {
-    func isRunning(bundleID: String) -> Bool { false }
-    func quit(bundleID: String, force: Bool) {}
-}
-
 // MARK: - Tests
 
 /// `ScanReport`'s doc is explicit, and it is the rule the whole background
@@ -56,7 +47,7 @@ final class UninstallerBackgroundScanHonestyTests: XCTestCase {
 
     private func engine(_ fs: SilentFS, apps: StubApps = StubApps()) -> UninstallerEngine {
         UninstallerEngine(home: home, apps: apps, fs: fs, trash: NoTrash(),
-                          running: NothingRunning())
+                          running: NoRunning())
     }
 
     /// The no-permission case, which is the ordinary one: Helm is installed,

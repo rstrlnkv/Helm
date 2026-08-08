@@ -38,10 +38,6 @@ private struct NoLister: AppLister {
     func installedBundleIDs() -> Set<String> { [] }
     func isKnownToSystem(bundleID: String) -> Bool { false }
 }
-private struct NothingRunning: RunningAppsPort {
-    func isRunning(bundleID: String) -> Bool { false }
-    func quit(bundleID: String, force: Bool) {}
-}
 
 final class ExtensionHostBlameTests: XCTestCase {
     private var root: URL!
@@ -62,7 +58,7 @@ final class ExtensionHostBlameTests: XCTestCase {
 
     private func engine(hosts: Set<String>) -> UninstallerEngine {
         UninstallerEngine(home: root, apps: NoLister(), fs: AnyFS(),
-                          trash: BlamingTrash(), running: NothingRunning(),
+                          trash: BlamingTrash(), running: NoRunning(),
                           extensions: HostsExtension(hosts: hosts))
     }
 

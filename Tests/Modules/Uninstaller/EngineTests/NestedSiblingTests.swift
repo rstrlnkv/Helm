@@ -70,14 +70,6 @@ private struct PartlyVisible: AppLister {
     }
 }
 
-private struct NoTrash: TrashPort {
-    func trashItem(_ url: URL) -> TrashOutcome { .success }
-}
-private struct NoRunning: RunningAppsPort {
-    func isRunning(bundleID: String) -> Bool { false }
-    func quit(bundleID: String, force: Bool) {}
-}
-
 final class NestedSiblingTests: XCTestCase {
     private let lib = "/Users/x/Library"
 

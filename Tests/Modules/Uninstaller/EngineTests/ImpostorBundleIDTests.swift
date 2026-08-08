@@ -56,14 +56,6 @@ private struct Declarers: AppLister {
     }
 }
 
-private struct NoTrash: TrashPort {
-    func trashItem(_ url: URL) -> TrashOutcome { .success }
-}
-private struct NoRunning: RunningAppsPort {
-    func isRunning(bundleID: String) -> Bool { false }
-    func quit(bundleID: String, force: Bool) {}
-}
-
 final class ImpostorBundleIDTests: XCTestCase {
     private let lib = "/Users/x/Library"
     private let id = "com.adobe.acrobat"

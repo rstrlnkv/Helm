@@ -36,22 +36,13 @@ final class TheOfferSwitchTakesEffectNowTests: XCTestCase {
         func children(of url: URL) -> [URL] { [] }
     }
 
-    private struct NoTrashing: TrashPort {
-        func trashItem(_ url: URL) -> TrashOutcome { .success }
-    }
-
-    private struct NothingRuns: RunningAppsPort {
-        func isRunning(bundleID: String) -> Bool { false }
-        func quit(bundleID: String, force: Bool) {}
-    }
-
     private func engine(watching: Bool,
                         transport: LocalTransport) -> (UninstallerEngine, NamespacedStore) {
         let store = NamespacedStore(namespace: "uninstaller", backing: InMemoryKeyValueStore())
         store.set(watching, for: "watchTrash")
         let engine = UninstallerEngine(home: URL(fileURLWithPath: "/Users/ann"),
-                                       apps: NoApps(), fs: NoFiles(), trash: NoTrashing(),
-                                       running: NothingRuns(), store: store,
+                                       apps: NoApps(), fs: NoFiles(), trash: NoTrash(),
+                                       running: NoRunning(), store: store,
                                        transport: transport)
         return (engine, store)
     }

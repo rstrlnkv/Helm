@@ -20,13 +20,6 @@ final class SystemAppIsNotOfferedTests: XCTestCase {
         func glob(_ pattern: URL) -> [URL] { [] }
         func children(of url: URL) -> [URL] { [] }
     }
-    private struct SilentTrash: TrashPort {
-        func trashItem(_ url: URL) -> TrashOutcome { .success }
-    }
-    private struct NothingRunning: RunningAppsPort {
-        func isRunning(bundleID: String) -> Bool { false }
-        func quit(bundleID: String, force: Bool) {}
-    }
     private struct FixedLister: AppLister {
         let apps: [InstalledApp]
         func installedApps() -> [InstalledApp] { apps }
@@ -46,7 +39,7 @@ final class SystemAppIsNotOfferedTests: XCTestCase {
                 InstalledApp(name: "Tool", bundleID: "com.acme.tool",
                              path: "/Applications/Tool.app", sizeBytes: 10),
             ]),
-            fs: SilentFS(), trash: SilentTrash(), running: NothingRunning())
+            fs: SilentFS(), trash: NoTrash(), running: NoRunning())
         self.engine = engine
         return UninstallerViewModel(vm: ModuleViewModel(transport: engine.transport))
     }

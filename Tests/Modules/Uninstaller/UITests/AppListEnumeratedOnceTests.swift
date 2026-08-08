@@ -45,15 +45,6 @@ final class AppListEnumeratedOnceTests: XCTestCase {
         func children(of url: URL) -> [URL] { [] }
     }
 
-    private struct SilentTrash: TrashPort {
-        func trashItem(_ url: URL) -> TrashOutcome { .success }
-    }
-
-    private struct NothingRunning: RunningAppsPort {
-        func isRunning(bundleID: String) -> Bool { false }
-        func quit(bundleID: String, force: Bool) {}
-    }
-
     private let installed = [
         InstalledApp(name: "Tool", bundleID: "com.acme.tool", path: "/Applications/Tool.app", sizeBytes: 0),
         InstalledApp(name: "Other", bundleID: "com.acme.other", path: "/Applications/Other.app", sizeBytes: 0),
@@ -67,8 +58,8 @@ final class AppListEnumeratedOnceTests: XCTestCase {
 
     private func page(_ lister: CountingLister) -> UninstallerViewModel {
         let engine = UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
-                                       apps: lister, fs: SilentFS(), trash: SilentTrash(),
-                                       running: NothingRunning())
+                                       apps: lister, fs: SilentFS(), trash: NoTrash(),
+                                       running: NoRunning())
         self.engine = engine
         return UninstallerViewModel(vm: ModuleViewModel(transport: engine.transport))
     }
