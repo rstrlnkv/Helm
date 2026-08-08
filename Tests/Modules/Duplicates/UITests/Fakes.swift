@@ -110,6 +110,15 @@ func heldModel(_ transport: HeldTransport) -> DuplicatesViewModel {
                         store: duplicatesStore())
 }
 
+/// Room for the tasks already scheduled to land. Spelled three times in
+/// `DuplicateSearchRaceTests` as twenty yields; fifty, because every use is
+/// either waiting for something to appear or asserting that it did not, and
+/// both are stronger the longer they wait.
+@MainActor
+func settle() async {
+    for _ in 0..<50 { await Task.yield() }
+}
+
 /// Waits for the request tasks to actually reach the transport. Yielding a
 /// fixed number of times is a guess about scheduling; this is the condition the
 /// test depends on.

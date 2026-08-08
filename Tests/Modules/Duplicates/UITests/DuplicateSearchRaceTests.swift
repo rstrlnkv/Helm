@@ -33,7 +33,7 @@ final class DuplicateSearchRaceTests: XCTestCase {
         XCTAssertEqual(dvm.phase, .start)
 
         transport.release(0, folder: "withdrawn")
-        for _ in 0..<20 { await Task.yield() }
+        await settle()
 
         XCTAssertTrue(dvm.groups.isEmpty, "a withdrawn search wrote its answer anyway")
         XCTAssertEqual(dvm.phase, .start)
@@ -53,9 +53,9 @@ final class DuplicateSearchRaceTests: XCTestCase {
 
         // The newer one answers first, then the older one arrives late.
         transport.release(1, folder: "newer")
-        for _ in 0..<20 { await Task.yield() }
+        await settle()
         transport.release(0, folder: "older")
-        for _ in 0..<20 { await Task.yield() }
+        await settle()
 
         XCTAssertEqual(dvm.groups.count, 1)
         XCTAssertTrue(dvm.groups[0].paths.allSatisfy { $0.contains("newer") },

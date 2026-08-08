@@ -37,36 +37,48 @@ final class StoreNamespacesAreModuleIdsTests: XCTestCase {
         return String(line[line.startIndex..<range.lowerBound])
     }
 
+    /// Every line of Swift under `Sources/<subpath>`, comments stripped, with
+    /// somewhere to say it. Both tests below read the tree; only what they look
+    /// for differs.
+    private func eachSourceLine(under subpath: String,
+                                _ visit: (_ where: String, _ code: String) -> Void) -> Int {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()   // HelmAppTests
+            .deletingLastPathComponent()   // Tests
+            .deletingLastPathComponent()   // repo
+            .appendingPathComponent(subpath)
+
+        var files = 0
+        let walk = FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil)
+        while let url = walk?.nextObject() as? URL {
+            guard url.pathExtension == "swift",
+                  let source = try? String(contentsOf: url, encoding: .utf8)
+            else { continue }
+            files += 1
+            for (index, line) in source.components(separatedBy: "\n").enumerated() {
+                visit("\(url.lastPathComponent):\(index + 1)", code(line))
+            }
+        }
+        return files
+    }
+
     func testEveryNamespaceLiteralNamesARegisteredModule() throws {
         let known = Set(ModuleRegistry.all.map { type(of: $0).id.rawValue })
             .union([Self.hostNamespace])
         XCTAssertGreaterThan(known.count, 5,
                              "the registry answered with almost nothing, so this proves nothing")
 
-        let root = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()   // HelmAppTests
-            .deletingLastPathComponent()   // Tests
-            .deletingLastPathComponent()   // repo
-            .appendingPathComponent("Sources")
-
         var offenders: [String] = []
         var found = 0
         let marker = "NamespacedStore(namespace: \""
-        let files = FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil)
-        while let url = files?.nextObject() as? URL {
-            guard url.pathExtension == "swift",
-                  let source = try? String(contentsOf: url, encoding: .utf8)
-            else { continue }
-            for (index, line) in source.components(separatedBy: "\n").enumerated() {
-                let text = code(line)
-                guard let start = text.range(of: marker),
-                      let end = text.range(of: "\"", range: start.upperBound..<text.endIndex)
-                else { continue }
-                found += 1
-                let namespace = String(text[start.upperBound..<end.lowerBound])
-                if !known.contains(namespace) {
-                    offenders.append("\(url.lastPathComponent):\(index + 1) — \"\(namespace)\"")
-                }
+        _ = eachSourceLine(under: "Sources") { site, text in
+            guard let start = text.range(of: marker),
+                  let end = text.range(of: "\"", range: start.upperBound..<text.endIndex)
+            else { return }
+            found += 1
+            let namespace = String(text[start.upperBound..<end.lowerBound])
+            if !known.contains(namespace) {
+                offenders.append("\(site) — \"\(namespace)\"")
             }
         }
 
@@ -138,29 +150,14 @@ final class StoreNamespacesAreModuleIdsTests: XCTestCase {
     /// `ResetEverything` passes `"reset"` — and inside one there is nothing to
     /// name but itself.
     func testNoModuleSpellsItsOwnIdAsALiteral() throws {
-        let root = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()   // HelmAppTests
-            .deletingLastPathComponent()   // Tests
-            .deletingLastPathComponent()   // repo
-            .appendingPathComponent("Sources/Modules")
-
         var offenders: [String] = []
         var callSites = 0
-        var scanned = 0
-        let files = FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil)
-        while let url = files?.nextObject() as? URL {
-            guard url.pathExtension == "swift",
-                  let source = try? String(contentsOf: url, encoding: .utf8)
-            else { continue }
-            scanned += 1
-            for (index, line) in source.components(separatedBy: "\n").enumerated() {
-                let text = code(line)
-                for marker in ["module: ", "namespace: "] {
-                    guard let start = text.range(of: marker) else { continue }
-                    callSites += 1
-                    guard text[start.upperBound...].hasPrefix("\"") else { continue }
-                    offenders.append("\(url.lastPathComponent):\(index + 1) — \(text.trimmingCharacters(in: .whitespaces))")
-                }
+        let scanned = eachSourceLine(under: "Sources/Modules") { site, text in
+            for marker in ["module: ", "namespace: "] {
+                guard let start = text.range(of: marker) else { continue }
+                callSites += 1
+                guard text[start.upperBound...].hasPrefix("\"") else { continue }
+                offenders.append("\(site) — \(text.trimmingCharacters(in: .whitespaces))")
             }
         }
 
