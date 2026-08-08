@@ -58,7 +58,7 @@ public enum HelmFailure {
         // uselessness this type was written to end, at the one call site it
         // was written for.
         if !(type(of: error) is NSError.Type) {
-            parts.append("(\(oneLine(String(describing: error))))")
+            parts.append("(\(oneLine(swiftDescription(of: error))))")
         }
 
         let message = nsError.userInfo[NSLocalizedDescriptionKey] as? String
@@ -109,6 +109,40 @@ public enum HelmFailure {
     }
 
     // MARK: -
+
+    /// A Swift error described by itself — except for the two whose description
+    /// is made out of bytes somebody else chose.
+    ///
+    /// `DecodingError` and `EncodingError` carry a coding path, and for an
+    /// object-shaped payload every key in that path came off the wire. A table
+    /// keyed by path is an ordinary shape (`HashCache` and `appSizes` are both
+    /// written that way), so the keys are somebody's file names — and
+    /// `EngineReply` states the rule the other way round: the line carries the
+    /// command and the type it wanted, never the payload. The case and the type
+    /// it was reaching for are the whole of what a reader needs; the call site
+    /// already names the arm and the type it asked for.
+    private static func swiftDescription(of error: Error) -> String {
+        switch error {
+        case let decoding as DecodingError:
+            switch decoding {
+            case .typeMismatch(let wanted, _): return "DecodingError.typeMismatch \(wanted)"
+            case .valueNotFound(let wanted, _): return "DecodingError.valueNotFound \(wanted)"
+            case .keyNotFound: return "DecodingError.keyNotFound"
+            case .dataCorrupted: return "DecodingError.dataCorrupted"
+            @unknown default: return "DecodingError"
+            }
+        case let encoding as EncodingError:
+            switch encoding {
+            // The value is the engine's own and not the sender's, and it is
+            // still a path as often as not — an event carrying what a scan
+            // found. Its type says which reply would not encode.
+            case .invalidValue(let value, _): return "EncodingError.invalidValue \(type(of: value))"
+            @unknown default: return "EncodingError"
+            }
+        default:
+            return String(describing: error)
+        }
+    }
 
     private static func securityMessage(_ status: Int32) -> String? {
         guard let cf = SecCopyErrorMessageString(status, nil) else { return nil }

@@ -18,11 +18,6 @@ import XCTest
 /// judges it.
 final class EngineReplyAdversarialTests: XCTestCase {
 
-    /// One test below reproduces a claim the code does not keep. It is gated
-    /// rather than weakened: `HELM_PINNED_DEFECTS=1 swift test` runs it.
-    static let pinnedDefectsRun =
-        ProcessInfo.processInfo.environment["HELM_PINNED_DEFECTS"] == "1"
-
     override func setUp() {
         super.setUp()
         HelmLog.shared.setEnabled(true)
@@ -103,15 +98,19 @@ final class EngineReplyAdversarialTests: XCTestCase {
     // MARK: - What the failure line may carry
 
     /// **The account name never reaches the log, whatever the payload is made
-    /// of.** `HelmFailure.describe` puts `String(describing:)` of a Swift error
-    /// into the line, and a `DecodingError`'s description contains its coding
-    /// path — which for an object-shaped payload is a key the *sender* chose. A
-    /// key that is an absolute path therefore arrives in the line, and the home
-    /// directory is the one part of a path that is never allowed to.
+    /// of.** A key the *sender* chose used to arrive in the line through the
+    /// `DecodingError`'s coding path, and a key that is an absolute path put the
+    /// home directory in it — the one part of a path that is never allowed.
     ///
     /// The real home is used, because that is the string the redaction knows;
-    /// a made-up one would test nothing. The leaf is asserted present first, so
-    /// "the account name is absent" cannot be green because the line is.
+    /// a made-up one would test nothing.
+    ///
+    /// **The control is the line, not the leak.** It used to be the leaf being
+    /// present — which was the defect asserted as a precondition, and could not
+    /// survive the fix. What has to be true for the absence below to mean
+    /// anything is that a refusal was written down *about this decode*, so that
+    /// is what is asserted: the command and the type it wanted, which is
+    /// everything the line is now allowed to carry.
     func testTheAccountNameCannotReachTheLogThroughACodingPath() throws {
         let home = NSHomeDirectory()
         try XCTSkipIf(home.isEmpty || !home.hasPrefix("/Users/"),
@@ -123,35 +122,29 @@ final class EngineReplyAdversarialTests: XCTestCase {
                                     payload: Data("{\"\(key)\": \"not-a-number\"}".utf8))
 
         XCTAssertNil(EngineReply.decode([String: Int].self, from: command))
-        XCTAssertTrue(engineLines.contains { $0.contains(leaf) },
-                      "the coding path did not reach the line at all, so the assertion "
-                      + "below is about a line that says nothing: \(engineLines)")
+        XCTAssertTrue(engineLines.contains { $0.contains("trash") && $0.contains("Int") },
+                      "nothing was written about this decode, so the assertions below are "
+                      + "about a line that does not exist: \(engineLines)")
+        XCTAssertFalse(engineLines.contains { $0.contains(leaf) },
+                       "the log carries the file name out of the payload: \(engineLines)")
         XCTAssertFalse(engineLines.contains { $0.contains("/Users/" + account) },
                        "the log carries the account name: \(engineLines)")
     }
 
-    /// DEFECT (pinned, gated): `EngineReply`'s own doc comment states the rule
-    /// absolutely — "The line carries the command and the type it wanted, never
-    /// the payload." It does not. `HelmFailure.describe` appends
-    /// `String(describing: error)` for any error that is not an `NSError`
-    /// subclass, and `DecodingError`/`EncodingError` are Swift enums: their
-    /// description carries the coding path, and for an object-shaped payload
-    /// every key in that path came out of the bytes the sender sent.
+    /// `EngineReply`'s own doc comment states the rule absolutely — "The line
+    /// carries the command and the type it wanted, never the payload." It used
+    /// not to: `HelmFailure.describe` appended `String(describing: error)` for
+    /// any error that is not an `NSError` subclass, and
+    /// `DecodingError`/`EncodingError` are Swift enums whose description carries
+    /// the coding path — for an object-shaped payload, every key in that path
+    /// came out of the bytes the sender sent.
     ///
-    /// Latent rather than live — no arm decodes a `[String: T]` today, so what
-    /// leaks now is only a key name a struct declared. It is one payload shape
-    /// away from live, and the shape is an ordinary one (a table keyed by path
-    /// is how `HashCache` and `appSizes` are already written), which is why the
-    /// invariant is worth a test rather than a note.
-    ///
-    /// The redaction that does hold is `testTheAccountNameCannotReachTheLog…`
-    /// above; this is the stronger claim the comment makes.
-    func testTheRefusalCarriesNoPartOfThePayloadAtAll() throws {
-        try XCTSkipUnless(EngineReplyAdversarialTests.pinnedDefectsRun,
-                          "DEFECT: the decode-failure line carries the payload's own keys "
-                          + "via String(describing: DecodingError) in HelmFailure.describe. "
-                          + "Latent: no arm decodes a dictionary today.")
-
+    /// It was latent rather than live: no arm decodes a `[String: T]` today, so
+    /// what leaked was a key name a struct had declared. It was one payload
+    /// shape away from live, and the shape is an ordinary one (a table keyed by
+    /// path is how `HashCache` and `appSizes` are already written), which is why
+    /// the invariant is a test rather than a note.
+    func testTheRefusalCarriesNoPartOfThePayloadAtAll() {
         let secret = "/Volumes/Backup/tax-return-\(UUID().uuidString).pdf"
         let command = EngineCommand(name: "trash",
                                     payload: Data("{\"\(secret)\": \"x\"}".utf8))
