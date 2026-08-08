@@ -320,6 +320,17 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   when the pencil had been switched off in Settings.
 - Deleting from Duplicates settles the list instead of dropping rows in a frame,
   and the Uninstaller — which had no motion anywhere — moves between its steps.
+- **Japanese quotes the way the system it runs on quotes.** 0.8.0 recorded that
+  Japanese had been moved from corner brackets to the curly quotes macOS uses,
+  and only the runtime helper had moved: 118 hardcoded 「…」 over 72 values
+  stayed in the translations, so the app drew both at once — a name Helm wrapped
+  itself in “…” beside a sentence quoting a module in 「…」. macOS's own Japanese
+  interface uses “…” 551 times across System Settings, Finder and the preference
+  panes and 「…」 not once. Where the bracket had been separating a list as well
+  as quoting it — the shape does that work, the curly pair does not — the items
+  are now parted by 、 as the English parts them by commas. The guard that
+  compares each language's marks against that ruling had Japanese filtered out
+  of it, which is why those 72 passed it; it reads all eight now.
 
 ### Added
 - **The sidebar is an arrangement the person owns.** The list of modules was in

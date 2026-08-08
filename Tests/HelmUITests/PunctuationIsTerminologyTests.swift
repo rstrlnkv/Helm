@@ -11,10 +11,13 @@ import XCTest
 /// which is one file disagreeing with itself about a language. Counted in
 /// Finder's own `.lproj`: es 424 `“…”` against 0 `«…»`, pt-BR 419 against 0.
 ///
-/// **Japanese is deliberately not here.** Helm is 118/118 consistent on 「…」
-/// where macOS's interface uses “…” 551 times and 「…」 not at all — a real
-/// inconsistency, but a wholesale one, and its own decision to take rather
-/// than a stray to sweep up with these.
+/// Japanese was held out of this for one release, and the exclusion was the
+/// reason the file could stay 118/118 on 「…」 while `Quoted` answered “…” for
+/// the same language: the filter dropped it from the offender loop *and* from
+/// the union, so it neither obeyed the ruling nor made 「…」 foreign to anyone.
+/// A held-out language is a guard that cannot fail. All eight are checked now,
+/// and the corner brackets stay seeded below because no language's `Quoted`
+/// produces them, so nothing else would put them in the union.
 final class PunctuationIsTerminologyTests: XCTestCase {
 
     private func table(for language: AppLanguage) throws -> [String: String] {
@@ -37,18 +40,14 @@ final class PunctuationIsTerminologyTests: XCTestCase {
         Set(Quoted("", language: language).filter { !$0.isWhitespace })
     }
 
-    /// Japanese is left out of both sides: it neither has to obey its own
-    /// ruling here nor gets to make 「…」 foreign to the other seven.
-    private var checked: [AppLanguage] { AppLanguage.allCases.filter { $0 != .ja } }
-
     func testNoLanguageQuotesWithAnotherLanguagesMarks() throws {
-        // Every mark any of the seven writes, plus the corner brackets, which
-        // none of them do and three Chinese values had.
-        let every = checked.reduce(into: Set<Character>(["「", "」"])) {
+        // Every mark any of the eight writes, plus the corner brackets, which
+        // none of them do — three Chinese values had them, and Japanese had 118.
+        let every = AppLanguage.allCases.reduce(into: Set<Character>(["「", "」"])) {
             $0.formUnion(marks(of: $1))
         }
         var offenders: [(AppLanguage, Character, String)] = []
-        for language in checked {
+        for language in AppLanguage.allCases {
             let foreign = every.subtracting(marks(of: language))
             for (key, value) in try table(for: language) {
                 for mark in foreign where value.contains(mark) {
