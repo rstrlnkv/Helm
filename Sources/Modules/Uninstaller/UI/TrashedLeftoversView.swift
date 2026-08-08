@@ -200,7 +200,7 @@ struct TrashedLeftoversView: View {
                                                           reason: UnStr.failureReason($0.reason))
                                    },
                                    needsFullDiskAccess: model.failures.contains {
-                                       $0.reason == TrashFailure.Reason.needsFullDiskAccess.rawValue
+                                       $0.reason == .needsFullDiskAccess
                                    })
                     .padding(.horizontal, 20).padding(.vertical, 12)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -277,7 +277,7 @@ struct TrashedLeftoversView: View {
     /// was derived from.
     private func groupHeader(_ group: TrashedAppLeftovers) -> some View {
         HStack(spacing: 10) {
-            Image(nsImage: AppIconCache.icon(forFile: group.appPath))
+            Image(nsImage: AppInfo.icon(forFile: group.appPath))
                 .resizable().frame(width: 28, height: 28)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 0) {
@@ -319,9 +319,7 @@ struct TrashedLeftoversView: View {
         .toggleStyle(.checkbox)
         .help(item.path)
         .contextMenu {
-            Button(UnStr.showInFinder) {
-                NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: item.path)])
-            }
+            Button(HelmA11y.showInFinder) { HelmReveal.inFinder(item.path) }
         }
     }
 

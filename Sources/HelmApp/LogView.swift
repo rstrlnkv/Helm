@@ -79,7 +79,7 @@ struct LogView: View {
             }
             Spacer(minLength: 0)
             Button {
-                NSWorkspace.shared.activateFileViewerSelecting([HelmLog.fileURL])
+                HelmReveal.inFinder(HelmLog.fileURL.path)
             } label: {
                 Label(AppStr.revealLog, systemImage: "doc.text.magnifyingglass")
             }

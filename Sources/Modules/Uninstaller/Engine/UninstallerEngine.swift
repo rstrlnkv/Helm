@@ -6,6 +6,17 @@ import HelmRuntime
 /// ports. Request/response over `transport.send` (the handler's returned `Data` is
 /// the reply). Not a toggle — no active state, so it never tints the menu bar.
 public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @unchecked Sendable {
+    /// This module's id, and the only place it is written down.
+    ///
+    /// It reaches disk in shapes nothing would flag if they disagreed: the
+    /// `module.uninstaller.*` keys of a store, the directory `ScanJournal` names after
+    /// it, and the removal attributed to it in the log. `UninstallerDescriptor.id`
+    /// is built from this rather than repeating it, the direction the
+    /// descriptors already carry their command enums, so the two spellings are
+    /// one. **The string itself never changes** — it names folders and stored
+    /// settings that are already on people's machines.
+    public static let moduleID = "uninstaller"
+
     private let home: URL
     private let apps: AppLister
     private let fs: FileSystemPort
@@ -13,6 +24,10 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     private let running: RunningAppsPort
     private let extensions: SystemExtensionPort
     private let store: NamespacedStore
+    /// The only mutable field here, and main-actor confinement is what makes the
+    /// `@unchecked Sendable` above true. `activate` and `deactivate` are called
+    /// from `ModuleHost`, which is `@MainActor`; the `setWatchingTrash` arm of
+    /// the transport handler hops there for the same reason.
     private var watcher: FolderWatcher?
     private let localTransport: LocalTransport
     public let transport: EngineTransport
@@ -24,7 +39,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     public init(home: URL, apps: AppLister, fs: FileSystemPort, trash: TrashPort,
                 running: RunningAppsPort,
                 extensions: SystemExtensionPort = NoSystemExtensions(),
-                store: NamespacedStore = NamespacedStore(namespace: "uninstaller",
+                store: NamespacedStore = NamespacedStore(namespace: UninstallerEngine.moduleID,
                                                         backing: InMemoryKeyValueStore()),
                 transport: LocalTransport = LocalTransport()) {
         self.home = home
@@ -428,38 +443,33 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         return (NSDictionary(contentsOf: info)?["CFBundleIdentifier"]) as? String
     }
 
-    /// Shared trashing core: sizes are read before trashing; only successfully
-    /// trashed items count toward freedBytes.
+    /// Shared trashing core: `HelmTrash` runs the batch — the order, the sizing,
+    /// the classification and the refusals — and this supplies the two things
+    /// only the uninstaller knows.
+    ///
+    /// It used to be a copy of that loop, and the copy was missing what only
+    /// shows up on a tree: a file basketed with the folder above it was reported
+    /// as neither moved nor refused, two names for one file were counted twice
+    /// over, and which of those happened depended on the order the paths
+    /// arrived in.
     private func trashSync(_ paths: [String]) -> UninstallResult {
-        var trashed: [String] = [], failed: [String] = []
-        var failures: [TrashFailureInfo] = []
-        var freed = 0
-        // Only queried when something actually fails — the lookup shells out.
-        var extensionHosts: Set<String>?
         // Same rule as the leftovers engine: the plan is built in a view model,
         // and a view model is not allowed to be the last word on what gets
         // deleted. A candidate that escaped its folder stops here.
         let (allowed, refused) = RemovableScope.partition(paths, home: home.path)
-        for p in refused {
-            HelmLog.shared.warn("uninstaller", "refused out-of-scope path: \(Redact.path(p))")
-            failed.append(p)
-            failures.append(TrashFailureInfo(path: p,
-                                             reason: TrashFailure.Reason.outOfScope.rawValue,
-                                             message: ""))
-        }
-        for p in allowed {
-            let url = URL(fileURLWithPath: p)
-            let size = fs.size(url)
-            let outcome = trash.trashItem(url)
-            if outcome.succeeded {
-                trashed.append(p); freed += size
-            } else if outcome.errorCode == NSFileNoSuchFileError, !fs.exists(url) {
-                // Already gone (a duplicate path, or removed meanwhile): there
-                // is nothing for the user to act on, so it is not a failure.
-                continue
-            } else {
-                failed.append(p)
-                let hosts = extensionHosts ?? extensions.activeExtensionHosts()
+        // Only queried when a bundle actually fails to move — the lookup shells
+        // out.
+        var extensionHosts: Set<String>?
+        // What macOS said, verbatim, per path. `HelmTrash` classifies the error
+        // and logs the sentence, and the sentence does not cross its `Result`;
+        // the failure sheet draws it under the classified reason as the evidence
+        // behind it, so this module keeps it as it goes past.
+        var saidByPath: [String: String] = [:]
+        let result = HelmTrash.remove(
+            allowed: allowed, outOfScope: refused, module: Self.moduleID,
+            hasSystemExtension: { path in
+                guard path.hasSuffix(".app") else { return false }
+                let hosts = extensionHosts ?? self.extensions.activeExtensionHosts()
                 extensionHosts = hosts
                 // Match the app's bundle id, not the path: /Applications/X.app
                 // never contains "com.vendor.x".
@@ -467,18 +477,23 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                 // "at.obdev.littlesnitch" and is a different product. Without the
                 // dot, the user is sent to turn off someone else's extension while
                 // the real reason — no permission — is hidden.
-                let blocked = p.hasSuffix(".app") && hosts.contains { host in
-                    bundleID(forAppAt: p).map { $0 == host || $0.hasPrefix(host + ".") } ?? false
-                }
-                failures.append(TrashFailureInfo(
-                    path: p,
-                    reason: TrashFailure.reason(path: p, errorCode: outcome.errorCode,
-                                                hasSystemExtension: blocked).rawValue,
-                    message: outcome.message))
-            }
-        }
-        return UninstallResult(trashed: trashed, failed: failed,
-                               freedBytes: freed, failures: failures)
+                guard let id = self.bundleID(forAppAt: path) else { return false }
+                return hosts.contains { id == $0 || id.hasPrefix($0 + ".") }
+            },
+            trashing: { url in
+                let outcome = self.trash.trashItem(url)
+                guard !outcome.succeeded else { return }
+                saidByPath[url.path] = outcome.message
+                throw NSError(domain: NSCocoaErrorDomain, code: outcome.errorCode,
+                              userInfo: outcome.message.isEmpty
+                                  ? nil : [NSLocalizedDescriptionKey: outcome.message])
+            })
+        return UninstallResult(
+            trashed: result.removed, freedBytes: result.freedBytes,
+            failures: result.refused.map {
+                TrashFailureInfo(path: $0.path, reason: $0.reason,
+                                 message: saidByPath[$0.path] ?? "")
+            })
     }
 
     // MARK: - Transport (request/response)
@@ -492,42 +507,48 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                 HelmLog.shared.info("uninstaller", "engine listApps start")
                 let list = await self.listApps()
                 HelmLog.shared.info("uninstaller", "engine listApps done: \(list.count)")
-                return (try? JSONEncoder().encode(list)) ?? Data()
+                return EngineReply.encode(list, for: cmd)
             case .appSizes:
-                guard let list = try? JSONDecoder().decode([InstalledApp].self, from: cmd.payload)
+                guard let list = EngineReply.decode([InstalledApp].self, from: cmd)
                 else { return Data() }
-                let sizes = await self.appSizes(list)
-                return (try? JSONEncoder().encode(sizes)) ?? Data()
+                return EngineReply.encode(await self.appSizes(list), for: cmd)
             case .scan:
-                guard let r = try? JSONDecoder().decode(UninstallScanRequest.self, from: cmd.payload) else { return Data() }
+                guard let r = EngineReply.decode(UninstallScanRequest.self, from: cmd)
+                else { return Data() }
                 let res = try await self.scan(bundleID: r.bundleID, appPath: r.appPath, appName: r.appName)
-                return (try? JSONEncoder().encode(res)) ?? Data()
+                return EngineReply.encode(res, for: cmd)
             case .uninstall:
-                guard let r = try? JSONDecoder().decode(UninstallRequest.self, from: cmd.payload) else { return Data() }
+                guard let r = EngineReply.decode(UninstallRequest.self, from: cmd)
+                else { return Data() }
                 let res = try await self.uninstall(appPath: r.appPath, paths: r.paths)
-                return (try? JSONEncoder().encode(res)) ?? Data()
+                return EngineReply.encode(res, for: cmd)
             case .systemExtensions:
                 let list = await offTheCooperativePool { self.extensions.installedExtensions() }
-                return (try? JSONEncoder().encode(list)) ?? Data()
+                return EngineReply.encode(list, for: cmd)
             case .scanOrphans:
-                return (try? JSONEncoder().encode(await self.scanOrphans())) ?? Data()
+                return EngineReply.encode(await self.scanOrphans(), for: cmd)
             case .backgroundScan:
-                return (try? JSONEncoder().encode(await self.backgroundScan())) ?? Data()
+                return EngineReply.encode(await self.backgroundScan(), for: cmd)
             case .trashedAppLeftovers:
-                return (try? JSONEncoder().encode(await self.trashedAppLeftovers())) ?? Data()
+                return EngineReply.encode(await self.trashedAppLeftovers(), for: cmd)
             case .watchingTrash:
-                return (try? JSONEncoder().encode(self.watchingTrash)) ?? Data()
+                return EngineReply.encode(self.watchingTrash, for: cmd)
             case .setWatchingTrash:
-                self.setWatchingTrash((try? JSONDecoder().decode(Bool.self, from: cmd.payload)) ?? false)
+                // The one arm that writes `watcher`, so it goes where the other
+                // two writers already are. `send` runs this handler on the
+                // caller's own executor, and nobody awaits this reply — the
+                // sweep it asks for arrives as `trashChanged`.
+                let on = EngineReply.decode(Bool.self, from: cmd) ?? false
+                await MainActor.run { self.setWatchingTrash(on) }
                 return Data()
             case .dismissTrashedApp:
                 self.dismissTrashedApp(bundleID: String(decoding: cmd.payload, as: UTF8.self))
                 return Data()
             case .trashPaths:
-                guard let paths = try? JSONDecoder().decode([String].self, from: cmd.payload) else { return Data() }
-                return (try? JSONEncoder().encode(await self.trashPaths(paths))) ?? Data()
+                guard let paths = EngineReply.decode([String].self, from: cmd) else { return Data() }
+                return EngineReply.encode(await self.trashPaths(paths), for: cmd)
             case .quit:
-                if let r = try? JSONDecoder().decode(QuitRequest.self, from: cmd.payload) {
+                if let r = EngineReply.decode(QuitRequest.self, from: cmd) {
                     self.quit(bundleID: r.bundleID, force: r.force)
                     // The command returns when the app is gone, so the caller
                     // does not have to guess how long that takes.

@@ -21,12 +21,13 @@ public struct KeepAwakePanelTile: View {
     public init(vm: ModuleViewModel, store: NamespacedStore) {
         self.vm = KeepAwakeViewModel.shared(vm: vm)
         self.store = store
-        _autoExternalDisplay = State(initialValue: store.bool("autoExternalDisplay", default: false))
-        _autoPower = State(initialValue: store.bool("autoPower", default: false))
+        let settings = KeepAwakeSettings(store: store)
+        _autoExternalDisplay = State(initialValue: settings.autoExternalDisplay)
+        _autoPower = State(initialValue: settings.autoPower)
         // Last panel choice wins; otherwise the module's default duration
         // (0 = indefinite, which isn't a timer value) and finally 30.
-        let remembered = store.int("panelTimerMinutes", default: 0)
-        let fallback = store.int("defaultDurationMinutes", default: 0)
+        let remembered = store.int(Self.panelTimerMinutes, default: 0)
+        let fallback = settings.defaultDurationMinutes
         _customMinutes = State(initialValue: remembered > 0 ? remembered : (fallback > 0 ? fallback : 30))
     }
 
@@ -77,14 +78,8 @@ public struct KeepAwakePanelTile: View {
         .helmPanelCard()
         // The store isn't observable, so these mirrored values would otherwise
         // drift once the same settings are changed in the Settings window.
-        .onReceive(NotificationCenter.default.publisher(for: .helmStoreChanged)) { note in
-            if store.changed(note, is: "autoExternalDisplay") {
-                autoExternalDisplay = store.bool("autoExternalDisplay", default: false)
-            }
-            if store.changed(note, is: "autoPower") {
-                autoPower = store.bool("autoPower", default: false)
-            }
-        }
+        .keepAwakeAutomationMirror(store, externalDisplay: $autoExternalDisplay,
+                                   power: $autoPower)
     }
 
     // MARK: - Header
@@ -131,9 +126,9 @@ public struct KeepAwakePanelTile: View {
 
     private var presetRow: some View {
         HStack(spacing: 6) {
-            presetPill(Self.durationLabel(15, compact: true), 15)
-            presetPill(Self.durationLabel(60, compact: true), 60)
-            presetPill(Self.durationLabel(120, compact: true), 120)
+            presetPill(KAStr.duration(15, compact: true), 15)
+            presetPill(KAStr.duration(60, compact: true), 60)
+            presetPill(KAStr.duration(120, compact: true), 120)
             presetPill("∞", 0)
             morePill
         }
@@ -191,7 +186,7 @@ public struct KeepAwakePanelTile: View {
                     // minutes at a time in a 300pt panel.
                     Menu {
                         ForEach(Self.timerOptions, id: \.self) { minutes in
-                            Button(Self.durationLabel(minutes)) { setMinutes(minutes) }
+                            Button(KAStr.duration(minutes)) { setMinutes(minutes) }
                         }
                         Divider()
                         Button(KAStr.customTime) {
@@ -199,7 +194,7 @@ public struct KeepAwakePanelTile: View {
                             showCustomTime = true
                         }
                     } label: {
-                        Text(Self.durationLabel(customMinutes))
+                        Text(KAStr.duration(customMinutes))
                     }
                     .menuStyle(.button)
                     .buttonStyle(.bordered)
@@ -233,13 +228,15 @@ public struct KeepAwakePanelTile: View {
             settingRow(KAStr.onExternalDisplay) {
                 Toggle(KAStr.onExternalDisplay, isOn: $autoExternalDisplay)
                     .labelsHidden()
-                    .onChange(of: autoExternalDisplay) { _, v in writeSetting(v, "autoExternalDisplay") }
+                    .onChange(of: autoExternalDisplay) { _, v in
+                        vm.save(in: store) { $0.setAutoExternalDisplay(v) }
+                    }
             }
 
             settingRow(KAStr.onPower) {
                 Toggle(KAStr.onPower, isOn: $autoPower)
                     .labelsHidden()
-                    .onChange(of: autoPower) { _, v in writeSetting(v, "autoPower") }
+                    .onChange(of: autoPower) { _, v in vm.save(in: store) { $0.setAutoPower(v) } }
             }
         }
     }
@@ -247,16 +244,6 @@ public struct KeepAwakePanelTile: View {
     // Round durations only: a compound label ("1 ч 30 мин") forced the menu wide
     // enough to push Start out of the card.
     private static let timerOptions = [5, 10, 15, 20, 30, 45, 60, 120, 180, 240]
-
-    /// "45 мин" / "1 ч" / "1 ч 30 мин" — minutes below an hour, hours above.
-    /// `compact` uses single-letter units, for the narrow preset pills.
-    private static func durationLabel(_ minutes: Int, compact: Bool = false) -> String {
-        let mUnit = compact ? KAStr.minutesUnitShort : KAStr.minutesUnit
-        let hUnit = compact ? KAStr.hoursUnitShort : KAStr.hoursUnit
-        guard minutes >= 60 else { return "\(minutes) \(mUnit)" }
-        let h = minutes / 60, m = minutes % 60
-        return m == 0 ? "\(h) \(hUnit)" : "\(h) \(hUnit) \(m) \(mUnit)"
-    }
 
     /// Label on the left, trailing control(s) pinned to the right edge.
     private func settingRow<Control: View>(_ title: String,
@@ -270,9 +257,14 @@ public struct KeepAwakePanelTile: View {
         }
     }
 
+    /// The tile's own memory of what was last picked here, which nothing else
+    /// reads — so it stays out of `KeepAwakeSettings`, the way `MenuBarLook`
+    /// keeps the keys the engine never acts on.
+    private static let panelTimerMinutes = "panelTimerMinutes"
+
     private func setMinutes(_ minutes: Int) {
         customMinutes = minutes
-        store.set(minutes, for: "panelTimerMinutes")
+        store.set(minutes, for: Self.panelTimerMinutes)
     }
 
     /// Free-form duration entry, opened from the menu's "Custom…" entry.
@@ -311,11 +303,6 @@ public struct KeepAwakePanelTile: View {
         showCustomTime = false
     }
 
-    private func writeSetting(_ value: Any?, _ key: String) {
-        store.set(value, for: key)
-        vm.send(KeepAwakeCommand.settingsChanged)
-    }
-
     // MARK: - Active countdown
 
     private func countdownRow(_ end: Date) -> some View {
@@ -329,7 +316,7 @@ public struct KeepAwakePanelTile: View {
                     .contentTransition(.numericText(countsDown: true))
                     .animation(HelmMotion.interface, value: remaining)
                 Spacer()
-                Button("+" + Self.durationLabel(15, compact: true)) {
+                Button("+" + KAStr.duration(15, compact: true)) {
                     let newMinutes = Int(ceil(remaining / 60)) + 15
                     vm.send(KeepAwakeCommand.start, payload: startPayload(newMinutes))
                 }

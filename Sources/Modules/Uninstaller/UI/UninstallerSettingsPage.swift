@@ -6,20 +6,6 @@ import Module_Uninstaller_Engine
 
 extension InstalledApp: Identifiable { public var id: String { bundleID } }
 
-/// `NSWorkspace.icon(forFile:)` hits the disk; List rows re-render often, so
-/// icons are memoized per bundle path. Shared with the Trash offer window,
-/// which draws the same icons for bundles sitting in `~/.Trash`.
-@MainActor
-enum AppIconCache {
-    static let cache = NSCache<NSString, NSImage>()
-    static func icon(forFile path: String) -> NSImage {
-        if let hit = cache.object(forKey: path as NSString) { return hit }
-        let img = NSWorkspace.shared.icon(forFile: path)
-        cache.setObject(img, forKey: path as NSString)
-        return img
-    }
-}
-
 /// Two steps, AppCleaner-style: tick the apps to remove, then review the files
 /// found for each of them before anything goes to the Trash. A running app is
 /// never removed silently — it is quit first, and only if the user says so.
@@ -65,9 +51,8 @@ public struct UninstallerSettingsPage: View {
 
     public var body: some View {
         pageBody
-            .helmOnAppActive { diskAccess = PermissionCheck.currentFullDiskAccess() }
-        .task {
-                diskAccess = PermissionCheck.currentFullDiskAccess()
+            .helmTracksFullDiskAccess($diskAccess)
+            .task {
                 watchingTrash = await uvm.watchingTrash()
                 await uvm.loadAppsIfNeeded()
             }
@@ -240,7 +225,7 @@ public struct UninstallerSettingsPage: View {
                 .toggleStyle(.checkbox)
                 .labelsHidden()
             }
-            Image(nsImage: AppIconCache.icon(forFile: app.path))
+            Image(nsImage: AppInfo.icon(forFile: app.path))
                 .resizable().frame(width: 28, height: 28)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 1) {
@@ -405,7 +390,7 @@ public struct UninstallerSettingsPage: View {
                             // report; the button that acts on it stays its own.
                             .accessibilityElement(children: .combine)
                             Spacer()
-                            Button(UnStr.showInFinder) { reveal(failure.path) }
+                            Button(HelmA11y.showInFinder) { HelmReveal.inFinder(failure.path) }
                                 .controlSize(.small)
                         }
                         .padding(.vertical, 3)
@@ -418,10 +403,10 @@ public struct UninstallerSettingsPage: View {
 
             Divider()
             HStack(spacing: 10) {
-                if failures.contains(where: { $0.reason == TrashFailure.Reason.needsFullDiskAccess.rawValue }) {
+                if failures.contains(where: { $0.reason == .needsFullDiskAccess }) {
                     Button(UnStr.openDiskAccess) { PermissionCheck.openFullDiskAccessSettings() }
                 }
-                if failures.contains(where: { $0.reason == TrashFailure.Reason.activeSystemExtension.rawValue }) {
+                if failures.contains(where: { $0.reason == .activeSystemExtension }) {
                     Button(UnStr.openExtensions) { PermissionCheck.openExtensionSettings() }
                 }
                 Spacer()
@@ -432,24 +417,11 @@ public struct UninstallerSettingsPage: View {
         }
     }
 
-    /// Selecting a file Finder cannot see does nothing at all, so fall back to
-    /// opening the enclosing folder — and bring Finder forward either way.
-    private func reveal(_ path: String) {
-        let url = URL(fileURLWithPath: path)
-        if FileManager.default.fileExists(atPath: path) {
-            NSWorkspace.shared.activateFileViewerSelecting([url])
-        } else {
-            NSWorkspace.shared.open(url.deletingLastPathComponent())
-        }
-        NSRunningApplication.runningApplications(
-            withBundleIdentifier: "com.apple.finder").first?.activate()
-    }
-
     private func groupHeader(_ group: UninstallGroup) -> some View {
         HStack(spacing: 8) {
             // The icon reads as an unticked checkbox beside a column of them,
             // and says nothing a screen reader needs — the name follows it.
-            Image(nsImage: AppIconCache.icon(forFile: group.app.path))
+            Image(nsImage: AppInfo.icon(forFile: group.app.path))
                 .resizable().frame(width: 18, height: 18)
                 .accessibilityHidden(true)
             Text(group.app.name).font(.callout.weight(.semibold))

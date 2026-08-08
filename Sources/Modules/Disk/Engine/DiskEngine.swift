@@ -5,6 +5,17 @@ import HelmRuntime
 /// Scans volumes and folders, and trashes what the user baskets. Long work
 /// goes through `blocking` so the concurrency pool is never parked.
 public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Sendable {
+    /// This module's id, and the only place it is written down.
+    ///
+    /// It reaches disk in shapes nothing would flag if they disagreed: the
+    /// `module.disk.*` keys of a store, the directory `ScanJournal` names after
+    /// it, and the removal attributed to it in the log. `DiskDescriptor.id`
+    /// is built from this rather than repeating it, the direction the
+    /// descriptors already carry their command enums, so the two spellings are
+    /// one. **The string itself never changes** — it names folders and stored
+    /// settings that are already on people's machines.
+    public static let moduleID = "disk"
+
     private let localTransport: LocalTransport
     public let transport: EngineTransport
     /// Every scan in flight, not the last one started: drilling into a folder
@@ -86,20 +97,18 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
             guard let tree = scanner.scan(root: path, onProgress: { progress in
                 counter.value = progress.filesSeen
                 // Progress is broadcast so the UI can show it without polling.
-                if let data = try? JSONEncoder().encode(
-                    ScanTick(scan: id, files: progress.filesSeen, bytes: progress.bytesSeen,
-                             path: progress.currentPath)) {
-                    self.localTransport.emit(EngineEvent(name: DiskEvent.progress.rawValue, payload: data))
-                }
+                self.localTransport.emit(DiskEvent.progress,
+                                         encoding: ScanTick(scan: id, files: progress.filesSeen,
+                                                            bytes: progress.bytesSeen,
+                                                            path: progress.currentPath))
             }, onPartial: { partialTree in
                 // A shallow snapshot every ~0.35s: the ring grows while the
                 // walk is still running.
                 let snapshot = ScanResult(root: DiskEntry(partialTree, depth: 4, path: path),
                                           freeBytes: freeNow,
                                           filesScanned: counter.value, seconds: 0)
-                if let data = try? JSONEncoder().encode(PartialScan(scan: id, result: snapshot)) {
-                    self.localTransport.emit(EngineEvent(name: DiskEvent.partial.rawValue, payload: data))
-                }
+                self.localTransport.emit(DiskEvent.partial,
+                                         encoding: PartialScan(scan: id, result: snapshot))
             }) else { return nil }
             let free = self.freeBytes(forPathOn: path)
             return ScanResult(root: DiskEntry(tree, depth: 6, path: path), freeBytes: free,
@@ -148,7 +157,7 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
             // misleading symptom, and the duplicate finder shipped one
             // (ARCHITECTURE.md § Removal scope).
             let (allowed, refused) = UserFileScope.partition(Array(Set(paths)))
-            return HelmTrash.remove(allowed: allowed, outOfScope: refused, module: "disk")
+            return HelmTrash.remove(allowed: allowed, outOfScope: refused, module: Self.moduleID)
         }
     }
 
@@ -160,21 +169,21 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
             guard let name = DiskCommand(rawValue: command.name) else { return Data() }
             switch name {
             case .volumes:
-                return (try? JSONEncoder().encode(self.volumes())) ?? Data()
+                return EngineReply.encode(self.volumes(), for: command)
             case .scan:
-                guard let payload = try? JSONDecoder().decode(ScanRequest.self, from: command.payload)
+                guard let payload = EngineReply.decode(ScanRequest.self, from: command)
                 else { return Data() }
-                return (try? JSONEncoder().encode(await self.scan(path: payload.path,
-                                                                  scan: payload.scan))) ?? Data()
+                return EngineReply.encode(await self.scan(path: payload.path, scan: payload.scan),
+                                          for: command)
             case .backgroundScan:
-                return (try? JSONEncoder().encode(await self.backgroundScan())) ?? Data()
+                return EngineReply.encode(await self.backgroundScan(), for: command)
             case .cancel:
                 self.cancel()
                 return Data()
             case .trash:
-                guard let paths = try? JSONDecoder().decode([String].self, from: command.payload)
+                guard let paths = EngineReply.decode([String].self, from: command)
                 else { return Data() }
-                return (try? JSONEncoder().encode(await self.trash(paths))) ?? Data()
+                return EngineReply.encode(await self.trash(paths), for: command)
             }
         }
     }

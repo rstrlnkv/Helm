@@ -42,19 +42,21 @@ public struct KeepAwakeSettingsPage: View {
         self.vm = KeepAwakeViewModel.shared(vm: vm)
         self.store = store
         _recorder = StateObject(wrappedValue: HelmHotkeyRecorder(store: store))
-        _autoExternalDisplay = State(initialValue: store.bool("autoExternalDisplay", default: false))
-        _autoPower = State(initialValue: store.bool("autoPower", default: false))
-        _appTriggers = State(initialValue: KeepAwakeSettings(store: store).appTriggers)
-        _keepDisplayOn = State(initialValue: store.bool("keepDisplayOn", default: false))
-        _jiggleEnabled = State(initialValue: store.bool("jiggleEnabled", default: false))
-        _jiggleIntervalMinutes = State(initialValue: max(1, store.int("jiggleIntervalMinutes", default: 5)))
-        _defaultDurationMinutes = State(initialValue: store.int("defaultDurationMinutes", default: 0))
-        _clamshellEnabled = State(initialValue: store.bool("clamshellEnabled", default: false))
-        // Through the settings struct, not a second literal: the engine's
-        // default is on, and a toggle drawn off above a guard that is armed
-        // would be the page lying about what the Mac will do.
-        _batteryGuardEnabled = State(initialValue: KeepAwakeSettings(store: store).batteryGuardEnabled)
-        _batteryGuardPercent = State(initialValue: KeepAwakeSettings(store: store).batteryGuardPercent)
+        // Every one of these through the settings struct, not a second literal:
+        // the engine's battery-guard default is on, and a toggle drawn off above
+        // a guard that is armed would be the page lying about what the Mac will
+        // do. The same holds for the rest of them, and for the jiggle clamp.
+        let settings = KeepAwakeSettings(store: store)
+        _autoExternalDisplay = State(initialValue: settings.autoExternalDisplay)
+        _autoPower = State(initialValue: settings.autoPower)
+        _appTriggers = State(initialValue: settings.appTriggers)
+        _keepDisplayOn = State(initialValue: settings.keepDisplayOn)
+        _jiggleEnabled = State(initialValue: settings.jiggleEnabled)
+        _jiggleIntervalMinutes = State(initialValue: settings.jiggleIntervalMinutes)
+        _defaultDurationMinutes = State(initialValue: settings.defaultDurationMinutes)
+        _clamshellEnabled = State(initialValue: settings.clamshellEnabled)
+        _batteryGuardEnabled = State(initialValue: settings.batteryGuardEnabled)
+        _batteryGuardPercent = State(initialValue: settings.batteryGuardPercent)
         _activeTintColor = State(initialValue: MenuBarLook.activeTint(store))
         _ringTimer = State(initialValue: MenuBarLook.ringTimer(store))
         _showTimerText = State(initialValue: MenuBarLook.showTimerText(store))
@@ -104,14 +106,8 @@ public struct KeepAwakeSettingsPage: View {
         .helmSettingsColumn()
         // The panel's ⋯ block writes the same keys; without this the page shows
         // stale values when both are open (the reverse direction already works).
-        .onReceive(NotificationCenter.default.publisher(for: .helmStoreChanged)) { note in
-            if store.changed(note, is: "autoExternalDisplay") {
-                autoExternalDisplay = store.bool("autoExternalDisplay", default: false)
-            }
-            if store.changed(note, is: "autoPower") {
-                autoPower = store.bool("autoPower", default: false)
-            }
-        }
+        .keepAwakeAutomationMirror(store, externalDisplay: $autoExternalDisplay,
+                                   power: $autoPower)
     }
 
     // MARK: - The sections
@@ -141,11 +137,15 @@ public struct KeepAwakeSettingsPage: View {
     @ViewBuilder private var automationSection: some View {
         Section(KAStr.automation) {
             Toggle(KAStr.withExternalDisplay, isOn: $autoExternalDisplay)
-                .onChange(of: autoExternalDisplay) { _, v in write(v, "autoExternalDisplay") }
+                .onChange(of: autoExternalDisplay) { _, v in
+                    vm.save(in: store) { $0.setAutoExternalDisplay(v) }
+                }
             Toggle(KAStr.whileOnPower, isOn: $autoPower)
-                .onChange(of: autoPower) { _, v in write(v, "autoPower") }
+                .onChange(of: autoPower) { _, v in vm.save(in: store) { $0.setAutoPower(v) } }
             Toggle(KAStr.keepAwakeLidClosed, isOn: $clamshellEnabled)
-                .onChange(of: clamshellEnabled) { _, v in write(v, "clamshellEnabled") }
+                .onChange(of: clamshellEnabled) { _, v in
+                    vm.save(in: store) { $0.setClamshellEnabled(v) }
+                }
             Text(KAStr.adminNote)
                 .font(.caption).foregroundStyle(HelmText.quiet)
             // The threshold only means anything with the rule on, so it
@@ -155,11 +155,15 @@ public struct KeepAwakeSettingsPage: View {
                     Stepper(KAStr.belowPercent(batteryGuardPercent),
                             value: $batteryGuardPercent, in: 5...50, step: 5)
                         .disabled(!batteryGuardEnabled)
-                        .onChange(of: batteryGuardPercent) { _, v in write(v, "batteryGuardPercent") }
+                        .onChange(of: batteryGuardPercent) { _, v in
+                            vm.save(in: store) { $0.setBatteryGuardPercent(v) }
+                        }
                         .fixedSize()
                     Toggle(KAStr.turnOffLowBattery, isOn: $batteryGuardEnabled)
                         .labelsHidden()
-                        .onChange(of: batteryGuardEnabled) { _, v in write(v, "batteryGuardEnabled") }
+                        .onChange(of: batteryGuardEnabled) { _, v in
+                            vm.save(in: store) { $0.setBatteryGuardEnabled(v) }
+                        }
                 }
             }
         }
@@ -174,7 +178,7 @@ public struct KeepAwakeSettingsPage: View {
     @ViewBuilder private var behaviourSection: some View {
         Section(KAStr.behavior) {
             Toggle(KAStr.keepDisplayOn, isOn: $keepDisplayOn)
-                .onChange(of: keepDisplayOn) { _, v in write(v, "keepDisplayOn") }
+                .onChange(of: keepDisplayOn) { _, v in vm.save(in: store) { $0.setKeepDisplayOn(v) } }
             // One row: the interval only means anything with the switch on,
             // so it sits beside it instead of on a line of its own.
             LabeledContent(KAStr.movePointer) {
@@ -182,11 +186,15 @@ public struct KeepAwakeSettingsPage: View {
                     Stepper(KAStr.everyMinutes(jiggleIntervalMinutes),
                             value: $jiggleIntervalMinutes, in: 1...60)
                         .disabled(!jiggleEnabled)
-                        .onChange(of: jiggleIntervalMinutes) { _, v in write(v, "jiggleIntervalMinutes") }
+                        .onChange(of: jiggleIntervalMinutes) { _, v in
+                            vm.save(in: store) { $0.setJiggleIntervalMinutes(v) }
+                        }
                         .fixedSize()
                     Toggle(KAStr.movePointer, isOn: $jiggleEnabled)
                         .labelsHidden()
-                        .onChange(of: jiggleEnabled) { _, v in write(v, "jiggleEnabled") }
+                        .onChange(of: jiggleEnabled) { _, v in
+                            vm.save(in: store) { $0.setJiggleEnabled(v) }
+                        }
                 }
             }
             // macOS drops synthetic mouse events from an untrusted app, so
@@ -196,13 +204,18 @@ public struct KeepAwakeSettingsPage: View {
                 HelmPermissionNote(need: .accessibility,
                                    text: KAStr.pointerNeedsAccessibility)
             }
+            // The minutes entry is the tile's own label; the two hour entries are
+            // not, on purpose — `KAStr.duration` spells them "1 h" / "2 h", which
+            // is what a preset pill needs and not what this row wants.
             Picker(KAStr.defaultDuration, selection: $defaultDurationMinutes) {
-                Text(KAStr.min15).tag(15)
+                Text(KAStr.duration(15)).tag(15)
                 Text(KAStr.oneHour).tag(60)
                 Text(KAStr.twoHours).tag(120)
                 Text(KAStr.indefinite).tag(0)
             }
-            .onChange(of: defaultDurationMinutes) { _, v in write(v, "defaultDurationMinutes") }
+            .onChange(of: defaultDurationMinutes) { _, v in
+                vm.save(in: store) { $0.setDefaultDurationMinutes(v) }
+            }
         }
     }
 
@@ -210,10 +223,10 @@ public struct KeepAwakeSettingsPage: View {
         Section(KAStr.menuBarIcon) {
             LabeledContent(KAStr.activeIconColor) { colorSwatches }
             Toggle(KAStr.customActiveIcon, isOn: $customActiveIcon)
-                .onChange(of: customActiveIcon) { _, v in write(v, MenuBarLook.Key.customIcon) }
+                .onChange(of: customActiveIcon) { _, v in writeLook(v, MenuBarLook.Key.customIcon) }
             if customActiveIcon {
                 IconShapePicker(selection: $activeIconShape, tintToken: activeTintColor)
-                    .onChange(of: activeIconShape) { _, v in write(v, MenuBarLook.Key.iconShape) }
+                    .onChange(of: activeIconShape) { _, v in writeLook(v, MenuBarLook.Key.iconShape) }
             }
             Text(KAStr.ringColorNote)
                 .font(.caption).foregroundStyle(HelmText.quiet)
@@ -223,11 +236,11 @@ public struct KeepAwakeSettingsPage: View {
     @ViewBuilder private var timerSection: some View {
         Section(KAStr.timer) {
             Toggle(KAStr.ringTimer, isOn: $ringTimer)
-                .onChange(of: ringTimer) { _, v in write(v, MenuBarLook.Key.ringTimer) }
+                .onChange(of: ringTimer) { _, v in writeLook(v, MenuBarLook.Key.ringTimer) }
             Text(KAStr.ringTimerNote)
                 .font(.caption).foregroundStyle(HelmText.quiet)
             Toggle(KAStr.showTimerText, isOn: $showTimerText)
-                .onChange(of: showTimerText) { _, v in write(v, MenuBarLook.Key.showTimerText) }
+                .onChange(of: showTimerText) { _, v in writeLook(v, MenuBarLook.Key.showTimerText) }
             LabeledContent(KAStr.timerColor) { timerColorSwatches }
         }
     }
@@ -241,7 +254,10 @@ public struct KeepAwakeSettingsPage: View {
 
     // MARK: - Write-through
 
-    private func write(_ value: Any?, _ key: String) {
+    /// The menu-bar look only, whose keys `MenuBarLook` owns and the engine never
+    /// reads. Everything the engine acts on goes through `vm.save(in:)` instead,
+    /// which spells no key at all.
+    private func writeLook(_ value: Any?, _ key: String) {
         store.set(value, for: key)
         vm.send(KeepAwakeCommand.settingsChanged)
     }
@@ -296,7 +312,7 @@ public struct KeepAwakeSettingsPage: View {
     }
 
     private func saveTriggers() {
-        write(AppTriggerRules.encode(appTriggers), "autoAppRules")
+        vm.save(in: store) { $0.setAppTriggers(appTriggers) }
     }
 
     private func pickApp() {
@@ -314,7 +330,7 @@ public struct KeepAwakeSettingsPage: View {
     private var colorSwatches: some View {
         HelmPaletteSwatches(selection: activeTintColor) { token in
             activeTintColor = token
-            write(token, MenuBarLook.Key.activeTint)
+            writeLook(token, MenuBarLook.Key.activeTint)
         }
     }
 
@@ -324,7 +340,7 @@ public struct KeepAwakeSettingsPage: View {
         // so show that as the selection.
         HelmPaletteSwatches(selection: timerTintColor.isEmpty ? activeTintColor : timerTintColor) { token in
             timerTintColor = token
-            write(token, MenuBarLook.Key.timerTint)
+            writeLook(token, MenuBarLook.Key.timerTint)
         }
     }
 }

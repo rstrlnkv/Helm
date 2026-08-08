@@ -129,7 +129,9 @@ enum UnStr {
     }
     /// The sentences moved to `TrashReasonText` when Disk and Duplicates
     /// started needing them too. Kept as a name the pages already call.
-    static func failureReason(_ raw: String) -> String { TrashReasonText.sentence(raw) }
+    static func failureReason(_ reason: TrashFailure.Reason) -> String {
+        TrashReasonText.sentence(reason.rawValue)
+    }
     /// Marks a leftover found by the app's display name rather than its
     /// bundle id, and it is not ticked by default.
     ///
@@ -138,7 +140,6 @@ enum UnStr {
     /// («по названию», 名前一致), which is what an under-specified fragment does.
     /// The word this app already uses for the thing is a guess.
     static var matchedByName: String { L("guess") }
-    static var showInFinder: String { L("Show in Finder") }
     static var openDiskAccess: String { L("Open Full Disk Access…") }
     static var openExtensions: String { L("Open Extensions…") }
     static var done: String { L("Done") }

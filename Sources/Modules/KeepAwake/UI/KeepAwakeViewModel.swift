@@ -1,5 +1,6 @@
 import SwiftUI
 import HelmContract
+import HelmRuntime
 import HelmUI
 import Module_KeepAwake_Engine
 
@@ -87,5 +88,17 @@ import Module_KeepAwake_Engine
     /// promise not to be used.
     public func send(_ command: KeepAwakeCommand, payload: Data = Data()) {
         vm.send(command, payload: payload)
+    }
+
+    /// Change a setting and tell the engine to re-read it.
+    ///
+    /// The pair is the point: the engine keeps what it read, so a write nobody
+    /// announces is a setting that starts working at the next launch. The
+    /// settings page and the panel tile each carried their own copy of these two
+    /// lines — and, before `KeepAwakeSettings` owned the keys, their own spelling
+    /// of every key they wrote.
+    func save(in store: NamespacedStore, _ change: (KeepAwakeSettings) -> Void) {
+        change(KeepAwakeSettings(store: store))
+        send(KeepAwakeCommand.settingsChanged)
     }
 }

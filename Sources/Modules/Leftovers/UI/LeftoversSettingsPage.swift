@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 import HelmRuntime
 import HelmUI
@@ -59,8 +58,7 @@ public struct LeftoversSettingsPage: View {
             Divider()
             actionBar
         }
-        .helmOnAppActive { diskAccess = PermissionCheck.currentFullDiskAccess() }
-        .task { diskAccess = PermissionCheck.currentFullDiskAccess() }
+        .helmTracksFullDiskAccess($diskAccess)
         .confirmationDialog(pendingDeletion.map { LfStr.confirmDeleteInUse($0.identifier) } ?? "",
                             isPresented: Binding(get: { pendingDeletion != nil },
                                                  set: { if !$0 { pendingDeletion = nil } }),
@@ -229,9 +227,7 @@ public struct LeftoversSettingsPage: View {
                 Text(Bytes(item.sizeBytes))
                     .font(.caption).foregroundStyle(HelmText.quiet).monospacedDigit()
                 Menu {
-                    Button(LfStr.reveal) {
-                        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: item.path)])
-                    }
+                    Button(HelmA11y.showInFinder) { HelmReveal.inFinder(item.path) }
                     if item.actions.contains(.delete) {
                         Button(Self.deleteLabel(for: item), role: .destructive) {
                             if LeftoverActions.needsConfirmation(item) {
@@ -283,10 +279,7 @@ public struct LeftoversSettingsPage: View {
                 HelmRemovalOutcome(
                     succeededText: banner,
                     removed: lvm.removedCount,
-                    failures: lvm.failures.map {
-                        HelmRemovalFailure(path: $0.path,
-                                           reason: LfStr.failureReason($0.message))
-                    },
+                    failures: lvm.failures.map(HelmRemovalFailure.init),
                     needsFullDiskAccess: diskAccess == .denied)
                     .frame(maxWidth: 420, alignment: .leading)
             }

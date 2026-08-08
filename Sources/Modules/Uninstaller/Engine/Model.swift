@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 public struct InstalledApp: Codable, Equatable, Sendable {
     public let name: String
@@ -64,26 +65,45 @@ public struct TrashedAppLeftovers: Codable, Equatable, Sendable {
 }
 
 /// Why one path could not be moved, so the UI can say something actionable.
+///
+/// **Not `HelmTrash.Refusal` with two extra letters.** It carries a third thing
+/// that one deliberately does not: what macOS said, verbatim. The shared loop
+/// classifies the error and writes the sentence to the log, because for Disk,
+/// Duplicates and Leftovers the classification is the whole of what a person can
+/// act on. This module's failure sheet draws both — the reason in Helm's words
+/// and macOS's own underneath it as the evidence behind it — and one screen with
+/// a use for a field is not a reason to put it on the type the other four share.
+///
+/// The reason is the enum rather than a string that happens to be its raw value.
+/// Leftovers held one of those in a field called `message` and nothing in the
+/// type said what it was; three screens here compared it against
+/// `.rawValue` by hand.
 public struct TrashFailureInfo: Codable, Equatable, Sendable, Identifiable {
     public var id: String { path }
     public let path: String
-    /// Raw value of `TrashFailure.Reason`.
-    public let reason: String
-    /// What macOS said, verbatim — dev builds surface it for triage.
+    public let reason: TrashFailure.Reason
+    /// What macOS said, verbatim — the sheet shows it under the reason.
     public let message: String
-    public init(path: String, reason: String, message: String = "") {
+    public init(path: String, reason: TrashFailure.Reason, message: String = "") {
         self.path = path; self.reason = reason; self.message = message
     }
 }
 
 public struct UninstallResult: Codable, Equatable, Sendable {
     public let trashed: [String]
-    public let failed: [String]
     public let freedBytes: Int
     public let failures: [TrashFailureInfo]
-    public init(trashed: [String], failed: [String], freedBytes: Int,
-                failures: [TrashFailureInfo] = []) {
-        self.trashed = trashed; self.failed = failed; self.freedBytes = freedBytes
+
+    /// The refused paths, which the two screens read one each: this one decides
+    /// which apps a removal answered for, and `failures` is what the report
+    /// lists. It was a stored field beside `failures`, appended to on the same
+    /// two lines, and nothing but that adjacency kept them in step — a `failed`
+    /// missing a path its `failures` recorded would file an app macOS refused as
+    /// the person's own "no", which takes it off every screen Helm has.
+    public var failed: [String] { failures.map(\.path) }
+
+    public init(trashed: [String], freedBytes: Int, failures: [TrashFailureInfo] = []) {
+        self.trashed = trashed; self.freedBytes = freedBytes
         self.failures = failures
     }
 }

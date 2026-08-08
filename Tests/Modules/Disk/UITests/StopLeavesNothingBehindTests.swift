@@ -35,60 +35,12 @@ import Module_Disk_Engine
 @MainActor
 final class StopLeavesNothingBehindTests: XCTestCase {
 
-    private final class AnsweringTransport: EngineTransport, @unchecked Sendable {
-        private let lock = NSLock()
-        private var results: [String: ScanResult] = [:]
-        private var removal = DiskRemoval(removed: [], refused: [], freedBytes: 0)
-        let volumes: [VolumeInfo]
-        let events: AsyncStream<EngineEvent>
-
-        init(volumes: [VolumeInfo]) {
-            self.volumes = volumes
-            events = AsyncStream { _ in }
-        }
-
-        func answer(_ path: String, with result: ScanResult) {
-            lock.lock(); results[path] = result; lock.unlock()
-        }
-
-        func answerTrash(with removal: DiskRemoval) {
-            lock.lock(); self.removal = removal; lock.unlock()
-        }
-
-        private func result(for path: String) -> ScanResult? {
-            lock.lock(); defer { lock.unlock() }; return results[path]
-        }
-
-        private var currentRemoval: DiskRemoval {
-            lock.lock(); defer { lock.unlock() }; return removal
-        }
-
-        func send(_ command: EngineCommand) async throws -> Data {
-            switch command.name {
-            case "volumes":
-                return (try? JSONEncoder().encode(volumes)) ?? Data()
-            case "scan":
-                let request = try? JSONDecoder().decode(ScanRequest.self, from: command.payload)
-                return (try? JSONEncoder().encode(request.flatMap { result(for: $0.path) })) ?? Data()
-            case "trash":
-                return (try? JSONEncoder().encode(currentRemoval)) ?? Data()
-            default:
-                return Data()
-            }
-        }
-    }
-
     // MARK: - Fixtures
 
     private let big = VolumeInfo(name: "Big", path: "/Volumes/Big",
                                  totalBytes: 1000, freeBytes: 100)
     private let small = VolumeInfo(name: "Small", path: "/Volumes/Small",
                                    totalBytes: 500, freeBytes: 50)
-
-    private func folder(_ path: String, bytes: Int, children: [DiskEntry] = []) -> DiskEntry {
-        DiskEntry(name: (path as NSString).lastPathComponent, path: path, bytes: bytes,
-                  isDirectory: true, noAccess: false, children: children)
-    }
 
     private func transport() -> AnsweringTransport {
         let transport = AnsweringTransport(volumes: [big, small])

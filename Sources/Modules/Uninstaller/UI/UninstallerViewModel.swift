@@ -188,12 +188,18 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
         let result = await trashPaths(paths)
 
         let moved = Bytes(result?.freedBytes ?? 0)
-        if let failed = result?.failed, !failed.isEmpty {
-            HelmLog.shared.warn("uninstaller", "failed to trash: \(Redact.paths(failed))")
-            resultBanner = UnStr.movedWithFailures(moved, failed.count)
+        if let result, !result.failed.isEmpty {
+            HelmLog.shared.warn("uninstaller", "failed to trash: \(Redact.paths(result.failed))")
+            resultBanner = UnStr.movedWithFailures(moved, result.failed.count)
             // Leftovers that stayed put are the whole point of the module, so
             // they get a screen of their own rather than a line to overlook.
-            failures = result?.failures ?? failed.map { TrashFailureInfo(path: $0, reason: "unknown") }
+            //
+            // There used to be a fallback here, building a failure per path with
+            // the reason `"unknown"`, for a result whose `failed` held paths its
+            // `failures` did not. That was already unreachable — `failed` is
+            // `failures.map(\.path)` — and `"unknown"` was not one of the
+            // reasons, so what it drew was the sentence for a cause nobody knew.
+            failures = result.failures
         } else {
             resultBanner = UnStr.movedToTrash(moved)
             failures = []

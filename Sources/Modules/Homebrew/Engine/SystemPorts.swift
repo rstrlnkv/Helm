@@ -159,10 +159,7 @@ public struct OSAPrivilegedRunner: PrivilegedRunner {
         // `AppleScript` in HelmRuntime — the escaping was written out here and
         // in `SudoersRule`, and Keep Awake's copy carried the comment saying so.
         let osa = AppleScript.administratorShellScript(script)
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        p.arguments = ["-e", osa]
-        do { try p.run(); p.waitUntilExit(); return p.terminationStatus == 0 } catch { return false }
+        return HelmProcess.run("/usr/bin/osascript", ["-e", osa]).status == 0
     }
 }
 

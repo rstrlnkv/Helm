@@ -78,9 +78,9 @@ final class ExtensionHostBlameTests: XCTestCase {
             .uninstall(appPath: path, paths: [])
         XCTAssertEqual(result.failures.count, 1)
         XCTAssertNotEqual(result.failures.first?.reason,
-                          TrashFailure.Reason.activeSystemExtension.rawValue,
+                          TrashFailure.Reason.activeSystemExtension,
                           "blamed an extension belonging to a different app")
-        XCTAssertEqual(result.failures.first?.reason, TrashFailure.Reason.noPermission.rawValue)
+        XCTAssertEqual(result.failures.first?.reason, TrashFailure.Reason.noPermission)
     }
 
     /// Control: the app that really owns the extension must still be named,
@@ -90,7 +90,7 @@ final class ExtensionHostBlameTests: XCTestCase {
         let result = try await engine(hosts: ["at.obdev.littlesnitch"])
             .uninstall(appPath: path, paths: [])
         XCTAssertEqual(result.failures.first?.reason,
-                       TrashFailure.Reason.activeSystemExtension.rawValue)
+                       TrashFailure.Reason.activeSystemExtension)
     }
 
     /// And an app with no relation to any host keeps the honest reason.
@@ -98,6 +98,6 @@ final class ExtensionHostBlameTests: XCTestCase {
         let path = try makeApp(named: "Unrelated", bundleID: "com.example.unrelated")
         let result = try await engine(hosts: ["at.obdev.littlesnitch"])
             .uninstall(appPath: path, paths: [])
-        XCTAssertEqual(result.failures.first?.reason, TrashFailure.Reason.noPermission.rawValue)
+        XCTAssertEqual(result.failures.first?.reason, TrashFailure.Reason.noPermission)
     }
 }

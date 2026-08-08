@@ -11,6 +11,17 @@ import HelmRuntime
 /// directly — which is what someone looking for duplicates actually wants —
 /// and Disk goes back to answering one question.
 public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecked Sendable {
+    /// This module's id, and the only place it is written down.
+    ///
+    /// It reaches disk in shapes nothing would flag if they disagreed: the
+    /// `module.duplicates.*` keys of a store, the directory `ScanJournal` names after
+    /// it, and the removal attributed to it in the log. `DuplicatesDescriptor.id`
+    /// is built from this rather than repeating it, the direction the
+    /// descriptors already carry their command enums, so the two spellings are
+    /// one. **The string itself never changes** — it names folders and stored
+    /// settings that are already on people's machines.
+    public static let moduleID = "duplicates"
+
     private let localTransport: LocalTransport
     public let transport: EngineTransport
     private let finderBox = FinderBox()
@@ -69,16 +80,14 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     /// the wait — and every tick of progress crosses the transport.
     public func find(under path: String) async -> [DuplicateGroup]? {
         await run(under: path, cache: nil, onProgress: { progress in
-            guard let data = try? JSONEncoder().encode(progress) else { return }
-            self.localTransport.emit(EngineEvent(name: DuplicatesEvent.progress.rawValue,
-                                                 payload: data))
+            self.localTransport.emit(DuplicatesEvent.progress, encoding: progress)
         })
     }
 
     /// Beside the journal, and private for the same reason: the keys name
     /// nothing but inodes, yet the file is a record of what was on this disk.
     static func cacheURL() -> URL {
-        ScanJournal().directory(module: "duplicates")
+        ScanJournal().directory(module: moduleID)
             .appendingPathComponent("hashes.json")
     }
 
@@ -201,7 +210,7 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
                                     "refused \(stale.count) — changed since the scan")
             }
             let result = HelmTrash.remove(allowed: allowed, outOfScope: outOfScope,
-                                          module: "duplicates")
+                                          module: Self.moduleID)
             // A new value rather than a mutation: `Result` is immutable on
             // purpose, so a refusal cannot be quietly dropped from one after the
             // fact. The stale ones join the scope refusals, and none of them is
@@ -226,12 +235,11 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
             guard let name = DuplicatesCommand(rawValue: command.name) else { return Data() }
             switch name {
             case .find:
-                guard let payload = try? JSONDecoder().decode(DuplicateSearchRequest.self,
-                                                              from: command.payload)
+                guard let payload = EngineReply.decode(DuplicateSearchRequest.self, from: command)
                 else { return Data() }
-                return (try? JSONEncoder().encode(await self.find(under: payload.path))) ?? Data()
+                return EngineReply.encode(await self.find(under: payload.path), for: command)
             case .backgroundScan:
-                return (try? JSONEncoder().encode(await self.backgroundScan())) ?? Data()
+                return EngineReply.encode(await self.backgroundScan(), for: command)
             case .cancel:
                 self.finderBox.current?.cancel()
                 return Data()
@@ -241,10 +249,9 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
                 // re-check — so there is no fallback to it: a caller sending
                 // bare paths gets nothing removed rather than something removed
                 // unchecked.
-                guard let plans = try? JSONDecoder().decode([DuplicatePlan].self,
-                                                            from: command.payload)
+                guard let plans = EngineReply.decode([DuplicatePlan].self, from: command)
                 else { return Data() }
-                return (try? JSONEncoder().encode(await self.trash(plans))) ?? Data()
+                return EngineReply.encode(await self.trash(plans), for: command)
             }
         }
     }

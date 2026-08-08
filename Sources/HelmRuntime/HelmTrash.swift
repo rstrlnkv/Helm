@@ -15,15 +15,20 @@ import Foundation
 /// module's own question (`RemovableScope`, `UserFileScope`, `WatchScope`),
 /// and this type takes paths that have already passed it.
 ///
-/// Three of the four call it: Disk, Duplicates and Leftovers. The other two
-/// paths that trash things do not, and the reason is the same in both — they
-/// take a port so their tests can run without a filesystem, while this hard-
-/// wires `FileManager`. `UninstallerEngine.trashSync` also carries a rule this
-/// does not (a bundle that is a live system extension is blamed on the
-/// extension rather than on macOS), and `RuleRunner` trashes one file at a time
-/// inside a rule it has already decided. Adopting them needs an injectable
-/// seam here, which would change this for all five callers to serve two —
-/// weighed and declined, deliberately, rather than overlooked.
+/// Every batch removal in the app comes through here — `grep -rn
+/// 'HelmTrash.remove' Sources` says which, and a number written down in this
+/// paragraph would not. The last one in was the uninstaller, through `trashing`:
+/// the move itself, which that module takes as a port so its tests can run
+/// without a filesystem. The seam was declined once, on the grounds that it
+/// changed this for every caller to serve one; what the copy it left in place
+/// then cost was three rules stated in the comments below and missing there — a
+/// child taken with its parent reported as neither moved nor refused, a hard
+/// link's bytes counted once per name, and a batch whose order decided its own
+/// answer.
+///
+/// `RuleRunner` is the one path still outside, and it is a different shape: one
+/// file at a time inside a rule it has already decided, with no batch for any of
+/// the rules here to be about.
 public enum HelmTrash {
 
     /// What happened to one path.
@@ -49,15 +54,6 @@ public enum HelmTrash {
         }
 
         public var failed: [String] { refused.map(\.path) }
-
-        /// The reason to show when the whole batch is being summarised in one
-        /// line: the most common one, and the first of the batch to break a
-        /// tie, so the sentence does not change between two identical runs.
-        public var principalReason: TrashFailure.Reason? {
-            var counts: [TrashFailure.Reason: Int] = [:]
-            for refusal in refused { counts[refusal.reason, default: 0] += 1 }
-            return refused.map(\.reason).max { counts[$0]! < counts[$1]! }
-        }
     }
 
     /// Trash `allowed`, and record `outOfScope` for everything the caller's own
@@ -66,11 +62,21 @@ public enum HelmTrash {
     ///
     /// `hasSystemExtension` answers "is this bundle a live system extension",
     /// which changes the reason from "macOS said no" to something the person
-    /// can act on. Modules that cannot be handed an app bundle pass nil.
+    /// can act on. Modules that cannot be handed an app bundle leave it alone.
+    ///
+    /// `trashing` is the move, and the only reason it is a parameter: a module
+    /// that reaches the filesystem through a port has to be able to hand that
+    /// port over here rather than keep a second copy of this loop. It throws the
+    /// way `FileManager` does, because what this does with a failure is read its
+    /// `NSError` code — a port that reports an outcome instead wraps it back up.
     public static func remove(allowed: [String],
                               outOfScope: [String] = [],
                               module: String,
-                              hasSystemExtension: (String) -> Bool = { _ in false })
+                              hasSystemExtension: (String) -> Bool = { _ in false },
+                              trashing: (URL) throws -> Void = {
+                                  try FileManager.default.trashItem(at: $0,
+                                                                    resultingItemURL: nil)
+                              })
         -> Result {
         var removed: [String] = []
         var refused = outOfScope.map { Refusal(path: $0, reason: .outOfScope) }
@@ -111,7 +117,7 @@ public enum HelmTrash {
             // Read before the move: afterwards the URL points at nothing.
             let size = FileWeight.allocated(of: url, countingOnce: &counted)
             do {
-                try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+                try trashing(url)
                 removed.append(path)
                 freed += size
             } catch let error as NSError

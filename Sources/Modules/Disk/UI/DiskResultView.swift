@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 import HelmRuntime
 import HelmUI
@@ -144,7 +143,7 @@ struct DiskResultView: View {
         if child.isDirectory {
             drill(into: child)
         } else {
-            NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+            HelmReveal.inFinder(path)
         }
     }
 
@@ -339,9 +338,7 @@ private struct ChildRow: View {
     private var isHovered: Bool { hovered == child.path }
 
 
-    private func reveal() {
-        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: child.path)])
-    }
+    private func reveal() { HelmReveal.inFinder(child.path) }
 
     var body: some View {
         HStack(spacing: 8) {
@@ -497,9 +494,7 @@ private struct AdviceList: View {
         }
     }
 
-    private func reveal(_ item: DiskAdvice) {
-        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: item.path)])
-    }
+    private func reveal(_ item: DiskAdvice) { HelmReveal.inFinder(item.path) }
 
     private func icon(_ kind: DiskAdvice.Kind) -> String {
         switch kind {

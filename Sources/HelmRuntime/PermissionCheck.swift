@@ -58,6 +58,32 @@ public enum PermissionCheck {
         return state(canReadProtectedPath: readable)
     }
 
+    /// The same answer, off the thread that draws — for the settings pages that
+    /// ask for it as they appear, through `helmTracksFullDiskAccess`.
+    ///
+    /// **Measured here, warm and cold**: 0.09 ms a call once the paths are in
+    /// the cache, 1.85 ms for the first call of the process, with three of the
+    /// four probe files present and the grant withheld. So the warm case is not
+    /// what this is about, and saying it was would be a claim the numbers do not
+    /// support. What it is about is that those milliseconds have no ceiling:
+    /// each is a synchronous `open` and a `read` of somebody's `chat.db` or
+    /// Safari bookmarks, on whatever volume the home directory is on, and a
+    /// blocking syscall answers when it answers. Five pages made that call while
+    /// building themselves.
+    ///
+    /// Off the **cooperative** pool, not merely off the main actor. A plain
+    /// `async` body would already leave the main thread, and would land on the
+    /// pool that has one thread per core — where a blocking read is exactly the
+    /// thing `offTheCooperativePool` exists to keep out.
+    ///
+    /// `probing` is a seam, not a feature: it is how `FullDiskAccessProbeTests`
+    /// can see which thread the probe ran on.
+    public static func fullDiskAccess(
+        probing probe: @escaping @Sendable () -> PermissionState = { currentFullDiskAccess() }
+    ) async -> PermissionState {
+        await offTheCooperativePool(probe)
+    }
+
     /// Accessibility. Keep Awake's pointer nudge posts a synthetic mouse event,
     /// and macOS drops those on the floor without this grant — the setting
     /// would look enabled and quietly do nothing.

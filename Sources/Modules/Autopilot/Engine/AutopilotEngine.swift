@@ -539,15 +539,14 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
             guard let name = AutopilotCommand(rawValue: command.name) else { return Data() }
             switch name {
             case .folders:
-                return (try? JSONEncoder().encode(self.folders)) ?? Data()
+                return EngineReply.encode(self.folders, for: command)
             case .history:
-                return (try? JSONEncoder().encode(self.history)) ?? Data()
+                return EngineReply.encode(self.history, for: command)
             case .clearHistory:
                 self.clearHistory()
                 return Data()
             case .setFolders:
-                guard let list = try? JSONDecoder().decode([WatchedFolder].self,
-                                                           from: command.payload)
+                guard let list = EngineReply.decode([WatchedFolder].self, from: command)
                 else { return Data() }
                 self.folders = list
                 return Data()
@@ -555,21 +554,19 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
                 // The folder arrives as a draft rather than by id: a rule being
                 // written has not been saved, and a preview of the saved
                 // version would answer a question nobody asked.
-                guard let draft = try? JSONDecoder().decode(WatchedFolder.self,
-                                                            from: command.payload)
+                guard let draft = EngineReply.decode(WatchedFolder.self, from: command)
                 else { return Data() }
                 // Runs on every keystroke in the rule editor.
                 let rows = await self.offQueue { self.preview(draft).map(PreviewRow.init) }
-                return (try? JSONEncoder().encode(rows)) ?? Data()
+                return EngineReply.encode(rows, for: command)
             case .runNow:
-                guard let payload = try? JSONDecoder().decode(WatchedFolderRef.self,
-                                                              from: command.payload),
+                guard let payload = EngineReply.decode(WatchedFolderRef.self, from: command),
                       let folder = self.folders.first(where: { $0.id == payload.id })
                 else { return Data() }
                 // A walk plus N moves, off the cooperative pool — and serialised
                 // with the hourly sweep, which is reachable at the same moment.
                 let report = await self.offQueue { self.sweep(folder) }
-                return (try? JSONEncoder().encode(report)) ?? Data()
+                return EngineReply.encode(report, for: command)
             }
         }
     }

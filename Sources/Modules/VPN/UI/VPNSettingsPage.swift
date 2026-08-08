@@ -25,13 +25,13 @@ public struct VPNSettingsPage: View {
     public init(vm: VPNViewModel, store: NamespacedStore) {
         self.vm = vm
         self.store = store
-        _rules = State(initialValue: VPNRules.decode(store.string("vpnAppRules", default: "{}")))
         // From the store rather than from `vm`, which is main-actor isolated
         // while this initializer is not. Nothing here may reach macOS's
         // notification centre: `UNUserNotificationCenter.current()` ends a test
         // run outright, and this page is constructed in one.
-        _notice = State(initialValue: VPNSettings(store: store).notice)
         let settings = VPNSettings(store: store)
+        _rules = State(initialValue: VPNRules.decode(settings.rulesJSON))
+        _notice = State(initialValue: settings.notice)
         _spin = State(initialValue: settings.automationSpin)
         _spinTintConnected = State(initialValue: settings.spinTint(for: .connected))
         _spinTintDisconnected = State(initialValue: settings.spinTint(for: .disconnected))
@@ -365,7 +365,7 @@ public struct VPNSettingsPage: View {
     }
 
     private func persist() {
-        store.set(VPNRules.encode(rules), for: "vpnAppRules")
+        VPNSettings(store: store).setRulesJSON(VPNRules.encode(rules))
         vm.send(VPNCommand.reloadRules)
     }
 
