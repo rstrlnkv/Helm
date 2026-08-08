@@ -29,7 +29,7 @@ final class AnsweringTransport: EngineTransport, @unchecked Sendable {
     private let lock = NSLock()
     private var results: [String: ScanResult] = [:]
     private var removal = DiskRemoval(removed: [], refused: [], freedBytes: 0)
-    let volumes: [VolumeInfo]
+    private let volumes: [VolumeInfo]
     let events: AsyncStream<EngineEvent>
 
     init(volumes: [VolumeInfo]) {

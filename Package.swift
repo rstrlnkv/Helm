@@ -51,13 +51,12 @@ extension Module {
         [
             .target(
                 name: engine,
-                dependencies: [.byName(name: "HelmContract"), .byName(name: "HelmRuntime")],
+                dependencies: ["HelmContract", "HelmRuntime"],
                 path: "Sources/Modules/\(name)/Engine"
             ),
             .target(
                 name: ui,
-                dependencies: [.byName(name: "HelmContract"), .byName(name: "HelmUI"),
-                               .byName(name: engine)],
+                dependencies: ["HelmContract", "HelmUI", .byName(name: engine)],
                 path: "Sources/Modules/\(name)/UI",
                 resources: uiResources
             ),
@@ -82,36 +81,41 @@ extension Module {
     }
 }
 
+/// The three every module is built on.
+let foundation: [Target] = [
+    .target(name: "HelmContract"),
+    // One edge, and only this direction: `EngineReply` is engine-side wire
+    // plumbing that logs, and the log lives here. The contract stays free of
+    // everything.
+    .target(name: "HelmRuntime", dependencies: ["HelmContract"]),
+    .target(name: "HelmUI", dependencies: ["HelmContract", "HelmRuntime"],
+            resources: [.process("Resources")]),
+]
+
+/// The host and the tests that belong to no module.
+let host: [Target] = [
+    .executableTarget(
+        name: "HelmApp",
+        // The UI targets only: the host talks to a module through its descriptor
+        // and the transport, and each descriptor already depends on its own
+        // engine. A direct edge here is a door past the transport into an
+        // engine's internals.
+        dependencies: ["HelmContract", "HelmRuntime", "HelmUI"]
+            + modules.map { .byName(name: $0.ui) }
+    ),
+    .testTarget(name: "HelmContractTests", dependencies: ["HelmContract"]),
+    .testTarget(name: "HelmAppTests",
+                dependencies: ["HelmApp", "HelmContract", "HelmRuntime", "HelmUI"]),
+    .testTarget(name: "HelmRuntimeTests", dependencies: ["HelmRuntime", "HelmContract"]),
+    .testTarget(name: "HelmUITests", dependencies: ["HelmUI"]),
+]
+
 let package = Package(
     name: "Helm",
     defaultLocalization: "en",
     platforms: [.macOS("26.0")],
-    targets: [
-        .target(name: "HelmContract"),
-        // One edge, and only this direction: `EngineReply` is engine-side wire
-        // plumbing that logs, and the log lives here. The contract stays free of
-        // everything.
-        .target(name: "HelmRuntime", dependencies: ["HelmContract"]),
-        .target(name: "HelmUI", dependencies: ["HelmContract", "HelmRuntime"],
-                resources: [.process("Resources")]),
-    ]
+    targets: foundation
         + modules.flatMap(\.sourceTargets)
-        + [
-            .executableTarget(
-                name: "HelmApp",
-                // The UI targets only: the host talks to a module through its
-                // descriptor and the transport, and each descriptor already
-                // depends on its own engine. A direct edge here is a door past
-                // the transport into an engine's internals.
-                dependencies: [.byName(name: "HelmContract"), .byName(name: "HelmRuntime"),
-                               .byName(name: "HelmUI")]
-                    + modules.map { .byName(name: $0.ui) }
-            ),
-            .testTarget(name: "HelmContractTests", dependencies: ["HelmContract"]),
-            .testTarget(name: "HelmAppTests",
-                        dependencies: ["HelmApp", "HelmContract", "HelmRuntime", "HelmUI"]),
-            .testTarget(name: "HelmRuntimeTests", dependencies: ["HelmRuntime", "HelmContract"]),
-            .testTarget(name: "HelmUITests", dependencies: ["HelmUI"]),
-        ]
+        + host
         + modules.flatMap(\.testTargets)
 )
