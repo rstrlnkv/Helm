@@ -63,6 +63,23 @@ enum KAStr {
     static var minutesUnit: String {
         L("min")
     }
+
+    /// "45 min" / "1 h" / "1 h 30 min" — minutes below an hour, hours above.
+    /// `compact` uses the single-letter units, for the narrow preset pills.
+    ///
+    /// The panel tile owned this privately while the settings page composed
+    /// "15 " + `minutesUnit` for the same duration one file away. The two hour
+    /// presets in that picker keep their own keys and do **not** come from here:
+    /// composed, they would read "1 ч" where Russian has «1 час» and "1 Std."
+    /// where German has "1 Stunde" — the abbreviation is what a narrow pill
+    /// needs, not what a settings row wants.
+    static func duration(_ minutes: Int, compact: Bool = false) -> String {
+        let mUnit = compact ? minutesUnitShort : minutesUnit
+        let hUnit = compact ? hoursUnitShort : hoursUnit
+        guard minutes >= 60 else { return "\(minutes) \(mUnit)" }
+        let h = minutes / 60, m = minutes % 60
+        return m == 0 ? "\(h) \(hUnit)" : "\(h) \(hUnit) \(m) \(mUnit)"
+    }
     static var lidClosed: String {
         L("Lid closed — staying awake")
     }
@@ -165,7 +182,6 @@ enum KAStr {
     static var timerColor: String { L("Timer color") }
     static var menuBarIcon: String { L("Menu-bar icon") }
     static var customActiveIcon: String { L("Custom icon when active") }
-    static var min15: String { "15 " + minutesUnit }
     static var metricState: String { L("STATE") }
     /// Whole words. Three of these were clipped with a period into a cell that
     /// fits them: the strip's label style is 9 pt semibold at 0.7 tracking and
