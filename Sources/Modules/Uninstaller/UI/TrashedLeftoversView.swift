@@ -200,7 +200,7 @@ struct TrashedLeftoversView: View {
                                                           reason: UnStr.failureReason($0.reason))
                                    },
                                    needsFullDiskAccess: model.failures.contains {
-                                       $0.reason == TrashFailure.Reason.needsFullDiskAccess.rawValue
+                                       $0.reason == .needsFullDiskAccess
                                    })
                     .padding(.horizontal, 20).padding(.vertical, 12)
                     .frame(maxWidth: .infinity, alignment: .leading)

@@ -21,9 +21,9 @@ final class RefusedPathsAreOneListTests: XCTestCase {
             trashed: ["/moved"],
             freedBytes: 12,
             failures: [TrashFailureInfo(path: "/locked",
-                                        reason: TrashFailure.Reason.needsFullDiskAccess.rawValue),
+                                        reason: .needsFullDiskAccess),
                        TrashFailureInfo(path: "/outside",
-                                        reason: TrashFailure.Reason.outOfScope.rawValue)])
+                                        reason: .outOfScope)])
 
         XCTAssertEqual(result.failed, ["/locked", "/outside"])
     }
@@ -41,7 +41,7 @@ final class RefusedPathsAreOneListTests: XCTestCase {
         let result = UninstallResult(
             trashed: [], freedBytes: 0,
             failures: paths.map { TrashFailureInfo(path: $0,
-                                                   reason: TrashFailure.Reason.systemRefused.rawValue) })
+                                                   reason: .systemRefused) })
 
         XCTAssertEqual(result.failed, paths)
     }
@@ -54,7 +54,7 @@ final class RefusedPathsAreOneListTests: XCTestCase {
         let sent = UninstallResult(
             trashed: ["/moved"], freedBytes: 12,
             failures: [TrashFailureInfo(path: "/locked",
-                                        reason: TrashFailure.Reason.needsFullDiskAccess.rawValue,
+                                        reason: .needsFullDiskAccess,
                                         message: "macOS said no")])
 
         let back = try JSONDecoder().decode(UninstallResult.self,
@@ -63,5 +63,25 @@ final class RefusedPathsAreOneListTests: XCTestCase {
         XCTAssertEqual(back, sent)
         XCTAssertEqual(back.failed, ["/locked"])
         XCTAssertEqual(back.failures.first?.message, "macOS said no")
+    }
+
+    /// The reason on the wire is the word, whether the field holds a string or
+    /// the enum it was always the raw value of. This is the check that let that
+    /// field become the enum: JSON written before it must still decode, and what
+    /// goes out must still be the same three keys with the same word in them.
+    func testTheReasonTravelsAsItsOwnWordEitherWay() throws {
+        let json = Data("""
+        {"trashed":["/moved"],"freedBytes":12,\
+        "failures":[{"path":"/locked","reason":"needsFullDiskAccess","message":"macOS said no"}]}
+        """.utf8)
+
+        let decoded = try JSONDecoder().decode(UninstallResult.self, from: json)
+
+        XCTAssertEqual(decoded.failures.map(\.reason), [.needsFullDiskAccess])
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(
+            with: try JSONEncoder().encode(decoded)) as? [String: Any])
+        let failures = try XCTUnwrap(object["failures"] as? [[String: Any]])
+        XCTAssertEqual(Set(try XCTUnwrap(failures.first).keys), ["path", "reason", "message"])
+        XCTAssertEqual(failures.first?["reason"] as? String, "needsFullDiskAccess")
     }
 }

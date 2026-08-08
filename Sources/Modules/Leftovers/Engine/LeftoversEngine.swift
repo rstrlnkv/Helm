@@ -61,14 +61,7 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
             // be completed" with the domain, the code and the path thrown away.
             HelmLog.shared.info("leftovers",
                                 "trashing \(allowed.count), refused \(refused.count) out of scope")
-            let result = HelmTrash.remove(allowed: allowed, outOfScope: refused,
-                                          module: "leftovers")
-            return LeftoversRemoval(
-                removed: result.removed,
-                failed: result.refused.map {
-                    TrashFailureDetail(path: $0.path, message: $0.reason.rawValue)
-                },
-                freedBytes: result.freedBytes)
+            return HelmTrash.remove(allowed: allowed, outOfScope: refused, module: "leftovers")
         }
     }
 
@@ -95,20 +88,13 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
     }
 }
 
-public struct TrashFailureDetail: Codable, Equatable, Sendable, Identifiable {
-    public var id: String { path }
-    public let path: String
-    public let message: String
-    public init(path: String, message: String) {
-        self.path = path; self.message = message
-    }
-}
-
-public struct LeftoversRemoval: Codable, Equatable, Sendable {
-    public let removed: [String]
-    public let failed: [TrashFailureDetail]
-    public let freedBytes: Int
-    public init(removed: [String], failed: [TrashFailureDetail], freedBytes: Int) {
-        self.removed = removed; self.failed = failed; self.freedBytes = freedBytes
-    }
-}
+/// What the trash command answers with — the same value `DiskRemoval` and
+/// `DuplicateRemoval` name, and for the same reason.
+///
+/// It was a field-for-field copy: `failed` for `refused`, and a
+/// `TrashFailureDetail` whose `message` carried `reason.rawValue` so that the
+/// page could hand it back to `TrashReasonText.sentence`. Nothing in the type
+/// said the string was a reason. The engine built the real result and unpacked
+/// it into the copy line by line; both ends of this wire are in one build, and
+/// the UI target imports this one, so one declaration serves both.
+public typealias LeftoversRemoval = HelmTrash.Result

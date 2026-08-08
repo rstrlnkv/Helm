@@ -16,7 +16,7 @@ final class LeftoversPageContractTests: XCTestCase {
         var events: AsyncStream<EngineEvent> { AsyncStream { _ in } }
 
         init(items: [StaleItem],
-             removal: LeftoversRemoval = LeftoversRemoval(removed: [], failed: [], freedBytes: 0)) {
+             removal: LeftoversRemoval = LeftoversRemoval(removed: [], refused: [], freedBytes: 0)) {
             self.items = items
             self.removal = removal
         }
@@ -112,7 +112,7 @@ final class LeftoversPageContractTests: XCTestCase {
         let item = agent("gone", bytes: 4_096)
         let transport = ScanTransport(
             items: [item],
-            removal: LeftoversRemoval(removed: [item.path], failed: [], freedBytes: 4_096))
+            removal: LeftoversRemoval(removed: [item.path], refused: [], freedBytes: 4_096))
         let lvm = LeftoversViewModel(vm: ModuleViewModel(transport: transport))
         await lvm.scan()
         lvm.selected.insert(item.path)
@@ -123,6 +123,32 @@ final class LeftoversPageContractTests: XCTestCase {
         XCTAssertEqual(lvm.banner, LfStr.movedToTrash(Bytes(4_096)),
                        "the banner promises space that only emptying the Trash gives back")
         XCTAssertEqual(lvm.removedCount, 1)
+    }
+
+    // MARK: - What a refusal says
+
+    /// The refusal reaches the page with its reason as a **reason**, not as a
+    /// word inside a field called `message`. That field was this module's own
+    /// copy of the shared refusal, and what it carried was `reason.rawValue` by
+    /// convention — nothing in the type said so, and the page handed it to
+    /// `TrashReasonText.sentence`, which answers its `default` for anything else.
+    /// This is the one place the module ever names a refusal.
+    func testARefusalArrivesWithItsReasonRatherThanAWordInAMessage() async {
+        let item = agent("locked", bytes: 4_096)
+        let refusal = HelmTrash.Refusal(path: item.path, reason: .needsFullDiskAccess)
+        let transport = ScanTransport(
+            items: [item],
+            removal: LeftoversRemoval(removed: [], refused: [refusal], freedBytes: 0))
+        let lvm = LeftoversViewModel(vm: ModuleViewModel(transport: transport))
+        await lvm.scan()
+        lvm.selected.insert(item.path)
+
+        await lvm.removeSelected()
+
+        XCTAssertEqual(lvm.failures.map(\.path), [item.path],
+                       "the refused path is not named anywhere the page can reach")
+        XCTAssertEqual(lvm.failures.map(\.reason), [TrashFailure.Reason.needsFullDiskAccess])
+        XCTAssertEqual(lvm.removedCount, 0)
     }
 
     /// And the question asked first is one question. It carried a second

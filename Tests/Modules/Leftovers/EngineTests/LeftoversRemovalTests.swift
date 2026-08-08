@@ -89,8 +89,11 @@ final class LeftoversRemovalTests: XCTestCase {
         let result = await engine.trash([inside, outside])
 
         XCTAssertEqual(result.removed, [inside])
-        XCTAssertEqual(result.failed.map(\.path), [outside],
+        XCTAssertEqual(result.failed, [outside],
                        "a refused path reached neither list and the count then lied")
+        // The reason is a reason now that this is the shared result, so the
+        // refusal can be asked *why* rather than only *whether*.
+        XCTAssertEqual(result.refused.map(\.reason), [.outOfScope])
         XCTAssertFalse(FileManager.default.fileExists(atPath: inside))
     }
 
@@ -103,7 +106,7 @@ final class LeftoversRemovalTests: XCTestCase {
 
         let result = await engine.trash([a, b, outside, a])   // one repeated
 
-        XCTAssertEqual(Set(result.removed + result.failed.map(\.path)), [a, b, outside])
+        XCTAssertEqual(Set(result.removed + result.failed), [a, b, outside])
         XCTAssertEqual(result.removed.count + result.failed.count, 3, "the repeat was counted twice")
     }
 
@@ -155,7 +158,7 @@ final class LeftoversRemovalTests: XCTestCase {
         let result = await engine.trash([missing])
 
         XCTAssertTrue(result.removed.isEmpty)
-        XCTAssertEqual(result.failed.map(\.path), [missing])
+        XCTAssertEqual(result.failed, [missing])
         XCTAssertEqual(result.freedBytes, 0)
     }
 }

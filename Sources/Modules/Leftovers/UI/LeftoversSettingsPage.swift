@@ -285,7 +285,7 @@ public struct LeftoversSettingsPage: View {
                     removed: lvm.removedCount,
                     failures: lvm.failures.map {
                         HelmRemovalFailure(path: $0.path,
-                                           reason: LfStr.failureReason($0.message))
+                                           reason: TrashReasonText.sentence($0.reason.rawValue))
                     },
                     needsFullDiskAccess: diskAccess == .denied)
                     .frame(maxWidth: 420, alignment: .leading)
