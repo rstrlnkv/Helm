@@ -58,8 +58,7 @@ public struct LeftoversSettingsPage: View {
             Divider()
             actionBar
         }
-        .helmOnAppActive { diskAccess = PermissionCheck.currentFullDiskAccess() }
-        .task { diskAccess = PermissionCheck.currentFullDiskAccess() }
+        .helmTracksFullDiskAccess($diskAccess)
         .confirmationDialog(pendingDeletion.map { LfStr.confirmDeleteInUse($0.identifier) } ?? "",
                             isPresented: Binding(get: { pendingDeletion != nil },
                                                  set: { if !$0 { pendingDeletion = nil } }),

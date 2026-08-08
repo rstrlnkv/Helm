@@ -51,9 +51,8 @@ public struct UninstallerSettingsPage: View {
 
     public var body: some View {
         pageBody
-            .helmOnAppActive { diskAccess = PermissionCheck.currentFullDiskAccess() }
-        .task {
-                diskAccess = PermissionCheck.currentFullDiskAccess()
+            .helmTracksFullDiskAccess($diskAccess)
+            .task {
                 watchingTrash = await uvm.watchingTrash()
                 await uvm.loadAppsIfNeeded()
             }

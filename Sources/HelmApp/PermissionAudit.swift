@@ -15,7 +15,11 @@ import HelmUI
 
     static func run() {
         Task {
-            let fullDisk = PermissionCheck.currentFullDiskAccess()
+            // This `Task` inherits the main actor from the enclosing type, so
+            // the four blocking reads happened on the thread that draws, at
+            // launch. `currentAccessibility` stays as it is: `AXIsProcessTrusted`
+            // answers from a cache and touches no file.
+            let fullDisk = await PermissionCheck.fullDiskAccess()
             let accessibility = PermissionCheck.currentAccessibility()
             // Logged every launch, not only the first: "it was granted
             // yesterday and is denied today" is the shape of the ad-hoc
