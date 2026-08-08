@@ -16,12 +16,6 @@ import HelmRuntime
 /// matters most.
 final class SettingsFromAPlistThatCanSayAnythingTests: XCTestCase {
 
-    /// The tests below that reproduce defects are gated rather than weakened:
-    /// `HELM_PINNED_DEFECTS=1 swift test` runs them, and each says in its skip
-    /// message what it reproduces and where the app reaches it.
-    static let pinnedDefectsRun =
-        ProcessInfo.processInfo.environment["HELM_PINNED_DEFECTS"] == "1"
-
     private var backing: InMemoryKeyValueStore!
     private var settings: KeepAwakeSettings!
 
@@ -38,8 +32,8 @@ final class SettingsFromAPlistThatCanSayAnythingTests: XCTestCase {
 
     // MARK: - Numbers that are about to be multiplied
 
-    /// DEFECT (pinned, gated): the jiggle interval is clamped from below and
-    /// not from above, and its only reader multiplies it:
+    /// The jiggle interval was clamped from below and not from above, and its
+    /// only reader multiplies it:
     ///
     ///     let interval = TimeInterval(settings.jiggleIntervalMinutes * 60)
     ///     // KeepAwakeEngine.scheduleJiggle
@@ -52,12 +46,7 @@ final class SettingsFromAPlistThatCanSayAnythingTests: XCTestCase {
     ///
     /// Asserted as the property the multiply needs rather than as a particular
     /// clamped value, so a fix may choose any ceiling it likes.
-    func testAStoredJiggleIntervalCannotOverflowTheTimerItFeeds() throws {
-        try XCTSkipUnless(Self.pinnedDefectsRun,
-                          "DEFECT: jiggleIntervalMinutes has a floor and no ceiling; "
-                          + "KeepAwakeEngine.scheduleJiggle traps on `minutes * 60` for a "
-                          + "stored value above Int.max / 60.")
-
+    func testAStoredJiggleIntervalCannotOverflowTheTimerItFeeds() {
         for stored in [Int.max, Int.max / 59, Int.max / 60 + 1] {
             plant("jiggleIntervalMinutes", stored)
             XCTAssertLessThanOrEqual(settings.jiggleIntervalMinutes, Int.max / 60,
@@ -67,27 +56,23 @@ final class SettingsFromAPlistThatCanSayAnythingTests: XCTestCase {
         }
     }
 
-    /// DEFECT (pinned, gated): the same shape one setting over.
-    /// `defaultDurationMinutes` has no clamp at all, and `startSession` does
+    /// The same shape one setting over.
+    /// `defaultDurationMinutes` had no clamp at all, and `startSession` does
     /// `TimeInterval(minutes * 60)` twice on it — reached from `toggleSession`,
     /// which is the panel tile's main button.
     ///
     /// The picker offers a fixed list of durations, so nothing a person can do
     /// produces this; a hand-edited or migrated plist can, and the picker's
     /// range is not a fact about the file.
-    func testAStoredDefaultDurationCannotOverflowTheSessionItStarts() throws {
-        try XCTSkipUnless(Self.pinnedDefectsRun,
-                          "DEFECT: defaultDurationMinutes is unclamped and "
-                          + "KeepAwakeEngine.startSession traps on `minutes * 60`.")
-
+    func testAStoredDefaultDurationCannotOverflowTheSessionItStarts() {
         plant("defaultDurationMinutes", Int.max)
         XCTAssertLessThanOrEqual(settings.defaultDurationMinutes, Int.max / 60,
                                  "the duration the main button starts a session with "
                                  + "overflows the multiply that turns it into seconds")
     }
 
-    /// DEFECT (pinned, gated), and the weaker of the three: the battery floor
-    /// is unclamped in both directions. The stepper offers 5…50; a stored 0 or
+    /// The weakest of the three: the battery floor was unclamped in both
+    /// directions. The stepper offers 5…50; a stored 0 or
     /// a negative leaves `percent <= threshold` unable to fire, which switches
     /// off the only thing that ever ends an unattended session — while the
     /// screen still draws the guard as on. A stored 101 ends every session on
@@ -95,12 +80,7 @@ final class SettingsFromAPlistThatCanSayAnythingTests: XCTestCase {
     ///
     /// Hardening rather than a crash. It is here because its sibling one field
     /// up *is* clamped, for a reason that applies word for word to this one.
-    func testAStoredBatteryFloorStaysInsideWhatTheStepperCanOffer() throws {
-        try XCTSkipUnless(Self.pinnedDefectsRun,
-                          "DEFECT (hardening): batteryGuardPercent is unclamped, so a plist "
-                          + "value of 0 or below silently disables the guard while the page "
-                          + "still shows it enabled.")
-
+    func testAStoredBatteryFloorStaysInsideWhatTheStepperCanOffer() {
         for stored in [0, -1, 101, Int.max] {
             plant("batteryGuardPercent", stored)
             XCTAssertTrue((1...100).contains(settings.batteryGuardPercent),
