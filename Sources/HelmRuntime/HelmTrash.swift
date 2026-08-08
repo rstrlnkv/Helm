@@ -101,7 +101,13 @@ public enum HelmTrash {
         // A trailing slash names the same folder and is a different string, so
         // it is stripped before either the dedupe or the ancestry test — that
         // test is a raw prefix comparison, and `…/folder/` never prefixes
-        // `…/folder/inside.bin` with the separator this expects.
+        // `…/folder/inside.bin` with the separator this expects. **All of
+        // them**: a path joined onto a root that already ended in one carries
+        // two, and stripping a single separator left `p` and `p//` as two
+        // entries in one batch — the first moved, the second met "no such
+        // file", and the branch below forgave it as a child of the first,
+        // because `p//` really does begin with `p/`. One folder, two removals,
+        // and `removed.count` is what the banner counts.
         //
         // Shortest first, so a folder is taken before anything inside it and
         // the child can tell "the batch took my parent" from "it was never
@@ -109,7 +115,7 @@ public enum HelmTrash {
         // the same basket gave two different answers on two runs.
         var seenPaths: Set<String> = []
         let ordered = allowed
-            .map { $0.count > 1 && $0.hasSuffix("/") ? String($0.dropLast()) : $0 }
+            .map(withoutTrailingSeparators)
             .filter { seenPaths.insert($0).inserted }
             .sorted { $0.count < $1.count }
         for path in ordered {
@@ -146,5 +152,13 @@ public enum HelmTrash {
 
         HelmLog.shared.info(module, "trashed \(removed.count), failed \(refused.count)")
         return Result(removed: removed, refused: refused, freedBytes: freed)
+    }
+
+    /// The spelling the batch answers under. The root is the one path that is
+    /// nothing but separators, and it keeps its own.
+    private static func withoutTrailingSeparators(_ path: String) -> String {
+        var trimmed = path
+        while trimmed.count > 1, trimmed.hasSuffix("/") { trimmed.removeLast() }
+        return trimmed
     }
 }

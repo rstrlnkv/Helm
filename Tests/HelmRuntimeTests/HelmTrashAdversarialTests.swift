@@ -16,11 +16,6 @@ import XCTest
 /// case could not fail whatever anybody asserted.
 final class HelmTrashAdversarialTests: XCTestCase {
 
-    /// One test below reproduces a defect the code still has, gated rather than
-    /// weakened: `HELM_PINNED_DEFECTS=1 swift test` runs it.
-    static let pinnedDefectsRun =
-        ProcessInfo.processInfo.environment["HELM_PINNED_DEFECTS"] == "1"
-
     private var root: URL!
     private var bin: URL!
     private var moved: [String] = []
@@ -116,23 +111,18 @@ final class HelmTrashAdversarialTests: XCTestCase {
         XCTAssertLessThan(result.freedBytes, 120_000, "the folder was counted once per spelling")
     }
 
-    /// DEFECT (pinned, gated): the normalisation strips **one** trailing
-    /// separator, and a path joined onto a root that already ended in one has
-    /// two. `…/Ghost` and `…/Ghost//` therefore survive the dedupe as two
-    /// different strings; the first is moved, the second meets
-    /// `NSFileNoSuchFileError`, and the "went with its parent" branch fires —
-    /// because `"…/Ghost/".hasPrefix("…/Ghost" + "/")` is true. One folder comes
-    /// back as two removals, and `removed.count` is what the banner counts.
+    /// The normalisation used to strip **one** trailing separator, and a path
+    /// joined onto a root that already ended in one has two. `…/Ghost` and
+    /// `…/Ghost//` then survived the dedupe as two different strings; the first
+    /// was moved, the second met `NSFileNoSuchFileError`, and the "went with its
+    /// parent" branch fired — because `"…/Ghost/".hasPrefix("…/Ghost" + "/")` is
+    /// true. One folder came back as two removals, and `removed.count` is what
+    /// the banner counts.
     ///
     /// The stated rule is "one outcome per path, whatever the caller handed
     /// over", and it is stated because `removed` and `failed` are read as one
     /// description of one batch.
     func testAPathCarryingADoubledSeparatorIsStillOneOutcome() throws {
-        try XCTSkipUnless(HelmTrashAdversarialTests.pinnedDefectsRun,
-                          "DEFECT: HelmTrash.remove strips only one trailing separator, so "
-                          + "`p` and `p//` are two entries in one batch and the second is "
-                          + "forgiven as a child of the first — one folder, two removals.")
-
         try write("Ghost/inside.bin", bytes: 60_000)
         let folder = root.appendingPathComponent("Ghost").path
 
