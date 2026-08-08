@@ -70,10 +70,24 @@ public enum StatusPlan {
     /// `spinUntil` it produced. The result is always a real index of an array
     /// of `frameCount`: a clock that jumps, or a module asking for a longer
     /// window than one spin, otherwise subscripts past the end.
+    ///
+    /// **The bounds are applied to the `Double`, before the conversion.** They
+    /// used to be applied after — `min(max(Int(phase * Double(frameCount)), 0),
+    /// frameCount - 1)` — where they protected nothing, because `Int(_:)` traps
+    /// on a value outside `Int`'s range and on one that is not a number, and it
+    /// ran first. `spinUntil` arrives from a module over JSON as a `Date`, which
+    /// is a `Double` of seconds; nothing between that payload and this line
+    /// bounds it, so the same family of crashes that `Clamped` was written for
+    /// reached the menu bar. The helper cannot be used here — `HelmRuntime`
+    /// depends on this target — so the order is spelled out instead.
+    ///
+    /// The empty array is refused first for the same arithmetic: `phase` is
+    /// infinite for a wild `spinUntil`, `infinity * 0` is NaN, and a NaN passes
+    /// through `min` and `max` untouched to trap at the conversion anyway.
     public static func frame(spinUntil: Date?, now: Date, frameCount: Int) -> Int? {
-        guard let spinUntil, spinUntil > now else { return nil }
+        guard let spinUntil, spinUntil > now, frameCount > 0 else { return nil }
         let phase = 1 - spinUntil.timeIntervalSince(now) / spinDuration
-        return min(max(Int(phase * Double(frameCount)), 0), frameCount - 1)
+        return Int(min(max(phase * Double(frameCount), 0), Double(frameCount - 1)))
     }
 
     /// Everything that changes the drawn icon, in one string, so the host can

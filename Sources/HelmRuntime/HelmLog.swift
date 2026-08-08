@@ -16,6 +16,38 @@ public enum LogPolicy {
     }
 }
 
+/// Where the log keeps its files. Pure so the rule is testable, beside the rule
+/// about whether there is a log at all.
+///
+/// **A test process must not write into the file people triage.** The log is a
+/// product surface: `~/Library/Logs/Helm/helm.log` is what a dev build is judged
+/// by before it ships, so a line in it reads as something the app did. Logging
+/// code under test logs — `EngineReply`'s tests exercise the decode failure it
+/// was written to record — and those lines wore the shape of a real fault well
+/// enough to be triaged as one.
+///
+/// The *folder* moves rather than the file, because everything that lives beside
+/// the log lives beside it by design: the rollover, the purge latch, and
+/// `Redact`'s salt. One decision keeps them together, where teaching each of
+/// them the same exception separately is how a name ends up spelled twice. It
+/// also takes the teeth out of `discardPreRedactionLog`, which deletes the log
+/// it finds and has destroyed a dev build's triage evidence once already when a
+/// tool that merely linked this target started it.
+///
+/// The test folder is **one** folder, reused by every run and bounded by the
+/// same rollover as the real one — so the file writing stays exercised under
+/// test rather than going dark, and nothing accumulates. `ScanJournal` takes one
+/// per process and has to sweep after the processes that died; a log has no
+/// reason to tell two runs apart, so it does not buy that problem.
+public enum LogDestination {
+
+    public static func directory(home: URL, temporary: URL, underTest: Bool) -> URL {
+        underTest
+            ? temporary.appendingPathComponent("helm-test-logs", isDirectory: true)
+            : home.appendingPathComponent("Library/Logs/Helm", isDirectory: true)
+    }
+}
+
 /// One event, one line: the file is parsed line-by-line when triaging.
 public enum LogLine {
     public static func format(date: Date, level: LogLevel, category: String,
@@ -53,11 +85,15 @@ public final class HelmLog: @unchecked Sendable {
     private let footprintQueue = DispatchQueue(label: "helm.log.footprint")
 
     /// ~/Library/Logs/Helm/helm.log — the place macOS users (and Console.app)
-    /// expect app logs to live.
-    public static var directory: URL {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Logs/Helm", isDirectory: true)
-    }
+    /// expect app logs to live. Somewhere else entirely under test; the reason
+    /// is on `LogDestination`.
+    ///
+    /// Resolved once. Every appended line asks for this folder, and none of the
+    /// three answers it is built from can change while the process lives.
+    public static let directory: URL =
+        LogDestination.directory(home: FileManager.default.homeDirectoryForCurrentUser,
+                                 temporary: FileManager.default.temporaryDirectory,
+                                 underTest: TestProcess.isRunning)
     public static var fileURL: URL { directory.appendingPathComponent("helm.log") }
     /// Where rollover puts the old half.
     ///

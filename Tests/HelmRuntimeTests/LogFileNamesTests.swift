@@ -51,8 +51,8 @@ final class LogFileNamesTests: XCTestCase {
         XCTAssertFalse(counts.isEmpty, "the scan stopped finding the file names")
         let repeated = counts.filter { $0.value > 1 }.keys.sorted()
         XCTAssertEqual(repeated, [], "built in more than one place, so two places can disagree")
-        XCTAssertEqual(Set(counts.keys), ["Library/Logs/Helm", "helm.log", "helm.previous.log",
-                                          ".redaction-reset"],
+        XCTAssertEqual(Set(counts.keys), ["Library/Logs/Helm", "helm-test-logs", "helm.log",
+                                          "helm.previous.log", ".redaction-reset"],
                        "a name here that no property declares is a name nothing clears")
     }
 
