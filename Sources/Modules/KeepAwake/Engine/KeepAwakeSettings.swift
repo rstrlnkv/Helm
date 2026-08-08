@@ -40,6 +40,18 @@ public struct KeepAwakeSettings {
         if !encoded.isEmpty { return AppTriggerRules.decode(encoded) }
         return AppTriggerRules.migrating(from: store.stringArray(Key.autoApps))
     }
+    /// True when the file holds a rules string that nothing can read.
+    ///
+    /// The reader above answers no rules for it, which fails in the safe
+    /// direction — the Mac sleeps — and looks exactly like having chosen no
+    /// apps. Somebody whose rules stopped holding the Mac awake had nothing to
+    /// look at, so `activate` says so once. Not from `appTriggers` itself: that
+    /// is read from `recompute`, which runs from three observers.
+    public var appRulesUnreadable: Bool {
+        let encoded = store.string(Key.autoAppRules, default: "")
+        return !encoded.isEmpty && AppTriggerRules.readable(encoded) == nil
+    }
+
     /// Encoded here, beside the decode above: the page used to spell the key and
     /// call `encode` itself, one target away from the only reader.
     public func setAppTriggers(_ triggers: [AppTrigger]) {

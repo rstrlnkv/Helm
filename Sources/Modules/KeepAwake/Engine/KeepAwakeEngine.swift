@@ -78,6 +78,13 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             _ = clamshell.setDisableSleep(false)
             store.set(false, for: "clamshellGuard")
         }
+        // The one loss in this module that nothing else reports: a rules string
+        // the file got wrong reads as no rules, so the apps somebody chose stop
+        // holding the Mac awake and every screen goes on looking well.
+        if settings.appRulesUnreadable {
+            HelmLog.shared.warn("keepawake", "the stored app rules could not be read; "
+                                + "no app is holding sleep")
+        }
         displayObserver.startObserving { [weak self] in self?.recompute() }
         power.startObserving { [weak self] in
             self?.batteryCheck()

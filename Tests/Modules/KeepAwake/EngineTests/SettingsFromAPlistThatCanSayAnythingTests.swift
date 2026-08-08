@@ -108,14 +108,19 @@ final class SettingsFromAPlistThatCanSayAnythingTests: XCTestCase {
 
     // MARK: - The wrong type under a known key
 
-    /// A string where an int lived, an int where a string lived, a list where a
-    /// flag lived. This is what a hand-edited plist, a botched migration and a
-    /// defaults-write with the wrong `-type` all produce, and every one of them
-    /// has to answer the module's own default — never zero, never false, and
-    /// never a crash from a forced cast.
+    /// A string where an int lived, a list where a flag lived. This is what a
+    /// hand-edited plist, a botched migration and a defaults-write with the
+    /// wrong `-type` all produce, and every one of them has to answer the
+    /// module's own default — never zero, never false, and never a crash from a
+    /// forced cast.
     ///
     /// Each default is asserted to be something other than the type's zero, so
     /// "answered the default" cannot be confused with "answered nothing".
+    ///
+    /// **A number is not the wrong type for a flag**, which is why `1` is not in
+    /// the list below and has a test of its own. A plist holds no booleans of
+    /// its own kind: `<true/>` and `<integer>1</integer>` arrive as the same
+    /// `NSNumber`, and the cast reads its value.
     func testAValueOfTheWrongTypeUnderAKnownKeyAnswersTheModulesDefault() {
         XCTAssertEqual(settings.jiggleIntervalMinutes, 5, "the default moved; re-read this test")
         XCTAssertEqual(settings.batteryGuardPercent, 20)
@@ -132,7 +137,7 @@ final class SettingsFromAPlistThatCanSayAnythingTests: XCTestCase {
                            + "\(settings.batteryGuardPercent)")
         }
 
-        for junk in [1, "yes", ["a", "b"]] as [Any] {
+        for junk in ["yes", ["a", "b"]] as [Any] {
             plant("batteryGuardEnabled", junk)
             XCTAssertTrue(settings.batteryGuardEnabled,
                           "a stored \(junk) under a Bool key turned the battery guard off — "
@@ -144,14 +149,31 @@ final class SettingsFromAPlistThatCanSayAnythingTests: XCTestCase {
                        "a number under the rules key was read as rules")
     }
 
+    /// The one wrong type that is not one. `defaults write … -int 0` under a
+    /// flag switches the flag off, because that is what the file says and what
+    /// `UserDefaults` answers — the number is not junk to fall back from.
+    ///
+    /// Stated because the guard is the only thing that ever ends an unattended
+    /// session, so "somebody's plist can switch it off with a 0" is a fact about
+    /// this module worth having written down. Both values are asserted, so
+    /// "answered the number" cannot be confused with "answered the default".
+    func testANumberUnderTheBatteryFlagIsTheFlag() {
+        plant("batteryGuardEnabled", 0)
+        XCTAssertFalse(settings.batteryGuardEnabled)
+
+        plant("batteryGuardEnabled", 1)
+        XCTAssertTrue(settings.batteryGuardEnabled)
+    }
+
     /// The rules are JSON in one string, so the file can hold something that is
     /// not JSON. It must come back as no rules rather than as invented ones,
     /// and it must not take the process with it.
     ///
     /// (What it does *not* do is fall back to the older `autoApps` list, because
-    /// the string is non-empty. That is a silent loss with no line in the log;
-    /// it fails in the safe direction — the Mac sleeps — so it is recorded here
-    /// rather than pinned.)
+    /// the string is non-empty. That is a loss, and it fails in the safe
+    /// direction — the Mac sleeps — so the module goes on working while the apps
+    /// somebody chose stop holding it awake. The line that says so is
+    /// `testARulesStringThatCouldNotBeReadIsSaidSoInTheLog` below.)
     func testARulesStringThatIsNotJSONIsNoRulesRatherThanInventedOnes() {
         plant("autoApps", ["com.apple.Safari"])
         XCTAssertEqual(settings.appTriggers, [AppTrigger(bundleID: "com.apple.Safari")],
@@ -172,6 +194,56 @@ final class SettingsFromAPlistThatCanSayAnythingTests: XCTestCase {
     func testARulesStringOfTheOlderShapeIsNotMistakenForRules() {
         plant("autoAppRules", "[\"com.apple.Safari\",\"com.apple.Music\"]")
         XCTAssertEqual(settings.appTriggers, [])
+    }
+
+    // MARK: - The one loss that is allowed to be quiet, but not silent
+
+    /// **A rules string nothing can read costs somebody their apps, and the
+    /// module goes on looking well.** Nothing is refused and nothing crashes:
+    /// the list is simply empty, the conditions never hold, and the Mac sleeps
+    /// through the render it was meant to sit out. The safe direction is the
+    /// right one to fail in; saying nothing at all is not part of it.
+    ///
+    /// Written at `activate`, once, and not in `appTriggers` — that getter is
+    /// read from `recompute`, which runs from three observers, and this module's
+    /// own rule is that it logs on a transition and never on the recompute.
+    ///
+    /// The control is the second half: a string that *is* readable, including
+    /// the empty list, must produce no line at all — otherwise the warning is
+    /// wallpaper and says nothing about anybody's file.
+    func testARulesStringThatCouldNotBeReadIsSaidSoInTheLog() {
+        HelmLog.shared.setEnabled(true)
+        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
+
+        // The readable pair is spelled by the encoder rather than by hand: every
+        // field of a rule is required, so a plausible-looking `{"bundleID": …}`
+        // is one of the unreadable strings and would make the control vacuous.
+        let real = AppTriggerRules.encode([AppTrigger(bundleID: "com.apple.Safari")])
+        for (stored, expected) in [("not json", true), ("[{\"bundleID\":}]", true),
+                                   ("[{\"bundleID\":\"com.apple.Safari\"}]", true),
+                                   ("[]", false), (real, false)] {
+            HelmLog.shared.clearTail()
+            plant("autoAppRules", stored)
+
+            engine().activate()
+
+            let said = HelmLog.shared.recentEntries()
+                .filter { $0.category == "keepawake" }
+                .contains { $0.message.contains("app rules") }
+            XCTAssertEqual(said, expected,
+                           "\"\(stored)\": the log says \(said) about rules it could not read")
+        }
+    }
+
+    /// The engine over this test's own store, with every port faked.
+    private func engine() -> KeepAwakeEngine {
+        KeepAwakeEngine(settings: settings,
+                        store: NamespacedStore(namespace: "keep-awake", backing: backing),
+                        assertions: FakeAssertions(),
+                        displayInfo: FakeDisplayInfo(),
+                        displayObserver: FakeDisplayObserver(),
+                        power: FakePower(), apps: FakeApps(),
+                        pointer: FakePointer(), clamshell: FakeClamshell(), clock: FakeClock())
     }
 
     // MARK: - Reading never writes

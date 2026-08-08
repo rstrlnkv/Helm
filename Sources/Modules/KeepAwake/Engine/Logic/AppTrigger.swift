@@ -57,11 +57,15 @@ public enum AppTriggerRules {
         return String(decoding: data, as: UTF8.self)
     }
 
-    public static func decode(_ raw: String) -> [AppTrigger] {
-        guard let data = raw.data(using: .utf8),
-              let rules = try? JSONDecoder().decode([AppTrigger].self, from: data)
-        else { return [] }
-        return rules
+    public static func decode(_ raw: String) -> [AppTrigger] { readable(raw) ?? [] }
+
+    /// `nil` for a string that is not rules, told apart from `[]` — which is a
+    /// legitimate thing for the file to say and means the person has chosen no
+    /// apps. The two are the same answer to the module and a different thing to
+    /// say about somebody's file.
+    public static func readable(_ raw: String) -> [AppTrigger]? {
+        guard let data = raw.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode([AppTrigger].self, from: data)
     }
 
     /// Earlier versions stored a plain list of bundle ids. Those apps kept the
