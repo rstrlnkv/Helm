@@ -137,13 +137,30 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         }
     }
 
+    /// The engine has the last word on how long a session may be.
+    ///
+    /// Every number a person can pick is bounded where they pick it — the
+    /// settings stepper, the tile's presets, `TimerPolicy.extendedMinutes` for
+    /// the "+15" — and one caller is not a person: `wireTransport` decodes
+    /// `KeepAwakeStart` from a JSON payload and hands `payload.minutes`
+    /// straight here, where `minutes * 60` **traps** on `Int` overflow. A
+    /// clamp in every view is a clamp in no engine.
+    ///
+    /// A negative is refused rather than brought up to the floor: zero is this
+    /// module's spelling of "until I say stop", so clamping would turn a
+    /// session of minus a minute into one with no deadline at all — the Mac
+    /// held awake on the strength of a number nobody wrote, which is the
+    /// direction this module does not fail in.
     public func startSession(minutes: Int) {
+        guard minutes >= 0 else { return }
+        let minutes = minutes.clamped(to: 0...TimerPolicy.longestSessionMinutes)
         manualOn = true
         suppressed = false
         expiryToken = nil
         if minutes > 0 {
-            startDate = clock.now()
-            endDate = clock.now().addingTimeInterval(TimeInterval(minutes * 60))
+            let now = clock.now()
+            startDate = now
+            endDate = now.addingTimeInterval(TimeInterval(minutes * 60))
             scheduleExpiry(after: TimeInterval(minutes * 60))
         } else {
             startDate = nil
