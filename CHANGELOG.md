@@ -119,6 +119,14 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   Duplicates have counted a file once per batch since their own pass; the
   Uninstaller kept a removal loop of its own and never learned it. All four share
   the loop now, which is also where the two fixes above come from.
+- **And a removal that refused one item no longer understates what the rest
+  freed.** Counting a file once per batch means keeping a note of what has been
+  counted, and the note was written when a path was *weighed* — which happens
+  before Helm's last look at where the path leads, and so before it can be
+  refused. A refused item therefore used up the note: another name for the same
+  file, later in the same batch, was treated as already counted and added
+  nothing, and a removal that really did trash something could report freeing
+  0 B. Only what actually leaves is counted now.
 - **Removing an app that is still running waits for it to quit.** `quit` only
   asks, and the bundle was moved after a fixed 800 ms — a number standing where
   an answer was available. macOS lets a running app's bundle be moved: a slow app
