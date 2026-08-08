@@ -66,7 +66,19 @@ public enum SessionRestore {
         // session, it is not a session, and keeping the Mac awake for a day on
         // the strength of a number nobody wrote is the wrong direction to fail
         // in.
-        guard bounded.isFinite, bounded <= TimerPolicy.longestSession else { return .none }
+        //
+        // The floor is the same sentence read from the other end, and it was
+        // missing while the ceiling stood: the bound is a *subtraction*, so a
+        // stored start after the stored end makes it negative, and a plist can
+        // put `<real>1e300</real>` in either field. `-1e300` is finite and is
+        // under a day, so the ceiling passed it to the same `Int(left / 60)`
+        // that traps — "less than Int.min" this time. The modest version is
+        // worse for not trapping: `startedAt = endsAt + 60` restored a session
+        // that ended before it began, holding the IOKit assertion behind a
+        // countdown reading 0:00. Zero belongs on this side too — a session
+        // with nothing left of it is over, which is what the deadline branch
+        // above already says about the other date.
+        guard bounded.isFinite, bounded > 0, bounded <= TimerPolicy.longestSession else { return .none }
         return .remaining(bounded)
     }
 }

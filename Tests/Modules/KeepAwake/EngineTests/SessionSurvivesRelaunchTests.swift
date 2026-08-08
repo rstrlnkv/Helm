@@ -208,6 +208,46 @@ final class SessionSurvivesRelaunchTests: XCTestCase {
                                  + "an Int is what every surface does with it")
     }
 
+    /// The same launch, entered through the other stored field. The bound is a
+    /// subtraction — `min(left, endsAt - startedAt)` — so `<real>1e300</real>`
+    /// in `sessionStartedAt` makes it -1e300, which is finite and is under the
+    /// ceiling the deadline was given. `Int(left / 60)` then traps at the other
+    /// end: "the result would be less than Int.min", at launch, exit 133, with
+    /// nothing drawn.
+    func testAStoredStartAfterTheDeadlineIsRefusedRatherThanTrapped() {
+        store.set(true, for: KeepAwakeEngine.SessionKey.on)
+        store.set(1e300, for: KeepAwakeEngine.SessionKey.startedAt)
+        store.set(clock.current.addingTimeInterval(1800).timeIntervalSinceReferenceDate,
+                  for: KeepAwakeEngine.SessionKey.endsAt)
+
+        let assertions = FakeAssertions()
+        let after = engine(assertions: assertions)
+        after.activate()
+
+        XCTAssertFalse(after.isActive)
+        XCTAssertNil(after.endDate)
+        XCTAssertFalse(assertions.held)
+    }
+
+    /// And the modest version, which never traps and is the worse defect for
+    /// it: a start a minute past the deadline restored a session of -60
+    /// seconds, so the engine held the IOKit assertion — the Mac awake, on
+    /// purpose — behind a countdown every surface drew as 0:00.
+    func testASessionThatEndedBeforeItBeganDoesNotHoldTheMacAwake() {
+        let ends = clock.current.addingTimeInterval(1800)
+        store.set(true, for: KeepAwakeEngine.SessionKey.on)
+        store.set(ends.addingTimeInterval(60).timeIntervalSinceReferenceDate,
+                  for: KeepAwakeEngine.SessionKey.startedAt)
+        store.set(ends.timeIntervalSinceReferenceDate, for: KeepAwakeEngine.SessionKey.endsAt)
+
+        let assertions = FakeAssertions()
+        let after = engine(assertions: assertions)
+        after.activate()
+
+        XCTAssertFalse(after.isActive)
+        XCTAssertFalse(assertions.held)
+    }
+
     /// The control: none of the above may be satisfied by an engine that simply
     /// never activates a session.
     func testTheHarnessCanHoldASessionAtAll() {
