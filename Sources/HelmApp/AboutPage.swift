@@ -341,7 +341,7 @@ struct AboutHelmView: View {
 
     /// "Checked 2 hours ago" from the stored timestamp, or a never-checked note.
     private var lastCheckedText: String {
-        let stamp = AppSettings.store.int("lastUpdateCheck", default: 0)
+        let stamp = AppSettings.store.int(UpdateService.lastCheckKey, default: 0)
         // The same reading `checkOnLaunch` makes of the same key, so the line
         // cannot say "checked 2 hours ago" about a number that stopped the
         // check from running.

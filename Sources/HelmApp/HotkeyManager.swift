@@ -76,11 +76,9 @@ import HelmUI
             guard var binding = bindings[name] else { continue }
             if let ref = binding.ref { UnregisterEventHotKey(ref); binding.ref = nil }
 
-            // The two numbers are read out of a plist and handed to a call that
-            // takes `UInt32`s, so what they may be is Carbon's question and not
-            // this loop's — `UInt32(keyCode)` traps, and the guard that used to
-            // stand here (`keyCode >= 0, modifiers != 0`) admitted `Int.max`
-            // and every negative modifier into it, at launch.
+            // What a stored pair may be is Carbon's question, not this loop's:
+            // the guard that stood here converted it with `UInt32(_:)`, which
+            // traps. `HotkeyCombination` has the argument and the bounds.
             let keyCode = binding.store.int("\(binding.prefix)KeyCode", default: -1)
             let modifiers = binding.store.int("\(binding.prefix)Modifiers", default: 0)
             guard let combination = HotkeyCombination(keyCode: keyCode, modifiers: modifiers) else {

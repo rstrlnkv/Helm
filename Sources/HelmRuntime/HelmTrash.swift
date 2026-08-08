@@ -142,17 +142,19 @@ public enum HelmTrash {
 
         for (index, path) in ordered.enumerated() {
             let url = URL(fileURLWithPath: path)
-            // The ledger as it stands before this path is weighed. Weighing
-            // *writes* to it — that is how an allocation wearing several names
-            // is charged once — and the two refusals below have to hand it
-            // back: they come after the walk and cannot come before it, because
-            // the recheck's whole value is being the last thing before the
-            // move. A path that never reached the Trash that spent the ledger
-            // leaves the next name for the same allocation weighing 0, and the
-            // batch reports freeing nothing about a file it really did trash.
-            let ledger = counted
+            // Weighed against a slate of this path's own, folded into the
+            // batch's ledger only where the path really goes.
+            //
+            // Weighing *writes* — that is how an allocation wearing several
+            // names is charged once — and it happens before the recheck below,
+            // which cannot move: being the last thing before the move is the
+            // whole of its value. So a path that is then refused had already
+            // spent the ledger, and the next name for the same allocation was
+            // weighed as something already counted and added 0 — a batch
+            // reporting that it freed nothing about a file it really did trash.
+            var slate = counted
             // Read before the move: afterwards the URL points at nothing.
-            let size = FileWeight.allocated(of: url, countingOnce: &counted)
+            let size = FileWeight.allocated(of: url, countingOnce: &slate)
             // Read the ancestry again, now, against what the gate approved. A
             // swapped symlink lands on a *different existing* directory object, so
             // a redirected subtree stops here rather than in someone's Documents.
@@ -165,7 +167,6 @@ public enum HelmTrash {
             // another object, is the change that matters, and both differ from the
             // reference.
             if let now = ancestry(path), now != approvedAncestry[index] {
-                counted = ledger
                 refused.append(Refusal(path: path, reason: .changedSinceScan))
                 HelmLog.shared.warn(module,
                     "refused: ancestor changed since the gate: \(Redact.path(path))")
@@ -174,6 +175,9 @@ public enum HelmTrash {
             do {
                 try trashing(url)
                 removed.append(path)
+                // The one place the batch's ledger grows: what it has charged
+                // is exactly what it has taken.
+                counted = slate
                 freed += size
             } catch let error as NSError
                 where error.code == NSFileNoSuchFileError
@@ -191,12 +195,6 @@ public enum HelmTrash {
                 // told so.
                 removed.append(path)
             } catch {
-                // Nothing moved, so nothing was charged and the ledger is the
-                // next name's to spend — the same sentence as the recheck's
-                // refusal above. The branch between the two is not a refusal:
-                // that path *is* in the Trash, taken there by its parent, and
-                // the parent's own walk is what counted it.
-                counted = ledger
                 let reason = TrashFailure.reason(path: path,
                                                  errorCode: (error as NSError).code,
                                                  hasSystemExtension: hasSystemExtension(path))

@@ -42,16 +42,21 @@ import HelmRuntime
         AppBuild.shortVersion ?? "0.0.0"
     }
 
+    /// The key the stamp is written and read under, in the three places that
+    /// touch it — here, `performCheck`, and the About page's "checked 2 hours
+    /// ago".
+    static let lastCheckKey = "lastUpdateCheck"
+
     /// Check at most once per day on launch (silent — only sets `available`).
     func checkOnLaunch() {
         let now = Date()
-        // Through `lastChecked` rather than subtracting the stored `Int` here:
-        // this runs at launch, and `now - last` on two `Int`s overflows and
-        // traps for a stored `Int.min`. A stamp that is not a moment we checked
-        // at means we have never checked.
-        let last = UpdateCheck.lastChecked(stored: AppSettings.store.int("lastUpdateCheck", default: 0),
-                                           now: now)
-        guard last.map({ now.timeIntervalSince($0) > 24 * 3600 }) ?? true else { return }
+        // Read as a moment rather than subtracted as an `Int`: this runs at
+        // launch, and `now - last` on two `Int`s overflows and traps for a
+        // stored `Int.min`. A stamp that is not a moment we checked at means we
+        // have never checked, so the check runs.
+        let stored = AppSettings.store.int(Self.lastCheckKey, default: 0)
+        if let last = UpdateCheck.lastChecked(stored: stored, now: now),
+           now.timeIntervalSince(last) <= 24 * 3600 { return }
         // The stamp is written by `performCheck` once it has an answer. Written
         // here it recorded the attempt, so a launch with no network still said
         // "checked just now" — and a manual check never moved the date at all.
@@ -159,7 +164,7 @@ import HelmRuntime
                                            currentVersion: currentVersion, channel: channel)
             // An answer, of either kind, is what "last checked" means.
             if case .error = outcome {} else {
-                AppSettings.store.set(Int(Date().timeIntervalSince1970), for: "lastUpdateCheck")
+                AppSettings.store.set(Int(Date().timeIntervalSince1970), for: Self.lastCheckKey)
             }
             switch outcome {
             case .upToDate:

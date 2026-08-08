@@ -111,12 +111,17 @@ public enum StatusPlan {
     /// The bounds are the ones the icon draws with, so the key still says what
     /// the icon shows: `MenuBarIcon.make` clamps to 0…1, and it strokes no arc
     /// for a value that is not a number — the same nothing it draws at 0.
+    /// `HelmRuntime`'s `clamped(to:whenNotANumber:)` is that sentence in one
+    /// call and cannot be used here, because `HelmRuntime` depends on this
+    /// target; as with `frame`, the order is spelled out instead.
     public static func redrawKey(style: String, size: String, tint: String?,
                                  progress: Double?, title: String?, frame: Int?,
                                  spinTint: String? = nil) -> String {
         let part = { (value: String?) in value.map { "=" + $0 } ?? "-" }
-        let drawn = { (p: Double) in p.isNaN ? 0 : min(max(p, 0), 1) }
-        let bucket = progress.map { "=\(Int((drawn($0) * 100).rounded()))" } ?? "-"
+        let bucket = progress.map { p in
+            let drawn = p.isNaN ? 0 : min(max(p, 0), 1)
+            return "=\(Int((drawn * 100).rounded()))"
+        } ?? "-"
         return [style, size, part(tint), bucket, part(title),
                 frame.map { "=\($0)" } ?? "-", part(spinTint)].joined(separator: "|")
     }

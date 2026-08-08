@@ -103,14 +103,11 @@ public enum MenuBarIcon {
                 return
             }
             strokeWhole(path, width: width, colour: colour.withAlphaComponent(0.25))
-            // This clamp is `min(max(…))`, so a `progress` that is not a number
-            // comes back as one — but the arc below is the only thing that
-            // reads it, and `NaN > 0` is false. The track is drawn and nothing
-            // is drawn over it, which is exactly what the old
-            // `min(1, max(0, progress))` produced by answering 0. Deliberate
-            // rather than lucky: a NaN never reaches the geometry, and if this
-            // value is ever read by anything other than a comparison it needs
-            // deciding here first.
+            // `clamped` is `min(max(…))`, which keeps a NaN — and the arc below
+            // is the only reader, where `NaN > 0` is false: the track is drawn
+            // and nothing over it, exactly what the old `min(1, max(0, x))`
+            // drew by answering 0. Anything here that is not a comparison has
+            // to decide that case first (`clamped(to:whenNotANumber:)`).
             let remaining = progress.clamped(to: 0...1)
             if remaining > 0 {
                 stroke(perimeter(of: path), from: 0, to: remaining,
