@@ -37,7 +37,6 @@ final class DuplicateRemovalOutcomeTests: XCTestCase {
         }
     }
 
-    private var home: String { NSHomeDirectory() }
     private var first: String { "\(home)/Downloads/first.bin" }
     private var second: String { "\(home)/Downloads/second.bin" }
     private var third: String { "\(home)/Downloads/third.bin" }
@@ -46,11 +45,9 @@ final class DuplicateRemovalOutcomeTests: XCTestCase {
         let groups = [DuplicateGroup(copies: [.init(path: first, bytes: 1_000_000),
                                               .init(path: second, bytes: 1_000_000),
                                               .init(path: third, bytes: 1_000_000)])]
-        let store = NamespacedStore(namespace: "duplicates", backing: InMemoryKeyValueStore())
-        store.set("\(home)/Downloads", for: "folder")
         let dvm = DuplicatesViewModel(
             vm: ModuleViewModel(transport: RemovingTransport(groups: groups, removal: removal)),
-            store: store)
+            store: duplicatesStore(folder: "\(home)/Downloads"))
         dvm.search()
         for _ in 0..<200 where dvm.phase != .result { await Task.yield() }
         return dvm
