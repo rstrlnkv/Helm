@@ -52,4 +52,43 @@ final class PunctuationIsTerminologyTests: XCTestCase {
                         .sorted()
                         .joined(separator: "\n"))
     }
+
+    /// French's space is a character, and the wrong one breaks the line.
+    ///
+    /// macOS French is 413 for 413 on the unbreakable space inside guillemets
+    /// and writes 129 before a colon and 121 before a question mark with never
+    /// an ordinary one. An ordinary space there is not merely the wrong
+    /// character: it is a *breaking* one, so the name can end up on the line
+    /// below the mark that opened it, and the colon can start a line by itself.
+    ///
+    /// Cleanly expressible because French is the only language of the eight
+    /// that spaces its punctuation at all, and because nothing in the file
+    /// quotes an untranslated English label — the one value that names a macOS
+    /// setting writes it in French inside French marks. Neither pattern has a
+    /// legitimate occurrence to excuse.
+    func testFrenchSpacesItsPunctuationTheWayMacOSDoes() throws {
+        let breaking: Character = " "        // U+0020
+        let unbreakable: Character = "\u{00A0}"
+        var offenders: [String] = []
+        for (key, value) in try table(for: .fr) {
+            let characters = Array(value)
+            for (index, character) in characters.enumerated() {
+                let before = index > 0 ? characters[index - 1] : nil
+                let after = index + 1 < characters.count ? characters[index + 1] : nil
+                if character == "«", after != unbreakable {
+                    offenders.append("« not followed by U+00A0 in \"\(key.prefix(50))…\"")
+                }
+                if character == "»", before != unbreakable {
+                    offenders.append("» not preceded by U+00A0 in \"\(key.prefix(50))…\"")
+                }
+                if ":;?!".contains(character), before == breaking {
+                    offenders.append("U+0020 before \(character) in \"\(key.prefix(50))…\"")
+                }
+            }
+        }
+        XCTAssertTrue(offenders.isEmpty,
+                      "\(offenders.count) French value(s) use an ordinary space where macOS "
+                      + "uses an unbreakable one:\n"
+                      + offenders.sorted().joined(separator: "\n").prefix(4000))
+    }
 }
