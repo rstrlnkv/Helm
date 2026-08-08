@@ -39,7 +39,8 @@ public struct VPNAppRule: Codable, Equatable {
 }
 
 /// Pure encode/decode/validation of the per-app auto-VPN rules
-/// (bundleID → rule), stored as JSON in DefaultsKey.vpnAppRules.
+/// (bundleID → rule). The JSON goes through `VPNSettings.rulesJSON`, which is
+/// where the key lives; `DefaultsKey`, named here for a while, never existed.
 public enum VPNRules {
     public static func encode(_ rules: [String: VPNAppRule]) -> String {
         guard let data = try? JSONEncoder().encode(rules),
