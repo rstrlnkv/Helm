@@ -21,75 +21,7 @@ import Module_Disk_Engine
 @MainActor
 final class DiskScanRaceTests: XCTestCase {
 
-    private final class HeldTransport: EngineTransport, @unchecked Sendable {
-        private let lock = NSLock()
-        private var parked: [CheckedContinuation<Data, Never>] = []
-        private var requests: [ScanRequest] = []
-        private var continuation: AsyncStream<EngineEvent>.Continuation?
-        let events: AsyncStream<EngineEvent>
-
-        init() {
-            var handle: AsyncStream<EngineEvent>.Continuation?
-            events = AsyncStream { handle = $0 }
-            continuation = handle
-        }
-
-        func send(_ command: EngineCommand) async throws -> Data {
-            switch command.name {
-            case "volumes":
-                return (try? JSONEncoder().encode([VolumeInfo]())) ?? Data()
-            case "scan":
-                if let request = try? JSONDecoder().decode(ScanRequest.self,
-                                                           from: command.payload) {
-                    note(request)
-                }
-                return await withCheckedContinuation { park($0) }
-            default:
-                return Data()
-            }
-        }
-
-        // Locking lives in non-async helpers: taking an NSLock across a
-        // suspension point is what the compiler objects to, and it is right to.
-        private func note(_ request: ScanRequest) {
-            lock.lock(); requests.append(request); lock.unlock()
-        }
-
-        private func park(_ continuation: CheckedContinuation<Data, Never>) {
-            lock.lock(); parked.append(continuation); lock.unlock()
-        }
-
-        var parkedCount: Int { lock.lock(); defer { lock.unlock() }; return parked.count }
-
-        /// The name the view model gave the request at `index` — the whole
-        /// point of the change: the screen has to be able to recognise its own
-        /// scan's events.
-        func scanID(_ index: Int) -> Int {
-            lock.lock(); defer { lock.unlock() }
-            return requests.indices.contains(index) ? requests[index].scan : -1
-        }
-
-        func release(_ index: Int, with result: ScanResult?) {
-            lock.lock()
-            guard parked.indices.contains(index) else { lock.unlock(); return }
-            let continuation = parked.remove(at: index)
-            lock.unlock()
-            continuation.resume(returning: (try? JSONEncoder().encode(result)) ?? Data())
-        }
-
-        func emitPartial(scan: Int, result: ScanResult) {
-            let payload = (try? JSONEncoder().encode(PartialScan(scan: scan, result: result)))
-                ?? Data()
-            continuation?.yield(EngineEvent(name: "partial", payload: payload))
-        }
-    }
-
     // MARK: - Fixtures
-
-    private func tree(_ path: String, bytes: Int, children: [DiskEntry] = []) -> DiskEntry {
-        DiskEntry(name: (path as NSString).lastPathComponent, path: path, bytes: bytes,
-                  isDirectory: true, noAccess: false, children: children)
-    }
 
     private func result(_ root: DiskEntry, freeBytes: Int = 500) -> ScanResult {
         ScanResult(root: root, freeBytes: freeBytes, filesScanned: 10, seconds: 1)
@@ -100,17 +32,6 @@ final class DiskScanRaceTests: XCTestCase {
         let directory = temporaryStoreDirectory("disk-race")
         return DiskViewModel(vm: ModuleViewModel(transport: transport),
                              store: ScanStore(directory: directory))
-    }
-
-    /// Waits for the request task to reach the transport. Yielding a fixed
-    /// number of times is a guess about scheduling; this is the condition the
-    /// test depends on.
-    private func untilParked(_ transport: HeldTransport, count: Int) async {
-        for _ in 0..<1000 where transport.parkedCount < count { await Task.yield() }
-    }
-
-    private func settle() async {
-        for _ in 0..<20 { await Task.yield() }
     }
 
     // MARK: - A snapshot belongs to one scan
@@ -124,13 +45,13 @@ final class DiskScanRaceTests: XCTestCase {
         await untilParked(transport, count: 1)
 
         let volume = transport.scanID(0)
-        transport.emitPartial(scan: volume, result: result(tree("/Volumes/Big", bytes: 900)))
+        transport.emitPartial(scan: volume, result: result(folder("/Volumes/Big", bytes: 900)))
         await settle()
         XCTAssertEqual(dvm.result?.root.path, "/Volumes/Big")
 
         // A second scan, of a folder inside it, with a name of its own.
         transport.emitPartial(scan: volume + 1,
-                              result: result(tree("/Volumes/Big/Sub", bytes: 20)))
+                              result: result(folder("/Volumes/Big/Sub", bytes: 20)))
         await settle()
 
         XCTAssertEqual(dvm.result?.root.path, "/Volumes/Big",
@@ -151,15 +72,15 @@ final class DiskScanRaceTests: XCTestCase {
 
         let volume = transport.scanID(0)
         transport.emitPartial(scan: volume,
-                              result: result(tree("/Volumes/Big", bytes: 100,
-                                                  children: [tree("/Volumes/Big/One", bytes: 60)])))
+                              result: result(folder("/Volumes/Big", bytes: 100,
+                                                  children: [folder("/Volumes/Big/One", bytes: 60)])))
         await settle()
         XCTAssertEqual(dvm.result?.root.children.count, 1)
 
         transport.emitPartial(scan: volume,
-                              result: result(tree("/Volumes/Big", bytes: 300,
-                                                  children: [tree("/Volumes/Big/One", bytes: 60),
-                                                             tree("/Volumes/Big/Two", bytes: 240)])))
+                              result: result(folder("/Volumes/Big", bytes: 300,
+                                                  children: [folder("/Volumes/Big/One", bytes: 60),
+                                                             folder("/Volumes/Big/Two", bytes: 240)])))
         await settle()
         XCTAssertEqual(dvm.result?.root.children.count, 2, "the ring stopped growing")
         transport.release(0, with: nil)
@@ -179,8 +100,8 @@ final class DiskScanRaceTests: XCTestCase {
         await untilParked(transport, count: 1)
 
         transport.emitPartial(scan: transport.scanID(0),
-                              result: result(tree("/Volumes/Big", bytes: 100,
-                                                  children: [tree("/Volumes/Big/Rim", bytes: 60)])))
+                              result: result(folder("/Volumes/Big", bytes: 100,
+                                                  children: [folder("/Volumes/Big/Rim", bytes: 60)])))
         await settle()
         XCTAssertTrue(dvm.live)
 
@@ -206,7 +127,7 @@ final class DiskScanRaceTests: XCTestCase {
         dvm.newScan()
         XCTAssertEqual(dvm.phase, .start)
 
-        transport.release(0, with: result(tree("/Volumes/Big", bytes: 900)))
+        transport.release(0, with: result(folder("/Volumes/Big", bytes: 900)))
         await settle()
 
         XCTAssertEqual(dvm.phase, .start, "the discarded scan replaced the volume picker")
@@ -225,7 +146,7 @@ final class DiskScanRaceTests: XCTestCase {
         dvm.cancel()
         XCTAssertEqual(dvm.phase, .start)
 
-        transport.release(0, with: result(tree("/Volumes/Big", bytes: 900)))
+        transport.release(0, with: result(folder("/Volumes/Big", bytes: 900)))
         await settle()
 
         XCTAssertEqual(dvm.phase, .start, "a stopped scan showed its result anyway")
@@ -240,7 +161,7 @@ final class DiskScanRaceTests: XCTestCase {
         Task { await dvm.scan(path: "/Volumes/Big") }
         await untilParked(transport, count: 1)
 
-        transport.release(0, with: result(tree("/Volumes/Big", bytes: 900)))
+        transport.release(0, with: result(folder("/Volumes/Big", bytes: 900)))
         await settle()
 
         XCTAssertEqual(dvm.phase, .result)

@@ -184,7 +184,7 @@ final class TrashOfferPlanTests: XCTestCase {
 
     func testAppsWhosePathsAllMovedAreAnswered() {
         let groups = [group("com.a", [leftover("/a1")]), group("com.b", [leftover("/b1")])]
-        let result = UninstallResult(trashed: ["/a1", "/b1"], failed: [], freedBytes: 20)
+        let result = UninstallResult(trashed: ["/a1", "/b1"], freedBytes: 20)
         XCTAssertEqual(TrashOfferPlan.answered(groups, failed: Set(result.failed)).map(\.bundleID),
                        ["com.a", "com.b"])
     }

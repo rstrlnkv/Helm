@@ -15,37 +15,12 @@ import Module_Duplicates_Engine
 @MainActor
 final class DuplicateBasketArithmeticTests: XCTestCase {
 
-    private final class OneAnswerTransport: EngineTransport, @unchecked Sendable {
-        private let groups: [DuplicateGroup]
-        var events: AsyncStream<EngineEvent> { AsyncStream { _ in } }
-
-        init(groups: [DuplicateGroup]) { self.groups = groups }
-
-        func send(_ command: EngineCommand) async throws -> Data {
-            guard command.name == "find" else { return Data() }
-            return (try? JSONEncoder().encode(groups)) ?? Data()
-        }
-    }
-
-    private var home: String { NSHomeDirectory() }
-
-    private func model(_ groups: [DuplicateGroup]) async -> DuplicatesViewModel {
-        // In memory: the module's real store is the person's remembered folder.
-        let store = NamespacedStore(namespace: "duplicates", backing: InMemoryKeyValueStore())
-        store.set("\(home)/Downloads", for: "folder")
-        let dvm = DuplicatesViewModel(vm: ModuleViewModel(transport:
-            OneAnswerTransport(groups: groups)), store: store)
-        dvm.search()
-        for _ in 0..<200 where dvm.phase != .result { await Task.yield() }
-        return dvm
-    }
-
     /// The clone stays, the real copy goes: what leaves is four megabytes, not
     /// the nothing the clone occupies.
     func testTheBasketCountsEachCopysOwnSize() async {
         let clone = "\(home)/Downloads/clone.bin"
         let real = "\(home)/Downloads/real.bin"
-        let dvm = await model([DuplicateGroup(copies: [.init(path: clone, bytes: 0),
+        let dvm = await searchedModel([DuplicateGroup(copies: [.init(path: clone, bytes: 0),
                                                       .init(path: real, bytes: 4_000_000)])])
         XCTAssertEqual(dvm.groups.count, 1, "the fixture never reached the view model")
 
@@ -62,7 +37,7 @@ final class DuplicateBasketArithmeticTests: XCTestCase {
     func testACopysOwnSizeIsAskedOfThatCopy() async {
         let clone = "\(home)/Downloads/clone.bin"
         let real = "\(home)/Downloads/real.bin"
-        let dvm = await model([DuplicateGroup(copies: [.init(path: clone, bytes: 0),
+        let dvm = await searchedModel([DuplicateGroup(copies: [.init(path: clone, bytes: 0),
                                                       .init(path: real, bytes: 4_000_000)])])
 
         XCTAssertEqual(dvm.bytes(of: real), 4_000_000)
@@ -73,7 +48,7 @@ final class DuplicateBasketArithmeticTests: XCTestCase {
 
     /// And the whole group's promise is the sum of the ones that would go.
     func testWastedIsWhatTheExtrasOccupy() async {
-        let dvm = await model([DuplicateGroup(copies: [
+        let dvm = await searchedModel([DuplicateGroup(copies: [
             .init(path: "\(home)/Downloads/a.bin", bytes: 1_000_000),
             .init(path: "\(home)/Downloads/b.bin", bytes: 2_000_000),
             .init(path: "\(home)/Downloads/c.bin", bytes: 3_000_000),

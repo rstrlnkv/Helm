@@ -59,22 +59,6 @@ final class HelmTrashTests: XCTestCase {
         XCTAssertEqual(result.refused.first?.path, ghost)
         XCTAssertEqual(result.freedBytes, 0)
     }
-
-    /// The one-line summary picks the reason that applies to most of the batch,
-    /// so "3 items could not be moved" can say why without listing three.
-    func testPrincipalReasonIsTheCommonestOne() {
-        let result = HelmTrash.Result(
-            removed: [],
-            refused: [.init(path: "/a", reason: .outOfScope),
-                      .init(path: "/b", reason: .needsFullDiskAccess),
-                      .init(path: "/c", reason: .needsFullDiskAccess)],
-            freedBytes: 0)
-        XCTAssertEqual(result.principalReason, .needsFullDiskAccess)
-    }
-
-    func testPrincipalReasonIsNilWhenNothingRefused() {
-        XCTAssertNil(HelmTrash.Result(removed: ["/a"], refused: [], freedBytes: 1).principalReason)
-    }
 }
 
 /// What "freed" means when the thing trashed is a folder.

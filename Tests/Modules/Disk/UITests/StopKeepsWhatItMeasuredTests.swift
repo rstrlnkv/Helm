@@ -28,83 +28,7 @@ import Module_Disk_Engine
 @MainActor
 final class StopKeepsWhatItMeasuredTests: XCTestCase {
 
-    private final class HeldTransport: EngineTransport, @unchecked Sendable {
-        private let lock = NSLock()
-        private var parked: [CheckedContinuation<Data, Never>] = []
-        private var requests: [ScanRequest] = []
-        private var removal = DiskRemoval(removed: [], refused: [], freedBytes: 0)
-        private var continuation: AsyncStream<EngineEvent>.Continuation?
-        let events: AsyncStream<EngineEvent>
-
-        init() {
-            var handle: AsyncStream<EngineEvent>.Continuation?
-            events = AsyncStream { handle = $0 }
-            continuation = handle
-        }
-
-        func send(_ command: EngineCommand) async throws -> Data {
-            switch command.name {
-            case "volumes":
-                return (try? JSONEncoder().encode([VolumeInfo]())) ?? Data()
-            case "scan":
-                if let request = try? JSONDecoder().decode(ScanRequest.self,
-                                                           from: command.payload) {
-                    note(request)
-                }
-                return await withCheckedContinuation { park($0) }
-            case "trash":
-                return (try? JSONEncoder().encode(currentRemoval)) ?? Data()
-            default:
-                return Data()
-            }
-        }
-
-        // Locking stays in non-async helpers: holding an NSLock across a
-        // suspension point is what the compiler objects to, and it is right to.
-        private func note(_ request: ScanRequest) {
-            lock.lock(); requests.append(request); lock.unlock()
-        }
-
-        private func park(_ continuation: CheckedContinuation<Data, Never>) {
-            lock.lock(); parked.append(continuation); lock.unlock()
-        }
-
-        private var currentRemoval: DiskRemoval {
-            lock.lock(); defer { lock.unlock() }; return removal
-        }
-
-        func answerTrash(with removal: DiskRemoval) {
-            lock.lock(); self.removal = removal; lock.unlock()
-        }
-
-        var parkedCount: Int { lock.lock(); defer { lock.unlock() }; return parked.count }
-
-        func scanID(_ index: Int) -> Int {
-            lock.lock(); defer { lock.unlock() }
-            return requests.indices.contains(index) ? requests[index].scan : -1
-        }
-
-        func release(_ index: Int, with result: ScanResult?) {
-            lock.lock()
-            guard parked.indices.contains(index) else { lock.unlock(); return }
-            let continuation = parked.remove(at: index)
-            lock.unlock()
-            continuation.resume(returning: (try? JSONEncoder().encode(result)) ?? Data())
-        }
-
-        func emitPartial(scan: Int, result: ScanResult) {
-            let payload = (try? JSONEncoder().encode(PartialScan(scan: scan, result: result)))
-                ?? Data()
-            continuation?.yield(EngineEvent(name: "partial", payload: payload))
-        }
-    }
-
     // MARK: - Fixtures
-
-    private func folder(_ path: String, bytes: Int, children: [DiskEntry] = []) -> DiskEntry {
-        DiskEntry(name: (path as NSString).lastPathComponent, path: path, bytes: bytes,
-                  isDirectory: true, noAccess: false, children: children)
-    }
 
     /// A snapshot of a walk in progress: the folder is charged with what has been
     /// counted so far, which is the point — 600 of an unknown total.
@@ -114,23 +38,13 @@ final class StopKeepsWhatItMeasuredTests: XCTestCase {
                    freeBytes: 100, filesScanned: files, seconds: 0)
     }
 
-    private var storeDirectory: URL { temporaryStoreDirectory("disk-stopkeep") }
-
     private func model(_ transport: HeldTransport) -> (DiskViewModel, ScanStore) {
         // A store of its own: the module's real one is the person's last scan,
-        // and a harness must leave nothing behind.
-        let directory = storeDirectory
-        addTeardownBlock { try? FileManager.default.removeItem(at: directory) }
-        let store = ScanStore(directory: directory)
+        // and a harness must leave nothing behind. `temporaryStoreDirectory`
+        // owns the teardown, and it *drains* — a one-shot `removeItem` beside
+        // it was the very race that helper exists to close.
+        let store = ScanStore(directory: temporaryStoreDirectory("disk-stopkeep"))
         return (DiskViewModel(vm: ModuleViewModel(transport: transport), store: store), store)
-    }
-
-    private func untilParked(_ transport: HeldTransport, count: Int) async {
-        for _ in 0..<1000 where transport.parkedCount < count { await Task.yield() }
-    }
-
-    private func settle() async {
-        for _ in 0..<50 { await Task.yield() }
     }
 
     /// A walk in flight with one snapshot drawn — the state the Stop button is

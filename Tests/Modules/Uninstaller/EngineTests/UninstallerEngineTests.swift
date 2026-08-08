@@ -129,24 +129,11 @@ final class UninstallerEngineTests: XCTestCase {
         XCTAssertTrue(r.runningNow)
     }
 
-    func testUninstallTrashesSelectedAndSumsFreed() async throws {
-        let trash = FakeTrash()
-        let fs = FakeFS(existing: [cacheA: 100, cacheB: 50, "/Applications/Tool.app": 1000])
-        let r = try await engine(fs: fs, trash: trash)
-            .uninstall(appPath: "/Applications/Tool.app", paths: [cacheA, cacheB])
-        XCTAssertEqual(r.freedBytes, 1150)
-        XCTAssertEqual(Set(trash.trashed), [cacheA, cacheB, "/Applications/Tool.app"])
-        XCTAssertTrue(r.failed.isEmpty)
-    }
-
-    func testUninstallReportsTrashFailures() async throws {
-        let trash = FakeTrash(failing: [cacheB])
-        let fs = FakeFS(existing: [cacheA: 100, cacheB: 50, "/Applications/Tool.app": 1000])
-        let r = try await engine(fs: fs, trash: trash)
-            .uninstall(appPath: "/Applications/Tool.app", paths: [cacheA, cacheB])
-        XCTAssertEqual(r.failed, [cacheB])
-        XCTAssertEqual(r.freedBytes, 1100)
-    }
+    /// What a removal says it freed is measured off the disk, not off a table of
+    /// sizes a test wrote down — `FMFileSystem.size` has always been
+    /// `FileWeight.allocated`, so a fake table was never the thing production
+    /// reads. Those three tests live in `TrashBatchFollowsTheSharedRulesTests`
+    /// now, over a real tree, beside the batch rules they are part of.
 }
 
 final class UninstallerOrphanScanTests: XCTestCase {
@@ -175,15 +162,4 @@ final class UninstallerOrphanScanTests: XCTestCase {
                         "/Users/x/Library/Preferences/com.gone.app.plist"])
     }
 
-    func testTrashPathsSumsFreedAndReportsFailures() async {
-        let a = "/Users/x/Library/Caches/a", b = "/Users/x/Library/Caches/b"
-        let trash = FakeTrash(failing: [b])
-        let fs = FakeFS(existing: [a: 100, b: 50])
-        let e = UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
-                                  apps: FakeApps(), fs: fs, trash: trash, running: FakeRunning(running: []))
-        let r = await e.trashPaths([a, b])
-        XCTAssertEqual(r.freedBytes, 100)
-        XCTAssertEqual(r.failed, [b])
-        XCTAssertEqual(trash.trashed, [a])
-    }
 }

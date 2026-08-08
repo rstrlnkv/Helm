@@ -6,6 +6,17 @@ import HelmRuntime
 /// the ones the user picks. Scanning walks many directories, so it runs off the
 /// concurrency pool via `blocking`.
 public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
+    /// This module's id, and the only place it is written down.
+    ///
+    /// It reaches disk in shapes nothing would flag if they disagreed: the
+    /// `module.leftovers.*` keys of a store, the directory `ScanJournal` names after
+    /// it, and the removal attributed to it in the log. `LeftoversDescriptor.id`
+    /// is built from this rather than repeating it, the direction the
+    /// descriptors already carry their command enums, so the two spellings are
+    /// one. **The string itself never changes** — it names folders and stored
+    /// settings that are already on people's machines.
+    public static let moduleID = "leftovers"
+
     private let scanner: LeftoversScanner
     /// The one the scan uses. The removal gate used to fall back to the
     /// process's own home, so an engine built for a different one scanned
@@ -61,14 +72,7 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
             // be completed" with the domain, the code and the path thrown away.
             HelmLog.shared.info("leftovers",
                                 "trashing \(allowed.count), refused \(refused.count) out of scope")
-            let result = HelmTrash.remove(allowed: allowed, outOfScope: refused,
-                                          module: "leftovers")
-            return LeftoversRemoval(
-                removed: result.removed,
-                failed: result.refused.map {
-                    TrashFailureDetail(path: $0.path, message: $0.reason.rawValue)
-                },
-                freedBytes: result.freedBytes)
+            return HelmTrash.remove(allowed: allowed, outOfScope: refused, module: Self.moduleID)
         }
     }
 
@@ -78,37 +82,29 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
             guard let name = LeftoversCommand(rawValue: command.name) else { return Data() }
             switch name {
             case .scan:
-                return (try? JSONEncoder().encode(await self.scan())) ?? Data()
+                return EngineReply.encode(await self.scan(), for: command)
             case .setDisabled:
-                guard let request = try? JSONDecoder().decode(LeftoversToggle.self,
-                                                              from: command.payload)
+                guard let request = EngineReply.decode(LeftoversToggle.self, from: command)
                 else { return Data() }
                 await offTheCooperativePool { self.switcher.setDisabled(request.disabled,
                                                                         label: request.label) }
                 return Data()
             case .trash:
-                guard let paths = try? JSONDecoder().decode([String].self, from: command.payload)
+                guard let paths = EngineReply.decode([String].self, from: command)
                 else { return Data() }
-                return (try? JSONEncoder().encode(await self.trash(paths))) ?? Data()
+                return EngineReply.encode(await self.trash(paths), for: command)
             }
         }
     }
 }
 
-public struct TrashFailureDetail: Codable, Equatable, Sendable, Identifiable {
-    public var id: String { path }
-    public let path: String
-    public let message: String
-    public init(path: String, message: String) {
-        self.path = path; self.message = message
-    }
-}
-
-public struct LeftoversRemoval: Codable, Equatable, Sendable {
-    public let removed: [String]
-    public let failed: [TrashFailureDetail]
-    public let freedBytes: Int
-    public init(removed: [String], failed: [TrashFailureDetail], freedBytes: Int) {
-        self.removed = removed; self.failed = failed; self.freedBytes = freedBytes
-    }
-}
+/// What the trash command answers with — the same value `DiskRemoval` and
+/// `DuplicateRemoval` name, and for the same reason.
+///
+/// It was a field-for-field copy: `failed` for `refused`, and a
+/// `TrashFailureDetail` whose `message` carried `reason.rawValue` so that the
+/// page could hand it back to `TrashReasonText.sentence`. Nothing in the type
+/// said the string was a reason. The engine built the real result and unpacked
+/// it into the copy line by line; both ends of this wire are in one build, and
+/// the UI target imports this one, so one declaration serves both.
+public typealias LeftoversRemoval = HelmTrash.Result

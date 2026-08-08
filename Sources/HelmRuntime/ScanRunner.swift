@@ -10,9 +10,14 @@ import Foundation
 /// that genuinely need a running app.
 ///
 /// This paragraph used to say `HelmApp` had no test target anywhere in
-/// `Package.swift`. It has one — `HelmAppTests`, line 136 — and the assumption
-/// is what `ListsAgreeWithTheTreeTests` was written to disprove. Pure logic
-/// still belongs here; the reason is the rigour, not an impossibility.
+/// `Package.swift`. It has one — `HelmAppTests`, declared there like any other —
+/// and the assumption is what `ListsAgreeWithTheTreeTests` was written to
+/// disprove. Pure logic still belongs here; the reason is the rigour, not an
+/// impossibility.
+///
+/// The line number that used to be in that sentence is gone: adding one target
+/// to the manifest moved it, and a figure nobody re-reads is worse than the
+/// name, which `grep` finds.
 public enum ScanRunner {
 
     /// Which modules have a background scan.

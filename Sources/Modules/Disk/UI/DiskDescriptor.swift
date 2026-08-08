@@ -5,7 +5,7 @@ import HelmUI
 import Module_Disk_Engine
 
 @MainActor public final class DiskDescriptor: ModuleDescriptor {
-    public static let id = ModuleID("disk")
+    public static let id = ModuleID(DiskEngine.moduleID)
     public static let metadata = ModuleMetadata(
         id: id, name: DkStr.moduleName, summary: DkStr.summary,
         sfSymbol: "chart.pie", permissions: [.fullDisk])

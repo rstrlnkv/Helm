@@ -416,11 +416,11 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             case .toggle:
                 self.toggleDefault()
             case .connect:
-                if let payload = try? JSONDecoder().decode(VPNConnectionRef.self, from: cmd.payload) {
+                if let payload = EngineReply.decode(VPNConnectionRef.self, from: cmd) {
                     self.connect(payload.name)
                 }
             case .disconnect:
-                if let payload = try? JSONDecoder().decode(VPNConnectionRef.self, from: cmd.payload) {
+                if let payload = EngineReply.decode(VPNConnectionRef.self, from: cmd) {
                     self.disconnect(payload.name)
                 }
             case .refresh:
@@ -437,8 +437,6 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
                                     autoConnected: autoConnected.sorted(),
                                     defaultName: defaultConnection?.name,
                                     lastAutomation: lastAutomation)
-        if let data = try? JSONEncoder().encode(payload) {
-            localTransport.emit(EngineEvent(name: VPNEvent.state.rawValue, payload: data))
-        }
+        localTransport.emit(VPNEvent.state, encoding: payload)
     }
 }

@@ -51,7 +51,7 @@ final class OneRemovalAtATimeTests: XCTestCase {
                 // before the caller resumed, and the gate would be untested.
                 for await _ in released.stream {}
                 return (try? JSONEncoder().encode(
-                    LeftoversRemoval(removed: [], failed: [], freedBytes: 0))) ?? Data()
+                    LeftoversRemoval(removed: [], refused: [], freedBytes: 0))) ?? Data()
             default:
                 return Data()
             }
