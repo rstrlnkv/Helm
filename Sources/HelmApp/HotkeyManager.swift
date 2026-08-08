@@ -1,6 +1,5 @@
 import AppKit
 import Carbon.HIToolbox
-import HelmContract
 import HelmRuntime
 import HelmUI
 

@@ -2,7 +2,6 @@
 // Copyright (C) 2026 Helm
 
 import AppKit
-import HelmRuntime
 import HelmUI
 import Module_Uninstaller_UI
 

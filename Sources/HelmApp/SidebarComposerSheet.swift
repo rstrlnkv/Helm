@@ -1,7 +1,6 @@
 import SwiftUI
 import AppKit
 import HelmUI
-import HelmRuntime
 
 /// Composing the sidebar, in a sheet.
 ///

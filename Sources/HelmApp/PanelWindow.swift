@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import HelmRuntime
 import HelmUI
 
 /// Borderless, non-activating panel shown below the status item; stacks each
