@@ -52,4 +52,27 @@ public extension View {
         onReceive(NotificationCenter.default.publisher(
             for: NSApplication.didBecomeActiveNotification)) { _ in action() }
     }
+
+    /// Keeps `state` on whether Full Disk Access has been granted: once as the
+    /// page appears, and again every time Helm comes back to the front, which is
+    /// how it hears about a grant made in System Settings.
+    ///
+    /// Five settings pages carried the same `@State`, the same
+    /// `.helmOnAppActive` and the same line inside their own `.task`. The note
+    /// itself stays at the call site — each module says what the missing grant
+    /// costs *there*, and those sentences are the part that differs.
+    ///
+    /// The probe is `PermissionCheck.fullDiskAccess()`, which is four blocking
+    /// file reads and says at its own declaration why it does them off the
+    /// cooperative pool.
+    func helmTracksFullDiskAccess(_ state: Binding<PermissionState>) -> some View {
+        task { state.wrappedValue = await PermissionCheck.fullDiskAccess() }
+            // A `Task` rather than the synchronous read this replaced: the
+            // answer lands a hop later than it used to, and the note with it.
+            // Measured offscreen against the old wiring — the page settles at
+            // the same height, and only the first frame differs.
+            .helmOnAppActive {
+                Task { @MainActor in state.wrappedValue = await PermissionCheck.fullDiskAccess() }
+            }
+    }
 }

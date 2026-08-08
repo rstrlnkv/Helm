@@ -46,8 +46,7 @@ public struct AutopilotSettingsPage: View {
                 .padding(.horizontal, 20).padding(.vertical, 12)
             }
         }
-        .helmOnAppActive { diskAccess = PermissionCheck.currentFullDiskAccess() }
-        .task { diskAccess = PermissionCheck.currentFullDiskAccess() }
+        .helmTracksFullDiskAccess($diskAccess)
         .animation(HelmMotion.interface, value: rvm.folders.count)
         .sheet(item: $editing) { context in
             RuleEditor(rvm: rvm, folder: context.folder, rule: context.rule)

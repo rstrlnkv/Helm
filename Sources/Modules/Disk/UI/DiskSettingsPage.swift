@@ -37,10 +37,9 @@ public struct DiskSettingsPage: View {
                 basketBar
             }
         }
-        .helmOnAppActive { diskAccess = PermissionCheck.currentFullDiskAccess() }
+        .helmTracksFullDiskAccess($diskAccess)
         .task {
             dvm.expireIfStale()
-            diskAccess = PermissionCheck.currentFullDiskAccess()
             await dvm.loadVolumes()
         }
         .animation(HelmMotion.interface, value: dvm.phase)

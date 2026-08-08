@@ -57,8 +57,7 @@ public struct DuplicatesSettingsPage: View {
                 basketBar
             }
         }
-        .helmOnAppActive { diskAccess = PermissionCheck.currentFullDiskAccess() }
-        .task { diskAccess = PermissionCheck.currentFullDiskAccess() }
+        .helmTracksFullDiskAccess($diskAccess)
         .animation(HelmMotion.interface, value: dvm.phase)
         .animation(HelmMotion.interface, value: dvm.basket.isEmpty)
         // And on the groups themselves, which is the change somebody actually
