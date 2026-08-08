@@ -4,6 +4,11 @@ import UniformTypeIdentifiers
 
 /// Resolve a bundle ID to a display name + icon (shared by every module that
 /// lists apps).
+///
+/// Both memos below are `nonisolated(unsafe)` and neither takes a lock, because
+/// `NSCache` does its own — it is documented as safe to use from several threads
+/// without one. Every caller draws on the main thread, which is what makes
+/// handing the same `NSImage` back to all of them safe.
 public enum AppInfo {
     /// The pair, so one id is one cache entry rather than two that can disagree.
     private final class Resolved {
@@ -12,11 +17,6 @@ public enum AppInfo {
         init(name: String, icon: NSImage) { self.name = name; self.icon = icon }
     }
 
-    /// Both memos are `nonisolated(unsafe)` and neither takes a lock, because
-    /// `NSCache` does its own — it is documented as safe to use from several
-    /// threads without one. Every caller draws on the main thread, which is what
-    /// makes handing the same `NSImage` back to all of them safe.
-    ///
     /// LaunchServices for the path, `FileManager` for the display name and
     /// `NSWorkspace` for the icon — three trips to the system, about 0.14 ms
     /// together, and `HelmAppRuleRow` asks for them in its **initialiser**.
