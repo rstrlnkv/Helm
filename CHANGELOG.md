@@ -56,6 +56,14 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   arranged.
 
 ### Fixed
+- **A removal cannot be redirected onto a file it was never meant to touch.**
+  Helm checks that everything it is about to trash sits inside a folder it may
+  clean, and it did that check once, up front. Between the check and the move it
+  weighs the batch, and on a large batch that takes long enough for one of the
+  approved folders to be quietly replaced with a link pointing somewhere else —
+  your Documents, say — so the move would land there instead. Helm now looks
+  again at where each path leads in the instant before it moves it, and refuses
+  anything that changed.
 - **A tile could swap places under a pointer that was not moving.** Switch a
   module off in Settings while its tile is in the hand and the panel loses the
   rectangle it was carrying; it then asked whether the pointer had crossed from

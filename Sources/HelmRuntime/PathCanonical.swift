@@ -36,6 +36,40 @@ public enum PathCanonical {
         return trimmed
     }
 
+    /// A stable name for the directory a path's parent chain resolves to *now*.
+    ///
+    /// Device and inode together identify one directory object; a rename or a
+    /// swapped symlink in the parent chain lands on a different one, and that is
+    /// exactly the change a gate approves before and a move must refuse after.
+    /// `nil` when the parent does not exist — a path pointing at nothing yet
+    /// (the scan and the click are minutes apart), which is a steady state, not a
+    /// change, so two `nil`s compare equal.
+    public struct AncestryIdentity: Equatable, Sendable {
+        public let device: UInt64
+        public let inode: UInt64
+        public init(device: UInt64, inode: UInt64) {
+            self.device = device
+            self.inode = inode
+        }
+    }
+
+    /// The identity of the directory `path`'s resolved parent chain leads to.
+    ///
+    /// Read once at the gate and once immediately before the move: if the two
+    /// disagree, a symlinked ancestor was swapped in between (`HelmTrash.remove`
+    /// says what that narrows and what it does not).
+    public static func ancestryIdentity(of path: String) -> AncestryIdentity? {
+        let resolved = resolvingAncestors(path)
+        let parent = (resolved as NSString).deletingLastPathComponent
+        guard !parent.isEmpty else { return nil }
+        var info = stat()
+        // `stat`, not `lstat`: the parent chain is already symlink-resolved, so
+        // the two agree — and what is wanted is the object the name leads to.
+        guard stat(parent, &info) == 0 else { return nil }
+        return AncestryIdentity(device: UInt64(bitPattern: Int64(info.st_dev)),
+                                inode: info.st_ino)
+    }
+
     /// The path with every symlink in its parent chain resolved, and its last
     /// component put back untouched.
     ///
