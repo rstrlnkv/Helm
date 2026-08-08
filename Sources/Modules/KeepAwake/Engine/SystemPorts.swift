@@ -55,6 +55,18 @@ public final class IOKitSleepAssertions: SleepAssertions {
                 hasDisplayAssertion = true
             }
         }
+        // **The call makes the world match its argument.** It used to only ever
+        // add: `display: false` created nothing and released nothing, so an
+        // assertion taken when the setting was on stayed up after it went off,
+        // and the display never slept. Nothing was broken by that only because
+        // `reconcileActiveSettings` releases everything first and re-applies —
+        // a pair somebody has to remember to balance, in the module whose worst
+        // failure is a Mac that will not sleep.
+        if !display, hasDisplayAssertion {
+            IOPMAssertionRelease(displayAssertionID)
+            displayAssertionID = 0
+            hasDisplayAssertion = false
+        }
     }
 
     public func release() {
