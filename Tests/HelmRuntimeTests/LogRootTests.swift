@@ -1,8 +1,8 @@
 import Foundation
 import XCTest
-@testable import Module_Disk_Engine
+@testable import HelmRuntime
 
-/// What a scan root may look like in `helm.log`.
+/// What a scan or search root may look like in `helm.log`.
 ///
 /// `Redact.path` rewrites the home prefix and its `/System/Volumes/Data` twin,
 /// and by design nothing else — so a scan of `/Volumes/Anna's Work Backup` or
@@ -27,6 +27,14 @@ final class LogRootTests: XCTestCase {
         let label = LogRoot.label("/Volumes/Anna's Work Backup", home: home)
         XCTAssertFalse(label.contains("Anna"), "the volume name went into the log")
         XCTAssertTrue(label.hasPrefix("/Volumes/"), "which kind of place it was is the useful part")
+    }
+
+    /// Duplicates searches a folder inside the volume, so the tail is a name too.
+    func testNothingBelowTheVolumeNameReachesTheLogEither() {
+        let label = LogRoot.label("/Volumes/Anna's Work Backup/Photos", home: home)
+        XCTAssertFalse(label.contains("Anna"), "the volume name went into the log")
+        XCTAssertFalse(label.contains("Photos"))
+        XCTAssertTrue(label.hasPrefix("/Volumes/"))
     }
 
     func testAnotherAccountsNameNeverReachesTheLog() {
