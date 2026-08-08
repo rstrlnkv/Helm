@@ -53,7 +53,6 @@ final class MovingTrash: TrashPort, @unchecked Sendable {
 final class TrashBatchFollowsTheSharedRulesTests: XCTestCase {
 
     private var home: URL!
-    private var bin: URL!
     private var trash: MovingTrash!
 
     override func setUpWithError() throws {
@@ -62,10 +61,9 @@ final class TrashBatchFollowsTheSharedRulesTests: XCTestCase {
         // different program.
         home = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("helm-unbatch-\(UUID().uuidString)")
-        bin = home.appendingPathComponent("bin")
         try FileManager.default.createDirectory(at: home.appendingPathComponent("Library/Caches"),
                                                withIntermediateDirectories: true)
-        trash = MovingTrash(bin: bin)
+        trash = MovingTrash(bin: home.appendingPathComponent("bin"))
     }
 
     override func tearDownWithError() throws {
@@ -86,6 +84,14 @@ final class TrashBatchFollowsTheSharedRulesTests: XCTestCase {
                                                withIntermediateDirectories: true)
         try Data(repeating: 0x41, count: bytes).write(to: url)
         return url.path
+    }
+
+    /// What production would say this path frees, since `FMFileSystem.size` is
+    /// this same call. The expectation is stated in the units the code answers
+    /// in — a byte count written down here would be a statement about APFS
+    /// block sizes.
+    private func weight(_ path: String) -> Int {
+        FileWeight.allocated(of: URL(fileURLWithPath: path))
     }
 
     private func caches(_ relative: String) -> URL {
@@ -200,7 +206,7 @@ final class TrashBatchFollowsTheSharedRulesTests: XCTestCase {
         let cache = try write(caches("Ghost-\(UUID().uuidString)/big.bin"), bytes: 200_000)
         let plist = try write(caches("Ghost-\(UUID().uuidString)/small.plist"), bytes: 8_000)
         let app = try appBundle(bytes: 100_000)
-        let weights = [cache, plist, app].map { FileWeight.allocated(of: URL(fileURLWithPath: $0)) }
+        let weights = [cache, plist, app].map(weight)
 
         let result = try await engine().uninstall(appPath: app, paths: [cache, plist])
 
@@ -218,7 +224,7 @@ final class TrashBatchFollowsTheSharedRulesTests: XCTestCase {
         let cache = try write(caches("Ghost-\(UUID().uuidString)/big.bin"), bytes: 200_000)
         let locked = try write(caches("Ghost-\(UUID().uuidString)/locked.bin"), bytes: 8_000)
         let app = try appBundle(bytes: 100_000)
-        let moved = [cache, app].map { FileWeight.allocated(of: URL(fileURLWithPath: $0)) }
+        let moved = [cache, app].map(weight)
         let engine = UninstallerEngine(home: home, apps: FakeApps(), fs: FMFileSystem(),
                                        trash: FakeTrash(failing: [locked]),
                                        running: FakeRunning(running: []))
