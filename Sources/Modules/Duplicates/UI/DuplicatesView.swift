@@ -91,7 +91,7 @@ struct DuplicatesView: View {
 
     private func reveal(_ path: String?) {
         guard let path else { return }
-        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+        HelmReveal.inFinder(path)
     }
 
     private func preview(_ path: String?) {

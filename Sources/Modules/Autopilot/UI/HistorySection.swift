@@ -1,4 +1,3 @@
-import AppKit
 import HelmRuntime
 import HelmUI
 import Module_Autopilot_Engine
@@ -111,9 +110,7 @@ struct HistorySection: View {
         }
     }
 
-    private func reveal(_ path: String) {
-        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
-    }
+    private func reveal(_ path: String) { HelmReveal.inFinder(path) }
 
     /// "trashed" needs no second half; the rest read as verb then value.
     private func detail(_ record: ActionRecord) -> String {

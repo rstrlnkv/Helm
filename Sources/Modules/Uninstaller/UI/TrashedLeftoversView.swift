@@ -319,9 +319,7 @@ struct TrashedLeftoversView: View {
         .toggleStyle(.checkbox)
         .help(item.path)
         .contextMenu {
-            Button(UnStr.showInFinder) {
-                NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: item.path)])
-            }
+            Button(HelmA11y.showInFinder) { HelmReveal.inFinder(item.path) }
         }
     }
 

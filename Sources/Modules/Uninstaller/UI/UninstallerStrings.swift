@@ -140,7 +140,6 @@ enum UnStr {
     /// («по названию», 名前一致), which is what an under-specified fragment does.
     /// The word this app already uses for the thing is a guess.
     static var matchedByName: String { L("guess") }
-    static var showInFinder: String { L("Show in Finder") }
     static var openDiskAccess: String { L("Open Full Disk Access…") }
     static var openExtensions: String { L("Open Extensions…") }
     static var done: String { L("Done") }

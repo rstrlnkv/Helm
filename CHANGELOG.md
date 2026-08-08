@@ -94,6 +94,16 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   values and the stream carried the new state and then the one it superseded.
   Measured at 26 subscriptions in 60 before the fix; the history now goes out
   before the subscriber goes live, both under the one lock.
+- **«Show in Finder» now shows something when the file has already gone.**
+  Selecting a path Finder cannot see does nothing at all — no window, no error,
+  no Finder in front — and the button is offered in exactly the places where the
+  path is most likely to be gone: beside a file that could not be moved, on a
+  file Autopilot moved somewhere else, on a leftover deleted a moment ago in
+  another window. Nine sites offered it and one of them, the Uninstaller's
+  removal report, had worked this out and fallen back to the enclosing folder;
+  the other eight did nothing. They all go through one `HelmReveal.inFinder`
+  now, which also brings Finder forward — `activateFileViewerSelecting` selects
+  in a window that may be behind the one the button was pressed in.
 - **The Homebrew console keeps the last thousand lines** rather than every line
   it has ever printed. It is cleared by Clear and by starting an install, so on
   the ordinary path it only grew, for the life of the app — and each line is a

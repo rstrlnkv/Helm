@@ -391,7 +391,7 @@ public struct UninstallerSettingsPage: View {
                             // report; the button that acts on it stays its own.
                             .accessibilityElement(children: .combine)
                             Spacer()
-                            Button(UnStr.showInFinder) { reveal(failure.path) }
+                            Button(HelmA11y.showInFinder) { HelmReveal.inFinder(failure.path) }
                                 .controlSize(.small)
                         }
                         .padding(.vertical, 3)
@@ -416,19 +416,6 @@ public struct UninstallerSettingsPage: View {
             }
             .padding(.horizontal, 20).padding(.vertical, 12)
         }
-    }
-
-    /// Selecting a file Finder cannot see does nothing at all, so fall back to
-    /// opening the enclosing folder — and bring Finder forward either way.
-    private func reveal(_ path: String) {
-        let url = URL(fileURLWithPath: path)
-        if FileManager.default.fileExists(atPath: path) {
-            NSWorkspace.shared.activateFileViewerSelecting([url])
-        } else {
-            NSWorkspace.shared.open(url.deletingLastPathComponent())
-        }
-        NSRunningApplication.runningApplications(
-            withBundleIdentifier: "com.apple.finder").first?.activate()
     }
 
     private func groupHeader(_ group: UninstallGroup) -> some View {
