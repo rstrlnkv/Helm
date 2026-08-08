@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import HelmRuntime
 
 /// Silent in-app installer for ad-hoc builds. Unzips a self-downloaded app bundle
 /// (no quarantine, so no Gatekeeper prompt), then hands off to a small detached
@@ -18,12 +19,8 @@ enum Installer {
         try fm.createDirectory(at: work, withIntermediateDirectories: true)
 
         // Unzip with ditto (handles the ditto-produced archive + preserves the signature).
-        let unzip = Process()
-        unzip.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
-        unzip.arguments = ["-x", "-k", zipURL.path, work.path]
-        try unzip.run()
-        unzip.waitUntilExit()
-        guard unzip.terminationStatus == 0 else { throw InstallError.unzipFailed }
+        let unzip = HelmProcess.run("/usr/bin/ditto", ["-x", "-k", zipURL.path, work.path])
+        guard unzip.status == 0 else { throw InstallError.unzipFailed }
 
         // The downloaded archive is consumed — drop it now so it never lingers.
         try? fm.removeItem(at: zipURL)
@@ -88,6 +85,9 @@ enum Installer {
         """
         try script.write(to: scriptURL, atomically: true, encoding: .utf8)
 
+        // The one spawn here that is not `HelmProcess`: that runner reads the
+        // child to EOF and waits for its status, and this child is waiting for
+        // *this* process to exit before it does any work.
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/bin/bash")
         proc.arguments = [scriptURL.path, newApp, installPath, String(pid), workDir, scriptURL.path]
