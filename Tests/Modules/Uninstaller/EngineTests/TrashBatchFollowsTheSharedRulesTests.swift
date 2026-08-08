@@ -169,7 +169,7 @@ final class TrashBatchFollowsTheSharedRulesTests: XCTestCase {
         XCTAssertEqual(result.failed, [vanished],
                        "a stale row reached neither list, so the count lied about it")
         XCTAssertEqual(result.failures.first?.reason,
-                       TrashFailure.Reason.systemRefused.rawValue)
+                       TrashFailure.Reason.systemRefused)
     }
 
     // MARK: - What the refusal carries
@@ -186,7 +186,7 @@ final class TrashBatchFollowsTheSharedRulesTests: XCTestCase {
 
         XCTAssertEqual(result.trashed, [inside])
         XCTAssertEqual(result.failures.map(\.reason),
-                       [TrashFailure.Reason.outOfScope.rawValue])
+                       [TrashFailure.Reason.outOfScope])
         XCTAssertTrue(FileManager.default.fileExists(atPath: outside.path),
                       "the refusal was reported and the file taken anyway")
     }
@@ -243,6 +243,6 @@ final class TrashBatchFollowsTheSharedRulesTests: XCTestCase {
 
         XCTAssertEqual(result.failures.map(\.message), ["denied"])
         XCTAssertEqual(result.failures.map(\.reason),
-                       [TrashFailure.Reason.noPermission.rawValue])
+                       [TrashFailure.Reason.noPermission])
     }
 }

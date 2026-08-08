@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 import HelmUI
 import Module_Leftovers_Engine
 
@@ -10,7 +11,7 @@ import Module_Leftovers_Engine
     /// Leftovers only by default: the full list is context, not a to-do list.
     @Published public var showAll = false
     @Published public private(set) var banner: String?
-    @Published public private(set) var failures: [TrashFailureDetail] = []
+    @Published public private(set) var failures: [HelmTrash.Refusal] = []
     /// How many actually moved — see `DiskViewModel.removedCount`.
     @Published public private(set) var removedCount = 0
     /// A removal is running. The page dims what would start a second one — see
@@ -141,7 +142,7 @@ import Module_Leftovers_Engine
         defer { busy = false }
         let result: LeftoversRemoval? = await client.request(LeftoversCommand.trash,
                                                             encoding: paths)
-        failures = result?.failed ?? []
+        failures = result?.refused ?? []
         removedCount = result?.removed.count ?? 0
         banner = LfStr.movedToTrash(Bytes(result?.freedBytes ?? 0))
         await scan()

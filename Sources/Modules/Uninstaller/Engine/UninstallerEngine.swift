@@ -480,7 +480,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         return UninstallResult(
             trashed: result.removed, freedBytes: result.freedBytes,
             failures: result.refused.map {
-                TrashFailureInfo(path: $0.path, reason: $0.reason.rawValue,
+                TrashFailureInfo(path: $0.path, reason: $0.reason,
                                  message: saidByPath[$0.path] ?? "")
             })
     }

@@ -37,7 +37,7 @@ struct OrphansView: View {
                                                           reason: UnStr.failureReason($0.reason))
                                    },
                                    needsFullDiskAccess: failures.contains {
-                                       $0.reason == TrashFailure.Reason.needsFullDiskAccess.rawValue
+                                       $0.reason == .needsFullDiskAccess
                                    })
                     // 20/12 like every other bar in Helm. At 12/10 this one sat
                     // narrower than the toolbar above it and the footer below.

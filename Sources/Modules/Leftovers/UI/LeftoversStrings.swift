@@ -3,13 +3,6 @@ import HelmUI
 import Module_Leftovers_Engine
 
 enum LfStr {
-    /// The sentences live in `TrashReasonText`, where Disk, Duplicates and
-    /// the uninstaller already read them. This module used to pass macOS's own
-    /// `localizedDescription` straight through, so it was the one removal
-    /// screen in Helm that showed an untranslated Cocoa sentence with the
-    /// reason discarded.
-    static func failureReason(_ raw: String) -> String { TrashReasonText.sentence(raw) }
-
     // Named after the macOS pane that covers the same ground, so the mapping
     // is obvious: System Settings → General → Login Items & Extensions.
     static var moduleName: String { L("Login Items & Extensions") }

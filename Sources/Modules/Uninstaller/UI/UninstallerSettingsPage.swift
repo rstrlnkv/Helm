@@ -404,10 +404,10 @@ public struct UninstallerSettingsPage: View {
 
             Divider()
             HStack(spacing: 10) {
-                if failures.contains(where: { $0.reason == TrashFailure.Reason.needsFullDiskAccess.rawValue }) {
+                if failures.contains(where: { $0.reason == .needsFullDiskAccess }) {
                     Button(UnStr.openDiskAccess) { PermissionCheck.openFullDiskAccessSettings() }
                 }
-                if failures.contains(where: { $0.reason == TrashFailure.Reason.activeSystemExtension.rawValue }) {
+                if failures.contains(where: { $0.reason == .activeSystemExtension }) {
                     Button(UnStr.openExtensions) { PermissionCheck.openExtensionSettings() }
                 }
                 Spacer()
