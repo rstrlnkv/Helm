@@ -62,13 +62,6 @@ final class TheLogDoesNotCarryWhatYouTypeTests: XCTestCase {
         func space() { handler?(.space) }
     }
 
-    private final class FakeSources: LayoutSourcePort, @unchecked Sendable {
-        var selected: [String] = []
-        func installed() -> [String] { ["en", "ru"] }
-        func current() -> String? { "en" }
-        func select(_ sourceID: String) { selected.append(sourceID) }
-    }
-
     /// A word nobody would type by accident, so finding it in a message cannot
     /// be a coincidence — and its replacement, which is just as much the
     /// person's text.
