@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import Module_Uninstaller_Engine
 
 /// The stronger half of `UninstallerDuplicateBundleIDTests`.
@@ -16,15 +17,10 @@ final class AppSizeIdentityTests: XCTestCase {
     private var home: URL!
 
     override func setUpWithError() throws {
-        home = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-un-size-id-\(UUID().uuidString)")
+        home = scratchDirectory("un-size-id")
         try FileManager.default.createDirectory(
             at: home.appendingPathComponent("Applications/Setapp"),
             withIntermediateDirectories: true)
-    }
-
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: home)
     }
 
     @discardableResult

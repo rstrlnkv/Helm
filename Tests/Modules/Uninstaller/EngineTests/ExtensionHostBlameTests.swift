@@ -1,5 +1,6 @@
 import HelmRuntime
 import XCTest
+import HelmTestSupport
 @testable import Module_Uninstaller_Engine
 
 /// When a bundle refuses to move, the engine decides whether to blame an active
@@ -46,12 +47,7 @@ final class ExtensionHostBlameTests: XCTestCase {
     private var root: URL!
 
     override func setUpWithError() throws {
-        root = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-blame-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-    }
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: root)
+        root = scratchDirectory("blame")
     }
 
     /// Writes a minimal app bundle whose Info.plist the engine can read.

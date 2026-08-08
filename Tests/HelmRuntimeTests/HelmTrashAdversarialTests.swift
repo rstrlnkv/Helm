@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 
 /// The shared trash loop meeting the batches a real screen can assemble.
@@ -21,15 +22,10 @@ final class HelmTrashAdversarialTests: XCTestCase {
     private var moved: [String] = []
 
     override func setUpWithError() throws {
-        root = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-trash-adversarial-\(UUID().uuidString)")
+        root = scratchDirectory("trash-adversarial")
         bin = root.appendingPathComponent("bin")
         try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
         moved = []
-    }
-
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: root)
     }
 
     /// A move that really moves, the way `FileManager.trashItem` does, and
@@ -44,15 +40,6 @@ final class HelmTrashAdversarialTests: XCTestCase {
             at: url,
             to: bin.appendingPathComponent("\(UUID().uuidString)-\(url.lastPathComponent)"))
         moved.append(url.path)
-    }
-
-    @discardableResult
-    private func write(_ relative: String, bytes: Int) throws -> String {
-        let url = root.appendingPathComponent(relative)
-        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
-                                                withIntermediateDirectories: true)
-        try Data(repeating: 0x41, count: bytes).write(to: url)
-        return url.path
     }
 
     private func remove(_ allowed: [String],
@@ -73,7 +60,7 @@ final class HelmTrashAdversarialTests: XCTestCase {
     /// file is on the disk, and telling the person it moved is the one answer
     /// they cannot check.
     func testAPortThatCallsAFileMissingWhileItIsStillThereIsRefusedNotForgiven() throws {
-        let parent = try write("Ghost/inside/child.bin", bytes: 40_000)
+        let parent = try write("Ghost/inside/child.bin", in: root, bytes: 40_000).path
         let folder = root.appendingPathComponent("Ghost").path
 
         let result = remove([folder, parent]) { _ in
@@ -97,7 +84,7 @@ final class HelmTrashAdversarialTests: XCTestCase {
     /// its root from a stored path and a row built from a `URL` — and the batch
     /// has to answer once for the folder, not once per spelling.
     func testAFolderSpelledWithAndWithoutItsTrailingSeparatorIsOneOutcome() throws {
-        try write("Ghost/inside.bin", bytes: 60_000)
+        try write("Ghost/inside.bin", in: root, bytes: 60_000)
         let folder = root.appendingPathComponent("Ghost").path
 
         let result = remove([folder, folder + "/"])
@@ -123,7 +110,7 @@ final class HelmTrashAdversarialTests: XCTestCase {
     /// over", and it is stated because `removed` and `failed` are read as one
     /// description of one batch.
     func testAPathCarryingADoubledSeparatorIsStillOneOutcome() throws {
-        try write("Ghost/inside.bin", bytes: 60_000)
+        try write("Ghost/inside.bin", in: root, bytes: 60_000)
         let folder = root.appendingPathComponent("Ghost").path
 
         let result = remove([folder, folder + "//"])
@@ -145,7 +132,7 @@ final class HelmTrashAdversarialTests: XCTestCase {
     /// The folder is asserted removed first, so the refusal below is a refusal
     /// and not the whole batch failing.
     func testAPathThatMerelyStartsWithAnotherIsNotForgivenAsItsChild() throws {
-        try write("Ghost/inside.bin", bytes: 20_000)
+        try write("Ghost/inside.bin", in: root, bytes: 20_000)
         let folder = root.appendingPathComponent("Ghost").path
         let lookalike = root.appendingPathComponent("Ghostly.bin").path   // never existed
 
@@ -172,7 +159,7 @@ final class HelmTrashAdversarialTests: XCTestCase {
         var answers: [HelmTrash.Result] = []
         for (index, parentFirst) in [true, false].enumerated() {
             let name = "Ghost\(index)"
-            let child = try write("\(name)/inside.bin", bytes: 120_000)
+            let child = try write("\(name)/inside.bin", in: root, bytes: 120_000).path
             let folder = root.appendingPathComponent(name).path
             let order = parentFirst ? "parent first" : "child first"
 
@@ -203,7 +190,7 @@ final class HelmTrashAdversarialTests: XCTestCase {
     /// link would also mean a link pointing outside the scope was measured
     /// through a gate it never passed.
     func testTrashingASymlinkFreesTheLinkAndNotWhatItPointsAt() throws {
-        try write("Real/big.bin", bytes: 400_000)
+        try write("Real/big.bin", in: root, bytes: 400_000)
         let target = root.appendingPathComponent("Real")
         let link = root.appendingPathComponent("Link")
         try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
@@ -233,7 +220,7 @@ final class HelmTrashAdversarialTests: XCTestCase {
                      "with\ta tab.bin", ".hidden", "trailing dot.", "dash-—-dash.bin",
                      "quote'and\"quote.bin"]
         var paths: [String] = []
-        for name in names { paths.append(try write("Names/" + name, bytes: 1_024)) }
+        for name in names { paths.append(try write("Names/" + name, in: root, bytes: 1_024).path) }
 
         let result = remove(paths)
 

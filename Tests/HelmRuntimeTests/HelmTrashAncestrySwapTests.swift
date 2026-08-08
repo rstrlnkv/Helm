@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 
 /// The gate and the move are two moments, and a symlinked ancestor can be
@@ -24,14 +25,9 @@ final class HelmTrashAncestrySwapTests: XCTestCase {
     private var bin: URL!
 
     override func setUpWithError() throws {
-        root = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-trash-ancestry-\(UUID().uuidString)")
+        root = scratchDirectory("trash-ancestry")
         bin = root.appendingPathComponent("bin")
         try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
-    }
-
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: root)
     }
 
     /// The pure logic, no filesystem: the identity the batch reads changes

@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import HelmTestSupport
 @testable import Module_Duplicates_Engine
 
 /// What the walk does when the filesystem says no.
@@ -20,21 +21,28 @@ import XCTest
 /// this path.
 final class DuplicateWalkErrorsTests: XCTestCase {
     private var root: URL!
-    private var blocked: [URL] = []
 
     override func setUpWithError() throws {
-        root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("helm-dup-walk-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        root = scratchDirectory("dup-walk")
     }
 
-    override func tearDownWithError() throws {
-        for url in blocked {
+    /// Unreadable now, readable again before anything tries to delete it.
+    ///
+    /// The restore is a teardown block rather than a `tearDown`, and that is
+    /// the whole of it: teardown blocks run *before* `tearDown`, so the scratch
+    /// directory's own removal reached a folder still at 0o000 and left it in
+    /// `$TMPDIR` for ever. Registered here, later than the directory's, it runs
+    /// first — blocks are unwound in reverse.
+    private func wall(in directory: URL) throws -> URL {
+        let url = directory.appendingPathComponent("wall")
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        addTeardownBlock {
             try? FileManager.default.setAttributes([.posixPermissions: 0o755],
                                                    ofItemAtPath: url.path)
         }
-        blocked = []
-        try? FileManager.default.removeItem(at: root)
+        try FileManager.default.setAttributes([.posixPermissions: 0o000],
+                                              ofItemAtPath: url.path)
+        return url
     }
 
     /// One copy of the pair per branch, and an unreadable directory in *both*
@@ -46,13 +54,8 @@ final class DuplicateWalkErrorsTests: XCTestCase {
     private func twoBranchesEachBehindAnUnreadableDirectory() throws {
         for (branch, byte) in [("one", UInt8(7)), ("two", UInt8(7))] {
             let directory = root.appendingPathComponent(branch)
-            let wall = directory.appendingPathComponent("wall")
-            try FileManager.default.createDirectory(at: wall, withIntermediateDirectories: true)
-            try Data(repeating: byte, count: 1_200_000)
-                .write(to: directory.appendingPathComponent("copy.bin"))
-            try FileManager.default.setAttributes([.posixPermissions: 0o000],
-                                                  ofItemAtPath: wall.path)
-            blocked.append(wall)
+            try write("\(branch)/copy.bin", in: root, bytes: 1_200_000, filler: byte)
+            _ = try wall(in: directory)
         }
     }
 

@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 @testable import Module_Autopilot_Engine
 
@@ -27,24 +28,10 @@ final class RuleRunnerIdempotenceTests: XCTestCase {
     private var runner: RuleRunner!
 
     override func setUpWithError() throws {
-        home = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-home-\(UUID().uuidString)")
+        home = scratchDirectory("home")
         root = home.appendingPathComponent("Files")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         runner = RuleRunner(home: home.path)
-    }
-
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: home)
-    }
-
-    @discardableResult
-    private func write(_ relative: String, bytes: Int = 4) throws -> URL {
-        let url = root.appendingPathComponent(relative)
-        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
-                                                withIntermediateDirectories: true)
-        try Data(repeating: 0x41, count: bytes).write(to: url)
-        return url
     }
 
     private func plan(_ url: URL, _ action: RuleAction, kind: FileKind = .document) -> RulePlan {
@@ -73,7 +60,7 @@ final class RuleRunnerIdempotenceTests: XCTestCase {
     /// goes one level deeper every hour, unattended, and writes a `moved` row
     /// into the history each time.
     func testAFileAlreadyInItsBucketIsNotSortedIntoAnotherOne() throws {
-        let file = try write("Images/a.jpg")
+        let file = try write("Images/a.jpg", in: root)
 
         let outcome = runner.run(plan(file, .sortIntoSubfolder(.kind), kind: .image), at: file.path)
 
@@ -85,7 +72,7 @@ final class RuleRunnerIdempotenceTests: XCTestCase {
     /// The same for the month scheme, which names its bucket after a date
     /// rather than a kind and so cannot be got right by accident.
     func testAFileAlreadyInItsMonthFolderIsNotSortedAgain() throws {
-        let file = try write("2026-07/a.pdf")
+        let file = try write("2026-07/a.pdf", in: root)
 
         let outcome = runner.run(plan(file, .sortIntoSubfolder(.month)), at: file.path)
 
@@ -97,7 +84,7 @@ final class RuleRunnerIdempotenceTests: XCTestCase {
     /// in its bucket is put in it. Without this the fix above could be "never
     /// sort anything" and the tests would not notice.
     func testAFileThatIsNotInItsBucketIsStillSorted() throws {
-        let file = try write("a.jpg")
+        let file = try write("a.jpg", in: root)
 
         let outcome = runner.run(plan(file, .sortIntoSubfolder(.kind), kind: .image), at: file.path)
 
@@ -108,7 +95,7 @@ final class RuleRunnerIdempotenceTests: XCTestCase {
     /// A bucket nested inside another folder of the same name is still a file
     /// that has arrived: only the folder the file is *in* decides.
     func testOnlyTheFolderTheFileIsInCounts() throws {
-        let file = try write("Images/Holiday/a.jpg")
+        let file = try write("Images/Holiday/a.jpg", in: root)
 
         let outcome = runner.run(plan(file, .sortIntoSubfolder(.kind), kind: .image), at: file.path)
 
@@ -127,7 +114,7 @@ final class RuleRunnerIdempotenceTests: XCTestCase {
     /// `photo.jpg` becomes `photo 2.jpg`, and `photo 2 2.jpg` the sweep after
     /// that. `rename` has guarded this since it was written; `move` never did.
     func testMovingAFileIntoTheFolderItIsAlreadyInDoesNothing() throws {
-        let file = try write("photo.jpg")
+        let file = try write("photo.jpg", in: root)
 
         let outcome = runner.run(plan(file, .move(to: root.path), kind: .image), at: file.path)
 
@@ -139,7 +126,7 @@ final class RuleRunnerIdempotenceTests: XCTestCase {
     /// typing a path writes a folder, and how a hand-edited plist is likely to
     /// carry one.
     func testATrailingSlashIsTheSameFolder() throws {
-        let file = try write("photo.jpg")
+        let file = try write("photo.jpg", in: root)
 
         let outcome = runner.run(plan(file, .move(to: root.path + "/"), kind: .image),
                                  at: file.path)
@@ -150,7 +137,7 @@ final class RuleRunnerIdempotenceTests: XCTestCase {
 
     /// And a real move still moves.
     func testAMoveToSomewhereElseStillHappens() throws {
-        let file = try write("photo.jpg")
+        let file = try write("photo.jpg", in: root)
         let elsewhere = root.appendingPathComponent("Sorted")
 
         let outcome = runner.run(plan(file, .move(to: elsewhere.path), kind: .image), at: file.path)

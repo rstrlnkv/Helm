@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 @testable import Module_Autopilot_Engine
 
@@ -21,8 +22,7 @@ final class RuleRunnerCaseRenameTests: XCTestCase {
     private var runner: RuleRunner!
 
     override func setUpWithError() throws {
-        home = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-home-\(UUID().uuidString)")
+        home = scratchDirectory("home")
         root = home.appendingPathComponent("Downloads")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         runner = RuleRunner(home: home.path)
@@ -36,10 +36,6 @@ final class RuleRunnerCaseRenameTests: XCTestCase {
             .fileExists(atPath: root.appendingPathComponent("CASE-PROBE").path)
         try FileManager.default.removeItem(at: probe)
         try XCTSkipUnless(folded, "case-sensitive volume: these two names are two files")
-    }
-
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: home)
     }
 
     private func rename(_ url: URL, pattern: String) -> RuleOutcome {

@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import Module_Disk_Engine
 
 /// Against a real fixture tree in tmp — the bulk-attribute walk has too many
@@ -7,8 +8,7 @@ final class DiskScannerTests: XCTestCase {
     private var fixture: URL!
 
     override func setUpWithError() throws {
-        fixture = FileManager.default.temporaryDirectory
-            .appendingPathComponent("helm-disk-test-\(UUID().uuidString)")
+        fixture = scratchDirectory("disk-test")
         let fm = FileManager.default
         try fm.createDirectory(at: fixture.appendingPathComponent("sub/deeper"),
                                withIntermediateDirectories: true)
@@ -18,10 +18,6 @@ final class DiskScannerTests: XCTestCase {
         // A symlink whose target must NOT be counted or followed.
         try fm.createSymbolicLink(at: fixture.appendingPathComponent("link"),
                                   withDestinationURL: fixture.appendingPathComponent("sub"))
-    }
-
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: fixture)
     }
 
     func testScanFindsFilesAndRollsUpSizes() throws {
@@ -62,9 +58,7 @@ final class DiskScannerTests: XCTestCase {
     /// MODTIME sits between OBJTYPE and FILEID in attribute-bit order; a
     /// misparse here silently corrupts every field after it.
     func testScannerReadsModificationDates() throws {
-        let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("helm-mtime-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let dir = scratchDirectory("mtime")
         defer { try? FileManager.default.removeItem(at: dir) }
         let file = dir.appendingPathComponent("old.bin")
         try Data(count: 200_000).write(to: file)
@@ -80,8 +74,7 @@ final class DiskScannerTests: XCTestCase {
     /// The skip set must actually prevent descent — the firmlink fix depends
     /// on it, and a path-formatting slip made it silently inert once already.
     func testSkippedDirectoriesAreNotWalked() throws {
-        let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("helm-skip-\(UUID().uuidString)")
+        let root = scratchDirectory("skip")
         let kept = root.appendingPathComponent("kept")
         let skipped = root.appendingPathComponent("skipped")
         try FileManager.default.createDirectory(at: kept, withIntermediateDirectories: true)

@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import Module_Duplicates_Engine
 
 /// The last thing standing between a stale offer and a deleted file.
@@ -8,14 +9,7 @@ final class DuplicateVerificationTests: XCTestCase {
 
     override func setUpWithError() throws {
         try super.setUpWithError()
-        directory = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-            .appendingPathComponent("verify-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-    }
-
-    override func tearDown() {
-        try? FileManager.default.removeItem(at: directory)
-        super.tearDown()
+        directory = scratchDirectory("verify")
     }
 
     @discardableResult

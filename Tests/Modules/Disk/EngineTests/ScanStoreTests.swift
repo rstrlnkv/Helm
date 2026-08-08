@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import Module_Disk_Engine
 
 final class ScanStoreTests: XCTestCase {
@@ -6,13 +7,8 @@ final class ScanStoreTests: XCTestCase {
     private var store: ScanStore!
 
     override func setUpWithError() throws {
-        directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("helm-scanstore-\(UUID().uuidString)")
+        directory = scratchDirectory("scanstore")
         store = ScanStore(directory: directory)
-    }
-
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: directory)
     }
 
     private func result(root: String, bytes: Int) -> ScanResult {

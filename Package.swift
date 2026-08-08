@@ -65,16 +65,18 @@ extension Module {
 
     /// A test target reaches one half of its module and no further: a UI test
     /// gets the engine through the UI target that already depends on it.
+    /// `HelmTestSupport` is the exception every test target gets, because it is
+    /// the harness rather than the subject.
     var testTargets: [Target] {
         [
             .testTarget(
                 name: "\(engine)Tests",
-                dependencies: [.byName(name: engine)],
+                dependencies: [.byName(name: engine), "HelmTestSupport"],
                 path: "Tests/Modules/\(name)/EngineTests"
             ),
             .testTarget(
                 name: "\(ui)Tests",
-                dependencies: [.byName(name: ui)],
+                dependencies: [.byName(name: ui), "HelmTestSupport"],
                 path: "Tests/Modules/\(name)/UITests"
             ),
         ]
@@ -92,6 +94,21 @@ let foundation: [Target] = [
             resources: [.process("Resources")]),
 ]
 
+/// The harness, which belongs to every test target and to no product.
+///
+/// A plain target rather than a test target: a test target cannot be depended
+/// on, and this has to reach nine of them. It is under `Tests/` because that is
+/// what it is — nothing in `Sources/` may import it, and nothing can, since no
+/// product lists it.
+///
+/// What lives here is what was written once per test file until it was written
+/// wrong: a scratch directory whose teardown **drains**, and the file-of-N-bytes
+/// every filesystem test needs. `Tests/Support/ScratchDirectory.swift` carries
+/// the measurement that says why.
+let support: [Target] = [
+    .target(name: "HelmTestSupport", path: "Tests/Support"),
+]
+
 /// The host and the tests that belong to no module.
 let host: [Target] = [
     .executableTarget(
@@ -103,11 +120,14 @@ let host: [Target] = [
         dependencies: ["HelmContract", "HelmRuntime", "HelmUI"]
             + modules.map { .byName(name: $0.ui) }
     ),
-    .testTarget(name: "HelmContractTests", dependencies: ["HelmContract"]),
+    .testTarget(name: "HelmContractTests",
+                dependencies: ["HelmContract", "HelmTestSupport"]),
     .testTarget(name: "HelmAppTests",
-                dependencies: ["HelmApp", "HelmContract", "HelmRuntime", "HelmUI"]),
-    .testTarget(name: "HelmRuntimeTests", dependencies: ["HelmRuntime", "HelmContract"]),
-    .testTarget(name: "HelmUITests", dependencies: ["HelmUI"]),
+                dependencies: ["HelmApp", "HelmContract", "HelmRuntime", "HelmUI",
+                               "HelmTestSupport"]),
+    .testTarget(name: "HelmRuntimeTests",
+                dependencies: ["HelmRuntime", "HelmContract", "HelmTestSupport"]),
+    .testTarget(name: "HelmUITests", dependencies: ["HelmUI", "HelmTestSupport"]),
 ]
 
 let package = Package(
@@ -116,6 +136,7 @@ let package = Package(
     platforms: [.macOS("26.0")],
     targets: foundation
         + modules.flatMap(\.sourceTargets)
+        + support
         + host
         + modules.flatMap(\.testTargets)
 )

@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 import HelmContract
 import HelmRuntime
 import HelmUI
@@ -43,7 +44,7 @@ final class TrashIsNotFreedSpaceTests: XCTestCase {
                                                 refused: [], freedBytes: 600))
         // A store of its own: the module's real one is the person's last scan,
         // and a harness must leave nothing behind.
-        let directory = temporaryStoreDirectory("disk-trash")
+        let directory = scratchDirectory("disk-trash")
         let dvm = DiskViewModel(vm: ModuleViewModel(transport: transport),
                                 store: ScanStore(directory: directory))
         await dvm.loadVolumes()

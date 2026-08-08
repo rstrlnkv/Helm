@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 
 /// The trash loop, which four modules used to keep their own copy of — and
@@ -90,9 +91,7 @@ final class HelmTrashFolderSizeTests: XCTestCase {
     }
 
     private func write(_ url: URL, bytes: Int) throws {
-        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
-                                                withIntermediateDirectories: true)
-        try Data(repeating: 0x41, count: bytes).write(to: url)
+        try write(url.lastPathComponent, in: url.deletingLastPathComponent(), bytes: bytes)
     }
 
     func testAFolderFreesWhatIsInsideIt() throws {

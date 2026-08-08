@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 
 /// The reset, exercised on a home directory it may destroy.
@@ -45,7 +46,7 @@ final class ResetRemovesOnlyItsOwnTests: XCTestCase {
     private var sentinel: String!
 
     override func setUpWithError() throws {
-        home = NSTemporaryDirectory() + "reset-test-" + UUID().uuidString
+        home = scratchDirectory("reset-test").path
         sentinel = "helm-reset-test-" + UUID().uuidString
         // The two directories a reset is allowed to take…
         for path in ResetPlan.removablePaths(home: home) {

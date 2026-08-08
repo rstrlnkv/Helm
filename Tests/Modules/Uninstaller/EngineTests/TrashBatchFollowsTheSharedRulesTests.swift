@@ -1,6 +1,7 @@
 import Foundation
 import HelmRuntime
 import XCTest
+import HelmTestSupport
 @testable import Module_Uninstaller_Engine
 
 /// A `TrashPort` that really moves what it is given.
@@ -59,15 +60,10 @@ final class TrashBatchFollowsTheSharedRulesTests: XCTestCase {
         // The engine is told this is home: `RemovableScope` refuses everything
         // outside one, and a test exempted from that gate is a test of a
         // different program.
-        home = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-unbatch-\(UUID().uuidString)")
+        home = scratchDirectory("unbatch")
         try FileManager.default.createDirectory(at: home.appendingPathComponent("Library/Caches"),
                                                withIntermediateDirectories: true)
         trash = MovingTrash(bin: home.appendingPathComponent("bin"))
-    }
-
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: home)
     }
 
     /// The real filesystem port, so the sizes are the ones production reads.
@@ -80,10 +76,8 @@ final class TrashBatchFollowsTheSharedRulesTests: XCTestCase {
 
     @discardableResult
     private func write(_ url: URL, bytes: Int) throws -> String {
-        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
-                                               withIntermediateDirectories: true)
-        try Data(repeating: 0x41, count: bytes).write(to: url)
-        return url.path
+        try write(url.lastPathComponent, in: url.deletingLastPathComponent(),
+                  bytes: bytes).path
     }
 
     /// What production would say this path frees, since `FMFileSystem.size` is

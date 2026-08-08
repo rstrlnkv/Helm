@@ -32,16 +32,18 @@ import XCTest
 /// UUID has to be in the **leaf** — putting it in the parent directory, which
 /// is what these files did, tells the Trash nothing, because only the moved
 /// item's own name survives the move.
-extension XCTestCase {
+public extension XCTestCase {
 
     /// A temporary directory for files this test intends to trash, removed in
     /// teardown along with anything left in it.
+    ///
+    /// The removal is `scratchDirectory`'s draining one. Nothing here writes
+    /// back into the folder after the test — the whole point is that the file
+    /// *leaves* it — but a teardown that only fires once is the shape this
+    /// suite has already paid for twice, and there is no second shape worth
+    /// keeping for the sake of 200 syscalls.
     func trashScratchDirectory(_ label: String) -> URL {
-        let url = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-\(label)-\(UUID().uuidString)")
-        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-        addTeardownBlock { try? FileManager.default.removeItem(at: url) }
-        return url
+        scratchDirectory(label)
     }
 
     /// `"one.bin"` → `"one-<uuid>.bin"`, keeping the extension so a test about

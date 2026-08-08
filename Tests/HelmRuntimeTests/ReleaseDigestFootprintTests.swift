@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 
 /// `ReleaseDigest.sha256(ofFileAt:)` streams a release asset in 1 MB slices —
@@ -19,8 +20,7 @@ final class ReleaseDigestFootprintTests: XCTestCase {
 
     override func setUpWithError() throws {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["HELM_BENCH"] == "1")
-        file = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-digest-footprint-\(UUID().uuidString).bin")
+        file = scratchDirectory("digest-footprint").appendingPathComponent("asset.bin")
         FileManager.default.createFile(atPath: file.path, contents: nil)
         let handle = try FileHandle(forWritingTo: file)
         defer { try? handle.close() }

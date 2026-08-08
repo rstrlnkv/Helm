@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 
 /// What the journal does when the world does not cooperate: the app quits
@@ -14,15 +15,8 @@ final class ScanJournalInterruptedTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        directory = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-            .appendingPathComponent("scan-journal-broken-\(UUID().uuidString)",
-                                    isDirectory: true)
+        directory = scratchDirectory("scan-journal-broken")
         journal = ScanJournal(directory: directory)
-    }
-
-    override func tearDown() {
-        try? FileManager.default.removeItem(at: directory)
-        super.tearDown()
     }
 
     private func entry(_ bytes: Int, at seconds: TimeInterval = 0) -> ScanEntry {

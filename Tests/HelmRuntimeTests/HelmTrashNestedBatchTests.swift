@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 
 /// A batch that contains a folder and something inside it.
@@ -41,8 +42,7 @@ final class HelmTrashNestedBatchTests: XCTestCase {
 
     /// A folder holding one 300 KB file. Returns (parent, child).
     private func makeTree() throws -> (String, String) {
-        let root = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-nested-\(UUID().uuidString)")
+        let root = scratchDirectory("nested")
         let name = "helm-nested-folder-\(UUID().uuidString)"
         let folder = root.appendingPathComponent(name)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)

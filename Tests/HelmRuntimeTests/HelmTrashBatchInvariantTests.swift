@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 
 /// `HelmTrash.remove` is the one place four modules now go to delete, and its
@@ -23,12 +24,13 @@ final class HelmTrashBatchInvariantTests: XCTestCase {
     /// removed `url.path` — the *source*, which the move has already emptied —
     /// so it reclaimed nothing while reading as though it did (`TrashScratch`).
     @discardableResult
-    private func write(_ name: String, bytes: Int = 4_096) throws -> String {
+    /// Not the shared `write` on its own: this file is going to the Trash, so
+    /// its leaf has to be a name nobody else could own and the reclamation has
+    /// to be registered before the move rather than after it.
+    private func trashableFile(_ name: String, bytes: Int = 4_096) throws -> String {
         let leaf = unownableLeaf(name)
-        let url = root.appendingPathComponent(leaf)
-        try Data(repeating: 0x41, count: bytes).write(to: url)
         reclaimFromTrash(leaf)
-        return url.path
+        return try write(leaf, in: root, bytes: bytes).path
     }
 
     /// A folder with one file in it. The **folder** is what goes to the Trash,
@@ -49,7 +51,7 @@ final class HelmTrashBatchInvariantTests: XCTestCase {
     /// caller forgot to put through a `Set`, hands the same path twice. It is
     /// one file and one outcome, whichever way it goes.
     func testAPathGivenTwiceHasOneOutcome() throws {
-        let file = try write("one.bin")
+        let file = try trashableFile("one.bin")
 
         let result = HelmTrash.remove(allowed: [file, file], module: "test")
 
@@ -61,8 +63,8 @@ final class HelmTrashBatchInvariantTests: XCTestCase {
     /// And the count that goes on the banner has to match. Three names, two
     /// files: the person is told about three things when two moved.
     func testTheTotalsDescribeTheBatchAndNotTheSpelling() throws {
-        let one = try write("one.bin")
-        let two = try write("two.bin")
+        let one = try trashableFile("one.bin")
+        let two = try trashableFile("two.bin")
 
         let result = HelmTrash.remove(allowed: [one, two, one], module: "test")
 
@@ -101,13 +103,7 @@ final class FileWeightIndirectionTests: XCTestCase {
     private var root: URL!
 
     override func setUpWithError() throws {
-        root = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-weight-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-    }
-
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: root)
+        root = scratchDirectory("weight")
     }
 
     /// A symlink is a few dozen bytes and deleting it frees a few dozen bytes.

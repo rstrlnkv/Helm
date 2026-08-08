@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 import HelmContract
 import HelmRuntime
 import HelmUI
@@ -60,7 +61,7 @@ final class StopLeavesNothingBehindTests: XCTestCase {
     private func model(_ transport: AnsweringTransport) -> DiskViewModel {
         // A store of its own: the module's real one is the person's last scan,
         // and a harness must leave nothing behind.
-        let directory = temporaryStoreDirectory("disk-stop")
+        let directory = scratchDirectory("disk-stop")
         return DiskViewModel(vm: ModuleViewModel(transport: transport),
                              store: ScanStore(directory: directory))
     }

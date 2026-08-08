@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 
 /// The gate must judge the path the filesystem will act on, not the path as
@@ -23,8 +24,7 @@ final class ScopeFollowsLinksTests: XCTestCase {
     private var home: URL!
 
     override func setUpWithError() throws {
-        home = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-scope-links-\(UUID().uuidString)")
+        home = scratchDirectory("scope-links")
         for sub in ["Library/Caches", "Documents"] {
             try FileManager.default.createDirectory(
                 at: home.appendingPathComponent(sub), withIntermediateDirectories: true)
