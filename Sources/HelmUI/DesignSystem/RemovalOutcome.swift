@@ -117,8 +117,9 @@ public struct HelmRemovalOutcome: View {
                             .fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 4)
                         Button {
-                            NSWorkspace.shared.activateFileViewerSelecting(
-                                [URL(fileURLWithPath: failure.path)])
+                            // Reached most often for a file that could not be
+                            // moved, which is where the fallback earns itself.
+                            HelmReveal.inFinder(failure.path)
                         } label: {
                             Image(systemName: "doc.text.magnifyingglass")
                         }

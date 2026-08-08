@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 import HelmRuntime
 import HelmUI
@@ -229,9 +228,7 @@ public struct LeftoversSettingsPage: View {
                 Text(Bytes(item.sizeBytes))
                     .font(.caption).foregroundStyle(HelmText.quiet).monospacedDigit()
                 Menu {
-                    Button(LfStr.reveal) {
-                        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: item.path)])
-                    }
+                    Button(HelmA11y.showInFinder) { HelmReveal.inFinder(item.path) }
                     if item.actions.contains(.delete) {
                         Button(Self.deleteLabel(for: item), role: .destructive) {
                             if LeftoverActions.needsConfirmation(item) {
