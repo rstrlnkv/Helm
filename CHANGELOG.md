@@ -67,6 +67,20 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   `removed` empty, so the tree was never pruned and the folders that had left
   were still drawn under a banner saying nothing was freed. The model refuses a
   second run itself now; the page dimming it is the courtesy on top.
+- **A file the Uninstaller took along with the folder above it is reported as
+  taken.** Tick a folder and something inside it and the file's turn comes after
+  the folder has already gone: macOS answers "no such file", and the branch for
+  that dropped the file from both lists — so a removal that moved four things
+  said three, and which of them it undercounted depended on the order the paths
+  happened to arrive in. The same branch swallowed a row that had gone *before*
+  the removal started; that one is now named with its reason, because the list on
+  screen is minutes old and "it was not there" is the thing worth saying about it.
+- **The Uninstaller no longer overstates what a removal freed.** A hard link is
+  one file wearing several names, and moving the second name frees nothing — the
+  size was read fresh for each path, so both names were counted in full. Disk and
+  Duplicates have counted a file once per batch since their own pass; the
+  Uninstaller kept a removal loop of its own and never learned it. All four share
+  the loop now, which is also where the two fixes above come from.
 - **Removing an app that is still running waits for it to quit.** `quit` only
   asks, and the bundle was moved after a fixed 800 ms — a number standing where
   an answer was available. macOS lets a running app's bundle be moved: a slow app
