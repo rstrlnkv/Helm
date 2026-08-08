@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 
 /// The card's own edges are `PanelGrid`'s constants, never numbers typed again.
 ///
@@ -23,29 +24,18 @@ import XCTest
 /// arithmetic, which is a question about the text.
 final class CardEdgesAreTheGridsConstantsTests: XCTestCase {
 
-    private var panelSource: String {
-        get throws {
-            let url = URL(fileURLWithPath: #filePath)
-                .deletingLastPathComponent()   // HelmAppTests
-                .deletingLastPathComponent()   // Tests
-                .deletingLastPathComponent()   // repo
-                .appendingPathComponent("Sources/HelmApp/HelmPanel.swift")
-            return try String(contentsOf: url, encoding: .utf8)
-        }
-    }
-
-    /// The line with its comment tail removed: this file's own explanation
-    /// quotes the offending spellings, and so do the card's comments.
-    private func code(_ line: String) -> String {
-        guard let range = line.range(of: "//") else { return line }
-        return String(line[line.startIndex..<range.lowerBound])
-    }
-
-    /// `card`'s body, by brace count over comment-stripped lines.
+    /// `card`'s body, by brace count over comment-stripped lines — the card's
+    /// own comments quote the spellings this forbids.
+    ///
+    /// **A card it cannot find is an empty slice, never a skip.** The control
+    /// below is what notices, and it has to notice by *failing*: a skip is
+    /// green in a failures-only summary, which is how `DocumentsNameTheTreeTests`
+    /// once checked nothing in a fresh worktree for weeks.
     private func cardBody() throws -> [(line: Int, text: String)] {
-        let lines = try panelSource.components(separatedBy: "\n").map(code)
+        let lines = try RepoSource.lines(of: "Sources/HelmApp/HelmPanel.swift")
+            .map(RepoSource.code)
         guard let start = lines.firstIndex(where: { $0.contains("private func card(") })
-        else { throw XCTSkip("HelmPanel has no `card` function under that name any more") }
+        else { return [] }
 
         var depth = 0
         var body: [(Int, String)] = []

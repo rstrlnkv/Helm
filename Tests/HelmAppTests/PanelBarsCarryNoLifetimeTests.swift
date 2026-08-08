@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 
 /// The extracted panel bars own no state, and it stays that way.
 ///
@@ -30,25 +31,15 @@ final class PanelBarsCarryNoLifetimeTests: XCTestCase {
                              "@FocusState", "@Namespace"]
 
     private func source() throws -> [String] {
-        let url = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()   // HelmAppTests
-            .deletingLastPathComponent()   // Tests
-            .deletingLastPathComponent()   // repo
-            .appendingPathComponent("Sources/HelmApp/PanelBars.swift")
-        return try String(contentsOf: url, encoding: .utf8).components(separatedBy: "\n")
+        try RepoSource.lines(of: "Sources/HelmApp/PanelBars.swift")
     }
 
-    /// The line with its comment tail removed: the file's own header explains
-    /// the rule by naming `@State`, and a scan that reads comments reports the
-    /// explanation as the offence.
-    private func code(_ line: String) -> String {
-        guard let range = line.range(of: "//") else { return line }
-        return String(line[line.startIndex..<range.lowerBound])
-    }
-
+    /// Comment tails come off first: the file's own header explains the rule by
+    /// naming `@State`, and a scan that reads comments reports the explanation
+    /// as the offence.
     func testNoPanelBarOwnsALifetime() throws {
         let offenders = try source().enumerated()
-            .map { (line: $0.offset + 1, text: code($0.element)) }
+            .map { (line: $0.offset + 1, text: RepoSource.code($0.element)) }
             .filter { line in lifetimes.contains { line.text.contains($0) } }
 
         XCTAssertTrue(offenders.isEmpty,

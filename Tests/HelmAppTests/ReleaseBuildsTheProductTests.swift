@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 
 /// The release build builds the app, not the package.
 ///
@@ -20,22 +21,13 @@ import XCTest
 /// a rename would take away without a word.
 final class ReleaseBuildsTheProductTests: XCTestCase {
 
-    private func read(_ path: String) throws -> String {
-        let url = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()   // HelmAppTests
-            .deletingLastPathComponent()   // Tests
-            .deletingLastPathComponent()   // repo
-            .appendingPathComponent(path)
-        return try String(contentsOf: url, encoding: .utf8)
-    }
-
     /// Assert the hazard is real before asserting it is fenced off. A test that
     /// says «the release build excludes the target that imports XCTest» passes
     /// on its own when nothing imports XCTest any more — and then the fence
     /// stands guarding nothing, with the reason for it lost.
     func testTheHarnessReallyDoesImportXCTest() throws {
         let sources = ["Tests/Support/ScratchDirectory.swift", "Tests/Support/TrashScratch.swift"]
-        let importers = try sources.filter { try read($0).contains("import XCTest") }
+        let importers = try sources.filter { try RepoSource.text(of: $0).contains("import XCTest") }
         XCTAssertFalse(importers.isEmpty,
                        "no file in HelmTestSupport imports XCTest any more, so the reason "
                        + "the release build names a product needs deciding again "
@@ -44,9 +36,8 @@ final class ReleaseBuildsTheProductTests: XCTestCase {
 
     /// The half that prunes the graph.
     func testThePackagingScriptBuildsTheProduct() throws {
-        let script = try read("Scripts/package-app.sh")
-        let builds = script.components(separatedBy: "\n")
-            .filter { $0.hasPrefix("swift build") }
+        let script = try RepoSource.lines(of: "Scripts/package-app.sh")
+        let builds = script.filter { $0.hasPrefix("swift build") }
         XCTAssertEqual(builds.count, 1, "expected one release build line, found \(builds)")
         XCTAssertTrue(builds.first?.contains("--product HelmApp") == true,
                       "the packaging script builds the whole package, which builds "
@@ -55,7 +46,7 @@ final class ReleaseBuildsTheProductTests: XCTestCase {
 
     /// The half that makes the flag name something declared.
     func testTheManifestDeclaresTheAppAsItsOnlyProduct() throws {
-        let manifest = try read("Package.swift")
+        let manifest = try RepoSource.text(of: "Package.swift")
         XCTAssertTrue(manifest.contains(#".executable(name: "HelmApp", targets: ["HelmApp"])"#),
                       "the manifest declares no HelmApp product, so `--product HelmApp` "
                       + "resolves to a synthesised one and a renamed target breaks "

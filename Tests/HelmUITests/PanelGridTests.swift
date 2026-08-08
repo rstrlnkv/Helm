@@ -145,12 +145,18 @@ final class PanelGridTests: XCTestCase {
     /// The strip gives back its gap along with its height, because the block
     /// itself goes away with it; the footer block's height is all it has to
     /// give, because the block is drawn empty. The next two tests are each of
-    /// those halves on its own.
+    /// those halves on its own; this one is the four combinations.
+    ///
+    /// The two bars are 30 and 44 pt so that no two of the numbers below can
+    /// coincide. At the 38 the footer was measured at, the strip's `30 + gap`
+    /// came to 38 as well, and two lines here said `both + 38` for two
+    /// different reasons — which is a way of reading right while saying
+    /// nothing.
     func testABarThatIsNotDrawnReservesNothing() {
-        let both = PanelGrid.roomForGrid(strip: 600, top: 30, foot: 38)
-        XCTAssertEqual(PanelGrid.roomForGrid(strip: 600, top: 30, foot: nil), both + 38)
-        XCTAssertEqual(PanelGrid.roomForGrid(strip: 600, top: nil, foot: 38), both + 38)
-        XCTAssertEqual(PanelGrid.roomForGrid(strip: 600, top: nil, foot: nil), both + 76)
+        let both = PanelGrid.roomForGrid(strip: 600, top: 30, foot: 44)
+        XCTAssertEqual(PanelGrid.roomForGrid(strip: 600, top: 30, foot: nil), both + 44)
+        XCTAssertEqual(PanelGrid.roomForGrid(strip: 600, top: nil, foot: 44), both + 38)
+        XCTAssertEqual(PanelGrid.roomForGrid(strip: 600, top: nil, foot: nil), both + 82)
     }
 
     /// **And it does not reserve the gap that bar would have made either.**
