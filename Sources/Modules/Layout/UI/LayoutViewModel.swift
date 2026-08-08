@@ -39,7 +39,7 @@ import Module_Layout_Engine
     deinit { eventsTask?.cancel() }
 
     private func handle(_ event: EngineEvent) {
-        guard event.name == "layoutState",
+        guard LayoutEvent(rawValue: event.name) == .layoutState,
               let decoded = try? JSONDecoder().decode(LayoutState.self, from: event.payload)
         else { return }
         state = decoded

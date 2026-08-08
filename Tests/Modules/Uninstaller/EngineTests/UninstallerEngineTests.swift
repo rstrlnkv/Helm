@@ -3,7 +3,7 @@ import XCTest
 
 // MARK: - Fakes
 
-private struct FakeFS: FileSystemPort {
+struct FakeFS: FileSystemPort {
     let existing: [String: Int]
     /// Directory listings for the orphan scan, keyed by parent path.
     var listings: [String: [String]] = [:]
@@ -14,7 +14,7 @@ private struct FakeFS: FileSystemPort {
         (listings[url.path] ?? []).map { url.appendingPathComponent($0) }
     }
 }
-private struct FakeApps: AppLister {
+struct FakeApps: AppLister {
     func installedBundleIDs() -> Set<String> { Set(apps.map(\.bundleID)) }
     var known: Set<String> = []
     func isKnownToSystem(bundleID: String) -> Bool { known.contains(bundleID) }
@@ -22,7 +22,7 @@ private struct FakeApps: AppLister {
     func installedApps() -> [InstalledApp] { apps }
     func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
 }
-private final class FakeTrash: TrashPort, @unchecked Sendable {
+final class FakeTrash: TrashPort, @unchecked Sendable {
     var trashed: [String] = []
     let failing: Set<String>
     init(failing: [String] = []) { self.failing = Set(failing) }
@@ -36,13 +36,50 @@ private final class FakeTrash: TrashPort, @unchecked Sendable {
         return .success
     }
 }
-private final class FakeRunning: RunningAppsPort, @unchecked Sendable {
-    let running: Set<String>
+/// A running app that can actually stop running.
+///
+/// `running` was a `let`, so quitting changed nothing the port could report and
+/// "the app is gone now" was unrepresentable — which is why nothing could test
+/// a wait for it, and why the wait was a fixed 800 ms sleep in the view model.
+final class FakeRunning: RunningAppsPort, @unchecked Sendable {
+    private let lock = NSLock()
+    private var running: Set<String>
+    /// Apps that ignore a quit request, so the deadline path has a subject.
+    private let stubborn: Set<String>
     /// Records (bundleID, force) so tests can assert how an app was quit.
     private(set) var quits: [(String, Bool)] = []
-    init(running: [String]) { self.running = Set(running) }
-    func isRunning(bundleID: String) -> Bool { running.contains(bundleID) }
-    func quit(bundleID: String, force: Bool) { quits.append((bundleID, force)) }
+
+    /// How long an app takes to actually go after being asked.
+    ///
+    /// Zero would make every test of a *wait* vacuous: the app would be gone
+    /// before `waitUntilGone` was even called, so the assertion would hold with
+    /// the wait deleted. A real app takes a moment, and that moment is the
+    /// whole subject.
+    private let quitAfter: TimeInterval
+
+    init(running: [String], stubborn: [String] = [], quitAfter: TimeInterval = 0) {
+        self.running = Set(running)
+        self.stubborn = Set(stubborn)
+        self.quitAfter = quitAfter
+    }
+
+    func isRunning(bundleID: String) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        return running.contains(bundleID)
+    }
+
+    func quit(bundleID: String, force: Bool) {
+        lock.lock()
+        quits.append((bundleID, force))
+        let willGo = !stubborn.contains(bundleID)
+        let delay = quitAfter
+        if willGo, delay == 0 { running.remove(bundleID) }
+        lock.unlock()
+        guard willGo, delay > 0 else { return }
+        DispatchQueue.global().asyncAfter(deadline: .now() + delay) { [self] in
+            lock.lock(); running.remove(bundleID); lock.unlock()
+        }
+    }
 }
 
 // MARK: - Tests

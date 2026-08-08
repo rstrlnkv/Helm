@@ -196,6 +196,11 @@ let package = Package(
             path: "Tests/Modules/Leftovers/UITests"
         ),
         .testTarget(
+            name: "Module_Homebrew_UITests",
+            dependencies: ["Module_Homebrew_UI"],
+            path: "Tests/Modules/Homebrew/UITests"
+        ),
+        .testTarget(
             name: "Module_Homebrew_EngineTests",
             dependencies: ["Module_Homebrew_Engine"],
             path: "Tests/Modules/Homebrew/EngineTests"

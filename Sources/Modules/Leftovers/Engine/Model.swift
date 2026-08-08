@@ -47,8 +47,7 @@ public struct StaleItem: Codable, Equatable, Sendable, Identifiable {
     /// through, so the batch went ahead and tried. The safer of two answers has
     /// to be the only answer.
     public var removable: Bool {
-        status == .orphaned
-            && LeftoverActions.available(for: self, writable: writable).contains(.delete)
+        status == .orphaned && actions.contains(.delete)
     }
 
     public init(path: String, identifier: String, kind: StaleKind, sizeBytes: Int,
@@ -66,8 +65,12 @@ public struct StaleItem: Codable, Equatable, Sendable, Identifiable {
         self.writable = writable
     }
 
+    /// The one call into `LeftoverActions`, and the answer `removable` and
+    /// `canToggle` are read off. All three used to call it themselves — the same
+    /// question asked three ways, which is how the checkbox and the row's menu
+    /// came to disagree about a launch daemon in the first place.
     public var actions: Set<LeftoverAction> {
-        LeftoverActions.available(for: self, writable: writable)
+        LeftoverActions.available(for: self)
     }
 
     /// Whether Helm can switch this one off without a password.
@@ -77,9 +80,7 @@ public struct StaleItem: Codable, Equatable, Sendable, Identifiable {
     /// took a `status` and never read it, which is exactly the argument that
     /// would have caught it. Deleted rather than merged: everything it said is
     /// already here, and what it did not say was the bug.
-    public var canToggle: Bool {
-        LeftoverActions.available(for: self, writable: writable).contains(.turnOff)
-    }
+    public var canToggle: Bool { actions.contains(.turnOff) }
 }
 
 /// Which login item to switch, and which way.

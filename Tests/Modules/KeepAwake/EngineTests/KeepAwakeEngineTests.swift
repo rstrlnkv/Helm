@@ -154,6 +154,41 @@ final class KeepAwakeEngineTests: XCTestCase {
         clock.fire(after: 600)
         XCTAssertFalse(engine.isActive)
     }
+
+    // MARK: - The one entrance the hotkey and the panel switch both use
+
+    /// `toggleSession` had no test at all, and it is what `KeepAwakeCommand
+    /// .toggle` runs — the global hotkey, and the switch at the top of the
+    /// panel tile. Everything under it was covered and the door itself was not.
+    func test_toggle_starts_a_session_at_the_default_duration() {
+        store.set(25, for: "defaultDurationMinutes")
+
+        engine.toggleSession()
+
+        XCTAssertTrue(engine.isActive)
+        let end = try? XCTUnwrap(engine.endDate)
+        XCTAssertEqual(end.map { Int($0.timeIntervalSince(clock.now()) / 60) }, 25)
+    }
+
+    /// Zero minutes means "until I say otherwise", which is the shipped default
+    /// — so the toggle must not invent a deadline for it.
+    func test_toggle_with_the_shipped_default_starts_an_indefinite_session() {
+        engine.toggleSession()
+
+        XCTAssertTrue(engine.isActive)
+        XCTAssertNil(engine.endDate)
+    }
+
+    func test_toggle_again_stops_the_session() {
+        engine.toggleSession()
+        XCTAssertTrue(engine.isActive, "precondition")
+
+        engine.toggleSession()
+
+        XCTAssertFalse(engine.isActive)
+        XCTAssertFalse(assertions.held)
+        XCTAssertNil(engine.endDate)
+    }
 }
 
 /// Turning the module off has to take its observers with it.

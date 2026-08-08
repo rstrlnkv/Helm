@@ -18,11 +18,19 @@ enum DkStr {
     static var chooseAnother: String { L("Choose another…") }
     static var scanAgain: String { L("Scan again") }
     static var free: String { L("free") }
-    static var basket: String { L("To remove") }
     static var moveToTrash: String { L("Move to Trash") }
     /// "Basket" was the only place the English UI used the word: no visible
     /// label says it — the bar itself is headed "To remove".
     static var basketContents: String { L("Show what is marked for removal") }
+    /// `HelmBasket` in HelmUI — the same bar Duplicates draws, and both had
+    /// these two lines built inside the view with a Latin middle dot and an
+    /// ASCII colon whatever the language.
+    static func basketLine(_ count: Int, _ size: String) -> String {
+        HelmBasket.line(count: count, size: size)
+    }
+    static func basketItem(_ name: String, _ size: String) -> String {
+        HelmBasket.item(name: name, size: size)
+    }
     static var emptyBasket: String { L("Nothing selected") }
     /// The name of the action, not of the gesture: "Add" has no object, and a
     /// screen reader says it once per row down a list of two hundred.

@@ -57,20 +57,37 @@ struct SidebarComposerSheet: View {
     /// The sheet's width, and the note's, less the 20 pt gutter on each side.
     static let width: CGFloat = 460
 
-    /// The note, measured rather than guessed.
+    /// The gutter the note is drawn inside, and therefore the width it wraps
+    /// at. Named because two places need the same number and one of them needs
+    /// it doubled.
+    private static let noteGutter: CGFloat = 20
+
+    /// The note itself — the sentence and the font, declared once.
     ///
-    /// It was folded into one constant that held while the note wrapped to two
-    /// lines in seven languages and one in Chinese — and then it moved from
-    /// `.caption` to `HelmText.rowDetail` and grew a sentence, and the constant
-    /// was wrong twice in an afternoon. `sizeThatFits` sees wrapping, which is
-    /// exactly what the guess could not, and it answers for whichever language
+    /// **`noteHeight` measures this exact value and `body` draws it.** They
+    /// used to spell it out separately: the same two strings joined the same
+    /// way, the same `.font`, and the wrap width as `width - 40` here against
+    /// `.padding(.horizontal, 20)` there. Three things that had to agree, in
+    /// two places, with nothing to make them.
+    ///
+    /// That is the defect below one level in. The height was a constant once,
+    /// and it went stale twice in an afternoon — the note wrapped differently,
+    /// then the font moved from `.caption` to `HelmText.rowDetail` — so it was
+    /// replaced by a measurement. But a measurement of a *second declaration*
+    /// can go stale the same way: change the font where it is drawn and the
+    /// sheet is sized for a note nobody sees.
+    private static var note: Text {
+        Text(AppStr.sidebarComposerNote + " " + AppStr.moduleSwitchNote)
+            .font(HelmText.rowDetail)
+    }
+
+    /// Measured rather than guessed. `sizeThatFits` sees wrapping, which is
+    /// exactly what a constant could not, and it answers for whichever language
     /// is actually running.
     private static var noteHeight: CGFloat {
-        let note = Text(AppStr.sidebarComposerNote + " " + AppStr.moduleSwitchNote)
-            .font(HelmText.rowDetail)
-            .fixedSize(horizontal: false, vertical: true)
-        return NSHostingController(rootView: note)
-            .sizeThatFits(in: CGSize(width: Self.width - 40, height: .greatestFiniteMagnitude))
+        NSHostingController(rootView: note.fixedSize(horizontal: false, vertical: true))
+            .sizeThatFits(in: CGSize(width: Self.width - Self.noteGutter * 2,
+                                     height: .greatestFiniteMagnitude))
             .height
     }
 
@@ -108,11 +125,12 @@ struct SidebarComposerSheet: View {
             .padding(.top, 18)
             .padding(.bottom, 10)
 
-            Text(AppStr.sidebarComposerNote + " " + AppStr.moduleSwitchNote)
-                .font(HelmText.rowDetail)
+            // The same `note` `noteHeight` measures — the sheet's window is
+            // sized from it, so the two must be one value.
+            Self.note
                 .foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 20)
+                .padding(.horizontal, Self.noteGutter)
                 .padding(.bottom, 12)
 
             Divider()

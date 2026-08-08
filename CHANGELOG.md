@@ -56,6 +56,34 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   arranged.
 
 ### Fixed
+- **Pressing «Move to Trash» twice no longer reports the first removal as having
+  failed.** What dims those buttons — an empty basket, an empty selection — is
+  not emptied until the answer comes back, so the button stayed live for the
+  whole request. The second press is not a second deletion: the files are already
+  in the Trash, and a path that is no longer there is refused with a reason, so
+  the round came back with nothing removed and a refusal per file — printed over
+  the report of the removal that had worked, in the one place these modules ever
+  name a refusal. Disk's was the worst of the four: its second round leaves
+  `removed` empty, so the tree was never pruned and the folders that had left
+  were still drawn under a banner saying nothing was freed. The model refuses a
+  second run itself now; the page dimming it is the courtesy on top.
+- **Removing an app that is still running waits for it to quit.** `quit` only
+  asks, and the bundle was moved after a fixed 800 ms — a number standing where
+  an answer was available. macOS lets a running app's bundle be moved: a slow app
+  carried on from where it had gone and wrote its preferences on the way out,
+  putting back the leftovers the uninstall had just taken. The wait polls to a
+  deadline, and the deadline proceeds rather than refuses — an app that ignores a
+  quit must not block a removal the person asked for.
+- **A page opened at the wrong moment could show the state its module had just
+  replaced.** `LocalTransport` registered a new subscriber before delivering its
+  own replay, so an event landing in that window was yielded ahead of the older
+  values and the stream carried the new state and then the one it superseded.
+  Measured at 26 subscriptions in 60 before the fix; the history now goes out
+  before the subscriber goes live, both under the one lock.
+- **The Homebrew console keeps the last thousand lines** rather than every line
+  it has ever printed. It is cleared by Clear and by starting an install, so on
+  the ordinary path it only grew, for the life of the app — and each line is a
+  view as well as a string.
 - **The warning triangle marks a module that can do nothing, not one that would
   like a permission.** It read the list of permissions a module *uses*, which put
   it on seven of the nine rows — including Keep Awake, which holds a power

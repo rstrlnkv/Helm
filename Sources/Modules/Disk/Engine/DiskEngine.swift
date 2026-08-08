@@ -89,7 +89,7 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
                 if let data = try? JSONEncoder().encode(
                     ScanTick(scan: id, files: progress.filesSeen, bytes: progress.bytesSeen,
                              path: progress.currentPath)) {
-                    self.localTransport.emit(EngineEvent(name: "progress", payload: data))
+                    self.localTransport.emit(EngineEvent(name: DiskEvent.progress.rawValue, payload: data))
                 }
             }, onPartial: { partialTree in
                 // A shallow snapshot every ~0.35s: the ring grows while the
@@ -98,7 +98,7 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
                                           freeBytes: freeNow,
                                           filesScanned: counter.value, seconds: 0)
                 if let data = try? JSONEncoder().encode(PartialScan(scan: id, result: snapshot)) {
-                    self.localTransport.emit(EngineEvent(name: "partial", payload: data))
+                    self.localTransport.emit(EngineEvent(name: DiskEvent.partial.rawValue, payload: data))
                 }
             }) else { return nil }
             let free = self.freeBytes(forPathOn: path)

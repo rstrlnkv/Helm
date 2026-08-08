@@ -1,5 +1,6 @@
 import HelmRuntime
 import HelmUI
+import Module_Leftovers_Engine
 
 enum LfStr {
     /// The sentences live in `TrashReasonText`, where Disk, Duplicates and
@@ -75,13 +76,19 @@ enum LfStr {
     /// sentence Disk settled on, in Finder's own words for the act (`AL13`) in
     /// the past tense — one phrasing across the app, not a second one here.
     static func movedToTrash(_ size: String) -> String { L("Moved to the Trash — \(size)", [.ru: "Перемещено в Корзину — \(size)", .es: "Trasladado a la papelera — \(size)", .fr: "Placé dans la corbeille — \(size)", .de: "In den Papierkorb gelegt — \(size)", .ja: "ゴミ箱に入れました — \(size)", .zh: "已移到废纸篓 — \(size)", .pt: "Movido para o Lixo — \(size)"]) }
-    static func kindName(_ kind: String) -> String {
+    /// **The kind, not its `rawValue`.** This took a `String` and ended in a
+    /// `default` that answered "Plug-ins" — so a sixth `StaleKind` would have
+    /// been drawn under the wrong heading, silently, and the `default` is
+    /// exactly the shape CLAUDE.md keeps out of the engines for the same reason:
+    /// it makes an unhandled case look like an answer. Over the enum the switch
+    /// is exhaustive and a new case is a build error.
+    static func kindName(_ kind: StaleKind) -> String {
         switch kind {
-        case "launchAgent": return L("Launch agents")
-        case "launchDaemon": return L("Launch daemons")
-        case "preference": return L("Settings files")
-        case "systemExtension": return L("System extensions")
-        default: return L("Plug-ins")
+        case .launchAgent: return L("Launch agents")
+        case .launchDaemon: return L("Launch daemons")
+        case .preference: return L("Settings files")
+        case .systemExtension: return L("System extensions")
+        case .plugin: return L("Plug-ins")
         }
     }
 }

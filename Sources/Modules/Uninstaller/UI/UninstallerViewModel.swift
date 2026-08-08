@@ -57,7 +57,7 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
         if let cached, cached.vm === vm { return cached }
         let created = UninstallerViewModel(vm: vm)
         cached = created
-        ModuleUICache.dropWhenDisabled("uninstaller") { cached = nil }
+        ModuleUICache.dropWhenDisabled(UninstallerDescriptor.id.rawValue) { cached = nil }
         return created
     }
 
@@ -162,16 +162,25 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
 
     public func removeSelection() async {
         guard UninstallPlan.readiness(groups, forceQuit: forceQuit) == .ready else { return }
+        // The model refuses a second run itself rather than trusting the page
+        // to have dimmed the button: `.disabled(model.busy)` is a redraw away,
+        // and the row menu reaches this by another road.
+        guard !busy else { return }
         busy = true
         defer { busy = false }
 
         if forceQuit {
             for group in groups where group.running {
                 HelmLog.shared.info("uninstaller", "force quit \(Redact.app(group.app.bundleID))")
+                // Returns when the app is actually gone: the engine holds the
+                // port that can be asked and waits on it. This was a flat
+                // `Task.sleep(800ms)` afterwards — a guess where the answer was
+                // available. Too short and a bundle moves while its app still
+                // runs, which writes its preferences on exit and puts back the
+                // leftovers the uninstall had just taken; too long and everyone
+                // waits for an app that stopped in 50 ms.
                 await quit(bundleID: group.app.bundleID, force: true)
             }
-            // Let the apps disappear before their bundles move.
-            try? await Task.sleep(nanoseconds: 800_000_000)
         }
 
         let paths = UninstallPlan.paths(groups, selectedLeftovers: selectedLeftovers)
@@ -200,9 +209,9 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
 
     // MARK: - Transport
 
-    private struct ScanReq: Codable { let bundleID: String; let appPath: String; let appName: String }
-    private struct UninstallReq: Codable { let appPath: String; let paths: [String] }
-    private struct QuitReq: Codable { let bundleID: String; let force: Bool }
+    // The three request shapes are the engine's own — they were declared here
+    // as well, and `QuitReq` had already drifted: `force` was `Bool` on this
+    // side and `Bool?` on the other. See `UninstallerCommand.swift`.
 
     public func listApps() async -> [InstalledApp] {
         HelmLog.shared.info("uninstaller", "listApps requested")
@@ -220,11 +229,11 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
     }
 
     public func scan(_ app: InstalledApp) async -> ScanResult? {
-        await client.request(UninstallerCommand.scan, encoding: ScanReq(bundleID: app.bundleID, appPath: app.path, appName: app.name))
+        await client.request(UninstallerCommand.scan, encoding: UninstallScanRequest(bundleID: app.bundleID, appPath: app.path, appName: app.name))
     }
 
     public func uninstall(appPath: String, paths: [String]) async -> UninstallResult? {
-        await client.request(UninstallerCommand.uninstall, encoding: UninstallReq(appPath: appPath, paths: paths))
+        await client.request(UninstallerCommand.uninstall, encoding: UninstallRequest(appPath: appPath, paths: paths))
     }
 
     /// Leftovers whose owning app is gone, grouped by bundle id.
@@ -254,6 +263,6 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
     }
 
     public func quit(bundleID: String, force: Bool = false) async {
-        await client.send(UninstallerCommand.quit, encoding: QuitReq(bundleID: bundleID, force: force))
+        await client.send(UninstallerCommand.quit, encoding: QuitRequest(bundleID: bundleID, force: force))
     }
 }

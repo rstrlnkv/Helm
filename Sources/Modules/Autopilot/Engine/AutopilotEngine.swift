@@ -344,8 +344,6 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         sweepTimer = timer
     }
 
-    // MARK: - Running
-
     // MARK: - What it did
 
     /// What Autopilot did, newest first, over the last thirty days.
@@ -535,8 +533,6 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
 
     // MARK: - Transport
 
-    private struct FolderPayload: Codable { let id: String }
-
     private func wireTransport() {
         localTransport.setHandler { [weak self] command in
             guard let self else { return Data() }
@@ -555,15 +551,6 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
                 else { return Data() }
                 self.folders = list
                 return Data()
-            case .preview:
-                guard let payload = try? JSONDecoder().decode(FolderPayload.self,
-                                                              from: command.payload),
-                      let folder = self.folders.first(where: { $0.id == payload.id })
-                else { return Data() }
-                // The plans carry a rule each; the page needs the file and what
-                // will happen to it, which is what `PreviewRow` is.
-                let rows = await self.offQueue { self.preview(folder).map(PreviewRow.init) }
-                return (try? JSONEncoder().encode(rows)) ?? Data()
             case .previewDraft:
                 // The folder arrives as a draft rather than by id: a rule being
                 // written has not been saved, and a preview of the saved
@@ -575,7 +562,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
                 let rows = await self.offQueue { self.preview(draft).map(PreviewRow.init) }
                 return (try? JSONEncoder().encode(rows)) ?? Data()
             case .runNow:
-                guard let payload = try? JSONDecoder().decode(FolderPayload.self,
+                guard let payload = try? JSONDecoder().decode(WatchedFolderRef.self,
                                                               from: command.payload),
                       let folder = self.folders.first(where: { $0.id == payload.id })
                 else { return Data() }

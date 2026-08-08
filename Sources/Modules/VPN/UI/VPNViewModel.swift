@@ -183,7 +183,7 @@ import Module_VPN_Engine
     /// The engine's own declaration — see the note on KeepAwake's.
     private typealias StatePayload = VPNEngine.StatePayload
     private func handle(_ e: EngineEvent) {
-        guard e.name == "state",
+        guard VPNEvent(rawValue: e.name) == .state,
               let p = try? JSONDecoder().decode(StatePayload.self, from: e.payload) else { return }
         connections = p.connections
         autoConnected = Set(p.autoConnected)
@@ -235,19 +235,23 @@ import Module_VPN_Engine
             self?.bannerAuthorization = heard
         }
     }
-    public func send(_ name: String, payload: Data = Data()) {
-        Task { _ = try? await transport.send(EngineCommand(name: name, payload: payload)) }
-    }
-
-    /// Named by the engine's own enum, which is what every call site here uses.
+    /// Named by the engine's own enum, which is what every call site uses.
+    ///
+    /// The `send(_ name: String, …)` this forwarded to was public, and nothing
+    /// outside called it — a door back to the string spelling the enum exists
+    /// to close, held open for a caller that never arrived.
     public func send(_ command: VPNCommand, payload: Data = Data()) {
-        send(command.rawValue, payload: payload)
+        Task { [transport] in
+            _ = try? await transport.send(EngineCommand(name: command.rawValue,
+                                                        payload: payload))
+        }
     }
     public func connect(_ name: String) { send(VPNCommand.connect, payload: nameData(name)) }
     public func disconnect(_ name: String) { send(VPNCommand.disconnect, payload: nameData(name)) }
     public func toggleDefault() { send(VPNCommand.toggle) }
+    /// The engine's own type — it was declared again here, inside this
+    /// function, matched to the other by field name across a JSON hop.
     private func nameData(_ name: String) -> Data {
-        struct P: Codable { let name: String }
-        return (try? JSONEncoder().encode(P(name: name))) ?? Data()
+        (try? JSONEncoder().encode(VPNConnectionRef(name: name))) ?? Data()
     }
 }

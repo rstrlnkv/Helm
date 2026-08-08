@@ -70,7 +70,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         let made = FolderWatcher { [weak self] changed in
             guard let self, TrashArrival.namesAnApp(changed, trash: trash) else { return }
             HelmLog.shared.info("uninstaller", "an app reached the Trash")
-            self.localTransport.emit(EngineEvent(name: Self.trashChangedEvent))
+            self.localTransport.emit(EngineEvent(name: UninstallerEvent.trashChanged.rawValue))
         }
         watcher = made
         made.watch([trash])
@@ -86,10 +86,14 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// "Look again" — it carries nothing, because what is in the Trash and
     /// whether any of it is worth offering is answered by `trashedAppLeftovers`
     /// and by nobody else.
-    public static let trashChangedEvent = "trashChanged"
 
-    /// Runs blocking filesystem work on a dispatch queue so it never parks a
-    /// Swift-concurrency pool thread (app-size scans walk whole bundles).
+    /// Where every leftover this module knows about lives.
+    ///
+    /// It carried a doc comment about running blocking work on a dispatch queue
+    /// so a pool thread is never parked — true of this engine, and about
+    /// `offTheCooperativePool`, which the operations below call directly. The
+    /// helper that sentence described is gone and the sentence stayed, over the
+    /// next declaration it found. Homebrew's engine had the same orphan.
     private var library: URL { home.appendingPathComponent("Library") }
 
     // MARK: - Operations
@@ -206,6 +210,28 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
 
     public func quit(bundleID: String, force: Bool = false) { running.quit(bundleID: bundleID, force: force) }
 
+    /// Waits for a quit to have actually happened.
+    ///
+    /// `quit` only *asks*. The caller then moves the app's bundle, and it used
+    /// to guess the gap with `Task.sleep(800ms)` in the view model — a number
+    /// where the answer was already available, since this engine holds the port
+    /// that can be asked. Too short and the bundle moves while the app still
+    /// runs: the process keeps going from the moved bundle and writes its
+    /// preferences on exit, so the leftovers an uninstall just removed come
+    /// back. Too long and everyone waits for an app that stopped in 50 ms.
+    ///
+    /// **The deadline proceeds rather than refuses.** An app that ignores a
+    /// quit must not block a removal the person explicitly asked for; the
+    /// failures come back from `trashSync` and are shown.
+    public func waitUntilGone(bundleID: String,
+                              deadline: TimeInterval = 5,
+                              poll: TimeInterval = 0.05) async {
+        let until = Date().addingTimeInterval(deadline)
+        while running.isRunning(bundleID: bundleID), Date() < until {
+            try? await Task.sleep(nanoseconds: UInt64(poll * 1_000_000_000))
+        }
+    }
+
     /// Directories whose bundle-id-named entries belong to a single app, so a
     /// leftover there identifies the app that owned it.
     private static let orphanScanDirs: [(String, LeftoverKind)] = [
@@ -301,7 +327,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         store.set(on, for: Self.watchKey)
         HelmLog.shared.info("uninstaller", "trash offer switched \(on ? "on" : "off")")
         startWatchingTrashIfAsked()
-        if on { localTransport.emit(EngineEvent(name: Self.trashChangedEvent)) }
+        if on { localTransport.emit(EngineEvent(name: UninstallerEvent.trashChanged.rawValue)) }
     }
 
     /// Cancel. Remembered so the window does not return for this app at the next
@@ -457,10 +483,6 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
 
     // MARK: - Transport (request/response)
 
-    private struct ScanReq: Codable { let bundleID: String; let appPath: String; let appName: String }
-    private struct UninstallReq: Codable { let appPath: String; let paths: [String] }
-    private struct QuitReq: Codable { let bundleID: String; let force: Bool? }
-
     private func wireTransport() {
         localTransport.setHandler { [weak self] cmd in
             guard let self else { return Data() }
@@ -477,11 +499,11 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                 let sizes = await self.appSizes(list)
                 return (try? JSONEncoder().encode(sizes)) ?? Data()
             case .scan:
-                guard let r = try? JSONDecoder().decode(ScanReq.self, from: cmd.payload) else { return Data() }
+                guard let r = try? JSONDecoder().decode(UninstallScanRequest.self, from: cmd.payload) else { return Data() }
                 let res = try await self.scan(bundleID: r.bundleID, appPath: r.appPath, appName: r.appName)
                 return (try? JSONEncoder().encode(res)) ?? Data()
             case .uninstall:
-                guard let r = try? JSONDecoder().decode(UninstallReq.self, from: cmd.payload) else { return Data() }
+                guard let r = try? JSONDecoder().decode(UninstallRequest.self, from: cmd.payload) else { return Data() }
                 let res = try await self.uninstall(appPath: r.appPath, paths: r.paths)
                 return (try? JSONEncoder().encode(res)) ?? Data()
             case .systemExtensions:
@@ -505,8 +527,11 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                 guard let paths = try? JSONDecoder().decode([String].self, from: cmd.payload) else { return Data() }
                 return (try? JSONEncoder().encode(await self.trashPaths(paths))) ?? Data()
             case .quit:
-                if let r = try? JSONDecoder().decode(QuitReq.self, from: cmd.payload) {
-                    self.quit(bundleID: r.bundleID, force: r.force ?? false)
+                if let r = try? JSONDecoder().decode(QuitRequest.self, from: cmd.payload) {
+                    self.quit(bundleID: r.bundleID, force: r.force)
+                    // The command returns when the app is gone, so the caller
+                    // does not have to guess how long that takes.
+                    await self.waitUntilGone(bundleID: r.bundleID)
                 }
                 return Data()
             }

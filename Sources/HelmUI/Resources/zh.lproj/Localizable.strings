@@ -69,10 +69,8 @@
 "Back" = "返回";
 "Before it starts changing what you type." = "在它开始改动你输入的文字之前。";
 "Behavior" = "行为";
-"Behaviour, module order, permissions, and diagnostics." = "行为、模块顺序、权限与诊断。";
 "Beta" = "Beta";
 "Blue" = "蓝色";
-"Both actions are always available from the icon’s right-click menu." = "这两项操作始终可从图标的右键菜单使用。";
 "CONNECTIONS" = "连接";
 "Cache — apps rebuild it" = "缓存 — 应用会重新生成";
 "Caches" = "缓存";
@@ -133,7 +131,6 @@
 "Document" = "文稿";
 "Done" = "完成";
 "Don’t fix" = "不修正";
-"Dot" = "点";
 "Double ring" = "双环";
 "Download" = "下载";
 "Downloaded from" = "下载来源";
@@ -146,7 +143,6 @@
 "Each module’s saved data and the diagnostics log go to the Trash, where you can get them back. Your preferences — which modules are on, their order, your shortcuts — are forgotten for good. Helm restarts and greets you as it did the first time." = "每个模块保存的数据和诊断日志会移到废纸篓，你可以从那里取回。设置本身（哪些模块已开启、它们的顺序、你的快捷键）则会被永久遗忘。Helm 会重启，并像第一次那样迎接你。";
 "Early builds with new features — expect rough edges." = "包含新功能的早期版本，可能存在问题。";
 "Edit" = "编辑";
-"Empty" = "清空";
 "Enable a module in Settings." = "在设置中启用一个模块。";
 "Errors" = "错误";
 "Escape closes the menu-bar panel, the way it closes every other menu on the Mac. It could be opened with a keyboard shortcut and then only be closed with the mouse." = "按 Esc 键即可关闭菜单栏面板，就像关闭 Mac 上的其他菜单一样。此前可以用快捷键打开，却只能用鼠标关闭。";
@@ -159,14 +155,12 @@
 "Extension" = "扩展名";
 "Extensions, separated by commas" = "扩展名，用逗号分隔";
 "External display" = "外接显示器";
-"Extras to basket" = "多余的放入收集篮";
 "Failed" = "失败";
 "Files" = "文件";
 "Files from 1 MB. Hard links are one file and are never offered." = "1 MB 以上的文件。硬链接是同一个文件，不会被列出。";
 "Files left in your Library" = "资源库中残留的文件";
 "Files left in your Library by apps you no longer have. Only files named after an app’s bundle id are listed, so some leftovers will not appear." = "已卸载应用留在资源库中的文件。仅列出以应用 bundle id 命名的文件，因此部分残留不会出现。";
 "Files that exist more than once" = "存在多份的文件";
-"Filled" = "实心";
 "Fix" = "修正";
 "Fix a capital held too long" = "修正词首连续两个大写字母";
 "Fix as I type" = "输入时自动修正";
@@ -239,7 +233,6 @@
 "Keyboard: a word typed in the wrong keyboard layout is fixed as you type — ghbdtn becomes привет — and the input source follows. Only when the word is not a word as typed and is one once swapped, so anything valid is left alone." = "“键盘”：用错误布局输入的单词会在输入时被修正，输入法也随之切换。仅当按原样不是单词、转换后才是单词时才处理。";
 "Kind" = "种类";
 "Language indicator" = "语言指示器";
-"Large" = "大";
 "Last 30 days" = "最近 30 天";
 "Last change" = "最近一次修改";
 "Later" = "稍后";
@@ -276,7 +269,6 @@
 "Mark for removal" = "标记为待删除";
 "Mark the extra copies" = "标记多余副本为待删除";
 "Media" = "媒体";
-"Medium" = "中";
 "Menu-bar icon" = "菜单栏图标";
 "Menu-bar panel and a System Settings-style window, the Liquid Glass icon, eight languages." = "菜单栏面板与系统设置风格窗口、Liquid Glass 图标、八种语言。";
 "Menu-bar spin" = "图标转动";
@@ -443,7 +435,6 @@
 "Show in Finder" = "在访达中显示";
 "Show it in the menu bar" = "在菜单栏中显示";
 "Show remaining time in the menu bar" = "在菜单栏显示剩余时间";
-"Show what is in the basket" = "查看收集篮内容";
 "Show what is marked for removal" = "查看已标记为待删除的项目";
 "Silent in-app updates: Update & Relaunch downloads, installs and restarts with no Gatekeeper prompt." = "静默更新：“更新并重启”自动下载、安装并重启，无 Gatekeeper 提示。";
 "Silent update cleans up its temporary files after installing." = "静默更新安装后清理临时文件。";
@@ -452,7 +443,6 @@
 "Size in megabytes" = "大小（MB）";
 "Sizes are right where they were nearly right. A file just under a round number was shown with the unit below it — \"1000 KB\" instead of \"1 MB\" — on every screen that names a size. And removing a folder now reports what the folder held, where it used to report nothing at all." = "大小显示修正：本该是“1 MB”的地方显示成“1000 KB”。删除文件夹时也会正确统计释放的空间。";
 "Skip" = "跳过";
-"Small" = "小";
 "Smaller items" = "较小的项目";
 "Sort into subfolder" = "整理到子文件夹";
 "Stands for" = "代表";
@@ -471,7 +461,6 @@
 "Switching to another module and back no longer throws away what you were doing. The Uninstaller used to lose every tick, the whole review step, and the record of what macOS had refused, the moment you left its page; Login Items & Extensions restarted its scan — the slowest one in the app — the same way. Both remember now." = "切换到其他模块再切回来，不会再丢掉你正在做的事情了。以前，卸载器一旦离开页面，就会丢失所有勾选、整个审阅步骤，以及 macOS 拒绝了哪些内容的记录；“登录项与扩展”——应用里最慢的一项扫描——也会以同样的方式重新开始。现在两者都会记住。";
 "System" = "系统";
 "System extensions" = "系统扩展";
-"System item" = "系统项目";
 "TIMER" = "计时器";
 "TODAY" = "今日";
 "Tag" = "标签";
@@ -514,8 +503,6 @@
 "Timer" = "计时器";
 "Timer color" = "计时器颜色";
 "Timing" = "时机";
-"Tiny" = "极小";
-"To remove" = "待删除";
 "Toggle Keep Awake" = "开关“保持唤醒”";
 "Tools for your Mac" = "给你的 Mac 的一套工具";
 "Try again" = "重试";
@@ -557,7 +544,6 @@
 "VPN module: connect and disconnect system VPNs with per-app auto-connect rules." = "VPN 模块：连接/断开系统 VPN，支持按应用自动连接。";
 "VPN rows no longer show an endless spinner: the status is re-checked until the connection settles." = "VPN 行不再无限转圈：状态会持续复查直到连接稳定。";
 "Value to match" = "要匹配的值";
-"Very small" = "很小";
 "Video" = "视频";
 "VoiceOver can find Helm in the menu bar, and \"Reduce motion\" is respected throughout." = "VoiceOver 能在菜单栏中找到 Helm，且全程遵循“减弱动态效果”。";
 "VoiceOver reads Helm properly: every icon button has a name, and a collapsed section is no longer read out." = "VoiceOver 能正确朗读 Helm：每个图标按钮都有名称，折叠的区块不再被读出。";
@@ -670,11 +656,8 @@
 "Close tab" = "关闭标签页";
 "Tab" = "标签页";
 "Paused" = "已暂停";
-"FOLDERS" = "文件夹";
-"No folders watched yet" = "尚未监视任何文件夹";
 "Edit widgets" = "编辑小组件";
 "Show the edit button in the panel" = "在面板中显示编辑按钮";
-"It is also in the menu-bar icon’s right-click menu." = "它也在菜单栏图标的右键菜单里。";
 "Choose what is in the list" = "选择列表中的项目";
 "Author" = "作者";
 "Tab labels" = "标签页样式";

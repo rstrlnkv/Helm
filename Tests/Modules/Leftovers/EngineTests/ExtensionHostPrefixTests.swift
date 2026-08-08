@@ -3,7 +3,7 @@ import HelmRuntime
 @testable import Module_Leftovers_Engine
 
 private struct HostFakeFiles: LeftoversFilePort {
-    func isWritable(_ url: URL) -> Bool { true }
+    func isWritableDirectory(_ url: URL) -> Bool { true }
     func children(of url: URL) -> [URL] { [] }
     func exists(_ path: String) -> Bool { false }
     func size(_ url: URL) -> Int { 0 }
@@ -15,11 +15,10 @@ private struct HostFakeApps: InstalledAppsPort {
     func installedBundleIDs() -> Set<String> { ids }
 }
 
-private struct HostFakeExtensions: ExtensionsPort {
+private struct HostFakeExtensions: LoadedItemsPort {
     var installed: [SystemExtensionInfo] = []
     func installedExtensions() -> [SystemExtensionInfo] { installed }
     func disabledLabels() -> Set<String> { [] }
-    func setDisabled(_ disabled: Bool, label: String) {}
 }
 
 /// The bug family this file exists for: an id matched as a bare character

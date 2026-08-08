@@ -35,10 +35,27 @@ public final class LocalTransport: EngineTransport, @unchecked Sendable {
         AsyncStream { continuation in
             let id = UUID()
             lock.lock()
+            // **The history goes out before the subscriber goes live, and both
+            // happen under the one lock.** Registering first and yielding the
+            // replay afterwards left a window: an `emit` landing in it reached
+            // the new subscriber immediately, and the replay — older by
+            // definition — followed it. The stream then carried the new state
+            // and then the state it had replaced, and a view model that assigns
+            // what it receives ends on the stale one. That is precisely the
+            // defect this replay exists to prevent, produced by the replay
+            // itself; measured at 26 rounds in 60 (`ReplayOrderTests`).
+            //
+            // Yielding while holding the lock is safe here and is the point: an
+            // `emit` during the replay blocks until it is done and is delivered
+            // after it, in order. `yield` appends to an unbounded buffer and
+            // resumes the consumer on its own executor — it runs no consumer
+            // code inline, and `onTermination` is not called from it, so there
+            // is nothing to re-enter this lock.
+            for name in eventOrder {
+                if let event = lastEvents[name] { continuation.yield(event) }
+            }
             subscribers[id] = continuation
-            let replay = eventOrder.compactMap { lastEvents[$0] }
             lock.unlock()
-            for event in replay { continuation.yield(event) }
             continuation.onTermination = { [weak self] _ in
                 guard let self else { return }
                 self.lock.lock(); self.subscribers[id] = nil; self.lock.unlock()
@@ -72,5 +89,22 @@ public final class LocalTransport: EngineTransport, @unchecked Sendable {
         for c in conts { c.yield(e) }
     }
 
-    public func send(_ c: EngineCommand) async throws -> Data { try await handler(c) }
+    /// The handler, read under the lock.
+    ///
+    /// A synchronous property because Swift 6 makes `NSLock.lock()` unavailable
+    /// from an `async` context outright — which is very likely why the read was
+    /// left unguarded when `setHandler` was given the lock. A lock taken on one
+    /// side of a field guards nothing, and this class is `@unchecked Sendable`,
+    /// so the compiler is trusting the author for exactly this.
+    private var currentHandler: Handler {
+        lock.lock(); defer { lock.unlock() }
+        return handler
+    }
+
+    /// The lock is released before the handler runs, and that is not an
+    /// oversight: the handler is engine work, and every `emit` it makes would
+    /// deadlock against a lock its own caller still held.
+    public func send(_ c: EngineCommand) async throws -> Data {
+        try await currentHandler(c)
+    }
 }

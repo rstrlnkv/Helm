@@ -80,7 +80,20 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
 
     private var core = VPNAutoConnectCore(rules: [:])
     private var knownBundleIDs: Set<String> = []
-    private var running = false
+    /// Under the lock, like the four above it and unlike the rest of this
+    /// group.
+    ///
+    /// `core` and `knownBundleIDs` are touched only from the work queue, which
+    /// is serial, so they need nothing. This one is written by `activate()` and
+    /// `deactivate()` on the host's thread and read by `appsChangedNow()` on the
+    /// work queue — the two-thread case the lock at the top of this class exists
+    /// for, and the comment there says why a bare property is not a race anyone
+    /// gets a warning for. It was the one field of that group that crossed.
+    private var _running = false
+    private var running: Bool {
+        get { lock.lock(); defer { lock.unlock() }; return _running }
+        set { lock.lock(); _running = newValue; lock.unlock() }
+    }
     private let work: VPNWorkQueue
     /// Injected so a firing's moment is a fact of the caller rather than of the
     /// machine — `VPNAutomation.spinPhase` measures from it.
@@ -382,7 +395,6 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
 
     // MARK: - Transport
 
-    private struct NamePayload: Codable { let name: String }
     /// Public because the page decodes it — see the note on KeepAwake's.
     public struct StatePayload: Codable {
         public let connections: [VPNConnection]
@@ -404,11 +416,11 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             case .toggle:
                 self.toggleDefault()
             case .connect:
-                if let payload = try? JSONDecoder().decode(NamePayload.self, from: cmd.payload) {
+                if let payload = try? JSONDecoder().decode(VPNConnectionRef.self, from: cmd.payload) {
                     self.connect(payload.name)
                 }
             case .disconnect:
-                if let payload = try? JSONDecoder().decode(NamePayload.self, from: cmd.payload) {
+                if let payload = try? JSONDecoder().decode(VPNConnectionRef.self, from: cmd.payload) {
                     self.disconnect(payload.name)
                 }
             case .refresh:
@@ -426,7 +438,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
                                     defaultName: defaultConnection?.name,
                                     lastAutomation: lastAutomation)
         if let data = try? JSONEncoder().encode(payload) {
-            localTransport.emit(EngineEvent(name: "state", payload: data))
+            localTransport.emit(EngineEvent(name: VPNEvent.state.rawValue, payload: data))
         }
     }
 }

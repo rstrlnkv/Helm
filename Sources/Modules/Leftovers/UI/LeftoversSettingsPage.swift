@@ -93,7 +93,7 @@ public struct LeftoversSettingsPage: View {
                     .lineLimit(1).fixedSize()
                 Menu {
                     ForEach(StaleKind.allCases, id: \.self) { kind in
-                        Toggle(LfStr.kindName(kind.rawValue), isOn: Binding(
+                        Toggle(LfStr.kindName(kind), isOn: Binding(
                             get: { !lvm.hiddenKinds.contains(kind) },
                             set: { on in
                                 if on { lvm.hiddenKinds.remove(kind) } else { lvm.hiddenKinds.insert(kind) }
@@ -148,7 +148,7 @@ public struct LeftoversSettingsPage: View {
         } else {
             List {
                 ForEach(grouped, id: \.kind) { group in
-                    Section(LfStr.kindName(group.kind.rawValue)) {
+                    Section(LfStr.kindName(group.kind)) {
                         ForEach(group.items) { item in
                             row(item)
                         }
@@ -272,7 +272,7 @@ public struct LeftoversSettingsPage: View {
             }
             .disabled(lvm.leftoverCount == 0)
             Button(LfStr.deselectAll) { lvm.selected.removeAll() }
-                .disabled(lvm.selected.isEmpty)
+                .disabled(lvm.selected.isEmpty || lvm.busy)
             if !lvm.items.isEmpty {
                 Text(LfStr.selectedLine(lvm.selectedCount, Bytes(lvm.selectedBytes)))
                     .font(.caption).foregroundStyle(HelmText.quiet)
@@ -292,7 +292,7 @@ public struct LeftoversSettingsPage: View {
             }
             Button(LfStr.removeSelected) { confirmingBatch = true }
                 .buttonStyle(.borderedProminent)
-                .disabled(lvm.selected.isEmpty)
+                .disabled(lvm.selected.isEmpty || lvm.busy)
                 .confirmationDialog(LfStr.confirmSelected(lvm.selected.count,
                                                           Bytes(lvm.selectedBytes)),
                                     isPresented: $confirmingBatch, titleVisibility: .visible) {

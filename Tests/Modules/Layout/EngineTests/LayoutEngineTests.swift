@@ -2,13 +2,13 @@ import XCTest
 import HelmContract
 @testable import Module_Layout_Engine
 
-private final class FakeTyping: TypingPort, @unchecked Sendable {
+final class FakeTyping: TypingPort, @unchecked Sendable {
     var performed: [SwitchPlan] = []
     var succeeds = true
     func perform(_ plan: SwitchPlan) -> Bool { performed.append(plan); return succeeds }
 }
 
-private final class FakeSecure: SecureContextPort, @unchecked Sendable {
+final class FakeSecure: SecureContextPort, @unchecked Sendable {
     var secure = false
     var bundle = "com.apple.Notes"
     func isSecureInput() -> Bool { secure }
@@ -16,17 +16,17 @@ private final class FakeSecure: SecureContextPort, @unchecked Sendable {
     func frontmostBundleID() -> String { bundle }
 }
 
-private struct FakeTranslation: TranslationPort {
+struct FakeTranslation: TranslationPort {
     let table: [String: String]
     func translate(_ word: String, from: String, to: String) -> String? { table[word] }
 }
 
-private struct FakeSpell: SpellPort {
+struct FakeSpell: SpellPort {
     let valid: Set<String>
     func isWord(_ word: String, sourceID: String) -> Bool? { valid.contains(word) }
 }
 
-private final class FakeTap: KeyTapPort, @unchecked Sendable {
+final class FakeTap: KeyTapPort, @unchecked Sendable {
     var handler: (@Sendable (TypingBuffer.Event) -> Void)?
     var modifiers: (@Sendable (ModifierTap.Input) -> Void)?
     func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
@@ -45,11 +45,25 @@ private final class FakeTap: KeyTapPort, @unchecked Sendable {
     func space() { handler?(.space) }
 }
 
-private final class FakeSources: LayoutSourcePort, @unchecked Sendable {
+/// A keyboard that is actually on the layout it was switched to.
+///
+/// `current()` used to answer `"en"` for ever, whatever `select()` had been
+/// told — so "convert, then convert the next word back" was unrepresentable:
+/// the engine reads `current()` at the top of every conversion, and in a test
+/// the second one always started from where the first one had. No test could
+/// have covered the sequence, whatever anybody wrote.
+///
+/// Shared rather than private because it was written out twice, in this file
+/// and in `TheLogDoesNotCarryWhatYouTypeTests` — the arrangement where one copy
+/// gets fixed. KeepAwake and VPN keep theirs in a `Fakes.swift` for the same
+/// reason.
+final class FakeSources: LayoutSourcePort, @unchecked Sendable {
     var selected: [String] = []
+    private var live: String
+    init(current: String = "en") { self.live = current }
     func installed() -> [String] { ["en", "ru"] }
-    func current() -> String? { "en" }
-    func select(_ sourceID: String) { selected.append(sourceID) }
+    func current() -> String? { live }
+    func select(_ sourceID: String) { selected.append(sourceID); live = sourceID }
 }
 
 /// The engine's own job is refusing: everything it does that is not a
