@@ -357,9 +357,12 @@ enum AppStr {
     /// A name, so it is written the way it is written — in Cyrillic where the
     /// reader has an alphabet for it, transliterated where they do not. Not a
     /// translation: nobody translates a name, they only spell it.
-    static var authorName: String {
-        L("Rostislav Strelnikov", [.ru: "Ростислав Стрельников"])
-    }
+    ///
+    /// In the `.lproj` files like everything else. It was an inline table with
+    /// one row in it, which is six languages absent from a table nothing
+    /// guards — the exact shape the changelog's twenty tables had when one of
+    /// them shipped English to six languages.
+    static var authorName: String { L("Rostislav Strelnikov") }
     static var close: String { L("Close") }
     static var quit: String { L("Quit") }
     /// Explains the tint rule without naming a specific module (the icon is no

@@ -694,3 +694,5 @@
 "Helm no longer asks for permissions the moment you install it. It used to request Full Disk Access and Accessibility on the very first launch, before you had asked it to do anything. Each module now asks for what it needs on its own page, when it needs it — and the old notice still appears if a permission you had granted goes away." = "O Helm não pede mais permissões assim que você o instala. Antes pedia Acesso Total ao Disco e Acessibilidade no primeiro início, antes de você pedir qualquer coisa. Agora cada módulo pede o que precisa na sua própria página, quando precisa. E se uma permissão que você já havia concedido desaparecer, o aviso de sempre continua aparecendo.";
 "Hardware" = "Hardware";
 "Show all" = "Mostrar tudo";
+"Rostislav Strelnikov" = "Rostislav Strelnikov";
+"·" = "·";
