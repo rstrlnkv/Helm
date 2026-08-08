@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 @testable import Module_Autopilot_Engine
 
@@ -26,8 +27,7 @@ final class AutopilotSweepTests: XCTestCase {
         // Inside a temporary directory the runner is told to treat as home:
         // `WatchScope` refuses anything outside one, and a test that wanted an
         // exemption from that gate would be testing a different program.
-        home = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-home-\(UUID().uuidString)")
+        home = scratchDirectory("home")
         root = home
             .appendingPathComponent("helm-sweep-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
@@ -38,17 +38,6 @@ final class AutopilotSweepTests: XCTestCase {
         engine = AutopilotEngine(store: NamespacedStore(namespace: "rules.test.\(UUID().uuidString)",
                                                     backing: InMemoryKeyValueStore()),
                              home: home.path, keys: TestRuleKey())
-    }
-
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: home)
-    }
-
-    private func write(_ relative: String, bytes: Int) throws {
-        let url = root.appendingPathComponent(relative)
-        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
-                                                withIntermediateDirectories: true)
-        try Data(repeating: 0x41, count: bytes).write(to: url)
     }
 
     private func exists(_ relative: String) -> Bool {
@@ -86,8 +75,8 @@ final class AutopilotSweepTests: XCTestCase {
     /// levels is not exotic: `sub/` here stands for any `Screenshots/`,
     /// `Invoices/2025/`, or the very subfolder a sort rule made a sweep ago.
     func testASweepBelowTheTopLevelActsOnTheFileItPlanned() throws {
-        try write("big.bin", bytes: 10)
-        try write("sub/big.bin", bytes: 3_000_000)
+        try write("big.bin", in: root, bytes: 10)
+        try write("sub/big.bin", in: root, bytes: 3_000_000)
 
         let watched = folder([rule("r", [.size(.largerThan, megabytes: 2)], .trash)], depth: 2)
         let planned = engine.preview(watched)
@@ -107,7 +96,7 @@ final class AutopilotSweepTests: XCTestCase {
     /// above 1 runs no rules at all below its top level, while the dry run beside
     /// the switch promises that it will.
     func testARuleReachesTheFilesTheDryRunPromised() throws {
-        try write("sub/report.pdf", bytes: 8)
+        try write("sub/report.pdf", in: root, bytes: 8)
 
         let watched = folder([rule("r", [.fileExtension(["pdf"])], .addTag("seen"))], depth: 2)
         XCTAssertEqual(engine.preview(watched).map(\.facts.name), ["report.pdf"],
@@ -130,8 +119,8 @@ final class AutopilotSweepTests: XCTestCase {
     /// moved carries no mark, the next sweep renames it again to `b 3.pdf`, and
     /// the folder grows a file an hour, forever.
     func testASecondSweepOverAnUnchangedFolderChangesNothing() throws {
-        try write("a.pdf", bytes: 4)
-        try write("b.pdf", bytes: 99)
+        try write("a.pdf", in: root, bytes: 4)
+        try write("b.pdf", in: root, bytes: 99)
 
         let watched = folder([rule("r", [.fileExtension(["pdf"])], .rename(pattern: "b"))])
         engine.sweep(watched)
@@ -157,8 +146,8 @@ final class AutopilotSweepTests: XCTestCase {
     /// `testASecondSweepOverAnUnchangedFolderChangesNothing`. Sorting no longer
     /// needs it, which is the point of the bucket check rather than a gap.
     func testASecondSweepDoesNotMoveAgain() throws {
-        try write("a.pdf", bytes: 4)
-        try write("b.pdf", bytes: 4)
+        try write("a.pdf", in: root, bytes: 4)
+        try write("b.pdf", in: root, bytes: 4)
 
         let watched = folder([rule("r", [.fileExtension(["pdf"])],
                                    .sortIntoSubfolder(.kind))],
@@ -179,8 +168,8 @@ final class AutopilotSweepTests: XCTestCase {
     /// deliberately not asserted here — the stamp and the bucket check both
     /// answer, and the invariant is that the folder is unchanged.
     func testASecondSweepDoesNotMoveAgainWhereItCanSeeTheResult() throws {
-        try write("a.pdf", bytes: 4)
-        try write("b.pdf", bytes: 4)
+        try write("a.pdf", in: root, bytes: 4)
+        try write("b.pdf", in: root, bytes: 4)
 
         let watched = folder([rule("r", [.fileExtension(["pdf"])],
                                    .sortIntoSubfolder(.kind))],
@@ -208,7 +197,7 @@ final class AutopilotSweepTests: XCTestCase {
     /// purpose. (Not exFAT, which this used to name: it keeps the stamp —
     /// ARCHITECTURE.md § Autopilot.)
     func testAnUnstampableVolumeDoesNotBuryTheFileDeeperEverySweep() throws {
-        try write("a.pdf", bytes: 4)
+        try write("a.pdf", in: root, bytes: 4)
 
         let watched = folder([rule("r", [.fileExtension(["pdf"])],
                                    .sortIntoSubfolder(.kind))],
@@ -241,8 +230,8 @@ final class AutopilotSweepTests: XCTestCase {
     /// direction is nothing: a folder read at depth 0 must not fall back to
     /// reading everything.
     func testANonsenseDepthReadsNothingRatherThanEverything() throws {
-        try write("a.pdf", bytes: 4)
-        try write("sub/b.pdf", bytes: 4)
+        try write("a.pdf", in: root, bytes: 4)
+        try write("sub/b.pdf", in: root, bytes: 4)
 
         let rules = [rule("r", [.fileExtension(["pdf"])], .trash)]
         XCTAssertTrue(engine.preview(folder(rules, depth: 0)).isEmpty)
@@ -254,7 +243,7 @@ final class AutopilotSweepTests: XCTestCase {
     /// or a walk that never returns. The tree is three levels deep, so any depth
     /// past three is the same answer.
     func testAnEnormousDepthIsJustTheWholeTree() throws {
-        try write("one/two/three/c.pdf", bytes: 4)
+        try write("one/two/three/c.pdf", in: root, bytes: 4)
 
         let rules = [rule("r", [.fileExtension(["pdf"])], .addTag("t"))]
         XCTAssertEqual(engine.preview(folder(rules, depth: 4)).map(\.facts.name), ["c.pdf"])
@@ -301,7 +290,7 @@ final class AutopilotSweepTests: XCTestCase {
 extension AutopilotSweepTests {
 
     func testASweepWritesDownWhatItDid() throws {
-        try write("report.pdf", bytes: 8)
+        try write("report.pdf", in: root, bytes: 8)
         let watched = folder([rule("Tag PDFs", [.fileExtension(["pdf"])], .addTag("seen"))], depth: 1)
 
         XCTAssertTrue(engine.history.isEmpty, "nothing has happened yet")
@@ -318,7 +307,7 @@ extension AutopilotSweepTests {
     /// would be Autopilot reporting work it did not do, every time the timer
     /// fires, until the real history is buried under it.
     func testASecondSweepAddsNothingBecauseNothingHappened() throws {
-        try write("report.pdf", bytes: 8)
+        try write("report.pdf", in: root, bytes: 8)
         let watched = folder([rule("Tag PDFs", [.fileExtension(["pdf"])], .addTag("seen"))], depth: 1)
 
         engine.sweep(watched)
@@ -329,7 +318,7 @@ extension AutopilotSweepTests {
     }
 
     func testAFileThatWasMovedSaysWhereItWent() throws {
-        try write("march.pdf", bytes: 8)
+        try write("march.pdf", in: root, bytes: 8)
         let destination = home.appendingPathComponent("Invoices")
         try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
         let watched = folder([rule("Invoices", [.fileExtension(["pdf"])],
@@ -343,7 +332,7 @@ extension AutopilotSweepTests {
     }
 
     func testTheHistoryCanBeThrownAway() throws {
-        try write("report.pdf", bytes: 8)
+        try write("report.pdf", in: root, bytes: 8)
         engine.sweep(folder([rule("Tag PDFs", [.fileExtension(["pdf"])], .addTag("seen"))], depth: 1))
         XCTAssertFalse(engine.history.isEmpty)
 

@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import HelmTestSupport
 @testable import Module_Autopilot_Engine
 
 /// The third action, on the volume where the stamp does not stick.
@@ -121,8 +122,7 @@ final class RenameIdempotenceTests: XCTestCase {
     /// The folder is described by a listing rather than a count: the harm is a
     /// file existing under a name nobody chose.
     func testTwoSweepsOfAnUnstampedRenameLeaveOneFileUnderOneName() throws {
-        let home = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-home-\(UUID().uuidString)")
+        let home = scratchDirectory("home")
         let root = home.appendingPathComponent("Files")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: home) }

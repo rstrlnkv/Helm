@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import HelmTestSupport
 @testable import Module_Autopilot_Engine
 
 /// The mechanism that stops a rule acting on the same file forever.
@@ -13,13 +14,7 @@ final class RuleStampTests: XCTestCase {
     private var directory: URL!
 
     override func setUpWithError() throws {
-        directory = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-stamp-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-    }
-
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: directory)
+        directory = scratchDirectory("stamp")
     }
 
     private func file(_ name: String) throws -> URL {

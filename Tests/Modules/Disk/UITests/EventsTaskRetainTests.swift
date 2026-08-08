@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 import HelmContract
 import HelmRuntime
 import HelmUI
@@ -26,7 +27,7 @@ final class EventsTaskRetainTests: XCTestCase {
     func testDiskViewModelIsReleasedOnceNothingElseHoldsIt() async {
         let transport = LocalTransport()
         let vm = ModuleViewModel(transport: transport)
-        let directory = temporaryStoreDirectory("disk-retain")
+        let directory = scratchDirectory("disk-retain")
         var dvm: DiskViewModel? = DiskViewModel(vm: vm, store: ScanStore(directory: directory))
         weak var weakDvm = dvm
 

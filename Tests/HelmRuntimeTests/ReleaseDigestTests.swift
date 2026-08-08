@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 
 /// The updater strips quarantine and the app is ad-hoc signed, so this parser
@@ -50,10 +51,7 @@ final class ReleaseDigestTests: XCTestCase {
 
     /// The digest is of the bytes on disk, and a single changed byte must fail.
     func testTheFileDigestIsTheFileAndNothingElse() throws {
-        let dir = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: dir) }
+        let dir = scratchDirectory("digest")
 
         let file = dir.appendingPathComponent("payload.zip")
         try Data("the real release".utf8).write(to: file)

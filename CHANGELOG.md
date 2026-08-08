@@ -56,6 +56,28 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   arranged.
 
 ### Fixed
+- **A removal cannot be redirected onto a file it was never meant to touch.**
+  Helm checks that everything it is about to trash sits inside a folder it may
+  clean, and it did that check once, up front. Between the check and the move it
+  weighs the batch, and on a large batch that takes long enough for one of the
+  approved folders to be quietly replaced with a link pointing somewhere else —
+  your Documents, say — so the move would land there instead. Helm now looks
+  again at where each path leads in the instant before it moves it, and refuses
+  anything that changed.
+- **«Показать в Finder» on a missing file can no longer launch anything.** When
+  the file is already gone, Helm falls back to showing the folder it was in. If
+  that folder was itself an app or a library — a stale row can point inside a
+  `.app` or a `.photoslibrary` — opening it *ran* or *mounted* it. Helm now
+  highlights such a bundle in Finder without opening it, and reveals a plain
+  folder as before. On an ejected disk, where there is nothing to show at all, it
+  now does nothing visibly rather than half-acting.
+- **A tile could swap places under a pointer that was not moving.** Switch a
+  module off in Settings while its tile is in the hand and the panel loses the
+  rectangle it was carrying; it then asked whether the pointer had crossed from
+  that rectangle into itself, and answered yes for the whole left half of the
+  tile. Two full-width tiles have the same centre sideways, so a tile growing
+  out of a reveal could reach the same answer without a module being switched
+  off at all. A swap is written to the layout immediately and there is no undo.
 - **Pressing «Move to Trash» twice no longer reports the first removal as having
   failed.** What dims those buttons — an empty basket, an empty selection — is
   not emptied until the answer comes back, so the button stayed live for the
@@ -123,6 +145,19 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 - **An empty Permissions section drew a heading with no card**, and the next
   heading read as its subtitle — so the reset card appeared to be what Permissions
   contained.
+- **Eight labels were showing a word written for somewhere else.** `General`,
+  `Media`, `Network`, `Paused`, `Show`, `Show Quit button`, `Show Settings
+  button` and `System` were each written twice in every translation file, and
+  macOS keeps the second of two entries silently — so which translation appeared
+  was decided by the order of the lines. In Russian the Login Items filter said
+  «Показать» where it chooses what to keep showing, and the «System» tag on an
+  app, a folder, a duplicate and a login item said «Система» where the row means
+  «системный»; the same tag read "Sistema" in Spanish and Portuguese instead of
+  "Del sistema" and "Do sistema"; German, Spanish and Portuguese had a second,
+  clumsier wording of the two panel-footer switches. Two of the eight were one
+  English word doing two jobs and are now two: the permissions notice says «Показать
+  разрешения» rather than a bare «Показать», and the tab-icon category of gears,
+  chips and drives is «Оборудование» rather than «Система».
 - **«9 modules in 4 sections» could not change.** It was the registry's count
   rendered as if it were state. It counts what is on.
 - Both appearance thumbnails that match the window's own appearance had no edge —

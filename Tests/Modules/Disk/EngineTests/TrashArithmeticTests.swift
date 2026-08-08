@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import Module_Disk_Engine
 
 /// The one number the Disk module exists to produce: how much a removal freed.
@@ -19,9 +20,7 @@ final class DiskTrashArithmeticTests: XCTestCase {
 
     override func setUpWithError() throws {
         trashedName = "helm-disk-freed-\(UUID().uuidString)"
-        root = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-disk-root-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        root = scratchDirectory("disk-root")
     }
 
     override func tearDownWithError() throws {

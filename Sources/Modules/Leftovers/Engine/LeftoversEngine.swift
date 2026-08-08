@@ -72,6 +72,16 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
             // be completed" with the domain, the code and the path thrown away.
             HelmLog.shared.info("leftovers",
                                 "trashing \(allowed.count), refused \(refused.count) out of scope")
+            // `hasSystemExtension` is left at its default, `false`, on purpose,
+            // not for want of wiring. `activeSystemExtension` only ever classifies
+            // a path ending in `.app` (`PermissionCheck.reason`), and the leftovers
+            // scan never offers one: it emits launchd `.plist`s, preference
+            // `.plist`s, plug-in bundles (`.qlgenerator`, `.prefPane`, `.plugin`,
+            // `.component`) and system-extension *identifiers* it never trashes —
+            // no `.app` among them. A live-extension check here would be inert, and
+            // an inert check is worse than none: it says a question was answered
+            // that was not. The uninstaller, which does hand over `.app` bundles,
+            // wires the real one.
             return HelmTrash.remove(allowed: allowed, outOfScope: refused, module: Self.moduleID)
         }
     }

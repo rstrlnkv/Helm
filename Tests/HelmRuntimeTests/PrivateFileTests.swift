@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 
 /// Files that name somebody's files are written at 0600, every time.
@@ -14,13 +15,7 @@ final class PrivateFileTests: XCTestCase {
     private var directory: URL!
 
     override func setUpWithError() throws {
-        directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("helm-private-file-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-    }
-
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: directory)
+        directory = scratchDirectory("private-file")
     }
 
     private func mode(of url: URL) throws -> Int {

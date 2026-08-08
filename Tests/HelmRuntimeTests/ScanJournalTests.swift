@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 
 final class ScanJournalTests: XCTestCase {
@@ -8,14 +9,8 @@ final class ScanJournalTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        directory = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-            .appendingPathComponent("scan-journal-\(UUID().uuidString)", isDirectory: true)
+        directory = scratchDirectory("scan-journal")
         journal = ScanJournal(directory: directory)
-    }
-
-    override func tearDown() {
-        try? FileManager.default.removeItem(at: directory)
-        super.tearDown()
     }
 
     private func entry(_ bytes: Int, _ count: Int, at seconds: TimeInterval = 0,

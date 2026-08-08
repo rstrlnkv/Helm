@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 @testable import Module_Autopilot_Engine
 
@@ -20,22 +21,10 @@ final class RuleRunnerTests: XCTestCase {
     /// home, which is the point of it — so a test that wants to exercise the
     /// runner has to give it one rather than be exempted from the gate.
     override func setUpWithError() throws {
-        home = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-home-\(UUID().uuidString)")
+        home = scratchDirectory("home")
         root = home.appendingPathComponent("Files")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         runner = RuleRunner(home: home.path)
-    }
-
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: home)
-    }
-
-    @discardableResult
-    private func write(_ name: String, bytes: Int = 4) throws -> URL {
-        let url = root.appendingPathComponent(name)
-        try Data(repeating: 0x41, count: bytes).write(to: url)
-        return url
     }
 
     private func facts(_ url: URL, kind: FileKind = .document) -> FileFacts {
@@ -56,7 +45,7 @@ final class RuleRunnerTests: XCTestCase {
     // MARK: - Moving
 
     func testMoveIntoAnotherFolder() throws {
-        let file = try write("a.pdf")
+        let file = try write("a.pdf", in: root)
         let destination = root.appendingPathComponent("Sorted")
         let outcome = runner.run(plan(file, .move(to: destination.path)), at: file.path)
         XCTAssertEqual(outcome, .moved(to: destination.appendingPathComponent("a.pdf").path))
@@ -67,7 +56,7 @@ final class RuleRunnerTests: XCTestCase {
     /// The destination folder is created rather than the move failing: a rule
     /// that names a folder is asking for that folder to exist.
     func testTheDestinationIsCreated() throws {
-        let file = try write("a.pdf")
+        let file = try write("a.pdf", in: root)
         let deep = root.appendingPathComponent("One/Two/Three")
         _ = runner.run(plan(file, .move(to: deep.path)), at: file.path)
         XCTAssertTrue(exists(deep.appendingPathComponent("a.pdf").path))
@@ -76,7 +65,7 @@ final class RuleRunnerTests: XCTestCase {
     /// The one that would lose somebody's work. A file already at the
     /// destination is never overwritten; the arriving one is numbered.
     func testACollisionIsNumberedRatherThanOverwritten() throws {
-        let file = try write("a.pdf", bytes: 4)
+        let file = try write("a.pdf", in: root, bytes: 4)
         let destination = root.appendingPathComponent("Sorted")
         try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
         try Data(repeating: 0x42, count: 99).write(to: destination.appendingPathComponent("a.pdf"))
@@ -91,7 +80,7 @@ final class RuleRunnerTests: XCTestCase {
     /// A rule cannot be used to move a file somewhere it has no business being,
     /// however the destination got into the rule.
     func testADestinationOutsideTheUsersFilesIsRefused() throws {
-        let file = try write("a.pdf")
+        let file = try write("a.pdf", in: root)
         let outcome = runner.run(plan(file, .move(to: "/System/Library/Helm")), at: file.path)
         XCTAssertEqual(outcome, .refused(.outOfScope))
         XCTAssertTrue(exists(file.path), "the file was moved anyway")
@@ -100,19 +89,19 @@ final class RuleRunnerTests: XCTestCase {
     // MARK: - Sorting and renaming
 
     func testSortIntoSubfolderByKind() throws {
-        let file = try write("a.png")
+        let file = try write("a.png", in: root)
         _ = runner.run(plan(file, .sortIntoSubfolder(.kind), kind: .image), at: file.path)
         XCTAssertTrue(exists(root.appendingPathComponent("Images/a.png").path))
     }
 
     func testSortIntoSubfolderByMonth() throws {
-        let file = try write("a.pdf")
+        let file = try write("a.pdf", in: root)
         _ = runner.run(plan(file, .sortIntoSubfolder(.month)), at: file.path)
         XCTAssertTrue(exists(root.appendingPathComponent("2026-07/a.pdf").path))
     }
 
     func testRename() throws {
-        let file = try write("report.pdf")
+        let file = try write("report.pdf", in: root)
         let outcome = runner.run(plan(file, .rename(pattern: "{name}-final")), at: file.path)
         XCTAssertEqual(outcome, .renamed(to: "report-final.pdf"))
         XCTAssertTrue(exists(root.appendingPathComponent("report-final.pdf").path))
@@ -121,7 +110,7 @@ final class RuleRunnerTests: XCTestCase {
     /// A pattern the filesystem should not be asked to take leaves the file
     /// alone and says so, rather than half-renaming it.
     func testARefusedPatternLeavesTheFileAlone() throws {
-        let file = try write("report.pdf")
+        let file = try write("report.pdf", in: root)
         let outcome = runner.run(plan(file, .rename(pattern: "../{name}")), at: file.path)
         XCTAssertEqual(outcome, .refused(.badPattern))
         XCTAssertTrue(exists(file.path))
@@ -132,7 +121,7 @@ final class RuleRunnerTests: XCTestCase {
     /// Deletion goes through the same gate as every other module's, inside the
     /// engine, not in the view model that built the plan.
     func testTrashGoesThroughTheUserFileGate() throws {
-        let file = try write("a.pdf")
+        let file = try write("a.pdf", in: root)
         let outcome = runner.run(plan(file, .trash), at: file.path)
         XCTAssertEqual(outcome, .trashed)
         XCTAssertFalse(exists(file.path))
@@ -155,7 +144,7 @@ final class RuleRunnerTests: XCTestCase {
     /// guard leaves this green. What the stamp is still the only answer to is
     /// tagging and renaming, and those are covered in `AutopilotSweepTests`.
     func testARuleDoesNotActOnTheSameFileTwice() throws {
-        let file = try write("a.pdf")
+        let file = try write("a.pdf", in: root)
         let destination = root.appendingPathComponent("Sorted")
         let first = runner.run(plan(file, .move(to: destination.path)), at: file.path)
         XCTAssertEqual(first, .moved(to: destination.appendingPathComponent("a.pdf").path))
@@ -167,7 +156,7 @@ final class RuleRunnerTests: XCTestCase {
 
     /// A different rule is not blocked by the first one's mark.
     func testAnotherRuleStillGetsItsTurn() throws {
-        let file = try write("a.pdf")
+        let file = try write("a.pdf", in: root)
         _ = runner.run(plan(file, .addTag("one"), id: "rule-1"), at: file.path)
         let outcome = runner.run(plan(file, .addTag("two"), id: "rule-2"), at: file.path)
         XCTAssertEqual(outcome, .tagged("two"))

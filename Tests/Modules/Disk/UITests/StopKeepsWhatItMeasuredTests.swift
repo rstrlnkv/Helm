@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 import HelmContract
 import HelmRuntime
 import HelmUI
@@ -43,7 +44,7 @@ final class StopKeepsWhatItMeasuredTests: XCTestCase {
         // and a harness must leave nothing behind. `temporaryStoreDirectory`
         // owns the teardown, and it *drains* — a one-shot `removeItem` beside
         // it was the very race that helper exists to close.
-        let store = ScanStore(directory: temporaryStoreDirectory("disk-stopkeep"))
+        let store = ScanStore(directory: scratchDirectory("disk-stopkeep"))
         return (DiskViewModel(vm: ModuleViewModel(transport: transport), store: store), store)
     }
 

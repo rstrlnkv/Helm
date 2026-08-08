@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import Module_Autopilot_Engine
 
 /// A package — an `.app`, an `.rtfd`, a `.photoslibrary` — is a directory that
@@ -19,18 +20,13 @@ final class PackageFactsTests: XCTestCase {
     private var root: URL!
 
     override func setUpWithError() throws {
-        root = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-package-facts-\(UUID().uuidString)")
+        root = scratchDirectory("package-facts")
         let bundle = root.appendingPathComponent("Downloaded.app/Contents/MacOS")
         try FileManager.default.createDirectory(at: bundle, withIntermediateDirectories: true)
         // Four megabytes inside the bundle, so "smaller than 1 MB" is a lie
         // about it by any reading of the word.
         try Data(repeating: 0x41, count: 4_000_000)
             .write(to: bundle.appendingPathComponent("Downloaded"))
-    }
-
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: root)
     }
 
     private func fact(named name: String) throws -> FileFacts {

@@ -69,10 +69,26 @@ public enum HelmTrash {
     /// port over here rather than keep a second copy of this loop. It throws the
     /// way `FileManager` does, because what this does with a failure is read its
     /// `NSError` code — a port that reports an outcome instead wraps it back up.
+    ///
+    /// `ancestry` names the directory each path's parent chain resolves to. It is
+    /// read once as the batch begins and again immediately before each move; a
+    /// path whose answer changed is refused with `changedSinceScan`, because a
+    /// symlinked ancestor was swapped between the two — the gate approved one
+    /// subtree and the Trash would take another. This **narrows, it does not
+    /// close**: the reference is taken here, not at the gate, so a swap that
+    /// landed before the batch began is not caught, and after the recheck one
+    /// stat chain still separates the check from `trashItem`'s own resolve. What
+    /// it does take away is the wide part — the `FileWeight` walk below, whose
+    /// duration an attacker sets by handing over a large batch. A full close
+    /// needs an `O_DIRECTORY | O_NOFOLLOW` parent with a relative unlink, which
+    /// `trashItem` cannot express.
     public static func remove(allowed: [String],
                               outOfScope: [String] = [],
                               module: String,
                               hasSystemExtension: (String) -> Bool = { _ in false },
+                              ancestry: (String) -> PathCanonical.AncestryIdentity? = {
+                                  PathCanonical.ancestryIdentity(of: $0)
+                              },
                               trashing: (URL) throws -> Void = {
                                   try FileManager.default.trashItem(at: $0,
                                                                     resultingItemURL: nil)
@@ -101,7 +117,13 @@ public enum HelmTrash {
         // A trailing slash names the same folder and is a different string, so
         // it is stripped before either the dedupe or the ancestry test — that
         // test is a raw prefix comparison, and `…/folder/` never prefixes
-        // `…/folder/inside.bin` with the separator this expects.
+        // `…/folder/inside.bin` with the separator this expects. **All of
+        // them**: a path joined onto a root that already ended in one carries
+        // two, and stripping a single separator left `p` and `p//` as two
+        // entries in one batch — the first moved, the second met "no such
+        // file", and the branch below forgave it as a child of the first,
+        // because `p//` really does begin with `p/`. One folder, two removals,
+        // and `removed.count` is what the banner counts.
         //
         // Shortest first, so a folder is taken before anything inside it and
         // the child can tell "the batch took my parent" from "it was never
@@ -109,13 +131,36 @@ public enum HelmTrash {
         // the same basket gave two different answers on two runs.
         var seenPaths: Set<String> = []
         let ordered = allowed
-            .map { $0.count > 1 && $0.hasSuffix("/") ? String($0.dropLast()) : $0 }
+            .map(PathCanonical.withoutTrailingSeparators)
             .filter { seenPaths.insert($0).inserted }
             .sorted { $0.count < $1.count }
-        for path in ordered {
+
+        // The reference read, taken before any walk weighs the batch: the walk is
+        // the window an attacker widens, so it has to sit inside the brackets, not
+        // straddle them.
+        let approvedAncestry = ordered.map(ancestry)
+
+        for (index, path) in ordered.enumerated() {
             let url = URL(fileURLWithPath: path)
             // Read before the move: afterwards the URL points at nothing.
             let size = FileWeight.allocated(of: url, countingOnce: &counted)
+            // Read the ancestry again, now, against what the gate approved. A
+            // swapped symlink lands on a *different existing* directory object, so
+            // a redirected subtree stops here rather than in someone's Documents.
+            //
+            // Only when the parent still exists: a `nil` here is the parent gone,
+            // which is the went-with-its-parent case one folder up in this same
+            // batch (the `NSFileNoSuchFileError` branch below owns that), never a
+            // redirection — trashing a path whose parent has vanished moves
+            // nothing. A parent that appeared where the gate saw none, or moved to
+            // another object, is the change that matters, and both differ from the
+            // reference.
+            if let now = ancestry(path), now != approvedAncestry[index] {
+                refused.append(Refusal(path: path, reason: .changedSinceScan))
+                HelmLog.shared.warn(module,
+                    "refused: ancestor changed since the gate: \(Redact.path(path))")
+                continue
+            }
             do {
                 try trashing(url)
                 removed.append(path)

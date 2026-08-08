@@ -26,7 +26,7 @@ public enum SystemFolderNames {
     /// The English key macOS would translate for this path, or nil when the
     /// path is not one of its localized folders.
     public static func key(forPath path: String, home: String) -> String? {
-        let trimmed = path.count > 1 && path.hasSuffix("/") ? String(path.dropLast()) : path
+        let trimmed = PathCanonical.withoutTrailingSeparators(path)
         let name = (trimmed as NSString).lastPathComponent
         let parent = (trimmed as NSString).deletingLastPathComponent
         if parent == "/" { return topLevel.contains(name) ? name : nil }

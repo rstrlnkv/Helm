@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 
 /// `ScanJournal.record` on a realistic list — `~/Documents` measured 6900
@@ -17,14 +18,8 @@ final class ScanJournalRecordBenchmark: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        directory = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-            .appendingPathComponent("scan-journal-bench-\(UUID().uuidString)", isDirectory: true)
+        directory = scratchDirectory("scan-journal-bench")
         journal = ScanJournal(directory: directory)
-    }
-
-    override func tearDown() {
-        try? FileManager.default.removeItem(at: directory)
-        super.tearDown()
     }
 
     private func items(_ n: Int) -> [ScanItem] {

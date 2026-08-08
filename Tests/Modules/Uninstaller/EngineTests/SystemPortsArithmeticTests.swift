@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import Module_Uninstaller_Engine
 
 /// The two numbers the uninstaller puts on screen — how big an app is, and how
@@ -8,13 +9,7 @@ final class UninstallerSizeArithmeticTests: XCTestCase {
     private var root: URL!
 
     override func setUpWithError() throws {
-        root = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-un-size-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-    }
-
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: root)
+        root = scratchDirectory("un-size")
     }
 
     /// One 400 KB allocation under two names. `FMFileSystem.size` walks names,
@@ -52,15 +47,10 @@ final class UninstallerDuplicateBundleIDTests: XCTestCase {
     private var home: URL!
 
     override func setUpWithError() throws {
-        home = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-un-home-\(UUID().uuidString)")
+        home = scratchDirectory("un-home")
         try FileManager.default.createDirectory(
             at: home.appendingPathComponent("Applications/Setapp"),
             withIntermediateDirectories: true)
-    }
-
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: home)
     }
 
     /// A bundle with a real Info.plist and `bytes` of payload inside it.

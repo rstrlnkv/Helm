@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 @testable import Module_Autopilot_Engine
 
@@ -22,23 +23,11 @@ final class RuleRunnerRenameTests: XCTestCase {
         // Inside a temporary directory the runner is told to treat as home:
         // `WatchScope` refuses anything outside one, and a test that wanted an
         // exemption from that gate would be testing a different program.
-        home = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-home-\(UUID().uuidString)")
+        home = scratchDirectory("home")
         root = home
             .appendingPathComponent("helm-rename-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         runner = RuleRunner(home: home.path)
-    }
-
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: home)
-    }
-
-    @discardableResult
-    private func write(_ name: String, bytes: Int = 4) throws -> URL {
-        let url = root.appendingPathComponent(name)
-        try Data(repeating: 0x41, count: bytes).write(to: url)
-        return url
     }
 
     private func rename(_ url: URL, pattern: String, id: String = "r") -> RuleOutcome {
@@ -60,8 +49,8 @@ final class RuleRunnerRenameTests: XCTestCase {
     /// the log and the stamp are told about a rename, so a name that is not on
     /// disk is a lie every one of them then acts on.
     func testTheNameAReportedRenameGivesIsTheNameOnDisk() throws {
-        try write("b.pdf", bytes: 99)
-        let file = try write("a.pdf")
+        try write("b.pdf", in: root, bytes: 99)
+        let file = try write("a.pdf", in: root)
 
         guard case let .renamed(to: reported) = rename(file, pattern: "b") else {
             return XCTFail("expected a rename")
@@ -77,8 +66,8 @@ final class RuleRunnerRenameTests: XCTestCase {
     /// Switching a rule off and on again does not clear it; it is an xattr on
     /// somebody's file.
     func testACollidingRenameDoesNotStampTheFileItCollidedWith() throws {
-        let bystander = try write("b.pdf", bytes: 99)
-        let file = try write("a.pdf")
+        let bystander = try write("b.pdf", in: root, bytes: 99)
+        let file = try write("a.pdf", in: root)
 
         _ = rename(file, pattern: "b")
 
@@ -96,7 +85,7 @@ final class RuleRunnerRenameTests: XCTestCase {
     /// becomes `a 2.pdf`, and nothing is stamped because the path the stamp goes
     /// to no longer exists. Next hour: `a 2 2.pdf`.
     func testRenamingAFileToTheNameItAlreadyHasChangesNothing() throws {
-        let file = try write("a.pdf")
+        let file = try write("a.pdf", in: root)
 
         _ = rename(file, pattern: "{name}")
         XCTAssertEqual(try listing(), ["a.pdf"],
@@ -116,7 +105,7 @@ final class RuleRunnerRenameTests: XCTestCase {
     /// move throws. What matters is that the file is where it was and is
     /// reported, rather than half-renamed or quietly counted as done.
     func testANameTooLongForTheFilesystemLeavesTheFileIntact() throws {
-        let file = try write("a.pdf", bytes: 7)
+        let file = try write("a.pdf", in: root, bytes: 7)
 
         let outcome = rename(file, pattern: String(repeating: "x", count: 300))
 

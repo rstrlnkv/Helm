@@ -1,5 +1,4 @@
 import SwiftUI
-import HelmRuntime
 import HelmUI
 import Module_Uninstaller_Engine
 
@@ -141,6 +140,11 @@ struct OrphansView: View {
         .task { watching = await uvm.watchingTrash() }
     }
 
+    // Every group's leftovers, which is every leftover on screen: the sections
+    // here do not collapse (a plain inset `List`, no disclosure state), so
+    // "select all" reaches nothing the user cannot scroll to. The confirmation
+    // names the exact count and total before anything moves, and the engine gate
+    // runs on top — so this is the whole visible set, honestly counted.
     private var allPaths: [String] { groups.flatMap(\.leftovers).map(\.path) }
     private var allSelected: Bool { selected.count == allPaths.count && !allPaths.isEmpty }
 

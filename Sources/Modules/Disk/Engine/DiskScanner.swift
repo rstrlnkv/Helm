@@ -68,7 +68,7 @@ public final class DiskScanner: @unchecked Sendable {
         var lastPath = root
 
         let queue = WorkQueue(initial: [root])
-        let workerCount = max(1, min(ProcessInfo.processInfo.activeProcessorCount, 8))
+        let workerCount = ProcessInfo.processInfo.activeProcessorCount.clamped(to: 1...8)
         let channel = BatchChannel()
 
         let group = DispatchGroup()

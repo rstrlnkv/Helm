@@ -1,5 +1,4 @@
 import Foundation
-import HelmContract
 import HelmUI
 import HelmRuntime
 import Module_Uninstaller_Engine

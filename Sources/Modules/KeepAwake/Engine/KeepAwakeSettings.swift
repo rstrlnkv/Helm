@@ -40,6 +40,18 @@ public struct KeepAwakeSettings {
         if !encoded.isEmpty { return AppTriggerRules.decode(encoded) }
         return AppTriggerRules.migrating(from: store.stringArray(Key.autoApps))
     }
+    /// True when the file holds a rules string that nothing can read.
+    ///
+    /// The reader above answers no rules for it, which fails in the safe
+    /// direction — the Mac sleeps — and looks exactly like having chosen no
+    /// apps. Somebody whose rules stopped holding the Mac awake had nothing to
+    /// look at, so `activate` says so once. Not from `appTriggers` itself: that
+    /// is read from `recompute`, which runs from three observers.
+    public var appRulesUnreadable: Bool {
+        let encoded = store.string(Key.autoAppRules, default: "")
+        return !encoded.isEmpty && AppTriggerRules.readable(encoded) == nil
+    }
+
     /// Encoded here, beside the decode above: the page used to spell the key and
     /// call `encode` itself, one target away from the only reader.
     public func setAppTriggers(_ triggers: [AppTrigger]) {
@@ -55,7 +67,16 @@ public struct KeepAwakeSettings {
     /// Clamped on read, which is where it has to hold: the stepper cannot offer
     /// less than a minute, and a plist can say anything — and 0 is a nudge loop
     /// running as fast as the timer can wake up.
-    public var jiggleIntervalMinutes: Int { max(1, store.int(Key.jiggleIntervalMinutes, default: 5)) }
+    ///
+    /// The ceiling is the same rule read the other way. `scheduleJiggle` does
+    /// `minutes * 60`, which **traps** in Swift on overflow, so a stored
+    /// `Int.max` is not a very long interval but the app terminating the moment
+    /// a session with jiggle on starts. A day is the ceiling because a jiggle
+    /// further apart than that is indistinguishable from the switch being off,
+    /// and the stepper's own top is 60.
+    public var jiggleIntervalMinutes: Int {
+        store.int(Key.jiggleIntervalMinutes, default: 5).clamped(to: 1...TimerPolicy.longestSessionMinutes)
+    }
     public func setJiggleIntervalMinutes(_ minutes: Int) {
         store.set(minutes, for: Key.jiggleIntervalMinutes)
     }
@@ -70,12 +91,25 @@ public struct KeepAwakeSettings {
     public var batteryGuardEnabled: Bool { store.bool(Key.batteryGuardEnabled, default: true) }
     public func setBatteryGuardEnabled(_ on: Bool) { store.set(on, for: Key.batteryGuardEnabled) }
 
-    public var batteryGuardPercent: Int { store.int(Key.batteryGuardPercent, default: 20) }
+    /// Clamped to the stepper's own range. A stored 0 or a negative leaves
+    /// `percent <= threshold` unable to fire, which switches the guard off while
+    /// the page still draws it on — and the guard is the only thing that ever
+    /// ends an unattended session. A stored 101 ends every session on battery
+    /// the moment it starts, which reads as the feature being broken.
+    public var batteryGuardPercent: Int {
+        store.int(Key.batteryGuardPercent, default: 20).clamped(to: 5...50)
+    }
     public func setBatteryGuardPercent(_ percent: Int) {
         store.set(percent, for: Key.batteryGuardPercent)
     }
 
-    public var defaultDurationMinutes: Int { store.int(Key.defaultDurationMinutes, default: 0) }
+    /// 0 is "indefinitely" and stays reachable; the ceiling is `jiggleInterval`'s
+    /// reason one field over — `startSession` turns these minutes into seconds
+    /// with the same trapping multiply, and it is reached from the panel tile's
+    /// main button.
+    public var defaultDurationMinutes: Int {
+        store.int(Key.defaultDurationMinutes, default: 0).clamped(to: 0...TimerPolicy.longestSessionMinutes)
+    }
     public func setDefaultDurationMinutes(_ minutes: Int) {
         store.set(minutes, for: Key.defaultDurationMinutes)
     }

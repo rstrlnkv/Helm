@@ -354,7 +354,7 @@ struct PermissionsWidget: View {
                     Button(AppStr.grant) { only.openSettings() }
                         .controlSize(.small)
                 } else {
-                    Button(AppStr.show) {
+                    Button(AppStr.showPermissions) {
                         NotificationCenter.default.post(name: .helmOpenSettings,
                                                         object: SettingsWindow.settingsPage)
                     }

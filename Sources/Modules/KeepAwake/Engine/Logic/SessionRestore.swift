@@ -49,7 +49,24 @@ public enum SessionRestore {
         // whose battery died and restarted from an epoch — `endDate - now`
         // exceeds the whole duration, and a thirty-minute session restored as a
         // day-long one is this same defect wearing the opposite sign.
-        guard let startDate else { return .remaining(left) }
-        return .remaining(min(left, endDate.timeIntervalSince(startDate)))
+        let bounded = startDate.map { min(left, endDate.timeIntervalSince($0)) } ?? left
+
+        // And it cannot come back longer than this module can start one, which
+        // is the question that bound cannot answer. That one is *relative* — no
+        // longer than the stored duration — so it does nothing when the stored
+        // duration is itself the absurd number, and there was nothing at all
+        // when no `startDate` was stored beside the deadline. `<real>1e300</real>`
+        // is a legal plist, and the value reached `Int(left / 60)` in
+        // `restoreSession`, which traps: the app terminating at launch, before
+        // anything is drawn, with no window to switch the session off from.
+        //
+        // Refused rather than brought down to the ceiling. Every writer here
+        // stores the two dates together, so a deadline out here says the file
+        // was written by something other than Helm — that is not a long
+        // session, it is not a session, and keeping the Mac awake for a day on
+        // the strength of a number nobody wrote is the wrong direction to fail
+        // in.
+        guard bounded.isFinite, bounded <= TimerPolicy.longestSession else { return .none }
+        return .remaining(bounded)
     }
 }

@@ -17,7 +17,59 @@ import Foundation
 ///
 /// This is the rule `WatchScope.canonical` already applies inside Autopilot,
 /// written once here now that a second and third gate need it.
+///
+/// The trailing separator below is the same subject one layer down — not where
+/// a path leads but which of several strings names the same place.
 public enum PathCanonical {
+
+    /// One folder, one spelling. `…/Ghost`, `…/Ghost/` and `…/Ghost//` are one
+    /// place and three strings, and a batch that treats them as three answers
+    /// three times for one folder.
+    ///
+    /// **Every** separator: a path joined onto a root that already ended in one
+    /// carries two, and stripping a single one left `p` and `p//` different.
+    /// The root is the one path that is nothing but a separator, and it keeps
+    /// its own.
+    public static func withoutTrailingSeparators(_ path: String) -> String {
+        var trimmed = path
+        while trimmed.count > 1, trimmed.hasSuffix("/") { trimmed.removeLast() }
+        return trimmed
+    }
+
+    /// A stable name for the directory a path's parent chain resolves to *now*.
+    ///
+    /// Device and inode together identify one directory object; a rename or a
+    /// swapped symlink in the parent chain lands on a different one, and that is
+    /// exactly the change a gate approves before and a move must refuse after.
+    /// `nil` when the parent does not exist — a path pointing at nothing yet
+    /// (the scan and the click are minutes apart), which is a steady state, not a
+    /// change, so two `nil`s compare equal.
+    public struct AncestryIdentity: Equatable, Sendable {
+        public let device: UInt64
+        public let inode: UInt64
+        public init(device: UInt64, inode: UInt64) {
+            self.device = device
+            self.inode = inode
+        }
+    }
+
+    /// The identity of the directory `path`'s resolved parent chain leads to.
+    ///
+    /// Read once at the gate and once immediately before the move: if the two
+    /// disagree, a symlinked ancestor was swapped in between (`HelmTrash.remove`
+    /// says what that narrows and what it does not).
+    public static func ancestryIdentity(of path: String) -> AncestryIdentity? {
+        let resolved = resolvingAncestors(path)
+        let parent = (resolved as NSString).deletingLastPathComponent
+        guard !parent.isEmpty else { return nil }
+        var info = stat()
+        // `stat`, not `lstat`: the parent chain is already symlink-resolved, so
+        // the two agree — and what is wanted is the object the name leads to.
+        guard stat(parent, &info) == 0 else { return nil }
+        return AncestryIdentity(device: UInt64(bitPattern: Int64(info.st_dev)),
+                                inode: info.st_ino)
+    }
+
     /// The path with every symlink in its parent chain resolved, and its last
     /// component put back untouched.
     ///

@@ -31,11 +31,18 @@ file_length:
 function_body_length:
   warning: 80
   error: 140
-# A few names here are deliberate and cannot be renamed: the keys of a `Codable`
-# struct that decodes GitHub's JSON must match the JSON (`browser_download_url`,
-# `tag_name`), and `L(...)` / `Bytes(...)` read as the small DSL they are. So
-# those three stay reported and are known: `severity` does not reach the
-# name-format check, and renaming them would break the JSON or the DSL.
+# A few names here are deliberate and cannot be renamed, so they are excluded
+# rather than left to nag every run into noise:
+#   - the keys of a `Codable` struct that decodes GitHub's JSON must match the
+#     wire (`browser_download_url`, `tag_name`, `html_url`, `installed_versions`,
+#     `current_version`);
+#   - the DSL functions `L`, `Bytes`, `Decimal`, `Count`, `Quoted` are
+#     capitalized on purpose so they read as the types they format to at the
+#     call site;
+#   - `where_` is a reserved-word escape.
+# Single letters are the house idiom for short-scope locals (loop indices and
+# the like); the list carries the ones in use, not a blanket min-length drop —
+# a two-letter name still has to say something.
 identifier_name:
   min_length: 2
-  excluded: [id, x, y, w, h, r, p, s, c, d, n, a, b, to, up, ok, at, dx, dy]
+  excluded: [id, x, y, w, h, r, p, s, c, d, n, a, b, e, f, g, i, j, k, l, m, q, t, u, v, z, to, up, ok, at, dx, dy, L, Bytes, Decimal, Count, Quoted, browser_download_url, tag_name, html_url, installed_versions, current_version, where_]

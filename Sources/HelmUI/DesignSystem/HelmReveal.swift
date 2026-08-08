@@ -13,7 +13,11 @@ import Foundation
 ///   files that failed to move, files Autopilot moved somewhere else, and
 ///   leftovers deleted a moment ago in another window — so the most likely
 ///   moment for someone to press it is the moment the path is already gone. The
-///   enclosing folder opens instead, which is the honest answer to "show me".
+///   enclosing folder is revealed instead, which is the honest answer to
+///   "show me" — *opened* when it is a plain folder, *selected* when it is a
+///   bundle, because `NSWorkspace.open` on a `.app` launches it and on a
+///   `.photoslibrary` mounts it. A disk scan lists the top-level children of a
+///   bundle, so a stale row inside one is reachable and this is not theoretical.
 /// - **Finder does not always come forward.** `activateFileViewerSelecting`
 ///   selects in a window that may be behind the settings window it was pressed
 ///   in, so the reveal happens where nobody can see it.
@@ -25,42 +29,72 @@ public enum HelmReveal {
 
     /// What Finder is asked to do.
     public enum Target: Equatable {
-        /// Open a window with this path highlighted.
+        /// Highlight this in its parent window. Never launches or mounts it —
+        /// `activateFileViewerSelecting` selects a bundle without opening it.
         case select(URL)
-        /// Open the folder the path was in. What is left when the path is gone.
-        case openEnclosing(URL)
+        /// Open this folder to its contents. **Only ever a plain directory:**
+        /// `NSWorkspace.open` on a `.app` launches it and on a `.photoslibrary`
+        /// mounts it, so a package is selected instead (below).
+        case open(URL)
     }
 
     /// `nil` reveals nothing. Two call sites guarded a `String?` by hand and the
     /// rest did not, and an empty path is worse than harmless:
     /// `URL(fileURLWithPath: "")` is the process's current directory, so the
     /// fallback would open a folder nobody asked about.
-    public static func target(for path: String,
-                              exists: (String) -> Bool = {
-                                  FileManager.default.fileExists(atPath: $0)
-                              }) -> Target? {
+    ///
+    /// `traits` answers whether the enclosing folder is a directory and whether
+    /// it is a package, so the bundle decision is testable without a real `.app`.
+    /// It returns `nil` for a folder that is not there — an unmounted volume,
+    /// most often — and then there is nothing to reveal.
+    public static func target(
+        for path: String,
+        exists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) },
+        traits: (String) -> (isDirectory: Bool, isPackage: Bool)? = {
+            guard let v = try? URL(fileURLWithPath: $0)
+                .resourceValues(forKeys: [.isDirectoryKey, .isPackageKey]) else { return nil }
+            return (v.isDirectory ?? false, v.isPackage ?? false)
+        }
+    ) -> Target? {
         guard !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
         let url = URL(fileURLWithPath: path)
-        // A folder is selected too, not opened: Finder shows it highlighted in
-        // its parent, which is what "show in Finder" means everywhere else.
-        return exists(path) ? .select(url) : .openEnclosing(url.deletingLastPathComponent())
+        // What is there is selected — a file, a folder, a bundle alike. Selecting
+        // never launches, so even a `.app` that exists is shown, not run.
+        if exists(path) { return .select(url) }
+
+        // Gone: fall back to where it was. The enclosing folder is *opened* only
+        // when it is a plain directory; a package is selected in its own parent,
+        // because opening it would launch or mount it. A folder that is itself
+        // gone (an ejected volume) leaves nothing to show.
+        let folder = url.deletingLastPathComponent()
+        guard let t = traits(folder.path) else { return nil }
+        return t.isDirectory && !t.isPackage ? .open(folder) : .select(folder)
     }
 
-    /// Reveal `path`, and bring Finder forward whichever way it went.
+    /// Reveal `path`, and bring Finder forward whichever way it went. Returns
+    /// whether anything could be shown: `false` when the path and its enclosing
+    /// folder are both gone (an unmounted volume), so a caller can say so rather
+    /// than press a button that does nothing.
     ///
     /// Finder is activated by name rather than by `NSWorkspace.shared.open`ing
     /// it: activating the running instance raises the window that was just
     /// opened, and asking to open Finder again does not.
-    @MainActor public static func inFinder(_ path: String) {
+    @MainActor @discardableResult public static func inFinder(_ path: String) -> Bool {
+        let shown: Bool
         switch target(for: path) {
         case .select(let url):
             NSWorkspace.shared.activateFileViewerSelecting([url])
-        case .openEnclosing(let folder):
-            NSWorkspace.shared.open(folder)
+            shown = true
+        case .open(let folder):
+            // `open` launches nothing here — `target` only ever hands `.open` a
+            // plain directory. Its Bool is the honest answer for an unmounted
+            // volume, which selecting cannot report.
+            shown = NSWorkspace.shared.open(folder)
         case nil:
-            return
+            return false
         }
         NSRunningApplication.runningApplications(
             withBundleIdentifier: "com.apple.finder").first?.activate()
+        return shown
     }
 }

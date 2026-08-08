@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 import HelmContract
 import HelmUI
 import Module_Disk_Engine
@@ -19,11 +20,10 @@ final class ScanResetTests: XCTestCase {
     private var storeDirectory: URL!
 
     override func setUpWithError() throws {
-        root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("helm-reset-\(UUID().uuidString)")
+        root = scratchDirectory("reset")
         try FileManager.default.createDirectory(at: root.appendingPathComponent("a"),
                                                 withIntermediateDirectories: true)
-        storeDirectory = temporaryStoreDirectory("reset-store")
+        storeDirectory = scratchDirectory("reset-store")
     }
 
     override func tearDownWithError() throws {

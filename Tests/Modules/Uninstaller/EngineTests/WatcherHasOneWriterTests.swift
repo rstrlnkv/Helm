@@ -58,21 +58,12 @@ final class WatcherHasOneWriterTests: XCTestCase {
         func children(of url: URL) -> [URL] { [] }
     }
 
-    private struct NoTrashing: TrashPort {
-        func trashItem(_ url: URL) -> TrashOutcome { .success }
-    }
-
-    private struct NothingRuns: RunningAppsPort {
-        func isRunning(bundleID: String) -> Bool { false }
-        func quit(bundleID: String, force: Bool) {}
-    }
-
     func testTheOfferSwitchWritesOnTheMainActorWhoeverSentTheCommand() async throws {
         let backing = ThreadNotingStore()
         let transport = LocalTransport()
         let engine = UninstallerEngine(
             home: URL(fileURLWithPath: NSTemporaryDirectory()),
-            apps: NoApps(), fs: NoFiles(), trash: NoTrashing(), running: NothingRuns(),
+            apps: NoApps(), fs: NoFiles(), trash: NoTrash(), running: NoRunning(),
             store: NamespacedStore(namespace: "uninstaller", backing: backing),
             transport: transport)
 

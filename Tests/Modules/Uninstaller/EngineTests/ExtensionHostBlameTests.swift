@@ -1,5 +1,6 @@
 import HelmRuntime
 import XCTest
+import HelmTestSupport
 @testable import Module_Uninstaller_Engine
 
 /// When a bundle refuses to move, the engine decides whether to blame an active
@@ -37,21 +38,12 @@ private struct NoLister: AppLister {
     func installedBundleIDs() -> Set<String> { [] }
     func isKnownToSystem(bundleID: String) -> Bool { false }
 }
-private struct NothingRunning: RunningAppsPort {
-    func isRunning(bundleID: String) -> Bool { false }
-    func quit(bundleID: String, force: Bool) {}
-}
 
 final class ExtensionHostBlameTests: XCTestCase {
     private var root: URL!
 
     override func setUpWithError() throws {
-        root = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-blame-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-    }
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: root)
+        root = scratchDirectory("blame")
     }
 
     /// Writes a minimal app bundle whose Info.plist the engine can read.
@@ -66,7 +58,7 @@ final class ExtensionHostBlameTests: XCTestCase {
 
     private func engine(hosts: Set<String>) -> UninstallerEngine {
         UninstallerEngine(home: root, apps: NoLister(), fs: AnyFS(),
-                          trash: BlamingTrash(), running: NothingRunning(),
+                          trash: BlamingTrash(), running: NoRunning(),
                           extensions: HostsExtension(hosts: hosts))
     }
 

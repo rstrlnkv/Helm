@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 @testable import Module_Autopilot_Engine
 
@@ -51,8 +52,7 @@ final class AutopilotLaunchTests: XCTestCase {
     private var stalled: StalledRuleKey!
 
     override func setUpWithError() throws {
-        home = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-home-\(UUID().uuidString)")
+        home = scratchDirectory("home")
         root = home.appendingPathComponent("Downloads")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         backing = InMemoryKeyValueStore()

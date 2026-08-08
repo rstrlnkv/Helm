@@ -205,7 +205,7 @@ struct HelmPanelContent: View {
                       size: .wide, pinned: true)
     }
 
-    private var tabIndex: Int { min(max(0, activeTab), max(0, layout.tabs.count - 1)) }
+    private var tabIndex: Int { activeTab.clamped(to: 0...max(0, layout.tabs.count - 1)) }
 
     private func widgets(_ parts: Candidates) -> [Widget] {
         let slots = layout.tabs.indices.contains(tabIndex) ? layout.tabs[tabIndex].widgets : []
@@ -584,177 +584,26 @@ struct HelmPanelContent: View {
 
     // MARK: - Chrome
 
-    /// The strip, and it is the first row of the card **in both modes**.
-    ///
-    /// In the mockups' first version it stood first when reading and second
-    /// when editing, so entering the mode moved every tab out from under the
-    /// cursor that had just pressed one.
-    /// The namespace the selection travels in.
+    /// The namespace the tab selection travels in.
     @Namespace private var tabSelection
-    /// And the one the tiles travel in.
+    /// And the one the tiles travel in — the gallery's ghosts too, so pressing
+    /// one moves it into the grid.
     @Namespace private var widgetShapes
 
-    @ViewBuilder
-    private var tabStrip: some View {
-        if layout.showsTabBar || editing {
-            HStack(spacing: 4) {
-                ForEach(Array(layout.tabs.enumerated()), id: \.element.id) { index, tab in
-                    Button {
-                        // The strip and the grid move together: the selection
-                        // slides while the widgets under it cross-fade, on one
-                        // transaction rather than two.
-                        withAnimation(HelmMotion.interface) { activeTab = index }
-                    } label: {
-                        // The mockup's tab: 4 pt between glyph and text, 4×8
-                        // of padding, a 10 pt corner, and 11 pt type that does
-                        // **not** change weight when selected.
-                        //
-                        // Weight was the first thing tried and it is the one
-                        // thing a tab cannot do: bold is wider than regular, so
-                        // every tab in the strip moved whenever another was
-                        // picked. Selection is a background and a colour.
-                        HStack(spacing: 4) {
-                            if tabLabels.showsGlyph, let glyph = tab.glyph {
-                                Image(systemName: glyph)
-                                    .font(.system(size: 13, weight: .medium))
-                            }
-                            if tabLabels.showsText {
-                                Text(AppStr.tabTitle(tab, number: index + 1))
-                                    .font(HelmText.rowDetail)
-                                    .lineLimit(1)
-                            }
-                            // The way to a tab's own settings, on the tab that
-                            // is open. The context menu has the same three
-                            // items; a chevron is what says they are there.
-                            if editing, index == tabIndex {
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 8, weight: .semibold))
-                                    .foregroundStyle(HelmText.quiet)
-                            }
-                        }
-                        .foregroundStyle(index == tabIndex ? Color.primary : HelmText.quiet)
-                        .padding(.horizontal, 8).padding(.vertical, 4)
-                        .background {
-                            if index == tabIndex {
-                                // A material, not a 5% overlay. `wellFill`
-                                // measured 1.23:1 over the panel's glass and
-                                // 1.04:1 in light — and the shadow under it was
-                                // cast by a shape with 5% alpha, so it was
-                                // ~0.6% black, which is nothing. A material
-                                // composites against whatever is behind it,
-                                // which is what a raised segment is.
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .fill(.regularMaterial)
-                                    .shadow(color: .black.opacity(0.18), radius: 1.5, y: 1)
-                                    // One shape that moves between tabs rather
-                                    // than one appearing while another goes.
-                                    .matchedGeometryEffect(id: "tab.selection", in: tabSelection)
-                            }
-                        }
-                        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                    // Glyph-only tabs have nowhere to put their name; the
-                    // pointer is where it goes.
-                    .help(AppStr.tabTitle(tab, number: index + 1))
-                    .accessibilityLabel(AppStr.tabTitle(tab, number: index + 1))
-                    .contextMenu {
-                        Button(AppStr.renameSection) {
-                            draftName = AppStr.tabTitle(tab, number: index + 1)
-                            renaming = tab.id
-                        }
-                        Button(AppStr.tabIcon) { pickingGlyph = tab.id }
-                        Button(AppStr.closeTab, role: .destructive) {
-                            // The token the tab buttons use. Bare, the content
-                            // cut while the card's measured height went on
-                            // ramping around it — its own transaction — so
-                            // closing a tab looked unlike switching to one.
-                            withAnimation(HelmMotion.interface) {
-                                apply(layout.removingTab(tab.id))
-                                activeTab = min(tabIndex, max(0, layout.tabs.count - 1))
-                            }
-                        }
-                        .disabled(layout.tabs.count == 1)
-                    }
-                    .popover(isPresented: Binding(get: { pickingGlyph == tab.id },
-                                                  set: { if !$0 { pickingGlyph = nil } }),
-                             arrowEdge: .bottom) {
-                        HelmGlyphPicker(selected: tab.glyph) { glyph in
-                            apply(layout.settingGlyph(glyph, onTab: tab.id))
-                            pickingGlyph = nil
-                        }
-                    }
-                }
-                if editing {
-                    Button {
-                        // The lowest number nobody is using. Counting the
-                        // tabs breaks the moment one in the middle is closed:
-                        // three tabs minus the second is two, and the next new
-                        // one would ask for an id the third already has.
-                        let taken = Set(layout.tabs.map(\.id))
-                        var n = 2
-                        while taken.contains("tab.\(n)") { n += 1 }
-                        withAnimation(HelmMotion.interface) {
-                            apply(layout.addingTab(id: "tab.\(n)"))
-                            activeTab = layout.tabs.count - 1
-                        }
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Color.accentColor)
-                            .padding(.horizontal, 8).padding(.vertical, 4)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(AppStr.newTab)
-                }
-                Spacer(minLength: 0)
-            }
-            // ⌘1…⌘9, as every tabbed window on the machine — on buttons of
-            // their own rather than on the tabs.
-            //
-            // A `keyboardShortcut` on a button decorates that button's *context
-            // menu* as well, so every item of the tab's menu — Rename, Icon,
-            // Close — was drawn with a «⌘2» it did not have and would not obey.
-            .background {
-                ForEach(0..<min(layout.tabs.count, 9), id: \.self) { index in
-                    Button("") { withAnimation(HelmMotion.interface) { activeTab = index } }
-                        .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .command)
-                        .opacity(0)
-                        .frame(width: 0, height: 0)
-                        .accessibilityHidden(true)
-                }
-            }
-        }
-    }
-
-    /// The bar above the grid while the panel is being arranged.
-    /// The bar says one thing: you are editing, and here is the way out.
+    /// **Each of these is asked twice** — once to draw the bar and once to take
+    /// its height off what the grid may have — so each is spelled once.
     ///
-    /// It carried the tab-label picker for a while — a full-width segmented
-    /// control, the heaviest thing in the panel, for a decision somebody makes
-    /// once, inside a mode that is about arranging widgets. It also appeared
-    /// and vanished with the number of tabs, so it flickered on state it had
-    /// nothing to do with, and it argued with «Готово» for the same row. It
-    /// lives in Settings → Panel now, beside the other three switches about how
-    /// this panel looks.
-    private var editBar: some View {
-        HStack(spacing: 8) {
-            Text(AppStr.panelSetup).font(.subheadline.weight(.semibold))
-            Spacer(minLength: 8)
-            Button(AppStr.done) {
-                // The same curve as the way in. This was a bare assignment, so
-                // entering the mode animated and leaving it cut — every cell
-                // dropping its padding and its corner controls in one frame.
-                withAnimation(HelmMotion.disclosure) {
-                    editing = false
-                    choosingUtilities = false
-                }
-            }
-                .controlSize(.small)
-                .buttonStyle(.borderedProminent)
-        }
-        .helmPanelCard()
-    }
+    /// Written out at both ends they went out of step: the mask was on the
+    /// strip and not on the foot, so switching the last footer button off left
+    /// 38 pt reserved under a footer that had stopped being drawn, and a grid
+    /// that had exactly fitted began to scroll.
+    private var showsTabStrip: Bool { layout.showsTabBar || editing }
+    /// Nothing pinned means nothing to pin: three hidden buttons would
+    /// otherwise leave an empty card at the foot of the panel.
+    private var showsFooter: Bool { showSettingsButton || showQuitButton || showEditButton }
+    /// The setup bar and the footer are measured together, and the setup bar is
+    /// there whenever the mode is.
+    private var showsFooterBlock: Bool { editing || showsFooter }
 
     /// Everything that could be a tile and is not one, in registry order so the
     /// row does not reshuffle itself between openings — and the drawer among
@@ -773,162 +622,6 @@ struct HelmPanelContent: View {
             .filter { byID[$0] != nil && !placed.contains($0) }
         if !placed.contains(Self.utilitiesWidget) { rest.append(Self.utilitiesWidget) }
         return rest
-    }
-
-    /// Everything not on this tab, as ghosts to press.
-    @ViewBuilder
-    private func gallery(_ byID: [String: ModuleHost.Live]) -> some View {
-        let rest = galleryIDs(byID)
-        // Shown only when there is something in it: a heading over a sentence
-        // saying there is nothing to do belongs on no screen, least of all the
-        // one where every other row is doing something.
-        if !rest.isEmpty {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(AppStr.addWidget)
-                .font(HelmText.rowDetail)
-                .foregroundStyle(HelmText.quiet)
-            do {
-                let columns = PanelGrid.columns(for: helmPanelWidth)
-                ForEach(Array(stride(from: 0, to: rest.count, by: columns)), id: \.self) { start in
-                    HStack(spacing: PanelGrid.gap) {
-                        ForEach(rest[start..<min(start + columns, rest.count)], id: \.self) { id in
-                            ghost(id, byID[id])
-                        }
-                        ForEach(0..<max(0, columns - (min(start + columns, rest.count) - start)),
-                                id: \.self) { _ in Color.clear.frame(maxWidth: .infinity) }
-                    }
-                }
-            }
-        }
-        .helmPanelCard()
-        }
-    }
-
-    private func ghost(_ id: String, _ live: ModuleHost.Live?) -> some View {
-        let descriptor = live?.descriptor ?? ModuleRegistry.all.first { $0.idRaw == id }
-        let isDrawer = id == Self.utilitiesWidget
-        return Button {
-            // A tile again: `adding` clears both refusals and gives it a slot,
-            // which is what the drawer needs — it *is* a tile, and one that
-            // only came here because somebody took it off.
-            withAnimation(HelmMotion.disclosure) {
-                apply(layout.adding(id, toTab: tabIndex))
-            }
-        } label: {
-            VStack(spacing: 4) {
-                if isDrawer {
-                    Image(systemName: "wrench.and.screwdriver")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(HelmText.quiet)
-                    Text(AppStr.utilities)
-                        .font(HelmText.rowDetail)
-                        .lineLimit(1)
-                } else if let descriptor {
-                    // 26, as the widget header draws it. The same module 200 pt
-                    // apart in two sizes is the defect `HelmWidgetHeader` was
-                    // unified to kill, reappearing in the gallery.
-                    HelmIconPlate(symbol: descriptor.moduleMetadata.sfSymbol,
-                                  tint: descriptor.moduleTint.colour, size: 26)
-                    Text(descriptor.moduleMetadata.shortName)
-                        .font(HelmText.rowDetail)
-                        .lineLimit(1)
-                }
-            }
-            .frame(maxWidth: .infinity, minHeight: 56)
-            .background(RoundedRectangle(cornerRadius: HelmSurface.cardRadius, style: .continuous)
-                .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
-                .foregroundStyle(HelmText.faint))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        // The same namespace the tiles travel in, so pressing a ghost *moves*
-        // it into the grid instead of ending it here and starting it there.
-        // Safe because the two can never be on screen together: `galleryIDs`
-        // offers only what no tab holds, and a tile is drawn only where it is
-        // held — so this id has exactly one view at any moment.
-        .matchedGeometryEffect(id: id, in: widgetShapes)
-    }
-
-    /// Not an option any more.
-    ///
-    /// `showSettingsButton` and `showQuitButton` both defaulted to false, which
-    /// is how a clean install ended up with no way into settings from the panel
-    /// it was given — and no way to find the switch that would have added one.
-    @ViewBuilder
-    private var footer: some View {
-        // Nothing pinned means nothing to pin: three hidden buttons would
-        // otherwise leave an empty card at the foot of the panel.
-        if showSettingsButton || showQuitButton || showEditButton {
-        HStack(spacing: 8) {
-            if showSettingsButton {
-                footerButton(AppStr.settingsPane, "gearshape") {
-                    NotificationCenter.default.post(name: .helmOpenSettings,
-                                                    object: SettingsWindow.settingsPage)
-                }
-            }
-            Spacer(minLength: 8)
-            // Only on the way in. While the setup bar is on screen it carries
-            // «Готово», and two of them a hundred points apart is one of them
-            // asking whether the other did something else.
-            //
-            // A glyph, not a word. «Настроить панель» is the longest label in
-            // the footer and the least often pressed — it is the door to a mode
-            // somebody enters once and then leaves alone — and at 300 pt it was
-            // the label that ran out of room and truncated to «Настроить па…».
-            // A pencil is the one glyph macOS uses for exactly this, and the
-            // name is still there for a pointer that rests on it and for
-            // VoiceOver.
-            // Both glyphs at the right edge, together. A lone icon floating
-            // in the middle of a footer reads as something that lost its label
-            // rather than as something that never needed one.
-            if !editing && showEditButton {
-                footerGlyph("pencil", AppStr.configurePanel) {
-                    // The same curve the card's measured height animates on.
-                    // Entering the mode grows every cell by 8 pt and adds two
-                    // controls to each, so the grid's height changes with it —
-                    // and on `interface` (0.22 snappy) against the height's
-                    // `disclosure` (0.30 smooth) the tiles and the card they
-                    // are in were running two different animations of the same
-                    // event. That is the judder.
-                    withAnimation(HelmMotion.disclosure) { editing = true }
-                }
-            }
-            if showQuitButton {
-                footerGlyph("power", AppStr.quit) { NSApp.terminate(nil) }
-            }
-        }
-        .helmPanelCard()
-        }
-    }
-
-    /// A footer action with no room for its name: the name is the tooltip and
-    /// the accessibility label, which is the whole of what the word was doing.
-    private func footerGlyph(_ symbol: String, _ name: String,
-                             action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(HelmText.quiet)
-                .frame(width: 22, height: 18)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .help(name)
-        .accessibilityLabel(name)
-    }
-
-    private func footerButton(_ title: String, _ symbol: String,
-                              action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
-                Image(systemName: symbol)
-                    .font(.system(size: 12, weight: .semibold))
-                Text(title).font(.subheadline.weight(.medium))
-            }
-            .foregroundStyle(HelmText.quiet)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
     }
 
     var body: some View {
@@ -1010,7 +703,6 @@ struct HelmPanelContent: View {
         }
     }
 
-
     /// Everything between the pinned bars: the grid, the gallery, the drawer.
     @ViewBuilder
     private func scrollable(_ parts: Candidates, _ items: [Widget]) -> some View {
@@ -1032,7 +724,22 @@ struct HelmPanelContent: View {
                     // can see rather than a list that happens to differ.
                     .id(layout.tabs.indices.contains(tabIndex) ? layout.tabs[tabIndex].id : "none")
                     .transition(.opacity)
-                if editing { gallery(parts.byID) }
+                // Shown only when there is something in it: a heading over a
+                // sentence saying there is nothing to do belongs on no screen,
+                // least of all the one where every other row is doing
+                // something.
+                let ghosts = editing ? galleryIDs(parts.byID) : []
+                if !ghosts.isEmpty {
+                    PanelGallery(ids: ghosts, byID: parts.byID, shapes: widgetShapes) { id in
+                        // A tile again: `adding` clears both refusals and gives
+                        // it a slot, which is what the drawer needs — it *is* a
+                        // tile, and one that only came here because somebody
+                        // took it off.
+                        withAnimation(HelmMotion.disclosure) {
+                            apply(layout.adding(id, toTab: tabIndex))
+                        }
+                    }
+                }
             }
     }
 
@@ -1050,25 +757,13 @@ struct HelmPanelContent: View {
         .padding(.vertical, 24)
     }
 
-    /// What the grid may take: the strip, less the pinned bars, the card's own
-    /// padding and the two gaps between the three blocks. Never less than one
-    /// row, so a very short strip still shows something to scroll.
+    /// What the grid may take. The arithmetic — and the rule that a bar nobody
+    /// draws reserves nothing — is `PanelGrid.roomForGrid`, where it has a test
+    /// per rule; what stays here is which bars are on screen.
     private var availableForGrid: CGFloat {
-        let strip = stripHeight > 0 ? stripHeight : PanelGrid.maximumHeight
-        let ceiling = min(strip, PanelGrid.maximumHeight)
-        // The pinned bars are not always there. Their last measurement is,
-        // which would keep reserving room for a strip that is no longer drawn.
-        //
-        // Both of them. The mask went on the strip and not on the foot, so
-        // switching the last footer button off left 38 pt reserved under a
-        // footer that had stopped being drawn — and a grid that had exactly
-        // fitted began to scroll. SwiftUI does report the collapse; the
-        // writer's `guard measured > 0` throws that report away, which is
-        // correct there and is why the reader has to do this.
-        let pinned = (layout.showsTabBar || editing) ? topChrome : 0
-        let foot = (editing || showSettingsButton || showQuitButton || showEditButton)
-            ? footerHeight : 0
-        return max(120, ceiling - pinned - foot - 24 - 16)
+        PanelGrid.roomForGrid(strip: stripHeight,
+                              top: showsTabStrip ? topChrome : nil,
+                              foot: showsFooterBlock ? footerHeight : nil)
     }
 
     private func card(_ parts: Candidates, _ items: [Widget]) -> some View {
@@ -1083,8 +778,15 @@ struct HelmPanelContent: View {
             // height, but the stack around it still puts its 8 pt gap after it
             // — so a panel with one tab and nothing being arranged opened with
             // 20 pt above its first widget where every other edge has 12.
-            if layout.showsTabBar || editing {
-                tabStrip
+            if showsTabStrip {
+                PanelTabStrip(layout: layout, tabIndex: tabIndex, editing: editing,
+                              labels: tabLabels, selection: tabSelection,
+                              activeTab: $activeTab, pickingGlyph: $pickingGlyph,
+                              rename: { tab, current in
+                                  draftName = current
+                                  renaming = tab
+                              },
+                              apply: apply)
                     // In a transaction, like the grid's height. These two were
                     // the last raw writes left, and they are exactly the ones
                     // that change when the mode is entered — the strip appears,
@@ -1145,8 +847,31 @@ struct HelmPanelContent: View {
             // and «Завершить» — three exits from the same card, two of them
             // together and one on its own at the other end.
             VStack(alignment: .leading, spacing: 8) {
-                if editing { editBar }
-                footer
+                if editing {
+                    PanelEditBar {
+                        // The same curve as the way in. This was a bare
+                        // assignment, so entering the mode animated and leaving
+                        // it cut — every cell dropping its padding and its
+                        // corner controls in one frame.
+                        withAnimation(HelmMotion.disclosure) {
+                            editing = false
+                            choosingUtilities = false
+                        }
+                    }
+                }
+                if showsFooter {
+                    PanelFooter(editing: editing, showSettings: showSettingsButton,
+                                showQuit: showQuitButton, showEdit: showEditButton) {
+                        // The same curve the card's measured height animates on.
+                        // Entering the mode grows every cell by 8 pt and adds
+                        // two controls to each, so the grid's height changes
+                        // with it — and on `interface` (0.22 snappy) against
+                        // the height's `disclosure` (0.30 smooth) the tiles and
+                        // the card they are in were running two different
+                        // animations of the same event. That is the judder.
+                        withAnimation(HelmMotion.disclosure) { editing = true }
+                    }
+                }
             }
             .onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
                 guard measured > 0, footerHeight != measured else { return }

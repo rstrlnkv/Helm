@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 import HelmContract
 import HelmUI
 import Module_Disk_Engine
@@ -17,14 +18,9 @@ final class RingFoldDistanceTests: XCTestCase {
     private var root: URL!
 
     override func setUpWithError() throws {
-        root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("helm-ring-fold-\(UUID().uuidString)")
+        root = scratchDirectory("ring-fold")
         try FileManager.default.createDirectory(at: root.appendingPathComponent("a/b/c"),
                                                 withIntermediateDirectories: true)
-    }
-
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: root)
     }
 
     func testAJumpOfTwoLevelsFoldsIntoTheWedgeItWentInThrough() async throws {
@@ -72,7 +68,7 @@ final class RingFoldDistanceTests: XCTestCase {
         let c = entry(root.appendingPathComponent("a/b/c"), [])
         let b = entry(root.appendingPathComponent("a/b"), [c])
         let a = entry(root.appendingPathComponent("a"), [b])
-        let store = ScanStore(directory: temporaryStoreDirectory("ring-fold-store"))
+        let store = ScanStore(directory: scratchDirectory("ring-fold-store"))
         store.save(ScanResult(root: entry(root, [a]), freeBytes: 0, filesScanned: 4, seconds: 1))
 
         let model = DiskViewModel(vm: ModuleViewModel(transport: LocalTransport()), store: store)

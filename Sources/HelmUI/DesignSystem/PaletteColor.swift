@@ -33,9 +33,4 @@ public enum PaletteColor: String, CaseIterable, Sendable {
         case .pink: return L("Pink")
         }
     }
-
-    public static func color(token: String?) -> Color {
-        guard let token, let p = PaletteColor(rawValue: token) else { return .white }
-        return p.color
-    }
 }

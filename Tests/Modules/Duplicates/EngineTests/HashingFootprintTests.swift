@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 import HelmRuntime
 @testable import Module_Duplicates_Engine
 
@@ -21,13 +22,7 @@ final class HashingFootprintTests: XCTestCase {
     private var folder: URL!
 
     override func setUpWithError() throws {
-        folder = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-hash-footprint-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-    }
-
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: folder)
+        folder = scratchDirectory("hash-footprint")
     }
 
     func testTheScanCostsItsSliceRatherThanTheVolumeItReads() throws {

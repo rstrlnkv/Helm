@@ -78,6 +78,13 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             _ = clamshell.setDisableSleep(false)
             store.set(false, for: "clamshellGuard")
         }
+        // The one loss in this module that nothing else reports: a rules string
+        // the file got wrong reads as no rules, so the apps somebody chose stop
+        // holding the Mac awake and every screen goes on looking well.
+        if settings.appRulesUnreadable {
+            HelmLog.shared.warn("keepawake", "the stored app rules could not be read; "
+                                + "no app is holding sleep")
+        }
         displayObserver.startObserving { [weak self] in self?.recompute() }
         power.startObserving { [weak self] in
             self?.batteryCheck()
@@ -277,7 +284,9 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 
     // MARK: - A session across the end of the process
 
-    private enum SessionKey {
+    /// Not private, so the tests that plant a session name the same keys the
+    /// engine reads rather than spelling them a second time.
+    enum SessionKey {
         static let on = "sessionOn"
         static let startedAt = "sessionStartedAt"
         static let endsAt = "sessionEndsAt"
@@ -343,11 +352,14 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         case .remaining(let left):
             manualOn = true
             startDate = storedStart
-            endDate = storedEnd
+            // The deadline the module decided on, not the one it read. The two
+            // differ wherever the decision bounded the stored pair — a clock
+            // that moved, or a pair that is credible as a duration and absurd
+            // as dates — and the countdown every surface draws is this date
+            // minus now, converted to an `Int`.
+            endDate = clock.now().addingTimeInterval(left)
             scheduleExpiry(after: left)
-            let whole = storedStart.map { storedEnd?.timeIntervalSince($0) ?? left } ?? left
-            HelmLog.shared.info("keepawake", "restored a session: "
-                                + "\(Int(left / 60)) of \(Int(whole / 60)) min left")
+            HelmLog.shared.info("keepawake", "restored a session: \(Int(left / 60)) min left")
         }
     }
 

@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 @testable import Module_Autopilot_Engine
 
@@ -11,13 +12,7 @@ final class AutopilotBoundaryTests: XCTestCase {
     private var root: URL!
 
     override func setUpWithError() throws {
-        root = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-bounds-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-    }
-
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: root)
+        root = scratchDirectory("bounds")
     }
 
     private func facts(_ name: String, added: Date) -> FileFacts {
@@ -345,8 +340,7 @@ final class AutopilotSelfSortTests: XCTestCase {
     /// And the other end: whatever a rule matched, a folder cannot be moved
     /// inside itself. Before this it failed with EINVAL on every sweep forever.
     func testAFolderIsNotMovedIntoItself() throws {
-        let home = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-self-\(UUID().uuidString)")
+        let home = scratchDirectory("self")
         let bucket = home.appendingPathComponent("Images")
         try FileManager.default.createDirectory(at: bucket, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: home) }

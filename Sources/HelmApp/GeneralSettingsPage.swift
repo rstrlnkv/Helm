@@ -89,7 +89,7 @@ struct MenuBarSettingsView: View {
                             Button(AppStr.grant) { only.openSettings() }
                                 .controlSize(.small)
                         } else {
-                            Button(AppStr.show) {
+                            Button(AppStr.showPermissions) {
                                 // A token, and the only bare `withAnimation`
                                 // left in the app. The default is a spring
                                 // nobody chose, and — the reason this one

@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 /// One thing a rule asks about a file.
 ///
@@ -58,9 +59,12 @@ public extension RuleCondition {
     /// that, and `storable` drops what it cannot repair. The two were once
     /// claimed to be the same rule and were not: clamping a negative gives `0`,
     /// and "larger than 0 MB" is true of every file in the folder.
+    /// Non-finite takes the upper bound, and the choice is written here rather
+    /// than inside the clamp: `clampedIfFinite` refuses ±∞ and NaN precisely
+    /// because sending them to *a* bound is safe under one comparison and
+    /// catastrophic under the other, which is the paragraph on `storable`.
     static func clamp(_ value: Double) -> Double {
-        guard value.isFinite else { return upperBound }
-        return min(max(value, lowerBound), upperBound)
+        value.clampedIfFinite(to: lowerBound...upperBound) ?? upperBound
     }
 
     /// What the editor's field will take. The comment above `clamp` says the

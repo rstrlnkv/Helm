@@ -39,10 +39,6 @@ final class StateOutlivesThePageTests: XCTestCase {
             refuses ? TrashOutcome(succeeded: false, errorCode: 513, message: "denied") : .success
         }
     }
-    private struct NothingRunning: RunningAppsPort {
-        func isRunning(bundleID: String) -> Bool { false }
-        func quit(bundleID: String, force: Bool) {}
-    }
     private struct FixedLister: AppLister {
         let apps: [InstalledApp]
         func installedApps() -> [InstalledApp] { apps }
@@ -63,7 +59,7 @@ final class StateOutlivesThePageTests: XCTestCase {
         let engine = UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
                                        apps: FixedLister(apps: installed), fs: SilentFS(),
                                        trash: StubTrash(refuses: trashRefuses),
-                                       running: NothingRunning())
+                                       running: NoRunning())
         self.engine = engine
         return ModuleViewModel(transport: engine.transport)
     }

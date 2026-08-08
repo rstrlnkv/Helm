@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 import HelmContract
 import HelmRuntime
 import HelmUI
@@ -29,7 +30,7 @@ final class DiskScanRaceTests: XCTestCase {
 
     private func model(_ transport: HeldTransport) -> DiskViewModel {
         // A store of its own: the module's real one is the user's last scan.
-        let directory = temporaryStoreDirectory("disk-race")
+        let directory = scratchDirectory("disk-race")
         return DiskViewModel(vm: ModuleViewModel(transport: transport),
                              store: ScanStore(directory: directory))
     }

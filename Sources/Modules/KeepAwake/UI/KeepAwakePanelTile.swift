@@ -24,11 +24,7 @@ public struct KeepAwakePanelTile: View {
         let settings = KeepAwakeSettings(store: store)
         _autoExternalDisplay = State(initialValue: settings.autoExternalDisplay)
         _autoPower = State(initialValue: settings.autoPower)
-        // Last panel choice wins; otherwise the module's default duration
-        // (0 = indefinite, which isn't a timer value) and finally 30.
-        let remembered = store.int(Self.panelTimerMinutes, default: 0)
-        let fallback = settings.defaultDurationMinutes
-        _customMinutes = State(initialValue: remembered > 0 ? remembered : (fallback > 0 ? fallback : 30))
+        _customMinutes = State(initialValue: Self.openingMinutes(store))
     }
 
     public var body: some View {
@@ -260,7 +256,43 @@ public struct KeepAwakePanelTile: View {
     /// The tile's own memory of what was last picked here, which nothing else
     /// reads — so it stays out of `KeepAwakeSettings`, the way `MenuBarLook`
     /// keeps the keys the engine never acts on.
-    private static let panelTimerMinutes = "panelTimerMinutes"
+    static let panelTimerMinutes = "panelTimerMinutes"
+
+    /// What the countdown's one button adds, in its label and in what it asks
+    /// for — the two were the same literal twice, one of them inside a string.
+    private static let extraMinutes = 15
+
+    /// The longest timer this tile offers, for the typed entry and for the
+    /// stored choice alike. Neither needs a floor: both are read behind a
+    /// `> 0`, where anything smaller already means "nothing chosen" rather
+    /// than a duration.
+    private static let maxCustomMinutes = 720
+
+    /// The duration the tile opens on: the last panel choice, otherwise the
+    /// module's default duration (0 = indefinite, which isn't a timer value)
+    /// and finally 30.
+    ///
+    /// The remembered value is capped here, where it is read, for the reason
+    /// `KeepAwakeSettings` clamps its two: it goes straight into `startPayload`,
+    /// and `startSession` turns minutes into seconds with a multiply that
+    /// **traps** on `Int` overflow — so a hand-edited `Int.max` in the plist is
+    /// the app terminating when Start is pressed, not a very long timer. The
+    /// key is the tile's own and the engine never reads it, which is why it
+    /// stays out of the settings type; that is about who reads it, not about
+    /// whether the file can be trusted.
+    ///
+    /// The ceiling is this tile's, not the settings type's day: the entry below
+    /// caps at the same number, so nothing that can be typed here is above it.
+    /// The module's default arrives already clamped by `KeepAwakeSettings` and
+    /// is taken as it comes — narrowing it again here would be the tile
+    /// overruling a duration the module considers legal.
+    static func openingMinutes(_ store: NamespacedStore) -> Int {
+        let remembered = store.int(panelTimerMinutes, default: 0)
+        let fallback = KeepAwakeSettings(store: store).defaultDurationMinutes
+        return remembered > 0
+            ? min(remembered, maxCustomMinutes)
+            : (fallback > 0 ? fallback : 30)
+    }
 
     private func setMinutes(_ minutes: Int) {
         customMinutes = minutes
@@ -296,9 +328,9 @@ public struct KeepAwakePanelTile: View {
     }
 
     private func applyCustomTime() {
-        // Clamped to the engine's sane range; junk input keeps the old value.
+        // Capped at the tile's own longest; junk input keeps the old value.
         if let entered = Int(customMinutesText.trimmingCharacters(in: .whitespaces)), entered > 0 {
-            setMinutes(min(720, max(1, entered)))
+            setMinutes(min(entered, Self.maxCustomMinutes))
         }
         showCustomTime = false
     }
@@ -316,9 +348,10 @@ public struct KeepAwakePanelTile: View {
                     .contentTransition(.numericText(countsDown: true))
                     .animation(HelmMotion.interface, value: remaining)
                 Spacer()
-                Button("+" + KAStr.duration(15, compact: true)) {
-                    let newMinutes = Int(ceil(remaining / 60)) + 15
-                    vm.send(KeepAwakeCommand.start, payload: startPayload(newMinutes))
+                Button("+" + KAStr.duration(Self.extraMinutes, compact: true)) {
+                    vm.send(KeepAwakeCommand.start, payload: startPayload(
+                        TimerPolicy.extendedMinutes(remaining: remaining,
+                                                    adding: Self.extraMinutes)))
                 }
                 .controlSize(.small)
                 // Ends the timed session; the header toggle is the all-or-nothing

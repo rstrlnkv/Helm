@@ -63,4 +63,17 @@ final class OneCountdownTests: XCTestCase {
         XCTAssertEqual(TimerProgress.label(remaining: 3599), "59:59")
         XCTAssertEqual(TimerProgress.label(remaining: 3600), "1:00:00")
     }
+
+    /// The last layer of the same defect. Every surface calls this with
+    /// `end.timeIntervalSinceNow`, and `Int(seconds.rounded())` **traps** on a
+    /// `Double` past `Int.max` — so a deadline that got past the engine takes
+    /// the menu bar, the panel widget and the settings page with it on the next
+    /// redraw, once a second. The engine bounds what it restores; this bounds
+    /// what is drawn, because a countdown is not the place to find out.
+    func testANumberNoCountdownCouldReachIsNotDrawn() {
+        for absurd in [1e300, .infinity, -Double.infinity, Double.nan] {
+            XCTAssertFalse(TimerProgress.label(remaining: absurd).isEmpty,
+                           "\(absurd) is not a countdown, and it is not a crash either")
+        }
+    }
 }

@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 
 /// `FileWeight` is the answer to "how many bytes does removing this give back",
@@ -15,22 +16,7 @@ final class FileWeightTests: XCTestCase {
     private var root: URL!
 
     override func setUpWithError() throws {
-        root = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-weight-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-    }
-
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: root)
-    }
-
-    @discardableResult
-    private func write(_ relative: String, bytes: Int) throws -> URL {
-        let url = root.appendingPathComponent(relative)
-        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
-                                                withIntermediateDirectories: true)
-        try Data(repeating: 0x41, count: bytes).write(to: url)
-        return url
+        root = scratchDirectory("weight")
     }
 
     // MARK: - The walk counts everything, once
@@ -41,10 +27,10 @@ final class FileWeightTests: XCTestCase {
     /// its first entry would produce. A third file, on its own inode, is what
     /// tells "counted once" from "counted one".
     func testAHardLinkIsCountedOnceAndTheOtherFilesAreStillCounted() throws {
-        let payload = try write("Support/payload.bin", bytes: 400_000)
+        let payload = try write("Support/payload.bin", in: root, bytes: 400_000)
         try FileManager.default.linkItem(
             at: payload, to: root.appendingPathComponent("Support/payload-alias.bin"))
-        try write("Support/other.bin", bytes: 200_000)
+        try write("Support/other.bin", in: root, bytes: 200_000)
 
         let folder = root.appendingPathComponent("Support")
         let whole = FileWeight.allocated(of: folder)
@@ -61,7 +47,7 @@ final class FileWeightTests: XCTestCase {
     /// one allocation — that is the difference between the ring's figure and
     /// the banner's.
     func testTwoNamesForOneFileInOneBatchAreOneAllocation() throws {
-        let payload = try write("a.bin", bytes: 400_000)
+        let payload = try write("a.bin", in: root, bytes: 400_000)
         let alias = root.appendingPathComponent("b.bin")
         try FileManager.default.linkItem(at: payload, to: alias)
 
@@ -76,7 +62,7 @@ final class FileWeightTests: XCTestCase {
     /// …and a fresh set is a fresh question: the uninstaller measures one app
     /// at a time and must not have the previous app's inodes held against it.
     func testAFreshCallDoesNotInheritAnEarlierBatchesInodes() throws {
-        let payload = try write("a.bin", bytes: 400_000)
+        let payload = try write("a.bin", in: root, bytes: 400_000)
         XCTAssertEqual(FileWeight.allocated(of: payload),
                        FileWeight.allocated(of: payload),
                        "asking twice gave two different answers")
@@ -89,7 +75,7 @@ final class FileWeightTests: XCTestCase {
     /// answers zero, and "smaller than 1 MB → Trash" then matches every
     /// application in a watched folder.
     func testAPackageIsWalkedRatherThanReportedAsNothing() throws {
-        try write("Downloaded.app/Contents/MacOS/Downloaded", bytes: 4_000_000)
+        try write("Downloaded.app/Contents/MacOS/Downloaded", in: root, bytes: 4_000_000)
         let app = root.appendingPathComponent("Downloaded.app")
         let values = try app.resourceValues(forKeys: [.isPackageKey, .isDirectoryKey])
 
@@ -99,7 +85,7 @@ final class FileWeightTests: XCTestCase {
 
     /// Hidden files go with the folder, so they belong in the figure.
     func testHiddenFilesAreIncludedBecauseTheyAreFreedToo() throws {
-        try write("box/.hidden.bin", bytes: 300_000)
+        try write("box/.hidden.bin", in: root, bytes: 300_000)
         XCTAssertGreaterThanOrEqual(FileWeight.allocated(of: root.appendingPathComponent("box")),
                                     300_000)
     }
@@ -109,7 +95,7 @@ final class FileWeightTests: XCTestCase {
     /// still there afterwards, so charging it to the removal would be a promise
     /// of gigabytes the disk never gives back.
     func testASymlinkIsNotChargedTheWeightOfWhatItPointsAt() throws {
-        try write("real/big.bin", bytes: 800_000)
+        try write("real/big.bin", in: root, bytes: 800_000)
         let link = root.appendingPathComponent("link")
         try FileManager.default.createSymbolicLink(
             at: link, withDestinationURL: root.appendingPathComponent("real"))
@@ -125,7 +111,7 @@ final class FileWeightTests: XCTestCase {
     }
 
     func testAnEmptyFileAndAnEmptyFolderAreZeroNotAnError() throws {
-        try write("empty.bin", bytes: 0)
+        try write("empty.bin", in: root, bytes: 0)
         let folder = root.appendingPathComponent("empty-folder")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
 
@@ -139,7 +125,7 @@ final class FileWeightTests: XCTestCase {
     /// under-reports the removal.
     func testHostileNamesAreWalkedLikeAnyOther() throws {
         let names = ["two words.bin", ".dotfile.bin", "файл.bin", "🙂.bin", "tab\tname.bin"]
-        for name in names { try write("hostile/\(name)", bytes: 100_000) }
+        for name in names { try write("hostile/\(name)", in: root, bytes: 100_000) }
 
         let total = FileWeight.allocated(of: root.appendingPathComponent("hostile"))
         XCTAssertGreaterThanOrEqual(total, 100_000 * names.count,

@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 @testable import Module_Duplicates_Engine
 
@@ -20,19 +21,12 @@ final class WastedBytesTests: XCTestCase {
     private var root: URL!
 
     override func setUpWithError() throws {
-        root = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-wasted-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        root = scratchDirectory("wasted")
     }
 
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: root)
-    }
-
+    /// Over the scanner's own floor, or the file is never a candidate.
     private func write(_ name: String, _ byte: UInt8) throws -> String {
-        let url = root.appendingPathComponent(name)
-        try Data(repeating: byte, count: 1_200_000).write(to: url)
-        return url.path
+        try write(name, in: root, bytes: 1_200_000, filler: byte).path
     }
 
     func testWastedIsWhatRemovingTheExtrasWouldActuallyFree() throws {

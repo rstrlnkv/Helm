@@ -2,7 +2,6 @@ import AppKit
 import Combine
 import SwiftUI
 import HelmRuntime
-import HelmContract
 import HelmUI
 
 /// System Settings-style settings window built on AppKit `NSSplitViewController`

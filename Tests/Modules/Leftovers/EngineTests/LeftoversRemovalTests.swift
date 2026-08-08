@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 @testable import Module_Leftovers_Engine
 
@@ -36,8 +37,7 @@ final class LeftoversRemovalTests: XCTestCase {
         // A temporary directory the engine is told is home. `RemovableScope`
         // refuses everything outside one, and a test that asked for an
         // exemption from that gate would be testing a different program.
-        home = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-leftovers-\(UUID().uuidString)")
+        home = scratchDirectory("leftovers")
         try FileManager.default.createDirectory(
             at: home.appendingPathComponent("Library/Application Support"),
             withIntermediateDirectories: true)
@@ -58,15 +58,13 @@ final class LeftoversRemovalTests: XCTestCase {
     /// A unique leaf under `relative`, so the Trash cleanup above can name what
     /// it removes without ever naming somebody else's file.
     @discardableResult
+    /// Not the shared `write` on its own: these files are really trashed, so
+    /// the leaf carries a UUID nobody else could own and goes on the list the
+    /// teardown reclaims by name.
     private func write(_ relative: String, named leaf: String, bytes: Int) throws -> String {
         let name = "\(leaf)-\(UUID().uuidString)"
-        let url = home.appendingPathComponent(relative).appendingPathComponent(name)
-        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
-                                                withIntermediateDirectories: true)
-        try Data(repeating: 0x41, count: bytes).write(to: url)
         trashedNames.append(name)
-        addTeardownBlock { try? FileManager.default.removeItem(at: url) }
-        return url.path
+        return try write("\(relative)/\(name)", in: home, bytes: bytes).path
     }
 
     /// A folder with a unique name, for the case that trashes the folder itself.

@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 
 /// A scan root that is a symbolic link.
@@ -145,9 +146,7 @@ final class ScanRootSymlinkTests: XCTestCase {
         // the premise assertion below walks whatever it points at, and pointing
         // it at a real account turned this one test into nine seconds against a
         // suite that runs in one.
-        let outside = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-            .appendingPathComponent("helm-scan-outside-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
+        let outside = scratchDirectory("scan-outside")
         made.append(outside)
         try Data("x".utf8).write(to: outside.appendingPathComponent("secret.txt"))
 

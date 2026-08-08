@@ -113,6 +113,53 @@ final class PanelGridTests: XCTestCase {
         }
     }
 
+    // MARK: - What the grid is left after the pinned bars
+
+    /// The strip is measured, and until it has been the panel still has to draw
+    /// something. Nothing measured means the whole ceiling, not nothing at all.
+    ///
+    /// Spelled as the number rather than as «the same as the ceiling»: two
+    /// calls of the same function agree with each other whatever it returns,
+    /// including the zero a stub returns, and a check that cannot fail is not a
+    /// check.
+    func testAnUnmeasuredStripIsTheWholeCeiling() {
+        let ceiling = PanelGrid.maximumHeight - PanelGrid.padding * 2 - PanelGrid.gap * 2
+        XCTAssertEqual(PanelGrid.roomForGrid(strip: 0, top: nil, foot: nil), ceiling)
+    }
+
+    /// A tall display does not buy a taller panel: past `maximumHeight` the
+    /// grid scrolls.
+    func testTheCeilingHoldsOnATallDisplay() {
+        let ceiling = PanelGrid.maximumHeight - PanelGrid.padding * 2 - PanelGrid.gap * 2
+        XCTAssertEqual(PanelGrid.roomForGrid(strip: 4000, top: nil, foot: nil), ceiling)
+    }
+
+    /// **A bar that is not drawn reserves nothing — either bar.**
+    ///
+    /// The shipped defect: the "is it drawn" test was applied to the tab strip
+    /// and not to the footer, so switching the last footer button off left 38 pt
+    /// reserved under a footer that had stopped being drawn, and a grid that had
+    /// exactly fitted began to scroll. `nil` is the bar's absence; its last
+    /// measurement is not an answer about a bar nobody draws.
+    func testABarThatIsNotDrawnReservesNothing() {
+        let both = PanelGrid.roomForGrid(strip: 600, top: 30, foot: 38)
+        XCTAssertEqual(PanelGrid.roomForGrid(strip: 600, top: 30, foot: nil), both + 38)
+        XCTAssertEqual(PanelGrid.roomForGrid(strip: 600, top: nil, foot: 38), both + 30)
+        XCTAssertEqual(PanelGrid.roomForGrid(strip: 600, top: nil, foot: nil), both + 68)
+    }
+
+    /// A very short strip still shows something to scroll rather than a sliver.
+    func testNeverLessThanARow() {
+        XCTAssertEqual(PanelGrid.roomForGrid(strip: 60, top: 300, foot: 300), 120)
+    }
+
+    /// The bars come off the ceiling, and so do the card's own padding and the
+    /// gaps between its blocks — the panel is 12 pt inside and 8 pt between.
+    func testTheCardsOwnEdgesComeOffToo() {
+        let room = PanelGrid.roomForGrid(strip: 500, top: nil, foot: nil)
+        XCTAssertEqual(room, 500 - PanelGrid.padding * 2 - PanelGrid.gap * 2)
+    }
+
     /// The control's control: a row never holds more than the grid has room
     /// for, and a full-width widget never shares one.
     func testNoRowOverflows() {

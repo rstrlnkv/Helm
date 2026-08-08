@@ -1,4 +1,5 @@
 import AppKit
+import HelmRuntime
 
 /// The shape Helm wears in the menu bar.
 ///
@@ -102,7 +103,7 @@ public enum MenuBarIcon {
                 return
             }
             strokeWhole(path, width: width, colour: colour.withAlphaComponent(0.25))
-            let remaining = min(1, max(0, progress))
+            let remaining = progress.clamped(to: 0...1)
             if remaining > 0 {
                 stroke(perimeter(of: path), from: 0, to: remaining,
                        width: width, colour: colour)
@@ -225,6 +226,9 @@ public enum MenuBarIcon {
         // nothing at all, and every round shape kept its corners the moment a
         // timer started. Restored immediately: it is global state, and it is
         // only ours for the length of one flatten.
+        // `copy()` comes from `NSCopying` typed `Any`; `NSBezierPath.copy()`
+        // returns an `NSBezierPath` by contract, so this cannot fail.
+        // swiftlint:disable:next force_cast
         let copy = path.copy() as! NSBezierPath
         let previousFlatness = NSBezierPath.defaultFlatness
         NSBezierPath.defaultFlatness = 0.02

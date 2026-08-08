@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import HelmTestSupport
 @testable import Module_Autopilot_Engine
 
 /// What a rule is offered, and what it is not.
@@ -16,20 +17,7 @@ final class FolderReaderTests: XCTestCase {
     private let reader = FolderReader()
 
     override func setUpWithError() throws {
-        root = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-reader-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-    }
-
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: root)
-    }
-
-    private func write(_ relative: String, bytes: Int = 4) throws {
-        let url = root.appendingPathComponent(relative)
-        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
-                                                withIntermediateDirectories: true)
-        try Data(repeating: 0x41, count: bytes).write(to: url)
+        root = scratchDirectory("reader")
     }
 
     private func names(depth: Int) -> [String] {
@@ -49,10 +37,10 @@ final class FolderReaderTests: XCTestCase {
     /// deliberately not asserted: that comes from whatever UTIs the machine has
     /// registered, and an assertion on it would be a report about this Mac.
     func testAPackageIsOneThingRatherThanItsContents() throws {
-        try write("Thing.app/Contents/MacOS/Thing")
-        try write("Thing.app/Contents/Info.plist")
-        try write("Note.rtfd/TXT.rtf")
-        try write("plain.txt")
+        try write("Thing.app/Contents/MacOS/Thing", in: root)
+        try write("Thing.app/Contents/Info.plist", in: root)
+        try write("Note.rtfd/TXT.rtf", in: root)
+        try write("plain.txt", in: root)
 
         for depth in [1, 2, 9] {
             XCTAssertEqual(names(depth: depth), ["Note.rtfd", "Thing.app", "plain.txt"],
@@ -75,9 +63,9 @@ final class FolderReaderTests: XCTestCase {
     /// `Images/` a sort rule created a moment ago is itself offered back to the
     /// rules on the next sweep.
     func testDepthOneIsTheFoldersOwnContentsIncludingItsSubfolders() throws {
-        try write("a.pdf")
-        try write("sub/b.pdf")
-        try write("sub/deeper/c.pdf")
+        try write("a.pdf", in: root)
+        try write("sub/b.pdf", in: root)
+        try write("sub/deeper/c.pdf", in: root)
 
         XCTAssertEqual(names(depth: 1), ["a.pdf", "sub"])
         XCTAssertEqual(names(depth: 2), ["a.pdf", "b.pdf", "deeper", "sub"])
@@ -88,8 +76,8 @@ final class FolderReaderTests: XCTestCase {
     /// anything: the dangerous failure would be a zero or negative depth falling
     /// through to an unlimited walk of somebody's home folder.
     func testADepthBelowOneReadsNothing() throws {
-        try write("a.pdf")
-        try write("sub/b.pdf")
+        try write("a.pdf", in: root)
+        try write("sub/b.pdf", in: root)
 
         XCTAssertTrue(names(depth: 0).isEmpty)
         XCTAssertTrue(names(depth: -1).isEmpty)
@@ -97,7 +85,7 @@ final class FolderReaderTests: XCTestCase {
     }
 
     func testAnEnormousDepthIsJustTheWholeTree() throws {
-        try write("one/two/three/c.pdf")
+        try write("one/two/three/c.pdf", in: root)
         XCTAssertEqual(names(depth: Int.max), names(depth: 4))
     }
 
@@ -109,7 +97,7 @@ final class FolderReaderTests: XCTestCase {
     func testAwkwardNamesAreReadAsSingleFiles() throws {
         let awkward = ["two words.pdf", "отчёт.pdf", "🙂.pdf", "a\tb.pdf", "a.b.c.pdf",
                        "a-file-with-no-extension", "ALLCAPS.PDF", "trailing space .pdf"]
-        for name in awkward { try write(name) }
+        for name in awkward { try write(name, in: root) }
 
         XCTAssertEqual(names(depth: 1), awkward.sorted(),
                        "a name was dropped, split or rewritten on the way in")
@@ -121,9 +109,9 @@ final class FolderReaderTests: XCTestCase {
     /// otherwise the input that makes `deletingPathExtension` and
     /// `pathExtension` disagree with each other.
     func testHiddenFilesAreNeverOfferedToARule() throws {
-        try write(".pdf")
-        try write(".hidden.pdf")
-        try write("visible.pdf")
+        try write(".pdf", in: root)
+        try write(".hidden.pdf", in: root)
+        try write("visible.pdf", in: root)
 
         XCTAssertEqual(names(depth: 1), ["visible.pdf"])
     }

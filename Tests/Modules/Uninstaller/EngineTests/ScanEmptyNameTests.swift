@@ -18,13 +18,6 @@ private struct NoApps: AppLister {
     func installedApps() -> [InstalledApp] { [] }
     func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
 }
-private struct NoTrash: TrashPort {
-    func trashItem(_ url: URL) -> TrashOutcome { .success }
-}
-private struct NoRunning: RunningAppsPort {
-    func isRunning(bundleID: String) -> Bool { false }
-    func quit(bundleID: String, force: Bool) {}
-}
 
 final class ScanEmptyNameTests: XCTestCase {
     /// Trap: an app whose Info.plist carries an empty `CFBundleDisplayName`.

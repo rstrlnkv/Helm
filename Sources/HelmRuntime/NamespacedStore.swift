@@ -8,6 +8,15 @@ public protocol KeyValueStore: AnyObject {
 /// `UserDefaults` without the disk, for tests and for a module that has no
 /// business persisting anything.
 ///
+/// **Without the disk, not without the plist.** `UserDefaults` writes to a file
+/// and reads it back, so every number it hands over is an `NSNumber` whatever
+/// Swift type went in — and an `NSNumber` casts by value rather than by
+/// declaration. `<integer>1</integer>` under a `Bool` key is `true` in
+/// production; `<real>5.0</real>` under an `Int` key is `5`. Holding Swift
+/// natives, this answered the module's *default* for both, which made every
+/// wrong-type test in the suite a test of the fake: they proved a value was
+/// refused that production accepts.
+///
 /// Locked, because the thing it stands in for is safe to touch from any thread
 /// and the engines handed one are not single-threaded: they read their own state
 /// from their own queues while the test that owns them writes from its. A bare
@@ -24,11 +33,26 @@ public final class InMemoryKeyValueStore: KeyValueStore, @unchecked Sendable {
     /// stake here.
     public var raw: [String: Any] {
         get { lock.withLock { values } }
-        set { lock.withLock { values = newValue } }
+        set { lock.withLock { values = newValue.mapValues(Self.asAFileWouldHoldIt) } }
     }
     public init() {}
     public func object(forKey k: String) -> Any? { lock.withLock { values[k] } }
-    public func set(_ v: Any?, forKey k: String) { lock.withLock { values[k] = v } }
+    public func set(_ v: Any?, forKey k: String) {
+        lock.withLock { values[k] = v.map(Self.asAFileWouldHoldIt) }
+    }
+
+    /// The value a plist would give back, which is what the casts above this
+    /// class are written against. Numbers become `NSNumber` — including the ones
+    /// inside a list or a table, since a table of flags is written
+    /// `<integer>1</integer>` too — and everything else is already itself.
+    private static func asAFileWouldHoldIt(_ value: Any) -> Any {
+        switch value {
+        case let number as NSNumber: number
+        case let list as [Any]: list.map(asAFileWouldHoldIt)
+        case let table as [String: Any]: table.mapValues(asAFileWouldHoldIt)
+        default: value
+        }
+    }
 }
 
 extension UserDefaults: KeyValueStore {}

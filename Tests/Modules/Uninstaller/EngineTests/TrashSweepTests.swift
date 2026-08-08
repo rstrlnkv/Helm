@@ -35,17 +35,6 @@ final class TrashSweepTests: XCTestCase {
         func children(of url: URL) -> [URL] { [] }
     }
 
-    /// Nothing here trashes anything: this file is about which apps are offered,
-    /// and the removal has its own tests behind `RemovableScope`.
-    private struct NoTrashing: TrashPort {
-        func trashItem(_ url: URL) -> TrashOutcome { .success }
-    }
-
-    private struct NothingRuns: RunningAppsPort {
-        func isRunning(bundleID: String) -> Bool { false }
-        func quit(bundleID: String, force: Bool) {}
-    }
-
     private let home = URL(fileURLWithPath: "/Users/ann")
 
     /// `watching: true` unless a test says otherwise, because the offer is off
@@ -58,7 +47,7 @@ final class TrashSweepTests: XCTestCase {
                                              backing: InMemoryKeyValueStore())
         store.set(watching, for: "watchTrash")
         return UninstallerEngine(home: home, apps: lister, fs: Everything(),
-                                 trash: NoTrashing(), running: NothingRuns(),
+                                 trash: NoTrash(), running: NoRunning(),
                                  store: store)
     }
 
@@ -130,7 +119,7 @@ final class TrashSweepTests: XCTestCase {
         }
         let uninstaller = UninstallerEngine(home: home,
                                   apps: Lister(trashed: [trashed("com.example.clean", "Clean")]),
-                                  fs: Nothing(), trash: NoTrashing(), running: NothingRuns())
+                                  fs: Nothing(), trash: NoTrash(), running: NoRunning())
 
         let groups = await uninstaller.trashedAppLeftovers()
         XCTAssertTrue(groups.isEmpty)

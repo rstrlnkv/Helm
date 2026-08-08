@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 
 /// The stronger half of
@@ -33,8 +34,7 @@ final class HelmTrashBatchOutcomeTests: XCTestCase {
 
     /// A folder holding one 300 KB file. Returns (parent, child).
     private func makeTree() throws -> (String, String) {
-        let root = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-batch-\(UUID().uuidString)")
+        let root = scratchDirectory("batch")
         let name = "helm-batch-folder-\(UUID().uuidString)"
         let folder = root.appendingPathComponent(name)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)

@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 import HelmContract
 import HelmUI
 import Module_Disk_Engine
@@ -17,18 +18,13 @@ final class RingSpareLayoutTests: XCTestCase {
     override func setUpWithError() throws {
         // Real directories: the view model refuses to restore a scan of a
         // folder that has since been deleted, and it is right to.
-        root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("helm-ring-spare-\(UUID().uuidString)")
+        root = scratchDirectory("ring-spare")
         try FileManager.default.createDirectory(at: root.appendingPathComponent("a/b/c/d"),
                                                 withIntermediateDirectories: true)
     }
 
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: root)
-    }
-
     func testTheLayoutCarriesOneLevelMoreThanTheRingDraws() async throws {
-        let store = ScanStore(directory: temporaryStoreDirectory("ring-spare-store"))
+        let store = ScanStore(directory: scratchDirectory("ring-spare-store"))
         store.save(fourDeep())
 
         let model = DiskViewModel(vm: ModuleViewModel(transport: LocalTransport()), store: store)

@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
-import HelmUI
 import HelmRuntime
+import HelmUI
 
 /// Composing the sidebar, in a sheet.
 ///
@@ -186,7 +186,7 @@ struct SidebarComposerSheet: View {
         // sections than that gets a scroll bar rather than a sheet taller than
         // the window it sits in.
         .frame(width: Self.width,
-               height: min(max(360, tableHeight + chrome), 660))
+               height: (tableHeight + chrome).clamped(to: 360...660))
         .alert(AppStr.renameSection, isPresented: Binding(
             get: { renaming != nil },
             set: { if !$0 { renaming = nil } }

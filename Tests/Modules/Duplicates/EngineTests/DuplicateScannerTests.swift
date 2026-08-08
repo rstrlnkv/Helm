@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import HelmRuntime
 @testable import Module_Duplicates_Engine
 
@@ -9,19 +10,13 @@ final class DuplicateScannerTests: XCTestCase {
     private var root: URL!
 
     override func setUpWithError() throws {
-        root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("helm-dup-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        root = scratchDirectory("dup")
     }
 
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: root)
-    }
-
+    /// Over the scanner's own floor by default, or the file is never a
+    /// candidate — which is this module's number, not the harness's.
     private func write(_ name: String, _ byte: UInt8, count: Int = 1_200_000) throws -> String {
-        let url = root.appendingPathComponent(name)
-        try Data(repeating: byte, count: count).write(to: url)
-        return url.path
+        try write(name, in: root, bytes: count, filler: byte).path
     }
 
     func testIdenticalFilesGroupAndDifferentOnesDoNot() throws {
@@ -111,23 +106,13 @@ final class SurvivorThroughTheScannerTests: XCTestCase {
     private var root: URL!
 
     override func setUpWithError() throws {
-        root = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-survivor-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-    }
-
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: root)
+        root = scratchDirectory("survivor")
     }
 
     @discardableResult
+    /// Over the scanner's own floor, or the file is never a candidate.
     private func write(_ relative: String, _ byte: UInt8) throws -> String {
-        let url = root.appendingPathComponent(relative)
-        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
-                                                withIntermediateDirectories: true)
-        // Over the scanner's own floor, or the file is never a candidate.
-        try Data(repeating: byte, count: 1_200_000).write(to: url)
-        return url.path
+        try write(relative, in: root, bytes: 1_200_000, filler: byte).path
     }
 
     /// The structural one, and the one that cannot pass by luck: whatever the

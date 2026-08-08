@@ -2,7 +2,6 @@
 // Copyright (C) 2026 Helm
 
 import SwiftUI
-import HelmUI
 
 /// What each notice mode looks like, drawn rather than shipped as pictures so
 /// the previews follow the appearance the way the rest of the app does.
