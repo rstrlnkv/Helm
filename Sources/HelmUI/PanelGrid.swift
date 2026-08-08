@@ -93,6 +93,31 @@ public enum PanelGrid {
             .element
     }
 
+    /// What the grid may take: the strip the panel is drawn in, less whichever
+    /// pinned bars are actually drawn, the card's own padding and the gaps
+    /// between its three blocks. Never less than one row, so a very short strip
+    /// still shows something to scroll.
+    ///
+    /// **A bar that is not drawn is `nil`, never its last measurement.** That
+    /// is the whole reason this is a function rather than four lines in the
+    /// card: the test was applied to the tab strip and not to the footer, so
+    /// switching the last footer button off left 38 pt reserved under a footer
+    /// that had stopped being drawn — and a grid that had exactly fitted began
+    /// to scroll. SwiftUI does report the collapse; the writer's
+    /// `guard measured > 0` throws that report away, which is correct there and
+    /// is why the reader has to say which bars exist.
+    ///
+    /// A strip of 0 is a strip nothing has measured yet, not a strip with no
+    /// room: it falls back to the ceiling, which is the only answer that draws
+    /// a panel at all before the first geometry callback lands.
+    public static func roomForGrid(strip: CGFloat, top: CGFloat?, foot: CGFloat?) -> CGFloat {
+        let ceiling = min(strip > 0 ? strip : maximumHeight, maximumHeight)
+        return max(minimumGrid, ceiling - (top ?? 0) - (foot ?? 0) - padding * 2 - gap * 2)
+    }
+
+    /// The least the grid is ever given: one row, rather than a sliver of one.
+    public static let minimumGrid: CGFloat = 120
+
     /// The grid, as rows of indices into `sizes`.
     ///
     /// SwiftUI has no column span, so the grid is built as rows and a
