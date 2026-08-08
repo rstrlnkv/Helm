@@ -172,10 +172,15 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
         if forceQuit {
             for group in groups where group.running {
                 HelmLog.shared.info("uninstaller", "force quit \(Redact.app(group.app.bundleID))")
+                // Returns when the app is actually gone: the engine holds the
+                // port that can be asked and waits on it. This was a flat
+                // `Task.sleep(800ms)` afterwards — a guess where the answer was
+                // available. Too short and a bundle moves while its app still
+                // runs, which writes its preferences on exit and puts back the
+                // leftovers the uninstall had just taken; too long and everyone
+                // waits for an app that stopped in 50 ms.
                 await quit(bundleID: group.app.bundleID, force: true)
             }
-            // Let the apps disappear before their bundles move.
-            try? await Task.sleep(nanoseconds: 800_000_000)
         }
 
         let paths = UninstallPlan.paths(groups, selectedLeftovers: selectedLeftovers)

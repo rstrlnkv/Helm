@@ -210,6 +210,28 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
 
     public func quit(bundleID: String, force: Bool = false) { running.quit(bundleID: bundleID, force: force) }
 
+    /// Waits for a quit to have actually happened.
+    ///
+    /// `quit` only *asks*. The caller then moves the app's bundle, and it used
+    /// to guess the gap with `Task.sleep(800ms)` in the view model — a number
+    /// where the answer was already available, since this engine holds the port
+    /// that can be asked. Too short and the bundle moves while the app still
+    /// runs: the process keeps going from the moved bundle and writes its
+    /// preferences on exit, so the leftovers an uninstall just removed come
+    /// back. Too long and everyone waits for an app that stopped in 50 ms.
+    ///
+    /// **The deadline proceeds rather than refuses.** An app that ignores a
+    /// quit must not block a removal the person explicitly asked for; the
+    /// failures come back from `trashSync` and are shown.
+    public func waitUntilGone(bundleID: String,
+                              deadline: TimeInterval = 5,
+                              poll: TimeInterval = 0.05) async {
+        let until = Date().addingTimeInterval(deadline)
+        while running.isRunning(bundleID: bundleID), Date() < until {
+            try? await Task.sleep(nanoseconds: UInt64(poll * 1_000_000_000))
+        }
+    }
+
     /// Directories whose bundle-id-named entries belong to a single app, so a
     /// leftover there identifies the app that owned it.
     private static let orphanScanDirs: [(String, LeftoverKind)] = [
@@ -507,6 +529,9 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
             case .quit:
                 if let r = try? JSONDecoder().decode(QuitRequest.self, from: cmd.payload) {
                     self.quit(bundleID: r.bundleID, force: r.force)
+                    // The command returns when the app is gone, so the caller
+                    // does not have to guess how long that takes.
+                    await self.waitUntilGone(bundleID: r.bundleID)
                 }
                 return Data()
             }
