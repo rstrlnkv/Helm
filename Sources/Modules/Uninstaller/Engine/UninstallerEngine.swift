@@ -432,36 +432,33 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         return (NSDictionary(contentsOf: info)?["CFBundleIdentifier"]) as? String
     }
 
-    /// Shared trashing core: sizes are read before trashing; only successfully
-    /// trashed items count toward freedBytes.
+    /// Shared trashing core: `HelmTrash` runs the batch — the order, the sizing,
+    /// the classification and the refusals — and this supplies the two things
+    /// only the uninstaller knows.
+    ///
+    /// It used to be a copy of that loop, and the copy was missing what only
+    /// shows up on a tree: a file basketed with the folder above it was reported
+    /// as neither moved nor refused, two names for one file were counted twice
+    /// over, and which of those happened depended on the order the paths
+    /// arrived in.
     private func trashSync(_ paths: [String]) -> UninstallResult {
-        var trashed: [String] = []
-        var failures: [TrashFailureInfo] = []
-        var freed = 0
-        // Only queried when something actually fails — the lookup shells out.
-        var extensionHosts: Set<String>?
         // Same rule as the leftovers engine: the plan is built in a view model,
         // and a view model is not allowed to be the last word on what gets
         // deleted. A candidate that escaped its folder stops here.
         let (allowed, refused) = RemovableScope.partition(paths, home: home.path)
-        for p in refused {
-            HelmLog.shared.warn("uninstaller", "refused out-of-scope path: \(Redact.path(p))")
-            failures.append(TrashFailureInfo(path: p,
-                                             reason: TrashFailure.Reason.outOfScope.rawValue,
-                                             message: ""))
-        }
-        for p in allowed {
-            let url = URL(fileURLWithPath: p)
-            let size = fs.size(url)
-            let outcome = trash.trashItem(url)
-            if outcome.succeeded {
-                trashed.append(p); freed += size
-            } else if outcome.errorCode == NSFileNoSuchFileError, !fs.exists(url) {
-                // Already gone (a duplicate path, or removed meanwhile): there
-                // is nothing for the user to act on, so it is not a failure.
-                continue
-            } else {
-                let hosts = extensionHosts ?? extensions.activeExtensionHosts()
+        // Only queried when a bundle actually fails to move — the lookup shells
+        // out.
+        var extensionHosts: Set<String>?
+        // What macOS said, verbatim, per path. `HelmTrash` classifies the error
+        // and logs the sentence, and the sentence does not cross its `Result`;
+        // the failure sheet draws it under the classified reason as the evidence
+        // behind it, so this module keeps it as it goes past.
+        var saidByPath: [String: String] = [:]
+        let result = HelmTrash.remove(
+            allowed: allowed, outOfScope: refused, module: "uninstaller",
+            hasSystemExtension: { path in
+                guard path.hasSuffix(".app") else { return false }
+                let hosts = extensionHosts ?? self.extensions.activeExtensionHosts()
                 extensionHosts = hosts
                 // Match the app's bundle id, not the path: /Applications/X.app
                 // never contains "com.vendor.x".
@@ -469,17 +466,23 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                 // "at.obdev.littlesnitch" and is a different product. Without the
                 // dot, the user is sent to turn off someone else's extension while
                 // the real reason — no permission — is hidden.
-                let blocked = p.hasSuffix(".app") && hosts.contains { host in
-                    bundleID(forAppAt: p).map { $0 == host || $0.hasPrefix(host + ".") } ?? false
-                }
-                failures.append(TrashFailureInfo(
-                    path: p,
-                    reason: TrashFailure.reason(path: p, errorCode: outcome.errorCode,
-                                                hasSystemExtension: blocked).rawValue,
-                    message: outcome.message))
-            }
-        }
-        return UninstallResult(trashed: trashed, freedBytes: freed, failures: failures)
+                guard let id = self.bundleID(forAppAt: path) else { return false }
+                return hosts.contains { id == $0 || id.hasPrefix($0 + ".") }
+            },
+            trashing: { url in
+                let outcome = self.trash.trashItem(url)
+                guard !outcome.succeeded else { return }
+                saidByPath[url.path] = outcome.message
+                throw NSError(domain: NSCocoaErrorDomain, code: outcome.errorCode,
+                              userInfo: outcome.message.isEmpty
+                                  ? nil : [NSLocalizedDescriptionKey: outcome.message])
+            })
+        return UninstallResult(
+            trashed: result.removed, freedBytes: result.freedBytes,
+            failures: result.refused.map {
+                TrashFailureInfo(path: $0.path, reason: $0.reason.rawValue,
+                                 message: saidByPath[$0.path] ?? "")
+            })
     }
 
     // MARK: - Transport (request/response)
