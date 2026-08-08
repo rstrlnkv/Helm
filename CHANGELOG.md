@@ -29,12 +29,12 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   for the same case.
 
 ### Changed
-- **The panel is arranged in the panel.** «Настроить панель» in the footer turns
+- **The panel is arranged in the panel.** “Edit panel” in the footer turns
   the grid into something you can rearrange: each widget grows a size control
   (1×1, 2×1, 2×N) and a way out, a gallery under it offers what is not there,
   and tabs appear from the second one. Keep Awake, VPN, Autopilot, Disk and
-  Layout answer at more than one size; Disk shows how much room is left out of
-  how much, which costs a `statfs` rather than a scan. The permissions notice
+  Keyboard come in more than one size; Disk shows how much of the disk is still
+  free, which costs a `statfs` rather than a scan. The permissions notice
   arrives by itself and leaves with the grant.
 - **One arrangement for everything.** The order and sections composed in Settings
   now decide the panel as well as the window's sidebar and the icon menu. The
