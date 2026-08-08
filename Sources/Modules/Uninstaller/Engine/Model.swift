@@ -78,12 +78,19 @@ public struct TrashFailureInfo: Codable, Equatable, Sendable, Identifiable {
 
 public struct UninstallResult: Codable, Equatable, Sendable {
     public let trashed: [String]
-    public let failed: [String]
     public let freedBytes: Int
     public let failures: [TrashFailureInfo]
-    public init(trashed: [String], failed: [String], freedBytes: Int,
-                failures: [TrashFailureInfo] = []) {
-        self.trashed = trashed; self.failed = failed; self.freedBytes = freedBytes
+
+    /// The refused paths, which the two screens read one each: this one decides
+    /// which apps a removal answered for, and `failures` is what the report
+    /// lists. It was a stored field beside `failures`, appended to on the same
+    /// two lines, and nothing but that adjacency kept them in step — a `failed`
+    /// missing a path its `failures` recorded would file an app macOS refused as
+    /// the person's own "no", which takes it off every screen Helm has.
+    public var failed: [String] { failures.map(\.path) }
+
+    public init(trashed: [String], freedBytes: Int, failures: [TrashFailureInfo] = []) {
+        self.trashed = trashed; self.freedBytes = freedBytes
         self.failures = failures
     }
 }

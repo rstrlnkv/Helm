@@ -435,7 +435,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// Shared trashing core: sizes are read before trashing; only successfully
     /// trashed items count toward freedBytes.
     private func trashSync(_ paths: [String]) -> UninstallResult {
-        var trashed: [String] = [], failed: [String] = []
+        var trashed: [String] = []
         var failures: [TrashFailureInfo] = []
         var freed = 0
         // Only queried when something actually fails — the lookup shells out.
@@ -446,7 +446,6 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         let (allowed, refused) = RemovableScope.partition(paths, home: home.path)
         for p in refused {
             HelmLog.shared.warn("uninstaller", "refused out-of-scope path: \(Redact.path(p))")
-            failed.append(p)
             failures.append(TrashFailureInfo(path: p,
                                              reason: TrashFailure.Reason.outOfScope.rawValue,
                                              message: ""))
@@ -462,7 +461,6 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                 // is nothing for the user to act on, so it is not a failure.
                 continue
             } else {
-                failed.append(p)
                 let hosts = extensionHosts ?? extensions.activeExtensionHosts()
                 extensionHosts = hosts
                 // Match the app's bundle id, not the path: /Applications/X.app
@@ -481,8 +479,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                     message: outcome.message))
             }
         }
-        return UninstallResult(trashed: trashed, failed: failed,
-                               freedBytes: freed, failures: failures)
+        return UninstallResult(trashed: trashed, freedBytes: freed, failures: failures)
     }
 
     // MARK: - Transport (request/response)
