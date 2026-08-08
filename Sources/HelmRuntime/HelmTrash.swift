@@ -115,7 +115,7 @@ public enum HelmTrash {
         // the same basket gave two different answers on two runs.
         var seenPaths: Set<String> = []
         let ordered = allowed
-            .map(withoutTrailingSeparators)
+            .map(PathCanonical.withoutTrailingSeparators)
             .filter { seenPaths.insert($0).inserted }
             .sorted { $0.count < $1.count }
         for path in ordered {
@@ -152,13 +152,5 @@ public enum HelmTrash {
 
         HelmLog.shared.info(module, "trashed \(removed.count), failed \(refused.count)")
         return Result(removed: removed, refused: refused, freedBytes: freed)
-    }
-
-    /// The spelling the batch answers under. The root is the one path that is
-    /// nothing but separators, and it keeps its own.
-    private static func withoutTrailingSeparators(_ path: String) -> String {
-        var trimmed = path
-        while trimmed.count > 1, trimmed.hasSuffix("/") { trimmed.removeLast() }
-        return trimmed
     }
 }

@@ -17,7 +17,25 @@ import Foundation
 ///
 /// This is the rule `WatchScope.canonical` already applies inside Autopilot,
 /// written once here now that a second and third gate need it.
+///
+/// The trailing separator below is the same subject one layer down — not where
+/// a path leads but which of several strings names the same place.
 public enum PathCanonical {
+
+    /// One folder, one spelling. `…/Ghost`, `…/Ghost/` and `…/Ghost//` are one
+    /// place and three strings, and a batch that treats them as three answers
+    /// three times for one folder.
+    ///
+    /// **Every** separator: a path joined onto a root that already ended in one
+    /// carries two, and stripping a single one left `p` and `p//` different.
+    /// The root is the one path that is nothing but a separator, and it keeps
+    /// its own.
+    public static func withoutTrailingSeparators(_ path: String) -> String {
+        var trimmed = path
+        while trimmed.count > 1, trimmed.hasSuffix("/") { trimmed.removeLast() }
+        return trimmed
+    }
+
     /// The path with every symlink in its parent chain resolved, and its last
     /// component put back untouched.
     ///

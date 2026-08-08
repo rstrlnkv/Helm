@@ -17,13 +17,14 @@ import HelmRuntime
 final class SettingsFromAPlistThatCanSayAnythingTests: XCTestCase {
 
     private var backing: InMemoryKeyValueStore!
+    private var store: NamespacedStore!
     private var settings: KeepAwakeSettings!
 
     override func setUp() {
         super.setUp()
         backing = InMemoryKeyValueStore()
-        settings = KeepAwakeSettings(store: NamespacedStore(namespace: "keep-awake",
-                                                            backing: backing))
+        store = NamespacedStore(namespace: "keep-awake", backing: backing)
+        settings = KeepAwakeSettings(store: store)
     }
 
     private func plant(_ key: String, _ value: Any) {
@@ -237,8 +238,7 @@ final class SettingsFromAPlistThatCanSayAnythingTests: XCTestCase {
 
     /// The engine over this test's own store, with every port faked.
     private func engine() -> KeepAwakeEngine {
-        KeepAwakeEngine(settings: settings,
-                        store: NamespacedStore(namespace: "keep-awake", backing: backing),
+        KeepAwakeEngine(settings: settings, store: store,
                         assertions: FakeAssertions(),
                         displayInfo: FakeDisplayInfo(),
                         displayObserver: FakeDisplayObserver(),
