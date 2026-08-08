@@ -81,10 +81,6 @@ public protocol TrashPort: Sendable {
     func trashItem(_ url: URL) -> TrashOutcome
 }
 
-public extension TrashPort {
-    func trash(_ url: URL) -> Bool { trashItem(url).succeeded }
-}
-
 /// System extensions block their host app from being moved; the UI needs to
 /// name that reason instead of reporting a bare failure.
 public protocol SystemExtensionPort: Sendable {

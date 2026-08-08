@@ -49,15 +49,6 @@ public enum HelmTrash {
         }
 
         public var failed: [String] { refused.map(\.path) }
-
-        /// The reason to show when the whole batch is being summarised in one
-        /// line: the most common one, and the first of the batch to break a
-        /// tie, so the sentence does not change between two identical runs.
-        public var principalReason: TrashFailure.Reason? {
-            var counts: [TrashFailure.Reason: Int] = [:]
-            for refusal in refused { counts[refusal.reason, default: 0] += 1 }
-            return refused.map(\.reason).max { counts[$0]! < counts[$1]! }
-        }
     }
 
     /// Trash `allowed`, and record `outOfScope` for everything the caller's own

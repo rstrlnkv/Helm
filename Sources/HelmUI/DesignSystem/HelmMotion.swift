@@ -28,17 +28,9 @@ public enum HelmMotion {
     }
     private static let instant = Animation.linear(duration: 0.01)
 
-    /// How long `disclosure` takes, as a number.
-    ///
-    /// AppKit needs the figure and not the `Animation`: a table animating its
-    /// own row heights takes an `NSAnimationContext` duration, and the rows and
-    /// the block around them have to move on one clock. It was written twice —
-    /// which is the arrangement where one of them gets changed.
-    public static let disclosureSeconds: Double = 0.30
-
     /// Opening and closing measured-height sections. No overshoot by design.
     public static var disclosure: Animation {
-        reduced ? instant : .smooth(duration: disclosureSeconds)
+        reduced ? instant : .smooth(duration: 0.30)
     }
 
     /// Small state changes: reordering rows, toggling a filter, moving a
@@ -132,15 +124,6 @@ public enum HelmMotion {
         return .easeInOut(duration: 0.50 + 0.16 * (distance - 1))
     }
 
-    /// Steady rotation (the About page's bezel while a check runs) — the one
-    /// place a linear curve is correct, because the motion has no destination.
-    /// Under Reduce Motion it does not turn at all; the progress spinner beside
-    /// it already says the same thing.
-    public static func steadyRotation(seconds: Double) -> Animation {
-        guard !reduced else { return .linear(duration: 0) }
-        return .linear(duration: seconds).repeatForever(autoreverses: false)
-    }
-
     /// How a wheel that was turning comes to rest: a short coast forward, never
     /// a rewind.
     ///
@@ -168,8 +151,7 @@ public extension View {
     /// screens while their list reloads.
     ///
     /// `.symbolEffect(.rotate, options: .repeating)` on its own does not honour
-    /// Reduce Motion; SwiftUI leaves that to us, and `HelmMotion.steadyRotation`
-    /// has always done it for the About bezel. These two spun regardless.
+    /// Reduce Motion; SwiftUI leaves that to us, and these two spun regardless.
     func helmSteadySpin(_ active: Bool) -> some View {
         symbolEffect(.rotate, options: .repeating,
                      isActive: HelmMotion.spins(requested: active,
