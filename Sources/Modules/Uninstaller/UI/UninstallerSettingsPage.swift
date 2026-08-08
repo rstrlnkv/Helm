@@ -6,20 +6,6 @@ import Module_Uninstaller_Engine
 
 extension InstalledApp: Identifiable { public var id: String { bundleID } }
 
-/// `NSWorkspace.icon(forFile:)` hits the disk; List rows re-render often, so
-/// icons are memoized per bundle path. Shared with the Trash offer window,
-/// which draws the same icons for bundles sitting in `~/.Trash`.
-@MainActor
-enum AppIconCache {
-    static let cache = NSCache<NSString, NSImage>()
-    static func icon(forFile path: String) -> NSImage {
-        if let hit = cache.object(forKey: path as NSString) { return hit }
-        let img = NSWorkspace.shared.icon(forFile: path)
-        cache.setObject(img, forKey: path as NSString)
-        return img
-    }
-}
-
 /// Two steps, AppCleaner-style: tick the apps to remove, then review the files
 /// found for each of them before anything goes to the Trash. A running app is
 /// never removed silently — it is quit first, and only if the user says so.
@@ -240,7 +226,7 @@ public struct UninstallerSettingsPage: View {
                 .toggleStyle(.checkbox)
                 .labelsHidden()
             }
-            Image(nsImage: AppIconCache.icon(forFile: app.path))
+            Image(nsImage: AppInfo.icon(forFile: app.path))
                 .resizable().frame(width: 28, height: 28)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 1) {
@@ -449,7 +435,7 @@ public struct UninstallerSettingsPage: View {
         HStack(spacing: 8) {
             // The icon reads as an unticked checkbox beside a column of them,
             // and says nothing a screen reader needs — the name follows it.
-            Image(nsImage: AppIconCache.icon(forFile: group.app.path))
+            Image(nsImage: AppInfo.icon(forFile: group.app.path))
                 .resizable().frame(width: 18, height: 18)
                 .accessibilityHidden(true)
             Text(group.app.name).font(.callout.weight(.semibold))
