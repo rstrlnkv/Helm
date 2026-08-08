@@ -145,8 +145,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
                                         payload: Data(line.utf8)))
     }
     private func emitState(_ s: OpState) {
-        localTransport.emit(EngineEvent(name: HomebrewEvent.opState.rawValue,
-                                        payload: (try? JSONEncoder().encode(s)) ?? Data()))
+        localTransport.emit(HomebrewEvent.opState, encoding: s)
     }
 
     /// `verb` is what happened; `subject` is the package it happened to, kept
@@ -253,25 +252,32 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     private func wireTransport() {
         localTransport.setHandler { [weak self] cmd in
             guard let self else { return Data() }
-            func json<T: Encodable>(_ v: T) -> Data { (try? JSONEncoder().encode(v)) ?? Data() }
+            // The local `json(_:)` these arms shared is `EngineReply` now — the
+            // same fold, where the other eight engines can reach it. Spelled per
+            // arm rather than wrapped again, because the helper takes its `#line`
+            // from the call site and a wrapper would report every arm as itself.
             guard let name = HomebrewCommand(rawValue: cmd.name) else { return Data() }
             switch name {
-            case .status:        return json(await offTheCooperativePool { self.status() })
-            case .listInstalled: return json(await offTheCooperativePool { self.listInstalled() })
-            case .outdated:      return json(await offTheCooperativePool { self.outdated() })
+            case .status:
+                return EngineReply.encode(await offTheCooperativePool { self.status() }, for: cmd)
+            case .listInstalled:
+                return EngineReply.encode(await offTheCooperativePool { self.listInstalled() }, for: cmd)
+            case .outdated:
+                return EngineReply.encode(await offTheCooperativePool { self.outdated() }, for: cmd)
             case .search:
                 let query = String(decoding: cmd.payload, as: UTF8.self)
-                return json(await offTheCooperativePool { self.search(query) })
+                return EngineReply.encode(await offTheCooperativePool { self.search(query) }, for: cmd)
             case .descriptions:
-                guard let r = try? JSONDecoder().decode(DescriptionsRequest.self,
-                                                        from: cmd.payload) else { return Data() }
-                return json(await offTheCooperativePool { self.descriptions(names: r.names, isCask: r.isCask) })
+                guard let r = EngineReply.decode(DescriptionsRequest.self, from: cmd)
+                else { return Data() }
+                let found = await offTheCooperativePool { self.descriptions(names: r.names, isCask: r.isCask) }
+                return EngineReply.encode(found, for: cmd)
             case .install:
-                if let r = try? JSONDecoder().decode(PackageRef.self, from: cmd.payload) {
+                if let r = EngineReply.decode(PackageRef.self, from: cmd) {
                     self.install(name: r.name, isCask: r.isCask)
                 }
             case .uninstall:
-                if let r = try? JSONDecoder().decode(PackageRef.self, from: cmd.payload) {
+                if let r = EngineReply.decode(PackageRef.self, from: cmd) {
                     self.uninstall(name: r.name, isCask: r.isCask)
                 }
             // A bare name, like `search` — the one-field struct that used to

@@ -69,9 +69,7 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     /// the wait — and every tick of progress crosses the transport.
     public func find(under path: String) async -> [DuplicateGroup]? {
         await run(under: path, cache: nil, onProgress: { progress in
-            guard let data = try? JSONEncoder().encode(progress) else { return }
-            self.localTransport.emit(EngineEvent(name: DuplicatesEvent.progress.rawValue,
-                                                 payload: data))
+            self.localTransport.emit(DuplicatesEvent.progress, encoding: progress)
         })
     }
 
@@ -226,12 +224,11 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
             guard let name = DuplicatesCommand(rawValue: command.name) else { return Data() }
             switch name {
             case .find:
-                guard let payload = try? JSONDecoder().decode(DuplicateSearchRequest.self,
-                                                              from: command.payload)
+                guard let payload = EngineReply.decode(DuplicateSearchRequest.self, from: command)
                 else { return Data() }
-                return (try? JSONEncoder().encode(await self.find(under: payload.path))) ?? Data()
+                return EngineReply.encode(await self.find(under: payload.path), for: command)
             case .backgroundScan:
-                return (try? JSONEncoder().encode(await self.backgroundScan())) ?? Data()
+                return EngineReply.encode(await self.backgroundScan(), for: command)
             case .cancel:
                 self.finderBox.current?.cancel()
                 return Data()
@@ -241,10 +238,9 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
                 // re-check — so there is no fallback to it: a caller sending
                 // bare paths gets nothing removed rather than something removed
                 // unchecked.
-                guard let plans = try? JSONDecoder().decode([DuplicatePlan].self,
-                                                            from: command.payload)
+                guard let plans = EngineReply.decode([DuplicatePlan].self, from: command)
                 else { return Data() }
-                return (try? JSONEncoder().encode(await self.trash(plans))) ?? Data()
+                return EngineReply.encode(await self.trash(plans), for: command)
             }
         }
     }
