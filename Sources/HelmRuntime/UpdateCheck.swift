@@ -56,6 +56,27 @@ public enum UpdateCheck {
         }
     }
 
+    /// When the last check happened, from the stored `lastUpdateCheck` — or
+    /// `nil` for a number that is not a moment this app checked at.
+    ///
+    /// The subtraction it feeds used to be `now - last` on two `Int`s, in
+    /// `checkOnLaunch`, which `AppDelegate` calls at launch:
+    /// `<integer>-9223372036854775808</integer>` **overflows** it and the app
+    /// terminates before anything is drawn. Done here rather than at the
+    /// arithmetic because the About page reads the same key to say "checked 2
+    /// hours ago", and the two were free to disagree about what a stored
+    /// number means.
+    ///
+    /// A stamp in the future is refused with the negative ones, and it is the
+    /// half that never crashes: taken at face value it keeps "checked
+    /// recently" true until the clock catches up, so `Int.max` in that key is
+    /// an app that quietly never looks for an update again.
+    public static func lastChecked(stored seconds: Int, now: Date) -> Date? {
+        guard seconds > 0 else { return nil }
+        let when = Date(timeIntervalSince1970: TimeInterval(seconds))
+        return when <= now ? when : nil
+    }
+
     private struct GHAsset: Decodable { let name: String; let browser_download_url: String }
     private struct GHRelease: Decodable {
         let tag_name: String

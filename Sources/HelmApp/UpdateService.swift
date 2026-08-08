@@ -44,9 +44,14 @@ import HelmRuntime
 
     /// Check at most once per day on launch (silent — only sets `available`).
     func checkOnLaunch() {
-        let last = AppSettings.store.int("lastUpdateCheck", default: 0)
-        let now = Int(Date().timeIntervalSince1970)
-        guard now - last > 24 * 3600 else { return }
+        let now = Date()
+        // Through `lastChecked` rather than subtracting the stored `Int` here:
+        // this runs at launch, and `now - last` on two `Int`s overflows and
+        // traps for a stored `Int.min`. A stamp that is not a moment we checked
+        // at means we have never checked.
+        let last = UpdateCheck.lastChecked(stored: AppSettings.store.int("lastUpdateCheck", default: 0),
+                                           now: now)
+        guard last.map({ now.timeIntervalSince($0) > 24 * 3600 }) ?? true else { return }
         // The stamp is written by `performCheck` once it has an answer. Written
         // here it recorded the attempt, so a launch with no network still said
         // "checked just now" — and a manual check never moved the date at all.
