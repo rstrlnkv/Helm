@@ -186,7 +186,6 @@ enum AppStr {
     static var channelBeta: String { L("Beta") }
     static var channelDev: String { L("Dev") }
     static var channelBetaNote: String { L("Helm is still in development. Beta builds are the steadier of the two.") }
-    static var flagCredit: String { L("Flag artwork: flag-icons, MIT") }
     /// Set in capitals like `betaBadge`: they sit side by side and a pair
     /// where one shouts and the other does not reads as two kinds of thing.
     static var devBadge: String { L("DEV") }

@@ -56,18 +56,17 @@ struct AboutHelmView: View {
             .controlSize(.large)
             .padding(.top, 14)
             Spacer(minLength: 18)
-            VStack(spacing: 3) {
-                Text("© 2026 Helm · GPL-3.0")
-                // CC BY 4.0 asks for attribution where the work is used, and
-                // the flags are used in the menu bar — this is the page that
-                // can carry it.
-                Link(AppStr.flagCredit,
-                     destination: URL(string: "https://github.com/lipis/flag-icons")!)
-                    .foregroundStyle(HelmText.faint)
-            }
-            .padding(.top, 6)
-            .font(.caption2)
-            .foregroundStyle(HelmText.faint)
+            // The flag credit was the second line here, and the comment above
+            // it named CC BY 4.0 — the licence of the EmojiOne set that was
+            // dropped, not of the flag-icons artwork that replaced it. MIT
+            // asks for its notice to *accompany* the copy, and `NOTICE.md`
+            // ships inside the bundle carrying the copyright and the full
+            // permission text. `NoticeShipsWithTheAppTests` is what keeps it
+            // there now that nothing on screen would show its absence.
+            Text("© 2026 Helm · GPL-3.0")
+                .padding(.top, 6)
+                .font(.caption2)
+                .foregroundStyle(HelmText.faint)
         }
             .frame(width: Self.column)
             .frame(maxWidth: .infinity)
