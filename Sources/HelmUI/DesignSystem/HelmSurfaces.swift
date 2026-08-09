@@ -346,7 +346,12 @@ public struct HelmPageHeader<Trailing: View>: View {
 
     public var body: some View {
         HStack(spacing: 12) {
-            HelmIconPlate(symbol: symbol, tint: tint)
+            // 28, asked of the mockup itself rather than counted off a picture:
+            // `.pagehead` measures 46 tall and its plate 28. Ours was the 44 pt
+            // plate the About window uses for the app's own icon, and a 44 pt
+            // square with 18 pt above and below is an 80 pt strip — a third of
+            // the height before the first control, on every page.
+            HelmIconPlate(symbol: symbol, tint: tint, size: 28)
             // 16, the redesign's «заголовок» step. It was 20, which is not on
             // the ladder at all — the six sizes are 10 · 11 · 13 · 16 · 22 · 40
             // — and with the summary gone the name no longer has to hold a
@@ -358,14 +363,16 @@ public struct HelmPageHeader<Trailing: View>: View {
             Spacer(minLength: 12)
             trailing
         }
-        // **20, not the redesign's 18.** The mockups draw this strip and the
-        // pane below it at one gutter, and moving only the header to 18 breaks
-        // the rule that matters more: a bleeding page's content starts at 20,
-        // and `StartScreenColumnTests` measures that the two begin at the same
-        // x. The gutter is an app-wide number; changing it is its own pass,
-        // not a side effect of restyling a header.
+        // **20 across, not the redesign's 18.** The mockups draw this strip and
+        // the pane below it at one gutter, and moving only the header to 18
+        // breaks the rule that matters more: a bleeding page's content starts
+        // at 20, and `StartScreenColumnTests` measures that the two begin at
+        // the same x. The gutter is an app-wide number; changing it is its own
+        // pass, not a side effect of restyling a header.
         .padding(.horizontal, 20)
-        .padding(.vertical, 18)
+        // 9 above and below a 28 pt plate is the mockup's 46 pt strip. It was
+        // 18, which with the old plate made 80.
+        .padding(.vertical, 9)
         // On the same column as the content below it. Which column that is
         // depends on the page: a grouped Form is capped at 744 pt and centred,
         // so its header is too — but a full-bleed page draws its toolbar at a

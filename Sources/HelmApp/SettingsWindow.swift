@@ -72,6 +72,7 @@ import HelmUI
     }
 
 
+
 }
 
 // MARK: - Shared model
@@ -413,6 +414,11 @@ private struct SettingsSidebar: View {
                     .frame(width: 22, height: 22)
             }
         }
+        // The mockup's row is 28 tall around a 22 pt plate; `.sidebar` style
+        // gives a taller one, and eleven rows of it is why the column read as
+        // roomy rather than narrow. The height is set on the content, not the
+        // row, so the selection capsule keeps its own inset.
+        .frame(height: 28)
     }
 }
 
