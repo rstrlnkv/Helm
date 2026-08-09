@@ -3,6 +3,58 @@ import SwiftUI
 import HelmRuntime
 import HelmUI
 
+/// What colour each update channel is, decided once.
+///
+/// The page names each channel twice — the badge on the wordmark says which
+/// build this is, the picker says which one to follow — and they used to
+/// disagree: the badge drew a dev build blue and a beta build orange. Two
+/// controls fifty points apart, saying the same word in different colours,
+/// each right on its own.
+///
+/// Orange is `HelmSignal.warning` because that is what it means: this channel
+/// ships rough edges on purpose. Beta is the accent, which is what macOS uses
+/// for "the one that is chosen" everywhere else.
+enum ChannelInk {
+    static func fill(_ channel: UpdateCheck.Channel) -> Color {
+        switch channel {
+        case .beta: return .accentColor
+        case .dev: return HelmSignal.warning
+        }
+    }
+
+    /// What the chosen pill is filled with, and what its label is set in.
+    ///
+    /// Not the knocked-out white on a saturated capsule the panel's size chips
+    /// use, because that was measured here and it does not hold up: white on
+    /// the accent is **4.02:1** in both appearances and white on the warning
+    /// orange is **2.23:1** in dark, against the 4.5:1 floor `HelmSignal` was
+    /// solved for. So this follows `HelmBadge`'s rule instead — the tint
+    /// colours the fill and nothing else, and the lettering stays the text
+    /// colour, which cannot be got wrong.
+    ///
+    /// The wash is opaque and blended **inside** the appearance rather than
+    /// drawn as `tint.opacity(0.22)`: `NSColor(Color)` returns a dynamic
+    /// colour, so a blend made one line outside the block resolves against
+    /// whatever appearance happens to be current — the same trap
+    /// `HelmMetricStrip` documents. It also means the fill is a colour that can
+    /// be measured, rather than one that depends on what it lands on.
+    static func chosenFill(_ channel: UpdateCheck.Channel) -> Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            var out = NSColor.windowBackgroundColor
+            appearance.performAsCurrentDrawingAppearance {
+                guard let tint = NSColor(fill(channel)).usingColorSpace(.sRGB),
+                      let base = NSColor.windowBackgroundColor.usingColorSpace(.sRGB),
+                      let blended = base.blended(withFraction: 0.22, of: tint)
+                else { return }
+                out = blended
+            }
+            return out
+        })
+    }
+
+    static func chosenLabel(_ channel: UpdateCheck.Channel) -> Color { .primary }
+}
+
 /// The About page: what this build is, which channel it follows, and what
 /// changed. `HelmBezel` and `WhatsNewView` below are its own and stay private.
 ///
@@ -150,10 +202,14 @@ struct AboutHelmView: View {
     /// `AppBuild.isDev`, which is where that argument now lives — it was written
     /// out here and twice more, and both other copies had stopped being read.
     private var badge: some View {
+        // The tint comes from `ChannelInk`, the same place the pills below read
+        // it. It used to be spelled here — dev blue, beta orange — which is the
+        // opposite of what the picker says, so a dev build showed a blue DEV
+        // over an orange Dev pill fifty points apart.
         HelmBadge(AppBuild.isDev ? AppStr.devBadge : AppStr.betaBadge,
-                  tint: AppBuild.isDev ? .blue : .orange,
+                  tint: ChannelInk.fill(AppBuild.isDev ? .dev : .beta),
                   emphasis: .prominent)
-            .help(AppBuild.isDev ? AppStr.channelDevNote : AppStr.channelBetaNote)
+            .help(Self.channelNote(AppBuild.isDev ? .dev : .beta))
     }
 
     private var badgeAccessibilityLabel: String {
@@ -212,17 +268,8 @@ struct AboutHelmView: View {
                     Text(AppStr.updateChannel)
                         .font(.callout)
                     Spacer()
-                    Picker(AppStr.updateChannel, selection: $channel) {
-                        Text(AppStr.channelBeta).tag(UpdateCheck.Channel.beta)
-                        Text(AppStr.channelDev).tag(UpdateCheck.Channel.dev)
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    // Its ideal width, not a reservation: at a fixed 170 the
-                    // control drew itself narrower and centred, leaving its
-                    // trailing edge short of the Check button directly above.
-                    .fixedSize()
-                    .onChange(of: channel) { _, newValue in updater.setChannel(newValue) }
+                    channelPills
+                        .onChange(of: channel) { _, newValue in updater.setChannel(newValue) }
                 }
                 Text(channel == .dev ? AppStr.channelDevNote : AppStr.channelBetaNote)
                     .font(HelmText.rowDetail)
@@ -233,6 +280,71 @@ struct AboutHelmView: View {
             .padding(.vertical, 12)
         }
         .helmCard(padding: 0)
+    }
+
+    /// The two channels, as pills — the panel's size chips brought inside the
+    /// settings window: a capsule per choice, a material capsule under the
+    /// group, a hairline rim (`PanelChrome.sizeControl`).
+    ///
+    /// A segmented control could not carry the one thing this row is for. The
+    /// channels differ in kind, not in position, and the system draws both
+    /// segments in the accent whichever is chosen — so the control that asks
+    /// «how rough a build do you want» said it in one colour. Here Dev is the
+    /// warning orange it means and Beta is the accent, from `ChannelInk`, which
+    /// is also what the badge on the wordmark now reads.
+    ///
+    /// Buttons rather than a tap gesture on a shape, so Full Keyboard Access
+    /// reaches them and each carries its own label and selected trait —
+    /// `KeyboardReachableControlsTests` is about exactly this shape.
+    private var channelPills: some View {
+        HStack(spacing: 2) {
+            ForEach(UpdateCheck.Channel.allCases, id: \.self) { option in
+                let chosen = channel == option
+                Button { channel = option } label: {
+                    Text(Self.channelName(option))
+                        // One weight in both states: a semibold chosen label is
+                        // wider than a regular one, so the pill beside it would
+                        // move every time the choice did. The fill carries the
+                        // state instead.
+                        .font(HelmText.rowTitle)
+                        .foregroundStyle(chosen ? ChannelInk.chosenLabel(option)
+                                         : HelmText.quiet)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 3)
+                        // A capsule inside a capsule, concentric at any type
+                        // size — the panel's chips learned this the hard way.
+                        .background(Capsule().fill(chosen ? ChannelInk.chosenFill(option)
+                                                   : Color.clear))
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .help(Self.channelNote(option))
+                .accessibilityLabel(Self.channelName(option))
+                .accessibilityAddTraits(chosen ? [.isButton, .isSelected] : .isButton)
+            }
+        }
+        .padding(2)
+        .background(Capsule().fill(.regularMaterial))
+        .overlay(Capsule().strokeBorder(HelmSurface.hairline))
+        .animation(HelmMotion.interface, value: channel)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(AppStr.updateChannel)
+    }
+
+    private static func channelName(_ channel: UpdateCheck.Channel) -> String {
+        switch channel {
+        case .beta: return AppStr.channelBeta
+        case .dev: return AppStr.channelDev
+        }
+    }
+
+    /// The same sentence the note under the row shows for that channel, so the
+    /// pointer and the page agree about what each one means.
+    private static func channelNote(_ channel: UpdateCheck.Channel) -> String {
+        switch channel {
+        case .beta: return AppStr.channelBetaNote
+        case .dev: return AppStr.channelDevNote
+        }
     }
 
     @ViewBuilder
