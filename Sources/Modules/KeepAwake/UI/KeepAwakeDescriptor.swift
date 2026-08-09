@@ -83,7 +83,10 @@ import Module_KeepAwake_Engine
             if MenuBarLook.showTimerText(store) {
                 title = TimerProgress.label(remaining: end.timeIntervalSinceNow)
             }
-            // A dedicated timer colour, when the user picked one.
+            // The countdown's own colour, which always has a value: orange
+            // unless somebody changed it. The `isEmpty` guard is kept for a
+            // store that answers nothing at all — it is not the fallback the
+            // comment here used to claim, because a stored tint is never empty.
             let timerTint = MenuBarLook.timerTint(store)
             if !timerTint.isEmpty { tint = timerTint }
         }

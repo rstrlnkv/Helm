@@ -36,8 +36,22 @@ enum MenuBarLook {
     static func showTimerText(_ store: NamespacedStore) -> Bool {
         store.bool(Key.showTimerText, default: false)
     }
+    /// Orange, the same as `activeTint` above — so out of the box a countdown
+    /// looks like the module rather than like something wrong.
+    ///
+    /// It was `red`, and red is `HelmSignal.danger`: a session running normally
+    /// was painted in the app's own failure colour, and the page showed two
+    /// palettes disagreeing — orange ringed under «Active icon color», red
+    /// ringed under «Timer color», neither of them chosen by anybody.
+    ///
+    /// **This value is always applied**, and the two comments that said
+    /// otherwise are corrected where they stand: a stored tint is never empty,
+    /// so the reader in `KeepAwakeDescriptor` has no fallback path to take.
+    /// Changing the active colour therefore does not change the countdown's —
+    /// that is a second decision, and it is the person's to make in the row
+    /// below it.
     static func timerTint(_ store: NamespacedStore) -> String {
-        store.string(Key.timerTint, default: "red")
+        store.string(Key.timerTint, default: "orange")
     }
     static func customIcon(_ store: NamespacedStore) -> Bool {
         store.bool(Key.customIcon, default: false)

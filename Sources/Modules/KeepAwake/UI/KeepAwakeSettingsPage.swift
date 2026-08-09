@@ -358,9 +358,13 @@ public struct KeepAwakeSettingsPage: View {
     }
 
     /// Timer palette: the countdown can stand out from the active colour.
+    ///
+    /// Both palettes open on orange, which is the same answer twice rather than
+    /// a disagreement — the timer's own default used to be red, so the page
+    /// showed two rings on two different colours and neither had been chosen.
+    /// The `isEmpty` branch survives for a store that answers nothing at all;
+    /// it is not a fallback the defaults can reach.
     private var timerColorSwatches: some View {
-        // No stored value yet → the active colour is what the timer will use,
-        // so show that as the selection.
         HelmPaletteSwatches(selection: timerTintColor.isEmpty ? activeTintColor : timerTintColor) { token in
             timerTintColor = token
             writeLook(token, MenuBarLook.Key.timerTint)
