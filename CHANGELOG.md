@@ -87,6 +87,28 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   fifth type size on a page the scale gives four.
 
 ### Fixed
+- **The Duplicates page was cut off at both ends, at the size the settings
+  window opens at.** Its toolbar wanted 1000 pt of a pane that is 810 — in seven
+  of the eight languages, German worst — so the folder path ran under the
+  sidebar on the left while the buttons were cut at the right edge. The narrow
+  window it was reported against only made it obvious. The row adapts now, and
+  gives up what is said twice before what is said once: the count first (the
+  list beneath it says the same, group by group), then the words on "Mark every
+  extra copy" (every group header already carries them), then the words on
+  "Search again". No control ever disappears, and the path never shrinks below
+  the width at which a path still names a place — with both trailing controls
+  drawn as symbols the row is 502 pt, inside the 610 pt pane of the narrowest
+  window Helm has. Drawn and measured in all eight languages, light and dark.
+  Three things had to be wrong at once. The row's third control was added and
+  entered no measurement: the script summed two of three, and typed its count
+  line out in five languages rather than reading the eight that ship, so the
+  threshold said 738 for a row needing 1000. The width the page steered by was
+  read off the toolbar itself, which reports what the row *resolved* to — so
+  once the row overflowed it was measuring its own overflow, and could never
+  come back down. And the pane centred what did not fit, which is why the damage
+  showed up on the left. The measurement now lives in a test that fails when a
+  threshold stops clearing its row, and when the row grows a part the
+  measurement does not know about.
 - **Helm could crash while you were typing.** The keyboard watcher handed macOS
   a pointer to itself that does not keep it alive, and had no teardown of its
   own — only the one the module runs when you switch Keyboard off. Every other

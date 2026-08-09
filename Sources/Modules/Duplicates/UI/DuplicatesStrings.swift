@@ -56,7 +56,12 @@ enum DupStr {
     /// share their blocks, so a cloned copy returns nothing — the figure can
     /// say so. It still names the Trash: the copies land there first, and the
     /// space arrives when it is emptied, which is the rule Disk already keeps.
-    static func found(_ groups: Int, _ wasted: String) -> String { L("Groups: \(groups) · \(wasted) once the Trash is emptied", [.ru: "Групп: \(groups) · \(wasted) после очистки Корзины", .es: "Grupos: \(groups) · \(wasted) al vaciar la papelera", .fr: "Groupes : \(groups) · \(wasted) après avoir vidé la corbeille", .de: "Gruppen: \(groups) · \(wasted) nach dem Leeren des Papierkorbs", .ja: "\(groups) グループ・ゴミ箱を空にすると \(wasted)", .zh: "\(groups) 组 · 清倒废纸篓后 \(wasted)", .pt: "Grupos: \(groups) · \(wasted) ao esvaziar o Lixo"]) }
+    /// Takes the language, as `Quoted` and `HelmConfirm.trash` do: this is the
+    /// widest thing the toolbar can carry, and the width test that holds
+    /// `DuplicatesLayout.barWithCount` has to ask it about German from a suite
+    /// running in English.
+    static func found(_ groups: Int, _ wasted: String,
+                      language: AppLanguage = AppLanguage.current) -> String { L("Groups: \(groups) · \(wasted) once the Trash is emptied", [.ru: "Групп: \(groups) · \(wasted) после очистки Корзины", .es: "Grupos: \(groups) · \(wasted) al vaciar la papelera", .fr: "Groupes : \(groups) · \(wasted) après avoir vidé la corbeille", .de: "Gruppen: \(groups) · \(wasted) nach dem Leeren des Papierkorbs", .ja: "\(groups) グループ・ゴミ箱を空にすると \(wasted)", .zh: "\(groups) 组 · 清倒废纸篓后 \(wasted)", .pt: "Grupos: \(groups) · \(wasted) ao esvaziar o Lixo"], language: language) }
     static var keepWhy: String { L("The copy that was there first. Helm never offers every copy of a file.") }
     static var keep: String { L("stays") }
     /// One key used to label two different actions: a group button meaning

@@ -345,7 +345,7 @@ private struct SettingsDetail: View {
 
     var body: some View {
         content
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     @ViewBuilder
@@ -410,6 +410,14 @@ private struct ModuleDetailView: View {
                 }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        // Leading, not centre. This alignment governs only content that does
+        // not fill the pane, and everything here fills it — a capped column
+        // and a non-bleeding header each centre themselves, measured unmoved
+        // at 610, 810 and 1400 pt. What it does govern is a row that wants
+        // *more* than the pane: centred, the overflow was split between the
+        // two edges, so a clipped toolbar hid its path under the sidebar and
+        // its buttons off the right. Pinned leading, an overflow spills one
+        // way and reads as one.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }

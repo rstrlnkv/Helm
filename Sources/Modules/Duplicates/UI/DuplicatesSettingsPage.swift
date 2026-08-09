@@ -11,8 +11,8 @@ public struct DuplicatesSettingsPage: View {
     @ObservedObject private var dvm: DuplicatesViewModel
     @State private var confirming = false
     @State private var diskAccess: PermissionState = .granted
-    /// The toolbar's own width, which decides what it can carry.
-    @State private var barWidth: CGFloat = 0
+    /// The width of the pane, which decides what the toolbar can carry.
+    @State private var paneWidth: CGFloat = 0
 
     public init(vm: ModuleViewModel, store: NamespacedStore) {
         dvm = DuplicatesViewModel.shared(vm: vm, store: store)
@@ -20,6 +20,20 @@ public struct DuplicatesSettingsPage: View {
 
     public var body: some View {
         VStack(spacing: 0) {
+            // What the pane offers, read from something that cannot want more
+            // than it is given. Hung on the toolbar itself — which is where it
+            // was — this reported the width the row *resolved to*, and once the
+            // row overflows that is what the row demanded: 935 pt inside an
+            // 810 pt pane in Russian. Worse, it latched: a reading over the
+            // threshold added the count, which made the row wider still, so
+            // nothing could ever bring it back down. A zero-height,
+            // zero-minimum child has no opinion of its own, so it resolves to
+            // exactly the proposal.
+            Color.clear
+                .frame(height: 0)
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: {
+                    paneWidth = $0
+                }
             // Page level: without the grant the walk simply sees less, and a
             // short answer looks exactly like a clean one.
             if diskAccess == .denied {
@@ -29,13 +43,8 @@ public struct DuplicatesSettingsPage: View {
             }
             if dvm.folder != nil || dvm.phase != .start {
                 // Measured, not guessed: what the row drops is decided by what
-                // it can hold. `DuplicatesLayout` has the numbers. Read through
-                // the row itself rather than a GeometryReader, which would take
-                // whatever height it was given instead of the row's own.
-                toolbar(DuplicatesLayout(availableWidth: barWidth))
-                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: {
-                        barWidth = $0
-                    }
+                // it can hold. `DuplicatesLayout` has the numbers.
+                toolbar(DuplicatesLayout(availableWidth: paneWidth))
                 Divider()
             }
             // What the answer excludes belongs with the answer. This note used
@@ -117,28 +126,51 @@ public struct DuplicatesSettingsPage: View {
                         .font(.caption).foregroundStyle(HelmText.faint)
                         .lineLimit(1).fixedSize()
                 }
-                // The controls keep their labels; the path truncates, being
-                // the one thing here that says the same when shortened.
+                // Every control stays at every width. What a narrow pane takes
+                // is labels, and only from the two whose words are said again
+                // elsewhere on the page — the path truncates, being the one
+                // thing here that says the same when shortened.
                 Button(dvm.folder == nil ? DupStr.chooseFolder : DupStr.chooseAnother) {
                     dvm.chooseFolder()
                 }
                 .controlSize(.small)
                 .fixedSize()
                 if dvm.folder != nil {
-                    Button(dvm.groups.isEmpty ? DupStr.search : DupStr.searchAgain) {
+                    let title = dvm.groups.isEmpty ? DupStr.search : DupStr.searchAgain
+                    control(title, symbol: "arrow.clockwise", labelled: layout.labelsSearch) {
                         dvm.search()
                     }
-                    .controlSize(.small)
-                    .fixedSize()
                 }
                 if !dvm.groups.isEmpty {
-                    Button(DupStr.basketAllExtras) { dvm.basketAllExtras() }
-                        .controlSize(.small)
-                        .fixedSize()
+                    // The label goes before the button does: every group header
+                    // already reads "Mark the extra copies", so the words are
+                    // what repeats — while on twenty groups the button itself
+                    // saves nineteen clicks.
+                    control(DupStr.basketAllExtras, symbol: "checklist",
+                            labelled: layout.labelsMarkAll) {
+                        dvm.basketAllExtras()
+                    }
                 }
             }
         }
         .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
+    }
+
+    /// A toolbar control that keeps its name where there is room for it, and
+    /// keeps saying it to VoiceOver and to the pointer where there is not.
+    private func control(_ title: String, symbol: String, labelled: Bool,
+                         action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            if labelled {
+                Text(title)
+            } else {
+                Image(systemName: symbol)
+            }
+        }
+        .controlSize(.small)
+        .fixedSize()
+        .help(title)
+        .accessibilityLabel(title)
     }
 
     // MARK: - Content
