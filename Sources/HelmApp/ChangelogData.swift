@@ -58,6 +58,8 @@ enum Changelog {
                 ChangeItem(kind: .new, text: L("Settings says what is missing before you scroll: a line at the top counts the permissions macOS is withholding and the modules they reach.")),
                 ChangeItem(kind: .upd, text: L("One arrangement for everything. The order and sections you compose now decide the panel as well, not just the window\u{2019}s sidebar.")),
                 ChangeItem(kind: .upd, text: L("The menu-bar icon has six shapes and three sizes \u{2014} S, M and L. The shape menu draws each one at the size you chose, so what you see is what the bar gets.")),
+                ChangeItem(kind: .upd, text: L("The update channel is two pills, each in its own colour \u{2014} Beta in the accent, Dev in orange \u{2014} so which one you follow is visible at a glance. The badge beside the wordmark agrees with them.")),
+                ChangeItem(kind: .upd, text: L("Helm no longer describes itself as a menu-bar app. It is also a panel, a settings window and a sidebar you arrange yourself, and the line under the name says so.")),
                 ChangeItem(kind: .fix, text: L("The warning in the sidebar now marks only a module that can do nothing without a permission. It marked seven of nine, including one that was working perfectly well.")),
                 ChangeItem(kind: .fix, text: L("Pressing \u{201C}Move to Trash\u{201D} twice no longer says the first removal failed. The files had already gone; asking again brought back a refusal for every one of them, printed over the list of what had actually moved \u{2014} and in Disk the folders that had left were still drawn on the ring.")),
                 ChangeItem(kind: .fix, text: L("The Uninstaller now counts a file removed with the folder it was in. The file did go to the Trash \u{2014} it was only missing from the report, so a removal of four things said three.")),
@@ -65,6 +67,7 @@ enum Changelog {
                 ChangeItem(kind: .fix, text: L("Removing an app that is still running waits for it to quit. Helm waited a fixed moment and moved the bundle anyway, so a slow app carried on from where it had been moved and wrote its settings back on the way out \u{2014} putting back the leftovers that had just been taken.")),
                 ChangeItem(kind: .fix, text: L("A switch no longer shows \u{201C}off\u{201D} for a module that is already running.")),
                 ChangeItem(kind: .fix, text: L("The Homebrew console keeps the last thousand lines instead of every line it has ever printed.")),
+                ChangeItem(kind: .fix, text: L("The line Helm shows when an update check fails is readable in every language. It was cut short in five of the eight, and a German reader saw the first half of it and nothing else.")),
                 ChangeItem(kind: .fix, text: L("\u{201C}Show in Finder\u{201D} opens the folder a file was in when the file itself is gone, and brings Finder forward. It sits beside a file that would not move, beside something Autopilot moved, beside a leftover deleted a moment ago \u{2014} where a path is most likely to have gone. In all but one of those places, pressing it did nothing, because Finder cannot select a file that is not there.")),
             ]),
             ChangelogEntry(version: "0.8.0", date: "2026-07-29", items: [
