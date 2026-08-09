@@ -5,7 +5,7 @@ All notable changes to Helm are documented here. The format is loosely based on
 global changes, MINOR = new/polished features, PATCH = fixes. Every release
 bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 
-## [Unreleased] — 0.9.0
+## [0.9.0] — 2026-08-09
 
 > 0.8.0 never shipped a final. Everything that had accumulated under it is
 > carried here: the version moved to 0.9.0 with the settings redesign, which is

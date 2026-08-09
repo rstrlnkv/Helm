@@ -50,7 +50,7 @@ enum Changelog {
     /// Computed so `L()` resolves against the current language each time.
     static var entries: [ChangelogEntry] {
         [
-            ChangelogEntry(version: "0.9.0", date: "2026-08-06", items: [
+            ChangelogEntry(version: "0.9.0", date: "2026-08-09", items: [
                 ChangeItem(kind: .new, text: L("Widgets are moved by hand. Pick one up and it follows the pointer; the others slide aside; letting go sets it down where the space opened.")),
                 ChangeItem(kind: .new, text: L("About Helm says who wrote it, with a way to reach him.")),
                 ChangeItem(kind: .new, text: L("The panel is arranged in the panel. \u{201C}Edit panel\u{201D} in its footer: give a widget one of three sizes, take one off, add one from the gallery, make a tab. Keep Awake, VPN, Autopilot, Disk and Keyboard come in more than one size, and Disk shows how much of the disk is still free.")),
@@ -64,13 +64,11 @@ enum Changelog {
                 ChangeItem(kind: .fix, text: L("Keyboard could stop converting words without saying so. macOS switches the keyboard watcher off by itself when it judges an app too slow to answer; Helm now notices and turns it back on.")),
                 ChangeItem(kind: .fix, text: L("Keep Awake could leave the Mac unable to sleep, with its own switch saying it was off.")),
                 ChangeItem(kind: .fix, text: L("Clearing Caches works now. macOS protects that folder itself but not what is inside it, so the recommendation could never be carried out. The contents are cleared and the folder stays \u{2014} one row and one press, as before. Whatever a running app is holding on to stays with it, listed by name, and the row shrinks to what is left.")),
-                ChangeItem(kind: .fix, text: L("The warning in the sidebar now marks only a module that can do nothing without a permission. It marked seven of nine, including one that was working perfectly well.")),
                 ChangeItem(kind: .fix, text: L("Pressing \u{201C}Move to Trash\u{201D} twice no longer says the first removal failed. The files had already gone; asking again brought back a refusal for every one of them, printed over the list of what had actually moved \u{2014} and in Disk the folders that had left were still drawn on the ring.")),
                 ChangeItem(kind: .fix, text: L("The Uninstaller now counts a file removed with the folder it was in. The file did go to the Trash \u{2014} it was only missing from the report, so a removal of four things said three.")),
                 ChangeItem(kind: .fix, text: L("The Uninstaller no longer overstates how much a removal moved to the Trash: two names for one file were counted as two files.")),
                 ChangeItem(kind: .fix, text: L("Removing an app that is still running waits for it to quit. Helm waited a fixed moment and moved the bundle anyway, so a slow app carried on from where it had been moved and wrote its settings back on the way out \u{2014} putting back the leftovers that had just been taken.")),
                 ChangeItem(kind: .fix, text: L("A switch no longer shows \u{201C}off\u{201D} for a module that is already running.")),
-                ChangeItem(kind: .fix, text: L("The Duplicates page fits the window. Its toolbar was wider than the space it had \u{2014} at the size the window opens at, and in seven of the eight languages \u{2014} so the folder path ran under the sidebar and the buttons were cut off at the right edge. It now gives up the count first and then the words on two buttons, keeping every button and the path itself.")),
                 ChangeItem(kind: .fix, text: L("The Homebrew console keeps the last thousand lines instead of every line it has ever printed.")),
                 ChangeItem(kind: .fix, text: L("The line Helm shows when an update check fails is readable in every language. It was cut short in five of the eight, and a German reader saw the first half of it and nothing else.")),
                 ChangeItem(kind: .fix, text: L("\u{201C}Show in Finder\u{201D} opens the folder a file was in when the file itself is gone, and brings Finder forward. It sits beside a file that would not move, beside something Autopilot moved, beside a leftover deleted a moment ago \u{2014} where a path is most likely to have gone. In all but one of those places, pressing it did nothing, because Finder cannot select a file that is not there.")),
