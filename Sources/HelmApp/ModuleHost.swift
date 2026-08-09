@@ -28,9 +28,20 @@ import HelmUI
         store(for: d).bool("enabled", default: true)
     }
 
+    /// Idempotent, on the same test `setEnabled` has always made and this one
+    /// had not: a module already live is left alone.
+    ///
+    /// It used to assign a second engine over the first without deactivating
+    /// it, so every extra call orphaned one engine per enabled module — each
+    /// still holding whatever it had registered, and each then freed with it
+    /// still registered. For Layout that is a live `CGEvent` tap on the main
+    /// run loop pointing at freed memory (`CGKeyTap`), which is a crash inside
+    /// whatever the person is typing. The `deinit`s are the backstop for the
+    /// routes nobody remembers; not building the orphan is the fix.
     func bootstrap() {
         ObsoleteDefaults.purge(from: UserDefaults.standard)
-        for d in ModuleRegistry.all where isEnabled(d) { enable(d) }
+        for d in ModuleRegistry.all
+        where isEnabled(d) && live[type(of: d).id.rawValue] == nil { enable(d) }
     }
 
     func setEnabled(_ d: any ModuleDescriptor, _ on: Bool) {

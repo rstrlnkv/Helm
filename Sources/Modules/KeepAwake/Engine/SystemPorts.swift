@@ -27,6 +27,14 @@ public final class IOKitSleepAssertions: SleepAssertions {
 
     public init() {}
 
+    /// The backstop, for the same reason `IOPSPowerInfo` below has one and
+    /// `CGKeyTap` now does: `deactivate()` is the ordinary route and covers the
+    /// module being switched off, and it is not the only way this object is let
+    /// go. An assertion nobody gives back is held until the process exits — so
+    /// dropping the engine any other way left a Mac that would not sleep, with
+    /// the settings page saying Keep Awake was off.
+    deinit { release() }
+
     public func preventSleep(display: Bool) {
         if !hasSystemAssertion {
             var assertionID: IOPMAssertionID = 0

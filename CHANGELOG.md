@@ -87,6 +87,27 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   fifth type size on a page the scale gives four.
 
 ### Fixed
+- **Helm could crash while you were typing.** The keyboard watcher handed macOS
+  a pointer to itself that does not keep it alive, and had no teardown of its
+  own — only the one the module runs when you switch Keyboard off. Every other
+  way the module could be let go left the watcher running against memory that
+  had been handed back, and the next key pressed anywhere on the Mac landed on
+  it. It was seen about once in six runs of the test suite, in the same place a
+  person types. The watcher now tears itself down whenever it is let go, and
+  gives back the system port it used to keep.
+- **Keyboard stopped converting words and did not say so.** macOS switches an
+  event tap off by itself — when it judges the app too slow to answer, and when
+  the Accessibility permission is withdrawn while Helm is running — and it says
+  so exactly once, through the tap it is switching off. Helm was not listening
+  for it, so Keyboard went quiet for the rest of the session with its own switch
+  still reading "on". Being switched off for slowness needs no permission change
+  and no action from you at all. It is now turned back on where that is the
+  cause, and where the permission is gone Helm says so in the log instead of
+  pretending to watch.
+- **Keep Awake could leave the Mac unable to sleep.** The power assertions were
+  given back when you switched the module off, and only then; any other way the
+  module was let go left them held until Helm quit — with the module's own
+  switch saying it was off.
 - **Recommendations offered a folder macOS refuses to move.** Clearing `Caches`
   failed every time: macOS protects that folder itself while leaving everything
   inside it to you, so the one thing the row offered was the one thing that

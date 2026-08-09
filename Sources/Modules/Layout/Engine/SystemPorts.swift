@@ -10,21 +10,71 @@ private let helmEventMarker: Int64 = 0x48_45_4C_4D   // "HELM"
 
 // MARK: - The tap
 
+/// The live keyboard tap.
+///
+/// **The pointer CoreGraphics holds does not own this object, and that is
+/// deliberate.** `userInfo` is a raw pointer with no retain/release callbacks —
+/// unlike `SCDynamicStoreContext`, which is why the VPN watcher can hand its
+/// sink over and let the framework hold it. Handing this one over `passRetained`
+/// would mean the tap keeps the object alive until the port is invalidated, and
+/// the only thing that invalidates the port is this object's own teardown: an
+/// unbreakable cycle, in which a module the user switched off goes on reading
+/// every keystroke for the life of the process. That is a worse defect than the
+/// one below, and a silent one.
+///
+/// So the pointer stays unretained, and the object gets a `deinit` — which is
+/// reachable precisely *because* nothing retains `self` (CLAUDE.md's note on
+/// `deinit` not running while something holds the object is the same fact from
+/// the other side). Without it, `stop()` had exactly one caller and any path
+/// that dropped the engine another way — `bootstrap()` replacing it, the module
+/// being let go at quit — left an enabled tap on the main run loop resolving a
+/// freed pointer. Measured: 5 SIGSEGVs in 5 runs on that path, 0 in 8 with the
+/// `deinit`, in `swift_retain` under `eventTapMessageHandler`.
+///
+/// `CFMachPortInvalidate` is a separate repair and fixes a separate thing: the
+/// port caches the run loop source it creates and the source retains the port,
+/// so without it neither is ever freed. Measured at 219 mach port names left
+/// behind over 200 start/stop cycles against 21 with it. It does **not** fix
+/// the crash — stopping without it already stops delivery — and saying it does
+/// would close the investigation on the half that matters.
+///
+/// `CFRunLoop` is the one thread-safe CoreFoundation type, so removing the
+/// source from whatever thread `deinit` happens to run on is supported and
+/// needs no hop to main. The fields do need a lock: this is `@unchecked
+/// Sendable`, the callback reads the handlers on the run loop that services the
+/// port, and `stop()` clears them.
 public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
+    private let lock = NSLock()
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
     private var handler: (@Sendable (TypingBuffer.Event) -> Void)?
     private var modifierHandler: (@Sendable (ModifierTap.Input) -> Void)?
 
+    /// Synchronous readers rather than `await`, for the reason `LocalTransport`
+    /// has them: Swift 6 refuses `NSLock.lock()` across a suspension, and a
+    /// field read on one side of a lock is a field read with no lock at all.
+    private var handlers: ((@Sendable (TypingBuffer.Event) -> Void)?,
+                           (@Sendable (ModifierTap.Input) -> Void)?) {
+        lock.lock(); defer { lock.unlock() }
+        return (handler, modifierHandler)
+    }
+
     public init() {}
+
+    /// The backstop, and after this the only guaranteed teardown. `deactivate()`
+    /// is still the ordinary route; this covers every other way the port can be
+    /// let go, which is the set that had nothing at all.
+    deinit { stop() }
 
     public func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
                       onModifier: @escaping @Sendable (ModifierTap.Input) -> Void) -> Bool {
         // Non-prompting: the module says so in its own settings rather than
         // throwing a system dialog at someone who has not asked for one.
         guard AXIsProcessTrusted() else { return false }
+        lock.lock()
         handler = onEvent
         modifierHandler = onModifier
+        lock.unlock()
         // flagsChanged as well: a key bound on its own is recognised from the
         // press and the release, and neither is a keyDown.
         let mask = (1 << CGEventType.keyDown.rawValue)
@@ -42,20 +92,37 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
             },
             userInfo: Unmanaged.passUnretained(self).toOpaque()) else { return false }
 
+        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+        lock.lock()
         self.tap = tap
-        source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+        self.source = source
+        lock.unlock()
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
         return true
     }
 
+    /// Idempotent, because `deinit` runs it again after `deactivate()` already
+    /// has, and invalidating a port twice is not free of consequence.
     public func stop() {
-        if let tap { CGEvent.tapEnable(tap: tap, enable: false) }
-        if let source { CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes) }
-        tap = nil
-        source = nil
+        // Taken out under the lock and torn down outside it, the shape
+        // `DynamicStoreNetworkWatch.stopObserving` uses: nothing that can call
+        // back into this object runs with the lock held.
+        lock.lock()
+        let tap = self.tap
+        let source = self.source
+        self.tap = nil
+        self.source = nil
         handler = nil
         modifierHandler = nil
+        lock.unlock()
+
+        if let source { CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes) }
+        guard let tap else { return }
+        CGEvent.tapEnable(tap: tap, enable: false)
+        // Not optional, and last: the port holds the run loop source it made and
+        // the source holds the port, so releasing our references frees neither.
+        CFMachPortInvalidate(tap)
     }
 
     /// A modifier changed. Which physical key it was comes from the key code;
@@ -73,8 +140,29 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
     /// only the left ones.
     private static let modifierMasks = TapKey.masksByKeyCode
 
-    private func deliverModifier(_ event: CGEvent) {
-        guard let handler = modifierHandler else { return }
+    /// macOS has taken the tap away. `TapDisabled` says what that means.
+    ///
+    /// Silence here is why this exists: both types used to fall through the
+    /// keycode switch, produce no characters and return, so Layout stopped
+    /// converting words and nothing anywhere said so. A timeout needs no
+    /// permission change to happen — the callback asks the accessibility server
+    /// for the frontmost app on every key, and one slow app in front is enough
+    /// to be judged too slow and switched off for the rest of the session.
+    private func theSystemDisabledUs() {
+        lock.lock(); let tap = self.tap; lock.unlock()
+        guard let tap else { return }
+        switch TapDisabled.response(stillTrusted: AXIsProcessTrusted()) {
+        case .enableItAgain:
+            CGEvent.tapEnable(tap: tap, enable: true)
+            HelmLog.shared.warn("layout", "the system switched the keyboard tap off; back on")
+        case .standDown:
+            stop()
+            HelmLog.shared.warn("layout",
+                                "the accessibility grant was withdrawn — no longer watching")
+        }
+    }
+
+    private func deliverModifier(_ event: CGEvent, _ handler: @Sendable (ModifierTap.Input) -> Void) {
         let code = event.getIntegerValueField(.keyboardEventKeycode)
         let at = ProcessInfo.processInfo.systemUptime
         if let mask = Self.modifierMasks[code] {
@@ -98,8 +186,18 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
     }
 
     private func deliver(_ event: CGEvent) {
+        // Before the marker check, not after: the system's own "I have switched
+        // this tap off" carries no source data, and it is the one event that
+        // must never be dropped.
+        if TapDisabled.disables(event.type) { theSystemDisabledUs(); return }
         guard event.getIntegerValueField(.eventSourceUserData) != helmEventMarker else { return }
-        if event.type == .flagsChanged { deliverModifier(event); return }
+        // Both read once, under the lock, before anything is dispatched: a
+        // `stop()` landing between the two would otherwise deliver half an event.
+        let (handler, modifierHandler) = handlers
+        if event.type == .flagsChanged {
+            if let modifierHandler { deliverModifier(event, modifierHandler) }
+            return
+        }
         // Everything that is not a modifier proves a held modifier is being
         // used as one, so the tap machine hears about it before the buffer does.
         modifierHandler?(.otherInput)
