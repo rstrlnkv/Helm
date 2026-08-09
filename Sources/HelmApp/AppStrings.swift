@@ -141,7 +141,11 @@ enum AppStr {
         L("Behaviour, appearance, permissions and what Helm may remove.")
     }
     static var modulesSection: String { L("Modules") }
-    static var tagline: String { L("Modular tools in your menu bar.") }
+    /// «in your menu bar» was false and had been since the panel: Helm is also
+    /// a panel, a settings window and a sidebar the person arranges. A tagline
+    /// under the wordmark is the app's own claim about itself, so it names the
+    /// machine it serves rather than one of the places it appears in.
+    static var tagline: String { L("Modular tools for your Mac.") }
     static var metricVersion: String { L("VERSION") }
     static var metricBuild: String { L("BUILD") }
     static var metricModules: String { L("MODULES") }

@@ -1,7 +1,8 @@
 # Helm
 
-Tools for your Mac. A modular menu-bar utility suite for macOS 26+ (Apple Silicon),
-in the spirit of PowerToys.
+Tools for your Mac. A modular utility suite for macOS 26+ (Apple Silicon),
+in the spirit of PowerToys — a menu-bar panel, a settings window, and the
+modules you choose to keep.
 
 ## Modules
 

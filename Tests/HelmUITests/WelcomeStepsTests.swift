@@ -53,7 +53,7 @@ final class WelcomeStepsTests: XCTestCase {
         let english = [
             "windowTitle": "Welcome to Helm",
             "introTitle": "Tools for your Mac",
-            "introBody": "Helm lives in the menu bar and is made of modules. Each one does a single job, and you can switch off the ones you do not want.",
+            "introBody": "Helm is made of modules. Each one does a single job, and you can switch off the ones you do not want.",
             "back": "Back",
             "next": "Next",
             "skip": "Skip",

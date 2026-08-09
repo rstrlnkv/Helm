@@ -188,9 +188,9 @@
 "Helm could crash outright when an application quit while the VPN module happened to be looking at the list of running programs. It was reading that list from the wrong thread, where macOS does not merely give a stale answer — it takes the process down." = "VPN モジュールが実行中プログラムの一覧を見ている最中にアプリが終了すると、Helm が異常終了することがありました。誤ったスレッドから一覧を読んでいたためで、この場合 macOS は古い値を返すのではなくプロセスを落とします。";
 "Helm downloads Homebrew’s own installer and runs it. macOS asks for an administrator password once, to create /opt/homebrew." = "Helm が Homebrew 公式のインストーラをダウンロードして実行します。/opt/homebrew を作るため、macOS が管理者パスワードを一度求めます。";
 "Helm introduces itself. On a new installation a short tour opens once: what Helm is, then one screen per module, with Back, Next and Skip. It only tells you what is there — nothing is switched on and no permission is asked for. If Helm was already installed, you get it once too, because Autopilot and Duplicates arrived without ever being introduced." = "Helm が自己紹介するようになりました。新規インストール時に短いツアーが一度だけ開きます。Helm とは何かを説明し、続いてモジュールごとに 1 画面ずつ、“戻る”、“次へ”、“スキップ”で進みます。案内するだけで、何かを有効にしたり許可を求めたりはしません。すでに使っている方にも一度表示されます。オートパイロットと重複は、紹介のないまま増えた機能だからです。";
+"Helm is made of modules. Each one does a single job, and you can switch off the ones you do not want." = "Helm はモジュールでできています。それぞれが一つの仕事をし、要らないものはオフにできます。";
 "Helm is missing permissions it needs" = "Helm に必要な権限がありません";
 "Helm is still in development. Beta builds are the steadier of the two." = "Helm はまだ開発中です。2 つのうち Beta のほうが安定しています。";
-"Helm lives in the menu bar and is made of modules. Each one does a single job, and you can switch off the ones you do not want." = "Helm はメニューバーに常駐し、モジュールでできています。それぞれが一つの仕事をし、要らないものはオフにできます。";
 "Helm needs Full Disk Access to move this." = "移動にはフルディスクアクセスが必要です。";
 "Helm returns to how it was just after installing. Access you granted in System Settings stays as it is." = "Helm はインストール直後の状態に戻ります。システム設定で許可したアクセスはそのままです。";
 "Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by." = "残された設定・キャッシュ・サポートファイルを表示し、そのまま削除できます。App がゴミ箱にある間だけです。空にすると、どのファイルか見分けられなくなります。";
@@ -276,7 +276,7 @@
 "Mint" = "ミント";
 "Minutes" = "分";
 "Miscellaneous" = "その他";
-"Modular tools in your menu bar." = "メニューバーのモジュール式ツール。";
+"Modular tools for your Mac." = "Mac のためのモジュール式ツール。";
 "More actions" = "その他の操作";
 "Move down" = "下へ移動";
 "Move pointer periodically" = "定期的にポインタを動かす";
