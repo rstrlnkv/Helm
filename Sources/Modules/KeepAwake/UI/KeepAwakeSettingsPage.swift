@@ -26,6 +26,7 @@ public struct KeepAwakeSettingsPage: View {
     @State private var defaultDurationMinutes: Int
 
     @State private var clamshellEnabled: Bool
+    @State private var timerEndsAutomation: Bool
 
     @State private var batteryGuardEnabled: Bool
     @State private var batteryGuardPercent: Int
@@ -55,6 +56,7 @@ public struct KeepAwakeSettingsPage: View {
         _jiggleIntervalMinutes = State(initialValue: settings.jiggleIntervalMinutes)
         _defaultDurationMinutes = State(initialValue: settings.defaultDurationMinutes)
         _clamshellEnabled = State(initialValue: settings.clamshellEnabled)
+        _timerEndsAutomation = State(initialValue: settings.timerEndsAutomation)
         _batteryGuardEnabled = State(initialValue: settings.batteryGuardEnabled)
         _batteryGuardPercent = State(initialValue: settings.batteryGuardPercent)
         _activeTintColor = State(initialValue: MenuBarLook.activeTint(store))
@@ -131,6 +133,18 @@ public struct KeepAwakeSettingsPage: View {
                       KAStr.metricRules),
             ])
             }
+            // The Mac is asleep, a rule that applies is on screen saying
+            // nothing, and until now there was no third thing to read. Only
+            // shown while it is true, and it stops being true by itself when
+            // the condition drops.
+            if vm.suppressed {
+                HStack(spacing: 8) {
+                    Text(KAStr.automationPaused)
+                        .font(.callout).foregroundStyle(HelmText.quiet)
+                    Spacer(minLength: 8)
+                    Button(KAStr.resume) { vm.send(KeepAwakeCommand.resumeAutomation) }
+                }
+            }
         }
     }
 
@@ -147,6 +161,15 @@ public struct KeepAwakeSettingsPage: View {
                     vm.save(in: store) { $0.setClamshellEnabled(v) }
                 }
             Text(KAStr.adminNote)
+                .font(.caption).foregroundStyle(HelmText.quiet)
+            // Between the automatic conditions and the guard that ends a
+            // session: this setting is about the end of one too, and it only
+            // means anything to somebody who has the conditions above.
+            Toggle(KAStr.timerEndsAutomation, isOn: $timerEndsAutomation)
+                .onChange(of: timerEndsAutomation) { _, v in
+                    vm.save(in: store) { $0.setTimerEndsAutomation(v) }
+                }
+            Text(KAStr.timerEndsAutomationNote)
                 .font(.caption).foregroundStyle(HelmText.quiet)
             // The threshold only means anything with the rule on, so it
             // shares the row instead of floating below it.
