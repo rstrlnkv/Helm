@@ -3,13 +3,40 @@ import XCTest
 
 final class TimerPolicyTests: XCTestCase {
     func test_no_auto_condition_deactivates() {
-        XCTAssertEqual(TimerPolicy.onExpiry(hasAutoCondition: false, suppressed: false), .deactivate)
+        XCTAssertEqual(TimerPolicy.onExpiry(hasAutoCondition: false, suppressed: false,
+                                            timerEndsAutomation: false), .deactivate)
     }
     func test_auto_condition_not_suppressed_continues_as_auto() {
-        XCTAssertEqual(TimerPolicy.onExpiry(hasAutoCondition: true, suppressed: false), .continueAsAuto)
+        XCTAssertEqual(TimerPolicy.onExpiry(hasAutoCondition: true, suppressed: false,
+                                            timerEndsAutomation: false), .continueAsAuto)
     }
     func test_auto_condition_suppressed_deactivates() {
-        XCTAssertEqual(TimerPolicy.onExpiry(hasAutoCondition: true, suppressed: true), .deactivate)
+        XCTAssertEqual(TimerPolicy.onExpiry(hasAutoCondition: true, suppressed: true,
+                                            timerEndsAutomation: false), .deactivate)
+    }
+
+    // MARK: - A timer set on top of automation
+
+    /// The point of the setting: the timer ran out, a rule's app is still
+    /// running, and the person asked for that to be the end of it. Without the
+    /// setting this is `.continueAsAuto` — the case directly above — so these
+    /// two tests are each other's control.
+    func testATimerEndsTheAutomationItSatOnWhenAsked() {
+        XCTAssertEqual(TimerPolicy.onExpiry(hasAutoCondition: true, suppressed: false,
+                                            timerEndsAutomation: true), .deactivate)
+    }
+
+    /// With no automatic condition there is nothing for the setting to change:
+    /// the session ends because the timer ended.
+    func testTheSettingChangesNothingWithoutAnAutomaticCondition() {
+        XCTAssertEqual(TimerPolicy.onExpiry(hasAutoCondition: false, suppressed: false,
+                                            timerEndsAutomation: true), .deactivate)
+    }
+
+    /// Already suppressed is already the answer this setting produces.
+    func testTheSettingChangesNothingWhenAlreadySuppressed() {
+        XCTAssertEqual(TimerPolicy.onExpiry(hasAutoCondition: true, suppressed: true,
+                                            timerEndsAutomation: true), .deactivate)
     }
 
     // MARK: - The panel tile's "+15"

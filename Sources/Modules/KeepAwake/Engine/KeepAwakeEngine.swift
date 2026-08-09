@@ -283,7 +283,9 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     }
 
     private func handleExpiry() {
-        switch TimerPolicy.onExpiry(hasAutoCondition: currentAutoConditionHolds(), suppressed: suppressed) {
+        switch TimerPolicy.onExpiry(hasAutoCondition: currentAutoConditionHolds(),
+                                    suppressed: suppressed,
+                                    timerEndsAutomation: settings.timerEndsAutomation) {
         case .continueAsAuto:
             // The timer ran out and the Mac stays awake anyway, because a display
             // or the charger is holding it. Without this line the countdown simply
@@ -295,6 +297,14 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             rememberSession()
             recompute()
         case .deactivate:
+            // A session ending because a rule was asked to end with its timer
+            // reads, from outside, exactly like one ending because the timer
+            // ran out — and the two leave the Mac in different states: this one
+            // leaves an automatic condition true and deliberately ignored.
+            if settings.timerEndsAutomation && currentAutoConditionHolds() {
+                HelmLog.shared.info("keepawake",
+                                    "timer ended; automation suppressed until the trigger returns")
+            }
             stopSession()
         }
     }

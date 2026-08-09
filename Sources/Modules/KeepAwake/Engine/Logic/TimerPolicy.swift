@@ -6,8 +6,18 @@ import HelmRuntime
 public enum TimerPolicy {
     public enum Action: Equatable, Sendable { case deactivate, continueAsAuto }
     /// On timer expiry: if an auto condition still holds and not suppressed, keep going as auto.
-    public static func onExpiry(hasAutoCondition: Bool, suppressed: Bool) -> Action {
-        (hasAutoCondition && !suppressed) ? .continueAsAuto : .deactivate
+    ///
+    /// Unless the person asked a timer to be the end of automation as well. Then
+    /// the session stops, and the caller's `stopSession()` suppresses the
+    /// condition that is still true — until it drops and comes back, which is
+    /// what "until the trigger fires again" means in this module. The
+    /// suppression is not decided here: this answers what the timer does, and
+    /// suppressing is what stopping already does.
+    public static func onExpiry(hasAutoCondition: Bool,
+                                suppressed: Bool,
+                                timerEndsAutomation: Bool) -> Action {
+        guard !timerEndsAutomation else { return .deactivate }
+        return (hasAutoCondition && !suppressed) ? .continueAsAuto : .deactivate
     }
 
     /// The longest session anything in this module can start, and so the longest

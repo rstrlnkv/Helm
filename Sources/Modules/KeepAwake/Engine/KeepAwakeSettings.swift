@@ -25,6 +25,7 @@ public struct KeepAwakeSettings {
         public static let batteryGuardEnabled = "batteryGuardEnabled"
         public static let batteryGuardPercent = "batteryGuardPercent"
         public static let defaultDurationMinutes = "defaultDurationMinutes"
+        public static let timerEndsAutomation = "timerEndsAutomation"
     }
 
     public var autoExternalDisplay: Bool { store.bool(Key.autoExternalDisplay, default: false) }
@@ -112,5 +113,23 @@ public struct KeepAwakeSettings {
     }
     public func setDefaultDurationMinutes(_ minutes: Int) {
         store.set(minutes, for: Key.defaultDurationMinutes)
+    }
+
+    /// A timer set on top of an automatic session ends that session too, and
+    /// the automation stays suppressed until its condition drops and comes
+    /// back.
+    ///
+    /// Off by default, and deliberately: on by default would change what an
+    /// existing timer does at the moment somebody updates, with nothing on
+    /// screen having moved. The changelog invites it instead.
+    ///
+    /// Unclamped, unlike its neighbours, because a `Bool` off a plist is one of
+    /// two answers whatever the file says — and the answer this setting fails
+    /// to is the one that keeps today's behaviour.
+    public var timerEndsAutomation: Bool {
+        store.bool(Key.timerEndsAutomation, default: false)
+    }
+    public func setTimerEndsAutomation(_ on: Bool) {
+        store.set(on, for: Key.timerEndsAutomation)
     }
 }
