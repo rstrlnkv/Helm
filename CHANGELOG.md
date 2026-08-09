@@ -55,6 +55,37 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   header to avoid a card inside a card. The page keeps one row that says what is
   arranged.
 
+- **The update channel is two pills, and the two channels differ by colour.**
+  Beta in the accent, Dev in `HelmSignal.warning` — which is what the dev
+  channel means. It was a system segmented control, which draws whichever
+  segment is chosen in the accent, so the control that asks how rough a build
+  you want answered in one colour either way. The badge beside the wordmark
+  reads the same source now: it drew a dev build blue and a beta build orange,
+  the opposite of the picker fifty points below it. The chosen pill takes the
+  tint as a wash and keeps the text colour rather than knocking it out in
+  white — measured, white on the accent is 4.02:1 and white on the warning
+  orange 2.23:1 in dark, where the wash reads at 9.86:1 or better.
+- **Helm stops calling itself a menu-bar app.** The tagline under the wordmark,
+  the first sentence of the welcome tour and the first line of the README each
+  said Helm lives in the menu bar. It is also a panel, a settings window and a
+  sidebar the person arranges. The tagline is now "Modular tools for your Mac."
+- **The flag credit leaves the About page.** MIT asks for its notice to
+  accompany a copy, not to be drawn on a screen, and `NOTICE.md` ships inside
+  the bundle with the copyright and the permission text in full. The comment
+  above the removed line named CC BY 4.0, which is the licence of the EmojiOne
+  set that was dropped rather than of the flag-icons artwork that replaced it.
+  `NoticeShipsWithTheAppTests` now fails if the notice loses its attribution or
+  `package-app.sh` stops copying it into `Contents/Resources`.
+- **The About page reads at one rhythm.** The author card sits 10 pt above the
+  update card instead of 20, which is the gap it already kept from the strip
+  above it; both cards start their text at the same inset, where the update
+  card's 14 pt insets stepped the left edge 227 → 229; the paperplane belongs
+  to the Telegram handle rather than sitting equidistant between the name and
+  it (10.5/10.5 pt before, 13.5/6.0 after), and the row aligns on the first
+  text baseline, which the link missed by 1.50 pt; and the channel row's name
+  and the two download links are `HelmText.rowTitle`, where `.callout` was a
+  fifth type size on a page the scale gives four.
+
 ### Fixed
 - **Recommendations offered a folder macOS refuses to move.** Clearing `Caches`
   failed every time: macOS protects that folder itself while leaving everything
@@ -65,6 +96,12 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   apps that are running, so some of it will refuse: what stays is listed by
   name with the reason, and the row shrinks to what is left rather than going
   on claiming the whole folder.
+- **The update-check failure line no longer truncates.** «Couldn't check for
+  updates.» wants 198 pt in German, 253 in French, 234 in Portuguese, 225 in
+  Russian and 215 in Spanish, of roughly 240 the row leaves it — so five of the
+  eight languages showed a sentence cut in half at the moment it mattered, and
+  a German reader whose update check failed read «Update-Prüfung fehl…». Two
+  lines, which is what the ahead-of-channel line beside it already did.
 - **A panel with one tab stops 8 pt short of the screen no more.** The card
   reserved room for a gap under the tab strip whether or not the strip was
   drawn, and one tab draws none — so a panel tall enough to need scrolling

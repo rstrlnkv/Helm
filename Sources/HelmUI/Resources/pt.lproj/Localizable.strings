@@ -167,7 +167,6 @@
 "Fix with" = "Corrigir com";
 "Fixes words typed in the wrong keyboard layout" = "Corrige palavras digitadas no layout errado";
 "Flag" = "Bandeira";
-"Flag artwork: flag-icons, MIT" = "Bandeiras: flag-icons, MIT";
 "Flag, system" = "Bandeira, do sistema";
 "Folder" = "Pasta";
 "Folders that keep themselves in order" = "Pastas que se mantêm em ordem";
@@ -188,9 +187,9 @@
 "Helm could crash outright when an application quit while the VPN module happened to be looking at the list of running programs. It was reading that list from the wrong thread, where macOS does not merely give a stale answer — it takes the process down." = "O Helm podia travar de vez quando um app era encerrado no exato momento em que o módulo de VPN olhava a lista de programas em execução. A lista era lida na thread errada, onde o macOS não devolve um dado velho — ele derruba o processo.";
 "Helm downloads Homebrew’s own installer and runs it. macOS asks for an administrator password once, to create /opt/homebrew." = "O Helm baixa o instalador oficial do Homebrew e o executa. O macOS pede uma senha de administrador uma vez, para criar /opt/homebrew.";
 "Helm introduces itself. On a new installation a short tour opens once: what Helm is, then one screen per module, with Back, Next and Skip. It only tells you what is there — nothing is switched on and no permission is asked for. If Helm was already installed, you get it once too, because Autopilot and Duplicates arrived without ever being introduced." = "O Helm se apresenta. Numa instalação nova, um tour curto abre uma vez: o que é o Helm e depois uma tela por módulo, com Voltar, Avançar e Pular. Ele só conta o que existe — não liga nada e não pede permissão. Se você já tinha o Helm, verá uma vez também, porque Piloto automático e Duplicatas chegaram sem apresentação.";
+"Helm is made of modules. Each one does a single job, and you can switch off the ones you do not want." = "O Helm é feito de módulos. Cada um faz uma única coisa, e você pode desligar os que não quiser.";
 "Helm is missing permissions it needs" = "O Helm não tem as permissões de que precisa";
 "Helm is still in development. Beta builds are the steadier of the two." = "O Helm ainda está em desenvolvimento. As builds Beta são as mais estáveis das duas.";
-"Helm lives in the menu bar and is made of modules. Each one does a single job, and you can switch off the ones you do not want." = "O Helm fica na barra de menus e é feito de módulos. Cada um faz uma única coisa, e você pode desligar os que não quiser.";
 "Helm needs Full Disk Access to move this." = "O Helm precisa de Acesso Total ao Disco para mover isto.";
 "Helm returns to how it was just after installing. Access you granted in System Settings stays as it is." = "O Helm volta a como estava logo após a instalação. O acesso concedido nos Ajustes do Sistema permanece.";
 "Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by." = "O Helm mostra os ajustes, caches e arquivos de suporte que ficaram, prontos para remover. Só enquanto o app está no Lixo: depois de esvaziar, não há como identificá-los.";
@@ -276,7 +275,7 @@
 "Mint" = "Menta";
 "Minutes" = "Minutos";
 "Miscellaneous" = "Outros";
-"Modular tools in your menu bar." = "Ferramentas modulares na sua barra de menus.";
+"Modular tools for your Mac." = "Ferramentas modulares para o seu Mac.";
 "More actions" = "Mais ações";
 "Move down" = "Mover para baixo";
 "Move pointer periodically" = "Mover o ponteiro periodicamente";
@@ -697,3 +696,6 @@
 "Show all" = "Mostrar tudo";
 "Rostislav Strelnikov" = "Rostislav Strelnikov";
 "·" = "·";
+"The update channel is two pills, each in its own colour — Beta in the accent, Dev in orange — so which one you follow is visible at a glance. The badge beside the wordmark agrees with them." = "O canal de atualizações agora são duas pastilhas, cada uma com a sua cor — Beta na cor de destaque, Dev em laranja — e num relance dá para ver em qual você está. O selo ao lado do nome passa a dizer o mesmo.";
+"Helm no longer describes itself as a menu-bar app. It is also a panel, a settings window and a sidebar you arrange yourself, and the line under the name says so." = "O Helm já não se descreve como um app da barra de menus. Também é um painel, uma janela de ajustes e uma barra lateral que você monta, e a linha abaixo do nome agora diz isso.";
+"The line Helm shows when an update check fails is readable in every language. It was cut short in five of the eight, and a German reader saw the first half of it and nothing else." = "A linha que aparece quando a verificação de atualizações falha é legível em todos os idiomas. Em cinco dos oito ela era cortada, e em alemão só se via a primeira metade.";

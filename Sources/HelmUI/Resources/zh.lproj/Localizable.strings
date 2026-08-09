@@ -167,7 +167,6 @@
 "Fix with" = "修正键";
 "Fixes words typed in the wrong keyboard layout" = "修正用错误键盘布局输入的单词";
 "Flag" = "旗帜";
-"Flag artwork: flag-icons, MIT" = "旗帜素材：flag-icons，MIT";
 "Flag, system" = "旗帜（系统）";
 "Folder" = "文件夹";
 "Folders that keep themselves in order" = "会自己保持整齐的文件夹";
@@ -188,9 +187,9 @@
 "Helm could crash outright when an application quit while the VPN module happened to be looking at the list of running programs. It was reading that list from the wrong thread, where macOS does not merely give a stale answer — it takes the process down." = "当某个程序恰好在 VPN 模块查看运行中程序列表时退出，Helm 可能直接崩溃。该列表是在错误的线程上读取的——这种情况下 macOS 不会返回过期数据，而是终止进程。";
 "Helm downloads Homebrew’s own installer and runs it. macOS asks for an administrator password once, to create /opt/homebrew." = "Helm 会下载 Homebrew 官方安装脚本并运行。为创建 /opt/homebrew，macOS 会要求输入一次管理员密码。";
 "Helm introduces itself. On a new installation a short tour opens once: what Helm is, then one screen per module, with Back, Next and Skip. It only tells you what is there — nothing is switched on and no permission is asked for. If Helm was already installed, you get it once too, because Autopilot and Duplicates arrived without ever being introduced." = "Helm 会自我介绍了。全新安装时会打开一次简短导览：先说明 Helm 是什么，然后每个模块一屏，可以上一步、下一步或跳过。它只做介绍——不会开启任何功能，也不索取权限。如果你已经在用 Helm，同样会看到一次：自动整理和重复文件当初是悄悄出现的。";
+"Helm is made of modules. Each one does a single job, and you can switch off the ones you do not want." = "Helm 由若干模块组成。每个模块只做一件事，不需要的可以关掉。";
 "Helm is missing permissions it needs" = "Helm 缺少所需权限";
 "Helm is still in development. Beta builds are the steadier of the two." = "Helm 仍在开发中。两者之中 Beta 更稳定。";
-"Helm lives in the menu bar and is made of modules. Each one does a single job, and you can switch off the ones you do not want." = "Helm 常驻菜单栏，由若干模块组成。每个模块只做一件事，不需要的可以关掉。";
 "Helm needs Full Disk Access to move this." = "移动此项需要完全磁盘访问权限。";
 "Helm returns to how it was just after installing. Access you granted in System Settings stays as it is." = "Helm 会回到刚安装完的状态。你在系统设置中授予的权限不受影响。";
 "Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by." = "Helm 会列出它留下的设置、缓存和支持文件，可直接删除。仅在 App 还在废纸篓里时有效——清倒之后就无法辨认这些文件了。";
@@ -276,7 +275,7 @@
 "Mint" = "薄荷色";
 "Minutes" = "分钟";
 "Miscellaneous" = "其他";
-"Modular tools in your menu bar." = "菜单栏里的模块化工具。";
+"Modular tools for your Mac." = "给你的 Mac 的模块化工具。";
 "More actions" = "更多操作";
 "Move down" = "下移";
 "Move pointer periodically" = "定期移动指针";
@@ -697,3 +696,6 @@
 "Show all" = "全部显示";
 "Rostislav Strelnikov" = "Rostislav Strelnikov";
 "·" = "·";
+"The update channel is two pills, each in its own colour — Beta in the accent, Dev in orange — so which one you follow is visible at a glance. The badge beside the wordmark agrees with them." = "更新通道现在是两个胶囊按钮，各有自己的颜色 — Beta 用强调色，Dev 用橙色，一眼就能看出你在哪个通道。名称旁边的标记也改成了同样的颜色。";
+"Helm no longer describes itself as a menu-bar app. It is also a panel, a settings window and a sidebar you arrange yourself, and the line under the name says so." = "Helm 不再把自己说成菜单栏应用。它也是面板、设置窗口，以及你自己编排的边栏，名称下面的那行现在就是这么说的。";
+"The line Helm shows when an update check fails is readable in every language. It was cut short in five of the eight, and a German reader saw the first half of it and nothing else." = "检查更新失败时显示的那行字，在所有语言里都能完整读到。八种语言里有五种会被截断，德语只能看到前半句。";

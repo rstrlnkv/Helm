@@ -3,6 +3,78 @@ import SwiftUI
 import HelmRuntime
 import HelmUI
 
+/// What colour each update channel is, decided once.
+///
+/// The page names each channel twice — the badge on the wordmark says which
+/// build this is, the picker says which one to follow — and they used to
+/// disagree: the badge drew a dev build blue and a beta build orange. Two
+/// controls fifty points apart, saying the same word in different colours,
+/// each right on its own.
+///
+/// Orange is `HelmSignal.warning` because that is what it means: this channel
+/// ships rough edges on purpose. Beta is the accent, which is what macOS uses
+/// for "the one that is chosen" everywhere else.
+///
+/// Internal rather than `private` for the reason `AboutHelmView` is: nothing
+/// outside `HelmApp` names it, and `ChannelInkTests` measures it.
+enum ChannelInk {
+    static func fill(_ channel: UpdateCheck.Channel) -> Color {
+        switch channel {
+        case .beta: return .accentColor
+        case .dev: return HelmSignal.warning
+        }
+    }
+
+    /// What the chosen pill is filled with, and what its label is set in.
+    ///
+    /// Not the knocked-out white on a saturated capsule the panel's size chips
+    /// use, because that was measured here and it does not hold up: white on
+    /// the accent is **4.02:1** in both appearances and white on the warning
+    /// orange is **2.23:1** in dark, against the 4.5:1 floor `HelmSignal` was
+    /// solved for. So this follows `HelmBadge`'s rule instead — the tint
+    /// colours the fill and nothing else, and the lettering stays the text
+    /// colour, which cannot be got wrong.
+    ///
+    /// The wash is opaque and blended **inside** the appearance rather than
+    /// drawn as `tint.opacity(0.22)`: `NSColor(Color)` returns a dynamic
+    /// colour, so a blend made one line outside the block resolves against
+    /// whatever appearance happens to be current — the same trap
+    /// `HelmMetricStrip` documents. It also means the fill is a colour that can
+    /// be measured, rather than one that depends on what it lands on.
+    static func chosenFill(_ channel: UpdateCheck.Channel) -> Color {
+        switch channel {
+        case .beta: return betaWash
+        case .dev: return devWash
+        }
+    }
+
+    /// The lettering on a chosen pill, which is the text colour whatever the
+    /// channel — the wash is what tells the two apart, and a label that changed
+    /// colour as well would be the pill deciding its own contrast.
+    static let chosenLabel = Color.primary
+
+    /// Stored, not built per call: `chosenFill` is read inside the view body
+    /// for every pill on every redraw, and each call would otherwise allocate a
+    /// colour and a provider closure. AppKit resolves the provider lazily per
+    /// appearance either way.
+    private static let betaWash = wash(fill(.beta))
+    private static let devWash = wash(fill(.dev))
+
+    private static func wash(_ tint: Color) -> Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            var out = NSColor.windowBackgroundColor
+            appearance.performAsCurrentDrawingAppearance {
+                guard let ink = NSColor(tint).usingColorSpace(.sRGB),
+                      let base = NSColor.windowBackgroundColor.usingColorSpace(.sRGB),
+                      let blended = base.blended(withFraction: 0.22, of: ink)
+                else { return }
+                out = blended
+            }
+            return out
+        })
+    }
+}
+
 /// The About page: what this build is, which channel it follows, and what
 /// changed. `HelmBezel` and `WhatsNewView` below are its own and stay private.
 ///
@@ -34,8 +106,12 @@ struct AboutHelmView: View {
             Spacer(minLength: 22).frame(maxHeight: 30)
             instrumentRow
                 .padding(.bottom, 10)
+            // 10, the same gap the strip above it takes. Down the page the
+            // gaps were 22, 10, 20, 14, 24 — the author card glued to the
+            // strip above and adrift from the update card below, which is one
+            // card reading as two different distances from its neighbours.
             authorRow
-                .padding(.bottom, 20)
+                .padding(.bottom, 10)
             updateCard
             HStack(spacing: 10) {
                 Button {
@@ -56,18 +132,17 @@ struct AboutHelmView: View {
             .controlSize(.large)
             .padding(.top, 14)
             Spacer(minLength: 18)
-            VStack(spacing: 3) {
-                Text("© 2026 Helm · GPL-3.0")
-                // CC BY 4.0 asks for attribution where the work is used, and
-                // the flags are used in the menu bar — this is the page that
-                // can carry it.
-                Link(AppStr.flagCredit,
-                     destination: URL(string: "https://github.com/lipis/flag-icons")!)
-                    .foregroundStyle(HelmText.faint)
-            }
-            .padding(.top, 6)
-            .font(.caption2)
-            .foregroundStyle(HelmText.faint)
+            // The flag credit was the second line here, and the comment above
+            // it named CC BY 4.0 — the licence of the EmojiOne set that was
+            // dropped, not of the flag-icons artwork that replaced it. MIT
+            // asks for its notice to *accompany* the copy, and `NOTICE.md`
+            // ships inside the bundle carrying the copyright and the full
+            // permission text. `NoticeShipsWithTheAppTests` is what keeps it
+            // there now that nothing on screen would show its absence.
+            Text("© 2026 Helm · GPL-3.0")
+                .padding(.top, 6)
+                .font(.caption2)
+                .foregroundStyle(HelmText.faint)
         }
             .frame(width: Self.column)
             .frame(maxWidth: .infinity)
@@ -151,10 +226,14 @@ struct AboutHelmView: View {
     /// `AppBuild.isDev`, which is where that argument now lives — it was written
     /// out here and twice more, and both other copies had stopped being read.
     private var badge: some View {
+        // The tint comes from `ChannelInk`, the same place the pills below read
+        // it. It used to be spelled here — dev blue, beta orange — which is the
+        // opposite of what the picker says, so a dev build showed a blue DEV
+        // over an orange Dev pill fifty points apart.
         HelmBadge(AppBuild.isDev ? AppStr.devBadge : AppStr.betaBadge,
-                  tint: AppBuild.isDev ? .blue : .orange,
+                  tint: ChannelInk.fill(AppBuild.isDev ? .dev : .beta),
                   emphasis: .prominent)
-            .help(AppBuild.isDev ? AppStr.channelDevNote : AppStr.channelBetaNote)
+            .help(AppStr.channelNote(AppBuild.isDev ? .dev : .beta))
     }
 
     private var badgeAccessibilityLabel: String {
@@ -169,16 +248,32 @@ struct AboutHelmView: View {
     /// foot: the licence and the flag credit down there are obligations, and
     /// this is not one — it is the answer to «who made this», which is a
     /// question people actually ask of a menu-bar app they were handed.
+    /// The glyph belongs to the handle, not between the two items.
+    ///
+    /// As a `Label` the paperplane sat 10.5 pt from the name and 10.5 pt from
+    /// the handle — measured ink, both gaps equal — so it read as a separator
+    /// between three things rather than as the mark on a Telegram link. An
+    /// `HStack` at 3 inside the `Link` and 12 between the row's own items puts
+    /// it at 13.5 and 6.0: the glyph is now nearer the thing it belongs to by
+    /// more than twice.
+    ///
+    /// `.firstTextBaseline` for the row, which is the same change: a `Label`'s
+    /// box is 14.12 pt against the text's 16.00, so centring the two hung the
+    /// link 1.50 pt above the name's baseline. Measured after: 0.00. It is
+    /// worth applying only with the glyph change — on its own it grew the card
+    /// from 40 to 41.
     private var authorRow: some View {
-        HStack(spacing: 8) {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text(AppStr.author)
                 .foregroundStyle(HelmText.quiet)
             Spacer(minLength: 8)
             Text(AppStr.authorName)
             Link(destination: URL(string: "https://t.me/r_strlnkv")!) {
-                Label("@r_strlnkv", systemImage: "paperplane.fill")
-                    .labelStyle(.titleAndIcon)
-                    .font(HelmText.rowDetail)
+                HStack(spacing: 3) {
+                    Image(systemName: "paperplane.fill")
+                    Text("@r_strlnkv")
+                }
+                .font(HelmText.rowDetail)
             }
         }
         .font(HelmText.rowTitle)
@@ -197,10 +292,15 @@ struct AboutHelmView: View {
 
     // MARK: - Update card
 
+    /// 12 horizontally, which is what `helmCard(padding: 12)` gives the two
+    /// cards above. At 14 the left text edge stepped 227 → 229 between the
+    /// author card and this one — two cards in one column starting their text
+    /// in two places, which is visible as a wobble long before anybody can say
+    /// what it is.
     private var updateCard: some View {
         VStack(spacing: 0) {
             updateRow
-                .padding(.horizontal, 14)
+                .padding(.horizontal, 12)
                 .padding(.vertical, 12)
             // The token, not a divider dimmed by eye: every other hairline in
             // the app is this colour, and 0.6 of a system divider is not a
@@ -211,29 +311,72 @@ struct AboutHelmView: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text(AppStr.updateChannel)
-                        .font(.callout)
+                        // A row's own name, at the size every other row name on
+                        // the page is set in. `.callout` is 12, and it was the
+                        // fifth size on a page the type scale gives four.
+                        .font(HelmText.rowTitle)
                     Spacer()
-                    Picker(AppStr.updateChannel, selection: $channel) {
-                        Text(AppStr.channelBeta).tag(UpdateCheck.Channel.beta)
-                        Text(AppStr.channelDev).tag(UpdateCheck.Channel.dev)
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    // Its ideal width, not a reservation: at a fixed 170 the
-                    // control drew itself narrower and centred, leaving its
-                    // trailing edge short of the Check button directly above.
-                    .fixedSize()
-                    .onChange(of: channel) { _, newValue in updater.setChannel(newValue) }
+                    channelPills
+                        .onChange(of: channel) { _, newValue in updater.setChannel(newValue) }
                 }
-                Text(channel == .dev ? AppStr.channelDevNote : AppStr.channelBetaNote)
+                Text(AppStr.channelNote(channel))
                     .font(HelmText.rowDetail)
                     .foregroundStyle(HelmText.quiet)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(.horizontal, 14)
+            .padding(.horizontal, 12)
             .padding(.vertical, 12)
         }
         .helmCard(padding: 0)
+    }
+
+    /// The two channels, as pills — the panel's size chips brought inside the
+    /// settings window: a capsule per choice, a material capsule under the
+    /// group, a hairline rim (`PanelChrome.sizeControl`).
+    ///
+    /// A segmented control could not carry the one thing this row is for. The
+    /// channels differ in kind, not in position, and the system draws both
+    /// segments in the accent whichever is chosen — so the control that asks
+    /// «how rough a build do you want» said it in one colour. Here Dev is the
+    /// warning orange it means and Beta is the accent, from `ChannelInk`, which
+    /// is also what the badge on the wordmark now reads.
+    ///
+    /// Buttons rather than a tap gesture on a shape, so Full Keyboard Access
+    /// reaches them and each carries its own label and selected trait —
+    /// `KeyboardReachableControlsTests` is about exactly this shape.
+    private var channelPills: some View {
+        HStack(spacing: 2) {
+            ForEach(UpdateCheck.Channel.allCases, id: \.self) { option in
+                let chosen = channel == option
+                Button { channel = option } label: {
+                    Text(AppStr.channelName(option))
+                        // One weight in both states: a semibold chosen label is
+                        // wider than a regular one, so the pill beside it would
+                        // move every time the choice did. The fill carries the
+                        // state instead.
+                        .font(HelmText.rowTitle)
+                        .foregroundStyle(chosen ? ChannelInk.chosenLabel
+                                         : HelmText.quiet)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 3)
+                        // A capsule inside a capsule, concentric at any type
+                        // size — the panel's chips learned this the hard way.
+                        .background(Capsule().fill(chosen ? ChannelInk.chosenFill(option)
+                                                   : Color.clear))
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .help(AppStr.channelNote(option))
+                .accessibilityLabel(AppStr.channelName(option))
+                .accessibilityAddTraits(chosen ? [.isButton, .isSelected] : .isButton)
+            }
+        }
+        .padding(2)
+        .background(Capsule().fill(.regularMaterial))
+        .overlay(Capsule().strokeBorder(HelmSurface.hairline))
+        .animation(HelmMotion.interface, value: channel)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(AppStr.updateChannel)
     }
 
     @ViewBuilder
@@ -255,7 +398,7 @@ struct AboutHelmView: View {
                 // was published and decide.
                 if let rel = updater.available {
                     Link(AppStr.download, destination: rel.pageURL)
-                        .font(.callout)
+                        .font(HelmText.rowTitle)
                 }
             }
         case .failed:
@@ -270,7 +413,7 @@ struct AboutHelmView: View {
                         Button(AppStr.retry) { updater.downloadAndInstall() }
                             .frame(maxWidth: .infinity)
                         Link(AppStr.download, destination: rel.downloadURL ?? rel.pageURL)
-                            .font(.callout)
+                            .font(HelmText.rowTitle)
                     }
                 }
             }
@@ -303,7 +446,15 @@ struct AboutHelmView: View {
             } else if updater.lastMessage == "error" {
                 HStack(spacing: 10) {
                     statusIcon("exclamationmark.triangle.fill", HelmSignal.warning)
-                    Text(AppStr.updateCheckFailed).lineLimit(1)
+                    // Two lines, like the `aheadOfChannel` branch below. At one
+                    // this sentence was cut in five of the eight languages: a
+                    // German whose update check failed read «Update-Prüfung
+                    // fehl…», where the string wants 198 pt of the roughly 240
+                    // the row leaves it. French wants 253, Portuguese 234,
+                    // Russian 225, Spanish 215. Only en, ja and zh ever fitted.
+                    Text(AppStr.updateCheckFailed)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                     Spacer()
                     Button(AppStr.retry) { updater.checkNow() }
                 }
