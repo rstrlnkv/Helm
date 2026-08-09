@@ -39,7 +39,7 @@ struct MenuBarSettingsView: View {
     var body: some View {
         VStack(spacing: 0) {
             HelmPageHeader(symbol: "gearshape", tint: .gray,
-                           title: AppStr.settingsPane, subtitle: AppStr.settingsPaneSummary)
+                           title: AppStr.settingsPane)
             Divider()
             settingsForm
         }

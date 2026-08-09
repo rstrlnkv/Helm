@@ -79,7 +79,7 @@ final class StartScreenColumnTests: XCTestCase {
 
     private static var header: some View {
         HelmPageHeader(symbol: "chart.pie", tint: .blue,
-                       title: "Disk", subtitle: "What is taking up space", bleeds: true)
+                       title: "Disk", bleeds: true)
     }
 
     /// A marker carrying the page's own padding and, optionally, the column.

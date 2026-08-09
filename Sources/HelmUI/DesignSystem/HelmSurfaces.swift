@@ -290,44 +290,55 @@ public enum HelmSignal {
     }
 }
 
+/// The strip at the top of every page: what this page is, and the controls
+/// that belong to the page rather than to any row in it.
+///
+/// **No summary line.** It carried the module's one-sentence description under
+/// the name — «Не давать Mac засыпать» under «Не спать» — which is the sidebar
+/// row you just clicked, said again in more words. Every mockup in the
+/// redesign draws the plate, the name, and then the page's own controls; the
+/// sentence still has two homes where it is the answer rather than an echo:
+/// the empty state of a module that is switched off, and the composer's
+/// tooltip.
 public struct HelmPageHeader<Trailing: View>: View {
     let symbol: String
     let tint: Color
     let title: String
-    let subtitle: String
     /// True for a page whose content spans the pane rather than sitting in the
     /// 744 pt form column — Disk, Uninstaller, Homebrew, Leftovers.
     let bleeds: Bool
     let trailing: Trailing
 
-    public init(symbol: String, tint: Color, title: String, subtitle: String,
+    public init(symbol: String, tint: Color, title: String,
                 bleeds: Bool = false,
                 @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
         self.symbol = symbol
         self.tint = tint
         self.title = title
-        self.subtitle = subtitle
         self.bleeds = bleeds
         self.trailing = trailing()
     }
 
     public var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 12) {
             HelmIconPlate(symbol: symbol, tint: tint)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.system(size: 20, weight: .semibold))
-                    .tracking(-0.2)
-                Text(subtitle)
-                    .font(.callout)
-                    .foregroundStyle(HelmText.quiet)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            // 16, the redesign's «заголовок» step. It was 20, which is not on
+            // the ladder at all — the six sizes are 10 · 11 · 13 · 16 · 22 · 40
+            // — and with the summary gone the name no longer has to hold a
+            // two-line block up on its own.
+            Text(title)
+                .font(.system(size: 16, weight: .semibold))
+                .tracking(-0.2)
+                .lineLimit(1)
             Spacer(minLength: 12)
             trailing
         }
-        // 20, matching the inset a grouped Form uses at every width.
+        // **20, not the redesign's 18.** The mockups draw this strip and the
+        // pane below it at one gutter, and moving only the header to 18 breaks
+        // the rule that matters more: a bleeding page's content starts at 20,
+        // and `StartScreenColumnTests` measures that the two begin at the same
+        // x. The gutter is an app-wide number; changing it is its own pass,
+        // not a side effect of restyling a header.
         .padding(.horizontal, 20)
         .padding(.vertical, 18)
         // On the same column as the content below it. Which column that is

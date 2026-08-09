@@ -595,7 +595,7 @@ private struct WhatsNewView: View {
     var body: some View {
         VStack(spacing: 0) {
             HelmPageHeader(symbol: "sparkles", tint: .indigo,
-                           title: AppStr.whatsNew, subtitle: AppStr.whatsNewSummary) {
+                           title: AppStr.whatsNew) {
                 // Escape closes it, like every sheet on the machine.
                 // `HelmHotkeyRecorder` special-cases Escape during capture and
                 // explains why; that care never reached the sheets.

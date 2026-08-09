@@ -39,7 +39,7 @@ struct LogView: View {
             // header caps at `HelmLayout.settingsColumn` and centres, which put
             // its icon at x = 53 against the rows' x = 21 on this pane.
             HelmPageHeader(symbol: "text.alignleft", tint: .gray,
-                           title: AppStr.logPane, subtitle: AppStr.logPaneSummary,
+                           title: AppStr.logPane,
                            bleeds: true)
             Divider()
             writing

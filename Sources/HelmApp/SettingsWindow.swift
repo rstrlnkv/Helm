@@ -434,7 +434,6 @@ private struct ModuleDetailView: View {
             HelmPageHeader(symbol: descriptor.moduleMetadata.sfSymbol,
                            tint: descriptor.moduleTint.colour,
                            title: descriptor.moduleMetadata.name,
-                           subtitle: descriptor.moduleMetadata.summary,
                            bleeds: descriptor.pageBleeds)
             // No switch here. It was the third one in the app for the same
             // fact — the composer sheet's column and the empty state's
