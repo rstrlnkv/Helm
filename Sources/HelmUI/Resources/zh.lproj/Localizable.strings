@@ -701,3 +701,7 @@
 "Helm could crash while you were typing. The part that watches the keyboard went on running after the module had let it go." = "在您打字时，Helm 可能会崩溃。监视键盘的部分在模块放开它之后仍继续运行。";
 "Keyboard could stop converting words without saying so. macOS switches the keyboard watcher off by itself when it judges an app too slow to answer; Helm now notices and turns it back on." = "“键盘”可能不再转换单词，却什么也不说。当 macOS 认为某个应用响应过慢时，会自行关闭键盘监视；现在 Helm 会察觉并重新开启。";
 "Keep Awake could leave the Mac unable to sleep, with its own switch saying it was off." = "“保持唤醒”可能让 Mac 无法睡眠，而它自己的开关却显示已关闭。";
+"A timer ends automation too" = "计时结束时也停止自动保持";
+"When the timer runs out, an app or a display no longer keeps the Mac awake — until the app is launched again." = "计时结束后，应用或显示器不再让 Mac 保持唤醒——直到该应用再次启动。";
+"Automation paused until the app comes back" = "自动保持已暂停，直到该应用再次运行";
+"Resume" = "恢复";

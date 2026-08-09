@@ -701,3 +701,7 @@
 "Helm could crash while you were typing. The part that watches the keyboard went on running after the module had let it go." = "入力中に Helm が異常終了することがありました。キーボードを監視する部分が、モジュールが手放したあとも動き続けていました。";
 "Keyboard could stop converting words without saying so. macOS switches the keyboard watcher off by itself when it judges an app too slow to answer; Helm now notices and turns it back on." = "“キーボード”が何も告げずに変換をやめることがありました。macOS は応答が遅いと判断したアプリのキーボード監視を自ら停止します。Helm はこれに気づいて監視を再開するようになりました。";
 "Keep Awake could leave the Mac unable to sleep, with its own switch saying it was off." = "“スリープ防止”が Mac をスリープできない状態のまま残すことがありました。モジュール自身のスイッチはオフと表示されていました。";
+"A timer ends automation too" = "タイマー終了時に自動化も停止";
+"When the timer runs out, an app or a display no longer keeps the Mac awake — until the app is launched again." = "タイマーが終わると、アプリや外部ディスプレイは Mac を起動状態に保たなくなります（アプリを再度起動するまで）。";
+"Automation paused until the app comes back" = "アプリが再び起動するまで自動化を停止中";
+"Resume" = "再開";

@@ -164,6 +164,21 @@ enum KAStr {
     static var adminNote: String {
         L("macOS asks for an administrator password the first time Keep Awake runs with this on. If Helm is quit while sleep is off, it stays off until Helm runs again.")
     }
+    /// A timer started while a rule is already holding the Mac ends the rule as
+    /// well. Says «too» because the timer already ends the session it started —
+    /// what the setting adds is the second half.
+    static var timerEndsAutomation: String { L("A timer ends automation too") }
+    /// Names what stops holding and how it comes back. «Until the app is
+    /// launched again» is the module's own rule stated plainly: the suppression
+    /// lifts when the condition drops and returns, and for an app rule that is
+    /// quitting and opening it.
+    static var timerEndsAutomationNote: String {
+        L("When the timer runs out, an app or a display no longer keeps the Mac awake — until the app is launched again.")
+    }
+    /// Shown wherever the state is shown. A Mac that slept with the rule's app
+    /// still on screen is the one thing this module must not leave unexplained.
+    static var automationPaused: String { L("Automation paused until the app comes back") }
+    static var resume: String { L("Resume") }
     static var turnOffLowBattery: String { L("Turn off on low battery") }
     /// `BatteryGuard.shouldDeactivate` is `percent <= threshold`: at exactly the
     /// figure shown, the session stops. Every language used to say "below" — and

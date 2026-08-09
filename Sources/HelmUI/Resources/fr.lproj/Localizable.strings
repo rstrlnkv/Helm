@@ -701,3 +701,7 @@
 "Helm could crash while you were typing. The part that watches the keyboard went on running after the module had let it go." = "Helm pouvait planter pendant que vous tapiez. La partie qui surveille le clavier continuait de tourner après que le module l'eut relâchée.";
 "Keyboard could stop converting words without saying so. macOS switches the keyboard watcher off by itself when it judges an app too slow to answer; Helm now notices and turns it back on." = "« Clavier » pouvait cesser de convertir les mots sans le dire. macOS coupe lui-même la surveillance du clavier quand il juge une app trop lente à répondre ; Helm s'en aperçoit maintenant et la réactive.";
 "Keep Awake could leave the Mac unable to sleep, with its own switch saying it was off." = "« Garder éveillé » pouvait empêcher le Mac de dormir, alors que son propre interrupteur indiquait qu'il était éteint.";
+"A timer ends automation too" = "Le minuteur arrête aussi l’automatisation";
+"When the timer runs out, an app or a display no longer keeps the Mac awake — until the app is launched again." = "Quand le minuteur se termine, une app ou un écran ne maintiennent plus le Mac éveillé — jusqu’à ce que l’app soit relancée.";
+"Automation paused until the app comes back" = "Automatisation en pause jusqu’au retour de l’app";
+"Resume" = "Reprendre";

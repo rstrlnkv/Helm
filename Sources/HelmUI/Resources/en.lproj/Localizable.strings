@@ -701,3 +701,7 @@
 "Helm could crash while you were typing. The part that watches the keyboard went on running after the module had let it go." = "Helm could crash while you were typing. The part that watches the keyboard went on running after the module had let it go.";
 "Keyboard could stop converting words without saying so. macOS switches the keyboard watcher off by itself when it judges an app too slow to answer; Helm now notices and turns it back on." = "Keyboard could stop converting words without saying so. macOS switches the keyboard watcher off by itself when it judges an app too slow to answer; Helm now notices and turns it back on.";
 "Keep Awake could leave the Mac unable to sleep, with its own switch saying it was off." = "Keep Awake could leave the Mac unable to sleep, with its own switch saying it was off.";
+"A timer ends automation too" = "A timer ends automation too";
+"When the timer runs out, an app or a display no longer keeps the Mac awake — until the app is launched again." = "When the timer runs out, an app or a display no longer keeps the Mac awake — until the app is launched again.";
+"Automation paused until the app comes back" = "Automation paused until the app comes back";
+"Resume" = "Resume";
