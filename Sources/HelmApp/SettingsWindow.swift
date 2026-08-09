@@ -71,6 +71,7 @@ import HelmUI
         NSApp.setActivationPolicy(.accessory)
     }
 
+
 }
 
 // MARK: - Shared model
@@ -167,6 +168,28 @@ final class SettingsSplitViewController: NSSplitViewController {
         // a third place storing a number the framework is already storing.
         splitView.autosaveName = Self.dividerAutosave
     }
+
+    /// The divider is a hairline to look at and a band to grab.
+    ///
+    /// AppKit hands a thin divider a hit area barely wider than the line, and
+    /// on a sidebar that is the difference between «resizable» and «resizable
+    /// if you find it». The rectangle drawn stays one pixel; the rectangle the
+    /// pointer is tested against is this one, and it is where the resize cursor
+    /// appears too — both come from the same call.
+    override func splitView(_ splitView: NSSplitView,
+                            effectiveRect proposedEffectiveRect: NSRect,
+                            forDrawnRect drawnRect: NSRect,
+                            ofDividerAt dividerIndex: Int) -> NSRect {
+        var grab = proposedEffectiveRect
+        grab.origin.x -= Self.dividerGrab
+        grab.size.width += Self.dividerGrab * 2
+        return grab
+    }
+
+    /// Either side of the hairline. Five is what a pointer finds without
+    /// looking, and it is small enough that the first row of the pane, whose
+    /// own inset is 20, is never inside it.
+    private static let dividerGrab: CGFloat = 5
 
     /// The first run's width, set where the split view actually has one.
     ///

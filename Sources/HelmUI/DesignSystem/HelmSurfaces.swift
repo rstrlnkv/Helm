@@ -300,6 +300,31 @@ public enum HelmSignal {
 /// sentence still has two homes where it is the answer rather than an echo:
 /// the empty state of a module that is switched off, and the composer's
 /// tooltip.
+/// The heading over a group of rows: small, upper case, spaced, quiet.
+///
+/// The system's own `Section("…")` draws 13 pt semibold in sentence case,
+/// which puts a section heading at the same weight as the rows under it and
+/// only two points below the page's own name. The redesign draws it as a label
+/// rather than a title — `--t-micro`, upper case, .08em of tracking — so the
+/// eye reads the group as a group and the page keeps one title.
+///
+/// Upper case is done by the string, not by a font trait: `.textCase(.uppercase)`
+/// on a `Form` section is the platform's own styling and would fight this.
+public struct HelmSectionTitle: View {
+    private let title: String
+    public init(_ title: String) { self.title = title }
+
+    public var body: some View {
+        Text(title.uppercased())
+            // 10 pt is the ladder's smallest step, and it is legible here only
+            // because the tracking opens it up: without the .08em the capitals
+            // set as a block.
+            .font(.system(size: 10, weight: .semibold))
+            .tracking(0.8)
+            .foregroundStyle(HelmText.faint)
+    }
+}
+
 public struct HelmPageHeader<Trailing: View>: View {
     let symbol: String
     let tint: Color

@@ -108,7 +108,7 @@ struct MenuBarSettingsView: View {
             }
 
             // What Helm does on its own.
-            Section(AppStr.behaviour) {
+            Section(header: HelmSectionTitle(AppStr.behaviour)) {
                 Toggle(AppStr.launchAtLogin, isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, v in LoginItem.setEnabled(v) }
             }
@@ -120,7 +120,7 @@ struct MenuBarSettingsView: View {
             // thing on this page by a distance and 10 pt wider than everything
             // around it, because it was drawn as a section *header* to avoid a
             // card inside a card.
-            Section(AppStr.modulesSection) {
+            Section(header: HelmSectionTitle(AppStr.modulesSection)) {
                 SidebarComposerRow(host: ModuleHost.shared, composing: $composing)
             }
 
@@ -128,7 +128,7 @@ struct MenuBarSettingsView: View {
             // three: the theme and the module icons under «General», the
             // menu-bar glyph under «Menu Bar» — so choosing how the app looks
             // meant visiting two headings and knowing which held what.
-            Section(AppStr.appearance) {
+            Section(header: HelmSectionTitle(AppStr.appearance)) {
                 // Three pictures, the way System Settings asks the same
                 // question. It was a pop-up of three accurate words that are
                 // not what anybody is choosing between.
@@ -158,7 +158,7 @@ struct MenuBarSettingsView: View {
 
             // The panel keeps its own arrangement, so there is exactly one
             // thing about it to decide here: whether the way in is on it.
-            Section(AppStr.panel) {
+            Section(header: HelmSectionTitle(AppStr.panel)) {
                 Toggle(AppStr.showSettingsButton, isOn: $showSettingsButton)
                     .onChange(of: showSettingsButton) { _, v in
                         AppSettings.showSettingsButton = v
@@ -192,7 +192,7 @@ struct MenuBarSettingsView: View {
             // 7.5 pt below it reading as its subtitle: the destructive card
             // looked like what Permissions contained.
             if !neededPermissions.isEmpty {
-                Section(AppStr.permissions) {
+                Section(header: HelmSectionTitle(AppStr.permissions)) {
                 // Driven by the table, so a new permission shows up here
                 // without anyone remembering to add a row — but only the ones
                 // an enabled module actually uses. Listing all of them asked
@@ -219,7 +219,7 @@ struct MenuBarSettingsView: View {
                 }
                 .id(Self.permissionsAnchor)
             }
-            Section(AppStr.resetSection) {
+            Section(header: HelmSectionTitle(AppStr.resetSection)) {
                 // `role: .destructive` alone draws as an ordinary link in a
                 // grouped Form on macOS — the role reaches menus and dialogs,
                 // not form rows. The token, not SwiftUI's `.red`: HelmSignal

@@ -60,19 +60,19 @@ public struct VPNSettingsPage: View {
                 ])
             }
 
-            Section(VPNStr.connections) {
+            Section(header: HelmSectionTitle(VPNStr.connections)) {
                 connectionsList
             }
 
-            Section(VPNStr.perAppAutomation) {
+            Section(header: HelmSectionTitle(VPNStr.perAppAutomation)) {
                 appRulesEditor
             }
 
-            Section(VPNStr.noticeSection) {
+            Section(header: HelmSectionTitle(VPNStr.noticeSection)) {
                 noticePicker
             }
 
-            Section(VPNStr.spinSection) {
+            Section(header: HelmSectionTitle(VPNStr.spinSection)) {
                 spinControls
             }
         }

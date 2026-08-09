@@ -146,7 +146,7 @@ public struct LeftoversSettingsPage: View {
         } else {
             List {
                 ForEach(grouped, id: \.kind) { group in
-                    Section(LfStr.kindName(group.kind)) {
+                    Section(header: HelmSectionTitle(LfStr.kindName(group.kind))) {
                         ForEach(group.items) { item in
                             row(item)
                         }

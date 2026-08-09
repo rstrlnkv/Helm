@@ -149,7 +149,7 @@ public struct KeepAwakeSettingsPage: View {
     }
 
     @ViewBuilder private var automationSection: some View {
-        Section(KAStr.automation) {
+        Section(header: HelmSectionTitle(KAStr.automation)) {
             Toggle(KAStr.withExternalDisplay, isOn: $autoExternalDisplay)
                 .onChange(of: autoExternalDisplay) { _, v in
                     vm.save(in: store) { $0.setAutoExternalDisplay(v) }
@@ -193,13 +193,13 @@ public struct KeepAwakeSettingsPage: View {
     }
 
     @ViewBuilder private var appsSection: some View {
-        Section(KAStr.appsSection) {
+        Section(header: HelmSectionTitle(KAStr.appsSection)) {
             appTriggersEditor
         }
     }
 
     @ViewBuilder private var behaviourSection: some View {
-        Section(KAStr.behavior) {
+        Section(header: HelmSectionTitle(KAStr.behavior)) {
             Toggle(KAStr.keepDisplayOn, isOn: $keepDisplayOn)
                 .onChange(of: keepDisplayOn) { _, v in vm.save(in: store) { $0.setKeepDisplayOn(v) } }
             // One row: the interval only means anything with the switch on,
@@ -243,7 +243,7 @@ public struct KeepAwakeSettingsPage: View {
     }
 
     @ViewBuilder private var menuBarIconSection: some View {
-        Section(KAStr.menuBarIcon) {
+        Section(header: HelmSectionTitle(KAStr.menuBarIcon)) {
             LabeledContent(KAStr.activeIconColor) { colorSwatches }
             Toggle(KAStr.customActiveIcon, isOn: $customActiveIcon)
                 .onChange(of: customActiveIcon) { _, v in writeLook(v, MenuBarLook.Key.customIcon) }
@@ -257,7 +257,7 @@ public struct KeepAwakeSettingsPage: View {
     }
 
     @ViewBuilder private var timerSection: some View {
-        Section(KAStr.timer) {
+        Section(header: HelmSectionTitle(KAStr.timer)) {
             Toggle(KAStr.ringTimer, isOn: $ringTimer)
                 .onChange(of: ringTimer) { _, v in writeLook(v, MenuBarLook.Key.ringTimer) }
             Text(KAStr.ringTimerNote)
@@ -269,7 +269,7 @@ public struct KeepAwakeSettingsPage: View {
     }
 
     @ViewBuilder private var shortcutSection: some View {
-        Section(KAStr.globalShortcut) {
+        Section(header: HelmSectionTitle(KAStr.globalShortcut)) {
             HelmHotkeyRow(KAStr.toggleAction, recorder: recorder,
                           taken: HotkeyStatus.isTaken("keep-awake.toggle"))
         }

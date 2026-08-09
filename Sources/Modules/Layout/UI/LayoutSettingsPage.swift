@@ -146,7 +146,7 @@ public struct LayoutSettingsPage: View {
     }
 
     private var triggersSection: some View {
-        Section(LyStr.triggers) {
+        Section(header: HelmSectionTitle(LyStr.triggers)) {
             Text(LyStr.triggersHint)
                 .font(.caption).foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
@@ -160,7 +160,7 @@ public struct LayoutSettingsPage: View {
     }
 
     private var shortcutsSection: some View {
-        Section(LyStr.shortcuts) {
+        Section(header: HelmSectionTitle(LyStr.shortcuts)) {
             // One gesture. This was two sections and eleven controls: chords for
             // "convert the last word" and "undo", and three more for the three
             // things that could be done to a selection. The engine already chose
@@ -200,7 +200,7 @@ public struct LayoutSettingsPage: View {
     /// Abbreviations, and the one typing habit Helm is sure enough about to
     /// correct.
     private var autoReplaceSection: some View {
-        Section(LyStr.autoReplaceSection) {
+        Section(header: HelmSectionTitle(LyStr.autoReplaceSection)) {
             Text(LyStr.autoReplaceNote)
                 .font(.caption).foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
@@ -276,11 +276,11 @@ public struct LayoutSettingsPage: View {
     /// into one list would read as five variations of the same thing.
     /// A place to try it without risking anything that was being written.
     private var tryItSection: some View {
-        Section(LyStr.tryIt) { LayoutTestField() }
+        Section(header: HelmSectionTitle(LyStr.tryIt)) { LayoutTestField() }
     }
 
     private var exceptionsSection: some View {
-        Section(LyStr.exceptions) {
+        Section(header: HelmSectionTitle(LyStr.exceptions)) {
             Text(LyStr.exceptionsHint).font(.caption).foregroundStyle(HelmText.quiet)
             TextEditor(text: $exceptions)
                 .font(.system(size: 12, design: .monospaced))
@@ -292,7 +292,7 @@ public struct LayoutSettingsPage: View {
     }
 
     @ViewBuilder private var appsSection: some View {
-        Section(LyStr.apps) {
+        Section(header: HelmSectionTitle(LyStr.apps)) {
             Text(LyStr.appsHint)
                 .font(.caption).foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
@@ -323,7 +323,7 @@ public struct LayoutSettingsPage: View {
     }
 
     @ViewBuilder private var indicatorSection: some View {
-        Section(LyStr.indicator) {
+        Section(header: HelmSectionTitle(LyStr.indicator)) {
             Text(LyStr.indicatorHint)
                 .font(.caption).foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
