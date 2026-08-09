@@ -11,6 +11,9 @@ public enum KeepAwakeCommand: String, CaseIterable, Sendable {
     case start
     case stop
     case settingsChanged
+    /// Lift a suppression the person can see on screen. Not `start`: that would
+    /// be a manual session, which outlives the rule that is actually true.
+    case resumeAutomation
 }
 
 /// Everything the engine says about itself.

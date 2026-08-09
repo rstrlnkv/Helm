@@ -68,4 +68,30 @@ final class ATimerCanEndTheAutomationItSatOnTests: XCTestCase {
         apps.fire()
         XCTAssertTrue(engine.isActive, "the trigger fired again")
     }
+
+    /// A Mac that went to sleep with the rule's app still running is the one
+    /// state this module cannot leave unexplained, so the state it publishes
+    /// has to carry it.
+    func testTheSuppressionIsPublished() {
+        store.set(true, for: KeepAwakeSettings.Key.timerEndsAutomation)
+        engine.activate()
+        engine.startSession(minutes: 30)
+        clock.fire(after: 30 * 60)
+        XCTAssertTrue(engine.suppressed)
+    }
+
+    /// And `resumeAutomation` is the way back, without starting a session of
+    /// its own: the rule takes over again because the rule was true all along.
+    func testResumeAutomationGivesTheRuleBack() {
+        store.set(true, for: KeepAwakeSettings.Key.timerEndsAutomation)
+        engine.activate()
+        engine.startSession(minutes: 30)
+        clock.fire(after: 30 * 60)
+        XCTAssertFalse(engine.isActive)
+
+        engine.resumeAutomation()
+        XCTAssertTrue(engine.isActive)
+        XCTAssertTrue(engine.activeConditions.contains(.app))
+        XCTAssertNil(engine.endDate, "resuming is not a new timed session")
+    }
 }

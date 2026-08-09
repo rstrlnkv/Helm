@@ -29,7 +29,14 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     public private(set) var startDate: Date?
 
     private var manualOn = false
-    private var suppressed = false
+    /// An automatic condition is true and is being ignored, because a session
+    /// was ended — by hand, or by a timer the person asked to end automation.
+    ///
+    /// Read outside this file as well as inside it, and that is the point: the
+    /// flag existed from the first version and was published nowhere, so a Mac
+    /// that slept with the rule's app still on screen had no account of itself
+    /// anywhere. One name for it, here and on the wire.
+    public private(set) var suppressed = false
     /// An admin password prompt is on screen and has not been answered.
     ///
     /// Nothing else can stand for this. `isSudoersInstalled()` asks the
@@ -182,6 +189,19 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         // as starting does — otherwise the next launch resurrects what was
         // switched off.
         rememberSession()
+        recompute()
+    }
+
+    /// Lift a suppression without starting a session.
+    ///
+    /// Not `startSession`: that is a manual session, which outlives the rule
+    /// and would go on holding the Mac after the app quit. The automatic
+    /// conditions are true or they are not; this only stops ignoring them, and
+    /// if none of them holds any more the recompute simply finds nothing.
+    public func resumeAutomation() {
+        guard suppressed else { return }
+        suppressed = false
+        HelmLog.shared.info("keepawake", "automation resumed by hand")
         recompute()
     }
 
@@ -527,6 +547,10 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         public let clamshellActive: Bool
         public let endDate: Date?
         public let startDate: Date?
+        /// A rule that applies and is being ignored. Every other field here
+        /// describes a Mac being held awake; this one is the only account of a
+        /// Mac that is not, while everything on screen says it should be.
+        public let suppressed: Bool
     }
 
     private func wireTransport() {
@@ -551,6 +575,8 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                 }
             case .stop:
                 self.stopSession()
+            case .resumeAutomation:
+                self.resumeAutomation()
             case .settingsChanged:
                 self.recompute()
                 self.reconcileActiveSettings()
@@ -566,7 +592,8 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                                     conditions: activeConditions.map(\.rawValue).sorted(),
                                     clamshellActive: clamshellActive,
                                     endDate: endDate,
-                                    startDate: startDate)
+                                    startDate: startDate,
+                                    suppressed: suppressed)
         localTransport.emit(KeepAwakeEvent.state, encoding: payload)
     }
 }

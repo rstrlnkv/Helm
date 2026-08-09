@@ -29,6 +29,10 @@ import Module_KeepAwake_Engine
     @Published public private(set) var endDate: Date?
     /// Start of the current timed session, for progress rendering.
     @Published public private(set) var startDate: Date?
+    /// An automatic condition is true and is being ignored, because a session
+    /// was ended by hand or by a timer. Cleared by the engine when the
+    /// condition drops, or by `resumeAutomation`.
+    @Published public private(set) var suppressed = false
 
     public let vm: ModuleViewModel
 
@@ -76,6 +80,7 @@ import Module_KeepAwake_Engine
         clamshellActive = p.clamshellActive
         endDate = p.endDate
         startDate = p.startDate
+        suppressed = p.suppressed
     }
 
     /// Named by the engine's own enum, and only that.
