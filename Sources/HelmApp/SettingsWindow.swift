@@ -70,6 +70,7 @@ import HelmUI
     func windowWillClose(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
     }
+
 }
 
 // MARK: - Shared model
@@ -137,8 +138,17 @@ final class SettingsSplitViewController: NSSplitViewController {
         sidebar.sizingOptions = []
         let sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebar)
         sidebarItem.canCollapse = false
-        sidebarItem.minimumThickness = 250
-        sidebarItem.maximumThickness = 250
+        // Narrower by default, and the person's to change.
+        //
+        // It was pinned at 250 from both sides, which is a sidebar nobody can
+        // resize: the two thicknesses being equal is what made the divider
+        // inert. 214 is the width the redesign draws every window at
+        // (`--sidebar-w`), and the longest row Helm ships — «Удаление
+        // приложений» — still sets in it; the floor and ceiling are there so a
+        // drag cannot leave a column too narrow to read or wide enough to
+        // starve the pane, whose own minimum is 420.
+        sidebarItem.minimumThickness = Self.sidebarMinimum
+        sidebarItem.maximumThickness = Self.sidebarMaximum
 
         let detail = NSHostingController(rootView: SettingsDetail(model: model))
         // fullSizeContentView + a transparent title bar makes AppKit inset the
@@ -151,6 +161,51 @@ final class SettingsSplitViewController: NSSplitViewController {
 
         addSplitViewItem(sidebarItem)
         addSplitViewItem(detailItem)
+
+        // AppKit remembers the divider itself, under this name, in the same
+        // defaults the window frame already uses. Written by hand it would be
+        // a third place storing a number the framework is already storing.
+        splitView.autosaveName = Self.dividerAutosave
+    }
+
+    /// The first run's width, set where the split view actually has one.
+    ///
+    /// Measured: doing this in `viewDidLoad` gives **180** — the minimum, not
+    /// the 214 asked for. At that point the split has no width to divide, so
+    /// the position clamps to the floor and the default silently becomes the
+    /// smallest allowed. Here the geometry exists.
+    ///
+    /// Once, and only when nothing is stored: `autosaveName` restores what was
+    /// dragged, and re-applying the default on every appearance would overwrite
+    /// the person's own choice each time they opened the window.
+    private var hasPlacedDivider = false
+    override func viewDidAppear() {
+        super.viewDidAppear()
+        guard !hasPlacedDivider else { return }
+        hasPlacedDivider = true
+        guard !UserDefaults.standard.hasSavedSplitPosition(Self.dividerAutosave) else { return }
+        splitView.setPosition(Self.sidebarDefault, ofDividerAt: 0)
+    }
+
+    /// The width the redesign draws, and the range a drag may reach.
+    private static let sidebarDefault: CGFloat = 214
+    private static let sidebarMinimum: CGFloat = 180
+    private static let sidebarMaximum: CGFloat = 320
+    /// Versioned, like `HelmSettingsWindow.v4` beside it: the day the range
+    /// changes, a stored position from outside it should be forgotten rather
+    /// than clamped in silence.
+    private static let dividerAutosave = "HelmSettingsSidebar.v1"
+}
+
+extension UserDefaults {
+    /// Whether AppKit has a remembered divider for this autosave name.
+    ///
+    /// `NSSplitView` writes `NSSplitView Subview Frames <name>` and offers no
+    /// public way to ask, so the question is asked of the same key it writes.
+    /// Without it, a first launch and a hundredth are indistinguishable, and
+    /// the default width would be re-applied over the person's own every time.
+    func hasSavedSplitPosition(_ autosaveName: String) -> Bool {
+        object(forKey: "NSSplitView Subview Frames \(autosaveName)") != nil
     }
 }
 
