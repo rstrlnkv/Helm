@@ -191,6 +191,25 @@ enum AppStr {
     static var devBadge: String { L("DEV") }
     static var betaBadge: String { L("BETA") }
     static var channelDevNote: String { L("Early builds with new features — expect rough edges.") }
+
+    /// The two above, chosen by the channel rather than by a ternary at the
+    /// call site — the same shape `openPane(_:)` takes for a permission. The
+    /// About page asked for each of these three times over: the pill's label,
+    /// the pill's tooltip, the note under the row, and the badge's tooltip.
+    static func channelName(_ channel: UpdateCheck.Channel) -> String {
+        switch channel {
+        case .beta: return channelBeta
+        case .dev: return channelDev
+        }
+    }
+
+    static func channelNote(_ channel: UpdateCheck.Channel) -> String {
+        switch channel {
+        case .beta: return channelBetaNote
+        case .dev: return channelDevNote
+        }
+    }
+
     /// The sidebar's warning next to a module macOS is currently blocking.
     static var moduleBlockedByPermission: String {
         L("Switched on, but macOS is withholding what it needs")

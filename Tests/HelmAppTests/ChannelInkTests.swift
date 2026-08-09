@@ -71,7 +71,7 @@ final class ChannelInkTests: XCTestCase {
     func testTheChosenPillsLabelIsReadableOnItsOwnFill() {
         for channel in UpdateCheck.Channel.allCases {
             for appearance in [NSAppearance.Name.aqua, .darkAqua] {
-                let measured = ratio(resolved(ChannelInk.chosenLabel(channel), appearance),
+                let measured = ratio(resolved(ChannelInk.chosenLabel, appearance),
                                      resolved(ChannelInk.chosenFill(channel), appearance))
                 XCTAssertGreaterThanOrEqual(
                     measured, 4.5,
