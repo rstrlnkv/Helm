@@ -50,6 +50,10 @@ enum Changelog {
     /// Computed so `L()` resolves against the current language each time.
     static var entries: [ChangelogEntry] {
         [
+            ChangelogEntry(version: "0.10.0", date: "2026-08-09", items: [
+                ChangeItem(kind: .new, text: L("A timer can end automation too. Switch it on, and a timer set while an app is holding the Mac ends that as well \u{2014} until the app is launched again.")),
+                ChangeItem(kind: .upd, text: L("The sidebar is narrower and you can drag it wider or thinner \u{2014} whatever you settle on comes back next time.")),
+            ]),
             ChangelogEntry(version: "0.9.0", date: "2026-08-09", items: [
                 ChangeItem(kind: .new, text: L("Widgets are moved by hand. Pick one up and it follows the pointer; the others slide aside; letting go sets it down where the space opened.")),
                 ChangeItem(kind: .new, text: L("About Helm says who wrote it, with a way to reach him.")),

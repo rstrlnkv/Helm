@@ -5,6 +5,29 @@ All notable changes to Helm are documented here. The format is loosely based on
 global changes, MINOR = new/polished features, PATCH = fixes. Every release
 bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 
+## [0.10.0] — 2026-08-09
+
+> The first release of the 0.10 line: one module per release, in the order they
+> stand in the sidebar. This one is Keep Awake, and the window it lives in.
+
+### Added
+- **A timer can end automation too.** Off by default. With “A timer ends
+  automation too” switched on, a timer started while an app rule is holding the
+  Mac ends that rule as well, and it stays off until the app is launched again.
+- **A rule that is being ignored says so.** Stopping a session while a rule
+  still applies has always suppressed that rule; nothing ever said so, and the
+  Mac slept with the rule’s app still on screen. There is a line for it now,
+  and a Resume button beside it.
+
+### Changed
+- **The sidebar is narrower, and its width is yours.** 214 pt out of the box
+  instead of 250, and the divider drags between 180 and 320 — it was pinned
+  from both sides, which is a sidebar nobody can resize. Whatever you settle on
+  comes back at the next launch.
+- **A page header is the name and the page’s own controls.** The one-sentence
+  description under the module name is gone: it repeated the sidebar row you
+  had just clicked. It still greets you on a module that is switched off.
+
 ## [0.9.0] — 2026-08-09
 
 > 0.8.0 never shipped a final. Everything that had accumulated under it is

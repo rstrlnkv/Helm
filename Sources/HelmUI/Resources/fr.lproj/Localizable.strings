@@ -705,3 +705,4 @@
 "When the timer runs out, an app or a display no longer keeps the Mac awake — until the app is launched again." = "Quand le minuteur se termine, une app ou un écran ne maintiennent plus le Mac éveillé — jusqu’à ce que l’app soit relancée.";
 "Automation paused until the app comes back" = "Automatisation en pause jusqu’au retour de l’app";
 "Resume" = "Reprendre";
+"The sidebar is narrower and you can drag it wider or thinner — whatever you settle on comes back next time." = "La barre latérale est plus étroite et se redimensionne au glisser — la largeur choisie revient la fois suivante.";

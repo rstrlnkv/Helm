@@ -705,3 +705,4 @@
 "When the timer runs out, an app or a display no longer keeps the Mac awake — until the app is launched again." = "タイマーが終わると、アプリや外部ディスプレイは Mac を起動状態に保たなくなります（アプリを再度起動するまで）。";
 "Automation paused until the app comes back" = "アプリが再び起動するまで自動化を停止中";
 "Resume" = "再開";
+"The sidebar is narrower and you can drag it wider or thinner — whatever you settle on comes back next time." = "サイドバーが細くなり、幅をドラッグで変えられます。決めた幅は次回も保たれます。";

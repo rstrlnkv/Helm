@@ -705,3 +705,4 @@
 "When the timer runs out, an app or a display no longer keeps the Mac awake — until the app is launched again." = "Когда таймер истечёт, приложение или дисплей больше не удерживают Mac — пока приложение не запустят снова.";
 "Automation paused until the app comes back" = "Автоматика приостановлена до следующего запуска";
 "Resume" = "Возобновить";
+"The sidebar is narrower and you can drag it wider or thinner — whatever you settle on comes back next time." = "Сайдбар стал уже, и его ширину можно тянуть — то, на чём остановитесь, вернётся в следующий раз.";
