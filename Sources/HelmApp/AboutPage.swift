@@ -86,8 +86,12 @@ struct AboutHelmView: View {
             Spacer(minLength: 22).frame(maxHeight: 30)
             instrumentRow
                 .padding(.bottom, 10)
+            // 10, the same gap the strip above it takes. Down the page the
+            // gaps were 22, 10, 20, 14, 24 — the author card glued to the
+            // strip above and adrift from the update card below, which is one
+            // card reading as two different distances from its neighbours.
             authorRow
-                .padding(.bottom, 20)
+                .padding(.bottom, 10)
             updateCard
             HStack(spacing: 10) {
                 Button {
@@ -224,16 +228,32 @@ struct AboutHelmView: View {
     /// foot: the licence and the flag credit down there are obligations, and
     /// this is not one — it is the answer to «who made this», which is a
     /// question people actually ask of a menu-bar app they were handed.
+    /// The glyph belongs to the handle, not between the two items.
+    ///
+    /// As a `Label` the paperplane sat 10.5 pt from the name and 10.5 pt from
+    /// the handle — measured ink, both gaps equal — so it read as a separator
+    /// between three things rather than as the mark on a Telegram link. An
+    /// `HStack` at 3 inside the `Link` and 12 between the row's own items puts
+    /// it at 13.5 and 6.0: the glyph is now nearer the thing it belongs to by
+    /// more than twice.
+    ///
+    /// `.firstTextBaseline` for the row, which is the same change: a `Label`'s
+    /// box is 14.12 pt against the text's 16.00, so centring the two hung the
+    /// link 1.50 pt above the name's baseline. Measured after: 0.00. It is
+    /// worth applying only with the glyph change — on its own it grew the card
+    /// from 40 to 41.
     private var authorRow: some View {
-        HStack(spacing: 8) {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text(AppStr.author)
                 .foregroundStyle(HelmText.quiet)
             Spacer(minLength: 8)
             Text(AppStr.authorName)
             Link(destination: URL(string: "https://t.me/r_strlnkv")!) {
-                Label("@r_strlnkv", systemImage: "paperplane.fill")
-                    .labelStyle(.titleAndIcon)
-                    .font(HelmText.rowDetail)
+                HStack(spacing: 3) {
+                    Image(systemName: "paperplane.fill")
+                    Text("@r_strlnkv")
+                }
+                .font(HelmText.rowDetail)
             }
         }
         .font(HelmText.rowTitle)
@@ -252,10 +272,15 @@ struct AboutHelmView: View {
 
     // MARK: - Update card
 
+    /// 12 horizontally, which is what `helmCard(padding: 12)` gives the two
+    /// cards above. At 14 the left text edge stepped 227 → 229 between the
+    /// author card and this one — two cards in one column starting their text
+    /// in two places, which is visible as a wobble long before anybody can say
+    /// what it is.
     private var updateCard: some View {
         VStack(spacing: 0) {
             updateRow
-                .padding(.horizontal, 14)
+                .padding(.horizontal, 12)
                 .padding(.vertical, 12)
             // The token, not a divider dimmed by eye: every other hairline in
             // the app is this colour, and 0.6 of a system divider is not a
@@ -266,7 +291,10 @@ struct AboutHelmView: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text(AppStr.updateChannel)
-                        .font(.callout)
+                        // A row's own name, at the size every other row name on
+                        // the page is set in. `.callout` is 12, and it was the
+                        // fifth size on a page the type scale gives four.
+                        .font(HelmText.rowTitle)
                     Spacer()
                     channelPills
                         .onChange(of: channel) { _, newValue in updater.setChannel(newValue) }
@@ -276,7 +304,7 @@ struct AboutHelmView: View {
                     .foregroundStyle(HelmText.quiet)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(.horizontal, 14)
+            .padding(.horizontal, 12)
             .padding(.vertical, 12)
         }
         .helmCard(padding: 0)
@@ -366,7 +394,7 @@ struct AboutHelmView: View {
                 // was published and decide.
                 if let rel = updater.available {
                     Link(AppStr.download, destination: rel.pageURL)
-                        .font(.callout)
+                        .font(HelmText.rowTitle)
                 }
             }
         case .failed:
@@ -381,7 +409,7 @@ struct AboutHelmView: View {
                         Button(AppStr.retry) { updater.downloadAndInstall() }
                             .frame(maxWidth: .infinity)
                         Link(AppStr.download, destination: rel.downloadURL ?? rel.pageURL)
-                            .font(.callout)
+                            .font(HelmText.rowTitle)
                     }
                 }
             }
@@ -414,7 +442,15 @@ struct AboutHelmView: View {
             } else if updater.lastMessage == "error" {
                 HStack(spacing: 10) {
                     statusIcon("exclamationmark.triangle.fill", HelmSignal.warning)
-                    Text(AppStr.updateCheckFailed).lineLimit(1)
+                    // Two lines, like the `aheadOfChannel` branch below. At one
+                    // this sentence was cut in five of the eight languages: a
+                    // German whose update check failed read «Update-Prüfung
+                    // fehl…», where the string wants 198 pt of the roughly 240
+                    // the row leaves it. French wants 253, Portuguese 234,
+                    // Russian 225, Spanish 215. Only en, ja and zh ever fitted.
+                    Text(AppStr.updateCheckFailed)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                     Spacer()
                     Button(AppStr.retry) { updater.checkNow() }
                 }
