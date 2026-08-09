@@ -39,6 +39,78 @@ final class DiskAdvisorTests: XCTestCase {
         XCTAssertTrue(DiskAdvisor.advise(root: root, rootPath: home, home: home, now: now).isEmpty)
     }
 
+    /// macOS carries an ACL on `~/Library/Caches` — `group:everyone deny
+    /// delete` — that its children do not, so `trashItem` refuses the folder
+    /// and takes any of its contents happily. The row offered the folder, the
+    /// press produced NSCocoaErrorDomain 513, and Recommendations had
+    /// recommended the one thing it could not do.
+    func testCacheAdviceNamesTheContentsAndNeverTheContainer() {
+        let cachesPath = home + "/Library/Caches"
+        let caches = dir(cachesPath, [file(cachesPath + "/Firefox", 3_000_000_000),
+                                      file(cachesPath + "/Adobe", 900_000_000)])
+        let root = dir(home, [dir(home + "/Library", [caches])])
+        let advice = DiskAdvisor.advise(root: root, rootPath: home, home: home, now: now)
+        let cache = advice.first { $0.kind == .cache }
+        XCTAssertEqual(cache?.path, cachesPath, "the row still names the folder")
+        XCTAssertEqual(cache?.targets.map(\.path).sorted(),
+                       [cachesPath + "/Adobe", cachesPath + "/Firefox"])
+        XCTAssertFalse(cache?.targets.contains { $0.path == cachesPath } ?? true,
+                       "the container is what macOS refuses; it must not be a target")
+    }
+
+    /// One row, one size, one button — whatever the expansion costs behind it.
+    func testExpandedCacheIsStillASingleRow() {
+        let cachesPath = home + "/Library/Caches"
+        let children = (0..<40).map { file(cachesPath + "/app\($0)", 30_000_000) }
+        let root = dir(home, [dir(home + "/Library", [dir(cachesPath, children)])])
+        let advice = DiskAdvisor.advise(root: root, rootPath: home, home: home, now: now)
+        XCTAssertEqual(advice.count, 1)
+        XCTAssertEqual(advice.first?.name, "Caches")
+    }
+
+    /// The folded bucket is an aggregate, not a path: `UserFileScope` refuses
+    /// anything ending in `/…`, so nothing will ever be attempted for it. Its
+    /// bytes belong to the folder's total and not to the row's promise.
+    func testCacheSizeIsWhatWillBeAttempted() {
+        let cachesPath = home + "/Library/Caches"
+        let loose = DiskNode(name: "…", bytes: 400_000_000, isDirectory: false, isFolded: true)
+        let caches = dir(cachesPath, [file(cachesPath + "/Firefox", 3_000_000_000), loose])
+        let root = dir(home, [dir(home + "/Library", [caches])])
+        let advice = DiskAdvisor.advise(root: root, rootPath: home, home: home, now: now)
+        XCTAssertEqual(advice.first?.bytes, 3_000_000_000)
+        XCTAssertEqual(advice.first?.targets.map(\.path), [cachesPath + "/Firefox"])
+    }
+
+    /// And the threshold judges the same figure the row shows. A folder holding
+    /// nothing but small loose files is 400 MB of cache that pressing + cannot
+    /// touch, so it is not a recommendation.
+    func testCacheOfNothingButLooseFilesIsNotAdvised() {
+        let cachesPath = home + "/Library/Caches"
+        let loose = DiskNode(name: "…", bytes: 400_000_000, isDirectory: false, isFolded: true)
+        let root = dir(home, [dir(home + "/Library", [dir(cachesPath, [loose])])])
+        XCTAssertTrue(DiskAdvisor.advise(root: root, rootPath: home, home: home,
+                                         now: now).isEmpty)
+    }
+
+    /// Every advice, of every kind, promises exactly what it will attempt. The
+    /// structural version of the size question, so a third kind cannot be added
+    /// with a size that means something else.
+    func testEveryAdviceWeighsItsOwnTargets() {
+        let cachesPath = home + "/Library/Caches"
+        let root = dir(home, [
+            dir(home + "/Library", [dir(cachesPath, [file(cachesPath + "/Firefox", 3_000_000_000)])]),
+            dir(home + "/Downloads", [file(home + "/Downloads/installer.dmg",
+                                           900_000_000, ageDays: 90)]),
+            dir(home + "/Movies", [file(home + "/Movies/raw.mov", 5_000_000_000, ageDays: 400)]),
+        ])
+        let advice = DiskAdvisor.advise(root: root, rootPath: home, home: home, now: now)
+        XCTAssertEqual(advice.count, 3)
+        for item in advice {
+            XCTAssertFalse(item.targets.isEmpty, item.path)
+            XCTAssertEqual(item.bytes, item.targets.reduce(0) { $0 + $1.bytes }, item.path)
+        }
+    }
+
     // MARK: - Old downloads
 
     func testOldBigDownloadIsAdvised() {

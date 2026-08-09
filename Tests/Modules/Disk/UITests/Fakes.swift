@@ -45,6 +45,18 @@ final class AnsweringTransport: EngineTransport, @unchecked Sendable {
         lock.lock(); self.removal = removal; lock.unlock()
     }
 
+    /// What the engine was actually asked to trash. A basket row and a removal
+    /// are not one to one — a cache row stands for its contents — so a test of
+    /// that has to be able to read the request rather than the basket.
+    var trashRequests: [[String]] {
+        lock.lock(); defer { lock.unlock() }; return requestedTrash
+    }
+    private var requestedTrash: [[String]] = []
+
+    private func noteTrash(_ paths: [String]) {
+        lock.lock(); requestedTrash.append(paths); lock.unlock()
+    }
+
     private func result(for path: String) -> ScanResult? {
         lock.lock(); defer { lock.unlock() }; return results[path]
     }
@@ -61,6 +73,7 @@ final class AnsweringTransport: EngineTransport, @unchecked Sendable {
             let request = try? JSONDecoder().decode(ScanRequest.self, from: command.payload)
             return (try? JSONEncoder().encode(request.flatMap { result(for: $0.path) })) ?? Data()
         case "trash":
+            noteTrash((try? JSONDecoder().decode([String].self, from: command.payload)) ?? [])
             return (try? JSONEncoder().encode(currentRemoval)) ?? Data()
         default:
             return Data()

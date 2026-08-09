@@ -56,6 +56,15 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   arranged.
 
 ### Fixed
+- **Recommendations offered a folder macOS refuses to move.** Clearing `Caches`
+  failed every time: macOS protects that folder itself while leaving everything
+  inside it to you, so the one thing the row offered was the one thing that
+  could not be done. It clears the contents now and leaves the folder, which is
+  what applications expect to find. Still one row, one size, one button — and
+  the size counts what will actually be attempted. Half of a cache belongs to
+  apps that are running, so some of it will refuse: what stays is listed by
+  name with the reason, and the row shrinks to what is left rather than going
+  on claiming the whole folder.
 - **A panel with one tab stops 8 pt short of the screen no more.** The card
   reserved room for a gap under the tab strip whether or not the strip was
   drawn, and one tab draws none — so a panel tall enough to need scrolling

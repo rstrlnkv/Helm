@@ -445,7 +445,12 @@ import Module_Disk_Engine
     @Published public private(set) var busy = false
 
     public func emptyBasket() async {
-        let paths = basket.map(\.path)
+        // One row in the basket is not always one removal: a cache row names a
+        // folder macOS will not part with and stands for everything inside it.
+        // The gate is unchanged — the engine partitions whatever comes out of
+        // here and `HelmTrash` still has the last word.
+        let paths = DiskRemovalPlan.targets(basket: basket.map(\.path),
+                                            advice: result?.advice ?? [])
         guard !paths.isEmpty else { return }
         // **One removal at a time**, the rule `UninstallerViewModel` already
         // follows. The basket is not emptied until the answer comes back, so
@@ -474,10 +479,8 @@ import Module_Disk_Engine
         // is the true half: what the volume *uses* falls by what left.
         let updated = ScanResult(root: pruned, freeBytes: previous.freeBytes,
                                  filesScanned: previous.filesScanned, seconds: previous.seconds,
-                                 advice: previous.advice.filter { advice in
-                                     !removed.contains { advice.path == $0
-                                         || advice.path.hasPrefix($0 + "/") }
-                                 })
+                                 advice: DiskRemovalPlan.remaining(previous.advice,
+                                                                   after: removed))
         result = updated
         // An unfinished tree is not written down. Every directory in it reports a
         // floor rather than a total, and the store is what the module reopens on
