@@ -166,8 +166,20 @@ enum KAStr {
     /// is an invitation, the second is an explanation.
     static var heroNoRules: String { L("No rule is switched on") }
     static var heroIdleReason: String { L("No rule applies right now") }
-    static var heroAutomatic: String { L("A rule keeps the Mac awake") }
-    static var heroIndefinite: String { L("Awake until you stop it") }
+    /// One figure for «awake», whatever is holding it, and the reason on the
+    /// line below — which is what the countdown state already does.
+    ///
+    /// There were two sentences here, and they were not parallel: «A rule is
+    /// holding the Mac» described the machinery, «Awake until you stop it»
+    /// described a deadline, and the reader had to parse a new construction for
+    /// each state of one screen. The figure answers one question — is this Mac
+    /// going to sleep — and everything about *why* moved to where the timer
+    /// already keeps it.
+    static var heroAwake: String { L("The Mac is staying awake") }
+    /// The reason line for a session with no deadline. «Until you stop it» is
+    /// the whole answer, and it is the same shape as the conditions listed for
+    /// a session a rule is holding.
+    static var heroUntilYouStop: String { L("Until you stop it") }
     /// The preset the menu-bar switch itself starts, named where it is offered.
     static func startTimerFor(_ minutes: Int) -> String {
         // The same spelling as the preset buttons beside it. `duration` gives

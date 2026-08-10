@@ -47,4 +47,37 @@ final class AMarkReportsTheWorldNotTheSwitchTests: XCTestCase {
             }
         }
     }
+
+    /// A card where no mark can appear holds no width for one.
+    ///
+    /// `.space` keeps one left edge for the labels of a *mixed* card. In a card
+    /// where nothing is marked it holds that edge against nobody: every label
+    /// steps right and the column of air down the left reads as icons that
+    /// failed to load — which is what a Mac with no rule switched on showed,
+    /// the common case on a fresh install.
+    func testACardWithNoMarksAtAllHoldsNoWidthForThem() {
+        XCTAssertEqual(HelmRowMark.of(enabled: false, satisfied: false,
+                                      inCardWithMarks: false), .none)
+        XCTAssertEqual(HelmRowMark.spacer(inCardWithMarks: false), .none)
+    }
+
+    /// And the moment one becomes possible, the width comes back — for the
+    /// unmarked rows too, which is the whole point of holding it.
+    func testTheWidthReturnsAsSoonAsAMarkIsPossible() {
+        XCTAssertEqual(HelmRowMark.of(enabled: false, satisfied: false,
+                                      inCardWithMarks: true), .space)
+        XCTAssertEqual(HelmRowMark.spacer(inCardWithMarks: true), .space)
+    }
+
+    /// The question is «can a mark appear», not «is one here now». Asked the
+    /// second way, every label in the card would jump sideways the moment a
+    /// condition came true — so a rule that is on and *not* satisfied still
+    /// keeps the card indented.
+    func testARuleThatIsOnButNotSatisfiedStillKeepsTheCardIndented() {
+        XCTAssertEqual(HelmRowMark.of(enabled: true, satisfied: false,
+                                      inCardWithMarks: true), .waiting)
+        XCTAssertEqual(HelmRowMark.of(enabled: false, satisfied: false,
+                                      inCardWithMarks: true), .space,
+                       "the unmarked rows stopped lining up with a rule that is merely armed")
+    }
 }

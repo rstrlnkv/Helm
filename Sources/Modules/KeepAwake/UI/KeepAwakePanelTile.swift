@@ -16,6 +16,22 @@ public struct KeepAwakePanelTile: View {
     /// Same measurement for the suppression row, which grows and shrinks on the
     /// engine's say-so rather than on a press.
     @State private var suppressedHeight: CGFloat = 0
+    /// What is *drawn*, as against what the engine says. Both rows below read
+    /// these and neither reads `vm` directly.
+    ///
+    /// `.animation(_:value:)` carries a property of a view that stays; it
+    /// carries neither a transition nor a layout change. Measured in
+    /// `KeepAwakeHero`, whose comment has the table: the swap under
+    /// `.animation(_:value:)` is **one** distinct frame, the same swap written
+    /// inside `withAnimation` is eleven. Both animations in this file were the
+    /// first spelling, and the comment below claiming a cross-fade described
+    /// something that never happened.
+    ///
+    /// Seeded from the engine rather than from a constant: the first value is
+    /// not a change, and a panel opened while a timer is already running must
+    /// show the countdown rather than play the presets swapping into it.
+    @State private var shownActive: Bool
+    @State private var shownSuppressed: Bool
     @State private var showCustomTime = false
     @State private var customMinutesText = ""
     @State private var autoExternalDisplay: Bool
@@ -28,6 +44,9 @@ public struct KeepAwakePanelTile: View {
         _autoExternalDisplay = State(initialValue: settings.autoExternalDisplay)
         _autoPower = State(initialValue: settings.autoPower)
         _customMinutes = State(initialValue: Self.openingMinutes(store))
+        let state = KeepAwakeViewModel.shared(vm: vm)
+        _shownActive = State(initialValue: state.isActive)
+        _shownSuppressed = State(initialValue: state.suppressed)
     }
 
     public var body: some View {
@@ -36,20 +55,19 @@ public struct KeepAwakePanelTile: View {
         // strip under the presets.
         VStack(alignment: .leading, spacing: 0) {
             header
-            // The swap the tile is for, and it was the one thing in it with no
-            // motion: a bare `if` between two rows of different heights, inside
-            // a card whose own height is ramping on `disclosure` around it. The
-            // rows are different view types, so there is nothing to
-            // interpolate — a cross-fade on one clock is the honest answer.
+            // The swap the tile is for. The rows are different view types, so
+            // there is nothing to interpolate — a cross-fade on one clock is
+            // the honest answer, and it took two attempts to actually get one:
+            // this comment described a cross-fade for months while the modifier
+            // under it carried nothing at all.
             Group {
-                if vm.isActive, let end = vm.endDate {
+                if shownActive, let end = vm.endDate {
                     countdownRow(end).transition(.opacity)
                 } else {
                     presetRow.transition(.opacity)
                 }
             }
             .padding(.top, 10)
-            .animation(HelmMotion.disclosure, value: vm.isActive)
             // Above the ⋯ block, never inside it. The whole point of this row
             // is that nothing else on any screen says the rule has stopped
             // working, so putting it behind a disclosure would leave it exactly
@@ -64,11 +82,10 @@ public struct KeepAwakePanelTile: View {
                 .onGeometryChange(for: CGFloat.self, of: \.size.height) { h in
                     if h > 0 { suppressedHeight = h }
                 }
-                .frame(height: vm.suppressed ? suppressedHeight : 0, alignment: .top)
+                .frame(height: shownSuppressed ? suppressedHeight : 0, alignment: .top)
                 .clipped()
-                .allowsHitTesting(vm.suppressed)
-                .accessibilityHidden(!vm.suppressed)
-                .animation(HelmMotion.disclosure, value: vm.suppressed)
+                .allowsHitTesting(shownSuppressed)
+                .accessibilityHidden(!shownSuppressed)
             // Canonical accordion, available in both states: the block always
             // exists, its natural height is measured, and the animation
             // interpolates between 0 and that number (SwiftUI can't animate to
@@ -94,6 +111,13 @@ public struct KeepAwakePanelTile: View {
                 .accessibilityHidden(!showMore)
         }
         .helmPanelCard()
+        // The transaction, not the modifier — see the note on `shownActive`.
+        .onChange(of: vm.isActive) { _, running in
+            withAnimation(HelmMotion.disclosure) { shownActive = running }
+        }
+        .onChange(of: vm.suppressed) { _, silenced in
+            withAnimation(HelmMotion.disclosure) { shownSuppressed = silenced }
+        }
         // The store isn't observable, so these mirrored values would otherwise
         // drift once the same settings are changed in the Settings window.
         .keepAwakeAutomationMirror(store, externalDisplay: $autoExternalDisplay,

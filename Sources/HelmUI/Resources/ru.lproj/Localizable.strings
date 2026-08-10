@@ -687,7 +687,6 @@
 "A silenced rule says so in the panel, with a way to start it again. Stopping a session by hand, or a timer that ends automation, leaves the rule quiet until it applies afresh — and nothing said so where you would look." = "Приглушённое правило говорит об этом в панели, и там же кнопка вернуть его. Остановка вручную или таймер, отключающий автоматику, оставляют правило молчать до следующего срабатывания — и нигде, куда смотрят, об этом не сообщалось.";
 "No rule is switched on" = "Ни одно правило не включено";
 "No rule applies right now" = "Сейчас ни одно правило не действует";
-"Awake until you stop it" = "Не спит, пока не остановите";
 "Applies right now" = "Действует сейчас";
 "So apps do not decide nobody is at the Mac" = "Чтобы приложения не решили, что за компьютером никого нет";
 "Until you pick one, the same as the active colour" = "Пока свой не выбран — тот же, что и активный";
@@ -695,7 +694,6 @@
 "Keep Awake opens with what is happening and the buttons for it: a countdown you can add to, or four ways to start. The rules underneath say in the same row whether they apply right now and whether they are switched on." = "Keep Awake открывается тем, что происходит, и кнопками к этому: отсчётом, к которому можно добавить время, или четырьмя способами начать. Правила ниже говорят в одной строке и о том, выполняются ли они сейчас, и о том, включены ли они.";
 "A module’s name says whether it is running." = "Рядом с именем модуля видно, работает ли он.";
 "A rule that is switched on and doing nothing looks different from one that is switched off. They used to look the same, so a rule that never fires and a rule nobody switched on were the same row." = "Правило, которое включено и ничего не делает, теперь выглядит иначе, чем выключенное. Раньше они выглядели одинаково: правило, которое ни разу не сработало, и правило, которое никто не включал, были одной строкой.";
-"A rule keeps the Mac awake" = "Правило не даёт Mac уснуть";
 "The Mac sleeps as usual" = "Mac засыпает как обычно";
 "Not applying right now" = "Сейчас не действует";
 "Stop pauses the rule until it applies again" = "«Стоп» поставит правило на паузу до следующего срабатывания";
@@ -717,3 +715,5 @@
 "then the external display keeps the Mac awake" = "дальше Mac держит внешний дисплей";
 "then being on power keeps the Mac awake" = "дальше Mac держит питание";
 "then the app keeps the Mac awake" = "дальше Mac держит приложение";
+"The Mac is staying awake" = "Mac не спит";
+"Until you stop it" = "Пока вы не остановите";

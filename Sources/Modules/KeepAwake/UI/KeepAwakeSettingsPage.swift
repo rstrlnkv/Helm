@@ -68,28 +68,11 @@ public struct KeepAwakeSettingsPage: View {
     }
 
     public var body: some View {
-        // The hero is not a section of the form. A grouped `Form` draws every
-        // section as a card, and a card holds *a list of things*; the state of
-        // the module is one thing, and v3 puts it on the bare pane with air
-        // around it. In a card it read as the first row of the settings list it
-        // had just stopped being.
-        VStack(spacing: 0) {
-            sessionHero
-            keepAwakeForm
-        }
+        keepAwakeForm
             .helmOnAppActive { accessibility = PermissionCheck.currentAccessibility() }
-        .task { accessibility = PermissionCheck.currentAccessibility() }
+            .task { accessibility = PermissionCheck.currentAccessibility() }
     }
 
-    /// The same countdown the menu bar and the panel show.
-    ///
-    /// This was a third spelling with no hours field, so a two-hour session —
-    /// one of the offered presets — read "120:00" here while the menu bar read
-    /// "2:00:00" at the same instant.
-    private var remainingText: String {
-        guard let end = vm.endDate else { return "—" }
-        return TimerProgress.label(remaining: end.timeIntervalSinceNow)
-    }
 
     /// Seven sections, each its own fragment.
     ///
@@ -101,7 +84,6 @@ public struct KeepAwakeSettingsPage: View {
     /// that keeps this page and the panel agreeing.
     private var keepAwakeForm: some View {
         Form {
-
             automationSection
             appsSection
 
@@ -129,108 +111,27 @@ public struct KeepAwakeSettingsPage: View {
     /// happening was the only screen that could not change it. Every command
     /// here was already on the wire; the panel tile sends the same ones.
     @ViewBuilder private var sessionHero: some View {
-        VStack(spacing: 10) {
-            // A countdown needs a tick of its own: the engine emits state on
-            // change, not once a second, so a figure drawn from it froze at
-            // whatever it read when the page opened. The panel tile solves it
-            // the same way.
-            TimelineView(.periodic(from: .now, by: 1)) { timeline in
-                hero(SessionHero.of(isActive: vm.isActive, endDate: vm.endDate,
-                                    conditions: vm.activeConditions, now: timeline.date))
-            }
-            // The Mac is asleep, a rule that applies is on screen saying
-            // nothing, and until now there was no third thing to read. Only
-            // shown while it is true, and it stops being true by itself when
-            // the condition drops.
-            if vm.suppressed {
-                HStack(spacing: 8) {
-                    Image(systemName: "pause.circle.fill")
-                        .foregroundStyle(HelmSignal.warning)
-                        .accessibilityHidden(true)
-                    Text(KAStr.automationPaused)
-                        .font(.callout).foregroundStyle(HelmText.quiet)
-                    Spacer(minLength: 8)
-                    Button(KAStr.resume) { vm.send(KeepAwakeCommand.resumeAutomation) }
-                }
-                .padding(.horizontal, 20)
-            }
+        // A countdown needs a tick of its own: the engine emits state on
+        // change, not once a second, so a figure drawn from it froze at
+        // whatever it read when the page opened. The panel tile solves it the
+        // same way. The tick goes *into* the hero rather than being read off
+        // the clock inside it, so the figure is a function of the tick.
+        TimelineView(.periodic(from: .now, by: 1)) { timeline in
+            KeepAwakeHero(
+                state: SessionHero.of(isActive: vm.isActive, endDate: vm.endDate,
+                                      conditions: vm.activeConditions, now: timeline.date),
+                now: timeline.date,
+                anyRuleOn: anyRuleOn,
+                defaultDurationMinutes: defaultDurationMinutes,
+                suppressed: vm.suppressed,
+                timedNote: timedNote,
+                start: start,
+                stop: { vm.send(KeepAwakeCommand.stop) },
+                resume: { vm.send(KeepAwakeCommand.resumeAutomation) })
         }
         .padding(.top, 24)
         .padding(.bottom, 18)
         .helmSettingsColumn()
-    }
-
-    @ViewBuilder private func hero(_ state: SessionHero) -> some View {
-        VStack(spacing: 8) {
-            switch state {
-            case .idle:
-                // The figure's slot, in words. 40 pt light is the size the
-                // countdown gets, and an idle page that dropped to body text
-                // there made the whole screen change shape when a timer began.
-                Text(KAStr.heroIdle)
-                    .font(.system(size: 40, weight: .light))
-                    .foregroundStyle(HelmText.quiet)
-                Text(anyRuleOn ? KAStr.heroIdleReason : KAStr.heroNoRules)
-                    .font(.callout).foregroundStyle(HelmText.faint)
-                HStack(spacing: 8) {
-                    startButton(KAStr.duration(15), minutes: 15)
-                    startButton(KAStr.oneHour, minutes: 60)
-                    startButton(KAStr.twoHours, minutes: 120)
-                    startButton(KAStr.indefinite, minutes: 0)
-                }
-                .padding(.top, 10)
-            case .timed(let end):
-                // Monospaced, so the figure does not jitter as the digits
-                // change width — it is redrawn once a second for hours.
-                Text(TimerProgress.label(remaining: end.timeIntervalSinceNow))
-                    .font(.system(size: 40, weight: .light, design: .monospaced))
-                    .tracking(-2)
-                    .contentTransition(.numericText(countsDown: true))
-                Text(timedNote(end)).font(.callout).foregroundStyle(HelmText.quiet)
-                HStack(spacing: 8) {
-                    // The same arithmetic the panel's «+15» uses, and for the
-                    // same reason: this is a `Double` that came off disk.
-                    Button("+" + KAStr.duration(15)) {
-                        start(TimerPolicy.extendedMinutes(remaining: end.timeIntervalSinceNow,
-                                                          adding: 15))
-                    }
-                    .controlSize(.large)
-                    Button(KAStr.indefinite) { start(0) }
-                        .controlSize(.large)
-                    stopButton
-                }
-                .padding(.top, 10)
-            case .indefinite:
-                Text(KAStr.heroIndefinite)
-                    .font(.system(size: 40, weight: .light))
-                HStack(spacing: 8) { stopButton }
-                    .padding(.top, 10)
-            case .automatic(let conditions):
-                Text(KAStr.heroAutomatic)
-                    .font(.system(size: 40, weight: .light))
-                Text(conditions.map(KAStr.condition).sorted().joined(separator: " · "))
-                    .font(.callout).foregroundStyle(HelmText.quiet)
-                HStack(spacing: 8) {
-                    // Zero is not a length, it is «no deadline» — composing
-                    // «start a timer for 0 min» from it made the page offer a
-                    // timer of nothing. The word is the one the idle row uses
-                    // for the same choice.
-                    Button(defaultDurationMinutes == 0
-                           ? KAStr.indefinite : KAStr.startTimerFor(defaultDurationMinutes)) {
-                        start(defaultDurationMinutes)
-                    }
-                    .controlSize(.large)
-                    stopButton
-                }
-                .padding(.top, 10)
-                // Stop does not end an automatic session, it silences the rule
-                // — the one thing nobody could learn from any screen. Said
-                // beside the button that does it.
-                Text(KAStr.heroStopSuppresses)
-                    .font(.caption).foregroundStyle(HelmText.faint)
-            }
-        }
-        .frame(maxWidth: .infinity)
     }
 
     /// «Таймер до 15:42 · дальше держит внешний дисплей». The second clause is
@@ -249,29 +150,6 @@ public struct KeepAwakeSettingsPage: View {
         autoExternalDisplay || autoPower || !appTriggers.isEmpty
     }
 
-    /// The preset the menu-bar switch and the shortcut start is the prominent
-    /// one. It is the only place on any screen that says which that is — the
-    /// row that used to say it in words is gone with the rest of the settings.
-    @ViewBuilder private func startButton(_ title: String, minutes: Int) -> some View {
-        // `.borderedProminent`, not `.tint` on a plain button: a tint colours a
-        // button's *label* and leaves the fill alone, so all four presets came
-        // out identical and the one the switch actually starts was a claim
-        // nothing on screen backed up.
-        if minutes == defaultDurationMinutes {
-            Button(title) { start(minutes) }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-        } else {
-            Button(title) { start(minutes) }
-                .controlSize(.large)
-        }
-    }
-
-    private var stopButton: some View {
-        Button(KAStr.stop) { vm.send(KeepAwakeCommand.stop) }
-            .controlSize(.large)
-    }
-
     private func start(_ minutes: Int) {
         guard let payload = try? JSONEncoder().encode(KeepAwakeStart(minutes: minutes)) else { return }
         vm.send(KeepAwakeCommand.start, payload: payload)
@@ -283,7 +161,17 @@ public struct KeepAwakeSettingsPage: View {
     /// edition put those 268 pt apart, so a person reading the page saw that a
     /// rule was holding the Mac and could not see what to change about it.
     @ViewBuilder private var automationSection: some View {
-        Section(header: HelmSectionTitle(KAStr.automation)) {
+        // The hero rides on this section's header.
+        //
+        // It has to be inside the form to scroll with the page — pinned above
+        // it, it held a fifth of the window for a sentence however far down the
+        // settings you had gone. But a *row* of a grouped form is drawn inside
+        // the section's card, and `listRowBackground(.clear)` does not take
+        // that fill away on macOS: measured, the block came back in a card
+        // either way. A section **header** is the one part of a grouped form
+        // that is drawn on the bare pane and still scrolls, which is exactly
+        // the two things this block needs.
+        Section(header: heroAndTitle) {
             ruleRow(KAStr.condition(.externalDisplay), on: $autoExternalDisplay,
                     satisfiedBy: .externalDisplay) { v in
                 vm.save(in: store) { $0.setAutoExternalDisplay(v) }
@@ -293,7 +181,7 @@ public struct KeepAwakeSettingsPage: View {
             }
             // No mark: the lid is not a rule that fires, it is a switch that
             // changes the whole Mac — and the note says what that costs.
-            HelmSettingRow(KAStr.keepAwakeLidClosed, note: KAStr.adminNote, mark: .space) {
+            HelmSettingRow(KAStr.keepAwakeLidClosed, note: KAStr.adminNote, mark: .spacer(inCardWithMarks: marksArePossible)) {
                 Toggle(KAStr.keepAwakeLidClosed, isOn: $clamshellEnabled)
                     .labelsHidden()
                     .onChange(of: clamshellEnabled) { _, v in
@@ -306,7 +194,7 @@ public struct KeepAwakeSettingsPage: View {
             // setting was written after the mockup, and here is where it
             // belongs: beside the rules whose end it changes.
             HelmSettingRow(KAStr.timerEndsAutomation, note: KAStr.timerEndsAutomationNote,
-                           mark: .space) {
+                           mark: .spacer(inCardWithMarks: marksArePossible)) {
                 Toggle(KAStr.timerEndsAutomation, isOn: $timerEndsAutomation)
                     .labelsHidden()
                     .onChange(of: timerEndsAutomation) { _, v in
@@ -316,7 +204,7 @@ public struct KeepAwakeSettingsPage: View {
             // The threshold and the switch on one row: a level means nothing
             // with the guard off, and the pop-up is disabled rather than hidden
             // so the number you set is still the number you see.
-            HelmSettingRow(KAStr.turnOffLowBattery, mark: .space) {
+            HelmSettingRow(KAStr.turnOffLowBattery, mark: .spacer(inCardWithMarks: marksArePossible)) {
                 Picker(KAStr.turnOffLowBattery, selection: $batteryGuardPercent) {
                     ForEach(HelmChoices.including(batteryGuardPercent, in: Self.batteryLevels),
                             id: \.self) { level in
@@ -342,6 +230,22 @@ public struct KeepAwakeSettingsPage: View {
     /// Five per cent to fifty, as the stepper this replaced stepped.
     private static let batteryLevels = Array(stride(from: 5, through: 50, by: 5))
 
+    private var heroAndTitle: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            sessionHero
+            HelmSectionTitle(KAStr.automation)
+        }
+    }
+
+    /// Whether any row of the automation card can carry a mark at all.
+    ///
+    /// Only the two condition rules ever get one; the lid, the timer setting
+    /// and the battery guard never do. With both switched off the card held
+    /// 14 pt of empty mark column against nobody — every label stepped right,
+    /// and the gap read as icons that had failed to load. It is the state a
+    /// fresh install opens in, so it was the first thing anybody saw.
+    private var marksArePossible: Bool { autoExternalDisplay || autoPower }
+
     /// A rule the engine can report on: the mark comes from `activeConditions`,
     /// the switch from the store, and the note from the two together.
     @ViewBuilder
@@ -352,7 +256,8 @@ public struct KeepAwakeSettingsPage: View {
         let satisfied = vm.activeConditions.contains(condition)
         HelmSettingRow(title,
                        note: enabled ? (satisfied ? KAStr.ruleApplies : KAStr.ruleWaiting) : nil,
-                       mark: .of(enabled: enabled, satisfied: satisfied)) {
+                       mark: .of(enabled: enabled, satisfied: satisfied,
+                                 inCardWithMarks: marksArePossible)) {
             Toggle(title, isOn: binding)
                 .labelsHidden()
                 .onChange(of: binding.wrappedValue) { _, v in save(v) }

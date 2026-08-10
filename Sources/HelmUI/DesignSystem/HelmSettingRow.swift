@@ -38,9 +38,29 @@ public enum HelmRowMark: Equatable, Sendable {
     /// reports the world; the switch beside it already reports the setting,
     /// and a grey dot for «off» is the row saying one thing twice. The
     /// width stays, so the labels of a mixed card keep one left edge.
-    public static func of(enabled: Bool, satisfied: Bool) -> HelmRowMark {
-        guard enabled else { return .space }
+    public static func of(enabled: Bool, satisfied: Bool,
+                          inCardWithMarks marksArePossible: Bool = true) -> HelmRowMark {
+        guard enabled else { return spacer(inCardWithMarks: marksArePossible) }
         return satisfied ? .holding : .waiting
+    }
+
+    /// The width-holder for a row that never carries a mark of its own — or
+    /// nothing at all, when no row in the card can carry one either.
+    ///
+    /// `.space` exists so a card of mixed rows keeps one left edge for its
+    /// labels. In a card where **nothing** is marked it holds that edge against
+    /// nobody: every label steps 26 pt right, and the column of air down the
+    /// left reads as icons that failed to load. Which is exactly what it looked
+    /// like on a Mac with no rule switched on — the common case on a fresh
+    /// install, and the first thing anybody sees.
+    ///
+    /// The question is «can a mark appear here», not «is one here now»: asked
+    /// the second way the labels would jump sideways the moment a condition
+    /// came true. Asked the first way the indent arrives when somebody flips a
+    /// switch — their own doing, and the same gesture that puts the first mark
+    /// on the screen.
+    public static func spacer(inCardWithMarks marksArePossible: Bool) -> HelmRowMark {
+        marksArePossible ? .space : .none
     }
 }
 

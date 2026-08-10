@@ -35,6 +35,7 @@ final class DocumentsNameTheTreeTests: XCTestCase {
         "LoginItems.appex": "a macOS bundle Helm reads a pane's own name out of",
         "PrivacySecurity.searchTerms": "a key inside a macOS settings bundle, and the rule is about not trusting it",
         "CAMediaTimingFunction": "Core Animation's curve, named where the documents explain why a spring cannot be handed to it",
+        "CAAnimation": "Core Animation's animation object, named where the documents say whose in-flight values `cacheDisplay` cannot see — and SwiftUI's, which it can",
         "NSAnimationContext": "AppKit's animation scope, named in the same passage about the table that is gone",
     ]
 

@@ -687,7 +687,6 @@
 "A silenced rule says so in the panel, with a way to start it again. Stopping a session by hand, or a timer that ends automation, leaves the rule quiet until it applies afresh — and nothing said so where you would look." = "被静音的规则会在面板里说明，并给出重新启用的按钮。手动停止，或让计时结束自动保持的开关，都会让规则一直沉默到下次满足条件——而这件事此前在你会看的地方都没有说明。";
 "No rule is switched on" = "没有开启任何规则";
 "No rule applies right now" = "目前没有规则被满足";
-"Awake until you stop it" = "保持唤醒，直到你停止";
 "Applies right now" = "当前已满足";
 "So apps do not decide nobody is at the Mac" = "以免 App 认为 Mac 前面没有人";
 "Until you pick one, the same as the active colour" = "未选择前，与激活时的颜色相同";
@@ -695,7 +694,6 @@
 "Keep Awake opens with what is happening and the buttons for it: a countdown you can add to, or four ways to start. The rules underneath say in the same row whether they apply right now and whether they are switched on." = "“保持唤醒”以当前状态和对应按钮开场：可以加时的倒计时，或四种开始方式。下面的规则会在同一行里说明它当前是否满足，以及是否已开启。";
 "A module’s name says whether it is running." = "模块名称旁会显示它是否正在运行。";
 "A rule that is switched on and doing nothing looks different from one that is switched off. They used to look the same, so a rule that never fires and a rule nobody switched on were the same row." = "已开启但没有生效的规则，现在看起来和关闭的规则不同了。以前两者一样：从未触发的规则和没人开启的规则是同一行。";
-"A rule keeps the Mac awake" = "有规则正在让 Mac 保持唤醒";
 "The Mac sleeps as usual" = "Mac 会照常睡眠";
 "Not applying right now" = "当前未满足";
 "Stop pauses the rule until it applies again" = "“停止”会暂停该规则，直到它再次满足";
@@ -717,3 +715,5 @@
 "then the external display keeps the Mac awake" = "之后由外接显示器继续保持唤醒";
 "then being on power keeps the Mac awake" = "之后由接通电源继续保持唤醒";
 "then the app keeps the Mac awake" = "之后由该 App 继续保持唤醒";
+"The Mac is staying awake" = "Mac 保持唤醒";
+"Until you stop it" = "直到你停止";

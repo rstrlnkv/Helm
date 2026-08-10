@@ -687,7 +687,6 @@
 "A silenced rule says so in the panel, with a way to start it again. Stopping a session by hand, or a timer that ends automation, leaves the rule quiet until it applies afresh — and nothing said so where you would look." = "停止中のルールがパネルでそう伝え、その場で再開できます。手動での停止や、自動化を終わらせるタイマーは、次に当てはまるまでルールを黙らせます。これまでは目に入る場所のどこにも書かれていませんでした。";
 "No rule is switched on" = "オンになっているルールはありません";
 "No rule applies right now" = "いまは条件を満たすルールがありません";
-"Awake until you stop it" = "停止するまで起きたままです";
 "Applies right now" = "いま条件を満たしています";
 "So apps do not decide nobody is at the Mac" = "App が“誰も Mac の前にいない”と判断しないように";
 "Until you pick one, the same as the active colour" = "選ぶまでは、アクティブの色と同じです";
@@ -695,7 +694,6 @@
 "Keep Awake opens with what is happening and the buttons for it: a countdown you can add to, or four ways to start. The rules underneath say in the same row whether they apply right now and whether they are switched on." = "スリープ防止は、いま何が起きているかと、そのためのボタンから始まります: 延長できるカウントダウン、または開始する 4 つの方法。下のルールは、いま条件を満たしているかと、入になっているかを同じ行で伝えます。";
 "A module’s name says whether it is running." = "モジュール名の横に、動作中かどうかが出ます。";
 "A rule that is switched on and doing nothing looks different from one that is switched off. They used to look the same, so a rule that never fires and a rule nobody switched on were the same row." = "入になっていて何もしていないルールは、切のルールと見た目が変わりました。以前は同じで、一度も当てはまらないルールと、誰も入にしていないルールが同じ行でした。";
-"A rule keeps the Mac awake" = "ルールが Mac を起こしています";
 "The Mac sleeps as usual" = "Mac はいつもどおりスリープします";
 "Not applying right now" = "いまは条件を満たしていません";
 "Stop pauses the rule until it applies again" = "“停止”は、次に条件を満たすまでルールを一時停止します";
@@ -717,3 +715,5 @@
 "then the external display keeps the Mac awake" = "その後は外部ディスプレイが起こしておきます";
 "then being on power keeps the Mac awake" = "その後は電源接続が起こしておきます";
 "then the app keeps the Mac awake" = "その後はアプリが起こしておきます";
+"The Mac is staying awake" = "Mac は起きたままです";
+"Until you stop it" = "停止するまで";

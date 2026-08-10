@@ -687,7 +687,6 @@
 "A silenced rule says so in the panel, with a way to start it again. Stopping a session by hand, or a timer that ends automation, leaves the rule quiet until it applies afresh — and nothing said so where you would look." = "A silenced rule says so in the panel, with a way to start it again. Stopping a session by hand, or a timer that ends automation, leaves the rule quiet until it applies afresh — and nothing said so where you would look.";
 "No rule is switched on" = "No rule is switched on";
 "No rule applies right now" = "No rule applies right now";
-"Awake until you stop it" = "Awake until you stop it";
 "Applies right now" = "Applies right now";
 "So apps do not decide nobody is at the Mac" = "So apps do not decide nobody is at the Mac";
 "Until you pick one, the same as the active colour" = "Until you pick one, the same as the active colour";
@@ -695,7 +694,6 @@
 "Keep Awake opens with what is happening and the buttons for it: a countdown you can add to, or four ways to start. The rules underneath say in the same row whether they apply right now and whether they are switched on." = "Keep Awake opens with what is happening and the buttons for it: a countdown you can add to, or four ways to start. The rules underneath say in the same row whether they apply right now and whether they are switched on.";
 "A module’s name says whether it is running." = "A module’s name says whether it is running.";
 "A rule that is switched on and doing nothing looks different from one that is switched off. They used to look the same, so a rule that never fires and a rule nobody switched on were the same row." = "A rule that is switched on and doing nothing looks different from one that is switched off. They used to look the same, so a rule that never fires and a rule nobody switched on were the same row.";
-"A rule keeps the Mac awake" = "A rule keeps the Mac awake";
 "The Mac sleeps as usual" = "The Mac sleeps as usual";
 "Not applying right now" = "Not applying right now";
 "Stop pauses the rule until it applies again" = "Stop pauses the rule until it applies again";
@@ -717,3 +715,5 @@
 "then the external display keeps the Mac awake" = "then the external display keeps the Mac awake";
 "then being on power keeps the Mac awake" = "then being on power keeps the Mac awake";
 "then the app keeps the Mac awake" = "then the app keeps the Mac awake";
+"The Mac is staying awake" = "The Mac is staying awake";
+"Until you stop it" = "Until you stop it";

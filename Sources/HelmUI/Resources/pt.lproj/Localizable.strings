@@ -687,7 +687,6 @@
 "A silenced rule says so in the panel, with a way to start it again. Stopping a session by hand, or a timer that ends automation, leaves the rule quiet until it applies afresh — and nothing said so where you would look." = "Uma regra silenciada avisa no painel, com um botão para retomá-la. Parar à mão, ou um timer que encerra a automação, deixa a regra quieta até ela ser atendida de novo — e isso não era dito em lugar nenhum à vista.";
 "No rule is switched on" = "Nenhuma regra está ativada";
 "No rule applies right now" = "Agora nenhuma regra é atendida";
-"Awake until you stop it" = "Acordado até você parar";
 "Applies right now" = "Aplica-se agora";
 "So apps do not decide nobody is at the Mac" = "Para que os apps não concluam que ninguém está no Mac";
 "Until you pick one, the same as the active colour" = "Enquanto você não escolher, a mesma da cor ativa";
@@ -695,7 +694,6 @@
 "Keep Awake opens with what is happening and the buttons for it: a countdown you can add to, or four ways to start. The rules underneath say in the same row whether they apply right now and whether they are switched on." = "O Keep Awake começa pelo que está acontecendo e pelos botões para isso: uma contagem que você pode estender, ou quatro maneiras de começar. As regras abaixo dizem na mesma linha se são atendidas agora e se estão ativadas.";
 "A module’s name says whether it is running." = "Ao lado do nome de um módulo aparece se ele está em execução.";
 "A rule that is switched on and doing nothing looks different from one that is switched off. They used to look the same, so a rule that never fires and a rule nobody switched on were the same row." = "Uma regra ativada que não faz nada agora parece diferente de uma desativada. Antes eram iguais: uma regra que nunca é atendida e uma que ninguém ativou eram a mesma linha.";
-"A rule keeps the Mac awake" = "Uma regra mantém o Mac acordado";
 "The Mac sleeps as usual" = "O Mac entra em repouso como sempre";
 "Not applying right now" = "Não se aplica agora";
 "Stop pauses the rule until it applies again" = "“Parar” pausa a regra até ela se aplicar de novo";
@@ -717,3 +715,5 @@
 "then the external display keeps the Mac awake" = "depois o monitor externo o mantém acordado";
 "then being on power keeps the Mac awake" = "depois a tomada o mantém acordado";
 "then the app keeps the Mac awake" = "depois o app o mantém acordado";
+"The Mac is staying awake" = "O Mac continua acordado";
+"Until you stop it" = "Até você parar";

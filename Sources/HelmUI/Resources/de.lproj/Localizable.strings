@@ -687,7 +687,6 @@
 "A silenced rule says so in the panel, with a way to start it again. Stopping a session by hand, or a timer that ends automation, leaves the rule quiet until it applies afresh — and nothing said so where you would look." = "Eine stummgeschaltete Regel sagt das jetzt im Panel, mit einer Taste, sie wieder zu starten. Ein Stopp von Hand oder ein Timer, der die Automatik beendet, lässt die Regel schweigen, bis sie erneut greift — und nirgends, wo man hinsieht, stand das.";
 "No rule is switched on" = "Keine Regel ist eingeschaltet";
 "No rule applies right now" = "Gerade trifft keine Regel zu";
-"Awake until you stop it" = "Wach, bis Sie es beenden";
 "Applies right now" = "Trifft gerade zu";
 "So apps do not decide nobody is at the Mac" = "Damit Apps nicht annehmen, dass niemand am Mac sitzt";
 "Until you pick one, the same as the active colour" = "Solange keine gewählt ist, dieselbe wie die aktive";
@@ -695,7 +694,6 @@
 "Keep Awake opens with what is happening and the buttons for it: a countdown you can add to, or four ways to start. The rules underneath say in the same row whether they apply right now and whether they are switched on." = "Wach halten beginnt mit dem, was gerade läuft, und den Tasten dafür: einem Countdown, den Sie verlängern können, oder vier Arten zu starten. Die Regeln darunter sagen in derselben Zeile, ob sie gerade zutreffen und ob sie eingeschaltet sind.";
 "A module’s name says whether it is running." = "Neben dem Namen eines Moduls steht, ob es läuft.";
 "A rule that is switched on and doing nothing looks different from one that is switched off. They used to look the same, so a rule that never fires and a rule nobody switched on were the same row." = "Eine Regel, die eingeschaltet ist und nichts tut, sieht jetzt anders aus als eine ausgeschaltete. Vorher sahen beide gleich aus: eine Regel, die nie greift, und eine, die niemand eingeschaltet hat, waren dieselbe Zeile.";
-"A rule keeps the Mac awake" = "Eine Regel hält den Mac wach";
 "The Mac sleeps as usual" = "Der Mac geht wie immer in den Ruhezustand";
 "Not applying right now" = "Trifft gerade nicht zu";
 "Stop pauses the rule until it applies again" = "„Stopp“ pausiert die Regel, bis sie wieder zutrifft";
@@ -717,3 +715,5 @@
 "then the external display keeps the Mac awake" = "danach hält der externe Bildschirm den Mac wach";
 "then being on power keeps the Mac awake" = "danach hält der Netzstrom den Mac wach";
 "then the app keeps the Mac awake" = "danach hält die App den Mac wach";
+"The Mac is staying awake" = "Der Mac bleibt wach";
+"Until you stop it" = "Bis Sie es beenden";
