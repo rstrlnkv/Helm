@@ -31,6 +31,26 @@ public struct KeepAwakeSettingsPage: View {
     @State private var batteryGuardEnabled: Bool
     @State private var batteryGuardPercent: Int
 
+    /// What the rule rows are **drawn** from, as against what is true.
+    ///
+    /// Every one of these arrives from the engine over the wire, and law 2 of
+    /// this house's motion notes is that a value handed over from outside
+    /// carries no transaction with it: `.animation(_:value:)` on the row would
+    /// be measured indistinguishable from no animation at all. So the arriving
+    /// value lands in state of this view's own, written inside `withAnimation`
+    /// where it lands, and the rows read only these. Seeded from the view model
+    /// rather than from a constant — a page opened while a rule is already
+    /// holding must show the tick, not play it arriving.
+    @State private var shownConditions: Set<ActiveCondition>
+    @State private var shownTriggered: Set<ActiveCondition>
+    @State private var shownSuppressed: Bool
+    /// The same for the mark *column*, which is a layout change — every label
+    /// in the card steps 26 pt sideways when the first rule is switched on.
+    /// This one is press-driven rather than engine-driven, but the write still
+    /// has to be inside the transaction: a `Toggle`'s binding sets its value
+    /// outside any animation, and `.onChange` is where it can be given one.
+    @State private var shownMarksPossible: Bool
+
     @State private var activeTintColor: String
     @State private var ringTimer: Bool
     @State private var showTimerText: Bool
@@ -59,6 +79,12 @@ public struct KeepAwakeSettingsPage: View {
         _timerEndsAutomation = State(initialValue: settings.timerEndsAutomation)
         _batteryGuardEnabled = State(initialValue: settings.batteryGuardEnabled)
         _batteryGuardPercent = State(initialValue: settings.batteryGuardPercent)
+        let live = KeepAwakeViewModel.shared(vm: vm)
+        _shownConditions = State(initialValue: live.activeConditions)
+        _shownTriggered = State(initialValue: live.triggeredConditions)
+        _shownSuppressed = State(initialValue: live.suppressed)
+        _shownMarksPossible = State(initialValue: settings.autoExternalDisplay
+                                                  || settings.autoPower)
         _activeTintColor = State(initialValue: MenuBarLook.activeTint(store))
         _ringTimer = State(initialValue: MenuBarLook.ringTimer(store))
         _showTimerText = State(initialValue: MenuBarLook.showTimerText(store))
@@ -94,6 +120,21 @@ public struct KeepAwakeSettingsPage: View {
         }
         .formStyle(.grouped)
         .helmSettingsColumn()
+        // Where the engine's values land, and the only place they are animated.
+        .onChange(of: vm.activeConditions) { _, arrived in
+            withAnimation(HelmMotion.disclosure) { shownConditions = arrived }
+        }
+        .onChange(of: vm.triggeredConditions) { _, arrived in
+            withAnimation(HelmMotion.disclosure) { shownTriggered = arrived }
+        }
+        .onChange(of: vm.suppressed) { _, silenced in
+            withAnimation(HelmMotion.disclosure) { shownSuppressed = silenced }
+        }
+        // …and where the press does. Both switches feed one column, so the
+        // derived value is watched rather than each of them.
+        .onChange(of: marksArePossible) { _, possible in
+            withAnimation(HelmMotion.disclosure) { shownMarksPossible = possible }
+        }
         // The panel's ⋯ block writes the same keys; without this the page shows
         // stale values when both are open (the reverse direction already works).
         .keepAwakeAutomationMirror(store, externalDisplay: $autoExternalDisplay,
@@ -280,19 +321,19 @@ public struct KeepAwakeSettingsPage: View {
                          satisfiedBy condition: ActiveCondition,
                          save: @escaping (Bool) -> Void) -> some View {
         let enabled = binding.wrappedValue
-        let satisfied = vm.activeConditions.contains(condition)
+        let satisfied = shownConditions.contains(condition)
         // The four cases live in `RuleNote`, out in the engine's logic where a
         // test can reach them. Written here as nested ternaries there was no
         // room for the fourth — a rule that is on, whose trigger holds, and
         // which is paused — so it read as «Not applying right now» directly
         // under a banner saying it was paused.
         let note = RuleNote.of(enabled: enabled, satisfied: satisfied,
-                               suppressed: vm.suppressed,
-                               triggerHolds: vm.triggeredConditions.contains(condition))
+                               suppressed: shownSuppressed,
+                               triggerHolds: shownTriggered.contains(condition))
         HelmSettingRow(title,
                        note: KAStr.ruleNote(note, condition),
                        mark: .of(enabled: enabled, satisfied: satisfied,
-                                 inCardWithMarks: marksArePossible)) {
+                                 inCardWithMarks: shownMarksPossible)) {
             Toggle(title, isOn: binding)
                 .labelsHidden()
                 .onChange(of: binding.wrappedValue) { _, v in save(v) }

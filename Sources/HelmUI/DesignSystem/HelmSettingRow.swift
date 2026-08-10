@@ -80,7 +80,12 @@ public struct HelmSettingRow<Trailing: View>: View {
     }
 
     public var body: some View {
-        HStack(spacing: 12) {
+        // Spacing 0, with the mark's own gap inside its frame. An `HStack`
+        // spacing is applied whether or not the view beside it has any width,
+        // so a column that shrinks to nothing would leave 12 pt of air behind
+        // — which is exactly the indent-against-nobody that `.none` exists to
+        // prevent. Carried in the frame, the gap goes with the column.
+        HStack(spacing: 0) {
             markView
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -91,6 +96,17 @@ public struct HelmSettingRow<Trailing: View>: View {
                         // that animate, where hierarchical styles re-resolve.
                         .foregroundStyle(HelmText.quiet)
                         .fixedSize(horizontal: false, vertical: true)
+                        // A *replacement*, so it gets a cross-fade and not a
+                        // reveal: «While an external display is connected»
+                        // becomes «Applies right now» when a switch is flipped,
+                        // and one `Text` whose string changes redraws in a
+                        // single frame however many transactions surround it.
+                        // The `.id` is what makes the two different views, which
+                        // is the only way a transition has anything to fire on
+                        // (law 1 — identity decides whether anything can
+                        // animate; here it is wanted rather than avoided).
+                        .id(note)
+                        .transition(.opacity)
                 }
             }
             // The label is the subject of the row and gives way last. Without a
@@ -105,29 +121,50 @@ public struct HelmSettingRow<Trailing: View>: View {
             // announcement into the sentence too, and the switch is the part a
             // person navigates *to*.
             .accessibilityElement(children: .combine)
-            Spacer(minLength: 8)
+            // 12, which is what the stack's own spacing used to contribute
+            // here before it went to 0 for the mark column's sake.
+            Spacer(minLength: 12)
             HStack(spacing: 8) { trailing }
         }
     }
 
-    @ViewBuilder private var markView: some View {
-        switch mark {
-        case .none:
-            EmptyView()
-        case .space:
-            // `.rspace` — the width of a mark and nothing in it.
-            Color.clear.frame(width: Self.markWidth, height: 1)
-        case .holding:
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(HelmSignal.success)
-                .frame(width: Self.markWidth)
-                .accessibilityHidden(true)
-        case .waiting:
-            Image(systemName: "clock")
-                .foregroundStyle(HelmText.faint)
-                .frame(width: Self.markWidth)
-                .accessibilityHidden(true)
-        }
+    /// **One view for all four marks, not a `switch` over them.**
+    ///
+    /// This was four branches, and SwiftUI interpolates between two states of
+    /// one view and never between two views — so `.space` → `.holding` was an
+    /// insert and a remove however many transactions surrounded it, and the
+    /// green tick simply appeared. The four states are properties of a single
+    /// `Image` now: which symbol, what colour, whether it is drawn at all, and
+    /// how wide the column it sits in is. Every one of those interpolates.
+    ///
+    /// `.contentTransition(.symbolEffect(.replace))` is what carries clock →
+    /// tick, which is a *replacement* of one glyph by another rather than a
+    /// reveal — the house rule about growing applies to blocks arriving, not to
+    /// a 14 pt symbol changing what it says.
+    private var markView: some View {
+        Image(systemName: symbolName)
+            .foregroundStyle(markInk)
+            .contentTransition(.symbolEffect(.replace))
+            // Nothing to say, but the column may still have to hold its width:
+            // `.space` is drawn and invisible rather than absent, so the labels
+            // of a mixed card keep one left edge.
+            .opacity(mark == .holding || mark == .waiting ? 1 : 0)
+            // The whole column, gap included. At `.none` it is nothing at all
+            // and the labels sit flush; anywhere else it is the mark's width
+            // plus the gap the stack no longer contributes.
+            .frame(width: mark == .none ? 0 : Self.markWidth + 12, alignment: .leading)
+            .accessibilityHidden(true)
+    }
+
+    /// `.space` keeps the tick's name rather than an empty string: an `Image`
+    /// with no symbol is a different shape, and the swap out of invisibility
+    /// would resize the column under the transition that is carrying it.
+    private var symbolName: String {
+        mark == .waiting ? "clock" : "checkmark.circle.fill"
+    }
+
+    private var markInk: Color {
+        mark == .waiting ? HelmText.faint : HelmSignal.success
     }
 
 }
