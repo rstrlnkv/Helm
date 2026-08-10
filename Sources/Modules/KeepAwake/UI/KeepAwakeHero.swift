@@ -260,8 +260,12 @@ struct KeepAwakeHero: View {
                 startButton(KAStr.duration(15), minutes: 15)
                 startButton(KAStr.oneHour, minutes: 60)
                 startButton(KAStr.twoHours, minutes: 120)
-                startButton(KAStr.indefinite, minutes: 0)
+                // Lengths first, then the one that has none. Every button up to
+                // here answers «for how long», and the free-form field is the
+                // fourth answer to that question rather than a fifth kind of
+                // thing — «Indefinite» between them read as a gap in the run.
                 customButton
+                startButton(KAStr.indefinite, minutes: 0)
             }
             .padding(.top, 10)
         }
@@ -301,9 +305,9 @@ struct KeepAwakeHero: View {
                 // same reason: this is a `Double` that came off disk.
                 extendButton(by: 15, from: end)
                 extendButton(by: 60, from: end)
+                customButton
                 Button(KAStr.indefinite) { start(0) }
                     .controlSize(.large)
-                customButton
                 stopButton
             }
             .padding(.top, 10)
@@ -357,8 +361,8 @@ struct KeepAwakeHero: View {
                 // choice. A rule can hold this Mac for an hour or for a day,
                 // and until now the only way to say «and keep holding it after
                 // the app quits» was to stop the rule and start again by hand.
-                startButton(KAStr.indefinite, minutes: 0)
                 customButton
+                startButton(KAStr.indefinite, minutes: 0)
                 stopButton
             }
             .padding(.top, 10)

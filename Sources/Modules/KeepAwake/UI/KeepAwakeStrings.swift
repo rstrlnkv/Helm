@@ -14,7 +14,21 @@ enum KAStr {
     }
     /// Window title: no ellipsis — that belongs to the menu entry that opens it.
     static var customTimeTitle: String { L("Custom duration") }
-    static var customTime: String { L("Custom…") }
+    /// The button that opens the free-form duration field.
+    ///
+    /// **Not «Timer».** That word is already this module's name for the running
+    /// countdown — `KAStr.timer`, «Timer colour», «A timer pauses the rule too»
+    /// — and the three buttons beside this one *are* timers, so naming only the
+    /// fourth one that would say the other three are not. One word, two meanings
+    /// on one screen, which is the collision the localization rule exists for.
+    ///
+    /// `Other…` is macOS's own label for exactly this control: a list of values
+    /// and a way to enter one that is not on it. `TB_Other...` in Preview and
+    /// `Other…` in Calendar read «Другое…», «Andere\u{00A0}…», «Autre…»,
+    /// «Otro…», «その他…», «其他…» — read out of those bundles rather than
+    /// translated again, including the German non-breaking space before the
+    /// ellipsis, which is Apple's spelling in all three apps that carry it.
+    static var customTime: String { L("Other…") }
     static var done: String { L("OK") }
     /// The state of the ⋯ disclosure, read after its name.
     ///
