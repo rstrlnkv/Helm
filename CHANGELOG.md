@@ -5,6 +5,69 @@ All notable changes to Helm are documented here. The format is loosely based on
 global changes, MINOR = new/polished features, PATCH = fixes. Every release
 bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 
+## [0.10.0-dev.2] — 2026-08-10
+
+> Keep Awake again: a manual timer where it was missing, and four screens that
+> were saying things that were not so.
+
+### Added
+- **Any duration, on the page as well as in the panel.** The panel has taken a
+  free-form number since the first version and the settings page never did, so
+  “keep this Mac awake for the length of this build” meant rounding to two
+  hours or opening another window.
+- **“Indefinite” in every state.** A rule holding the Mac could not be told to
+  keep holding it after the app it watches quits, except by stopping the rule
+  and starting a session by hand.
+
+### Fixed
+- **“Something else is keeping this Mac awake” was on screen with nothing of
+  the sort running.** It was not wrong — `powerd` holds
+  `PreventUserIdleSystemSleep` named “Powerd - Prevent sleep while display is
+  on” for as long as the screen is lit, and `sharingd` holds one named
+  “Handoff” — it was useless, because the sentence was true every time there
+  was somebody there to read it. Counted by owner now. Measured, and a nil
+  check would not have been enough: `powerd`, `WindowServer`, `coreaudiod` and
+  `backupd` have no `NSRunningApplication` at all, but `sharingd` does; what
+  separates it is an activation policy of `.prohibited`.
+- **“Stop pauses the rule” was written in one of four states.** The engine
+  suppresses whenever a rule’s trigger holds, whatever started the session — so
+  a hand-started timer running beside a watched app paused that rule with no
+  screen mentioning it. And once the rule *is* paused the caption goes: it was
+  sitting directly above the banner that says the same thing, one of them in
+  the future tense about something that had already happened.
+- **A paused rule’s own row said “Not applying right now”**, two hundred points
+  under a banner saying it was paused. `activeConditions` is deliberately empty
+  while suppressed; the engine publishes the triggers separately now.
+- **“Default duration” named a control that does not exist** — the menu-bar
+  switch. The status item opens the panel on a left click and a menu on a
+  right click; the two things that start a session of that length are the
+  panel’s switch and the keyboard shortcut, and the second was never mentioned.
+- **The administrator password dialog no longer comes from a rule.** Engaging
+  “Stay awake with the lid closed” installs a NOPASSWD sudoers rule, and that
+  was reached on every edge of “the Mac is now being held awake” — including
+  the edges an app launching causes. So a real system password prompt could
+  appear at a moment nobody had touched Helm, with nothing on it naming the
+  app, the rule or this program, and any process running as this user could
+  choose that moment. It needs a gesture behind it now: a deliberate start, or
+  the switch’s own rising edge. Where the grant already exists nothing is asked
+  and nothing changes, and the session itself was never at stake — an IOKit
+  assertion holds an open Mac awake perfectly well.
+- **The countdown no longer interrupts VoiceOver every second**, in the hero
+  and in the panel. A setting row is one stop rather than three.
+- **A changelog entry from `-dev.1` shipped English-only in seven languages.**
+  Nothing could catch that: one guard compares the eight tables against each
+  other and the other looks for translations nothing asks for, so a key that
+  reached none of the tables passed both. There is a check for that direction
+  now — it found this one, and thirty-seven false accusations that turned out
+  to be interpolated strings, which keep their tables at the call site.
+
+### Changed
+- The hero’s preset row wraps instead of truncating its buttons. Measured: at
+  the settings column every state of the block is 137 pt, which is what keeps
+  the form below still when somebody presses “15 min”.
+- The panel’s “paused” notice is drawn by the same component as the page’s,
+  rather than by a hand-built copy that outlived the extraction.
+
 ## [0.10.0] — 2026-08-09
 
 > The first release of the 0.10 line: one module per release, in the order they

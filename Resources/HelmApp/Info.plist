@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
 	<key>CFBundleExecutable</key>
 	<string>HelmApp</string>
 	<key>CFBundleIconFile</key>
@@ -10,15 +12,6 @@
 	<string>Helm</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.helm.app</string>
-	<!-- Helm's strings come from L() tables and the bundle ships no .lproj, so
-	     AppKit read this app as English-only and drew every panel it owns in
-	     English inside a Russian or Japanese UI: the folder picker's Open /
-	     Cancel / New Folder and its whole sidebar (three modules open an
-	     NSOpenPanel), the text field context menu, the standard window and
-	     application menu titles VoiceOver reads out. Declaring the eight
-	     languages is what lets AppKit pick its own localization for them —
-	     these are the system's panels, not ours, and it has already translated
-	     them. Same list, same order as AppLanguage. -->
 	<key>CFBundleLocalizations</key>
 	<array>
 		<string>en</string>
@@ -30,14 +23,12 @@
 		<string>zh-Hans</string>
 		<string>pt-BR</string>
 	</array>
-	<key>CFBundleDevelopmentRegion</key>
-	<string>en</string>
 	<key>CFBundleName</key>
 	<string>Helm</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.10.0-dev.1</string>
+	<string>0.10.0-dev.2</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>LSMinimumSystemVersion</key>

@@ -91,4 +91,63 @@ final class NoOrphanTranslationsTests: XCTestCase {
                       + "a translation of the old meaning:\n"
                       + orphans.map { "  \"\($0)\"" }.joined(separator: "\n"))
     }
+
+    /// And the direction neither this file nor `StringsCoverageTests` covered:
+    /// an `L("…")` written in the source with no entry in any table.
+    ///
+    /// `StringsCoverageTests` compares the eight files **against each other**,
+    /// so a key that reached none of them passes there; `L()` falls back to its
+    /// own key, so it looks perfect in English and ships English to the other
+    /// seven. Found the way these things are always found — five changelog
+    /// strings were added, the whole suite stayed green, and the only reason
+    /// they were translated at all is that somebody went looking.
+    func testEveryLiteralInTheSourceHasAKeyInTheTables() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Sources")
+
+        // `L("…")` on one line, which is how every literal in this codebase is
+        // written — a key split across lines by string concatenation is not a
+        // key any table could carry either.
+        let call = try NSRegularExpression(pattern: #"\bL\(\s*"((?:[^"\\]|\\.)*)"#)
+        var used = Set<String>()
+        var scanned = 0
+        let files = FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil)
+        while let url = files?.nextObject() as? URL {
+            guard url.pathExtension == "swift",
+                  let source = try? String(contentsOf: url, encoding: .utf8)
+            else { continue }
+            scanned += 1
+            let range = NSRange(source.startIndex..., in: source)
+            for match in call.matches(in: source, range: range) {
+                guard let r = Range(match.range(at: 1), in: source) else { continue }
+                let literal = String(source[r])
+                // An interpolated string is not a key and never could be: the
+                // interpolation runs before the lookup, so `L("\(n) files")`
+                // asks the table for "3 files". CLAUDE.md's rule is that those
+                // keep an inline table at the call site, and thirty-seven of
+                // the thirty-eight this check first accused were exactly that.
+                // The thirty-eighth was real.
+                guard !literal.contains("\\(") else { continue }
+                used.insert(decodingEscapes(literal))
+            }
+        }
+        XCTAssertGreaterThan(scanned, 100,
+                             "only \(scanned) source files were read, so a pass means nothing")
+        XCTAssertGreaterThan(used.count, 100,
+                             "the pattern matched \(used.count) literals, which is not this "
+                             + "app — the regex has stopped finding L() calls")
+
+        let path = try XCTUnwrap(Localized.stringsFile(for: .en)?.path)
+        let english = try XCTUnwrap(NSDictionary(contentsOfFile: path) as? [String: String])
+        let missing = used.subtracting(english.keys).sorted()
+
+        XCTAssertTrue(missing.isEmpty,
+                      "\(missing.count) literal(s) are asked for by name and are in no table. "
+                      + "They read correctly in English and in English only, in all seven "
+                      + "other languages, with nothing failing:\n"
+                      + missing.map { "  \"\($0.prefix(70))\"" }.joined(separator: "\n"))
+    }
 }
