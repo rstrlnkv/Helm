@@ -76,7 +76,13 @@ import Module_VPN_Engine
     /// what a person wants from the top of this page is whether anything is up
     /// at all. That is one word, and the window already has a place for it.
     public func activity(_ vm: ModuleViewModel) -> ModuleActivity? {
-        viewModel(vm).connections.contains { $0.status.isUp } ? .active : .idle
+        // `isConnected`, not `isUp`. `isUp` is «something is happening here»
+        // and includes `.connecting`, so a tunnel three seconds into coming up
+        // put a green «Active» in the header beside a card that said
+        // «Connecting…». That exact defect was found and fixed once in the
+        // metric strip this badge replaced — and came back with the badge,
+        // because the question was copied and the answer was not.
+        viewModel(vm).connections.contains { $0.status.isConnected } ? .active : .idle
     }
 
     /// Without this the host reads `statusAppearance` only when something else

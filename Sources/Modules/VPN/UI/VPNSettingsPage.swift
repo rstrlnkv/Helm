@@ -41,9 +41,6 @@ public struct VPNSettingsPage: View {
         vpnForm
     }
 
-    /// Connections that are up. Not on their way up: the strip says "active"
-    /// and tints it green, beside a row spinning and saying "Connecting".
-
     private var vpnForm: some View {
         Form {
             // No `HelmMetricStrip`. Two of its three figures — how many
@@ -54,6 +51,13 @@ public struct VPNSettingsPage: View {
             // `VPNDescriptor.activity`.
             Section(header: HelmSectionTitle(VPNStr.connections)) {
                 connectionsList
+                // What the tool said, where the press happened. The engine has
+                // reported this since it learned to read `scutil`'s output, and
+                // a request with no answer is worse than the switch it
+                // replaced: the spinner ran and the card came back unchanged.
+                if let failure = vm.lastFailure {
+                    HelmBanner(failureText(failure), symbol: "exclamationmark.triangle.fill")
+                }
                 if !vm.connections.isEmpty {
                     // Where configurations come from, said once under the list
                     // rather than only inside the empty state — the person with
@@ -222,7 +226,15 @@ public struct VPNSettingsPage: View {
             // Adaptive rather than a fixed three: v3 draws three because it
             // had three to draw. A Mac with two would leave a third of the row
             // empty, and one with five would need a second row anyway.
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 190), spacing: 12)], spacing: 12) {
+            // Columns from the count, not from a minimum width. Measured, the
+            // grid row is 684 pt and `.adaptive(minimum: 190)` fixes three
+            // columns of 220 — so one connection left 68 % of a drawn section
+            // empty and two left 34 %, and one or two is the common Mac. Three
+            // is the ceiling because a fourth card would be narrower than its
+            // own longest verb.
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12),
+                                     count: min(vm.connections.count, 3)),
+                      spacing: 12) {
                 ForEach(vm.connections) { connection in
                     connectionCard(connection)
                 }
@@ -244,12 +256,25 @@ public struct VPNSettingsPage: View {
     /// affordable: a row has to fit its control in a column and a card does
     /// not.
     private func connectionCard(_ c: VPNConnection) -> some View {
-        let active = c.status.isUp
+        // **Two different questions, and they used to share one answer.**
+        // `isUp` is «something is happening here» and includes `.connecting`;
+        // `isConnected` is «traffic is on the tunnel». The dot and the ring
+        // report the second — a green dot on a tunnel that is three seconds
+        // into coming up is the page saying the Mac is protected when it is
+        // not. The verb reads the first, because what you can ask for while it
+        // is connecting is to stop.
+        let connected = c.status.isConnected
         let transitioning = c.status.isTransitioning
         return VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                HelmStatusDot(active: active)
-                Text(c.name).font(.system(size: 13, weight: .semibold)).lineLimit(1)
+                HelmStatusDot(active: connected)
+                // Truncating is the price of the grid and worth paying — but
+                // not silently: measured, «Mullvad WireGuard Amsterdam» becomes
+                // «Mullvad WireGuard Amste…», and two configurations that
+                // differ after 24 characters become the same row.
+                Text(c.name).font(.system(size: 13, weight: .semibold))
+                    .lineLimit(1)
+                    .help(c.name)
             }
             // Monospaced, because these two lines are a readout — the kind is
             // a protocol name and the status is one of five words, and they sit
@@ -264,39 +289,73 @@ public struct VPNSettingsPage: View {
             Spacer(minLength: 6)
             HStack(spacing: 6) {
                 if transitioning { ProgressView().controlSize(.small) }
-                connectionVerb(c, active: active, transitioning: transitioning)
+                connectionVerb(c, up: c.status.isUp, transitioning: transitioning)
             }
         }
         .padding(12)
-        .frame(maxWidth: .infinity, minHeight: 92, alignment: .topLeading)
+        // No `minHeight`. Measured: every card in a row comes out 116 pt —
+        // including one with no protocol line — so the floor never applied to
+        // anything and a number that never applies is a claim nobody can check.
+        .frame(maxWidth: .infinity, alignment: .topLeading)
         .background(
             RoundedRectangle(cornerRadius: HelmSurface.cardRadius, style: .continuous)
-                .fill(Color.primary.opacity(0.05))
+                // The token, not the number. This was the only place in the
+                // tree spelling `Color.primary.opacity(0.05)` out; measured,
+                // it is `HelmSurface.wellFill` to the byte — 236 in light and
+                // 46 in dark, both ways.
+                .fill(HelmSurface.wellFill)
         )
         .overlay(
             // The connected one is ringed rather than filled: a filled card in
             // a row of cards reads as «selected», and there is nothing to
             // select here — it is the one that is up.
+            //
+            // **`HelmSignal.success`, not the accent.** The accent already
+            // means «the option you chose» 900 pt down this same page, where
+            // `HelmChoiceCards` rings the notice preview in it — same ink, same
+            // idiom, two meanings on one screen. Meanwhile the mark that does
+            // mean «up», the dot 4 pt away, is the signal colour. Measured on
+            // the card fill: ring 3.40:1 against the 3:1 floor for a non-text
+            // mark, so this was never about legibility. It is also the person's
+            // own setting: under Graphite the «which one is up» mark went grey.
             RoundedRectangle(cornerRadius: HelmSurface.cardRadius, style: .continuous)
-                .strokeBorder(active ? Color.accentColor : .clear, lineWidth: 1.5)
+                .strokeBorder(connected ? HelmSignal.success : .clear, lineWidth: 1.5)
         )
     }
 
     @ViewBuilder
-    private func connectionVerb(_ c: VPNConnection, active: Bool, transitioning: Bool) -> some View {
-        if active {
-            Button(VPNStr.disconnect) { vm.disconnect(c.name) }
-                .frame(maxWidth: .infinity)
-                .disabled(transitioning)
-                .accessibilityLabel("\(VPNStr.disconnect), \(c.name)")
+    private func connectionVerb(_ c: VPNConnection, up: Bool, transitioning: Bool) -> some View {
+        // **The frame goes on the label, not on the button.**
+        // `.frame(maxWidth: .infinity)` applied to a macOS bordered control
+        // does not stretch it — the control hugs its title and centres itself
+        // in the space instead. Measured in an offscreen window at a 171 pt
+        // content width: on the button the control starts at x=60; on the label
+        // it starts at x=12 and fills. Left as it was, three cards in a row had
+        // three different button widths and two different left edges — 74 pt
+        // for «Connect», 100 for «Подключить» — with up to 122 pt of empty card
+        // beside each. v3 spells it `.btn.wide { width: 100% }`.
+        if up {
+            Button { vm.disconnect(c.name) } label: {
+                Text(VPNStr.disconnect).frame(maxWidth: .infinity)
+            }
+            .disabled(transitioning)
+            .accessibilityLabel("\(VPNStr.disconnect), \(c.name)")
         } else {
             // Prominent, because on a page of cards the one thing to press is
             // «connect» and there is no other candidate for the accent.
-            Button(VPNStr.connect) { vm.connect(c.name) }
-                .buttonStyle(.borderedProminent)
-                .frame(maxWidth: .infinity)
-                .disabled(transitioning)
-                .accessibilityLabel("\(VPNStr.connect), \(c.name)")
+            Button { vm.connect(c.name) } label: {
+                Text(VPNStr.connect).frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(transitioning)
+            .accessibilityLabel("\(VPNStr.connect), \(c.name)")
+        }
+    }
+
+    private func failureText(_ f: VPNFailure) -> String {
+        switch f.reason {
+        case .noSuchService: return VPNStr.failureNoSuchService(f.name)
+        case .refused: return VPNStr.failureRefused(f.name)
         }
     }
 

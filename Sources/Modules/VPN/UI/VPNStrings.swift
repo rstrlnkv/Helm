@@ -44,6 +44,34 @@ enum VPNStr {
     /// The one verb on a card. macOS's own words for these two, out of its
     /// network panes: «Подключить»/«Отключить», *Verbinden*/*Trennen* — not the
     /// dictionary's «Соединить» or *Anschließen*.
+    /// What to say when the tool refused.
+    ///
+    /// Two reasons and two sentences, because they call for different things: a
+    /// configuration that is gone needs looking at in System Settings, and a
+    /// refusal needs trying again or reading the log. `scutil`'s own words are
+    /// English and are not written for a person, so they go in the log and the
+    /// fact comes here.
+    static func failureNoSuchService(_ name: String) -> String {
+        L("«\(name)» is no longer in System Settings",
+          [.ru: "«\(name)» больше нет в Системных настройках",
+           .es: "«\(name)» ya no está en Ajustes del Sistema",
+           .fr: "«\u{00A0}\(name)\u{00A0}» n\u{2019}est plus dans les Réglages Système",
+           .de: "„\(name)“ ist nicht mehr in den Systemeinstellungen",
+           .ja: "「\(name)」はシステム設定にありません",
+           .zh: "“\(name)”已不在系统设置中",
+           .pt: "«\(name)» não está mais nos Ajustes do Sistema"])
+    }
+    static func failureRefused(_ name: String) -> String {
+        L("macOS refused to connect «\(name)» — the log has what it said",
+          [.ru: "macOS отказалась подключить «\(name)» — что именно, записано в журнале",
+           .es: "macOS se negó a conectar «\(name)»; lo que dijo está en el registro",
+           .fr: "macOS a refusé de connecter «\u{00A0}\(name)\u{00A0}»\u{00A0}: le journal a sa réponse",
+           .de: "macOS hat „\(name)“ nicht verbunden — was es sagte, steht im Protokoll",
+           .ja: "macOS が「\(name)」の接続を拒否しました。内容はログにあります",
+           .zh: "macOS 拒绝连接“\(name)”——具体原因见日志",
+           .pt: "o macOS recusou conectar «\(name)» — o que ele disse está no registro"])
+    }
+
     static var connect: String { L("Connect") }
     static var disconnect: String { L("Disconnect") }
 

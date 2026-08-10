@@ -10,6 +10,11 @@ import Module_VPN_Engine
     /// The last rule firing worth reacting to, or nil. Stale firings never get
     /// here — see `handle`.
     @Published public private(set) var lastAutomation: VPNAutomation?
+    /// The last command `scutil` did not accept, cleared by the next one it
+    /// did. The engine has published this since it learned to read the tool's
+    /// output; nothing here decoded it, so pressing Connect on a configuration
+    /// macOS refuses ran the spinner and returned the card exactly as it was.
+    @Published public private(set) var lastFailure: VPNFailure?
 
     private let transport: EngineTransport
     private let settings: VPNSettings?
@@ -188,6 +193,7 @@ import Module_VPN_Engine
         connections = p.connections
         autoConnected = Set(p.autoConnected)
         defaultName = p.defaultName
+        lastFailure = p.lastFailure
         // Stale firings are dropped here rather than downstream. The engine
         // keeps its last one for good and repeats it in every state payload, so
         // the first refresh after launch would otherwise spin the ring for
