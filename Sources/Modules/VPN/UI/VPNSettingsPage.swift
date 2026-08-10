@@ -40,6 +40,29 @@ public struct VPNSettingsPage: View {
         vpnForm
     }
 
+    /// The connections block, and the heading of the section it rides on.
+    private var connectionsAndTitle: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HelmSectionTitle(VPNStr.connections)
+            connectionsList
+            if !vm.connections.isEmpty {
+                Text(VPNStr.connectionsHint)
+                    .font(.caption)
+                    .foregroundStyle(HelmText.quiet)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 8)
+            }
+            if let failure = vm.lastFailure {
+                HelmBanner(failureText(failure), symbol: "exclamationmark.triangle.fill")
+                    .padding(.top, 10)
+            }
+            // The gap the grouped form puts between a card and the next
+            // heading, which this block is now standing in for.
+            HelmSectionTitle(VPNStr.perAppAutomation)
+                .padding(.top, 20)
+        }
+    }
+
     private var vpnForm: some View {
         Form {
             // No `HelmMetricStrip`. Two of its three figures — how many
@@ -48,27 +71,21 @@ public struct VPNSettingsPage: View {
             // one thing a person wants from the top of this page is whether
             // anything is up, and the window's own header draws that from
             // `VPNDescriptor.activity`.
-            Section(header: HelmSectionTitle(VPNStr.connections)) {
-                connectionsList
-                // What the tool said, where the press happened. The engine has
-                // reported this since it learned to read `scutil`'s output, and
-                // a request with no answer is worse than the switch it
-                // replaced: the spinner ran and the card came back unchanged.
-                if let failure = vm.lastFailure {
-                    HelmBanner(failureText(failure), symbol: "exclamationmark.triangle.fill")
-                }
-                if !vm.connections.isEmpty {
-                    // Where configurations come from, said once under the list
-                    // rather than only inside the empty state — the person with
-                    // two of them is the one who wonders where a third goes.
-                    Text(VPNStr.connectionsHint)
-                        .font(.caption)
-                        .foregroundStyle(HelmText.quiet)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-
-            Section(header: HelmSectionTitle(VPNStr.perAppAutomation)) {
+            // **The connections ride on the next section's header.**
+            //
+            // v3 draws these cards straight on the pane. A grouped `Form` puts
+            // every *row* in a card of its own — measured, the section fill is
+            // 247 in light and 37 in dark — so a grid of cards inside one is a
+            // card inside a card, and the leftover space of a row that does not
+            // fill its width becomes a visible hole. `listRowBackground(.clear)`
+            // does not take that fill away on macOS; Keep Awake measured it and
+            // the block came back in a card either way.
+            //
+            // A section **header** is the one part of a grouped form that is
+            // drawn on the bare pane and still scrolls, which is exactly the
+            // two things this block needs. Same shape as Keep Awake's hero,
+            // and for the same reason.
+            Section(header: connectionsAndTitle) {
                 appRulesEditor
             }
 
@@ -229,14 +246,21 @@ public struct VPNSettingsPage: View {
             // Adaptive rather than a fixed three: v3 draws three because it
             // had three to draw. A Mac with two would leave a third of the row
             // empty, and one with five would need a second row anyway.
-            // Columns from the count, not from a minimum width. Measured, the
-            // grid row is 684 pt and `.adaptive(minimum: 190)` fixes three
-            // columns of 220 — so one connection left 68 % of a drawn section
-            // empty and two left 34 %, and one or two is the common Mac. Three
-            // is the ceiling because a fourth card would be narrower than its
-            // own longest verb.
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12),
-                                     count: min(vm.connections.count, 3)),
+            // **Adaptive with a ceiling**, and the ceiling is the point.
+            //
+            // It was `.adaptive(minimum: 190)`, which fixed three columns and
+            // left 68 % of the row empty with one connection. Columns from the
+            // *count* filled the row and produced the opposite fault: two
+            // connections became two 660 pt cards with 660 pt buttons across
+            // them, which is a card the size of a paragraph.
+            //
+            // The hole was only ever conspicuous because this grid sat inside
+            // a grouped-`Form` section that drew a fill around it. On the bare
+            // pane, which is where it lives now, leftover space is invisible —
+            // so the card can go back to being card-sized. 280 is v3's own
+            // width plus the room German needs for «Verbinden».
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 190, maximum: 280), spacing: 12)],
+                      alignment: .leading,
                       spacing: 12) {
                 ForEach(vm.connections) { connection in
                     connectionCard(connection)
