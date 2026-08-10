@@ -336,14 +336,17 @@ struct UtilitiesSection: View {
 /// added. It is a fact about the machine, so it is computed from the machine.
 struct PermissionsWidget: View {
     let withheld: [PermissionNeed]
-    let modules: Int
+    // No module count. The widget is 320 pt with a button on the same line, so
+    // a second fact there is a paragraph wrapped around a control at the top of
+    // the first thing anybody opens when something is wrong. The settings page
+    // has the room and says both.
 
     var body: some View {
         HelmWidgetBody {
             HStack(spacing: 8) {
                 Image(systemName: "exclamationmark.circle.fill")
                     .foregroundStyle(HelmSignal.warning)
-                Text(AppStr.permissionsWithheld(count: withheld.count, modules: modules))
+                Text(AppStr.permissionsWithheld(count: withheld.count))
                     .font(HelmText.rowDetail)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 8)

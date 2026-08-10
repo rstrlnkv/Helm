@@ -206,8 +206,7 @@ struct HelmPanelContent: View {
         let missing = PermissionSummary.withheld(accessibility: accessibility, fullDisk: diskAccess)
         guard !missing.isEmpty else { return nil }
         return Widget(id: Self.permissionsWidget,
-                      content: .module(AnyView(PermissionsWidget(
-                          withheld: missing, modules: PermissionSummary.affected(by: missing)))),
+                      content: .module(AnyView(PermissionsWidget(withheld: missing))),
                       size: .wide, pinned: true)
     }
 

@@ -135,42 +135,58 @@ enum AppStr {
     /// because «Показать все» is the widest of the eight buttons at 96 pt:
     /// «Не выдано» → «Нет». All eight are two lines or fewer now, and Chinese
     /// is one.
+    /// **The panel says only how many grants are missing.** The module count
+    /// is a second fact, and the widget is 320 pt wide with a button on the
+    /// same line: two facts there is a paragraph wrapped around a control, at
+    /// the top of the first thing anybody opens when something is wrong. The
+    /// settings page has the room and keeps both.
+    static func permissionsWithheld(count: Int,
+                                    language: AppLanguage = AppLanguage.current) -> String {
+        L("\(count) \(count == 1 ? "permission" : "permissions") not granted",
+          permissionsClause(count), language: language)
+    }
+
     static func permissionsWithheld(count: Int, modules: Int,
                                     language: AppLanguage = AppLanguage.current) -> String {
-        // Split into named parts rather than one expression: the concatenation
-        // of eight interpolated ternaries is more than the type-checker will
-        // take in one go, and «try breaking up the expression» is not a hint
-        // worth rediscovering.
-        let permissions = count == 1 ? "permission" : "permissions"
         let modulesWord = modules == 1 ? "module" : "modules"
-        let en = "\(count) \(permissions) not granted · \(modules) \(modulesWord)"
-
-        let ruPermissions = Plural.russian(count, "разрешение", "разрешения", "разрешений")
+        let en = "\(count) \(count == 1 ? "permission" : "permissions") not granted"
+            + " · \(modules) \(modulesWord)"
+        var table = permissionsClause(count)
         let ruModules = Plural.russian(modules, "модуль", "модуля", "модулей")
-        let esPermissions = count == 1 ? "permiso" : "permisos"
-        let frPermissions = count == 1 ? "autorisation manquante" : "autorisations manquantes"
-        let dePermissions = count == 1 ? "Berechtigung fehlt" : "Berechtigungen fehlen"
-        let ptPermissions = count == 1 ? "permissão não concedida" : "permissões não concedidas"
-
-        let table: [AppLanguage: String] = [
-            // «Не выдано», not «Нет». The shorter form was a compromise with
-            // the button beside it: «Показать все» was 96 pt, the widest of the
-            // eight, and left Russian three lines. With the button down to
-            // «Показать» the natural phrasing measures 52 pt — two lines — so
-            // there is nothing left to buy by clipping it.
-            .ru: "Не выдано \(count) \(ruPermissions) · \(modules) \(ruModules)",
-            .es: "Faltan \(count) \(esPermissions) · \(modules) "
-                 + (modules == 1 ? "módulo" : "módulos"),
-            .fr: "\(count) \(frPermissions) · \(modules) "
-                 + (modules == 1 ? "module" : "modules"),
-            .de: "\(count) \(dePermissions) · \(modules) "
-                 + (modules == 1 ? "Modul" : "Module"),
-            .ja: "\(count) 件の許可が未付与 · \(modules) 個のモジュール",
-            .zh: "\(count) 项权限未授予 · \(modules) 个模块",
-            .pt: "\(count) \(ptPermissions) · \(modules) "
-                 + (modules == 1 ? "módulo" : "módulos"),
+        let tail: [AppLanguage: String] = [
+            .ru: " · \(modules) \(ruModules)",
+            .es: " · \(modules) " + (modules == 1 ? "módulo" : "módulos"),
+            .fr: " · \(modules) " + (modules == 1 ? "module" : "modules"),
+            .de: " · \(modules) " + (modules == 1 ? "Modul" : "Module"),
+            .ja: " · \(modules) 個のモジュール",
+            .zh: " · \(modules) 个模块",
+            .pt: " · \(modules) " + (modules == 1 ? "módulo" : "módulos"),
         ]
+        for (language, suffix) in tail { table[language, default: ""] += suffix }
         return L(en, table, language: language)
+    }
+
+    /// «2 permissions not granted», in the seven. Shared, so the panel's line
+    /// and the page's longer one cannot come to disagree about the half they
+    /// have in common.
+    ///
+    /// Split into named parts rather than written as one expression: the
+    /// concatenation of eight interpolated ternaries is more than the
+    /// type-checker will take in one go, and «try breaking up the expression»
+    /// is not a hint worth rediscovering.
+    private static func permissionsClause(_ count: Int) -> [AppLanguage: String] {
+        let ru = Plural.russian(count, "разрешение", "разрешения", "разрешений")
+        let es = count == 1 ? "permiso" : "permisos"
+        let fr = count == 1 ? "autorisation manquante" : "autorisations manquantes"
+        let de = count == 1 ? "Berechtigung fehlt" : "Berechtigungen fehlen"
+        let pt = count == 1 ? "permissão não concedida" : "permissões não concedidas"
+        return [.ru: "Не выдано \(count) \(ru)",
+                .es: "Faltan \(count) \(es)",
+                .fr: "\(count) \(fr)",
+                .de: "\(count) \(de)",
+                .ja: "\(count) 件の許可が未付与",
+                .zh: "\(count) 项权限未授予",
+                .pt: "\(count) \(pt)"]
     }
 
     /// The localized face of `PermissionNeed`; the runtime carries English.

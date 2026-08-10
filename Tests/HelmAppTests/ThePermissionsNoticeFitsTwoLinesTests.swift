@@ -62,6 +62,23 @@ final class ThePermissionsNoticeFitsTwoLinesTests: XCTestCase {
                       + "paragraph at the top of a 320 pt panel:\n" + tall.joined(separator: "\n"))
     }
 
+    /// The panel's own line, which lost its second clause: one line in every
+    /// language but the longest, where it is two. Asserted as well as the
+    /// ceiling above, because «fits in two» would go on passing if the sentence
+    /// crept back to two lines everywhere — and the reason the module count
+    /// went is that a warning at the top of the panel should be a line.
+    func testThePanelsLineIsUsuallyOne() {
+        var wrapped: [String] = []
+        for language in AppLanguage.allCases {
+            let notice = AppStr.permissionsWithheld(count: 2, language: language)
+            let h = height(notice, AppStr.showPermissions(language: language))
+            if h > 48 { wrapped.append("\(language.rawValue): \(Int(h)) pt — \(notice)") }
+        }
+        XCTAssertLessThanOrEqual(wrapped.count, 2,
+                                 "the panel's warning wraps in \(wrapped.count) language(s):\n"
+                                 + wrapped.joined(separator: "\n"))
+    }
+
     /// The control, and it is the pair that was reported: the sentence as it
     /// shipped, beside the button as it shipped. Both have since been
     /// shortened — separately, and each shortening bought room for the other —
