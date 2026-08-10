@@ -99,19 +99,24 @@ enum AppStr {
     /// action — Russian tells the two apart («Показывать» against «Показать»)
     /// and one key cannot hold both.
     ///
-    /// **"All", not "permissions": the word is already in the line beside it.**
-    /// `Show permissions` was measured in English only. Hosted offscreen at the
-    /// panel's 276 pt across all eight, the German button took 154 pt of it and
-    /// left the notice 91 pt and four lines; French 151, Russian 141, and five
-    /// of the eight wrapped to three lines or more. `Show all` is 94 pt at its
-    /// widest (Spanish), leaves the notice 151 pt, and wraps to two lines in
-    /// seven languages and one in Chinese — and the count it sits beside
-    /// already says permissions.
+    /// **Just «Show».** It was `Show permissions`, then `Show all`, and both
+    /// were measured: at the panel's width the German `Show permissions` button
+    /// took 154 pt and left the notice four lines, and `Show all` left Russian
+    /// three. The count beside it already says permissions and the notice says
+    /// how many, so the verb is the whole of what the button has to add — and
+    /// the shorter it is, the more room the sentence beside it has.
+    ///
+    /// The word had to be taken back off Leftovers' filter menu, which used it
+    /// for the *other* sense: that one is «Показывать: всё», imperfective, a
+    /// standing choice; this is «Показать», perfective, done once. One English
+    /// key means one thing, so the filter is `Filter` now — which is also what
+    /// it is, beside a filter glyph.
+    ///
     /// Takes a language, so a test can ask about the seven this machine is not
     /// set to. The suite runs in whatever language this Mac is in, and a check
     /// gated on `.current` never exercises the language it was written for.
     static func showPermissions(language: AppLanguage = AppLanguage.current) -> String {
-        L("Show all", language: language)
+        L("Show", language: language)
     }
     static var showPermissions: String { showPermissions() }
 
@@ -140,7 +145,7 @@ enum AppStr {
         let modulesWord = modules == 1 ? "module" : "modules"
         let en = "\(count) \(permissions) not granted · \(modules) \(modulesWord)"
 
-        let ruPermissions = Plural.russian(count, "разрешения", "разрешений", "разрешений")
+        let ruPermissions = Plural.russian(count, "разрешение", "разрешения", "разрешений")
         let ruModules = Plural.russian(modules, "модуль", "модуля", "модулей")
         let esPermissions = count == 1 ? "permiso" : "permisos"
         let frPermissions = count == 1 ? "autorisation manquante" : "autorisations manquantes"
@@ -148,10 +153,12 @@ enum AppStr {
         let ptPermissions = count == 1 ? "permissão não concedida" : "permissões não concedidas"
 
         let table: [AppLanguage: String] = [
-            // Genitive after «нет»: «нет одного разрешения», «нет двух
-            // разрешений», «нет пяти разрешений» — the last two forms are the
-            // same word and only the singular differs.
-            .ru: "Нет \(count) \(ruPermissions) · \(modules) \(ruModules)",
+            // «Не выдано», not «Нет». The shorter form was a compromise with
+            // the button beside it: «Показать все» was 96 pt, the widest of the
+            // eight, and left Russian three lines. With the button down to
+            // «Показать» the natural phrasing measures 52 pt — two lines — so
+            // there is nothing left to buy by clipping it.
+            .ru: "Не выдано \(count) \(ruPermissions) · \(modules) \(ruModules)",
             .es: "Faltan \(count) \(esPermissions) · \(modules) "
                  + (modules == 1 ? "módulo" : "módulos"),
             .fr: "\(count) \(frPermissions) · \(modules) "

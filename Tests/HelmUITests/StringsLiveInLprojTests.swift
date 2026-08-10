@@ -152,6 +152,9 @@ final class StringsLiveInLprojTests: XCTestCase {
         "Beta": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         "BUILD": [.fr, .de, .pt],
         "Caches": [.fr, .de, .pt],
+        // German borrowed the word whole; Duden lists «Filter» and nothing else
+        // for the sense a list menu means.
+        "Filter": [.de],
         "Capsule": [.fr],
         "cask": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         "Cookies": [.ru, .es, .fr, .de, .pt],

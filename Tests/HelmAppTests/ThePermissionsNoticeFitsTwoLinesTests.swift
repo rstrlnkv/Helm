@@ -62,12 +62,28 @@ final class ThePermissionsNoticeFitsTwoLinesTests: XCTestCase {
                       + "paragraph at the top of a 320 pt panel:\n" + tall.joined(separator: "\n"))
     }
 
-    /// The control. A sentence that is genuinely too long has to fail this, or
-    /// the threshold is above every real case and the check cannot fail.
-    func testTheThresholdCatchesASentenceThatIsTooLong() {
+    /// The control, and it is the pair that was reported: the sentence as it
+    /// shipped, beside the button as it shipped. Both have since been
+    /// shortened — separately, and each shortening bought room for the other —
+    /// so this is the only place either of them still exists.
+    ///
+    /// Without it the threshold is a number above every real case, and a check
+    /// that cannot go red is not evidence of anything.
+    func testTheThresholdCatchesTheRowThatWasReported() {
         let h = height("Не выдано 2 разрешения · затронуто 7 модулей", "Показать все")
         XCTAssertGreaterThan(h, twoLines,
-                             "the sentence this test was written about measures \(Int(h)) pt, "
+                             "the row this test was written about measures \(Int(h)) pt, "
                              + "so the threshold is not measuring anything")
+    }
+
+    /// And the button is the short one. The sentence fits because of it: the
+    /// same Russian beside «Показать все» is three lines, so a later change
+    /// that lengthens the button silently un-fixes the notice.
+    func testTheButtonIsWhatMakesTheSentenceFit() {
+        let notice = AppStr.permissionsWithheld(count: 2, modules: 7, language: .ru)
+        XCTAssertLessThanOrEqual(height(notice, AppStr.showPermissions(language: .ru)), twoLines)
+        XCTAssertGreaterThan(height(notice, "Показать все"), twoLines,
+                             "the notice no longer depends on the button's width, which "
+                             + "means this pair has stopped being measured together")
     }
 }

@@ -28,7 +28,16 @@ enum LfStr {
     static var disable: String { L("Turn off") }
     static var enable: String { L("Turn on") }
     static var statusDisabled: String { L("Disabled") }
-    static var filter: String { L("Show") }
+    /// The menu that narrows the list, drawn beside a filter glyph — so
+    /// «Filter» is what it is, and «Show» was a verb borrowed for a noun's job.
+    ///
+    /// It moved because a *button* elsewhere needed the word: the panel's
+    /// permissions notice opens the list of them, and «Show» is what that
+    /// button says. One English key means one thing, and these two are not the
+    /// same thing — this one is imperfective in Russian («Показывать: всё»),
+    /// the button perfective («Показать»), and a shared key would have put the
+    /// wrong aspect on one of them in every Slavic language.
+    static var filter: String { L("Filter") }
     static var cancelAction: String { L("Cancel") }
     static var deleteItem: String { L("Delete…") }
     static func confirmDeleteInUse(_ name: String) -> String { L("Delete \(name)? It is loaded now, and the app that installed it may put it back.", [.ru: "Удалить \(name)? Он сейчас загружен, и установившее его приложение может создать его заново.", .es: "¿Eliminar \(name)? Está cargado ahora y la app que lo instaló podría volver a crearlo.", .fr: "Supprimer \(name) ? Il est chargé, et l’app qui l’a installé peut le recréer.", .de: "\(name) löschen? Es ist gerade geladen, und die App, die es installiert hat, kann es neu anlegen.", .ja: "\(name) を削除しますか？現在読み込まれており、インストールしたアプリが再作成する場合があります。", .zh: "删除 \(name)？它当前已加载，安装它的应用可能会重新创建。", .pt: "Excluir \(name)? Está carregado agora, e o app que o instalou pode recriá-lo."]) }
