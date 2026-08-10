@@ -67,6 +67,18 @@ import Module_KeepAwake_Engine
         KeepAwakeViewModel.shared(vm: vm).isActive ? .active : .idle
     }
 
+    /// Accessibility only while the pointer nudge is on — it is the one thing
+    /// here that needs it, and it ships off. The admin helper is declared
+    /// unconditionally because nothing prompts for it in advance: macOS asks at
+    /// the moment the sudoers rule is written, which is a gesture away.
+    public func currentPermissions(_ vm: ModuleViewModel?) -> [ModulePermission] {
+        let s = store ?? NamespacedStore(namespace: KeepAwakeDescriptor.id.rawValue,
+                                         backing: UserDefaults.standard)
+        var needs: [ModulePermission] = [.adminHelper]
+        if KeepAwakeSettings(store: s).jiggleEnabled { needs.append(.accessibility) }
+        return needs
+    }
+
     public func statusChanges(_ vm: ModuleViewModel) -> AnyPublisher<Void, Never>? {
         KeepAwakeViewModel.shared(vm: vm).objectWillChange
             .map { _ in () }

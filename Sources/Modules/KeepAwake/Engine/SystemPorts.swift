@@ -326,6 +326,13 @@ public final class PmsetClamshellPort: ClamshellPort {
         FileManager.default.fileExists(atPath: Self.sudoersPath)
     }
 
+    /// Asks sudo, not the filesystem. `-n` fails rather than prompting, and
+    /// `disablesleep 0` is the half of the grant that is safe to spend on a
+    /// question: it is what «restore sleep» does anyway, and it is idempotent.
+    public func canDisableSleepWithoutPassword() -> Bool {
+        Shell.run(Self.sudoPath, ["-n", Self.pmsetPath, "disablesleep", "0"]).status == 0
+    }
+
     public func installSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async {
             let user = NSUserName()

@@ -39,7 +39,7 @@ import HelmRuntime
             // request with no reason behind it is one people deny.
             let needs = ModuleRegistry.all
                 .filter { host.isEnabled($0) }
-                .flatMap { $0.moduleMetadata.permissions }
+                .flatMap { $0.currentPermissions(host.liveModule($0.idRaw)?.vm) }
             let missing = PermissionAuditPlan.missing(
                 fullDisk: fullDisk, accessibility: accessibility,
                 needsFullDisk: needs.contains(.fullDisk),

@@ -137,6 +137,12 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         power.stopObserving()
         if isActive { assertions.release() }
         if clamshellActive { disengageClamshell() }
+        // Switching the module off is a decision, and the sudo rule is the one
+        // thing here that would otherwise outlive it — outlive quitting Helm,
+        // and outlive deleting it. `/etc/sudoers.d` on the machine this was
+        // written on holds two abandoned NOPASSWD grants from predecessors;
+        // that is what «the rule survives the app» looks like a year later.
+        releaseSudoersOnTeardown()
         cancelTimers()
         expiryToken = nil
         isActive = false
@@ -551,7 +557,11 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     // MARK: - Clamshell
 
     private func engageClamshell() {
-        if !clamshell.isSudoersInstalled() {
+        // The capability, not our filename. A rule written by something else —
+        // a predecessor, an admin, a migration — grants exactly this, and
+        // asking about the file made Helm request a password to install what
+        // was already there.
+        if !clamshell.canDisableSleepWithoutPassword() {
             // Every false→true edge of `isActive` and every settings change
             // reaches here, and while a prompt is up the disk still says the
             // rule is missing — so without this the person got one password
@@ -590,15 +600,52 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// turned off is a grant nobody is holding. Silent on failure — the user
     /// declined the password prompt, which is an answer, and the rule stays
     /// until they say otherwise.
+    /// Unconditional: the module is being switched off, so the grant has no
+    /// customer left whatever the stored setting says.
+    /// The `settingsChanged` path, reachable without a transport hop.
+    ///
+    /// The command handler does these three in this order, and a test of what
+    /// happens when a setting changes should not have to encode a JSON payload
+    /// to say so.
+    func settingsChangedForTests() {
+        recompute()
+        reconcileActiveSettings()
+        releaseSudoersIfUnneeded()
+    }
+
+    private func releaseSudoersOnTeardown() {
+        guard clamshell.isSudoersInstalled() else { return }
+        clamshell.removeSudoers { _ in }
+    }
+
     private func releaseSudoersIfUnneeded() {
         guard !settings.clamshellEnabled, clamshell.isSudoersInstalled() else { return }
+        // Removing our file is all this can do; whether the *capability* went
+        // with it is a different question, asked below once the file is gone.
         guard !sudoersRemovalInFlight else { return }
         sudoersRemovalInFlight = true
         clamshell.removeSudoers { [weak self] _ in
-            // Cleared whatever the answer was: a declined removal has to be
-            // askable again, and a flag left standing would mean the rule could
-            // never be taken off for the life of the process.
-            Task { @MainActor in self?.sudoersRemovalInFlight = false }
+            guard let self else { return }
+            // The file is gone and the grant may not be. Measured on a real
+            // machine: `/etc/sudoers.d` held the identical rule under another
+            // name, so «removed» was reported while any process running as this
+            // user still had passwordless `pmset disablesleep`. A revocation
+            // that revokes nothing is worse than none, because it is reported
+            // as done.
+            //
+            // Read here rather than in a hop: this touches no engine state, and
+            // a hop would put the check after the caller returns — which is how
+            // a synchronous fake releases a gate before the thing it gates has
+            // happened, and how a test of it passes for free.
+            if self.clamshell.canDisableSleepWithoutPassword() {
+                HelmLog.shared.warn("keepawake",
+                                    "a passwordless pmset rule survives that Helm did not write")
+            }
+            // Engine state does hop: cleared whatever the answer was, because a
+            // declined removal has to be askable again and a flag left standing
+            // would mean the rule could never come off for the life of the
+            // process.
+            Task { @MainActor in self.sudoersRemovalInFlight = false }
         }
     }
 

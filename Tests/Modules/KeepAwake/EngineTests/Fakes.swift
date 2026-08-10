@@ -88,8 +88,12 @@ final class FakeClamshell: ClamshellPort {
     var pmset = ""
     var disableSleepCalls: [Bool] = []
     var installCompletion: ((Bool) -> Void)?
+    var installCalls = 0
     func isSudoersInstalled() -> Bool { sudoersInstalled }
-    func installSudoers(_ done: @escaping @Sendable (Bool) -> Void) { installCompletion = done }
+    func installSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
+        installCalls += 1
+        installCompletion = done
+    }
     var removeCalls = 0
     func removeSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
         removeCalls += 1
@@ -101,6 +105,14 @@ final class FakeClamshell: ClamshellPort {
     /// state, so no test of the failure could exist whatever anybody wrote —
     /// and that failure is the one that leaves a Mac unable to sleep.
     var disableSleepSucceeds = true
+    /// Whether a passwordless rule exists at all — separate from
+    /// `sudoersInstalled`, which is «our file is there». On a real Mac the two
+    /// differ: a rule written by something else grants the same capability
+    /// under another name, and that is the state the file check could not see.
+    var passwordlessGrantExists: Bool?
+    func canDisableSleepWithoutPassword() -> Bool {
+        passwordlessGrantExists ?? sudoersInstalled
+    }
     func setDisableSleep(_ on: Bool) -> Bool {
         disableSleepCalls.append(on)
         return disableSleepSucceeds

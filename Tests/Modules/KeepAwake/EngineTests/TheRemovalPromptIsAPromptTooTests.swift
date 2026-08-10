@@ -27,6 +27,7 @@ private final class RemovalPromptClamshell: ClamshellPort {
     private(set) var installCount = 0
     private var pendingRemovals: [(Bool) -> Void] = []
 
+    func canDisableSleepWithoutPassword() -> Bool { sudoersInstalled }
     func isSudoersInstalled() -> Bool { sudoersInstalled }
 
     func installSudoers(_ done: @escaping @Sendable (Bool) -> Void) {

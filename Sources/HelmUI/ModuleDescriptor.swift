@@ -29,6 +29,20 @@ import HelmRuntime
     /// A module answers this when it has a running/not-running of its own, and
     /// gets no badge until it does.
     func activity(_ vm: ModuleViewModel) -> ModuleActivity?
+    /// The permissions this module needs **as it is configured right now**.
+    ///
+    /// `metadata.permissions` answers a different question — what a module
+    /// would use if everything in it were switched on — and that is the right
+    /// answer for a settings table listing what a module is capable of. It is
+    /// the wrong one for asking. Keep Awake declares `.accessibility` because
+    /// its pointer nudge posts synthetic events; the nudge ships off, so a
+    /// first launch put a modal in front of somebody offering the widest input
+    /// grant macOS has, for a switch they had never touched. And because this
+    /// bundle is ad-hoc signed, every update drops the grant and asks again.
+    ///
+    /// Defaults to the declared list, so a module that has nothing conditional
+    /// says nothing new.
+    func currentPermissions(_ vm: ModuleViewModel?) -> [ModulePermission]
     /// Desired host status-icon appearance for the current vm state. Default = inactive (white ring).
     func statusAppearance(_ vm: ModuleViewModel) -> StatusAppearance
     /// Fires when the value `statusAppearance` reads has changed.
@@ -57,6 +71,9 @@ public extension ModuleDescriptor {
     var pageBleeds: Bool { false }
     func statusAppearance(_ vm: ModuleViewModel) -> StatusAppearance { .inactive }
     func activity(_ vm: ModuleViewModel) -> ModuleActivity? { nil }
+    func currentPermissions(_ vm: ModuleViewModel?) -> [ModulePermission] {
+        Self.metadata.permissions
+    }
     func statusChanges(_ vm: ModuleViewModel) -> AnyPublisher<Void, Never>? { nil }
 
     /// Every module already draws one panel tile the width of the card, and

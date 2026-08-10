@@ -52,6 +52,18 @@ public protocol PointerPort: AnyObject {
 
 public protocol ClamshellPort: AnyObject {
     func isSudoersInstalled() -> Bool
+    /// Whether `pmset disablesleep` can actually be run without a password.
+    ///
+    /// Not the same question as «is our file there», and the difference was
+    /// measured on the machine this was written on: `/etc/sudoers.d` held a
+    /// `vorssaint-clamshell` from a predecessor whose contents are this app's
+    /// rule character for character, under another name. So the file check
+    /// answered no while the capability was granted — Helm asked for a password
+    /// to install what already existed — and after removal it answered no again
+    /// while any process running as this user still had passwordless
+    /// `pmset disablesleep`. A revocation that revokes nothing is worse than
+    /// none, because it is reported as done.
+    func canDisableSleepWithoutPassword() -> Bool
     func installSudoers(_ done: @escaping @Sendable (Bool) -> Void)   // admin prompt once
     /// Takes the rule back out when the feature is switched off.
     func removeSudoers(_ done: @escaping @Sendable (Bool) -> Void)
