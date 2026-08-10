@@ -290,7 +290,6 @@
 "New rule" = "新建规则";
 "Next" = "下一步";
 "No VPNs configured" = "未配置 VPN";
-"No VPNs set up yet. Add one in System Settings, under Network › VPN." = "尚未设置 VPN。请在“系统设置”的“网络 › VPN”中添加。";
 "No abbreviations yet" = "还没有缩写";
 "No access" = "无访问权限";
 "No duplicates here. Every large file under this folder is one of a kind." = "没有重复文件。此文件夹下的每个大文件都只有一份。";
@@ -739,3 +738,7 @@
 "The battery guard says so on screen. It used to end sessions in silence — you pressed “15 min” at 5 % and nothing happened, with the reason only in the log. The panel and the settings page both say it now." = "电量保护会在界面上说明。以前它会悄悄结束会话：你在 5 % 时按下“15 分钟”，什么都没发生，原因只在日志里。现在面板和设置页都会说明。";
 "A colour of your own: the colour menu ends with “Other…”, which opens the system colour panel — the way Calendar offers one. The palette itself is Calendar’s, and follows light and dark the way the system’s colours do." = "自定义颜色：颜色菜单末尾是“其他…”，会打开系统调色板——和“日历”的做法一致。调色板本身也取自“日历”，并像系统颜色那样跟随浅色与深色。";
 "“Stop on low battery” is a slider with stops, the way the charge limit is set in Battery. And the two colour rows are a dot and a name instead of two rows of ten swatches." = "“电量低时停止”改成带档位的滑块，与“电池”中的充电上限一致。两行颜色选择也从两排十个色块，变成一个圆点加名称。";
+"No VPNs are set up on this Mac" = "这台 Mac 上没有配置任何 VPN";
+"Helm connects and disconnects the configurations macOS holds, and can do it by rule — bringing up the work VPN when Slack opens, for example. The configuration itself is added in System Settings." = "Helm 连接和断开 macOS 保存的配置，并且可以按规则进行——例如打开 Slack 时接通工作 VPN。配置本身在“系统设置”中添加。";
+"Open Network settings" = "打开“网络”设置";
+"Helm picks it up on its own — there is nothing to refresh." = "Helm 会自动识别——无需刷新。";

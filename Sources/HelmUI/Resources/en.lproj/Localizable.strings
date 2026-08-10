@@ -290,7 +290,6 @@
 "New rule" = "New rule";
 "Next" = "Next";
 "No VPNs configured" = "No VPNs configured";
-"No VPNs set up yet. Add one in System Settings, under Network › VPN." = "No VPNs set up yet. Add one in System Settings, under Network › VPN.";
 "No abbreviations yet" = "No abbreviations yet";
 "No access" = "No access";
 "No duplicates here. Every large file under this folder is one of a kind." = "No duplicates here. Every large file under this folder is one of a kind.";
@@ -739,3 +738,7 @@
 "The battery guard says so on screen. It used to end sessions in silence — you pressed “15 min” at 5 % and nothing happened, with the reason only in the log. The panel and the settings page both say it now." = "The battery guard says so on screen. It used to end sessions in silence — you pressed “15 min” at 5 % and nothing happened, with the reason only in the log. The panel and the settings page both say it now.";
 "A colour of your own: the colour menu ends with “Other…”, which opens the system colour panel — the way Calendar offers one. The palette itself is Calendar’s, and follows light and dark the way the system’s colours do." = "A colour of your own: the colour menu ends with “Other…”, which opens the system colour panel — the way Calendar offers one. The palette itself is Calendar’s, and follows light and dark the way the system’s colours do.";
 "“Stop on low battery” is a slider with stops, the way the charge limit is set in Battery. And the two colour rows are a dot and a name instead of two rows of ten swatches." = "“Stop on low battery” is a slider with stops, the way the charge limit is set in Battery. And the two colour rows are a dot and a name instead of two rows of ten swatches.";
+"No VPNs are set up on this Mac" = "No VPNs are set up on this Mac";
+"Helm connects and disconnects the configurations macOS holds, and can do it by rule — bringing up the work VPN when Slack opens, for example. The configuration itself is added in System Settings." = "Helm connects and disconnects the configurations macOS holds, and can do it by rule — bringing up the work VPN when Slack opens, for example. The configuration itself is added in System Settings.";
+"Open Network settings" = "Open Network settings";
+"Helm picks it up on its own — there is nothing to refresh." = "Helm picks it up on its own — there is nothing to refresh.";

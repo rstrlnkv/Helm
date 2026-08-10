@@ -198,13 +198,25 @@ public struct VPNSettingsPage: View {
     @ViewBuilder
     private var connectionsList: some View {
         if vm.connections.isEmpty {
-            HStack(spacing: 8) {
-                Image(systemName: "lock.slash")
-                Text(VPNStr.noVPNsSystem)
+            // A destination, not a shrug. The module cannot create a
+            // configuration — `scutil --nc` has no `create` — so the one thing
+            // this screen can do for somebody with no VPN is take them where
+            // they are made. It was a single quiet line with nothing to press.
+            HelmEmptyState(symbol: "lock.shield",
+                           tint: VPNDescriptor.tint.colour,
+                           title: VPNStr.noVPNsSystem,
+                           message: VPNStr.noVPNsExplain,
+                           note: VPNStr.noVPNsNote) {
+                Button(VPNStr.openNetworkSettings) {
+                    // The pane's own identifier, the way `PermissionNeed` opens
+                    // the privacy panes.
+                    if let url = URL(string: "x-apple.systempreferences:com.apple.Network-Settings.extension") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
             }
-            .font(.callout)
-            .foregroundStyle(HelmText.quiet)
-            .accessibilityElement(children: .combine)
         } else {
             ForEach(vm.connections) { connection in
                 connectionRow(connection)
@@ -283,8 +295,12 @@ public struct VPNSettingsPage: View {
             .font(.caption)
             .foregroundStyle(HelmText.quiet)
             .fixedSize(horizontal: false, vertical: true)
-        ForEach(Array(sortedBundleIDs.enumerated()), id: \.element) { index, bundleID in
-            if index > 0 { Divider() }
+        // No `Divider()` between them. A grouped `Form` draws its own
+        // separators, and each direct child of a `Section` is a **row** — so an
+        // explicit divider became a row of its own, with a row's padding, and
+        // the list came out with a 40 pt empty band between every pair of
+        // apps. Keep Awake's list of the same shape has never had one.
+        ForEach(sortedBundleIDs, id: \.self) { bundleID in
             appRuleRow(bundleID)
         }
         Button {

@@ -21,9 +21,26 @@ enum VPNStr {
     static var noVPNs: String {
         L("No VPNs configured")
     }
+    /// The page when macOS has no VPN at all.
+    ///
+    /// **The module cannot create one**, and that is the whole shape of this
+    /// screen: `scutil --nc` connects and disconnects configurations the system
+    /// owns, and there is no `--nc create`. So the screen leads to where they
+    /// are made rather than drawing an empty list with a Connect button
+    /// underneath it, which is what it did — one quiet line, no plate, and
+    /// nothing to press.
     static var noVPNsSystem: String {
-        L("No VPNs set up yet. Add one in System Settings, under Network › VPN.")
+        L("No VPNs are set up on this Mac")
     }
+    /// Why Helm cannot simply offer to make one, and what it *will* do once
+    /// there is one — said here because this is the only screen a person with
+    /// no VPN ever sees of this module.
+    static var noVPNsExplain: String {
+        L("Helm connects and disconnects the configurations macOS holds, and can do it by rule — bringing up the work VPN when Slack opens, for example. The configuration itself is added in System Settings.")
+    }
+    static var openNetworkSettings: String { L("Open Network settings") }
+    /// Nothing to refresh afterwards: the engine watches the list.
+    static var noVPNsNote: String { L("Helm picks it up on its own — there is nothing to refresh.") }
     static var connections: String {
         L("Connections")
     }

@@ -290,7 +290,6 @@
 "New rule" = "Nueva regla";
 "Next" = "Siguiente";
 "No VPNs configured" = "Sin VPN configuradas";
-"No VPNs set up yet. Add one in System Settings, under Network › VPN." = "Aún no hay ninguna VPN. Añade una en Ajustes del Sistema, en Red › VPN.";
 "No abbreviations yet" = "Aún sin abreviaturas";
 "No access" = "Sin acceso";
 "No duplicates here. Every large file under this folder is one of a kind." = "No hay duplicados. Cada archivo grande de esta carpeta es único.";
@@ -739,3 +738,7 @@
 "The battery guard says so on screen. It used to end sessions in silence — you pressed “15 min” at 5 % and nothing happened, with the reason only in the log. The panel and the settings page both say it now." = "La protección de batería lo dice en pantalla. Antes terminaba las sesiones en silencio: pulsabas “15 min” al 5 %, no pasaba nada y el motivo estaba solo en el registro. Ahora lo dicen el panel y la página de ajustes.";
 "A colour of your own: the colour menu ends with “Other…”, which opens the system colour panel — the way Calendar offers one. The palette itself is Calendar’s, and follows light and dark the way the system’s colours do." = "Un color propio: el menú de colores termina con “Otro…”, que abre la paleta del sistema, como lo ofrece Calendario. La paleta es la de Calendario y sigue el modo claro y oscuro como los colores del sistema.";
 "“Stop on low battery” is a slider with stops, the way the charge limit is set in Battery. And the two colour rows are a dot and a name instead of two rows of ten swatches." = "“Detener con poca batería” es un regulador con posiciones, como el límite de carga en “Batería”. Y las dos filas de color son un punto con su nombre en vez de dos filas de diez muestras.";
+"No VPNs are set up on this Mac" = "No hay ninguna VPN configurada en este Mac";
+"Helm connects and disconnects the configurations macOS holds, and can do it by rule — bringing up the work VPN when Slack opens, for example. The configuration itself is added in System Settings." = "Helm conecta y desconecta las configuraciones que guarda macOS, y puede hacerlo por reglas: levantar la VPN del trabajo al abrir Slack, por ejemplo. La configuración se añade en Ajustes del Sistema.";
+"Open Network settings" = "Abrir los ajustes de Red";
+"Helm picks it up on its own — there is nothing to refresh." = "Helm la detecta solo: no hay nada que actualizar.";
