@@ -734,3 +734,5 @@
 "The countdown says what happens at zero when a timer is set to end automation as well — the one state where that setting decides anything was the one state nothing mentioned it." = "La cuenta atrás dice qué pasa al llegar a cero cuando el temporizador también termina la automatización: el único estado en que ese ajuste decide algo era el único en que nada lo mencionaba.";
 "Filter" = "Filtro";
 "Rule paused" = "Regla en pausa";
+"Brown" = "Marrón";
+"Other colour…" = "Otro…";

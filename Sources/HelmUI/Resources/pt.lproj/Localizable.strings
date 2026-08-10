@@ -734,3 +734,5 @@
 "The countdown says what happens at zero when a timer is set to end automation as well — the one state where that setting decides anything was the one state nothing mentioned it." = "A contagem regressiva diz o que acontece no zero quando o timer também encerra a automação: o único estado em que esse ajuste decide algo era o único em que nada o mencionava.";
 "Filter" = "Filtro";
 "Rule paused" = "Regra em pausa";
+"Brown" = "Marrom";
+"Other colour…" = "Outra…";

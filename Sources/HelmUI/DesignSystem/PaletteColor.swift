@@ -1,32 +1,56 @@
 import SwiftUI
 import AppKit
-/// The fixed active-tint palette for status icons (Keep Awake picks from this).
+/// The active-tint palette for status icons — Calendar's, which is the system's.
+///
+/// **This reverses an earlier decision, and the reversal is measured.** The
+/// palette used to be ten hand-picked hexes «not the system's», on the finding
+/// that `systemRed` and `systemPink` are **22 units of sRGB apart** — two of
+/// the ten swatches were the same colour, in the one control whose entire
+/// content is which colour you picked. That finding was about a set containing
+/// both a red and a pink. Calendar's set has neither problem: measured on this
+/// Mac, the closest pair of the seven is orange/yellow at **103** units in
+/// light and red/orange at **101** in dark, against 22 for the pair that
+/// caused the rewrite.
+///
+/// What the system's colours buy that a hex cannot: they change with the
+/// appearance. `systemRed` is `#FF383C` in light and `#FF4245` in dark, and the
+/// icon they tint sits in the menu bar, which is the one surface that follows
+/// the desktop rather than the app.
+///
+/// `mint`, `cyan` and `pink` are **retired, not removed**. They are somebody's
+/// stored setting on a Mac that has already run Helm, and a case that stops
+/// existing reads back as white with no explanation. They resolve; `offered` is
+/// what the menu lists.
 public enum PaletteColor: String, CaseIterable, Sendable {
-    case white, red, orange, yellow, green, mint, cyan, blue, purple, pink
-    /// The redesign's own ten, not the system's.
-    ///
-    /// Measured off a capture: `Color.red` and `Color.pink` are `systemRed` and
-    /// `systemPink`, and on a 20 pt circle they are **22 units of sRGB apart**
-    /// — identical red channel, six of green, twenty-one of blue — in light and
-    /// in dark alike. Two of the ten swatches were the same colour, in the one
-    /// control whose entire content is which colour you picked. v3's pair is 78
-    /// apart because its pink is a magenta.
-    ///
-    /// And `.white` is 255,254,255 on a 248 card — 1.06:1, held apart only by a
-    /// hairline ring measuring 1.08:1. v3 spells that slot `#f2f2f7` precisely
-    /// so it reads as the lightest *grey* rather than as the paper.
+    case white, red, orange, yellow, green, blue, purple, brown
+    case mint, cyan, pink
+
+    /// What the colour menu offers, in Calendar's order. White leads because it
+    /// is the untinted default — `nil` and `"white"` are the same answer in
+    /// `MenuBarIcon.nsColor(tintToken:)`.
+    public static let offered: [PaletteColor] = [
+        .white, .red, .orange, .yellow, .green, .blue, .purple, .brown,
+    ]
+
     public var color: Color {
         switch self {
-        case .white: return Color(hex: 0xF2F2F7)
-        case .red: return Color(hex: 0xE5484D)
-        case .orange: return Color(hex: 0xDE7A21)
-        case .yellow: return Color(hex: 0xE5B62C)
-        case .green: return Color(hex: 0x2EA05A)
-        case .mint: return Color(hex: 0x4CC7A4)
-        case .cyan: return Color(hex: 0x3AA8C1)
-        case .blue: return Color(hex: 0x2F7CF6)
-        case .purple: return Color(hex: 0x8B5CF6)
-        case .pink: return Color(hex: 0xE0559A)
+        // Not `.white`: on a light card that is 1.06:1 against the paper, held
+        // apart only by a hairline ring. The lightest *grey*, which is what v3
+        // spells `#f2f2f7` for, and it is the same in both appearances because
+        // it stands for «no tint» rather than for a colour.
+        case .white: return Color(hex: 0xF1F1F7)
+        case .red: return Color(nsColor: .systemRed)
+        case .orange: return Color(nsColor: .systemOrange)
+        case .yellow: return Color(nsColor: .systemYellow)
+        case .green: return Color(nsColor: .systemGreen)
+        case .blue: return Color(nsColor: .systemBlue)
+        case .purple: return Color(nsColor: .systemPurple)
+        case .brown: return Color(nsColor: .systemBrown)
+        // Retired: reachable only from a stored value written before the
+        // palette became Calendar's.
+        case .mint: return Color(nsColor: .systemMint)
+        case .cyan: return Color(nsColor: .systemCyan)
+        case .pink: return Color(nsColor: .systemPink)
         }
     }
     /// The colour's name in the user's language. It was `rawValue.capitalized`
@@ -39,10 +63,14 @@ public enum PaletteColor: String, CaseIterable, Sendable {
         case .orange: return L("Orange")
         case .yellow: return L("Yellow")
         case .green: return L("Green")
+        case .blue: return L("Blue")
+        // Apple's own word, out of `CalendarUI.framework`'s table: Russian says
+        // «Лиловый» where a translator reaching for the dictionary writes
+        // «Фиолетовый», and this app is meant to read like the system.
+        case .purple: return L("Purple")
+        case .brown: return L("Brown")
         case .mint: return L("Mint")
         case .cyan: return L("Cyan")
-        case .blue: return L("Blue")
-        case .purple: return L("Purple")
         case .pink: return L("Pink")
         }
     }

@@ -176,7 +176,7 @@
 "Global shortcut" = "Глобальное сочетание клавиш";
 "Got it" = "Понятно";
 "Grant…" = "Выдать…";
-"Green" = "Зелёный";
+"Green" = "Зеленый";
 "Group Containers" = "Групповые контейнеры";
 "Helm Settings" = "Настройки Helm";
 "Helm can be used with VoiceOver. Every control now says what it is — the rule editor was built from pop-up buttons and fields that announced nothing, so a rule could not be written at all without sight." = "Helm работает с VoiceOver. Каждый элемент управления теперь называет себя — редактор правил состоял из кнопок и полей, не сообщавших ничего, и правило нельзя было составить вслепую.";
@@ -356,7 +356,7 @@
 "Point Helm at a folder and give it rules. A file that arrives is checked against them in order and the first match wins — and every watched folder is checked again once an hour, so age rules come round." = "Покажите Helm папку и задайте правила. Появившийся файл сверяется с ними по порядку, срабатывает первое подошедшее — и раз в час Helm обходит папку заново, чтобы правила про возраст тоже доходили до дела.";
 "Power" = "Питание";
 "Press keys…" = "Нажмите клавиши…";
-"Purple" = "Фиолетовый";
+"Purple" = "Лиловый";
 "Putting the app back from the Trash will not bring these files back." = "Если вернуть приложение из Корзины, эти файлы не вернутся.";
 "Quick Look" = "Быстрый просмотр";
 "Quit" = "Завершить";
@@ -567,7 +567,7 @@
 "Without Full Disk Access some folders scan as empty." = "Без «Доступа к диску» часть папок будет показана пустыми.";
 "Wording and sizes reviewed across the app: shorter labels, one name per thing, and sizes in your language — “432,95 ГБ”, not “432,95 GB”." = "Пересмотрены надписи и размеры по всему приложению: короче формулировки, одно название на одну вещь, размеры на вашем языке — «432,95 ГБ», а не «432,95 GB».";
 "Write a log file" = "Вести журнал";
-"Yellow" = "Жёлтый";
+"Yellow" = "Желтый";
 "You can change this later in Settings." = "Это можно изменить позже в Настройках.";
 "Your layouts, as they will look:" = "Ваши раскладки — как они будут выглядеть:";
 "You’re on the latest version." = "Установлена последняя версия.";
@@ -734,3 +734,5 @@
 "The countdown says what happens at zero when a timer is set to end automation as well — the one state where that setting decides anything was the one state nothing mentioned it." = "Отсчёт говорит, что произойдёт на нуле, если таймер настроен завершать и автоматику: раньше единственное состояние, где эта настройка что-то решает, было единственным, где о ней молчали.";
 "Filter" = "Фильтр";
 "Rule paused" = "Приостановлено";
+"Brown" = "Коричневый";
+"Other colour…" = "Другой…";

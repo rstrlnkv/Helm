@@ -734,3 +734,5 @@
 "The countdown says what happens at zero when a timer is set to end automation as well — the one state where that setting decides anything was the one state nothing mentioned it." = "Der Countdown sagt, was bei null passiert, wenn ein Timer auch die Automatik beenden soll — der eine Zustand, in dem diese Einstellung etwas entscheidet, war der eine, in dem nichts sie erwähnte.";
 "Filter" = "Filter";
 "Rule paused" = "Regel pausiert";
+"Brown" = "Braun";
+"Other colour…" = "Andere …";

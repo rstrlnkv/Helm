@@ -734,3 +734,5 @@
 "The countdown says what happens at zero when a timer is set to end automation as well — the one state where that setting decides anything was the one state nothing mentioned it." = "当计时器被设为同时结束自动化时，倒计时会说明归零后会发生什么——这项设置唯一起作用的状态，正是此前唯一没有提到它的状态。";
 "Filter" = "筛选";
 "Rule paused" = "规则已暂停";
+"Brown" = "棕色";
+"Other colour…" = "其他…";

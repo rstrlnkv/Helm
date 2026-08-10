@@ -59,4 +59,9 @@ public enum HelmA11y {
             ? L("expanded")
             : L("collapsed")
     }
+
+    /// Calendar's own last item in this menu, and its own word: `Other…` in
+    /// `CalendarUI.framework`'s table, «Другой…» in Russian — where a
+    /// translator reaching for the dictionary writes «Свой цвет…».
+    public static var otherColour: String { L("Other colour…") }
 }

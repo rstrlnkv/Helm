@@ -734,3 +734,5 @@
 "The countdown says what happens at zero when a timer is set to end automation as well — the one state where that setting decides anything was the one state nothing mentioned it." = "Le compte à rebours dit ce qui se passe à zéro quand un minuteur doit aussi mettre fin à l’automatisme : le seul état où ce réglage décide quelque chose était le seul où rien ne le mentionnait.";
 "Filter" = "Filtrer";
 "Rule paused" = "Règle en pause";
+"Brown" = "Marron";
+"Other colour…" = "Autre…";

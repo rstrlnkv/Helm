@@ -734,3 +734,5 @@
 "The countdown says what happens at zero when a timer is set to end automation as well — the one state where that setting decides anything was the one state nothing mentioned it." = "The countdown says what happens at zero when a timer is set to end automation as well — the one state where that setting decides anything was the one state nothing mentioned it.";
 "Filter" = "Filter";
 "Rule paused" = "Rule paused";
+"Brown" = "Brown";
+"Other colour…" = "Other colour…";

@@ -412,7 +412,11 @@ public enum MenuBarIcon {
         case "blue": return .systemBlue
         case "purple": return .systemPurple
         case "pink": return .systemPink
-        default: return .white
+        // A colour the person chose themselves, stored as `#RRGGBB`. Anything
+        // else — a token from a build that had names this one does not, a
+        // hand-edited plist — falls back to white, which is the untinted glyph
+        // and the same answer `nil` gives.
+        default: return PaletteTint.custom(tintToken) ?? .white
         }
     }
 }
