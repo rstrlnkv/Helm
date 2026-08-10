@@ -394,6 +394,16 @@ struct KeepAwakeHero: View {
     /// running while the rule's app is also on screen draws the countdown, and
     /// Stop there paused the rule with no screen anywhere mentioning it. One
     /// condition now, and it is the engine's own.
+    /// A rule could be paused by pressing Stop, and has not been already.
+    ///
+    /// The second half is not pedantry. Photographed: with the rule suppressed,
+    /// the caption «Stop pauses the rule until it applies again» sat directly
+    /// above the banner «Paused until the rule applies again» — the same
+    /// sentence twice, one of them in the future tense about something that had
+    /// already happened. The banner is the one that belongs there, because it
+    /// carries the way back.
+    private var saysWhatStopWouldDo: Bool { ruleHolds && !suppressed }
+
     private var stopNote: some View {
         Text(KAStr.heroStopSuppresses)
             .font(.system(size: 11)).foregroundStyle(HelmText.faint)
@@ -402,9 +412,9 @@ struct KeepAwakeHero: View {
             // caption that removed itself from the hierarchy would take the
             // page's height with it in one frame, which is the accordion
             // defect the suppression row below was rewritten to avoid.
-            .opacity(ruleHolds ? 1 : 0)
-            .animation(HelmMotion.interface, value: ruleHolds)
-            .accessibilityHidden(!ruleHolds)
+            .opacity(saysWhatStopWouldDo ? 1 : 0)
+            .animation(HelmMotion.interface, value: saysWhatStopWouldDo)
+            .accessibilityHidden(!saysWhatStopWouldDo)
             .padding(.top, 6)
     }
 

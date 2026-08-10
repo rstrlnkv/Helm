@@ -26,19 +26,28 @@ final class TheStopCaptionIsOnScreenOrNotTests: XCTestCase {
 
     private static let now = Date(timeIntervalSince1970: 1_700_000_000)
 
-    private func hero(ruleHolds: Bool, state: SessionHero) -> some View {
+    private func hero(ruleHolds: Bool, state: SessionHero,
+                      suppressed: Bool = false) -> some View {
         KeepAwakeHero(state: state, now: Self.now, anyRuleOn: true,
-                      defaultDurationMinutes: 60, suppressed: false,
+                      defaultDurationMinutes: 60, suppressed: suppressed,
                       heldByOthers: false, ruleHolds: ruleHolds,
                       timedNote: { _ in "until 15:42" },
                       start: { _ in }, stop: {}, resume: {})
             .frame(width: HelmLayout.settingsColumn)
     }
 
-    /// Ink in the bottom 24 pt of the block — where the 11 pt caption sits,
-    /// under the row of buttons.
-    private func captionInk(ruleHolds: Bool, state: SessionHero) -> Int {
-        let host = NSHostingView(rootView: AnyView(hero(ruleHolds: ruleHolds, state: state)))
+    /// Every pixel of ink in the block.
+    ///
+    /// **Not a band, and the first version of this file got that wrong.** The
+    /// caption's own strip was read as «the bottom 24 pt», which is the caption
+    /// only while nothing is below it — with the rule paused, the suppression
+    /// banner grows into exactly that strip and the reading became 804412 for
+    /// a caption that was not there. Two renders that differ in one thing and
+    /// are compared against each other need no such arithmetic: everything else
+    /// on screen is identical and cancels.
+    private func ink(ruleHolds: Bool, state: SessionHero, suppressed: Bool = false) -> Int {
+        let host = NSHostingView(rootView: AnyView(
+            hero(ruleHolds: ruleHolds, state: state, suppressed: suppressed)))
         host.frame = NSRect(x: 0, y: 0, width: HelmLayout.settingsColumn,
                             height: host.fittingSize.height)
         host.layoutSubtreeIfNeeded()
@@ -46,7 +55,7 @@ final class TheStopCaptionIsOnScreenOrNotTests: XCTestCase {
         host.cacheDisplay(in: host.bounds, to: rep)
         guard let data = rep.bitmapData, rep.samplesPerPixel == 4 else { return -1 }
         var mass = 0
-        for y in max(0, rep.pixelsHigh - 24)..<rep.pixelsHigh {
+        for y in 0..<rep.pixelsHigh {
             for x in 0..<rep.pixelsWide {
                 mass += Int(data[y * rep.bytesPerRow + x * 4 + 3])
             }
@@ -58,8 +67,8 @@ final class TheStopCaptionIsOnScreenOrNotTests: XCTestCase {
     /// beside a rule whose trigger holds.
     func testTheCaptionIsDrawnWhileARuleCouldBePaused() throws {
         let state = SessionHero.timed(until: Self.now.addingTimeInterval(3600))
-        let with = captionInk(ruleHolds: true, state: state)
-        let without = captionInk(ruleHolds: false, state: state)
+        let with = ink(ruleHolds: true, state: state)
+        let without = ink(ruleHolds: false, state: state)
         try XCTSkipIf(with < 0 || without < 0, "nothing drew — no window server")
 
         XCTAssertGreaterThan(with, without,
@@ -68,24 +77,30 @@ final class TheStopCaptionIsOnScreenOrNotTests: XCTestCase {
                              + "\(without)")
     }
 
-    /// And it is *not* drawn when no rule could be paused — otherwise the test
-    /// above passes with the condition deleted, which is exactly the mutation
-    /// that survived before this file existed.
-    func testTheCaptionIsAbsentWhenNoRuleApplies() throws {
-        let ink = captionInk(ruleHolds: false,
-                             state: .timed(until: Self.now.addingTimeInterval(3600)))
-        try XCTSkipIf(ink < 0, "nothing drew — no window server")
+    /// Once the rule *is* paused, the caption stops offering to pause it.
+    ///
+    /// Photographed during this change: the caption sat directly above the
+    /// banner that says the same thing, one of them in the future tense about
+    /// something that had already happened. The banner stays, because it is the
+    /// one carrying the way back.
+    func testTheCaptionGoesOnceTheRuleIsActuallyPaused() throws {
+        let state = SessionHero.automatic([.externalDisplay])
+        let holds = ink(ruleHolds: true, state: state, suppressed: true)
+        let not = ink(ruleHolds: false, state: state, suppressed: true)
+        try XCTSkipIf(holds < 0 || not < 0, "nothing drew — no window server")
 
-        XCTAssertEqual(ink, 0,
-                       "a Mac with no rule at all was told that Stop would pause one: \(ink)")
+        XCTAssertEqual(holds, not,
+                       "«Stop pauses the rule» is still on screen above a banner saying the "
+                       + "rule is already paused: \(holds) vs \(not)")
     }
 
     /// The same in the state that always carried it, so moving the caption out
     /// of `.automatic` did not lose it there.
     func testTheAutomaticStateStillCarriesIt() throws {
-        let with = captionInk(ruleHolds: true, state: .automatic([.externalDisplay]))
-        try XCTSkipIf(with < 0, "nothing drew — no window server")
+        let with = ink(ruleHolds: true, state: .automatic([.externalDisplay]))
+        let without = ink(ruleHolds: false, state: .automatic([.externalDisplay]))
+        try XCTSkipIf(with < 0 || without < 0, "nothing drew — no window server")
 
-        XCTAssertGreaterThan(with, 0)
+        XCTAssertGreaterThan(with, without)
     }
 }
