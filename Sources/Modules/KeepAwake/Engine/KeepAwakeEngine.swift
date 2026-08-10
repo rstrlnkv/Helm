@@ -44,6 +44,13 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// password — so for the whole life of the prompt, which is seconds to
     /// minutes, the answer is the same "no" that started it.
     private var sudoersInstallInFlight = false
+    /// The other half of the same guard. `removeSudoers` also puts up an
+    /// administrator dialog, and `releaseSudoersIfUnneeded` runs on
+    /// `settingsChanged` — which the settings page sends on every control it
+    /// draws. Five ordinary edits with the lid option off produced five
+    /// password prompts, because `/etc/sudoers.d` still holds the rule for the
+    /// whole life of the dialog and every edit asked again.
+    private var sudoersRemovalInFlight = false
 
     private var expiryToken: AnyObject?
     private var jiggleToken: AnyObject?
@@ -217,6 +224,19 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     // MARK: - Core recompute
 
     private func recompute() {
+        // The battery guard is a **veto, not a suppression.** While the charge is
+        // under the floor nothing may hold the Mac — and the moment the charger
+        // goes in the veto lifts by itself, because it is recomputed rather than
+        // remembered. Written as `stopSession()` it borrowed the person's verb:
+        // `suppressed` means somebody said stop, and suppression only lifts when
+        // the *trigger* drops and returns — so a rule silenced by a flat battery
+        // stayed silenced after the Mac was plugged back in. Written as
+        // `deactivate()` it did nothing at all, since the rule simply took the
+        // Mac again on the next recompute.
+        guard !batteryVetoes() else {
+            releaseForBattery()
+            return
+        }
         let ext = externalDisplayCondition()
         let pwr = powerCondition()
         let appR = appCondition()
@@ -302,7 +322,11 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             rules,
             running: Set(apps.runningBundleIDs()),
             externalDisplay: ExternalDisplaySupport.hasExternal(builtInFlags: displayInfo.builtInFlags()),
-            onPower: power.snapshot().map { !$0.onBattery } ?? false)
+            // `isOnMains`, like `powerCondition` above. This site was left on
+            // `snapshot()` when that fix landed, so a rule narrowed to «only
+            // when plugged in» stayed dead on every Mac without a battery —
+            // the exact defect the commit claimed to have closed.
+            onPower: power.isOnMains)
     }
     private func currentAutoConditionHolds() -> Bool {
         externalDisplayCondition() || powerCondition() || appCondition()
@@ -428,18 +452,47 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 
     // MARK: - Battery guard
 
+    /// True while the charge is under the floor the person set.
+    private func batteryVetoes() -> Bool {
+        guard let snap = power.snapshot() else { return false }
+        return BatteryGuard.shouldDeactivate(enabled: settings.batteryGuardEnabled,
+                                             isOnBattery: snap.onBattery,
+                                             percent: snap.percent,
+                                             threshold: settings.batteryGuardPercent)
+    }
+
+    /// Let go, and say so once — not once per power notification.
+    private func releaseForBattery() {
+        activeConditions = []
+        // A session that was *asked for* counts, even though it never became
+        // active: pressing «15 min» at 5 % now refuses instantly rather than
+        // holding the Mac for the thirty seconds until the watch ticks, and a
+        // refusal nobody is told about is the module failing silently at the
+        // one thing it was asked to do.
+        guard isActive || manualOn || endDate != nil else { emitState(); return }
+        let percent = power.snapshot()?.percent ?? 0
+        // The session ends without the person touching anything, so the log is
+        // the only place that can say who ended it and why.
+        HelmLog.shared.info("keepawake", "battery guard stopped the session at "
+                            + "\(percent)% (floor \(settings.batteryGuardPercent)%)")
+        assertions.release()
+        if clamshellActive { disengageClamshell() }
+        cancelTimers()
+        isActive = false
+        // A hand-started session really is over — there is no deadline left to
+        // come back to. A rule is not: it holds again the moment the veto lifts.
+        manualOn = false
+        endDate = nil
+        startDate = nil
+        rememberSession()
+        emitState()
+    }
+
     private func batteryCheck() {
-        guard let snap = power.snapshot() else { return }
-        if BatteryGuard.shouldDeactivate(enabled: settings.batteryGuardEnabled,
-                                          isOnBattery: snap.onBattery,
-                                          percent: snap.percent,
-                                          threshold: settings.batteryGuardPercent) {
-            // The session ends without the person touching anything, so the log is
-            // the only place that can say who ended it and why.
-            HelmLog.shared.info("keepawake", "battery guard stopped the session at "
-                                + "\(snap.percent)% (floor \(settings.batteryGuardPercent)%)")
-            stopSession()
-        }
+        // One decision, in `recompute`. This used to hold a copy of it and call
+        // `stopSession()`, which is how the guard came to borrow a verb that
+        // means «a person said stop».
+        recompute()
     }
 
     private func scheduleBatteryWatch() {
@@ -520,7 +573,14 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// until they say otherwise.
     private func releaseSudoersIfUnneeded() {
         guard !settings.clamshellEnabled, clamshell.isSudoersInstalled() else { return }
-        clamshell.removeSudoers { _ in }
+        guard !sudoersRemovalInFlight else { return }
+        sudoersRemovalInFlight = true
+        clamshell.removeSudoers { [weak self] _ in
+            // Cleared whatever the answer was: a declined removal has to be
+            // askable again, and a flag left standing would mean the rule could
+            // never be taken off for the life of the process.
+            Task { @MainActor in self?.sudoersRemovalInFlight = false }
+        }
     }
 
     private func reallyEngageClamshell() {

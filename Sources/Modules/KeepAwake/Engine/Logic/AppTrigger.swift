@@ -64,13 +64,29 @@ public enum AppTriggerRules {
     /// apps. The two are the same answer to the module and a different thing to
     /// say about somebody's file.
     public static func readable(_ raw: String) -> [AppTrigger]? {
-        guard let data = raw.data(using: .utf8) else { return nil }
-        return try? JSONDecoder().decode([AppTrigger].self, from: data)
+        guard let data = raw.data(using: .utf8),
+              let decoded = try? JSONDecoder().decode([AppTrigger].self, from: data)
+        else { return nil }
+        return deduplicated(decoded)
+    }
+
+    /// One rule per app, first one wins.
+    ///
+    /// `AppTrigger` is `Identifiable` on its bundle id and the settings page
+    /// draws `ForEach(id: \.element.bundleID)`, whose behaviour with a repeated
+    /// id SwiftUI's own documentation leaves undefined — in the list that
+    /// carries a per-row condition menu and a remove button keyed on the index.
+    /// Two writers produce duplicates without anybody using the picker: a
+    /// hand-edited plist, and `migrating(from:)` over an `autoApps` array that
+    /// nothing ever deduplicated.
+    private static func deduplicated(_ rules: [AppTrigger]) -> [AppTrigger] {
+        var seen = Set<String>()
+        return rules.filter { seen.insert($0.bundleID).inserted }
     }
 
     /// Earlier versions stored a plain list of bundle ids. Those apps kept the
     /// Mac awake unconditionally, so that is what they migrate to.
     public static func migrating(from bundleIDs: [String]) -> [AppTrigger] {
-        bundleIDs.map { AppTrigger(bundleID: $0) }
+        deduplicated(bundleIDs.map { AppTrigger(bundleID: $0) })
     }
 }
