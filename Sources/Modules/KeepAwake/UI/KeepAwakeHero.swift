@@ -255,9 +255,7 @@ struct KeepAwakeHero: View {
             Text(anyRuleOn ? KAStr.heroIdleReason : KAStr.heroNoRules)
                 .font(.system(size: 13)).foregroundStyle(HelmText.faint)
             HelmWrappingRow {
-                startButton(KAStr.duration(15), minutes: 15)
-                startButton(KAStr.oneHour, minutes: 60)
-                startButton(KAStr.twoHours, minutes: 120)
+                presetButtons
                 // Lengths first, then the one that has none. Every button up to
                 // here answers «for how long», and the free-form field is the
                 // fourth answer to that question rather than a fifth kind of
@@ -329,9 +327,7 @@ struct KeepAwakeHero: View {
             HelmWrappingRow {
                 // A session with no deadline can be given one, and until now
                 // the only way to bound it was to stop it and start again.
-                startButton(KAStr.duration(15), minutes: 15)
-                startButton(KAStr.oneHour, minutes: 60)
-                startButton(KAStr.twoHours, minutes: 120)
+                presetButtons
                 customButton
                 stopButton
             }
@@ -350,9 +346,7 @@ struct KeepAwakeHero: View {
                 // to be one button carrying whatever «Default duration» said,
                 // which meant the page offered a length nobody had chosen for
                 // this session and hid the other two.
-                startButton(KAStr.duration(15), minutes: 15)
-                startButton(KAStr.oneHour, minutes: 60)
-                startButton(KAStr.twoHours, minutes: 120)
+                presetButtons
                 // Zero is not a length, it is «no deadline» — composing «start
                 // a timer for 0 min» from it made the page offer a timer of
                 // nothing. The word is the one the idle row uses for the same
@@ -424,6 +418,20 @@ struct KeepAwakeHero: View {
     }
 
     // MARK: - Buttons
+
+    /// The three lengths every state offers, written once.
+    ///
+    /// They were spelled out in `.idle`, `.indefinite` and `.automatic` — the
+    /// same three numbers and the same three keys, three times — so changing a
+    /// preset, or adding a fourth, meant three edits and a fourth state would
+    /// have started from a copy. Computed rather than stored: the labels are
+    /// `L()` lookups and a `static let` would freeze them in whatever language
+    /// the app opened in.
+    @ViewBuilder private var presetButtons: some View {
+        startButton(KAStr.duration(15), minutes: 15)
+        startButton(KAStr.oneHour, minutes: 60)
+        startButton(KAStr.twoHours, minutes: 120)
+    }
 
     /// The preset the menu-bar switch and the shortcut start is the prominent
     /// one. It is the only place on any screen that says which that is.

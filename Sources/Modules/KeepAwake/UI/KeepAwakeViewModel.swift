@@ -103,6 +103,22 @@ import Module_KeepAwake_Engine
         vm.send(command, payload: payload)
     }
 
+    /// Start a session of `minutes` — 0 meaning «no deadline».
+    ///
+    /// Both surfaces asked for this and each encoded the payload itself: a free
+    /// function at the bottom of the panel tile, and four lines of
+    /// `JSONEncoder` in the settings page. One wire message, two spellings, and
+    /// the pair of them one field-rename apart from silently starting nothing —
+    /// there is no compiler across a JSON hop, which is the defect
+    /// `KeepAwakeStart` was hoisted out of the views to end. Encoding is not a
+    /// view's job in any case.
+    public func start(minutes: Int) {
+        guard let payload = try? JSONEncoder().encode(KeepAwakeStart(minutes: minutes)) else {
+            return
+        }
+        send(KeepAwakeCommand.start, payload: payload)
+    }
+
     /// Change a setting and tell the engine to re-read it.
     ///
     /// The pair is the point: the engine keeps what it read, so a write nobody

@@ -181,7 +181,7 @@ public struct KeepAwakePanelTile: View {
 
     private func presetPill(_ label: String, _ minutes: Int) -> some View {
         Button {
-            vm.send(KeepAwakeCommand.start, payload: startPayload(minutes))
+            vm.start(minutes: minutes)
         } label: {
             pillLabel(Text(label))
         }
@@ -278,7 +278,7 @@ public struct KeepAwakePanelTile: View {
                     .popover(isPresented: $showCustomTime, arrowEdge: .bottom) { customTimeEditor }
 
                     Button(KAStr.start) {
-                        vm.send(KeepAwakeCommand.start, payload: startPayload(customMinutes))
+                        vm.start(minutes: customMinutes)
                         withAnimation(HelmMotion.disclosure) { showMore = false }
                     }
                     .controlSize(.small)
@@ -433,9 +433,8 @@ public struct KeepAwakePanelTile: View {
                     .accessibilityAddTraits(.updatesFrequently)
                 Spacer()
                 Button("+" + KAStr.duration(Self.extraMinutes, compact: true)) {
-                    vm.send(KeepAwakeCommand.start, payload: startPayload(
-                        TimerPolicy.extendedMinutes(remaining: remaining,
-                                                    adding: Self.extraMinutes)))
+                    vm.start(minutes: TimerPolicy.extendedMinutes(
+                        remaining: remaining, adding: Self.extraMinutes))
                 }
                 .controlSize(.small)
                 // Ends the timed session; the header toggle is the all-or-nothing
@@ -450,10 +449,4 @@ public struct KeepAwakePanelTile: View {
         }
     }
 
-}
-
-/// The engine's own type — it was declared again here, a `struct P` matched
-/// to the other by field name across a JSON hop.
-private func startPayload(_ minutes: Int) -> Data {
-    (try? JSONEncoder().encode(KeepAwakeStart(minutes: minutes))) ?? Data()
 }

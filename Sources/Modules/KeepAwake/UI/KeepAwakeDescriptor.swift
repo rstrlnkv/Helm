@@ -6,7 +6,9 @@ import HelmUI
 import Module_KeepAwake_Engine
 
 @MainActor public final class KeepAwakeDescriptor: ModuleDescriptor {
-    public static let id = ModuleID("keep-awake")
+    /// The engine's constant, forwarded. Not a second literal: a name only one
+    /// side changes is an error nowhere.
+    public static let id = ModuleID(KeepAwakeEngine.moduleID)
     public static let metadata = ModuleMetadata(
         id: id, name: KAStr.moduleName,
         summary: KAStr.summary,
@@ -16,6 +18,16 @@ import Module_KeepAwake_Engine
         // without this line a Keep Awake user who does not also run Layout was
         // never told the grant had lapsed.
         sfSymbol: "moon.zzz.fill", permissions: [.adminHelper, .accessibility])
+    /// The store the host handed us, or this module's own if it handed none.
+    ///
+    /// Spelled out at four call sites — three of them identical and one wrapped
+    /// differently, which is how a fifth would have got a different namespace
+    /// without anybody noticing. The namespace is where every setting the
+    /// person has configured lives.
+    private func resolved(_ store: NamespacedStore?) -> NamespacedStore {
+        store ?? NamespacedStore(namespace: Self.id.rawValue, backing: UserDefaults.standard)
+    }
+
     public static let category: ModuleCategory = .power
     public static let tint: ModuleTint = .keepAwake
 
@@ -34,7 +46,7 @@ import Module_KeepAwake_Engine
     }
 
     public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? {
-        let s = store ?? NamespacedStore(namespace: KeepAwakeDescriptor.id.rawValue, backing: UserDefaults.standard)
+        let s = resolved(store)
         return MenuBarContribution(panelTile: AnyView(KeepAwakePanelTile(vm: vm, store: s)))
     }
 
@@ -43,7 +55,7 @@ import Module_KeepAwake_Engine
     /// automation conditions unfolded under it, which at 2×1 are behind a
     /// disclosure because the tile has to stay short.
     public func panelWidget(_ size: PanelWidgetSize, _ vm: ModuleViewModel) -> AnyView? {
-        let s = store ?? NamespacedStore(namespace: KeepAwakeDescriptor.id.rawValue, backing: UserDefaults.standard)
+        let s = resolved(store)
         switch size {
         case .compact: return AnyView(KeepAwakeCompactWidget(vm: vm))
         case .wide: return AnyView(KeepAwakePanelTile(vm: vm, store: s))
@@ -56,7 +68,7 @@ import Module_KeepAwake_Engine
     }
 
     public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
-        AnyView(KeepAwakeSettingsPage(vm: vm, store: store ?? NamespacedStore(namespace: KeepAwakeDescriptor.id.rawValue, backing: UserDefaults.standard)))
+        AnyView(KeepAwakeSettingsPage(vm: vm, store: resolved(store)))
     }
 
     /// This module has a plain running/not-running of its own, which is what
@@ -71,8 +83,7 @@ import Module_KeepAwake_Engine
     /// unconditionally because nothing prompts for it in advance: macOS asks at
     /// the moment the sudoers rule is written, which is a gesture away.
     public func currentPermissions(_ vm: ModuleViewModel?) -> [ModulePermission] {
-        let s = store ?? NamespacedStore(namespace: KeepAwakeDescriptor.id.rawValue,
-                                         backing: UserDefaults.standard)
+        let s = resolved(store)
         var needs: [ModulePermission] = [.adminHelper]
         if KeepAwakeSettings(store: s).jiggleEnabled { needs.append(.accessibility) }
         return needs

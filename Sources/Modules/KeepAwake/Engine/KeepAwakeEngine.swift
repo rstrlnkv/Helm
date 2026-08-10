@@ -8,6 +8,19 @@ import HelmRuntime
 /// (host enables/disables the module); the keep-awake session itself is controlled
 /// independently via `startSession`/`stopSession`/`toggleSession`.
 public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
+    /// The module's own name for itself, and the namespace its settings are
+    /// stored under.
+    ///
+    /// On the engine, with the descriptor forwarding it upward — the same
+    /// direction the command enum travels, and the convention `DiskEngine`,
+    /// `DuplicatesEngine`, `LeftoversEngine` and `UninstallerEngine` already
+    /// follow. It was a literal in the descriptor while the engine side had no
+    /// name at all, so nothing in `Engine/` could say which store it was
+    /// reading. `StoreNamespacesAreModuleIdsTests` records the nine that
+    /// shipped and fails on a rename: this is stored-settings data, and a
+    /// rename orphans everything anybody has configured.
+    public static let moduleID = "keep-awake"
+
     private let settings: KeepAwakeSettings
     private let store: NamespacedStore
     private let assertions: SleepAssertions
@@ -17,13 +30,18 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     private let apps: AppRunningPort
     private let pointer: PointerPort
     private let clamshell: ClamshellPort
+    /// «Stay awake with the lid closed», and the NOPASSWD rule it needs. Six
+    /// methods and four flags that nothing else here reads — see
+    /// `ClamshellCoordinator`.
+    private let lid: ClamshellCoordinator
     private let clock: Clock
     private let localTransport: LocalTransport
     public let transport: EngineTransport
 
     public private(set) var isActive = false
     public private(set) var activeConditions: Set<ActiveCondition> = []
-    public private(set) var clamshellActive = false
+    /// Forwarded, because the wire and the panel have always called it this.
+    public var clamshellActive: Bool { lid.active }
     public private(set) var endDate: Date?
     /// When the current timed session began (nil when there is no timer).
     public private(set) var startDate: Date?
@@ -51,25 +69,6 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// only state in its `.automatic` branch, because that was the only branch
     /// that could see any conditions at all.
     public private(set) var triggeredConditions: Set<ActiveCondition> = []
-    /// An admin password prompt is on screen and has not been answered.
-    ///
-    /// Nothing else can stand for this. `isSudoersInstalled()` asks the
-    /// filesystem, and the file appears only when the person types their
-    /// password — so for the whole life of the prompt, which is seconds to
-    /// minutes, the answer is the same "no" that started it.
-    private var sudoersInstallInFlight = false
-    /// The other half of the same guard. `removeSudoers` also puts up an
-    /// administrator dialog, and `releaseSudoersIfUnneeded` runs on
-    /// `settingsChanged` — which the settings page sends on every control it
-    /// draws. Five ordinary edits with the lid option off produced five
-    /// password prompts, because `/etc/sudoers.d` still holds the rule for the
-    /// whole life of the dialog and every edit asked again.
-    private var sudoersRemovalInFlight = false
-    /// The last value of `clamshellEnabled` this engine acted on, so the rising
-    /// edge of the switch can be told from the setting merely being true.
-    /// Seeded from the store at construction: a launch with the setting already
-    /// on is not somebody switching it on.
-    private var lastClamshellSetting = false
 
     private var expiryToken: AnyObject?
     private var jiggleToken: AnyObject?
@@ -98,20 +97,21 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         self.clock = clock
         self.localTransport = transport
         self.transport = transport
-        self.lastClamshellSetting = settings.clamshellEnabled
+        self.lid = ClamshellCoordinator(clamshell: clamshell, store: store, settings: settings)
+        // After every stored property is set, which is the first moment `self`
+        // may be captured. Both are asked at the moment of use rather than read
+        // now: a password prompt can be on screen for minutes, and whether a
+        // session is still running is a different answer by the time it is
+        // answered.
+        self.lid.sessionIsActive = { [weak self] in self?.isActive ?? false }
+        self.lid.stateChanged = { [weak self] in self?.emitState() }
         wireTransport()
     }
 
     // MARK: - ModuleEngine (module enabled/disabled)
 
     public func activate() {
-        // Only shell out to pmset when we actually recorded disabling sleep;
-        // Swift evaluates both call arguments, so short-circuit with the flag.
-        if store.bool(KeepAwakeSettings.Key.clamshellGuard, default: false),
-           ClamshellRecovery.sleepDisabled(inPmsetOutput: clamshell.pmsetReport()) {
-            _ = clamshell.setDisableSleep(false)
-            store.set(false, for: KeepAwakeSettings.Key.clamshellGuard)
-        }
+        lid.recoverAtLaunch()
         // The one loss in this module that nothing else reports: a rules string
         // the file got wrong reads as no rules, so the apps somebody chose stop
         // holding the Mac awake and every screen goes on looking well.
@@ -137,25 +137,31 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         // observer left armed is a pointer into freed memory the next time the
         // charger moves.
         //
-        // **Only this one, and the other two are not an oversight.** The power
-        // port hands IOKit an *unretained* pointer to itself as the callback
-        // context (`IOPSNotificationCreateRunLoopSource`), so a callback already
-        // scheduled would resolve a context that is going away — which is why
-        // its `stopObserving` invalidates the source as well as removing it.
-        // `ScreenParamsObserver` and `WorkspaceAppPort` register blocks that
-        // capture the caller's closure and never `self`; each clears its own
-        // token at the top of `startObserving` and again in `deinit`, so
-        // dropping the engine takes them with it. Read as a general rule, this
-        // line says the other two were forgotten. They were not.
+        // **Power is the one that would be a crash**, and the reason is worth
+        // keeping: it hands IOKit an *unretained* pointer to itself as the
+        // callback context (`IOPSNotificationCreateRunLoopSource`), so a
+        // callback already scheduled would resolve a context that is going
+        // away — which is why its `stopObserving` invalidates the source as
+        // well as removing it.
+        //
+        // The display observer is stopped here too. It is not a crash if it is
+        // not — `ScreenParamsObserver` registers a block that captures the
+        // caller's closure and never `self`, and clears its own token in
+        // `deinit` — but *when* that happens is then a fact about when the last
+        // reference goes, and this is the moment it is meant to happen. The
+        // method was on the port and called by nobody for exactly as long as
+        // that reasoning stood in for calling it.
+        //
+        // `WorkspaceAppPort` has no `stopObserving` to call and clears its
+        // token the same way. That is the remaining asymmetry, and it is named
+        // here rather than left to be rediscovered.
         power.stopObserving()
+        displayObserver.stopObserving()
         if isActive { assertions.release() }
-        if clamshellActive { disengageClamshell() }
-        // Switching the module off is a decision, and the sudo rule is the one
-        // thing here that would otherwise outlive it — outlive quitting Helm,
-        // and outlive deleting it. `/etc/sudoers.d` on the machine this was
-        // written on holds two abandoned NOPASSWD grants from predecessors;
-        // that is what «the rule survives the app» looks like a year later.
-        releaseSudoersOnTeardown()
+        // Sleep back, and the grant with it: switching the module off is a
+        // decision, and the sudo rule is the one thing here that would outlive
+        // it — outlive quitting Helm, and outlive deleting it.
+        lid.tearDown()
         cancelTimers()
         expiryToken = nil
         isActive = false
@@ -314,14 +320,14 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             HelmLog.shared.info("keepawake", "holding sleep: \(ConditionLabel.of(r.conditions))"
                                 + (settings.keepDisplayOn ? ", display too" : ""))
             if MacHardware.hasLid, settings.clamshellEnabled {
-                engageClamshell(mayPrompt: byGesture)
+                lid.engage(mayPrompt: byGesture)
             }
             if settings.jiggleEnabled { scheduleJiggle() }
             scheduleBatteryWatch()
         } else if !r.isActive && isActive {
             assertions.release()
             HelmLog.shared.info("keepawake", "released")
-            if clamshellActive { disengageClamshell() }
+            if lid.active { lid.disengage() }
             cancelTimers()
             isActive = false
         }
@@ -333,25 +339,15 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// active, so toggling keepDisplayOn / clamshell / jiggle takes effect now
     /// (not only on the next session).
     private func reconcileActiveSettings() {
-        // The switch's rising edge, not its value. `settingsChanged` arrives
-        // for every control the page draws, and the value stays true after a
-        // password dialog is *declined* — so asking on the value put a dialog
-        // in front of somebody for every later edit of an unrelated setting.
-        // The same shape as `sudoersRemovalInFlight`, which was the other half
-        // of this defect.
-        //
-        // Read before the `isActive` guard, so an edge that happens while the
-        // module is idle is *consumed* rather than saved up for whichever
-        // unrelated edit happens to arrive after a rule starts a session.
-        let switchedOn = settings.clamshellEnabled && !lastClamshellSetting
-        lastClamshellSetting = settings.clamshellEnabled
+        // Consumed before the `isActive` guard — see `consumeRisingEdge`.
+        let switchedOn = lid.consumeRisingEdge()
         guard isActive else { return }
         assertions.release()
         assertions.preventSleep(display: settings.keepDisplayOn)
-        if settings.clamshellEnabled, !clamshellActive {
-            engageClamshell(mayPrompt: switchedOn)
-        } else if !settings.clamshellEnabled, clamshellActive {
-            disengageClamshell()
+        if settings.clamshellEnabled, !lid.active {
+            lid.engage(mayPrompt: switchedOn)
+        } else if !settings.clamshellEnabled, lid.active {
+            lid.disengage()
         }
         if settings.jiggleEnabled, jiggleToken == nil {
             scheduleJiggle()
@@ -544,7 +540,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         HelmLog.shared.info("keepawake", "battery guard stopped the session at "
                             + "\(percent)% (floor \(settings.batteryGuardPercent)%)")
         assertions.release()
-        if clamshellActive { disengageClamshell() }
+        if lid.active { lid.disengage() }
         cancelTimers()
         isActive = false
         // A hand-started session really is over — there is no deadline left to
@@ -597,63 +593,6 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         NotificationCenter.default.post(name: .helmPointerNudged, object: nil)
     }
 
-    // MARK: - Clamshell
-
-    private func engageClamshell(mayPrompt: Bool) {
-        // The capability, not our filename. A rule written by something else —
-        // a predecessor, an admin, a migration — grants exactly this, and
-        // asking about the file made Helm request a password to install what
-        // was already there.
-        if !clamshell.canDisableSleepWithoutPassword() {
-            // Nobody is expecting a password dialog, so there will not be one.
-            // The session goes ahead: an IOKit assertion holds an open Mac
-            // awake perfectly well, and the lid is the only part that needs
-            // the rule.
-            guard mayPrompt else {
-                HelmLog.shared.info("keepawake", "closed-lid sleep needs an administrator "
-                                    + "rule; not asking for one outside a deliberate start")
-                return
-            }
-            // Every false→true edge of `isActive` and every settings change
-            // reaches here, and while a prompt is up the disk still says the
-            // rule is missing — so without this the person got one password
-            // dialog per click for a single decision, each of them an
-            // `osascript` writing the same staging file in /etc/sudoers.d.
-            // A *declined* prompt is a different state: the flag clears when
-            // the prompt is answered, so the next session asks again.
-            guard !sudoersInstallInFlight else { return }
-            sudoersInstallInFlight = true
-            clamshell.installSudoers { [weak self] ok in
-                // The osascript callback arrives on a background queue; engine
-                // state and store writes belong on main.
-                DispatchQueue.main.async {
-                    self?.sudoersInstallFinished(granted: ok)
-                }
-            }
-        } else {
-            reallyEngageClamshell()
-        }
-    }
-
-    /// The prompt has been answered, and only now is there a file to reason
-    /// about. Both questions asked while it was up were asked of a rule that
-    /// did not exist yet, so both are asked again here.
-    private func sudoersInstallFinished(granted: Bool) {
-        sudoersInstallInFlight = false
-        guard granted else { return }
-        reallyEngageClamshell()
-        releaseSudoersIfUnneeded()
-    }
-
-    /// Switching the option off takes the passwordless-sudo rule back out.
-    ///
-    /// The rule is the price of the feature, not of having installed Helm: a
-    /// permanent NOPASSWD line in /etc/sudoers.d for something the user has
-    /// turned off is a grant nobody is holding. Silent on failure — the user
-    /// declined the password prompt, which is an answer, and the rule stays
-    /// until they say otherwise.
-    /// Unconditional: the module is being switched off, so the grant has no
-    /// customer left whatever the stored setting says.
     /// The `settingsChanged` path, reachable without a transport hop.
     ///
     /// The command handler does these three in this order, and a test of what
@@ -662,84 +601,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     func settingsChangedForTests() {
         recompute()
         reconcileActiveSettings()
-        releaseSudoersIfUnneeded()
-    }
-
-    private func releaseSudoersOnTeardown() {
-        guard clamshell.isSudoersInstalled() else { return }
-        clamshell.removeSudoers { _ in }
-    }
-
-    private func releaseSudoersIfUnneeded() {
-        guard !settings.clamshellEnabled, clamshell.isSudoersInstalled() else { return }
-        // Removing our file is all this can do; whether the *capability* went
-        // with it is a different question, asked below once the file is gone.
-        guard !sudoersRemovalInFlight else { return }
-        sudoersRemovalInFlight = true
-        clamshell.removeSudoers { [weak self] _ in
-            guard let self else { return }
-            // The file is gone and the grant may not be. Measured on a real
-            // machine: `/etc/sudoers.d` held the identical rule under another
-            // name, so «removed» was reported while any process running as this
-            // user still had passwordless `pmset disablesleep`. A revocation
-            // that revokes nothing is worse than none, because it is reported
-            // as done.
-            //
-            // Read here rather than in a hop: this touches no engine state, and
-            // a hop would put the check after the caller returns — which is how
-            // a synchronous fake releases a gate before the thing it gates has
-            // happened, and how a test of it passes for free.
-            if self.clamshell.canDisableSleepWithoutPassword() {
-                HelmLog.shared.warn("keepawake",
-                                    "a passwordless pmset rule survives that Helm did not write")
-            }
-            // Engine state does hop: cleared whatever the answer was, because a
-            // declined removal has to be askable again and a flag left standing
-            // would mean the rule could never come off for the life of the
-            // process.
-            Task { @MainActor in self.sudoersRemovalInFlight = false }
-        }
-    }
-
-    private func reallyEngageClamshell() {
-        // The sudoers prompt is async; the session may have already ended (or
-        // clamshell may have been disabled) by the time the user answers it.
-        // Never disable sleep for a session that is no longer active.
-        guard isActive, settings.clamshellEnabled else { return }
-        // The flag before the call, and it stays set if the call fails: it is a
-        // note to the next launch that this app *may* have left system sleep
-        // off, and the expensive mistake is missing that, not repeating it.
-        store.set(true, for: KeepAwakeSettings.Key.clamshellGuard)
-        // The result is the whole point. `sudo -n` fails whenever the NOPASSWD
-        // rule is gone — removed by an admin, by a migration, by somebody
-        // tidying `/etc/sudoers.d` — and the two ends of this used to discard
-        // it. Claiming a lid is safe to close is the one claim in this module
-        // that costs somebody a dead battery in a bag.
-        guard clamshell.setDisableSleep(true) else {
-            HelmLog.shared.warn("keepawake", "closed-lid sleep could not be disabled")
-            clamshellActive = false
-            emitState()
-            return
-        }
-        clamshellActive = true
-        // A change to the system's own sleep setting, made through sudo and
-        // outliving the process — the one thing this module does that a crash can
-        // leave behind. Both ends of it belong in the trail.
-        HelmLog.shared.info("keepawake", "closed-lid sleep disabled")
-    }
-
-    private func disengageClamshell() {
-        // If this fails, system sleep is still off — machine-wide, past this
-        // process — and clearing the guard would take away the only thing that
-        // brings the next launch back to look. The Mac would never sleep again
-        // and every screen would say Keep Awake was off.
-        guard clamshell.setDisableSleep(false) else {
-            HelmLog.shared.warn("keepawake", "closed-lid sleep could not be restored")
-            return
-        }
-        store.set(false, for: KeepAwakeSettings.Key.clamshellGuard)
-        clamshellActive = false
-        HelmLog.shared.info("keepawake", "closed-lid sleep restored")
+        lid.releaseIfUnneeded()
     }
 
     private func cancelTimers() {
@@ -800,7 +662,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             case .settingsChanged:
                 self.recompute()
                 self.reconcileActiveSettings()
-                self.releaseSudoersIfUnneeded()
+                self.lid.releaseIfUnneeded()
             }
             }
             return Data()

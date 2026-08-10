@@ -206,10 +206,7 @@ public struct KeepAwakeSettingsPage: View {
         autoExternalDisplay || autoPower || !appTriggers.isEmpty
     }
 
-    private func start(_ minutes: Int) {
-        guard let payload = try? JSONEncoder().encode(KeepAwakeStart(minutes: minutes)) else { return }
-        vm.send(KeepAwakeCommand.start, payload: payload)
-    }
+    private func start(_ minutes: Int) { vm.start(minutes: minutes) }
 
     /// Four rules, and every row answers two questions at once: the mark on the
     /// left is what is happening now — a condition off the wire — and the
