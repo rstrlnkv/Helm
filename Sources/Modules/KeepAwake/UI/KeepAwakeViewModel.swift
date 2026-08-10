@@ -33,6 +33,8 @@ import Module_KeepAwake_Engine
     /// was ended by hand or by a timer. Cleared by the engine when the
     /// condition drops, or by `resumeAutomation`.
     @Published public private(set) var suppressed = false
+    /// Something other than Helm is holding the Mac awake.
+    @Published public private(set) var heldByOthers = false
 
     public let vm: ModuleViewModel
 
@@ -81,6 +83,7 @@ import Module_KeepAwake_Engine
         endDate = p.endDate
         startDate = p.startDate
         suppressed = p.suppressed
+        heldByOthers = p.heldByOthers
     }
 
     /// Named by the engine's own enum, and only that.

@@ -719,3 +719,4 @@
 "While an external display is connected" = "Solange ein externer Bildschirm angeschlossen ist";
 "While the Mac is on power" = "Solange der Mac am Netzstrom hängt";
 "macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "Beim ersten Mal fragt macOS nach einem Adminpasswort und behält eine Regel, mit der Helm den Ruhezustand künftig ohne Nachfrage ausschalten darf. Wird dies ausgeschaltet, verschwindet sie. Wird Helm beendet, während der Ruhezustand aus ist, bleibt er aus, bis Helm wieder läuft.";
+"The Mac is being kept awake by something other than Helm" = "Der Mac wird von etwas anderem als Helm wach gehalten";

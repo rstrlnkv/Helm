@@ -370,6 +370,37 @@ public struct KeepAwakeSystemPorts {
     public let pointer = CGEventPointer()
     public let clamshell = PmsetClamshellPort()
     public let clock = DispatchClock()
+    public let holders = IOKitSleepHolders()
 
     public init() {}
+}
+
+/// `IOPMCopyAssertionsByProcess`, minus our own process and minus the kinds
+/// that are not about sleep at all.
+public final class IOKitSleepHolders: SleepHoldersPort {
+    /// The kinds that actually stop a Mac going to sleep. `UserIsActive` and
+    /// `SystemIsActive` are not among them — they say somebody is at the
+    /// keyboard, which is true of four of the ten assertions on an idle Mac and
+    /// would make the line permanently true.
+    private static let holding: Set<String> = [
+        kIOPMAssertionTypePreventUserIdleSystemSleep as String,
+        kIOPMAssertionTypePreventSystemSleep as String,
+        kIOPMAssertionTypeNoIdleSleep as String,
+        kIOPMAssertionTypePreventUserIdleDisplaySleep as String,
+    ]
+
+    public func othersHoldSleep() -> Bool {
+        var unmanaged: Unmanaged<CFDictionary>?
+        guard IOPMCopyAssertionsByProcess(&unmanaged) == kIOReturnSuccess,
+              let byProcess = unmanaged?.takeRetainedValue() as? [NSNumber: [[String: Any]]]
+        else { return false }
+        let mine = NSNumber(value: ProcessInfo.processInfo.processIdentifier)
+        for (pid, assertions) in byProcess where pid != mine {
+            for assertion in assertions {
+                guard let kind = assertion[kIOPMAssertionTypeKey] as? String else { continue }
+                if Self.holding.contains(kind) { return true }
+            }
+        }
+        return false
+    }
 }

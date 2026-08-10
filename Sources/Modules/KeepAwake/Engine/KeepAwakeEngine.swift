@@ -16,6 +16,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     private let power: PowerInfoPort
     private let apps: AppRunningPort
     private let pointer: PointerPort
+    private let holders: SleepHoldersPort?
     private let clamshell: ClamshellPort
     private let clock: Clock
     private let localTransport: LocalTransport
@@ -37,6 +38,10 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// that slept with the rule's app still on screen had no account of itself
     /// anywhere. One name for it, here and on the wire.
     public private(set) var suppressed = false
+    /// Something that is not Helm is holding this Mac awake. One boolean, read
+    /// where the other conditions are read, so it costs an IOKit call on events
+    /// that already happen and arms no timer at rest.
+    public private(set) var heldByOthers = false
     /// An admin password prompt is on screen and has not been answered.
     ///
     /// Nothing else can stand for this. `isSudoersInstalled()` asks the
@@ -66,6 +71,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                 pointer: PointerPort,
                 clamshell: ClamshellPort,
                 clock: Clock,
+                holders: SleepHoldersPort? = nil,
                 transport: LocalTransport = LocalTransport()) {
         self.settings = settings
         self.store = store
@@ -75,6 +81,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         self.power = power
         self.apps = apps
         self.pointer = pointer
+        self.holders = holders
         self.clamshell = clamshell
         self.clock = clock
         self.localTransport = transport
@@ -237,6 +244,11 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             releaseForBattery()
             return
         }
+        // Asked here rather than on a clock: `recompute` runs on the events
+        // that change the answer — an app launching or quitting, the charger,
+        // a display — so the line is right when it matters and nothing polls
+        // while nothing is happening.
+        heldByOthers = holders?.othersHoldSleep() ?? false
         let ext = externalDisplayCondition()
         let pwr = powerCondition()
         let appR = appCondition()
@@ -266,7 +278,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             assertions.preventSleep(display: settings.keepDisplayOn)
             HelmLog.shared.info("keepawake", "holding sleep: \(ConditionLabel.of(r.conditions))"
                                 + (settings.keepDisplayOn ? ", display too" : ""))
-            if settings.clamshellEnabled { engageClamshell() }
+            if MacHardware.hasLid, settings.clamshellEnabled { engageClamshell() }
             if settings.jiggleEnabled { scheduleJiggle() }
             scheduleBatteryWatch()
         } else if !r.isActive && isActive {
@@ -301,7 +313,13 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     }
 
     private func externalDisplayCondition() -> Bool {
-        settings.autoExternalDisplay && ExternalDisplaySupport.hasExternal(builtInFlags: displayInfo.builtInFlags())
+        // The page hides this rule on a Mac with no display of its own, and the
+        // engine has to agree — a stored `true` from a machine that was a
+        // laptop last week, or from a hand-edited plist, would otherwise hold a
+        // Mac mini awake for ever through a row nobody can see to switch off.
+        guard MacHardware.hasBuiltInDisplay else { return false }
+        return settings.autoExternalDisplay
+            && ExternalDisplaySupport.hasExternal(builtInFlags: displayInfo.builtInFlags())
     }
     private func powerCondition() -> Bool {
         // `snapshot()` is nil for two different reasons and this read them as
@@ -454,6 +472,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 
     /// True while the charge is under the floor the person set.
     private func batteryVetoes() -> Bool {
+        guard MacHardware.hasBattery else { return false }
         guard let snap = power.snapshot() else { return false }
         return BatteryGuard.shouldDeactivate(enabled: settings.batteryGuardEnabled,
                                              isOnBattery: snap.onBattery,
@@ -647,6 +666,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         /// describes a Mac being held awake; this one is the only account of a
         /// Mac that is not, while everything on screen says it should be.
         public let suppressed: Bool
+        public let heldByOthers: Bool
     }
 
     private func wireTransport() {
@@ -689,7 +709,8 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                                     clamshellActive: clamshellActive,
                                     endDate: endDate,
                                     startDate: startDate,
-                                    suppressed: suppressed)
+                                    suppressed: suppressed,
+                                    heldByOthers: heldByOthers)
         localTransport.emit(KeepAwakeEvent.state, encoding: payload)
     }
 }

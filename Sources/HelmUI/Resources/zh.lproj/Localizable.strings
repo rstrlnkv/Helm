@@ -719,3 +719,4 @@
 "While an external display is connected" = "接着外接显示器时";
 "While the Mac is on power" = "Mac 接着电源时";
 "macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "首次启用时 macOS 会要求输入管理员密码，并保留一条规则，让 Helm 以后无需再询问就能关闭睡眠。关掉此设置会移除它。若在睡眠被关闭时退出 Helm，睡眠会一直关闭，直到 Helm 再次运行。";
+"The Mac is being kept awake by something other than Helm" = "有 Helm 之外的东西正在让 Mac 保持唤醒";

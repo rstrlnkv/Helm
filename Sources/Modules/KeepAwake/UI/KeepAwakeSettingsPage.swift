@@ -124,6 +124,7 @@ public struct KeepAwakeSettingsPage: View {
                 anyRuleOn: anyRuleOn,
                 defaultDurationMinutes: defaultDurationMinutes,
                 suppressed: vm.suppressed,
+                heldByOthers: vm.heldByOthers,
                 timedNote: timedNote,
                 start: start,
                 stop: { vm.send(KeepAwakeCommand.stop) },
@@ -177,22 +178,40 @@ public struct KeepAwakeSettingsPage: View {
         // that is drawn on the bare pane and still scrolls, which is exactly
         // the two things this block needs.
         Section(header: heroAndTitle) {
-            ruleRow(KAStr.condition(.externalDisplay), on: $autoExternalDisplay,
-                    satisfiedBy: .externalDisplay) { v in
-                vm.save(in: store) { $0.setAutoExternalDisplay(v) }
+            // Hidden on a Mac that has no display of its own. «Keep awake with
+            // an external display» is a rule about being docked, and a mini or
+            // a Studio has no notion of docked: every display it has is
+            // external, so the rule is unconditionally true there and amounts
+            // to «never sleep» — while the row cheerfully reports it applying.
+            //
+            // The hardware, not the current display list: a laptop with the lid
+            // shut reports only external displays too, and hiding the rule on
+            // that evidence would take it away exactly when somebody docked.
+            if MacHardware.hasBuiltInDisplay {
+                ruleRow(KAStr.condition(.externalDisplay), on: $autoExternalDisplay,
+                        satisfiedBy: .externalDisplay) { v in
+                    vm.save(in: store) { $0.setAutoExternalDisplay(v) }
+                }
             }
             ruleRow(KAStr.onPower, on: $autoPower, satisfiedBy: .power) { v in
                 vm.save(in: store) { $0.setAutoPower(v) }
             }
             // No mark: the lid is not a rule that fires, it is a switch that
             // changes the whole Mac — and the note says what that costs.
-            HelmSettingRow(KAStr.keepAwakeLidClosed, note: KAStr.adminNote, mark: .spacer(inCardWithMarks: marksArePossible)) {
-                Toggle(KAStr.keepAwakeLidClosed, isOn: $clamshellEnabled)
-                    .labelsHidden()
-                    .onChange(of: clamshellEnabled) { _, v in
-                        vm.save(in: store) { $0.setClamshellEnabled(v) }
-                    }
+            // No lid, nothing to keep awake with it closed — and this is the
+            // row that writes a passwordless sudo rule into `/etc/sudoers.d`,
+            // so drawing it where it can do nothing is offering a permanent
+            // system grant for a feature the machine cannot use.
+            if MacHardware.hasLid {
+                HelmSettingRow(KAStr.keepAwakeLidClosed, note: KAStr.adminNote, mark: .spacer(inCardWithMarks: marksArePossible)) {
+                    Toggle(KAStr.keepAwakeLidClosed, isOn: $clamshellEnabled)
+                        .labelsHidden()
+                        .onChange(of: clamshellEnabled) { _, v in
+                            vm.save(in: store) { $0.setClamshellEnabled(v) }
+                        }
+                }
             }
+
             // Between the conditions and the guard that ends a session: this is
             // about the end of one too, and it means nothing to somebody who
             // has no conditions above it. v3 does not draw this row — the
@@ -209,25 +228,28 @@ public struct KeepAwakeSettingsPage: View {
             // The threshold and the switch on one row: a level means nothing
             // with the guard off, and the pop-up is disabled rather than hidden
             // so the number you set is still the number you see.
-            HelmSettingRow(KAStr.turnOffLowBattery, mark: .spacer(inCardWithMarks: marksArePossible)) {
-                Picker(KAStr.turnOffLowBattery, selection: $batteryGuardPercent) {
-                    ForEach(HelmChoices.including(batteryGuardPercent, in: Self.batteryLevels),
-                            id: \.self) { level in
-                        Text(KAStr.belowPercent(level)).tag(level)
+            // A guard on a battery this Mac does not have.
+            if MacHardware.hasBattery {
+                HelmSettingRow(KAStr.turnOffLowBattery, mark: .spacer(inCardWithMarks: marksArePossible)) {
+                    Picker(KAStr.turnOffLowBattery, selection: $batteryGuardPercent) {
+                        ForEach(HelmChoices.including(batteryGuardPercent, in: Self.batteryLevels),
+                                id: \.self) { level in
+                            Text(KAStr.belowPercent(level)).tag(level)
+                        }
                     }
-                }
-                .pickerStyle(.menu)
-                .labelsHidden()
-                .fixedSize()
-                .disabled(!batteryGuardEnabled)
-                .onChange(of: batteryGuardPercent) { _, v in
-                    vm.save(in: store) { $0.setBatteryGuardPercent(v) }
-                }
-                Toggle(KAStr.turnOffLowBattery, isOn: $batteryGuardEnabled)
+                    .pickerStyle(.menu)
                     .labelsHidden()
-                    .onChange(of: batteryGuardEnabled) { _, v in
-                        vm.save(in: store) { $0.setBatteryGuardEnabled(v) }
+                    .fixedSize()
+                    .disabled(!batteryGuardEnabled)
+                    .onChange(of: batteryGuardPercent) { _, v in
+                        vm.save(in: store) { $0.setBatteryGuardPercent(v) }
                     }
+                    Toggle(KAStr.turnOffLowBattery, isOn: $batteryGuardEnabled)
+                        .labelsHidden()
+                        .onChange(of: batteryGuardEnabled) { _, v in
+                            vm.save(in: store) { $0.setBatteryGuardEnabled(v) }
+                        }
+                }
             }
         }
     }

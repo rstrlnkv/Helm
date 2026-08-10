@@ -51,7 +51,7 @@ final class HeroMotionProbe: XCTestCase {
                               now: box.tick,
                               anyRuleOn: true,
                               defaultDurationMinutes: 60,
-                              suppressed: box.suppressed,
+                              suppressed: box.suppressed, heldByOthers: false,
                               timedNote: { _ in "until 15:42" },
                               start: { _ in }, stop: {}, resume: {})
                 // The form, in one bar. It is what somebody is reading while

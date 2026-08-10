@@ -40,7 +40,7 @@ final class TheSilencedRuleReachesTheScreenTests: XCTestCase {
 
     private func state(suppressed: Bool) -> KeepAwakeEngine.StatePayload {
         KeepAwakeEngine.StatePayload(isActive: false, conditions: [], clamshellActive: false,
-                                     endDate: nil, startDate: nil, suppressed: suppressed)
+                                     endDate: nil, startDate: nil, suppressed: suppressed, heldByOthers: false)
     }
 
     func testTheFlagTravelsFromTheEngineToTheScreen() async {

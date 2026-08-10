@@ -63,3 +63,21 @@ public protocol Clock: AnyObject {
     func schedule(after: TimeInterval, _ block: @escaping @Sendable () -> Void) -> AnyObject
     func now() -> Date
 }
+
+/// Whether anything *other than Helm* is holding this Mac awake.
+///
+/// The page's idle state draws «The Mac sleeps as usual» in 40 pt whenever
+/// Helm is not holding — and on an ordinary machine that is false most of the
+/// day. Measured on the machine this was written on: `Claude` had held a
+/// `NoIdleSleepAssertion` for nineteen hours, `sharingd` one for Handoff, and
+/// `pmset -g` read `sleep 0 (sleep prevented by sharingd, HelmApp, powerd,
+/// Claude)`. A module named for sleep could speak only about the sleep it
+/// prevented itself.
+///
+/// One boolean, deliberately: a list of holders is a second feature with its
+/// own history of degenerating into rows of `powerd` and `bluetoothd` that
+/// nobody can act on. This answers the one question that makes the headline
+/// honest.
+public protocol SleepHoldersPort: AnyObject {
+    func othersHoldSleep() -> Bool
+}

@@ -84,6 +84,7 @@ struct KeepAwakeHero: View {
     let anyRuleOn: Bool
     let defaultDurationMinutes: Int
     let suppressed: Bool
+    let heldByOthers: Bool
     let timedNote: (Date) -> String
     let start: (Int) -> Void
     let stop: () -> Void
@@ -119,7 +120,8 @@ struct KeepAwakeHero: View {
     @State private var shownSuppressed: Bool
 
     init(state: SessionHero, now: Date, anyRuleOn: Bool, defaultDurationMinutes: Int,
-         suppressed: Bool, timedNote: @escaping (Date) -> String,
+         suppressed: Bool, heldByOthers: Bool,
+         timedNote: @escaping (Date) -> String,
          start: @escaping (Int) -> Void, stop: @escaping () -> Void,
          resume: @escaping () -> Void) {
         self.state = state
@@ -127,6 +129,7 @@ struct KeepAwakeHero: View {
         self.anyRuleOn = anyRuleOn
         self.defaultDurationMinutes = defaultDurationMinutes
         self.suppressed = suppressed
+        self.heldByOthers = heldByOthers
         self.timedNote = timedNote
         self.start = start
         self.stop = stop
@@ -219,7 +222,11 @@ struct KeepAwakeHero: View {
             Text(KAStr.heroIdle)
                 .font(.system(size: 40, weight: .light))
                 .foregroundStyle(HelmText.quiet)
-            Text(anyRuleOn ? KAStr.heroIdleReason : KAStr.heroNoRules)
+            // The Mac is not asleep and it is not us — the 40 pt sentence
+            // above says otherwise, and on an ordinary machine it is wrong
+            // most of the day.
+            Text(heldByOthers ? KAStr.heroHeldByOthers
+                              : (anyRuleOn ? KAStr.heroIdleReason : KAStr.heroNoRules))
                 .font(.system(size: 13)).foregroundStyle(HelmText.faint)
             HStack(spacing: 8) {
                 startButton(KAStr.duration(15), minutes: 15)

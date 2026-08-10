@@ -719,3 +719,4 @@
 "While an external display is connected" = "While an external display is connected";
 "While the Mac is on power" = "While the Mac is on power";
 "macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. If Helm quits while sleep is off, sleep stays off until Helm runs again.";
+"The Mac is being kept awake by something other than Helm" = "The Mac is being kept awake by something other than Helm";
