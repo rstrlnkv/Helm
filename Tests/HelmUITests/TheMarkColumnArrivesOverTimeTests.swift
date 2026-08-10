@@ -137,6 +137,21 @@ final class TheMarkColumnArrivesOverTimeTests: XCTestCase {
 
     private func steps(_ s: [Int]) -> Int { Set(s.filter { $0 >= 0 }).count }
 
+    /// Samples that are neither where the value started nor where it ended.
+    ///
+    /// **`steps` is not travel, and this file learned that the expensive way.**
+    /// A note that sat at its old x for six frames and then jumped to the new
+    /// one read `[2, 2, 2, 2, 2, 2, 53, 54, 54 …]` — three distinct values,
+    /// which passed a `steps >= 3` written to mean «it moved smoothly». Two
+    /// plateaus and a jump is exactly the defect being watched for, and it
+    /// satisfies a count of distinct values as readily as a ramp does. What
+    /// distinguishes them is whether anything was ever drawn *in between*.
+    private func intermediates(_ s: [Int]) -> Int {
+        let good = s.filter { $0 >= 0 }
+        guard let first = good.first, let last = good.last else { return 0 }
+        return Set(good.filter { $0 != first && $0 != last }).count
+    }
+
     /// The control: a width written with no transaction arrives in one step, so
     /// a ramp below is the transaction and not the machine.
     func testAWidthWrittenWithNoTransactionArrivesInOneStep() throws {
@@ -156,9 +171,9 @@ final class TheMarkColumnArrivesOverTimeTests: XCTestCase {
             withAnimation(HelmMotion.disclosure) { box.mark = .holding }
         }
         try XCTSkipIf(samples.allSatisfy { $0 < 0 }, "nothing drew — no window server")
-        XCTAssertGreaterThanOrEqual(steps(samples), 3,
-                                    "every label in the card stepped 26 pt sideways in "
-                                    + "\(steps(samples)) frame(s): \(samples)")
+        XCTAssertGreaterThanOrEqual(intermediates(samples), 2,
+                                    "every label in the card stepped 26 pt sideways through "
+                                    + "\(intermediates(samples)) position(s): \(samples)")
     }
 
     /// **What the pressed row plays.** Its column already had the width — the
@@ -176,9 +191,10 @@ final class TheMarkColumnArrivesOverTimeTests: XCTestCase {
             withAnimation(HelmMotion.disclosure) { box.mark = .waiting }
         }
         try XCTSkipIf(samples.allSatisfy { $0 <= 0 }, "nothing drew — no window server")
-        XCTAssertGreaterThanOrEqual(steps(samples), 3,
-                                    "the mark appeared in \(steps(samples)) frame(s) on the "
-                                    + "row somebody had just pressed: \(samples)")
+        XCTAssertGreaterThanOrEqual(intermediates(samples), 2,
+                                    "the mark was drawn at \(intermediates(samples)) "
+                                    + "value(s) between absent and present on the row "
+                                    + "somebody had just pressed: \(samples)")
     }
 
     /// **The one the identity bug actually showed in.** Clock → tick changes no
@@ -203,9 +219,10 @@ final class TheMarkColumnArrivesOverTimeTests: XCTestCase {
             withAnimation(HelmMotion.disclosure) { box.mark = .holding }
         }
         try XCTSkipIf(samples.allSatisfy { $0 <= 0 }, "nothing drew — no window server")
-        XCTAssertGreaterThanOrEqual(steps(samples), 3,
-                                    "the tick replaced the clock in \(steps(samples)) "
-                                    + "frame(s), which is a cut: \(samples)")
+        XCTAssertGreaterThanOrEqual(intermediates(samples), 2,
+                                    "the tick replaced the clock through "
+                                    + "\(intermediates(samples)) intermediate value(s), "
+                                    + "which is a cut: \(samples)")
     }
 
     /// The third thing that used to arrive in one frame: the note. «While an
@@ -223,9 +240,35 @@ final class TheMarkColumnArrivesOverTimeTests: XCTestCase {
             withAnimation(HelmMotion.disclosure) { box.note = "Applies right now" }
         }
         try XCTSkipIf(samples.allSatisfy { $0 <= 0 }, "nothing drew — no window server")
-        XCTAssertGreaterThanOrEqual(steps(samples), 3,
-                                    "the note changed in \(steps(samples)) frame(s): "
-                                    + "\(samples)")
+        XCTAssertGreaterThanOrEqual(intermediates(samples), 2,
+                                    "the note changed through \(intermediates(samples)) "
+                                    + "intermediate value(s): \(samples)")
+    }
+
+    /// **The real press changes both at once**, and that is where the note
+    /// stopped travelling.
+    ///
+    /// Switching a rule on moves the label column 26 pt *and* replaces the note
+    /// under the title in the same transaction. Measured separately, each was
+    /// fine: the note slid when only the mark changed, and it cross-faded when
+    /// only the string changed. Together it did neither — a `.id` on the note
+    /// gives the two strings different identities, so the old one is removed
+    /// where it stood and the new one inserted where it belongs. Nothing
+    /// travels. The title glides and the note appears, which is what «the lower
+    /// text does not move, it is just replaced» describes.
+    func testTheNoteTravelsEvenWhenItsWordsChangeTooo() throws {
+        let box = Box()
+        let samples = series(Harness(box: box), sample: firstInkX) {
+            withAnimation(HelmMotion.disclosure) {
+                box.mark = .waiting
+                box.note = "Not applying right now"
+            }
+        }
+        try XCTSkipIf(samples.allSatisfy { $0 < 0 }, "nothing drew — no window server")
+        XCTAssertGreaterThanOrEqual(intermediates(samples), 2,
+                                    "the note was drawn at \(intermediates(samples)) "
+                                    + "position(s) between where it started and where it "
+                                    + "ended — a jump, not a slide: \(samples)")
     }
 
     /// A spacer draws nothing.

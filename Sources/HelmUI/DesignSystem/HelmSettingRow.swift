@@ -96,17 +96,26 @@ public struct HelmSettingRow<Trailing: View>: View {
                         // that animate, where hierarchical styles re-resolve.
                         .foregroundStyle(HelmText.quiet)
                         .fixedSize(horizontal: false, vertical: true)
-                        // A *replacement*, so it gets a cross-fade and not a
-                        // reveal: «While an external display is connected»
-                        // becomes «Applies right now» when a switch is flipped,
-                        // and one `Text` whose string changes redraws in a
-                        // single frame however many transactions surround it.
-                        // The `.id` is what makes the two different views, which
-                        // is the only way a transition has anything to fire on
-                        // (law 1 — identity decides whether anything can
-                        // animate; here it is wanted rather than avoided).
-                        .id(note)
-                        .transition(.opacity)
+                        // `.contentTransition`, **not** `.id` plus a
+                        // `.transition`. Both cross-fade the words; only this
+                        // one leaves the note travelling.
+                        //
+                        // A transition needs two identities, and two identities
+                        // are two views: the outgoing note is removed *where it
+                        // stood* and the incoming inserted *where it belongs*,
+                        // so neither of them moves. On a press that changes the
+                        // words and the indent together — which is every press
+                        // on this card — the title glided 26 pt while the note
+                        // under it sat still and then appeared at the far end.
+                        // Measured, leftmost ink of the note band, twenty
+                        // frames: `[2, 2, 2, 2, 2, 2, 53, 54, 54 …]`.
+                        //
+                        // A content transition changes what one view *draws*
+                        // without changing which view it is, so the layout goes
+                        // on animating underneath it. Law 1 cuts both ways:
+                        // identity is what lets a transition fire, and it is
+                        // also what stops anything travelling.
+                        .contentTransition(.opacity)
                 }
             }
             // The label is the subject of the row and gives way last. Without a
