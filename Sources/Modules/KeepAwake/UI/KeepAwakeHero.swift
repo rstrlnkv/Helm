@@ -335,10 +335,10 @@ struct KeepAwakeHero: View {
     /// hierarchical style resolves again when that layer is dropped — which
     /// reads as a blink.
     private var suppressionRow: some View {
-        HelmBanner(KAStr.automationPaused, symbol: "pause.circle.fill") {
+        HelmBanner(KAStr.automationPaused, symbol: "pause.circle.fill", fillsWidth: false) {
             Button(KAStr.resume, action: resume)
         }
-        .padding(.horizontal, 20)
+        .frame(maxWidth: .infinity)
         // Inside the measured row, not between it and the block above: the gap
         // has to be part of what collapses to zero.
         .padding(.top, 12)

@@ -20,14 +20,25 @@ public struct HelmBanner<Action: View>: View {
     private let text: String
     private let symbol: String
     private let tone: Tone
+    private let fillsWidth: Bool
     private let action: Action
 
+    /// - Parameter fillsWidth: true for a notice that belongs to a card or a
+    ///   column and should share its edges; false for one that belongs to a
+    ///   *centred* block, where a full-width field lines up with nothing.
+    ///
+    ///   Measured: in the hero it took the section header's inset, which is
+    ///   9 pt inside the card below it and 20 pt outside the buttons above —
+    ///   so it matched neither, and read as a third thing wedged between two.
+    ///   Sized to its own content and centred, it is plainly part of the block
+    ///   it sits in.
     public init(_ text: String, symbol: String = "exclamationmark.triangle.fill",
-                tone: Tone = .warning,
+                tone: Tone = .warning, fillsWidth: Bool = true,
                 @ViewBuilder action: () -> Action = { EmptyView() }) {
         self.text = text
         self.symbol = symbol
         self.tone = tone
+        self.fillsWidth = fillsWidth
         self.action = action()
     }
 
@@ -51,7 +62,10 @@ public struct HelmBanner<Action: View>: View {
                 .foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
                 .multilineTextAlignment(.leading)
-            Spacer(minLength: 8)
+            // Filling the width, the spacer is what pushes the verb to the
+            // far edge; hugging, there is nothing to push against and the two
+            // would sit 8 pt apart, which reads as one run-on control.
+            if fillsWidth { Spacer(minLength: 8) } else { Spacer().frame(width: 6) }
             action
         }
         .padding(.horizontal, 12)
