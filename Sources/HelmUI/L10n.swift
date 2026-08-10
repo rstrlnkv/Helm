@@ -15,6 +15,38 @@ public enum AppLanguage: String, CaseIterable, Sendable {
     /// which is the only thing that can change the answer.
     public static var current: AppLanguage { cache.value }
 
+    /// A language chosen in Settings, overriding the system's preference.
+    ///
+    /// Dev builds only, and the picker that writes it says so: this exists to
+    /// read a screen in seven languages without logging out of the Mac, which
+    /// is what checking a translation against the running app costs otherwise.
+    /// Nil is the ordinary state and means «whatever this Mac is set to».
+    ///
+    /// Setting it drops the cache, which is the same thing the system's own
+    /// locale change does — so every `L()` from the next read onwards answers
+    /// in the new language. Views already built do not redraw by themselves;
+    /// the app posts a notification for that.
+    public static var override: AppLanguage? {
+        get { cache.override }
+        set { cache.override = newValue }
+    }
+
+    /// The language's own name for itself. A picker that lists «Japanese» in
+    /// English is a picker for people who already read English — every system
+    /// language chooser on this machine writes each one in itself.
+    public var endonym: String {
+        switch self {
+        case .en: return "English"
+        case .zh: return "中文"
+        case .es: return "Español"
+        case .fr: return "Français"
+        case .de: return "Deutsch"
+        case .ja: return "日本語"
+        case .ru: return "Русский"
+        case .pt: return "Português"
+        }
+    }
+
     private static let cache = LanguageCache()
 
     private final class LanguageCache: @unchecked Sendable {
@@ -31,9 +63,22 @@ public enum AppLanguage: String, CaseIterable, Sendable {
             }
         }
 
+        private var overridden: AppLanguage?
+
+        var override: AppLanguage? {
+            get { lock.lock(); defer { lock.unlock() }; return overridden }
+            set {
+                lock.lock()
+                overridden = newValue
+                cached = nil
+                lock.unlock()
+            }
+        }
+
         var value: AppLanguage {
             lock.lock()
             defer { lock.unlock() }
+            if let overridden { return overridden }
             if let cached { return cached }
             let resolved = Self.resolve()
             cached = resolved

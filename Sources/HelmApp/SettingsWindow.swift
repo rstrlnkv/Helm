@@ -81,6 +81,7 @@ import HelmUI
 
 
 
+
 }
 
 // MARK: - Shared model
@@ -260,6 +261,9 @@ private struct SettingsSidebar: View {
     /// Re-read on notification rather than observed: the value lives in
     /// `UserDefaults` through `AppSettings`, which SwiftUI cannot watch.
     @State private var style = AppSettings.sidebarStyle
+    /// Bumped when the language changes. Every label here is a computed
+    /// property, so what has to be told is the view, not the value.
+    @State private var languageRevision = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -346,6 +350,11 @@ private struct SettingsSidebar: View {
         }
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)   // let the AppKit sidebar material show
+        // Strings are computed on every read, so a language change needs the
+        // views told, not the values. The same bump the sidebar style uses.
+        .onReceive(NotificationCenter.default.publisher(for: .helmLanguageChanged)) { _ in
+            languageRevision &+= 1
+        }
         .onReceive(NotificationCenter.default.publisher(for: .helmSidebarStyleChanged)) { _ in
             style = AppSettings.sidebarStyle
         }

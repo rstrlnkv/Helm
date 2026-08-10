@@ -3,6 +3,16 @@ import HelmUI
 
 /// Localized strings for the app shell (settings window chrome).
 enum AppStr {
+    /// Rows that exist only on a dev build. Not translated cheaply — the point
+    /// of the section is reading the app in another language, so its own labels
+    /// have to be right in that language too.
+    static var developerSection: String { L("Developer") }
+    static var interfaceLanguage: String { L("Interface language") }
+    static var systemLanguage: String { L("Same as the Mac") }
+    static var interfaceLanguageNote: String {
+        L("Dev builds only. Windows already open keep the language they were drawn in.")
+    }
+
     /// The badge beside a module's name in its page header.
     ///
     /// «Active» is the key Layout's own indicator already uses for the same

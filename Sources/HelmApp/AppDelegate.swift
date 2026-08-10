@@ -31,6 +31,10 @@ import Module_Uninstaller_UI
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         // Before the status item and the panel exist, so nothing is drawn twice.
+        // Before anything draws a string: every `L()` reads the language on
+        // every call, so a late apply would leave whatever was built first in
+        // the Mac's own language.
+        AppSettings.applyStoredLanguage()
         AppSettings.applyAppearance()
         // Dev builds always log: the file is the evidence we triage before a
         // build graduates to the stable channel.

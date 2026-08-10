@@ -720,3 +720,7 @@
 "While the Mac is on power" = "Tant que le Mac est sur secteur";
 "macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "La première fois, macOS demande un mot de passe administrateur et conserve une règle qui laisse Helm désactiver la veille sans redemander. Désactiver ceci la supprime. Si Helm est quitté alors que la veille est désactivée, elle le reste jusqu’au prochain lancement de Helm.";
 "The Mac is being kept awake by something other than Helm" = "Autre chose que Helm maintient le Mac éveillé";
+"Developer" = "Développement";
+"Interface language" = "Langue de l’interface";
+"Same as the Mac" = "Comme le Mac";
+"Dev builds only. Windows already open keep the language they were drawn in." = "Versions dev uniquement. Les fenêtres déjà ouvertes gardent la langue dans laquelle elles ont été dessinées.";

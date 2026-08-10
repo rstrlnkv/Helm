@@ -720,3 +720,7 @@
 "While the Mac is on power" = "Пока Mac подключён к питанию";
 "macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "При первом включении macOS запросит пароль администратора и оставит правило, позволяющее Helm выключать сон без нового запроса. Выключение этой настройки его убирает. Если закрыть Helm, пока сон выключен, Mac не сможет заснуть до следующего запуска Helm.";
 "The Mac is being kept awake by something other than Helm" = "Mac не спит по другой причине, не связанной с Helm";
+"Developer" = "Для разработки";
+"Interface language" = "Язык интерфейса";
+"Same as the Mac" = "Как на маке";
+"Dev builds only. Windows already open keep the language they were drawn in." = "Только для сборок dev. Уже открытые окна остаются на том языке, на котором нарисованы.";

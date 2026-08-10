@@ -10,6 +10,10 @@ extension Notification.Name {
     /// The setting is written from the window it changes, so nothing would
     /// notice on its own: the sidebar reads a value SwiftUI cannot observe.
     static let helmSidebarStyleChanged = Notification.Name("helmSidebarStyleChanged")
+    /// Posted when the language override changes. Strings are computed on
+    /// every read, so what needs telling is not the values but the views: a
+    /// window already drawn keeps whatever it built.
+    static let helmLanguageChanged = Notification.Name("helmLanguageChanged")
 }
 
 /// App-level (not per-module) settings, e.g. the menu-bar icon shape.
@@ -36,6 +40,33 @@ extension Notification.Name {
             store.set(newValue.rawValue, for: SidebarStyle.storageKey)
             NotificationCenter.default.post(name: .helmSidebarStyleChanged, object: nil)
         }
+    }
+
+    /// The language the interface is drawn in, or nil for the Mac's own.
+    ///
+    /// **Dev builds only** — `AppBuild.isDev` gates the row that writes it, and
+    /// `apply()` below refuses to read a stored value on any other build, so a
+    /// beta that once ran a dev build cannot come up in Japanese.
+    ///
+    /// It exists because checking a translation against the running app
+    /// otherwise costs a logout: eight languages, and the only way to see the
+    /// seventh was to change the Mac's own preference and start again.
+    static var language: AppLanguage? {
+        get { AppLanguage.override }
+        set {
+            AppLanguage.override = newValue
+            store.set(newValue?.rawValue, for: languageKey)
+            NotificationCenter.default.post(name: .helmLanguageChanged, object: nil)
+        }
+    }
+
+    private static let languageKey = "interfaceLanguage"
+
+    /// Read once at launch, before anything draws a string.
+    static func applyStoredLanguage() {
+        guard AppBuild.isDev else { return }
+        let stored = store.string(languageKey, default: "")
+        AppLanguage.override = stored.isEmpty ? nil : AppLanguage(rawValue: stored)
     }
 
     static func applyAppearance() {

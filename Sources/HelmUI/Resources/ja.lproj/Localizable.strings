@@ -720,3 +720,7 @@
 "While the Mac is on power" = "Mac が電源に接続されている間";
 "macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "初回に macOS が管理者パスワードを求め、以後は確認なしにスリープを切れるルールを残します。この設定を切ると、そのルールも消えます。スリープを切ったまま Helm を終了すると、次に Helm を起動するまで切のままです。";
 "The Mac is being kept awake by something other than Helm" = "Helm 以外の何かが Mac を起こしています";
+"Developer" = "開発";
+"Interface language" = "インターフェイスの言語";
+"Same as the Mac" = "Mac と同じ";
+"Dev builds only. Windows already open keep the language they were drawn in." = "dev ビルド専用。すでに開いているウインドウは、描かれたときの言語のままです。";

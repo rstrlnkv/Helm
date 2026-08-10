@@ -14,6 +14,7 @@ struct MenuBarSettingsView: View {
     @State private var size: String = AppSettings.menuBarIconSize
     @State private var launchAtLogin: Bool = LoginItem.isEnabled
     @State private var appearance: AppAppearance = AppSettings.appearance
+    @State private var language: String? = AppSettings.language?.rawValue
     @State private var sidebarStyle: SidebarStyle = AppSettings.sidebarStyle
     @State private var tabLabels = AppSettings.tabLabelStyle
     @State private var showPanelEditButton = AppSettings.showPanelEditButton
@@ -128,6 +129,29 @@ struct MenuBarSettingsView: View {
             // three: the theme and the module icons under «General», the
             // menu-bar glyph under «Menu Bar» — so choosing how the app looks
             // meant visiting two headings and knowing which held what.
+            // Dev builds only. This is a tool for reading the app in a
+            // language this Mac is not set to — eight of them, where the only
+            // other way to see the seventh is to change the system preference
+            // and log out. It is not a feature: macOS decides an app's
+            // language, and a second answer in Helm's own settings would be
+            // two places to look on a shipping build.
+            if AppBuild.isDev {
+                Section(header: HelmSectionTitle(AppStr.developerSection)) {
+                    Picker(AppStr.interfaceLanguage, selection: $language) {
+                        Text(AppStr.systemLanguage).tag(String?.none)
+                        ForEach(AppLanguage.allCases, id: \.rawValue) { lang in
+                            Text(lang.endonym).tag(String?.some(lang.rawValue))
+                        }
+                    }
+                    .onChange(of: language) { _, code in
+                        AppSettings.language = code.flatMap(AppLanguage.init(rawValue:))
+                    }
+                    Text(AppStr.interfaceLanguageNote)
+                        .font(.system(size: 11))
+                        .foregroundStyle(HelmText.quiet)
+                }
+            }
+
             Section(header: HelmSectionTitle(AppStr.appearance)) {
                 // Three pictures, the way System Settings asks the same
                 // question. It was a pop-up of three accurate words that are
