@@ -723,4 +723,4 @@
 "Developer" = "Desarrollo";
 "Interface language" = "Idioma de la interfaz";
 "Same as the Mac" = "Igual que el Mac";
-"Dev builds only. Windows already open keep the language they were drawn in." = "Solo para versiones dev. Las ventanas ya abiertas conservan el idioma con el que se dibujaron.";
+"Dev builds only, for reading the app in a language this Mac is not set to." = "Solo para versiones dev, para leer la app en un idioma que este Mac no tiene puesto.";

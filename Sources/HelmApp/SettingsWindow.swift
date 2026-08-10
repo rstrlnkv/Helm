@@ -82,6 +82,7 @@ import HelmUI
 
 
 
+
 }
 
 // MARK: - Shared model
@@ -103,10 +104,30 @@ enum SettingsSelection: Hashable {
     /// Bumped when the module order changes, so the sidebar redraws with it —
     /// the order is read from settings, which SwiftUI cannot observe.
     @Published private(set) var orderRevision = 0
+
+    /// Bumped when the interface language changes.
+    ///
+    /// Every label in this window is a computed property that reads
+    /// `AppLanguage.current` at draw time, so the values are already right the
+    /// moment the override is set — what is wrong is that nothing asked for
+    /// them again. The first attempt bumped a `@State` inside the sidebar,
+    /// which redrew the sidebar and left every button in the pane beside it in
+    /// the old language: a `@State` reaches its own subtree and no further.
+    ///
+    /// It lives here because this is the one object both panes observe, and it
+    /// is spent on `.id()` rather than on a plain dependency — a re-evaluated
+    /// parent may hand a child the same inputs and SwiftUI will keep the view
+    /// it already built. A changed identity is the only thing that guarantees
+    /// the whole subtree is made again.
+    @Published private(set) var languageRevision = 0
     init(host: ModuleHost) {
         self.host = host
         // The model lives as long as the settings window, so the observation
         // needs no teardown — and a deinit cannot touch main-actor state.
+        NotificationCenter.default.addObserver(
+            forName: .helmLanguageChanged, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.languageRevision += 1 }
+        }
         NotificationCenter.default.addObserver(
             forName: .helmModuleOrderChanged, object: nil, queue: .main) { [weak self] _ in
             // In a transaction: the sidebar behind the composer sheet is that
@@ -134,7 +155,9 @@ final class SettingsSplitViewController: NSSplitViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        let sidebar = NSHostingController(rootView: SettingsSidebar(model: model, host: model.host))
+        let sidebar = NSHostingController(
+            rootView: SettingsSidebar(model: model, host: model.host)
+                .modifier(RebuiltOnLanguageChange(model: model)))
         // Own the top strip ourselves: with the automatic titlebar safe area the
         // list scrolls under the traffic lights and gets the system scroll-edge
         // fade; dropping the safe area and reserving a fixed strip in the view
@@ -161,7 +184,9 @@ final class SettingsSplitViewController: NSSplitViewController {
         sidebarItem.minimumThickness = Self.sidebarMinimum
         sidebarItem.maximumThickness = Self.sidebarMaximum
 
-        let detail = NSHostingController(rootView: SettingsDetail(model: model))
+        let detail = NSHostingController(
+            rootView: SettingsDetail(model: model)
+                .modifier(RebuiltOnLanguageChange(model: model)))
         // fullSizeContentView + a transparent title bar makes AppKit inset the
         // detail pane by the title-bar height, leaving a dead gap above the
         // module header. The pane draws its own top padding, so drop the inset.
@@ -261,9 +286,6 @@ private struct SettingsSidebar: View {
     /// Re-read on notification rather than observed: the value lives in
     /// `UserDefaults` through `AppSettings`, which SwiftUI cannot watch.
     @State private var style = AppSettings.sidebarStyle
-    /// Bumped when the language changes. Every label here is a computed
-    /// property, so what has to be told is the view, not the value.
-    @State private var languageRevision = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -350,11 +372,6 @@ private struct SettingsSidebar: View {
         }
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)   // let the AppKit sidebar material show
-        // Strings are computed on every read, so a language change needs the
-        // views told, not the values. The same bump the sidebar style uses.
-        .onReceive(NotificationCenter.default.publisher(for: .helmLanguageChanged)) { _ in
-            languageRevision &+= 1
-        }
         .onReceive(NotificationCenter.default.publisher(for: .helmSidebarStyleChanged)) { _ in
             style = AppSettings.sidebarStyle
         }
@@ -565,5 +582,19 @@ private struct ModuleDetailView: View {
         // its buttons off the right. Pinned leading, an overflow spills one
         // way and reads as one.
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
+/// Gives its content a new identity whenever the interface language changes.
+///
+/// Not a redraw — a rebuild. A view whose inputs have not changed is one
+/// SwiftUI is entitled to keep, and every string here is read from a computed
+/// property rather than passed in, so nothing about a label's *inputs* changes
+/// when the language does. `.id()` is what says «this is a different view now».
+private struct RebuiltOnLanguageChange: ViewModifier {
+    @ObservedObject var model: SettingsModel
+
+    func body(content: Content) -> some View {
+        content.id(model.languageRevision)
     }
 }

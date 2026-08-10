@@ -723,4 +723,4 @@
 "Developer" = "Для разработки";
 "Interface language" = "Язык интерфейса";
 "Same as the Mac" = "Как на маке";
-"Dev builds only. Windows already open keep the language they were drawn in." = "Только для сборок dev. Уже открытые окна остаются на том языке, на котором нарисованы.";
+"Dev builds only, for reading the app in a language this Mac is not set to." = "Только для сборок dev — чтобы прочитать приложение на языке, который не выбран на этом маке.";

@@ -723,4 +723,4 @@
 "Developer" = "开发";
 "Interface language" = "界面语言";
 "Same as the Mac" = "与 Mac 相同";
-"Dev builds only. Windows already open keep the language they were drawn in." = "仅限 dev 版本。已经打开的窗口会保留绘制时使用的语言。";
+"Dev builds only, for reading the app in a language this Mac is not set to." = "仅限 dev 版本，用于以这台 Mac 未设置的语言阅读应用。";

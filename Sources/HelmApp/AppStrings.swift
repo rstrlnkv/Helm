@@ -9,8 +9,12 @@ enum AppStr {
     static var developerSection: String { L("Developer") }
     static var interfaceLanguage: String { L("Interface language") }
     static var systemLanguage: String { L("Same as the Mac") }
+    /// It used to end «windows already open keep the language they were drawn
+    /// in», which was true of the first attempt and is not true now: both the
+    /// settings window and the panel take a new identity and are rebuilt. A
+    /// note describing a limitation that has been removed is worse than none.
     static var interfaceLanguageNote: String {
-        L("Dev builds only. Windows already open keep the language they were drawn in.")
+        L("Dev builds only, for reading the app in a language this Mac is not set to.")
     }
 
     /// The badge beside a module's name in its page header.

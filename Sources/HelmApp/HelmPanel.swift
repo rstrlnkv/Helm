@@ -8,6 +8,12 @@ import HelmUI
 /// without a screenshot of somebody's screen.
 struct HelmPanelContent: View {
     @ObservedObject var host: ModuleHost
+    /// The panel is a second window with its own hosting view, so the settings
+    /// window's rebuild does not reach it. Same reasoning, same remedy: the
+    /// labels are computed properties, so nothing about a view's *inputs*
+    /// changes when the language does, and only a new identity makes SwiftUI
+    /// build them again.
+    @State private var languageRevision = 0
     @State private var utilitiesExpanded = false
     /// The panel is being arranged rather than read.
     ///
@@ -655,6 +661,13 @@ struct HelmPanelContent: View {
         // every position of the menu-bar icon.
         .onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
             if measured > 0, stripHeight != measured { stripHeight = measured }
+        }
+        // A new identity, not a redraw: nothing about a label's inputs changes
+        // when the language does, so a re-evaluated body would hand SwiftUI the
+        // same views and it would keep the ones it had.
+        .id(languageRevision)
+        .onReceive(NotificationCenter.default.publisher(for: .helmLanguageChanged)) { _ in
+            languageRevision &+= 1
         }
         .onReceive(NotificationCenter.default.publisher(for: .helmModuleOrderChanged)) { _ in
             reload()
