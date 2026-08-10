@@ -717,3 +717,5 @@
 "then the app keeps the Mac awake" = "之后由该 App 继续保持唤醒";
 "The Mac is staying awake" = "Mac 保持唤醒";
 "Until you stop it" = "直到你停止";
+"While an external display is connected" = "接着外接显示器时";
+"While the Mac is on power" = "Mac 接着电源时";

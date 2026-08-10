@@ -717,3 +717,5 @@
 "then the app keeps the Mac awake" = "その後はアプリが起こしておきます";
 "The Mac is staying awake" = "Mac は起きたままです";
 "Until you stop it" = "停止するまで";
+"While an external display is connected" = "外部ディスプレイが接続されている間";
+"While the Mac is on power" = "Mac が電源に接続されている間";

@@ -255,13 +255,10 @@ struct KeepAwakeHero: View {
                 .animation(HelmMotion.interface, value: label)
             Text(timedNote(end)).font(.callout).foregroundStyle(HelmText.quiet)
             HStack(spacing: 8) {
-                // The same arithmetic the panel's «+15» uses, and for the same
-                // reason: this is a `Double` that came off disk.
-                Button("+" + KAStr.duration(15)) {
-                    start(TimerPolicy.extendedMinutes(remaining: end.timeIntervalSince(now),
-                                                      adding: 15))
-                }
-                .controlSize(.large)
+                // The same arithmetic the panel's «+15» uses, and for the
+                // same reason: this is a `Double` that came off disk.
+                extendButton(by: 15, from: end)
+                extendButton(by: 60, from: end)
                 Button(KAStr.indefinite) { start(0) }
                     .controlSize(.large)
                 stopButton
@@ -284,8 +281,15 @@ struct KeepAwakeHero: View {
                 .font(.system(size: 40, weight: .light))
             Text(KAStr.heroUntilYouStop)
                 .font(.callout).foregroundStyle(HelmText.quiet)
-            HStack(spacing: 8) { stopButton }
-                .padding(.top, 10)
+            HStack(spacing: 8) {
+                // A session with no deadline can be given one, and until now
+                // the only way to bound it was to stop it and start again.
+                startButton(KAStr.duration(15), minutes: 15)
+                startButton(KAStr.oneHour, minutes: 60)
+                startButton(KAStr.twoHours, minutes: 120)
+                stopButton
+            }
+            .padding(.top, 10)
         }
     }
 
@@ -300,11 +304,13 @@ struct KeepAwakeHero: View {
                 // timer for 0 min» from it made the page offer a timer of
                 // nothing. The word is the one the idle row uses for the same
                 // choice.
-                Button(defaultDurationMinutes == 0
-                       ? KAStr.indefinite : KAStr.startTimerFor(defaultDurationMinutes)) {
-                    start(defaultDurationMinutes)
-                }
-                .controlSize(.large)
+                // The same three a session with no deadline offers. It used
+                // to be one button carrying whatever «Default duration» said,
+                // which meant the page offered a length nobody had chosen for
+                // this session and hid the other two.
+                startButton(KAStr.duration(15), minutes: 15)
+                startButton(KAStr.oneHour, minutes: 60)
+                startButton(KAStr.twoHours, minutes: 120)
                 stopButton
             }
             .padding(.top, 10)
@@ -318,31 +324,43 @@ struct KeepAwakeHero: View {
 
     // MARK: - The row under them
 
+    /// A field, not three loose pieces.
+    ///
+    /// It was a bare `HStack` — a mark, some quiet text, a button — floating
+    /// under a centred 40 pt figure with nothing to say the three belonged
+    /// together. `HelmBanner` is the shape v3 gives a statement with one verb
+    /// beside it, and the same one the panel's permissions notice already
+    /// draws. Its colours are literal for the reason this block needs: the
+    /// height animates, `.clipped()` gives it a layer of its own, and a
+    /// hierarchical style resolves again when that layer is dropped — which
+    /// reads as a blink.
     private var suppressionRow: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "pause.circle.fill")
-                .foregroundStyle(HelmSignal.warning)
-                .accessibilityHidden(true)
-            // Literal colours, both of them: this row sits inside a block whose
-            // height animates, `.clipped()` gives that block a layer of its own,
-            // and hierarchical styles resolve against the rendering context —
-            // so they resolve again when the layer is dropped at the end, which
-            // reads as a blink. The panel's ⋯ heading blinked for exactly this.
-            Text(KAStr.automationPaused)
-                .font(.callout).foregroundStyle(HelmText.quiet)
-            Spacer(minLength: 8)
+        HelmBanner(KAStr.automationPaused, symbol: "pause.circle.fill") {
             Button(KAStr.resume, action: resume)
         }
         .padding(.horizontal, 20)
         // Inside the measured row, not between it and the block above: the gap
         // has to be part of what collapses to zero.
-        .padding(.top, 10)
+        .padding(.top, 12)
     }
 
     // MARK: - Buttons
 
     /// The preset the menu-bar switch and the shortcut start is the prominent
     /// one. It is the only place on any screen that says which that is.
+    /// «+15 мин», «+1 час» — adding to a deadline rather than replacing it.
+    ///
+    /// The arithmetic is `TimerPolicy`'s, which clamps: a remaining interval is
+    /// a `Double` that came off disk, and «+1 hour» on a session somebody's
+    /// plist claims has forty days left must not extend it.
+    private func extendButton(by minutes: Int, from end: Date) -> some View {
+        Button("+" + KAStr.duration(minutes)) {
+            start(TimerPolicy.extendedMinutes(remaining: end.timeIntervalSince(now),
+                                              adding: minutes))
+        }
+        .controlSize(.large)
+    }
+
     @ViewBuilder private func startButton(_ title: String, minutes: Int) -> some View {
         // `.borderedProminent`, not `.tint` on a plain button: a tint colours a
         // button's *label* and leaves the fill alone, so all four presets came

@@ -254,8 +254,12 @@ public struct KeepAwakeSettingsPage: View {
                          save: @escaping (Bool) -> Void) -> some View {
         let enabled = binding.wrappedValue
         let satisfied = vm.activeConditions.contains(condition)
+        // On: what is happening. Off: what would happen — the one moment a
+        // person needs to know what a rule means is before they switch it on,
+        // and that was the one state the row said nothing in.
         HelmSettingRow(title,
-                       note: enabled ? (satisfied ? KAStr.ruleApplies : KAStr.ruleWaiting) : nil,
+                       note: enabled ? (satisfied ? KAStr.ruleApplies : KAStr.ruleWaiting)
+                                     : KAStr.ruleMeaning(condition),
                        mark: .of(enabled: enabled, satisfied: satisfied,
                                  inCardWithMarks: marksArePossible)) {
             Toggle(title, isOn: binding)
@@ -344,14 +348,18 @@ public struct KeepAwakeSettingsPage: View {
                 colorSwatches
             }
             HelmSettingRow(KAStr.customActiveIcon) {
-                if customActiveIcon {
-                    IconShapePicker(selection: $activeIconShape, tintToken: activeTintColor)
-                        .labelsHidden()
-                        .fixedSize()
-                        .onChange(of: activeIconShape) { _, v in
-                            writeLook(v, MenuBarLook.Key.iconShape)
-                        }
-                }
+                // Disabled, never absent. Taken away when the switch went off,
+                // the row lost its tallest control and became visibly shorter
+                // than its neighbours — the card twitched on a setting that had
+                // nothing to do with its height. The two paired rows above do
+                // it this way too, and the shape you chose stays readable.
+                IconShapePicker(selection: $activeIconShape, tintToken: activeTintColor)
+                    .labelsHidden()
+                    .fixedSize()
+                    .disabled(!customActiveIcon)
+                    .onChange(of: activeIconShape) { _, v in
+                        writeLook(v, MenuBarLook.Key.iconShape)
+                    }
                 Toggle(KAStr.customActiveIcon, isOn: $customActiveIcon)
                     .labelsHidden()
                     .onChange(of: customActiveIcon) { _, v in

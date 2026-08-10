@@ -717,3 +717,5 @@
 "then the app keeps the Mac awake" = "danach hält die App den Mac wach";
 "The Mac is staying awake" = "Der Mac bleibt wach";
 "Until you stop it" = "Bis Sie es beenden";
+"While an external display is connected" = "Solange ein externer Bildschirm angeschlossen ist";
+"While the Mac is on power" = "Solange der Mac am Netzstrom hängt";

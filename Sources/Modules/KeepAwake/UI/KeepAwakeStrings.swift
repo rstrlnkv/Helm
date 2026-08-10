@@ -111,6 +111,19 @@ enum KAStr {
     /// on are the same row with the same silence under it.
     static var ruleApplies: String { L("Applies right now") }
     static var ruleWaiting: String { L("Not applying right now") }
+    /// What a rule would do, said while it is still switched off.
+    ///
+    /// The row was a bare label until you turned it on — the notes only
+    /// appeared afterwards, so the one moment a person needs to know what a
+    /// rule means is the one moment the row said nothing.
+    static func ruleMeaning(_ condition: ActiveCondition) -> String {
+        switch condition {
+        case .externalDisplay: return L("While an external display is connected")
+        case .power: return L("While the Mac is on power")
+        // Neither is a rule anybody switches on, so neither has a row here.
+        case .manual, .timer, .app: return ""
+        }
+    }
     static var appsSection: String { L("Apps") }
     static func triggerCondition(_ condition: AppTrigger.Condition) -> String {
         switch condition {

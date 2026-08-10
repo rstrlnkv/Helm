@@ -27,7 +27,7 @@
 "Accessibility" = "Универсальный доступ";
 "Accessibility is off. Without it Helm cannot see what you type, so keyboard corrections and the pointer nudge do nothing." = "Универсальный доступ выключен. Без него Helm не видит набранное — исправление раскладки и движение указателя не работают.";
 "Accessibility now appears among the permissions, and Keep Awake says so right at the pointer setting — without that grant macOS ignores the nudge and the switch did nothing." = "«Универсальный доступ» появился среди разрешений, а «Не спать» предупреждает об этом прямо у настройки указателя: без него macOS игнорирует движение, и переключатель ничего не делал.";
-"Active" = "Работает";
+"Active" = "Активно";
 "Add" = "Добавить";
 "Add an app, and Helm connects a VPN when it launches." = "Добавьте приложение — и Helm сам подключит VPN при его запуске.";
 "Add app…" = "Добавить приложение…";
@@ -304,7 +304,7 @@
 "Not checked yet" = "Ещё не проверялось";
 "Not connected" = "Не подключено";
 "Not modified in months" = "Не изменялся месяцами";
-"Not running" = "Не работает";
+"Not running" = "Не активно";
 "Nothing Helm runs can hang. Homebrew, the VPN list and the power settings are read by running the system's own tools, and a tool that was talkative enough about its own warnings could stop forever, taking the screen waiting for it with it." = "Ничто из запускаемого Helm не зависает. Homebrew, список VPN и настройки питания читаются системными утилитами, и достаточно многословная утилита могла остановиться навсегда, забрав с собой ждавший её экран.";
 "Nothing in this folder matches yet." = "Пока ничто в этой папке не подходит.";
 "Nothing in this folder." = "В этой папке ничего нет.";
@@ -717,3 +717,5 @@
 "then the app keeps the Mac awake" = "дальше Mac держит приложение";
 "The Mac is staying awake" = "Mac не спит";
 "Until you stop it" = "Пока вы не остановите";
+"While an external display is connected" = "Пока подключён внешний дисплей";
+"While the Mac is on power" = "Пока Mac подключён к питанию";

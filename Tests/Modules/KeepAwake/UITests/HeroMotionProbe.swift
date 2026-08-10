@@ -263,7 +263,13 @@ final class HeroMotionProbe: XCTestCase {
         box.state = .automatic([.externalDisplay])
         let samples = series(Harness(box: box), sample: barTop) { box.state = .idle }
         try XCTSkipIf(samples.allSatisfy { $0 <= 0 }, "nothing drew — no window server")
-        XCTAssertGreaterThanOrEqual(steps(samples), 4,
+        // Three, not four. The bar was four when `.automatic` carried two
+        // buttons and `.idle` four — 68 pt of travel. Both states offer the
+        // same three durations now, so the distance is 42 pt and the same ramp
+        // lands in three distinct samples: `[274, 238, 232, 232 …]`. The number
+        // that matters is the gap to a cut, which is 1, and the mutation that
+        // puts the modifier back still fails here.
+        XCTAssertGreaterThanOrEqual(steps(samples), 3,
                                     "the page reached its new height in \(steps(samples)) "
                                     + "step(s): \(samples)")
     }
