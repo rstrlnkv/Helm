@@ -18,6 +18,7 @@ final class KeepAwakeEngineTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
+        KeepAwakeSettings.useTestSeal()
         backing = InMemoryKeyValueStore()
         store = NamespacedStore(namespace: "keep-awake", backing: backing)
         settings = KeepAwakeSettings(store: store)
@@ -33,6 +34,11 @@ final class KeepAwakeEngineTests: XCTestCase {
                                   displayInfo: displayInfo, displayObserver: displayObserver,
                                   power: power, apps: apps, pointer: pointer,
                                   clamshell: clamshell, clock: clock)
+    }
+
+    override func tearDown() {
+        KeepAwakeSettings.restoreLidSeal()
+        super.tearDown()
     }
 
     func test_startSession_indefinite_activates_and_prevents_sleep() {
@@ -92,7 +98,7 @@ final class KeepAwakeEngineTests: XCTestCase {
     }
 
     func test_clamshell_engage_and_disengage() {
-        store.set(true, for: "clamshellEnabled")
+        KeepAwakeSettings(store: store).setClamshellEnabled(true)
         clamshell.sudoersInstalled = true
 
         engine.startSession(minutes: 0)
@@ -107,7 +113,7 @@ final class KeepAwakeEngineTests: XCTestCase {
     }
 
     func test_clamshell_async_install_completing_after_stop_does_not_disable_sleep() {
-        store.set(true, for: "clamshellEnabled")
+        KeepAwakeSettings(store: store).setClamshellEnabled(true)
         clamshell.sudoersInstalled = false // forces the async installSudoers path
 
         engine.activate()

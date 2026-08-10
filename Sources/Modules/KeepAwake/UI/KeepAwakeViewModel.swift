@@ -37,6 +37,9 @@ import Module_KeepAwake_Engine
     /// `activeConditions`, a suppressed rule is still in here — which is how
     /// a row can say «Paused» rather than «Not applying right now».
     @Published public private(set) var triggeredConditions: Set<ActiveCondition> = []
+    /// Bundle ids of the app rules holding the Mac right now, so the hero can
+    /// name them instead of saying «App».
+    @Published public private(set) var holdingApps: [String] = []
     /// Any rule at all — the condition under which Stop silences a rule as
     /// well as ending the session.
     public var ruleHolds: Bool { !triggeredConditions.isEmpty }
@@ -89,6 +92,7 @@ import Module_KeepAwake_Engine
         startDate = p.startDate
         suppressed = p.suppressed
         triggeredConditions = Set(p.triggeredConditions.compactMap(ActiveCondition.init(rawValue:)))
+        holdingApps = p.holdingApps
     }
 
     /// Named by the engine's own enum, and only that.

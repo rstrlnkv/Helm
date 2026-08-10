@@ -15,7 +15,12 @@ import SwiftUI
 /// so the card's number is the one that would ship unreadable.
 public struct HelmBanner<Action: View>: View {
     /// Which signal, and therefore which fill and which ink.
-    public enum Tone: Sendable { case warning, success }
+    ///
+    /// One case. A `success` sat beside it with no caller anywhere — a banner
+    /// is a statement the page has to make with a verb beside it, and nothing
+    /// in this app has ever had to announce that something went right that
+    /// way. Two lines to add back if one ever does.
+    public enum Tone: Sendable { case warning }
 
     private let text: String
     private let symbol: String
@@ -45,7 +50,6 @@ public struct HelmBanner<Action: View>: View {
     private var ink: Color {
         switch tone {
         case .warning: return HelmSignal.warning
-        case .success: return HelmSignal.success
         }
     }
 

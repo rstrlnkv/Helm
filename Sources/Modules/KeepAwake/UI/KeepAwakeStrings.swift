@@ -152,6 +152,26 @@ enum KAStr {
         case .paused: return automationPaused
         }
     }
+    /// The reason line under the figure: «External display · Safari».
+    ///
+    /// The composition lived in the hero, and the `.app` case answered «App» —
+    /// the only rule type anybody actually uses, and the only one that could
+    /// not say what it was about. A person with four apps in the list could not
+    /// tell which was holding the Mac, on the screen whose whole job is to
+    /// answer that.
+    ///
+    /// Names are resolved by the caller from the bundle ids the engine
+    /// publishes; several apps read as a list, and none at all falls back to
+    /// the generic word rather than leaving a gap.
+    static func conditionsLine(_ conditions: Set<ActiveCondition>,
+                               appNames: [String]) -> String {
+        conditions.map { condition in
+            guard condition == .app, !appNames.isEmpty else { return self.condition(condition) }
+            return appNames.joined(separator: ", ")
+        }
+        .sorted()
+        .joined(separator: " · ")
+    }
     static var appsSection: String { L("Apps") }
     static func triggerCondition(_ condition: AppTrigger.Condition) -> String {
         switch condition {
@@ -267,6 +287,13 @@ enum KAStr {
         // build error here rather than a sentence nobody wrote.
         case .manual, .timer: return ""
         }
+    }
+    /// The third answer at zero, and the one that was missing. With «A timer
+    /// pauses the rule too» switched on the note stopped at «Timer until
+    /// 16:03» — the one state where that setting decides anything was the one
+    /// state nothing on the page mentioned it.
+    static var thenRulePaused: String {
+        L("then the rule is paused until it applies again")
     }
     static var pointerNeedsAccessibility: String { L("Needs Accessibility, or the pointer will not move") }
     /// Russian was the odd one out: «хоткей» is slang, and Helm's own Layout

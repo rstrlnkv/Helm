@@ -48,8 +48,26 @@ public struct AppTrigger: Codable, Equatable, Sendable, Identifiable {
 public enum AppTriggerRules {
     public static func isHolding(_ rules: [AppTrigger], running: Set<String>,
                                  externalDisplay: Bool, onPower: Bool) -> Bool {
-        rules.contains { $0.isSatisfied(running: running, externalDisplay: externalDisplay,
-                                        onPower: onPower) }
+        !holding(rules, running: running, externalDisplay: externalDisplay,
+                 onPower: onPower).isEmpty
+    }
+
+    /// **Which** rules are satisfied, not merely whether any is.
+    ///
+    /// The screen said «App» — the only rule type anybody actually uses, and
+    /// the only one that could not say what it was talking about. A person with
+    /// four apps in the list could not tell which of them was holding the Mac,
+    /// on the screen whose whole job is to answer that.
+    ///
+    /// Bundle ids, not names: the ids are what the module stores and what it
+    /// matched on, and turning one into a name is a Launch Services lookup that
+    /// belongs on the screen doing the drawing. It keeps names off the wire and
+    /// out of the log, which is the standing rule.
+    public static func holding(_ rules: [AppTrigger], running: Set<String>,
+                               externalDisplay: Bool, onPower: Bool) -> [String] {
+        rules.filter { $0.isSatisfied(running: running, externalDisplay: externalDisplay,
+                                      onPower: onPower) }
+             .map(\.bundleID)
     }
 
     public static func encode(_ rules: [AppTrigger]) -> String {

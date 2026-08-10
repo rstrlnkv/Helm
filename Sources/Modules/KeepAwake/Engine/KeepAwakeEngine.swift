@@ -69,6 +69,10 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// only state in its `.automatic` branch, because that was the only branch
     /// that could see any conditions at all.
     public private(set) var triggeredConditions: Set<ActiveCondition> = []
+    /// The bundle ids of the app rules that are satisfied right now — so the
+    /// screen can say *which* app, rather than «App». Ids rather than names:
+    /// the lookup belongs to whoever draws, and names stay off the wire.
+    public private(set) var holdingApps: [String] = []
 
     private var expiryToken: AnyObject?
     private var jiggleToken: AnyObject?
@@ -289,6 +293,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         // Same three the suppression test below uses, and the same three
         // `stopSession` consults — built once here, so the caption on screen
         // and the behaviour it describes cannot come apart.
+        holdingApps = holdingAppRules()
         triggeredConditions = []
         if ext { triggeredConditions.insert(.externalDisplay) }
         if pwr { triggeredConditions.insert(.power) }
@@ -376,12 +381,14 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         // ending a session early is this module's safe failure.
         settings.autoPower && power.isOnMains
     }
-    private func appCondition() -> Bool {
+    private func appCondition() -> Bool { !holdingAppRules().isEmpty }
+
+    private func holdingAppRules() -> [String] {
         let rules = settings.appTriggers
-        guard !rules.isEmpty else { return false }
+        guard !rules.isEmpty else { return [] }
         // A rule may be narrowed to "only at the desk" or "only plugged in",
         // so the same inputs the other conditions use are passed in.
-        return AppTriggerRules.isHolding(
+        return AppTriggerRules.holding(
             rules,
             running: Set(apps.runningBundleIDs()),
             externalDisplay: ExternalDisplaySupport.hasExternal(builtInFlags: displayInfo.builtInFlags()),
@@ -633,6 +640,9 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         /// note — a screen that says nothing beats a screen that says the
         /// wrong thing.
         public var triggeredConditions: [String] = []
+        /// Defaulted for the same reason as the field above: it arrived after
+        /// the wire did, and an older payload has to decode.
+        public var holdingApps: [String] = []
     }
 
     private func wireTransport() {
@@ -677,7 +687,8 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                                     startDate: startDate,
                                     suppressed: suppressed,
                                     triggeredConditions: triggeredConditions
-                                        .map(\.rawValue).sorted())
+                                        .map(\.rawValue).sorted(),
+                                    holdingApps: holdingApps)
         localTransport.emit(KeepAwakeEvent.state, encoding: payload)
     }
 }

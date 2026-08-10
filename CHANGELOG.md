@@ -5,6 +5,60 @@ All notable changes to Helm are documented here. The format is loosely based on
 global changes, MINOR = new/polished features, PATCH = fixes. Every release
 bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 
+## [0.10.0-dev.3] — 2026-08-10
+
+> The rest of Keep Awake's open list, and a refactor of the module behind it.
+
+### Added
+- **The custom duration is entered the way Clock enters one** — a column per
+  unit with the abbreviation above the figure, instead of one box asking for
+  minutes, where “two hours” was a sum the person had to do and `120` read the
+  same as `12`. Hours and minutes, not hours-minutes-seconds: the session is
+  minutes all the way down to the stored deadline, so a seconds column would
+  take a number and round it away.
+- **The row says which app is holding the Mac**, rather than “App”. It is the
+  only rule type most people use and the only one that could not say what it
+  was talking about. Bundle ids travel on the wire; the name is resolved by
+  whoever draws, so names stay out of the log.
+
+### Fixed
+- **The countdown says what happens at zero when “A timer pauses the rule too”
+  is on.** `nil` had folded together the two answers that differ most —
+  “nothing is holding this Mac” and “a rule is, and this timer is about to
+  pause it” — so the one state where that setting decides anything was the one
+  state the page was silent in.
+- **“Stay awake with the lid closed” is sealed** (`SettingGuard`). It is the
+  one setting in this module that decides whether `sudo pmset disablesleep`
+  runs, and the administrator prompt needing a gesture does not protect
+  *engaging* where the grant already exists: any rule firing will do it. So a
+  plist edit was enough to stop a Mac sleeping the next time a watched app
+  launched. A broken seal refuses in the safe direction; a value that predates
+  sealing is adopted once and sealed on the way out, so nobody loses the
+  feature on upgrade.
+- **The mark, the indent and the note animate.** Switching the first rule on
+  moved every label in the card 26 pt, put a tick where there was nothing and
+  replaced the note — all in one frame. It was law 1 rather than a missing
+  curve: four `switch` branches are four views, and SwiftUI interpolates
+  between two states of one view.
+- **“Indefinite” is a button like the others.** The accent means “this is what
+  the panel's switch starts”, and the stored default is zero on a fresh
+  install, so the page drew the eye to the one choice that never ends.
+- The free-form duration is called **“Other…”** — what macOS calls this
+  control in Preview, Calendar and Automator. “Timer” was the obvious
+  candidate and is the one word that cannot be used: it is already this
+  module's name for the running countdown, and the three buttons beside it
+  *are* timers.
+
+### Changed
+- `ClamshellCoordinator`: the code that can leave a Mac unable to sleep, and
+  the code that can put a root password dialog on somebody's screen, is one
+  file. The engine goes 821 → 667 lines and the three existing clamshell
+  suites pass unchanged, which is what says the behaviour did not move.
+- Written once, having been written more: the wire message that starts a
+  session, the hero's three presets, the descriptor's fallback store, and the
+  module id — which was a literal in the descriptor while the engine had no
+  name for itself.
+
 ## [0.10.0-dev.2] — 2026-08-10
 
 > Keep Awake again: a manual timer where it was missing, and four screens that

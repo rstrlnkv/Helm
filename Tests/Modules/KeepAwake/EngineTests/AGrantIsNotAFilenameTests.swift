@@ -20,14 +20,20 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
+        KeepAwakeSettings.useTestSeal()
         store = NamespacedStore(namespace: "keep-awake", backing: InMemoryKeyValueStore())
         clamshell = FakeClamshell()
-        store.set(true, for: KeepAwakeSettings.Key.clamshellEnabled)
+        KeepAwakeSettings(store: store).setClamshellEnabled(true)
         engine = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
                                  assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
                                  displayObserver: FakeDisplayObserver(), power: FakePower(),
                                  apps: FakeApps(), pointer: FakePointer(),
                                  clamshell: clamshell, clock: FakeClock())
+    }
+
+    override func tearDown() {
+        KeepAwakeSettings.restoreLidSeal()
+        super.tearDown()
     }
 
     /// The control: with no grant of any kind, the first session asks.
@@ -62,7 +68,7 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
 
         clamshell.sudoersInstalled = true
         clamshell.passwordlessGrantExists = true
-        store.set(false, for: KeepAwakeSettings.Key.clamshellEnabled)
+        KeepAwakeSettings(store: store).setClamshellEnabled(false)
 
         engine.settingsChangedForTests()
 
@@ -81,7 +87,7 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
 
         clamshell.sudoersInstalled = true
         clamshell.passwordlessGrantExists = false
-        store.set(false, for: KeepAwakeSettings.Key.clamshellEnabled)
+        KeepAwakeSettings(store: store).setClamshellEnabled(false)
 
         engine.settingsChangedForTests()
 

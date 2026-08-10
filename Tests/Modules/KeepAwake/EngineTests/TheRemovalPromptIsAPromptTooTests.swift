@@ -80,6 +80,7 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
+        KeepAwakeSettings.useTestSeal()
         store = NamespacedStore(namespace: "keep-awake", backing: InMemoryKeyValueStore())
         clamshell = RemovalPromptClamshell()
         engine = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
@@ -89,7 +90,7 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
                                  clamshell: clamshell, clock: FakeClock())
         // The state this is all about: the feature is off and its rule is still
         // installed, which is exactly what switching the toggle off produces.
-        store.set(false, for: KeepAwakeSettings.Key.clamshellEnabled)
+        KeepAwakeSettings(store: store).setClamshellEnabled(false)
         engine.activate()
     }
 
@@ -97,6 +98,11 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
     private func settingsChanged() async {
         _ = try? await engine.transport.send(
             EngineCommand(name: KeepAwakeCommand.settingsChanged.rawValue))
+    }
+
+    override func tearDown() {
+        KeepAwakeSettings.restoreLidSeal()
+        super.tearDown()
     }
 
     /// The control, first: a test about asking twice is worth nothing if the
@@ -173,7 +179,7 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
         await settingsChanged()
         XCTAssertEqual(clamshell.removeCount, 1, "precondition: a removal is in flight")
 
-        store.set(true, for: KeepAwakeSettings.Key.clamshellEnabled)
+        KeepAwakeSettings(store: store).setClamshellEnabled(true)
         await settingsChanged()
         // …and only now does the person answer the dialog that is still up.
         clamshell.answerRemovalPrompts(granted: true)

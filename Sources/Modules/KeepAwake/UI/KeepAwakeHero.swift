@@ -89,6 +89,11 @@ struct KeepAwakeHero: View {
     /// which Stop silences the rule as well as ending the session — see
     /// `KeepAwakeEngine.ruleHolds`.
     let ruleHolds: Bool
+    /// The names of the apps holding the Mac, already resolved. The hero is
+    /// handed words rather than bundle ids: turning one into the other is a
+    /// Launch Services lookup, and a view redrawn once a second is the wrong
+    /// place for it.
+    let appNames: [String]
     let timedNote: (Date) -> String
     let start: (Int) -> Void
     let stop: () -> Void
@@ -137,7 +142,7 @@ struct KeepAwakeHero: View {
     @State private var customMinutes = 0
 
     init(state: SessionHero, now: Date, anyRuleOn: Bool, defaultDurationMinutes: Int,
-         suppressed: Bool, ruleHolds: Bool,
+         suppressed: Bool, ruleHolds: Bool, appNames: [String] = [],
          timedNote: @escaping (Date) -> String,
          start: @escaping (Int) -> Void, stop: @escaping () -> Void,
          resume: @escaping () -> Void) {
@@ -147,6 +152,7 @@ struct KeepAwakeHero: View {
         self.defaultDurationMinutes = defaultDurationMinutes
         self.suppressed = suppressed
         self.ruleHolds = ruleHolds
+        self.appNames = appNames
         self.timedNote = timedNote
         self.start = start
         self.stop = stop
@@ -339,7 +345,7 @@ struct KeepAwakeHero: View {
         VStack(spacing: 8) {
             Text(KAStr.heroAwake)
                 .font(.system(size: 40, weight: .light))
-            Text(conditions.map(KAStr.condition).sorted().joined(separator: " · "))
+            Text(KAStr.conditionsLine(conditions, appNames: appNames))
                 .font(.system(size: 13)).foregroundStyle(HelmText.quiet)
             HelmWrappingRow {
                 // The same three a session with no deadline offers. It used

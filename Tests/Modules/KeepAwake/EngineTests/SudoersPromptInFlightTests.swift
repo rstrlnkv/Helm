@@ -76,6 +76,7 @@ final class SudoersPromptInFlightTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
+        KeepAwakeSettings.useTestSeal()
         backing = InMemoryKeyValueStore()
         store = NamespacedStore(namespace: "keep-awake", backing: backing)
         settings = KeepAwakeSettings(store: store)
@@ -87,7 +88,7 @@ final class SudoersPromptInFlightTests: XCTestCase {
                                  power: FakePower(), apps: FakeApps(),
                                  pointer: FakePointer(),
                                  clamshell: clamshell, clock: FakeClock())
-        store.set(true, for: "clamshellEnabled")
+        KeepAwakeSettings(store: store).setClamshellEnabled(true)
     }
 
     /// Everything already on the main queue has run. The engine posts its
@@ -127,11 +128,16 @@ final class SudoersPromptInFlightTests: XCTestCase {
     /// exists to prevent: a permanent `NOPASSWD` line in `/etc/sudoers.d` for a
     /// feature the person has switched off — "a grant nobody is holding", and
     /// the one Helm's predecessor left on this machine.
+    override func tearDown() {
+        KeepAwakeSettings.restoreLidSeal()
+        super.tearDown()
+    }
+
     func testARuleThatLandsAfterTheOptionIsOffIsTakenBackOut() async throws {
         startSessionWithPromptUp()
 
         // The person changes their mind while the prompt is up.
-        store.set(false, for: "clamshellEnabled")
+        KeepAwakeSettings(store: store).setClamshellEnabled(false)
         _ = try await engine.transport.send(EngineCommand(name: "settingsChanged"))
         XCTAssertEqual(clamshell.removeCount, 0,
                        "precondition: there was nothing on disk to remove yet")
@@ -150,7 +156,7 @@ final class SudoersPromptInFlightTests: XCTestCase {
     func testARuleThatLandsAfterTheOptionIsOffDisablesNoSleep() async throws {
         startSessionWithPromptUp()
 
-        store.set(false, for: "clamshellEnabled")
+        KeepAwakeSettings(store: store).setClamshellEnabled(false)
         _ = try await engine.transport.send(EngineCommand(name: "settingsChanged"))
         clamshell.answerAllPrompts(granted: true)
         await drainMain()

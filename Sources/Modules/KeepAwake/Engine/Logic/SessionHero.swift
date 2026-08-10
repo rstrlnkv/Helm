@@ -50,11 +50,43 @@ public enum SessionHero: Equatable, Sendable {
     /// «then the external display and the charger and Final Cut keep it awake»
     /// is a list where a reason was wanted. `allCases` order decides which,
     /// so the answer does not change between two runs on one machine.
-    public static func holderAfterTimer(conditions: Set<ActiveCondition>,
-                                 timerEndsAutomation: Bool) -> ActiveCondition? {
-        guard !timerEndsAutomation else { return nil }
-        return ActiveCondition.allCases.first {
+    /// What happens when the countdown reaches zero.
+    ///
+    /// Three answers, not two. It used to be an optional condition, and `nil`
+    /// folded together the two cases that differ most: «nothing is holding this
+    /// Mac, so it goes to sleep» and «a rule is holding it and this timer is
+    /// about to pause that rule». The second is the whole point of «A timer
+    /// pauses the rule too» — and with that switch on, the one state where it
+    /// matters was the one state the page said nothing in, because the note
+    /// degenerated to «Timer until 16:03» and stopped there.
+    public enum AfterTimer: Equatable, Sendable {
+        /// No rule applies; the session simply ends.
+        case nothing
+        /// The timer ends and this condition goes on holding the Mac.
+        case heldBy(ActiveCondition)
+        /// A rule applies **and** the person asked a timer to end automation,
+        /// so zero stops the rule as well.
+        case rulePaused
+    }
+
+    public static func afterTimer(conditions: Set<ActiveCondition>,
+                                  timerEndsAutomation: Bool) -> AfterTimer {
+        let holder = ActiveCondition.allCases.first {
             ActiveCondition.automatic.contains($0) && conditions.contains($0)
         }
+        guard let holder else { return .nothing }
+        return timerEndsAutomation ? .rulePaused : .heldBy(holder)
+    }
+
+    /// The older shape, kept for the callers that only ask «and then what holds
+    /// it» — `nil` covers both «nothing» and «the rule is being paused», which
+    /// is why anything drawing a sentence uses `afterTimer` instead.
+    public static func holderAfterTimer(conditions: Set<ActiveCondition>,
+                                        timerEndsAutomation: Bool) -> ActiveCondition? {
+        if case .heldBy(let condition) = afterTimer(conditions: conditions,
+                                                    timerEndsAutomation: timerEndsAutomation) {
+            return condition
+        }
+        return nil
     }
 }

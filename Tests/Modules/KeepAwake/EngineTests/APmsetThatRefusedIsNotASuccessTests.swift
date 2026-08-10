@@ -28,16 +28,22 @@ final class APmsetThatRefusedIsNotASuccessTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
+        KeepAwakeSettings.useTestSeal()
         backing = InMemoryKeyValueStore()
         store = NamespacedStore(namespace: "keep-awake", backing: backing)
         clamshell = FakeClamshell()
         clamshell.sudoersInstalled = true
-        store.set(true, for: KeepAwakeSettings.Key.clamshellEnabled)
+        KeepAwakeSettings(store: store).setClamshellEnabled(true)
         engine = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
                                  assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
                                  displayObserver: FakeDisplayObserver(), power: FakePower(),
                                  apps: FakeApps(), pointer: FakePointer(),
                                  clamshell: clamshell, clock: FakeClock())
+    }
+
+    override func tearDown() {
+        KeepAwakeSettings.restoreLidSeal()
+        super.tearDown()
     }
 
     private var guardFlag: Bool {

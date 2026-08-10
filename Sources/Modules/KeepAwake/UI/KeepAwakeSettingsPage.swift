@@ -175,6 +175,11 @@ public struct KeepAwakeSettingsPage: View {
                 defaultDurationMinutes: defaultDurationMinutes,
                 suppressed: vm.suppressed,
                 ruleHolds: vm.ruleHolds,
+                // Resolved here, not in the hero: the hero is rebuilt once a
+                // second by its `TimelineView`, and a Launch Services lookup
+                // per tick for a string that changes when an app launches is
+                // work nobody asked for.
+                appNames: vm.holdingApps.map { AppInfo.resolve($0).name },
                 timedNote: timedNote,
                 start: start,
                 stop: { vm.send(KeepAwakeCommand.stop) },
@@ -194,10 +199,13 @@ public struct KeepAwakeSettingsPage: View {
     /// the only answer on the page to what happens at zero.
     private func timedNote(_ end: Date) -> String {
         let until = KAStr.timerUntil(end)
-        guard let holder = SessionHero.holderAfterTimer(
-                conditions: vm.activeConditions,
-                timerEndsAutomation: timerEndsAutomation) else { return until }
-        return until + " · " + KAStr.thenHeldBy(holder)
+        let after = SessionHero.afterTimer(conditions: vm.activeConditions,
+                                           timerEndsAutomation: timerEndsAutomation)
+        switch after {
+        case .nothing: return until
+        case .heldBy(let condition): return until + " · " + KAStr.thenHeldBy(condition)
+        case .rulePaused: return until + " · " + KAStr.thenRulePaused
+        }
     }
 
     /// True when anything is configured that *could* hold the Mac — which is
