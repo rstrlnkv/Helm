@@ -722,5 +722,5 @@
 "The Mac is being kept awake by something other than Helm" = "Helm 以外の何かが Mac を起こしています";
 "Developer" = "開発";
 "Interface language" = "インターフェイスの言語";
-"Same as the Mac" = "Mac と同じ";
 "Dev builds only, for reading the app in a language this Mac is not set to." = "dev ビルド専用。この Mac に設定されていない言語でアプリを読むためのものです。";
+"System Settings" = "システム設定";

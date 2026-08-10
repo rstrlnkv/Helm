@@ -722,5 +722,5 @@
 "The Mac is being kept awake by something other than Helm" = "Algo que não é o Helm está mantendo o Mac acordado";
 "Developer" = "Desenvolvimento";
 "Interface language" = "Idioma da interface";
-"Same as the Mac" = "Igual ao Mac";
 "Dev builds only, for reading the app in a language this Mac is not set to." = "Apenas versões dev, para ler o app num idioma que este Mac não tem definido.";
+"System Settings" = "Ajustes do Sistema";

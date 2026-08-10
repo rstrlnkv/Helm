@@ -8,7 +8,11 @@ enum AppStr {
     /// have to be right in that language too.
     static var developerSection: String { L("Developer") }
     static var interfaceLanguage: String { L("Interface language") }
-    static var systemLanguage: String { L("Same as the Mac") }
+    /// Named after the place the answer comes from, and named the way macOS
+    /// names it there — «System Settings» in English, «Настройки системы» in
+    /// Russian, and so on out of each language's own System Settings. «Same as
+    /// the Mac» described a relationship; this points at the pane.
+    static var systemLanguage: String { L("System Settings") }
     /// It used to end «windows already open keep the language they were drawn
     /// in», which was true of the first attempt and is not true now: both the
     /// settings window and the panel take a new identity and are rebuilt. A
