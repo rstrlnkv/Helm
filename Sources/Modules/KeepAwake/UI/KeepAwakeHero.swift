@@ -132,7 +132,10 @@ struct KeepAwakeHero: View {
     /// that reopened holding somebody's «47» from last week would be offering a
     /// choice they had already used up.
     @State private var showCustomTime = false
-    @State private var customMinutesText = ""
+    /// The number the field is holding, in minutes. Seeded from the module's
+    /// own default duration when the popover opens, so the field starts on
+    /// something meaningful rather than on zero — Clock does the same.
+    @State private var customMinutes = 0
 
     init(state: SessionHero, now: Date, anyRuleOn: Bool, defaultDurationMinutes: Int,
          suppressed: Bool, heldByOthers: Bool, ruleHolds: Bool,
@@ -464,42 +467,46 @@ struct KeepAwakeHero: View {
     /// panel's entry, so the two surfaces say the same word for the same thing.
     private var customButton: some View {
         Button(KAStr.customTime) {
-            customMinutesText = ""
+            customMinutes = defaultDurationMinutes
             showCustomTime = true
         }
         .controlSize(.large)
         .popover(isPresented: $showCustomTime, arrowEdge: .bottom) { customTimeEditor }
     }
 
+    /// macOS's own timer, in the two units this module can keep.
+    ///
+    /// It was one box asking for minutes, which made «two hours» a sum the
+    /// person had to do — and a box holding `120` reads the same as one holding
+    /// `12`. `HelmDurationField` is the Clock shape: a column per unit, the
+    /// abbreviation above the figure.
     private var customTimeEditor: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(KAStr.customTimeTitle).font(.system(size: 13, weight: .semibold))
-            HStack(spacing: 6) {
-                TextField("", text: $customMinutesText)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 70)
-                    .accessibilityLabel(HelmA11y.minutes)
-                    .onSubmit(applyCustomTime)
-                Text(KAStr.minutesUnit).foregroundStyle(HelmText.quiet)
-            }
-            HStack {
-                Spacer()
-                Button(KAStr.done, action: applyCustomTime)
-                    .keyboardShortcut(.defaultAction)
-            }
+        VStack(spacing: 14) {
+            Text(KAStr.customTimeTitle)
+                .font(.system(size: 13, weight: .semibold))
+            HelmDurationField(minutes: $customMinutes,
+                              ceiling: TimerPolicy.longestSessionMinutes,
+                              hourLabel: KAStr.hoursUnitShort,
+                              minuteLabel: KAStr.minutesUnitShort)
+            Button(KAStr.start, action: applyCustomTime)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .keyboardShortcut(.defaultAction)
+                // Zero minutes is «Indefinite», and that word is a button of
+                // its own two rows up. A field showing 00:00 offering to start
+                // something would be this screen giving one choice two names.
+                .disabled(customMinutes == 0)
         }
-        .padding(14)
-        .frame(width: 220)
+        .padding(18)
+        .frame(width: 230)
     }
 
-    /// Nothing, a word, a negative number and «999999» all arrive here, because
-    /// this is a text field. `TimerPolicy` owns the ceiling — the same one
-    /// `startSession` clamps to — so a number typed here cannot ask for a
-    /// session the engine would refuse and then draw as running.
+    /// `HelmDurationField` has already clamped to the same ceiling
+    /// `startSession` uses, so there is no second opinion about the number
+    /// here — only the refusal to read zero as a duration.
     private func applyCustomTime() {
         showCustomTime = false
-        guard let entered = Int(customMinutesText.trimmingCharacters(in: .whitespaces)),
-              entered > 0 else { return }
-        start(min(entered, TimerPolicy.longestSessionMinutes))
+        guard customMinutes > 0 else { return }
+        start(customMinutes)
     }
 }

@@ -33,7 +33,10 @@ public struct KeepAwakePanelTile: View {
     @State private var shownActive: Bool
     @State private var shownSuppressed: Bool
     @State private var showCustomTime = false
-    @State private var customMinutesText = ""
+    /// What the popover is holding while it is open. Separate from
+    /// `customMinutes`, which is the value that has been *saved*: a popover
+    /// dismissed without confirming must leave the stored duration alone.
+    @State private var editedMinutes = 0
     @State private var autoExternalDisplay: Bool
     @State private var autoPower: Bool
 
@@ -262,7 +265,7 @@ public struct KeepAwakePanelTile: View {
                         }
                         Divider()
                         Button(KAStr.customTime) {
-                            customMinutesText = String(customMinutes)
+                            editedMinutes = customMinutes
                             showCustomTime = true
                         }
                     } label: {
@@ -376,39 +379,37 @@ public struct KeepAwakePanelTile: View {
     }
 
     /// Free-form duration entry, opened from the menu's "Custom…" entry.
+    ///
+    /// The same field the settings page draws — a shape two surfaces draw
+    /// belongs to `HelmUI`, and this was the older of the two: one box asking
+    /// for minutes, so «two hours» was a sum the person had to do and `120`
+    /// read the same as `12`.
     private var customTimeEditor: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(spacing: 12) {
             Text(KAStr.customTimeTitle)
                 .font(.subheadline.weight(.semibold))
-            // One line: field, unit, confirm — instead of three separate rows.
-            HStack(spacing: 6) {
-                TextField("", text: $customMinutesText)
-                    // "min" sits beside the field as its own Text, so read
-                    // aloud the number had no unit.
-                    .accessibilityLabel(HelmA11y.minutes)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 56)
-                    .multilineTextAlignment(.trailing)
-                    .onSubmit(applyCustomTime)
-                Text(KAStr.minutesUnit)
-                    .font(.subheadline)
-                    .foregroundStyle(HelmText.quiet)
-                Spacer(minLength: 8)
-                Button(KAStr.done, action: applyCustomTime)
-                    .controlSize(.small)
-                    .keyboardShortcut(.defaultAction)
-            }
+            HelmDurationField(minutes: $editedMinutes,
+                              ceiling: Self.maxCustomMinutes,
+                              hourLabel: KAStr.hoursUnitShort,
+                              minuteLabel: KAStr.minutesUnitShort)
+            Button(KAStr.done, action: applyCustomTime)
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+                // Unlike the page's, this number is a *setting* — what the
+                // switch starts next time — so zero is not «Indefinite» here,
+                // it is a duration the tile could not act on.
+                .disabled(editedMinutes == 0)
         }
-        .padding(12)
-        .frame(width: 218)
+        .padding(14)
+        .frame(width: 226)
     }
 
     private func applyCustomTime() {
-        // Capped at the tile's own longest; junk input keeps the old value.
-        if let entered = Int(customMinutesText.trimmingCharacters(in: .whitespaces)), entered > 0 {
-            setMinutes(min(entered, Self.maxCustomMinutes))
-        }
         showCustomTime = false
+        guard editedMinutes > 0 else { return }
+        // `HelmDurationField` clamps to the ceiling it was handed, which is
+        // this one — so the value only has to be stored.
+        setMinutes(editedMinutes)
     }
 
     // MARK: - Active countdown
