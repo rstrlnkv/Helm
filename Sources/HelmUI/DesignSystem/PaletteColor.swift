@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 /// The fixed active-tint palette for status icons (Keep Awake picks from this).
 public enum PaletteColor: String, CaseIterable, Sendable {
     case white, red, orange, yellow, green, mint, cyan, blue, purple, pink
@@ -45,6 +46,29 @@ public enum PaletteColor: String, CaseIterable, Sendable {
         case .pink: return L("Pink")
         }
     }
+
+    public var swatchImage: NSImage {
+        // `self.color` is read out here rather than inside the drawing block:
+        // the block is `@Sendable` and capturing the case itself makes the
+        // compiler ask questions about a type it has no reason to.
+        let fill = NSColor(color)
+        let side: CGFloat = 12
+        let image = NSImage(size: NSSize(width: side, height: side), flipped: false) { rect in
+            let disc = NSBezierPath(ovalIn: rect.insetBy(dx: 0.5, dy: 0.5))
+            fill.setFill()
+            disc.fill()
+            // The same hairline the swatches always had: `.white` is a pale
+            // grey on a pale menu and needs an edge to be a disc at all.
+            NSColor.labelColor.withAlphaComponent(0.20).setStroke()
+            disc.lineWidth = 1
+            disc.stroke()
+            return true
+        }
+        // A template image is recoloured by the menu, which is exactly what has
+        // to not happen here.
+        image.isTemplate = false
+        return image
+    }
 }
 
 private extension Color {
@@ -58,4 +82,16 @@ private extension Color {
                   blue: Double(hex & 0xFF) / 255,
                   opacity: 1)
     }
+
+    /// A filled circle in this colour, as an image.
+    ///
+    /// **Not an SF Symbol with a `foregroundStyle` on it.** A `Picker` with the
+    /// menu style is drawn by AppKit as an `NSMenu`, and an `NSMenuItem` takes
+    /// an *image*: the tint SwiftUI is asked to apply to a symbol inside one is
+    /// dropped, which is why the ten colours arrived as ten identical grey dots
+    /// and then as no dots at all. Drawn here and handed over already coloured,
+    /// there is nothing left for the menu to strip.
+    ///
+    /// `isTemplate` stays false for the same reason — a template image is
+    /// recoloured by the menu, which is exactly what has to not happen.
 }

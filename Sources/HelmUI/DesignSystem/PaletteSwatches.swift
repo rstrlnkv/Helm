@@ -57,9 +57,10 @@ public struct HelmPaletteSwatches: View {
                 Label {
                     Text(palette.label)
                 } icon: {
-                    // Tinted per item, so the list reads as a palette rather
-                    // than as ten words.
-                    Image(systemName: "circle.fill").foregroundStyle(palette.color)
+                    // An image, not a tinted symbol: an `NSMenuItem` drops the
+                    // tint and the list came out as ten words. See
+                    // `PaletteColor.swatchImage`.
+                    Image(nsImage: palette.swatchImage)
                 }
                 .tag(palette)
             }
