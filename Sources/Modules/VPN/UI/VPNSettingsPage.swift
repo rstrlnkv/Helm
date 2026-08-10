@@ -20,7 +20,6 @@ public struct VPNSettingsPage: View {
     /// Natural height of the two swatch rows, measured so the disclosure
     /// animates between 0 and a concrete value — the same pattern
     /// `UtilitiesSection` in `HelmPanel.swift` uses for its rows.
-    @State private var spinRowsHeight: CGFloat = 0
 
     public init(vm: VPNViewModel, store: NamespacedStore) {
         self.vm = vm
@@ -160,34 +159,38 @@ public struct VPNSettingsPage: View {
         Toggle(VPNStr.spinLabel, isOn: Binding(
             get: { spin },
             set: { on in
-                withAnimation(HelmMotion.disclosure) { spin = on }
+                spin = on
                 VPNSettings(store: store).setAutomationSpin(on)
             }))
 
-        VStack(spacing: 2) {
-            LabeledContent(VPNStr.spinConnected) {
-                HelmPaletteSwatches(VPNStr.spinConnected, selection: spinTintConnected) { token in
-                    spinTintConnected = token
-                    VPNSettings(store: store).setSpinTint(token, for: .connected)
-                }
+        // **Disabled, never revealed.** These were a measured-height
+        // disclosure under the switch, and it cost two things. The collapsed
+        // block still occupied a `Form` row with a row's padding, so the
+        // section ended in 36 pt of empty card under a separator that promised
+        // a row — in the default state, since the spin ships off, which is what
+        // a fresh install shows. And inside one row the two of them got no
+        // hairline between them and none of the form's own rhythm.
+        //
+        // Keep Awake draws the same two palettes as plain rows and disables the
+        // control rather than taking it away, with the reason in its own
+        // comment: a row that loses its tallest control becomes visibly shorter
+        // than its neighbours and the card twitches on a setting that has
+        // nothing to do with its height. Same answer here, and the empty row
+        // goes with the machinery.
+        HelmSettingRow(VPNStr.spinConnected) {
+            HelmPaletteSwatches(VPNStr.spinConnected, selection: spinTintConnected) { token in
+                spinTintConnected = token
+                VPNSettings(store: store).setSpinTint(token, for: .connected)
             }
-            LabeledContent(VPNStr.spinDisconnected) {
-                HelmPaletteSwatches(VPNStr.spinDisconnected, selection: spinTintDisconnected) { token in
-                    spinTintDisconnected = token
-                    VPNSettings(store: store).setSpinTint(token, for: .disconnected)
-                }
+            .disabled(!spin)
+        }
+        HelmSettingRow(VPNStr.spinDisconnected) {
+            HelmPaletteSwatches(VPNStr.spinDisconnected, selection: spinTintDisconnected) { token in
+                spinTintDisconnected = token
+                VPNSettings(store: store).setSpinTint(token, for: .disconnected)
             }
+            .disabled(!spin)
         }
-        .onGeometryChange(for: CGFloat.self, of: \.size.height) { height in
-            if height > 0 { spinRowsHeight = height }
-        }
-        .frame(height: spin ? spinRowsHeight : 0, alignment: .top)
-        // Height + clipping only, matching `UtilitiesSection`: fading would
-        // isolate the rows in their own layer.
-        .clipped()
-        .allowsHitTesting(spin)
-        // `.clipped()` hides it from the eye, not from the accessibility tree.
-        .accessibilityHidden(!spin)
 
         // Said where the two settings are, not only in a spec file.
         if !spin, notice == .silent {
@@ -376,9 +379,14 @@ public struct VPNSettingsPage: View {
     @ViewBuilder
     private var appRulesEditor: some View {
         if rules.isEmpty {
-            Text(VPNStr.perAppHint)
-                .font(.callout)
-                .foregroundStyle(HelmText.quiet)
+            // One block, not two grey paragraphs at two sizes stacked in a
+            // card — `.callout` over `.caption`, which read as a paragraph that
+            // had lost its heading. The scope note below stays where it is: it
+            // is for the person who *has* rules, and that is the one this
+            // branch is not about.
+            HelmEmptyState(symbol: "app.badge.checkmark",
+                           tint: VPNDescriptor.tint.colour,
+                           message: VPNStr.perAppHint) { EmptyView() }
         }
         // What the tunnel actually covers. Kept out of the `isEmpty` branch on
         // purpose — the person with rules already configured is the one acting
@@ -398,8 +406,21 @@ public struct VPNSettingsPage: View {
         Button {
             pickApp()
         } label: {
-            Label(VPNStr.addApp, systemImage: "plus")
+            // A row of the list it adds to, in the accent — the shape Keep
+            // Awake settled on and the one v3 draws. As a bordered `Label` it
+            // was a chip sitting in a column of plain rows, its fill starting
+            // 1 pt left of the copy above it and its title 36 pt right of it.
+            // The 22 pt box is the app icon's column, so the two agree by
+            // construction rather than by coincidence.
+            HStack(spacing: 12) {
+                Image(systemName: "plus")
+                    .frame(width: 22, height: 22)
+                Text(VPNStr.addApp)
+            }
+            .foregroundStyle(Color.accentColor)
+            .accessibilityElement(children: .combine)
         }
+        .buttonStyle(.plain)
         .disabled(vm.connections.isEmpty)
     }
 
@@ -417,6 +438,19 @@ public struct VPNSettingsPage: View {
             // Two nameless pop-ups in one row are indistinguishable to
             // VoiceOver; each carries what it chooses.
             Picker("\(info.name) — \(VPNStr.rulePickerVPN)", selection: vpnNameBinding(bundleID)) {
+                // The name the rule actually holds, even when the system no
+                // longer has it. A `Picker` whose selection matches no tag
+                // draws **blank**, so an orphaned rule showed an empty control
+                // beside a note explaining that «Old office» is gone — the one
+                // row where the page had something to say showed nothing at
+                // all. v3 answers this with a «Choose another» button; the
+                // picker *is* that button, and it only had to be able to
+                // display where it currently points.
+                if let held = rules[bundleID]?.vpnName,
+                   !vm.connections.contains(where: { $0.name == held }) {
+                    Text(VPNStr.missingConnection(held)).tag(held)
+                    Divider()
+                }
                 ForEach(vm.connections.map(\.name), id: \.self) { name in
                     Text(name).tag(name)
                 }

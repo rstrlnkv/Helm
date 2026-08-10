@@ -72,6 +72,20 @@ enum VPNStr {
            .pt: "o macOS recusou conectar «\(name)» — o que ele disse está no registro"])
     }
 
+    /// The name a rule still points at, in the picker, when the system no
+    /// longer has it. Marked rather than plain: the entry is where the rule
+    /// currently is and not somewhere it can be put back.
+    static func missingConnection(_ name: String) -> String {
+        L("\(name) — missing",
+          [.ru: "\(name) — больше нет",
+           .es: "\(name) — no existe",
+           .fr: "\(name) — introuvable",
+           .de: "\(name) — nicht vorhanden",
+           .ja: "\(name) — ありません",
+           .zh: "\(name) — 已不存在",
+           .pt: "\(name) — não existe"])
+    }
+
     static var connect: String { L("Connect") }
     static var disconnect: String { L("Disconnect") }
 
