@@ -124,7 +124,6 @@ public struct KeepAwakeSettingsPage: View {
                 anyRuleOn: anyRuleOn,
                 defaultDurationMinutes: defaultDurationMinutes,
                 suppressed: vm.suppressed,
-                heldByOthers: vm.heldByOthers,
                 ruleHolds: vm.ruleHolds,
                 timedNote: timedNote,
                 start: start,

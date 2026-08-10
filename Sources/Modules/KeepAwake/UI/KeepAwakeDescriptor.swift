@@ -30,8 +30,7 @@ import Module_KeepAwake_Engine
             assertions: ports.assertions, displayInfo: ports.displayInfo,
             displayObserver: ports.displayObserver, power: ports.power,
             apps: ports.apps, pointer: ports.pointer,
-            clamshell: ports.clamshell, clock: ports.clock,
-            holders: ports.holders)
+            clamshell: ports.clamshell, clock: ports.clock)
     }
 
     public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? {

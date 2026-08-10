@@ -20,15 +20,18 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   and starting a session by hand.
 
 ### Fixed
-- **“Something else is keeping this Mac awake” was on screen with nothing of
-  the sort running.** It was not wrong — `powerd` holds
-  `PreventUserIdleSystemSleep` named “Powerd - Prevent sleep while display is
-  on” for as long as the screen is lit, and `sharingd` holds one named
-  “Handoff” — it was useless, because the sentence was true every time there
-  was somebody there to read it. Counted by owner now. Measured, and a nil
-  check would not have been enough: `powerd`, `WindowServer`, `coreaudiod` and
-  `backupd` have no `NSRunningApplication` at all, but `sharingd` does; what
-  separates it is an activation policy of `.prohibited`.
+- **The line about something else keeping the Mac awake is gone.** It was on
+  screen with nothing of the sort running, and it was not wrong — `powerd`
+  holds `PreventUserIdleSystemSleep` named “Powerd - Prevent sleep while
+  display is on” for as long as the screen is lit, and `sharingd` holds one
+  named “Handoff”. Counting by owner was the first fix, and it was measured:
+  `powerd`, `WindowServer`, `coreaudiod` and `backupd` have no
+  `NSRunningApplication` at all, but `sharingd` does, and what separates it is
+  an activation policy of `.prohibited`. **The narrowed line was still noise** —
+  it reported a browser somebody keeps open all day, under a 40 pt heading
+  saying the Mac sleeps as usual, which is the opposite claim. A signal whose
+  false-positive rate is set by the rest of the machine is not a signal, so the
+  line, its string and the whole IOKit chain behind it were removed.
 - **“Stop pauses the rule” was written in one of four states.** The engine
   suppresses whenever a rule’s trigger holds, whatever started the session — so
   a hand-started timer running beside a watched app paused that rule with no

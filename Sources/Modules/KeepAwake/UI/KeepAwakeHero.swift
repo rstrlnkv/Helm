@@ -84,7 +84,6 @@ struct KeepAwakeHero: View {
     let anyRuleOn: Bool
     let defaultDurationMinutes: Int
     let suppressed: Bool
-    let heldByOthers: Bool
     /// A rule's trigger is true right now, whatever state the figure is in.
     /// The engine's own word for it, because that is the exact condition under
     /// which Stop silences the rule as well as ending the session — see
@@ -138,7 +137,7 @@ struct KeepAwakeHero: View {
     @State private var customMinutes = 0
 
     init(state: SessionHero, now: Date, anyRuleOn: Bool, defaultDurationMinutes: Int,
-         suppressed: Bool, heldByOthers: Bool, ruleHolds: Bool,
+         suppressed: Bool, ruleHolds: Bool,
          timedNote: @escaping (Date) -> String,
          start: @escaping (Int) -> Void, stop: @escaping () -> Void,
          resume: @escaping () -> Void) {
@@ -147,7 +146,6 @@ struct KeepAwakeHero: View {
         self.anyRuleOn = anyRuleOn
         self.defaultDurationMinutes = defaultDurationMinutes
         self.suppressed = suppressed
-        self.heldByOthers = heldByOthers
         self.ruleHolds = ruleHolds
         self.timedNote = timedNote
         self.start = start
@@ -250,11 +248,11 @@ struct KeepAwakeHero: View {
             Text(KAStr.heroIdle)
                 .font(.system(size: 40, weight: .light))
                 .foregroundStyle(HelmText.quiet)
-            // The Mac is not asleep and it is not us — the 40 pt sentence
-            // above says otherwise, and on an ordinary machine it is wrong
-            // most of the day.
-            Text(heldByOthers ? KAStr.heroHeldByOthers
-                              : (anyRuleOn ? KAStr.heroIdleReason : KAStr.heroNoRules))
+            // Why *this module* is not holding the Mac. It used to have a
+            // third branch — «something other than Helm is keeping this Mac
+            // awake» — which contradicted the 40 pt sentence directly above it
+            // (see the note on `heroIdle`).
+            Text(anyRuleOn ? KAStr.heroIdleReason : KAStr.heroNoRules)
                 .font(.system(size: 13)).foregroundStyle(HelmText.faint)
             HelmWrappingRow {
                 startButton(KAStr.duration(15), minutes: 15)
@@ -447,7 +445,12 @@ struct KeepAwakeHero: View {
         // button's *label* and leaves the fill alone, so all four presets came
         // out identical and the one the switch actually starts was a claim
         // nothing on screen backed up.
-        if minutes == defaultDurationMinutes {
+        // Zero is «Indefinite», and it is never the accented button however
+        // the default duration is set. The accent says «this is what the
+        // panel's switch starts», and on a fresh install that is zero — so the
+        // one choice on the row that never ends was the one the page drew the
+        // eye to. A default of «Indefinite» simply leaves the row unaccented.
+        if minutes > 0, minutes == defaultDurationMinutes {
             Button(title) { start(minutes) }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)

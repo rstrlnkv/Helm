@@ -377,39 +377,7 @@ public struct KeepAwakeSystemPorts {
     public let pointer = CGEventPointer()
     public let clamshell = PmsetClamshellPort()
     public let clock = DispatchClock()
-    public let holders = IOKitSleepHolders()
 
     public init() {}
 }
 
-/// `IOPMCopyAssertionsByProcess`, minus our own process, minus the kinds that
-/// are not about sleep at all, and minus everything that is not an application.
-///
-/// **That last filter is the whole difference between a warning and wallpaper.**
-/// The line this feeds says «something other than Helm is keeping this Mac
-/// awake», and macOS itself holds these assertions as ordinary housekeeping:
-/// `powerd` holds `PreventUserIdleSystemSleep` named "Powerd - Prevent sleep
-/// while display is on" for as long as the screen is lit, and `sharingd` holds
-/// one named "Handoff" for as long as Handoff is switched on. Counting those,
-/// the sentence was true whenever anybody was looking at the Mac — which is
-/// every time it could be read.
-public final class IOKitSleepHolders: SleepHoldersPort {
-
-    public func othersHoldSleep() -> Bool {
-        var unmanaged: Unmanaged<CFDictionary>?
-        guard IOPMCopyAssertionsByProcess(&unmanaged) == kIOReturnSuccess,
-              let byProcess = unmanaged?.takeRetainedValue() as? [NSNumber: [[String: Any]]]
-        else { return false }
-        let mine = NSNumber(value: ProcessInfo.processInfo.processIdentifier)
-        for (pid, assertions) in byProcess where pid != mine {
-            let app = NSRunningApplication(processIdentifier: pid_t(pid.int32Value))
-            for assertion in assertions {
-                guard let kind = assertion[kIOPMAssertionTypeKey] as? String else { continue }
-                if SleepHolderFilter.counts(kind: kind, policy: app?.activationPolicy) {
-                    return true
-                }
-            }
-        }
-        return false
-    }
-}

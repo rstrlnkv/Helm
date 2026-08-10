@@ -16,7 +16,6 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     private let power: PowerInfoPort
     private let apps: AppRunningPort
     private let pointer: PointerPort
-    private let holders: SleepHoldersPort?
     private let clamshell: ClamshellPort
     private let clock: Clock
     private let localTransport: LocalTransport
@@ -38,10 +37,6 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// that slept with the rule's app still on screen had no account of itself
     /// anywhere. One name for it, here and on the wire.
     public private(set) var suppressed = false
-    /// Something that is not Helm is holding this Mac awake. One boolean, read
-    /// where the other conditions are read, so it costs an IOKit call on events
-    /// that already happen and arms no timer at rest.
-    public private(set) var heldByOthers = false
     /// The rules whose triggers are true right now — **whether or not they are
     /// being obeyed**, which is what makes this different from
     /// `activeConditions`.
@@ -90,7 +85,6 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                 pointer: PointerPort,
                 clamshell: ClamshellPort,
                 clock: Clock,
-                holders: SleepHoldersPort? = nil,
                 transport: LocalTransport = LocalTransport()) {
         self.settings = settings
         self.store = store
@@ -100,7 +94,6 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         self.power = power
         self.apps = apps
         self.pointer = pointer
-        self.holders = holders
         self.clamshell = clamshell
         self.clock = clock
         self.localTransport = transport
@@ -283,11 +276,6 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             releaseForBattery()
             return
         }
-        // Asked here rather than on a clock: `recompute` runs on the events
-        // that change the answer — an app launching or quitting, the charger,
-        // a display — so the line is right when it matters and nothing polls
-        // while nothing is happening.
-        heldByOthers = holders?.othersHoldSleep() ?? false
         let ext = externalDisplayCondition()
         let pwr = powerCondition()
         let appR = appCondition()
@@ -777,7 +765,6 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         /// describes a Mac being held awake; this one is the only account of a
         /// Mac that is not, while everything on screen says it should be.
         public let suppressed: Bool
-        public let heldByOthers: Bool
         /// Defaulted, because this field arrived after the wire did and an
         /// older payload still has to decode. Absent means «no rule's trigger
         /// holds», which is the reading that shows no caption and no «Paused»
@@ -827,7 +814,6 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                                     endDate: endDate,
                                     startDate: startDate,
                                     suppressed: suppressed,
-                                    heldByOthers: heldByOthers,
                                     triggeredConditions: triggeredConditions
                                         .map(\.rawValue).sorted())
         localTransport.emit(KeepAwakeEvent.state, encoding: payload)

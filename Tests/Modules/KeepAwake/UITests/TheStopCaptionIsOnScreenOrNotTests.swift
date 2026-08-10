@@ -30,7 +30,7 @@ final class TheStopCaptionIsOnScreenOrNotTests: XCTestCase {
                       suppressed: Bool = false) -> some View {
         KeepAwakeHero(state: state, now: Self.now, anyRuleOn: true,
                       defaultDurationMinutes: 60, suppressed: suppressed,
-                      heldByOthers: false, ruleHolds: ruleHolds,
+                      ruleHolds: ruleHolds,
                       timedNote: { _ in "until 15:42" },
                       start: { _ in }, stop: {}, resume: {})
             .frame(width: HelmLayout.settingsColumn)

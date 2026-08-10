@@ -207,18 +207,6 @@ enum KAStr {
     /// is an invitation, the second is an explanation.
     static var heroNoRules: String { L("No rule is switched on") }
     static var heroIdleReason: String { L("No rule applies right now") }
-    /// The Mac is not asleep, and it is not Helm doing it.
-    ///
-    /// The idle hero draws «The Mac sleeps as usual» in 40 pt whenever this
-    /// module is not holding — which on an ordinary machine is false most of
-    /// the day. Measured where this was written: `Claude` had held a
-    /// `NoIdleSleepAssertion` for nineteen hours and `pmset -g` read
-    /// «sleep 0 (sleep prevented by sharingd, HelmApp, powerd, Claude)».
-    /// One line, and no list: naming the processes is a second feature whose
-    /// own history is rows of `powerd` and `bluetoothd` nobody can act on.
-    static var heroHeldByOthers: String {
-        L("The Mac is being kept awake by something other than Helm")
-    }
     /// One figure for «awake», whatever is holding it, and the reason on the
     /// line below — which is what the countdown state already does.
     ///

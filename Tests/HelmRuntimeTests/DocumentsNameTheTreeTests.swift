@@ -47,6 +47,7 @@ final class DocumentsNameTheTreeTests: XCTestCase {
         "HelmSurface.floatingEdge": "a token the documents claimed existed; grep found it only in the prose, and that paragraph is the correction",
         "SidebarComposerTable": "the composer while it was an NSTableView; the passage is about what that cost and why it went back to a List",
         "SidebarComposerRedraw": "the value that told that table what to do, and the paragraph naming it is its obituary",
+        "SleepHoldersPort": "the port behind «something other than Helm is keeping this Mac awake»; the section naming it is about why a correctly-filtered signal was still not one",
     ]
 
     // MARK: - The tree

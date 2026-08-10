@@ -36,7 +36,6 @@ final class HeroTickCostBenchmark: XCTestCase {
         var body: some View {
             KeepAwakeHero(state: box.state, now: box.tick, anyRuleOn: true,
                           defaultDurationMinutes: 60, suppressed: box.suppressed,
-                          heldByOthers: false,
                           ruleHolds: true,
                           timedNote: { end in
                               // What the real page does on every `.timed` tick:

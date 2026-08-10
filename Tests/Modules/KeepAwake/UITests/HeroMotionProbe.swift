@@ -57,7 +57,7 @@ final class HeroMotionProbe: XCTestCase {
                               now: box.tick,
                               anyRuleOn: true,
                               defaultDurationMinutes: 60,
-                              suppressed: box.suppressed, heldByOthers: false,
+                              suppressed: box.suppressed,
                               ruleHolds: true,
                               timedNote: { _ in "until 15:42" },
                               start: { _ in }, stop: {}, resume: {})
