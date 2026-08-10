@@ -53,7 +53,6 @@
 "Application Scripts" = "Скрипты приложения";
 "Application Support" = "Данные приложения";
 "Apps" = "Приложения";
-"Apps that keep the Mac awake" = "Приложения, не дающие спать";
 "Archive" = "Архив";
 "Audio" = "Аудио";
 "Auto" = "Авто";
@@ -303,7 +302,6 @@
 "No VPNs set up yet. Add one in System Settings, under Network › VPN." = "VPN пока не настроен. Добавьте его в Системных настройках, раздел «Сеть» › VPN.";
 "No abbreviations yet" = "Сокращений пока нет";
 "No access" = "Нет доступа";
-"No apps yet." = "Приложений пока нет.";
 "No duplicates here. Every large file under this folder is one of a kind." = "Дубликатов нет. Каждый крупный файл в этой папке существует в единственном экземпляре.";
 "No extra files found." = "Дополнительных файлов не найдено.";
 "No leftovers found." = "Остатков не найдено.";
@@ -715,3 +713,8 @@
 "Stop will silence the rule until it fires again" = "«Стоп» приглушит правило до следующего срабатывания";
 "Applies right now" = "Выполняется сейчас";
 "Switched on, not applying right now" = "Включено, сейчас не выполняется";
+"So apps do not decide nobody is at the Mac" = "Чтобы приложения не считали, что за маком никого нет";
+"How long the menu-bar switch and the panel keep it awake" = "Столько держит переключатель в меню-баре и в панели";
+"Until you pick one, the same as the active colour" = "Пока свой не выбран — тот же, что и активный";
+"No apps chosen" = "Ни одного приложения";
+"Add an app and the Mac stays awake while it is running. A rule can be narrower: only on power, only with an external display, or both." = "Добавьте приложение — и мак не будет засыпать, пока оно запущено. Правило можно сузить: только от сети, только с внешним дисплеем или и то и другое.";

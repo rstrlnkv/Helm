@@ -53,7 +53,6 @@
 "Application Scripts" = "应用脚本";
 "Application Support" = "应用数据";
 "Apps" = "应用";
-"Apps that keep the Mac awake" = "保持 Mac 唤醒的应用";
 "Archive" = "压缩包";
 "Audio" = "音频";
 "Auto" = "自动";
@@ -303,7 +302,6 @@
 "No VPNs set up yet. Add one in System Settings, under Network › VPN." = "尚未设置 VPN。请在“系统设置”的“网络 › VPN”中添加。";
 "No abbreviations yet" = "还没有缩写";
 "No access" = "无访问权限";
-"No apps yet." = "还没有应用。";
 "No duplicates here. Every large file under this folder is one of a kind." = "没有重复文件。此文件夹下的每个大文件都只有一份。";
 "No extra files found." = "未找到附加文件。";
 "No leftovers found." = "未找到残留项。";
@@ -715,3 +713,8 @@
 "Stop will silence the rule until it fires again" = "“停止”会让规则静音，直到它再次满足";
 "Applies right now" = "当前已满足";
 "Switched on, not applying right now" = "已开启，当前未满足";
+"So apps do not decide nobody is at the Mac" = "以免 App 认为 Mac 前面没有人";
+"How long the menu-bar switch and the panel keep it awake" = "菜单栏开关和面板保持唤醒的时长";
+"Until you pick one, the same as the active colour" = "未选择前，与激活时的颜色相同";
+"No apps chosen" = "未选择任何 App";
+"Add an app and the Mac stays awake while it is running. A rule can be narrower: only on power, only with an external display, or both." = "添加一个 App，它运行时 Mac 就不会睡眠。规则可以更窄：仅接电源时、仅接外接显示器时，或两者兼有。";

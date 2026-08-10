@@ -53,7 +53,6 @@
 "Application Scripts" = "Application Scripts";
 "Application Support" = "Application Support";
 "Apps" = "Apps";
-"Apps that keep the Mac awake" = "Apps that keep the Mac awake";
 "Archive" = "Archive";
 "Audio" = "Audio";
 "Auto" = "Auto";
@@ -303,7 +302,6 @@
 "No VPNs set up yet. Add one in System Settings, under Network › VPN." = "No VPNs set up yet. Add one in System Settings, under Network › VPN.";
 "No abbreviations yet" = "No abbreviations yet";
 "No access" = "No access";
-"No apps yet." = "No apps yet.";
 "No duplicates here. Every large file under this folder is one of a kind." = "No duplicates here. Every large file under this folder is one of a kind.";
 "No extra files found." = "No extra files found.";
 "No leftovers found." = "No leftovers found.";
@@ -715,3 +713,8 @@
 "Stop will silence the rule until it fires again" = "Stop will silence the rule until it fires again";
 "Applies right now" = "Applies right now";
 "Switched on, not applying right now" = "Switched on, not applying right now";
+"So apps do not decide nobody is at the Mac" = "So apps do not decide nobody is at the Mac";
+"How long the menu-bar switch and the panel keep it awake" = "How long the menu-bar switch and the panel keep it awake";
+"Until you pick one, the same as the active colour" = "Until you pick one, the same as the active colour";
+"No apps chosen" = "No apps chosen";
+"Add an app and the Mac stays awake while it is running. A rule can be narrower: only on power, only with an external display, or both." = "Add an app and the Mac stays awake while it is running. A rule can be narrower: only on power, only with an external display, or both.";

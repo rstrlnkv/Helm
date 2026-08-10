@@ -53,7 +53,6 @@
 "Application Scripts" = "Scripts de l’app";
 "Application Support" = "Données de l’app";
 "Apps" = "Apps";
-"Apps that keep the Mac awake" = "Apps qui gardent le Mac éveillé";
 "Archive" = "Archive";
 "Audio" = "Audio";
 "Auto" = "Auto";
@@ -303,7 +302,6 @@
 "No VPNs set up yet. Add one in System Settings, under Network › VPN." = "Aucun VPN configuré. Ajoutez-en un dans Réglages Système, sous Réseau › VPN.";
 "No abbreviations yet" = "Pas encore d’abréviations";
 "No access" = "Pas d’accès";
-"No apps yet." = "Aucune app pour l’instant.";
 "No duplicates here. Every large file under this folder is one of a kind." = "Aucun doublon. Chaque gros fichier de ce dossier est unique.";
 "No extra files found." = "Aucun fichier supplémentaire trouvé.";
 "No leftovers found." = "Aucun reste trouvé.";
@@ -715,3 +713,8 @@
 "Stop will silence the rule until it fires again" = "« Stop » met la règle en sourdine jusqu’au prochain déclenchement";
 "Applies right now" = "Remplie en ce moment";
 "Switched on, not applying right now" = "Activée, pas remplie pour l’instant";
+"So apps do not decide nobody is at the Mac" = "Pour que les apps ne concluent pas que personne n’est devant le Mac";
+"How long the menu-bar switch and the panel keep it awake" = "C’est la durée que tiennent l’interrupteur de la barre des menus et le panneau";
+"Until you pick one, the same as the active colour" = "Tant que vous n’en choisissez pas, la même que l’active";
+"No apps chosen" = "Aucune app choisie";
+"Add an app and the Mac stays awake while it is running. A rule can be narrower: only on power, only with an external display, or both." = "Ajoutez une app et le Mac reste éveillé tant qu’elle tourne. La règle peut être plus étroite : seulement sur secteur, seulement avec un écran externe, ou les deux.";

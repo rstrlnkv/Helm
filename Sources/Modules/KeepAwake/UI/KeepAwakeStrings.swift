@@ -113,7 +113,7 @@ enum KAStr {
     static var ruleWaiting: String { L("Switched on, not applying right now") }
     static var withExternalDisplay: String { L("Keep awake with external display") }
     static var whileOnPower: String { L("Keep awake while on power") }
-    static var appsSection: String { L("Apps that keep the Mac awake") }
+    static var appsSection: String { L("Apps") }
     static func triggerCondition(_ condition: AppTrigger.Condition) -> String {
         switch condition {
         case .always: return L("Always")
@@ -122,7 +122,14 @@ enum KAStr {
         case .displayAndPower: return L("Display and power")
         }
     }
-    static var noAppsYet: String { L("No apps yet.") }
+    static var noAppsYet: String { L("No apps chosen") }
+    /// What an app rule *is*, said where somebody would otherwise find out by
+    /// trying. The section heading used to carry this job in its own tail —
+    /// «Apps that keep the Mac awake» — which explained it again on every visit
+    /// for ever, including to the people who already had a list.
+    static var noAppsYetNote: String {
+        L("Add an app and the Mac stays awake while it is running. A rule can be narrower: only on power, only with an external display, or both.")
+    }
     static var behavior: String { L("Behavior") }
     static var keepDisplayOn: String { L("Keep display on") }
     static var movePointer: String { L("Move pointer periodically") }
@@ -277,6 +284,11 @@ enum KAStr {
     static var ringTimerNote: String { L("While a timer runs, the ring empties clockwise.") }
     static var showTimerText: String { L("Show remaining time in the menu bar") }
     static var timerColor: String { L("Timer color") }
+    static var timerColorNote: String { L("Until you pick one, the same as the active colour") }
+    static var movePointerNote: String { L("So apps do not decide nobody is at the Mac") }
+    static var defaultDurationNote: String {
+        L("How long the menu-bar switch and the panel keep it awake")
+    }
     static var menuBarIcon: String { L("Menu-bar icon") }
     static var customActiveIcon: String { L("Custom icon when active") }
     static var metricState: String { L("STATE") }

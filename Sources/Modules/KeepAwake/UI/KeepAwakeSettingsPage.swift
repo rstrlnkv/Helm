@@ -108,7 +108,6 @@ public struct KeepAwakeSettingsPage: View {
             behaviourSection
 
             menuBarIconSection
-            timerSection
             shortcutSection
         }
         .formStyle(.grouped)
@@ -363,71 +362,107 @@ public struct KeepAwakeSettingsPage: View {
 
     @ViewBuilder private var behaviourSection: some View {
         Section(header: HelmSectionTitle(KAStr.behavior)) {
-            Toggle(KAStr.keepDisplayOn, isOn: $keepDisplayOn)
-                .onChange(of: keepDisplayOn) { _, v in vm.save(in: store) { $0.setKeepDisplayOn(v) } }
-            // One row: the interval only means anything with the switch on,
-            // so it sits beside it instead of on a line of its own.
-            LabeledContent(KAStr.movePointer) {
-                HStack(spacing: 10) {
-                    Stepper(KAStr.everyMinutes(jiggleIntervalMinutes),
-                            value: $jiggleIntervalMinutes, in: 1...60)
-                        .disabled(!jiggleEnabled)
-                        .onChange(of: jiggleIntervalMinutes) { _, v in
-                            vm.save(in: store) { $0.setJiggleIntervalMinutes(v) }
-                        }
-                        .fixedSize()
-                    Toggle(KAStr.movePointer, isOn: $jiggleEnabled)
-                        .labelsHidden()
-                        .onChange(of: jiggleEnabled) { _, v in
-                            vm.save(in: store) { $0.setJiggleEnabled(v) }
-                        }
+            HelmSettingRow(KAStr.keepDisplayOn) {
+                Toggle(KAStr.keepDisplayOn, isOn: $keepDisplayOn)
+                    .labelsHidden()
+                    .onChange(of: keepDisplayOn) { _, v in
+                        vm.save(in: store) { $0.setKeepDisplayOn(v) }
+                    }
+            }
+            // The interval means nothing with the switch off, so it shares the
+            // row rather than floating below it — and it is a pop-up, because
+            // the stepper offered every minute from 1 to 60 for a question with
+            // about seven answers.
+            HelmSettingRow(KAStr.movePointer, note: KAStr.movePointerNote) {
+                Picker(KAStr.movePointer, selection: $jiggleIntervalMinutes) {
+                    ForEach(HelmChoices.including(jiggleIntervalMinutes, in: Self.jiggleMinutes),
+                            id: \.self) { minutes in
+                        Text(KAStr.everyMinutes(minutes)).tag(minutes)
+                    }
                 }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .fixedSize()
+                .disabled(!jiggleEnabled)
+                .onChange(of: jiggleIntervalMinutes) { _, v in
+                    vm.save(in: store) { $0.setJiggleIntervalMinutes(v) }
+                }
+                Toggle(KAStr.movePointer, isOn: $jiggleEnabled)
+                    .labelsHidden()
+                    .onChange(of: jiggleEnabled) { _, v in
+                        vm.save(in: store) { $0.setJiggleEnabled(v) }
+                    }
             }
             // macOS drops synthetic mouse events from an untrusted app, so
             // without this grant the switch above is on and nothing moves.
-            // Say so where the switch is, not only in the app's settings.
+            // Said where the switch is, not only in the app's settings.
             if jiggleEnabled, accessibility == .denied {
                 HelmPermissionNote(need: .accessibility,
                                    text: KAStr.pointerNeedsAccessibility)
             }
-            // The minutes entry is the tile's own label; the two hour entries are
-            // not, on purpose — `KAStr.duration` spells them "1 h" / "2 h", which
-            // is what a preset pill needs and not what this row wants.
-            Picker(KAStr.defaultDuration, selection: $defaultDurationMinutes) {
-                Text(KAStr.duration(15)).tag(15)
-                Text(KAStr.oneHour).tag(60)
-                Text(KAStr.twoHours).tag(120)
-                Text(KAStr.indefinite).tag(0)
-            }
-            .onChange(of: defaultDurationMinutes) { _, v in
-                vm.save(in: store) { $0.setDefaultDurationMinutes(v) }
+            HelmSettingRow(KAStr.defaultDuration, note: KAStr.defaultDurationNote) {
+                Picker(KAStr.defaultDuration, selection: $defaultDurationMinutes) {
+                    Text(KAStr.duration(15)).tag(15)
+                    Text(KAStr.oneHour).tag(60)
+                    Text(KAStr.twoHours).tag(120)
+                    Text(KAStr.indefinite).tag(0)
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .fixedSize()
+                .onChange(of: defaultDurationMinutes) { _, v in
+                    vm.save(in: store) { $0.setDefaultDurationMinutes(v) }
+                }
             }
         }
     }
 
+    /// The intervals a pointer nudge is worth asking for; a stored value
+    /// outside this list is kept by `HelmChoices`.
+    private static let jiggleMinutes = [1, 2, 5, 10, 15, 30, 60]
+
+    /// One section, where there were two.
+    ///
+    /// «Menu-bar icon» and «Timer» were two headings about one subject — what
+    /// the icon looks like — and being two is how the app came to ship two
+    /// palettes that disagreed with each other: the active colour ringed on
+    /// orange under one heading, the countdown ringed on red under the other,
+    /// and no way to see that it was one question asked twice.
     @ViewBuilder private var menuBarIconSection: some View {
         Section(header: HelmSectionTitle(KAStr.menuBarIcon)) {
-            LabeledContent(KAStr.activeIconColor) { colorSwatches }
-            Toggle(KAStr.customActiveIcon, isOn: $customActiveIcon)
-                .onChange(of: customActiveIcon) { _, v in writeLook(v, MenuBarLook.Key.customIcon) }
-            if customActiveIcon {
-                IconShapePicker(selection: $activeIconShape, tintToken: activeTintColor)
-                    .onChange(of: activeIconShape) { _, v in writeLook(v, MenuBarLook.Key.iconShape) }
+            HelmSettingRow(KAStr.activeIconColor, note: KAStr.ringColorNote) {
+                colorSwatches
             }
-            Text(KAStr.ringColorNote)
-                .font(.caption).foregroundStyle(HelmText.quiet)
-        }
-    }
-
-    @ViewBuilder private var timerSection: some View {
-        Section(header: HelmSectionTitle(KAStr.timer)) {
-            Toggle(KAStr.ringTimer, isOn: $ringTimer)
-                .onChange(of: ringTimer) { _, v in writeLook(v, MenuBarLook.Key.ringTimer) }
-            Text(KAStr.ringTimerNote)
-                .font(.caption).foregroundStyle(HelmText.quiet)
-            Toggle(KAStr.showTimerText, isOn: $showTimerText)
-                .onChange(of: showTimerText) { _, v in writeLook(v, MenuBarLook.Key.showTimerText) }
-            LabeledContent(KAStr.timerColor) { timerColorSwatches }
+            HelmSettingRow(KAStr.customActiveIcon) {
+                if customActiveIcon {
+                    IconShapePicker(selection: $activeIconShape, tintToken: activeTintColor)
+                        .labelsHidden()
+                        .fixedSize()
+                        .onChange(of: activeIconShape) { _, v in
+                            writeLook(v, MenuBarLook.Key.iconShape)
+                        }
+                }
+                Toggle(KAStr.customActiveIcon, isOn: $customActiveIcon)
+                    .labelsHidden()
+                    .onChange(of: customActiveIcon) { _, v in
+                        writeLook(v, MenuBarLook.Key.customIcon)
+                    }
+            }
+            HelmSettingRow(KAStr.ringTimer, note: KAStr.ringTimerNote) {
+                Toggle(KAStr.ringTimer, isOn: $ringTimer)
+                    .labelsHidden()
+                    .onChange(of: ringTimer) { _, v in writeLook(v, MenuBarLook.Key.ringTimer) }
+            }
+            HelmSettingRow(KAStr.showTimerText) {
+                Toggle(KAStr.showTimerText, isOn: $showTimerText)
+                    .labelsHidden()
+                    .onChange(of: showTimerText) { _, v in
+                        writeLook(v, MenuBarLook.Key.showTimerText)
+                    }
+            }
+            HelmSettingRow(KAStr.timerColor, note: KAStr.timerColorNote) {
+                timerColorSwatches
+            }
         }
     }
 
@@ -459,8 +494,20 @@ public struct KeepAwakeSettingsPage: View {
     @ViewBuilder
     private var appTriggersEditor: some View {
         if appTriggers.isEmpty {
-            Text(KAStr.noAppsYet)
-                .font(.callout).foregroundStyle(HelmText.quiet)
+            // A sentence, not a shrug. «No apps yet.» said nothing about what
+            // an app rule is or why anybody would want one, and the section
+            // heading used to carry that job in its tail — re-explaining it on
+            // every visit for ever, including to people who already had a list.
+            // The explanation belongs where there is nothing to look at, and
+            // goes away as soon as there is.
+            HelmEmptyState(symbol: "plus.app",
+                           tint: KeepAwakeDescriptor.tint.colour,
+                           title: KAStr.noAppsYet,
+                           message: KAStr.noAppsYetNote) {
+                Button(KAStr.addApp) { pickApp() }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+            }
         }
             // One row per app: icon, name, when it applies, and the remove
             // button. The condition is a single menu because the two flags are
@@ -480,10 +527,15 @@ public struct KeepAwakeSettingsPage: View {
                     saveTriggers()
                 }
         }
-        Button {
-            pickApp()
-        } label: {
-            Label(KAStr.addApp, systemImage: "plus")
+        // Under a list, never under the empty state: there the one prominent
+        // button already carries this action, and two «Add app…» in one card is
+        // the app asking the same question twice.
+        if !appTriggers.isEmpty {
+            Button {
+                pickApp()
+            } label: {
+                Label(KAStr.addApp, systemImage: "plus")
+            }
         }
     }
 

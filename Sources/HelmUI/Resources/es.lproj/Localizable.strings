@@ -53,7 +53,6 @@
 "Application Scripts" = "Scripts de la app";
 "Application Support" = "Datos de la app";
 "Apps" = "Apps";
-"Apps that keep the Mac awake" = "Apps que mantienen activo el Mac";
 "Archive" = "Archivo comprimido";
 "Audio" = "Audio";
 "Auto" = "Automático";
@@ -303,7 +302,6 @@
 "No VPNs set up yet. Add one in System Settings, under Network › VPN." = "Aún no hay ninguna VPN. Añade una en Ajustes del Sistema, en Red › VPN.";
 "No abbreviations yet" = "Aún sin abreviaturas";
 "No access" = "Sin acceso";
-"No apps yet." = "Aún no hay apps.";
 "No duplicates here. Every large file under this folder is one of a kind." = "No hay duplicados. Cada archivo grande de esta carpeta es único.";
 "No extra files found." = "No se encontraron archivos adicionales.";
 "No leftovers found." = "No se encontraron restos.";
@@ -715,3 +713,8 @@
 "Stop will silence the rule until it fires again" = "“Detener” silenciará la regla hasta que vuelva a cumplirse";
 "Applies right now" = "Se cumple ahora";
 "Switched on, not applying right now" = "Activada, ahora no se cumple";
+"So apps do not decide nobody is at the Mac" = "Para que las apps no den por hecho que no hay nadie ante el Mac";
+"How long the menu-bar switch and the panel keep it awake" = "Es lo que mantiene despierto el interruptor de la barra de menús y el panel";
+"Until you pick one, the same as the active colour" = "Mientras no elijas uno, el mismo que el activo";
+"No apps chosen" = "Ninguna app elegida";
+"Add an app and the Mac stays awake while it is running. A rule can be narrower: only on power, only with an external display, or both." = "Añade una app y el Mac seguirá despierto mientras se ejecute. La regla puede ser más estrecha: solo con corriente, solo con pantalla externa o ambas.";
