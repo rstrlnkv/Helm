@@ -42,11 +42,35 @@ final class MarkColumnHasOneClockTests: XCTestCase {
     /// not satisfied by nobody animating anything.
     func testTheLiveValueStillFeedsTheDrawnOne() throws {
         let source = try page()
-        XCTAssertTrue(source.contains("onChange(of: marksArePossible)"),
+        XCTAssertTrue(source.contains("onChange(of: enabledRules)"),
                       "nothing watches the live value, so the column never moves at all")
-        XCTAssertTrue(source.contains("withAnimation(HelmMotion.disclosure) { shownMarksPossible"),
+        XCTAssertTrue(source.contains("withAnimation(HelmMotion.disclosure) { shownEnabled"),
                       "the drawn value is written outside a transaction, which is the same "
                       + "one frame by another route")
+    }
+
+    /// **The pressed row's own mark, which was the last thing still jumping.**
+    ///
+    /// `HelmRowMark.of(enabled:…)` decides whether a tick is drawn at all, and
+    /// it was handed `binding.wrappedValue` — what the switch says this
+    /// instant. So on the row somebody had just pressed, and only on that row,
+    /// the mark appeared in one frame while the column it sits in slid.
+    func testTheMarkIsDecidedByTheDrawnSwitchAndNotTheLiveOne() throws {
+        let source = try page()
+        XCTAssertFalse(source.contains("let enabled = binding.wrappedValue"),
+                       "the mark and the note are decided by the live switch, so the row "
+                       + "being pressed is the one row that does not animate")
+        XCTAssertTrue(source.contains("let enabled = shownEnabled.contains(condition)"),
+                      "the drawn set is not what decides the mark")
+    }
+
+    /// …and the switch itself is still live, because a control that lags the
+    /// finger is a worse fault than the one above.
+    func testTheSwitchItselfStillFollowsTheFinger() throws {
+        let source = try page()
+        XCTAssertTrue(source.contains("Toggle(title, isOn: binding)"),
+                      "the switch was moved onto the drawn value too, so it now waits for "
+                      + "a curve before showing what it was just told")
     }
 
     /// …and every row that draws the column reads the drawn value, so the count

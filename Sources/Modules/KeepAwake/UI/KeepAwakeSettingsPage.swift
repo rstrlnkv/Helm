@@ -44,12 +44,19 @@ public struct KeepAwakeSettingsPage: View {
     @State private var shownConditions: Set<ActiveCondition>
     @State private var shownTriggered: Set<ActiveCondition>
     @State private var shownSuppressed: Bool
-    /// The same for the mark *column*, which is a layout change — every label
-    /// in the card steps 26 pt sideways when the first rule is switched on.
-    /// This one is press-driven rather than engine-driven, but the write still
-    /// has to be inside the transaction: a `Toggle`'s binding sets its value
-    /// outside any animation, and `.onChange` is where it can be given one.
-    @State private var shownMarksPossible: Bool
+    /// Which rules are **drawn** as switched on.
+    ///
+    /// Press-driven rather than engine-driven, and it needs the same treatment
+    /// for the same reason: a `Toggle` writes its binding outside any
+    /// animation, so a mark decided by `binding.wrappedValue` flips in one
+    /// frame. That was the last thing on this card still jumping — and it was
+    /// the *pressed* row, the one being looked at, whose own tick appeared
+    /// instantly while its column slid under it.
+    ///
+    /// The switch itself keeps the live binding. A switch that lagged behind
+    /// the finger would be a worse fault than the one being fixed; what waits
+    /// for the curve is what the row *says*, not what it does.
+    @State private var shownEnabled: Set<ActiveCondition>
 
     @State private var activeTintColor: String
     @State private var ringTimer: Bool
@@ -83,8 +90,10 @@ public struct KeepAwakeSettingsPage: View {
         _shownConditions = State(initialValue: live.activeConditions)
         _shownTriggered = State(initialValue: live.triggeredConditions)
         _shownSuppressed = State(initialValue: live.suppressed)
-        _shownMarksPossible = State(initialValue: settings.autoExternalDisplay
-                                                  || settings.autoPower)
+        var enabled = Set<ActiveCondition>()
+        if settings.autoExternalDisplay { enabled.insert(.externalDisplay) }
+        if settings.autoPower { enabled.insert(.power) }
+        _shownEnabled = State(initialValue: enabled)
         _activeTintColor = State(initialValue: MenuBarLook.activeTint(store))
         _ringTimer = State(initialValue: MenuBarLook.ringTimer(store))
         _showTimerText = State(initialValue: MenuBarLook.showTimerText(store))
@@ -130,10 +139,10 @@ public struct KeepAwakeSettingsPage: View {
         .onChange(of: vm.suppressed) { _, silenced in
             withAnimation(HelmMotion.disclosure) { shownSuppressed = silenced }
         }
-        // …and where the press does. Both switches feed one column, so the
-        // derived value is watched rather than each of them.
-        .onChange(of: marksArePossible) { _, possible in
-            withAnimation(HelmMotion.disclosure) { shownMarksPossible = possible }
+        // …and where the press does. One set for both switches, so the two
+        // rules and the column they share cannot be given three clocks.
+        .onChange(of: enabledRules) { _, enabled in
+            withAnimation(HelmMotion.disclosure) { shownEnabled = enabled }
         }
         // The panel's ⋯ block writes the same keys; without this the page shows
         // stale values when both are open (the reverse direction already works).
@@ -312,16 +321,26 @@ public struct KeepAwakeSettingsPage: View {
     /// 14 pt of empty mark column against nobody — every label stepped right,
     /// and the gap read as icons that had failed to load. It is the state a
     /// fresh install opens in, so it was the first thing anybody saw.
-    /// Whether a mark **can** appear in this card — the live answer, read in
-    /// exactly one place.
+    /// Which rules are switched on — the live answer, read in exactly one
+    /// place: the `onChange` that gives it a transaction.
     ///
     /// Every row in the card is indented by the mark column, marked or not, so
-    /// every row has to move on the same clock. Three of them went on reading
-    /// this directly after the marked ones moved to the drawn value, and the
-    /// result was worse than no animation: the row that gains a tick ramped
-    /// while the three beside it jumped, so the card came apart down the middle
-    /// on every press. `MarkColumnHasOneClockTests` fails on a second reader.
-    private var marksArePossible: Bool { autoExternalDisplay || autoPower }
+    /// every row has to move on one clock. Three of them went on reading the
+    /// live value after the marked ones moved to the drawn one, and the result
+    /// was worse than no animation: the row that gains a tick ramped while the
+    /// three beside it jumped, so the card came apart down the middle on every
+    /// press. `MarkColumnHasOneClockTests` fails on a second reader.
+    private var enabledRules: Set<ActiveCondition> {
+        var enabled = Set<ActiveCondition>()
+        if autoExternalDisplay { enabled.insert(.externalDisplay) }
+        if autoPower { enabled.insert(.power) }
+        return enabled
+    }
+
+    /// The column's own question, asked of the *drawn* set. One value behind
+    /// both — a second `@State` for the column could disagree with the marks
+    /// it makes room for, which is three clocks again by another route.
+    private var shownMarksPossible: Bool { !shownEnabled.isEmpty }
 
     /// A rule the engine can report on: the mark comes from `activeConditions`,
     /// the switch from the store, and the note from the two together.
@@ -329,7 +348,10 @@ public struct KeepAwakeSettingsPage: View {
     private func ruleRow(_ title: String, on binding: Binding<Bool>,
                          satisfiedBy condition: ActiveCondition,
                          save: @escaping (Bool) -> Void) -> some View {
-        let enabled = binding.wrappedValue
+        // Drawn, not live: `binding.wrappedValue` is what the switch says this
+        // instant, and a mark decided by it appears in one frame under a column
+        // that is still sliding.
+        let enabled = shownEnabled.contains(condition)
         let satisfied = shownConditions.contains(condition)
         // The four cases live in `RuleNote`, out in the engine's logic where a
         // test can reach them. Written here as nested ternaries there was no

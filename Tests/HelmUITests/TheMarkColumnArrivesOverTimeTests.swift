@@ -161,6 +161,26 @@ final class TheMarkColumnArrivesOverTimeTests: XCTestCase {
                                     + "\(steps(samples)) frame(s): \(samples)")
     }
 
+    /// **What the pressed row plays.** Its column already had the width — the
+    /// card was showing marks before, or the column arrived with it — and what
+    /// changes is that this row now has something to say: `.space` → `.waiting`,
+    /// an invisible glyph becoming a clock.
+    ///
+    /// One `Image` whose opacity changes, so it ramps. As four branches it was
+    /// `Color.clear` being removed and an `Image` inserted, which is a cut
+    /// however long the curve.
+    func testAMarkArrivingInAColumnThatAlreadyExistsFadesUp() throws {
+        let box = Box()
+        box.mark = .space
+        let samples = series(Harness(box: box), sample: { self.markInk($0) }) {
+            withAnimation(HelmMotion.disclosure) { box.mark = .waiting }
+        }
+        try XCTSkipIf(samples.allSatisfy { $0 <= 0 }, "nothing drew — no window server")
+        XCTAssertGreaterThanOrEqual(steps(samples), 3,
+                                    "the mark appeared in \(steps(samples)) frame(s) on the "
+                                    + "row somebody had just pressed: \(samples)")
+    }
+
     /// **The one the identity bug actually showed in.** Clock → tick changes no
     /// width at all, so nothing about the layout can carry it: either the two
     /// marks are one view whose symbol is replaced, or they are two views and
@@ -206,6 +226,40 @@ final class TheMarkColumnArrivesOverTimeTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(steps(samples), 3,
                                     "the note changed in \(steps(samples)) frame(s): "
                                     + "\(samples)")
+    }
+
+    /// A spacer draws nothing.
+    ///
+    /// `.space` holds the column's width so a card of mixed rows keeps one left
+    /// edge, and it must hold it *empty* — the mark reports the world, and a
+    /// tick on a row that can never carry one is the row saying something that
+    /// is not true. Since all four marks are now one `Image`, the only thing
+    /// keeping it invisible is an opacity, which is one character from being
+    /// wrong: a mutation to `.opacity(1)` broke nothing else in this file.
+    func testASpacerHoldsTheWidthAndDrawsNothing() throws {
+        let empty = Box(); empty.mark = .space
+        let marked = Box(); marked.mark = .holding
+        let blank = still(Harness(box: empty))
+        let tick = still(Harness(box: marked))
+        try XCTSkipIf(blank < 0 || tick < 0, "nothing drew — no window server")
+
+        XCTAssertEqual(blank, 0, "a row that can never carry a mark drew one: \(blank)")
+        XCTAssertGreaterThan(tick, 0, "…and a row that can drew nothing, so the check "
+                             + "above is measuring an empty window")
+    }
+
+    /// One settled frame's worth of ink in the mark column.
+    private func still<V: View>(_ view: V) -> Int {
+        let host = NSHostingView(rootView: view)
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 460, height: 200),
+                              styleMask: [.titled], backing: .buffered, defer: false)
+        window.contentView = host
+        host.frame = NSRect(x: 0, y: 0, width: 460, height: 200)
+        window.layoutIfNeeded()
+        for _ in 0..<20 { RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01)) }
+        let mass = markInk(host)
+        window.contentView = nil
+        return mass
     }
 
     /// And the mark itself is one view across the change, so the tick can
