@@ -5,6 +5,59 @@ All notable changes to Helm are documented here. The format is loosely based on
 global changes, MINOR = new/polished features, PATCH = fixes. Every release
 bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 
+## [0.10.0-dev.4] — 2026-08-11
+
+> What the screens were not saying, and four controls that were shouting.
+
+### Added
+- **The battery guard says so on screen.** It ended sessions in silence — the
+  code's own comment admitted «the log is the only place that can say who ended
+  it and why», on a state nobody would guess at: you press “15 min” at 5 % and
+  nothing happens. Both the panel and the settings page say it now, in the slot
+  the paused-rule notice already uses. The guard wins over a paused rule,
+  because both can be true and only one explains why nothing at all is running,
+  and it carries no button — “Resume” while it is in force is a control that
+  cannot do what it says.
+- **A colour of your own.** The colour menu ends with “Other…”, which opens the
+  system colour panel — the way Calendar offers one.
+
+### Changed
+- **The palette is Calendar's**, which is the system's: red, orange, yellow,
+  green, blue, purple, brown. They follow the appearance, which the
+  hand-picked hexes could not, and the icon they tint sits in the menu bar —
+  the one surface that follows the desktop rather than the app. The names are
+  Apple's own too, read out of its bundles: “Лиловый”, not “Фиолетовый”. Mint,
+  cyan and pink are retired rather than removed, so a Mac that already had one
+  of them keeps it.
+- **Two rainbows became two menus.** The colour rows were 270 pt of swatches
+  each; they are a dot and a name now.
+- **“Stop on low battery” is a slider with stops**, the way Battery's own
+  charge limit is set. The menu made a quantity into ten rows of words to
+  compare by reading.
+- **No preset is highlighted.** The fill was meant to say which length the
+  panel's switch starts; it landed on “Indefinite” on a fresh install, and on
+  “15 min” after that, where a filled button in a row of five reads as *the*
+  thing to press. That fact belongs on “Default duration”, which is on the same
+  page.
+- The panel's “paused” notice is one line rather than four.
+- The permissions notice at the top of the panel fits beside its button in
+  every language — it was three lines in Russian, French and Portuguese — and
+  says only how many grants are missing. The module count stays on the settings
+  page, which has the room. The button is “Show”.
+
+### Fixed
+- **The colour menu showed no colours.** A `Picker` with the menu style is
+  drawn by AppKit, and an `NSMenuItem` drops the tint asked of an SF Symbol
+  inside it. The swatches are drawn already coloured now.
+- **“Other…” opened a popover with a colour well in it**, which is a second
+  click and a floating swatch between the menu item and the thing it names.
+- The rule rows could go stale while the battery guard held everything down:
+  the hero offered to pause a rule that was not holding, a row read “Paused”
+  from a trigger that had dropped, and the figure named an app that had since
+  quit.
+- VoiceOver: the panel's “∞” reads “Indefinite” rather than the character, and
+  the decorative timer glyph beside the countdown is no longer announced.
+
 ## [0.10.0-dev.3] — 2026-08-10
 
 > The rest of Keep Awake's open list, and a refactor of the module behind it.

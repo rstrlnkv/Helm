@@ -736,3 +736,6 @@
 "Rule paused" = "Regel pausiert";
 "Brown" = "Braun";
 "Other colour…" = "Andere …";
+"The battery guard says so on screen. It used to end sessions in silence — you pressed “15 min” at 5 % and nothing happened, with the reason only in the log. The panel and the settings page both say it now." = "Der Akkuschutz sagt es auf dem Bildschirm. Er beendete Sitzungen bisher stumm: Du hast bei 5 % auf „15 Min.“ getippt, nichts geschah, und der Grund stand nur im Protokoll. Jetzt sagen es das Panel und die Einstellungsseite.";
+"A colour of your own: the colour menu ends with “Other…”, which opens the system colour panel — the way Calendar offers one. The palette itself is Calendar’s, and follows light and dark the way the system’s colours do." = "Eine eigene Farbe: Das Farbmenü endet mit „Andere …“, das die Systemfarbpalette öffnet — so wie es Kalender anbietet. Die Palette selbst ist die von Kalender und folgt Hell und Dunkel wie die Farben des Systems.";
+"“Stop on low battery” is a slider with stops, the way the charge limit is set in Battery. And the two colour rows are a dot and a name instead of two rows of ten swatches." = "„Bei wenig Akku stoppen“ ist ein Regler mit Rastungen, so wie das Ladelimit unter „Batterie“ gesetzt wird. Und die zwei Farbzeilen sind ein Punkt mit Namen statt zweier Reihen zu zehn Feldern.";
