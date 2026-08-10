@@ -353,6 +353,25 @@ enum KAStr {
     /// what lets the panel draw it beside a button in a 320 pt strip instead of
     /// hyphenating across three lines.
     static var automationPaused: String { L("Paused until the rule applies again") }
+    /// The same fact for the panel, which is 320 pt with a button beside it.
+    /// The long form wrapped to four lines there — a paragraph in a card that
+    /// is otherwise a row and a switch. «Until it applies again» is what the
+    /// settings page has room to add; here the word «paused» is the whole of
+    /// what has to arrive, and the button beside it says what to do about it.
+    static var automationPausedShort: String { L("Rule paused") }
+    /// The battery guard has everything stopped. Said on screen because the
+    /// session ends with nobody touching anything: a person who pressed «15
+    /// min» at 5 % saw nothing happen, and the only account of it was the log.
+    static func stoppedByBattery(_ percent: Int) -> String {
+        L("Stopped below \(percent) %",
+          [.ru: "Остановлено ниже \(percent) %",
+           .es: "Detenido por debajo del \(percent) %",
+           .fr: "Arrêté sous \(percent) %",
+           .de: "Unter \(percent) % gestoppt",
+           .ja: "\(percent) % 未満で停止",
+           .zh: "低于 \(percent) % 时停止",
+           .pt: "Parado abaixo de \(percent) %"])
+    }
     static var resume: String { L("Resume") }
     static var turnOffLowBattery: String { L("Stop on low battery") }
     /// `BatteryGuard.shouldDeactivate` is `percent <= threshold`: at exactly the

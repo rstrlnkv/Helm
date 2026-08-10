@@ -285,20 +285,28 @@ public struct KeepAwakeSettingsPage: View {
             // so the number you set is still the number you see.
             // A guard on a battery this Mac does not have.
             if MacHardware.hasBattery {
-                HelmSettingRow(KAStr.turnOffLowBattery, mark: .spacer(inCardWithMarks: shownMarksPossible)) {
-                    Picker(KAStr.turnOffLowBattery, selection: $batteryGuardPercent) {
-                        ForEach(HelmChoices.including(batteryGuardPercent, in: Self.batteryLevels),
-                                id: \.self) { level in
-                            Text(KAStr.belowPercent(level)).tag(level)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .labelsHidden()
-                    .fixedSize()
-                    .disabled(!batteryGuardEnabled)
-                    .onChange(of: batteryGuardPercent) { _, v in
-                        vm.save(in: store) { $0.setBatteryGuardPercent(v) }
-                    }
+                // A slider with stops, the way Battery's own charge limit is
+                // set. The menu it replaces made a *quantity* into a list of
+                // words — ten rows of «At 30 % or less» to compare by reading —
+                // where the thing being chosen is a point on a scale and reads
+                // as one. The floor's own row carries the figure, so the number
+                // is on screen without opening anything.
+                HelmSettingRow(KAStr.turnOffLowBattery,
+                               note: batteryGuardEnabled ? KAStr.belowPercent(batteryGuardPercent)
+                                                         : nil,
+                               mark: .spacer(inCardWithMarks: shownMarksPossible)) {
+                    Slider(value: batteryPercentBinding,
+                           in: Double(Self.batteryFloorRange.lowerBound)
+                               ... Double(Self.batteryFloorRange.upperBound),
+                           step: Double(Self.batteryFloorStep))
+                        // Wide enough for ten stops to be aimed at rather than
+                        // dragged past, and no wider: the row still has a
+                        // switch at its end.
+                        .frame(width: 160)
+                        .labelsHidden()
+                        .disabled(!batteryGuardEnabled)
+                        .accessibilityLabel(KAStr.turnOffLowBattery)
+                        .accessibilityValue(KAStr.belowPercent(batteryGuardPercent))
                     Toggle(KAStr.turnOffLowBattery, isOn: $batteryGuardEnabled)
                         .labelsHidden()
                         .onChange(of: batteryGuardEnabled) { _, v in
@@ -310,7 +318,28 @@ public struct KeepAwakeSettingsPage: View {
     }
 
     /// Five per cent to fifty, as the stepper this replaced stepped.
-    private static let batteryLevels = Array(stride(from: 5, through: 50, by: 5))
+    /// The floor, as a range with a step rather than a list of choices.
+    ///
+    /// Five to fifty in fives: below five the guard cannot act before the Mac
+    /// does, and above fifty it is not a low-battery guard any more. The step
+    /// is what makes the slider land on the numbers a person would have picked
+    /// from a menu.
+    private static let batteryFloorRange = 5...50
+    private static let batteryFloorStep = 5
+
+    /// `Slider` speaks `Double`; the setting is an `Int` and everything that
+    /// reads it — the engine's guard, the note beside the control — wants it
+    /// that way. Rounded rather than truncated, so a drag that lands a hair
+    /// under a stop does not step down one.
+    private var batteryPercentBinding: Binding<Double> {
+        Binding(get: { Double(batteryGuardPercent) },
+                set: { new in
+                    let rounded = Int(new.rounded())
+                    guard rounded != batteryGuardPercent else { return }
+                    batteryGuardPercent = rounded
+                    vm.save(in: store) { $0.setBatteryGuardPercent(rounded) }
+                })
+    }
 
     private var heroAndTitle: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -610,7 +639,7 @@ public struct KeepAwakeSettingsPage: View {
     // MARK: - Color swatches
 
     private var colorSwatches: some View {
-        HelmPaletteSwatches(selection: activeTintColor) { token in
+        HelmPaletteSwatches(KAStr.activeIconColor, selection: activeTintColor) { token in
             activeTintColor = token
             writeLook(token, MenuBarLook.Key.activeTint)
         }
@@ -624,7 +653,8 @@ public struct KeepAwakeSettingsPage: View {
     /// The `isEmpty` branch survives for a store that answers nothing at all;
     /// it is not a fallback the defaults can reach.
     private var timerColorSwatches: some View {
-        HelmPaletteSwatches(selection: timerTintColor.isEmpty ? activeTintColor : timerTintColor) { token in
+        HelmPaletteSwatches(KAStr.timerColor,
+                            selection: timerTintColor.isEmpty ? activeTintColor : timerTintColor) { token in
             timerTintColor = token
             writeLook(token, MenuBarLook.Key.timerTint)
         }

@@ -89,6 +89,12 @@ struct KeepAwakeHero: View {
     /// which Stop silences the rule as well as ending the session — see
     /// `KeepAwakeEngine.ruleHolds`.
     let ruleHolds: Bool
+    /// The battery guard is holding everything down. When it is, it is the
+    /// only thing worth saying: a paused rule is a detail beside «nothing this
+    /// module does will run until you plug in».
+    let batteryStopped: Bool
+    /// The floor it stopped at, for the sentence.
+    let batteryFloor: Int
     /// The names of the apps holding the Mac, already resolved. The hero is
     /// handed words rather than bundle ids: turning one into the other is a
     /// Launch Services lookup, and a view redrawn once a second is the wrong
@@ -143,6 +149,7 @@ struct KeepAwakeHero: View {
 
     init(state: SessionHero, now: Date, anyRuleOn: Bool, defaultDurationMinutes: Int,
          suppressed: Bool, ruleHolds: Bool, appNames: [String] = [],
+         batteryStopped: Bool = false, batteryFloor: Int = 0,
          timedNote: @escaping (Date) -> String,
          start: @escaping (Int) -> Void, stop: @escaping () -> Void,
          resume: @escaping () -> Void) {
@@ -153,12 +160,14 @@ struct KeepAwakeHero: View {
         self.suppressed = suppressed
         self.ruleHolds = ruleHolds
         self.appNames = appNames
+        self.batteryStopped = batteryStopped
+        self.batteryFloor = batteryFloor
         self.timedNote = timedNote
         self.start = start
         self.stop = stop
         self.resume = resume
         _shownState = State(initialValue: state)
-        _shownSuppressed = State(initialValue: suppressed)
+        _shownSuppressed = State(initialValue: suppressed || batteryStopped)
     }
 
     var body: some View {
@@ -220,8 +229,12 @@ struct KeepAwakeHero: View {
         .onChange(of: state) { _, arrived in
             withAnimation(HelmMotion.disclosure) { shownState = arrived }
         }
-        .onChange(of: suppressed) { _, silenced in
-            withAnimation(HelmMotion.disclosure) { shownSuppressed = silenced }
+        // Either notice fills the same slot, so the drawn flag is «there is
+        // something to say» rather than «a rule is paused» — the battery guard
+        // sets no `suppressed` of its own, and gating on that one left its
+        // banner permanently collapsed to nothing.
+        .onChange(of: hasNotice) { _, notice in
+            withAnimation(HelmMotion.disclosure) { shownSuppressed = notice }
         }
     }
 
@@ -379,15 +392,30 @@ struct KeepAwakeHero: View {
     /// height animates, `.clipped()` gives it a layer of its own, and a
     /// hierarchical style resolves again when that layer is dropped — which
     /// reads as a blink.
-    private var suppressionRow: some View {
-        HelmBanner(KAStr.automationPaused, symbol: "pause.circle.fill", fillsWidth: false) {
-            Button(KAStr.resume, action: resume)
+    @ViewBuilder private var suppressionRow: some View {
+        // The battery wins. Both can be true — a rule is paused *and* the
+        // charge is under the floor — and of the two only one explains why
+        // nothing at all is happening; «resume» would be a button that cannot
+        // do what it says while the guard is in force.
+        Group {
+            if batteryStopped {
+                HelmBanner(KAStr.stoppedByBattery(batteryFloor), symbol: "battery.25",
+                           fillsWidth: false)
+            } else {
+                HelmBanner(KAStr.automationPaused, symbol: "pause.circle.fill",
+                           fillsWidth: false) {
+                    Button(KAStr.resume, action: resume)
+                }
+            }
         }
         .frame(maxWidth: .infinity)
         // Inside the measured row, not between it and the block above: the gap
         // has to be part of what collapses to zero.
         .padding(.top, 12)
     }
+
+    /// Whether the slot under the buttons has anything in it at all.
+    private var hasNotice: Bool { suppressed || batteryStopped }
 
     /// Stop does not only end a session — while a rule's trigger is true it
     /// silences the rule as well, so the Mac does not simply take itself back.
@@ -454,24 +482,24 @@ struct KeepAwakeHero: View {
         .controlSize(.large)
     }
 
-    @ViewBuilder private func startButton(_ title: String, minutes: Int) -> some View {
-        // `.borderedProminent`, not `.tint` on a plain button: a tint colours a
-        // button's *label* and leaves the fill alone, so all four presets came
-        // out identical and the one the switch actually starts was a claim
-        // nothing on screen backed up.
-        // Zero is «Indefinite», and it is never the accented button however
-        // the default duration is set. The accent says «this is what the
-        // panel's switch starts», and on a fresh install that is zero — so the
-        // one choice on the row that never ends was the one the page drew the
-        // eye to. A default of «Indefinite» simply leaves the row unaccented.
-        if minutes > 0, minutes == defaultDurationMinutes {
-            Button(title) { start(minutes) }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-        } else {
-            Button(title) { start(minutes) }
-                .controlSize(.large)
-        }
+    /// **No accented preset.** Every button on this row is the same button.
+    ///
+    /// One of them used to be filled: the one matching «Default duration», on
+    /// the reasoning that the page ought to say which length the panel's switch
+    /// and the keyboard shortcut start. Twice that reasoning produced a screen
+    /// somebody objected to — first because the default is zero on a fresh
+    /// install, so the fill landed on «Indefinite», the one choice that never
+    /// ends; then, with zero excluded, on «15 min», where a filled button in a
+    /// row of five reads as *the* thing to press rather than as a note about a
+    /// setting.
+    ///
+    /// The fact it was carrying is worth keeping and belongs where the setting
+    /// is: «Default duration» on this same page, three cards down, names the
+    /// two controls that use it. A row of verbs is not the place to annotate a
+    /// preference.
+    private func startButton(_ title: String, minutes: Int) -> some View {
+        Button(title) { start(minutes) }
+            .controlSize(.large)
     }
 
     private var stopButton: some View {

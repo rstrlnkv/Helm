@@ -733,3 +733,4 @@
 "Keep Awake says which app is holding the Mac, not just “App”. It was the only rule type most people use and the only one that could not say what it was talking about." = "Keep Awake says which app is holding the Mac, not just “App”. It was the only rule type most people use and the only one that could not say what it was talking about.";
 "The countdown says what happens at zero when a timer is set to end automation as well — the one state where that setting decides anything was the one state nothing mentioned it." = "The countdown says what happens at zero when a timer is set to end automation as well — the one state where that setting decides anything was the one state nothing mentioned it.";
 "Filter" = "Filter";
+"Rule paused" = "Rule paused";

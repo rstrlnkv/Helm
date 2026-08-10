@@ -174,18 +174,23 @@ public struct KeepAwakePanelTile: View {
             presetPill(KAStr.duration(15, compact: true), 15)
             presetPill(KAStr.duration(60, compact: true), 60)
             presetPill(KAStr.duration(120, compact: true), 120)
-            presetPill("∞", 0)
+            // The glyph is the label a 320 pt row can take; the word is what
+            // it means, and what the settings page's own button says. Without
+            // this VoiceOver read the character.
+            presetPill("∞", 0, spoken: KAStr.indefinite)
             morePill
         }
     }
 
-    private func presetPill(_ label: String, _ minutes: Int) -> some View {
+    private func presetPill(_ label: String, _ minutes: Int,
+                            spoken: String? = nil) -> some View {
         Button {
             vm.start(minutes: minutes)
         } label: {
             pillLabel(Text(label))
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(spoken ?? label)
     }
 
     private var morePill: some View {
@@ -233,7 +238,9 @@ public struct KeepAwakePanelTile: View {
     /// literal colours it needed are both already in there, for the same two
     /// reasons they were written here.
     private var suppressedRow: some View {
-        HelmBanner(KAStr.automationPaused, symbol: "pause.circle.fill") {
+        // The short form. In a 320 pt card beside a button the long sentence
+        // wrapped to four lines — a paragraph where everything else is a row.
+        HelmBanner(KAStr.automationPausedShort, symbol: "pause.circle.fill") {
             Button(KAStr.resume) { vm.send(KeepAwakeCommand.resumeAutomation) }
                 .controlSize(.small)
                 .fixedSize()
@@ -419,6 +426,9 @@ public struct KeepAwakePanelTile: View {
             let remaining = max(0, end.timeIntervalSince(ctx.date))
             HStack(spacing: 8) {
                 Image(systemName: "timer").foregroundStyle(HelmText.quiet)
+                    // Decoration beside a figure that already says what it is;
+                    // read aloud it announced «timer» before the time.
+                    .accessibilityHidden(true)
                 Text(TimerProgress.label(remaining: remaining))
                     .font(.subheadline.weight(.semibold))
                     .monospacedDigit()

@@ -73,6 +73,16 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// screen can say *which* app, rather than «App». Ids rather than names:
     /// the lookup belongs to whoever draws, and names stay off the wire.
     public private(set) var holdingApps: [String] = []
+    /// The battery guard is holding everything down, and nothing this module
+    /// does will run until the charge comes back or the charger goes in.
+    ///
+    /// Published because the alternative is what shipped: the session ends
+    /// with nobody touching anything, and the code's own comment said «the log
+    /// is the only place that can say who ended it and why». That is the same
+    /// silence the paused-rule banner exists to break, on a state a person is
+    /// even less likely to guess at — they pressed «15 min» and nothing
+    /// happened.
+    public private(set) var batteryStopped = false
 
     private var expiryToken: AnyObject?
     private var jiggleToken: AnyObject?
@@ -282,23 +292,25 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         // stayed silenced after the Mac was plugged back in. Written as
         // `deactivate()` it did nothing at all, since the rule simply took the
         // Mac again on the next recompute.
+        // **The sets are refreshed before the veto returns, not after it.**
+        // They used to be computed further down, past this `return`, so while a
+        // veto was in force both kept whatever they held when it began: the
+        // hero went on offering to pause a rule that was not holding, a row
+        // read «Paused» from a trigger that had dropped, and the figure named
+        // an app that had since quit.
+        refreshTriggers()
         guard !batteryVetoes() else {
+            batteryStopped = true
             releaseForBattery()
             return
         }
-        let ext = externalDisplayCondition()
-        let pwr = powerCondition()
-        let appR = appCondition()
+        batteryStopped = false
 
-        // Same three the suppression test below uses, and the same three
-        // `stopSession` consults — built once here, so the caption on screen
-        // and the behaviour it describes cannot come apart.
-        holdingApps = holdingAppRules()
-        triggeredConditions = []
-        if ext { triggeredConditions.insert(.externalDisplay) }
-        if pwr { triggeredConditions.insert(.power) }
-        if appR { triggeredConditions.insert(.app) }
-
+        // Read from the set `refreshTriggers` just built, not asked of the
+        // ports a second time: three more reads of the display list, the power
+        // source and the running applications, on every event, for answers this
+        // recompute already has — and two of them could differ from the ones
+        // the screen is about to be told about.
         if suppressed && triggeredConditions.isEmpty {
             suppressed = false
         }
@@ -306,9 +318,9 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         var inputs = Conditions.Inputs()
         inputs.manual = manualOn
         inputs.timerRunning = (endDate != nil && endDate! > clock.now())
-        inputs.externalDisplay = ext
-        inputs.onPower = pwr
-        inputs.appRunning = appR
+        inputs.externalDisplay = triggeredConditions.contains(.externalDisplay)
+        inputs.onPower = triggeredConditions.contains(.power)
+        inputs.appRunning = triggeredConditions.contains(.app)
         inputs.suppressed = suppressed
 
         let r = Conditions.resolve(inputs)
@@ -523,6 +535,16 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     // MARK: - Battery guard
 
     /// True while the charge is under the floor the person set.
+    /// What the screens read about the rules, whatever else this recompute
+    /// decides. Same three expressions `stopSession` consults, built once.
+    private func refreshTriggers() {
+        holdingApps = holdingAppRules()
+        triggeredConditions = []
+        if externalDisplayCondition() { triggeredConditions.insert(.externalDisplay) }
+        if powerCondition() { triggeredConditions.insert(.power) }
+        if !holdingApps.isEmpty { triggeredConditions.insert(.app) }
+    }
+
     private func batteryVetoes() -> Bool {
         guard MacHardware.hasBattery else { return false }
         guard let snap = power.snapshot() else { return false }
@@ -643,6 +665,8 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         /// Defaulted for the same reason as the field above: it arrived after
         /// the wire did, and an older payload has to decode.
         public var holdingApps: [String] = []
+        /// Defaulted like the two above: it arrived after the wire did.
+        public var batteryStopped: Bool = false
     }
 
     private func wireTransport() {
@@ -688,7 +712,8 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                                     suppressed: suppressed,
                                     triggeredConditions: triggeredConditions
                                         .map(\.rawValue).sorted(),
-                                    holdingApps: holdingApps)
+                                    holdingApps: holdingApps,
+                                    batteryStopped: batteryStopped)
         localTransport.emit(KeepAwakeEvent.state, encoding: payload)
     }
 }

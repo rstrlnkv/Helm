@@ -40,6 +40,9 @@ import Module_KeepAwake_Engine
     /// Bundle ids of the app rules holding the Mac right now, so the hero can
     /// name them instead of saying «App».
     @Published public private(set) var holdingApps: [String] = []
+    /// The battery guard has everything stopped, and nothing will run until
+    /// the charge comes back or the charger goes in.
+    @Published public private(set) var batteryStopped = false
     /// Any rule at all — the condition under which Stop silences a rule as
     /// well as ending the session.
     public var ruleHolds: Bool { !triggeredConditions.isEmpty }
@@ -93,6 +96,7 @@ import Module_KeepAwake_Engine
         suppressed = p.suppressed
         triggeredConditions = Set(p.triggeredConditions.compactMap(ActiveCondition.init(rawValue:)))
         holdingApps = p.holdingApps
+        batteryStopped = p.batteryStopped
     }
 
     /// Named by the engine's own enum, and only that.

@@ -733,3 +733,4 @@
 "Keep Awake says which app is holding the Mac, not just “App”. It was the only rule type most people use and the only one that could not say what it was talking about." = "Keep Awake が“アプリ”ではなく、どのアプリが Mac を起こしているかを表示します。誰もが使うルールでありながら、何のことか言えない唯一のものでした。";
 "The countdown says what happens at zero when a timer is set to end automation as well — the one state where that setting decides anything was the one state nothing mentioned it." = "タイマーが自動処理も終える設定のとき、ゼロで何が起きるかを表示します。その設定が意味を持つ唯一の状態が、それについて何も言わない唯一の状態でした。";
 "Filter" = "フィルタ";
+"Rule paused" = "ルール一時停止";

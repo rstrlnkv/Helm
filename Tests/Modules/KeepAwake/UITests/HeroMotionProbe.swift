@@ -194,6 +194,23 @@ final class HeroMotionProbe: XCTestCase {
 
     private func steps(_ samples: [Int]) -> Int { Set(samples.filter { $0 > 0 }).count }
 
+    /// Samples that are neither where the value started nor where it ended.
+    ///
+    /// **Counting distinct values is not measuring travel**, and it is also not
+    /// stable: a ramp sampled every 20 ms lands in three or four buckets
+    /// depending on what else the machine is doing, so a `steps >= 4` fails one
+    /// full-suite run in several and passes on its own — which is a flake, and
+    /// a flake gets deleted rather than read. What tells a ramp from a cut is
+    /// whether anything was drawn *between* the two ends: a cut has none however
+    /// often it is sampled, and one intermediate value is already impossible to
+    /// produce without interpolation. The same distinction
+    /// `TheMarkColumnArrivesOverTimeTests` records at length.
+    private func intermediates(_ samples: [Int]) -> Int {
+        let good = samples.filter { $0 > 0 }
+        guard let first = good.first, let last = good.last else { return 0 }
+        return Set(good.filter { $0 != first && $0 != last }).count
+    }
+
     // MARK: - The controls
     //
     // Neither is optional. Without them every ramp below passes on a machine
@@ -231,9 +248,9 @@ final class HeroMotionProbe: XCTestCase {
             box.state = .timed(until: HeroMotionProbe.now.addingTimeInterval(3600))
         }
         try XCTSkipIf(samples.allSatisfy { $0 <= 0 }, "nothing drew — no window server")
-        XCTAssertGreaterThanOrEqual(steps(samples), 4,
-                                    "the figure was replaced in \(steps(samples)) step(s), "
-                                    + "which is a cut: \(samples)")
+        XCTAssertGreaterThanOrEqual(intermediates(samples), 1,
+                                    "the figure was drawn at \(intermediates(samples)) mass(es) "
+                                    + "between the two states, which is a cut: \(samples)")
     }
 
     /// The countdown's own digits. `.contentTransition(.numericText)` was

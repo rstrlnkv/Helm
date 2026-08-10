@@ -733,3 +733,4 @@
 "Keep Awake says which app is holding the Mac, not just “App”. It was the only rule type most people use and the only one that could not say what it was talking about." = "Keep Awake dice qué app mantiene despierto el Mac, no solo “App”. Es el tipo de regla que usa todo el mundo y el único que no podía decir de qué hablaba.";
 "The countdown says what happens at zero when a timer is set to end automation as well — the one state where that setting decides anything was the one state nothing mentioned it." = "La cuenta atrás dice qué pasa al llegar a cero cuando el temporizador también termina la automatización: el único estado en que ese ajuste decide algo era el único en que nada lo mencionaba.";
 "Filter" = "Filtro";
+"Rule paused" = "Regla en pausa";
