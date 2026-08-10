@@ -1,6 +1,5 @@
 import CoreGraphics
 import Foundation
-import HelmRuntime
 @testable import Module_KeepAwake_Engine
 
 /// Two assertions, because the real port holds two.
@@ -164,35 +163,5 @@ final class FakeClock: Clock {
     func fire(after: TimeInterval) {
         guard let e = entries.last(where: { $0.after == after && !cancelledIDs.contains($0.id) }) else { return }
         e.block()
-    }
-}
-
-/// Switching the lid option on the way the app does.
-///
-/// `clamshellEnabled` is sealed: it is the one setting here that decides
-/// whether `sudo pmset disablesleep` runs, so a value written straight into the
-/// store is a forgery and reads back as off. Six tests wrote it that way — they
-/// predate the seal — and each of them silently stopped exercising the clamshell
-/// at all, which is the shape of a test that passes for the wrong reason.
-///
-/// The key is fixed and in memory: a test must never touch the person's login
-/// keychain. `restoreLidSeal()` puts the real one back, because the guard is
-/// static and whatever runs next would inherit this one.
-extension KeepAwakeSettings {
-    static func useTestSeal() {
-        guardian = SettingGuard(keys: FixedSealKey())
-    }
-
-    static func restoreLidSeal() {
-        guardian = SettingGuard(keys: KeychainSealKey(service: "com.helm.app",
-                                                      account: "keep-awake-seal",
-                                                      category: "clamshell"))
-    }
-}
-
-struct FixedSealKey: SealKeyPort {
-    var firstUse = false
-    func key() -> SealKey? {
-        SealKey(material: Data(repeating: 9, count: 32), firstUse: firstUse)
     }
 }

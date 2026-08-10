@@ -64,7 +64,6 @@ enum Changelog {
                 ChangeItem(kind: .fix, text: L("The countdown no longer interrupts VoiceOver every second.")),
                 ChangeItem(kind: .upd, text: L("Keep Awake says which app is holding the Mac, not just \u{201C}App\u{201D}. It was the only rule type most people use and the only one that could not say what it was talking about.")),
                 ChangeItem(kind: .fix, text: L("The countdown says what happens at zero when a timer is set to end automation as well \u{2014} the one state where that setting decides anything was the one state nothing mentioned it.")),
-                ChangeItem(kind: .upd, text: L("\u{201C}Stay awake with the lid closed\u{201D} is sealed. It is the one setting here that decides whether Helm changes a system-wide sleep setting, and a value written into the preferences file by anything other than Helm is now refused rather than obeyed.")),
             ]),
             ChangelogEntry(version: "0.9.0", date: "2026-08-09", items: [
                 ChangeItem(kind: .new, text: L("Widgets are moved by hand. Pick one up and it follows the pointer; the others slide aside; letting go sets it down where the space opened.")),

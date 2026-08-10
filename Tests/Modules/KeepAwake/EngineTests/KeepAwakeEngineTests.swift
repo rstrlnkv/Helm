@@ -18,7 +18,6 @@ final class KeepAwakeEngineTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        KeepAwakeSettings.useTestSeal()
         backing = InMemoryKeyValueStore()
         store = NamespacedStore(namespace: "keep-awake", backing: backing)
         settings = KeepAwakeSettings(store: store)
@@ -34,11 +33,6 @@ final class KeepAwakeEngineTests: XCTestCase {
                                   displayInfo: displayInfo, displayObserver: displayObserver,
                                   power: power, apps: apps, pointer: pointer,
                                   clamshell: clamshell, clock: clock)
-    }
-
-    override func tearDown() {
-        KeepAwakeSettings.restoreLidSeal()
-        super.tearDown()
     }
 
     func test_startSession_indefinite_activates_and_prevents_sleep() {

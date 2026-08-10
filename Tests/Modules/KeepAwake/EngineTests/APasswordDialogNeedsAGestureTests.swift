@@ -23,7 +23,6 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        KeepAwakeSettings.useTestSeal()
         store = NamespacedStore(namespace: "keep-awake", backing: InMemoryKeyValueStore())
         KeepAwakeSettings(store: store).setClamshellEnabled(true)
         clamshell = FakeClamshell()
@@ -44,11 +43,6 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
     /// suppressed by the in-flight guard rather than by the code under test.
     private func drainMain() {
         RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.05))
-    }
-
-    override func tearDown() {
-        KeepAwakeSettings.restoreLidSeal()
-        super.tearDown()
     }
 
     /// The control. Pressing a button still asks — otherwise every assertion

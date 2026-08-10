@@ -88,69 +88,34 @@ public struct KeepAwakeSettings {
         store.set(minutes, for: Key.jiggleIntervalMinutes)
     }
 
-    /// **Sealed**, because it steers privileged work nobody is watching.
+    /// **Not sealed, and that was tried.** This is the one setting here that
+    /// decides whether `sudo pmset disablesleep 1` runs, so it is exactly the
+    /// shape the sealing rule is written for — a stored value steering
+    /// privileged work nobody is watching.
     ///
-    /// Every other setting here decides whether the Mac stays awake. This one
-    /// decides whether `sudo pmset disablesleep 1` runs — a system-wide change,
-    /// above every IOKit assertion, still in force after Helm quits. The
-    /// administrator prompt now needs a gesture behind it, but *engaging*
-    /// where the grant already exists does not: any rule firing will do it. So
-    /// a plist edit is enough to make a Mac stop sleeping the next time a
-    /// watched app is launched, and the plist is a file any process running as
-    /// this user can write.
+    /// A `SettingGuard` over it was written, tested and then taken out, because
+    /// on this app it cannot be read. Measured with `sample` on a real launch:
+    /// the main thread sat in `SecItemCopyMatching` → `SecKeychainItemCopyContent`,
+    /// called from this getter, called from `KeepAwakeEngine.init` — the app
+    /// stopped at «enable keep-awake» and went no further, behind a system
+    /// keychain dialog. **The bundle is ad-hoc signed** (`package-app.sh` →
+    /// `--sign -`, no Team ID), so its code identity changes with every build
+    /// and a keychain ACL written by one build never matches the next; that
+    /// dialog is not a one-off, it is every install. And a person who dismisses
+    /// it loses the lid feature with nothing on screen saying why.
     ///
-    /// A broken seal refuses in the safe direction — the lid option is treated
-    /// as off, and the Mac goes on sleeping as it always did. `.adopt` is the
-    /// migration and the only door left open by it: an installation that has
-    /// never sealed anything predates sealing, so the stored value is taken
-    /// once and sealed on the way out. The keychain account is this module's
-    /// own; the deployed ones do not move.
-    public var clamshellEnabled: Bool {
-        let stored = store.bool(Key.clamshellEnabled, default: false)
-        // Nothing to forge, and nothing to warn about: «off» is what a missing
-        // seal falls back to anyway, so an unsealed `false` is not evidence of
-        // anything. Reading it also spares every Mac that has this switched off
-        // a keychain hit on every recompute.
-        guard stored else { return false }
-        switch Self.guardian.verdict(payload: Self.payload(of: stored),
-                                     mac: store.string(SettingGuard.macKey(for: Key.clamshellEnabled),
-                                                       default: "")) {
-        case .sealed:
-            return true
-        case .adopt:
-            setClamshellEnabled(true)
-            return true
-        case .broken:
-            HelmLog.shared.warn("keepawake", "the closed-lid setting is not Helm's own; "
-                                + "system sleep will not be touched until it is set again")
-            return false
-        }
-    }
-
-    public func setClamshellEnabled(_ on: Bool) {
-        store.set(on, for: Key.clamshellEnabled)
-        // The writer still writes. Refusing to save what a person asked for,
-        // because a reader might distrust it later, is the wrong end to fail at.
-        store.set(Self.guardian.seal(Self.payload(of: on)) ?? "",
-                  for: SettingGuard.macKey(for: Key.clamshellEnabled))
-    }
-
-    /// The bytes the seal is over — the value and the key it belongs to, so a
-    /// MAC lifted from one sealed boolean cannot be pasted onto another.
-    private static func payload(of on: Bool) -> Data {
-        Data("\(Key.clamshellEnabled)=\(on)".utf8)
-    }
-
-    /// This module's own keychain item. A `var` for the reason `AppSettings`
-    /// gives for its own: a test must not write to the person's login keychain,
-    /// and this type is constructed from everywhere. Nothing in the app assigns
-    /// it.
-    /// `nonisolated(unsafe)`, and the reason is the same one that makes it a
-    /// `var`: it is written by tests and by nothing else. `AppSettings.scanGuard`
-    /// gets away without the annotation only because its own type is
-    /// main-actor isolated; this one is reached from the engine, which is not.
-    public nonisolated(unsafe) static var guardian = SettingGuard(keys: KeychainSealKey(
-        service: "com.helm.app", account: "keep-awake-seal", category: "clamshell"))
+    /// `AppSettings.disabledScans` seals fine because it is read rarely and
+    /// never at launch. This one is read from `recompute`, which runs on every
+    /// display, charger and application event.
+    ///
+    /// So it waits for a Developer ID — the same purchase CLAUDE.md says is
+    /// blocking `NEVPNManager`, an `SMAppService` helper, notarization and TCC
+    /// grants surviving an install. Until then the plist is what it is, and the
+    /// mitigation that *did* ship is the one that matters most: the
+    /// administrator dialog needs a gesture, so a forged value cannot summon a
+    /// password prompt — it can only engage a grant the person already gave.
+    public var clamshellEnabled: Bool { store.bool(Key.clamshellEnabled, default: false) }
+    public func setClamshellEnabled(_ on: Bool) { store.set(on, for: Key.clamshellEnabled) }
 
     /// On by default, because `defaultDurationMinutes` is 0 — "indefinitely" —
     /// and nothing else in the module ever ends that session: the guard is the

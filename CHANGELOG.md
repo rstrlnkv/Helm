@@ -27,14 +27,16 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   “nothing is holding this Mac” and “a rule is, and this timer is about to
   pause it” — so the one state where that setting decides anything was the one
   state the page was silent in.
-- **“Stay awake with the lid closed” is sealed** (`SettingGuard`). It is the
-  one setting in this module that decides whether `sudo pmset disablesleep`
-  runs, and the administrator prompt needing a gesture does not protect
-  *engaging* where the grant already exists: any rule firing will do it. So a
-  plist edit was enough to stop a Mac sleeping the next time a watched app
-  launched. A broken seal refuses in the safe direction; a value that predates
-  sealing is adopted once and sealed on the way out, so nobody loses the
-  feature on upgrade.
+- **A seal for “Stay awake with the lid closed” was written and taken back
+  out.** It is the one setting here that decides whether `sudo pmset
+  disablesleep` runs, so it is exactly what the sealing rule is for — but the
+  bundle is ad-hoc signed, its code identity changes with every build, and a
+  keychain ACL written by one build never matches the next. Measured with
+  `sample` on a real launch: the main thread sat in `SecItemCopyMatching`
+  called from the engine's own initialiser, and the app stopped at “enable
+  keep-awake” behind a system keychain dialog. It waits for a Developer ID.
+  What did ship is the mitigation that matters more: the administrator prompt
+  needs a gesture, so a forged value cannot summon a password dialog.
 - **The mark, the indent and the note animate.** Switching the first rule on
   moved every label in the card 26 pt, put a tick where there was nothing and
   replaced the note — all in one frame. It was law 1 rather than a missing

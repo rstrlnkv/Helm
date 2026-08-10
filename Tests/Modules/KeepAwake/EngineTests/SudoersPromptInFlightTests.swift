@@ -76,7 +76,6 @@ final class SudoersPromptInFlightTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        KeepAwakeSettings.useTestSeal()
         backing = InMemoryKeyValueStore()
         store = NamespacedStore(namespace: "keep-awake", backing: backing)
         settings = KeepAwakeSettings(store: store)
@@ -128,11 +127,6 @@ final class SudoersPromptInFlightTests: XCTestCase {
     /// exists to prevent: a permanent `NOPASSWD` line in `/etc/sudoers.d` for a
     /// feature the person has switched off — "a grant nobody is holding", and
     /// the one Helm's predecessor left on this machine.
-    override func tearDown() {
-        KeepAwakeSettings.restoreLidSeal()
-        super.tearDown()
-    }
-
     func testARuleThatLandsAfterTheOptionIsOffIsTakenBackOut() async throws {
         startSessionWithPromptUp()
 

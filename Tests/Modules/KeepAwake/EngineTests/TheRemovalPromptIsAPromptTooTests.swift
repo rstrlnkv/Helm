@@ -80,7 +80,6 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        KeepAwakeSettings.useTestSeal()
         store = NamespacedStore(namespace: "keep-awake", backing: InMemoryKeyValueStore())
         clamshell = RemovalPromptClamshell()
         engine = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
@@ -98,11 +97,6 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
     private func settingsChanged() async {
         _ = try? await engine.transport.send(
             EngineCommand(name: KeepAwakeCommand.settingsChanged.rawValue))
-    }
-
-    override func tearDown() {
-        KeepAwakeSettings.restoreLidSeal()
-        super.tearDown()
     }
 
     /// The control, first: a test about asking twice is worth nothing if the

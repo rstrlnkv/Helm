@@ -20,7 +20,6 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        KeepAwakeSettings.useTestSeal()
         store = NamespacedStore(namespace: "keep-awake", backing: InMemoryKeyValueStore())
         clamshell = FakeClamshell()
         KeepAwakeSettings(store: store).setClamshellEnabled(true)
@@ -29,11 +28,6 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
                                  displayObserver: FakeDisplayObserver(), power: FakePower(),
                                  apps: FakeApps(), pointer: FakePointer(),
                                  clamshell: clamshell, clock: FakeClock())
-    }
-
-    override func tearDown() {
-        KeepAwakeSettings.restoreLidSeal()
-        super.tearDown()
     }
 
     /// The control: with no grant of any kind, the first session asks.
