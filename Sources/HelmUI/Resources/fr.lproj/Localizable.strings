@@ -709,7 +709,6 @@
 "Only while the Mac is kept awake. At other times Helm shows its shared icon" = "Seulement tant que le Mac est maintenu éveillé. Sinon, Helm affiche son icône commune";
 "While a timer runs, the ring empties clockwise" = "Pendant le minuteur, l’anneau se vide dans le sens horaire";
 "Add an app and the Mac stays awake while it is running. You can limit a rule to power, to an external display, or to both." = "Ajoutez une app et le Mac reste éveillé tant qu’elle tourne. Vous pouvez limiter la règle au secteur, à un écran externe, ou aux deux.";
-"macOS asks for an administrator password the first time. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "La première fois, macOS demande un mot de passe administrateur. Si Helm est quitté alors que la veille est désactivée, elle le reste jusqu’au prochain lancement de Helm.";
 "When the timer runs out, the rule is paused until it applies again" = "À la fin du minuteur, la règle est mise en pause jusqu’à ce qu’elle s’applique de nouveau";
 "Needs Accessibility, or the pointer will not move" = "Nécessite « Accessibilité », sinon le pointeur ne bougera pas";
 "then the external display keeps the Mac awake" = "ensuite c’est l’écran externe qui le maintient éveillé";
@@ -719,3 +718,4 @@
 "Until you stop it" = "Jusqu’à ce que vous l’arrêtiez";
 "While an external display is connected" = "Tant qu’un écran externe est branché";
 "While the Mac is on power" = "Tant que le Mac est sur secteur";
+"macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "La première fois, macOS demande un mot de passe administrateur et conserve une règle qui laisse Helm désactiver la veille sans redemander. Désactiver ceci la supprime. Si Helm est quitté alors que la veille est désactivée, elle le reste jusqu’au prochain lancement de Helm.";

@@ -250,13 +250,19 @@ enum KAStr {
     /// Two questions, so two sentences: what Helm does to the Mac, and what it
     /// costs. "The setting is system-wide" named no setting — what is system-wide
     /// is `pmset disablesleep`, i.e. sleep is off for the whole machine — and
+    /// It now names the *grant*, not only the dialog. A security review put it
+    /// plainly: the sentence explained the password box and never said what the
+    /// box buys — a permanent passwordless-sudo rule for `pmset disablesleep`
+    /// in `/etc/sudoers.d`, which outlives quitting Helm and deleting it, and
+    /// which switching this option off is what takes back out.
+    ///
     /// "once" was wrong, because the sudoers rule is removed when the toggle goes
     /// off, so switching it off and on asks again. The second sentence used to
     /// say «it stays off», where «it» could attach to Helm as easily as to
     /// sleep — and the Russian resolved it to the wrong one, promising that
     /// *Helm* would start at Helm's next start. The noun is repeated.
     static var adminNote: String {
-        L("macOS asks for an administrator password the first time. If Helm quits while sleep is off, sleep stays off until Helm runs again.")
+        L("macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. If Helm quits while sleep is off, sleep stays off until Helm runs again.")
     }
     /// A timer started while a rule is already holding the Mac ends the rule as
     /// well. Says «too» because the timer already ends the session it started —

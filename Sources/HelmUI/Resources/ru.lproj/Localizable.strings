@@ -709,7 +709,6 @@
 "Only while the Mac is kept awake. At other times Helm shows its shared icon" = "Только пока Helm держит Mac. В остальное время — общий значок";
 "While a timer runs, the ring empties clockwise" = "Пока идёт таймер, кольцо убывает по часовой стрелке";
 "Add an app and the Mac stays awake while it is running. You can limit a rule to power, to an external display, or to both." = "Добавьте приложение — и Mac не будет засыпать, пока оно запущено. Правило можно ограничить: только при питании, только с внешним дисплеем или и тем и другим.";
-"macOS asks for an administrator password the first time. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "При первом включении macOS запросит пароль администратора. Если закрыть Helm, пока сон выключен, Mac не сможет заснуть до следующего запуска Helm.";
 "When the timer runs out, the rule is paused until it applies again" = "Когда таймер закончится, правило встанет на паузу до следующего срабатывания";
 "Needs Accessibility, or the pointer will not move" = "Нужен «Универсальный доступ», иначе курсор не сдвинется";
 "then the external display keeps the Mac awake" = "дальше его держит внешний дисплей";
@@ -719,3 +718,4 @@
 "Until you stop it" = "Пока вы не остановите";
 "While an external display is connected" = "Пока подключён внешний дисплей";
 "While the Mac is on power" = "Пока Mac подключён к питанию";
+"macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "При первом включении macOS запросит пароль администратора и оставит правило, позволяющее Helm выключать сон без нового запроса. Выключение этой настройки его убирает. Если закрыть Helm, пока сон выключен, Mac не сможет заснуть до следующего запуска Helm.";

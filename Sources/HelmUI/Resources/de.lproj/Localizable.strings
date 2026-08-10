@@ -709,7 +709,6 @@
 "Only while the Mac is kept awake. At other times Helm shows its shared icon" = "Nur solange der Mac wach gehalten wird. Sonst zeigt Helm sein gemeinsames Symbol";
 "While a timer runs, the ring empties clockwise" = "Während ein Timer läuft, leert sich der Ring im Uhrzeigersinn";
 "Add an app and the Mac stays awake while it is running. You can limit a rule to power, to an external display, or to both." = "Fügen Sie eine App hinzu, und der Mac bleibt wach, solange sie läuft. Eine Regel lässt sich auf Netzstrom, auf einen externen Bildschirm oder auf beides begrenzen.";
-"macOS asks for an administrator password the first time. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "Beim ersten Mal fragt macOS nach einem Adminpasswort. Wird Helm beendet, während der Ruhezustand aus ist, bleibt er aus, bis Helm wieder läuft.";
 "When the timer runs out, the rule is paused until it applies again" = "Läuft der Timer ab, pausiert die Regel, bis sie wieder zutrifft";
 "Needs Accessibility, or the pointer will not move" = "Braucht „Bedienungshilfen“, sonst bewegt sich der Zeiger nicht";
 "then the external display keeps the Mac awake" = "danach hält der externe Bildschirm den Mac wach";
@@ -719,3 +718,4 @@
 "Until you stop it" = "Bis Sie es beenden";
 "While an external display is connected" = "Solange ein externer Bildschirm angeschlossen ist";
 "While the Mac is on power" = "Solange der Mac am Netzstrom hängt";
+"macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "Beim ersten Mal fragt macOS nach einem Adminpasswort und behält eine Regel, mit der Helm den Ruhezustand künftig ohne Nachfrage ausschalten darf. Wird dies ausgeschaltet, verschwindet sie. Wird Helm beendet, während der Ruhezustand aus ist, bleibt er aus, bis Helm wieder läuft.";

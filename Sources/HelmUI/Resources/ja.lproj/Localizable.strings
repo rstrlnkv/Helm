@@ -709,7 +709,6 @@
 "Only while the Mac is kept awake. At other times Helm shows its shared icon" = "Mac を起こしている間だけ。ほかのときは Helm の共通アイコンです";
 "While a timer runs, the ring empties clockwise" = "タイマー中はリングが時計回りに減ります";
 "Add an app and the Mac stays awake while it is running. You can limit a rule to power, to an external display, or to both." = "アプリを追加すると、そのアプリが動いている間 Mac はスリープしません。ルールは電源接続時のみ、外部ディスプレイ接続時のみ、またはその両方に絞れます。";
-"macOS asks for an administrator password the first time. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "初回に macOS が管理者パスワードを求めます。スリープを切ったまま Helm を終了すると、次に Helm を起動するまで切のままです。";
 "When the timer runs out, the rule is paused until it applies again" = "タイマーが終わると、次に条件を満たすまでルールは一時停止します";
 "Needs Accessibility, or the pointer will not move" = "“アクセシビリティ”が必要です。ないとポインタは動きません";
 "then the external display keeps the Mac awake" = "その後は外部ディスプレイが起こしておきます";
@@ -719,3 +718,4 @@
 "Until you stop it" = "停止するまで";
 "While an external display is connected" = "外部ディスプレイが接続されている間";
 "While the Mac is on power" = "Mac が電源に接続されている間";
+"macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "初回に macOS が管理者パスワードを求め、以後は確認なしにスリープを切れるルールを残します。この設定を切ると、そのルールも消えます。スリープを切ったまま Helm を終了すると、次に Helm を起動するまで切のままです。";

@@ -709,7 +709,6 @@
 "Only while the Mac is kept awake. At other times Helm shows its shared icon" = "仅在 Mac 保持唤醒时。其余时间显示 Helm 的通用图标";
 "While a timer runs, the ring empties clockwise" = "计时期间圆环会顺时针减少";
 "Add an app and the Mac stays awake while it is running. You can limit a rule to power, to an external display, or to both." = "添加一个 App，它运行时 Mac 就不会睡眠。你可以把规则限定为接电源时、接外接显示器时，或两者兼有。";
-"macOS asks for an administrator password the first time. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "首次启用时 macOS 会要求输入管理员密码。若在睡眠被关闭时退出 Helm，睡眠会一直关闭，直到 Helm 再次运行。";
 "When the timer runs out, the rule is paused until it applies again" = "计时结束后，该规则会暂停，直到再次满足";
 "Needs Accessibility, or the pointer will not move" = "需要“辅助功能”，否则指针不会移动";
 "then the external display keeps the Mac awake" = "之后由外接显示器继续保持唤醒";
@@ -719,3 +718,4 @@
 "Until you stop it" = "直到你停止";
 "While an external display is connected" = "接着外接显示器时";
 "While the Mac is on power" = "Mac 接着电源时";
+"macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "首次启用时 macOS 会要求输入管理员密码，并保留一条规则，让 Helm 以后无需再询问就能关闭睡眠。关掉此设置会移除它。若在睡眠被关闭时退出 Helm，睡眠会一直关闭，直到 Helm 再次运行。";

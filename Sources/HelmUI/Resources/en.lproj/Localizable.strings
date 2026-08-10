@@ -709,7 +709,6 @@
 "Only while the Mac is kept awake. At other times Helm shows its shared icon" = "Only while the Mac is kept awake. At other times Helm shows its shared icon";
 "While a timer runs, the ring empties clockwise" = "While a timer runs, the ring empties clockwise";
 "Add an app and the Mac stays awake while it is running. You can limit a rule to power, to an external display, or to both." = "Add an app and the Mac stays awake while it is running. You can limit a rule to power, to an external display, or to both.";
-"macOS asks for an administrator password the first time. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "macOS asks for an administrator password the first time. If Helm quits while sleep is off, sleep stays off until Helm runs again.";
 "When the timer runs out, the rule is paused until it applies again" = "When the timer runs out, the rule is paused until it applies again";
 "Needs Accessibility, or the pointer will not move" = "Needs Accessibility, or the pointer will not move";
 "then the external display keeps the Mac awake" = "then the external display keeps the Mac awake";
@@ -719,3 +718,4 @@
 "Until you stop it" = "Until you stop it";
 "While an external display is connected" = "While an external display is connected";
 "While the Mac is on power" = "While the Mac is on power";
+"macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. If Helm quits while sleep is off, sleep stays off until Helm runs again.";

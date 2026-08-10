@@ -709,7 +709,6 @@
 "Only while the Mac is kept awake. At other times Helm shows its shared icon" = "Solo mientras el Mac se mantiene despierto. El resto del tiempo Helm muestra su icono común";
 "While a timer runs, the ring empties clockwise" = "Mientras corre el temporizador, el anillo se vacía en sentido horario";
 "Add an app and the Mac stays awake while it is running. You can limit a rule to power, to an external display, or to both." = "Añade una app y el Mac seguirá despierto mientras se ejecute. Puedes limitar la regla a la corriente, a una pantalla externa o a ambas.";
-"macOS asks for an administrator password the first time. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "La primera vez, macOS pide una contraseña de administración. Si cierras Helm mientras el reposo está desactivado, seguirá desactivado hasta que Helm vuelva a ejecutarse.";
 "When the timer runs out, the rule is paused until it applies again" = "Cuando acabe el temporizador, la regla queda en pausa hasta que vuelva a cumplirse";
 "Needs Accessibility, or the pointer will not move" = "Necesita “Accesibilidad”, o el puntero no se moverá";
 "then the external display keeps the Mac awake" = "después lo mantiene despierto la pantalla externa";
@@ -719,3 +718,4 @@
 "Until you stop it" = "Hasta que lo pares";
 "While an external display is connected" = "Mientras haya una pantalla externa conectada";
 "While the Mac is on power" = "Mientras el Mac esté enchufado";
+"macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "La primera vez, macOS pide una contraseña de administración y deja una regla que permite a Helm desactivar el reposo sin volver a preguntar. Al desactivar esto, se elimina. Si cierras Helm mientras el reposo está desactivado, seguirá desactivado hasta que Helm vuelva a ejecutarse.";
