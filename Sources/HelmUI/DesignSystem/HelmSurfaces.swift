@@ -315,13 +315,18 @@ public struct HelmSectionTitle: View {
     public init(_ title: String) { self.title = title }
 
     public var body: some View {
-        Text(title.uppercased())
-            // 10 pt is the ladder's smallest step, and it is legible here only
-            // because the tracking opens it up: without the .08em the capitals
-            // set as a block.
-            .font(.system(size: 10, weight: .semibold))
-            .tracking(0.8)
-            .foregroundStyle(HelmText.faint)
+        // v3's `.sectitle`: 11 pt semibold, quiet, and **not** uppercased.
+        //
+        // It was 10 pt capitals with 0.8 of tracking. Capitals are a second
+        // voice — the app used them for the badge and for the metric strip's
+        // labels, where a word is a token rather than a word — and a section
+        // heading is neither: it names the thing below it, in the same voice
+        // the rows are written in. At 10 pt the capitals also needed the
+        // tracking to stay legible, which is the size telling you it is one
+        // step too small for the job.
+        Text(title)
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(HelmText.quiet)
     }
 }
 

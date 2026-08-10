@@ -68,7 +68,15 @@ public struct KeepAwakeSettingsPage: View {
     }
 
     public var body: some View {
-        keepAwakeForm
+        // The hero is not a section of the form. A grouped `Form` draws every
+        // section as a card, and a card holds *a list of things*; the state of
+        // the module is one thing, and v3 puts it on the bare pane with air
+        // around it. In a card it read as the first row of the settings list it
+        // had just stopped being.
+        VStack(spacing: 0) {
+            sessionHero
+            keepAwakeForm
+        }
             .helmOnAppActive { accessibility = PermissionCheck.currentAccessibility() }
         .task { accessibility = PermissionCheck.currentAccessibility() }
     }
@@ -93,7 +101,6 @@ public struct KeepAwakeSettingsPage: View {
     /// that keeps this page and the panel agreeing.
     private var keepAwakeForm: some View {
         Form {
-            sessionSection
 
             automationSection
             appsSection
@@ -114,24 +121,23 @@ public struct KeepAwakeSettingsPage: View {
 
     // MARK: - The sections
 
-    @ViewBuilder private var sessionSection: some View {
-        Section {
+    /// What is happening, and the verbs for it.
+    ///
+    /// It was `HelmMetricStrip` — «ВЫКЛ · — · 0» before anything is configured.
+    /// Two of those three figures are the unreadable kind this house does not
+    /// draw at all, and above twenty controls there was not one that could
+    /// begin or end a session: the screen whose whole job is to say what is
+    /// happening was the only screen that could not change it. Every command
+    /// here was already on the wire; the panel tile sends the same ones.
+    @ViewBuilder private var sessionHero: some View {
+        VStack(spacing: 10) {
             // A countdown needs a tick of its own: the engine emits state on
-            // change, not once a second, so this figure sat at whatever it
-            // read when the page opened. The panel tile solves it the same
-            // way.
-            TimelineView(.periodic(from: .now, by: 1)) { _ in
-            HelmMetricStrip([
-                .init(vm.isActive ? KAStr.metricOn : KAStr.metricOff, KAStr.metricState,
-                      tint: vm.isActive ? .green : nil),
-                .init(remainingText, KAStr.metricTimer, tint: vm.endDate != nil ? .orange : nil),
-                // Only the automatic reasons. `activeConditions` also
-                // carries `manual` and `timer`, so turning Keep Awake on by
-                // hand — with no rule configured at all — used to report
-                // "AUTOMATIC 1". The panel already counts it this way.
-                .init("\(vm.activeConditions.intersection(ActiveCondition.automatic).count)",
-                      KAStr.metricRules),
-            ])
+            // change, not once a second, so a figure drawn from it froze at
+            // whatever it read when the page opened. The panel tile solves it
+            // the same way.
+            TimelineView(.periodic(from: .now, by: 1)) { timeline in
+                hero(SessionHero.of(isActive: vm.isActive, endDate: vm.endDate,
+                                    conditions: vm.activeConditions, now: timeline.date))
             }
             // The Mac is asleep, a rule that applies is on screen saying
             // nothing, and until now there was no third thing to read. Only
@@ -139,13 +145,132 @@ public struct KeepAwakeSettingsPage: View {
             // the condition drops.
             if vm.suppressed {
                 HStack(spacing: 8) {
+                    Image(systemName: "pause.circle.fill")
+                        .foregroundStyle(HelmSignal.warning)
+                        .accessibilityHidden(true)
                     Text(KAStr.automationPaused)
                         .font(.callout).foregroundStyle(HelmText.quiet)
                     Spacer(minLength: 8)
                     Button(KAStr.resume) { vm.send(KeepAwakeCommand.resumeAutomation) }
                 }
+                .padding(.horizontal, 20)
             }
         }
+        .padding(.top, 24)
+        .padding(.bottom, 18)
+        .helmSettingsColumn()
+    }
+
+    @ViewBuilder private func hero(_ state: SessionHero) -> some View {
+        VStack(spacing: 8) {
+            switch state {
+            case .idle:
+                // The figure's slot, in words. 40 pt light is the size the
+                // countdown gets, and an idle page that dropped to body text
+                // there made the whole screen change shape when a timer began.
+                Text(KAStr.heroIdle)
+                    .font(.system(size: 40, weight: .light))
+                    .foregroundStyle(HelmText.quiet)
+                Text(anyRuleOn ? KAStr.heroIdleReason : KAStr.heroNoRules)
+                    .font(.callout).foregroundStyle(HelmText.faint)
+                HStack(spacing: 8) {
+                    startButton(KAStr.duration(15), minutes: 15)
+                    startButton(KAStr.oneHour, minutes: 60)
+                    startButton(KAStr.twoHours, minutes: 120)
+                    startButton(KAStr.indefinite, minutes: 0)
+                }
+                .padding(.top, 10)
+            case .timed(let end):
+                // Monospaced, so the figure does not jitter as the digits
+                // change width — it is redrawn once a second for hours.
+                Text(TimerProgress.label(remaining: end.timeIntervalSinceNow))
+                    .font(.system(size: 40, weight: .light, design: .monospaced))
+                    .tracking(-2)
+                    .contentTransition(.numericText(countsDown: true))
+                Text(timedNote(end)).font(.callout).foregroundStyle(HelmText.quiet)
+                HStack(spacing: 8) {
+                    // The same arithmetic the panel's «+15» uses, and for the
+                    // same reason: this is a `Double` that came off disk.
+                    Button("+" + KAStr.duration(15)) {
+                        start(TimerPolicy.extendedMinutes(remaining: end.timeIntervalSinceNow,
+                                                          adding: 15))
+                    }
+                    .controlSize(.large)
+                    Button(KAStr.indefinite) { start(0) }
+                        .controlSize(.large)
+                    stopButton
+                }
+                .padding(.top, 10)
+            case .indefinite:
+                Text(KAStr.heroIndefinite)
+                    .font(.system(size: 40, weight: .light))
+                HStack(spacing: 8) { stopButton }
+                    .padding(.top, 10)
+            case .automatic(let conditions):
+                Text(KAStr.heroAutomatic)
+                    .font(.system(size: 40, weight: .light))
+                Text(conditions.map(KAStr.condition).sorted().joined(separator: " · "))
+                    .font(.callout).foregroundStyle(HelmText.quiet)
+                HStack(spacing: 8) {
+                    Button(KAStr.startTimerFor(defaultDurationMinutes)) {
+                        start(defaultDurationMinutes)
+                    }
+                    .controlSize(.large)
+                    stopButton
+                }
+                .padding(.top, 10)
+                // Stop does not end an automatic session, it silences the rule
+                // — the one thing nobody could learn from any screen. Said
+                // beside the button that does it.
+                Text(KAStr.heroStopSuppresses)
+                    .font(.caption).foregroundStyle(HelmText.faint)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    /// «Таймер до 15:42 · дальше держит внешний дисплей». The second clause is
+    /// the only answer on the page to what happens at zero.
+    private func timedNote(_ end: Date) -> String {
+        let until = KAStr.timerUntil(end)
+        guard let holder = SessionHero.holderAfterTimer(
+                conditions: vm.activeConditions,
+                timerEndsAutomation: timerEndsAutomation) else { return until }
+        return until + " · " + KAStr.thenHeldBy(holder)
+    }
+
+    /// True when anything is configured that *could* hold the Mac — which is
+    /// the difference between «nothing is set up» and «nothing applies now».
+    private var anyRuleOn: Bool {
+        autoExternalDisplay || autoPower || !appTriggers.isEmpty
+    }
+
+    /// The preset the menu-bar switch and the shortcut start is the prominent
+    /// one. It is the only place on any screen that says which that is — the
+    /// row that used to say it in words is gone with the rest of the settings.
+    @ViewBuilder private func startButton(_ title: String, minutes: Int) -> some View {
+        // `.borderedProminent`, not `.tint` on a plain button: a tint colours a
+        // button's *label* and leaves the fill alone, so all four presets came
+        // out identical and the one the switch actually starts was a claim
+        // nothing on screen backed up.
+        if minutes == defaultDurationMinutes {
+            Button(title) { start(minutes) }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+        } else {
+            Button(title) { start(minutes) }
+                .controlSize(.large)
+        }
+    }
+
+    private var stopButton: some View {
+        Button(KAStr.stop) { vm.send(KeepAwakeCommand.stop) }
+            .controlSize(.large)
+    }
+
+    private func start(_ minutes: Int) {
+        guard let payload = try? JSONEncoder().encode(KeepAwakeStart(minutes: minutes)) else { return }
+        vm.send(KeepAwakeCommand.start, payload: payload)
     }
 
     @ViewBuilder private var automationSection: some View {

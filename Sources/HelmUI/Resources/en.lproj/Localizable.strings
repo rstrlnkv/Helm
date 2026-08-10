@@ -707,3 +707,9 @@
 "The sidebar is narrower and you can drag it wider or thinner — whatever you settle on comes back next time." = "The sidebar is narrower and you can drag it wider or thinner — whatever you settle on comes back next time.";
 "Paused until the rule fires again" = "Paused until the rule fires again";
 "A silenced rule says so in the panel, with a way to start it again. Stopping a session by hand, or a timer that ends automation, leaves the rule quiet until it applies afresh — and nothing said so where you would look." = "A silenced rule says so in the panel, with a way to start it again. Stopping a session by hand, or a timer that ends automation, leaves the rule quiet until it applies afresh — and nothing said so where you would look.";
+"The Mac sleeps normally" = "The Mac sleeps normally";
+"No rule is switched on" = "No rule is switched on";
+"No rule applies right now" = "No rule applies right now";
+"A rule is holding the Mac" = "A rule is holding the Mac";
+"Awake until you stop it" = "Awake until you stop it";
+"Stop will silence the rule until it fires again" = "Stop will silence the rule until it fires again";

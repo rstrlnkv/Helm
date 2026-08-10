@@ -707,3 +707,9 @@
 "The sidebar is narrower and you can drag it wider or thinner — whatever you settle on comes back next time." = "La barra lateral es más estrecha y puedes arrastrarla: el ancho que elijas vuelve la próxima vez.";
 "Paused until the rule fires again" = "En pausa hasta que la regla vuelva a cumplirse";
 "A silenced rule says so in the panel, with a way to start it again. Stopping a session by hand, or a timer that ends automation, leaves the rule quiet until it applies afresh — and nothing said so where you would look." = "Una regla silenciada lo dice en el panel, con un botón para volver a activarla. Pararla a mano, o un temporizador que acaba la automatización, la deja callada hasta que vuelva a cumplirse, y eso no se decía en ningún sitio a la vista.";
+"The Mac sleeps normally" = "El Mac duerme como siempre";
+"No rule is switched on" = "Ninguna regla está activada";
+"No rule applies right now" = "Ahora no se cumple ninguna regla";
+"A rule is holding the Mac" = "Una regla mantiene el Mac despierto";
+"Awake until you stop it" = "Despierto hasta que lo pares";
+"Stop will silence the rule until it fires again" = "“Detener” silenciará la regla hasta que vuelva a cumplirse";

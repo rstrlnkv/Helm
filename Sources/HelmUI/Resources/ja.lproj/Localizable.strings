@@ -707,3 +707,9 @@
 "The sidebar is narrower and you can drag it wider or thinner — whatever you settle on comes back next time." = "サイドバーが細くなり、幅をドラッグで変えられます。決めた幅は次回も保たれます。";
 "Paused until the rule fires again" = "ルールが次に当てはまるまで停止中";
 "A silenced rule says so in the panel, with a way to start it again. Stopping a session by hand, or a timer that ends automation, leaves the rule quiet until it applies afresh — and nothing said so where you would look." = "停止中のルールがパネルでそう伝え、その場で再開できます。手動での停止や、自動化を終わらせるタイマーは、次に当てはまるまでルールを黙らせます。これまでは目に入る場所のどこにも書かれていませんでした。";
+"The Mac sleeps normally" = "Mac は通常どおりスリープします";
+"No rule is switched on" = "入になっているルールはありません";
+"No rule applies right now" = "いまは条件を満たすルールがありません";
+"A rule is holding the Mac" = "ルールが Mac を起こしています";
+"Awake until you stop it" = "停止するまで起きたままです";
+"Stop will silence the rule until it fires again" = "“停止”は、次に当てはまるまでルールを黙らせます";

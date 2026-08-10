@@ -1,3 +1,4 @@
+import Foundation
 import HelmUI
 import HelmRuntime
 import Module_KeepAwake_Engine
@@ -139,6 +140,71 @@ enum KAStr {
     static var oneHour: String { L("1 hour") }
     static var twoHours: String { L("2 hours") }
     static var indefinite: String { L("Indefinite") }
+
+    // MARK: - The hero
+    //
+    // The top of the page says what is happening and offers the verbs for it.
+    // It was three metric cells reading «ВЫКЛ · — · 0» — two of the three
+    // figures the unreadable kind this house does not draw at all — above
+    // twenty controls and no way to begin or end a session at all.
+
+    static var heroIdle: String { L("The Mac sleeps normally") }
+    /// Two different silences, and they want different sentences: nothing is
+    /// switched on, and something is switched on but does not apply. The first
+    /// is an invitation, the second is an explanation.
+    static var heroNoRules: String { L("No rule is switched on") }
+    static var heroIdleReason: String { L("No rule applies right now") }
+    static var heroAutomatic: String { L("A rule is holding the Mac") }
+    static var heroIndefinite: String { L("Awake until you stop it") }
+    /// The preset the menu-bar switch itself starts, named where it is offered.
+    static func startTimerFor(_ minutes: Int) -> String {
+        let length = duration(minutes)
+        return L("Start a timer for \(length)",
+                 [.ru: "Поставить таймер на \(length)", .es: "Poner un temporizador de \(length)",
+                  .fr: "Lancer un minuteur de \(length)", .de: "Timer auf \(length) stellen",
+                  .ja: "\(length) のタイマーを開始", .zh: "开始 \(length) 计时",
+                  .pt: "Iniciar um temporizador de \(length)"])
+    }
+    /// Said beside the button that does it, rather than left for the log.
+    static var heroStopSuppresses: String {
+        L("Stop will silence the rule until it fires again")
+    }
+    /// «Таймер до 15:42» — the deadline as a clock, which is what a person
+    /// checks against. `HelmDates.timeOfDay` writes it in the app's language,
+    /// not the system's.
+    static func timerUntil(_ end: Date) -> String {
+        let time = HelmDates.timeOfDay(end)
+        return L("Timer until \(time)",
+                 [.ru: "Таймер до \(time)", .es: "Temporizador hasta las \(time)",
+                  .fr: "Minuteur jusqu’à \(time)", .de: "Timer bis \(time)",
+                  .ja: "\(time) までのタイマー", .zh: "计时至 \(time)",
+                  .pt: "Temporizador até \(time)"])
+    }
+    /// The second half of that line: what is still holding the Mac when the
+    /// countdown reaches zero. The answer comes from
+    /// `SessionHero.holderAfterTimer`, which also knows that «a timer ends
+    /// automation too» makes the answer nothing.
+    static func thenHeldBy(_ condition: ActiveCondition) -> String {
+        let what = conditionInSentence(condition)
+        return L("then \(what) keeps it awake",
+                 [.ru: "дальше держит \(what)", .es: "después lo mantiene \(what)",
+                  .fr: "ensuite c’est \(what) qui le maintient", .de: "danach hält \(what) ihn wach",
+                  .ja: "その後は\(what)が起こしておきます", .zh: "之后由\(what)继续保持",
+                  .pt: "depois \(what) o mantém acordado"])
+    }
+    /// The condition's name where it is not the first word.
+    ///
+    /// The labels are written for a row, so they open with a capital. Dropped
+    /// into a sentence that capital is a second one in the middle of the line —
+    /// except in German, where a noun carries its capital wherever it stands.
+    /// Lower-casing with the *app's* locale, not the system's: `lowercased()`
+    /// with no locale answers in whatever macOS is set to, which is the whole
+    /// family of defects `HelmDates` and `Bytes` exist to keep out.
+    static func conditionInSentence(_ condition: ActiveCondition) -> String {
+        let label = self.condition(condition)
+        guard AppLanguage.current != .de else { return label }
+        return label.lowercased(with: Locale(identifier: AppLanguage.current.rawValue))
+    }
     static var pointerNeedsAccessibility: String { L("Needs Accessibility, or the pointer will not move.") }
     /// Russian was the odd one out: «хоткей» is slang, and Helm's own Layout
     /// page already says «сочетание клавиш». macOS calls it «Сочетание клавиш»

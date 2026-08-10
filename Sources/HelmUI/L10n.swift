@@ -205,6 +205,18 @@ public enum HelmDates {
         return formatter
     }()
 
+    /// A time of day the way this language writes one — «15:42», "3:42 PM".
+    ///
+    /// Keyed by the app's language like everything else here, and for the same
+    /// measured reason: a `DateFormatter` built with no locale answers in the
+    /// *system's* language, so a Mac set to Italian would read Helm's Russian
+    /// page with an Italian clock — and, worse, a 12-hour one where the reader
+    /// expects 24.
+    public static func timeOfDay(_ date: Date,
+                                 language: String = AppLanguage.current.rawValue) -> String {
+        cache.clock(language: language).string(from: date)
+    }
+
     /// Day and minute, short: a report covering thirty days needs the day, and a
     /// morning's worth of moves needs the minute.
     public static func dayAndMinute(_ date: Date,
@@ -248,6 +260,7 @@ public enum HelmDates {
         private var relatives: [String: RelativeDateTimeFormatter] = [:]
         private var absolutes: [String: DateFormatter] = [:]
         private var days: [String: DateFormatter] = [:]
+        private var clocks: [String: DateFormatter] = [:]
 
         /// Reads the stored form and nothing else: fixed format, fixed locale.
         /// `en_US_POSIX` because a fixed-format formatter on any other locale
@@ -271,6 +284,17 @@ public enum HelmDates {
             // The zone the stored day was parsed in, so the day cannot shift.
             formatter.timeZone = storage.timeZone
             days[language] = formatter
+            return formatter
+        }
+
+        func clock(language: String) -> DateFormatter {
+            lock.lock(); defer { lock.unlock() }
+            if let existing = clocks[language] { return existing }
+            let formatter = DateFormatter()
+            formatter.dateStyle = .none
+            formatter.timeStyle = .short
+            formatter.locale = Locale(identifier: language)
+            clocks[language] = formatter
             return formatter
         }
 
