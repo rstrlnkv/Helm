@@ -107,31 +107,65 @@ enum AppStr {
     /// widest (Spanish), leaves the notice 151 pt, and wraps to two lines in
     /// seven languages and one in Chinese — and the count it sits beside
     /// already says permissions.
-    static var showPermissions: String { L("Show all") }
+    /// Takes a language, so a test can ask about the seven this machine is not
+    /// set to. The suite runs in whatever language this Mac is in, and a check
+    /// gated on `.current` never exercises the language it was written for.
+    static func showPermissions(language: AppLanguage = AppLanguage.current) -> String {
+        L("Show all", language: language)
+    }
+    static var showPermissions: String { showPermissions() }
 
     /// The one thing on the settings page that is wrong right now, said above
     /// everything else. Counted from `permissions` rather than `inertWithout`:
     /// the sidebar's triangle marks a module that can do nothing, and this line
     /// is about every module a missing grant reaches.
-    static func permissionsWithheld(count: Int, modules: Int) -> String {
-        let en = "\(count) " + (count == 1 ? "permission" : "permissions")
-            + " not granted · \(modules) " + (modules == 1 ? "module" : "modules") + " affected"
-        return L(en,
-          [.ru: "Не выдано \(count) "
-                + Plural.russian(count, "разрешение", "разрешения", "разрешений")
-                + " · затронуто \(modules) "
-                + Plural.russian(modules, "модуль", "модуля", "модулей"),
-           .es: "Faltan \(count) " + (count == 1 ? "permiso" : "permisos")
-                + " · \(modules) " + (modules == 1 ? "módulo afectado" : "módulos afectados"),
-           .fr: "\(count) " + (count == 1 ? "autorisation manquante" : "autorisations manquantes")
-                + " · \(modules) " + (modules == 1 ? "module concerné" : "modules concernés"),
-           .de: "\(count) " + (count == 1 ? "Berechtigung fehlt" : "Berechtigungen fehlen")
-                + " · \(modules) " + (modules == 1 ? "Modul betroffen" : "Module betroffen"),
-           .ja: "\(count) 件の許可が未付与 · \(modules) 個のモジュールに影響",
-           .zh: "\(count) 项权限未授予 · 影响 \(modules) 个模块",
-           .pt: "\(count) " + (count == 1 ? "permissão não concedida" : "permissões não concedidas")
-                + " · \(modules) " + (modules == 1 ? "módulo afetado" : "módulos afetados")])
+    ///
+    /// **Both clauses lost their verb, and Russian lost another word.**
+    /// Measured on the real row at the panel's 320 pt, one line being 44 pt and
+    /// each further line 14: «… · 7 modules affected» put Russian, French and
+    /// Portuguese on **three** lines beside a button that is on one. The
+    /// trailing participle is what the middle dot already implies — «2
+    /// permissions not granted · 7 modules» says the same thing — and that
+    /// brought French and Portuguese to two. Russian needed one word more,
+    /// because «Показать все» is the widest of the eight buttons at 96 pt:
+    /// «Не выдано» → «Нет». All eight are two lines or fewer now, and Chinese
+    /// is one.
+    static func permissionsWithheld(count: Int, modules: Int,
+                                    language: AppLanguage = AppLanguage.current) -> String {
+        // Split into named parts rather than one expression: the concatenation
+        // of eight interpolated ternaries is more than the type-checker will
+        // take in one go, and «try breaking up the expression» is not a hint
+        // worth rediscovering.
+        let permissions = count == 1 ? "permission" : "permissions"
+        let modulesWord = modules == 1 ? "module" : "modules"
+        let en = "\(count) \(permissions) not granted · \(modules) \(modulesWord)"
+
+        let ruPermissions = Plural.russian(count, "разрешения", "разрешений", "разрешений")
+        let ruModules = Plural.russian(modules, "модуль", "модуля", "модулей")
+        let esPermissions = count == 1 ? "permiso" : "permisos"
+        let frPermissions = count == 1 ? "autorisation manquante" : "autorisations manquantes"
+        let dePermissions = count == 1 ? "Berechtigung fehlt" : "Berechtigungen fehlen"
+        let ptPermissions = count == 1 ? "permissão não concedida" : "permissões não concedidas"
+
+        let table: [AppLanguage: String] = [
+            // Genitive after «нет»: «нет одного разрешения», «нет двух
+            // разрешений», «нет пяти разрешений» — the last two forms are the
+            // same word and only the singular differs.
+            .ru: "Нет \(count) \(ruPermissions) · \(modules) \(ruModules)",
+            .es: "Faltan \(count) \(esPermissions) · \(modules) "
+                 + (modules == 1 ? "módulo" : "módulos"),
+            .fr: "\(count) \(frPermissions) · \(modules) "
+                 + (modules == 1 ? "module" : "modules"),
+            .de: "\(count) \(dePermissions) · \(modules) "
+                 + (modules == 1 ? "Modul" : "Module"),
+            .ja: "\(count) 件の許可が未付与 · \(modules) 個のモジュール",
+            .zh: "\(count) 项权限未授予 · \(modules) 个模块",
+            .pt: "\(count) \(ptPermissions) · \(modules) "
+                 + (modules == 1 ? "módulo" : "módulos"),
+        ]
+        return L(en, table, language: language)
     }
+
     /// The localized face of `PermissionNeed`; the runtime carries English.
     static func permissionTitle(_ need: PermissionNeed) -> String {
         switch need {
