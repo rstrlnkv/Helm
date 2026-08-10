@@ -56,6 +56,10 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     private let lock = NSLock()
     private var _connections: [VPNConnection] = []
     private var _autoConnected: Set<String> = []
+    /// The last command this module sent that the tool did not accept, cleared
+    /// by the next one it did. One at a time on purpose: a page listing every
+    /// refusal it has ever seen is a log, and there is one of those.
+    private var _lastFailure: VPNFailure?
     /// Which of those were ever observed up. Without it, "not up right now"
     /// cannot be told from "not up yet".
     private var _cameUp: Set<String> = []
@@ -69,6 +73,11 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// ever written". Nothing in the app clears this.
     func clearLastAutomationForTesting() {
         lock.lock(); _lastAutomation = nil; lock.unlock()
+    }
+
+    public var lastFailure: VPNFailure? {
+        lock.lock(); defer { lock.unlock() }
+        return _lastFailure
     }
 
     public var connections: [VPNConnection] {
@@ -272,7 +281,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             if let p = creds.password, !p.isEmpty { args += ["--password", p] }
             if let s = creds.secret, !s.isEmpty { args += ["--secret", s] }
         }
-        _ = runner.run(args)
+        report(VPNCommandReply.of(runner.run(args)), verb: "connect", name: name)
         emitState()
         scheduleRefresh()
     }
@@ -298,7 +307,8 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         // immediately. Connect and disconnect are this module's ordinary
         // traffic, so that is the common path, not an edge.
         lock.lock(); _autoConnected.remove(name); _cameUp.remove(name); lock.unlock()
-        _ = runner.run(["--nc", "stop", name])
+        report(VPNCommandReply.of(runner.run(["--nc", "stop", name])),
+               verb: "disconnect", name: name)
         emitState()
         scheduleRefresh()
     }
@@ -349,6 +359,29 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
                     + self.connections.map { "\(Redact.vpn($0.name))=\($0.status)" }
                         .joined(separator: ", "))
             }
+        }
+    }
+
+    /// What the tool said, in the trail and on the wire.
+    ///
+    /// Both call sites discarded it. `scutil` exits 0 whatever happens and puts
+    /// its complaint on stdout, so a rule pointing at a configuration that was
+    /// renamed in System Settings failed in silence — the tunnel never came up
+    /// and nothing anywhere said why.
+    ///
+    /// The name is redacted in the log, like every other line this module
+    /// writes; `_lastFailure` carries it unredacted because the screen is
+    /// allowed to name what the person configured, and the log is not.
+    private func report(_ reply: VPNCommandReply, verb: String, name: String) {
+        switch reply {
+        case .accepted:
+            lock.lock(); _lastFailure = nil; lock.unlock()
+        case .noSuchService:
+            HelmLog.shared.warn("vpn", "\(verb) \(Redact.vpn(name)): no such configuration")
+            lock.lock(); _lastFailure = VPNFailure(name: name, reason: .noSuchService); lock.unlock()
+        case .refused(let text):
+            HelmLog.shared.warn("vpn", "\(verb) \(Redact.vpn(name)) refused: \(text)")
+            lock.lock(); _lastFailure = VPNFailure(name: name, reason: .refused); lock.unlock()
         }
     }
 
@@ -406,6 +439,10 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         /// its whole state for the sake of one field.
         /// `VPNAutomationRecordingTests` holds a payload without it.
         public let lastAutomation: VPNAutomation?
+        /// Optional for the same reason as the field above: a payload written
+        /// before it existed still decodes, and a throw here would cost the
+        /// page its whole state for the sake of one field.
+        public var lastFailure: VPNFailure?
     }
 
     private func wireTransport() {
@@ -436,7 +473,8 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         let payload = StatePayload(connections: connections,
                                     autoConnected: autoConnected.sorted(),
                                     defaultName: defaultConnection?.name,
-                                    lastAutomation: lastAutomation)
+                                    lastAutomation: lastAutomation,
+                                    lastFailure: lastFailure)
         localTransport.emit(VPNEvent.state, encoding: payload)
     }
 }

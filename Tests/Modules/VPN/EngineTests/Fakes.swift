@@ -7,11 +7,19 @@ import Foundation
 final class FakeRunner: VPNRunnerPort {
     var issued: [[String]] = []
     var listOutput: String = ""
+    /// What `start` and `stop` answer.
+    ///
+    /// It was hard-coded to `""`, which is what the real tool prints when it
+    /// **succeeded** — so «scutil refused» was a state no test could write
+    /// down, whatever anybody wrote, and none did. The tool reports failure by
+    /// printing a line and exiting 0 (`No service`), and both call sites threw
+    /// that line away for as long as this fake could not produce one.
+    var reply: String = ""
 
     func run(_ args: [String]) -> String {
         issued.append(args)
         if args == ["--nc", "list"] { return listOutput }
-        return ""
+        return reply
     }
 }
 

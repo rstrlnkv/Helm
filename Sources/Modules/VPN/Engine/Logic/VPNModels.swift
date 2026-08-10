@@ -35,3 +35,27 @@ public struct VPNConnection: Identifiable, Equatable, Sendable, Codable {
         self.kind = kind
     }
 }
+
+/// A command the tool refused, named so a screen can say which one.
+///
+/// The name is here unredacted and in the log it is not: `Redact.vpn` exists
+/// because a diagnostic file leaves the machine, and this value never does —
+/// it goes to the window of the person who configured the thing it names.
+public struct VPNFailure: Codable, Equatable, Sendable {
+    public enum Reason: String, Codable, Sendable {
+        /// No configuration by that name — renamed or deleted in System
+        /// Settings, or a rule left pointing at one that is gone.
+        case noSuchService
+        /// `scutil` said something else. What it said is in the log; the screen
+        /// gets the fact rather than the tool's own words, which are English
+        /// and are not written for a person.
+        case refused
+    }
+    public let name: String
+    public let reason: Reason
+
+    public init(name: String, reason: Reason) {
+        self.name = name
+        self.reason = reason
+    }
+}
