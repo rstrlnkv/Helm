@@ -32,6 +32,9 @@ public struct KeepAwakePanelTile: View {
     /// show the countdown rather than play the presets swapping into it.
     @State private var shownActive: Bool
     @State private var shownSuppressed: Bool
+    /// The floor the guard stopped at, for the sentence. Seeded from the store
+    /// like the rest: the settings page can change it while the panel is open.
+    @State private var batteryFloor: Int
     @State private var showCustomTime = false
     /// What the popover is holding while it is open. Separate from
     /// `customMinutes`, which is the value that has been *saved*: a popover
@@ -49,7 +52,8 @@ public struct KeepAwakePanelTile: View {
         _customMinutes = State(initialValue: Self.openingMinutes(store))
         let state = KeepAwakeViewModel.shared(vm: vm)
         _shownActive = State(initialValue: state.isActive)
-        _shownSuppressed = State(initialValue: state.suppressed)
+        _shownSuppressed = State(initialValue: state.suppressed || state.batteryStopped)
+        _batteryFloor = State(initialValue: settings.batteryGuardPercent)
     }
 
     public var body: some View {
@@ -118,13 +122,17 @@ public struct KeepAwakePanelTile: View {
         .onChange(of: vm.isActive) { _, running in
             withAnimation(HelmMotion.disclosure) { shownActive = running }
         }
-        .onChange(of: vm.suppressed) { _, silenced in
-            withAnimation(HelmMotion.disclosure) { shownSuppressed = silenced }
+        // Either notice fills the same slot, so the drawn flag is «there is
+        // something to say» rather than «a rule is paused» — the battery guard
+        // sets no `suppressed` of its own, and gating on that one would leave
+        // its banner collapsed to nothing. The hero keeps the same pair.
+        .onChange(of: hasNotice) { _, notice in
+            withAnimation(HelmMotion.disclosure) { shownSuppressed = notice }
         }
         // The store isn't observable, so these mirrored values would otherwise
         // drift once the same settings are changed in the Settings window.
         .keepAwakeAutomationMirror(store, externalDisplay: $autoExternalDisplay,
-                                   power: $autoPower)
+                                   power: $autoPower, batteryFloor: $batteryFloor)
     }
 
     // MARK: - Header
@@ -237,13 +245,29 @@ public struct KeepAwakePanelTile: View {
     /// hero and this copy simply outlived the extraction; the wrapping and the
     /// literal colours it needed are both already in there, for the same two
     /// reasons they were written here.
-    private var suppressedRow: some View {
-        // The short form. In a 320 pt card beside a button the long sentence
-        // wrapped to four lines — a paragraph where everything else is a row.
-        HelmBanner(KAStr.automationPausedShort, symbol: "pause.circle.fill") {
-            Button(KAStr.resume) { vm.send(KeepAwakeCommand.resumeAutomation) }
-                .controlSize(.small)
-                .fixedSize()
+    /// Whether the slot under the presets has anything in it at all.
+    private var hasNotice: Bool { vm.suppressed || vm.batteryStopped }
+
+    @ViewBuilder private var suppressedRow: some View {
+        Group {
+            // The battery wins. Both can be true — a rule is paused *and* the
+            // charge is under the floor — and of the two only one explains why
+            // nothing at all is happening. No button beside it either:
+            // «Resume» while the guard is in force is a control that cannot do
+            // what it says, and the notice goes by itself when the charger goes
+            // in. The settings page draws the same pair the same way round.
+            if vm.batteryStopped {
+                HelmBanner(KAStr.stoppedByBattery(batteryFloor), symbol: "battery.25")
+            } else {
+                // The short form. In a 320 pt card beside a button the long
+                // sentence wrapped to four lines — a paragraph where everything
+                // else is a row.
+                HelmBanner(KAStr.automationPausedShort, symbol: "pause.circle.fill") {
+                    Button(KAStr.resume) { vm.send(KeepAwakeCommand.resumeAutomation) }
+                        .controlSize(.small)
+                        .fixedSize()
+                }
+            }
         }
         .padding(.top, 10)
     }
