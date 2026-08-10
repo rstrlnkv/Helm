@@ -55,7 +55,9 @@ public struct HelmBanner<Action: View>: View {
                 .foregroundStyle(ink)
                 .accessibilityHidden(true)
             Text(text)
-                .font(.callout)
+                // 13, the ladder's body step. `.callout` is 12 on macOS and
+                // 12 is not one of the six sizes this house has.
+                .font(.system(size: 13))
                 // Literal, and deliberately not the ink: a whole sentence in a
                 // signal colour is a shout. The mark carries the signal; the
                 // words carry the meaning.

@@ -26,6 +26,11 @@ public struct KeepAwakeSettings {
         public static let batteryGuardPercent = "batteryGuardPercent"
         public static let defaultDurationMinutes = "defaultDurationMinutes"
         public static let timerEndsAutomation = "timerEndsAutomation"
+        /// Not a preference — a note to the *next launch* that this app turned
+        /// system sleep off and may not have turned it back on. It was spelled
+        /// as a literal at four sites inside the very file whose doc comment is
+        /// about not spelling a key twice.
+        public static let clamshellGuard = "clamshellGuard"
     }
 
     public var autoExternalDisplay: Bool { store.bool(Key.autoExternalDisplay, default: false) }

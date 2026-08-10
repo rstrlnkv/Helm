@@ -587,7 +587,7 @@
 "h" = "ч";
 "is" = "равно";
 "larger than" = "больше чем";
-"m" = "м";
+"m" = "мин";
 "macOS is not allowing notifications from Helm. The name will be shown in the menu bar instead." = "macOS не разрешает уведомления от Helm. Вместо этого имя будет показано в строке меню.";
 "macOS may already use 🌐︎ to switch input source, open emoji or start dictation. Set “Press 🌐︎ to: Do Nothing” in Keyboard settings, or it will do both. Keyboards without a 🌐︎ key never send it." = "macOS может уже использовать 🌐︎ — для смены языка, эмодзи или диктовки. Поставьте «Клавиша 🌐︎: ничего не делать» в настройках клавиатуры, иначе сработает и то и другое. Клавиатуры без 🌐︎ её не отправляют.";
 "macOS would not move this. Show it in the Finder and try from there — the Finder says more about why." = "macOS не дала это переместить. Покажите файл в Finder и попробуйте оттуда — Finder объясняет причину подробнее.";
@@ -697,7 +697,7 @@
 "The Mac sleeps as usual" = "Mac засыпает как обычно";
 "Not applying right now" = "Сейчас не действует";
 "Stop pauses the rule until it applies again" = "«Стоп» поставит правило на паузу до следующего срабатывания";
-"Paused until the rule applies again" = "Пауза до следующего срабатывания";
+"Paused until the rule applies again" = "Правило на паузе до следующего срабатывания";
 "Stop on low battery" = "Останавливать при низком заряде";
 "Stay awake with the lid closed" = "Не спать с закрытой крышкой";
 "A timer pauses the rule too" = "Таймер ставит на паузу и правило";
@@ -712,9 +712,9 @@
 "macOS asks for an administrator password the first time. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "При первом включении macOS запросит пароль администратора. Если закрыть Helm, пока сон выключен, Mac не сможет заснуть до следующего запуска Helm.";
 "When the timer runs out, the rule is paused until it applies again" = "Когда таймер закончится, правило встанет на паузу до следующего срабатывания";
 "Needs Accessibility, or the pointer will not move" = "Нужен «Универсальный доступ», иначе курсор не сдвинется";
-"then the external display keeps the Mac awake" = "дальше Mac держит внешний дисплей";
-"then being on power keeps the Mac awake" = "дальше Mac держит питание";
-"then the app keeps the Mac awake" = "дальше Mac держит приложение";
+"then the external display keeps the Mac awake" = "дальше его держит внешний дисплей";
+"then being on power keeps the Mac awake" = "дальше его держит питание";
+"then the app keeps the Mac awake" = "дальше его держит приложение";
 "The Mac is staying awake" = "Mac не спит";
 "Until you stop it" = "Пока вы не остановите";
 "While an external display is connected" = "Пока подключён внешний дисплей";

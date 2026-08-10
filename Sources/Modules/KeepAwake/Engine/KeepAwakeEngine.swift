@@ -80,10 +80,10 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     public func activate() {
         // Only shell out to pmset when we actually recorded disabling sleep;
         // Swift evaluates both call arguments, so short-circuit with the flag.
-        if store.bool("clamshellGuard", default: false),
+        if store.bool(KeepAwakeSettings.Key.clamshellGuard, default: false),
            ClamshellRecovery.sleepDisabled(inPmsetOutput: clamshell.pmsetReport()) {
             _ = clamshell.setDisableSleep(false)
-            store.set(false, for: "clamshellGuard")
+            store.set(false, for: KeepAwakeSettings.Key.clamshellGuard)
         }
         // The one loss in this module that nothing else reports: a rules string
         // the file got wrong reads as no rules, so the apps somebody chose stop
@@ -136,9 +136,18 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 
     // MARK: - Session control (keep-awake on/off)
 
+    /// The one verb the keyboard has, and it has to be able to undo itself.
+    ///
+    /// Measured before this branch existed: with a rule holding the Mac, ⌥⌘K
+    /// paused the rule; ⌥⌘K again did **not** put it back — it started a
+    /// session by hand, so the shortcut oscillated between «rule paused» and
+    /// «held by hand for ever» and could never reach «just the rule». Off,
+    /// then on, has to be where you started.
     public func toggleSession() {
         if isActive {
             stopSession()
+        } else if suppressed {
+            resumeAutomation()
         } else {
             startSession(minutes: settings.defaultDurationMinutes)
         }
@@ -275,7 +284,14 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         settings.autoExternalDisplay && ExternalDisplaySupport.hasExternal(builtInFlags: displayInfo.builtInFlags())
     }
     private func powerCondition() -> Bool {
-        settings.autoPower && (power.snapshot().map { !$0.onBattery } ?? false)
+        // `snapshot()` is nil for two different reasons and this read them as
+        // one. A Mac with no battery — mini, Studio, iMac — has an empty power
+        // source list, so nil there means «no battery, therefore mains», and
+        // reading it as «not on power» made this rule dead on every desktop,
+        // along with every app rule narrowed to `.power`. Nil for an
+        // *incomplete* dictionary still has to mean not-on-power, because
+        // ending a session early is this module's safe failure.
+        settings.autoPower && power.isOnMains
     }
     private func appCondition() -> Bool {
         let rules = settings.appTriggers
@@ -512,8 +528,21 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         // clamshell may have been disabled) by the time the user answers it.
         // Never disable sleep for a session that is no longer active.
         guard isActive, settings.clamshellEnabled else { return }
-        store.set(true, for: "clamshellGuard")
-        _ = clamshell.setDisableSleep(true)
+        // The flag before the call, and it stays set if the call fails: it is a
+        // note to the next launch that this app *may* have left system sleep
+        // off, and the expensive mistake is missing that, not repeating it.
+        store.set(true, for: KeepAwakeSettings.Key.clamshellGuard)
+        // The result is the whole point. `sudo -n` fails whenever the NOPASSWD
+        // rule is gone — removed by an admin, by a migration, by somebody
+        // tidying `/etc/sudoers.d` — and the two ends of this used to discard
+        // it. Claiming a lid is safe to close is the one claim in this module
+        // that costs somebody a dead battery in a bag.
+        guard clamshell.setDisableSleep(true) else {
+            HelmLog.shared.warn("keepawake", "closed-lid sleep could not be disabled")
+            clamshellActive = false
+            emitState()
+            return
+        }
         clamshellActive = true
         // A change to the system's own sleep setting, made through sudo and
         // outliving the process — the one thing this module does that a crash can
@@ -522,8 +551,15 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     }
 
     private func disengageClamshell() {
-        _ = clamshell.setDisableSleep(false)
-        store.set(false, for: "clamshellGuard")
+        // If this fails, system sleep is still off — machine-wide, past this
+        // process — and clearing the guard would take away the only thing that
+        // brings the next launch back to look. The Mac would never sleep again
+        // and every screen would say Keep Awake was off.
+        guard clamshell.setDisableSleep(false) else {
+            HelmLog.shared.warn("keepawake", "closed-lid sleep could not be restored")
+            return
+        }
+        store.set(false, for: KeepAwakeSettings.Key.clamshellGuard)
         clamshellActive = false
         HelmLog.shared.info("keepawake", "closed-lid sleep restored")
     }

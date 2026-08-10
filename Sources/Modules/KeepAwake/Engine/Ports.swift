@@ -10,6 +10,14 @@ public protocol DisplayInfoPort: AnyObject { func builtInFlags() -> [Bool] }
 
 public protocol PowerInfoPort: AnyObject {
     func snapshot() -> (onBattery: Bool, percent: Int)?
+    /// Whether the Mac is on mains, which is **not** `!snapshot()!.onBattery`.
+    ///
+    /// A Mac with no battery has an empty power-source list, so `snapshot()`
+    /// is nil there — and nil is also what an incomplete IOKit dictionary
+    /// gives. Read as one thing, the power rule was dead on every desktop.
+    /// The battery guard still reads `snapshot()`, where nil correctly means
+    /// «no reading, do not end the session».
+    var isOnMains: Bool { get }
     func startObserving(_ onChange: @escaping @Sendable () -> Void)
     /// Every observer this module starts has to be stoppable, because the
     /// module can be switched off: the engine is dropped, the port goes with

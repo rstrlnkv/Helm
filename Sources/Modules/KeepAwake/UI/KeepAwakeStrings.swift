@@ -193,25 +193,6 @@ enum KAStr {
     /// the whole answer, and it is the same shape as the conditions listed for
     /// a session a rule is holding.
     static var heroUntilYouStop: String { L("Until you stop it") }
-    /// The preset the menu-bar switch itself starts, named where it is offered.
-    static func startTimerFor(_ minutes: Int) -> String {
-        // The same spelling as the preset buttons beside it. `duration` gives
-        // «1 h», which is what a narrow pill needs; this sentence sits under a
-        // 40 pt figure next to a button reading «1 hour», and the two spellings
-        // of one length on one screen is the defect `duration`'s own comment
-        // warns about.
-        let length: String
-        switch minutes {
-        case 60: length = oneHour
-        case 120: length = twoHours
-        default: length = duration(minutes)
-        }
-        return L("Start a timer for \(length)",
-                 [.ru: "Поставить таймер на \(length)", .es: "Poner un temporizador de \(length)",
-                  .fr: "Lancer un minuteur de \(length)", .de: "Timer auf \(length) stellen",
-                  .ja: "\(length) のタイマーを開始", .zh: "开始 \(length) 计时",
-                  .pt: "Iniciar um temporizador de \(length)"])
-    }
     /// Said beside the button that does it, rather than left for the log.
     static var heroStopSuppresses: String {
         L("Stop pauses the rule until it applies again")
@@ -325,7 +306,4 @@ enum KAStr {
     }
     static var menuBarIcon: String { L("Menu-bar icon") }
     static var customActiveIcon: String { L("Custom icon when active") }
-    /// Whole words. Three of these were clipped with a period into a cell that
-    /// fits them: the strip's label style is 9 pt semibold at 0.7 tracking and
-    /// the cell is a third of the 704 pt settings column, about 230 pt, while
 }

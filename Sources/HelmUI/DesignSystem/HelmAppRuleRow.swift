@@ -40,7 +40,7 @@ public struct HelmAppRuleRow<Controls: View, Note: View>: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 10) {
+            HStack(spacing: 12) {
                 Image(nsImage: info.icon)
                     .resizable().frame(width: 22, height: 22)
                     // The name is the next thing in the row, so reading the
@@ -63,6 +63,10 @@ public struct HelmAppRuleRow<Controls: View, Note: View>: View {
             }
             note
         }
-        .padding(.vertical, 5)
+        // No extra vertical padding. Measured against the rest of the page:
+        // an app row came out 55 pt where every other plain row is 35–37, so
+        // one card of five read as visibly looser than its neighbours. Ten of
+        // those points were this padding, standardised from VPN — the taller
+        // of the two rows won a comparison nobody made.
     }
 }

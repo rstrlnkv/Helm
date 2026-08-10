@@ -48,8 +48,15 @@ final class FakeDisplayObserver: DisplayObserverPort {
 
 final class FakePower: PowerInfoPort {
     var snap: (onBattery: Bool, percent: Int)? = (onBattery: false, percent: 100)
+    /// Separate from `snap`, because on a real Mac the two are separate: a
+    /// desktop answers «on mains» while `snapshot()` answers nil, and that
+    /// combination is the one the power rule was broken on. A fake that
+    /// derived this from `snap` could not express it, so no test of it could
+    /// exist — which is how the defect lived.
+    var onMains: Bool?
     private var onChange: (@Sendable () -> Void)?
     func snapshot() -> (onBattery: Bool, percent: Int)? { snap }
+    var isOnMains: Bool { onMains ?? !(snap?.onBattery ?? true) }
     private(set) var observing = false
     func startObserving(_ onChange: @escaping @Sendable () -> Void) {
         self.onChange = onChange
@@ -89,7 +96,15 @@ final class FakeClamshell: ClamshellPort {
         sudoersInstalled = false
         done(true)
     }
-    func setDisableSleep(_ on: Bool) -> Bool { disableSleepCalls.append(on); return true }
+    /// Whether `pmset` accepts the call. A fake that always succeeds makes
+    /// «the sudoers rule was removed behind the app's back» an unrepresentable
+    /// state, so no test of the failure could exist whatever anybody wrote —
+    /// and that failure is the one that leaves a Mac unable to sleep.
+    var disableSleepSucceeds = true
+    func setDisableSleep(_ on: Bool) -> Bool {
+        disableSleepCalls.append(on)
+        return disableSleepSucceeds
+    }
     func pmsetReport() -> String { pmset }
 }
 
@@ -107,6 +122,11 @@ final class FakeClock: Clock {
     private var nextID = 0
     private var cancelledIDs: Set<Int> = []
     var current = Date()
+    /// How many timers have been scheduled since this clock was created,
+    /// including ones since cancelled — a benchmark asking "did anything get
+    /// armed at rest" wants to know that a timer was requested at all, not only
+    /// whether one is still live.
+    var scheduledCount: Int { entries.count }
 
     func schedule(after: TimeInterval, _ block: @escaping @Sendable () -> Void) -> AnyObject {
         let id = nextID; nextID += 1

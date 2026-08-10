@@ -1,5 +1,4 @@
 import SwiftUI
-import HelmRuntime
 import HelmUI
 import Module_KeepAwake_Engine
 
@@ -221,7 +220,7 @@ struct KeepAwakeHero: View {
                 .font(.system(size: 40, weight: .light))
                 .foregroundStyle(HelmText.quiet)
             Text(anyRuleOn ? KAStr.heroIdleReason : KAStr.heroNoRules)
-                .font(.callout).foregroundStyle(HelmText.faint)
+                .font(.system(size: 13)).foregroundStyle(HelmText.faint)
             HStack(spacing: 8) {
                 startButton(KAStr.duration(15), minutes: 15)
                 startButton(KAStr.oneHour, minutes: 60)
@@ -253,7 +252,7 @@ struct KeepAwakeHero: View {
                 // digits cut. Keyed on the label rather than on the interval,
                 // for the reason above.
                 .animation(HelmMotion.interface, value: label)
-            Text(timedNote(end)).font(.callout).foregroundStyle(HelmText.quiet)
+            Text(timedNote(end)).font(.system(size: 13)).foregroundStyle(HelmText.quiet)
             HStack(spacing: 8) {
                 // The same arithmetic the panel's «+15» uses, and for the
                 // same reason: this is a `Double` that came off disk.
@@ -280,7 +279,7 @@ struct KeepAwakeHero: View {
             Text(KAStr.heroAwake)
                 .font(.system(size: 40, weight: .light))
             Text(KAStr.heroUntilYouStop)
-                .font(.callout).foregroundStyle(HelmText.quiet)
+                .font(.system(size: 13)).foregroundStyle(HelmText.quiet)
             HStack(spacing: 8) {
                 // A session with no deadline can be given one, and until now
                 // the only way to bound it was to stop it and start again.
@@ -298,7 +297,7 @@ struct KeepAwakeHero: View {
             Text(KAStr.heroAwake)
                 .font(.system(size: 40, weight: .light))
             Text(conditions.map(KAStr.condition).sorted().joined(separator: " · "))
-                .font(.callout).foregroundStyle(HelmText.quiet)
+                .font(.system(size: 13)).foregroundStyle(HelmText.quiet)
             HStack(spacing: 8) {
                 // Zero is not a length, it is «no deadline» — composing «start a
                 // timer for 0 min» from it made the page offer a timer of
@@ -318,7 +317,7 @@ struct KeepAwakeHero: View {
             // the one thing nobody could learn from any screen. Said beside the
             // button that does it.
             Text(KAStr.heroStopSuppresses)
-                .font(.caption).foregroundStyle(HelmText.faint)
+                .font(.system(size: 11)).foregroundStyle(HelmText.faint)
         }
     }
 

@@ -130,7 +130,12 @@ public struct KeepAwakeSettingsPage: View {
                 resume: { vm.send(KeepAwakeCommand.resumeAutomation) })
         }
         .padding(.top, 24)
-        .padding(.bottom, 18)
+        // 31, not 18. Measured: the gap from the buttons to «Automation» was
+        // 21 pt where every other card-to-heading gap on the page is 34, so
+        // the first heading sat crowded against the hero while the rest of the
+        // page breathed. The grouped `Form` sets that rhythm; this is the one
+        // block outside it and it has to join.
+        .padding(.bottom, 31)
         .helmSettingsColumn()
     }
 

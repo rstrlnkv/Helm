@@ -125,13 +125,18 @@ public final class IOPSPowerInfo: PowerInfoPort {
     /// below has no equivalent in `PowerSource`: a scan asks once a minute and
     /// has nothing to subscribe to.
     ///
-    /// Nil still means "IOKit would not answer", and Keep Awake still reads that
-    /// as *not* on power — ending a session early is the safe failure here,
-    /// where for a scan the safe failure is the opposite.
+    /// Nil still means "IOKit would not answer", and the battery guard still
+    /// reads that as no reading at all rather than as a flat battery.
     public func snapshot() -> (onBattery: Bool, percent: Int)? {
         guard let reading = PowerSource.current() else { return nil }
         return (onBattery: reading.onBattery, percent: reading.percent)
     }
+
+    /// The other question, which `snapshot()` cannot answer. A Mac with no
+    /// battery gives an empty source list, so `snapshot()` is nil there and
+    /// «no battery» arrived looking exactly like «IOKit would not answer» —
+    /// which is why the power rule was dead on every desktop Mac.
+    public var isOnMains: Bool { PowerSource.isOnMains }
 
     public func startObserving(_ onChange: @escaping @Sendable () -> Void) {
         self.onChange = onChange

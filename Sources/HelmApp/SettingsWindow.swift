@@ -466,6 +466,28 @@ private struct ModuleDetailView: View {
     let descriptor: any ModuleDescriptor
     let id: String
 
+    /// The badge's own reason to redraw.
+    ///
+    /// `activity` reads a `@Published` on the module's view model — an object
+    /// this view holds and does not observe — so measured, the badge changed
+    /// exactly once per visit to the page: start a session from the hero, and
+    /// the countdown ran while the badge two inches above it still said «Not
+    /// active», until you left the page and came back.
+    ///
+    /// `statusChanges` is the publisher for exactly this and already existed
+    /// with one subscriber, the status item. The badge is its second.
+    @State private var activityRevision = 0
+
+    /// The module's own «my state moved» signal, or nothing for a module that
+    /// publishes none — in which case the badge is absent anyway.
+    private var activityChanges: AnyPublisher<Void, Never> {
+        guard let live = host.liveModule(id),
+              let changes = descriptor.statusChanges(live.vm) else {
+            return Empty().eraseToAnyPublisher()
+        }
+        return changes
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HelmPageHeader(symbol: descriptor.moduleMetadata.sfSymbol,
@@ -477,6 +499,9 @@ private struct ModuleDetailView: View {
                 // notion of running at all.
                 if let live = host.liveModule(id),
                    let activity = descriptor.activity(live.vm) {
+                    // Read so this branch depends on it; the value means
+                    // nothing, the dependency is the point.
+                    let _ = activityRevision
                     switch activity {
                     case .active:
                         HelmBadge(AppStr.moduleActive, tint: HelmSignal.success)
@@ -519,6 +544,9 @@ private struct ModuleDetailView: View {
                 }
             }
         }
+        // The badge above reads a value off an object this view does not
+        // observe, so without this it is right once per visit and stale after.
+        .onReceive(activityChanges) { _ in activityRevision &+= 1 }
         // Leading, not centre. This alignment governs only content that does
         // not fill the pane, and everything here fills it — a capped column
         // and a non-bleeding header each centre themselves, measured unmoved
