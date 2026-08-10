@@ -718,3 +718,7 @@
 "Until you pick one, the same as the active colour" = "選ぶまでは、アクティブの色と同じです";
 "No apps chosen" = "App が選ばれていません";
 "Add an app and the Mac stays awake while it is running. A rule can be narrower: only on power, only with an external display, or both." = "App を追加すると、その App が動いている間 Mac はスリープしません。ルールは絞り込めます: 電源接続時のみ、外部ディスプレイ接続時のみ、またはその両方。";
+"Not active" = "停止中";
+"Keep Awake opens with what is happening and the buttons for it: a countdown you can add to, or four ways to start. The rules underneath say in the same row whether they apply right now and whether they are switched on." = "スリープ防止は、いま何が起きているかと、そのためのボタンから始まります: 延長できるカウントダウン、または開始する 4 つの方法。下のルールは、いま条件を満たしているかと、入になっているかを同じ行で伝えます。";
+"A module’s name says whether it is running." = "モジュール名の横に、動作中かどうかが出ます。";
+"A rule that is switched on and doing nothing looks different from one that is switched off. They used to look the same, so a rule that never fires and a rule nobody switched on were the same row." = "入になっていて何もしていないルールは、切のルールと見た目が変わりました。以前は同じで、一度も当てはまらないルールと、誰も入にしていないルールが同じ行でした。";

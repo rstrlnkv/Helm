@@ -718,3 +718,7 @@
 "Until you pick one, the same as the active colour" = "Пока свой не выбран — тот же, что и активный";
 "No apps chosen" = "Ни одного приложения";
 "Add an app and the Mac stays awake while it is running. A rule can be narrower: only on power, only with an external display, or both." = "Добавьте приложение — и мак не будет засыпать, пока оно запущено. Правило можно сузить: только от сети, только с внешним дисплеем или и то и другое.";
+"Not active" = "Не активен";
+"Keep Awake opens with what is happening and the buttons for it: a countdown you can add to, or four ways to start. The rules underneath say in the same row whether they apply right now and whether they are switched on." = "Keep Awake открывается тем, что происходит, и кнопками к этому: отсчётом, к которому можно добавить время, или четырьмя способами начать. Правила ниже говорят в одной строке и о том, выполняются ли они сейчас, и о том, включены ли они.";
+"A module’s name says whether it is running." = "Рядом с именем модуля видно, работает ли он.";
+"A rule that is switched on and doing nothing looks different from one that is switched off. They used to look the same, so a rule that never fires and a rule nobody switched on were the same row." = "Правило, которое включено и ничего не делает, теперь выглядит иначе, чем выключенное. Раньше они выглядели одинаково: правило, которое ни разу не сработало, и правило, которое никто не включал, были одной строкой.";

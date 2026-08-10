@@ -466,7 +466,25 @@ private struct ModuleDetailView: View {
             HelmPageHeader(symbol: descriptor.moduleMetadata.sfSymbol,
                            tint: descriptor.moduleTint.colour,
                            title: descriptor.moduleMetadata.name,
-                           bleeds: descriptor.pageBleeds)
+                           bleeds: descriptor.pageBleeds) {
+                // Only for a module that can say. Most answer nil, and nil
+                // draws nothing rather than «Not active» for a module with no
+                // notion of running at all.
+                if let live = host.liveModule(id),
+                   let activity = descriptor.activity(live.vm) {
+                    switch activity {
+                    case .active:
+                        HelmBadge(AppStr.moduleActive, tint: HelmSignal.success)
+                    case .idle:
+                        // Quiet text, not a badge. «Not active» is the ordinary
+                        // state, and a badge on every page for the ordinary
+                        // state is a mark that means nothing.
+                        Text(AppStr.moduleIdle)
+                            .font(.system(size: 11))
+                            .foregroundStyle(HelmText.quiet)
+                    }
+                }
+            }
             // No switch here. It was the third one in the app for the same
             // fact — the composer sheet's column and the empty state's
             // «Включить» being the other two — and it was the only one that

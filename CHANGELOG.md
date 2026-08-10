@@ -26,6 +26,25 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   a display rule comes back when the display does and a power rule when the
   charger does. All eight languages had faithfully translated the wrong half.
 
+- **Keep Awake opens with what is happening, and the verbs for it.** The page
+  began with three figures — `OFF · — · 0` before anything is configured, two
+  of them the unreadable kind — above twenty controls and not one that could
+  begin or end a session. It opens with a countdown you can add to, or four
+  ways to start, with the one the menu-bar switch uses drawn prominently: the
+  only place on any screen that says which that is.
+- **A rule row answers two questions.** The mark on the left is what is
+  happening now, off the wire; the control on the right is what is configured,
+  out of the store. A rule that is on and not applying now looks different from
+  one that is off — they used to look identical, so a rule that never fires and
+  a rule nobody switched on were the same row. A switched-off rule gets no mark
+  at all: the switch beside it already says so.
+- **Two headings about the icon become one.** «Menu-bar icon» and «Timer» both
+  answered what the icon looks like, and being two is how the app came to ship
+  two palettes that disagreed.
+- **A module's name says whether it is running.** From a new `activity` on the
+  descriptor rather than from the menu-bar claim, which would have told a Disk
+  user their scan was not running.
+
 ### Changed
 - **The sidebar is narrower, and its width is yours.** 214 pt out of the box
   instead of 250, and the divider drags between 180 and 320 — it was pinned

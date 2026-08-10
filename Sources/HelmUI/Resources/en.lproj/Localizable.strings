@@ -718,3 +718,7 @@
 "Until you pick one, the same as the active colour" = "Until you pick one, the same as the active colour";
 "No apps chosen" = "No apps chosen";
 "Add an app and the Mac stays awake while it is running. A rule can be narrower: only on power, only with an external display, or both." = "Add an app and the Mac stays awake while it is running. A rule can be narrower: only on power, only with an external display, or both.";
+"Not active" = "Not active";
+"Keep Awake opens with what is happening and the buttons for it: a countdown you can add to, or four ways to start. The rules underneath say in the same row whether they apply right now and whether they are switched on." = "Keep Awake opens with what is happening and the buttons for it: a countdown you can add to, or four ways to start. The rules underneath say in the same row whether they apply right now and whether they are switched on.";
+"A module’s name says whether it is running." = "A module’s name says whether it is running.";
+"A rule that is switched on and doing nothing looks different from one that is switched off. They used to look the same, so a rule that never fires and a rule nobody switched on were the same row." = "A rule that is switched on and doing nothing looks different from one that is switched off. They used to look the same, so a rule that never fires and a rule nobody switched on were the same row.";

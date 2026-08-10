@@ -718,3 +718,7 @@
 "Until you pick one, the same as the active colour" = "Enquanto você não escolher, a mesma da cor ativa";
 "No apps chosen" = "Nenhum app escolhido";
 "Add an app and the Mac stays awake while it is running. A rule can be narrower: only on power, only with an external display, or both." = "Adicione um app e o Mac fica acordado enquanto ele estiver em execução. A regra pode ser mais estreita: só na tomada, só com monitor externo ou ambos.";
+"Not active" = "Inativo";
+"Keep Awake opens with what is happening and the buttons for it: a countdown you can add to, or four ways to start. The rules underneath say in the same row whether they apply right now and whether they are switched on." = "O Keep Awake começa pelo que está acontecendo e pelos botões para isso: uma contagem que você pode estender, ou quatro maneiras de começar. As regras abaixo dizem na mesma linha se são atendidas agora e se estão ativadas.";
+"A module’s name says whether it is running." = "Ao lado do nome de um módulo aparece se ele está em execução.";
+"A rule that is switched on and doing nothing looks different from one that is switched off. They used to look the same, so a rule that never fires and a rule nobody switched on were the same row." = "Uma regra ativada que não faz nada agora parece diferente de uma desativada. Antes eram iguais: uma regra que nunca é atendida e uma que ninguém ativou eram a mesma linha.";

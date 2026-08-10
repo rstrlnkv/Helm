@@ -59,6 +59,13 @@ import Module_KeepAwake_Engine
         AnyView(KeepAwakeSettingsPage(vm: vm, store: store ?? NamespacedStore(namespace: KeepAwakeDescriptor.id.rawValue, backing: UserDefaults.standard)))
     }
 
+    /// This module has a plain running/not-running of its own, which is what
+    /// the badge needs — and it is the same `isActive` the menu-bar icon and
+    /// the panel tile draw, not a second opinion about it.
+    public func activity(_ vm: ModuleViewModel) -> ModuleActivity? {
+        KeepAwakeViewModel.shared(vm: vm).isActive ? .active : .idle
+    }
+
     public func statusChanges(_ vm: ModuleViewModel) -> AnyPublisher<Void, Never>? {
         KeepAwakeViewModel.shared(vm: vm).objectWillChange
             .map { _ in () }

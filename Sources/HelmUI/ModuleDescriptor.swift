@@ -18,6 +18,17 @@ import HelmRuntime
     func makeEngine(store: NamespacedStore) -> any ModuleEngine
     func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution?
     func settingsPage(_ vm: ModuleViewModel) -> AnyView
+    /// Whether this module is doing something right now — for the badge beside
+    /// its name in the page header.
+    ///
+    /// Nil by default, and nil is the honest answer for most modules: «active»
+    /// has to mean something the module can actually say. `statusAppearance`
+    /// is not that answer, however tempting — it reports a *claim on the
+    /// menu-bar icon*, so Disk in the middle of a scan returns `.inactive` and
+    /// a badge drawn from it would tell the person their scan was not running.
+    /// A module answers this when it has a running/not-running of its own, and
+    /// gets no badge until it does.
+    func activity(_ vm: ModuleViewModel) -> ModuleActivity?
     /// Desired host status-icon appearance for the current vm state. Default = inactive (white ring).
     func statusAppearance(_ vm: ModuleViewModel) -> StatusAppearance
     /// Fires when the value `statusAppearance` reads has changed.
@@ -45,6 +56,7 @@ public extension ModuleDescriptor {
     /// 744 pt form column, so its header knows not to centre itself.
     var pageBleeds: Bool { false }
     func statusAppearance(_ vm: ModuleViewModel) -> StatusAppearance { .inactive }
+    func activity(_ vm: ModuleViewModel) -> ModuleActivity? { nil }
     func statusChanges(_ vm: ModuleViewModel) -> AnyPublisher<Void, Never>? { nil }
 
     /// Every module already draws one panel tile the width of the card, and
@@ -65,4 +77,15 @@ public extension ModuleDescriptor {
     func panelWidgetSizes(_ vm: ModuleViewModel) -> Set<PanelWidgetSize> {
         Set(PanelWidgetSize.allCases.filter { panelWidget($0, vm) != nil })
     }
+}
+
+/// What a module says about itself in its page header.
+///
+/// Two cases and no third: this is not a place for progress or counts. v3
+/// draws the first as a green badge and the second as quiet text, because
+/// «not active» is the ordinary state and a badge for it would be a mark on
+/// every page that means nothing.
+public enum ModuleActivity: Equatable, Sendable {
+    case active
+    case idle
 }

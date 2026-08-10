@@ -54,6 +54,9 @@ enum Changelog {
                 ChangeItem(kind: .new, text: L("A timer can end automation too. Switch it on, and a timer set while an app is holding the Mac ends that as well \u{2014} until the app is launched again.")),
                 ChangeItem(kind: .upd, text: L("The sidebar is narrower and you can drag it wider or thinner \u{2014} whatever you settle on comes back next time.")),
                 ChangeItem(kind: .new, text: L("A silenced rule says so in the panel, with a way to start it again. Stopping a session by hand, or a timer that ends automation, leaves the rule quiet until it applies afresh \u{2014} and nothing said so where you would look.")),
+                ChangeItem(kind: .upd, text: L("Keep Awake opens with what is happening and the buttons for it: a countdown you can add to, or four ways to start. The rules underneath say in the same row whether they apply right now and whether they are switched on.")),
+                ChangeItem(kind: .upd, text: L("A rule that is switched on and doing nothing looks different from one that is switched off. They used to look the same, so a rule that never fires and a rule nobody switched on were the same row.")),
+                ChangeItem(kind: .new, text: L("A module\u{2019}s name says whether it is running.")),
             ]),
             ChangelogEntry(version: "0.9.0", date: "2026-08-09", items: [
                 ChangeItem(kind: .new, text: L("Widgets are moved by hand. Pick one up and it follows the pointer; the others slide aside; letting go sets it down where the space opened.")),

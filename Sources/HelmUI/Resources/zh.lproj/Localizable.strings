@@ -718,3 +718,7 @@
 "Until you pick one, the same as the active colour" = "未选择前，与激活时的颜色相同";
 "No apps chosen" = "未选择任何 App";
 "Add an app and the Mac stays awake while it is running. A rule can be narrower: only on power, only with an external display, or both." = "添加一个 App，它运行时 Mac 就不会睡眠。规则可以更窄：仅接电源时、仅接外接显示器时，或两者兼有。";
+"Not active" = "未启用";
+"Keep Awake opens with what is happening and the buttons for it: a countdown you can add to, or four ways to start. The rules underneath say in the same row whether they apply right now and whether they are switched on." = "“保持唤醒”以当前状态和对应按钮开场：可以加时的倒计时，或四种开始方式。下面的规则会在同一行里说明它当前是否满足，以及是否已开启。";
+"A module’s name says whether it is running." = "模块名称旁会显示它是否正在运行。";
+"A rule that is switched on and doing nothing looks different from one that is switched off. They used to look the same, so a rule that never fires and a rule nobody switched on were the same row." = "已开启但没有生效的规则，现在看起来和关闭的规则不同了。以前两者一样：从未触发的规则和没人开启的规则是同一行。";

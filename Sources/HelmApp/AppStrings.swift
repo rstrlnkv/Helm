@@ -3,6 +3,15 @@ import HelmUI
 
 /// Localized strings for the app shell (settings window chrome).
 enum AppStr {
+    /// The badge beside a module's name in its page header.
+    ///
+    /// «Active» is the key Layout's own indicator already uses for the same
+    /// meaning — a module that is working — so it is reused rather than said a
+    /// second way. Its partner is new: nothing in the app had a word for the
+    /// ordinary state, because nothing drew it.
+    static var moduleActive: String { L("Active") }
+    static var moduleIdle: String { L("Not active") }
+
     /// The settings window's own title. Never drawn — the window hides its
     /// title bar text — and read aloud all the same: VoiceOver announces it on
     /// focus, and the Window menu lists it. It was the one user-visible English
