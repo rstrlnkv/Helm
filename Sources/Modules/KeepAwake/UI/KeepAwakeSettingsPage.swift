@@ -244,7 +244,7 @@ public struct KeepAwakeSettingsPage: View {
             // so drawing it where it can do nothing is offering a permanent
             // system grant for a feature the machine cannot use.
             if MacHardware.hasLid {
-                HelmSettingRow(KAStr.keepAwakeLidClosed, note: KAStr.adminNote, mark: .spacer(inCardWithMarks: marksArePossible)) {
+                HelmSettingRow(KAStr.keepAwakeLidClosed, note: KAStr.adminNote, mark: .spacer(inCardWithMarks: shownMarksPossible)) {
                     Toggle(KAStr.keepAwakeLidClosed, isOn: $clamshellEnabled)
                         .labelsHidden()
                         .onChange(of: clamshellEnabled) { _, v in
@@ -259,7 +259,7 @@ public struct KeepAwakeSettingsPage: View {
             // setting was written after the mockup, and here is where it
             // belongs: beside the rules whose end it changes.
             HelmSettingRow(KAStr.timerEndsAutomation, note: KAStr.timerEndsAutomationNote,
-                           mark: .spacer(inCardWithMarks: marksArePossible)) {
+                           mark: .spacer(inCardWithMarks: shownMarksPossible)) {
                 Toggle(KAStr.timerEndsAutomation, isOn: $timerEndsAutomation)
                     .labelsHidden()
                     .onChange(of: timerEndsAutomation) { _, v in
@@ -271,7 +271,7 @@ public struct KeepAwakeSettingsPage: View {
             // so the number you set is still the number you see.
             // A guard on a battery this Mac does not have.
             if MacHardware.hasBattery {
-                HelmSettingRow(KAStr.turnOffLowBattery, mark: .spacer(inCardWithMarks: marksArePossible)) {
+                HelmSettingRow(KAStr.turnOffLowBattery, mark: .spacer(inCardWithMarks: shownMarksPossible)) {
                     Picker(KAStr.turnOffLowBattery, selection: $batteryGuardPercent) {
                         ForEach(HelmChoices.including(batteryGuardPercent, in: Self.batteryLevels),
                                 id: \.self) { level in
@@ -312,6 +312,15 @@ public struct KeepAwakeSettingsPage: View {
     /// 14 pt of empty mark column against nobody — every label stepped right,
     /// and the gap read as icons that had failed to load. It is the state a
     /// fresh install opens in, so it was the first thing anybody saw.
+    /// Whether a mark **can** appear in this card — the live answer, read in
+    /// exactly one place.
+    ///
+    /// Every row in the card is indented by the mark column, marked or not, so
+    /// every row has to move on the same clock. Three of them went on reading
+    /// this directly after the marked ones moved to the drawn value, and the
+    /// result was worse than no animation: the row that gains a tick ramped
+    /// while the three beside it jumped, so the card came apart down the middle
+    /// on every press. `MarkColumnHasOneClockTests` fails on a second reader.
     private var marksArePossible: Bool { autoExternalDisplay || autoPower }
 
     /// A rule the engine can report on: the mark comes from `activeConditions`,
