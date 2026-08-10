@@ -188,7 +188,6 @@ final class StringsLiveInLprojTests: XCTestCase {
         "Tab": [.de],
         "Tag": [.fr, .de],
         "Text": [.de],
-        "TIMER": [.de, .pt],
         "Timer": [.de, .pt],
         "Updates": [.de],
         "VERSION": [.fr, .de],

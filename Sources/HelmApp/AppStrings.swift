@@ -10,7 +10,11 @@ enum AppStr {
     /// second way. Its partner is new: nothing in the app had a word for the
     /// ordinary state, because nothing drew it.
     static var moduleActive: String { L("Active") }
-    static var moduleIdle: String { L("Not active") }
+    /// The same key Layout's indicator already carries for the same state, so
+    /// «Active» and its negative come as a pair. Two English spellings of one
+    /// idea had already collapsed into one word in German and Japanese, which
+    /// is the translators noticing what the source had not.
+    static var moduleIdle: String { L("Not running") }
 
     /// The settings window's own title. Never drawn — the window hides its
     /// title bar text — and read aloud all the same: VoiceOver announces it on
