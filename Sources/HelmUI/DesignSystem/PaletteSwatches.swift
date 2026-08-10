@@ -15,40 +15,29 @@ import SwiftUI
 /// appear under the hosting view for the button form and none for the gesture
 /// form; `.buttonStyle(.plain)` leaves the drawing exactly as it was.
 public struct HelmPaletteSwatches: View {
-    /// `.grid` is the original 5×2 field, kept as the default so Keep Awake's
-    /// two call sites change nothing. `.row` is a single line of ten, smaller,
-    /// for a place that only has one row's worth of space beside a label.
-    public enum Layout { case grid, row }
-
+    /// Ten swatches on one line, beside the label whose colour they set.
+    ///
+    /// There was a 5×2 grid as well, and it was the default. Two of them in one
+    /// column — the active colour and the countdown colour — came out different
+    /// widths, so their right edges did not line up and the card read as
+    /// crooked. A row cannot do that. The grid had no call site left once both
+    /// moved, and a layout nobody asks for is a branch that stops being true
+    /// without anybody finding out.
     private let selection: String
-    private let layout: Layout
     private let pick: (String) -> Void
 
-    public init(selection: String, layout: Layout = .grid, pick: @escaping (String) -> Void) {
+    public init(selection: String, pick: @escaping (String) -> Void) {
         self.selection = selection
-        self.layout = layout
         self.pick = pick
     }
 
     public var body: some View {
-        switch layout {
-        case .grid:
-            // 5 columns × 2 rows for the 10 palette colours.
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 24, maximum: 44)), count: 5),
-                      spacing: 12) {
-                ForEach(PaletteColor.allCases, id: \.rawValue) { palette in
-                    swatch(palette, diameter: 24, checkmarkSize: 11)
-                }
+        HStack(spacing: 8) {
+            ForEach(PaletteColor.allCases, id: \.rawValue) { palette in
+                swatch(palette, diameter: 20, checkmarkSize: 9)
             }
-            .padding(.vertical, 4)
-        case .row:
-            HStack(spacing: 8) {
-                ForEach(PaletteColor.allCases, id: \.rawValue) { palette in
-                    swatch(palette, diameter: 20, checkmarkSize: 9)
-                }
-            }
-            .padding(.vertical, 4)
         }
+        .padding(.vertical, 4)
     }
 
     /// One swatch button, shared by both layouts so they cannot drift apart —

@@ -211,7 +211,12 @@ public struct KeepAwakeSettingsPage: View {
                 Text(conditions.map(KAStr.condition).sorted().joined(separator: " · "))
                     .font(.callout).foregroundStyle(HelmText.quiet)
                 HStack(spacing: 8) {
-                    Button(KAStr.startTimerFor(defaultDurationMinutes)) {
+                    // Zero is not a length, it is «no deadline» — composing
+                    // «start a timer for 0 min» from it made the page offer a
+                    // timer of nothing. The word is the one the idle row uses
+                    // for the same choice.
+                    Button(defaultDurationMinutes == 0
+                           ? KAStr.indefinite : KAStr.startTimerFor(defaultDurationMinutes)) {
                         start(defaultDurationMinutes)
                     }
                     .controlSize(.large)
@@ -531,11 +536,16 @@ public struct KeepAwakeSettingsPage: View {
         // button already carries this action, and two «Add app…» in one card is
         // the app asking the same question twice.
         if !appTriggers.isEmpty {
+            // The card's last row, not a button sitting in one: v3 draws it as
+            // a line of the list it adds to, in the accent, which is also how
+            // macOS's own lists offer «add».
             Button {
                 pickApp()
             } label: {
                 Label(KAStr.addApp, systemImage: "plus")
+                    .foregroundStyle(Color.accentColor)
             }
+            .buttonStyle(.plain)
         }
     }
 

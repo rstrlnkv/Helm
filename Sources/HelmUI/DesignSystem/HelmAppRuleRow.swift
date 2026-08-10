@@ -50,7 +50,11 @@ public struct HelmAppRuleRow<Controls: View, Note: View>: View {
                 Spacer(minLength: 12)
                 controls
                 Button(action: remove) {
-                    Image(systemName: "minus.circle.fill").foregroundStyle(HelmText.quiet)
+                    // A cross, not a filled minus. The minus is the sign macOS
+                    // puts under a list — the button that removes the *selected*
+                    // row — and there is one of these per row, which is the
+                    // other gesture entirely.
+                    Image(systemName: "xmark").foregroundStyle(HelmText.faint)
                 }
                 .buttonStyle(.plain)
                 // Which app this removes. A list of these offered VoiceOver

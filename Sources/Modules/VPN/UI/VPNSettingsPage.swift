@@ -161,13 +161,13 @@ public struct VPNSettingsPage: View {
 
         VStack(spacing: 2) {
             LabeledContent(VPNStr.spinConnected) {
-                HelmPaletteSwatches(selection: spinTintConnected, layout: .row) { token in
+                HelmPaletteSwatches(selection: spinTintConnected) { token in
                     spinTintConnected = token
                     VPNSettings(store: store).setSpinTint(token, for: .connected)
                 }
             }
             LabeledContent(VPNStr.spinDisconnected) {
-                HelmPaletteSwatches(selection: spinTintDisconnected, layout: .row) { token in
+                HelmPaletteSwatches(selection: spinTintDisconnected) { token in
                     spinTintDisconnected = token
                     VPNSettings(store: store).setSpinTint(token, for: .disconnected)
                 }
