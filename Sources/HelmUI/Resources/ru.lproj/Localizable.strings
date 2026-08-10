@@ -17,8 +17,6 @@
 "A way out of a scan in Disk. The module opens on whatever it measured last, and the only button was “Scan again”, which measures the same place — so a scan of the wrong folder came back at every launch with no way to leave it. “Choose another…” beside it clears the screen and forgets the saved scan." = "Из скана в «Диске» теперь есть выход. Модуль открывается на том, что мерил в последний раз, а единственная кнопка была «Сканировать заново», которая мерит то же самое место. «Выбрать другое…» рядом очищает экран и забывает сохранённый скан.";
 "A word is checked when you finish it this way. Moving the caret or clicking elsewhere never converts — by then you have moved on." = "Слово проверяется, когда вы закончили его одним из этих способов. Перемещение курсора или клик в другом месте не запускают проверку: к этому моменту вы уже заняты другим.";
 "A word is only changed when it is not a word as typed and is one once swapped. Anything valid is left alone." = "Слово меняется, только если само по себе оно не слово, а после смены раскладки словом становится. Всё осмысленное остаётся как есть.";
-"ACTIVE" = "АКТИВНО";
-"AUTOMATIC" = "АВТО";
 "Abbreviation" = "Сокращение";
 "Abbreviations" = "Сокращения";
 "Abbreviations. A short token you type often and what it stands for, expanded at the same word boundary a layout conversion happens at. A word that expanded is never also converted. And optionally the one typing habit Helm is sure enough about to correct: “ПРivet” → “Privet” — never a word typed in capitals on purpose, and never one with a digit in it." = "Аббревиатуры. Короткое сочетание, которое вы часто набираете, и то, во что оно разворачивается, — на той же границе слова, где происходит смена раскладки. Развернувшееся слово не переводится ещё и в другую раскладку. И, по желанию, единственная опечатка, в которой Helm уверен достаточно, чтобы её исправлять: «ПРивет» → «Привет» — но никогда «ПРИВЕТ» (кто-то кричит намеренно) и никогда слово с цифрой (это идентификатор).";
@@ -67,7 +65,6 @@
 "Before it starts changing what you type." = "Что оно делает с вашим текстом — до того, как начнёт.";
 "Beta" = "Beta";
 "Blue" = "Синий";
-"CONNECTIONS" = "ПОДКЛЮЧЕНИЯ";
 "Cache — apps rebuild it" = "Кеш — приложения создадут заново";
 "Caches" = "Кеши";
 "Cancel" = "Отменить";
@@ -742,3 +739,6 @@
 "Helm connects and disconnects the configurations macOS holds, and can do it by rule — bringing up the work VPN when Slack opens, for example. The configuration itself is added in System Settings." = "Helm подключает и отключает конфигурации, которые держит macOS, и умеет делать это по правилам — например, поднимать рабочий VPN, когда открывается Slack. Саму конфигурацию добавляют в Системных настройках.";
 "Open Network settings" = "Открыть «Сеть» в настройках";
 "Helm picks it up on its own — there is nothing to refresh." = "Helm подхватит её сам — обновлять ничего не нужно.";
+"macOS holds the configurations — Helm connects and disconnects them. Add one in System Settings and Helm picks it up." = "Конфигурации держит macOS — Helm их подключает и отключает. Новую добавляют в Системных настройках, Helm подхватит её сам.";
+"Connect" = "Подключить";
+"Disconnect" = "Отключить";

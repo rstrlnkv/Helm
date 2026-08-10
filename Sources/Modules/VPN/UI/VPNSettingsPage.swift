@@ -43,25 +43,26 @@ public struct VPNSettingsPage: View {
 
     /// Connections that are up. Not on their way up: the strip says "active"
     /// and tints it green, beside a row spinning and saying "Connecting".
-    private var activeCount: Int {
-        vm.connections.filter(\.status.isConnected).count
-    }
 
     private var vpnForm: some View {
         Form {
-            Section {
-                HelmMetricStrip([
-                    .init("\(vm.connections.count)", VPNStr.metricConnections),
-                    .init("\(activeCount)", VPNStr.metricActive, tint: activeCount > 0 ? .green : nil),
-                    // The rules written down, not the ones firing this second:
-                    // the dial sat directly above the list and read 0 over one
-                    // visible rule. Which of them is up is the dot's answer.
-                    .init("\(VPNRules.automationCount(rules))", VPNStr.metricAutomatic),
-                ])
-            }
-
+            // No `HelmMetricStrip`. Two of its three figures — how many
+            // connections, how many are up — are what the list underneath says
+            // a row at a time, and the third is a number nobody acts on. The
+            // one thing a person wants from the top of this page is whether
+            // anything is up, and the window's own header draws that from
+            // `VPNDescriptor.activity`.
             Section(header: HelmSectionTitle(VPNStr.connections)) {
                 connectionsList
+                if !vm.connections.isEmpty {
+                    // Where configurations come from, said once under the list
+                    // rather than only inside the empty state — the person with
+                    // two of them is the one who wonders where a third goes.
+                    Text(VPNStr.connectionsHint)
+                        .font(.caption)
+                        .foregroundStyle(HelmText.quiet)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
 
             Section(header: HelmSectionTitle(VPNStr.perAppAutomation)) {
@@ -218,53 +219,85 @@ public struct VPNSettingsPage: View {
                 .controlSize(.large)
             }
         } else {
-            ForEach(vm.connections) { connection in
-                connectionRow(connection)
+            // Adaptive rather than a fixed three: v3 draws three because it
+            // had three to draw. A Mac with two would leave a third of the row
+            // empty, and one with five would need a second row anyway.
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 190), spacing: 12)], spacing: 12) {
+                ForEach(vm.connections) { connection in
+                    connectionCard(connection)
+                }
             }
         }
     }
 
-    private func connectionRow(_ c: VPNConnection) -> some View {
+    /// One connection, as a card with one verb.
+    ///
+    /// **A switch was the wrong control for this.** A `Toggle` says «this is on
+    /// or off» and sets it directly; a tunnel takes seconds to come up, can
+    /// refuse, and is put back down by the network without anybody asking — so
+    /// the switch spent those seconds showing the state somebody *wanted*
+    /// rather than the one that was true, and there was no honest position for
+    /// «connecting». A button is a request, which is what pressing this is, and
+    /// the dot and the words beside it report what happened.
+    ///
+    /// v3 draws these as a grid of cards, and the grid is what makes the verb
+    /// affordable: a row has to fit its control in a column and a card does
+    /// not.
+    private func connectionCard(_ c: VPNConnection) -> some View {
         let active = c.status.isUp
         let transitioning = c.status.isTransitioning
-        return HStack(spacing: 12) {
-            HelmStatusDot(active: active)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(c.name)
-                // The separator belongs to the pair, not to the status.
-                // Written as `Text("· \(status)")` it was drawn whether or not
-                // there was a kind in front of it, so a connection whose
-                // protocol could not be read — `scutil` printing `[]`, which
-                // `prettyKind` answers nil for — showed a line opening on a
-                // stray middle dot. Latent rather than live: the parser's
-                // fallback almost always finds a word. It is also the one
-                // piece of punctuation on this row that never went through
-                // `L()`, and `·` is not what CJK sets between two words.
-                HStack(spacing: 6) {
-                    if let kind = prettyKind(c.kind) {
-                        Text(kind)
-                        Text(VPNStr.separator)
-                    }
-                    Text(statusText(c.status))
-                }
-                .font(.caption)
-                .foregroundStyle(HelmText.quiet)
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                HelmStatusDot(active: active)
+                Text(c.name).font(.system(size: 13, weight: .semibold)).lineLimit(1)
             }
-            // The name and what it is doing are one thing to read, not two
-            // stops. On the text only, the way Disk and Duplicates do it: the
-            // switch beside it stays its own control.
+            // Monospaced, because these two lines are a readout — the kind is
+            // a protocol name and the status is one of five words, and they sit
+            // in a column of cards a person compares down.
+            VStack(alignment: .leading, spacing: 0) {
+                if let kind = prettyKind(c.kind) { Text(kind) }
+                Text(statusText(c.status))
+            }
+            .font(.system(size: 11, design: .monospaced))
+            .foregroundStyle(HelmText.quiet)
             .accessibilityElement(children: .combine)
-            Spacer()
-            if transitioning { ProgressView().controlSize(.small) }
-            Toggle("", isOn: Binding(
-                get: { active },
-                set: { on in on ? vm.connect(c.name) : vm.disconnect(c.name) }))
-                .toggleStyle(.switch)
-                .labelsHidden()
-                .controlSize(.small)
-                .accessibilityLabel(c.name)
+            Spacer(minLength: 6)
+            HStack(spacing: 6) {
+                if transitioning { ProgressView().controlSize(.small) }
+                connectionVerb(c, active: active, transitioning: transitioning)
+            }
         }
-        .padding(.vertical, 3)
+        .padding(12)
+        .frame(maxWidth: .infinity, minHeight: 92, alignment: .topLeading)
+        .background(
+            RoundedRectangle(cornerRadius: HelmSurface.cardRadius, style: .continuous)
+                .fill(Color.primary.opacity(0.05))
+        )
+        .overlay(
+            // The connected one is ringed rather than filled: a filled card in
+            // a row of cards reads as «selected», and there is nothing to
+            // select here — it is the one that is up.
+            RoundedRectangle(cornerRadius: HelmSurface.cardRadius, style: .continuous)
+                .strokeBorder(active ? Color.accentColor : .clear, lineWidth: 1.5)
+        )
+    }
+
+    @ViewBuilder
+    private func connectionVerb(_ c: VPNConnection, active: Bool, transitioning: Bool) -> some View {
+        if active {
+            Button(VPNStr.disconnect) { vm.disconnect(c.name) }
+                .frame(maxWidth: .infinity)
+                .disabled(transitioning)
+                .accessibilityLabel("\(VPNStr.disconnect), \(c.name)")
+        } else {
+            // Prominent, because on a page of cards the one thing to press is
+            // «connect» and there is no other candidate for the accent.
+            Button(VPNStr.connect) { vm.connect(c.name) }
+                .buttonStyle(.borderedProminent)
+                .frame(maxWidth: .infinity)
+                .disabled(transitioning)
+                .accessibilityLabel("\(VPNStr.connect), \(c.name)")
+        }
     }
 
     private func prettyKind(_ raw: String?) -> String? {

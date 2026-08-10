@@ -17,8 +17,6 @@
 "A way out of a scan in Disk. The module opens on whatever it measured last, and the only button was “Scan again”, which measures the same place — so a scan of the wrong folder came back at every launch with no way to leave it. “Choose another…” beside it clears the screen and forgets the saved scan." = "Ein Ausgang aus dem Scan in Festplatte: das Modul öffnet mit dem zuletzt Gemessenen, und „Anderes wählen…“ leert den Bildschirm und vergisst den gespeicherten Scan.";
 "A word is checked when you finish it this way. Moving the caret or clicking elsewhere never converts — by then you have moved on." = "Ein Wort wird geprüft, wenn du es so beendest. Cursor bewegen oder woanders klicken konvertiert nie — dann bist du schon weiter.";
 "A word is only changed when it is not a word as typed and is one once swapped. Anything valid is left alone." = "Ein Wort wird nur geändert, wenn es so getippt keines ist und nach dem Tausch eines wird. Gültiges bleibt.";
-"ACTIVE" = "AKTIV";
-"AUTOMATIC" = "AUTO";
 "Abbreviation" = "Kürzel";
 "Abbreviations" = "Abkürzungen";
 "Abbreviations. A short token you type often and what it stands for, expanded at the same word boundary a layout conversion happens at. A word that expanded is never also converted. And optionally the one typing habit Helm is sure enough about to correct: “ПРivet” → “Privet” — never a word typed in capitals on purpose, and never one with a digit in it." = "Abkürzungen. Ein kurzes Kürzel, das du oft tippst, und wofür es steht — an derselben Wortgrenze, an der auch die Belegung umgeschaltet wird. Ein aufgelöstes Kürzel wird nicht zusätzlich umgewandelt. Und auf Wunsch der eine Tippfehler, bei dem Helm sicher genug ist: „HAllo“ → „Hallo“ — nie ein absichtlich groß geschriebenes Wort und nie eines mit einer Ziffer.";
@@ -67,7 +65,6 @@
 "Before it starts changing what you type." = "Bevor es anfängt, dein Getipptes zu ändern.";
 "Beta" = "Beta";
 "Blue" = "Blau";
-"CONNECTIONS" = "VERBINDUNGEN";
 "Cache — apps rebuild it" = "Cache — Apps legen ihn neu an";
 "Caches" = "Caches";
 "Cancel" = "Abbrechen";
@@ -742,3 +739,6 @@
 "Helm connects and disconnects the configurations macOS holds, and can do it by rule — bringing up the work VPN when Slack opens, for example. The configuration itself is added in System Settings." = "Helm verbindet und trennt die Konfigurationen, die macOS verwaltet, und kann das nach Regeln tun — etwa das Arbeits-VPN starten, wenn Slack geöffnet wird. Die Konfiguration selbst wird in den Systemeinstellungen angelegt.";
 "Open Network settings" = "Netzwerkeinstellungen öffnen";
 "Helm picks it up on its own — there is nothing to refresh." = "Helm übernimmt sie von selbst — es gibt nichts zu aktualisieren.";
+"macOS holds the configurations — Helm connects and disconnects them. Add one in System Settings and Helm picks it up." = "Die Konfigurationen verwaltet macOS — Helm verbindet und trennt sie. Eine neue legt man in den Systemeinstellungen an, Helm übernimmt sie.";
+"Connect" = "Verbinden";
+"Disconnect" = "Trennen";

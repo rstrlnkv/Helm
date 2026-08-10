@@ -68,6 +68,17 @@ import Module_VPN_Engine
         }
     }
 
+    /// The badge in the page header, which is where the count used to be.
+    ///
+    /// A `HelmMetricStrip` sat above this page reading «2 connections · 1
+    /// active · 3 automatic». Two of those three are facts the list underneath
+    /// spells out a row at a time, and the third is a number nobody acts on;
+    /// what a person wants from the top of this page is whether anything is up
+    /// at all. That is one word, and the window already has a place for it.
+    public func activity(_ vm: ModuleViewModel) -> ModuleActivity? {
+        viewModel(vm).connections.contains { $0.status.isUp } ? .active : .idle
+    }
+
     /// Without this the host reads `statusAppearance` only when something else
     /// redraws the icon, and a rule firing by itself is precisely the case
     /// where nothing else does.

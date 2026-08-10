@@ -38,6 +38,18 @@ enum VPNStr {
     static var noVPNsExplain: String {
         L("Helm connects and disconnects the configurations macOS holds, and can do it by rule — bringing up the work VPN when Slack opens, for example. The configuration itself is added in System Settings.")
     }
+    /// Under the list, for the person who already has two and wonders where a
+    /// third comes from. The empty state says the same thing at length; this is
+    /// the one-line version for a page that is not empty.
+    /// The one verb on a card. macOS's own words for these two, out of its
+    /// network panes: «Подключить»/«Отключить», *Verbinden*/*Trennen* — not the
+    /// dictionary's «Соединить» or *Anschließen*.
+    static var connect: String { L("Connect") }
+    static var disconnect: String { L("Disconnect") }
+
+    static var connectionsHint: String {
+        L("macOS holds the configurations — Helm connects and disconnects them. Add one in System Settings and Helm picks it up.")
+    }
     static var openNetworkSettings: String { L("Open Network settings") }
     /// Nothing to refresh afterwards: the engine watches the list.
     static var noVPNsNote: String { L("Helm picks it up on its own — there is nothing to refresh.") }
@@ -181,7 +193,4 @@ enum VPNStr {
         }
     }
 
-    static var metricConnections: String { L("CONNECTIONS") }
-    static var metricActive: String { L("ACTIVE") }
-    static var metricAutomatic: String { L("AUTOMATIC") }
 }
