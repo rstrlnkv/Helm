@@ -47,11 +47,10 @@ public struct HelmPaletteSwatches: View {
     /// Which item the menu has selected: one of the eight, or the free choice.
     private enum Choice: Hashable { case palette(PaletteColor), custom }
 
-    @State private var showingPicker = false
-    /// What the colour well is bound to while the popover is open. Seeded from
-    /// the stored token so the panel opens on the colour that is in use, not on
-    /// black.
-    @State private var custom: Color = .accentColor
+    /// Kept alive by the view, because `NSColorPanel` holds its target
+    /// weakly: a bridge created inside the action would be gone before the
+    /// first colour came back.
+    @State private var bridge = ColorPanelBridge()
 
     public var body: some View {
         // A `Picker`, not a `Menu`. Both are one compact control; this one is
@@ -91,14 +90,6 @@ public struct HelmPaletteSwatches: View {
         .labelsHidden()
         .fixedSize()
         .accessibilityValue(currentLabel)
-        // The system colour panel, opened by choosing «Other…» and anchored to
-        // the control that opened it.
-        .popover(isPresented: $showingPicker, arrowEdge: .bottom) {
-            ColorPicker(HelmA11y.otherColour, selection: $custom, supportsOpacity: false)
-                .labelsHidden()
-                .padding(14)
-                .onChange(of: custom) { _, picked in pick(PaletteTint.token(for: picked)) }
-        }
     }
 
     /// The selection, in both directions. Choosing «Other…» does not itself
@@ -112,11 +103,31 @@ public struct HelmPaletteSwatches: View {
         }, set: { new in
             switch new {
             case .palette(let palette): pick(palette.rawValue)
-            case .custom:
-                custom = PaletteTint.customColor(selection) ?? current.color
-                showingPicker = true
+            case .custom: openColourPanel()
             }
         })
+    }
+
+    /// **The system panel itself, not a popover containing a colour well.**
+    ///
+    /// A SwiftUI `ColorPicker` *is* a well — a button that opens this panel —
+    /// so presenting one in a popover put a second click and a floating swatch
+    /// between «Other…» and the thing it names. Calendar opens the panel.
+    ///
+    /// Continuous, so the icon in the menu bar follows the panel while somebody
+    /// is dragging around the wheel: this control's whole subject is a colour
+    /// they are looking at somewhere else on screen.
+    private func openColourPanel() {
+        let panel = NSColorPanel.shared
+        bridge.onPick = { pick(PaletteTint.token(for: Color(nsColor: $0))) }
+        panel.setTarget(bridge)
+        panel.setAction(#selector(ColorPanelBridge.colourChanged(_:)))
+        panel.showsAlpha = false
+        panel.isContinuous = true
+        // Opens on the colour in use rather than on whatever the panel was left
+        // showing — which, shared app-wide as it is, could be anything.
+        panel.color = PaletteTint.custom(selection) ?? NSColor(current.color)
+        panel.makeKeyAndOrderFront(nil)
     }
 
     /// A disc in an arbitrary colour, drawn the same way the palette's own are.
@@ -145,4 +156,16 @@ public struct HelmPaletteSwatches: View {
     private var current: PaletteColor {
         PaletteColor(rawValue: selection) ?? PaletteColor.allCases[0]
     }
+}
+
+/// `NSColorPanel`'s target, which it holds **weakly**.
+///
+/// A closure cannot be one — the panel wants an object and a selector — and an
+/// object created inside the action that opens the panel is deallocated before
+/// the first colour comes back, which reads as a panel that does nothing. Held
+/// by the view for as long as the view is there.
+final class ColorPanelBridge: NSObject {
+    var onPick: (NSColor) -> Void = { _ in }
+
+    @objc func colourChanged(_ sender: NSColorPanel) { onPick(sender.color) }
 }

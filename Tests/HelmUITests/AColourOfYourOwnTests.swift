@@ -1,6 +1,7 @@
 import XCTest
 import AppKit
 import SwiftUI
+import HelmTestSupport
 @testable import HelmUI
 
 /// A colour the person chose themselves has to survive the round trip to the
@@ -95,5 +96,40 @@ final class AColourOfYourOwnTests: XCTestCase {
     func testTheMenuOffersCalendarsEight() {
         XCTAssertEqual(PaletteColor.offered.map(\.rawValue),
                        ["white", "red", "orange", "yellow", "green", "blue", "purple", "brown"])
+    }
+
+    /// **«Other…» opens the system panel, not a popover with a well in it.**
+    ///
+    /// A SwiftUI `ColorPicker` *is* a colour well — a button whose whole job is
+    /// to open `NSColorPanel` — so presenting one inside a popover put a second
+    /// click and a floating swatch between the menu item and the thing it
+    /// names. Reported as «remove this popup».
+    ///
+    /// A source check: the panel is AppKit's own window and a test cannot open
+    /// it without taking over the machine.
+    func testTheMenuOpensTheSystemPanelDirectly() throws {
+        let url = RepoSource.root
+            .appendingPathComponent("Sources/HelmUI/DesignSystem/PaletteSwatches.swift")
+        let source = try String(contentsOf: url, encoding: .utf8)
+        XCTAssertGreaterThan(source.count, 500, "the file was not read at all")
+        XCTAssertTrue(source.contains("NSColorPanel.shared"),
+                      "«Other…» does not reach the system panel")
+        XCTAssertFalse(source.contains("ColorPicker("),
+                       "a colour well is being presented instead of the panel, which is the "
+                       + "extra click this replaced")
+        XCTAssertFalse(source.contains(".popover("),
+                       "the popover is back")
+    }
+
+    /// And the panel's target is held. `NSColorPanel` keeps it **weakly**, so a
+    /// bridge created inside the action that opens the panel is gone before the
+    /// first colour comes back — which reads as a panel that does nothing.
+    func testTheColourPanelsTargetIsRetained() throws {
+        let url = RepoSource.root
+            .appendingPathComponent("Sources/HelmUI/DesignSystem/PaletteSwatches.swift")
+        let source = try String(contentsOf: url, encoding: .utf8)
+        XCTAssertTrue(source.contains("@State private var bridge = ColorPanelBridge()"),
+                      "the target is not held by the view, so it is deallocated before the "
+                      + "panel can call it")
     }
 }
