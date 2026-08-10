@@ -58,7 +58,7 @@ private final class RemovalPromptClamshell: ClamshellPort {
 /// Switching «stay awake with the lid closed» off takes the passwordless-sudo
 /// rule back out — and asks for a password to do it.
 ///
-/// `engageClamshell` keeps `sudoersInstallInFlight` for exactly this, with a
+/// `ClamshellCoordinator.engage` keeps `installInFlight` for exactly this, with a
 /// comment naming what it costs: "the person got one password dialog per click
 /// for a single decision". `releaseSudoersIfUnneeded` is the same shape with
 /// nothing in front of it —
@@ -120,7 +120,7 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
         XCTAssertEqual(clamshell.removeCount, 1,
                        "a second administrator password dialog was stacked on the one already "
                        + "up, for the decision the person already made — the install side keeps "
-                       + "`sudoersInstallInFlight` for precisely this")
+                       + "`installInFlight` for precisely this")
     }
 
     /// And it is not two: the page sends this command on every control it has.

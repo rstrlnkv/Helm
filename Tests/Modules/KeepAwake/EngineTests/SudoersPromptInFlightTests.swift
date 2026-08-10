@@ -53,10 +53,10 @@ private final class PromptClamshell: ClamshellPort {
 
 /// What happens to the sudoers rule while the password prompt is on screen.
 ///
-/// `engageClamshell` asks `isSudoersInstalled()` and, on no, starts an admin
+/// `ClamshellCoordinator.engage` asks the system and, on no, starts an admin
 /// prompt. Nothing records that a prompt is already up, and the file the
 /// question is about does not appear until the prompt is answered — so every
-/// path that reaches `engageClamshell` in that window asks again, and every path
+/// path that reaches `engage` in that window asks again, and every path
 /// that reaches `releaseSudoersIfUnneeded` in that window is told there is
 /// nothing to remove.
 ///
@@ -162,7 +162,7 @@ final class SudoersPromptInFlightTests: XCTestCase {
     // MARK: - One question, asked once
 
     /// Stop and start again while the prompt is up, which is one click each in
-    /// the panel and needs no timing at all: `recompute` calls `engageClamshell`
+    /// the panel and needs no timing at all: `recompute` calls `engage`
     /// on every false→true edge of `isActive`, and `isSudoersInstalled()` is
     /// still false because the first prompt has not been answered.
     ///

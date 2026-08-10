@@ -37,6 +37,18 @@ final class DocumentsNameTheTreeTests: XCTestCase {
         "CAMediaTimingFunction": "Core Animation's curve, named where the documents explain why a spring cannot be handed to it",
         "CAAnimation": "Core Animation's animation object, named where the documents say whose in-flight values `cacheDisplay` cannot see — and SwiftUI's, which it can",
         "NSAnimationContext": "AppKit's animation scope, named in the same passage about the table that is gone",
+        // Lowercase, and only visible to this check since it stopped skipping
+        // that half of the namespace. Programs the documents name because a
+        // script runs them, and two AppKit/SwiftUI members named in passages
+        // about what they cannot do.
+        "backupd": "a macOS daemon, named in the measurement of which processes hold sleep",
+        "sharingd": "the same measurement — the one that answers NSRunningApplication and still is not an app",
+        "dmgbuild": "the tool that lays out the disk image window",
+        "hdiutil": "the tool that makes and mounts it",
+        "ffmpeg": "used to pull frames out of a screen recording when measuring motion",
+        "safeAreaInset": "SwiftUI's modifier, named where the documents say what it costs",
+        "usesAutomaticRowHeights": "NSTableView's property, in the passage about the table that is gone",
+        "noteHeightOfRows": "NSTableView's method, in the same passage",
     ]
 
     /// Names the documents carry **because** they are gone. An entry is a
@@ -47,8 +59,20 @@ final class DocumentsNameTheTreeTests: XCTestCase {
         "HelmSurface.floatingEdge": "a token the documents claimed existed; grep found it only in the prose, and that paragraph is the correction",
         "SidebarComposerTable": "the composer while it was an NSTableView; the passage is about what that cost and why it went back to a List",
         "SidebarComposerRedraw": "the value that told that table what to do, and the paragraph naming it is its obituary",
+        "hasPrevious": "the misspelling this check could not see while it skipped lowercase names; the passage naming it is the account of that blind spot",
         "SleepHoldersPort": "the port behind «something other than Helm is keeping this Mac awake»; the section naming it is about why a correctly-filtered signal was still not one",
     ]
+
+    /// This check's own machinery, which the documents describe by name.
+    ///
+    /// Its file's **contents** are deliberately kept out of the blob — reading
+    /// them would make the tree contain precisely the names the two lists above
+    /// say are missing, and `knownAbsent` would then report every entry as back
+    /// in the tree for ever. The cost of that is that the check cannot see its
+    /// own members either, and the documents name them when explaining how it
+    /// works. Two entries, and they are the only ones: anything else declared
+    /// here is not something the prose should be pointing at.
+    private static let ownMachinery: Set<String> = ["knownAbsent", "foreign"]
 
     // MARK: - The tree
 
@@ -113,15 +137,30 @@ final class DocumentsNameTheTreeTests: XCTestCase {
         return found
     }
 
-    /// `Type`, `Type.member` and `Something.swift`, inside backticks.
+    /// `Type`, `Type.member`, `aMember` and `Something.swift`, inside backticks.
     ///
     /// Backticks only, deliberately: prose says "Disk" and "Layout" about
     /// modules and screens all the time, and a check that reads those is a check
     /// nobody will keep.
+    ///
+    /// **The lowercase half was skipped for a year, and that is half the
+    /// namespace.** The shape required a capital first letter, so every method
+    /// and property the documents name — `engageClamshell`, `recompute`,
+    /// `hadPrevious` — was passed over in silence. It surfaced when a refactor
+    /// renamed two of them and this check went on passing; a hand count then
+    /// found thirteen lowercase names in the two documents, of which three were
+    /// genuinely stale. One of those three was a document saying `hasPrevious`
+    /// where the tree says `hadPrevious` — a single letter, wrong since it was
+    /// written, and invisible to a check whose whole job is that comparison.
+    ///
+    /// A token of nothing but hex digits is not a name: the documents quote git
+    /// hashes in backticks, and `c69e17ab` is not something the tree should be
+    /// asked about.
     private func namesMentioned(in lines: [String]) -> [(token: String, line: Int)] {
         let pattern = try! NSRegularExpression(pattern: "`([^`]+)`")
         let shape = try! NSRegularExpression(
-            pattern: "^[A-Z][A-Za-z0-9]*(\\.[A-Za-z][A-Za-z0-9]*)?$")
+            pattern: "^[A-Za-z][A-Za-z0-9]*(\\.[A-Za-z][A-Za-z0-9]*)?$")
+        let hashLike = try! NSRegularExpression(pattern: "^[0-9a-f]{6,}$")
         var found: [(String, Int)] = []
         for (index, line) in lines.enumerated() {
             let range = NSRange(line.startIndex..., in: line)
@@ -132,6 +171,7 @@ final class DocumentsNameTheTreeTests: XCTestCase {
                 guard shape.firstMatch(in: token, range: whole) != nil
                         || token.contains(".swift")
                 else { continue }
+                if hashLike.firstMatch(in: token, range: whole) != nil { continue }
                 found.append((token, index + 1))
             }
         }
@@ -191,6 +231,7 @@ final class DocumentsNameTheTreeTests: XCTestCase {
         for (document, lines) in documents {
             for (token, line) in namesMentioned(in: lines) {
                 if Self.foreign[token] != nil || Self.knownAbsent[token] != nil { continue }
+                if Self.ownMachinery.contains(token) { continue }
                 if !isInTheTree(token, blob: blob, names: names, byName: byName) {
                     stale.append("\(document):\(line) names `\(token)`, which is not in the tree")
                 }
