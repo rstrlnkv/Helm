@@ -13,6 +13,9 @@ public struct KeepAwakePanelTile: View {
     /// Natural height of the ⋯ block, measured once so the disclosure can
     /// animate between 0 and a concrete value.
     @State private var moreHeight: CGFloat = 0
+    /// Same measurement for the suppression row, which grows and shrinks on the
+    /// engine's say-so rather than on a press.
+    @State private var suppressedHeight: CGFloat = 0
     @State private var showCustomTime = false
     @State private var customMinutesText = ""
     @State private var autoExternalDisplay: Bool
@@ -47,6 +50,25 @@ public struct KeepAwakePanelTile: View {
             }
             .padding(.top, 10)
             .animation(HelmMotion.disclosure, value: vm.isActive)
+            // Above the ⋯ block, never inside it. The whole point of this row
+            // is that nothing else on any screen says the rule has stopped
+            // working, so putting it behind a disclosure would leave it exactly
+            // as unfindable as the log line it replaces.
+            //
+            // The same accordion the block below uses, for the same reason: the
+            // row always exists, its natural height is measured, and the height
+            // animates between 0 and that number. This is the panel — a card
+            // that changes size under the pointer with no motion is the defect
+            // the disclosure token was introduced to end.
+            suppressedRow
+                .onGeometryChange(for: CGFloat.self, of: \.size.height) { h in
+                    if h > 0 { suppressedHeight = h }
+                }
+                .frame(height: vm.suppressed ? suppressedHeight : 0, alignment: .top)
+                .clipped()
+                .allowsHitTesting(vm.suppressed)
+                .accessibilityHidden(!vm.suppressed)
+                .animation(HelmMotion.disclosure, value: vm.suppressed)
             // Canonical accordion, available in both states: the block always
             // exists, its natural height is measured, and the animation
             // interpolates between 0 and that number (SwiftUI can't animate to
@@ -160,6 +182,41 @@ public struct KeepAwakePanelTile: View {
             .padding(.vertical, 6)
             .background(Capsule().fill(active ? Color.accentColor.opacity(0.25) : HelmSurface.onPanelFill))
             .contentShape(Capsule())
+    }
+
+    /// A rule applies, and the Mac is asleep anyway.
+    ///
+    /// Stopping a session while a rule still holds silences that rule until it
+    /// fires again — and a timer that ends automation does the same when it
+    /// runs out. Both are correct and neither is visible: the switch reads off,
+    /// the rule reads on, and the Mac sleeps with the app that should be
+    /// holding it still on screen. The settings page grew a line for it; this
+    /// is the panel, which is where somebody actually looks when the Mac
+    /// slept and they did not expect it to.
+    ///
+    /// It ends by itself when the condition drops, so there is nothing to
+    /// dismiss — only a way to say «no, keep going».
+    private var suppressedRow: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: "pause.circle.fill")
+                .foregroundStyle(HelmSignal.warning)
+                .accessibilityHidden(true)
+            // Wrapping, not truncating. In a 320 pt panel this sentence is two
+            // lines beside the button; `lineLimit(1)` would leave «Automation
+            // paused until…» and cut the half that says when it comes back.
+            Text(KAStr.automationPaused)
+                .font(.caption)
+                // A literal colour: this row sits inside a block whose height
+                // animates, and hierarchical styles re-resolve when the layer
+                // is dropped — the ⋯ heading blinked for exactly this reason.
+                .foregroundStyle(HelmText.quiet)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            Button(KAStr.resume) { vm.send(KeepAwakeCommand.resumeAutomation) }
+                .controlSize(.small)
+                .fixedSize()
+        }
+        .padding(.top, 10)
     }
 
     /// Quick automation toggles + a custom timer, revealed inline under the

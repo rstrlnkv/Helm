@@ -703,6 +703,7 @@
 "Keep Awake could leave the Mac unable to sleep, with its own switch saying it was off." = "«Не засыпать» мог оставить Mac без возможности уснуть, хотя его собственный переключатель показывал, что он выключен.";
 "A timer ends automation too" = "Таймер выключает и автоматику";
 "When the timer runs out, an app or a display no longer keeps the Mac awake — until the app is launched again." = "Когда таймер истечёт, приложение или дисплей больше не удерживают Mac — пока приложение не запустят снова.";
-"Automation paused until the app comes back" = "Автоматика приостановлена до следующего запуска";
 "Resume" = "Возобновить";
 "The sidebar is narrower and you can drag it wider or thinner — whatever you settle on comes back next time." = "Сайдбар стал уже, и его ширину можно тянуть — то, на чём остановитесь, вернётся в следующий раз.";
+"Paused until the rule fires again" = "Пауза до следующего срабатывания";
+"A silenced rule says so in the panel, with a way to start it again. Stopping a session by hand, or a timer that ends automation, leaves the rule quiet until it applies afresh — and nothing said so where you would look." = "Приглушённое правило говорит об этом в панели, и там же кнопка вернуть его. Остановка вручную или таймер, отключающий автоматику, оставляют правило молчать до следующего срабатывания — и нигде, куда смотрят, об этом не сообщалось.";

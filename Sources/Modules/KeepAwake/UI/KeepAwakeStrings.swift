@@ -177,7 +177,16 @@ enum KAStr {
     }
     /// Shown wherever the state is shown. A Mac that slept with the rule's app
     /// still on screen is the one thing this module must not leave unexplained.
-    static var automationPaused: String { L("Automation paused until the app comes back") }
+    /// «Paused until the rule fires again» — the rule, not the app.
+    ///
+    /// It said «until the app comes back», which is true of one of the three
+    /// rules and false of the other two: a display rule comes back when the
+    /// display is plugged in again and a power rule when the charger is, and
+    /// neither involves an app. All eight languages had faithfully translated
+    /// the wrong half. It is also the shortest of the three sentences, which is
+    /// what lets the panel draw it beside a button in a 320 pt strip instead of
+    /// hyphenating across three lines.
+    static var automationPaused: String { L("Paused until the rule fires again") }
     static var resume: String { L("Resume") }
     static var turnOffLowBattery: String { L("Turn off on low battery") }
     /// `BatteryGuard.shouldDeactivate` is `percent <= threshold`: at exactly the

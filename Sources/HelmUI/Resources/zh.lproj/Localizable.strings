@@ -703,6 +703,7 @@
 "Keep Awake could leave the Mac unable to sleep, with its own switch saying it was off." = "“保持唤醒”可能让 Mac 无法睡眠，而它自己的开关却显示已关闭。";
 "A timer ends automation too" = "计时结束时也停止自动保持";
 "When the timer runs out, an app or a display no longer keeps the Mac awake — until the app is launched again." = "计时结束后，应用或显示器不再让 Mac 保持唤醒——直到该应用再次启动。";
-"Automation paused until the app comes back" = "自动保持已暂停，直到该应用再次运行";
 "Resume" = "恢复";
 "The sidebar is narrower and you can drag it wider or thinner — whatever you settle on comes back next time." = "侧栏变窄了，并且可以拖动调整宽度——你选定的宽度下次仍然保留。";
+"Paused until the rule fires again" = "已暂停，直到规则再次满足";
+"A silenced rule says so in the panel, with a way to start it again. Stopping a session by hand, or a timer that ends automation, leaves the rule quiet until it applies afresh — and nothing said so where you would look." = "被静音的规则会在面板里说明，并给出重新启用的按钮。手动停止，或让计时结束自动保持的开关，都会让规则一直沉默到下次满足条件——而这件事此前在你会看的地方都没有说明。";

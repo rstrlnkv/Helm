@@ -703,6 +703,7 @@
 "Keep Awake could leave the Mac unable to sleep, with its own switch saying it was off." = "Keep Awake could leave the Mac unable to sleep, with its own switch saying it was off.";
 "A timer ends automation too" = "A timer ends automation too";
 "When the timer runs out, an app or a display no longer keeps the Mac awake — until the app is launched again." = "When the timer runs out, an app or a display no longer keeps the Mac awake — until the app is launched again.";
-"Automation paused until the app comes back" = "Automation paused until the app comes back";
 "Resume" = "Resume";
 "The sidebar is narrower and you can drag it wider or thinner — whatever you settle on comes back next time." = "The sidebar is narrower and you can drag it wider or thinner — whatever you settle on comes back next time.";
+"Paused until the rule fires again" = "Paused until the rule fires again";
+"A silenced rule says so in the panel, with a way to start it again. Stopping a session by hand, or a timer that ends automation, leaves the rule quiet until it applies afresh — and nothing said so where you would look." = "A silenced rule says so in the panel, with a way to start it again. Stopping a session by hand, or a timer that ends automation, leaves the rule quiet until it applies afresh — and nothing said so where you would look.";

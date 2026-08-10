@@ -17,7 +17,14 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 - **A rule that is being ignored says so.** Stopping a session while a rule
   still applies has always suppressed that rule; nothing ever said so, and the
   Mac slept with the rule’s app still on screen. There is a line for it now,
-  and a Resume button beside it.
+  and a Resume button beside it — on the settings page **and in the panel**,
+  which is where somebody actually looks when the Mac slept and they did not
+  expect it to. It sits above the ⋯ block, never inside it: behind a disclosure
+  it would be as unfindable as the log line it replaces.
+  The sentence itself was wrong and is fixed: it said “until the app comes
+  back”, which is true of one of the three rules and false of the other two —
+  a display rule comes back when the display does and a power rule when the
+  charger does. All eight languages had faithfully translated the wrong half.
 
 ### Changed
 - **The sidebar is narrower, and its width is yours.** 214 pt out of the box

@@ -703,6 +703,7 @@
 "Keep Awake could leave the Mac unable to sleep, with its own switch saying it was off." = "« Garder éveillé » pouvait empêcher le Mac de dormir, alors que son propre interrupteur indiquait qu'il était éteint.";
 "A timer ends automation too" = "Le minuteur arrête aussi l’automatisation";
 "When the timer runs out, an app or a display no longer keeps the Mac awake — until the app is launched again." = "Quand le minuteur se termine, une app ou un écran ne maintiennent plus le Mac éveillé — jusqu’à ce que l’app soit relancée.";
-"Automation paused until the app comes back" = "Automatisation en pause jusqu’au retour de l’app";
 "Resume" = "Reprendre";
 "The sidebar is narrower and you can drag it wider or thinner — whatever you settle on comes back next time." = "La barre latérale est plus étroite et se redimensionne au glisser — la largeur choisie revient la fois suivante.";
+"Paused until the rule fires again" = "En pause jusqu’au prochain déclenchement";
+"A silenced rule says so in the panel, with a way to start it again. Stopping a session by hand, or a timer that ends automation, leaves the rule quiet until it applies afresh — and nothing said so where you would look." = "Une règle mise en sourdine le dit dans le panneau, avec de quoi la relancer. Un arrêt à la main, ou un minuteur qui coupe l’automatisme, la laisse silencieuse jusqu’au prochain déclenchement — et rien ne le disait là où on regarde.";
