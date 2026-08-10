@@ -713,3 +713,5 @@
 "A rule is holding the Mac" = "Мак держит правило";
 "Awake until you stop it" = "Не спит, пока не остановите";
 "Stop will silence the rule until it fires again" = "«Стоп» приглушит правило до следующего срабатывания";
+"Applies right now" = "Выполняется сейчас";
+"Switched on, not applying right now" = "Включено, сейчас не выполняется";

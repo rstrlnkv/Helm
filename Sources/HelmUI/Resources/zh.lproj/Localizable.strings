@@ -713,3 +713,5 @@
 "A rule is holding the Mac" = "有规则正在保持 Mac 唤醒";
 "Awake until you stop it" = "保持唤醒，直到你停止";
 "Stop will silence the rule until it fires again" = "“停止”会让规则静音，直到它再次满足";
+"Applies right now" = "当前已满足";
+"Switched on, not applying right now" = "已开启，当前未满足";

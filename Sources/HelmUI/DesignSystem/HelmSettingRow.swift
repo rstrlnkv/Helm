@@ -14,31 +14,44 @@ import SwiftUI
 /// switched off has no mark at all: the mark reports the world, not the
 /// position of the switch beside it, and a grey dot for «off» would be the row
 /// saying the same thing twice in two alphabets.
-public struct HelmSettingRow<Trailing: View>: View {
+/// What the left of the row says about right now.
+public enum HelmRowMark: Equatable, Sendable {
+    /// Nothing to report, and nothing to line up with either — for a card
+    /// whose rows carry no marks at all.
+    case none
+    /// Nothing to report, but hold the width. A card where some rows are
+    /// marked and some are not needs every label to start on one line;
+    /// without this the unmarked ones step 26 pt to the left and the card
+    /// reads as two lists.
+    case space
+    /// The condition is met — this is why the Mac is awake.
+    case holding
+    /// Switched on and not met right now. Drawn so that «my rule does
+    /// nothing» stops looking like «my rule is off».
+    case waiting
 
-    /// What the left of the row says about right now.
-    public enum Mark: Equatable, Sendable {
-        /// Nothing to report, and nothing to line up with either — for a card
-        /// whose rows carry no marks at all.
-        case none
-        /// Nothing to report, but hold the width. A card where some rows are
-        /// marked and some are not needs every label to start on one line;
-        /// without this the unmarked ones step 26 pt to the left and the card
-        /// reads as two lists.
-        case space
-        /// The condition is met — this is why the Mac is awake.
-        case holding
-        /// Switched on and not met right now. Drawn so that «my rule does
-        /// nothing» stops looking like «my rule is off».
-        case waiting
+    /// The three-way answer, decided once for every module rather than in
+    /// each page's own `if`.
+    ///
+    /// The half that is easy to get wrong is the third: a rule that is
+    /// switched **off** gets `.space`, not a mark of its own. The mark
+    /// reports the world; the switch beside it already reports the setting,
+    /// and a grey dot for «off» is the row saying one thing twice. The
+    /// width stays, so the labels of a mixed card keep one left edge.
+    public static func of(enabled: Bool, satisfied: Bool) -> HelmRowMark {
+        guard enabled else { return .space }
+        return satisfied ? .holding : .waiting
     }
+}
+
+public struct HelmSettingRow<Trailing: View>: View {
 
     private let title: String
     private let note: String?
-    private let mark: Mark
+    private let mark: HelmRowMark
     private let trailing: Trailing
 
-    public init(_ title: String, note: String? = nil, mark: Mark = .none,
+    public init(_ title: String, note: String? = nil, mark: HelmRowMark = .none,
                 @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
         self.title = title
         self.note = note

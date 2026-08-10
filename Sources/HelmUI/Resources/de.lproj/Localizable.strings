@@ -713,3 +713,5 @@
 "A rule is holding the Mac" = "Eine Regel hält den Mac wach";
 "Awake until you stop it" = "Wach, bis Sie es beenden";
 "Stop will silence the rule until it fires again" = "„Stopp“ legt die Regel still, bis sie erneut greift";
+"Applies right now" = "Trifft gerade zu";
+"Switched on, not applying right now" = "Eingeschaltet, trifft gerade nicht zu";

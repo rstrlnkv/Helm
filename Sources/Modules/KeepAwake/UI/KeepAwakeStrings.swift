@@ -104,6 +104,13 @@ enum KAStr {
     // MARK: - Settings
 
     static var automation: String { L("Automation") }
+    /// The note under a rule that is doing its job, and under one that is not.
+    ///
+    /// The second is the state v3 exists to draw: switched on, and nothing
+    /// happening. Without it a rule that never fires and a rule nobody switched
+    /// on are the same row with the same silence under it.
+    static var ruleApplies: String { L("Applies right now") }
+    static var ruleWaiting: String { L("Switched on, not applying right now") }
     static var withExternalDisplay: String { L("Keep awake with external display") }
     static var whileOnPower: String { L("Keep awake while on power") }
     static var appsSection: String { L("Apps that keep the Mac awake") }

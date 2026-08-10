@@ -713,3 +713,5 @@
 "A rule is holding the Mac" = "A rule is holding the Mac";
 "Awake until you stop it" = "Awake until you stop it";
 "Stop will silence the rule until it fires again" = "Stop will silence the rule until it fires again";
+"Applies right now" = "Applies right now";
+"Switched on, not applying right now" = "Switched on, not applying right now";

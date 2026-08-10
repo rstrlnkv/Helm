@@ -273,47 +273,85 @@ public struct KeepAwakeSettingsPage: View {
         vm.send(KeepAwakeCommand.start, payload: payload)
     }
 
+    /// Four rules, and every row answers two questions at once: the mark on the
+    /// left is what is happening now — a condition off the wire — and the
+    /// control on the right is what is configured, out of the store. The second
+    /// edition put those 268 pt apart, so a person reading the page saw that a
+    /// rule was holding the Mac and could not see what to change about it.
     @ViewBuilder private var automationSection: some View {
         Section(header: HelmSectionTitle(KAStr.automation)) {
-            Toggle(KAStr.withExternalDisplay, isOn: $autoExternalDisplay)
-                .onChange(of: autoExternalDisplay) { _, v in
-                    vm.save(in: store) { $0.setAutoExternalDisplay(v) }
-                }
-            Toggle(KAStr.whileOnPower, isOn: $autoPower)
-                .onChange(of: autoPower) { _, v in vm.save(in: store) { $0.setAutoPower(v) } }
-            Toggle(KAStr.keepAwakeLidClosed, isOn: $clamshellEnabled)
-                .onChange(of: clamshellEnabled) { _, v in
-                    vm.save(in: store) { $0.setClamshellEnabled(v) }
-                }
-            Text(KAStr.adminNote)
-                .font(.caption).foregroundStyle(HelmText.quiet)
-            // Between the automatic conditions and the guard that ends a
-            // session: this setting is about the end of one too, and it only
-            // means anything to somebody who has the conditions above.
-            Toggle(KAStr.timerEndsAutomation, isOn: $timerEndsAutomation)
-                .onChange(of: timerEndsAutomation) { _, v in
-                    vm.save(in: store) { $0.setTimerEndsAutomation(v) }
-                }
-            Text(KAStr.timerEndsAutomationNote)
-                .font(.caption).foregroundStyle(HelmText.quiet)
-            // The threshold only means anything with the rule on, so it
-            // shares the row instead of floating below it.
-            LabeledContent(KAStr.turnOffLowBattery) {
-                HStack(spacing: 10) {
-                    Stepper(KAStr.belowPercent(batteryGuardPercent),
-                            value: $batteryGuardPercent, in: 5...50, step: 5)
-                        .disabled(!batteryGuardEnabled)
-                        .onChange(of: batteryGuardPercent) { _, v in
-                            vm.save(in: store) { $0.setBatteryGuardPercent(v) }
-                        }
-                        .fixedSize()
-                    Toggle(KAStr.turnOffLowBattery, isOn: $batteryGuardEnabled)
-                        .labelsHidden()
-                        .onChange(of: batteryGuardEnabled) { _, v in
-                            vm.save(in: store) { $0.setBatteryGuardEnabled(v) }
-                        }
-                }
+            ruleRow(KAStr.condition(.externalDisplay), on: $autoExternalDisplay,
+                    satisfiedBy: .externalDisplay) { v in
+                vm.save(in: store) { $0.setAutoExternalDisplay(v) }
             }
+            ruleRow(KAStr.onPower, on: $autoPower, satisfiedBy: .power) { v in
+                vm.save(in: store) { $0.setAutoPower(v) }
+            }
+            // No mark: the lid is not a rule that fires, it is a switch that
+            // changes the whole Mac — and the note says what that costs.
+            HelmSettingRow(KAStr.keepAwakeLidClosed, note: KAStr.adminNote, mark: .space) {
+                Toggle(KAStr.keepAwakeLidClosed, isOn: $clamshellEnabled)
+                    .labelsHidden()
+                    .onChange(of: clamshellEnabled) { _, v in
+                        vm.save(in: store) { $0.setClamshellEnabled(v) }
+                    }
+            }
+            // Between the conditions and the guard that ends a session: this is
+            // about the end of one too, and it means nothing to somebody who
+            // has no conditions above it. v3 does not draw this row — the
+            // setting was written after the mockup, and here is where it
+            // belongs: beside the rules whose end it changes.
+            HelmSettingRow(KAStr.timerEndsAutomation, note: KAStr.timerEndsAutomationNote,
+                           mark: .space) {
+                Toggle(KAStr.timerEndsAutomation, isOn: $timerEndsAutomation)
+                    .labelsHidden()
+                    .onChange(of: timerEndsAutomation) { _, v in
+                        vm.save(in: store) { $0.setTimerEndsAutomation(v) }
+                    }
+            }
+            // The threshold and the switch on one row: a level means nothing
+            // with the guard off, and the pop-up is disabled rather than hidden
+            // so the number you set is still the number you see.
+            HelmSettingRow(KAStr.turnOffLowBattery, mark: .space) {
+                Picker(KAStr.turnOffLowBattery, selection: $batteryGuardPercent) {
+                    ForEach(HelmChoices.including(batteryGuardPercent, in: Self.batteryLevels),
+                            id: \.self) { level in
+                        Text(KAStr.belowPercent(level)).tag(level)
+                    }
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .fixedSize()
+                .disabled(!batteryGuardEnabled)
+                .onChange(of: batteryGuardPercent) { _, v in
+                    vm.save(in: store) { $0.setBatteryGuardPercent(v) }
+                }
+                Toggle(KAStr.turnOffLowBattery, isOn: $batteryGuardEnabled)
+                    .labelsHidden()
+                    .onChange(of: batteryGuardEnabled) { _, v in
+                        vm.save(in: store) { $0.setBatteryGuardEnabled(v) }
+                    }
+            }
+        }
+    }
+
+    /// Five per cent to fifty, as the stepper this replaced stepped.
+    private static let batteryLevels = Array(stride(from: 5, through: 50, by: 5))
+
+    /// A rule the engine can report on: the mark comes from `activeConditions`,
+    /// the switch from the store, and the note from the two together.
+    @ViewBuilder
+    private func ruleRow(_ title: String, on binding: Binding<Bool>,
+                         satisfiedBy condition: ActiveCondition,
+                         save: @escaping (Bool) -> Void) -> some View {
+        let enabled = binding.wrappedValue
+        let satisfied = vm.activeConditions.contains(condition)
+        HelmSettingRow(title,
+                       note: enabled ? (satisfied ? KAStr.ruleApplies : KAStr.ruleWaiting) : nil,
+                       mark: .of(enabled: enabled, satisfied: satisfied)) {
+            Toggle(title, isOn: binding)
+                .labelsHidden()
+                .onChange(of: binding.wrappedValue) { _, v in save(v) }
         }
     }
 

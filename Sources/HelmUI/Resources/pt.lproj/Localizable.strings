@@ -713,3 +713,5 @@
 "A rule is holding the Mac" = "Uma regra mantém o Mac acordado";
 "Awake until you stop it" = "Acordado até você parar";
 "Stop will silence the rule until it fires again" = "“Parar” silencia a regra até ela ser atendida de novo";
+"Applies right now" = "É atendida agora";
+"Switched on, not applying right now" = "Ativada, não é atendida agora";

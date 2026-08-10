@@ -713,3 +713,5 @@
 "A rule is holding the Mac" = "ルールが Mac を起こしています";
 "Awake until you stop it" = "停止するまで起きたままです";
 "Stop will silence the rule until it fires again" = "“停止”は、次に当てはまるまでルールを黙らせます";
+"Applies right now" = "いま条件を満たしています";
+"Switched on, not applying right now" = "入ですが、いまは条件を満たしていません";
