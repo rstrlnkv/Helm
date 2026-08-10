@@ -37,6 +37,7 @@ final class HeroTickCostBenchmark: XCTestCase {
             KeepAwakeHero(state: box.state, now: box.tick, anyRuleOn: true,
                           defaultDurationMinutes: 60, suppressed: box.suppressed,
                           heldByOthers: false,
+                          ruleHolds: true,
                           timedNote: { end in
                               // What the real page does on every `.timed` tick:
                               // `SessionHero.holderAfterTimer` plus a formatted

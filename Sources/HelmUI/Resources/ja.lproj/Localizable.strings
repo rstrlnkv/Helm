@@ -705,7 +705,7 @@
 "Keep the display on" = "ディスプレイを消さない";
 "Active icon colour" = "アクティブ時のアイコンの色";
 "Timer colour" = "タイマーの色";
-"How long the menu-bar switch and the panel keep the Mac awake" = "メニューバーのスイッチとパネルが Mac を起こしておく長さ";
+"How long the panel's switch and the keyboard shortcut keep the Mac awake" = "パネルのスイッチとキーボードショートカットが Mac を起こしておく長さ";
 "Only while the Mac is kept awake. At other times Helm shows its shared icon" = "Mac を起こしている間だけ。ほかのときは Helm の共通アイコンです";
 "While a timer runs, the ring empties clockwise" = "タイマー中はリングが時計回りに減ります";
 "Add an app and the Mac stays awake while it is running. You can limit a rule to power, to an external display, or to both." = "アプリを追加すると、そのアプリが動いている間 Mac はスリープしません。ルールは電源接続時のみ、外部ディスプレイ接続時のみ、またはその両方に絞れます。";
@@ -724,3 +724,4 @@
 "Interface language" = "インターフェイスの言語";
 "Dev builds only, for reading the app in a language this Mac is not set to." = "dev ビルド専用。この Mac に設定されていない言語でアプリを読むためのものです。";
 "System Settings" = "システム設定";
+"Time remaining" = "残り時間";

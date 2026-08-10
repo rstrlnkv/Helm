@@ -94,6 +94,18 @@ final class FakeClamshell: ClamshellPort {
         installCalls += 1
         installCompletion = done
     }
+    /// Answer the prompt that is on screen. **The real one takes seconds to
+    /// minutes and can be declined**, and a fake that only ever completed
+    /// through a stored closure nobody called left the engine permanently
+    /// mid-prompt — which is a state that flatters every «did it ask again?»
+    /// test, because the in-flight guard suppresses the second ask for a reason
+    /// that has nothing to do with the code under test.
+    func finishInstall(granted: Bool) {
+        let done = installCompletion
+        installCompletion = nil
+        if granted { sudoersInstalled = true }
+        done?(granted)
+    }
     var removeCalls = 0
     func removeSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
         removeCalls += 1

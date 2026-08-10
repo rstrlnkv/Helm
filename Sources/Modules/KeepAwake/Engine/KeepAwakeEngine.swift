@@ -42,6 +42,20 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// where the other conditions are read, so it costs an IOKit call on events
     /// that already happen and arms no timer at rest.
     public private(set) var heldByOthers = false
+    /// The rules whose triggers are true right now — **whether or not they are
+    /// being obeyed**, which is what makes this different from
+    /// `activeConditions`.
+    ///
+    /// A suppressed rule contributes nothing to `activeConditions`, so from the
+    /// outside a paused rule and a rule whose app has quit looked identical:
+    /// the page drew «Not applying right now» under a banner saying the rule
+    /// was paused. Two accounts of one rule on one screen.
+    ///
+    /// Non-empty is also precisely the condition under which `stopSession()`
+    /// silences a rule as well as ending the session — a fact the hero could
+    /// only state in its `.automatic` branch, because that was the only branch
+    /// that could see any conditions at all.
+    public private(set) var triggeredConditions: Set<ActiveCondition> = []
     /// An admin password prompt is on screen and has not been answered.
     ///
     /// Nothing else can stand for this. `isSudoersInstalled()` asks the
@@ -56,6 +70,11 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// password prompts, because `/etc/sudoers.d` still holds the rule for the
     /// whole life of the dialog and every edit asked again.
     private var sudoersRemovalInFlight = false
+    /// The last value of `clamshellEnabled` this engine acted on, so the rising
+    /// edge of the switch can be told from the setting merely being true.
+    /// Seeded from the store at construction: a launch with the setting already
+    /// on is not somebody switching it on.
+    private var lastClamshellSetting = false
 
     private var expiryToken: AnyObject?
     private var jiggleToken: AnyObject?
@@ -86,6 +105,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         self.clock = clock
         self.localTransport = transport
         self.transport = transport
+        self.lastClamshellSetting = settings.clamshellEnabled
         wireTransport()
     }
 
@@ -203,7 +223,9 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             endDate = nil
         }
         rememberSession()
-        recompute()
+        // The one path where an administrator dialog is expected: somebody
+        // pressed a button a moment ago and is still looking at the screen.
+        recompute(byGesture: true)
     }
 
     public func stopSession() {
@@ -236,7 +258,18 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 
     // MARK: - Core recompute
 
-    private func recompute() {
+    /// - Parameter byGesture: this recompute follows something the person just
+    ///   did. **Only a gesture may raise an administrator password dialog.**
+    ///   Engaging the closed-lid setting installs a NOPASSWD sudoers rule, and
+    ///   that was reached from here on every false→true edge of `isActive` —
+    ///   including the edges a *rule* causes. So a watched app launching put a
+    ///   real system password prompt on screen with nothing on it naming the
+    ///   app, the rule or Helm, at a moment the person had touched nothing; and
+    ///   any process running as this user could choose that moment by launching
+    ///   the app. Automatic paths still engage when the grant already exists —
+    ///   that costs no dialog — and otherwise say so in the log and carry on
+    ///   holding sleep the ordinary way.
+    private func recompute(byGesture: Bool = false) {
         // The battery guard is a **veto, not a suppression.** While the charge is
         // under the floor nothing may hold the Mac — and the moment the charger
         // goes in the veto lifts by itself, because it is recomputed rather than
@@ -259,7 +292,15 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         let pwr = powerCondition()
         let appR = appCondition()
 
-        if suppressed && !(ext || pwr || appR) {
+        // Same three the suppression test below uses, and the same three
+        // `stopSession` consults — built once here, so the caption on screen
+        // and the behaviour it describes cannot come apart.
+        triggeredConditions = []
+        if ext { triggeredConditions.insert(.externalDisplay) }
+        if pwr { triggeredConditions.insert(.power) }
+        if appR { triggeredConditions.insert(.app) }
+
+        if suppressed && triggeredConditions.isEmpty {
             suppressed = false
         }
 
@@ -284,7 +325,9 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             assertions.preventSleep(display: settings.keepDisplayOn)
             HelmLog.shared.info("keepawake", "holding sleep: \(ConditionLabel.of(r.conditions))"
                                 + (settings.keepDisplayOn ? ", display too" : ""))
-            if MacHardware.hasLid, settings.clamshellEnabled { engageClamshell() }
+            if MacHardware.hasLid, settings.clamshellEnabled {
+                engageClamshell(mayPrompt: byGesture)
+            }
             if settings.jiggleEnabled { scheduleJiggle() }
             scheduleBatteryWatch()
         } else if !r.isActive && isActive {
@@ -302,11 +345,23 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// active, so toggling keepDisplayOn / clamshell / jiggle takes effect now
     /// (not only on the next session).
     private func reconcileActiveSettings() {
+        // The switch's rising edge, not its value. `settingsChanged` arrives
+        // for every control the page draws, and the value stays true after a
+        // password dialog is *declined* — so asking on the value put a dialog
+        // in front of somebody for every later edit of an unrelated setting.
+        // The same shape as `sudoersRemovalInFlight`, which was the other half
+        // of this defect.
+        //
+        // Read before the `isActive` guard, so an edge that happens while the
+        // module is idle is *consumed* rather than saved up for whichever
+        // unrelated edit happens to arrive after a rule starts a session.
+        let switchedOn = settings.clamshellEnabled && !lastClamshellSetting
+        lastClamshellSetting = settings.clamshellEnabled
         guard isActive else { return }
         assertions.release()
         assertions.preventSleep(display: settings.keepDisplayOn)
         if settings.clamshellEnabled, !clamshellActive {
-            engageClamshell()
+            engageClamshell(mayPrompt: switchedOn)
         } else if !settings.clamshellEnabled, clamshellActive {
             disengageClamshell()
         }
@@ -556,12 +611,21 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 
     // MARK: - Clamshell
 
-    private func engageClamshell() {
+    private func engageClamshell(mayPrompt: Bool) {
         // The capability, not our filename. A rule written by something else —
         // a predecessor, an admin, a migration — grants exactly this, and
         // asking about the file made Helm request a password to install what
         // was already there.
         if !clamshell.canDisableSleepWithoutPassword() {
+            // Nobody is expecting a password dialog, so there will not be one.
+            // The session goes ahead: an IOKit assertion holds an open Mac
+            // awake perfectly well, and the lid is the only part that needs
+            // the rule.
+            guard mayPrompt else {
+                HelmLog.shared.info("keepawake", "closed-lid sleep needs an administrator "
+                                    + "rule; not asking for one outside a deliberate start")
+                return
+            }
             // Every false→true edge of `isActive` and every settings change
             // reaches here, and while a prompt is up the disk still says the
             // rule is missing — so without this the person got one password
@@ -714,6 +778,12 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         /// Mac that is not, while everything on screen says it should be.
         public let suppressed: Bool
         public let heldByOthers: Bool
+        /// Defaulted, because this field arrived after the wire did and an
+        /// older payload still has to decode. Absent means «no rule's trigger
+        /// holds», which is the reading that shows no caption and no «Paused»
+        /// note — a screen that says nothing beats a screen that says the
+        /// wrong thing.
+        public var triggeredConditions: [String] = []
     }
 
     private func wireTransport() {
@@ -757,7 +827,9 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                                     endDate: endDate,
                                     startDate: startDate,
                                     suppressed: suppressed,
-                                    heldByOthers: heldByOthers)
+                                    heldByOthers: heldByOthers,
+                                    triggeredConditions: triggeredConditions
+                                        .map(\.rawValue).sorted())
         localTransport.emit(KeepAwakeEvent.state, encoding: payload)
     }
 }

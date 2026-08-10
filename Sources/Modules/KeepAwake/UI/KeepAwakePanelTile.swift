@@ -220,22 +220,17 @@ public struct KeepAwakePanelTile: View {
     ///
     /// It ends by itself when the condition drops, so there is nothing to
     /// dismiss — only a way to say «no, keep going».
+    /// The same shape the settings page draws, from the same component.
+    ///
+    /// This was a hand-built `HStack` — a mark, `.caption` text, a button, no
+    /// fill — while the hero drew the identical sentence through `HelmBanner`
+    /// as a tinted field at 13 pt. One statement, two appearances, decided by
+    /// which window you happened to open. `HelmBanner` was extracted for the
+    /// hero and this copy simply outlived the extraction; the wrapping and the
+    /// literal colours it needed are both already in there, for the same two
+    /// reasons they were written here.
     private var suppressedRow: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Image(systemName: "pause.circle.fill")
-                .foregroundStyle(HelmSignal.warning)
-                .accessibilityHidden(true)
-            // Wrapping, not truncating. In a 320 pt panel this sentence is two
-            // lines beside the button; `lineLimit(1)` would leave «Automation
-            // paused until…» and cut the half that says when it comes back.
-            Text(KAStr.automationPaused)
-                .font(.caption)
-                // A literal colour: this row sits inside a block whose height
-                // animates, and hierarchical styles re-resolve when the layer
-                // is dropped — the ⋯ heading blinked for exactly this reason.
-                .foregroundStyle(HelmText.quiet)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 8)
+        HelmBanner(KAStr.automationPaused, symbol: "pause.circle.fill") {
             Button(KAStr.resume) { vm.send(KeepAwakeCommand.resumeAutomation) }
                 .controlSize(.small)
                 .fixedSize()
@@ -428,6 +423,13 @@ public struct KeepAwakePanelTile: View {
                     .monospacedDigit()
                     .contentTransition(.numericText(countsDown: true))
                     .animation(HelmMotion.interface, value: remaining)
+                    // Once a second, this row is rebuilt. Without the trait
+                    // VoiceOver re-speaks the figure every time and interrupts
+                    // itself doing it, so the panel cannot be used while a
+                    // timer runs — and the panel is where the timer lives.
+                    .accessibilityLabel(KAStr.a11yRemaining(
+                        TimerProgress.label(remaining: remaining)))
+                    .accessibilityAddTraits(.updatesFrequently)
                 Spacer()
                 Button("+" + KAStr.duration(Self.extraMinutes, compact: true)) {
                     vm.send(KeepAwakeCommand.start, payload: startPayload(

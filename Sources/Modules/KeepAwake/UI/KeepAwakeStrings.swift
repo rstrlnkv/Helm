@@ -124,6 +124,20 @@ enum KAStr {
         case .manual, .timer, .app: return ""
         }
     }
+    /// The whole note in one place, so the row's four states and the four cases
+    /// that decide them are read from the same list.
+    ///
+    /// `.paused` deliberately re-uses `automationPaused` — the banner's own
+    /// sentence. Two spellings of one fact was the defect; a second key here
+    /// would have been a third.
+    static func ruleNote(_ note: RuleNote, _ condition: ActiveCondition) -> String {
+        switch note {
+        case .meaning: return ruleMeaning(condition)
+        case .applies: return ruleApplies
+        case .waiting: return ruleWaiting
+        case .paused: return automationPaused
+        }
+    }
     static var appsSection: String { L("Apps") }
     static func triggerCondition(_ condition: AppTrigger.Condition) -> String {
         switch condition {
@@ -208,6 +222,16 @@ enum KAStr {
     /// Said beside the button that does it, rather than left for the log.
     static var heroStopSuppresses: String {
         L("Stop pauses the rule until it applies again")
+    }
+
+    /// What VoiceOver says for the countdown, once, when asked.
+    ///
+    /// Interpolated, so it composes from a localized word rather than from a
+    /// table of its own — the same shape `duration` uses. The figure on screen
+    /// is `1:23:45` and is announced as it reads; the word in front is what
+    /// makes it a duration rather than a time of day.
+    static func a11yRemaining(_ label: String) -> String {
+        "\(L("Time remaining")): \(label)"
     }
     /// «Таймер до 15:42» — the deadline as a clock, which is what a person
     /// checks against. `HelmDates.timeOfDay` writes it in the app's language,
@@ -319,8 +343,15 @@ enum KAStr {
     static var timerColor: String { L("Timer colour") }
     static var timerColorNote: String { L("Until you pick one, the same as the active colour") }
     static var movePointerNote: String { L("So apps do not decide nobody is at the Mac") }
+    /// **Names the two controls that actually use it.** It used to say «the
+    /// menu-bar switch», and there is no switch in the menu bar: the status
+    /// item opens the panel on a left click and a menu on a right click. The
+    /// two senders of `toggle` are the panel's own switch and the keyboard
+    /// shortcut — the second of which the note never mentioned, so the one
+    /// control that starts a session without any window on screen went
+    /// unexplained.
     static var defaultDurationNote: String {
-        L("How long the menu-bar switch and the panel keep the Mac awake")
+        L("How long the panel's switch and the keyboard shortcut keep the Mac awake")
     }
     static var menuBarIcon: String { L("Menu-bar icon") }
     static var customActiveIcon: String { L("Custom icon when active") }

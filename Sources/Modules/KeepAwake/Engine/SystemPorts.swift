@@ -382,19 +382,18 @@ public struct KeepAwakeSystemPorts {
     public init() {}
 }
 
-/// `IOPMCopyAssertionsByProcess`, minus our own process and minus the kinds
-/// that are not about sleep at all.
+/// `IOPMCopyAssertionsByProcess`, minus our own process, minus the kinds that
+/// are not about sleep at all, and minus everything that is not an application.
+///
+/// **That last filter is the whole difference between a warning and wallpaper.**
+/// The line this feeds says «something other than Helm is keeping this Mac
+/// awake», and macOS itself holds these assertions as ordinary housekeeping:
+/// `powerd` holds `PreventUserIdleSystemSleep` named "Powerd - Prevent sleep
+/// while display is on" for as long as the screen is lit, and `sharingd` holds
+/// one named "Handoff" for as long as Handoff is switched on. Counting those,
+/// the sentence was true whenever anybody was looking at the Mac — which is
+/// every time it could be read.
 public final class IOKitSleepHolders: SleepHoldersPort {
-    /// The kinds that actually stop a Mac going to sleep. `UserIsActive` and
-    /// `SystemIsActive` are not among them — they say somebody is at the
-    /// keyboard, which is true of four of the ten assertions on an idle Mac and
-    /// would make the line permanently true.
-    private static let holding: Set<String> = [
-        kIOPMAssertionTypePreventUserIdleSystemSleep as String,
-        kIOPMAssertionTypePreventSystemSleep as String,
-        kIOPMAssertionTypeNoIdleSleep as String,
-        kIOPMAssertionTypePreventUserIdleDisplaySleep as String,
-    ]
 
     public func othersHoldSleep() -> Bool {
         var unmanaged: Unmanaged<CFDictionary>?
@@ -403,9 +402,12 @@ public final class IOKitSleepHolders: SleepHoldersPort {
         else { return false }
         let mine = NSNumber(value: ProcessInfo.processInfo.processIdentifier)
         for (pid, assertions) in byProcess where pid != mine {
+            let app = NSRunningApplication(processIdentifier: pid_t(pid.int32Value))
             for assertion in assertions {
                 guard let kind = assertion[kIOPMAssertionTypeKey] as? String else { continue }
-                if Self.holding.contains(kind) { return true }
+                if SleepHolderFilter.counts(kind: kind, policy: app?.activationPolicy) {
+                    return true
+                }
             }
         }
         return false

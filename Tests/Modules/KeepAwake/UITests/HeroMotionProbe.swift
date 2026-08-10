@@ -45,6 +45,12 @@ final class HeroMotionProbe: XCTestCase {
 
     private struct Harness: View {
         @ObservedObject var box: Box
+        /// The settings column by default — the width the hero is really drawn
+        /// at, and the width at which all four states measure the same 137 pt.
+        /// A narrower one is how a test gets a height change to look at: the
+        /// preset row wraps, and `.automatic` (six controls) folds a line
+        /// before `.idle` (five) does.
+        var width: CGFloat = HelmLayout.settingsColumn
         var body: some View {
             VStack(spacing: 0) {
                 KeepAwakeHero(state: box.state,
@@ -52,6 +58,7 @@ final class HeroMotionProbe: XCTestCase {
                               anyRuleOn: true,
                               defaultDurationMinutes: 60,
                               suppressed: box.suppressed, heldByOthers: false,
+                              ruleHolds: true,
                               timedNote: { _ in "until 15:42" },
                               start: { _ in }, stop: {}, resume: {})
                 // The form, in one bar. It is what somebody is reading while
@@ -59,7 +66,7 @@ final class HeroMotionProbe: XCTestCase {
                 Color.black.frame(height: 12)
                 Spacer(minLength: 0)
             }
-            .frame(width: HelmLayout.settingsColumn)
+            .frame(width: width)
         }
     }
 
@@ -256,22 +263,46 @@ final class HeroMotionProbe: XCTestCase {
                                  "a content transition animated itself: \(samples)")
     }
 
-    /// A rule stops holding the Mac: the block loses its caption line, and the
-    /// form under it has to travel rather than jump.
+    /// One state is a line of buttons taller than another: the form under the
+    /// hero has to travel rather than jump.
+    ///
+    /// **Measured at 460 pt, not at the settings column, and that is the point
+    /// of the test rather than an inconvenience.** The caption about Stop used
+    /// to live inside `.automatic`, which made that state permanently taller
+    /// than `.idle`; moved out under the block — because it made pressing «15
+    /// min» shove the whole form down, which
+    /// `testStartingATimerDoesNotMoveTheFormAtAll` exists to forbid — every
+    /// state measures the same 137 pt at the real width, and the setup this
+    /// test had could no longer produce the thing it was watching. A guard
+    /// whose subject cannot happen is not a guard.
+    ///
+    /// What does still change the block's height is the preset row folding, and
+    /// it folds at different widths for different states because they carry
+    /// different numbers of controls. Measured across the range:
+    /// `744: idle=137 auto=137`, `520: 137/137`, **`460: idle=137 auto=173`**,
+    /// `420: 220/173`. So 460 is a width where exactly one of the two has
+    /// wrapped, which is a 36 pt change to ramp through — and it is also the
+    /// only assertion anywhere that `HelmWrappingRow` wraps at all.
     func testTheBlockRampsWhenTheStateChangesHeight() throws {
+        let box = Box()
+        box.state = .automatic([.externalDisplay])
+        let samples = series(Harness(box: box, width: 460), sample: barTop) { box.state = .idle }
+        try XCTSkipIf(samples.allSatisfy { $0 <= 0 }, "nothing drew — no window server")
+        XCTAssertGreaterThanOrEqual(steps(samples), 3,
+                                    "the page reached its new height in \(steps(samples)) "
+                                    + "step(s): \(samples)")
+    }
+
+    /// And at the width it is actually drawn at, no state swap moves the form
+    /// at all — which is the other half of the sentence above, and the reason
+    /// the test before it had to be re-aimed.
+    func testAtTheRealWidthEveryStateIsTheSameHeight() throws {
         let box = Box()
         box.state = .automatic([.externalDisplay])
         let samples = series(Harness(box: box), sample: barTop) { box.state = .idle }
         try XCTSkipIf(samples.allSatisfy { $0 <= 0 }, "nothing drew — no window server")
-        // Three, not four. The bar was four when `.automatic` carried two
-        // buttons and `.idle` four — 68 pt of travel. Both states offer the
-        // same three durations now, so the distance is 42 pt and the same ramp
-        // lands in three distinct samples: `[274, 238, 232, 232 …]`. The number
-        // that matters is the gap to a cut, which is 1, and the mutation that
-        // puts the modifier back still fails here.
-        XCTAssertGreaterThanOrEqual(steps(samples), 3,
-                                    "the page reached its new height in \(steps(samples)) "
-                                    + "step(s): \(samples)")
+        XCTAssertEqual(steps(samples), 1,
+                       "a state swap moved the form under it: \(samples)")
     }
 
     /// The silenced-rule row, which arrives on the engine's say-so while

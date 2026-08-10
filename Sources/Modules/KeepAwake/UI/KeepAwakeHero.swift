@@ -85,6 +85,11 @@ struct KeepAwakeHero: View {
     let defaultDurationMinutes: Int
     let suppressed: Bool
     let heldByOthers: Bool
+    /// A rule's trigger is true right now, whatever state the figure is in.
+    /// The engine's own word for it, because that is the exact condition under
+    /// which Stop silences the rule as well as ending the session — see
+    /// `KeepAwakeEngine.ruleHolds`.
+    let ruleHolds: Bool
     let timedNote: (Date) -> String
     let start: (Int) -> Void
     let stop: () -> Void
@@ -119,8 +124,18 @@ struct KeepAwakeHero: View {
     @State private var shownState: SessionHero
     @State private var shownSuppressed: Bool
 
+    /// Free-form minutes, and the popover that takes them.
+    ///
+    /// Not stored anywhere. The panel remembers its custom duration because the
+    /// panel's number *is* a setting — it is what its switch starts next time.
+    /// Here the number is an instruction carried out on the spot, and a page
+    /// that reopened holding somebody's «47» from last week would be offering a
+    /// choice they had already used up.
+    @State private var showCustomTime = false
+    @State private var customMinutesText = ""
+
     init(state: SessionHero, now: Date, anyRuleOn: Bool, defaultDurationMinutes: Int,
-         suppressed: Bool, heldByOthers: Bool,
+         suppressed: Bool, heldByOthers: Bool, ruleHolds: Bool,
          timedNote: @escaping (Date) -> String,
          start: @escaping (Int) -> Void, stop: @escaping () -> Void,
          resume: @escaping () -> Void) {
@@ -130,6 +145,7 @@ struct KeepAwakeHero: View {
         self.defaultDurationMinutes = defaultDurationMinutes
         self.suppressed = suppressed
         self.heldByOthers = heldByOthers
+        self.ruleHolds = ruleHolds
         self.timedNote = timedNote
         self.start = start
         self.stop = stop
@@ -162,6 +178,15 @@ struct KeepAwakeHero: View {
                 // own transaction carries the layout), so it is here for the
                 // edge rather than for the travel.
                 .clipped()
+            // Under the four states rather than inside three of them.
+            //
+            // Written into each branch, it made `.timed` a line taller than
+            // `.idle` — and those two are the same height *by design*, so that
+            // the form below does not move when somebody presses «15 min».
+            // `HeroMotionProbe` caught it at three distinct heights where one
+            // is the whole point. Out here the caption belongs to the block,
+            // not to a state, so every state stays the height it was.
+            stopNote
             // The Mac is asleep, a rule that applies is on screen saying
             // nothing, and there is a third thing to read. It ends by itself
             // when the condition drops, so there is nothing to dismiss.
@@ -228,11 +253,12 @@ struct KeepAwakeHero: View {
             Text(heldByOthers ? KAStr.heroHeldByOthers
                               : (anyRuleOn ? KAStr.heroIdleReason : KAStr.heroNoRules))
                 .font(.system(size: 13)).foregroundStyle(HelmText.faint)
-            HStack(spacing: 8) {
+            HelmWrappingRow {
                 startButton(KAStr.duration(15), minutes: 15)
                 startButton(KAStr.oneHour, minutes: 60)
                 startButton(KAStr.twoHours, minutes: 120)
                 startButton(KAStr.indefinite, minutes: 0)
+                customButton
             }
             .padding(.top, 10)
         }
@@ -259,14 +285,22 @@ struct KeepAwakeHero: View {
                 // digits cut. Keyed on the label rather than on the interval,
                 // for the reason above.
                 .animation(HelmMotion.interface, value: label)
+                // A figure that redraws once a second is a figure VoiceOver
+                // re-speaks once a second, and it interrupts itself doing it —
+                // so the page becomes unusable for as long as a timer runs.
+                // `.updatesFrequently` is the trait that says «this changes on
+                // its own; read it when asked, not when it moves».
+                .accessibilityLabel(KAStr.a11yRemaining(label))
+                .accessibilityAddTraits(.updatesFrequently)
             Text(timedNote(end)).font(.system(size: 13)).foregroundStyle(HelmText.quiet)
-            HStack(spacing: 8) {
+            HelmWrappingRow {
                 // The same arithmetic the panel's «+15» uses, and for the
                 // same reason: this is a `Double` that came off disk.
                 extendButton(by: 15, from: end)
                 extendButton(by: 60, from: end)
                 Button(KAStr.indefinite) { start(0) }
                     .controlSize(.large)
+                customButton
                 stopButton
             }
             .padding(.top, 10)
@@ -287,12 +321,13 @@ struct KeepAwakeHero: View {
                 .font(.system(size: 40, weight: .light))
             Text(KAStr.heroUntilYouStop)
                 .font(.system(size: 13)).foregroundStyle(HelmText.quiet)
-            HStack(spacing: 8) {
+            HelmWrappingRow {
                 // A session with no deadline can be given one, and until now
                 // the only way to bound it was to stop it and start again.
                 startButton(KAStr.duration(15), minutes: 15)
                 startButton(KAStr.oneHour, minutes: 60)
                 startButton(KAStr.twoHours, minutes: 120)
+                customButton
                 stopButton
             }
             .padding(.top, 10)
@@ -305,11 +340,7 @@ struct KeepAwakeHero: View {
                 .font(.system(size: 40, weight: .light))
             Text(conditions.map(KAStr.condition).sorted().joined(separator: " · "))
                 .font(.system(size: 13)).foregroundStyle(HelmText.quiet)
-            HStack(spacing: 8) {
-                // Zero is not a length, it is «no deadline» — composing «start a
-                // timer for 0 min» from it made the page offer a timer of
-                // nothing. The word is the one the idle row uses for the same
-                // choice.
+            HelmWrappingRow {
                 // The same three a session with no deadline offers. It used
                 // to be one button carrying whatever «Default duration» said,
                 // which meant the page offered a length nobody had chosen for
@@ -317,14 +348,17 @@ struct KeepAwakeHero: View {
                 startButton(KAStr.duration(15), minutes: 15)
                 startButton(KAStr.oneHour, minutes: 60)
                 startButton(KAStr.twoHours, minutes: 120)
+                // Zero is not a length, it is «no deadline» — composing «start
+                // a timer for 0 min» from it made the page offer a timer of
+                // nothing. The word is the one the idle row uses for the same
+                // choice. A rule can hold this Mac for an hour or for a day,
+                // and until now the only way to say «and keep holding it after
+                // the app quits» was to stop the rule and start again by hand.
+                startButton(KAStr.indefinite, minutes: 0)
+                customButton
                 stopButton
             }
             .padding(.top, 10)
-            // Stop does not end an automatic session, it silences the rule —
-            // the one thing nobody could learn from any screen. Said beside the
-            // button that does it.
-            Text(KAStr.heroStopSuppresses)
-                .font(.system(size: 11)).foregroundStyle(HelmText.faint)
         }
     }
 
@@ -348,6 +382,30 @@ struct KeepAwakeHero: View {
         // Inside the measured row, not between it and the block above: the gap
         // has to be part of what collapses to zero.
         .padding(.top, 12)
+    }
+
+    /// Stop does not only end a session — while a rule's trigger is true it
+    /// silences the rule as well, so the Mac does not simply take itself back.
+    ///
+    /// This used to be written once, in the branch that draws an automatic
+    /// session, on the reasoning that a rule is what that branch is about. But
+    /// the *engine* asks a different question: `stopSession` suppresses whenever
+    /// a trigger holds, whatever started the session. A hand-started timer
+    /// running while the rule's app is also on screen draws the countdown, and
+    /// Stop there paused the rule with no screen anywhere mentioning it. One
+    /// condition now, and it is the engine's own.
+    private var stopNote: some View {
+        Text(KAStr.heroStopSuppresses)
+            .font(.system(size: 11)).foregroundStyle(HelmText.faint)
+            // Opacity, not an `if`. The condition is the engine's and changes
+            // under the reader — an app quits, a charger comes out — and a
+            // caption that removed itself from the hierarchy would take the
+            // page's height with it in one frame, which is the accordion
+            // defect the suppression row below was rewritten to avoid.
+            .opacity(ruleHolds ? 1 : 0)
+            .animation(HelmMotion.interface, value: ruleHolds)
+            .accessibilityHidden(!ruleHolds)
+            .padding(.top, 6)
     }
 
     // MARK: - Buttons
@@ -385,5 +443,53 @@ struct KeepAwakeHero: View {
     private var stopButton: some View {
         Button(KAStr.stop, action: stop)
             .controlSize(.large)
+    }
+
+    /// Any duration, not one of the presets.
+    ///
+    /// The panel has had this since the first version and the page never did,
+    /// so «keep this Mac awake for the length of this build» meant either
+    /// rounding to two hours or opening the panel — and the page is the screen
+    /// somebody is already looking at when they think it. Same strings as the
+    /// panel's entry, so the two surfaces say the same word for the same thing.
+    private var customButton: some View {
+        Button(KAStr.customTime) {
+            customMinutesText = ""
+            showCustomTime = true
+        }
+        .controlSize(.large)
+        .popover(isPresented: $showCustomTime, arrowEdge: .bottom) { customTimeEditor }
+    }
+
+    private var customTimeEditor: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(KAStr.customTimeTitle).font(.system(size: 13, weight: .semibold))
+            HStack(spacing: 6) {
+                TextField("", text: $customMinutesText)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 70)
+                    .accessibilityLabel(HelmA11y.minutes)
+                    .onSubmit(applyCustomTime)
+                Text(KAStr.minutesUnit).foregroundStyle(HelmText.quiet)
+            }
+            HStack {
+                Spacer()
+                Button(KAStr.done, action: applyCustomTime)
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(14)
+        .frame(width: 220)
+    }
+
+    /// Nothing, a word, a negative number and «999999» all arrive here, because
+    /// this is a text field. `TimerPolicy` owns the ceiling — the same one
+    /// `startSession` clamps to — so a number typed here cannot ask for a
+    /// session the engine would refuse and then draw as running.
+    private func applyCustomTime() {
+        showCustomTime = false
+        guard let entered = Int(customMinutesText.trimmingCharacters(in: .whitespaces)),
+              entered > 0 else { return }
+        start(min(entered, TimerPolicy.longestSessionMinutes))
     }
 }

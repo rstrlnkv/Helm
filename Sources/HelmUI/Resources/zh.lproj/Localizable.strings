@@ -705,7 +705,7 @@
 "Keep the display on" = "不熄屏";
 "Active icon colour" = "激活时的图标颜色";
 "Timer colour" = "计时颜色";
-"How long the menu-bar switch and the panel keep the Mac awake" = "菜单栏开关和面板让 Mac 保持唤醒的时长";
+"How long the panel's switch and the keyboard shortcut keep the Mac awake" = "面板开关和键盘快捷键让 Mac 保持唤醒的时长";
 "Only while the Mac is kept awake. At other times Helm shows its shared icon" = "仅在 Mac 保持唤醒时。其余时间显示 Helm 的通用图标";
 "While a timer runs, the ring empties clockwise" = "计时期间圆环会顺时针减少";
 "Add an app and the Mac stays awake while it is running. You can limit a rule to power, to an external display, or to both." = "添加一个 App，它运行时 Mac 就不会睡眠。你可以把规则限定为接电源时、接外接显示器时，或两者兼有。";
@@ -724,3 +724,4 @@
 "Interface language" = "界面语言";
 "Dev builds only, for reading the app in a language this Mac is not set to." = "仅限 dev 版本，用于以这台 Mac 未设置的语言阅读应用。";
 "System Settings" = "系统设置";
+"Time remaining" = "剩余时间";

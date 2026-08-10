@@ -705,7 +705,7 @@
 "Keep the display on" = "Keep the display on";
 "Active icon colour" = "Active icon colour";
 "Timer colour" = "Timer colour";
-"How long the menu-bar switch and the panel keep the Mac awake" = "How long the menu-bar switch and the panel keep the Mac awake";
+"How long the panel's switch and the keyboard shortcut keep the Mac awake" = "How long the panel's switch and the keyboard shortcut keep the Mac awake";
 "Only while the Mac is kept awake. At other times Helm shows its shared icon" = "Only while the Mac is kept awake. At other times Helm shows its shared icon";
 "While a timer runs, the ring empties clockwise" = "While a timer runs, the ring empties clockwise";
 "Add an app and the Mac stays awake while it is running. You can limit a rule to power, to an external display, or to both." = "Add an app and the Mac stays awake while it is running. You can limit a rule to power, to an external display, or to both.";
@@ -724,3 +724,4 @@
 "Interface language" = "Interface language";
 "Dev builds only, for reading the app in a language this Mac is not set to." = "Dev builds only, for reading the app in a language this Mac is not set to.";
 "System Settings" = "System Settings";
+"Time remaining" = "Time remaining";

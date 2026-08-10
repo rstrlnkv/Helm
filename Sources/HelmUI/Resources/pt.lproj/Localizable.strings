@@ -705,7 +705,7 @@
 "Keep the display on" = "Não apagar a tela";
 "Active icon colour" = "Cor do ícone ativo";
 "Timer colour" = "Cor do timer";
-"How long the menu-bar switch and the panel keep the Mac awake" = "Por quanto tempo o interruptor da barra de menus e o painel mantêm o Mac acordado";
+"How long the panel's switch and the keyboard shortcut keep the Mac awake" = "Por quanto tempo o interruptor do painel e o atalho de teclado mantêm o Mac acordado";
 "Only while the Mac is kept awake. At other times Helm shows its shared icon" = "Só enquanto o Mac é mantido acordado. Nas outras horas o Helm mostra seu ícone comum";
 "While a timer runs, the ring empties clockwise" = "Enquanto o timer está ativo, o anel se esvazia no sentido horário";
 "Add an app and the Mac stays awake while it is running. You can limit a rule to power, to an external display, or to both." = "Adicione um app e o Mac fica acordado enquanto ele estiver em execução. Você pode limitar a regra à tomada, a um monitor externo ou a ambos.";
@@ -724,3 +724,4 @@
 "Interface language" = "Idioma da interface";
 "Dev builds only, for reading the app in a language this Mac is not set to." = "Apenas versões dev, para ler o app num idioma que este Mac não tem definido.";
 "System Settings" = "Ajustes do Sistema";
+"Time remaining" = "Tempo restante";

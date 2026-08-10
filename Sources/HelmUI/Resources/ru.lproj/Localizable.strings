@@ -705,7 +705,7 @@
 "Keep the display on" = "Не гасить дисплей";
 "Active icon colour" = "Цвет активного значка";
 "Timer colour" = "Цвет таймера";
-"How long the menu-bar switch and the panel keep the Mac awake" = "Столько времени Mac не спит после переключателя в строке меню и панели";
+"How long the panel's switch and the keyboard shortcut keep the Mac awake" = "Столько времени Mac не спит после переключателя в панели и сочетания клавиш";
 "Only while the Mac is kept awake. At other times Helm shows its shared icon" = "Только пока Helm держит Mac. В остальное время — общий значок";
 "While a timer runs, the ring empties clockwise" = "Пока идёт таймер, кольцо убывает по часовой стрелке";
 "Add an app and the Mac stays awake while it is running. You can limit a rule to power, to an external display, or to both." = "Добавьте приложение — и Mac не будет засыпать, пока оно запущено. Правило можно ограничить: только при питании, только с внешним дисплеем или и тем и другим.";
@@ -724,3 +724,4 @@
 "Interface language" = "Язык интерфейса";
 "Dev builds only, for reading the app in a language this Mac is not set to." = "Только для сборок dev — чтобы прочитать приложение на языке, который не выбран на этом Mac.";
 "System Settings" = "Настройки системы";
+"Time remaining" = "Осталось";

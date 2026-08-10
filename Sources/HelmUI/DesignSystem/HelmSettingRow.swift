@@ -97,6 +97,14 @@ public struct HelmSettingRow<Trailing: View>: View {
             // floor it is the part a fixed-width control on the right squeezes
             // to nothing — measured once already, at one character per line.
             .layoutPriority(1)
+            // Title and note are one thought, and VoiceOver stopped on each of
+            // them separately: «External display» — next — «Applies right now»
+            // — next — the switch. Three stops for one row, over a page of
+            // them. Combined here rather than across the whole row: `.combine`
+            // on an element containing a control folds the control's own
+            // announcement into the sentence too, and the switch is the part a
+            // person navigates *to*.
+            .accessibilityElement(children: .combine)
             Spacer(minLength: 8)
             HStack(spacing: 8) { trailing }
         }

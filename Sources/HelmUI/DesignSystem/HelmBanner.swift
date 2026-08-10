@@ -34,7 +34,7 @@ public struct HelmBanner<Action: View>: View {
     ///   it sits in.
     public init(_ text: String, symbol: String = "exclamationmark.triangle.fill",
                 tone: Tone = .warning, fillsWidth: Bool = true,
-                @ViewBuilder action: () -> Action = { EmptyView() }) {
+                @ViewBuilder action: () -> Action) {
         self.text = text
         self.symbol = symbol
         self.tone = tone
@@ -76,5 +76,20 @@ public struct HelmBanner<Action: View>: View {
             RoundedRectangle(cornerRadius: HelmSurface.cardRadius, style: .continuous)
                 .fill(ink.opacity(0.13))
         )
+    }
+}
+
+/// A banner with nothing to press.
+///
+/// A separate initialiser rather than `action: () -> Action = { EmptyView() }`,
+/// which Swift warns about today and rejects outright in a future language
+/// mode: a default expression cannot stand in for a generic parameter the other
+/// arguments already infer. The constraint says the same thing in a form the
+/// compiler is happy with — this initialiser exists only when `Action` is
+/// `EmptyView`, so the type is pinned rather than guessed.
+extension HelmBanner where Action == EmptyView {
+    public init(_ text: String, symbol: String = "exclamationmark.triangle.fill",
+                tone: Tone = .warning, fillsWidth: Bool = true) {
+        self.init(text, symbol: symbol, tone: tone, fillsWidth: fillsWidth) { EmptyView() }
     }
 }

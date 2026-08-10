@@ -35,6 +35,13 @@ import Module_KeepAwake_Engine
     @Published public private(set) var suppressed = false
     /// Something other than Helm is holding the Mac awake.
     @Published public private(set) var heldByOthers = false
+    /// The rules whose triggers are true right now, obeyed or paused. Unlike
+    /// `activeConditions`, a suppressed rule is still in here — which is how
+    /// a row can say «Paused» rather than «Not applying right now».
+    @Published public private(set) var triggeredConditions: Set<ActiveCondition> = []
+    /// Any rule at all — the condition under which Stop silences a rule as
+    /// well as ending the session.
+    public var ruleHolds: Bool { !triggeredConditions.isEmpty }
 
     public let vm: ModuleViewModel
 
@@ -84,6 +91,7 @@ import Module_KeepAwake_Engine
         startDate = p.startDate
         suppressed = p.suppressed
         heldByOthers = p.heldByOthers
+        triggeredConditions = Set(p.triggeredConditions.compactMap(ActiveCondition.init(rawValue:)))
     }
 
     /// Named by the engine's own enum, and only that.

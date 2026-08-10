@@ -125,6 +125,7 @@ public struct KeepAwakeSettingsPage: View {
                 defaultDurationMinutes: defaultDurationMinutes,
                 suppressed: vm.suppressed,
                 heldByOthers: vm.heldByOthers,
+                ruleHolds: vm.ruleHolds,
                 timedNote: timedNote,
                 start: start,
                 stop: { vm.send(KeepAwakeCommand.stop) },
@@ -281,12 +282,16 @@ public struct KeepAwakeSettingsPage: View {
                          save: @escaping (Bool) -> Void) -> some View {
         let enabled = binding.wrappedValue
         let satisfied = vm.activeConditions.contains(condition)
-        // On: what is happening. Off: what would happen — the one moment a
-        // person needs to know what a rule means is before they switch it on,
-        // and that was the one state the row said nothing in.
+        // The four cases live in `RuleNote`, out in the engine's logic where a
+        // test can reach them. Written here as nested ternaries there was no
+        // room for the fourth — a rule that is on, whose trigger holds, and
+        // which is paused — so it read as «Not applying right now» directly
+        // under a banner saying it was paused.
+        let note = RuleNote.of(enabled: enabled, satisfied: satisfied,
+                               suppressed: vm.suppressed,
+                               triggerHolds: vm.triggeredConditions.contains(condition))
         HelmSettingRow(title,
-                       note: enabled ? (satisfied ? KAStr.ruleApplies : KAStr.ruleWaiting)
-                                     : KAStr.ruleMeaning(condition),
+                       note: KAStr.ruleNote(note, condition),
                        mark: .of(enabled: enabled, satisfied: satisfied,
                                  inCardWithMarks: marksArePossible)) {
             Toggle(title, isOn: binding)
@@ -482,8 +487,21 @@ public struct KeepAwakeSettingsPage: View {
             Button {
                 pickApp()
             } label: {
-                Label(KAStr.addApp, systemImage: "plus")
-                    .foregroundStyle(Color.accentColor)
+                // The app rows above are a 22 pt icon and a 12 pt gap, and a
+                // `Label` uses neither — its own spacing put this title 6.5 pt
+                // to the left of every app name it sits under, which on a card
+                // of otherwise aligned rows reads as the last row being
+                // slightly broken. Spelled out, so the two agree by
+                // construction rather than by coincidence.
+                HStack(spacing: 12) {
+                    Image(systemName: "plus")
+                        .frame(width: 22, height: 22)
+                    Text(KAStr.addApp)
+                }
+                .foregroundStyle(Color.accentColor)
+                // The row is one target and one announcement, not a glyph and
+                // a word to stop on separately.
+                .accessibilityElement(children: .combine)
             }
             .buttonStyle(.plain)
         }
