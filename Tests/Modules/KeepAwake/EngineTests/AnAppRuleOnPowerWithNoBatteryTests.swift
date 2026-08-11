@@ -9,7 +9,7 @@ import HelmRuntime
 /// IOKit dictionary that came back incomplete — and reading them as one made
 /// «keep awake on power» never fire on a mini, a Studio or an iMac. The port
 /// grew `isOnMains` for the other question, `powerCondition()` reads it, and
-/// `FakePower.onMains` exists so a test can be a desktop.
+/// `FakePower.says(_:)` exists so a test can be a desktop.
 ///
 /// The commit that did it says, of the same defect, "taking **every app rule
 /// narrowed to `.power`** with it", and the engine's own comment beside
@@ -60,7 +60,7 @@ final class AnAppRuleOnPowerWithNoBatteryTests: XCTestCase {
     /// own doc comment was written for.
     private func aMacWithNoBattery() {
         power.snap = nil
-        power.onMains = true
+        power.says(.mains)
         // One display, and it is not built-in — which is what a desktop reports.
         displayInfo.flags = [false]
     }
@@ -69,13 +69,13 @@ final class AnAppRuleOnPowerWithNoBatteryTests: XCTestCase {
     /// defect never showed up on the machine it was written on.
     private func aLaptopOnMains() {
         power.snap = (onBattery: false, percent: 100)
-        power.onMains = true
+        power.says(.mains)
         displayInfo.flags = [true]
     }
 
     private func aLaptopOnBattery() {
         power.snap = (onBattery: true, percent: 80)
-        power.onMains = false
+        power.says(.battery)
         displayInfo.flags = [true]
     }
 

@@ -73,11 +73,27 @@ final class ClamshellCoordinator: @unchecked Sendable {
     /// What the last run may have left behind.
     ///
     /// The guard flag is a note that this app *may* have turned system sleep
-    /// off; it survives a crash, which is the case it exists for. Only shell
-    /// out when the flag is set — Swift evaluates both arguments of `&&`, so
-    /// the flag has to short-circuit the `pmset` read.
+    /// off; it survives a crash, which is the case it exists for. **It does not
+    /// survive somebody editing the plist**, and it lives in one every process
+    /// running as this user can write — so on its own it made the recovery
+    /// switchable off by anything on the machine: clear the note and system sleep
+    /// stays off for good, with every screen saying Keep Awake is idle.
+    ///
+    /// The rule on disk is the second anchor, and it is the one that cannot be
+    /// arranged from this account. Measured: `/etc/sudoers.d` is `0755`, so
+    /// `fileExists` answers from uid 501 with no grant of any kind, while the rule
+    /// inside it is `0440 root:wheel` — unreadable, and removable only with a
+    /// password. Either anchor is a reason to go and *look*; what `pmset -g` says
+    /// is still what decides whether anything is put back.
+    ///
+    /// The shell-out stays off the ordinary path: with neither anchor the
+    /// second half of this guard is never evaluated, which is what a Mac that has
+    /// never had the lid option switched on wants — the whole cost of it there is
+    /// two reads of local state.
     func recoverAtLaunch() {
-        guard store.bool(KeepAwakeSettings.Key.clamshellGuard, default: false),
+        let mayHaveLeftSleepOff = store.bool(KeepAwakeSettings.Key.clamshellGuard, default: false)
+            || clamshell.isSudoersInstalled()
+        guard mayHaveLeftSleepOff,
               ClamshellRecovery.sleepDisabled(inPmsetOutput: clamshell.pmsetReport())
         else { return }
         restoreSleep(refused: "closed-lid sleep could not be restored at launch",
@@ -102,6 +118,14 @@ final class ClamshellCoordinator: @unchecked Sendable {
     private func restoreSleep(refused: String, restored: String) {
         guard clamshell.setDisableSleep(false) else {
             HelmLog.shared.warn("keepawake", refused)
+            // Told, for the same reason `reallyEngage`'s refusal tells: this
+            // class does not get to assume its callers emit. Every one of them
+            // does today — `recompute`, `releaseForBattery`,
+            // `reconcileActiveSettings`, `deactivate` and `activate` all end in
+            // `emitState()` — so this changes nothing observable now, and it is
+            // the contract that `stateChanged` exists for rather than a habit of
+            // five call sites.
+            stateChanged()
             return
         }
         store.set(false, for: KeepAwakeSettings.Key.clamshellGuard)
@@ -109,16 +133,31 @@ final class ClamshellCoordinator: @unchecked Sendable {
         HelmLog.shared.info("keepawake", restored)
     }
 
-    /// The module is being switched off. Sleep goes back and the grant goes
-    /// with it — unconditionally, whatever the stored setting says, because a
-    /// permanent NOPASSWD line for a module that is off is a grant nobody is
-    /// holding. `/etc/sudoers.d` on the machine this was written on holds two
-    /// abandoned rules from predecessors; that is what «the rule survives the
-    /// app» looks like a year later.
+    /// The module is being switched off, or Helm is quitting. **Sleep goes back;
+    /// the grant stays.**
+    ///
+    /// It used to remove the rule here too, and that was a promise this process
+    /// cannot keep: `removeSudoers` dispatches to a global queue and runs
+    /// `osascript … with administrator privileges`, while `deactivate()` is what
+    /// `applicationWillTerminate` calls on every live engine. So quitting put an
+    /// administrator password dialog on screen on behalf of an app that was
+    /// already gone. `/etc/sudoers.d` on the machine this was written on holds
+    /// two abandoned rules from predecessors — and this app's own removal was
+    /// written the same way, so it was on course to leave a third.
+    ///
+    /// It also ran straight after the restore, whatever the restore answered. A
+    /// refused restore leaves system sleep off machine-wide and keeps
+    /// `clamshellGuard` set precisely so the next launch comes back and looks —
+    /// and what that launch needs is `sudo -n pmset disablesleep 0`, i.e. this
+    /// grant. The one path where the rule is load-bearing was the one taking it
+    /// away.
+    ///
+    /// So the grant's lifetime is the **lid option**, not the process:
+    /// `releaseIfUnneeded()` takes it out on the setting's falling edge, where
+    /// there is somebody at the screen to answer the dialog. Switching the module
+    /// off leaves it, exactly as a crash does.
     func tearDown() {
         if active { disengage() }
-        guard clamshell.isSudoersInstalled() else { return }
-        clamshell.removeSudoers { _ in }
     }
 
     // MARK: - Engaging

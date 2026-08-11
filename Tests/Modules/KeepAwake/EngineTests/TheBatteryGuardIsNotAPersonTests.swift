@@ -49,13 +49,13 @@ final class TheBatteryGuardIsNotAPersonTests: XCTestCase {
 
     private func onMains() {
         power.snap = (onBattery: false, percent: 100)
-        power.onMains = true
+        power.says(.mains)
     }
 
     /// Under the shipped floor of 20%.
     private func onAFlatBattery() {
         power.snap = (onBattery: true, percent: 5)
-        power.onMains = false
+        power.says(.battery)
     }
 
     /// The rule is holding the Mac and then the battery runs down.

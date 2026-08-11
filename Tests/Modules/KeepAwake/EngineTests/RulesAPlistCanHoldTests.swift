@@ -121,16 +121,24 @@ final class RulesAPlistCanHoldTests: XCTestCase {
 
     // MARK: - Enormous
 
-    /// Five hundred rules, with the only match at the end. Nothing about the
-    /// module says a list has a length, and «the first N are read» is the shape
-    /// of defect that hides in a list nobody makes by hand.
-    func testTheFiveHundredthRuleStillHoldsTheMac() {
-        var rules = (0..<499).map { AppTrigger(bundleID: "com.example.filler\($0)") }
+    /// A list at the module's ceiling, with the only match at the end. «The
+    /// first N are read» is the shape of defect that hides in a list nobody makes
+    /// by hand, and it is what these two are for.
+    ///
+    /// **This used to be five hundred, and the number moved for a reason.** The
+    /// value is unbounded input read on every recompute — 4.7 MB of it decodes to
+    /// 50 001 rules at 57 ms an event — so `AppTriggerRules.maxRules` refuses past
+    /// 200 now and the refusal goes to the banner. What is asserted here is the
+    /// half that must not change with it: everything up to the ceiling is read,
+    /// and the last rule matters as much as the first
+    /// (`AFileWithMoreRulesThanAnybodyChoseTests` holds both boundaries).
+    func testTheTwoHundredthRuleStillHoldsTheMac() {
+        var rules = (0..<199).map { AppTrigger(bundleID: "com.example.filler\($0)") }
         rules.append(AppTrigger(bundleID: "com.example.render"))
         plant("autoAppRules", AppTriggerRules.encode(rules))
 
-        XCTAssertEqual(settings.appTriggers.count, 500)
-        XCTAssertFalse(settings.appRulesUnreadable, "five hundred rules read as an unreadable file")
+        XCTAssertEqual(settings.appTriggers.count, 200)
+        XCTAssertFalse(settings.appRulesUnreadable, "a list at the ceiling is not a broken file")
         XCTAssertTrue(AppTriggerRules.isHolding(settings.appTriggers,
                                                 running: ["com.example.render"],
                                                 externalDisplay: false, onPower: false))
@@ -138,8 +146,8 @@ final class RulesAPlistCanHoldTests: XCTestCase {
 
     /// And an engine over the same store answers the same, so the length is a
     /// fact about the module and not only about the decoder.
-    func testAnEngineWithFiveHundredRulesStillHoldsTheMac() {
-        var rules = (0..<499).map { AppTrigger(bundleID: "com.example.filler\($0)") }
+    func testAnEngineWithTwoHundredRulesStillHoldsTheMac() {
+        var rules = (0..<199).map { AppTrigger(bundleID: "com.example.filler\($0)") }
         rules.append(AppTrigger(bundleID: "com.example.render"))
         plant("autoAppRules", AppTriggerRules.encode(rules))
         let apps = FakeApps()

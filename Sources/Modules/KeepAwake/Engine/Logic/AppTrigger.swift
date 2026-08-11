@@ -77,13 +77,41 @@ enum AppTriggerRules {
 
     static func decode(_ raw: String) -> [AppTrigger] { readable(raw) ?? [] }
 
+    /// The most rules this module will read, and the longest a bundle id may be.
+    ///
+    /// **The value is unbounded input read on every recompute.** It is one string
+    /// in `~/Library/Preferences`, which any process running as this user can
+    /// write, and `recompute()` runs from three observers — a display moving, the
+    /// charger, an app launching. Measured on what a plist can hold: 4.7 MB of
+    /// rules decodes to 50 001 of them at about 57 ms a recompute, and one bundle
+    /// id can be a million characters long.
+    ///
+    /// Nobody reaches these numbers by choosing apps: the picker adds one at a
+    /// time from a file dialog, and 256 characters is already far past
+    /// `com.microsoft.VSCode`. Over either ceiling the value is **refused**, not
+    /// truncated — silently keeping the first 200 is the one outcome nobody could
+    /// see, a page drawing rules that hold nothing or a Mac held awake by rules
+    /// the page does not draw. A refusal has a place to go: the banner
+    /// (`KeepAwakeSettings.AppRulesReading.unreadable`).
+    static let maxRules = 200
+    static let maxBundleIDLength = 256
+    /// Checked **before** anything is decoded, which is where the cost is: a
+    /// refusal after `JSONDecoder` has already parsed 4.7 MB still pays the 57 ms
+    /// on every event. 128 KB is comfortably above the worst legitimate file —
+    /// `maxRules` rules whose ids are all `maxBundleIDLength` long encode to about
+    /// 64 KB — and far below anything written to be expensive.
+    static let maxEncodedBytes = 128 * 1024
+
     /// `nil` for a string that is not rules, told apart from `[]` — which is a
     /// legitimate thing for the file to say and means the person has chosen no
     /// apps. The two are the same answer to the module and a different thing to
     /// say about somebody's file.
     static func readable(_ raw: String) -> [AppTrigger]? {
-        guard let data = raw.data(using: .utf8),
-              let decoded = try? JSONDecoder().decode([AppTrigger].self, from: data)
+        guard raw.utf8.count <= maxEncodedBytes,
+              let data = raw.data(using: .utf8),
+              let decoded = try? JSONDecoder().decode([AppTrigger].self, from: data),
+              decoded.count <= maxRules,
+              decoded.allSatisfy({ $0.bundleID.count <= maxBundleIDLength })
         else { return nil }
         return deduplicated(decoded)
     }

@@ -121,11 +121,11 @@ public final class IOPSPowerInfo: PowerInfoPort {
         return (onBattery: reading.onBattery, percent: reading.percent)
     }
 
-    /// The other question, which `snapshot()` cannot answer. A Mac with no
-    /// battery gives an empty source list, so `snapshot()` is nil there and
-    /// «no battery» arrived looking exactly like «IOKit would not answer» —
-    /// which is why the power rule was dead on every desktop Mac.
-    public var isOnMains: Bool { PowerSource.isOnMains }
+    /// The other question, which `snapshot()` cannot answer — the protocol has
+    /// why. An independent read rather than a fold of the battery reading: this
+    /// used to be `PowerSource.isOnMains`, whose nil-means-mains fold belongs to
+    /// the background scan and was silently deciding this module's questions too.
+    public func supply() -> PowerSource.Supply? { PowerSource.supply() }
 
     public func startObserving(_ onChange: @escaping @Sendable () -> Void) {
         self.onChange = onChange

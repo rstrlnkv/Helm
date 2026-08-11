@@ -170,9 +170,9 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         power.stopObserving()
         displayObserver.stopObserving()
         if isActive { assertions.release() }
-        // Sleep back, and the grant with it: switching the module off is a
-        // decision, and the sudo rule is the one thing here that would outlive
-        // it — outlive quitting Helm, and outlive deleting it.
+        // Sleep back — and the grant stays, for the reason `tearDown` gives: this
+        // is also what `applicationWillTerminate` calls, and a password dialog
+        // raised on the way out is one nobody answers.
         lid.tearDown()
         cancelTimers()
         expiryToken = nil
@@ -381,15 +381,15 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         return settings.autoExternalDisplay
             && ExternalDisplaySupport.hasExternal(builtInFlags: displayInfo.builtInFlags())
     }
+    /// **Definitely** on mains — the only reading that may hold a Mac awake, and
+    /// this module's fold of the port's three answers (`PowerInfoPort.supply()`
+    /// has the history). A supply nothing named fails toward sleep, which is the
+    /// opposite of the background scan's fold in `PowerSource.isOnMains(_:)` and
+    /// the reason neither fold lives in the port.
+    private func onMains() -> Bool { power.supply() == .mains }
+
     private func powerCondition() -> Bool {
-        // `snapshot()` is nil for two different reasons and this read them as
-        // one. A Mac with no battery — mini, Studio, iMac — has an empty power
-        // source list, so nil there means «no battery, therefore mains», and
-        // reading it as «not on power» made this rule dead on every desktop,
-        // along with every app rule narrowed to `.power`. Nil for an
-        // *incomplete* dictionary still has to mean not-on-power, because
-        // ending a session early is this module's safe failure.
-        settings.autoPower && power.isOnMains
+        settings.autoPower && onMains()
     }
     private func appCondition() -> Bool { !holdingAppRules().isEmpty }
 
@@ -402,11 +402,11 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             rules,
             running: Set(apps.runningBundleIDs()),
             externalDisplay: ExternalDisplaySupport.hasExternal(builtInFlags: displayInfo.builtInFlags()),
-            // `isOnMains`, like `powerCondition` above. This site was left on
+            // The same reading as `powerCondition` above. This site was left on
             // `snapshot()` when that fix landed, so a rule narrowed to «only
             // when plugged in» stayed dead on every Mac without a battery —
             // the exact defect the commit claimed to have closed.
-            onPower: power.isOnMains)
+            onPower: onMains())
     }
     private func currentAutoConditionHolds() -> Bool {
         externalDisplayCondition() || powerCondition() || appCondition()
@@ -552,7 +552,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         // nothing else ever ends.
         guard let snap = power.snapshot() else {
             return BatteryGuard.shouldDeactivateWithNoReading(
-                enabled: settings.batteryGuardEnabled, isOnMains: power.isOnMains)
+                enabled: settings.batteryGuardEnabled, isOnMains: onMains())
         }
         return BatteryGuard.shouldDeactivate(enabled: settings.batteryGuardEnabled,
                                              isOnBattery: snap.onBattery,

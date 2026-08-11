@@ -40,35 +40,67 @@ public struct KeepAwakeSettings {
     public var autoPower: Bool { store.bool(Key.autoPower, default: false) }
     public func setAutoPower(_ on: Bool) { store.set(on, for: Key.autoPower) }
 
-    /// Per-app rules. Reads the new encoded form, falling back to the plain
-    /// bundle-id list older versions wrote so nobody's apps disappear.
-    public var appTriggers: [AppTrigger] {
-        let encoded = store.string(Key.autoAppRules, default: "")
-        if !encoded.isEmpty { return AppTriggerRules.decode(encoded) }
-        return AppTriggerRules.migrating(from: store.stringArray(Key.autoApps))
+    /// What the file says about the app rules — **once**, for both the rules and
+    /// the banner over them.
+    ///
+    /// The two used to be read separately and disagreed in the migration case.
+    /// `appTriggers` asked `store.string`, an `as? String`, so a value of the
+    /// wrong type came back as the empty string, read as «nothing was ever
+    /// written», and fell through to migrating the older `autoApps` list;
+    /// `appRulesUnreadable` asked `store.object`, saw something that was not a
+    /// string, and said so. A plist with an *array* under the rules key on a Mac
+    /// that still has the legacy list therefore held the Mac awake on two rules
+    /// under a banner saying no app could be read — and that file is one plist
+    /// type away from ordinary, since `autoApps` *is* a `[String]`.
+    ///
+    /// So there is one reading, and «unreadable» means no rules: the module fails
+    /// toward the Mac sleeping and says so on screen. Absent and empty are not
+    /// errors — «no apps chosen» is a legitimate thing for the file to say, and a
+    /// banner on every fresh install would be the worse fault — and both migrate,
+    /// because that is what an older file looks like.
+    enum AppRulesReading {
+        /// Something is stored under the rules key and nothing can read it: the
+        /// wrong plist type, a string that is not rules, or more rules than this
+        /// module will read (`AppTriggerRules.readable`).
+        case unreadable
+        case rules([AppTrigger])
     }
+
+    var appRulesReading: AppRulesReading {
+        guard let value = store.object(Key.autoAppRules) else { return migrated() }
+        guard let encoded = value as? String else { return .unreadable }
+        guard !encoded.isEmpty else { return migrated() }
+        guard let rules = AppTriggerRules.readable(encoded) else { return .unreadable }
+        return .rules(rules)
+    }
+
+    /// The older key, read only when the current one has nothing to say — this is
+    /// on `recompute`'s path, which runs from three observers.
+    private func migrated() -> AppRulesReading {
+        .rules(AppTriggerRules.migrating(from: store.stringArray(Key.autoApps)))
+    }
+
+    /// Per-app rules. Reads the new encoded form, falling back to the plain
+    /// bundle-id list older versions wrote so nobody's apps disappear — and
+    /// answering *nothing* for a file the banner is about to disown.
+    public var appTriggers: [AppTrigger] {
+        switch appRulesReading {
+        case .unreadable: []
+        case .rules(let rules): rules
+        }
+    }
+
     /// True when the file holds something under the rules key that nothing can
     /// read.
     ///
-    /// The reader above answers no rules for it, which fails in the safe
-    /// direction — the Mac sleeps — and looks exactly like having chosen no
-    /// apps. Somebody whose rules stopped holding the Mac awake had nothing to
-    /// look at, so `activate` says so once. Not from `appTriggers` itself: that
-    /// is read from `recompute`, which runs from three observers.
-    ///
-    /// **A value of the wrong type counts, and it used not to.** Asked through
-    /// `store.string` — an `as? String` — a plist whose `autoAppRules` is an
-    /// *array* answered with the empty string, which reads as «nothing was ever
-    /// written»: every rule dead, the page drawing its empty state, and the banner
-    /// silent. That is one plist type away from ordinary, since `autoApps` — the
-    /// key this module still migrates from — *is* a `[String]`. Absent stays not
-    /// an error, and so does an empty string: «no apps chosen» is a legitimate
-    /// thing for the file to say, and a banner on every fresh install would be a
-    /// worse fault than the one this closes.
+    /// Somebody whose rules stopped holding the Mac awake had nothing to look at,
+    /// so `activate` says so once. Not from `appTriggers` itself: that is read
+    /// from `recompute`, which runs from three observers.
     public var appRulesUnreadable: Bool {
-        guard let value = store.object(Key.autoAppRules) else { return false }
-        guard let encoded = value as? String else { return true }
-        return !encoded.isEmpty && AppTriggerRules.readable(encoded) == nil
+        switch appRulesReading {
+        case .unreadable: true
+        case .rules: false
+        }
     }
 
     /// Encoded here, beside the decode above: the page used to spell the key and

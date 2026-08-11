@@ -33,23 +33,23 @@ final class ARefusedCommandIsNotSilenceTests: XCTestCase {
     // MARK: - The reading
 
     func testSilenceIsSuccess() {
-        XCTAssertEqual(VPNCommandReply.of(""), .accepted)
-        XCTAssertEqual(VPNCommandReply.of("   \n "), .accepted)
+        XCTAssertEqual(VPNCommandReply.of("", name: "Office"), .accepted)
+        XCTAssertEqual(VPNCommandReply.of("   \n ", name: "Office"), .accepted)
     }
 
     func testTheToolsOwnWordsForAMissingConfiguration() {
-        XCTAssertEqual(VPNCommandReply.of("No service"), .noSuchService)
-        XCTAssertEqual(VPNCommandReply.of("No service\n"), .noSuchService)
+        XCTAssertEqual(VPNCommandReply.of("No service", name: "Office"), .noSuchService)
+        XCTAssertEqual(VPNCommandReply.of("No service\n", name: "Office"), .noSuchService)
         // Matched case-insensitively but never translated: `scutil` is not
         // localized, and a Mac in another language still prints English.
-        XCTAssertEqual(VPNCommandReply.of("no service"), .noSuchService)
+        XCTAssertEqual(VPNCommandReply.of("no service", name: "Office"), .noSuchService)
     }
 
     /// Anything else is kept verbatim rather than mapped to «failed». The set
     /// of things this tool can print is not ours to enumerate, and an unknown
     /// message is worth more in the trail than a word we chose.
     func testAnythingElseIsCarriedThrough() {
-        XCTAssertEqual(VPNCommandReply.of("Some future complaint"),
+        XCTAssertEqual(VPNCommandReply.of("Some future complaint", name: "Office"),
                        .refused("Some future complaint"))
     }
 

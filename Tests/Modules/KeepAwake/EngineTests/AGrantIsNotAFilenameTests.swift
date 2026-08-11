@@ -88,17 +88,28 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
         XCTAssertEqual(survivorLines(), 0)
     }
 
-    /// Switching the module off takes the rule with it. It used to survive
-    /// that, and quitting, and deleting the app — which is what the two
-    /// abandoned NOPASSWD files on this machine are.
-    func testSwitchingTheModuleOffTakesTheRuleWithIt() {
+    /// **Switching the module off leaves the rule, and that is the decision.**
+    ///
+    /// It used to remove it here, which read well and could not work:
+    /// `deactivate()` is what `applicationWillTerminate` calls on every live
+    /// engine, and `removeSudoers` dispatches to a global queue and puts up an
+    /// `osascript` administrator dialog — for an app that is already gone. The
+    /// two abandoned NOPASSWD files on this machine are what that looks like a
+    /// year later, and Helm's own removal was written the same way.
+    ///
+    /// The grant belongs to the lid option: `releaseIfUnneeded` takes it out on
+    /// that setting's falling edge, with somebody at the screen to answer the
+    /// dialog (the two tests above, and
+    /// `AGrantIsNotRevokedByQuittingTests`).
+    func testSwitchingTheModuleOffLeavesTheRuleToTheLidOption() {
         clamshell.sudoersInstalled = true
         clamshell.passwordlessGrantExists = true
 
         engine.deactivate()
 
-        XCTAssertEqual(clamshell.removeCalls, 1,
-                       "the module is off and a permanent passwordless sudo rule for it is not")
+        XCTAssertEqual(clamshell.removeCalls, 0,
+                       "a password dialog was raised on the way out of the process that raised it")
+        XCTAssertTrue(clamshell.isSudoersInstalled())
     }
 
     private func survivorLines() -> Int {

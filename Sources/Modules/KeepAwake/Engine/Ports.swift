@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import HelmRuntime
 
 public protocol SleepAssertions: AnyObject {   // IOKit
     func preventSleep(display: Bool)
@@ -10,14 +11,18 @@ public protocol DisplayInfoPort: AnyObject { func builtInFlags() -> [Bool] }
 
 public protocol PowerInfoPort: AnyObject {
     func snapshot() -> (onBattery: Bool, percent: Int)?
-    /// Whether the Mac is on mains, which is **not** `!snapshot()!.onBattery`.
+    /// Which supply is running the Mac, which is **not** derivable from
+    /// `snapshot()` — that is nil both for a Mac with no battery and for an
+    /// incomplete IOKit dictionary, and reading the two as one thing left the
+    /// power rule dead on every desktop. `PowerSource.supply()` has the rest.
     ///
-    /// A Mac with no battery has an empty power-source list, so `snapshot()`
-    /// is nil there — and nil is also what an incomplete IOKit dictionary
-    /// gives. Read as one thing, the power rule was dead on every desktop.
-    /// The battery guard still reads `snapshot()`, where nil correctly means
-    /// «no reading, do not end the session».
-    var isOnMains: Bool { get }
+    /// **Three answers, because the system has three.** It used to be a `Bool`
+    /// folding «I don't know» into `true`, which is how a power source nothing
+    /// could read came to *start* holding a Mac awake; this module folds that
+    /// third answer to «not on mains», because letting the Mac sleep is its safe
+    /// failure. The battery guard still reads `snapshot()`, where nil correctly
+    /// means «no reading, do not end the session».
+    func supply() -> PowerSource.Supply?
     func startObserving(_ onChange: @escaping @Sendable () -> Void)
     /// Every observer this module starts has to be stoppable, because the
     /// module can be switched off: the engine is dropped, the port goes with

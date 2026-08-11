@@ -286,7 +286,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             if let p = creds.password, !p.isEmpty { args += ["--password", p] }
             if let s = creds.secret, !s.isEmpty { args += ["--secret", s] }
         }
-        report(VPNCommandReply.of(runner.run(args)), verb: "connect", name: name)
+        report(VPNCommandReply.of(runner.run(args), name: name), verb: "connect", name: name)
         emitState()
         scheduleRefresh()
     }
@@ -312,7 +312,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         // immediately. Connect and disconnect are this module's ordinary
         // traffic, so that is the common path, not an edge.
         lock.lock(); _autoConnected.remove(name); _cameUp.remove(name); lock.unlock()
-        report(VPNCommandReply.of(runner.run(["--nc", "stop", name])),
+        report(VPNCommandReply.of(runner.run(["--nc", "stop", name]), name: name),
                verb: "disconnect", name: name)
         emitState()
         scheduleRefresh()

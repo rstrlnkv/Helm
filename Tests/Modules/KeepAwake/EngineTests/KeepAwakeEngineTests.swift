@@ -129,6 +129,12 @@ final class KeepAwakeEngineTests: XCTestCase {
     func test_clamshell_recovery_on_activate() {
         store.set(true, for: "clamshellGuard")
         clamshell.pmset = "SleepDisabled 1"
+        // The grant, because the recovery *is* `sudo -n pmset disablesleep 0`:
+        // without a passwordless rule the real port's call fails, and the fixture
+        // only worked while `FakeClamshell.setDisableSleep` answered yes without
+        // one. A launch that finds this state and no grant keeps the note instead
+        // — `APmsetThatRefusedIsNotASuccessTests` is where that half lives.
+        clamshell.sudoersInstalled = true
 
         engine.activate()
         XCTAssertEqual(clamshell.disableSleepCalls, [false])

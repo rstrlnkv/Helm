@@ -55,7 +55,7 @@ final class AChargeNobodyCanReadIsNotZeroTests: XCTestCase {
     /// IOKit answered, and the answer had nothing in it.
     private func withNoReading(onMains: Bool) {
         power.snap = nil
-        power.onMains = onMains
+        power.says(onMains ? .mains : .battery)
     }
 
     // MARK: - The decision, where it has a test on any Mac
@@ -145,7 +145,7 @@ final class AChargeNobodyCanReadIsNotZeroTests: XCTestCase {
         engine.activate()
         engine.startSession(minutes: 0)
         power.snap = (onBattery: true, percent: 5)
-        power.onMains = false
+        power.says(.battery)
         power.fire()
 
         let lines = guardLines()

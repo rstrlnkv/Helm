@@ -58,7 +58,7 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
     func testARuleFiringDoesNotRaiseAPasswordDialog() {
         store.set(true, for: KeepAwakeSettings.Key.autoPower)
         let power = FakePower()
-        power.onMains = true
+        power.says(.mains)
         let ruled = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
                                     assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
                                     displayObserver: FakeDisplayObserver(), power: power,
@@ -81,7 +81,7 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
         clamshell.passwordlessGrantExists = true
         store.set(true, for: KeepAwakeSettings.Key.autoPower)
         let power = FakePower()
-        power.onMains = true
+        power.says(.mains)
         let ruled = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
                                     assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
                                     displayObserver: FakeDisplayObserver(), power: power,

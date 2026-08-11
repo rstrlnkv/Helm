@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import HelmRuntime
 @testable import Module_KeepAwake_Engine
 
 /// Two assertions, because the real port holds two.
@@ -48,15 +49,31 @@ final class FakeDisplayObserver: DisplayObserverPort {
 
 final class FakePower: PowerInfoPort {
     var snap: (onBattery: Bool, percent: Int)? = (onBattery: false, percent: 100)
-    /// Separate from `snap`, because on a real Mac the two are separate: a
-    /// desktop answers «on mains» while `snapshot()` answers nil, and that
-    /// combination is the one the power rule was broken on. A fake that
-    /// derived this from `snap` could not express it, so no test of it could
-    /// exist — which is how the defect lived.
-    var onMains: Bool?
+    /// What `IOPSGetProvidingPowerSourceType` named, and it is a separate fact
+    /// from `snap` on a real Mac: a desktop answers `.mains` while `snapshot()`
+    /// answers nil — the combination the power rule was broken on — and a Mac
+    /// drawing from a UPS names a supply this app does not reason about while a
+    /// capacity is perfectly readable.
+    ///
+    /// **The third answer is the one that matters here.** While this was a
+    /// `Bool` the real port could not produce «no reading *and* not on mains» —
+    /// `isOnMains` folded every unreadable source to `true` — so a test
+    /// planting it was testing a state that did not exist, and
+    /// `BatteryGuard.shouldDeactivateWithNoReading`'s whole reason for being
+    /// was unreachable in production while its test passed.
+    private var plantedSupply: PowerSource.Supply??
+    /// The system names this supply. `nil` is «it named one this app does not
+    /// know, or named none at all», which is a state and not an omission.
+    func says(_ supply: PowerSource.Supply?) { plantedSupply = .some(supply) }
     private var onChange: (@Sendable () -> Void)?
     func snapshot() -> (onBattery: Bool, percent: Int)? { snap }
-    var isOnMains: Bool { onMains ?? !(snap?.onBattery ?? true) }
+    /// Unplanted, the supply follows `snap` — a Mac whose two readings agree,
+    /// which is every laptop with a working battery and is what a test that only
+    /// cares about a charge should get.
+    func supply() -> PowerSource.Supply? {
+        if case .some(let planted) = plantedSupply { return planted }
+        return snap.map { $0.onBattery ? .battery : .mains }
+    }
     private(set) var observing = false
     func startObserving(_ onChange: @escaping @Sendable () -> Void) {
         self.onChange = onChange
@@ -127,9 +144,23 @@ final class FakeClamshell: ClamshellPort {
     }
     func setDisableSleep(_ on: Bool) -> Bool {
         disableSleepCalls.append(on)
+        // **The call needs the grant.** `PmsetClamshellPort` runs
+        // `sudo -n pmset disablesleep …`, and `-n` fails outright when no
+        // passwordless rule covers it. Answering yes without one made «the rule
+        // is gone, so the restore cannot run» an unrepresentable state — which is
+        // the state the grant's lifetime was changed for: a removal fired at quit
+        // took away the very thing the next launch's recovery needs.
+        guard canDisableSleepWithoutPassword() else { return false }
         return disableSleepSucceeds
     }
-    func pmsetReport() -> String { pmset }
+    /// How many times the report was read, because «did this launch shell out to
+    /// `pmset` at all» is a question about every launch on every Mac: the
+    /// recovery's anchors exist to keep that read off the ordinary path.
+    private(set) var pmsetReads = 0
+    func pmsetReport() -> String {
+        pmsetReads += 1
+        return pmset
+    }
 }
 
 /// Manual clock: `schedule` records blocks keyed by an incrementing id so tests can

@@ -147,6 +147,36 @@ final class APmsetThatRefusedIsNotASuccessTests: XCTestCase {
                       + "a word about it")
     }
 
+    /// **The refusal reaches the screen from the coordinator, not from the habits
+    /// of its callers.**
+    ///
+    /// `ClamshellCoordinator` is told `stateChanged` rather than asking, because
+    /// its answers change while a password prompt is up — and `reallyEngage`'s
+    /// refusal branch calls it while `restoreSleep`'s did not. Every caller of
+    /// `restoreSleep` happens to emit on the same turn today (`recompute`,
+    /// `releaseForBattery`, `reconcileActiveSettings`, `activate`, `deactivate`),
+    /// so this is a test of the contract and not of anything visible: asserted
+    /// here, one call away, because at engine level it cannot fail.
+    func testARefusedRestoreAnnouncesItselfRatherThanTrustingTheCaller() {
+        let lid = ClamshellCoordinator(clamshell: clamshell, store: store,
+                                       settings: KeepAwakeSettings(store: store))
+        lid.sessionIsActive = { true }
+        var announcements = 0
+        lid.stateChanged = { announcements += 1 }
+        clamshell.passwordlessGrantExists = true
+        lid.engage(mayPrompt: false)
+        XCTAssertTrue(lid.active, "precondition: sleep is off, so there is something to restore")
+        XCTAssertEqual(announcements, 0, "precondition: engaging cleanly announces nothing")
+
+        clamshell.disableSleepSucceeds = false
+        lid.disengage()
+
+        XCTAssertEqual(announcements, 1,
+                       "the restore was refused — system sleep is still off — and the class whose "
+                       + "whole reason for holding `stateChanged` is «a refusal has to reach the "
+                       + "screen» said nothing")
+    }
+
     /// A second engine over the same store and the same lid, which is what the
     /// next launch is.
     private func atLaunch() -> KeepAwakeEngine {

@@ -55,7 +55,7 @@ final class APausedRuleSaysSoTests: XCTestCase {
         let store = NamespacedStore(namespace: "keep-awake", backing: InMemoryKeyValueStore())
         store.set(true, for: KeepAwakeSettings.Key.autoPower)
         let power = FakePower()
-        power.onMains = true
+        power.says(.mains)
         let engine = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
                                      assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
                                      displayObserver: FakeDisplayObserver(), power: power,
@@ -82,7 +82,7 @@ final class APausedRuleSaysSoTests: XCTestCase {
         let store = NamespacedStore(namespace: "keep-awake", backing: InMemoryKeyValueStore())
         store.set(true, for: KeepAwakeSettings.Key.autoPower)
         let power = FakePower()
-        power.onMains = true
+        power.says(.mains)
         let engine = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
                                      assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
                                      displayObserver: FakeDisplayObserver(), power: power,
@@ -91,7 +91,7 @@ final class APausedRuleSaysSoTests: XCTestCase {
         engine.activate()
         engine.stopSession()
 
-        power.onMains = false
+        power.says(.battery)
         engine.settingsChangedForTests()
 
         XCTAssertFalse(engine.triggeredConditions.contains(.power))
