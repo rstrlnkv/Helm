@@ -29,7 +29,6 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     private let power: PowerInfoPort
     private let apps: AppRunningPort
     private let pointer: PointerPort
-    private let clamshell: ClamshellPort
     /// «Stay awake with the lid closed», and the NOPASSWD rule it needs. Six
     /// methods and four flags that nothing else here reads — see
     /// `ClamshellCoordinator`.
@@ -107,7 +106,6 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         self.power = power
         self.apps = apps
         self.pointer = pointer
-        self.clamshell = clamshell
         self.clock = clock
         self.localTransport = transport
         self.transport = transport

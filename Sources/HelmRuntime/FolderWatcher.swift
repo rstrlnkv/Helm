@@ -16,7 +16,6 @@ import Foundation
 public final class FolderWatcher: @unchecked Sendable {
     private let queue = DispatchQueue(label: "helm.rules.watcher")
     private var stream: FSEventStreamRef?
-    private var paths: [String] = []
     private let onChange: @Sendable ([String]) -> Void
 
     public init(onChange: @escaping @Sendable ([String]) -> Void) {
@@ -31,7 +30,6 @@ public final class FolderWatcher: @unchecked Sendable {
     public func watch(_ folders: [String]) {
         queue.async { [self] in
             stopStream()
-            paths = folders
             guard !folders.isEmpty else { return }
             start(folders)
         }

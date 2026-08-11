@@ -23,7 +23,6 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
     /// there and would have refused to remove there — two homes in a type
     /// that was handed one.
     private let home: String
-    private let files: LeftoversFilePort
     private let localTransport: LocalTransport
     public let transport: EngineTransport
     /// The write half. The scan gets `loaded` and cannot reach this.
@@ -35,7 +34,6 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
                 loaded: LoadedItemsPort = ActiveExtensions(),
                 switcher: LoginItemSwitchPort = ActiveExtensions(),
                 transport: LocalTransport = LocalTransport()) {
-        self.files = files
         self.switcher = switcher
         self.home = home.path
         self.scanner = LeftoversScanner(home: home, files: files, apps: apps, extensions: loaded)

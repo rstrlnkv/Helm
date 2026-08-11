@@ -29,6 +29,7 @@ final class DocumentsNameTheTreeTests: XCTestCase {
     /// re-derive that to decide whether an entry still belongs.
     private static let foreign: [String: String] = [
         "AVAssetImageGenerator": "AVFoundation — pulls exact frames for the motion measurements",
+        "assignOnlyProperty": "periphery's own vocabulary for a finding, not a name in this tree",
         "AttributeGraph": "SwiftUI's own dependency graph, named from a live vmmap",
         "IOSurface": "the framework, named from the same vmmap",
         "QuartzCore": "likewise",
