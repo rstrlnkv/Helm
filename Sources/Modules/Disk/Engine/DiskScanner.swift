@@ -226,7 +226,6 @@ public final class DiskScanner: @unchecked Sendable {
         }
     }
 
-
     // MARK: - getattrlistbulk
 
     /// A device identifier that never traps: no unsigned conversion, and an

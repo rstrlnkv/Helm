@@ -71,18 +71,6 @@ import HelmUI
         NSApp.setActivationPolicy(.accessory)
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
 }
 
 // MARK: - Shared model
@@ -527,6 +515,13 @@ private struct ModuleDetailView: View {
                    let activity = descriptor.activity(live.vm) {
                     // Read so this branch depends on it; the value means
                     // nothing, the dependency is the point.
+                    //
+                    // **`let` is load-bearing.** A `ViewBuilder` takes
+                    // declarations and drops them; a bare `_ = x` is an
+                    // *expression* of type `()`, and the builder then asks `()`
+                    // to conform to `View`. `swiftlint --fix` rewrote this line
+                    // under `redundant_discardable_let` on 2026-08-11 and the
+                    // whole app stopped compiling. That rule is off here.
                     let _ = activityRevision
                     switch activity {
                     case .active:

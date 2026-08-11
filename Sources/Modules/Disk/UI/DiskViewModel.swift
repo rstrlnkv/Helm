@@ -521,7 +521,6 @@ import Module_Disk_Engine
         }
     }
 
-
     // MARK: - Layout
 
     /// The layout the ring is about to become, computed before the animation

@@ -108,7 +108,6 @@ public struct KeepAwakeSettingsPage: View {
             .task { accessibility = PermissionCheck.currentAccessibility() }
     }
 
-
     /// Seven sections, each its own fragment.
     ///
     /// This was one 123-line expression: more than anyone can hold at once and

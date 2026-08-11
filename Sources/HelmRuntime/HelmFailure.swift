@@ -197,4 +197,3 @@ public enum HelmFailure {
         return flat.prefix(messageLimit) + "… (\(flat.count) characters)"
     }
 }
-

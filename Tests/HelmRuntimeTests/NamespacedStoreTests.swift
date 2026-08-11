@@ -13,9 +13,9 @@ final class NamespacedStoreTests: XCTestCase {
     }
     func test_roundtrip_bool_int_string_array() {
         let s = makeStore()
-        s.set(42, for: "n"); s.set(["a","b"], for: "apps"); s.set("x", for: "s")
+        s.set(42, for: "n"); s.set(["a", "b"], for: "apps"); s.set("x", for: "s")
         XCTAssertEqual(s.int("n", default: 0), 42)
-        XCTAssertEqual(s.stringArray("apps"), ["a","b"])
+        XCTAssertEqual(s.stringArray("apps"), ["a", "b"])
         XCTAssertEqual(s.string("s", default: ""), "x")
     }
     func test_defaults_returned_when_missing() {

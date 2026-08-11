@@ -182,8 +182,11 @@ struct KeepAwakeHero: View {
                     // The first measurement is not a change. Animating it plays
                     // the hero collapsing from whatever the unmeasured layout
                     // happened to be, on the first frame of the page.
-                    if stateHeight == 0 { stateHeight = height }
-                    else { withAnimation(HelmMotion.disclosure) { stateHeight = height } }
+                    if stateHeight == 0 {
+                        stateHeight = height
+                    } else {
+                        withAnimation(HelmMotion.disclosure) { stateHeight = height }
+                    }
                 }
                 .frame(height: stateHeight > 0 ? stateHeight : nil, alignment: .top)
                 // The pair, not either half. The outgoing state is a line

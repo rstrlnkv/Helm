@@ -161,8 +161,6 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
         }
     }
 
-
-
     private func wireTransport() {
         localTransport.setHandler { [weak self] command in
             guard let self else { return Data() }
@@ -199,7 +197,6 @@ private final class FileCounter: @unchecked Sendable {
         set { lock.lock(); stored = newValue; lock.unlock() }
     }
 }
-
 
 /// What to measure, and under whose name. The name comes from the caller
 /// because the caller is the one who has to recognise the answer: the view

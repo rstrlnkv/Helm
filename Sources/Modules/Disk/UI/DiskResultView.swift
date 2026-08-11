@@ -337,7 +337,6 @@ private struct ChildRow: View {
     private var removable: Bool { UserFileScope.isRemovable(child.path) }
     private var isHovered: Bool { hovered == child.path }
 
-
     private func reveal() { HelmReveal.inFinder(child.path) }
 
     var body: some View {

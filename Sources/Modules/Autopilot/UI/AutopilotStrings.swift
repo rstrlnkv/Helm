@@ -1,3 +1,13 @@
+// swiftlint:disable line_length
+//
+// Every line this rule flags in this file is one localized string — the English
+// that is also the key, and that eight `.strings` files answer. Splitting one
+// across source lines buys nothing and risks the key. `.swiftlint.yml` already
+// says these lines "are correct at that length"; the exemption is here so the
+// 320-character warning can go on meaning what that comment claims it means —
+// a notice about runaway *code* — instead of firing 61 times on the one case
+// it excuses.
+
 import HelmRuntime
 import HelmUI
 import Module_Autopilot_Engine

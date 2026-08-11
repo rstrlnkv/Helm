@@ -290,8 +290,11 @@ struct UtilitiesSection: View {
                 // hands its value over *outside* the running transaction, so
                 // the write has to carry its own. Measured: 102 → 298 pt in a
                 // single frame without this, a ramp with it.
-                if rowsHeight == 0 { rowsHeight = height }
-                else { withAnimation(HelmMotion.disclosure) { rowsHeight = height } }
+                if rowsHeight == 0 {
+                    rowsHeight = height
+                } else {
+                    withAnimation(HelmMotion.disclosure) { rowsHeight = height }
+                }
             }
             .frame(height: open ? rowsHeight : 0, alignment: .top)
             // Height + clipping only: fading would isolate these rows in their

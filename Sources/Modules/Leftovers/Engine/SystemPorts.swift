@@ -21,6 +21,24 @@ public struct FileSystemLeftovers: LeftoversFilePort {
     }
 }
 
+/// What is installed, by walking the applications directories.
+///
+/// **Not `RunningApps`, and not the Uninstaller's `WorkspaceAppLister`,
+/// although all three are about applications.** `RunningApps` answers who is
+/// *running* and is a main-thread-only AppKit read behind a snapshot;
+/// `WorkspaceAppLister` answers the same question this does but over a
+/// different set of directories, and backs it with a LaunchServices lookup.
+/// Four questions, four answers, and the reason they are not one type is that
+/// the answers differ.
+///
+/// **What this one does not have is that LaunchServices backstop.** The depth-2
+/// walk below covers the case its own comment names — a vendor folder like
+/// `/Applications/Adobe Photoshop 2026/` — but not the other case
+/// `OrphanDetector.isOrphan` records: a helper nested inside another
+/// application's bundle, under `Contents/`, which is in no applications
+/// directory at any depth. Uninstaller pays for that lookup because it once
+/// offered such bundles for deletion while their apps were installed and
+/// running. This module trashes on the same kind of judgement.
 public struct WorkspaceInstalledApps: InstalledAppsPort {
     private let searchDirs: [URL]
 

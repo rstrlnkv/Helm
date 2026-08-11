@@ -10,6 +10,19 @@ excluded:
 disabled_rules:
   - todo            # a TODO in this repo is a decision recorded, not debt to nag about
   - trailing_comma  # trailing commas in multi-line literals are deliberate here
+  # `let _ = x` is not redundant inside a `ViewBuilder`, and this rule's autofix
+  # does not know that. A builder takes declarations and drops them; rewritten to
+  # a bare `_ = x` the line becomes an expression of type `()`, which the builder
+  # then asks to conform to `View`. `swiftlint --fix` made exactly that edit in
+  # `SettingsWindow.swift` on 2026-08-11 and the app stopped compiling — one line,
+  # and `--fix` is the reason it was believed safe.
+  - redundant_discardable_let
+  # `statement_position`'s autofix joins both branches of an if/else onto one
+  # line when each branch is already brace-on-the-same-line. It did that to five
+  # `onGeometryChange` handlers, each sitting under a comment explaining why the
+  # two branches differ, and produced lines of 129 to 139 characters. The rule is
+  # right about `} else {`; its fix is not worth the five it damaged.
+  - statement_position
 
 # A localized string is one line carrying eight languages; splitting it hurts
 # more than it helps, and those lines are most of the file in the *Strings.swift

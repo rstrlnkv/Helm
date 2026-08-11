@@ -213,7 +213,6 @@ public struct UninstallerSystemPorts {
     }
 }
 
-
 /// Both uninstaller checks go through the shared CLI in HelmRuntime.
 public struct SystemExtensionLister: SystemExtensionPort {
     public init() {}

@@ -224,7 +224,6 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
         }
     }
 
-
     // MARK: - Transport
 
     private func wireTransport() {

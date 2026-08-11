@@ -417,7 +417,3 @@ private struct RingCanvas: View, @MainActor Animatable {
     }
 
 }
-
-
-
-

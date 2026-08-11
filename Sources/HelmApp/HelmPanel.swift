@@ -806,8 +806,11 @@ struct HelmPanelContent: View {
                     // and snapped its ends.
                     .onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
                         guard measured > 0, topChrome != measured else { return }
-                        if topChrome == 0 { topChrome = measured }
-                        else { withAnimation(HelmMotion.disclosure) { topChrome = measured } }
+                        if topChrome == 0 {
+                            topChrome = measured
+                        } else {
+                            withAnimation(HelmMotion.disclosure) { topChrome = measured }
+                        }
                     }
             }
             ScrollView {
@@ -843,8 +846,11 @@ struct HelmPanelContent: View {
                     // from full height to its content while the card is pinned
                     // at the top. Opening the panel looked like the block
                     // unfolding from its middle in both directions.
-                    if gridHeight == 0 { gridHeight = measured }
-                    else { withAnimation(HelmMotion.disclosure) { gridHeight = measured } }
+                    if gridHeight == 0 {
+                        gridHeight = measured
+                    } else {
+                        withAnimation(HelmMotion.disclosure) { gridHeight = measured }
+                    }
                 }
             }
             // An explicit height, not a `maxHeight`. A `ScrollView`'s ideal
@@ -887,8 +893,11 @@ struct HelmPanelContent: View {
             }
             .onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
                 guard measured > 0, footerHeight != measured else { return }
-                if footerHeight == 0 { footerHeight = measured }
-                else { withAnimation(HelmMotion.disclosure) { footerHeight = measured } }
+                if footerHeight == 0 {
+                    footerHeight = measured
+                } else {
+                    withAnimation(HelmMotion.disclosure) { footerHeight = measured }
+                }
             }
         }
         .padding(PanelGrid.padding)

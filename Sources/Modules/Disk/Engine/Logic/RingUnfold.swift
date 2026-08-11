@@ -70,7 +70,6 @@ public enum RingUnfold {
         return max(0, 1 - t)
     }
 
-
     /// Where an arc sits partway between the layout it is in and the layout it
     /// is becoming.
     ///

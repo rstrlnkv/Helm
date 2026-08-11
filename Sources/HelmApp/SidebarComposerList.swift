@@ -100,8 +100,7 @@ struct SidebarComposerList: View {
                         // Every later one is a correction the list has to be
                         // seen making, and `onGeometryChange` hands its value
                         // over outside whatever transaction caused it.
-                        if heights[row.id] == nil { heights[row.id] = measured }
-                        else {
+                        if heights[row.id] == nil { heights[row.id] = measured } else {
                             withAnimation(HelmMotion.interface) { heights[row.id] = measured }
                         }
                     }
