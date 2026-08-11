@@ -27,8 +27,21 @@ import XCTest
 ///    the audit's inflation, applied to the arithmetic instead of to the text.
 ///
 /// **What it can see, and what it cannot.** `intrinsicContentSize` is AppKit's,
-/// so this reads the AppKit-backed controls in a page — segmented controls,
-/// text and search fields, pop-ups. It does **not** see a `Text` truncating:
+/// so this reads the AppKit-backed controls in a page. Measured 2026-08-11, all
+/// nine pages, with the configured fixture below: **23 controls in the whole
+/// app** — 18 switches, 3 text fields (Layout), one search field and one
+/// segmented control (Uninstaller). This comment used to name pop-ups as well,
+/// and there is not one in any page's view tree: SwiftUI's `Picker(.menu)`,
+/// `Button` and `Slider` are drawn by SwiftUI itself on macOS 26/27, so a walk
+/// for `_NSCoreHostingView<AppKit…>` cannot find them however the page is seeded.
+/// `testTheControlsFoundAreTheOnesRecorded` holds that inventory, so the day the
+/// platform hands them back is a failure rather than a silent widening. So
+/// `recordedAtFortyPercent` is a fact about one segmented control in eight
+/// languages — and the widths this app imposes on the pickers it cannot see are
+/// measured in `AnImposedPickerWidthFitsItsLabelsTests`, which hosts each one and
+/// reads the same `intrinsicContentSize` this file does.
+///
+/// It does **not** see a `Text` truncating:
 /// SwiftUI draws text already truncated, so the layer never overflows its
 /// parent, and the string that would say how much was lost is not in the
 /// rendered tree (the accessibility tree carries it, and is not materialized
@@ -44,6 +57,14 @@ final class LongStringGeometryRatchetTests: XCTestCase {
     /// agreement. `atFullSize` was 1 and is 0: the Uninstaller's segmented control
     /// was drawn at 200 pt where Russian asks for 208, and the `.frame(width: 200)`
     /// that did it is gone.
+    ///
+    /// **Re-measured 2026-08-11 with the configured fixture, three consecutive runs:
+    /// both numbers unchanged.** Which is a finding rather than a reassurance — the
+    /// fixture puts two app-rule rows, their condition menus and the battery slider
+    /// into every render, and none of them is a control this measurement can see
+    /// (`testTheControlsFoundAreTheOnesRecorded` records that inventory). The pair
+    /// below moves when a *segmented control*, a text field or a search field
+    /// changes, and for nothing else.
     ///
     /// `atFortyPercent` is that control in all eight languages, and **a wider frame
     /// cannot lower it** — worth knowing before somebody tries. A segmented control
@@ -84,7 +105,12 @@ final class LongStringGeometryRatchetTests: XCTestCase {
         defer { AppLanguage.override = previous }
         for language in AppLanguage.allCases {
             AppLanguage.override = language
-            for page in ModulePageRender.pages() {
+            // Seeded, and that is a correction rather than a refinement: against
+            // an empty store the pages draw their empty states, so Keep Awake's
+            // per-app rule rows, the condition pop-up in each of them and the
+            // battery slider were in none of these 72 renders. The widest label a
+            // configured page has was measured in no language at all.
+            for page in ModulePageRender.pages(seededBy: ModulePageRender.configured) {
                 page.assertItDrewSomething()
                 out += page.controls.map { Seen(language: language, module: page.id, control: $0) }
             }
@@ -154,6 +180,68 @@ final class LongStringGeometryRatchetTests: XCTestCase {
                           + "the language override is not reaching the page")
     }
 
+    /// **The fixture reaches the render.** Without this the seed is a parameter
+    /// nobody can see the effect of, and the 72 renders go on being 72 empty
+    /// states while the file above claims otherwise — the same shape as a language
+    /// filtered out of its own guard, one argument along.
+    ///
+    /// Asserted as layers, which is where the difference is: two per-app rule rows
+    /// with a condition menu and a remove button each, and the battery figure
+    /// beside its slider, against the empty state's one button. Measured 296 → 322.
+    func testTheConfiguredRowsAreDrawn() {
+        let plain = ModulePageRender.page(for: keepAwake, width: ModulePageRender.pageWidth)
+        let seeded = ModulePageRender.page(for: keepAwake, width: ModulePageRender.pageWidth,
+                                          seededBy: ModulePageRender.configured)
+        plain.assertItDrewSomething()
+        seeded.assertItDrewSomething()
+
+        XCTAssertGreaterThan(seeded.layers.count, plain.layers.count,
+                             "the seeded page draws \(seeded.layers.count) layers against "
+                             + "\(plain.layers.count) on an empty store, so the app rules the "
+                             + "fixture writes are not being drawn at all and every render this "
+                             + "file takes is still of an empty state")
+    }
+
+    /// **What this instrument can reach, recorded as an inventory rather than as a
+    /// sentence.**
+    ///
+    /// The two numbers above are only as wide as the set of controls this walk
+    /// finds, and that set is much narrower than it reads: measured over all nine
+    /// pages, in every language, it is 23 controls — 18 switches (which the text
+    /// rule excludes, because a switch is 36 pt in every language), 3 text fields,
+    /// one search field and one segmented control. The configured Keep Awake page
+    /// alone draws four `Picker(.menu)` and a row of buttons, and its whole view
+    /// tree holds ten switches and nothing else: SwiftUI draws menus, buttons and
+    /// sliders itself on macOS 26/27, so there is no AppKit view to ask.
+    ///
+    /// So this is the coverage, written down. A class **appearing** here is the day
+    /// the platform hands those controls back to AppKit, and both recorded numbers
+    /// have to be re-measured that day rather than inherited. A class
+    /// **disappearing** is a page that has stopped drawing what it drew.
+    ///
+    /// The gap itself is not left as a note: what a width imposed on a picker does
+    /// to its labels in eight languages is measured in
+    /// `AnImposedPickerWidthFitsItsLabelsTests`, by hosting the control this walk
+    /// cannot find and reading the same `intrinsicContentSize` — calibrated against
+    /// this file's own reading of the one control both can see.
+    func testTheControlsFoundAreTheOnesRecorded() {
+        var tally: [String: Int] = [:]
+        for seen in Self.seen where seen.language == .de {
+            tally[seen.control.shortName, default: 0] += 1
+        }
+        XCTAssertFalse(tally.isEmpty, "no control was found in any page, in any language")
+
+        XCTAssertEqual(tally, ["AppKitSwitch": 18, "AppKitTextField": 3,
+                               "AppKitSearchField": 1, "AppKitSegmentedControl": 1], """
+            the controls this measurement can see are not the ones it was measured with: \
+            \(tally.sorted { $0.key < $1.key }.map { "\($0.key)×\($0.value)" }.joined(separator: " ")).
+            A pop-up, a button or a slider appearing here means the platform now backs them with \
+            AppKit views, and the two recorded numbers above cover controls they never covered — \
+            re-measure them rather than inherit them. A count falling means a page has stopped \
+            drawing what it drew.
+            """)
+    }
+
     /// And the eight tables really are the eight. A language whose table failed
     /// to load falls every string back to English silently, which would make
     /// this test eight English runs without a word.
@@ -194,6 +282,10 @@ final class LongStringGeometryRatchetTests: XCTestCase {
 
     private var uninstaller: any ModuleDescriptor {
         ModuleRegistry.all.first { $0.idRaw == "uninstaller" }!
+    }
+
+    private var keepAwake: any ModuleDescriptor {
+        ModuleRegistry.all.first { $0.idRaw == "keep-awake" }!
     }
 
     private func isSqueezed(_ control: ModulePageRender.Control, by factor: CGFloat) -> Bool {

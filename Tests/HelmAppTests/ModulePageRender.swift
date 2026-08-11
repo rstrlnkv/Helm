@@ -1,6 +1,7 @@
 import AppKit
 import HelmContract
 import HelmRuntime
+import Module_KeepAwake_Engine
 import SwiftUI
 import XCTest
 @testable import HelmApp
@@ -109,13 +110,40 @@ enum ModulePageRender {
     ///
     /// The registry, not a list written here: a module added to the app has to
     /// arrive in these ratchets without anybody remembering to add it.
-    static func pages(width: CGFloat = pageWidth) -> [Page] {
-        ModuleRegistry.all.map { page(for: $0, width: width) }
+    static func pages(width: CGFloat = pageWidth,
+                      seededBy seed: Seed = { _, _ in }) -> [Page] {
+        ModuleRegistry.all.map { page(for: $0, width: width, seededBy: seed) }
     }
 
-    static func page(for descriptor: any ModuleDescriptor, width: CGFloat) -> Page {
+    /// Settings a page is opened *on*, written into its store before it is built.
+    ///
+    /// **A page drawn against an empty store draws a page nobody has.** Every
+    /// module's richest rows are the ones a person has configured — Keep Awake's
+    /// app rules with a condition menu each, the battery slider under its own
+    /// figure — and none of them existed in any of the 72 renders the string
+    /// ratchet takes: the empty state draws one prominent button where the
+    /// configured list draws three controls a row.
+    ///
+    /// What that buys, and what it does not: the seeded rows are now in the
+    /// **render** — 296 layers to 322 on the Keep Awake page — so the layer floor
+    /// and anything measured off pixels sees them. They are not in the *control*
+    /// walk, because a SwiftUI `Picker(.menu)`, `Button` and `Slider` are not
+    /// AppKit-backed views on macOS 26/27 at all; `LongStringGeometryRatchetTests`
+    /// carries the measurement and one red test about it.
+    ///
+    /// A parameter with an empty default rather than a fixture applied to
+    /// everything, because the other two ratchets built on this render carry
+    /// recorded numbers of their own: what a seed does to a *radius* count is a
+    /// separate measurement, taken by whoever wants it.
+    typealias Seed = (String, NamespacedStore) -> Void
+
+    static func page(for descriptor: any ModuleDescriptor, width: CGFloat,
+                     seededBy seed: Seed = { _, _ in }) -> Page {
         let id = type(of: descriptor).id.rawValue
         let store = NamespacedStore(namespace: id, backing: InMemoryKeyValueStore())
+        // Before the engine and before the page: both read the store as they are
+        // built, which is what a page opened on somebody's existing settings does.
+        seed(id, store)
         // Built for its type and its lifetime, never asked anything: the page is
         // drawn against `SilentTransport`. The store is in memory, so nothing
         // here reaches `UserDefaults.standard`.
@@ -243,6 +271,51 @@ extension ModulePageRender.Page {
         "keep-awake": 250, "vpn": 160, "uninstaller": 45, "homebrew": 10,
         "leftovers": 25, "disk": 40, "duplicates": 12, "autopilot": 12, "layout": 230,
     ]
+}
+
+extension ModulePageRender {
+
+    /// The rows a person has, for the modules whose pages hide their widest
+    /// controls until something is configured.
+    ///
+    /// Keep Awake is the one written so far, because it is the one that was
+    /// measured: three shapes of control were in none of the 72 renders — the
+    /// per-app rule rows, the condition pop-up each of them carries, and the
+    /// battery floor's slider under its own figure. What the page drew instead was
+    /// the empty state's single prominent button.
+    ///
+    /// **Bundle ids that resolve to nothing, on purpose.** `AppInfo.resolve` falls
+    /// back to the id itself for an app this Mac does not have, so the row's name
+    /// is the fixture's own string rather than a fact about what is installed —
+    /// and the icon is the system's generic bundle icon rather than somebody's
+    /// software. A real id would make these numbers a measurement of this machine,
+    /// which is the thing `SilentTransport` exists to avoid one line up.
+    ///
+    /// Two rules, not one: a list is what the page draws differently from an empty
+    /// state, and the second row is where the «Add app…» line at the foot of the
+    /// list appears.
+    static let configured: Seed = { id, store in
+        guard id == KeepAwakeEngine.moduleID else { return }
+        let settings = KeepAwakeSettings(store: store)
+        settings.setAppTriggers([
+            AppTrigger(bundleID: "com.example.render", needsPower: true),
+            AppTrigger(bundleID: "com.example.conference", needsExternalDisplay: true),
+        ])
+        // The two rule rows switched on, so their notes and marks are drawn as
+        // well as their switches, and the mark column exists at all.
+        settings.setAutoExternalDisplay(true)
+        settings.setAutoPower(true)
+        // The floor's own row carries the figure beside the slider, and the note
+        // under it is only drawn with the guard armed.
+        settings.setBatteryGuardEnabled(true)
+        settings.setBatteryGuardPercent(45)
+        // The interval pop-up beside «Move the pointer» is disabled until this is
+        // on — a disabled control is still measured, but a page with it off is not
+        // a page anybody has once they have asked for the feature.
+        settings.setJiggleEnabled(true)
+        settings.setJiggleIntervalMinutes(30)
+        settings.setDefaultDurationMinutes(120)
+    }
 }
 
 /// A transport that never answers.
