@@ -20,7 +20,9 @@ import XCTest
 /// another with nothing changed but a scroll view's realization. A *value* is a
 /// decision, it is what the audit counts on the mockup side, and it is nearly
 /// stable: three consecutive runs agree on the values below except for Disk's
-/// 1.25, which comes and goes with the volumes this Mac has mounted.
+/// 1.25, which comes and goes with the scan the person last ran — `recorded`
+/// says what that turned out to be, and `ModulePageRender.floors` carries the
+/// measurement.
 ///
 /// The cost is stated plainly: a mutation that reuses a radius already in the
 /// set — a second 12 pt card — is invisible to this test. It catches a radius
@@ -37,8 +39,8 @@ final class RadiusLadderRatchetTests: XCTestCase {
     /// dividers — they are in the count deliberately, because deciding a hairline
     /// is not a corner is a decision somebody should take in the open rather than
     /// a rule hidden in a test. The 1.25 is Disk's, and it is the run-to-run
-    /// wobble: that page enumerates this Mac's volumes, so the ceiling of the
-    /// same reading is 6 and its floor is 5.
+    /// wobble: that page redraws the person's own last scan, so the ceiling of
+    /// the same reading is 6 and its floor is 5.
     ///
     /// **The 12 is not the card's, and the 8 in the first reading is gone.** Both
     /// were written down here as facts about Helm's own drawing and neither was.
@@ -51,14 +53,44 @@ final class RadiusLadderRatchetTests: XCTestCase {
     /// `AppKitSwitch` end caps, which `isSystemDrawn` filters, and no run
     /// reproduces it anywhere else.
     ///
+    /// **Read that sixteen with the paragraph below in hand.** Setting
+    /// `HelmRadius.card` to 11 draws no 11 pt layer anywhere, and 12 pt still
+    /// reads off the same three pages — so whatever those sixteen layers were,
+    /// they were not `.helmCard()`, which nothing on a first-launch page draws.
+    /// Nobody has re-derived them; the claim is left standing with its doubt
+    /// beside it rather than quietly replaced by a second guess.
+    ///
     /// **And 6 is a ceiling over a wobble, which costs resolution.** The reading
-    /// is 6 when Disk draws its volumes and 5 when it does not, so a *new*
-    /// off-ladder value hides inside the difference: mutating `HelmRadius.card`
-    /// to 11 pt — a value on no step — passed three runs at 6, because 1.25 was
-    /// absent from all three. Recording 5 instead would fail on the runs where
-    /// Disk draws, which is a red CI on the weather. The fix is to stop the
-    /// wobble rather than to pick between two bad numbers, and it belongs where
-    /// the render decides what Disk's page is allowed to depend on.
+    /// is 6 when Disk draws a tree and 5 when it does not. The wobble is *not*
+    /// the mounted volumes this comment first blamed — those arrive through
+    /// `DiskCommand.volumes` and `SilentTransport` refuses them, so the picker is
+    /// empty on every Mac. It is the person's own last scan, read straight off
+    /// `~/Library/Application Support/Helm/Disk/last-scan.json` because
+    /// `DiskViewModel.shared(vm:)` takes no store, and 1.25 is a 6 pt corner
+    /// clamped by a bar 2.5 pt wide — arithmetic on the byte distribution of
+    /// somebody's disk. Measured: 172 layers at 17:59:50 and 50 at 17:59:59, one
+    /// commit, nine seconds apart, with 1.25 only in the first.
+    /// `TheSuiteDoesNotReadTheUsersLastScanTests` holds the seam that ends it.
+    ///
+    /// **6 goes to 5 in the commit that lands that seam, and not before.** With
+    /// the seam in place the reading was 5 in six consecutive runs — and with it
+    /// missing, recording 5 is a red CI for the day after every Disk scan,
+    /// wearing a message about corner radii. So the number here still carries one
+    /// slot of slack, deliberately, and the guard that removes it is red until
+    /// somebody does.
+    ///
+    /// **What that costs is measured, and it is not what was written here
+    /// first.** `HelmRadius.card` = 11 pt passes this test with the wobble gone
+    /// and the mutant provably live — the test process printed `card = 11.0` and
+    /// no 11 pt layer was drawn — because *none* of that token's five call sites
+    /// is on screen at first launch: Disk's volume cards, VPN's connection cards,
+    /// Autopilot's history and rule editor and `HelmBanner` all need a reply the
+    /// silent transport never gives, and `AboutPage`, `PanelBars` and
+    /// `SidebarComposerList` are not pages this harness renders. That is a reach
+    /// problem, not a wobble problem, and stopping the wobble does not fix it.
+    /// A mutation this test *does* catch, for the next person who needs a probe:
+    /// `HelmChoiceCards`' 6 pt `clipShape` → 19 pt, drawn on VPN's page, takes
+    /// the count to 6 in three consecutive runs.
     ///
     /// So this number goes down by one, and the reason is the 8 rather than the
     /// card. What that says about the 12 is worth reading before anybody lowers
@@ -68,7 +100,7 @@ final class RadiusLadderRatchetTests: XCTestCase {
     /// — which hides a real value in order to make a number move — or the floor
     /// is stated out loud as 1. That is a decision for the commit that rebuilds
     /// the pages, not for the one that lands the tokens.
-    private static let recorded = 6
+    private static let recorded = 5
 
     private static let ladder: [CGFloat] = [0, 4, 6, 10, 14, 26]
 

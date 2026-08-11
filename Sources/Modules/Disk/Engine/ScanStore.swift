@@ -13,12 +13,31 @@ public final class ScanStore: @unchecked Sendable {
 
     public init(directory: URL) { self.directory = directory }
 
-    public convenience init() {
+    public convenience init() { self.init(directory: ScanStore.defaultDirectory) }
+
+    /// A per-process temporary directory under `swift test`, Application Support
+    /// in the app — the answer `ScanJournal.defaultDirectory` next door already
+    /// gives, for the same reason and through the same `TestScratch`.
+    ///
+    /// **This file is an index of every file name on somebody's volume**, and
+    /// without the question every test that renders Disk's page read theirs:
+    /// `DiskViewModel` takes its store as a defaulted argument, so a page built
+    /// through `shared(vm:)` restores whatever that file holds, on a detached task
+    /// that races the render's settle loop. `restoreLastScan` also calls `clear()`
+    /// when the saved root has gone, so a suite run could *delete* their cache
+    /// and not only read it. `TheSuiteDoesNotReadTheUsersLastScanTests` carries
+    /// what it cost the ratchets, in layers and in seconds.
+    ///
+    /// Resolved once. Every `ScanStore()` would otherwise ask, and asking sweeps
+    /// `$TMPDIR` — a walk that belongs to the process, not to each store built in
+    /// it.
+    private static let defaultDirectory: URL = {
+        if TestProcess.isRunning { return TestScratch(prefix: "helm-disk-store-").directory() }
         let base = FileManager.default.urls(for: .applicationSupportDirectory,
                                             in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSHomeDirectory() + "/Library/Application Support")
-        self.init(directory: base.appendingPathComponent("Helm/Disk", isDirectory: true))
-    }
+        return base.appendingPathComponent("Helm/Disk", isDirectory: true)
+    }()
 
     public var fileURL: URL { directory.appendingPathComponent("last-scan.json") }
 

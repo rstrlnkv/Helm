@@ -224,13 +224,21 @@ extension ModulePageRender.Page {
     /// sixteen readings a page — and set below the lowest of them, so a page
     /// that legitimately loses a row does not fail a test about ladders.
     ///
-    /// **Disk's is low on purpose, and it is the exception worth naming.** Its
-    /// page enumerates this Mac's mounted volumes from a `.task`, so what it
-    /// draws is a fact about the machine and about when the answer arrives: 49,
-    /// 129 and 170 layers were all measured on this Mac in one afternoon. The
-    /// floor there asks only whether the page drew at all, which is the question
-    /// this guard exists for; the volume list is out of every ratchet's reach by
-    /// construction, since a Mac with an external drive would draw more of it.
+    /// **Disk's is low on purpose, and it is the exception worth naming.** 49,
+    /// 129, 170, 172 and 50 layers were all measured on this Mac in one
+    /// afternoon, and the reason is not the one written here first. The volume
+    /// list *does* come through the transport (`DiskCommand.volumes`), so under
+    /// `SilentTransport` it is empty and the same on every Mac. What is not is
+    /// the **person's last scan**: `DiskSettingsPage` builds its view model
+    /// through `DiskViewModel.shared(vm:)`, which has no store parameter, so
+    /// `restoreLastScan()` reads `~/Library/Application Support/Helm/Disk/last-scan.json`
+    /// — 8 MB here — on a detached task that races `settle`. 172 layers at
+    /// 17:59:50 and 50 at 17:59:59, one commit, nine seconds apart; and the
+    /// dependence switched itself off at 18:00:41, which is 86 400 s after the
+    /// scan that wrote the file. `TheSuiteDoesNotReadTheUsersLastScanTests` is
+    /// the guard and carries the seam that ends it. Until that lands the floor
+    /// here asks only whether the page drew at all, which is the question this
+    /// guard exists for.
     static let floors: [String: Int] = [
         "keep-awake": 250, "vpn": 160, "uninstaller": 45, "homebrew": 10,
         "leftovers": 25, "disk": 40, "duplicates": 12, "autopilot": 12, "layout": 230,

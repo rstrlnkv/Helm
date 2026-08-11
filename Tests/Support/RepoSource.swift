@@ -52,6 +52,26 @@ public enum RepoSource {
         try text(of: relative).components(separatedBy: "\n")
     }
 
+    /// Every `.swift` file under a directory of the repository, repo-relative
+    /// and in walk order.
+    ///
+    /// `UISources` had this privately for the nine module UI directories, and
+    /// the second scan that needed it — one that reads all of `Sources` — is the
+    /// point at which it stops being one reader's business. The paths come back
+    /// relative because that is what `text(of:)` and `lines(of:)` take, and
+    /// because a finding has to name a file somebody can open.
+    public static func swiftFiles(under relative: String) throws -> [String] {
+        let base = root.appendingPathComponent(relative)
+        guard let walk = FileManager.default.enumerator(at: base, includingPropertiesForKeys: nil)
+        else { return [] }
+        var out: [String] = []
+        while let url = walk.nextObject() as? URL {
+            guard url.pathExtension == "swift" else { continue }
+            out.append(relative + url.path.replacingOccurrences(of: base.path, with: ""))
+        }
+        return out
+    }
+
     /// A line with its comment tail removed.
     ///
     /// Every one of these scans has to do this, and for the same reason each

@@ -56,10 +56,10 @@ public enum UISources {
 
     /// Every `.swift` file a module page can be drawn from, repo-relative.
     public static func files() throws -> [String] {
-        var out = try swiftFiles(under: "Sources/HelmUI")
+        var out = try RepoSource.swiftFiles(under: "Sources/HelmUI")
         for module in try moduleNames() {
             let directory = "Sources/Modules/\(module)/UI"
-            let found = try swiftFiles(under: directory)
+            let found = try RepoSource.swiftFiles(under: directory)
             guard !found.isEmpty else {
                 throw Failure("\(directory) holds no Swift — the scan is not reading \(module)")
             }
@@ -124,18 +124,6 @@ public enum UISources {
 
     private static func trim(_ value: Double) -> String {
         value == value.rounded() ? String(Int(value)) : String(value)
-    }
-
-    private static func swiftFiles(under relative: String) throws -> [String] {
-        let root = RepoSource.root.appendingPathComponent(relative)
-        guard let walk = FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil)
-        else { return [] }
-        var out: [String] = []
-        while let url = walk.nextObject() as? URL {
-            guard url.pathExtension == "swift" else { continue }
-            out.append(relative + url.path.replacingOccurrences(of: root.path, with: ""))
-        }
-        return out
     }
 
     struct Failure: Error, CustomStringConvertible {

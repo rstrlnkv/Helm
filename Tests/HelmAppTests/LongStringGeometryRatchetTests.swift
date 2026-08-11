@@ -75,7 +75,8 @@ final class LongStringGeometryRatchetTests: XCTestCase {
     ///
     /// Not an optimization for its own sake: three tests asking the same
     /// question of three separate renders is three chances for the answers to
-    /// disagree, and a page whose content arrives late (Disk's volume list) is
+    /// disagree, and a page whose content arrives late (Disk's restored scan,
+    /// `ModulePageRender.floors`) is
     /// exactly the shape that makes them. One reading, asserted three ways.
     private static let seen: [Seen] = {
         var out: [Seen] = []
