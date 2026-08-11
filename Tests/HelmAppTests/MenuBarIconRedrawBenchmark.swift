@@ -1,7 +1,6 @@
 import XCTest
 import HelmRuntime
 import HelmUI
-@testable import HelmApp
 
 /// What the menu-bar ring costs while a Keep Awake countdown is running: how
 /// often `StatusItemController.refreshIcon` actually asks `MenuBarIcon.make`

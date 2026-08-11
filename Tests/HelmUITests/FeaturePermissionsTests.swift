@@ -1,7 +1,6 @@
 import XCTest
 import HelmContract
 import HelmRuntime
-@testable import HelmUI
 
 /// `PermissionNeed.Feature` is the table that says what each capability needs
 /// before the user is allowed to believe a switch is doing something. It was

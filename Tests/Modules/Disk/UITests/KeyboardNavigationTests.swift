@@ -1,6 +1,5 @@
 import XCTest
 import Module_Disk_Engine
-@testable import Module_Disk_UI
 
 /// Keyboard navigation of the disk list.
 ///

@@ -22,9 +22,7 @@ struct VPNAutoConnectCore {
 
     init(rules: [String: VPNAppRule]) { self.rules = rules }
 
-    mutating func appLaunched(_ bundleID: String,
-                              connect: (String) -> Void,
-                              disconnect: (String) -> Void) {
+    mutating func appLaunched(_ bundleID: String, connect: (String) -> Void) {
         guard let rule = rules[bundleID], launched[bundleID] == nil else { return }
         var set = running[rule.vpnName] ?? []
         let wasEmpty = set.isEmpty
@@ -34,9 +32,7 @@ struct VPNAutoConnectCore {
         if wasEmpty && rule.connectOnLaunch { connect(rule.vpnName) }
     }
 
-    mutating func appTerminated(_ bundleID: String,
-                                connect: (String) -> Void,
-                                disconnect: (String) -> Void) {
+    mutating func appTerminated(_ bundleID: String, disconnect: (String) -> Void) {
         // No launch on record means Helm did not raise this VPN — the user may
         // have dialled it up by hand, and a quit must not take it down.
         guard let rule = launched.removeValue(forKey: bundleID) else { return }

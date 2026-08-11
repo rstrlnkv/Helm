@@ -13,22 +13,22 @@ import XCTest
 final class RingSpareLevelTests: XCTestCase {
 
     func testTheSpareLevelIsInvisibleBeforeTheDrillStarts() {
-        XCTAssertEqual(RingUnfold.opacity(isPivot: false, isDescendant: true,
+        XCTAssertEqual(RingUnfold.opacity(isDescendant: true,
                                           isSpare: true, progress: 0), 0)
     }
 
     func testTheSpareLevelFadesUpWithTheUnfold() {
-        XCTAssertEqual(RingUnfold.opacity(isPivot: false, isDescendant: true,
+        XCTAssertEqual(RingUnfold.opacity(isDescendant: true,
                                           isSpare: true, progress: 0.5), 0.5, accuracy: 0.0001)
-        XCTAssertEqual(RingUnfold.opacity(isPivot: false, isDescendant: true,
+        XCTAssertEqual(RingUnfold.opacity(isDescendant: true,
                                           isSpare: true, progress: 1), 1)
     }
 
     /// It arrives at full opacity exactly where the drill lands, so the swap to
     /// the new tree changes nothing that was on screen a frame earlier.
     func testAtTheEndOfTheUnfoldTheSpareMatchesAnOrdinaryDescendant() {
-        let spare = RingUnfold.opacity(isPivot: false, isDescendant: true, isSpare: true, progress: 1)
-        let ordinary = RingUnfold.opacity(isPivot: false, isDescendant: true, progress: 1)
+        let spare = RingUnfold.opacity(isDescendant: true, isSpare: true, progress: 1)
+        let ordinary = RingUnfold.opacity(isDescendant: true, progress: 1)
         XCTAssertEqual(spare, ordinary)
     }
 
@@ -36,7 +36,7 @@ final class RingSpareLevelTests: XCTestCase {
     /// outside it is on its way off the screen.
     func testASpareOutsideTheOpeningBranchIsNeverDrawn() {
         for t in [0.0, 0.25, 0.5, 1.0] {
-            XCTAssertEqual(RingUnfold.opacity(isPivot: false, isDescendant: false,
+            XCTAssertEqual(RingUnfold.opacity(isDescendant: false,
                                               isSpare: true, progress: t), 0)
         }
     }
@@ -48,7 +48,7 @@ final class RingSpareLevelTests: XCTestCase {
     /// is what the person is about to be looking at, and a progress nobody can
     /// read is not a reason to draw the ring they drilled into as a hole.
     func testAProgressThatIsNotANumberLeavesTheSpareSolid() {
-        XCTAssertEqual(RingUnfold.opacity(isPivot: false, isDescendant: true,
+        XCTAssertEqual(RingUnfold.opacity(isDescendant: true,
                                           isSpare: true, progress: .nan), 1)
     }
 
@@ -56,16 +56,16 @@ final class RingSpareLevelTests: XCTestCase {
     /// the bounds are 0 and 1 — which is what the old spelling gave and what
     /// refusing every non-finite value alike would have taken away.
     func testAnInfiniteProgressKeepsItsBound() {
-        XCTAssertEqual(RingUnfold.opacity(isPivot: false, isDescendant: true,
+        XCTAssertEqual(RingUnfold.opacity(isDescendant: true,
                                           isSpare: true, progress: .infinity), 1)
-        XCTAssertEqual(RingUnfold.opacity(isPivot: false, isDescendant: true,
+        XCTAssertEqual(RingUnfold.opacity(isDescendant: true,
                                           isSpare: true, progress: -.infinity), 0)
     }
 
     func testTheLevelsThatWereAlreadyRightAreUnchanged() {
-        XCTAssertEqual(RingUnfold.opacity(isPivot: false, isDescendant: true, progress: 0.5), 1)
-        XCTAssertEqual(RingUnfold.opacity(isPivot: true, isDescendant: false, progress: 0), 1)
-        XCTAssertEqual(RingUnfold.opacity(isPivot: true, isDescendant: false, progress: 1), 0)
+        XCTAssertEqual(RingUnfold.opacity(isDescendant: true, progress: 0.5), 1)
+        XCTAssertEqual(RingUnfold.opacity(isDescendant: false, progress: 0), 1)
+        XCTAssertEqual(RingUnfold.opacity(isDescendant: false, progress: 1), 0)
     }
 
     /// The spare slides from outside the drawn area to the outermost drawn

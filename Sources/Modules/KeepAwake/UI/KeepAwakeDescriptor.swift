@@ -82,7 +82,7 @@ import Module_KeepAwake_Engine
     /// here that needs it, and it ships off. The admin helper is declared
     /// unconditionally because nothing prompts for it in advance: macOS asks at
     /// the moment the sudoers rule is written, which is a gesture away.
-    public func currentPermissions(_ vm: ModuleViewModel?) -> [ModulePermission] {
+    public func currentPermissions() -> [ModulePermission] {
         let s = resolved(store)
         var needs: [ModulePermission] = [.adminHelper]
         if KeepAwakeSettings(store: s).jiggleEnabled { needs.append(.accessibility) }

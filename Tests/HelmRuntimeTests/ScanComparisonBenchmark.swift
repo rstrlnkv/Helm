@@ -14,7 +14,7 @@ import XCTest
 /// `HELM_BENCH=1 swift test --filter ScanComparisonBenchmark`
 final class ScanComparisonBenchmark: XCTestCase {
 
-    private func items(_ n: Int, changedFraction: Double = 0.05) -> [ScanItem] {
+    private func items(_ n: Int) -> [ScanItem] {
         (0..<n).map { i in
             ScanItem(path: "/Users/person/Documents/Project\(i % 200)/file-\(i).dat",
                      bytes: 1000 + i)

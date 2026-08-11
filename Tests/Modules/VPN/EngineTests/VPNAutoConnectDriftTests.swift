@@ -24,7 +24,7 @@ final class VPNAutoConnectDriftTests: XCTestCase {
     func test_quit_without_a_prior_launch_does_not_disconnect() {
         var core = VPNAutoConnectCore(rules: ["a": VPNAppRule(vpnName: "V")])
         var disconnects: [String] = []
-        core.appTerminated("a", connect: { _ in }, disconnect: { disconnects.append($0) })
+        core.appTerminated("a", disconnect: { disconnects.append($0) })
         XCTAssertEqual(disconnects, [],
                        "a quit with no matching launch tore down a VPN Helm never raised")
     }
@@ -35,12 +35,12 @@ final class VPNAutoConnectDriftTests: XCTestCase {
     func test_repeated_quit_disconnects_at_most_once() {
         var core = VPNAutoConnectCore(rules: ["a": VPNAppRule(vpnName: "V")])
         var connects: [String] = [], disconnects: [String] = []
-        core.appLaunched("a", connect: { connects.append($0) }, disconnect: { _ in })
-        core.appLaunched("a", connect: { connects.append($0) }, disconnect: { _ in })
+        core.appLaunched("a", connect: { connects.append($0) })
+        core.appLaunched("a", connect: { connects.append($0) })
         XCTAssertEqual(connects, ["V"], "launch is already idempotent")
 
-        core.appTerminated("a", connect: { _ in }, disconnect: { disconnects.append($0) })
-        core.appTerminated("a", connect: { _ in }, disconnect: { disconnects.append($0) })
+        core.appTerminated("a", disconnect: { disconnects.append($0) })
+        core.appTerminated("a", disconnect: { disconnects.append($0) })
         XCTAssertEqual(disconnects, ["V"], "quit is not idempotent the way launch is")
     }
 
@@ -50,14 +50,14 @@ final class VPNAutoConnectDriftTests: XCTestCase {
     /// active, and the quit lands on the new one, which was never connected.
     func test_remapping_a_running_app_neither_strands_the_old_vpn_nor_cuts_the_new_one() {
         var core = VPNAutoConnectCore(rules: ["a": VPNAppRule(vpnName: "Work")])
-        core.appLaunched("a", connect: { _ in }, disconnect: { _ in })
+        core.appLaunched("a", connect: { _ in })
         XCTAssertEqual(core.activeVPNs, ["Work"])
 
         // The user re-points the rule at another VPN while the app keeps running.
         core.rules = ["a": VPNAppRule(vpnName: "Home")]
 
         var disconnects: [String] = []
-        core.appTerminated("a", connect: { _ in }, disconnect: { disconnects.append($0) })
+        core.appTerminated("a", disconnect: { disconnects.append($0) })
 
         XCTAssertFalse(disconnects.contains("Home"),
                        "quitting the app disconnected a VPN it was never launched against")
@@ -71,11 +71,11 @@ final class VPNAutoConnectDriftTests: XCTestCase {
         var core = VPNAutoConnectCore(rules: ["a": VPNAppRule(vpnName: "V"),
                                               "b": VPNAppRule(vpnName: "V")])
         var disconnects: [String] = []
-        core.appLaunched("a", connect: { _ in }, disconnect: { _ in })
-        core.appLaunched("b", connect: { _ in }, disconnect: { _ in })
-        core.appTerminated("a", connect: { _ in }, disconnect: { disconnects.append($0) })
+        core.appLaunched("a", connect: { _ in })
+        core.appLaunched("b", connect: { _ in })
+        core.appTerminated("a", disconnect: { disconnects.append($0) })
         XCTAssertEqual(disconnects, [])
-        core.appTerminated("b", connect: { _ in }, disconnect: { disconnects.append($0) })
+        core.appTerminated("b", disconnect: { disconnects.append($0) })
         XCTAssertEqual(disconnects, ["V"])
     }
 
@@ -85,7 +85,7 @@ final class VPNAutoConnectDriftTests: XCTestCase {
         var core = VPNAutoConnectCore(
             rules: ["a": VPNAppRule(vpnName: "V", connectOnLaunch: true, disconnectOnQuit: false)])
         var disconnects: [String] = []
-        core.appTerminated("a", connect: { _ in }, disconnect: { disconnects.append($0) })
+        core.appTerminated("a", disconnect: { disconnects.append($0) })
         XCTAssertEqual(disconnects, [])
     }
 }

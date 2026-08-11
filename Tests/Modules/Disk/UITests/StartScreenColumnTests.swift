@@ -1,7 +1,6 @@
 import XCTest
 import SwiftUI
 import HelmUI
-@testable import Module_Disk_UI
 
 /// The start screen sits on the same column as its own header.
 ///

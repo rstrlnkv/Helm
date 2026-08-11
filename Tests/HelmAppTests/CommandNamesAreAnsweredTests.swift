@@ -3,7 +3,6 @@ import Module_Disk_UI
 import Module_Duplicates_UI
 import Module_Uninstaller_UI
 import XCTest
-@testable import HelmApp
 
 /// A command name is a type now, and this keeps it one.
 ///

@@ -1,7 +1,6 @@
 import Foundation
 import XCTest
 import HelmTestSupport
-@testable import HelmRuntime
 @testable import Module_Autopilot_Engine
 
 /// The sibling of `testRenamingAFileToTheNameItAlreadyHasChangesNothing`.

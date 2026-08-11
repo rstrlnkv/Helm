@@ -1,6 +1,5 @@
 import XCTest
 import HelmTestSupport
-@testable import Module_KeepAwake_UI
 
 /// The panel and the settings page each have one slot under their buttons, and
 /// two things can want it: a rule that has been paused, and the battery guard

@@ -13,7 +13,7 @@ enum PermissionSummary {
     static func needed() -> [PermissionNeed] {
         let declared = ModuleRegistry.all
             .filter { ModuleHost.shared.isEnabled($0) }
-            .flatMap { $0.currentPermissions(ModuleHost.shared.liveModule($0.idRaw)?.vm) }
+            .flatMap { $0.currentPermissions() }
         return PermissionNeed.allCases.filter { need in
             switch need {
             case .fullDiskAccess: return declared.contains(.fullDisk)

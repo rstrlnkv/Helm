@@ -1,6 +1,5 @@
 import Foundation
 import XCTest
-@testable import HelmRuntime
 
 /// Which operations can name themselves in the memory trail.
 ///

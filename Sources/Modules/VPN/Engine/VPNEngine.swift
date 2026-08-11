@@ -149,8 +149,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             self.knownBundleIDs = launched
             for id in launched {
                 self.core.appLaunched(id,
-                                      connect: { [weak self] in self?.connect($0, auto: true) },
-                                      disconnect: { _ in })
+                                      connect: { [weak self] in self?.connect($0, auto: true) })
             }
         }
         apps.startObserving { [weak self] in self?.appsChanged() }
@@ -415,7 +414,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         let connectAuto: (String) -> Void = { [weak self] in self?.connect($0, auto: true) }
         let disconnectClosure: (String) -> Void = { [weak self] in self?.disconnect($0, auto: true) }
         for id in launched where core.rules[id] != nil {
-            core.appLaunched(id, connect: connectAuto, disconnect: disconnectClosure)
+            core.appLaunched(id, connect: connectAuto)
         }
         // Every quit, not only the ones a rule still covers. `appTerminated`
         // consults `launched` — the record of what Helm actually did — and the
@@ -428,7 +427,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         // dead for the session with the row still showing the rule as on, and
         // the VPN Helm raised still up.
         for id in quit {
-            core.appTerminated(id, connect: connectAuto, disconnect: disconnectClosure)
+            core.appTerminated(id, disconnect: disconnectClosure)
         }
     }
 

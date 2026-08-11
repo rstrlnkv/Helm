@@ -2,7 +2,6 @@ import HelmContract
 import HelmRuntime
 import HelmUI
 import XCTest
-@testable import Module_KeepAwake_Engine
 @testable import Module_KeepAwake_UI
 
 /// One object behind three surfaces.

@@ -144,7 +144,7 @@ import HelmUI
         }
     }
 
-    @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
+    @objc private func statusItemClicked(_: NSStatusBarButton) {
         if NSApp.currentEvent?.type == .rightMouseUp {
             showMenu()
         } else {

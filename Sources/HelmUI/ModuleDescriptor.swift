@@ -42,7 +42,7 @@ import HelmRuntime
     ///
     /// Defaults to the declared list, so a module that has nothing conditional
     /// says nothing new.
-    func currentPermissions(_ vm: ModuleViewModel?) -> [ModulePermission]
+    func currentPermissions() -> [ModulePermission]
     /// Desired host status-icon appearance for the current vm state. Default = inactive (white ring).
     func statusAppearance(_ vm: ModuleViewModel) -> StatusAppearance
     /// Fires when the value `statusAppearance` reads has changed.
@@ -71,7 +71,7 @@ public extension ModuleDescriptor {
     var pageBleeds: Bool { false }
     func statusAppearance(_ vm: ModuleViewModel) -> StatusAppearance { .inactive }
     func activity(_ vm: ModuleViewModel) -> ModuleActivity? { nil }
-    func currentPermissions(_ vm: ModuleViewModel?) -> [ModulePermission] {
+    func currentPermissions() -> [ModulePermission] {
         Self.metadata.permissions
     }
     func statusChanges(_ vm: ModuleViewModel) -> AnyPublisher<Void, Never>? { nil }

@@ -1,5 +1,4 @@
 import XCTest
-@testable import HelmUI
 
 /// Two halves of one promise: every animation in the app comes from
 /// `HelmMotion`, and every `HelmMotion` token stops when the person has asked

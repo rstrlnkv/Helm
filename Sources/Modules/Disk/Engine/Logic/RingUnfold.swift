@@ -56,7 +56,7 @@ public enum RingUnfold {
     /// swapped. Now it is laid out one level deeper than is drawn and enters
     /// the way everything else does: sliding inward, and fading up with the
     /// same progress, which is 0 exactly where it is invisible anyway.
-    public static func opacity(isPivot: Bool, isDescendant: Bool, isSpare: Bool = false,
+    public static func opacity(isDescendant: Bool, isSpare: Bool = false,
                                progress t: Double) -> Double {
         // Solid for a progress that is not a number, which is what this line
         // answered as `max(0, min(1, t))` — `Swift.min(1, .nan)` is 1 — and

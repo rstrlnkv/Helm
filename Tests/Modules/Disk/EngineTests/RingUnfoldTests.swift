@@ -77,10 +77,10 @@ final class RingUnfoldTests: XCTestCase {
     /// fade; the pivot and the other branches are leaving.
     func testDescendantsNeverFade() {
         for t in stride(from: 0.0, through: 1.0, by: 0.25) {
-            XCTAssertEqual(RingUnfold.opacity(isPivot: false, isDescendant: true, progress: t), 1)
+            XCTAssertEqual(RingUnfold.opacity(isDescendant: true, progress: t), 1)
         }
-        XCTAssertEqual(RingUnfold.opacity(isPivot: true, isDescendant: false, progress: 1), 0)
-        XCTAssertEqual(RingUnfold.opacity(isPivot: false, isDescendant: false, progress: 0), 1)
+        XCTAssertEqual(RingUnfold.opacity(isDescendant: false, progress: 1), 0)
+        XCTAssertEqual(RingUnfold.opacity(isDescendant: false, progress: 0), 1)
     }
 
     /// Pushed past a full turn, an arc would wrap back over the ring it just

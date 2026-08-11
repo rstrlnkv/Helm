@@ -1,7 +1,6 @@
 import XCTest
 import AppKit
 import SwiftUI
-@testable import HelmUI
 
 /// Ink that carries a meaning comes from `HelmSignal`, never from the system
 /// palette.

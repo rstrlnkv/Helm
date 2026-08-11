@@ -83,7 +83,7 @@ final class UndoAfterNavigationTests: XCTestCase {
     }
 
     /// Converts a word and leaves an undo record behind it.
-    private func converted(_ engine: LayoutEngine) {
+    private func converted(_: LayoutEngine) {
         tap.type("ghbdtn")
         tap.send(.space)
         XCTAssertEqual(typing.performed.count, 1, "precondition: the word was converted")
