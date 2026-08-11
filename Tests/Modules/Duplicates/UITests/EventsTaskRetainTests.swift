@@ -2,7 +2,6 @@ import XCTest
 import HelmContract
 import HelmRuntime
 import HelmUI
-import Module_Duplicates_Engine
 @testable import Module_Duplicates_UI
 
 /// Control for the same question `Module_Disk_UITests.EventsTaskRetainTests`
