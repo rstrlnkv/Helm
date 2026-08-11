@@ -249,7 +249,7 @@ import Module_Uninstaller_UI
         // neither goes through an engine's `deactivate()`. Stopped from outside,
         // like every other observer the app starts itself.
         scanCoordinator?.stop()
-        for live in host.live.values { live.engine.deactivate() }
+        host.shutdown()
     }
 
 }

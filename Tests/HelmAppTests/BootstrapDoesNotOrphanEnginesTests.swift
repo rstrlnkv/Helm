@@ -19,6 +19,16 @@ import XCTest
 @MainActor
 final class BootstrapDoesNotOrphanEnginesTests: XCTestCase {
 
+    /// `bootstrap()` above ran against the shared host, so the engines it built
+    /// are real and would otherwise run for the rest of the process — for
+    /// Layout, a live keyboard tap spell-checking everything typed while the
+    /// suite runs. `ShutdownLetsTheEnginesGoTests` is what proves this call
+    /// actually lets them go.
+    override func tearDown() {
+        ModuleHost.shared.shutdown()
+        super.tearDown()
+    }
+
     func testASecondBootstrapKeepsTheEnginesTheFirstOneBuilt() {
         let host = ModuleHost.shared
         host.bootstrap()

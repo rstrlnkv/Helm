@@ -19,6 +19,14 @@ import AppKit
 @MainActor
 final class DisclosureProbe: XCTestCase {
 
+    /// `heights` bootstraps the shared host to get real modules for the
+    /// harness, and the engines that builds are real too. Let them go, or the
+    /// rest of the process runs with a live keyboard tap in it.
+    override func tearDown() {
+        ModuleHost.shared.shutdown()
+        super.tearDown()
+    }
+
     private final class Box: ObservableObject { @Published var open = false }
 
     /// The panel's own sandwich: a pinned bar, a measured scroll view whose

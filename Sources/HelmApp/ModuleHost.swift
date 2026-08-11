@@ -57,6 +57,23 @@ import HelmUI
         }
     }
 
+    /// Every live engine deactivated and dropped; nobody's enabled flag moves.
+    ///
+    /// This is quitting — or a test suite tidying up after `bootstrap()` — not
+    /// somebody switching a module off: no store write, no `.helmModuleDisabled`
+    /// post, and the next `bootstrap()` builds the same set again. `disable`
+    /// stays the route for the person's own switch, with the persistence and
+    /// the notification that act carries.
+    func shutdown() {
+        for key in live.keys.sorted() {
+            live[key]?.engine.deactivate()
+            live[key] = nil
+            // The same sweep `disable` does: a scan task can outlive the
+            // engine that started it.
+            HelmActivity.sweep(module: key)
+        }
+    }
+
     /// Measured **around** the construction, which is the whole point.
     ///
     /// The reading used to be taken on the line before `makeEngine`, so
