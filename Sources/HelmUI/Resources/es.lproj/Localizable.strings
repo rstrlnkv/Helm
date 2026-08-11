@@ -143,7 +143,6 @@
 "Every layout has a real flag now. Helm drew them itself for a while, but a table of bands and crosses cannot hold Mexico’s eagle, Portugal’s armillary sphere or Korea’s trigrams — half a dozen flags were approximations because of it. These come from flag-icons under the MIT licence (credited on this page): rectangular, accurate, and legible down to the smallest badge size. A layout that names no country still keeps its letters." = "Cada distribución tiene ahora una bandera de verdad: flag-icons bajo licencia MIT (acreditado en esta página). Rectangulares, precisas y legibles hasta el tamaño más pequeño. Una distribución sin país conserva sus letras.";
 "Everything" = "Todo";
 "Everything is up to date." = "Todo está actualizado.";
-"Everything that landed in Helm, newest first." = "Todo lo que llegó a Helm, de lo más reciente a lo más antiguo.";
 "Expanded" = "Desplegado";
 "Extension" = "Extensión";
 "Extensions, separated by commas" = "Extensiones separadas por comas";
@@ -529,7 +528,6 @@
 "Warnings are legible in the light theme, the icon and colour swatches can be reached from the keyboard, and sizes and names follow macOS in every language — Russian abbreviates the byte the way the Finder does, French writes a lowercase ko, and each screen calls a permission by the name Settings gives it." = "Los avisos se leen en el tema claro, las muestras de icono y color se alcanzan con el teclado, y los tamaños y nombres siguen a macOS en cada idioma.";
 "Website data" = "Datos de sitios web";
 "Welcome to Helm" = "Te damos la bienvenida a Helm";
-"What Helm is writing, as it writes it." = "Lo que Helm escribe, mientras lo escribe.";
 "What could be deleted" = "Qué se podría eliminar";
 "What is taking up space" = "Qué ocupa espacio en el disco";
 "What to check" = "Qué comprobar";
@@ -618,7 +616,6 @@
 "Hexagon" = "Hexágono";
 "Capsule" = "Cápsula";
 "Modules" = "Módulos";
-"Behaviour, appearance, permissions and what Helm may remove." = "Comportamiento, apariencia, permisos y lo que Helm puede eliminar.";
 "Order and sections" = "Orden y secciones";
 "A switch turns the module off everywhere in Helm." = "El interruptor desactiva el módulo en todo Helm.";
 "Remove widget" = "Quitar el widget";

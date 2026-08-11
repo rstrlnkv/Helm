@@ -143,7 +143,6 @@
 "Every layout has a real flag now. Helm drew them itself for a while, but a table of bands and crosses cannot hold Mexico’s eagle, Portugal’s armillary sphere or Korea’s trigrams — half a dozen flags were approximations because of it. These come from flag-icons under the MIT licence (credited on this page): rectangular, accurate, and legible down to the smallest badge size. A layout that names no country still keeps its letters." = "すべての配列に本物の旗が付きました。MIT ライセンスの flag-icons です（このページに表示）。長方形で正確、最小サイズでも読み取れます。国が定まらない配列は文字のままです。";
 "Everything" = "すべて";
 "Everything is up to date." = "すべて最新です。";
-"Everything that landed in Helm, newest first." = "Helm に追加されたすべて（新しい順）。";
 "Expanded" = "展開済み";
 "Extension" = "拡張子";
 "Extensions, separated by commas" = "拡張子（カンマ区切り）";
@@ -529,7 +528,6 @@
 "Warnings are legible in the light theme, the icon and colour swatches can be reached from the keyboard, and sizes and names follow macOS in every language — Russian abbreviates the byte the way the Finder does, French writes a lowercase ko, and each screen calls a permission by the name Settings gives it." = "ライトテーマで警告が読めるようになり、アイコンと色の見本にキーボードで到達でき、単位や名称は各言語で macOS に合わせました。";
 "Website data" = "Webサイトのデータ";
 "Welcome to Helm" = "Helm へようこそ";
-"What Helm is writing, as it writes it." = "Helm が書いている内容を、書かれた順に。";
 "What could be deleted" = "削除できる候補";
 "What is taking up space" = "ディスクを占めているもの";
 "What to check" = "確認する項目";
@@ -618,7 +616,6 @@
 "Hexagon" = "六角形";
 "Capsule" = "カプセル";
 "Modules" = "モジュール";
-"Behaviour, appearance, permissions and what Helm may remove." = "動作、外観、アクセス権、そしてHelmが削除してよいもの。";
 "Order and sections" = "並び順とセクション";
 "A switch turns the module off everywhere in Helm." = "スイッチを切ると、そのモジュールは Helm 全体で無効になります。";
 "Remove widget" = "ウィジェットを外す";

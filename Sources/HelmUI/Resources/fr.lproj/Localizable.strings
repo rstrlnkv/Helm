@@ -143,7 +143,6 @@
 "Every layout has a real flag now. Helm drew them itself for a while, but a table of bands and crosses cannot hold Mexico’s eagle, Portugal’s armillary sphere or Korea’s trigrams — half a dozen flags were approximations because of it. These come from flag-icons under the MIT licence (credited on this page): rectangular, accurate, and legible down to the smallest badge size. A layout that names no country still keeps its letters." = "Chaque disposition a désormais un vrai drapeau : flag-icons sous licence MIT (crédité sur cette page). Rectangulaires, exacts et lisibles jusqu’à la plus petite taille. Une disposition sans pays garde ses lettres.";
 "Everything" = "Tout";
 "Everything is up to date." = "Tout est à jour.";
-"Everything that landed in Helm, newest first." = "Tout ce qui est arrivé dans Helm, du plus récent au plus ancien.";
 "Expanded" = "Développé";
 "Extension" = "Extension";
 "Extensions, separated by commas" = "Extensions séparées par des virgules";
@@ -529,7 +528,6 @@
 "Warnings are legible in the light theme, the icon and colour swatches can be reached from the keyboard, and sizes and names follow macOS in every language — Russian abbreviates the byte the way the Finder does, French writes a lowercase ko, and each screen calls a permission by the name Settings gives it." = "Les avertissements sont lisibles en thème clair, les échantillons d’icône et de couleur sont accessibles au clavier, et les tailles et les noms suivent macOS dans chaque langue.";
 "Website data" = "Données de sites web";
 "Welcome to Helm" = "Bienvenue dans Helm";
-"What Helm is writing, as it writes it." = "Ce que Helm écrit, au moment où il l’écrit.";
 "What could be deleted" = "Ce qui pourrait être supprimé";
 "What is taking up space" = "Ce qui occupe l’espace disque";
 "What to check" = "Quoi vérifier";
@@ -618,7 +616,6 @@
 "Hexagon" = "Hexagone";
 "Capsule" = "Capsule";
 "Modules" = "Modules";
-"Behaviour, appearance, permissions and what Helm may remove." = "Comportement, apparence, autorisations et ce que Helm peut supprimer.";
 "Order and sections" = "Ordre et sections";
 "A switch turns the module off everywhere in Helm." = "L’interrupteur désactive le module partout dans Helm.";
 "Remove widget" = "Retirer le widget";

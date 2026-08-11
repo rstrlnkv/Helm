@@ -143,7 +143,6 @@
 "Every layout has a real flag now. Helm drew them itself for a while, but a table of bands and crosses cannot hold Mexico’s eagle, Portugal’s armillary sphere or Korea’s trigrams — half a dozen flags were approximations because of it. These come from flag-icons under the MIT licence (credited on this page): rectangular, accurate, and legible down to the smallest badge size. A layout that names no country still keeps its letters." = "Every layout has a real flag now. Helm drew them itself for a while, but a table of bands and crosses cannot hold Mexico’s eagle, Portugal’s armillary sphere or Korea’s trigrams — half a dozen flags were approximations because of it. These come from flag-icons under the MIT licence (credited on this page): rectangular, accurate, and legible down to the smallest badge size. A layout that names no country still keeps its letters.";
 "Everything" = "Everything";
 "Everything is up to date." = "Everything is up to date.";
-"Everything that landed in Helm, newest first." = "Everything that landed in Helm, newest first.";
 "Expanded" = "Expanded";
 "Extension" = "Extension";
 "Extensions, separated by commas" = "Extensions, separated by commas";
@@ -529,7 +528,6 @@
 "Warnings are legible in the light theme, the icon and colour swatches can be reached from the keyboard, and sizes and names follow macOS in every language — Russian abbreviates the byte the way the Finder does, French writes a lowercase ko, and each screen calls a permission by the name Settings gives it." = "Warnings are legible in the light theme, the icon and colour swatches can be reached from the keyboard, and sizes and names follow macOS in every language — Russian abbreviates the byte the way the Finder does, French writes a lowercase ko, and each screen calls a permission by the name Settings gives it.";
 "Website data" = "Website data";
 "Welcome to Helm" = "Welcome to Helm";
-"What Helm is writing, as it writes it." = "What Helm is writing, as it writes it.";
 "What could be deleted" = "What could be deleted";
 "What is taking up space" = "What is taking up space";
 "What to check" = "What to check";
@@ -618,7 +616,6 @@
 "Hexagon" = "Hexagon";
 "Capsule" = "Capsule";
 "Modules" = "Modules";
-"Behaviour, appearance, permissions and what Helm may remove." = "Behaviour, appearance, permissions and what Helm may remove.";
 "Order and sections" = "Order and sections";
 "A switch turns the module off everywhere in Helm." = "A switch turns the module off everywhere in Helm.";
 "Remove widget" = "Remove widget";

@@ -143,7 +143,6 @@
 "Every layout has a real flag now. Helm drew them itself for a while, but a table of bands and crosses cannot hold Mexico’s eagle, Portugal’s armillary sphere or Korea’s trigrams — half a dozen flags were approximations because of it. These come from flag-icons under the MIT licence (credited on this page): rectangular, accurate, and legible down to the smallest badge size. A layout that names no country still keeps its letters." = "每个布局现在都有真正的旗帜：MIT 许可的 flag-icons（本页已署名）。矩形、准确，最小尺寸下依然清晰。没有国家归属的布局仍保持字母显示。";
 "Everything" = "全部";
 "Everything is up to date." = "全部已是最新。";
-"Everything that landed in Helm, newest first." = "Helm 的全部更新，最新在前。";
 "Expanded" = "已展开";
 "Extension" = "扩展名";
 "Extensions, separated by commas" = "扩展名，用逗号分隔";
@@ -529,7 +528,6 @@
 "Warnings are legible in the light theme, the icon and colour swatches can be reached from the keyboard, and sizes and names follow macOS in every language — Russian abbreviates the byte the way the Finder does, French writes a lowercase ko, and each screen calls a permission by the name Settings gives it." = "浅色主题下的警告清晰可读，图标与颜色色块可用键盘抵达，尺寸和名称在每种语言下都与 macOS 一致。";
 "Website data" = "网站数据";
 "Welcome to Helm" = "欢迎使用 Helm";
-"What Helm is writing, as it writes it." = "Helm 正在写入的内容，边写边看。";
 "What could be deleted" = "可删除的内容";
 "What is taking up space" = "磁盘空间被什么占用";
 "What to check" = "检查什么";
@@ -618,7 +616,6 @@
 "Hexagon" = "六边形";
 "Capsule" = "胶囊";
 "Modules" = "模块";
-"Behaviour, appearance, permissions and what Helm may remove." = "行为、外观、权限，以及 Helm 可以删除什么。";
 "Order and sections" = "顺序与分组";
 "A switch turns the module off everywhere in Helm." = "开关会在整个 Helm 中停用该模块。";
 "Remove widget" = "移除小组件";

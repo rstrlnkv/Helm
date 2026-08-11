@@ -143,7 +143,6 @@
 "Every layout has a real flag now. Helm drew them itself for a while, but a table of bands and crosses cannot hold Mexico’s eagle, Portugal’s armillary sphere or Korea’s trigrams — half a dozen flags were approximations because of it. These come from flag-icons under the MIT licence (credited on this page): rectangular, accurate, and legible down to the smallest badge size. A layout that names no country still keeps its letters." = "Cada layout agora tem uma bandeira de verdade: flag-icons sob licença MIT (creditado nesta página). Retangulares, precisas e legíveis até no menor tamanho. Um layout sem país mantém as letras.";
 "Everything" = "Tudo";
 "Everything is up to date." = "Tudo está atualizado.";
-"Everything that landed in Helm, newest first." = "Tudo que chegou ao Helm, do mais recente ao mais antigo.";
 "Expanded" = "Expandido";
 "Extension" = "Extensão";
 "Extensions, separated by commas" = "Extensões separadas por vírgulas";
@@ -529,7 +528,6 @@
 "Warnings are legible in the light theme, the icon and colour swatches can be reached from the keyboard, and sizes and names follow macOS in every language — Russian abbreviates the byte the way the Finder does, French writes a lowercase ko, and each screen calls a permission by the name Settings gives it." = "Os avisos são legíveis no tema claro, as amostras de ícone e cor são alcançáveis pelo teclado, e tamanhos e nomes seguem o macOS em cada idioma.";
 "Website data" = "Dados de sites";
 "Welcome to Helm" = "Boas-vindas ao Helm";
-"What Helm is writing, as it writes it." = "O que o Helm escreve, enquanto escreve.";
 "What could be deleted" = "O que pode ser excluído";
 "What is taking up space" = "O que ocupa espaço no disco";
 "What to check" = "O que verificar";
@@ -618,7 +616,6 @@
 "Hexagon" = "Hexágono";
 "Capsule" = "Cápsula";
 "Modules" = "Módulos";
-"Behaviour, appearance, permissions and what Helm may remove." = "Comportamento, aparência, permissões e o que o Helm pode remover.";
 "Order and sections" = "Ordem e seções";
 "A switch turns the module off everywhere in Helm." = "O interruptor desativa o módulo em todo o Helm.";
 "Remove widget" = "Remover o widget";

@@ -45,6 +45,4 @@ public enum VPNCommandReply: Equatable, Sendable {
         if text.lowercased().hasPrefix("no service") { return .noSuchService }
         return .refused(text)
     }
-
-    public var isAccepted: Bool { self == .accepted }
 }

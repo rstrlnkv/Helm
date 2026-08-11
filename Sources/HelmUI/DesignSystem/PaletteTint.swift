@@ -35,9 +35,4 @@ public enum PaletteTint {
                        blue: CGFloat(value & 0xFF) / 255,
                        alpha: 1)
     }
-
-    /// The same answer as a SwiftUI colour, for the swatch that shows it.
-    public static func customColor(_ token: String?) -> Color? {
-        custom(token).map(Color.init(nsColor:))
-    }
 }

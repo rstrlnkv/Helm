@@ -220,14 +220,6 @@ enum AppStr {
         L("The log records what Helm did, not what you have: app names, VPN names and paths are replaced before anything is written.")
     }
     static var clearLog: String { L("Clear") }
-    static var whatsNewSummary: String { L("Everything that landed in Helm, newest first.") }
-    /// The four headings under it, in order. It said «module order… and
-    /// diagnostics»: the order is one row now and diagnostics is a page of its
-    /// own, so the subtitle named one thing that had moved and one that was
-    /// not here.
-    static var settingsPaneSummary: String {
-        L("Behaviour, appearance, permissions and what Helm may remove.")
-    }
     static var modulesSection: String { L("Modules") }
     /// «in your menu bar» was false and had been since the panel: Helm is also
     /// a panel, a settings window and a sidebar the person arranges. A tagline
@@ -305,7 +297,6 @@ enum AppStr {
     // MARK: - The live log (dev builds only)
 
     static var logPane: String { L("Log") }
-    static var logPaneSummary: String { L("What Helm is writing, as it writes it.") }
     static var logLevel: String { L("What to show") }
     static var logLevelAll: String { L("Everything") }
     static var logLevelWarnings: String { L("Warnings") }

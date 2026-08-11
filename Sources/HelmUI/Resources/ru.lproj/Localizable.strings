@@ -143,7 +143,6 @@
 "Every layout has a real flag now. Helm drew them itself for a while, but a table of bands and crosses cannot hold Mexico’s eagle, Portugal’s armillary sphere or Korea’s trigrams — half a dozen flags were approximations because of it. These come from flag-icons under the MIT licence (credited on this page): rectangular, accurate, and legible down to the smallest badge size. A layout that names no country still keeps its letters." = "У каждой раскладки теперь настоящий флаг. Helm какое-то время рисовал их сам, но таблица полос и крестов не вмещает мексиканского орла, португальскую армиллярную сферу и корейские триграммы — с полдюжины флагов из-за этого были приближениями. Теперь это flag-icons под лицензией MIT (указано на этой же странице): прямоугольные, точные и читаемые вплоть до самого мелкого размера значка. Раскладка без страны по-прежнему остаётся буквами.";
 "Everything" = "Всё";
 "Everything is up to date." = "Всё обновлено.";
-"Everything that landed in Helm, newest first." = "Всё, что появилось в Helm, начиная с последнего.";
 "Expanded" = "Развёрнуто";
 "Extension" = "Расширение";
 "Extensions, separated by commas" = "Расширения через запятую";
@@ -529,7 +528,6 @@
 "Warnings are legible in the light theme, the icon and colour swatches can be reached from the keyboard, and sizes and names follow macOS in every language — Russian abbreviates the byte the way the Finder does, French writes a lowercase ko, and each screen calls a permission by the name Settings gives it." = "Предупреждения читаются в светлой теме, образцы иконок и цветов достижимы с клавиатуры, а размеры и названия совпадают с macOS: байт сокращён до «Б», каждый экран зовёт разрешение так же, как Настройки.";
 "Website data" = "Данные сайтов";
 "Welcome to Helm" = "Добро пожаловать в Helm";
-"What Helm is writing, as it writes it." = "Что Helm пишет — прямо сейчас, строка за строкой.";
 "What could be deleted" = "Что можно удалить";
 "What is taking up space" = "Что занимает место на диске";
 "What to check" = "Что проверять";
@@ -618,7 +616,6 @@
 "Hexagon" = "Шестиугольник";
 "Capsule" = "Капсула";
 "Modules" = "Модули";
-"Behaviour, appearance, permissions and what Helm may remove." = "Поведение, внешний вид, разрешения и что Helm может удалять.";
 "Order and sections" = "Порядок и разделы";
 "A switch turns the module off everywhere in Helm." = "Переключатель выключает модуль во всём Helm.";
 "Remove widget" = "Убрать виджет";
