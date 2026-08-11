@@ -7,6 +7,14 @@ import HelmRuntime
 /// It goes next to the control it is about, not only in the settings list: a
 /// switch that macOS ignores looks exactly like a switch that works, and the
 /// person flipping it is the one who needs to know.
+///
+/// **It is a `HelmBanner`, not a shape of its own.** This was the last pre-v3
+/// row left on a settings page: a bare `HStack` of a mark, `.caption` text —
+/// 10 pt, where every other note on the same page is 11 — and a button, with no
+/// field to say the three were one thing. Which is the description of
+/// `HelmBanner` word for word, so the fix was to draw one rather than to restate
+/// its numbers here: nine call sites in eight modules became v3 in one edit, and
+/// the two shapes cannot drift, because there is one.
 public struct HelmPermissionNote: View {
     private let text: String
     private let openSettings: () -> Void
@@ -24,17 +32,10 @@ public struct HelmPermissionNote: View {
     }
 
     public var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "exclamationmark.circle.fill")
-                .foregroundStyle(HelmSignal.warning)
-                .accessibilityHidden(true)
-            Text(text)
-                .font(.caption)
-                // Literal, not `.secondary`: these notes appear inside blocks
-                // that animate in, and hierarchical styles re-resolve there.
-                .foregroundStyle(HelmText.quiet)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 8)
+        // The circle, not the banner's default triangle: a withheld grant is the
+        // one notice in the app that macOS itself draws, and the panel's own
+        // permissions widget has always used this glyph for it.
+        HelmBanner(text, symbol: "exclamationmark.circle.fill") {
             Button(Self.grant) { openSettings() }
                 .controlSize(.small)
         }

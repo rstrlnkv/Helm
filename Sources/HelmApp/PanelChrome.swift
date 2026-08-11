@@ -346,25 +346,28 @@ struct PermissionsWidget: View {
 
     var body: some View {
         HelmWidgetBody {
-            HStack(spacing: 8) {
-                Image(systemName: "exclamationmark.circle.fill")
-                    .foregroundStyle(HelmSignal.warning)
-                Text(AppStr.permissionsWithheld(count: withheld.count))
-                    .font(HelmText.rowDetail)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 8)
+            // `HelmBanner`, not a fourth hand-rolled row. This was the shape the
+            // banner's own documentation claimed the panel already drew — a mark,
+            // some quiet text and a button, spelled out here at 11 pt with no
+            // field behind it — while the hero and `HelmPermissionNote` drew the
+            // v3 field. One statement, two appearances, decided by which window
+            // you happened to open.
+            HelmBanner(AppStr.permissionsWithheld(count: withheld.count),
+                       symbol: "exclamationmark.circle.fill") {
                 // One withheld grant has one place to go, so go there. Several
                 // do not, and a button that picks one of them silently is a
                 // button that lies about what it opened.
                 if withheld.count == 1, let only = withheld.first {
                     Button(AppStr.grant) { only.openSettings() }
                         .controlSize(.small)
+                        .fixedSize()
                 } else {
                     Button(AppStr.showPermissions) {
                         NotificationCenter.default.post(name: .helmOpenSettings,
                                                         object: SettingsWindow.settingsPage)
                     }
                     .controlSize(.small)
+                    .fixedSize()
                 }
             }
         }

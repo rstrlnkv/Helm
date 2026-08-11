@@ -3,11 +3,16 @@ import SwiftUI
 /// A statement the page has to make, with at most one verb beside it.
 ///
 /// v3's `.banner`: a signal-tinted field, a mark, a sentence, and the action
-/// that answers it on the right. The panel already draws this shape for the
-/// permissions notice, and Keep Awake's suppression row was drawing it by hand
-/// — a bare `HStack` of an icon, some quiet text and a button, floating on the
-/// page with nothing to say it was one thing. Beside a centred 40 pt hero that
-/// read as three unrelated pieces of furniture rather than a notice.
+/// that answers it on the right. Keep Awake's suppression row was drawing it by
+/// hand — a bare `HStack` of an icon, some quiet text and a button, floating on
+/// the page with nothing to say it was one thing. Beside a centred 40 pt hero
+/// that read as three unrelated pieces of furniture rather than a notice.
+///
+/// **«The panel already draws this shape» is what this comment used to say, and
+/// it was not true.** The panel's permissions notice was a fourth hand-rolled
+/// `HStack` — 11 pt, no field — and so was `HelmPermissionNote`, which nine call
+/// sites in eight modules draw. A sentence claiming a shape is shared is not the
+/// sharing; both draw this type now, which is.
 ///
 /// The fill is 13 % of the signal, which is what makes it a field rather than a
 /// row; the ink is the signal's *ink* variant, measured against that fill and
