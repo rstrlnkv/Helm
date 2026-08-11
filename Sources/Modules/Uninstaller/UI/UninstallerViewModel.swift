@@ -237,15 +237,6 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
         await client.request(UninstallerCommand.scan, encoding: UninstallScanRequest(bundleID: app.bundleID, appPath: app.path, appName: app.name))
     }
 
-    public func uninstall(appPath: String, paths: [String]) async -> UninstallResult? {
-        await client.request(UninstallerCommand.uninstall, encoding: UninstallRequest(appPath: appPath, paths: paths))
-    }
-
-    /// Leftovers whose owning app is gone, grouped by bundle id.
-    public func systemExtensions() async -> [SystemExtensionInfo] {
-        await client.request(UninstallerCommand.systemExtensions) ?? []
-    }
-
     public func scanOrphans() async -> [OrphanGroup] {
         await client.request(UninstallerCommand.scanOrphans) ?? []
     }

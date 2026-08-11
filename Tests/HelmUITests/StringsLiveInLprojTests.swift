@@ -176,7 +176,6 @@ final class StringsLiveInLprojTests: XCTestCase {
         "MB": [.es, .de, .ja, .zh, .pt],
         "min": [.es, .fr, .pt],
         "Mint": [.de],
-        "Minutes": [.fr],
         "MODULES": [.fr],
         "Modules": [.fr],
         "Name": [.de],
@@ -199,7 +198,6 @@ final class StringsLiveInLprojTests: XCTestCase {
         "VERSION": [.fr, .de],
         "Video": [.de],
         "VPN": [.ru, .es, .fr, .de, .ja, .zh, .pt],
-        "·": [.ru, .es, .fr, .de, .zh, .pt],
         "🌐︎": [.ru, .es, .fr, .de, .ja, .zh, .pt],
     ]
 

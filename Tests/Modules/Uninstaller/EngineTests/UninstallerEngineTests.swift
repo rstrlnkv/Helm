@@ -16,8 +16,6 @@ final class UninstallerEngineTests: XCTestCase {
     /// Leftover paths in the shape the engine will actually see: inside the
     /// home the engine was given. Bare "/a" is refused by the scope gate, and
     /// rightly — nothing at the root of the volume is an app's leftover.
-    private let cacheA = "/Users/x/Library/Caches/a"
-    private let cacheB = "/Users/x/Library/Caches/b"
 
     private func engine(fs: FakeFS, trash: FakeTrash = FakeTrash(), running: [String] = []) -> UninstallerEngine {
         UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),

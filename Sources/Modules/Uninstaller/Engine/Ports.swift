@@ -97,7 +97,6 @@ public protocol RunningAppsPort: Sendable {
 }
 
 public extension RunningAppsPort {
-    func quit(bundleID: String) { quit(bundleID: bundleID, force: false) }
 }
 
 /// Default when no lister is injected (tests, previews).

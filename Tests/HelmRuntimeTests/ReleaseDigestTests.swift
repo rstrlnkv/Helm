@@ -9,7 +9,6 @@ final class ReleaseDigestTests: XCTestCase {
     private let asset = "Helm-0.7.1-dev.10.zip"
     private let good = String(repeating: "a1b2c3d4", count: 8)   // 64 hex chars
 
-    private func notes(_ body: String) -> String { body }
 
     func testFindsTheDigestForTheAssetItWasAskedAbout() {
         let text = """

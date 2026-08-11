@@ -11,7 +11,6 @@ enum RenamePattern {
 
     /// `{name}` the file's name without its extension, `{date}` the date it was
     /// added as `2026-07-15`, `{counter}` a three-digit sequence number.
-    public static let tokens = [nameToken, "{date}", "{counter}"]
 
     /// The only token whose value comes from the file's name, and therefore the
     /// only reason applying a pattern twice can produce two different names.

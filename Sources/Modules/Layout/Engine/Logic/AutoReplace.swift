@@ -50,7 +50,6 @@ public struct AutoReplace: Equatable, Sendable {
         return table[word]
     }
 
-    public var isEmpty: Bool { table.isEmpty }
 }
 
 /// The corrections that are about how a keyboard is held rather than about

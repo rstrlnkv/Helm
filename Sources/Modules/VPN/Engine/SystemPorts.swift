@@ -367,6 +367,5 @@ public struct VPNSystemPorts {
     public let credentials = KeychainCredentials()
     public let apps = WorkspaceAppObserver()
     public let network = DynamicStoreNetworkWatch()
-    public let notice = SystemAutomationNotice()
     public init() {}
 }

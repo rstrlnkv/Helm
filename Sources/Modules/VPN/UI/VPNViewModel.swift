@@ -277,7 +277,6 @@ import Module_VPN_Engine
     }
     func connect(_ name: String) { send(VPNCommand.connect, payload: nameData(name)) }
     func disconnect(_ name: String) { send(VPNCommand.disconnect, payload: nameData(name)) }
-    public func toggleDefault() { send(VPNCommand.toggle) }
     /// The engine's own type — it was declared again here, inside this
     /// function, matched to the other by field name across a JSON hop.
     private func nameData(_ name: String) -> Data {

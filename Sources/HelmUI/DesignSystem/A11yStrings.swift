@@ -35,12 +35,6 @@ public enum HelmA11y {
     public static var whatToShow: String {
         L("What to show")
     }
-    /// A number typed into a field whose unit is a separate label beside it,
-    /// which VoiceOver reads as a neighbour rather than as part of the value.
-    public static var minutes: String {
-        L("Minutes")
-    }
-
     /// Whether a disclosure is open. SwiftUI has no trait for it on macOS — the
     /// rotor gets `.isButton` and nothing else — so the state has to be said,
     /// and a control whose whole purpose is to open and close must say it.

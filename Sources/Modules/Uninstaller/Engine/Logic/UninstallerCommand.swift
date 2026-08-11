@@ -73,9 +73,9 @@ public struct UninstallScanRequest: Codable, Sendable {
 }
 
 /// The bundle to remove and everything chosen to go with it.
-public struct UninstallRequest: Codable, Sendable {
-    public let appPath: String
-    public let paths: [String]
+struct UninstallRequest: Codable, Sendable {
+    let appPath: String
+    let paths: [String]
     public init(appPath: String, paths: [String]) {
         self.appPath = appPath
         self.paths = paths

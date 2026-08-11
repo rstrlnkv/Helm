@@ -54,5 +54,4 @@ public struct ScanReport: Codable, Equatable, Sendable {
         self.items = items
     }
 
-    public var isEmpty: Bool { count == 0 && bytes == 0 }
 }

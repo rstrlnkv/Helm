@@ -40,12 +40,6 @@ public enum ReviewRow: Equatable, Sendable, Identifiable {
         return false
     }
 
-    public var sizeBytes: Int {
-        switch self {
-        case .bundle(let app): return app.sizeBytes
-        case .leftover(let leftover): return leftover.sizeBytes
-        }
-    }
 }
 
 /// Pure rules behind the batch uninstall flow.

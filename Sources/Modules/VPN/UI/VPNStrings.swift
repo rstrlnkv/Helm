@@ -21,7 +21,6 @@ enum VPNStr {
     /// In the `.lproj` files, not in a table here: seven rows of which six only
     /// said what English says, standing outside everything those files are
     /// guarded by.
-    static var separator: String { L("·") }
 
     static var summary: String {
         // No full stop, in any of them: a module subtitle is a label, and the

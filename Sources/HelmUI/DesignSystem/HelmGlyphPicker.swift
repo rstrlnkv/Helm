@@ -57,7 +57,6 @@ enum HelmGlyphCatalogue {
     }
 
     /// Every symbol on offer, for a caller that needs to hand one out.
-    public static var all: [String] { categories.flatMap(\.symbols) }
 }
 
 /// Choosing one of them: a category down the side, a grid beside it.

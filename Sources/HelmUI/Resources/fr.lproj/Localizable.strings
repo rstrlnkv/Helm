@@ -261,7 +261,6 @@
 "Menu-bar spin" = "Rotation de l’icône";
 "Menu-bar timer: the ring empties clockwise while a timer runs, with optional remaining time and its own colour." = "Minuteur dans la barre : l’anneau se vide dans le sens horaire, temps restant et couleur dédiée en option.";
 "Mint" = "Menthe";
-"Minutes" = "Minutes";
 "Miscellaneous" = "Autres";
 "Modular tools for your Mac." = "Des outils modulaires pour votre Mac.";
 "More actions" = "Plus d’actions";
@@ -666,7 +665,6 @@
 "Helm no longer asks for permissions the moment you install it. It used to request Full Disk Access and Accessibility on the very first launch, before you had asked it to do anything. Each module now asks for what it needs on its own page, when it needs it — and the old notice still appears if a permission you had granted goes away." = "Helm ne demande plus d’autorisations dès l’installation. Il réclamait l’accès complet au disque et l’accessibilité au premier lancement, avant que vous ne lui demandiez quoi que ce soit. Chaque module demande maintenant ce dont il a besoin sur sa propre page, au moment où il en a besoin. Et si une autorisation que vous aviez accordée disparaît, l’ancien avertissement s’affiche toujours.";
 "Hardware" = "Matériel";
 "Rostislav Strelnikov" = "Rostislav Strelnikov";
-"·" = "·";
 "The update channel is two pills, each in its own colour — Beta in the accent, Dev in orange — so which one you follow is visible at a glance. The badge beside the wordmark agrees with them." = "Le canal de mises à jour est devenu deux pastilles, chacune avec sa couleur — Beta dans la couleur d’accentuation, Dev en orange — celui que vous suivez se voit d’un coup d’œil. Le badge à côté du nom dit maintenant la même chose.";
 "Helm no longer describes itself as a menu-bar app. It is also a panel, a settings window and a sidebar you arrange yourself, and the line under the name says so." = "Helm ne se décrit plus comme une application de la barre des menus. C’est aussi un panneau, une fenêtre de réglages et une barre latérale que vous composez vous-même, et la ligne sous le nom le dit désormais.";
 "The line Helm shows when an update check fails is readable in every language. It was cut short in five of the eight, and a German reader saw the first half of it and nothing else." = "La ligne affichée quand une vérification des mises à jour échoue est lisible dans toutes les langues. Elle était coupée dans cinq des huit, et en allemand on n’en voyait que la première moitié.";

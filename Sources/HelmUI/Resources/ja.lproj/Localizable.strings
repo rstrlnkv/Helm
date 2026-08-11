@@ -261,7 +261,6 @@
 "Menu-bar spin" = "アイコンの回転";
 "Menu-bar timer: the ring empties clockwise while a timer runs, with optional remaining time and its own colour." = "メニューバーのタイマー：リングが時計回りに減少。残り時間表示と専用カラーも選択可。";
 "Mint" = "ミント";
-"Minutes" = "分";
 "Miscellaneous" = "その他";
 "Modular tools for your Mac." = "Mac のためのモジュール式ツール。";
 "More actions" = "その他の操作";
@@ -666,7 +665,6 @@
 "Helm no longer asks for permissions the moment you install it. It used to request Full Disk Access and Accessibility on the very first launch, before you had asked it to do anything. Each module now asks for what it needs on its own page, when it needs it — and the old notice still appears if a permission you had granted goes away." = "インストール直後に権限を求めることはなくなりました。以前は初回起動時にフルディスクアクセスとアクセシビリティを要求していました。今は各モジュールが必要なときに自分のページで尋ねます。そして、いったん与えた許可がなくなったときは、これまでどおり通知が出ます。";
 "Hardware" = "ハードウェア";
 "Rostislav Strelnikov" = "Rostislav Strelnikov";
-"·" = "・";
 "The update channel is two pills, each in its own colour — Beta in the accent, Dev in orange — so which one you follow is visible at a glance. The badge beside the wordmark agrees with them." = "アップデートチャンネルは 2 つのピルになり、それぞれ色が違います — Beta はアクセントカラー、Dev はオレンジ。どちらを追っているかがひと目でわかり、名前の横のバッジも同じ色になりました。";
 "Helm no longer describes itself as a menu-bar app. It is also a panel, a settings window and a sidebar you arrange yourself, and the line under the name says so." = "Helm は自身をメニューバーアプリとは呼ばなくなりました。パネルでもあり、設定ウインドウでもあり、自分で組み立てるサイドバーでもあります。名前の下の一行がそう言うようになりました。";
 "The line Helm shows when an update check fails is readable in every language. It was cut short in five of the eight, and a German reader saw the first half of it and nothing else." = "アップデートの確認に失敗したときの文が、どの言語でも最後まで読めるようになりました。8 言語中 5 つで途中で切れていて、ドイツ語では前半しか見えていませんでした。";
