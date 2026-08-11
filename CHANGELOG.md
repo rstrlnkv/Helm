@@ -5,7 +5,7 @@ All notable changes to Helm are documented here. The format is loosely based on
 global changes, MINOR = new/polished features, PATCH = fixes. Every release
 bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 
-## [Unreleased]
+## [0.10.0-dev.5] — 2026-08-11
 
 > The VPN page, and the one event on it nobody asked for.
 
