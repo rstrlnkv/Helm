@@ -14,6 +14,7 @@ public struct VPNSettingsPage: View {
 
     @State private var rules: [String: VPNAppRule]
     @State private var notice: VPNNotice
+    @State private var dropNotice: VPNNotice
     @State private var spin: Bool
     @State private var spinTintConnected: String
     @State private var spinTintDisconnected: String
@@ -31,6 +32,7 @@ public struct VPNSettingsPage: View {
         let settings = VPNSettings(store: store)
         _rules = State(initialValue: VPNRules.decode(settings.rulesJSON))
         _notice = State(initialValue: settings.notice)
+        _dropNotice = State(initialValue: settings.dropNotice)
         _spin = State(initialValue: settings.automationSpin)
         _spinTintConnected = State(initialValue: settings.spinTint(for: .connected))
         _spinTintDisconnected = State(initialValue: settings.spinTint(for: .disconnected))
@@ -131,29 +133,24 @@ public struct VPNSettingsPage: View {
     /// one, and never at launch.
     @ViewBuilder
     private var noticePicker: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // **No second heading inside the card.** The section already says
-            // what this decides, and "Notification style" over the cards made
-            // the only sub-heading *inside* a card anywhere in Helm — everywhere
-            // else a label sits over the card, on the page. The string is still
-            // the group's accessibility label, because a screen reader hears no
-            // section header at this depth.
-            HelmChoiceCards(selection: Binding(
+        // **The shape General settings asks its picture question in**: a
+        // labelled row, with the pictures on the trailing side —
+        // `AppearancePicker` and this are the same control now, so they are the
+        // same size, radius, ring and label weight without anybody keeping them
+        // in step.
+        //
+        // The label came back, and it is not the sub-heading that was taken out
+        // of this card. That was a second *title* over one control saying what
+        // the section header already said. There are two controls here, each
+        // deciding a different event, and a row label is how every other row in
+        // this form names what it sets.
+        LabeledContent(VPNStr.noticeRuleLabel) {
+            noticeCards(selection: Binding(
                 get: { notice },
                 set: { chosen in
                     notice = chosen
                     Task { await vm.choose(chosen) }
-                }),
-                items: [
-                    .init(id: .silent, label: VPNStr.noticeOption(.silent),
-                          preview: NoticePreview.strip(name: false, banner: false)),
-                    .init(id: .menuBar, label: VPNStr.noticeOption(.menuBar),
-                          preview: NoticePreview.strip(name: true, banner: false)),
-                    .init(id: .system, label: VPNStr.noticeOption(.system),
-                          preview: NoticePreview.strip(name: true, banner: true)),
-                ])
-                .accessibilityElement(children: .contain)
-                .accessibilityLabel(VPNStr.noticeLabel)
+                }), label: VPNStr.noticeRuleLabel)
         }
         // Where the switch is, not only in the app's permission list: a mode
         // macOS refuses looks exactly like one it allows.
@@ -164,6 +161,50 @@ public struct VPNSettingsPage: View {
         Text(VPNStr.noticeHint)
             .font(.caption)
             .foregroundStyle(HelmText.quiet)
+
+        // The second event, and the reason this section is a pair. Everything
+        // else here is Helm doing what it was asked; this is the arrangement
+        // failing, and from that moment the Mac is sending in clear while the
+        // last thing the person was told is that it was not.
+        LabeledContent(VPNStr.noticeDropLabel) {
+            noticeCards(selection: Binding(
+                get: { dropNotice },
+                set: { chosen in
+                    dropNotice = chosen
+                    Task { await vm.choose(chosen, for: .dropped) }
+                }), label: VPNStr.noticeDropLabel)
+        }
+        if dropNotice == .system, vm.bannerAuthorization == .denied {
+            HelmPermissionNote(text: VPNStr.noticeDenied,
+                               openSettings: PermissionCheck.openNotificationSettings)
+        }
+        Text(VPNStr.noticeDropHint)
+            .font(.caption)
+            .foregroundStyle(HelmText.quiet)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// The three pictures. Written once: the two rows choose between the same
+    /// three outcomes, and a second copy is a second place for them to drift.
+    private func noticeCards(selection: Binding<VPNNotice>, label: String) -> some View {
+        HelmChoiceCards(selection: selection,
+                        items: [
+                            .init(id: .silent, label: VPNStr.noticeOption(.silent),
+                                  preview: NoticePreview.strip(name: false, banner: false)),
+                            .init(id: .menuBar, label: VPNStr.noticeOption(.menuBar),
+                                  preview: NoticePreview.strip(name: true, banner: false)),
+                            .init(id: .system, label: VPNStr.noticeOption(.system),
+                                  preview: NoticePreview.strip(name: true, banner: true)),
+                        ],
+                        // Wider than the appearance picker's, and the labels are
+                        // why: «Имя в строке меню» is one line at 104 and two at
+                        // 74, and one two-line label in a row of three puts
+                        // three cards on three baselines.
+                        thumbnail: CGSize(width: 104, height: 66))
+            // Two unnamed groups of three identical-sounding buttons in one
+            // card is what a screen reader would otherwise be handed.
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(label)
     }
 
     /// The spin toggle and its two colour rows. The rows are mounted always
@@ -220,6 +261,13 @@ public struct VPNSettingsPage: View {
 
     // MARK: - Connections
 
+    /// The widest a connection card may grow: **half the row**, less the gap
+    /// beside it. Derived rather than typed, so it stays true if the settings
+    /// column moves — and it is a rule rather than a number. One connection
+    /// gets a half-row card instead of a 704 pt banner; two fill the row
+    /// exactly and finish level with the card below.
+    private static var cardCeiling: CGFloat { (HelmLayout.cardWidth - 12) / 2 }
+
     @ViewBuilder
     private var connectionsList: some View {
         if vm.connections.isEmpty {
@@ -243,29 +291,38 @@ public struct VPNSettingsPage: View {
                 .controlSize(.large)
             }
         } else {
-            // Adaptive rather than a fixed three: v3 draws three because it
-            // had three to draw. A Mac with two would leave a third of the row
-            // empty, and one with five would need a second row anyway.
-            // **Adaptive with a ceiling**, and the ceiling is the point.
+            // **Columns from the count, capped at three, each free to grow to
+            // 340.** Both halves are measured rather than chosen.
             //
-            // It was `.adaptive(minimum: 190)`, which fixed three columns and
-            // left 68 % of the row empty with one connection. Columns from the
-            // *count* filled the row and produced the opposite fault: two
-            // connections became two 660 pt cards with 660 pt buttons across
-            // them, which is a card the size of a paragraph.
+            // `.adaptive(minimum: 190, maximum: 280)` fixes the column count
+            // from the *width*, so a Mac with two VPNs got three columns and
+            // used two: photographed at the settings column, two 221 pt cards
+            // ending at x=532 with 233 pt of nothing to their right and a
+            // full-width line of explanation underneath drawing a line right
+            // across it. Columns from the count alone was the opposite fault —
+            // one connection became a 704 pt card with a 680 pt button across
+            // it, which is a card the size of a paragraph.
             //
-            // The hole was only ever conspicuous because this grid sat inside
-            // a grouped-`Form` section that drew a fill around it. On the bare
-            // pane, which is where it lives now, leftover space is invisible —
-            // so the card can go back to being card-sized. 280 is v3's own
-            // width plus the room German needs for «Verbinden».
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 190, maximum: 280), spacing: 12)],
+            // The ceiling is what keeps a card card-shaped; the count is what
+            // stops the row ending in a hole. Two connections now measure 346
+            // each and finish flush with the card below. One still leaves
+            // space beside it, and a single half-row card under a heading
+            // reads as one VPN rather than as a grid that failed to fill.
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 190,
+                                                                   maximum: Self.cardCeiling),
+                                                         spacing: 12),
+                                     count: min(max(vm.connections.count, 1), 3)),
                       alignment: .leading,
                       spacing: 12) {
                 ForEach(vm.connections) { connection in
                     connectionCard(connection)
                 }
             }
+            // Back out to the section cards' own edge. These are cards, and the
+            // headings and captions around them are text: the text belongs at
+            // the header inset, level with what the rows below say, and the
+            // cards belong level with the cards below.
+            .padding(.horizontal, -HelmLayout.groupedHeaderOutset)
         }
     }
 
@@ -412,13 +469,6 @@ public struct VPNSettingsPage: View {
                            tint: VPNDescriptor.tint.colour,
                            message: VPNStr.perAppHint) { EmptyView() }
         }
-        // What the tunnel actually covers. Kept out of the `isEmpty` branch on
-        // purpose — the person with rules already configured is the one acting
-        // on the belief that only that app is routed.
-        Text(VPNStr.perAppScopeNote)
-            .font(.caption)
-            .foregroundStyle(HelmText.quiet)
-            .fixedSize(horizontal: false, vertical: true)
         // No `Divider()` between them. A grouped `Form` draws its own
         // separators, and each direct child of a `Section` is a **row** — so an
         // explicit divider became a row of its own, with a row's padding, and
@@ -446,6 +496,18 @@ public struct VPNSettingsPage: View {
         }
         .buttonStyle(.plain)
         .disabled(vm.connections.isEmpty)
+        // What the tunnel actually covers, **under the list rather than over
+        // it**. It is the one thing on this page somebody can be wrong about in
+        // a way that matters — a section headed "per-app" beside a control that
+        // routes the whole Mac — and it was the card's first row: two lines of
+        // grey explanation before a single app, so the block opened by
+        // explaining itself and the rules began a third of the way down. macOS
+        // puts this text under the group it qualifies, which is also where a
+        // person looks after reading the rows rather than before.
+        Text(VPNStr.perAppScopeNote)
+            .font(.caption)
+            .foregroundStyle(HelmText.quiet)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     /// One line per app: which VPN, and when the rule fires. The two switches
@@ -501,11 +563,43 @@ public struct VPNSettingsPage: View {
                         .font(.caption)
                         .foregroundStyle(HelmText.quiet)
                 }
+            } else if holdingNow(bundleID) {
+                // **The one question this list could not answer: is it working
+                // right now?** Everything in the row is what was *asked* for —
+                // an app, a VPN, a moment — and a rule that has quietly stopped
+                // firing looks exactly like one that fires every day. The
+                // engine already publishes which tunnels it is holding up
+                // itself; the row simply had nothing that read it.
+                //
+                // Only for tunnels in `autoConnected`, which is Helm's own
+                // book: a VPN somebody raised by hand is up, and saying "this
+                // rule did that" about it would be the row taking credit for
+                // somebody else's click.
+                HStack(spacing: 6) {
+                    HelmStatusDot(active: true)
+                    Text(VPNStr.ruleHoldingNow)
+                        .font(.caption)
+                        .foregroundStyle(HelmText.quiet)
+                }
+                .accessibilityElement(children: .combine)
             }
         } remove: {
             rules.removeValue(forKey: bundleID)
             persist()
         }
+    }
+
+    /// Is this rule's tunnel up **and** Helm's doing, right now.
+    ///
+    /// Both halves. `autoConnected` is the engine's book of what it raised
+    /// itself and outlives the tunnel by a refresh or two; the live status is
+    /// what `scutil` says. Either one alone would put a green dot under a rule
+    /// whose VPN is down.
+    private func holdingNow(_ bundleID: String) -> Bool {
+        guard let name = rules[bundleID]?.vpnName, vm.autoConnected.contains(name) else {
+            return false
+        }
+        return vm.connections.contains { $0.name == name && $0.status.isConnected }
     }
 
     private func timingBinding(_ bundleID: String) -> Binding<VPNAppRule.Timing> {

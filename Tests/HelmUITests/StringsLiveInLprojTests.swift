@@ -170,6 +170,9 @@ final class StringsLiveInLprojTests: XCTestCase {
         "Image": [.fr],
         "m": [.es, .fr, .pt],
         "Manual": [.es, .pt],
+        // Le Robert and Apple's own French Mitteilungen pane both spell it
+        // this way — «Notifications» is the French word, identically.
+        "Notifications": [.fr],
         "MB": [.es, .de, .ja, .zh, .pt],
         "min": [.es, .fr, .pt],
         "Mint": [.de],

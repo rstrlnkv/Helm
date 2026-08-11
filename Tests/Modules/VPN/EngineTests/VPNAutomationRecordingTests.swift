@@ -170,7 +170,12 @@ final class VPNAutomationRecordingTests: XCTestCase {
     /// A tunnel Helm raised that came up and then went — the network went, or
     /// somebody stopped it in System Settings — leaves `_autoConnected` on the
     /// refresh path. That is a firing: what Helm arranged is no longer true.
-    func test_a_tunnel_helm_raised_that_drops_on_its_own_is_recorded_as_disconnected() {
+    ///
+    /// **`.dropped`, and it used to be `.disconnected`** — the same case a quit
+    /// rule produces. The two shared a kind, so they shared a set of words and
+    /// one volume: somebody who wanted their rules to fire in silence was also
+    /// asking not to be told when the tunnel fell over underneath them.
+    func test_a_tunnel_helm_raised_that_drops_on_its_own_is_recorded_as_dropped() {
         let runner = FakeRunner()
         runner.listOutput = list("Disconnected")
         let engine = makeEngine(runner)
@@ -183,7 +188,8 @@ final class VPNAutomationRecordingTests: XCTestCase {
         engine.refresh()
 
         XCTAssertEqual(engine.lastAutomation,
-                       VPNAutomation(at: at, name: "A", kind: .disconnected))
+                       VPNAutomation(at: at, name: "A", kind: .dropped),
+                       "a tunnel that fell over was recorded as a rule taking it down")
         XCTAssertFalse(engine.autoConnected.contains("A"),
                        "the recording must follow the same drop the bookkeeping made")
     }

@@ -116,7 +116,7 @@ import Module_VPN_Engine
         // this is a preference, that is an instruction from the system.
         let spinning = model.automationSpin
             && VPNAutomation.spinPhase(firing, now: now) != nil
-        let names = model.effectiveNotice.showsMenuBarName
+        let names = model.effectiveNotice(for: firing.kind).showsMenuBarName
             && VPNAutomation.showsName(firing, now: now)
         return StatusAppearance(title: names ? firing.name : nil,
                                 spinUntil: spinning ? VPNAutomation.spinEnd(firing) : nil,

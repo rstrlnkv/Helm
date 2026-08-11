@@ -311,7 +311,6 @@
 "Nothing selected" = "Nada seleccionado";
 "Nothing was actually “freed” by trashing something — it just moved to the Trash, on the same volume. Disk, Duplicates, Login Items & Extensions and the Uninstaller now say so plainly (“Moved to the Trash — 4 KB”), and Disk stopped counting it as space regained until the Trash itself is emptied." = "En realidad nada quedaba “liberado” al enviarlo a la papelera — solo se movía allí, en el mismo volumen. Disco, Duplicados, Ítems de inicio y extensiones, y el Desinstalador ahora lo dicen tal cual (“Trasladado a la papelera — 4 KB”), y Disco dejó de contarlo como espacio recuperado hasta que la papelera se vacía.";
 "Notification" = "Notificación";
-"Notification style" = "Estilo de aviso";
 "Number of days" = "Número de días";
 "OK" = "Listo";
 "Off" = "Desactivada";
@@ -742,3 +741,11 @@
 "macOS holds the configurations — Helm connects and disconnects them. Add one in System Settings and Helm picks it up." = "Las configuraciones las guarda macOS: Helm las conecta y las desconecta. Se añade una en Ajustes del Sistema y Helm la detecta.";
 "Connect" = "Conectar";
 "Disconnect" = "Desconectar";
+"Notifications" = "Notificaciones";
+"When a tunnel drops on its own" = "Cuando un túnel se cae solo";
+"A tunnel can go down on its own — the network changes, the server hangs up. That can be louder than the rules." = "Un túnel puede caerse solo: cambia la red, el servidor corta la conexión. Eso puede avisarse más alto que las reglas.";
+"VPN dropped" = "La VPN se ha caído";
+"Connected by this rule now" = "Conectada ahora por esta regla";
+"A VPN that drops on its own can be announced louder than the rules. A tunnel that goes down because the network changed is the one thing here nobody asked for, and it used to arrive in the same words, at the same volume, as a rule doing what it was told." = "Una VPN que se cae sola puede avisarse más alto que las reglas. Un túnel que se cae porque cambió la red es lo único aquí que nadie pidió, y se anunciaba con las mismas palabras y al mismo volumen que una regla haciendo lo que se le dijo.";
+"A per-app rule says when it is holding a tunnel up right now." = "Una regla por app indica cuándo está manteniendo un túnel en este momento.";
+"The VPN page lines up. The connections take up the whole row and sit in the same column as everything under them, and the notice modes are picked the way light and dark are picked in General." = "La página de VPN está alineada. Las conexiones ocupan toda la fila y quedan en la misma columna que todo lo de abajo, y el modo de aviso se elige como se elige claro u oscuro en General.";

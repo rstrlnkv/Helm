@@ -25,6 +25,7 @@ import Module_VPN_Engine
     private var notices: AutomationNoticePort?
     /// Set only by `setForTesting`; nil in the app, always.
     private var noticeForTesting: VPNNotice?
+    private var dropNoticeForTesting: VPNNotice?
     private var bannerAuthorizedForTesting: Bool?
     private var spinForTesting: Bool?
     private var spinTintsForTesting: [VPNAutomation.Kind: String]?
@@ -44,6 +45,16 @@ import Module_VPN_Engine
     /// rather than cached, so a change in Settings applies to the next firing
     /// instead of to the next launch.
     public var notice: VPNNotice { noticeForTesting ?? settings?.notice ?? .menuBar }
+
+    /// …and the one for a tunnel that fell over by itself, which is a separate
+    /// setting because it is separate news. `noticeForTesting` covers both: a
+    /// test that sets a mode is setting the module's voice, and one that wants
+    /// them to differ passes `dropNotice`.
+    public func notice(for kind: VPNAutomation.Kind) -> VPNNotice {
+        if let forced = kind == .dropped ? dropNoticeForTesting : noticeForTesting { return forced }
+        if let forced = noticeForTesting { return forced }
+        return settings?.notice(for: kind) ?? .menuBar
+    }
 
     /// Whether the menu-bar ring turns when a rule fires. Read at every ask
     /// rather than cached, like `notice`, so a change in Settings applies to
@@ -78,6 +89,13 @@ import Module_VPN_Engine
         notice.effective(bannerAuthorized: bannerAuthorized)
     }
 
+    /// The same, for the firing in hand. A tunnel that fell over answers to its
+    /// own setting, and the menu-bar name is decided from the firing's kind
+    /// rather than from the rules' mode.
+    public func effectiveNotice(for kind: VPNAutomation.Kind) -> VPNNotice {
+        notice(for: kind).effective(bannerAuthorized: bannerAuthorized)
+    }
+
     /// What macOS answered the last time it was asked, this launch — by the
     /// settings page, or by a firing on its way to a banner. Nil until
     /// something asks, which is why the settings row says nothing about a
@@ -100,8 +118,11 @@ import Module_VPN_Engine
     /// asking at launch, or on every visit to this page, spends it on somebody
     /// who was not asking for notifications.
     @discardableResult
-    public func choose(_ notice: VPNNotice) async -> NoticeAuthorization? {
-        settings?.setNotice(notice)
+    public func choose(_ notice: VPNNotice, for kind: VPNAutomation.Kind = .connected) async
+        -> NoticeAuthorization? {
+        // The kind names the *setting*, not one event: `.dropped` is the tunnel
+        // that fell over, anything else is the rules.
+        if kind == .dropped { settings?.setDropNotice(notice) } else { settings?.setNotice(notice) }
         guard let port = notices else { return nil }
         return record(await AutomationNotice.prepare(for: notice, port: port))
     }
@@ -127,11 +148,13 @@ import Module_VPN_Engine
     /// for the engine that fires the rule and for the store that holds the mode,
     /// neither of which a test of the status item wants to own.
     func setForTesting(automation: VPNAutomation?, notice: VPNNotice,
+                       dropNotice: VPNNotice? = nil,
                        bannerAuthorized: Bool = false,
                        notices: AutomationNoticePort? = nil,
                        spin: Bool = false,
                        spinTints: [VPNAutomation.Kind: String]? = nil) {
         noticeForTesting = notice
+        dropNoticeForTesting = dropNotice
         bannerAuthorizedForTesting = bannerAuthorized
         spinForTesting = spin
         spinTintsForTesting = spinTints
@@ -230,7 +253,7 @@ import Module_VPN_Engine
     /// page displays, and it is written where the person can see it change.
     private func announce(_ firing: VPNAutomation) {
         guard let port = notices else { return }
-        let mode = notice
+        let mode = notice(for: firing.kind)
         let title = VPNStr.automationBannerTitle(firing.kind)
         let body = VPNStr.automationBannerBody(firing.name, kind: firing.kind)
         // Resolves `self` only after the await, so the wait holds nothing.

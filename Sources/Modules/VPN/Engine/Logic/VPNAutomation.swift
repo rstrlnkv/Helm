@@ -11,7 +11,21 @@ import HelmRuntime
 /// from System Settings is deliberately not one of these. An indicator that
 /// fires for everything indicates nothing.
 public struct VPNAutomation: Codable, Equatable, Sendable {
-    public enum Kind: String, Codable, Sendable { case connected, disconnected }
+    /// What happened. **Three, not two** — a tunnel Helm took down when an app
+    /// quit and a tunnel that fell over are the same movement and not the same
+    /// news, and they shared a case for as long as the module existed.
+    ///
+    /// `.disconnected` is a rule doing what it was asked to. `.dropped` is the
+    /// network, the server or somebody in System Settings taking the tunnel
+    /// away while the person believed they were behind it — the one event here
+    /// worth interrupting somebody for, and it was announced in the same words,
+    /// at the same volume, as the one they had arranged themselves.
+    public enum Kind: String, Codable, Sendable { case connected, disconnected, dropped
+
+        /// Which way the tunnel went. The ring turns in one of two colours and
+        /// this is the question it asks: down is down, however it got there.
+        public var goingUp: Bool { self == .connected }
+    }
     public let at: Date
     public let name: String
     public let kind: Kind

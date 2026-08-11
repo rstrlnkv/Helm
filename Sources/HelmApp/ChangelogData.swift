@@ -67,6 +67,9 @@ enum Changelog {
                 ChangeItem(kind: .upd, text: L("\u{201C}Stop on low battery\u{201D} is a slider with stops, the way the charge limit is set in Battery. And the two colour rows are a dot and a name instead of two rows of ten swatches.")),
                 ChangeItem(kind: .upd, text: L("Keep Awake says which app is holding the Mac, not just \u{201C}App\u{201D}. It was the only rule type most people use and the only one that could not say what it was talking about.")),
                 ChangeItem(kind: .fix, text: L("The countdown says what happens at zero when a timer is set to end automation as well \u{2014} the one state where that setting decides anything was the one state nothing mentioned it.")),
+                ChangeItem(kind: .new, text: L("A VPN that drops on its own can be announced louder than the rules. A tunnel that goes down because the network changed is the one thing here nobody asked for, and it used to arrive in the same words, at the same volume, as a rule doing what it was told.")),
+                ChangeItem(kind: .new, text: L("A per-app rule says when it is holding a tunnel up right now.")),
+                ChangeItem(kind: .upd, text: L("The VPN page lines up. The connections take up the whole row and sit in the same column as everything under them, and the notice modes are picked the way light and dark are picked in General.")),
             ]),
             ChangelogEntry(version: "0.9.0", date: "2026-08-09", items: [
                 ChangeItem(kind: .new, text: L("Widgets are moved by hand. Pick one up and it follows the pointer; the others slide aside; letting go sets it down where the space opened.")),

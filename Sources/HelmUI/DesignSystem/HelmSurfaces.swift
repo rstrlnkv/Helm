@@ -161,8 +161,32 @@ public extension View {
 }
 
 public enum HelmLayout {
-    /// 704 of content plus the form's own 20 pt inset on each side.
+    /// 704 of content plus the form's own inset on each side.
     public static let settingsColumn: CGFloat = 744
+
+    /// What a grouped `Form` insets its section cards by, each side. Spelled
+    /// out because two numbers on this page are derived from it rather than
+    /// typed: the card row's width, and the widest a card in it may grow.
+    public static let formInset: CGFloat = 20
+
+    /// The width a section card actually gets.
+    public static var cardWidth: CGFloat { settingsColumn - formInset * 2 }
+
+    /// How much further in a grouped `Form` insets a section **header** than
+    /// the section's own card, so a block riding on a header can be put back
+    /// level with the cards under it.
+    ///
+    /// Measured on macOS 27 at the settings column: the card runs 70…774 and
+    /// header content starts at 80 — the form insets a section by 20 and a
+    /// header by 30. Text is right where it belongs at 30, level with the
+    /// **content** of the rows below (82); a *card* drawn there is not, and the
+    /// VPN page draws real cards in a header. Two card systems on one page
+    /// that miss each other by 10 pt is the kind of thing nobody can name and
+    /// everybody sees.
+    ///
+    /// A number owned by SwiftUI, so `TheConnectionsLineUpWithTheCardsTests`
+    /// photographs both edges and fails if a macOS release moves either.
+    public static let groupedHeaderOutset: CGFloat = 10
 }
 
 /// Text that recedes, at contrasts that were measured rather than assumed.

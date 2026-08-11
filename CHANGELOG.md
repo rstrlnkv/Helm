@@ -5,6 +5,44 @@ All notable changes to Helm are documented here. The format is loosely based on
 global changes, MINOR = new/polished features, PATCH = fixes. Every release
 bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 
+## [Unreleased]
+
+> The VPN page, and the one event on it nobody asked for.
+
+### Added
+- **A tunnel that falls over by itself has its own notice setting.** Everything
+  else this module announces is something you arranged — an app opened, a rule
+  connected. A tunnel that goes down because the network changed or the server
+  hung up is the arrangement failing, and from that moment the Mac is sending in
+  clear while the last thing it told you was that it was not. It shared a kind
+  with «a quit rule took it down» for the life of the module, so it shared a
+  volume: silencing the rules silenced that too. Two rows now, each with the
+  three pictures, and the drop's words are its own — «went down on its own»
+  rather than «is not connected». The ring's colour is not split: it says which
+  way the tunnel went, and there are two ways.
+- **A per-app rule says when it is holding a tunnel up right now.** Everything
+  else in that row is what was *asked* for, and a rule that has quietly stopped
+  firing looks exactly like one that fires every day.
+
+### Changed
+- **The connections line up with the cards under them.** The block rides on a
+  grouped form's section header, which macOS insets 10 pt further than the
+  section's own card — right for a heading, wrong for a card. Photographed: two
+  connection cards running 80…532 above a card running 70…774, so a page of
+  cards had two left edges and no right edge in common. The cards now take their
+  number from how many VPNs there are rather than from the width, so two of them
+  fill the row instead of leaving a third of it empty, and each is capped at half
+  the row so one VPN is a card and not a banner.
+- **The notice picker is the appearance picker.** Light/dark/auto in General and
+  the three notice modes here were the same row of pictures built twice, at two
+  sizes, two corner radii, two rings and two label treatments. One control now;
+  what survived is the appearance picker's, because every part of it had been
+  argued somewhere.
+- **The per-app card opens with the rules.** The paragraph about a VPN carrying
+  everything this Mac sends was its first row, so the block began by explaining
+  itself and the first app sat a third of the way down. It is under the list now,
+  where macOS puts text that qualifies a group.
+
 ## [0.10.0-dev.4] — 2026-08-11
 
 > What the screens were not saying, and four controls that were shouting.

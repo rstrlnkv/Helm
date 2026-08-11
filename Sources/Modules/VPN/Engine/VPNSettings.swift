@@ -7,11 +7,43 @@ public struct VPNSettings {
     public var rulesJSON: String { store.string("vpnAppRules", default: "{}") }
     public func setRulesJSON(_ json: String) { store.set(json, for: "vpnAppRules") }
 
+    /// How loudly a *rule* firing is announced — an app launched, an app quit,
+    /// and Helm did what it was told.
     public var notice: VPNNotice {
         VPNNotice(rawValue: store.string("automationNotice", default: "")) ?? .menuBar
     }
     public func setNotice(_ notice: VPNNotice) {
         store.set(notice.rawValue, for: "automationNotice")
+    }
+
+    /// How loudly a tunnel **falling over by itself** is announced.
+    ///
+    /// A separate setting because it is separate news. Everything else this
+    /// module announces is something the person arranged; this is the arrangement
+    /// failing, and the moment it fails they are sending in clear while the last
+    /// thing they were told was that they were not. Somebody who wants their
+    /// rules silent can still want to hear about that.
+    ///
+    /// Its own account rather than a derivation of `notice`: a stored setting
+    /// that steers what the app says is the person's, and one computed from
+    /// another cannot be set to less than it.
+    ///
+    /// Defaulted to the same `.menuBar` the rules get. `.system` would be the
+    /// louder default and it would be a lie: macOS grants the banner permission
+    /// only when somebody asks for it, this module asks only when a person picks
+    /// that mode, and a page showing "Notification" selected for a mode that has
+    /// never been allowed says something the app will not do.
+    public var dropNotice: VPNNotice {
+        VPNNotice(rawValue: store.string("dropNotice", default: "")) ?? .menuBar
+    }
+    public func setDropNotice(_ notice: VPNNotice) {
+        store.set(notice.rawValue, for: "dropNotice")
+    }
+
+    /// The one both sides read, so no caller decides for itself which of the
+    /// two settings a firing answers to.
+    public func notice(for kind: VPNAutomation.Kind) -> VPNNotice {
+        kind == .dropped ? dropNotice : notice
     }
 
     /// Whether the menu-bar ring turns when a rule fires.
@@ -29,13 +61,19 @@ public struct VPNSettings {
     /// a tunnel going down are the two things worth telling apart at a glance,
     /// and `VPNAutomation.Kind` already distinguishes them.
     public func spinTint(for kind: VPNAutomation.Kind) -> String {
-        store.string(Self.spinTintKey(kind), default: kind == .connected ? "green" : "orange")
+        store.string(Self.spinTintKey(kind), default: kind.goingUp ? "green" : "orange")
     }
     public func setSpinTint(_ token: String, for kind: VPNAutomation.Kind) {
         store.set(token, for: Self.spinTintKey(kind))
     }
+    /// **Two keys for three kinds.** `.dropped` is a third kind of news and not
+    /// a third colour: the ring says which way the tunnel went, and there are
+    /// two ways. Deriving the key from `rawValue` would have opened a
+    /// `spinTint.dropped` nobody sets, so a tunnel that fell over would have
+    /// turned the ring in the default orange while the person's own colour for
+    /// a tunnel going down sat in the store unread.
     private static func spinTintKey(_ kind: VPNAutomation.Kind) -> String {
-        "spinTint.\(kind.rawValue)"
+        "spinTint.\(kind.goingUp ? "connected" : "disconnected")"
     }
 
     /// What macOS last said about banners — a mirror, not the truth.

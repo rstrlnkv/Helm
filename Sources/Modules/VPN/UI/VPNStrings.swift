@@ -125,6 +125,12 @@ enum VPNStr {
     static var addApp: String {
         L("Add app…")
     }
+    /// Under a rule whose tunnel Helm is holding up at this moment — the one
+    /// thing the list could not say, since a rule that has silently stopped
+    /// firing looks exactly like one that fires every day.
+    static var ruleHoldingNow: String {
+        L("Connected by this rule now")
+    }
 
     static func status(_ s: VPNStatus) -> String {
         switch s {
@@ -138,16 +144,26 @@ enum VPNStr {
 
     // MARK: - How a firing is announced
 
+    /// The section now holds two of these, so it is headed by the topic and
+    /// each row says which event it decides.
     static var noticeSection: String {
+        L("Notifications")
+    }
+    static var noticeRuleLabel: String {
         L("When a rule fires")
+    }
+    /// The other event: nobody asked for this one.
+    static var noticeDropLabel: String {
+        L("When a tunnel drops on its own")
+    }
+    /// Said under the pair, because the second setting is the reason the first
+    /// one can be left silent.
+    static var noticeDropHint: String {
+        L("A tunnel can go down on its own — the network changes, the server hangs up. That can be louder than the rules.")
     }
     static var spinSection: String {
         L("Menu-bar spin")
     }
-    static var noticeLabel: String {
-        L("Notification style")
-    }
-
     /// The three answers. "Menu bar" and "Notification" are macOS's own words
     /// for its own things — Menüleiste, メニューバー, Mitteilung — read out of
     /// the system's tables rather than translated (ARCHITECTURE.md §
@@ -216,6 +232,11 @@ enum VPNStr {
             // U+00A0 in the Russian, as macOS writes it: an ordinary space
             // there lets a two-word status break across lines.
             return L("Not connected", language: language)
+        case .dropped:
+            // Not read out of macOS's table, because macOS has no line for
+            // this: `VPN_DISCONNECTED` is the state, and the news here is that
+            // nobody asked for it. The state is what the body says.
+            return L("VPN dropped", language: language)
         }
     }
 
@@ -232,6 +253,8 @@ enum VPNStr {
             return L("\(name) is connected", [.ru: "\(name) подключен", .es: "\(name) está conectado", .fr: "\(name) est connecté", .de: "„\(name)“ ist verbunden", .ja: "\(name)は接続されています", .zh: "\(name)已连接", .pt: "\(name) está conectado"], language: language)
         case .disconnected:
             return L("\(name) is not connected", [.ru: "\(name) не подключен", .es: "\(name) no está conectado", .fr: "\(name) n’est pas connecté", .de: "„\(name)“ ist nicht verbunden", .ja: "\(name)は接続されていません", .zh: "\(name)未连接", .pt: "\(name) não está conectado"], language: language)
+        case .dropped:
+            return L("\(name) went down on its own", [.ru: "\(name) отключился сам", .es: "\(name) se desconectó por sí solo", .fr: "\(name) s’est déconnecté tout seul", .de: "„\(name)“ wurde von selbst getrennt", .ja: "\(name)が自動的に切断されました", .zh: "\(name)已自行断开", .pt: "\(name) caiu sozinho"], language: language)
         }
     }
 

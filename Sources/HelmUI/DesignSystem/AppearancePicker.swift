@@ -41,53 +41,18 @@ public struct AppearancePicker: View {
         // pictures with names under them, and a label floating at its middle
         // reads as attached to nothing. On the first line it introduces what
         // follows, which is what the pictures are arranged as.
+        //
+        // The row of pictures itself is `HelmChoiceCards`, which is where the
+        // ring, the hairline and the label's weight now live — this file kept
+        // its own copy of all three while the VPN page drew the same control
+        // one size and one radius away.
         LabeledContent(title) {
-            HStack(alignment: .top, spacing: 12) {
-                ForEach(Self.order, id: \.self) { mode in
-                    swatch(mode)
-                }
-            }
+            HelmChoiceCards(selection: $selection,
+                            items: Self.order.map {
+                                .init(id: $0, label: AppearanceNames.of($0),
+                                      preview: AppearanceThumbnail(mode: $0))
+                            })
         }
-    }
-
-    private func swatch(_ mode: AppAppearance) -> some View {
-        let selected = selection == mode
-        return Button {
-            selection = mode
-        } label: {
-            VStack(spacing: 6) {
-                AppearanceThumbnail(mode: mode)
-                    .frame(width: 74, height: 46)
-                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                    // The accent ring on the chosen one; a hairline on all
-                    // three so the unchosen ones have an edge at all.
-                    //
-                    // The thumbnails bake literal colours, and the one that
-                    // matches the window's own appearance disappears into the
-                    // card behind it: in light mode the light thumbnail's
-                    // window body and the card measured the *same pixel value*,
-                    // 1.00:1, leaving a pale blue L with three lights floating
-                    // in nothing. Dark against dark measured 1.12:1 — the same
-                    // failure, symmetric. A 0.5 pt hairline is not a card
-                    // border; this is a picture of a window, and the ring is
-                    // still what says which one is chosen.
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .strokeBorder(selected ? Color.accentColor : HelmSurface.hairline,
-                                          lineWidth: selected ? 2.5 : 0.5)
-                    }
-                Text(AppearanceNames.of(mode))
-                    .font(.caption)
-                    // Weight, not colour: the ring already says which one is
-                    // chosen, and a second colour saying it again is what makes
-                    // the two that are not chosen look disabled.
-                    .fontWeight(selected ? .semibold : .regular)
-                    .foregroundStyle(selected ? Color.primary : HelmText.quiet)
-            }
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(AppearanceNames.of(mode))
-        .accessibilityAddTraits(selected ? [.isSelected] : [])
     }
 }
 

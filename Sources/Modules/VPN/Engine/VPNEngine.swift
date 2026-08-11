@@ -220,7 +220,13 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         // every run.
         for name in dropped.sorted() {
             HelmLog.shared.info("vpn", "automatic connection dropped: \(Redact.vpn(name))")
-            recordAutomation(name, .disconnected)
+            // `.dropped`, not `.disconnected`. Nobody asked for this one: the
+            // network went, the server hung up, or somebody stopped it in
+            // System Settings — and the person is now sending everything in
+            // clear having last been told they were behind a tunnel. It is the
+            // one firing here that can be set to arrive as a banner while the
+            // rules stay quiet.
+            recordAutomation(name, .dropped)
         }
         emitState()
     }
