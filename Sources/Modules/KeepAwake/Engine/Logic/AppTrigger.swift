@@ -45,9 +45,9 @@ public struct AppTrigger: Codable, Equatable, Sendable, Identifiable {
     }
 }
 
-public enum AppTriggerRules {
-    public static func isHolding(_ rules: [AppTrigger], running: Set<String>,
-                                 externalDisplay: Bool, onPower: Bool) -> Bool {
+enum AppTriggerRules {
+    static func isHolding(_ rules: [AppTrigger], running: Set<String>,
+                          externalDisplay: Bool, onPower: Bool) -> Bool {
         !holding(rules, running: running, externalDisplay: externalDisplay,
                  onPower: onPower).isEmpty
     }
@@ -63,25 +63,25 @@ public enum AppTriggerRules {
     /// matched on, and turning one into a name is a Launch Services lookup that
     /// belongs on the screen doing the drawing. It keeps names off the wire and
     /// out of the log, which is the standing rule.
-    public static func holding(_ rules: [AppTrigger], running: Set<String>,
-                               externalDisplay: Bool, onPower: Bool) -> [String] {
+    static func holding(_ rules: [AppTrigger], running: Set<String>,
+                        externalDisplay: Bool, onPower: Bool) -> [String] {
         rules.filter { $0.isSatisfied(running: running, externalDisplay: externalDisplay,
                                       onPower: onPower) }
              .map(\.bundleID)
     }
 
-    public static func encode(_ rules: [AppTrigger]) -> String {
+    static func encode(_ rules: [AppTrigger]) -> String {
         guard let data = try? JSONEncoder().encode(rules) else { return "[]" }
         return String(decoding: data, as: UTF8.self)
     }
 
-    public static func decode(_ raw: String) -> [AppTrigger] { readable(raw) ?? [] }
+    static func decode(_ raw: String) -> [AppTrigger] { readable(raw) ?? [] }
 
     /// `nil` for a string that is not rules, told apart from `[]` — which is a
     /// legitimate thing for the file to say and means the person has chosen no
     /// apps. The two are the same answer to the module and a different thing to
     /// say about somebody's file.
-    public static func readable(_ raw: String) -> [AppTrigger]? {
+    static func readable(_ raw: String) -> [AppTrigger]? {
         guard let data = raw.data(using: .utf8),
               let decoded = try? JSONDecoder().decode([AppTrigger].self, from: data)
         else { return nil }
@@ -104,7 +104,7 @@ public enum AppTriggerRules {
 
     /// Earlier versions stored a plain list of bundle ids. Those apps kept the
     /// Mac awake unconditionally, so that is what they migrate to.
-    public static func migrating(from bundleIDs: [String]) -> [AppTrigger] {
+    static func migrating(from bundleIDs: [String]) -> [AppTrigger] {
         deduplicated(bundleIDs.map { AppTrigger(bundleID: $0) })
     }
 }

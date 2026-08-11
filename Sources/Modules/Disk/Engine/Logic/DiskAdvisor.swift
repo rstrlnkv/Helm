@@ -87,7 +87,7 @@ public struct DiskAdvice: Codable, Equatable, Sendable, Identifiable {
 /// Walks a finished scan tree and points at likely reclaimable space.
 /// Heuristics only — everything still goes through the basket and the user's
 /// confirmation; nothing here deletes.
-public enum DiskAdvisor {
+enum DiskAdvisor {
     private static let cacheFloor = 100_000_000          // 100 MB
     private static let downloadFloor = 50_000_000        // 50 MB
     private static let downloadAge: TimeInterval = 30 * 86_400
@@ -131,8 +131,8 @@ public enum DiskAdvisor {
     /// volume walk hands in `/` while home is somewhere inside it. The two were
     /// one parameter for as long as `DiskNode` stored its own path, and the
     /// tests never caught the conflation because they scan home itself.
-    public static func advise(root: DiskNode, rootPath: String, home: String,
-                              now: Date = Date()) -> [DiskAdvice] {
+    static func advise(root: DiskNode, rootPath: String, home: String,
+                       now: Date = Date()) -> [DiskAdvice] {
         var advice: [DiskAdvice] = []
 
         for relative in cacheFolders {

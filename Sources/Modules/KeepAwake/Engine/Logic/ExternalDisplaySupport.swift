@@ -1,4 +1,4 @@
-public enum ExternalDisplaySupport {
+enum ExternalDisplaySupport {
     /// External display present = any online display that is not built-in.
     ///
     /// **`[false]` is ambiguous and is deliberately read as «yes».** It is what
@@ -14,5 +14,5 @@ public enum ExternalDisplaySupport {
     /// `CGGetOnlineDisplayList` does not carry — whether this Mac has a
     /// built-in panel at all, not whether one is awake — so the honest fix is
     /// a hardware reading, not a change of rule here.
-    public static func hasExternal(builtInFlags: [Bool]) -> Bool { builtInFlags.contains(false) }
+    static func hasExternal(builtInFlags: [Bool]) -> Bool { builtInFlags.contains(false) }
 }

@@ -5,8 +5,8 @@ import Foundation
 
 /// Pure parsing of `scutil --nc list` / `scutil --nc status` output and the
 /// "which VPN does a one-click toggle act on" resolution.
-public enum VPNListParser {
-    public static func parseStatus(_ token: String) -> VPNStatus {
+enum VPNListParser {
+    static func parseStatus(_ token: String) -> VPNStatus {
         switch token.trimmingCharacters(in: .whitespaces).lowercased() {
         case "connected": return .connected
         case "connecting": return .connecting
@@ -35,12 +35,12 @@ public enum VPNListParser {
     ///
     /// An answer carries the header, or at least one row we could read. Anything
     /// else — silence, or a complaint from the tool — is not an answer.
-    public static func isReadable(_ output: String) -> Bool {
+    static func isReadable(_ output: String) -> Bool {
         if output.contains(listHeader) { return true }
         return !parseList(output).isEmpty
     }
 
-    public static func parseList(_ output: String) -> [VPNConnection] {
+    static func parseList(_ output: String) -> [VPNConnection] {
         var result: [VPNConnection] = []
         for rawLine in output.split(separator: "\n", omittingEmptySubsequences: true) {
             let line = String(rawLine)
@@ -66,7 +66,7 @@ public enum VPNListParser {
 
     /// The VPN a one-click toggle acts on: the sole configured one, else the
     /// last-used (if still present), else the first.
-    public static func defaultConnection(from connections: [VPNConnection],
+    static func defaultConnection(from connections: [VPNConnection],
                                   lastUsedName: String?) -> VPNConnection? {
         if connections.count == 1 { return connections.first }
         if let lastUsedName, let match = connections.first(where: { $0.name == lastUsedName }) {

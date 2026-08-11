@@ -16,7 +16,7 @@ import Foundation
 /// Helm declining to convert a selection is a correct outcome that the person
 /// can see and act on. Helm silently eating the screenshot they were about to
 /// paste is not.
-public enum PasteboardSafety {
+enum PasteboardSafety {
 
     /// The types a save-and-restore actually round-trips.
     private static let restorable: Set<String> = [
@@ -27,7 +27,7 @@ public enum PasteboardSafety {
 
     /// True when everything on the clipboard is something `restore` can put
     /// back. An empty clipboard has nothing to lose and is fine.
-    public static func canBorrow(types: [String]) -> Bool {
+    static func canBorrow(types: [String]) -> Bool {
         types.allSatisfy { restorable.contains($0) }
     }
 }

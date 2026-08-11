@@ -2,7 +2,7 @@ import Foundation
 
 /// Parses `brew outdated --json=v2` into `[OutdatedPackage]` across the
 /// `formulae` and `casks` arrays.
-public enum BrewOutdatedParser {
+enum BrewOutdatedParser {
     private struct Root: Decodable { let formulae: [Entry]?; let casks: [Entry]? }
     private struct Entry: Decodable {
         let name: String
@@ -12,7 +12,7 @@ public enum BrewOutdatedParser {
         let pinned: Bool?
     }
 
-    public static func parse(_ data: Data) -> [OutdatedPackage] {
+    static func parse(_ data: Data) -> [OutdatedPackage] {
         guard let root = try? JSONDecoder().decode(Root.self, from: data) else { return [] }
         func map(_ entries: [Entry]?, isCask: Bool) -> [OutdatedPackage] {
             (entries ?? []).map {

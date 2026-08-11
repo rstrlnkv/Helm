@@ -5,16 +5,16 @@ import SwiftUI
 /// The panel's module tile. Kept as its own name because that is what the
 /// modules call it; it is `HelmIconPlate` at panel size, so the radius, the
 /// glyph proportion and the shadow are the app's, not this file's.
-public struct HelmIconBadge: View {
+struct HelmIconBadge: View {
     let symbol: String
     let color: Color
     var active: Bool
 
-    public init(symbol: String, color: Color, active: Bool = true) {
+    init(symbol: String, color: Color, active: Bool = true) {
         self.symbol = symbol; self.color = color; self.active = active
     }
 
-    public var body: some View {
+    var body: some View {
         HelmIconPlate(symbol: symbol, tint: color, size: 26, active: active)
             .accessibilityHidden(true)
     }

@@ -132,11 +132,11 @@ public func L(_ english: String, _ table: [AppLanguage: String] = [:],
 /// resolution, which would answer `Locale.preferredLanguages` again rather than
 /// `AppLanguage.current`, and has no way to ask about a language other than the
 /// running one — which every localization test in this suite needs to do.
-public enum Localized {
+enum Localized {
     /// English is the key, and English is also what a missing bundle or a
     /// missing key falls back to — so a table that never made it out of the
     /// migration reads as untranslated English rather than a crash.
-    public static func string(_ key: String, language: AppLanguage) -> String {
+    static func string(_ key: String, language: AppLanguage) -> String {
         guard language != .en else { return key }
         return cache.table(for: language)[key] ?? key
     }
@@ -145,7 +145,7 @@ public enum Localized {
     /// shipped table as data — `Bundle.module` inside a test target resolves to
     /// the test's own bundle, not `HelmUI`'s, so this is the only way a test
     /// outside this module can see what actually ships.
-    public static func stringsFile(for language: AppLanguage) -> URL? {
+    static func stringsFile(for language: AppLanguage) -> URL? {
         Bundle.module
             .url(forResource: language.rawValue, withExtension: "lproj")?
             .appendingPathComponent("Localizable.strings")

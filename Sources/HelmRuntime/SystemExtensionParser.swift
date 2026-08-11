@@ -22,8 +22,8 @@ public struct SystemExtensionInfo: Equatable, Sendable, Identifiable, Codable {
 
 /// Parses `systemextensionsctl list`. Columns are tab-separated:
 /// `enabled ⇥ active ⇥ teamID ⇥ bundleID (version) ⇥ name ⇥ [state]`
-public enum SystemExtensionParser {
-    public static func parse(_ output: String) -> [SystemExtensionInfo] {
+enum SystemExtensionParser {
+    static func parse(_ output: String) -> [SystemExtensionInfo] {
         output.split(separator: "\n").compactMap { line -> SystemExtensionInfo? in
             let columns = line.components(separatedBy: "\t")
             guard columns.count >= 6 else { return nil }
@@ -46,7 +46,7 @@ public enum SystemExtensionParser {
 
     /// The apps those extensions belong to: an extension id is the host app's
     /// id plus one component (com.acme.app.networkExtension → com.acme.app).
-    public static func hostIdentifiers(_ output: String) -> Set<String> {
+    static func hostIdentifiers(_ output: String) -> Set<String> {
         Set(parse(output).flatMap { info -> [String] in
             let parts = info.identifier.split(separator: ".")
             guard parts.count > 3 else { return [info.identifier] }

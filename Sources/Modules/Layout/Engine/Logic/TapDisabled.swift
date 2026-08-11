@@ -19,9 +19,9 @@ import CoreGraphics
 ///
 /// Here rather than in the port because it is a decision, and decisions in this
 /// module are checkable without a keyboard.
-public enum TapDisabled {
+enum TapDisabled {
 
-    public enum Response: Equatable {
+    enum Response: Equatable {
         /// The grant is intact and the tap was disabled for being slow. Turning
         /// it back on is the documented repair.
         case enableItAgain
@@ -33,11 +33,11 @@ public enum TapDisabled {
 
     /// The two event types that mean "this tap is no longer live". They arrive
     /// whatever the tap asked to be sent, so neither is in the event mask.
-    public static func disables(_ type: CGEventType) -> Bool {
+    static func disables(_ type: CGEventType) -> Bool {
         type == .tapDisabledByTimeout || type == .tapDisabledByUserInput
     }
 
-    public static func response(stillTrusted: Bool) -> Response {
+    static func response(stillTrusted: Bool) -> Response {
         stillTrusted ? .enableItAgain : .standDown
     }
 }

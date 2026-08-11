@@ -18,19 +18,19 @@ import Foundation
 /// is the whole reason they are safe to put on a shortcut". Changing case went
 /// because macOS already offers it in Edit ▸ Transformations wherever text can
 /// be edited at all.
-public enum SelectionAction: String, Codable, CaseIterable, Sendable {
+enum SelectionAction: String, Codable, CaseIterable, Sendable {
     /// The same keys read through the other layout: `ghbdtn` → `привет`.
     case convert
 }
 
 /// The transform, applied. Separate from the action so the engine can ask
 /// "what would this become" without a keyboard, a clipboard or an app.
-public struct SelectionTransform: Sendable {
+struct SelectionTransform: Sendable {
     /// Layout conversion needs the pair of input sources, which only the engine
     /// knows; the other two are pure.
-    public let convert: @Sendable (String) -> String?
+    let convert: @Sendable (String) -> String?
 
-    public init(convert: @escaping @Sendable (String) -> String?) {
+    init(convert: @escaping @Sendable (String) -> String?) {
         self.convert = convert
     }
 
@@ -40,7 +40,7 @@ public struct SelectionTransform: Sendable {
     /// is still an edit. It clears the undo stack of the app it happens in, it
     /// scrolls the view, and in a few apps it drops the selection — three
     /// visible consequences for a keystroke that was supposed to do nothing.
-    public func apply(_ action: SelectionAction, to text: String) -> String? {
+    func apply(_ action: SelectionAction, to text: String) -> String? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
         let result: String? = switch action {

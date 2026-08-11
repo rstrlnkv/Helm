@@ -12,20 +12,20 @@ import HelmRuntime
 public typealias RuleKey = SealKey
 public typealias RuleKeyPort = SealKeyPort
 
-public enum RuleSeal {
+enum RuleSeal {
 
     /// Stored beside the rules — `module.autopilot.foldersMAC` in the same
     /// plist. There is no point hiding it: knowing the MAC gains nothing
     /// without the key, and the key is not in the file.
-    public static let storeKey = "foldersMAC"
+    static let storeKey = "foldersMAC"
 
-    public typealias Verdict = SettingSeal.Verdict
+    typealias Verdict = SettingSeal.Verdict
 
-    public static func mac(for payload: Data, key: Data) -> String {
+    static func mac(for payload: Data, key: Data) -> String {
         SettingSeal.mac(for: payload, key: key)
     }
 
-    public static func verdict(payload: Data, mac: String?, key: RuleKey) -> Verdict {
+    static func verdict(payload: Data, mac: String?, key: RuleKey) -> Verdict {
         SettingSeal.verdict(payload: payload, mac: mac, key: key)
     }
 }

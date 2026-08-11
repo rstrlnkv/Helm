@@ -5,14 +5,14 @@ import Module_VPN_Engine
 
 /// Compact tile shown in the shared Helm panel: each configured VPN gets a
 /// small connect/disconnect switch.
-public struct VPNPanelTile: View {
+struct VPNPanelTile: View {
     @ObservedObject private var vm: VPNViewModel
 
-    public init(vm: VPNViewModel) {
+    init(vm: VPNViewModel) {
         self.vm = vm
     }
 
-    public var body: some View {
+    var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             header
             if vm.connections.isEmpty {

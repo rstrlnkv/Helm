@@ -15,8 +15,8 @@ import Foundation
 /// So the test is positional, the way `RemovableScope` is positional: the
 /// folders applications are installed in, at any depth, rather than a list of
 /// places to distrust.
-public enum InstalledLocation {
-    public static func isInstalled(path: String, home: String) -> Bool {
+enum InstalledLocation {
+    static func isInstalled(path: String, home: String) -> Bool {
         let path = URL(fileURLWithPath: path).standardizedFileURL.path
         return folders(home: home).contains { path.hasPrefix($0 + "/") }
     }

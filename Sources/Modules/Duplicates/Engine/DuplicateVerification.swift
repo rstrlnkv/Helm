@@ -16,9 +16,9 @@ import Foundation
 ///
 /// **No cache, ever, on this path.** That is the whole point: a cached digest is
 /// exactly what this exists to distrust.
-public enum DuplicateVerification {
+enum DuplicateVerification {
 
-    public enum Verdict: Equatable, Sendable {
+    enum Verdict: Equatable, Sendable {
         /// Both files are still there and still identical. The removal may go
         /// ahead.
         case identical
@@ -39,7 +39,7 @@ public enum DuplicateVerification {
     /// A size difference short-circuits the read — two files of unequal length
     /// cannot hold the same bytes, and this is the common case when something
     /// has been edited.
-    public static func verify(remove: String, keep: String) -> Verdict {
+    static func verify(remove: String, keep: String) -> Verdict {
         // The same file under two names is not a duplicate pair at all, and
         // trashing "one of them" would remove the only copy. `FileFacts`
         // carries the inode for this reason during a search; here the two paths

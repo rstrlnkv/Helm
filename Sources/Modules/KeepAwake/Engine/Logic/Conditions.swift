@@ -26,22 +26,21 @@ public enum ActiveCondition: String, Hashable, Sendable, CaseIterable {
     public static let automatic: Set<ActiveCondition> = [.externalDisplay, .power, .app]
 }
 
-public enum Conditions {
-    public struct Inputs: Equatable, Sendable {
-        public var manual = false
-        public var timerRunning = false
-        public var externalDisplay = false
-        public var onPower = false
-        public var appRunning = false
-        public var suppressed = false   // manual-off while an auto condition holds
-        public init() {}
+enum Conditions {
+    struct Inputs: Equatable, Sendable {
+        var manual = false
+        var timerRunning = false
+        var externalDisplay = false
+        var onPower = false
+        var appRunning = false
+        var suppressed = false   // manual-off while an auto condition holds
     }
-    public struct Result: Equatable, Sendable {
-        public var isActive: Bool
-        public var conditions: Set<ActiveCondition>
-        public static let inactive = Result(isActive: false, conditions: [])
+    struct Result: Equatable, Sendable {
+        var isActive: Bool
+        var conditions: Set<ActiveCondition>
+        static let inactive = Result(isActive: false, conditions: [])
     }
-    public static func resolve(_ i: Inputs) -> Result {
+    static func resolve(_ i: Inputs) -> Result {
         if i.manual || i.timerRunning {
             var c: Set<ActiveCondition> = []
             if i.manual { c.insert(.manual) }; if i.timerRunning { c.insert(.timer) }

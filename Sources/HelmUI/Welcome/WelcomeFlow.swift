@@ -9,25 +9,25 @@ import Foundation
 /// that could do it could not be asked what it would do without one. `next()`
 /// at the end is therefore a no-op rather than a dismissal — the view reads
 /// `isLastStep` and calls the window's own close.
-public struct WelcomeFlow: Equatable, Sendable {
-    public let stepCount: Int
-    public private(set) var step: Int = 0
+struct WelcomeFlow: Equatable, Sendable {
+    let stepCount: Int
+    private(set) var step: Int = 0
 
-    public init(stepCount: Int) {
+    init(stepCount: Int) {
         self.stepCount = max(0, stepCount)
     }
 
-    public var canGoBack: Bool { step > 0 }
+    var canGoBack: Bool { step > 0 }
     /// True for an empty tour as well, so a window with no steps still offers
     /// a way out that is not only Skip.
-    public var isLastStep: Bool { step >= stepCount - 1 }
+    var isLastStep: Bool { step >= stepCount - 1 }
 
-    public mutating func next() {
+    mutating func next() {
         guard !isLastStep else { return }
         step += 1
     }
 
-    public mutating func back() {
+    mutating func back() {
         guard canGoBack else { return }
         step -= 1
     }

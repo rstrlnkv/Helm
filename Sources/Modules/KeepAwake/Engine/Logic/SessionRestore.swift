@@ -18,9 +18,9 @@ import Foundation
 /// Pure, because every branch here is a judgement rather than arithmetic: what a
 /// stale deadline means, whether "until I say stop" survives a restart, and what
 /// to believe when the clock has moved. `SessionRestoreTests` argues each one.
-public enum SessionRestore {
+enum SessionRestore {
 
-    public enum Decision: Equatable {
+    enum Decision: Equatable {
         /// Nothing was running, or what was running is over.
         case none
         /// A session with no deadline — `startSession(minutes: 0)`.
@@ -34,8 +34,8 @@ public enum SessionRestore {
     ///   - startDate: when it began; `nil` for an indefinite one.
     ///   - endDate: when it was due to end; `nil` for an indefinite one.
     ///   - now: the clock on the way back up.
-    public static func decide(manualOn: Bool, startDate: Date?, endDate: Date?,
-                              now: Date) -> Decision {
+    static func decide(manualOn: Bool, startDate: Date?, endDate: Date?,
+                       now: Date) -> Decision {
         // The dates are the deadline *of* a session, not the session. A deadline
         // found with the session switched off is stale bookkeeping, and acting on
         // it would keep the Mac awake because of something the person turned off.

@@ -3,18 +3,18 @@ import HelmContract
 import HelmUI
 import Module_VPN_Engine
 
-@MainActor public final class VPNViewModel: ObservableObject {
-    @Published public private(set) var connections: [VPNConnection] = []
-    @Published public private(set) var autoConnected: Set<String> = []
-    @Published public private(set) var defaultName: String?
+@MainActor final class VPNViewModel: ObservableObject {
+    @Published private(set) var connections: [VPNConnection] = []
+    @Published private(set) var autoConnected: Set<String> = []
+    @Published private(set) var defaultName: String?
     /// The last rule firing worth reacting to, or nil. Stale firings never get
     /// here — see `handle`.
-    @Published public private(set) var lastAutomation: VPNAutomation?
+    @Published private(set) var lastAutomation: VPNAutomation?
     /// The last command `scutil` did not accept, cleared by the next one it
     /// did. The engine has published this since it learned to read the tool's
     /// output; nothing here decoded it, so pressing Connect on a configuration
     /// macOS refuses ran the spinner and returned the card exactly as it was.
-    @Published public private(set) var lastFailure: VPNFailure?
+    @Published private(set) var lastFailure: VPNFailure?
 
     private let transport: EngineTransport
     private let settings: VPNSettings?
@@ -44,13 +44,13 @@ import Module_VPN_Engine
     /// How loudly a firing is announced. Read from the store at every ask
     /// rather than cached, so a change in Settings applies to the next firing
     /// instead of to the next launch.
-    public var notice: VPNNotice { noticeForTesting ?? settings?.notice ?? .menuBar }
+    var notice: VPNNotice { noticeForTesting ?? settings?.notice ?? .menuBar }
 
     /// …and the one for a tunnel that fell over by itself, which is a separate
     /// setting because it is separate news. `noticeForTesting` covers both: a
     /// test that sets a mode is setting the module's voice, and one that wants
     /// them to differ passes `dropNotice`.
-    public func notice(for kind: VPNAutomation.Kind) -> VPNNotice {
+    func notice(for kind: VPNAutomation.Kind) -> VPNNotice {
         if let forced = kind == .dropped ? dropNoticeForTesting : noticeForTesting { return forced }
         if let forced = noticeForTesting { return forced }
         return settings?.notice(for: kind) ?? .menuBar
@@ -59,12 +59,12 @@ import Module_VPN_Engine
     /// Whether the menu-bar ring turns when a rule fires. Read at every ask
     /// rather than cached, like `notice`, so a change in Settings applies to
     /// the next firing instead of to the next launch.
-    public var automationSpin: Bool {
+    var automationSpin: Bool {
         spinForTesting ?? settings?.automationSpin ?? false
     }
 
     /// The colour that firing turns in.
-    public func spinTint(for kind: VPNAutomation.Kind) -> String {
+    func spinTint(for kind: VPNAutomation.Kind) -> String {
         spinTintsForTesting?[kind]
             ?? settings?.spinTint(for: kind)
             ?? (kind == .connected ? "green" : "orange")
@@ -77,7 +77,7 @@ import Module_VPN_Engine
     /// matters because a firing asks macOS on its way past and the label
     /// decision is read a moment later — the stored mirror is the thing that
     /// was believed while the permission was already gone.
-    public var bannerAuthorized: Bool {
+    var bannerAuthorized: Bool {
         if let heard = bannerAuthorization { return heard == .authorized }
         return bannerAuthorizedForTesting ?? settings?.bannerAuthorized ?? false
     }
@@ -85,14 +85,14 @@ import Module_VPN_Engine
     /// The mode as it will actually behave, which is not always the mode that
     /// was chosen: `.system` without the permission is the menu-bar label, and
     /// anything that acts on the choice has to ask this rather than the raw one.
-    public var effectiveNotice: VPNNotice {
+    var effectiveNotice: VPNNotice {
         notice.effective(bannerAuthorized: bannerAuthorized)
     }
 
     /// The same, for the firing in hand. A tunnel that fell over answers to its
     /// own setting, and the menu-bar name is decided from the firing's kind
     /// rather than from the rules' mode.
-    public func effectiveNotice(for kind: VPNAutomation.Kind) -> VPNNotice {
+    func effectiveNotice(for kind: VPNAutomation.Kind) -> VPNNotice {
         notice(for: kind).effective(bannerAuthorized: bannerAuthorized)
     }
 
@@ -100,7 +100,7 @@ import Module_VPN_Engine
     /// settings page, or by a firing on its way to a banner. Nil until
     /// something asks, which is why the settings row says nothing about a
     /// permission that has never come up.
-    @Published public private(set) var bannerAuthorization: NoticeAuthorization?
+    @Published private(set) var bannerAuthorization: NoticeAuthorization?
 
     /// Whether there is any way to reach macOS's banners from here.
     ///
@@ -118,7 +118,7 @@ import Module_VPN_Engine
     /// asking at launch, or on every visit to this page, spends it on somebody
     /// who was not asking for notifications.
     @discardableResult
-    public func choose(_ notice: VPNNotice, for kind: VPNAutomation.Kind = .connected) async
+    func choose(_ notice: VPNNotice, for kind: VPNAutomation.Kind = .connected) async
         -> NoticeAuthorization? {
         // The kind names the *setting*, not one event: `.dropped` is the tunnel
         // that fell over, anything else is the rules.
@@ -133,7 +133,7 @@ import Module_VPN_Engine
     /// in System Settings without Helm hearing a thing; then `.system` would
     /// post nothing and suppress the label on the strength of a stale yes.
     @discardableResult
-    public func refreshBannerAuthorization() async -> NoticeAuthorization? {
+    func refreshBannerAuthorization() async -> NoticeAuthorization? {
         guard let port = notices else { return nil }
         return record(await port.authorizationState())
     }
@@ -182,8 +182,8 @@ import Module_VPN_Engine
         }
     }
 
-    public init(transport: EngineTransport, settings: VPNSettings? = nil,
-                notices: AutomationNoticePort? = nil) {
+    init(transport: EngineTransport, settings: VPNSettings? = nil,
+         notices: AutomationNoticePort? = nil) {
         self.transport = transport
         self.settings = settings
         self.notices = notices
@@ -207,7 +207,7 @@ import Module_VPN_Engine
     /// connects or disconnects, so a tunnel raised from the macOS menu bar,
     /// from System Settings, or one that simply dropped, left this showing
     /// yesterday's state for as long as the app ran.
-    public func refresh() { send(VPNCommand.refresh) }
+    func refresh() { send(VPNCommand.refresh) }
     /// The engine's own declaration — see the note on KeepAwake's.
     private typealias StatePayload = VPNEngine.StatePayload
     private func handle(_ e: EngineEvent) {
@@ -269,14 +269,14 @@ import Module_VPN_Engine
     /// The `send(_ name: String, …)` this forwarded to was public, and nothing
     /// outside called it — a door back to the string spelling the enum exists
     /// to close, held open for a caller that never arrived.
-    public func send(_ command: VPNCommand, payload: Data = Data()) {
+    func send(_ command: VPNCommand, payload: Data = Data()) {
         Task { [transport] in
             _ = try? await transport.send(EngineCommand(name: command.rawValue,
                                                         payload: payload))
         }
     }
-    public func connect(_ name: String) { send(VPNCommand.connect, payload: nameData(name)) }
-    public func disconnect(_ name: String) { send(VPNCommand.disconnect, payload: nameData(name)) }
+    func connect(_ name: String) { send(VPNCommand.connect, payload: nameData(name)) }
+    func disconnect(_ name: String) { send(VPNCommand.disconnect, payload: nameData(name)) }
     public func toggleDefault() { send(VPNCommand.toggle) }
     /// The engine's own type — it was declared again here, inside this
     /// function, matched to the other by field name across a JSON hop.

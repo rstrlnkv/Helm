@@ -29,23 +29,23 @@ public struct LogEntry: Sendable, Equatable, Identifiable {
 /// Bounded on purpose: a window for finding memory bugs must not be one. The
 /// oldest line goes when the newest arrives, which is the behaviour of every
 /// `tail -f` anybody has ever read.
-public struct LogTail: Sendable {
-    public let limit: Int
+struct LogTail: Sendable {
+    let limit: Int
     private var buffer: [LogEntry] = []
 
-    public init(limit: Int = 1000) {
+    init(limit: Int = 1000) {
         self.limit = limit
         buffer.reserveCapacity(limit)
     }
 
-    public var entries: [LogEntry] { buffer }
+    var entries: [LogEntry] { buffer }
 
-    public mutating func append(_ entry: LogEntry) {
+    mutating func append(_ entry: LogEntry) {
         buffer.append(entry)
         if buffer.count > limit { buffer.removeFirst(buffer.count - limit) }
     }
 
-    public mutating func clear() { buffer.removeAll(keepingCapacity: true) }
+    mutating func clear() { buffer.removeAll(keepingCapacity: true) }
 }
 
 /// What the reader chose to see.

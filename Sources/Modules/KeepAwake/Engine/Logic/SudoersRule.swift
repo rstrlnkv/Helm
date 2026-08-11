@@ -13,19 +13,19 @@ import HelmRuntime
 /// process running as this user could swap the file for
 /// `<user> ALL=(ALL) NOPASSWD: ALL`, pass the check and be handed permanent
 /// passwordless root. The content travels now; no user-writable path is named.
-public enum SudoersRule {
+enum SudoersRule {
     /// Where sudo reads the rule from. `/etc/sudoers.d` is root-owned, so every
     /// file this command touches is one only root can write.
-    public static let installedPath = "/etc/sudoers.d/helm-keepawake"
+    static let installedPath = "/etc/sudoers.d/helm-keepawake"
 
     /// Written first under this name so sudo never reads a half-written or
     /// unchecked file: the move into place is a rename on the same filesystem.
     static let stagingPath = installedPath + ".new"
 
-    public static let pmsetPath = "/usr/bin/pmset"
+    static let pmsetPath = "/usr/bin/pmset"
 
     /// As narrow as it was: the two exact commands the module runs, nothing else.
-    public static func text(user: String) -> String {
+    static func text(user: String) -> String {
         "\(user) ALL=(root) NOPASSWD: \(pmsetPath) disablesleep 1, \(pmsetPath) disablesleep 0"
     }
 
@@ -33,7 +33,7 @@ public enum SudoersRule {
     /// file and report the failure. Without the `exit 1` a successful cleanup
     /// would be the command's exit status, and a refused rule would read as
     /// installed.
-    public static func installCommand(user: String) -> String {
+    static func installCommand(user: String) -> String {
         "/usr/bin/printf '%s\\n' \(shellQuoted(text(user: user))) > \(stagingPath)"
             + " && /bin/chmod 440 \(stagingPath)"
             + " && /usr/sbin/visudo -cf \(stagingPath)"
@@ -41,13 +41,13 @@ public enum SudoersRule {
             + " || { /bin/rm -f \(stagingPath); exit 1; }"
     }
 
-    public static func removeCommand() -> String { "/bin/rm -f \(installedPath)" }
+    static func removeCommand() -> String { "/bin/rm -f \(installedPath)" }
 
-    public static func installScript(user: String) -> String {
+    static func installScript(user: String) -> String {
         privilegedScript(installCommand(user: user))
     }
 
-    public static func removeScript() -> String { privilegedScript(removeCommand()) }
+    static func removeScript() -> String { privilegedScript(removeCommand()) }
 
     // MARK: -
 

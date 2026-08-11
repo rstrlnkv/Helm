@@ -7,14 +7,14 @@ import SwiftUI
 /// the question here is «which of these six pictures is my tab», which is
 /// answered by looking rather than by typing. Shortcuts asks it the same way —
 /// a grid, a handful of categories, no search.
-public enum HelmGlyphCatalogue {
-    public struct Category: Identifiable, Sendable {
-        public let id: String
-        public let title: String
-        public let symbols: [String]
+enum HelmGlyphCatalogue {
+    struct Category: Identifiable, Sendable {
+        let id: String
+        let title: String
+        let symbols: [String]
     }
 
-    public static var categories: [Category] {
+    static var categories: [Category] {
         [
             .init(id: "general", title: L("General"), symbols: [
                 "square.grid.2x2", "star", "bolt", "flag",

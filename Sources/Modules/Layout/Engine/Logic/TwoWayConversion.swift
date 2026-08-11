@@ -15,10 +15,10 @@ import Foundation
 ///
 /// So both directions are asked, the current one first. A direction that hands
 /// back what it was given has converted nothing and is not an answer.
-public enum TwoWayConversion {
-    public static func result(for text: String,
-                              forward: (String) -> String?,
-                              backward: (String) -> String?) -> String? {
+enum TwoWayConversion {
+    static func result(for text: String,
+                       forward: (String) -> String?,
+                       backward: (String) -> String?) -> String? {
         if let out = forward(text), out != text { return out }
         if let out = backward(text), out != text { return out }
         return nil

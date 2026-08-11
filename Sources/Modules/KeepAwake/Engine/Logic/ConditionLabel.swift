@@ -11,7 +11,7 @@ import Foundation
 ///
 /// No names anywhere — these are enum cases, not the app or display a rule names,
 /// so the line satisfies the rule that the log carries no names by construction.
-public enum ConditionLabel {
+enum ConditionLabel {
 
     /// The fixed order. Adding a case to `ActiveCondition` without adding it here
     /// is caught by `ConditionLabelTests`, which walks `allCases`.
@@ -23,7 +23,7 @@ public enum ConditionLabel {
         (.app, "app"),
     ]
 
-    public static func of(_ conditions: Set<ActiveCondition>) -> String {
+    static func of(_ conditions: Set<ActiveCondition>) -> String {
         let held = order.filter { conditions.contains($0.0) }.map(\.1)
         // Not the empty string: held by nothing is a real state — it is what the
         // line says the moment a session ends — and an empty value reads in a log

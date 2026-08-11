@@ -13,13 +13,13 @@ import Foundation
 /// that makes sense, and take the first that says yes. Nothing fitting is not a
 /// refusal — `Fix` exists to force a conversion the spell-checker would not
 /// bless — so the fallback is the old order.
-public enum OtherSource {
+enum OtherSource {
 
     /// `makesSense` is asked at most once per candidate and stops at the first
     /// yes: it spell-checks a translation, and somebody is waiting on a key.
-    public static func pick(current: String,
-                            installed: [String],
-                            makesSense: (String) -> Bool) -> String? {
+    static func pick(current: String,
+                     installed: [String],
+                     makesSense: (String) -> Bool) -> String? {
         let others = installed.filter { $0 != current }
         guard !others.isEmpty else { return nil }
         for candidate in others where makesSense(candidate) { return candidate }

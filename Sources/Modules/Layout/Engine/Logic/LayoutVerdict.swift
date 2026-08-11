@@ -5,28 +5,28 @@ import Foundation
 /// Written as a list of reasons to decline, with exactly one way through. A
 /// false positive here does not show a wrong number — it rewrites a sentence
 /// somebody was in the middle of, in an app Helm does not own.
-public enum LayoutVerdict {
-    public enum Decision: Equatable {
+enum LayoutVerdict {
+    enum Decision: Equatable {
         case leave
         case convert(String)
     }
 
     /// Below this there is no evidence at all: one character is a keystroke,
     /// not a word.
-    public static let minimumLength = 2
+    static let minimumLength = 2
 
     /// At or below this length a spell checker's answer is not worth having —
     /// almost every two-letter pair lands on something a checker will accept.
     /// These are decided by `ShortWords` instead: convert only towards a word
     /// people actually type. See that file for why permission is the wrong
     /// question here and confidence is the right one.
-    public static let shortWordLength = 3
+    static let shortWordLength = 3
 
-    public static func decide(word: String,
-                              translated: String,
-                              validAsTyped: Bool,
-                              validTranslated: Bool,
-                              exceptions: Set<String>) -> Decision {
+    static func decide(word: String,
+                       translated: String,
+                       validAsTyped: Bool,
+                       validTranslated: Bool,
+                       exceptions: Set<String>) -> Decision {
         // The rule that outranks the rest: what was typed is already a word, so
         // it is what they meant.
         guard !validAsTyped else { return .leave }

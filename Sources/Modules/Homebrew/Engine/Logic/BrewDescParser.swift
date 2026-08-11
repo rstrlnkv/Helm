@@ -3,8 +3,8 @@ import Foundation
 /// Parses `brew desc` output — one `name: description` line per package. Cask
 /// lines may carry a display name in parentheses ("figma: (Figma) …"), which is
 /// dropped; the row already shows the package name.
-public enum BrewDescParser {
-    public static func parse(_ output: String) -> [String: String] {
+enum BrewDescParser {
+    static func parse(_ output: String) -> [String: String] {
         var out: [String: String] = [:]
         for raw in output.split(separator: "\n") {
             guard let sep = raw.range(of: ": ") else { continue }

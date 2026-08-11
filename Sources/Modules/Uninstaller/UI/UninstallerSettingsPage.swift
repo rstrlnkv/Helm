@@ -9,7 +9,7 @@ extension InstalledApp: Identifiable { public var id: String { bundleID } }
 /// Two steps, AppCleaner-style: tick the apps to remove, then review the files
 /// found for each of them before anything goes to the Trash. A running app is
 /// never removed silently — it is quit first, and only if the user says so.
-public struct UninstallerSettingsPage: View {
+struct UninstallerSettingsPage: View {
     @ObservedObject private var uvm: UninstallerViewModel
 
     /// What survives a sidebar click is exactly what the person cannot retype:
@@ -26,7 +26,7 @@ public struct UninstallerSettingsPage: View {
     /// 0 = installed apps, 1 = leftovers from apps that are already gone.
     @State private var tab = 0
 
-    public init(vm: ModuleViewModel) {
+    init(vm: ModuleViewModel) {
         uvm = UninstallerViewModel.shared(vm: vm)
     }
 
@@ -49,7 +49,7 @@ public struct UninstallerSettingsPage: View {
         return []
     }
 
-    public var body: some View {
+    var body: some View {
         pageBody
             .helmTracksFullDiskAccess($diskAccess)
             .task {

@@ -4,7 +4,7 @@ import Foundation
 /// so the rules err on the side of leaving things alone: anything Apple's,
 /// anything in a system location, anything whose owner is still installed, and
 /// anything whose owner cannot be identified stays put.
-public enum StaleItemRules {
+enum StaleItemRules {
     /// An extension id is its host app's id plus one component:
     /// com.acme.app.networkExtension → com.acme.app.
     static func hostIdentifier(of identifier: String) -> String {
@@ -24,8 +24,8 @@ public enum StaleItemRules {
         "com.apple.", "systemgroup.", "group.", "org.cups.", "org.sparkle-project.",
     ]
 
-    public static func isRemovable(identifier: String, path: String,
-                                   ownerInstalled: Bool, installedIDs: Set<String>) -> Bool {
+    static func isRemovable(identifier: String, path: String,
+                            ownerInstalled: Bool, installedIDs: Set<String>) -> Bool {
         guard !ownerInstalled else { return false }
         guard !identifier.isEmpty, !identifier.hasPrefix(".") else { return false }
         guard !protectedNamespaces.contains(where: identifier.hasPrefix) else { return false }

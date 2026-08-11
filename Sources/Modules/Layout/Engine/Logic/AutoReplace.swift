@@ -55,7 +55,7 @@ public struct AutoReplace: Equatable, Sendable {
 
 /// The corrections that are about how a keyboard is held rather than about
 /// which layout is on.
-public enum TypingHabits {
+enum TypingHabits {
 
     /// A capital held a moment too long: `ПРивет` → `Привет`.
     ///
@@ -71,7 +71,7 @@ public enum TypingHabits {
     /// The rule changes exactly one letter. A correction that also converted
     /// the layout would be two edits to one word, which the undo shortcut
     /// cannot take back in one press.
-    public static func corrected(_ word: String) -> String? {
+    static func corrected(_ word: String) -> String? {
         let letters = Array(word)
         guard letters.count >= 3 else { return nil }
         guard !letters.contains(where: \.isNumber) else { return nil }

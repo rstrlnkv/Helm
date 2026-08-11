@@ -3,14 +3,14 @@ import Foundation
 /// Pure: derives the candidate leftover paths for an app from its bundle id and
 /// name, relative to a `~/Library` dir. No filesystem access — the engine filters
 /// these to what actually exists (resolving `isGlob` candidates against siblings).
-public enum LeftoverMatcher {
-    public struct Candidate: Equatable {
-        public let url: URL
-        public let kind: LeftoverKind
-        public let matchedByName: Bool
+enum LeftoverMatcher {
+    struct Candidate: Equatable {
+        let url: URL
+        let kind: LeftoverKind
+        let matchedByName: Bool
         /// true → `url`'s last component is a `*` pattern to match against siblings
         /// (Group Containers `*.<id>`, ByHost/LaunchAgents `<id>*.plist`).
-        public let isGlob: Bool
+        let isGlob: Bool
     }
 
     /// A bundle id and a display name are free-form strings read off disk —
@@ -40,7 +40,7 @@ public enum LeftoverMatcher {
             && !token.contains("*") && !token.contains("?")
     }
 
-    public static func candidates(bundleID id: String, appName name: String, library lib: URL) -> [Candidate] {
+    static func candidates(bundleID id: String, appName name: String, library lib: URL) -> [Candidate] {
         func u(_ parts: String...) -> URL { parts.reduce(lib) { $0.appendingPathComponent($1) } }
         var out: [Candidate] = []
         func add(_ url: URL, _ kind: LeftoverKind, name byName: Bool = false, glob: Bool = false) {

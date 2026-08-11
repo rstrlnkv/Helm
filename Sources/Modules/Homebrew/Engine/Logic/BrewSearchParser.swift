@@ -17,8 +17,8 @@ import Foundation
 /// «formula» for an answer, silently, which is precisely the guess this parser
 /// exists not to make. The one place that may still decide a kind on its own is
 /// a `==> Casks` header, because that is brew saying it.
-public enum BrewSearchParser {
-    public static func parse(_ output: String, isCask kind: Bool) -> [SearchHit] {
+enum BrewSearchParser {
+    static func parse(_ output: String, isCask kind: Bool) -> [SearchHit] {
         var isCask = kind
         var hits: [SearchHit] = []
         for raw in output.split(separator: "\n", omittingEmptySubsequences: false) {

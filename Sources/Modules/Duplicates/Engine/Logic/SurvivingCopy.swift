@@ -22,10 +22,10 @@ import Foundation
 /// 3. **Alphabetically**, so two copies that are alike in every way the rule
 ///    can see still come back in one fixed order and the row does not move
 ///    between scans.
-public enum SurvivingCopy {
+enum SurvivingCopy {
 
     /// The group's paths, the survivor first.
-    public static func order(_ files: [FileFacts]) -> [String] {
+    static func order(_ files: [FileFacts]) -> [String] {
         files.sorted(by: keeps).map(\.path)
     }
 

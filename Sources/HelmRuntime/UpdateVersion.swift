@@ -3,7 +3,7 @@ import Foundation
 /// Pure semantic-version comparison for the GitHub update check, including
 /// dev-channel prereleases ("0.7.0-dev.2"): a prerelease sorts BELOW its own
 /// release but above every earlier version.
-public enum UpdateVersion {
+enum UpdateVersion {
     /// "v1.2.3" / "1.2" → [1, 2, 3]; anything from a "-" suffix on is dropped.
     static func parse(_ s: String) -> [Int] {
         let trimmed = s.hasPrefix("v") || s.hasPrefix("V") ? String(s.dropFirst()) : s
@@ -21,7 +21,7 @@ public enum UpdateVersion {
     }
 
     /// True when `latest` is a strictly higher version than `current`.
-    public static func isNewer(_ latest: String, than current: String) -> Bool {
+    static func isNewer(_ latest: String, than current: String) -> Bool {
         let a = parse(latest), b = parse(current)
         for i in 0..<max(a.count, b.count) {
             let x = i < a.count ? a[i] : 0

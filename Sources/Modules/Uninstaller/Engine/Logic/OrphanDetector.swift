@@ -5,12 +5,12 @@ import Foundation
 /// bundle id (`com.acme.tool`) are considered, so plain folders like "Google" or
 /// "Firefox" — which can belong to an installed app, a plug-in, or the system —
 /// are never flagged. Apple's own domains are always skipped.
-public enum OrphanDetector {
+enum OrphanDetector {
     /// Domains that belong to macOS itself or to Helm; never orphan candidates.
     static let skippedPrefixes = ["com.apple.", "com.helm."]
 
     /// A name qualifies if it has at least two dots (reverse-DNS shape) and no spaces.
-    public static func looksLikeBundleID(_ name: String) -> Bool {
+    static func looksLikeBundleID(_ name: String) -> Bool {
         guard !name.contains(" ") else { return false }
         let base = stripKnownSuffix(name)
         return base.split(separator: ".").count >= 3
@@ -18,7 +18,7 @@ public enum OrphanDetector {
 
     /// Strips the file suffixes macOS appends to per-app support files, so
     /// `com.acme.tool.plist` and `com.acme.tool.savedState` map to the bundle id.
-    public static func bundleID(from name: String) -> String {
+    static func bundleID(from name: String) -> String {
         stripKnownSuffix(name)
     }
 
@@ -36,8 +36,8 @@ public enum OrphanDetector {
     /// (Adobe Acrobat DC/, Microsoft Office/) and every helper nested inside
     /// another bundle. Both were being offered for deletion while their apps
     /// were installed and running.
-    public static func isOrphan(name: String, installedBundleIDs: Set<String>,
-                                knownToSystem: (String) -> Bool = { _ in false }) -> Bool {
+    static func isOrphan(name: String, installedBundleIDs: Set<String>,
+                         knownToSystem: (String) -> Bool = { _ in false }) -> Bool {
         guard looksLikeBundleID(name) else { return false }
         // A leading dot survives the split — ".com.apple.finder.plist" still has
         // three components — and then makes every `hasPrefix` test below miss,

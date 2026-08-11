@@ -5,22 +5,22 @@ import HelmRuntime
 /// is safely removable: the owner is gone, nothing Apple's, nothing in a
 /// system location. Filesystem access goes through ports so the whole walk is
 /// testable.
-public struct LeftoversScanner: Sendable {
+struct LeftoversScanner: Sendable {
     private let home: URL
     private let files: LeftoversFilePort
     private let apps: InstalledAppsPort
     /// Reading only — a scan never switches anything off.
     private let extensions: LoadedItemsPort
 
-    public init(home: URL, files: LeftoversFilePort,
-                apps: InstalledAppsPort, extensions: LoadedItemsPort) {
+    init(home: URL, files: LeftoversFilePort,
+         apps: InstalledAppsPort, extensions: LoadedItemsPort) {
         self.home = home
         self.files = files
         self.apps = apps
         self.extensions = extensions
     }
 
-    public func scan() -> [StaleItem] {
+    func scan() -> [StaleItem] {
         let installed = apps.installedBundleIDs()
         // Read once. `activeExtensionIdentifiers()` and `installedExtensions()`
         // each shelled out to systemextensionsctl and parsed the same list, so

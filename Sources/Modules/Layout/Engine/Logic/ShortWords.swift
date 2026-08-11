@@ -20,10 +20,10 @@ import Foundation
 ///
 /// Nothing here is longer than three characters. A long word would bypass the
 /// spell checker entirely, which is the one thing the list must never do.
-public enum ShortWords {
+enum ShortWords {
 
     /// Common Russian words of two and three letters.
-    public static let russian: Set<String> = [
+    static let russian: Set<String> = [
         // prepositions and conjunctions
         "на", "по", "за", "до", "из", "от", "во", "со", "об", "не", "ни", "но",
         "то", "та", "те", "уж", "же", "ли", "бы", "их", "ей", "ею", "им",
@@ -39,7 +39,7 @@ public enum ShortWords {
     ]
 
     /// Common English words of two and three letters.
-    public static let english: Set<String> = [
+    static let english: Set<String> = [
         "an", "as", "at", "be", "by", "do", "go", "he", "if", "in", "is", "it",
         "me", "my", "no", "of", "on", "or", "so", "to", "up", "us", "we", "am",
         "id", "ok", "hi",
@@ -52,10 +52,10 @@ public enum ShortWords {
     ]
 
     /// Every word in the list, both languages.
-    public static var all: Set<String> { russian.union(english) }
+    static var all: Set<String> { russian.union(english) }
 
     /// Whether this is a short word common enough to convert towards.
-    public static func isCommon(_ word: String) -> Bool {
+    static func isCommon(_ word: String) -> Bool {
         let lowered = word.lowercased()
         guard lowered.count >= 2, lowered.count <= 3 else { return false }
         return russian.contains(lowered) || english.contains(lowered)

@@ -3,8 +3,8 @@ import Foundation
 /// Filename matching for leftover patterns. Supports any number of `*`
 /// wildcards, which the single-star version could not: an extension container
 /// can carry both a team prefix and a suffix (`TEAMID.com.app.extension`).
-public enum GlobMatch {
-    public static func matches(_ name: String, pattern: String) -> Bool {
+enum GlobMatch {
+    static func matches(_ name: String, pattern: String) -> Bool {
         let parts = pattern.components(separatedBy: "*")
         guard parts.count > 1 else { return name == pattern }
 

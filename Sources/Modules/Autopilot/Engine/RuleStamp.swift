@@ -13,10 +13,10 @@ import Foundation
 /// carries a handful of these at most, and a single value keeps the accumulate
 /// case — several rules stamping the same file over time — from depending on
 /// how many attributes a filesystem will hold.
-public enum RuleStamp {
+enum RuleStamp {
     static let attribute = "com.helm.autopilot.stamp"
 
-    public static func isStamped(_ path: String, by ruleID: String) -> Bool {
+    static func isStamped(_ path: String, by ruleID: String) -> Bool {
         ids(at: path).contains(ruleID)
     }
 
@@ -25,7 +25,7 @@ public enum RuleStamp {
     /// read but not annotate, still gets acted on — the caller logs the miss
     /// and moves on rather than refusing the file or looping on it.
     @discardableResult
-    public static func stamp(_ path: String, by ruleID: String) -> Bool {
+    static func stamp(_ path: String, by ruleID: String) -> Bool {
         var stamped = ids(at: path)
         guard !stamped.contains(ruleID) else { return true }
         stamped.append(ruleID)

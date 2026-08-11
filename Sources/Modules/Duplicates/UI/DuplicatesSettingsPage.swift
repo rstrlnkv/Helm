@@ -3,7 +3,7 @@ import HelmUI
 import SwiftUI
 
 /// The module's page: pick a folder, watch it read, decide what goes.
-public struct DuplicatesSettingsPage: View {
+struct DuplicatesSettingsPage: View {
     /// Observed, never owned: Settings tears this page down on every sidebar
     /// visit, and a `@StateObject` here took the search, the basket and the
     /// phase with it. Hashing a folder is minutes of reading and there is no
@@ -14,11 +14,11 @@ public struct DuplicatesSettingsPage: View {
     /// The width of the pane, which decides what the toolbar can carry.
     @State private var paneWidth: CGFloat = 0
 
-    public init(vm: ModuleViewModel, store: NamespacedStore) {
+    init(vm: ModuleViewModel, store: NamespacedStore) {
         dvm = DuplicatesViewModel.shared(vm: vm, store: store)
     }
 
-    public var body: some View {
+    var body: some View {
         VStack(spacing: 0) {
             // What the pane offers, read from something that cannot want more
             // than it is given. Hung on the toolbar itself — which is where it

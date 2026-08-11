@@ -7,7 +7,7 @@ import Foundation
 /// becomes a move (`sub/{name}`), a file that loses its identity (an empty
 /// pattern) or one that disappears from Finder (a leading dot) are all a rule
 /// doing something nobody asked for, forever, once a folder is watched.
-public enum RenamePattern {
+enum RenamePattern {
 
     /// `{name}` the file's name without its extension, `{date}` the date it was
     /// added as `2026-07-15`, `{counter}` a three-digit sequence number.
@@ -17,8 +17,8 @@ public enum RenamePattern {
     /// only reason applying a pattern twice can produce two different names.
     static let nameToken = "{name}"
 
-    public static func apply(_ pattern: String, to facts: FileFacts,
-                             counter: Int = 1) -> String? {
+    static func apply(_ pattern: String, to facts: FileFacts,
+                      counter: Int = 1) -> String? {
         // Everything but the file's own name, substituted once: what is left is
         // both the template for this run and the shape of every name this
         // pattern has produced for this file before.
@@ -59,9 +59,9 @@ public enum RenamePattern {
 }
 
 /// The subfolder a sorting rule puts a file in.
-public enum SortBucket {
+enum SortBucket {
 
-    public static func name(for facts: FileFacts, scheme: SortScheme) -> String {
+    static func name(for facts: FileFacts, scheme: SortScheme) -> String {
         switch scheme {
         case .kind: kindName(facts.kind)
         case .month: month.string(from: facts.added)

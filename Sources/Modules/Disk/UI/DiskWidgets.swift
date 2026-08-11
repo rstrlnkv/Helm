@@ -10,11 +10,11 @@ import Module_Disk_Engine
 /// app. Capacity and free space are a question the filesystem answers
 /// immediately, they are the two numbers somebody opens a disk tool to see
 /// first, and until now the only way to see them in Helm was to open its page.
-public struct DiskWidget: View {
+struct DiskWidget: View {
     @ObservedObject private var vm: DiskViewModel
     private let size: PanelWidgetSize
 
-    public init(vm: ModuleViewModel, size: PanelWidgetSize) {
+    init(vm: ModuleViewModel, size: PanelWidgetSize) {
         self.vm = DiskViewModel.shared(vm: vm)
         self.size = size
     }
@@ -26,7 +26,7 @@ public struct DiskWidget: View {
         vm.volumes.first { $0.path == "/" } ?? vm.volumes.first
     }
 
-    public var body: some View {
+    var body: some View {
         HelmWidgetBody {
             HelmWidgetHeader(symbol: "chart.pie", tint: DiskDescriptor.tint.colour,
                              name: DkStr.moduleName, compact: size == .compact)

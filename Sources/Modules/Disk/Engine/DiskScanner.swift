@@ -1,17 +1,17 @@
 import Foundation
 import HelmRuntime
 
-public struct ScanProgress: Sendable {
-    public let filesSeen: Int
-    public let bytesSeen: Int
-    public let currentPath: String
+struct ScanProgress: Sendable {
+    let filesSeen: Int
+    let bytesSeen: Int
+    let currentPath: String
 }
 
 /// Walks a directory tree with `getattrlistbulk` — one syscall returns a
 /// batch of entries WITH their attributes, which is why MacDirStat-style
 /// scanners outrun FileManager by an order of magnitude. Techniques
 /// referenced, code our own.
-public final class DiskScanner: @unchecked Sendable {
+final class DiskScanner: @unchecked Sendable {
     private let foldThreshold: Int
     private var cancelled = false
     private let lock = NSLock()
@@ -30,14 +30,14 @@ public final class DiskScanner: @unchecked Sendable {
     /// chair (`ScanRoot.refusesDescent`).
     private let unattended: Bool
 
-    public init(foldThreshold: Int = 32 * 1024, skip: Set<String>? = nil,
-                unattended: Bool = false) {
+    init(foldThreshold: Int = 32 * 1024, skip: Set<String>? = nil,
+         unattended: Bool = false) {
         self.foldThreshold = foldThreshold
         self.injectedSkip = skip
         self.unattended = unattended
     }
 
-    public func cancel() {
+    func cancel() {
         lock.lock(); cancelled = true; lock.unlock()
     }
 
@@ -54,9 +54,9 @@ public final class DiskScanner: @unchecked Sendable {
     /// so TreeBuilder needs no locking — and because the tree exists while the
     /// walk runs, `onPartial` can hand the UI snapshots for a ring that grows
     /// live instead of a spinner.
-    public func scan(root: String,
-                     onProgress: (@Sendable (ScanProgress) -> Void)? = nil,
-                     onPartial: (@Sendable (DiskNode) -> Void)? = nil) -> DiskNode? {
+    func scan(root: String,
+              onProgress: (@Sendable (ScanProgress) -> Void)? = nil,
+              onPartial: (@Sendable (DiskNode) -> Void)? = nil) -> DiskNode? {
         let builder = TreeBuilder(root: root, foldThreshold: foldThreshold)
         let rootDev = deviceID(of: root)
         // The Data volume is reachable both directly and through the firmlinks

@@ -7,9 +7,9 @@ import Foundation
 /// running per VPN; on the 0↔1 transitions it emits connect/disconnect,
 /// honoring each rule's per-behavior flags. No AppKit — driven by app
 /// launch/quit events and validated in unit tests.
-public struct VPNAutoConnectCore {
+struct VPNAutoConnectCore {
     /// bundleID → rule.
-    public var rules: [String: VPNAppRule]
+    var rules: [String: VPNAppRule]
     /// VPN name → set of running mapped bundleIDs.
     private var running: [String: Set<String>] = [:]
     /// bundleID → the rule that was in force when it was counted as running.
@@ -20,9 +20,9 @@ public struct VPNAutoConnectCore {
     /// no rule at all. Only what is recorded here was actually raised by Helm.
     private var launched: [String: VPNAppRule] = [:]
 
-    public init(rules: [String: VPNAppRule]) { self.rules = rules }
+    init(rules: [String: VPNAppRule]) { self.rules = rules }
 
-    public mutating func appLaunched(_ bundleID: String,
+    mutating func appLaunched(_ bundleID: String,
                               connect: (String) -> Void,
                               disconnect: (String) -> Void) {
         guard let rule = rules[bundleID], launched[bundleID] == nil else { return }
@@ -34,7 +34,7 @@ public struct VPNAutoConnectCore {
         if wasEmpty && rule.connectOnLaunch { connect(rule.vpnName) }
     }
 
-    public mutating func appTerminated(_ bundleID: String,
+    mutating func appTerminated(_ bundleID: String,
                                 connect: (String) -> Void,
                                 disconnect: (String) -> Void) {
         // No launch on record means Helm did not raise this VPN — the user may
@@ -47,7 +47,7 @@ public struct VPNAutoConnectCore {
     }
 
     /// The VPNs with ≥1 mapped app currently running.
-    public var activeVPNs: Set<String> {
+    var activeVPNs: Set<String> {
         Set(running.filter { !$0.value.isEmpty }.keys)
     }
 }

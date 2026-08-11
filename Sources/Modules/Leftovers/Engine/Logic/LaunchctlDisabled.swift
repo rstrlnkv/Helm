@@ -7,10 +7,10 @@ import Foundation
 /// nothing on disk, the choice survives a reboot, and the user can undo it
 /// here or in System Settings. The alternative, moving someone's plist
 /// somewhere else, is a change they cannot see and we cannot promise to undo.
-public enum LaunchctlDisabled {
+enum LaunchctlDisabled {
     /// Labels currently switched off, from `launchctl print-disabled gui/<uid>`:
     ///     "com.acme.helper" => disabled
-    public static func parse(_ output: String) -> Set<String> {
+    static func parse(_ output: String) -> Set<String> {
         var disabled: Set<String> = []
         for line in output.split(separator: "\n") {
             guard line.contains("=> disabled"),

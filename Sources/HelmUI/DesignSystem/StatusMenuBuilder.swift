@@ -33,9 +33,9 @@ public enum StatusMenuBuilder {
     public static let glyphSize = NSSize(width: 15, height: 15)
 
     public static func menu(settingsTitle: String, quitTitle: String, groups: [Group],
-                     target: AnyObject?,
-                     openSettings: Selector, openModule: Selector, quit: Selector,
-                     editTitle: String? = nil, editWidgets: Selector? = nil) -> NSMenu {
+              target: AnyObject?,
+              openSettings: Selector, openModule: Selector, quit: Selector,
+              editTitle: String? = nil, editWidgets: Selector? = nil) -> NSMenu {
         let menu = NSMenu()
 
         let settings = NSMenuItem(title: settingsTitle, action: openSettings, keyEquivalent: ",")

@@ -4,7 +4,7 @@ import HelmUI
 import Module_KeepAwake_Engine
 
 /// Compact tile shown in the shared Helm panel.
-public struct KeepAwakePanelTile: View {
+struct KeepAwakePanelTile: View {
     @ObservedObject private var vm: KeepAwakeViewModel
     private let store: NamespacedStore
 
@@ -43,7 +43,7 @@ public struct KeepAwakePanelTile: View {
     @State private var autoExternalDisplay: Bool
     @State private var autoPower: Bool
 
-    public init(vm: ModuleViewModel, store: NamespacedStore) {
+    init(vm: ModuleViewModel, store: NamespacedStore) {
         self.vm = KeepAwakeViewModel.shared(vm: vm)
         self.store = store
         let settings = KeepAwakeSettings(store: store)
@@ -56,7 +56,7 @@ public struct KeepAwakePanelTile: View {
         _batteryFloor = State(initialValue: settings.batteryGuardPercent)
     }
 
-    public var body: some View {
+    var body: some View {
         // spacing 0 + explicit padding: a stack spacing would still insert its
         // gap before the collapsed (zero-height) disclosure, leaving a stray
         // strip under the presets.

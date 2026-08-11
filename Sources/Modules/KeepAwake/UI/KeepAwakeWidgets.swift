@@ -9,14 +9,14 @@ import Module_KeepAwake_Engine
 /// that fits in a square that is 144 pt wide. What does fit is the answer to
 /// «is it on, and for how much longer», which is what somebody glances at the
 /// panel for.
-public struct KeepAwakeCompactWidget: View {
+struct KeepAwakeCompactWidget: View {
     @ObservedObject private var vm: KeepAwakeViewModel
 
-    public init(vm: ModuleViewModel) {
+    init(vm: ModuleViewModel) {
         self.vm = KeepAwakeViewModel.shared(vm: vm)
     }
 
-    public var body: some View {
+    var body: some View {
         HelmWidgetBody {
             HelmWidgetHeader(symbol: "moon.zzz.fill", tint: KeepAwakeDescriptor.tint.colour,
                              name: KAStr.moduleName, active: vm.isActive, compact: true)

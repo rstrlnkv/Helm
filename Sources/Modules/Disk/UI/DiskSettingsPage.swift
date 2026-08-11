@@ -7,17 +7,17 @@ import Module_Disk_Engine
 /// Pick something to scan, watch the ring grow, read it, and empty the basket.
 /// Result rendering lives in DiskResultView; this page owns the states and
 /// the basket bar.
-public struct DiskSettingsPage: View {
+struct DiskSettingsPage: View {
     @ObservedObject private var dvm: DiskViewModel
     @State private var hovered: String?
     @State private var diskAccess: PermissionState = .granted
     @State private var confirming = false
 
-    public init(vm: ModuleViewModel) {
+    init(vm: ModuleViewModel) {
         dvm = DiskViewModel.shared(vm: vm)
     }
 
-    public var body: some View {
+    var body: some View {
         VStack(spacing: 0) {
             // Page-level, not phase-level: without the grant a scan still runs
             // and still draws a ring, it simply under-reports — and the result

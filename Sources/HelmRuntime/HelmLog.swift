@@ -49,10 +49,10 @@ public enum LogDestination {
 }
 
 /// One event, one line: the file is parsed line-by-line when triaging.
-public enum LogLine {
-    public static func format(date: Date, level: LogLevel, category: String,
-                              message: String, site: LogSite? = nil,
-                              timeZone: TimeZone = .current) -> String {
+enum LogLine {
+    static func format(date: Date, level: LogLevel, category: String,
+                       message: String, site: LogSite? = nil,
+                       timeZone: TimeZone = .current) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
         formatter.timeZone = timeZone
@@ -67,9 +67,9 @@ public enum LogLine {
     }
 }
 
-public enum LogRotation {
+enum LogRotation {
     /// Rotate once the file has reached the limit, not before.
-    public static func shouldRotate(currentSize: Int, limit: Int) -> Bool {
+    static func shouldRotate(currentSize: Int, limit: Int) -> Bool {
         currentSize >= limit
     }
 }

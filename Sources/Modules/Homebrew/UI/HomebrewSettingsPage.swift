@@ -6,7 +6,7 @@ import Module_Homebrew_Engine
 // themselves now, spelled once through `BrewKey` — the same key the description
 // cache is read by, which is the half that has to agree with the row.
 
-public struct HomebrewSettingsPage: View {
+struct HomebrewSettingsPage: View {
     /// Which list is on screen — and therefore which one Refresh reloads.
     ///
     /// It was an `Int`, tagged 0/1/2 in the picker, switched on in the body and
@@ -22,9 +22,9 @@ public struct HomebrewSettingsPage: View {
     @State private var segment: Segment = .installed
     @State private var query = ""
 
-    public init(vm: ModuleViewModel) { hb = HomebrewViewModel.shared(vm: vm) }
+    init(vm: ModuleViewModel) { hb = HomebrewViewModel.shared(vm: vm) }
 
-    public var body: some View {
+    var body: some View {
         VStack(spacing: 0) {
             if hb.status.installed {
                 managerBody

@@ -27,7 +27,7 @@ public struct TrashedApp: Equatable, Sendable {
 /// decides which leftovers get claimed, and a wrong or empty one claims files
 /// belonging to nobody; the name is the heading the window puts above a list of
 /// things it is offering to delete, and an empty heading is worse than a filename.
-public enum TrashedAppIdentity {
+enum TrashedAppIdentity {
 
     /// nil when there is nothing worth offering — no bundle id, or a bundle whose
     /// `Info.plist` could not be read at all.
@@ -35,7 +35,7 @@ public enum TrashedAppIdentity {
     /// `info` is untrusted: it is a file on disk that anything can write, so every
     /// value is checked for its type rather than force-cast. A number where a name
     /// belongs is not a name.
-    public static func of(path: String, info: [String: Any]?) -> TrashedApp? {
+    static func of(path: String, info: [String: Any]?) -> TrashedApp? {
         guard let info, let bundleID = string(info["CFBundleIdentifier"]) else { return nil }
         let fileName = (path as NSString).lastPathComponent
         let fallback = fileName.hasSuffix(".app")
@@ -64,11 +64,11 @@ public enum TrashedAppIdentity {
 /// for an app they already said no to is the difference between a helpful app and
 /// one people switch off. And it has to stop sticking when the app leaves the
 /// Trash, or one decline means never being asked about that app again.
-public enum TrashOfferMemory {
+enum TrashOfferMemory {
 
     /// In the order found, which the caller sets to the order the apps arrived —
     /// filtering must not reshuffle the groups the window draws.
-    public static func toOffer(found: [TrashedApp], dismissed: Set<String>) -> [TrashedApp] {
+    static func toOffer(found: [TrashedApp], dismissed: Set<String>) -> [TrashedApp] {
         found.filter { !dismissed.contains($0.bundleID) }
     }
 
@@ -77,8 +77,8 @@ public enum TrashOfferMemory {
     /// finally deleted, either way a later removal is a new question.
     ///
     /// Only forgets. Finding an app does not decline it.
-    public static func stillDismissed(_ dismissed: Set<String>,
-                                      found: [TrashedApp]) -> Set<String> {
+    static func stillDismissed(_ dismissed: Set<String>,
+                               found: [TrashedApp]) -> Set<String> {
         dismissed.intersection(found.map(\.bundleID))
     }
 }

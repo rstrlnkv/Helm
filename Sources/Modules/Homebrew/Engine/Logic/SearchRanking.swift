@@ -11,9 +11,9 @@ import Foundation
 ///
 /// Three groups, and inside each one brew's order is left alone — it is
 /// alphabetical, and re-sorting it would only make the list harder to scan.
-public enum SearchRanking {
+enum SearchRanking {
 
-    public static func rank(_ hits: [SearchHit], query: String) -> [SearchHit] {
+    static func rank(_ hits: [SearchHit], query: String) -> [SearchHit] {
         let needle = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !needle.isEmpty else { return hits }
 

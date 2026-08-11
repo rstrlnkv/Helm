@@ -12,13 +12,13 @@ import Foundation
 /// all, so a word typed in one place could be edited into another: type
 /// `ghbdtn` in Notes, switch to Mail, tap the key, and six backspaces and a
 /// Russian word land in Mail.
-public struct RememberedWord: Equatable, Sendable {
-    public let word: String
+struct RememberedWord: Equatable, Sendable {
+    let word: String
     /// nil when the word ended by the caret leaving rather than by a character.
-    public let ending: Character?
-    public let app: String
+    let ending: Character?
+    let app: String
 
-    public init(_ completion: TypingBuffer.Completion, in app: String) {
+    init(_ completion: TypingBuffer.Completion, in app: String) {
         self.word = completion.word
         self.ending = completion.ending
         self.app = app
@@ -26,7 +26,7 @@ public struct RememberedWord: Equatable, Sendable {
 
     /// An empty id is "no idea which app", which matches nothing — the rule
     /// `UndoRecord` and `AppScope` both apply before typing at all.
-    public func belongs(to bundleID: String) -> Bool {
+    func belongs(to bundleID: String) -> Bool {
         !bundleID.isEmpty && bundleID == app
     }
 }

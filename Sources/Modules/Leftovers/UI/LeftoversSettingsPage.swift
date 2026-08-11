@@ -5,7 +5,7 @@ import Module_Leftovers_Engine
 
 /// Scan, review, remove. Nothing is pre-selected: every item here is something
 /// macOS loads, so each one is a deliberate choice.
-public struct LeftoversSettingsPage: View {
+struct LeftoversSettingsPage: View {
     /// Observed, never owned: Settings tears this page down on every sidebar
     /// visit, and a `@StateObject` here took the scan and every checkbox with
     /// it. Nothing in this list is pre-ticked — each tick is a decision about a
@@ -15,7 +15,7 @@ public struct LeftoversSettingsPage: View {
     @State private var confirmingBatch = false
     @State private var pendingDeletion: StaleItem?
 
-    public init(vm: ModuleViewModel) {
+    init(vm: ModuleViewModel) {
         lvm = LeftoversViewModel.shared(vm: vm)
     }
 
@@ -34,7 +34,7 @@ public struct LeftoversSettingsPage: View {
         }
     }
 
-    public var body: some View {
+    var body: some View {
         VStack(spacing: 0) {
             toolbar
             Divider()

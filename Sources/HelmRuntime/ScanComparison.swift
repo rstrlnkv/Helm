@@ -41,7 +41,7 @@ public struct ScanChange: Equatable, Sendable {
 ///
 /// Pure, so the interesting cases — a file that changed size, a first scan, a
 /// list with a repeated path — are tested without a filesystem.
-public enum ScanComparison {
+enum ScanComparison {
 
     /// - Parameter previous: nil when the module has never scanned before, which
     ///   is a different thing from an empty list. An empty list means the scan
@@ -52,7 +52,7 @@ public enum ScanComparison {
     /// happened to it, the old bytes leave the total and the new ones enter it,
     /// and calling that "stayed" would be wrong about the only quantity this
     /// measures.
-    public static func between(previous: [ScanItem]?, current: [ScanItem]) -> ScanChange {
+    static func between(previous: [ScanItem]?, current: [ScanItem]) -> ScanChange {
         let before = Set(previous ?? [])
         let after = Set(current)
         // Both sides de-duplicated, and by the same rule. `went` came from the

@@ -3,7 +3,7 @@ import HelmRuntime
 import HelmUI
 import Module_Layout_Engine
 
-public struct LayoutSettingsPage: View {
+struct LayoutSettingsPage: View {
     @ObservedObject private var lvm: LayoutViewModel
     private let store: NamespacedStore
 
@@ -26,7 +26,7 @@ public struct LayoutSettingsPage: View {
     @State private var newLong = ""
     @State private var fixCapitals: Bool
 
-    public init(vm: ModuleViewModel, store: NamespacedStore) {
+    init(vm: ModuleViewModel, store: NamespacedStore) {
         lvm = LayoutViewModel.shared(vm: vm)
         self.store = store
         _automatic = State(initialValue: store.bool(LayoutKey.automatic, default: true))
@@ -48,7 +48,7 @@ public struct LayoutSettingsPage: View {
         _fixCapitals = State(initialValue: store.bool(LayoutKey.fixCapitals, default: false))
     }
 
-    public var body: some View {
+    var body: some View {
         Form {
             stateSection
             behaviourSection

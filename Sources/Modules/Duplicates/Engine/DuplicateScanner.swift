@@ -18,11 +18,11 @@ public struct DuplicateProgress: Codable, Sendable {
 /// full hash decides — so a folder of ten thousand distinct files costs a
 /// directory walk and nothing else, and only real candidates are ever read in
 /// full.
-public final class DuplicateScanner: @unchecked Sendable {
+final class DuplicateScanner: @unchecked Sendable {
     /// Below this a file is not worth offering: the list would drown in
     /// kilobyte-sized config copies whose deletion frees nothing anyone can
     /// feel.
-    public static let minBytes = 1_000_000
+    static let minBytes = 1_000_000
     /// Enough of a prefix that two files agreeing on it are usually the same
     /// file; cheap enough that reading it costs one I/O burst.
     private static let prefixBytes = 128 * 1024
@@ -35,7 +35,7 @@ public final class DuplicateScanner: @unchecked Sendable {
     /// that vanished between being listed and being read. A count, not the
     /// paths: the question the log is asked is whether the answer was whole,
     /// not whose folder was in the way.
-    public var unreadablePaths: Int {
+    var unreadablePaths: Int {
         lock.lock(); defer { lock.unlock() }
         return unreadable
     }
@@ -44,9 +44,9 @@ public final class DuplicateScanner: @unchecked Sendable {
         lock.lock(); unreadable += 1; lock.unlock()
     }
 
-    public init() {}
+    init() {}
 
-    public func cancel() {
+    func cancel() {
         lock.lock(); cancelled = true; lock.unlock()
     }
 
@@ -63,9 +63,9 @@ public final class DuplicateScanner: @unchecked Sendable {
     ///   what any search does the first time. When one is supplied it is also
     ///   **filled**: whatever this search reads is written back, so the caller
     ///   can persist it and the next search reads less.
-    public func find(under root: String,
-                     cache: HashCache? = nil,
-                     onProgress: (@Sendable (DuplicateProgress) -> Void)? = nil)
+    func find(under root: String,
+              cache: HashCache? = nil,
+              onProgress: (@Sendable (DuplicateProgress) -> Void)? = nil)
     -> [DuplicateGroup]? {
         let files = HelmActivity.phase("duplicates.walk") {
             walk(root, onProgress: onProgress)

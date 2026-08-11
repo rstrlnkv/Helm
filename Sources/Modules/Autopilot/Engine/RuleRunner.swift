@@ -24,17 +24,17 @@ public enum RuleOutcome: Equatable, Sendable {
 
 /// The plan, performed. One file at a time, and every path through it either
 /// does exactly one thing or does nothing and says why.
-public struct RuleRunner: Sendable {
+struct RuleRunner: Sendable {
     /// Which home `WatchScope` measures against. Injected so a test can put its
     /// fixtures somewhere real without writing into the person's own folders —
     /// the gate is the same gate, asked about a different home.
     private let home: String
 
-    public init(home: String = NSHomeDirectory()) {
+    init(home: String = NSHomeDirectory()) {
         self.home = home
     }
 
-    public func run(_ plan: RulePlan, at path: String) -> RuleOutcome {
+    func run(_ plan: RulePlan, at path: String) -> RuleOutcome {
         guard FileManager.default.fileExists(atPath: path) else { return .refused(.missing) }
         // Asked before anything happens, so a file already handled by this rule
         // costs a stat rather than a move.

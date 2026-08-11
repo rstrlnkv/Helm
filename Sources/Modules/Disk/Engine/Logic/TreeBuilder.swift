@@ -2,7 +2,7 @@ import Foundation
 
 /// Accumulates scan results into a DiskNode tree. Pure bookkeeping — the
 /// scanner feeds it paths and sizes; nothing here touches the filesystem.
-public final class TreeBuilder: @unchecked Sendable {
+final class TreeBuilder: @unchecked Sendable {
     private let rootPath: String
     private let rootNode: DiskNode
     /// Files below this many bytes fold into a per-directory "…" bucket so a
@@ -11,7 +11,7 @@ public final class TreeBuilder: @unchecked Sendable {
     private var seenFileIDs: Set<UInt64> = []
     private var index: [String: DiskNode]
 
-    public init(root: String, foldThreshold: Int) {
+    init(root: String, foldThreshold: Int) {
         self.rootPath = root
         self.foldThreshold = foldThreshold
         self.rootNode = DiskNode(name: (root as NSString).lastPathComponent,
@@ -19,7 +19,7 @@ public final class TreeBuilder: @unchecked Sendable {
         self.index = [root: rootNode]
     }
 
-    public func addFile(path: String, bytes: Int, fileID: UInt64, modified: TimeInterval = 0) {
+    func addFile(path: String, bytes: Int, fileID: UInt64, modified: TimeInterval = 0) {
         // A hard link's target is one allocation however many names it has.
         //
         // 0 is not an id — it is the absence of one. `DiskScanner.readDirectory`
@@ -46,11 +46,11 @@ public final class TreeBuilder: @unchecked Sendable {
         charge(bytes, from: parentPath)
     }
 
-    public func markNoAccess(path: String) {
+    func markNoAccess(path: String) {
         directory(for: path)?.noAccess = true
     }
 
-    public func build() -> DiskNode { rootNode }
+    func build() -> DiskNode { rootNode }
 
     // MARK: - Internals
 

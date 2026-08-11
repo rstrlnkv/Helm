@@ -51,15 +51,15 @@ import Foundation
 /// Every refusal fails toward leaving files behind, which is the survivable
 /// direction: an unclaimed leftover costs disk space, and a wrongly claimed one
 /// costs somebody else's data.
-public struct LeftoverOwnership {
+struct LeftoverOwnership {
     private let id: String
     private let installedBundleIDs: Set<String>
     private let installedPaths: Set<String>
     private let knownToSystem: (String) -> Bool
 
-    public init(bundleID: String, installedBundleIDs: Set<String>,
-                installedPaths: [String],
-                knownToSystem: @escaping (String) -> Bool) {
+    init(bundleID: String, installedBundleIDs: Set<String>,
+         installedPaths: [String],
+         knownToSystem: @escaping (String) -> Bool) {
         self.id = bundleID
         self.installedBundleIDs = installedBundleIDs
         self.installedPaths = Set(installedPaths)
@@ -74,9 +74,9 @@ public struct LeftoverOwnership {
     /// Reported rather than inferred from an empty result: a scan that claims
     /// nothing because the id is shared and a scan that finds nothing are the
     /// same screen and different facts.
-    public var idIsContested: Bool { installedPaths.count > 1 }
+    var idIsContested: Bool { installedPaths.count > 1 }
 
-    public func claims(name: String) -> Bool {
+    func claims(name: String) -> Bool {
         guard !id.isEmpty else { return false }
         // Nothing built from a contested id is this app's — not the exact
         // candidates, and not what the globs around them reach either.

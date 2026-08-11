@@ -7,14 +7,14 @@ import HelmUI
 /// it needs a button. What fits in a square is the count, and the count is what
 /// somebody is checking when they glance at the panel: nothing up when
 /// something should be is the whole question.
-public struct VPNCompactWidget: View {
+struct VPNCompactWidget: View {
     @ObservedObject private var vm: VPNViewModel
 
-    public init(vm: VPNViewModel) { self.vm = vm }
+    init(vm: VPNViewModel) { self.vm = vm }
 
     private var up: Int { vm.connections.filter { $0.status.isUp }.count }
 
-    public var body: some View {
+    var body: some View {
         HelmWidgetBody {
             HelmWidgetHeader(symbol: "lock.shield", tint: VPNDescriptor.tint.colour,
                              name: VPNDescriptor.metadata.name,

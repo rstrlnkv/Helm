@@ -1,9 +1,9 @@
 import Foundation
 
 /// Facts plus a rule, in, yes or no, out. No filesystem, no clock.
-public enum RuleMatcher {
+enum RuleMatcher {
 
-    public static func matches(_ facts: FileFacts, _ rule: Rule) -> Bool {
+    static func matches(_ facts: FileFacts, _ rule: Rule) -> Bool {
         // A rule with nothing in it matches nothing. The other reading — that
         // an empty `all` is vacuously true — would have a half-written rule act
         // on every file in the folder, which is the worst thing this module can

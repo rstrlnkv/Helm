@@ -14,14 +14,14 @@ import Foundation
 /// kilobytes below one, and has no threshold: nine modules switching on twice each
 /// is not a stream, and the figure being small is the answer, not a reason to
 /// withhold it.
-public enum ScopeCost {
+enum ScopeCost {
 
     /// Below this, the difference is scheduling rather than the work — a redraw
     /// that happened to land between the two readings. Named so a test can state
     /// it, and small enough that a real allocation never hides under it.
     static let noise = 1024
 
-    public static func line(grewBy bytes: Int) -> String {
+    static func line(grewBy bytes: Int) -> String {
         guard abs(bytes) >= noise else { return "unchanged" }
         let sign = bytes >= 0 ? "+" : "-"
         let size = abs(bytes)

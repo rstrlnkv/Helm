@@ -2,13 +2,13 @@ import Foundation
 import HelmRuntime
 
 /// One file, as the duplicate search needs it.
-public struct FileFacts: Hashable, Sendable {
-    public let path: String
-    public let bytes: Int
+struct FileFacts: Hashable, Sendable {
+    let path: String
+    let bytes: Int
     /// The inode. Two paths sharing one are one file wearing two names — a
     /// hard link — and deleting either frees nothing, so the pair must never
     /// be offered as a duplicate.
-    public let fileID: UInt64
+    let fileID: UInt64
     /// What it occupies, as opposed to how long it is.
     ///
     /// The two are separate on purpose. Grouping by size is a *content*
@@ -16,28 +16,28 @@ public struct FileFacts: Hashable, Sendable {
     /// agree on that and need not agree on blocks, so grouping by what they
     /// occupy would lose duplicates — a worse failure than an imprecise total.
     /// The arithmetic the screen shows is about space, so it uses this.
-    public let allocated: Int
+    let allocated: Int
     /// When the file arrived in its folder — the Finder's "Date Added", and
     /// what decides which copy stays. Not the creation date: a file carries
     /// that with it when it is copied, so it would call the copy exactly as old
     /// as the original. nil on a volume that does not record it.
-    public let added: Date?
+    let added: Date?
     /// The APFS clone family, when the volume has one. Files sharing it share
     /// their blocks, so removing one of them frees nothing — the same reasoning
     /// as `fileID` above, one level up: a hard link is one file with two names,
     /// a clone is two files with one set of blocks.
-    public let cloneFamily: UInt64?
+    let cloneFamily: UInt64?
     /// When the contents last changed, to the resolution `lstat` reports.
     ///
     /// Part of what identifies a file to `HashCache`, together with the inode
     /// and the size: a digest may only be reused while all three still hold.
     /// Free to collect — the walk already calls `lstat` on every candidate for
     /// the inode and the device.
-    public let modified: TimeInterval?
+    let modified: TimeInterval?
 
-    public init(path: String, bytes: Int, fileID: UInt64, added: Date? = nil,
-                allocated: Int? = nil, cloneFamily: UInt64? = nil,
-                modified: TimeInterval? = nil) {
+    init(path: String, bytes: Int, fileID: UInt64, added: Date? = nil,
+         allocated: Int? = nil, cloneFamily: UInt64? = nil,
+         modified: TimeInterval? = nil) {
         self.path = path
         self.bytes = bytes
         self.fileID = fileID
@@ -118,11 +118,11 @@ public struct DuplicateGroup: Codable, Equatable, Sendable, Identifiable {
 /// where the cheap check agrees. A file that cannot be read cannot be judged
 /// and leaves the running — reporting it "identical" unread would be a guess
 /// wearing a fact's clothing.
-public enum Duplicates {
+enum Duplicates {
 
     /// Groups worth hashing: same size, above the floor, more than one file —
     /// with hard-linked twins collapsed to one representative first.
-    public static func sizeGroups(_ files: [FileFacts], minBytes: Int) -> [[FileFacts]] {
+    static func sizeGroups(_ files: [FileFacts], minBytes: Int) -> [[FileFacts]] {
         var byID: [UInt64: FileFacts] = [:]
         // fileID 0 means the inode could not be read. Unknown is not "the
         // same": collapsing all unknowns into one representative would hide
@@ -155,8 +155,8 @@ public enum Duplicates {
 
     /// Splits one candidate group by a digest. Files whose digest cannot be
     /// taken are dropped; sub-groups of one stop being candidates.
-    public static func refine(_ group: [FileFacts],
-                              by digest: (FileFacts) -> String?) -> [[FileFacts]] {
+    static func refine(_ group: [FileFacts],
+                       by digest: (FileFacts) -> String?) -> [[FileFacts]] {
         var byDigest: [String: [FileFacts]] = [:]
         for file in group {
             guard let d = digest(file) else { continue }
@@ -181,7 +181,7 @@ public enum Duplicates {
     /// page explained one rule in its tooltip while the app followed another.
     /// Both call this now, and a change to which copy survives cannot land in
     /// one line and miss the other.
-    public static func group(_ identical: [FileFacts]) -> DuplicateGroup {
+    static func group(_ identical: [FileFacts]) -> DuplicateGroup {
         // Each copy with what it occupies, because `wasted` promises what
         // removing the extras frees and the removal reports the same measure.
         // One size for the group took it from the walk order while the paths
@@ -201,9 +201,9 @@ public enum Duplicates {
     /// The whole pipeline: size → prefix hash → full hash → groups, largest
     /// waste first. `partial` and `full` are injected so the pipeline can be
     /// tested without a disk and driven with real hashing in production.
-    public static func groups(files: [FileFacts], minBytes: Int,
-                              partial: (FileFacts) -> String?,
-                              full: (FileFacts) -> String?) -> [DuplicateGroup] {
+    static func groups(files: [FileFacts], minBytes: Int,
+                       partial: (FileFacts) -> String?,
+                       full: (FileFacts) -> String?) -> [DuplicateGroup] {
         var result: [DuplicateGroup] = []
         for candidates in sizeGroups(files, minBytes: minBytes) {
             for byPrefix in refine(candidates, by: partial) {

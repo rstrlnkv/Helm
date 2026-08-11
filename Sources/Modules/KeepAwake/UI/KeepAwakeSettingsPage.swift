@@ -8,7 +8,7 @@ import Module_KeepAwake_Engine
 /// Settings page for the Keep Awake module. The `NamespacedStore` isn't
 /// observable, so values are seeded into local `@State` and written through
 /// on every change, notifying the engine via `settingsChanged`.
-public struct KeepAwakeSettingsPage: View {
+struct KeepAwakeSettingsPage: View {
     // Observed, not held: the state strip reads isActive and the live
     // conditions, and a plain `let` means SwiftUI never hears them change —
     // the figures froze at whatever they were when the page opened.
@@ -66,7 +66,7 @@ public struct KeepAwakeSettingsPage: View {
     @State private var activeIconShape: String
     @StateObject private var recorder: HelmHotkeyRecorder
 
-    public init(vm: ModuleViewModel, store: NamespacedStore) {
+    init(vm: ModuleViewModel, store: NamespacedStore) {
         self.vm = KeepAwakeViewModel.shared(vm: vm)
         self.store = store
         _recorder = StateObject(wrappedValue: HelmHotkeyRecorder(store: store))
@@ -102,7 +102,7 @@ public struct KeepAwakeSettingsPage: View {
         _activeIconShape = State(initialValue: MenuBarLook.iconShape(store))
     }
 
-    public var body: some View {
+    var body: some View {
         keepAwakeForm
             .helmOnAppActive { accessibility = PermissionCheck.currentAccessibility() }
             .task { accessibility = PermissionCheck.currentAccessibility() }

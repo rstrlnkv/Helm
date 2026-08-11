@@ -5,7 +5,7 @@ import SwiftUI
 
 /// The module's page: the folders being watched, and each one's rules in the
 /// order they will be tried.
-public struct AutopilotSettingsPage: View {
+struct AutopilotSettingsPage: View {
     @StateObject private var rvm: AutopilotViewModel
     @State private var editing: EditingRule?
     @State private var diskAccess: PermissionState = .granted
@@ -17,11 +17,11 @@ public struct AutopilotSettingsPage: View {
         var id: String { rule.id }
     }
 
-    public init(vm: ModuleViewModel) {
+    init(vm: ModuleViewModel) {
         _rvm = StateObject(wrappedValue: AutopilotViewModel(vm: vm))
     }
 
-    public var body: some View {
+    var body: some View {
         VStack(spacing: 0) {
             if diskAccess == .denied {
                 HelmPermissionNote(need: .fullDiskAccess, text: ApStr.needsAccess)

@@ -12,9 +12,9 @@ import Foundation
 /// exist — one plist read, in the place that already knows how to refuse. A rule
 /// that stat'ed the disk to answer would be doing that work twice and would be
 /// wrong the moment the file changed between the two.
-public enum TrashArrival {
+enum TrashArrival {
 
-    public static func namesAnApp(_ changed: [String], trash: String) -> Bool {
+    static func namesAnApp(_ changed: [String], trash: String) -> Bool {
         let prefix = trash.hasSuffix("/") ? trash : trash + "/"
         return changed.contains { path in
             // The separator matters: `.Trashcan` starts with `.Trash` and is

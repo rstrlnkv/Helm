@@ -4,10 +4,10 @@ import HelmRuntime
 
 // MARK: - App listing
 
-public final class WorkspaceAppLister: AppLister {
+final class WorkspaceAppLister: AppLister {
     private let home: URL
     private let fs: FileSystemPort
-    public init(home: URL, fs: FileSystemPort) { self.home = home; self.fs = fs }
+    init(home: URL, fs: FileSystemPort) { self.home = home; self.fs = fs }
 
     private var searchDirs: [URL] {
         [URL(fileURLWithPath: "/Applications"),
@@ -16,7 +16,7 @@ public final class WorkspaceAppLister: AppLister {
          home.appendingPathComponent("Applications/Setapp")]
     }
 
-    public func installedBundleIDs() -> Set<String> {
+    func installedBundleIDs() -> Set<String> {
         var ids: Set<String> = []
         for dir in searchDirs {
             guard let items = try? FileManager.default.contentsOfDirectory(
@@ -30,7 +30,7 @@ public final class WorkspaceAppLister: AppLister {
         return ids
     }
 
-    public func isKnownToSystem(bundleID: String) -> Bool {
+    func isKnownToSystem(bundleID: String) -> Bool {
         NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) != nil
     }
 
@@ -45,7 +45,7 @@ public final class WorkspaceAppLister: AppLister {
     /// second time to group it by id would double that for an answer
     /// LaunchServices gives more completely — it registers `/Applications`
     /// itself, so a bundle there that it has never heard of does not arise.
-    public func installedPaths(forBundleID id: String) -> [String] {
+    func installedPaths(forBundleID id: String) -> [String] {
         NSWorkspace.shared.urlsForApplications(withBundleIdentifier: id)
             .map(\.path)
             .filter { InstalledLocation.isInstalled(path: $0, home: home.path) }
@@ -60,7 +60,7 @@ public final class WorkspaceAppLister: AppLister {
     /// no failure to report to anyone: the question is whether there is anything to
     /// offer, and the answer is no. The same is true without Full Disk Access,
     /// which is what the directory read needs.
-    public func trashedApps() -> [TrashedApp] {
+    func trashedApps() -> [TrashedApp] {
         let trash = home.appendingPathComponent(".Trash", isDirectory: true)
         let items: [URL]
         do {
@@ -84,7 +84,7 @@ public final class WorkspaceAppLister: AppLister {
             }
     }
 
-    public func installedApps() -> [InstalledApp] {
+    func installedApps() -> [InstalledApp] {
         let fm = FileManager.default
         var seen = Set<String>()
         var out: [InstalledApp] = []
@@ -110,7 +110,7 @@ public final class WorkspaceAppLister: AppLister {
 
     /// Measured in parallel: the walks are independent, and one slow bundle
     /// (Xcode, 3.2 s here) otherwise holds up the other thirty-eight.
-    public func appSizes(_ apps: [InstalledApp]) -> [String: Int] {
+    func appSizes(_ apps: [InstalledApp]) -> [String: Int] {
         let fs = self.fs
         var sizes: [String: Int] = [:]
         let lock = NSLock()

@@ -1,22 +1,16 @@
 import Foundation
 
-public struct LaunchAgentInfo: Equatable, Sendable {
-    public let identifier: String
+struct LaunchAgentInfo: Equatable, Sendable {
+    let identifier: String
     /// The executable launchd would run, when the job names one.
-    public let program: String?
-    public let runAtLoad: Bool
-
-    public init(identifier: String, program: String?, runAtLoad: Bool) {
-        self.identifier = identifier
-        self.program = program
-        self.runAtLoad = runAtLoad
-    }
+    let program: String?
+    let runAtLoad: Bool
 }
 
 /// Pure reading of a launchd job definition, so "does this point at something
 /// that no longer exists" can be decided without touching the disk in tests.
-public enum LaunchAgentReader {
-    public static func read(plist: [String: Any], path: String) -> LaunchAgentInfo {
+enum LaunchAgentReader {
+    static func read(plist: [String: Any], path: String) -> LaunchAgentInfo {
         // Empty is not a label: launchd lets a job omit `Label` and take its
         // name from the file, and a blank one has to be special-cased by every
         // rule downstream.

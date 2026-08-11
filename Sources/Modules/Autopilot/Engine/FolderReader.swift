@@ -7,9 +7,7 @@ import UniformTypeIdentifiers
 /// Everything above it is arithmetic on those facts; keeping the reading in one
 /// small type is what makes that true. It also means the answer to "what does a
 /// rule know about a file" is a single file to read.
-public struct FolderReader: Sendable {
-
-    public init() {}
+struct FolderReader: Sendable {
 
     /// The files a folder's rules will be offered, at the folder's depth.
     ///
@@ -18,7 +16,7 @@ public struct FolderReader: Sendable {
     /// depth: an `.app` or an `.rtfd` is one thing to a person, and descending
     /// into it would offer a rule several hundred files that are not files as
     /// far as anybody is concerned.
-    public func facts(in folder: String, depth: Int, now: Date = Date()) -> [FileFacts] {
+    func facts(in folder: String, depth: Int, now: Date = Date()) -> [FileFacts] {
         let root = URL(fileURLWithPath: folder)
         let keys: [URLResourceKey] = [.isDirectoryKey, .isPackageKey, .fileSizeKey,
                                       .addedToDirectoryDateKey, .contentModificationDateKey,
@@ -37,7 +35,7 @@ public struct FolderReader: Sendable {
 
     /// One file. Used by the watcher, which is told about a path rather than a
     /// folder.
-    public func facts(of url: URL, now: Date = Date()) -> FileFacts? {
+    func facts(of url: URL, now: Date = Date()) -> FileFacts? {
         facts(of: url, keys: [.isDirectoryKey, .isPackageKey, .fileSizeKey,
                               .addedToDirectoryDateKey, .contentModificationDateKey,
                               .creationDateKey, .tagNamesKey, .contentTypeKey], now: now)

@@ -8,7 +8,7 @@ import Module_VPN_Engine
 /// model; per-app automation rules are seeded from the `NamespacedStore` into
 /// local `@State` and written through on every change, notifying the engine
 /// via `reloadRules`.
-public struct VPNSettingsPage: View {
+struct VPNSettingsPage: View {
     @ObservedObject private var vm: VPNViewModel
     private let store: NamespacedStore
 
@@ -22,7 +22,7 @@ public struct VPNSettingsPage: View {
     /// animates between 0 and a concrete value — the same pattern
     /// `UtilitiesSection` in `HelmPanel.swift` uses for its rows.
 
-    public init(vm: VPNViewModel, store: NamespacedStore) {
+    init(vm: VPNViewModel, store: NamespacedStore) {
         self.vm = vm
         self.store = store
         // From the store rather than from `vm`, which is main-actor isolated
@@ -38,7 +38,7 @@ public struct VPNSettingsPage: View {
         _spinTintDisconnected = State(initialValue: settings.spinTint(for: .disconnected))
     }
 
-    public var body: some View {
+    var body: some View {
         vpnForm
     }
 
