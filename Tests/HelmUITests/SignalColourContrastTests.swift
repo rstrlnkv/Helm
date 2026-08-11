@@ -1,5 +1,6 @@
 import XCTest
 import AppKit
+import HelmTestSupport
 import SwiftUI
 @testable import HelmUI
 
@@ -25,41 +26,20 @@ import SwiftUI
 /// one the current call site happens to need.
 final class SignalColourContrastTests: XCTestCase {
 
-    private static let bodyTextFloor = 4.5
+    private static let bodyTextFloor = Contrast.bodyFloor
 
-    private func luminance(_ c: NSColor) -> Double {
-        let s = c.usingColorSpace(.sRGB)!
-        func linear(_ v: CGFloat) -> Double {
-            let d = Double(v)
-            return d <= 0.04045 ? d / 12.92 : pow((d + 0.055) / 1.055, 2.4)
-        }
-        return 0.2126 * linear(s.redComponent)
-             + 0.7152 * linear(s.greenComponent)
-             + 0.0722 * linear(s.blueComponent)
-    }
+    /// The arithmetic, and the two traps in it, are `Contrast`'s — in
+    /// `HelmTestSupport`, where three more test files were spelling the same four
+    /// functions out. These tokens are opaque, so nothing here composites.
+    private func ratio(_ a: NSColor, _ b: NSColor) -> Double { Contrast.ratio(a, b) }
 
-    private func ratio(_ a: NSColor, _ b: NSColor) -> Double {
-        let x = luminance(a), y = luminance(b)
-        return (max(x, y) + 0.05) / (min(x, y) + 0.05)
-    }
-
-    /// Resolves a dynamic colour the way the window will, rather than reading
-    /// whatever appearance the test process happens to be in.
     private func resolved(_ color: Color, _ appearance: NSAppearance.Name) -> NSColor {
-        var out: NSColor = .clear
-        NSAppearance(named: appearance)!.performAsCurrentDrawingAppearance {
-            out = NSColor(color).usingColorSpace(.sRGB)!
-        }
-        return out
+        Contrast.resolved(color, appearance)
     }
 
     private func background(_ keyPath: KeyPath<NSColor.Type, NSColor>,
                             _ appearance: NSAppearance.Name) -> NSColor {
-        var out: NSColor = .clear
-        NSAppearance(named: appearance)!.performAsCurrentDrawingAppearance {
-            out = NSColor.self[keyPath: keyPath].usingColorSpace(.sRGB)!
-        }
-        return out
+        Contrast.system(keyPath, appearance)
     }
 
     private func assertReadable(_ color: Color, _ name: String,

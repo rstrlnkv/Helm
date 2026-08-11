@@ -252,7 +252,7 @@ struct PanelGallery: View {
                 }
             }
             .frame(maxWidth: .infinity, minHeight: 56)
-            .background(RoundedRectangle(cornerRadius: HelmSurface.cardRadius, style: .continuous)
+            .background(RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous)
                 .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
                 .foregroundStyle(HelmText.faint))
             .contentShape(Rectangle())

@@ -193,8 +193,11 @@ struct LogView: View {
     /// category word it used to tint carried 3.8% of the row's ink and answered
     /// the wrong question: the tint says "bad", the word says "who".
     ///
-    /// The wash is 0.06 rather than 0.09 because `HelmText.faint` measured 3.47:1
-    /// on the heavier one — under what that token was solved for.
+    /// The wash was held at 0.06 rather than 0.09 because `HelmText.faint`
+    /// measured 3.47:1 on the heavier one — under what that token was solved for.
+    /// **That reason has lapsed:** faint is 0.65 now, and re-measured over the
+    /// washes it is 4.68:1 light and 5.43:1 dark at 0.09, against 4.71 and 5.61 at
+    /// 0.06. The wash stays at 0.06 because it is a look, not because it has to.
     @ViewBuilder private func row(_ entry: LogEntry) -> some View {
         let signal = tint(for: entry.level)
         HStack(alignment: .firstTextBaseline, spacing: 8) {

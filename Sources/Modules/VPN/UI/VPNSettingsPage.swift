@@ -382,7 +382,7 @@ struct VPNSettingsPage: View {
         // anything and a number that never applies is a claim nobody can check.
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .background(
-            RoundedRectangle(cornerRadius: HelmSurface.cardRadius, style: .continuous)
+            RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous)
                 // The token, not the number. This was the only place in the
                 // tree spelling `Color.primary.opacity(0.05)` out; measured,
                 // it is `HelmSurface.wellFill` to the byte — 236 in light and
@@ -402,7 +402,7 @@ struct VPNSettingsPage: View {
             // the card fill: ring 3.40:1 against the 3:1 floor for a non-text
             // mark, so this was never about legibility. It is also the person's
             // own setting: under Graphite the «which one is up» mark went grey.
-            RoundedRectangle(cornerRadius: HelmSurface.cardRadius, style: .continuous)
+            RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous)
                 .strokeBorder(connected ? HelmSignal.success : .clear, lineWidth: 1.5)
         )
     }

@@ -275,10 +275,10 @@ struct SidebarComposerListRow: View {
 
     private func card(top: Bool, bottom: Bool) -> some View {
         UnevenRoundedRectangle(
-            topLeadingRadius: top ? HelmSurface.cardRadius : 0,
-            bottomLeadingRadius: bottom ? HelmSurface.cardRadius : 0,
-            bottomTrailingRadius: bottom ? HelmSurface.cardRadius : 0,
-            topTrailingRadius: top ? HelmSurface.cardRadius : 0,
+            topLeadingRadius: top ? HelmRadius.card : 0,
+            bottomLeadingRadius: bottom ? HelmRadius.card : 0,
+            bottomTrailingRadius: bottom ? HelmRadius.card : 0,
+            topTrailingRadius: top ? HelmRadius.card : 0,
             style: .continuous
         )
         .fill(HelmSurface.cardFill)

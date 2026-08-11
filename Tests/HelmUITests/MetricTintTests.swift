@@ -1,5 +1,6 @@
 import XCTest
 import AppKit
+import HelmTestSupport
 import SwiftUI
 @testable import HelmUI
 
@@ -13,7 +14,7 @@ import SwiftUI
 final class MetricTintTests: XCTestCase {
 
     /// 16 pt medium is not large text: the body floor applies.
-    private static let floor = 4.5
+    private static let floor = Contrast.bodyFloor
 
     /// The tints a strip is actually given (Keep Awake, VPN and Layout pass
     /// green and orange), plus teal, which the blend treats worst of the three.
@@ -88,37 +89,15 @@ final class MetricTintTests: XCTestCase {
         }
     }
 
-    // MARK: - Measurement
+    // MARK: - Measurement, which is `Contrast`'s in `HelmTestSupport`
 
-    private func luminance(_ c: NSColor) -> Double {
-        let s = c.usingColorSpace(.sRGB)!
-        func linear(_ v: CGFloat) -> Double {
-            let d = Double(v)
-            return d <= 0.04045 ? d / 12.92 : pow((d + 0.055) / 1.055, 2.4)
-        }
-        return 0.2126 * linear(s.redComponent)
-             + 0.7152 * linear(s.greenComponent)
-             + 0.0722 * linear(s.blueComponent)
-    }
-
-    private func ratio(_ a: NSColor, _ b: NSColor) -> Double {
-        let x = luminance(a), y = luminance(b)
-        return (max(x, y) + 0.05) / (min(x, y) + 0.05)
-    }
+    private func ratio(_ a: NSColor, _ b: NSColor) -> Double { Contrast.ratio(a, b) }
 
     private func resolved(_ color: Color, _ appearance: NSAppearance.Name) -> NSColor {
-        var out: NSColor = .clear
-        NSAppearance(named: appearance)!.performAsCurrentDrawingAppearance {
-            out = NSColor(color).usingColorSpace(.sRGB)!
-        }
-        return out
+        Contrast.resolved(color, appearance)
     }
 
     private func windowBackground(_ appearance: NSAppearance.Name) -> NSColor {
-        var out: NSColor = .clear
-        NSAppearance(named: appearance)!.performAsCurrentDrawingAppearance {
-            out = NSColor.windowBackgroundColor.usingColorSpace(.sRGB)!
-        }
-        return out
+        Contrast.system(\NSColor.Type.windowBackgroundColor, appearance)
     }
 }

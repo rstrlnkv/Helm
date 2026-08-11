@@ -77,7 +77,7 @@ public struct HelmBanner<Action: View>: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(
-            RoundedRectangle(cornerRadius: HelmSurface.cardRadius, style: .continuous)
+            RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous)
                 .fill(ink.opacity(0.13))
         )
     }

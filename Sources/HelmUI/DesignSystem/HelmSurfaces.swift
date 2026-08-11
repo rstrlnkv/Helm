@@ -3,7 +3,6 @@ import SwiftUI
 /// The surfaces that give every Helm screen the same voice as the About page:
 /// one icon plate, instrument-style figures, and one card treatment.
 public enum HelmSurface {
-    public static let cardRadius: CGFloat = 12
     /// Measured against a real `Form` section on the same background: at 0.05
     /// the card sat 10 L from the panel where the system's section sits 7, in
     /// both themes — a heavier card claiming to be the same surface.
@@ -30,7 +29,7 @@ public extension View {
         self
             .padding(padding)
             .background(
-                RoundedRectangle(cornerRadius: HelmSurface.cardRadius, style: .continuous)
+                RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous)
                     .fill(HelmSurface.cardFill)
             )
     }
@@ -214,8 +213,13 @@ public enum HelmText {
     /// — where the platform's own `.secondary` is 3.95:1 light.
     public static let quiet = Color.primary.opacity(0.64)
     /// Captions that must recede and stay readable — short, and never the only
-    /// place a fact appears. 3.54:1 / 4.63:1.
-    public static let faint = Color.primary.opacity(0.55)
+    /// place a fact appears. 4.77:1 / 5.92:1.
+    ///
+    /// It was 0.55, which measured 3.54:1 in light — under the body floor, and
+    /// written down as such in this comment for months, because prose is not a
+    /// guard. `RecessedTextIsReadableTests` is, and the floor needs 0.631
+    /// (`Scripts/design/contrast.swift`); 0.65 is the first step past it.
+    public static let faint = Color.primary.opacity(0.65)
     /// Marks, never text — breadcrumb chevrons and the like. A chevron carries
     /// meaning, so it answers to the 3:1 non-text threshold rather than to
     /// nothing at all. 3.07:1 / 4.07:1.

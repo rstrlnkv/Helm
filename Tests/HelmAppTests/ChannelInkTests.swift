@@ -1,5 +1,6 @@
 import XCTest
 import AppKit
+import HelmTestSupport
 import SwiftUI
 @testable import HelmApp
 @testable import HelmUI
@@ -19,28 +20,13 @@ import HelmRuntime
 @MainActor
 final class ChannelInkTests: XCTestCase {
 
+    /// `Contrast`'s, in `HelmTestSupport`: the same four functions were spelled
+    /// out here and in three other test files.
     private func resolved(_ color: Color, _ appearance: NSAppearance.Name) -> NSColor {
-        var out: NSColor = .clear
-        NSAppearance(named: appearance)!.performAsCurrentDrawingAppearance {
-            out = NSColor(color).usingColorSpace(.sRGB)!
-        }
-        return out
+        Contrast.resolved(color, appearance)
     }
 
-    private func luminance(_ c: NSColor) -> Double {
-        func linear(_ v: CGFloat) -> Double {
-            let d = Double(v)
-            return d <= 0.04045 ? d / 12.92 : pow((d + 0.055) / 1.055, 2.4)
-        }
-        return 0.2126 * linear(c.redComponent)
-             + 0.7152 * linear(c.greenComponent)
-             + 0.0722 * linear(c.blueComponent)
-    }
-
-    private func ratio(_ a: NSColor, _ b: NSColor) -> Double {
-        let x = luminance(a), y = luminance(b)
-        return (max(x, y) + 0.05) / (min(x, y) + 0.05)
-    }
+    private func ratio(_ a: NSColor, _ b: NSColor) -> Double { Contrast.ratio(a, b) }
 
     /// The whole point of the change: two channels a colour-blind-to-nothing
     /// reader can tell apart at a glance, in both appearances.
@@ -74,7 +60,7 @@ final class ChannelInkTests: XCTestCase {
                 let measured = ratio(resolved(ChannelInk.chosenLabel, appearance),
                                      resolved(ChannelInk.chosenFill(channel), appearance))
                 XCTAssertGreaterThanOrEqual(
-                    measured, 4.5,
+                    measured, Contrast.bodyFloor,
                     "\(channel.rawValue) in \(appearance.rawValue): "
                     + String(format: "%.2f", measured) + ":1")
             }
