@@ -689,6 +689,8 @@
 "Paused until the rule applies again" = "En pausa hasta que la regla vuelva a cumplirse";
 "Stop on low battery" = "Parar con poca batería";
 "Stay awake with the lid closed" = "Seguir despierto con la tapa cerrada";
+"Sleep is off right now" = "El reposo está desactivado ahora";
+"The saved app rules could not be read, so no app is keeping the Mac awake" = "No se pudieron leer las reglas de apps guardadas, así que ninguna app mantiene el Mac despierto";
 "A timer pauses the rule too" = "El temporizador también pausa la regla";
 "Move the pointer" = "Mover el puntero";
 "Keep the display on" = "No apagar la pantalla";

@@ -689,6 +689,8 @@
 "Paused until the rule applies again" = "已暂停，直到规则再次满足";
 "Stop on low battery" = "低电量时停止";
 "Stay awake with the lid closed" = "合盖后仍保持唤醒";
+"Sleep is off right now" = "当前睡眠已关闭";
+"The saved app rules could not be read, so no app is keeping the Mac awake" = "无法读取已保存的 App 规则，因此没有 App 让 Mac 保持唤醒";
 "A timer pauses the rule too" = "计时结束也暂停规则";
 "Move the pointer" = "移动指针";
 "Keep the display on" = "不熄屏";

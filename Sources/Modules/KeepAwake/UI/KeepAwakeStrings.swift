@@ -182,6 +182,17 @@ enum KAStr {
         }
     }
     static var noAppsYet: String { L("No apps chosen") }
+    /// A rules string in the file that nothing can read.
+    ///
+    /// The reader answers «no rules» for it, which fails in the safe direction —
+    /// the Mac sleeps — and looks exactly like having chosen no apps at all. The
+    /// engine wrote one line in the log at launch and that was the entire account
+    /// of it: the apps somebody picked stopped holding the Mac awake, and this
+    /// page went on looking perfectly well. Says what was lost and what follows
+    /// from it, because the second half is what the person actually noticed.
+    static var appRulesUnreadable: String {
+        L("The saved app rules could not be read, so no app is keeping the Mac awake")
+    }
     /// What an app rule *is*, said where somebody would otherwise find out by
     /// trying. The section heading used to carry this job in its own tail —
     /// «Apps that keep the Mac awake» — which explained it again on every visit
@@ -305,6 +316,19 @@ enum KAStr {
     static var globalShortcut: String { L("Global shortcut") }
     static var toggleAction: String { L("Toggle Keep Awake") }
     static var keepAwakeLidClosed: String { L("Stay awake with the lid closed") }
+    /// The live half of the lid row, and the only place any window says it.
+    ///
+    /// What the setting does is turn system sleep off for the whole Mac, through
+    /// a sudoers rule that outlives this process — the one thing this module does
+    /// that a person cannot see by looking at their menu bar. It was published on
+    /// the wire from the first version and read by the panel tile's subtitle
+    /// alone, so the page carrying the switch never mentioned it.
+    ///
+    /// Deliberately not `lidClosed`, which is the panel's «Lid closed — staying
+    /// awake»: that names the lid, in a subtitle listing what is holding the Mac.
+    /// This row's title already says «with the lid closed», so what is left to
+    /// say is the state of the machine.
+    static var sleepIsOffNow: String { L("Sleep is off right now") }
     /// What the person is about to face and what they get for it. `pmset` was
     /// the tool's name, which answers a question nobody asked: the two things
     /// worth knowing are that the password prompt is macOS's own — not this

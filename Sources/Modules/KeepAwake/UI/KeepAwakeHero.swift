@@ -285,7 +285,7 @@ struct KeepAwakeHero: View {
                 customButton
                 startButton(KAStr.indefinite, minutes: 0)
             }
-            .padding(.top, 10)
+            .padding(.top, 18)
         }
     }
 
@@ -328,7 +328,7 @@ struct KeepAwakeHero: View {
                     .controlSize(.large)
                 stopButton
             }
-            .padding(.top, 10)
+            .padding(.top, 18)
         }
     }
 
@@ -353,7 +353,7 @@ struct KeepAwakeHero: View {
                 customButton
                 stopButton
             }
-            .padding(.top, 10)
+            .padding(.top, 18)
         }
     }
 
@@ -379,7 +379,7 @@ struct KeepAwakeHero: View {
                 startButton(KAStr.indefinite, minutes: 0)
                 stopButton
             }
-            .padding(.top, 10)
+            .padding(.top, 18)
         }
     }
 
@@ -533,7 +533,7 @@ struct KeepAwakeHero: View {
     /// `12`. `HelmDurationField` is the Clock shape: a column per unit, the
     /// abbreviation above the figure.
     private var customTimeEditor: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 12) {
             Text(KAStr.customTimeTitle)
                 .font(.system(size: 13, weight: .semibold))
             HelmDurationField(minutes: $customMinutes,

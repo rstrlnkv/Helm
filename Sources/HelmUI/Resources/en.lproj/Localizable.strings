@@ -689,6 +689,8 @@
 "Paused until the rule applies again" = "Paused until the rule applies again";
 "Stop on low battery" = "Stop on low battery";
 "Stay awake with the lid closed" = "Stay awake with the lid closed";
+"Sleep is off right now" = "Sleep is off right now";
+"The saved app rules could not be read, so no app is keeping the Mac awake" = "The saved app rules could not be read, so no app is keeping the Mac awake";
 "A timer pauses the rule too" = "A timer pauses the rule too";
 "Move the pointer" = "Move the pointer";
 "Keep the display on" = "Keep the display on";

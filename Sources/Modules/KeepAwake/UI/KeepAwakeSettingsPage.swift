@@ -44,19 +44,20 @@ struct KeepAwakeSettingsPage: View {
     @State private var shownConditions: Set<ActiveCondition>
     @State private var shownTriggered: Set<ActiveCondition>
     @State private var shownSuppressed: Bool
-    /// Which rules are **drawn** as switched on.
+    /// Which rows of the automation card are **drawn** as carrying a mark.
     ///
     /// Press-driven rather than engine-driven, and it needs the same treatment
-    /// for the same reason: a `Toggle` writes its binding outside any
-    /// animation, so a mark decided by `binding.wrappedValue` flips in one
-    /// frame. That was the last thing on this card still jumping — and it was
-    /// the *pressed* row, the one being looked at, whose own tick appeared
-    /// instantly while its column slid under it.
+    /// for the same reason: a `Toggle` writes its binding outside any animation,
+    /// so a mark decided by `binding.wrappedValue` flips in one frame. That was
+    /// the last thing on this card still jumping — and it was the *pressed* row,
+    /// the one being looked at, whose own tick appeared instantly while its
+    /// column slid under it.
     ///
-    /// The switch itself keeps the live binding. A switch that lagged behind
-    /// the finger would be a worse fault than the one being fixed; what waits
-    /// for the curve is what the row *says*, not what it does.
-    @State private var shownEnabled: Set<ActiveCondition>
+    /// The switch itself keeps the live binding: one that lagged behind the finger
+    /// would be a worse fault than this. What waits for the curve is what the row
+    /// *says*, not what it does. A `MarkableRules` and not a set of conditions,
+    /// because the lid row carries a mark too — one value for the whole column.
+    @State private var shownEnabled: MarkableRules
 
     @State private var activeTintColor: String
     @State private var ringTimer: Bool
@@ -90,10 +91,12 @@ struct KeepAwakeSettingsPage: View {
         _shownConditions = State(initialValue: live.activeConditions)
         _shownTriggered = State(initialValue: live.triggeredConditions)
         _shownSuppressed = State(initialValue: live.suppressed)
-        var enabled = Set<ActiveCondition>()
-        if settings.autoExternalDisplay { enabled.insert(.externalDisplay) }
-        if settings.autoPower { enabled.insert(.power) }
-        _shownEnabled = State(initialValue: enabled)
+        // The function `enabledRules` reads, not a second copy: the seed spelled
+        // the two `insert`s again, and was the half that never learned the
+        // hardware.
+        _shownEnabled = State(initialValue: MarkableRules.onThisMac(
+            autoExternalDisplay: settings.autoExternalDisplay,
+            autoPower: settings.autoPower, lidHolding: live.clamshellActive))
         _activeTintColor = State(initialValue: MenuBarLook.activeTint(store))
         _ringTimer = State(initialValue: MenuBarLook.ringTimer(store))
         _showTimerText = State(initialValue: MenuBarLook.showTimerText(store))
@@ -179,18 +182,29 @@ struct KeepAwakeSettingsPage: View {
                 // per tick for a string that changes when an app launches is
                 // work nobody asked for.
                 appNames: vm.holdingApps.map { AppInfo.resolve($0).name },
+                // Both defaulted in the hero's initialiser and neither was ever
+                // passed, so «Stopped below 20 %» sat in a branch nothing could
+                // reach: pressing «15 min» at 5 % was silence here while the panel
+                // said why. The floor is the drawn one, so the sentence names the
+                // number the row below shows.
+                batteryStopped: vm.batteryStopped,
+                batteryFloor: batteryGuardPercent,
                 timedNote: timedNote,
                 start: start,
                 stop: { vm.send(KeepAwakeCommand.stop) },
                 resume: { vm.send(KeepAwakeCommand.resumeAutomation) })
         }
-        .padding(.top, 24)
-        // 31, not 18. Measured: the gap from the buttons to «Automation» was
-        // 21 pt where every other card-to-heading gap on the page is 34, so
-        // the first heading sat crowded against the hero while the rest of the
-        // page breathed. The grouped `Form` sets that rhythm; this is the one
-        // block outside it and it has to join.
-        .padding(.bottom, 31)
+        // **18 and 12, and neither is what anybody sees.** This block rides on a
+        // section header inside a grouped `Form`, which adds 20 pt of its own, so
+        // 12 draws as 32 against a page rhythm of 30. Measured on the render at
+        // 810 pt, ink to ink because a pill's box reaches past its label: 48 pt of
+        // air over the figure, 34 from the buttons down to «Automation». The bottom
+        // was 31 — 19 pt more than that, under the tallest block on the page. Of
+        // the two steps the ladder offers above, 28 takes the figure's air to 58
+        // while the gap below stays 34, and the window has a strip for the traffic
+        // lights over that again: it would spend the most air on the page at the
+        // very top of it. 18 is the hero's own rhythm as well.
+        .padding(.bottom, 12)
         .helmSettingsColumn()
     }
 
@@ -250,14 +264,29 @@ struct KeepAwakeSettingsPage: View {
             ruleRow(KAStr.onPower, on: $autoPower, satisfiedBy: .power) { v in
                 vm.save(in: store) { $0.setAutoPower(v) }
             }
-            // No mark: the lid is not a rule that fires, it is a switch that
-            // changes the whole Mac — and the note says what that costs.
-            // No lid, nothing to keep awake with it closed — and this is the
-            // row that writes a passwordless sudo rule into `/etc/sudoers.d`,
-            // so drawing it where it can do nothing is offering a permanent
-            // system grant for a feature the machine cannot use.
+            // **The one thing this module does that outlives the process, and no
+            // window said so.** `clamshellActive` was published, crossed the wire,
+            // and was read by the panel tile's subtitle alone — so this row was
+            // nailed to `.spacer`, and somebody who shut the lid saw the switch
+            // they had set and nothing of what it was doing. While sleep is off
+            // that is the note worth having; what the grant costs is what the row
+            // says the rest of the time, swapped like the rule rows above it.
+            //
+            // `.holding` or nothing, and no `.waiting` between: the switch on with
+            // the lid open is what the control itself says, and a clock there
+            // would be the row reporting the setting twice.
+            //
+            // No lid, nothing to keep awake with it closed — and this is the row
+            // that writes a passwordless sudo rule into `/etc/sudoers.d`, so
+            // drawing it where it can do nothing offers a permanent system grant
+            // for a feature the machine cannot use.
             if MacHardware.hasLid {
-                HelmSettingRow(KAStr.keepAwakeLidClosed, note: KAStr.adminNote, mark: .spacer(inCardWithMarks: shownMarksPossible)) {
+                HelmSettingRow(KAStr.keepAwakeLidClosed,
+                               note: shownEnabled.lidHolding ? KAStr.sleepIsOffNow
+                                                             : KAStr.adminNote,
+                               mark: shownEnabled.lidHolding
+                                   ? .holding
+                                   : .spacer(inCardWithMarks: shownMarksPossible)) {
                     Toggle(KAStr.keepAwakeLidClosed, isOn: $clamshellEnabled)
                         .labelsHidden()
                         .onChange(of: clamshellEnabled) { _, v in
@@ -347,27 +376,24 @@ struct KeepAwakeSettingsPage: View {
         }
     }
 
-    /// Whether any row of the automation card can carry a mark at all.
+    /// Which rows of the card can carry a mark — the live answer, read in exactly
+    /// one place: the `onChange` that gives it a transaction.
     ///
-    /// Only the two condition rules ever get one; the lid, the timer setting
-    /// and the battery guard never do. With both switched off the card held
-    /// 14 pt of empty mark column against nobody — every label stepped right,
-    /// and the gap read as icons that had failed to load. It is the state a
-    /// fresh install opens in, so it was the first thing anybody saw.
-    /// Which rules are switched on — the live answer, read in exactly one
-    /// place: the `onChange` that gives it a transaction.
+    /// Every row is indented by the mark column, marked or not, so all of them
+    /// have to move on one clock. Three went on reading the live value after the
+    /// marked ones moved to the drawn one, and that was worse than no animation:
+    /// the row gaining a tick ramped while the three beside it jumped, so the card
+    /// came apart down the middle on every press. `MarkColumnHasOneClockTests`
+    /// fails on a second reader.
     ///
-    /// Every row in the card is indented by the mark column, marked or not, so
-    /// every row has to move on one clock. Three of them went on reading the
-    /// live value after the marked ones moved to the drawn one, and the result
-    /// was worse than no animation: the row that gains a tick ramped while the
-    /// three beside it jumped, so the card came apart down the middle on every
-    /// press. `MarkColumnHasOneClockTests` fails on a second reader.
-    private var enabledRules: Set<ActiveCondition> {
-        var enabled = Set<ActiveCondition>()
-        if autoExternalDisplay { enabled.insert(.externalDisplay) }
-        if autoPower { enabled.insert(.power) }
-        return enabled
+    /// The two rules and the lid can be marked; the timer setting and the battery
+    /// guard never are. With none of them countable the column is not drawn at
+    /// all — 14 pt of indent against nobody reads as icons that failed to load,
+    /// and it is the state a fresh install opens in. Which rows count is
+    /// `MarkableRules`, hardware included.
+    private var enabledRules: MarkableRules {
+        MarkableRules.onThisMac(autoExternalDisplay: autoExternalDisplay,
+                                autoPower: autoPower, lidHolding: vm.clamshellActive)
     }
 
     /// The column's own question, asked of the *drawn* set. One value behind
@@ -406,6 +432,16 @@ struct KeepAwakeSettingsPage: View {
 
     @ViewBuilder private var appsSection: some View {
         Section(header: HelmSectionTitle(KAStr.appsSection)) {
+            // A rules string nothing can read answers as «no rules» — safe, the
+            // Mac sleeps — and is indistinguishable from having chosen none. One
+            // line in the log at launch was the whole account of it.
+            //
+            // Asked of the store on every pass rather than mirrored into `@State`:
+            // the way out of this state is adding an app, which rewrites the string
+            // through `setAppTriggers`, so the answer has to be the file's own.
+            if KeepAwakeSettings(store: store).appRulesUnreadable {
+                HelmBanner(KAStr.appRulesUnreadable)
+            }
             appTriggersEditor
         }
     }
@@ -659,7 +695,3 @@ struct KeepAwakeSettingsPage: View {
         }
     }
 }
-
-/// Records a global-shortcut combo into the module store and notifies the app's
-/// HotkeyManager (via `helmHotkeyChanged`) to (re)register it. Capture uses a
-/// local key monitor while the settings window is key — no Accessibility needed.

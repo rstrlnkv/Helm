@@ -689,6 +689,8 @@
 "Paused until the rule applies again" = "Правило на паузе до следующего срабатывания";
 "Stop on low battery" = "Останавливать при низком заряде";
 "Stay awake with the lid closed" = "Не спать с закрытой крышкой";
+"Sleep is off right now" = "Сон сейчас выключен";
+"The saved app rules could not be read, so no app is keeping the Mac awake" = "Сохранённые правила приложений не удалось прочитать, поэтому ни одно приложение не мешает Mac заснуть";
 "A timer pauses the rule too" = "Таймер ставит на паузу и правило";
 "Move the pointer" = "Двигать курсор";
 "Keep the display on" = "Не гасить дисплей";

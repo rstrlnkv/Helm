@@ -26,10 +26,14 @@ import XCTest
 /// rule in this repository is explained by quoting the thing it forbids.
 final class SpaceLadderRatchetTests: XCTestCase {
 
-    /// Measured 2026-08-11 against `main` = `8b8c547`. Dominated by 10 pt (53)
-    /// and 20 pt (37) — the two values `HelmSpace.s?` will absorb — with
-    /// `UninstallerSettingsPage` the worst single file at 21.
-    private static let recorded = 133
+    /// Measured 2026-08-11 against `main` = `8b8c547`, at **133**; lowered to 126
+    /// the same day by the Keep Awake v3 move, which took seven values off the
+    /// ladder in two files — the hero's four button-row gaps and its popover's
+    /// stack (10, 10, 10, 10, 14) and the two paddings around the hero on the
+    /// page (24 above, 31 below). Still dominated by 10 pt (49) and 20 pt (37) —
+    /// the two values `HelmSpace.s?` will absorb — with `UninstallerSettingsPage`
+    /// the worst single file at 21.
+    private static let recorded = 126
 
     private static let ladder: Set<Double> = [0, 2, 4, 6, 8, 12, 18, 28, 40]
 

@@ -689,6 +689,8 @@
 "Paused until the rule applies again" = "En pause jusqu’au prochain déclenchement";
 "Stop on low battery" = "Arrêter si la batterie est faible";
 "Stay awake with the lid closed" = "Rester éveillé, couvercle fermé";
+"Sleep is off right now" = "La veille est désactivée en ce moment";
+"The saved app rules could not be read, so no app is keeping the Mac awake" = "Les règles d’apps enregistrées n’ont pas pu être lues, donc aucune app ne maintient le Mac éveillé";
 "A timer pauses the rule too" = "Le minuteur met aussi la règle en pause";
 "Move the pointer" = "Bouger le pointeur";
 "Keep the display on" = "Garder l’écran allumé";

@@ -689,6 +689,8 @@
 "Paused until the rule applies again" = "次に条件を満たすまで一時停止中";
 "Stop on low battery" = "バッテリー残量が少ないときは停止";
 "Stay awake with the lid closed" = "ふたを閉じても起きたまま";
+"Sleep is off right now" = "いまスリープは切になっています";
+"The saved app rules could not be read, so no app is keeping the Mac awake" = "保存されたアプリのルールを読み取れなかったため、どのアプリも Mac を起きたままにしていません";
 "A timer pauses the rule too" = "タイマーはルールも一時停止する";
 "Move the pointer" = "ポインタを動かす";
 "Keep the display on" = "ディスプレイを消さない";
