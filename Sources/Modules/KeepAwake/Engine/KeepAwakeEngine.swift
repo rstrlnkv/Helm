@@ -545,7 +545,15 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 
     private func batteryVetoes() -> Bool {
         guard MacHardware.hasBattery else { return false }
-        guard let snap = power.snapshot() else { return false }
+        // No reading is two states and `isOnMains` tells them apart, the same
+        // split `powerCondition` above was corrected for. «No veto» for both
+        // switched the guard off exactly where it matters: a laptop on battery
+        // whose IOKit dictionary came back short, holding an indefinite session
+        // nothing else ever ends.
+        guard let snap = power.snapshot() else {
+            return BatteryGuard.shouldDeactivateWithNoReading(
+                enabled: settings.batteryGuardEnabled, isOnMains: power.isOnMains)
+        }
         return BatteryGuard.shouldDeactivate(enabled: settings.batteryGuardEnabled,
                                              isOnBattery: snap.onBattery,
                                              percent: snap.percent,
@@ -561,11 +569,14 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         // refusal nobody is told about is the module failing silently at the
         // one thing it was asked to do.
         guard isActive || manualOn || endDate != nil else { emitState(); return }
-        let percent = power.snapshot()?.percent ?? 0
-        // The session ends without the person touching anything, so the log is
-        // the only place that can say who ended it and why.
+        // The session ends without the person touching anything, so the log is the
+        // only place that can say who ended it and why — and a figure it did not
+        // read has no business in it. This was `percent ?? 0`, which reads as 0%:
+        // a measurement nobody took, and the one charge that means the Mac is
+        // about to go out.
+        let charge = power.snapshot().map { "\($0.percent)%" } ?? "an unreadable charge"
         HelmLog.shared.info("keepawake", "battery guard stopped the session at "
-                            + "\(percent)% (floor \(settings.batteryGuardPercent)%)")
+                            + "\(charge) (floor \(settings.batteryGuardPercent)%)")
         assertions.release()
         if lid.active { lid.disengage() }
         cancelTimers()

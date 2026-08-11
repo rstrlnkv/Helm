@@ -386,15 +386,28 @@ enum KAStr {
     /// The battery guard has everything stopped. Said on screen because the
     /// session ends with nobody touching anything: a person who pressed «15
     /// min» at 5 % saw nothing happen, and the only account of it was the log.
+    ///
+    /// **The floor is inclusive and the sentence says so.** This said «below» in
+    /// all eight languages — with 未満 and 低于, the strict operators, in the two
+    /// languages that have an inclusive one — while `BatteryGuard.shouldDeactivate`
+    /// is `percent <= threshold` and stops *at* the figure. That is the same
+    /// mismatch the audit corrected in `belowPercent` six rows down, and this
+    /// sentence was written ten days after that correction; it could not be seen
+    /// until the notice was wired up, because nothing drew the branch.
+    ///
+    /// The English is the key and the meaning changed, so this is a **new** key
+    /// rather than eight corrections, and each language spells the boundary the
+    /// way its corrected sibling already does — no-break space before the sign
+    /// included, which is macOS's own.
     static func stoppedByBattery(_ percent: Int) -> String {
-        L("Stopped below \(percent) %",
-          [.ru: "Остановлено ниже \(percent) %",
-           .es: "Detenido por debajo del \(percent) %",
-           .fr: "Arrêté sous \(percent) %",
-           .de: "Unter \(percent) % gestoppt",
-           .ja: "\(percent) % 未満で停止",
-           .zh: "低于 \(percent) % 时停止",
-           .pt: "Parado abaixo de \(percent) %"])
+        L("Stopped at \(percent)% or less",
+          [.ru: "Остановлено при \(percent)\u{00A0}% и ниже",
+           .es: "Detenido al \(percent)\u{00A0}% o menos",
+           .fr: "Arrêté à \(percent)\u{00A0}% ou moins",
+           .de: "Bei \(percent)\u{00A0}% oder weniger gestoppt",
+           .ja: "\(percent)% 以下で停止",
+           .zh: "\(percent)% 及以下时停止",
+           .pt: "Parado em \(percent)\u{00A0}% ou menos"])
     }
     static var resume: String { L("Resume") }
     static var turnOffLowBattery: String { L("Stop on low battery") }

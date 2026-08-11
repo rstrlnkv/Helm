@@ -80,8 +80,33 @@ final class ClamshellCoordinator: @unchecked Sendable {
         guard store.bool(KeepAwakeSettings.Key.clamshellGuard, default: false),
               ClamshellRecovery.sleepDisabled(inPmsetOutput: clamshell.pmsetReport())
         else { return }
-        _ = clamshell.setDisableSleep(false)
+        restoreSleep(refused: "closed-lid sleep could not be restored at launch",
+                     restored: "closed-lid sleep restored at launch")
+    }
+
+    /// Put system sleep back, and keep the note if `pmset` refused.
+    ///
+    /// The refusal is the case both callers exist for: the rule this needs can
+    /// be gone — removed by an admin, by a migration, by somebody tidying
+    /// `/etc/sudoers.d` — and then sleep stays off machine-wide, past this
+    /// process. Clearing the guard there takes away the only thing that brings
+    /// the next launch back to look, so the Mac would never sleep again while
+    /// every screen said Keep Awake was idle.
+    ///
+    /// Written once because it was written twice: launch recovery discarded the
+    /// result (`_ = clamshell.setDisableSleep(false)`) for as long as `disengage`
+    /// had been reading it, so the same defect the tests here were written for
+    /// survived its own fix on the other path.
+    /// The sentences are the caller's, so a refusal cannot be reported by one
+    /// path and swallowed by the other — which is the defect, not the wording.
+    private func restoreSleep(refused: String, restored: String) {
+        guard clamshell.setDisableSleep(false) else {
+            HelmLog.shared.warn("keepawake", refused)
+            return
+        }
         store.set(false, for: KeepAwakeSettings.Key.clamshellGuard)
+        active = false
+        HelmLog.shared.info("keepawake", restored)
     }
 
     /// The module is being switched off. Sleep goes back and the grant goes
@@ -174,17 +199,8 @@ final class ClamshellCoordinator: @unchecked Sendable {
     }
 
     func disengage() {
-        // If this fails, system sleep is still off — machine-wide, past this
-        // process — and clearing the guard would take away the only thing that
-        // brings the next launch back to look. The Mac would never sleep again
-        // and every screen would say Keep Awake was off.
-        guard clamshell.setDisableSleep(false) else {
-            HelmLog.shared.warn("keepawake", "closed-lid sleep could not be restored")
-            return
-        }
-        store.set(false, for: KeepAwakeSettings.Key.clamshellGuard)
-        active = false
-        HelmLog.shared.info("keepawake", "closed-lid sleep restored")
+        restoreSleep(refused: "closed-lid sleep could not be restored",
+                     restored: "closed-lid sleep restored")
     }
 
     // MARK: - Settings

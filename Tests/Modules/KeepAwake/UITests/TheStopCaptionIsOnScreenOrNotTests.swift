@@ -26,11 +26,16 @@ final class TheStopCaptionIsOnScreenOrNotTests: XCTestCase {
 
     private static let now = Date(timeIntervalSince1970: 1_700_000_000)
 
+    /// Both battery arguments are passed at every call site in this file, and
+    /// that is deliberate: they carry initialiser defaults, and a defaulted input
+    /// is what let the page's own call go on compiling with the wiring cut for a
+    /// whole release — `TheBatteryNoticeReachesThePageTests` is the account.
     private func hero(ruleHolds: Bool, state: SessionHero,
-                      suppressed: Bool = false) -> some View {
+                      suppressed: Bool = false, batteryStopped: Bool = false) -> some View {
         KeepAwakeHero(state: state, now: Self.now, anyRuleOn: true,
                       defaultDurationMinutes: 60, suppressed: suppressed,
                       ruleHolds: ruleHolds,
+                      batteryStopped: batteryStopped, batteryFloor: 20,
                       timedNote: { _ in "until 15:42" },
                       start: { _ in }, stop: {}, resume: {})
             .frame(width: HelmLayout.settingsColumn)
@@ -45,9 +50,11 @@ final class TheStopCaptionIsOnScreenOrNotTests: XCTestCase {
     /// a caption that was not there. Two renders that differ in one thing and
     /// are compared against each other need no such arithmetic: everything else
     /// on screen is identical and cancels.
-    private func ink(ruleHolds: Bool, state: SessionHero, suppressed: Bool = false) -> Int {
+    private func ink(ruleHolds: Bool, state: SessionHero, suppressed: Bool = false,
+                     batteryStopped: Bool = false) -> Int {
         let host = NSHostingView(rootView: AnyView(
-            hero(ruleHolds: ruleHolds, state: state, suppressed: suppressed)))
+            hero(ruleHolds: ruleHolds, state: state, suppressed: suppressed,
+                 batteryStopped: batteryStopped)))
         host.frame = NSRect(x: 0, y: 0, width: HelmLayout.settingsColumn,
                             height: host.fittingSize.height)
         host.layoutSubtreeIfNeeded()
@@ -102,5 +109,53 @@ final class TheStopCaptionIsOnScreenOrNotTests: XCTestCase {
         try XCTSkipIf(with < 0 || without < 0, "nothing drew — no window server")
 
         XCTAssertGreaterThan(with, without)
+    }
+
+    /// **«Stop pauses the rule» with no Stop on screen.**
+    ///
+    /// `.idle` is the one state of the four that draws no Stop button — its row is
+    /// the three lengths, «Custom…» and «Indefinite» — and the caption is drawn in
+    /// every state now, on `ruleHolds && !suppressed`. Those two look impossible
+    /// together: a trigger that holds and is not being ignored is a session, and a
+    /// session is not `.idle`.
+    ///
+    /// The battery veto is the state that makes them possible, and it arrived on
+    /// this page in the commit that wired the notice up. `recompute` refreshes
+    /// `triggeredConditions` **before** the veto returns — deliberately, so the
+    /// rows stop naming an app that has quit — then releases everything with
+    /// `suppressed` untouched. What the engine emits is exactly this: `isActive`
+    /// false, a trigger holding, nothing suppressed, the guard in force. So the
+    /// page draws a 40 pt «Off», an 11 pt line offering to pause a rule by
+    /// pressing a button that is not there, and under it the banner saying nothing
+    /// will run until the charger goes in.
+    ///
+    /// Reachable no other way, which is why nothing caught it: with the veto
+    /// lifted the same two flags put the hero in `.automatic`, where Stop exists
+    /// and the sentence is true.
+    func testTheCaptionIsNotOfferedWhileTheBatteryGuardHasEverythingStopped() throws {
+        let holds = ink(ruleHolds: true, state: .idle, batteryStopped: true)
+        let not = ink(ruleHolds: false, state: .idle, batteryStopped: true)
+        try XCTSkipIf(holds < 0 || not < 0, "nothing drew — no window server")
+
+        // Both readings carry the battery banner — the drawn flag is seeded from
+        // `suppressed || batteryStopped` — so the only thing that can differ
+        // between them is the caption.
+        XCTAssertEqual(holds, not,
+                       "«Stop pauses the rule until it applies again» is on screen in a state "
+                       + "with no Stop button in it, above a banner saying the battery guard "
+                       + "has stopped everything: \(holds) vs \(not)")
+    }
+
+    /// The instrument, on the state that has no notice and no Stop either: the
+    /// equality above must not be passing because `.idle` cannot draw the caption
+    /// at all.
+    func testTheIdleStateDrawsTheCaptionToday() throws {
+        let holds = ink(ruleHolds: true, state: .idle)
+        let not = ink(ruleHolds: false, state: .idle)
+        try XCTSkipIf(holds < 0 || not < 0, "nothing drew — no window server")
+
+        XCTAssertNotEqual(holds, not,
+                          "the caption is already absent in `.idle` whatever `ruleHolds` says, "
+                          + "so the check above cannot fail and the reading proves nothing")
     }
 }

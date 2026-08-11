@@ -37,6 +37,11 @@ final class HeroTickCostBenchmark: XCTestCase {
             KeepAwakeHero(state: box.state, now: box.tick, anyRuleOn: true,
                           defaultDurationMinutes: 60, suppressed: box.suppressed,
                           ruleHolds: true,
+                          // Passed although both default: what a defaulted
+                          // battery input costs is written down in
+                          // `BothNoticesShareOneSlotTests`. A guard in force
+                          // would end the session this benchmark is ticking.
+                          batteryStopped: false, batteryFloor: 20,
                           timedNote: { end in
                               // What the real page does on every `.timed` tick:
                               // `SessionHero.holderAfterTimer` plus a formatted

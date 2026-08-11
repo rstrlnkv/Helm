@@ -100,15 +100,60 @@ final class APmsetThatRefusedIsNotASuccessTests: XCTestCase {
     func testTheNextLaunchRestoresWhatTheRefusalLeftBehind() {
         store.set(true, for: KeepAwakeSettings.Key.clamshellGuard)
         clamshell.pmset = "SleepDisabled 1"
-        let fresh = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
-                                    assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
-                                    displayObserver: FakeDisplayObserver(), power: FakePower(),
-                                    apps: FakeApps(), pointer: FakePointer(),
-                                    clamshell: clamshell, clock: FakeClock())
 
-        fresh.activate()
+        atLaunch().activate()
 
         XCTAssertTrue(clamshell.disableSleepCalls.contains(false),
                       "a launch that finds the guard set and sleep disabled has to put it back")
+    }
+
+    /// **The same refusal, on the other of the two paths that clear the flag.**
+    ///
+    /// `disengage()` was taught to keep the flag when `pmset` refuses — that is
+    /// the test four above, and it is the expensive case: sleep is off
+    /// machine-wide and the note is the only thing that brings anybody back to
+    /// look. `recoverAtLaunch()` does the identical pair of steps and was left
+    /// as it was: `_ = clamshell.setDisableSleep(false)`, result discarded, and
+    /// then the flag cleared whatever happened.
+    ///
+    /// So the sequence this whole file is about — Helm crashed with sleep off,
+    /// and the sudoers rule has since been taken out by an admin, a migration or
+    /// somebody tidying `/etc/sudoers.d`, which is exactly what this machine's
+    /// leftover `vorssaint-clamshell` line is — ends with the restore refused,
+    /// the note erased, and **no launch ever looking again**. The Mac does not
+    /// sleep again, and every screen says Keep Awake is idle: `active` is false
+    /// on the path that never succeeded, so even the settings row that now says
+    /// «Sleep is off right now» says nothing.
+    ///
+    /// Asserted as the flag rather than as a `pmset` call count, for the reason
+    /// its sibling gives: the flag is the whole mechanism by which a failure
+    /// here is recoverable at all.
+    func testARefusedRecoveryAtLaunchKeepsTheFlagThatBringsTheNextLaunchBack() {
+        store.set(true, for: KeepAwakeSettings.Key.clamshellGuard)
+        clamshell.pmset = "SleepDisabled 1"
+        clamshell.disableSleepSucceeds = false
+
+        atLaunch().activate()
+
+        // The subject first: a test about a refusal is vacuous if the call never
+        // happened. `recoverAtLaunch` short-circuits on the flag *and* on the
+        // `pmset` report, and either half missing would leave nothing to refuse.
+        XCTAssertTrue(clamshell.disableSleepCalls.contains(false),
+                      "precondition: the launch did try to put sleep back")
+        XCTAssertTrue(guardFlag,
+                      "the restore was refused and the note that says «this app may have left "
+                      + "system sleep off» has been cleared anyway — nothing will ever look "
+                      + "again, this Mac never sleeps, and `active` is false so no screen says "
+                      + "a word about it")
+    }
+
+    /// A second engine over the same store and the same lid, which is what the
+    /// next launch is.
+    private func atLaunch() -> KeepAwakeEngine {
+        KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
+                        assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
+                        displayObserver: FakeDisplayObserver(), power: FakePower(),
+                        apps: FakeApps(), pointer: FakePointer(),
+                        clamshell: clamshell, clock: FakeClock())
     }
 }

@@ -328,15 +328,24 @@ struct KeepAwakePanelTile: View {
                 .foregroundStyle(HelmText.quiet)
                 .padding(.top, 2)
 
+            // Hidden on a Mac with no display of its own, the way the settings
+            // page hides the same rule and the engine refuses it: every display a
+            // mini or a Studio has is external, so the rule would mean «never
+            // sleep». This was the **writer** — the page hid its row and the panel
+            // went on offering the switch, so a desktop could be put into a state
+            // whose only control was on the screen that does not draw it.
+            //
             // The row's visible Text is a sibling, not the toggle's label, so
             // the title goes into the Toggle itself and labelsHidden keeps it
             // for VoiceOver only.
-            settingRow(KAStr.onExternalDisplay) {
-                Toggle(KAStr.onExternalDisplay, isOn: $autoExternalDisplay)
-                    .labelsHidden()
-                    .onChange(of: autoExternalDisplay) { _, v in
-                        vm.save(in: store) { $0.setAutoExternalDisplay(v) }
-                    }
+            if MacHardware.hasBuiltInDisplay {
+                settingRow(KAStr.onExternalDisplay) {
+                    Toggle(KAStr.onExternalDisplay, isOn: $autoExternalDisplay)
+                        .labelsHidden()
+                        .onChange(of: autoExternalDisplay) { _, v in
+                            vm.save(in: store) { $0.setAutoExternalDisplay(v) }
+                        }
+                }
             }
 
             settingRow(KAStr.onPower) {

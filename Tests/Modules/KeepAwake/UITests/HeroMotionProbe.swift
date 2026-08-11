@@ -59,6 +59,13 @@ final class HeroMotionProbe: XCTestCase {
                               defaultDurationMinutes: 60,
                               suppressed: box.suppressed,
                               ruleHolds: true,
+                              // Spelled out although they default, and the
+                              // default is why: the page's own call omitted
+                              // both for a release and drew a notice nothing
+                              // could reach. The motion measured here is the
+                              // paused row's, so the guard is off.
+                              batteryStopped: false,
+                              batteryFloor: 20,
                               timedNote: { _ in "until 15:42" },
                               start: { _ in }, stop: {}, resume: {})
                 // The form, in one bar. It is what somebody is reading while

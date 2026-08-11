@@ -156,4 +156,59 @@ final class RulesAPlistCanHoldTests: XCTestCase {
         XCTAssertTrue(engine.isActive)
         XCTAssertTrue(engine.activeConditions.contains(.app))
     }
+
+    // MARK: - A value under the rules key that is not a string at all
+
+    /// **The banner covers a rules *string* nothing can read, and not a rules
+    /// *value* nothing can read.**
+    ///
+    /// `appRulesUnreadable` is `!encoded.isEmpty && readable(encoded) == nil`, and
+    /// `encoded` comes from `store.string(…)` — an `as? String` over whatever the
+    /// file holds. So a plist whose `autoAppRules` is an *array* answers with the
+    /// empty string, which reads as «nothing was ever written»: every app rule is
+    /// dead, the page draws its empty state, and the new banner says nothing. That
+    /// is the exact silence the banner shipped to break, one plist type over.
+    ///
+    /// Not exotic, either. `autoApps` — the key this module still reads for
+    /// migration — *is* a `[String]`, so an array under a rules key is what this
+    /// app's own older format looks like; a hand edit, a restored backup or a
+    /// half-finished migration all produce it.
+    func testARulesValueThatIsNotAStringIsReportedAsUnreadable() {
+        for value in [["com.apple.Safari"] as Any, 42 as Any, Data() as Any] {
+            backing.raw.removeValue(forKey: "module.keep-awake.autoAppRules")
+            plant("autoAppRules", value)
+
+            // The subject: this really is a file with something under the rules
+            // key, and no rule is being honoured.
+            XCTAssertNotNil(backing.raw["module.keep-awake.autoAppRules"],
+                            "precondition: the fixture wrote nothing")
+            XCTAssertTrue(settings.appTriggers.isEmpty,
+                          "precondition: \(type(of: value)) under the rules key holds nothing")
+
+            XCTAssertTrue(settings.appRulesUnreadable,
+                          "the file holds a \(type(of: value)) where the rules go, every app "
+                          + "rule is dead, and the page reports «no apps chosen» — the same "
+                          + "silence the banner exists to break")
+        }
+    }
+
+    /// The controls, and they are the half a fix must not break: a store that has
+    /// never held rules, and one that holds none *on purpose*, are not errors.
+    /// «Unreadable» drawn for either of those is a banner on every fresh install.
+    func testAnAbsentOrEmptyRulesValueIsNotAnError() {
+        XCTAssertFalse(settings.appRulesUnreadable,
+                       "a store with no rules key at all is a fresh install")
+
+        plant("autoAppRules", "")
+        XCTAssertFalse(settings.appRulesUnreadable, "an empty string is not a broken file")
+
+        plant("autoAppRules", "[]")
+        XCTAssertFalse(settings.appRulesUnreadable,
+                       "«no apps chosen» is a legitimate thing for the file to say")
+
+        plant("autoAppRules", "{not rules at all")
+        XCTAssertTrue(settings.appRulesUnreadable,
+                      "the flag no longer reports the case it was written for, so the check "
+                      + "above passes for a flag that reports nothing")
+    }
 }

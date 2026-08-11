@@ -147,9 +147,15 @@ struct KeepAwakeHero: View {
     /// something meaningful rather than on zero — Clock does the same.
     @State private var customMinutes = 0
 
+    /// **The two battery inputs carry no defaults, deliberately.** They had
+    /// `= false` and `= 0`, and the page's own call simply forgot them: a hero that
+    /// could never draw the notice, compiling everywhere, for a whole release. Of
+    /// every input here they are the two whose default *looks like* «nothing is
+    /// wrong», so the compiler is the only reader that can catch a call site
+    /// dropping them.
     init(state: SessionHero, now: Date, anyRuleOn: Bool, defaultDurationMinutes: Int,
          suppressed: Bool, ruleHolds: Bool, appNames: [String] = [],
-         batteryStopped: Bool = false, batteryFloor: Int = 0,
+         batteryStopped: Bool, batteryFloor: Int,
          timedNote: @escaping (Date) -> String,
          start: @escaping (Int) -> Void, stop: @escaping () -> Void,
          resume: @escaping () -> Void) {
@@ -438,7 +444,15 @@ struct KeepAwakeHero: View {
     /// sentence twice, one of them in the future tense about something that had
     /// already happened. The banner is the one that belongs there, because it
     /// carries the way back.
-    private var saysWhatStopWouldDo: Bool { ruleHolds && !suppressed }
+    ///
+    /// And not while the battery guard has everything stopped, which is the one
+    /// state where a trigger holds, nothing is suppressed and there is **no Stop
+    /// button on screen**: `recompute` refreshes the triggers before the veto
+    /// returns, so the engine emits `isActive` false with a trigger true — `.idle`,
+    /// whose row is the three lengths and «Indefinite». The caption offered to
+    /// pause a rule by pressing something that is not there, over a banner saying
+    /// nothing will run until the charger goes in.
+    private var saysWhatStopWouldDo: Bool { ruleHolds && !suppressed && !batteryStopped }
 
     private var stopNote: some View {
         Text(KAStr.heroStopSuppresses)

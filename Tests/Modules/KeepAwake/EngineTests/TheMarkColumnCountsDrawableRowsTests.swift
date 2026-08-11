@@ -85,6 +85,30 @@ final class TheMarkColumnCountsDrawableRowsTests: XCTestCase {
         }
     }
 
+    /// **An iMac, which is the third shape and was in none of the readings above.**
+    ///
+    /// `MacHardware` answers three questions from two facts — `hasLid` *is*
+    /// `hasBattery`, and `hasBuiltInDisplay` is «a battery, or the window server
+    /// says a panel is built in» — so the machines this function can be asked
+    /// about are a laptop (both true), a mini/Studio/Pro (both false) and an iMac:
+    /// a panel of its own and no lid. The two cases written above are the first
+    /// two, and a desktop that draws the display row was left to be assumed.
+    ///
+    /// It has to count the display rule, because the row is on its page, and it
+    /// has to ignore the lid, because that row is not — the pair a fix that tied
+    /// the two hardware questions together would break, in the one direction this
+    /// Mac cannot photograph.
+    func testAniMacCountsTheDisplayRuleAndNeverTheLid() {
+        let rules = MarkableRules.of(autoExternalDisplay: true, autoPower: false,
+                                     lidHolding: true,
+                                     hasBuiltInDisplay: true, hasLid: false)
+        XCTAssertTrue(rules.contains(.externalDisplay),
+                      "the row is drawn on an iMac and its mark is not counted")
+        XCTAssertFalse(rules.lidHolding,
+                       "an iMac has no lid, and the row that would carry this mark is not drawn")
+        XCTAssertFalse(rules.isEmpty)
+    }
+
     /// A Mac with no lid cannot be holding sleep off with it, whatever arrives
     /// over the wire — the same rule as the display row, one row down.
     func testAMacWithNoLidNeverReportsTheLidHolding() {

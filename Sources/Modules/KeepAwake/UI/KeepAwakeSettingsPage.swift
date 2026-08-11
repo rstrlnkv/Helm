@@ -223,8 +223,11 @@ struct KeepAwakeSettingsPage: View {
 
     /// True when anything is configured that *could* hold the Mac — which is
     /// the difference between «nothing is set up» and «nothing applies now».
+    /// Through `enabledRules`, so the hardware is in the answer: off the raw flags
+    /// it counted the display rule on a desktop, whose row is not drawn and whose
+    /// engine refuses it. `.rules`, because the lid is not one.
     private var anyRuleOn: Bool {
-        autoExternalDisplay || autoPower || !appTriggers.isEmpty
+        !enabledRules.rules.isEmpty || !appTriggers.isEmpty
     }
 
     private func start(_ minutes: Int) { vm.start(minutes: minutes) }
