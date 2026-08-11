@@ -6,17 +6,6 @@ import IOKit
 import IOKit.pwr_mgt
 import IOKit.ps
 
-// MARK: - Shell
-
-/// Kept as a name; the body is `HelmProcess`, shared by every module.
-enum Shell {
-    static func run(_ launchPath: String, _ arguments: [String]) -> (status: Int32, stdout: String) {
-        let result = HelmProcess.run(launchPath, arguments)
-        return (result.status, result.output)
-    }
-
-}
-
 // MARK: - IOKitSleepAssertions
 
 public final class IOKitSleepAssertions: SleepAssertions {
@@ -309,12 +298,12 @@ public final class PmsetClamshellPort: ClamshellPort {
     public init() {}
 
     public func pmsetReport() -> String {
-        Shell.run(Self.pmsetPath, ["-g"]).stdout
+        HelmProcess.run(Self.pmsetPath, ["-g"]).output
     }
 
     public func setDisableSleep(_ on: Bool) -> Bool {
         let flag = on ? "1" : "0"
-        let result = Shell.run(Self.sudoPath, ["-n", Self.pmsetPath, "disablesleep", flag])
+        let result = HelmProcess.run(Self.sudoPath, ["-n", Self.pmsetPath, "disablesleep", flag])
         return result.status == 0
     }
 
@@ -330,7 +319,7 @@ public final class PmsetClamshellPort: ClamshellPort {
     /// `disablesleep 0` is the half of the grant that is safe to spend on a
     /// question: it is what «restore sleep» does anyway, and it is idempotent.
     public func canDisableSleepWithoutPassword() -> Bool {
-        Shell.run(Self.sudoPath, ["-n", Self.pmsetPath, "disablesleep", "0"]).status == 0
+        HelmProcess.run(Self.sudoPath, ["-n", Self.pmsetPath, "disablesleep", "0"]).status == 0
     }
 
     public func installSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
@@ -347,7 +336,7 @@ public final class PmsetClamshellPort: ClamshellPort {
             // path stood in `ps auxww` for the whole life of the password
             // prompt (`SudoersRule` has the rest). Everything now happens
             // inside root-owned /etc/sudoers.d.
-            let result = Shell.run("/usr/bin/osascript", ["-e", SudoersRule.installScript(user: user)])
+            let result = HelmProcess.run("/usr/bin/osascript", ["-e", SudoersRule.installScript(user: user)])
             done(result.status == 0)
         }
     }
@@ -358,7 +347,7 @@ public final class PmsetClamshellPort: ClamshellPort {
     public func removeSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async {
             guard self.isSudoersInstalled() else { done(true); return }
-            let result = Shell.run("/usr/bin/osascript", ["-e", SudoersRule.removeScript()])
+            let result = HelmProcess.run("/usr/bin/osascript", ["-e", SudoersRule.removeScript()])
             done(result.status == 0)
         }
     }

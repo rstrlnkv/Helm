@@ -8,26 +8,12 @@ import Security
 import SystemConfiguration
 import UserNotifications
 
-// MARK: - Shell
-
-/// Minimal `Process` wrapper for invoking system command-line tools. Local to
-/// this file — the rest of the engine target stays free of any shell dependency
-/// so the core logic (Ports.swift, VPNEngine, etc.) can be unit-tested with
-/// fakes instead.
-/// Kept as a name; the body is `HelmProcess`, which every module shares.
-enum Shell {
-    @discardableResult
-    static func run(_ path: String, _ args: [String]) -> HelmProcess.Result {
-        HelmProcess.run(path, args)
-    }
-}
-
 // MARK: - ScutilRunner
 
 /// Production `VPNRunnerPort`: shells out to `/usr/sbin/scutil`.
 public final class ScutilRunner: VPNRunnerPort {
     public init() {}
-    public func run(_ args: [String]) -> String { Shell.run("/usr/sbin/scutil", args).output }
+    public func run(_ args: [String]) -> String { HelmProcess.run("/usr/sbin/scutil", args).output }
 }
 
 // MARK: - WorkspaceAppObserver
@@ -195,7 +181,7 @@ public final class KeychainCredentials: VPNCredentialsPort {
     }
 
     public func credentials(for name: String) -> VPNCredentials? {
-        let show = Shell.run("/usr/sbin/scutil", ["--nc", "show", name]).output
+        let show = HelmProcess.run("/usr/sbin/scutil", ["--nc", "show", name]).output
         guard let uuid = Self.value(inScutilShow: show, field: "AuthPassword") else { return nil }
         let authName = Self.value(inScutilShow: show, field: "AuthName")
 
@@ -282,7 +268,7 @@ public final class KeychainCredentials: VPNCredentialsPort {
         var args = ["find-generic-password", "-w", "-s", service]
         if let account, !account.isEmpty { args += ["-a", account] }
         if let keychain { args.append(keychain) }
-        let result = Shell.run("/usr/bin/security", args)
+        let result = HelmProcess.run("/usr/bin/security", args)
         guard result.status == 0 else { return nil }
         let value = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
         return value.isEmpty ? nil : value
