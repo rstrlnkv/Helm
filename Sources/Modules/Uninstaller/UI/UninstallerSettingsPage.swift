@@ -72,7 +72,15 @@ struct UninstallerSettingsPage: View {
                     Text(UnStr.tabOrphans).tag(1)
                 }
                 .pickerStyle(.segmented).labelsHidden()
-                .frame(width: 200)
+                // No width, because a segmented control sizes itself from its own
+                // labels and never stretches past that — so a fixed number is
+                // slack in the languages below it and a squeeze in the ones
+                // above. 200 was both: 39 pt of slack in English, where the
+                // control drew itself at x=39.5, indented from the 20 pt every
+                // row below it starts at, and 8 pt short in Russian, where AppKit
+                // took the difference out of the segments' padding until
+                // «Приложения» sat against the edge of its pill. A bigger number
+                // would only move which language pays.
                 .disabled(step == .review)
 
                 if tab == 0 && step == .pick {

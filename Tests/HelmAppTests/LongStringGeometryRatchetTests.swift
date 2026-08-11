@@ -41,14 +41,18 @@ import XCTest
 final class LongStringGeometryRatchetTests: XCTestCase {
 
     /// Measured 2026-08-11 against `main` = `8b8c547`, three consecutive runs in
-    /// agreement.
+    /// agreement. `atFullSize` was 1 and is 0: the Uninstaller's segmented control
+    /// was drawn at 200 pt where Russian asks for 208, and the `.frame(width: 200)`
+    /// that did it is gone.
     ///
-    /// `atFullSize` is what does not fit as shipped: the Uninstaller's segmented
-    /// control in Russian, drawn at 200 pt where it asks for 208. `atFortyPercent`
-    /// is the same control in all eight languages — it is laid out at exactly its
-    /// intrinsic width in every one of them, so it has no headroom anywhere, and
-    /// Russian is simply the language that has already spent it.
-    private static let recordedAtFullSize = 1
+    /// `atFortyPercent` is that control in all eight languages, and **a wider frame
+    /// cannot lower it** — worth knowing before somebody tries. A segmented control
+    /// sizes itself from its labels and does not stretch past that: Chinese drew
+    /// 100 pt inside the 200 pt frame this page used to impose. So its drawn width
+    /// is its intrinsic width whenever it has the room, and `drawn < intrinsic × 1.4`
+    /// holds for every segmented control at any width. What lowers this number is a
+    /// shorter label or a different control.
+    private static let recordedAtFullSize = 0
     private static let recordedAtFortyPercent = 8
 
     /// The audit's number, and the reason it is 1.4 and not 2: a translation is
@@ -130,7 +134,7 @@ final class LongStringGeometryRatchetTests: XCTestCase {
     ///
     /// Asserted through a control's own intrinsic width, which is set by the
     /// text in it: the Uninstaller's segmented control is 161 pt in English and
-    /// 200 in Russian, and a render that ignored the override would answer 161
+    /// 208 in Russian, and a render that ignored the override would answer 161
     /// twice.
     func testTheLanguageChangesWhatIsDrawn() {
         var widths: [String: CGFloat] = [:]
