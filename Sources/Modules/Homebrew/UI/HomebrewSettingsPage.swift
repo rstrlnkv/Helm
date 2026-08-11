@@ -104,7 +104,11 @@ struct HomebrewSettingsPage: View {
                     Text(HbStr.segSearch).tag(Segment.search)
                 }
                 .pickerStyle(.segmented).labelsHidden()
-                .frame(width: 300)
+                // Its own width, not 300: the control asks 226.5 pt in English
+                // and 370.5 in Japanese, so a fixed number clipped four
+                // languages and centred the rest — which walked the row's left
+                // edge from 20 pt to 75.5 while every row below it starts at 20.
+                .fixedSize()
                 .onChange(of: segment) { _, seg in
                     Task { await refresh(seg) }
                 }

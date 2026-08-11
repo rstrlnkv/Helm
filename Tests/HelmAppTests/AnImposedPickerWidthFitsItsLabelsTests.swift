@@ -4,7 +4,6 @@ import SwiftUI
 import XCTest
 @testable import HelmApp
 @testable import HelmUI
-@testable import Module_Homebrew_UI
 @testable import Module_Leftovers_UI
 @testable import Module_Uninstaller_UI
 
@@ -38,16 +37,16 @@ import XCTest
 /// chosen against English and translated past, and both were invisible until
 /// somebody switched the app to Russian and looked at it.
 ///
-/// **And the sanctioned answer is a model of a different control.**
-/// `HelmPickerWidth.segmented` adds up the label widths and 26 pt a segment, which
-/// is what `NSSegmentedControl` does with `.segmentDistribution = .fit`. SwiftUI's
-/// `.segmented` picker fills its segments **equally**: measured here, the hosted
-/// control's intrinsic width equals `.fillEqually`'s `sizeToFit` in all 24
-/// readings taken, and exceeds `HelmPickerWidth.segmented`'s answer by up to
-/// 140 pt (the log's level filter in Russian: 263 written, 403.5 asked for). That
-/// is why the ratchets below record two sites that clip today rather than none —
-/// both numbers are `HelmPickerWidth.segmented`'s, once written out by hand as 300
-/// and once called directly.
+/// **And the sanctioned answer was a model of a different control.**
+/// `HelmPickerWidth.segmented` used to add up the label widths and 26 pt a
+/// segment, which is what `NSSegmentedControl` does with
+/// `.segmentDistribution = .fit`. SwiftUI's `.segmented` picker fills its segments
+/// **equally**: measured here, the hosted control's intrinsic width equals
+/// `.fillEqually`'s `sizeToFit` in all 24 readings taken, and exceeded the old
+/// answer by up to 140 pt (the log's level filter in Russian: 263 written, 403.5
+/// asked for). Both sites that clipped were that arithmetic — once written out by
+/// hand as 300, once called directly — and `PickerWidthTests` now pins the helper
+/// against `.fillEqually` label set by label set.
 @MainActor
 final class AnImposedPickerWidthFitsItsLabelsTests: XCTestCase {
 
@@ -94,33 +93,40 @@ final class AnImposedPickerWidthFitsItsLabelsTests: XCTestCase {
     /// break the record without touching the picker. Changing the width does break
     /// it, which is the moment it has to be measured again.
     private static let recorded: [String: @Sendable () -> [String]] = [
-        "HomebrewSettingsPage.swift|300": { [HbStr.segInstalled, HbStr.segUpdates,
-                                             HbStr.segSearch] },
         "LeftoversSettingsPage.swift|180": { [LfStr.filterLeftovers, LfStr.filterAll] },
         "LogView.swift|HelmPickerWidth": { [AppStr.logLevelAll, AppStr.logLevelWarnings,
                                             AppStr.logLevelErrors] },
     ]
 
-    /// **Measured 2026-08-11, three consecutive runs in agreement.**
+    /// **Measured 2026-08-11, three consecutive runs in agreement.** Both numbers
+    /// were 2 and 3 when this file was written; what lowered them was
+    /// `HelmPickerWidth.segmented` learning the control SwiftUI actually draws —
+    /// `count × (widest label + 24)`, rounded up to the half point, which is
+    /// `.fillEqually`'s own arithmetic to the point — and Homebrew's written 300
+    /// coming off in favour of `.fixedSize()`.
     ///
     /// `clipping` is a site whose imposed width is under what its labels ask for in
-    /// at least one language — the ratchet's full-size rule. Two of the three:
+    /// at least one language, and it is **zero**: the two that clipped were the
+    /// `LogView` filter (short in seven of eight languages — ru 263 against 403.5)
+    /// and Homebrew's toolbar (short in four — ru 366, ja 370.5, es 357, pt 303).
     ///
-    /// - `LogView.swift`, `HelmPickerWidth.segmented(levelLabels)`, short in **seven
-    ///   of eight languages** — en 236 against 265.5, de 215/280.5, fr 242/351,
-    ///   ru 263/403.5, es 191/204, ja 180/184.5, pt 180/189; only zh fits.
-    /// - `HomebrewSettingsPage.swift`, a written 300, short in four — ru 366,
-    ///   ja 370.5, es 357, pt 303.
+    /// `tight` is a site with less than 40 % of room, and the two left are both
+    /// there honestly:
     ///
-    /// `tight` is a site with less than 40 % of room, which is all three: Leftovers'
-    /// 180 fits every language and Russian asks for 152, which is 1.18 ×.
+    /// - `LeftoversSettingsPage.swift`'s written 180 fits every language, and
+    ///   Russian asks 152 — 1.18 ×. A number chosen by hand, and the one site here
+    ///   that a longer translation could still overtake.
+    /// - `LogView.swift` is at **exactly** 1.00 × in all eight, because a computed
+    ///   width *is* what the control asks for. That is the fix, not a finding:
+    ///   headroom would be slack, AppKit centres a segmented control in the width
+    ///   it is given, and the row's left edge would then walk off the 20 pt gutter
+    ///   with the language. Padding this number to satisfy the ratchet would be
+    ///   putting the defect back.
     ///
-    /// Both numbers are only ever lowered, by the commit that lowers them. The way
-    /// down is one line: `HelmPickerWidth.segmented` has to model the control
-    /// SwiftUI draws — `max(label) × count + chrome`, which is `.fillEqually` — or
-    /// the width has to come off altogether, which is what `f69fcaf` did.
-    private static let recordedClipping = 2
-    private static let recordedTight = 3
+    /// Both numbers are only ever lowered, by the commit that lowers them. What is
+    /// left to lower is Leftovers' 180.
+    private static let recordedClipping = 0
+    private static let recordedTight = 2
     private static let inflation: CGFloat = 1.4
 
     /// Every file a picker can be written in: the shared enumeration the ladder

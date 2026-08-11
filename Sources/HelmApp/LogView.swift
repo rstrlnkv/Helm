@@ -109,8 +109,10 @@ struct LogView: View {
                 Text(levelLabels[2]).tag(LogLevel.error)
             }
             .pickerStyle(.segmented).labelsHidden()
-            // Measured, not 260: that was 3 pt from clipping in Russian and
-            // 110 pt too wide in Chinese.
+            // Measured per language, not 260 and not 263: a segmented control
+            // draws every segment as wide as the widest label, so its width is
+            // the widest × three — 403.5 pt in Russian, where adding the three
+            // labels up answered 263 and clipped two of them.
             .frame(width: HelmPickerWidth.segmented(levelLabels))
 
             // Built from what has arrived, so it names the modules that spoke

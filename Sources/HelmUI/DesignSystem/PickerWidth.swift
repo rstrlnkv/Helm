@@ -1,6 +1,7 @@
 import AppKit
 
-/// How wide a pop-up button has to be to show its own labels.
+/// How wide a picker has to be to show its own labels — a pop-up's width and a
+/// segmented control's, which are different arithmetic on the same measurement.
 ///
 /// The rule editor sets a fixed width on every picker so its rows read as
 /// columns rather than as ragged sentences. The widths were chosen against the
@@ -17,27 +18,51 @@ import AppKit
 /// `sizeToFit` does, without building a button per row.
 public enum HelmPickerWidth {
     static let chrome: CGFloat = 48
+    static let segmentChrome: CGFloat = 24
+
+    /// The longest label's ink at the system font. Both widths here are built on
+    /// it — a pop-up draws the longest label once, a segmented control draws its
+    /// width once per segment, and that difference is the whole difference
+    /// between the two functions below.
+    private static func widestInk(of labels: [String]) -> CGFloat {
+        let font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
+        return labels
+            .map { ($0 as NSString).size(withAttributes: [.font: font]).width }
+            .max() ?? 0
+    }
 
     /// The width that fits the longest of `labels`, never below `minimum` — so
     /// a row of short words keeps the column it was designed with.
     public static func fitting(_ labels: [String], minimum: CGFloat) -> CGFloat {
-        let font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
-        let widest = labels
-            .map { ($0 as NSString).size(withAttributes: [.font: font]).width }
-            .max() ?? 0
-        return max(minimum, (widest + chrome).rounded(.up))
+        max(minimum, (widestInk(of: labels) + chrome).rounded(.up))
     }
 
-    /// A segmented control's chrome is per *segment*, not per control: about
-    /// 26 pt around each label. Hard-coded widths are what this type exists to
-    /// end — 260 was 3 pt from clipping in Russian and 110 pt too wide in
-    /// Chinese, and `.fixedSize()` is not the answer either, because SwiftUI's
-    /// fitting size for a segmented picker comes back at 404 pt in Russian.
-    public static func segmented(_ labels: [String], minimum: CGFloat = 180) -> CGFloat {
-        let font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
-        let ink = labels
-            .map { ($0 as NSString).size(withAttributes: [.font: font]).width }
-            .reduce(0, +)
-        return max(minimum, (ink + 26 * CGFloat(labels.count)).rounded(.up))
+    /// A segmented control's chrome is per *segment*, not per control: 24 pt
+    /// around each label, calibrated across eleven label sets, four scripts and
+    /// two-to-four segments.
+    ///
+    /// And every segment is as wide as the **widest** label, because that is how
+    /// the control divides itself up — so the width is `count × (widest + 24)`,
+    /// never the labels added together. Adding them was this helper's own
+    /// arithmetic until 2026-08-11, and it is a pop-up's: it agrees only when
+    /// every label is the same length, which English nearly is and Russian is
+    /// not. The log's three levels were handed 263 pt where the control asks
+    /// 403.5, and nothing said so, because the number came from the helper whose
+    /// whole job was to end widths chosen by hand.
+    ///
+    /// Rounded up per segment, and to the half point, because that is the grid
+    /// AppKit lays a segment out on: over 400 random label sets in four scripts
+    /// this answers `sizeToFit` **exactly**, never a half point short and never a
+    /// half point over. Rounding at the end instead came out 0.5 pt short in five
+    /// of eighteen real label sets — and a computed width that comes out short is
+    /// worse than a written one, because it looks measured.
+    ///
+    /// There is no minimum to pass, either: a floor above what the labels ask for
+    /// is the slack this arithmetic exists to remove, and it centres the control
+    /// in its own frame — which walks the left edge of the row away from the
+    /// gutter every row below it starts at.
+    public static func segmented(_ labels: [String]) -> CGFloat {
+        let segment = ((widestInk(of: labels) + segmentChrome) * 2).rounded(.up) / 2
+        return segment * CGFloat(labels.count)
     }
 }
