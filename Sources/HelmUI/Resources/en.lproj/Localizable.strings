@@ -6,7 +6,7 @@
 "1 module" = "1 module";
 "2 hours" = "2 hours";
 "A Keep Awake session now survives Helm restarting. A two-hour session lived only in memory, so anything that ended the app — a silent update most often — cancelled it: the countdown vanished from the menu bar, the Mac was free to sleep, and nothing said so. It comes back with the time it had left. A session whose end passed while Helm was gone stays finished." = "A Keep Awake session now survives Helm restarting. A two-hour session lived only in memory, so anything that ended the app — a silent update most often — cancelled it: the countdown vanished from the menu bar, the Mac was free to sleep, and nothing said so. It comes back with the time it had left. A session whose end passed while Helm was gone stays finished.";
-"A VPN carries everything this Mac sends, not only that app, and it takes a few seconds to come up after the app starts." = "A VPN carries everything this Mac sends, not only that app, and it takes a few seconds to come up after the app starts.";
+"A VPN carries everything this Mac sends, not only the app it names, and it takes a few seconds to come up after the app starts." = "A VPN carries everything this Mac sends, not only the app it names, and it takes a few seconds to come up after the app starts.";
 "A design pass over the whole app, in the macOS 26/27 idiom: Liquid Glass on the menu-bar panel, page titles that line up with the page beneath them at any window width, text that recedes without becoming unreadable, and numbers that roll instead of cutting. The sidebar groups modules into Files and Utilities rather than putting five of seven in one pile, and the window opens wide enough for the Disk screen to show everything it measures." = "A design pass over the whole app, in the macOS 26/27 idiom: Liquid Glass on the menu-bar panel, page titles that line up with the page beneath them at any window width, text that recedes without becoming unreadable, and numbers that roll instead of cutting. The sidebar groups modules into Files and Utilities rather than putting five of seven in one pile, and the window opens wide enough for the Disk screen to show everything it measures.";
 "A few things fixed that you’re unlikely to ever notice directly: a symbolic link inside a folder Helm may clean could send removal to a different file than the one it confirmed; the diagnostics log’s short tags for app, VPN and package names could be reversed back into the real names by anyone holding the same public lists Helm draws them from; and Homebrew’s one-time setup step now names its two admin commands outright rather than trusting the environment to find them." = "A few things fixed that you’re unlikely to ever notice directly: a symbolic link inside a folder Helm may clean could send removal to a different file than the one it confirmed; the diagnostics log’s short tags for app, VPN and package names could be reversed back into the real names by anyone holding the same public lists Helm draws them from; and Homebrew’s one-time setup step now names its two admin commands outright rather than trusting the environment to find them.";
 "A filter hides the kinds you are not reviewing — system extensions, for instance." = "A filter hides the kinds you are not reviewing — system extensions, for instance.";
@@ -28,6 +28,7 @@
 "Active" = "Active";
 "Add" = "Add";
 "Add an app, and Helm connects a VPN when it launches." = "Add an app, and Helm connects a VPN when it launches.";
+"Add another in System Settings and Helm picks it up." = "Add another in System Settings and Helm picks it up.";
 "Add app…" = "Add app…";
 "Add condition" = "Add condition";
 "Add folder…" = "Add folder…";
@@ -96,7 +97,15 @@
 "Custom active-state icon for Keep Awake." = "Custom active-state icon for Keep Awake.";
 "Custom duration" = "Custom duration";
 "Custom icon when active" = "Custom icon when active";
+"Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings.";
+"Icon spin" = "Menu-bar spin";
+"Menu bar" = "Menu bar";
+"Nothing" = "Nothing";
 "Other…" = "Other…";
+"Spin the menu-bar icon" = "Turn the menu-bar icon";
+"This decides the words. Whether the icon turns is the switch below." = "This decides the words. Whether the icon turns is the switch below.";
+"With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all.";
+"macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead.";
 "Cyan" = "Cyan";
 "DEV" = "DEV";
 "Dark" = "Dark";
@@ -121,7 +130,6 @@
 "Disk no longer lets a top-level folder of the disk — Users, Applications, Library — go into the basket. What is inside them still can." = "Disk no longer lets a top-level folder of the disk — Users, Applications, Library — go into the basket. What is inside them still can.";
 "Disk takes a second look: a duplicate finder. Point it at the folder the ring is showing and it lists files that exist more than once — content compared, not names. One copy in each group is marked as the one that stays; the extras go to the basket, and deletion runs through the same guarded path as everything else. Hard links are one file and are never offered." = "Disk takes a second look: a duplicate finder. Point it at the folder the ring is showing and it lists files that exist more than once — content compared, not names. One copy in each group is marked as the one that stays; the extras go to the basket, and deletion runs through the same guarded path as everything else. Hard links are one file and are never offered.";
 "Display and power" = "Display and power";
-"Do not notify" = "Do not notify";
 "Document" = "Document";
 "Done" = "Done";
 "Don’t fix" = "Don’t fix";
@@ -260,7 +268,6 @@
 "Media" = "Media";
 "Menu-bar icon" = "Menu-bar icon";
 "Menu-bar panel and a System Settings-style window, the Liquid Glass icon, eight languages." = "Menu-bar panel and a System Settings-style window, the Liquid Glass icon, eight languages.";
-"Menu-bar spin" = "Menu-bar spin";
 "Menu-bar timer: the ring empties clockwise while a timer runs, with optional remaining time and its own colour." = "Menu-bar timer: the ring empties clockwise while a timer runs, with optional remaining time and its own colour.";
 "Mint" = "Mint";
 "Miscellaneous" = "Miscellaneous";
@@ -272,7 +279,6 @@
 "Move up" = "Move up";
 "Moving around the disk ring is one movement now. Going back up more than one level used to change the screen without animating at all, the ring travels for longer the further it goes, and the slight overshoot at the end of each move — which read as a snap — is gone." = "Moving around the disk ring is one movement now. Going back up more than one level used to change the screen without animating at all, the ring travels for longer the further it goes, and the slight overshoot at the end of each move — which read as a snap — is gone.";
 "Name" = "Name";
-"Name in menu bar" = "Name in menu bar";
 "Name pattern" = "Name pattern";
 "Name without extension" = "Name without extension";
 "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works." = "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works.";
@@ -475,7 +481,6 @@
 "The update status no longer claims you are current when no check has run — it shows when the last check happened." = "The update status no longer claims you are current when no check has run — it shows when the last check happened.";
 "Then" = "Then";
 "This app is not signed — this rule never fires" = "This app is not signed — this rule never fires";
-"This decides the words. Whether the ring turns is the switch below." = "This decides the words. Whether the ring turns is the switch below.";
 "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word." = "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word.";
 "This is the real thing, not a demonstration: it works here exactly as it does anywhere else." = "This is the real thing, not a demonstration: it works here exactly as it does anywhere else.";
 "This release published no checksum. Helm opened its download page instead." = "This release published no checksum. Helm opened its download page instead.";
@@ -488,7 +493,6 @@
 "Turn off" = "Turn off";
 "Turn on" = "Turn on";
 "Turn on before reporting a problem. The file lives in ~/Library/Logs/Helm." = "Turn on before reporting a problem. The file lives in ~/Library/Logs/Helm.";
-"Turn the menu-bar icon" = "Turn the menu-bar icon";
 "Turn the rule on" = "Turn the rule on";
 "Turning a login item off no longer clears everything else you had ticked." = "Turning a login item off no longer clears everything else you had ticked.";
 "Turning off \"stay awake with the lid closed\" now also removes the passwordless permission it had to install. It used to stay on your Mac for good." = "Turning off \"stay awake with the lid closed\" now also removes the passwordless permission it had to install. It used to stay on your Mac for good.";
@@ -550,7 +554,6 @@
 "White" = "White";
 "Window" = "Window";
 "With an external display" = "With an external display";
-"With this off and the notice set to nothing, a rule that connects or drops a tunnel gives no sign at all." = "With this off and the notice set to nothing, a rule that connects or drops a tunnel gives no sign at all.";
 "Without Accessibility Helm cannot see what you type, and this does nothing." = "Without Accessibility Helm cannot see what you type, and this does nothing.";
 "Without Full Disk Access Helm cannot read every folder, and a short list of duplicates looks exactly like a folder that has none." = "Without Full Disk Access Helm cannot read every folder, and a short list of duplicates looks exactly like a folder that has none.";
 "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do." = "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do.";
@@ -581,7 +584,6 @@
 "is" = "is";
 "larger than" = "larger than";
 "m" = "m";
-"macOS is not allowing notifications from Helm. The name will be shown in the menu bar instead." = "macOS is not allowing notifications from Helm. The name will be shown in the menu bar instead.";
 "macOS may already use 🌐︎ to switch input source, open emoji or start dictation. Set “Press 🌐︎ to: Do Nothing” in Keyboard settings, or it will do both. Keyboards without a 🌐︎ key never send it." = "macOS may already use 🌐︎ to switch input source, open emoji or start dictation. Set “Press 🌐︎ to: Do Nothing” in Keyboard settings, or it will do both. Keyboards without a 🌐︎ key never send it.";
 "macOS would not move this. Show it in the Finder and try from there — the Finder says more about why." = "macOS would not move this. Show it in the Finder and try from there — the Finder says more about why.";
 "min" = "min";
@@ -735,10 +737,8 @@
 "A colour of your own: the colour menu ends with “Other…”, which opens the system colour panel — the way Calendar offers one. The palette itself is Calendar’s, and follows light and dark the way the system’s colours do." = "A colour of your own: the colour menu ends with “Other…”, which opens the system colour panel — the way Calendar offers one. The palette itself is Calendar’s, and follows light and dark the way the system’s colours do.";
 "“Stop on low battery” is a slider with stops, the way the charge limit is set in Battery. And the two colour rows are a dot and a name instead of two rows of ten swatches." = "“Stop on low battery” is a slider with stops, the way the charge limit is set in Battery. And the two colour rows are a dot and a name instead of two rows of ten swatches.";
 "No VPNs are set up on this Mac" = "No VPNs are set up on this Mac";
-"Helm connects and disconnects the configurations macOS holds, and can do it by rule — bringing up the work VPN when Slack opens, for example. The configuration itself is added in System Settings." = "Helm connects and disconnects the configurations macOS holds, and can do it by rule — bringing up the work VPN when Slack opens, for example. The configuration itself is added in System Settings.";
 "Open Network settings" = "Open Network settings";
 "Helm picks it up on its own — there is nothing to refresh." = "Helm picks it up on its own — there is nothing to refresh.";
-"macOS holds the configurations — Helm connects and disconnects them. Add one in System Settings and Helm picks it up." = "macOS holds the configurations — Helm connects and disconnects them. Add one in System Settings and Helm picks it up.";
 "Connect" = "Connect";
 "Disconnect" = "Disconnect";
 "Notifications" = "Notifications";

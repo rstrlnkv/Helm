@@ -68,9 +68,16 @@ final class VPNBannerWordsTests: XCTestCase {
 
     /// The eight titles are macOS's own state words — `Connected` and
     /// `Not Connected` from the same table.
+    ///
+    /// **Spanish is `VPN.appex`'s, and the two tables disagree.** Network's own
+    /// `Connected` is «Conectado», the gendered adjective; the pane that
+    /// describes a *VPN* says «Con conexión», which is also where its
+    /// counterpart «Sin conexión» comes from — and this app was shipping one of
+    /// each. `Connected` is one English key for one state, drawn on the card and
+    /// on the banner, so it is read out of the VPN table on both.
     func testTheTitleIsTheStateMacOSNamesIt() {
         let connected: [AppLanguage: String] = [
-            .en: "Connected", .ru: "Подключено", .es: "Conectado", .fr: "Connecté",
+            .en: "Connected", .ru: "Подключено", .es: "Con conexión", .fr: "Connecté",
             .de: "Verbunden", .ja: "接続済み", .zh: "已连接", .pt: "Conectado",
         ]
         // U+00A0 in the Russian, as macOS writes it: a two-word status with a

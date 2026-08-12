@@ -6,7 +6,7 @@
 "1 module" = "1 個のモジュール";
 "2 hours" = "2 時間";
 "A Keep Awake session now survives Helm restarting. A two-hour session lived only in memory, so anything that ended the app — a silent update most often — cancelled it: the countdown vanished from the menu bar, the Mac was free to sleep, and nothing said so. It comes back with the time it had left. A session whose end passed while Helm was gone stays finished." = "スリープ防止のセッションが Helm の再起動後も続くようになりました。2 時間のセッションはメモリ上にしかなく、アプリを終了させるもの — たいていは自動更新 — がそれを取り消していました。メニューバーのカウントダウンは消え、Mac はスリープでき、その説明もありませんでした。いまは残り時間のまま戻ります。Helm が動いていない間に終了時刻を過ぎたセッションは、そのまま終了扱いです。";
-"A VPN carries everything this Mac sends, not only that app, and it takes a few seconds to come up after the app starts." = "VPN はこの Mac の通信すべてを運びます。そのアプリの分だけではありません。トンネルは起動から数秒後につながります。";
+"A VPN carries everything this Mac sends, not only the app it names, and it takes a few seconds to come up after the app starts." = "VPN はこの Mac の通信すべてを運びます。そのアプリの分だけではありません。トンネルは起動から数秒後につながります。";
 "A design pass over the whole app, in the macOS 26/27 idiom: Liquid Glass on the menu-bar panel, page titles that line up with the page beneath them at any window width, text that recedes without becoming unreadable, and numbers that roll instead of cutting. The sidebar groups modules into Files and Utilities rather than putting five of seven in one pile, and the window opens wide enough for the Disk screen to show everything it measures." = "アプリ全体のデザインを macOS 26/27 の作法に合わせました。メニューバーパネルの Liquid Glass、どの幅でも下の内容と揃うページ見出し、読める濃さの補助テキスト、そして切り替わらず転がる数字。サイドバーは“ファイル”と“ユーティリティ”に整理されます。";
 "A few things fixed that you’re unlikely to ever notice directly: a symbolic link inside a folder Helm may clean could send removal to a different file than the one it confirmed; the diagnostics log’s short tags for app, VPN and package names could be reversed back into the real names by anyone holding the same public lists Helm draws them from; and Homebrew’s one-time setup step now names its two admin commands outright rather than trusting the environment to find them." = "普段は直接気づかないであろう修正がいくつかあります。Helm が整理できるフォルダ内のシンボリックリンクが、画面で確認したのとは別のファイルへ削除を向かわせてしまうことがありました。診断ログのアプリ・VPN・パッケージ名の短いタグは、Helm が参照しているのと同じ公開リストを持っていれば元の名前に逆算できてしまいました。Homebrew の初回セットアップ手順は、環境まかせにせず 2 つの管理者コマンドを直接指定するようになりました。";
 "A filter hides the kinds you are not reviewing — system extensions, for instance." = "いま見ていない種類（システム機能拡張など）はフィルタで隠せます。";
@@ -28,6 +28,7 @@
 "Active" = "動作中";
 "Add" = "追加";
 "Add an app, and Helm connects a VPN when it launches." = "アプリを追加すると、その起動時に Helm が VPN を接続します。";
+"Add another in System Settings and Helm picks it up." = "システム設定で追加すれば、Helm が引き継ぎます。";
 "Add app…" = "アプリを追加…";
 "Add condition" = "条件を追加";
 "Add folder…" = "フォルダを追加…";
@@ -96,7 +97,15 @@
 "Custom active-state icon for Keep Awake." = "スリープ防止のカスタムアクティブアイコン。";
 "Custom duration" = "カスタム時間";
 "Custom icon when active" = "アクティブ時にカスタムアイコン";
+"Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm は macOS が保持する構成を、手動でも、アプリの起動に合わせたルールでも接続できます。構成そのものはシステム設定で追加します。";
+"Icon spin" = "アイコンの回転";
+"Menu bar" = "メニューバー";
+"Nothing" = "なし";
 "Other…" = "その他…";
+"Spin the menu-bar icon" = "メニューバーのアイコンを回す";
+"This decides the words. Whether the icon turns is the switch below." = "ここで決まるのは文字だけです。アイコンが回るかどうかは下のスイッチで決まります。";
+"With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "これをオフにし、通知も“なし”にすると、ルールが接続・切断しても何も知らせません。";
+"macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "macOS が Helm の通知を許可していません。代わりにメニューバーに名前を表示します。";
 "Cyan" = "シアン";
 "DEV" = "DEV";
 "Dark" = "ダーク";
@@ -109,8 +118,8 @@
 "Dev builds always log. The file lives in ~/Library/Logs/Helm." = "Dev ビルドは常にログを記録します。ファイルは ~/Library/Logs/Helm。";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "診断：Helm は動作のログを記録でき、問題時にすぐ共有できます。Dev ビルドでは常時オン。";
 "Disabled" = "オフ";
-"Disconnected" = "未接続";
-"Disconnecting…" = "切断中…";
+"Disconnected" = "接続解除済み";
+"Disconnecting…" = "接続解除中…";
 "Disk" = "ディスク";
 "Disk Space remembers its last scan: reopen Helm and the ring is already there, labelled with when it was measured. Deleting no longer triggers a full rescan — the ring updates in place." = "ディスク容量は前回のスキャンを記憶します。Helm を開けばリングはすでに表示され、計測時刻も表示。削除しても全体の再スキャンは走らず、その場で更新されます。";
 "Disk Space suggests what to free: bloated caches, old downloads and big files untouched for months — one tap adds them to the basket. The scan result now survives switching modules and is kept for a day." = "ディスク容量が空けられるものを提案：肥大化したキャッシュ、古いダウンロード、数か月未使用の大きなファイル。ワンクリックでバスケットへ。スキャン結果はモジュールを切り替えても消えず、1日保持されます。";
@@ -121,7 +130,6 @@
 "Disk no longer lets a top-level folder of the disk — Users, Applications, Library — go into the basket. What is inside them still can." = "“ディスク”で、ディスク直下のフォルダをバスケットに入れられないようにしました。中身は従来どおり入れられます。";
 "Disk takes a second look: a duplicate finder. Point it at the folder the ring is showing and it lists files that exist more than once — content compared, not names. One copy in each group is marked as the one that stays; the extras go to the basket, and deletion runs through the same guarded path as everything else. Hard links are one file and are never offered." = "“ディスク”がもう一度チェック：重複ファイル検索。リングが示すフォルダを対象に、複数存在するファイルを一覧します。名前ではなく内容を比較。各グループの 1 つは残す印が付き、余分はバスケットへ。ハードリンクは同一ファイルなので提案されません。";
 "Display and power" = "ディスプレイと電源";
-"Do not notify" = "通知しない";
 "Document" = "書類";
 "Done" = "完了";
 "Don’t fix" = "修正しない";
@@ -260,7 +268,6 @@
 "Media" = "メディア";
 "Menu-bar icon" = "メニューバーのアイコン";
 "Menu-bar panel and a System Settings-style window, the Liquid Glass icon, eight languages." = "メニューバーパネルとシステム設定風ウインドウ、Liquid Glass アイコン、8 言語対応。";
-"Menu-bar spin" = "アイコンの回転";
 "Menu-bar timer: the ring empties clockwise while a timer runs, with optional remaining time and its own colour." = "メニューバーのタイマー：リングが時計回りに減少。残り時間表示と専用カラーも選択可。";
 "Mint" = "ミント";
 "Miscellaneous" = "その他";
@@ -272,7 +279,6 @@
 "Move up" = "上へ移動";
 "Moving around the disk ring is one movement now. Going back up more than one level used to change the screen without animating at all, the ring travels for longer the further it goes, and the slight overshoot at the end of each move — which read as a snap — is gone." = "ディスクリングの移動が一つの動きになりました。2 階層以上戻るときはアニメーションがなく、画面が切り替わるだけでした。";
 "Name" = "名前";
-"Name in menu bar" = "名前をメニューバーに";
 "Name pattern" = "名前のパターン";
 "Name without extension" = "拡張子なしの名前";
 "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works." = "“キーボード”が入力したテキストの配列を直し、“スリープ防止”がポインタを動かすために必要です。許可がないとどちらも機能しません。";
@@ -280,7 +286,7 @@
 "Needs an administrator to delete" = "削除には管理者権限が必要です";
 "Network" = "ネットワーク";
 "Network cache and cookies" = "ネットワークキャッシュと Cookie";
-"Never" = "オフ";
+"Never" = "しない";
 "Never change these words" = "これらの単語は変更しない";
 "Never in a password field. And not in the terminals and password managers Helm knows — add any others in Settings." = "パスワード欄では決して動きません。Helm が知っているターミナルとパスワード管理アプリでも動きません。ほかは設定で追加してください。";
 "Never this word" = "この単語は変更しない";
@@ -475,7 +481,6 @@
 "The update status no longer claims you are current when no check has run — it shows when the last check happened." = "未確認のまま“最新です”と表示せず、最後に確認した時刻を表示します。";
 "Then" = "その時";
 "This app is not signed — this rule never fires" = "このアプリは署名されていません。このルールは動作しません";
-"This decides the words. Whether the ring turns is the switch below." = "ここで決まるのは文字だけです。リングが回るかどうかは下のスイッチで決まります。";
 "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word." = "これは入力に使うキーです。押しっぱなしや同時押しでは通常どおりですが、単独でうっかり叩くと直前の単語が修正されます。";
 "This is the real thing, not a demonstration: it works here exactly as it does anywhere else." = "これはデモではなく本物の入力欄です。ここでも他のアプリと同じように動きます。";
 "This release published no checksum. Helm opened its download page instead." = "このリリースにはチェックサムがありません。Helm がダウンロードページを開きました。";
@@ -488,7 +493,6 @@
 "Turn off" = "オフにする";
 "Turn on" = "オンにする";
 "Turn on before reporting a problem. The file lives in ~/Library/Logs/Helm." = "問題を報告する前にオンにしてください。ファイルは ~/Library/Logs/Helm。";
-"Turn the menu-bar icon" = "メニューバーのアイコンを回す";
 "Turn the rule on" = "ルールを有効にする";
 "Turning a login item off no longer clears everything else you had ticked." = "ログイン項目をオフにしても、他のチェックが消えなくなりました。";
 "Turning off \"stay awake with the lid closed\" now also removes the passwordless permission it had to install. It used to stay on your Mac for good." = "“フタを閉じてもスリープしない”をオフにすると、そのために追加したパスワード不要の許可も削除します。従来は残り続けていました。";
@@ -544,13 +548,12 @@
 "When a punctuation mark is typed" = "句読点を入力したとき";
 "When a rule connects" = "ルールが接続したとき";
 "When a rule fires" = "ルールが動作したとき";
-"When a tunnel goes down" = "トンネルが切れたとき";
+"When a tunnel goes down" = "トンネルが切断されたとき";
 "When to fix" = "修正するタイミング";
 "Which conditions must match" = "一致が必要な条件";
 "White" = "白";
 "Window" = "ウインドウ";
 "With an external display" = "外部ディスプレイ接続時";
-"With this off and the notice set to nothing, a rule that connects or drops a tunnel gives no sign at all." = "これをオフにし、通知も“なし”にすると、ルールが接続・切断しても何の合図も出ません。";
 "Without Accessibility Helm cannot see what you type, and this does nothing." = "アクセシビリティがないと入力内容を読み取れず、この機能は動作しません。";
 "Without Full Disk Access Helm cannot read every folder, and a short list of duplicates looks exactly like a folder that has none." = "フルディスクアクセスがないとすべてのフォルダを読めず、結果が少ないのか重複がないのか区別できません。";
 "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do." = "フルディスクアクセスがないと、保護されたフォルダは空として読まれます。どのルールも一致せず、片づけるものがないフォルダと見分けがつきません。";
@@ -581,7 +584,6 @@
 "is" = "が一致";
 "larger than" = "より大きい";
 "m" = "分";
-"macOS is not allowing notifications from Helm. The name will be shown in the menu bar instead." = "macOS が Helm の通知を許可していません。代わりにメニューバーに名前を表示します。";
 "macOS may already use 🌐︎ to switch input source, open emoji or start dictation. Set “Press 🌐︎ to: Do Nothing” in Keyboard settings, or it will do both. Keyboards without a 🌐︎ key never send it." = "macOS が 🌐︎ を入力ソース切り替え・絵文字・音声入力に使っている場合があります。キーボード設定で“🌐︎ キーを押して: 何もしない”にしてください。🌐︎ のないキーボードはこのキーを送りません。";
 "macOS would not move this. Show it in the Finder and try from there — the Finder says more about why." = "macOS がこれを移動しませんでした。Finder で表示してそちらから試してください。理由は Finder のほうが詳しく教えてくれます。";
 "min" = "分";
@@ -735,10 +737,8 @@
 "A colour of your own: the colour menu ends with “Other…”, which opens the system colour panel — the way Calendar offers one. The palette itself is Calendar’s, and follows light and dark the way the system’s colours do." = "自分の色を。カラーメニューの最後に“その他…”があり、システムのカラーパネルが開きます。カレンダーと同じやり方です。パレット自体もカレンダーのもので、システムの色と同じくライトとダークに追随します。";
 "“Stop on low battery” is a slider with stops, the way the charge limit is set in Battery. And the two colour rows are a dot and a name instead of two rows of ten swatches." = "“バッテリー残量が少ないときは停止”はステップ付きのスライダになりました。“バッテリー”の充電上限と同じ操作です。色の 2 行も、10 個ずつ並ぶ見本ではなく、点と名前になりました。";
 "No VPNs are set up on this Mac" = "この Mac には VPN が設定されていません";
-"Helm connects and disconnects the configurations macOS holds, and can do it by rule — bringing up the work VPN when Slack opens, for example. The configuration itself is added in System Settings." = "Helm は macOS が保持する構成を接続・切断し、ルールに従って行えます。たとえば Slack を開いたら仕事用 VPN を上げる、といった具合です。構成そのものはシステム設定で追加します。";
 "Open Network settings" = "“ネットワーク”設定を開く";
 "Helm picks it up on its own — there is nothing to refresh." = "Helm が自動で認識します。更新の操作は要りません。";
-"macOS holds the configurations — Helm connects and disconnects them. Add one in System Settings and Helm picks it up." = "構成は macOS が保持し、Helm はそれを接続・切断します。システム設定で追加すれば Helm が引き継ぎます。";
 "Connect" = "接続";
 "Disconnect" = "接続解除";
 "Notifications" = "通知";

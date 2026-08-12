@@ -6,7 +6,7 @@
 "1 module" = "1 个模块";
 "2 hours" = "2 小时";
 "A Keep Awake session now survives Helm restarting. A two-hour session lived only in memory, so anything that ended the app — a silent update most often — cancelled it: the countdown vanished from the menu bar, the Mac was free to sleep, and nothing said so. It comes back with the time it had left. A session whose end passed while Helm was gone stays finished." = "防止睡眠的会话现在能在 Helm 重启后继续。两小时的会话只存在于内存中，因此任何结束应用的操作 —— 通常是静默更新 —— 都会取消它：菜单栏的倒计时消失，Mac 可以入睡，而且没有任何提示。现在它会带着剩余时间回来。若结束时间在 Helm 不在期间已过，会话保持结束状态。";
-"A VPN carries everything this Mac sends, not only that app, and it takes a few seconds to come up after the app starts." = "VPN 承载这台 Mac 的全部流量，不只是该应用的，而且隧道要在应用启动几秒后才建立。";
+"A VPN carries everything this Mac sends, not only the app it names, and it takes a few seconds to come up after the app starts." = "VPN 承载这台 Mac 的全部流量，不只是该应用的，而且隧道要在应用启动几秒后才建立。";
 "A design pass over the whole app, in the macOS 26/27 idiom: Liquid Glass on the menu-bar panel, page titles that line up with the page beneath them at any window width, text that recedes without becoming unreadable, and numbers that roll instead of cutting. The sidebar groups modules into Files and Utilities rather than putting five of seven in one pile, and the window opens wide enough for the Disk screen to show everything it measures." = "对整个应用做了一次符合 macOS 26/27 风格的设计调整：菜单栏面板采用 Liquid Glass，页面标题在任何窗口宽度下都与下方内容对齐，次要文字在变淡的同时保持可读，数字滚动而不是硬切。侧边栏按“文件”和“实用工具”分组。";
 "A few things fixed that you’re unlikely to ever notice directly: a symbolic link inside a folder Helm may clean could send removal to a different file than the one it confirmed; the diagnostics log’s short tags for app, VPN and package names could be reversed back into the real names by anyone holding the same public lists Helm draws them from; and Homebrew’s one-time setup step now names its two admin commands outright rather than trusting the environment to find them." = "还有一些你大概不会直接察觉的修复：Helm 允许清理的文件夹里如果藏着符号链接，删除动作可能会作用到与确认屏幕不同的文件上；诊断日志里为应用、VPN 和软件包名称生成的短标签，只要拥有 Helm 用来生成它们的同一份公开列表，就能被反推出真实名称；Homebrew 的一次性安装步骤现在会直接写明它用到的两条管理员命令，而不是依赖环境去找到它们。";
 "A filter hides the kinds you are not reviewing — system extensions, for instance." = "筛选器可隐藏你当前不查看的类型，例如系统扩展。";
@@ -28,6 +28,7 @@
 "Active" = "运行中";
 "Add" = "添加";
 "Add an app, and Helm connects a VPN when it launches." = "添加一个应用，Helm 会在它启动时连接 VPN。";
+"Add another in System Settings and Helm picks it up." = "在“系统设置”中添加后，Helm 会自动识别。";
 "Add app…" = "添加应用…";
 "Add condition" = "添加条件";
 "Add folder…" = "添加文件夹…";
@@ -85,7 +86,7 @@
 "Connect system VPNs, automatically per app" = "按应用自动连接系统 VPN";
 "Connected" = "已连接";
 "Connecting a VPN no longer makes the rest of Helm stutter — the work moved off the thread that draws the interface." = "连接 VPN 时 Helm 其余部分不再卡顿——相关工作已移出绘制界面的线程。";
-"Connecting…" = "连接中…";
+"Connecting…" = "正在连接…";
 "Connections" = "连接";
 "Containers" = "容器";
 "Cookies" = "Cookie";
@@ -96,7 +97,15 @@
 "Custom active-state icon for Keep Awake." = "保持唤醒的自定义激活图标。";
 "Custom duration" = "自定义时长";
 "Custom icon when active" = "激活时使用自定义图标";
+"Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm 可以手动连接 macOS 保存的配置，也可以在应用启动时按规则连接。配置本身在“系统设置”中添加。";
+"Icon spin" = "图标转动";
+"Menu bar" = "菜单栏";
+"Nothing" = "无";
 "Other…" = "其他…";
+"Spin the menu-bar icon" = "转动菜单栏图标";
+"This decides the words. Whether the icon turns is the switch below." = "这里只决定文字。图标是否转动由下面的开关决定。";
+"With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "关闭此项且提示设为“无”时，规则连接或断开隧道将没有任何提示。";
+"macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "macOS 不允许 Helm 发送通知。将改为在菜单栏显示名称。";
 "Cyan" = "青色";
 "DEV" = "DEV";
 "Dark" = "深色";
@@ -109,8 +118,8 @@
 "Dev builds always log. The file lives in ~/Library/Logs/Helm." = "开发版始终记录日志。文件位于 ~/Library/Logs/Helm。";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "诊断：Helm 可记录自身操作日志，出问题时随时分享。开发版始终开启。";
 "Disabled" = "已关闭";
-"Disconnected" = "已断开";
-"Disconnecting…" = "断开中…";
+"Disconnected" = "已断开连接";
+"Disconnecting…" = "正在断开连接…";
 "Disk" = "磁盘";
 "Disk Space remembers its last scan: reopen Helm and the ring is already there, labelled with when it was measured. Deleting no longer triggers a full rescan — the ring updates in place." = "磁盘空间会记住上次扫描：重新打开 Helm，环形图已在，并标注测量时间。删除不再触发整盘重扫，环形图就地更新。";
 "Disk Space suggests what to free: bloated caches, old downloads and big files untouched for months — one tap adds them to the basket. The scan result now survives switching modules and is kept for a day." = "磁盘空间会建议可释放的内容：膨胀的缓存、旧下载和数月未动的大文件——点一下即可加入收集篮。扫描结果在切换模块后保留，有效期一天。";
@@ -121,7 +130,6 @@
 "Disk no longer lets a top-level folder of the disk — Users, Applications, Library — go into the basket. What is inside them still can." = "“磁盘”不再允许把磁盘顶层文件夹放入收集篮，其中的内容仍然可以。";
 "Disk takes a second look: a duplicate finder. Point it at the folder the ring is showing and it lists files that exist more than once — content compared, not names. One copy in each group is marked as the one that stays; the extras go to the basket, and deletion runs through the same guarded path as everything else. Hard links are one file and are never offered." = "“磁盘”再看一眼：重复文件查找。指向环形图当前显示的文件夹，它会列出存在多份的文件——比较内容而非文件名。每组保留一份，多余的放入收集篮，删除仍走同样受保护的路径。硬链接是同一个文件，不会被列出。";
 "Display and power" = "显示器与电源";
-"Do not notify" = "不提示";
 "Document" = "文稿";
 "Done" = "完成";
 "Don’t fix" = "不修正";
@@ -260,7 +268,6 @@
 "Media" = "媒体";
 "Menu-bar icon" = "菜单栏图标";
 "Menu-bar panel and a System Settings-style window, the Liquid Glass icon, eight languages." = "菜单栏面板与系统设置风格窗口、Liquid Glass 图标、八种语言。";
-"Menu-bar spin" = "图标转动";
 "Menu-bar timer: the ring empties clockwise while a timer runs, with optional remaining time and its own colour." = "菜单栏计时：圆环顺时针递减，可选剩余时间与专属颜色。";
 "Mint" = "薄荷色";
 "Miscellaneous" = "其他";
@@ -272,7 +279,6 @@
 "Move up" = "上移";
 "Moving around the disk ring is one movement now. Going back up more than one level used to change the screen without animating at all, the ring travels for longer the further it goes, and the slight overshoot at the end of each move — which read as a snap — is gone." = "在磁盘环形图中移动现在是一个连贯的动作：向上跨越多层时之前完全没有动画。";
 "Name" = "名称";
-"Name in menu bar" = "名称显示在菜单栏";
 "Name pattern" = "名称模板";
 "Name without extension" = "不含扩展名的名称";
 "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works." = "“键盘”纠正你输入内容的布局、“保持唤醒”移动指针都需要此权限。未授予时两者都不起作用。";
@@ -280,7 +286,7 @@
 "Needs an administrator to delete" = "删除需要管理员权限";
 "Network" = "网络";
 "Network cache and cookies" = "网络缓存与 Cookie";
-"Never" = "关闭";
+"Never" = "永不";
 "Never change these words" = "从不修改这些词";
 "Never in a password field. And not in the terminals and password managers Helm knows — add any others in Settings." = "在密码框中从不介入。Helm 已知的终端和密码管理器也不介入；其他的请在设置中添加。";
 "Never this word" = "从不改这个词";
@@ -475,7 +481,6 @@
 "The update status no longer claims you are current when no check has run — it shows when the last check happened." = "未执行检查时不再声称已是最新，而是显示上次检查时间。";
 "Then" = "则";
 "This app is not signed — this rule never fires" = "此应用未签名，此规则不会生效";
-"This decides the words. Whether the ring turns is the switch below." = "这里只决定文字。圆环是否转动由下面的开关决定。";
 "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word." = "这是你打字时会用到的键。按住或组合使用时一切照常，但不小心单独敲一下就会修正上一个词。";
 "This is the real thing, not a demonstration: it works here exactly as it does anywhere else." = "这是真实的输入框，不是演示：它在这里的行为和在别处完全一样。";
 "This release published no checksum. Helm opened its download page instead." = "此版本未发布校验和。Helm 已打开其下载页面。";
@@ -488,7 +493,6 @@
 "Turn off" = "关闭";
 "Turn on" = "开启";
 "Turn on before reporting a problem. The file lives in ~/Library/Logs/Helm." = "报告问题前请开启。文件位于 ~/Library/Logs/Helm。";
-"Turn the menu-bar icon" = "转动菜单栏图标";
 "Turn the rule on" = "开启规则";
 "Turning a login item off no longer clears everything else you had ticked." = "关闭某个登录项时，不再清空你已勾选的其他项。";
 "Turning off \"stay awake with the lid closed\" now also removes the passwordless permission it had to install. It used to stay on your Mac for good." = "关闭“合盖仍保持唤醒”时，会一并移除为此安装的免密码权限。此前它会永久留在你的 Mac 上。";
@@ -550,7 +554,6 @@
 "White" = "白色";
 "Window" = "窗口";
 "With an external display" = "连接外接显示器时";
-"With this off and the notice set to nothing, a rule that connects or drops a tunnel gives no sign at all." = "关闭此项且提示设为“无”时，规则连接或断开隧道将没有任何提示。";
 "Without Accessibility Helm cannot see what you type, and this does nothing." = "没有无障碍权限，Helm 无法读取输入，此功能不起作用。";
 "Without Full Disk Access Helm cannot read every folder, and a short list of duplicates looks exactly like a folder that has none." = "没有完全磁盘访问权限时，Helm 无法读取全部文件夹；结果少和没有重复看起来一模一样。";
 "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do." = "没有完全磁盘访问权限时，受保护的文件夹会被读成空的：没有规则匹配，而这看起来和一个无事可做的文件夹一模一样。";
@@ -581,7 +584,6 @@
 "is" = "等于";
 "larger than" = "大于";
 "m" = "分钟";
-"macOS is not allowing notifications from Helm. The name will be shown in the menu bar instead." = "macOS 不允许 Helm 发送通知。将改为在菜单栏显示名称。";
 "macOS may already use 🌐︎ to switch input source, open emoji or start dictation. Set “Press 🌐︎ to: Do Nothing” in Keyboard settings, or it will do both. Keyboards without a 🌐︎ key never send it." = "macOS 可能已把 🌐︎ 用于切换输入法、打开表情或听写。请在键盘设置中选择“按下 🌐︎ 键时：不执行任何操作”，否则两件事都会发生。没有 🌐︎ 键的键盘不会发送它。";
 "macOS would not move this. Show it in the Finder and try from there — the Finder says more about why." = "macOS 未能移动它。请在访达中显示并从那里尝试——访达会给出更详细的原因。";
 "min" = "分钟";
@@ -735,10 +737,8 @@
 "A colour of your own: the colour menu ends with “Other…”, which opens the system colour panel — the way Calendar offers one. The palette itself is Calendar’s, and follows light and dark the way the system’s colours do." = "自定义颜色：颜色菜单末尾是“其他…”，会打开系统调色板——和“日历”的做法一致。调色板本身也取自“日历”，并像系统颜色那样跟随浅色与深色。";
 "“Stop on low battery” is a slider with stops, the way the charge limit is set in Battery. And the two colour rows are a dot and a name instead of two rows of ten swatches." = "“低电量时停止”改成带档位的滑块，与“电池”中的充电上限一致。两行颜色选择也从两排十个色块，变成一个圆点加名称。";
 "No VPNs are set up on this Mac" = "这台 Mac 上没有配置任何 VPN";
-"Helm connects and disconnects the configurations macOS holds, and can do it by rule — bringing up the work VPN when Slack opens, for example. The configuration itself is added in System Settings." = "Helm 连接和断开 macOS 保存的配置，并且可以按规则进行——例如打开 Slack 时接通工作 VPN。配置本身在“系统设置”中添加。";
 "Open Network settings" = "打开“网络”设置";
 "Helm picks it up on its own — there is nothing to refresh." = "Helm 会自动识别——无需刷新。";
-"macOS holds the configurations — Helm connects and disconnects them. Add one in System Settings and Helm picks it up." = "配置由 macOS 保存，Helm 负责连接和断开。在“系统设置”中添加后，Helm 会自动识别。";
 "Connect" = "连接";
 "Disconnect" = "断开连接";
 "Notifications" = "通知";

@@ -6,7 +6,7 @@
 "1 module" = "1 модуль";
 "2 hours" = "2 часа";
 "A Keep Awake session now survives Helm restarting. A two-hour session lived only in memory, so anything that ended the app — a silent update most often — cancelled it: the countdown vanished from the menu bar, the Mac was free to sleep, and nothing said so. It comes back with the time it had left. A session whose end passed while Helm was gone stays finished." = "Сессия «Не спать» теперь переживает перезапуск Helm. Двухчасовая сессия жила только в памяти, поэтому всё, что завершало приложение — чаще всего тихое обновление, — её отменяло: отсчёт исчезал из меню-бара, Mac мог заснуть, и об этом никто не сообщал. Теперь она возвращается с остатком времени. А та, чей срок истёк, пока Helm не было, остаётся завершённой.";
-"A VPN carries everything this Mac sends, not only that app, and it takes a few seconds to come up after the app starts." = "Через VPN идёт весь трафик этого Mac, а не только трафик приложения, и туннель поднимается через несколько секунд после его запуска.";
+"A VPN carries everything this Mac sends, not only the app it names, and it takes a few seconds to come up after the app starts." = "Через VPN идёт весь трафик этого Mac, а не только трафик приложения. Туннель поднимается через несколько секунд после запуска приложения.";
 "A design pass over the whole app, in the macOS 26/27 idiom: Liquid Glass on the menu-bar panel, page titles that line up with the page beneath them at any window width, text that recedes without becoming unreadable, and numbers that roll instead of cutting. The sidebar groups modules into Files and Utilities rather than putting five of seven in one pile, and the window opens wide enough for the Disk screen to show everything it measures." = "Дизайн-проход по всему приложению в стиле macOS 26/27: Liquid Glass в панели строки меню, заголовки страниц, выровненные с содержимым при любой ширине окна, приглушённый текст, который остаётся читаемым, и цифры, которые перекатываются, а не режутся. В боковом меню появились «Файлы» и «Утилиты» вместо пяти модулей из семи в одной куче, а окно открывается достаточно широким, чтобы «Диск» показывал всё, что измерил.";
 "A few things fixed that you’re unlikely to ever notice directly: a symbolic link inside a folder Helm may clean could send removal to a different file than the one it confirmed; the diagnostics log’s short tags for app, VPN and package names could be reversed back into the real names by anyone holding the same public lists Helm draws them from; and Homebrew’s one-time setup step now names its two admin commands outright rather than trusting the environment to find them." = "Несколько правок, которые вы вряд ли когда-нибудь заметите напрямую: символическая ссылка внутри папки, которую Helm может очищать, могла направить удаление не на тот файл, что был подтверждён на экране; короткие метки для имён приложений, VPN и пакетов в журнале диагностики можно было обратить обратно в настоящие имена, имея те же открытые списки, из которых Helm их берёт; а разовая настройка Homebrew теперь называет обе свои административные команды напрямую, а не полагается на окружение в их поиске.";
 "A filter hides the kinds you are not reviewing — system extensions, for instance." = "Фильтр прячет виды, которые сейчас не смотрите, — например, системные расширения.";
@@ -27,7 +27,8 @@
 "Accessibility now appears among the permissions, and Keep Awake says so right at the pointer setting — without that grant macOS ignores the nudge and the switch did nothing." = "«Универсальный доступ» появился среди разрешений, а «Не спать» предупреждает об этом прямо у настройки указателя: без него macOS игнорирует движение, и переключатель ничего не делал.";
 "Active" = "Активно";
 "Add" = "Добавить";
-"Add an app, and Helm connects a VPN when it launches." = "Добавьте приложение — и Helm сам подключит VPN при его запуске.";
+"Add an app, and Helm connects a VPN when it launches." = "Добавьте приложение — и Helm сам подключит VPN, когда оно запустится.";
+"Add another in System Settings and Helm picks it up." = "Новую добавьте в Системных настройках — Helm подхватит её сам.";
 "Add app…" = "Добавить приложение…";
 "Add condition" = "Добавить условие";
 "Add folder…" = "Добавить папку…";
@@ -82,7 +83,7 @@
 "Clipboard" = "Буфер обмена";
 "Close" = "Закрыть";
 "Collapsed" = "Свёрнуто";
-"Connect system VPNs, automatically per app" = "Подключение системных VPN, автоматически по приложению";
+"Connect system VPNs, automatically per app" = "Подключение системных VPN, автоматически по приложениям";
 "Connected" = "Подключено";
 "Connecting a VPN no longer makes the rest of Helm stutter — the work moved off the thread that draws the interface." = "Подключение VPN больше не подтормаживает остальной Helm — работа ушла с потока, который рисует интерфейс.";
 "Connecting…" = "Подключение…";
@@ -96,7 +97,15 @@
 "Custom active-state icon for Keep Awake." = "Своя иконка активного состояния для «Не спать».";
 "Custom duration" = "Своё время";
 "Custom icon when active" = "Свой значок в активном состоянии";
+"Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm подключает конфигурации, которые хранит macOS, — вручную или по правилам, когда открывается приложение. Новую добавьте в Системных настройках.";
+"Icon spin" = "Вращение значка";
+"Menu bar" = "Строка меню";
+"Nothing" = "Ничего";
 "Other…" = "Другое…";
+"Spin the menu-bar icon" = "Вращать значок в строке меню";
+"This decides the words. Whether the icon turns is the switch below." = "Здесь только слова. Вращается ли значок — решает переключатель ниже.";
+"With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "Если это выключено, а уведомление — «Ничего», правило подключит или отключит туннель незаметно.";
+"macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "macOS не разрешает уведомления от Helm — имя появится в строке меню.";
 "Cyan" = "Голубой";
 "DEV" = "DEV";
 "Dark" = "Тёмное";
@@ -109,7 +118,7 @@
 "Dev builds always log. The file lives in ~/Library/Logs/Helm." = "В dev-сборках журнал всегда включён. Файл — в ~/Library/Logs/Helm.";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "Диагностика: Helm может вести журнал своих действий, чтобы было что прислать, если что-то пошло не так. В Dev-сборках включён всегда.";
 "Disabled" = "Отключено";
-"Disconnected" = "Отключено";
+"Disconnected" = "Не подключено";
 "Disconnecting…" = "Отключение…";
 "Disk" = "Диск";
 "Disk Space remembers its last scan: reopen Helm and the ring is already there, labelled with when it was measured. Deleting no longer triggers a full rescan — the ring updates in place." = "«Место на диске» помнит последний скан: откройте Helm — кольцо уже на месте, с подписью, когда оно измерено. Удаление больше не запускает полное пересканирование — кольцо обновляется на месте.";
@@ -121,7 +130,6 @@
 "Disk no longer lets a top-level folder of the disk — Users, Applications, Library — go into the basket. What is inside them still can." = "«Диск» больше не даёт положить в корзину папку верхнего уровня — «Пользователи», «Программы», «Библиотеки». Их содержимое — по-прежнему можно.";
 "Disk takes a second look: a duplicate finder. Point it at the folder the ring is showing and it lists files that exist more than once — content compared, not names. One copy in each group is marked as the one that stays; the extras go to the basket, and deletion runs through the same guarded path as everything else. Hard links are one file and are never offered." = "«Диск» смотрит второй раз: поиск дубликатов. Направьте его на папку, которую показывает кольцо, — он перечислит файлы, существующие больше одного раза. Сравнивается содержимое, а не имена. Одна копия в каждой группе помечена как остающаяся; лишние уходят в корзину, а удаление идёт тем же защищённым путём, что и всё остальное. Жёсткие ссылки — один файл, они не предлагаются.";
 "Display and power" = "При дисплее и питании";
-"Do not notify" = "Не уведомлять";
 "Document" = "Документ";
 "Done" = "Готово";
 "Don’t fix" = "Не исправлять";
@@ -260,7 +268,6 @@
 "Media" = "Медиа";
 "Menu-bar icon" = "Значок в строке меню";
 "Menu-bar panel and a System Settings-style window, the Liquid Glass icon, eight languages." = "Панель в строке меню и окно в стиле Системных настроек, иконка Liquid Glass, восемь языков.";
-"Menu-bar spin" = "Вращение значка";
 "Menu-bar timer: the ring empties clockwise while a timer runs, with optional remaining time and its own colour." = "Таймер в строке меню: кольцо убывает по часовой, опционально время и свой цвет.";
 "Mint" = "Мятный";
 "Miscellaneous" = "Прочее";
@@ -272,7 +279,6 @@
 "Move up" = "Переместить вверх";
 "Moving around the disk ring is one movement now. Going back up more than one level used to change the screen without animating at all, the ring travels for longer the further it goes, and the slight overshoot at the end of each move — which read as a snap — is gone." = "Перемещение по кольцу «Диска» теперь одно движение. Возврат более чем на один уровень раньше не анимировался вовсе — экран просто менялся. Чем дальше едет кольцо, тем дольше движение, а лёгкий перелёт в конце, читавшийся как рывок, убран.";
 "Name" = "Название";
-"Name in menu bar" = "Имя в строке меню";
 "Name pattern" = "Шаблон имени";
 "Name without extension" = "Имя без расширения";
 "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works." = "Нужен, чтобы «Клавиатура» исправляла раскладку набранного, а «Не спать» двигал указатель. Без него не работает ни то, ни другое.";
@@ -280,7 +286,7 @@
 "Needs an administrator to delete" = "Для удаления нужен администратор";
 "Network" = "Сеть";
 "Network cache and cookies" = "Сетевой кеш и cookie";
-"Never" = "Выключено";
+"Never" = "Никогда";
 "Never change these words" = "Никогда не менять эти слова";
 "Never in a password field. And not in the terminals and password managers Helm knows — add any others in Settings." = "Никогда — в поле пароля. И не в тех терминалах и менеджерах паролей, которые Helm знает; остальные добавьте в настройках.";
 "Never this word" = "Не менять это слово";
@@ -337,7 +343,7 @@
 "Panels and cards now look the same on every screen: one border-free container, and the figures at the top of a module line up with the settings below them." = "Панели и карточки теперь выглядят одинаково на всех экранах: один вид блока без рамки, а цифры вверху модуля выровнены по настройкам под ними.";
 "Paused" = "Пауза";
 "Paused — a password field is in front, and Helm never reads one." = "Приостановлено — впереди поле пароля, а его Helm не читает.";
-"Per-app automation" = "Автоматизация по приложению";
+"Per-app automation" = "Автоматизация по приложениям";
 "Per-app rules read as one line each: the app, when the rule applies, and nothing else. Both Keep Awake and VPN." = "Правила по приложениям — по одной строке: приложение, когда правило действует, и ничего лишнего. И в «Не спать», и в VPN.";
 "Permissions" = "Разрешения";
 "Permissions are called what System Settings calls them, so the row Helm points you at is the row you find." = "Разрешения называются так же, как в «Системных настройках», — вы находите именно тот пункт, на который Helm ссылается.";
@@ -475,7 +481,6 @@
 "The update status no longer claims you are current when no check has run — it shows when the last check happened." = "Статус обновлений больше не утверждает, что версия последняя, если проверки не было — показывает, когда проверяли в последний раз.";
 "Then" = "То";
 "This app is not signed — this rule never fires" = "Приложение не подписано — правило не срабатывает";
-"This decides the words. Whether the ring turns is the switch below." = "Это решает про слова. Вращается ли кольцо — переключатель ниже.";
 "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word." = "Это клавиша, которой вы печатаете. Зажатая или в сочетании она работает как обычно, но случайное одиночное нажатие исправит последнее слово.";
 "This is the real thing, not a demonstration: it works here exactly as it does anywhere else." = "Поле настоящее, а не демонстрация: здесь модуль работает точно так же, как в любом другом приложении.";
 "This release published no checksum. Helm opened its download page instead." = "В релизе нет контрольной суммы. Helm открыл страницу загрузки.";
@@ -488,7 +493,6 @@
 "Turn off" = "Отключить";
 "Turn on" = "Включить";
 "Turn on before reporting a problem. The file lives in ~/Library/Logs/Helm." = "Включите перед тем, как сообщить о проблеме. Файл — в ~/Library/Logs/Helm.";
-"Turn the menu-bar icon" = "Вращать значок в строке меню";
 "Turn the rule on" = "Включить правило";
 "Turning a login item off no longer clears everything else you had ticked." = "Отключение одного объекта входа больше не снимает все остальные отметки.";
 "Turning off \"stay awake with the lid closed\" now also removes the passwordless permission it had to install. It used to stay on your Mac for good." = "Выключение «не спать с закрытой крышкой» теперь снимает и беспарольное разрешение, которое для этого пришлось установить. Раньше оно оставалось на Mac навсегда.";
@@ -542,15 +546,14 @@
 "When a file cannot be moved, Helm now says which one and why instead of reporting success. Deleting a Homebrew package asks first, and the disk basket lists what is in it before it goes to the Trash." = "Если файл переместить не удалось, Helm называет какой и почему, а не рапортует об успехе. Удаление пакета Homebrew теперь спрашивает подтверждение, а корзина «Места на диске» показывает, что в ней лежит.";
 "When a file will not move, Helm now says why on every screen that removes things. Disk and the duplicate finder used to give you a count and leave you to guess — usually the answer was Full Disk Access, which is one click away once you know. Quiet text is also readable again: the captions and secondary lines were fainter than they were meant to be." = "Когда файл не удаётся переместить, Helm теперь говорит почему — на каждом экране, где что-то удаляется. «Диск» и поиск дубликатов раньше показывали число и оставляли догадываться; чаще всего дело в полном доступе к диску, а это один клик, если знать. И приглушённый текст снова читается: подписи и второстепенные строки были бледнее, чем задумано.";
 "When a punctuation mark is typed" = "Когда введён знак препинания";
-"When a rule connects" = "Когда правило подключает";
+"When a rule connects" = "Когда правило подключает VPN";
 "When a rule fires" = "Когда правило срабатывает";
-"When a tunnel goes down" = "Когда туннель разрывается";
+"When a tunnel goes down" = "Когда туннель отключается";
 "When to fix" = "Когда исправлять";
 "Which conditions must match" = "Какие условия должны совпасть";
 "White" = "Белый";
 "Window" = "Окна";
 "With an external display" = "При внешнем дисплее";
-"With this off and the notice set to nothing, a rule that connects or drops a tunnel gives no sign at all." = "Если это выключено, а уведомление — «ничего», правило подключит или разорвёт туннель без единого признака.";
 "Without Accessibility Helm cannot see what you type, and this does nothing." = "Без универсального доступа Helm не видит набранное, и это не работает.";
 "Without Full Disk Access Helm cannot read every folder, and a short list of duplicates looks exactly like a folder that has none." = "Без «Доступа к диску» Helm прочитает не все папки: часть дубликатов не найдётся, а результат будет выглядеть так же, как чистая папка.";
 "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do." = "Без «Доступа к диску» защищённая папка читается пустой: ни одно правило не срабатывает — и это выглядит так же, как папка, где нечего делать.";
@@ -581,7 +584,6 @@
 "is" = "равно";
 "larger than" = "больше чем";
 "m" = "мин";
-"macOS is not allowing notifications from Helm. The name will be shown in the menu bar instead." = "macOS не разрешает уведомления от Helm. Вместо этого имя будет показано в строке меню.";
 "macOS may already use 🌐︎ to switch input source, open emoji or start dictation. Set “Press 🌐︎ to: Do Nothing” in Keyboard settings, or it will do both. Keyboards without a 🌐︎ key never send it." = "macOS может уже использовать 🌐︎ — для смены языка, эмодзи или диктовки. Поставьте «Клавиша 🌐︎: ничего не делать» в настройках клавиатуры, иначе сработает и то и другое. Клавиатуры без 🌐︎ её не отправляют.";
 "macOS would not move this. Show it in the Finder and try from there — the Finder says more about why." = "macOS не дала это переместить. Покажите файл в Finder и попробуйте оттуда — Finder объясняет причину подробнее.";
 "min" = "мин";
@@ -735,16 +737,14 @@
 "A colour of your own: the colour menu ends with “Other…”, which opens the system colour panel — the way Calendar offers one. The palette itself is Calendar’s, and follows light and dark the way the system’s colours do." = "Свой цвет: меню цвета заканчивается пунктом «Другой…», открывающим системную палитру — как это сделано в Календаре. Сама палитра тоже из Календаря и следует светлой и тёмной теме, как системные цвета.";
 "“Stop on low battery” is a slider with stops, the way the charge limit is set in Battery. And the two colour rows are a dot and a name instead of two rows of ten swatches." = "«Останавливать при низком заряде» — теперь ползунок с делениями, как лимит зарядки в разделе «Аккумулятор». А две строки выбора цвета стали точкой с названием вместо двух рядов по десять образцов.";
 "No VPNs are set up on this Mac" = "На этом Mac не настроен ни один VPN";
-"Helm connects and disconnects the configurations macOS holds, and can do it by rule — bringing up the work VPN when Slack opens, for example. The configuration itself is added in System Settings." = "Helm подключает и отключает конфигурации, которые держит macOS, и умеет делать это по правилам — например, поднимать рабочий VPN, когда открывается Slack. Саму конфигурацию добавляют в Системных настройках.";
 "Open Network settings" = "Открыть «Сеть» в настройках";
 "Helm picks it up on its own — there is nothing to refresh." = "Helm подхватит её сам — обновлять ничего не нужно.";
-"macOS holds the configurations — Helm connects and disconnects them. Add one in System Settings and Helm picks it up." = "Конфигурации держит macOS — Helm их подключает и отключает. Новую добавляют в Системных настройках, Helm подхватит её сам.";
 "Connect" = "Подключить";
 "Disconnect" = "Отключить";
 "Notifications" = "Уведомления";
-"When a tunnel drops on its own" = "Когда туннель падает сам";
-"A tunnel can go down on its own — the network changes, the server hangs up. That can be louder than the rules." = "Туннель может упасть сам: сменилась сеть, сервер разорвал связь. Об этом можно сообщать громче, чем о правилах.";
-"VPN dropped" = "VPN отключился";
+"When a tunnel drops on its own" = "Когда туннель обрывается сам";
+"A tunnel can go down on its own — the network changes, the server hangs up. That can be louder than the rules." = "Туннель может оборваться сам: меняется сеть, сервер разрывает связь. Об этом можно сообщать громче, чем о правилах.";
+"VPN dropped" = "VPN оборвался сам";
 "Connected by this rule now" = "Сейчас подключено этим правилом";
 "A VPN that drops on its own can be announced louder than the rules. A tunnel that goes down because the network changed is the one thing here nobody asked for, and it used to arrive in the same words, at the same volume, as a rule doing what it was told." = "О VPN, который отключился сам, можно сообщать громче, чем о правилах. Туннель, упавший из-за смены сети, — единственное здесь, чего никто не просил, а сообщали о нём теми же словами и так же тихо, как о сработавшем правиле.";
 "A per-app rule says when it is holding a tunnel up right now." = "Правило для приложения показывает, когда оно держит туннель прямо сейчас.";

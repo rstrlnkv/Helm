@@ -231,6 +231,14 @@ struct VPNSettingsPage: View {
         }
     }
 
+    /// **The card the three labels have to fit.** Wider than the appearance
+    /// picker's 74 pt, and capped near 140 by the row label beside it — «Wenn ein
+    /// Tunnel von selbst abbricht» is 219.1 pt of the 680 the row has. Named
+    /// rather than typed at the call site because
+    /// `TheNoticeLabelsFitTheCardTests` measures the labels against it: a number
+    /// spelled twice is a number one side can change alone.
+    static let noticeThumbnail = CGSize(width: 104, height: 66)
+
     /// The three pictures. Written once: the two rows choose between the same
     /// three outcomes, and a second copy is a second place for them to drift.
     private func noticeCards(selection: Binding<VPNNotice>, label: String) -> some View {
@@ -243,11 +251,7 @@ struct VPNSettingsPage: View {
                             .init(id: .system, label: VPNStr.noticeOption(.system),
                                   preview: NoticePreview.of(.system)),
                         ],
-                        // Wider than the appearance picker's, and the labels are
-                        // why: «Имя в строке меню» is one line at 104 and two at
-                        // 74, and one two-line label in a row of three puts
-                        // three cards on three baselines.
-                        thumbnail: CGSize(width: 104, height: 66))
+                        thumbnail: Self.noticeThumbnail)
             // Two unnamed groups of three identical-sounding buttons in one
             // card is what a screen reader would otherwise be handed.
             .accessibilityElement(children: .contain)
@@ -466,6 +470,11 @@ struct VPNSettingsPage: View {
         // «connecting» left a card with nothing on it to press, under the
         // comment above promising the opposite.
         let action = VPNCardAction.of(c.status)
+        // Which word, from the same table: three of them, where the tool has two
+        // directions. A handshake being abandoned is «Cancel» — 接続解除 is
+        // *release the connection* and there is none yet — and a tunnel on its
+        // way down keeps the word that was pressed while it is dimmed.
+        let word = VPNStr.cardWord(action.word)
         // **The frame goes on the label, not on the button.**
         // `.frame(maxWidth: .infinity)` applied to a macOS bordered control
         // does not stretch it — the control hugs its title and centres itself
@@ -478,19 +487,19 @@ struct VPNSettingsPage: View {
         switch action.verb {
         case .disconnect:
             Button { vm.disconnect(c.name) } label: {
-                Text(VPNStr.disconnect).frame(maxWidth: .infinity)
+                Text(word).frame(maxWidth: .infinity)
             }
             .disabled(!action.enabled)
-            .accessibilityLabel("\(VPNStr.disconnect), \(c.name)")
+            .accessibilityLabel("\(word), \(c.name)")
         case .connect:
             // Prominent, because on a page of cards the one thing to press is
             // «connect» and there is no other candidate for the accent.
             Button { vm.connect(c.name) } label: {
-                Text(VPNStr.connect).frame(maxWidth: .infinity)
+                Text(word).frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
             .disabled(!action.enabled)
-            .accessibilityLabel("\(VPNStr.connect), \(c.name)")
+            .accessibilityLabel("\(word), \(c.name)")
         }
     }
 

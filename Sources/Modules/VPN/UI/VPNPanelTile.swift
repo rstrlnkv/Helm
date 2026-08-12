@@ -61,19 +61,25 @@ struct VPNPanelTile: View {
 
     private func connectionRow(_ c: VPNConnection) -> some View {
         // Three questions, and the dot and the switch used to share one answer.
-        // Whether traffic is on the tunnel is `isConnected` (above); what can be
-        // *asked for* while it is coming up is `VPNCardAction`, which is the
-        // engine's to answer and says «stop» — so the switch stays thrown while a
-        // handshake runs and can be turned off, which is exactly when somebody
-        // wants out.
+        // Whether traffic is on the tunnel is `isConnected` (the dot, above);
+        // whether the switch may be touched at all is `VPNCardAction`, which is
+        // the engine's to answer — it says yes while a handshake runs, so the
+        // switch can be turned off then, which is exactly when somebody wants
+        // out. Where it *stands* is the third question, at the `Toggle` below.
         let action = VPNCardAction.of(c.status)
         return HStack(spacing: 8) {
             HelmStatusDot(active: c.status.isConnected)
             Text(c.name).lineLimit(1)
             Spacer(minLength: 8)
             if c.status.isTransitioning { ProgressView().controlSize(.small) }
+            // **`isUp`, and not the card's verb.** A switch's position is what
+            // was last asked for, which is a different question from «where does
+            // a press go»: a tunnel on its way *down* offers the stop word
+            // dimmed on the settings page, and the same value here would throw
+            // this switch back on at the moment it was turned off. `isUp` is the
+            // engine's own vocabulary either way.
             Toggle("", isOn: Binding(
-                get: { action.verb == .disconnect },
+                get: { c.status.isUp },
                 set: { on in on ? vm.connect(c.name) : vm.disconnect(c.name) }))
                 .toggleStyle(.switch)
                 .labelsHidden()

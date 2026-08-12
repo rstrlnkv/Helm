@@ -16,36 +16,28 @@ import XCTest
 /// coming up. So the verb and whether it can be pressed are the engine's
 /// vocabulary, next to `isUp` and `isConnected`, and this table is the promise
 /// with a test under it.
+///
+/// **Which *word* each status draws is
+/// `ACancelIsAStopWithItsOwnWordTests`**, together with the tie between
+/// the word and the direction — this file is «can it be pressed, and where does
+/// the press go», that one is «what does it say».
 final class ACardCanStopATunnelComingUpTests: XCTestCase {
 
     /// The one that was wrong, on its own line: `stop` works here.
     func testATunnelComingUpCanStillBeAskedToStop() {
-        XCTAssertEqual(VPNCardAction.of(.connecting),
-                       VPNCardAction(verb: .disconnect, enabled: true))
+        XCTAssertEqual(VPNCardAction.of(.connecting).verb, .disconnect)
+        XCTAssertTrue(VPNCardAction.of(.connecting).enabled)
     }
 
     /// And the whole table, so a status added later has to answer this too.
-    func testEveryStatusSaysWhichVerbAndWhether() {
-        XCTAssertEqual(VPNCardAction.of(.connected),
-                       VPNCardAction(verb: .disconnect, enabled: true))
-        XCTAssertEqual(VPNCardAction.of(.disconnected),
-                       VPNCardAction(verb: .connect, enabled: true))
-        XCTAssertEqual(VPNCardAction.of(.unknown),
-                       VPNCardAction(verb: .connect, enabled: true))
+    func testEveryStatusSaysWhetherItCanBePressed() {
+        for status in [VPNStatus.connected, .connecting, .disconnected, .unknown] {
+            XCTAssertTrue(VPNCardAction.of(status).enabled,
+                          "\(status) draws a card with nothing to press")
+        }
         // The one state that is still waited out rather than acted on: asking
         // `--nc start` of a service that is going down has not been measured,
         // and this one resolves itself in seconds where `connecting` can hang.
-        XCTAssertEqual(VPNCardAction.of(.disconnecting),
-                       VPNCardAction(verb: .connect, enabled: false))
-    }
-
-    /// The verb follows «is something happening here», which is what `isUp`
-    /// answers — asserted against the status vocabulary rather than against a
-    /// second list of cases, so the two cannot drift apart.
-    func testTheVerbIsStopForEveryStatusThatIsUp() {
-        for status in [VPNStatus.connected, .connecting, .disconnected, .disconnecting, .unknown] {
-            XCTAssertEqual(VPNCardAction.of(status).verb, status.isUp ? .disconnect : .connect,
-                           "\(status) draws the wrong verb")
-        }
+        XCTAssertFalse(VPNCardAction.of(.disconnecting).enabled)
     }
 }

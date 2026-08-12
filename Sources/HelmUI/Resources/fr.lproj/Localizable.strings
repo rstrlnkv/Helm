@@ -6,7 +6,7 @@
 "1 module" = "1 module";
 "2 hours" = "2 heures";
 "A Keep Awake session now survives Helm restarting. A two-hour session lived only in memory, so anything that ended the app — a silent update most often — cancelled it: the countdown vanished from the menu bar, the Mac was free to sleep, and nothing said so. It comes back with the time it had left. A session whose end passed while Helm was gone stays finished." = "Une session Rester Éveillé survit désormais au redémarrage de Helm. Une session de deux heures ne vivait qu’en mémoire : tout ce qui fermait l’app — le plus souvent une mise à jour silencieuse — l’annulait, le compte à rebours disparaissait de la barre des menus, le Mac pouvait s’endormir et rien ne le disait. Elle revient avec le temps qui lui restait. Une session dont l’échéance est passée pendant l’absence de Helm reste terminée.";
-"A VPN carries everything this Mac sends, not only that app, and it takes a few seconds to come up after the app starts." = "Un VPN transporte tout le trafic de ce Mac, pas seulement celui de cette app, et le tunnel met quelques secondes à s’établir après l’ouverture.";
+"A VPN carries everything this Mac sends, not only the app it names, and it takes a few seconds to come up after the app starts." = "Un VPN transporte tout le trafic de ce Mac, pas seulement celui de cette app, et le tunnel met quelques secondes à s’établir après l’ouverture.";
 "A design pass over the whole app, in the macOS 26/27 idiom: Liquid Glass on the menu-bar panel, page titles that line up with the page beneath them at any window width, text that recedes without becoming unreadable, and numbers that roll instead of cutting. The sidebar groups modules into Files and Utilities rather than putting five of seven in one pile, and the window opens wide enough for the Disk screen to show everything it measures." = "Une passe de design sur toute l’app, dans l’idiome macOS 26/27 : Liquid Glass dans le panneau, des titres alignés avec leur contenu à toute largeur, un texte atténué qui reste lisible et des chiffres qui défilent au lieu de sauter. La barre latérale regroupe en Fichiers et Utilitaires.";
 "A few things fixed that you’re unlikely to ever notice directly: a symbolic link inside a folder Helm may clean could send removal to a different file than the one it confirmed; the diagnostics log’s short tags for app, VPN and package names could be reversed back into the real names by anyone holding the same public lists Helm draws them from; and Homebrew’s one-time setup step now names its two admin commands outright rather than trusting the environment to find them." = "Quelques corrections que vous ne remarquerez probablement jamais directement : un lien symbolique dans un dossier que Helm peut nettoyer pouvait envoyer la suppression vers un fichier différent de celui confirmé à l’écran ; les courtes étiquettes du journal de diagnostic pour les noms d’app, de VPN et de paquet pouvaient être inversées vers les vrais noms par quiconque disposait des mêmes listes publiques dont Helm les tire ; et l’étape de configuration unique de Homebrew nomme désormais directement ses deux commandes d’administration plutôt que de faire confiance à l’environnement pour les trouver.";
 "A filter hides the kinds you are not reviewing — system extensions, for instance." = "Un filtre masque les types que vous n’examinez pas, les extensions système par exemple.";
@@ -28,6 +28,7 @@
 "Active" = "Actif";
 "Add" = "Ajouter";
 "Add an app, and Helm connects a VPN when it launches." = "Ajoutez une app, et Helm connecte un VPN à son ouverture.";
+"Add another in System Settings and Helm picks it up." = "Ajoutez-en une autre dans les Réglages Système et Helm la reprend.";
 "Add app…" = "Ajouter une app…";
 "Add condition" = "Ajouter une condition";
 "Add folder…" = "Ajouter un dossier…";
@@ -96,7 +97,15 @@
 "Custom active-state icon for Keep Awake." = "Icône active personnalisée pour Rester éveillé.";
 "Custom duration" = "Durée personnalisée";
 "Custom icon when active" = "Icône personnalisée si actif";
+"Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm connecte les configurations que macOS conserve — à la main, ou selon une règle à l’ouverture d’une app. Ajoutez-en une dans les Réglages Système.";
+"Icon spin" = "Rotation de l’icône";
+"Menu bar" = "Barre des menus";
+"Nothing" = "Rien";
 "Other…" = "Autre…";
+"Spin the menu-bar icon" = "Faire tourner l’icône de la barre des menus";
+"This decides the words. Whether the icon turns is the switch below." = "Ceci décide des mots. C’est l’interrupteur ci-dessous qui décide si l’icône tourne.";
+"With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "Avec ceci désactivé et l’avis réglé sur « Rien », une règle qui connecte ou coupe un tunnel ne donne aucun signe.";
+"macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "macOS n’autorise pas les notifications de Helm : le nom apparaît donc dans la barre des menus.";
 "Cyan" = "Cyan";
 "DEV" = "DEV";
 "Dark" = "Sombre";
@@ -121,7 +130,6 @@
 "Disk no longer lets a top-level folder of the disk — Users, Applications, Library — go into the basket. What is inside them still can." = "Disque ne laisse plus mettre au panier un dossier de premier niveau du disque. Leur contenu, si.";
 "Disk takes a second look: a duplicate finder. Point it at the folder the ring is showing and it lists files that exist more than once — content compared, not names. One copy in each group is marked as the one that stays; the extras go to the basket, and deletion runs through the same guarded path as everything else. Hard links are one file and are never offered." = "Disque regarde une seconde fois : un chercheur de doublons. Pointez-le sur le dossier de l’anneau et il liste les fichiers présents plus d’une fois — contenu comparé, pas les noms. Une copie par groupe reste ; les autres vont au panier.";
 "Display and power" = "Écran et secteur";
-"Do not notify" = "Ne pas avertir";
 "Document" = "Document";
 "Done" = "Terminé";
 "Don’t fix" = "Ne pas corriger";
@@ -260,7 +268,6 @@
 "Media" = "Médias";
 "Menu-bar icon" = "Icône de la barre des menus";
 "Menu-bar panel and a System Settings-style window, the Liquid Glass icon, eight languages." = "Panneau de barre des menus et fenêtre façon Réglages Système, icône Liquid Glass, huit langues.";
-"Menu-bar spin" = "Rotation de l’icône";
 "Menu-bar timer: the ring empties clockwise while a timer runs, with optional remaining time and its own colour." = "Minuteur dans la barre : l’anneau se vide dans le sens horaire, temps restant et couleur dédiée en option.";
 "Mint" = "Menthe";
 "Miscellaneous" = "Autres";
@@ -272,7 +279,6 @@
 "Move up" = "Monter";
 "Moving around the disk ring is one movement now. Going back up more than one level used to change the screen without animating at all, the ring travels for longer the further it goes, and the slight overshoot at the end of each move — which read as a snap — is gone." = "Se déplacer dans l’anneau du disque est un seul mouvement : remonter de plus d’un niveau ne s’animait pas du tout, l’anneau prend maintenant plus de temps quand il va plus loin, et le léger rebond final a disparu.";
 "Name" = "Nom";
-"Name in menu bar" = "Nom dans la barre des menus";
 "Name pattern" = "Modèle de nom";
 "Name without extension" = "Nom sans extension";
 "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works." = "Nécessaire pour que Clavier corrige la disposition de ce que vous tapez et que Rester éveillé bouge le pointeur. Sans lui, aucun des deux ne fonctionne.";
@@ -280,7 +286,7 @@
 "Needs an administrator to delete" = "Suppression réservée à un administrateur";
 "Network" = "Réseau";
 "Network cache and cookies" = "Cache réseau et cookies";
-"Never" = "Désactivé";
+"Never" = "Jamais";
 "Never change these words" = "Ne jamais changer ces mots";
 "Never in a password field. And not in the terminals and password managers Helm knows — add any others in Settings." = "Jamais dans un champ de mot de passe. Ni dans les terminaux et gestionnaires de mots de passe que Helm connaît — ajoutez les autres dans les réglages.";
 "Never this word" = "Jamais ce mot";
@@ -475,7 +481,6 @@
 "The update status no longer claims you are current when no check has run — it shows when the last check happened." = "L’état des mises à jour n’affirme plus que vous êtes à jour sans vérification : il indique la dernière vérification.";
 "Then" = "Alors";
 "This app is not signed — this rule never fires" = "Cette app n’est pas signée — la règle ne se déclenche pas";
-"This decides the words. Whether the ring turns is the switch below." = "Ceci décide des mots. C’est l’interrupteur ci-dessous qui décide si l’anneau tourne.";
 "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word." = "C’est une touche dont vous vous servez en tapant. Maintenue ou combinée elle fonctionne normalement, mais une pression isolée par mégarde corrigera le dernier mot.";
 "This is the real thing, not a demonstration: it works here exactly as it does anywhere else." = "Ce champ est réel, pas une démonstration : le module s’y comporte comme partout ailleurs.";
 "This release published no checksum. Helm opened its download page instead." = "Cette version n’a publié aucune somme de contrôle. Helm a ouvert sa page de téléchargement.";
@@ -488,7 +493,6 @@
 "Turn off" = "Désactiver";
 "Turn on" = "Activer";
 "Turn on before reporting a problem. The file lives in ~/Library/Logs/Helm." = "Activez-le avant de signaler un problème. Le fichier est dans ~/Library/Logs/Helm.";
-"Turn the menu-bar icon" = "Faire tourner l’icône de la barre des menus";
 "Turn the rule on" = "Activer la règle";
 "Turning a login item off no longer clears everything else you had ticked." = "Désactiver un élément d’ouverture n’efface plus le reste de votre sélection.";
 "Turning off \"stay awake with the lid closed\" now also removes the passwordless permission it had to install. It used to stay on your Mac for good." = "Désactiver « rester éveillé capot fermé » retire aussi l’autorisation sans mot de passe qu’il avait fallu installer. Elle restait auparavant à demeure.";
@@ -544,13 +548,12 @@
 "When a punctuation mark is typed" = "À la saisie d’une ponctuation";
 "When a rule connects" = "Quand une règle connecte";
 "When a rule fires" = "Quand une règle se déclenche";
-"When a tunnel goes down" = "Quand un tunnel tombe";
+"When a tunnel goes down" = "Quand un tunnel se déconnecte";
 "When to fix" = "Quand corriger";
 "Which conditions must match" = "Quelles conditions doivent correspondre";
 "White" = "Blanc";
 "Window" = "Fenêtres";
 "With an external display" = "Avec un écran externe";
-"With this off and the notice set to nothing, a rule that connects or drops a tunnel gives no sign at all." = "Avec ceci désactivé et l’avis réglé sur rien, une règle qui connecte ou coupe un tunnel ne donne aucun signe.";
 "Without Accessibility Helm cannot see what you type, and this does nothing." = "Sans l’Accessibilité, Helm ne voit pas ce que vous tapez et ceci ne fait rien.";
 "Without Full Disk Access Helm cannot read every folder, and a short list of duplicates looks exactly like a folder that has none." = "Sans accès complet au disque, Helm ne peut pas lire tous les dossiers, et une courte liste ressemble exactement à un dossier sans doublons.";
 "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do." = "Sans accès complet au disque, un dossier protégé se lit comme vide : aucune règle ne correspond, et cela ressemble exactement à un dossier sans rien à faire.";
@@ -581,7 +584,6 @@
 "is" = "est";
 "larger than" = "plus grand que";
 "m" = "m";
-"macOS is not allowing notifications from Helm. The name will be shown in the menu bar instead." = "macOS n’autorise pas les notifications de Helm. Le nom sera affiché dans la barre des menus à la place.";
 "macOS may already use 🌐︎ to switch input source, open emoji or start dictation. Set “Press 🌐︎ to: Do Nothing” in Keyboard settings, or it will do both. Keyboards without a 🌐︎ key never send it." = "macOS utilise peut-être déjà 🌐︎ pour changer de source, ouvrir les emoji ou dicter. Réglez « Touche 🌐︎ : ne rien faire » dans les réglages du clavier, sinon les deux se produiront. Les claviers sans 🌐︎ ne l’envoient jamais.";
 "macOS would not move this. Show it in the Finder and try from there — the Finder says more about why." = "macOS n’a pas déplacé cet élément. Affichez-le dans le Finder et réessayez depuis là : le Finder en dit plus.";
 "min" = "min";
@@ -735,12 +737,10 @@
 "A colour of your own: the colour menu ends with “Other…”, which opens the system colour panel — the way Calendar offers one. The palette itself is Calendar’s, and follows light and dark the way the system’s colours do." = "Une couleur à vous : le menu des couleurs se termine par « Autre… », qui ouvre la palette du système — comme le propose Calendrier. La palette elle-même vient de Calendrier et suit le clair et le sombre comme les couleurs du système.";
 "“Stop on low battery” is a slider with stops, the way the charge limit is set in Battery. And the two colour rows are a dot and a name instead of two rows of ten swatches." = "« Arrêter si la batterie est faible » est un curseur à crans, comme la limite de charge dans « Batterie ». Et les deux lignes de couleur sont une pastille et un nom au lieu de deux rangées de dix.";
 "No VPNs are set up on this Mac" = "Aucun VPN n’est configuré sur ce Mac";
-"Helm connects and disconnects the configurations macOS holds, and can do it by rule — bringing up the work VPN when Slack opens, for example. The configuration itself is added in System Settings." = "Helm connecte et déconnecte les configurations que macOS conserve, et sait le faire selon des règles — monter le VPN du travail à l’ouverture de Slack, par exemple. La configuration elle-même s’ajoute dans les Réglages Système.";
 "Open Network settings" = "Ouvrir les réglages Réseau";
 "Helm picks it up on its own — there is nothing to refresh." = "Helm la reprend tout seul : rien à actualiser.";
-"macOS holds the configurations — Helm connects and disconnects them. Add one in System Settings and Helm picks it up." = "Les configurations sont gérées par macOS — Helm les connecte et les déconnecte. On en ajoute une dans les Réglages Système et Helm la reprend.";
-"Connect" = "Connecter";
-"Disconnect" = "Déconnecter";
+"Connect" = "Se connecter";
+"Disconnect" = "Se déconnecter";
 "Notifications" = "Notifications";
 "When a tunnel drops on its own" = "Quand un tunnel tombe tout seul";
 "A tunnel can go down on its own — the network changes, the server hangs up. That can be louder than the rules." = "Un tunnel peut tomber tout seul : le réseau change, le serveur raccroche. Cela peut être signalé plus fort que les règles.";
