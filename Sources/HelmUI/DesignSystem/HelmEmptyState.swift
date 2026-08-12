@@ -64,6 +64,13 @@ public struct HelmEmptyState<Actions: View>: View {
             }
             if let message {
                 Text(message)
+                    // **Said, not inherited.** With no font of its own this took
+                    // whatever the slot it was mounted in provides, and one of
+                    // those slots is a `Form`'s section header — which is
+                    // semibold. So the same component drew its sentence in two
+                    // weights on one screen, 500 pt apart, on the VPN page.
+                    // A sentence is the scale's body step wherever it is.
+                    .font(HelmText.rowTitle)
                     .foregroundStyle(HelmText.quiet)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: Self.textWidth)

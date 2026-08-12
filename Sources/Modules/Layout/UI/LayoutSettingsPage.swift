@@ -299,7 +299,10 @@ struct LayoutSettingsPage: View {
             if appRules.isEmpty {
                 Text(LyStr.noAppsYet).font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
             }
-            ForEach(appRules.keys.sorted(), id: \.self) { bundleID in
+            // By the name the row draws, not by the bundle id it is stored
+            // under: `com.apple.Safari` before `org.mozilla.firefox` reads as
+            // Safari before Firefox, which is an order with no rule in it.
+            ForEach(AppInfo.sortedByName(appRules.keys), id: \.self) { bundleID in
                 appRow(bundleID)
             }
             Button { pickApps() } label: { Label(LyStr.addApp, systemImage: "plus") }

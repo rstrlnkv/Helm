@@ -45,6 +45,39 @@ public enum AppInfo {
         return (answer.name, answer.icon)
     }
 
+    /// Bundle ids in the order the names they draw would be read.
+    ///
+    /// **A list stored by key and read by name.** Two settings pages held their
+    /// app rules in a `[String: Rule]` and drew `keys.sorted()`, which is
+    /// `com.apple.Safari` before `com.tinyapp.Zed` before `org.mozilla.firefox`
+    /// — Safari, Zed, Firefox on screen, an order with no rule in it. Here
+    /// rather than in either page for the reason every other shared drawing
+    /// decision is: the second copy is where they drift.
+    ///
+    /// `localizedStandardCompare` is the Finder's own comparison — case
+    /// insensitive, and a run of digits read as a number, so «Ableton 9» comes
+    /// before «Ableton 10». The id breaks a tie, because two apps can carry one
+    /// name and a list that reshuffles under the pointer is not sorted.
+    ///
+    /// Each id is resolved **once** rather than at every comparison a sort
+    /// makes, which is the same question asked per pair instead of per item.
+    ///
+    /// - Parameter name: how an id becomes the word the row shows. Defaulted to
+    ///   `resolve`, and an argument so the order can be tested without asking
+    ///   this Mac what it has installed.
+    public static func sortedByName(_ bundleIDs: some Sequence<String>,
+                                    name: (String) -> String = { resolve($0).name }) -> [String] {
+        bundleIDs.map { (id: $0, name: name($0)) }
+            .sorted { left, right in
+                switch left.name.localizedStandardCompare(right.name) {
+                case .orderedAscending: return true
+                case .orderedDescending: return false
+                case .orderedSame: return left.id < right.id
+                }
+            }
+            .map(\.id)
+    }
+
     /// The icon of a bundle whose **path** is what the caller has.
     ///
     /// A separate question from `resolve`, not a shortcut into it: the callers

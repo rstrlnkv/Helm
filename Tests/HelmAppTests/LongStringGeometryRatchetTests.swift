@@ -28,8 +28,8 @@ import XCTest
 ///
 /// **What it can see, and what it cannot.** `intrinsicContentSize` is AppKit's,
 /// so this reads the AppKit-backed controls in a page. Measured 2026-08-11, all
-/// nine pages, with the configured fixture below: **23 controls in the whole
-/// app** — 18 switches, 3 text fields (Layout), one search field and one
+/// nine pages, with the configured fixture below: **22 controls in the whole
+/// app** — 17 switches, 3 text fields (Layout), one search field and one
 /// segmented control (Uninstaller). This comment used to name pop-ups as well,
 /// and there is not one in any page's view tree: SwiftUI's `Picker(.menu)`,
 /// `Button` and `Slider` are drawn by SwiftUI itself on macOS 26/27, so a walk
@@ -217,7 +217,7 @@ final class LongStringGeometryRatchetTests: XCTestCase {
     ///
     /// The two numbers above are only as wide as the set of controls this walk
     /// finds, and that set is much narrower than it reads: measured over all nine
-    /// pages, in every language, it is 23 controls — 18 switches (which the text
+    /// pages, in every language, it is 22 controls — 17 switches (which the text
     /// rule excludes, because a switch is 36 pt in every language), 3 text fields,
     /// one search field and one segmented control. The configured Keep Awake page
     /// alone draws four `Picker(.menu)` and a row of buttons, and its whole view
@@ -241,7 +241,12 @@ final class LongStringGeometryRatchetTests: XCTestCase {
         }
         XCTAssertFalse(tally.isEmpty, "no control was found in any page, in any language")
 
-        XCTAssertEqual(tally, ["AppKitSwitch": 18, "AppKitTextField": 3,
+        // **17 switches, and the one that left is recorded rather than
+        // absorbed.** VPN's «spin the icon» toggle is behind
+        // `connections.isEmpty` since 2026-08-12, and this render's transport
+        // never sends a connection — so on a page nobody with a VPN sees, that
+        // switch is not drawn. It is the only count this fixture moved.
+        XCTAssertEqual(tally, ["AppKitSwitch": 17, "AppKitTextField": 3,
                                "AppKitSearchField": 1, "AppKitSegmentedControl": 1], """
             the controls this measurement can see are not the ones it was measured with: \
             \(tally.sorted { $0.key < $1.key }.map { "\($0.key)×\($0.value)" }.joined(separator: " ")).

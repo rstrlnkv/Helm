@@ -42,12 +42,20 @@ struct VPNSettingsPage: View {
         vpnForm
     }
 
+    /// **Is there anything on this Mac for the rest of the page to be about.**
+    ///
+    /// Asked in four places — the heading over the rules, the rules themselves,
+    /// their footer and the two cards below — because a `Form` builds a header,
+    /// a body and a footer in three separate closures. One name, so those four
+    /// cannot come to mean four slightly different things.
+    private var hasConnections: Bool { !vm.connections.isEmpty }
+
     /// The connections block, and the heading of the section it rides on.
     private var connectionsAndTitle: some View {
         VStack(alignment: .leading, spacing: 0) {
             HelmSectionTitle(VPNStr.connections)
             connectionsList
-            if !vm.connections.isEmpty {
+            if hasConnections {
                 Text(VPNStr.connectionsHint)
                     .font(HelmText.rowDetail)
                     .foregroundStyle(HelmText.quiet)
@@ -57,11 +65,19 @@ struct VPNSettingsPage: View {
             if let failure = vm.lastFailure {
                 HelmBanner(failureText(failure), symbol: "exclamationmark.triangle.fill")
                     .padding(.top, HelmSpace.s4)
+                    // **It has a fill, so it is a card.** A section header is
+                    // inset 10 pt further than the section's own card, which is
+                    // right for text and wrong for a filled field: measured, the
+                    // banner ran 30…713 against 20…723 for every card on the
+                    // page. Back out the same way the connections grid does.
+                    .padding(.horizontal, -HelmLayout.groupedHeaderOutset)
             }
-            // The gap the grouped form puts between a card and the next
-            // heading, which this block is now standing in for.
-            HelmSectionTitle(VPNStr.perAppAutomation)
-                .padding(.top, HelmSpace.s7)
+            if hasConnections {
+                // The gap the grouped form puts between a card and the next
+                // heading, which this block is now standing in for.
+                HelmSectionTitle(VPNStr.perAppAutomation)
+                    .padding(.top, HelmSpace.s7)
+            }
         }
     }
 
@@ -87,16 +103,40 @@ struct VPNSettingsPage: View {
             // drawn on the bare pane and still scrolls, which is exactly the
             // two things this block needs. Same shape as Keep Awake's hero,
             // and for the same reason.
-            Section(header: connectionsAndTitle) {
-                appRulesEditor
+            // **Nothing below the empty state, at zero connections.** The three
+            // sections under this one configure what happens when a rule fires
+            // and how a firing is announced — events that cannot happen on a Mac
+            // with no VPN configured — and they were 800 pt of them, ending in a
+            // second empty state inside the rules card. The one thing this page
+            // can do for that person is the button in the empty state, and it
+            // was below the fold behind settings for a feature they have not
+            // got.
+            Section {
+                if hasConnections { appRulesEditor }
+            } header: {
+                connectionsAndTitle
+            } footer: {
+                // What the tunnel actually covers: a **footer**, which is where
+                // macOS puts the sentence that qualifies a group and where this
+                // same page already puts the hint under its connections. It was
+                // the card's last row — the one row of that card that is not a
+                // rule, drawn at a row's inset with a separator over it.
+                if hasConnections {
+                    Text(VPNStr.perAppScopeNote)
+                        .font(HelmText.rowDetail)
+                        .foregroundStyle(HelmText.quiet)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
 
-            Section(header: HelmSectionTitle(VPNStr.noticeSection)) {
-                noticePicker
-            }
+            if hasConnections {
+                Section(header: HelmSectionTitle(VPNStr.noticeSection)) {
+                    noticePicker
+                }
 
-            Section(header: HelmSectionTitle(VPNStr.spinSection)) {
-                spinControls
+                Section(header: HelmSectionTitle(VPNStr.spinSection)) {
+                    spinControls
+                }
             }
         }
         .formStyle(.grouped)
@@ -152,12 +192,6 @@ struct VPNSettingsPage: View {
                     Task { await vm.choose(chosen) }
                 }), label: VPNStr.noticeRuleLabel)
         }
-        // Where the switch is, not only in the app's permission list: a mode
-        // macOS refuses looks exactly like one it allows.
-        if notice == .system, vm.bannerAuthorization == .denied {
-            HelmPermissionNote(text: VPNStr.noticeDenied,
-                               openSettings: PermissionCheck.openNotificationSettings)
-        }
         Text(VPNStr.noticeHint)
             .font(HelmText.rowDetail)
             .foregroundStyle(HelmText.quiet)
@@ -174,14 +208,24 @@ struct VPNSettingsPage: View {
                     Task { await vm.choose(chosen, for: .dropped) }
                 }), label: VPNStr.noticeDropLabel)
         }
-        if dropNotice == .system, vm.bannerAuthorization == .denied {
-            HelmPermissionNote(text: VPNStr.noticeDenied,
-                               openSettings: PermissionCheck.openNotificationSettings)
-        }
         Text(VPNStr.noticeDropHint)
             .font(HelmText.rowDetail)
             .foregroundStyle(HelmText.quiet)
             .fixedSize(horizontal: false, vertical: true)
+
+        // Where the switch is, not only in the app's permission list: a mode
+        // macOS refuses looks exactly like one it allows.
+        //
+        // **Once for the card, and both rows are in the question.** Each row
+        // used to ask it for itself, so choosing the banner for both events and
+        // then revoking the permission drew the same sentence twice, 20 pt
+        // apart, and took the card from 285 to 423 pt. `permissionMissing` is
+        // that question with a test under it.
+        if VPNNotice.permissionMissing(among: [notice, dropNotice],
+                                       authorization: vm.bannerAuthorization) {
+            HelmPermissionNote(text: VPNStr.noticeDenied,
+                               openSettings: PermissionCheck.openNotificationSettings)
+        }
     }
 
     /// The three pictures. Written once: the two rows choose between the same
@@ -345,10 +389,10 @@ struct VPNSettingsPage: View {
         // `isConnected` is «traffic is on the tunnel». The dot and the ring
         // report the second — a green dot on a tunnel that is three seconds
         // into coming up is the page saying the Mac is protected when it is
-        // not. The verb reads the first, because what you can ask for while it
-        // is connecting is to stop.
+        // not. The verb answers a third question, `VPNCardAction`, and it is
+        // the engine's rather than this view's: what you can ask for while a
+        // tunnel is coming up is to stop.
         let connected = c.status.isConnected
-        let transitioning = c.status.isTransitioning
         return VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 HelmStatusDot(active: connected)
@@ -371,10 +415,14 @@ struct VPNSettingsPage: View {
             .foregroundStyle(HelmText.quiet)
             .accessibilityElement(children: .combine)
             Spacer(minLength: 6)
-            HStack(spacing: 6) {
-                if transitioning { ProgressView().controlSize(.small) }
-                connectionVerb(c, up: c.status.isUp, transitioning: transitioning)
-            }
+            // **No spinner beside the verb.** It shared the button's `HStack`,
+            // so a card that started connecting moved its own button: measured,
+            // 202.5 pt wide to 181.0 with the left edge travelling 22 pt, on the
+            // one control the person was reaching for. The state is already said
+            // in words on the line above — «Подключение…», in the readout face —
+            // and v3 draws no spinner here. A gutter reserved for one would be a
+            // 22 pt hole in every card that is not moving.
+            connectionVerb(c)
         }
         .padding(12)
         // No `minHeight`. Measured: every card in a row comes out 116 pt —
@@ -408,7 +456,13 @@ struct VPNSettingsPage: View {
     }
 
     @ViewBuilder
-    private func connectionVerb(_ c: VPNConnection, up: Bool, transitioning: Bool) -> some View {
+    private func connectionVerb(_ c: VPNConnection) -> some View {
+        // Which verb, and whether it can be pressed, is the engine's question —
+        // `VPNCardAction`, beside `isUp`. Answered here it was answered wrongly:
+        // the button was disabled for *every* transition, so a tunnel stuck on
+        // «connecting» left a card with nothing on it to press, under the
+        // comment above promising the opposite.
+        let action = VPNCardAction.of(c.status)
         // **The frame goes on the label, not on the button.**
         // `.frame(maxWidth: .infinity)` applied to a macOS bordered control
         // does not stretch it — the control hugs its title and centres itself
@@ -418,20 +472,21 @@ struct VPNSettingsPage: View {
         // three different button widths and two different left edges — 74 pt
         // for «Connect», 100 for «Подключить» — with up to 122 pt of empty card
         // beside each. v3 spells it `.btn.wide { width: 100% }`.
-        if up {
+        switch action.verb {
+        case .disconnect:
             Button { vm.disconnect(c.name) } label: {
                 Text(VPNStr.disconnect).frame(maxWidth: .infinity)
             }
-            .disabled(transitioning)
+            .disabled(!action.enabled)
             .accessibilityLabel("\(VPNStr.disconnect), \(c.name)")
-        } else {
+        case .connect:
             // Prominent, because on a page of cards the one thing to press is
             // «connect» and there is no other candidate for the accent.
             Button { vm.connect(c.name) } label: {
                 Text(VPNStr.connect).frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            .disabled(transitioning)
+            .disabled(!action.enabled)
             .accessibilityLabel("\(VPNStr.connect), \(c.name)")
         }
     }
@@ -453,8 +508,10 @@ struct VPNSettingsPage: View {
 
     // MARK: - Per-app automation
 
+    /// By the name the row draws, not by the key it is stored under — the same
+    /// order the Finder would give the apps themselves.
     private var sortedBundleIDs: [String] {
-        rules.keys.sorted()
+        AppInfo.sortedByName(rules.keys)
     }
 
     @ViewBuilder
@@ -495,19 +552,10 @@ struct VPNSettingsPage: View {
             .accessibilityElement(children: .combine)
         }
         .buttonStyle(.plain)
-        .disabled(vm.connections.isEmpty)
-        // What the tunnel actually covers, **under the list rather than over
-        // it**. It is the one thing on this page somebody can be wrong about in
-        // a way that matters — a section headed "per-app" beside a control that
-        // routes the whole Mac — and it was the card's first row: two lines of
-        // grey explanation before a single app, so the block opened by
-        // explaining itself and the rules began a third of the way down. macOS
-        // puts this text under the group it qualifies, which is also where a
-        // person looks after reading the rows rather than before.
-        Text(VPNStr.perAppScopeNote)
-            .font(HelmText.rowDetail)
-            .foregroundStyle(HelmText.quiet)
-            .fixedSize(horizontal: false, vertical: true)
+        // What the tunnel actually covers is the section's **footer** now, drawn
+        // by the form itself — it is the one thing on this page somebody can be
+        // wrong about in a way that matters, and it belongs under the group it
+        // qualifies rather than in it.
     }
 
     /// One line per app: which VPN, and when the rule fires. The two switches

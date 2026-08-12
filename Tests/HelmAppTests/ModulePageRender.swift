@@ -286,8 +286,23 @@ extension ModulePageRender.Page {
     /// the guard and carries the seam that ends it. Until that lands the floor
     /// here asks only whether the page drew at all, which is the question this
     /// guard exists for.
+    ///
+    /// **VPN's is 45 because its page got shorter on purpose, and the number
+    /// that fell says something this render cannot otherwise see.** It drew 160+
+    /// layers here only because a Mac with no VPN configured was shown 800 pt of
+    /// settings for events that cannot happen — a rules card, a notice card and a
+    /// spin card under an empty state. Those are behind `connections.isEmpty`
+    /// now, and `SilentTransport` never sends connections, so what this render
+    /// reads is the empty state: 55 layers in light and 58 in dark, identical in
+    /// all eight languages, measured 2026-08-12.
+    ///
+    /// The rest of that page is therefore measured by nothing here, and the
+    /// connections grid never was: connections arrive as an **event**, and the
+    /// `Seed` above only reaches the store. A fixture for the wire — one state
+    /// payload, then the same silence — is what would give this page back to all
+    /// three ratchets built on this render.
     static let floors: [String: Int] = [
-        "keep-awake": 250, "vpn": 160, "uninstaller": 45, "homebrew": 10,
+        "keep-awake": 250, "vpn": 45, "uninstaller": 45, "homebrew": 10,
         "leftovers": 25, "disk": 40, "duplicates": 12, "autopilot": 12, "layout": 230,
     ]
 }

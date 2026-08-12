@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Helm
 
 import Foundation
+import HelmRuntime
 
 /// How loudly the module says that a rule fired.
 ///
@@ -21,5 +22,18 @@ public enum VPNNotice: String, CaseIterable, Codable, Sendable {
     /// not telling them. The settings row says the same thing in words.
     public func effective(bannerAuthorized: Bool) -> VPNNotice {
         self == .system && !bannerAuthorized ? .menuBar : self
+    }
+
+    /// Whether a card of these choices has to say that macOS is refusing them.
+    ///
+    /// **Asked of the card, not of a row.** The notice card decides two events
+    /// and each row asked for itself, so choosing the banner for both and then
+    /// revoking the permission drew one sentence twice, 20 pt apart.
+    ///
+    /// `nil` is not a refusal: it means nobody has asked macOS this launch,
+    /// which is what the page holds until its `.task` has run.
+    public static func permissionMissing(among modes: [VPNNotice],
+                                         authorization: NoticeAuthorization?) -> Bool {
+        authorization == .denied && modes.contains { $0.postsBanner }
     }
 }
