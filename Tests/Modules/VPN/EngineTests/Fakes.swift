@@ -88,13 +88,35 @@ final class FakeCreds: VPNCredentialsPort {
     /// Readable only where a prompt is allowed: the System keychain.
     var behindAPrompt: [String: VPNCredentials] = [:]
     /// Every ask, so a test can see that nothing was asked at all — which is a
-    /// different fact from an answer of nil.
+    /// different fact from any of the three answers.
     private(set) var asks: [(name: String, promptingAllowed: Bool)] = []
 
-    func credentials(for name: String, promptingAllowed: Bool) -> VPNCredentials? {
+    func credentials(for name: String, promptingAllowed: Bool) -> VPNCredentialRead {
         asks.append((name, promptingAllowed))
-        if let cached = map[name] { return cached }
-        return promptingAllowed ? behindAPrompt[name] : nil
+        if let cached = map[name] { return answer(cached) }
+        guard let stored = behindAPrompt[name] else {
+            // Neither tier has anything: the configuration keeps no secret Helm
+            // supplies, which is what an IKEv2 or WireGuard service looks like
+            // here. The real port answers this from the absence of an
+            // `AuthPassword` field.
+            return .notNeeded
+        }
+        guard promptingAllowed else { return .behindAPrompt }
+        // **The read a person's gesture allows also fills the cache**, which is
+        // what makes one press of Connect enough for every automatic connect
+        // afterwards. A fake that read the System tier and left the cache empty
+        // could not represent that, and «the press repaired it» is the state the
+        // notice on screen tells people to produce.
+        map[name] = stored
+        return answer(stored)
+    }
+
+    /// `.ready` only ever carries a usable secret, exactly as `KeychainCredentials`
+    /// builds it — a fake free to answer `.ready` with nothing in it would be
+    /// freer than the port it stands for (CLAUDE.md § A fake can also be freer
+    /// than the port).
+    private func answer(_ creds: VPNCredentials) -> VPNCredentialRead {
+        creds.secret?.isEmpty == false ? .ready(creds) : .notNeeded
     }
 }
 

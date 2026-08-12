@@ -202,16 +202,35 @@ public final class KeychainCredentials: VPNCredentialsPort {
         }
     }
 
-    public func credentials(for name: String, promptingAllowed: Bool) -> VPNCredentials? {
+    public func credentials(for name: String, promptingAllowed: Bool) -> VPNCredentialRead {
         let show = HelmProcess.run("/usr/sbin/scutil", ["--nc", "show", name]).output
-        guard let uuid = Self.value(inScutilShow: show, field: "AuthPassword") else { return nil }
+        // No `AuthPassword` line: this configuration keeps no secret Helm has to
+        // supply, and `--nc start` connects it on its own. `.notNeeded` rather
+        // than the nil this used to be — see `VPNCredentialRead`, and the
+        // warning that would otherwise be drawn under every IKEv2 connect.
+        guard let uuid = Self.value(inScutilShow: show, field: "AuthPassword") else {
+            return .notNeeded
+        }
         let authName = Self.value(inScutilShow: show, field: "AuthName")
 
-        // 1. Helm's own cache (no prompt — we own these items).
-        if let secret = helmCacheRead("\(uuid).ss"), !secret.isEmpty {
-            return VPNCredentials(user: authName,
-                                  password: helmCacheRead("\(uuid).pw"),
-                                  secret: secret)
+        // 1. Helm's own cache (no prompt while the item's access list still names
+        // this build — see below).
+        let cached = helmCacheRead("\(uuid).ss")
+        if case .value(let secret) = cached, !secret.isEmpty {
+            return .ready(VPNCredentials(user: authName,
+                                         password: helmCacheRead("\(uuid).pw").value,
+                                         secret: secret))
+        }
+        // **An item that is there and unreadable is not an empty cache**, and the
+        // two were one silent nil. `SecItemAdd` binds the access list to the code
+        // identity that wrote it, and this bundle is ad-hoc signed — every install
+        // is a different identity to macOS (ARCHITECTURE.md § Permissions) — so
+        // this is the ordinary state of the cache after an update, not an exotic
+        // one. Logged with the status, because «no cached credentials» sent the
+        // last investigation looking for a purge that had run hours earlier.
+        if case .refused(let status) = cached {
+            HelmLog.shared.warn("vpn", "the cached credential for \(Redact.vpn(name)) is not "
+                + "readable by this build: \(HelmFailure.osStatus(status))")
         }
 
         // 2. First time: read the System keychain, which macOS gates behind an
@@ -222,11 +241,15 @@ public final class KeychainCredentials: VPNCredentialsPort {
         guard promptingAllowed else {
             HelmLog.shared.info("vpn", "no cached credentials for \(Redact.vpn(name)); an "
                 + "automatic connect does not ask the System keychain")
-            return nil
+            return .behindAPrompt
         }
         let secret = Self.keychainSecret(service: "\(uuid).SS", account: nil,
                                          keychain: "/Library/Keychains/System.keychain")
-        guard let secret, !secret.isEmpty else { return nil }
+        // Still `.behindAPrompt`: there *is* a secret — the configuration named
+        // the keychain item that holds it — and this read did not come back with
+        // it. A declined dialog and a locked keychain both land here, and both
+        // leave the same fact behind for the screen to say.
+        guard let secret, !secret.isEmpty else { return .behindAPrompt }
         let password = Self.keychainSecret(service: uuid, account: authName,
                                            keychain: "/Library/Keychains/System.keychain")
 
@@ -234,7 +257,7 @@ public final class KeychainCredentials: VPNCredentialsPort {
         helmCacheWrite("\(uuid).ss", secret)
         if let password, !password.isEmpty { helmCacheWrite("\(uuid).pw", password) }
 
-        return VPNCredentials(user: authName, password: password, secret: secret)
+        return .ready(VPNCredentials(user: authName, password: password, secret: secret))
     }
 
     private func query(_ account: String) -> [String: Any] {
@@ -243,14 +266,56 @@ public final class KeychainCredentials: VPNCredentialsPort {
          kSecAttrAccount as String: account]
     }
 
-    private func helmCacheRead(_ account: String) -> String? {
+    /// What a read of Helm's own cache found — **three answers, for the reason
+    /// `VPNCredentialRead` has three.**
+    ///
+    /// «Nothing there» and «there and this build may not read it» were one nil, and
+    /// the second is the ordinary state after every install: an item's access list
+    /// names the code identity that created it, and an ad-hoc signed bundle has a
+    /// new identity in every build. A caller that cannot tell them apart reports
+    /// «no cached credentials» for a cache that is full.
+    ///
+    /// **`KeychainSealKey.Read` in `HelmRuntime` is this same triage**, down to the
+    /// `errSecItemNotFound` branch and the `HelmFailure.osStatus` line — the second
+    /// spelling of it, and therefore a hoist that is owed rather than a shape to
+    /// copy a third time. Not taken here: it would refactor an untested,
+    /// security-critical read outside this fix.
+    ///
+    /// **What this cannot tell you**, and it matters for the rule above about
+    /// automatic connects never summoning a dialog: whether macOS raises the
+    /// «Helm wants to use your confidential information» panel *inside*
+    /// `SecItemCopyMatching` when the access list no longer names this build. If it
+    /// does, an item left by the previous install is a second route to a prompt an
+    /// automatic connect never asked for. `kSecUseAuthenticationUI` would settle it
+    /// and cannot be tried without writing to somebody's real keychain, so it is
+    /// recorded rather than guessed at.
+    private enum CacheRead {
+        case value(String)
+        /// No such item, or bytes that are not a string.
+        case missing
+        /// An item macOS would not hand over. The status is kept for the log —
+        /// `errSecAuthFailed` and `errSecInteractionNotAllowed` are different
+        /// stories and a bare "unreadable" tells neither.
+        case refused(OSStatus)
+
+        var value: String? {
+            if case .value(let v) = self { return v }
+            return nil
+        }
+    }
+
+    private func helmCacheRead(_ account: String) -> CacheRead {
         var q = query(account)
         q[kSecReturnData as String] = true
         q[kSecMatchLimit as String] = kSecMatchLimitOne
         var item: CFTypeRef?
-        guard SecItemCopyMatching(q as CFDictionary, &item) == errSecSuccess,
-              let data = item as? Data else { return nil }
-        return String(data: data, encoding: .utf8)
+        let status = SecItemCopyMatching(q as CFDictionary, &item)
+        guard status == errSecSuccess else {
+            return status == errSecItemNotFound ? .missing : .refused(status)
+        }
+        guard let data = item as? Data,
+              let value = String(data: data, encoding: .utf8) else { return .missing }
+        return .value(value)
     }
 
     /// Written through the keychain API, not the `security` tool.

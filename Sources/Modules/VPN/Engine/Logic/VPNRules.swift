@@ -124,4 +124,21 @@ public enum VPNRules {
         let names = Set(connections.map(\.name))
         return rules.filter { !names.contains($0.value.vpnName) }
     }
+
+    /// Of the configurations Helm has no usable secret for, the ones no rule speaks
+    /// for — **which is the half a banner has to say.**
+    ///
+    /// Every rule pointing at one of them draws that sentence on its own row, where
+    /// it names the app whose automation is dead; a page-wide banner beside it is
+    /// the same words twice on one screen, which was photographed at 230 pt apart
+    /// before this existed. What is left over is real and has nowhere else to go: a
+    /// rule deleted after the fact, or a keychain dialog declined while connecting
+    /// by hand.
+    ///
+    /// Order is the caller's — the engine sorts the book — so this only removes.
+    public static func unspokenFor(_ locked: [String],
+                                   by rules: [String: VPNAppRule]) -> [String] {
+        let spoken = Set(rules.values.map(\.vpnName))
+        return locked.filter { !spoken.contains($0) }
+    }
 }

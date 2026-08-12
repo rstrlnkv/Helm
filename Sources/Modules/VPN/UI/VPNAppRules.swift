@@ -110,6 +110,15 @@ extension VPNSettingsPage {
         } note: {
             if missing, let name = rules[bundleID]?.vpnName {
                 ruleWarning(VPNStr.ruleVPNMissing(name))
+            } else if let name = rules[bundleID]?.vpnName,
+                      vm.secretsBehindAPrompt.contains(name) {
+                // **The rule that could not fire, on the row somebody looks at when
+                // it stops working.** The secret is in the System keychain and an
+                // automatic connect may not open the dialog macOS guards it with,
+                // so this rule does nothing at all until one press of Connect fills
+                // Helm's own cache — and `scutil` reports the start it could not
+                // perform as a success, so nothing else on this page would say it.
+                ruleWarning(VPNStr.secretNeedsAPress(name))
             } else if let note = trustNote(bundleID) {
                 // A rule bound to no identity, or to an app nobody signed, cannot
                 // fire — and a rule that refuses in silence looks exactly like one

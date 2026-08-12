@@ -235,6 +235,30 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   protection that measurement shows the attribute does not provide in this
   keychain; the comment now names what actually protects it — the item's
   ACL.
+- **A rule with no reachable secret said so nowhere.** The two changes above —
+  the one-time purge of the old credential cache, and an automatic connect no
+  longer reading the System keychain — met on a first launch: empty cache plus
+  no prompt is no secret at all, so the rule reached the same dead end at every
+  launch of its app (three inside an hour in the report), ran a `--nc start`
+  that could not work, announced a connection nobody had, and left only a log
+  line to say why. Neither change is weakened. `VPNCredentialsPort` now answers
+  `VPNCredentialRead` — `.ready`, `.notNeeded`, `.behindAPrompt` — instead of a
+  nil that folded "this configuration keeps no secret" (IKEv2) into "there is
+  one and Helm may not read it", which is what made the state unreportable in
+  either direction. `VPNSecretBook` holds the configurations it applies to, on
+  the wire and drawn: the rule's own row says it, and a banner over the
+  connections speaks for a configuration no rule covers
+  (`VPNStr.secretNeedsAPress`, one sentence per configuration). The book is a
+  latch with two reverse channels — a credential read that succeeds, and the
+  tunnel being observed up — so a second automatic attempt is refused rather
+  than repeated, and nothing is announced for a start Helm knowingly
+  under-supplied.
+- Helm's own credential cache can tell "no item" from "an item this build may
+  not read", which are the same silence and different facts: an item's ACL is
+  bound to the code identity that wrote it, and an ad-hoc signed bundle has a
+  new identity every build — so an unreadable cache is the ordinary state after
+  an update, not an exotic one. It is logged with its `OSStatus` and reported
+  as `.behindAPrompt` rather than as an empty cache.
 - VPN's `scutil` refusal text is redacted at the point it is created, not
   only where it is logged — the tool's message is usually *about* the
   configuration and therefore contains its name, so the case can no longer

@@ -16,6 +16,14 @@ import Module_VPN_Engine
     /// output; nothing here decoded it, so pressing Connect on a configuration
     /// macOS refuses ran the spinner and returned the card exactly as it was.
     @Published private(set) var lastFailure: VPNFailure?
+    /// Configurations whose stored secret Helm may not read unattended — sorted by
+    /// the engine, so the page draws them in one order.
+    ///
+    /// A standing state rather than an event, and it is what the two sentences on
+    /// this page are drawn from: a rule whose tunnel is in here cannot fire until
+    /// somebody presses Connect once, and the engine stops attempting a
+    /// `--nc start` it knows cannot work (`VPNSecretBook`).
+    @Published private(set) var secretsBehindAPrompt: [String] = []
 
     private let transport: EngineTransport
     private let settings: VPNSettings?
@@ -223,6 +231,7 @@ import Module_VPN_Engine
         autoConnected = Set(p.autoConnected)
         defaultName = p.defaultName
         lastFailure = p.lastFailure
+        secretsBehindAPrompt = p.secretsBehindAPrompt
         // Stale firings are dropped here rather than downstream. The engine
         // keeps its last one for good and repeats it in every state payload, so
         // the first refresh after launch would otherwise spin the ring for

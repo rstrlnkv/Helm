@@ -3,13 +3,44 @@ import HelmRuntime
 
 /// Credentials some VPNs (L2TP/IPSec) need at connect time; nil for VPNs that
 /// connect on their own (IKEv2). Secrets never logged.
-public struct VPNCredentials: Sendable {
+public struct VPNCredentials: Equatable, Sendable {
     public var user: String?
     public var password: String?
     public var secret: String?
     public init(user: String? = nil, password: String? = nil, secret: String? = nil) {
         self.user = user; self.password = password; self.secret = secret
     }
+}
+
+/// What a credential read found — **three answers, because the nil it replaced
+/// was two of them.**
+///
+/// `credentials(for:promptingAllowed:)` used to answer `VPNCredentials?`, and nil
+/// meant either «this configuration keeps no secret Helm has to supply» (IKEv2,
+/// WireGuard — the ordinary case, and nothing is wrong) or «there is one, in the
+/// System keychain, and this caller may not open the dialog macOS guards it with»
+/// (an automatic connect against an empty cache — the tunnel cannot come up and
+/// nobody is told). Folded together, the engine could report neither: saying
+/// something about every nil would put a warning under every automatic connect on
+/// the machine, and saying nothing is what shipped.
+///
+/// This is the repair ARCHITECTURE.md § A nil from a system read can be folding
+/// two questions into one records for `PowerSource.supply()`, in the same shape:
+/// the port answers the question it is actually being asked.
+public enum VPNCredentialRead: Equatable, Sendable {
+    /// Read, and usable: the secret is in hand. Only ever built with a non-empty
+    /// secret — the fake stands where the real port stands, and a `.ready` with
+    /// nothing in it is a state neither can produce.
+    case ready(VPNCredentials)
+    /// This configuration keeps no secret Helm supplies. `scutil --nc start`
+    /// connects it on its own, and there is nothing to say to anybody.
+    case notNeeded
+    /// There is a secret and this read did not get it: it lives in the System
+    /// keychain, which macOS gates behind an authorization dialog. For an
+    /// automatic connect that is Helm declining to ask — not the tool refusing —
+    /// and it is the one answer the person has to be told about, because until
+    /// somebody presses Connect the rule cannot work.
+    case behindAPrompt
 }
 
 /// Runs `scutil` with the given args and hands back everything it answered.
@@ -39,10 +70,13 @@ public protocol VPNRunnerPort: AnyObject {
 ///   rule otherwise chooses both the configuration and the moment that prompt
 ///   appears in front of somebody who did nothing. Helm's own cache needs no
 ///   prompt and stays readable either way, so an automatic connect that has been
-///   made once before is unaffected; one that has not gives up, and the System
-///   keychain then waits for the gesture of a person pressing Connect.
+///   made once before is unaffected; one that has not answers `.behindAPrompt`,
+///   and the System keychain then waits for the gesture of a person pressing
+///   Connect. That answer is a state the screen draws, not a silence: giving up
+///   quietly is what left a rule reaching the same dead end three times in an
+///   hour with only the log to say so.
 public protocol VPNCredentialsPort: AnyObject {
-    func credentials(for name: String, promptingAllowed: Bool) -> VPNCredentials?
+    func credentials(for name: String, promptingAllowed: Bool) -> VPNCredentialRead
 }
 
 /// Reports currently-running app bundle IDs and notifies on any change; the

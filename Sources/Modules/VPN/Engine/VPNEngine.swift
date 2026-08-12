@@ -78,6 +78,10 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// irreducible rather than merely unfixed here — Helm asks for a name, macOS
     /// picks the configuration.
     private var _cameUp: [String: String] = [:]
+    /// Which configurations Helm has no usable secret for — `VPNSecretBook`, under
+    /// the same lock as the two books above it, and for the same reason: written
+    /// from the work queue, read by the page.
+    private var _secrets = VPNSecretBook()
     private var _lastAutomation: VPNAutomation?
 
     public var lastAutomation: VPNAutomation? {
@@ -93,6 +97,18 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     public var lastFailure: VPNFailure? {
         lock.lock(); defer { lock.unlock() }
         return _lastFailure
+    }
+
+    /// The configurations a rule cannot raise, because their secret is in the
+    /// System keychain and only a person's own gesture may open it.
+    ///
+    /// On the wire and drawn, not merely logged: the two changes that produced
+    /// this state — the one-time purge of the old credential cache and the refusal
+    /// to prompt for an automatic connect — are both correct, and together they
+    /// left a rule reaching the same dead end at every launch of its app with
+    /// nothing but `~/Library/Logs/Helm/helm.log` to say so.
+    public var secretsBehindAPrompt: [String] {
+        lock.lock(); defer { lock.unlock() }; return _secrets.names
     }
 
     public var connections: [VPNConnection] {
@@ -239,6 +255,11 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             && _autoConnected.contains(connection.name) {
             _cameUp[connection.id] = connection.name
         }
+        // The reverse channel for the secret book: a tunnel that is up needed
+        // nothing from Helm after all, and a configuration deleted in System
+        // Settings is nothing to draw a sentence about. Without this the notice
+        // would be a warning nobody can clear.
+        _secrets.reconcile(against: parsed)
         lock.unlock()
         // Recorded outside the lock the names were collected under: sorted so
         // that when several go at once the last one written is the same on
@@ -316,12 +337,26 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         //
         // `promptingAllowed: !auto` is the other half, and it is about a
         // different exposure — see `VPNCredentialsPort`.
-        if !alreadyUp,
-           let creds = credentials?.credentials(for: name, promptingAllowed: !auto),
-           creds.secret?.isEmpty == false {
-            if let u = creds.user, !u.isEmpty { args += ["--user", u] }
-            if let p = creds.password, !p.isEmpty { args += ["--password", p] }
-            if let s = creds.secret, !s.isEmpty { args += ["--secret", s] }
+        // A tunnel that is already up needs nothing supplied and nothing said, so
+        // it answers the same as a configuration that keeps no secret — and the
+        // credential read is not performed at all.
+        let step = alreadyUp ? VPNSecretBook.Step.nothingToSupply
+                             : secretStep(for: name, auto: auto)
+        switch step {
+        case .supply(let creds):
+            args += Self.arguments(for: creds)
+        // Nothing goes on the command line either way. What separates the two is
+        // whether a connection may be *announced* afterwards — read off `step`
+        // below, where the announcement is.
+        case .nothingToSupply, .tryWithoutIt:
+            break
+        case .refuse:
+            HelmLog.shared.info("vpn", "no usable secret for \(Redact.vpn(name)) and a "
+                + "rule may not ask for one; not attempted")
+            // The one publication point, on the early return as well: a path that
+            // skips it leaves the screen holding whatever it had.
+            emitState()
+            return
         }
         let reply = VPNCommandReply.of(runner.run(args), name: name, knownNames: knownNames)
         report(reply, verb: .connect, name: name)
@@ -347,7 +382,16 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             // runs all day fired this at every launch of Helm. Measured in the
             // menu bar rather than reasoned about — the ring spun 0.8 s after
             // each launch.
-            if !alreadyUp { recordAutomation(name, .connected) }
+            //
+            // **And never for a start Helm knowingly under-supplied.** `--nc start`
+            // answers nothing whether it worked or not, so a connect whose secret
+            // was behind a prompt lit the ring and put the name in the menu bar
+            // while the page said the rule could not fire: one screen telling the
+            // person they are behind a tunnel and another that they are not. Helm
+            // owns the tunnel either way — the quit rule has to be able to take
+            // down whatever came up — which is why only the announcement is held
+            // back and `_autoConnected` is not.
+            if !alreadyUp, step != .tryWithoutIt { recordAutomation(name, .connected) }
         }
         emitState()
         if reply == .accepted { poll(name, following: .connect) }
@@ -393,6 +437,36 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         }
         emitState()
         if reply == .accepted { poll(name, following: .disconnect) }
+    }
+
+    /// The tool's own spelling of a credential. Empty fields are left off rather
+    /// than passed empty: `scutil` takes each of these as an argument, and an
+    /// argument list is readable by every process running as this user (see the
+    /// note in `connectNow`), so nothing goes on it that does not have to.
+    private static func arguments(for creds: VPNCredentials) -> [String] {
+        var arguments: [String] = []
+        if let user = creds.user, !user.isEmpty { arguments += ["--user", user] }
+        if let password = creds.password, !password.isEmpty {
+            arguments += ["--password", password]
+        }
+        if let secret = creds.secret, !secret.isEmpty { arguments += ["--secret", secret] }
+        return arguments
+    }
+
+    /// What a connect does about the secret this configuration needs, and the
+    /// book's record of it — one step, under the lock the books share.
+    ///
+    /// **The third question the port used to fold away.** It answered
+    /// `VPNCredentials?`, so «this configuration keeps no secret» (IKEv2) and
+    /// «there is one and I may not read it» were one nil — and the engine could
+    /// report neither: a rule met the second every time its app launched, ran a
+    /// `--nc start` that could not work, announced a connection nobody had, and
+    /// said so nowhere but the log. The rule about what to do with each answer is
+    /// `VPNSecretBook.step`, where it is pure and tested.
+    private func secretStep(for name: String, auto: Bool) -> VPNSecretBook.Step {
+        let read = credentials?.credentials(for: name, promptingAllowed: !auto) ?? .notNeeded
+        lock.lock(); defer { lock.unlock() }
+        return _secrets.step(for: read, name: name, automatic: auto)
     }
 
     /// The one writer, so "Helm caused this" is decided in a single place. Under
@@ -578,23 +652,6 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
 
     // MARK: - Transport
 
-    /// Public because the page decodes it — see the note on KeepAwake's.
-    public struct StatePayload: Codable {
-        public let connections: [VPNConnection]
-        public let autoConnected: [String]
-        public let defaultName: String?
-        /// The last firing Helm caused, if any. Optional, so the synthesized
-        /// decoder reads it with `decodeIfPresent` and a payload written before
-        /// this field existed still decodes — a throw here would cost the page
-        /// its whole state for the sake of one field.
-        /// `VPNAutomationRecordingTests` holds a payload without it.
-        public let lastAutomation: VPNAutomation?
-        /// Optional for the same reason as the field above: a payload written
-        /// before it existed still decodes, and a throw here would cost the
-        /// page its whole state for the sake of one field.
-        public var lastFailure: VPNFailure?
-    }
-
     private func wireTransport() {
         localTransport.setHandler { [weak self] cmd in
             guard let self else { return Data() }
@@ -624,7 +681,8 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
                                     autoConnected: autoConnected.sorted(),
                                     defaultName: defaultConnection?.name,
                                     lastAutomation: lastAutomation,
-                                    lastFailure: lastFailure)
+                                    lastFailure: lastFailure,
+                                    secretsBehindAPrompt: secretsBehindAPrompt)
         localTransport.emit(VPNEvent.state, encoding: payload)
     }
 }

@@ -128,6 +128,40 @@ enum VPNStr {
         }
     }
 
+    /// **What to do, for the state where Helm declined to ask.**
+    ///
+    /// The secret an L2TP/IPSec configuration needs lives in the System keychain,
+    /// and macOS gates a third-party read of it behind an authorization dialog. An
+    /// automatic connect may not summon that dialog — a forged rule would otherwise
+    /// choose both the configuration and the moment — so a Mac whose credential
+    /// cache is empty has a rule that cannot fire, for ever, until somebody presses
+    /// Connect once and Helm caches what that read returns
+    /// (`VPNSecretBook`, `VPNCredentialRead.behindAPrompt`).
+    ///
+    /// It says the remedy rather than the fault, and it says it about a *standing*
+    /// state: the sentence stays up until the secret becomes readable or the tunnel
+    /// comes up, and there is no other remedy to offer — which is why it is also
+    /// the honest thing to draw after a keychain dialog somebody declined.
+    ///
+    /// **The button's own word is interpolated, not spelled again.** A sentence
+    /// naming a control the app does not draw has already shipped in eight
+    /// languages once (CLAUDE.md § a changelog entry that names a control), and
+    /// `cardWord` is where that word is decided.
+    static func secretNeedsAPress(_ name: String,
+                                  language: AppLanguage = AppLanguage.current) -> String {
+        let it = Quoted(name, language: language)
+        let press = cardWord(.connect, language: language)
+        return L("Press \(press) once for \(it) — a rule cannot unlock its stored secret",
+                 [.ru: "Нажмите «\(press)» для \(it) — правилу сохранённый ключ недоступен",
+                  .es: "Pulsa “\(press)” una vez en \(it): una regla no puede acceder a su clave guardada",
+                  .fr: "Appuyez une fois sur «\u{00A0}\(press)\u{00A0}» pour \(it)\u{00A0}: une règle ne peut pas accéder à sa clé enregistrée",
+                  .de: "Drücke einmal „\(press)“ für \(it) — eine Regel kann den gespeicherten Schlüssel nicht abrufen",
+                  .ja: "\(it)で一度“\(press)”を押してください。ルールでは保存された鍵を読み出せません",
+                  .zh: "请为\(it)按一次“\(press)”——规则无法取用已保存的密钥",
+                  .pt: "Clique em “\(press)” uma vez para \(it) — uma regra não consegue acessar a chave salva"],
+                 language: language)
+    }
+
     /// The name a rule still points at, in the picker, when the system no
     /// longer has it. Marked rather than plain: the entry is where the rule
     /// currently is and not somewhere it can be put back.

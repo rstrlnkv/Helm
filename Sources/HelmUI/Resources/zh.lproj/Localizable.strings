@@ -762,3 +762,4 @@
 "A VPN card mid-handshake says Cancel, not Disconnect — the old word named an act that had not happened yet, and was flatly wrong in Japanese and Chinese." = "正在建立连接的 VPN 卡片现在显示“取消”，而不是“断开连接”——旧的措辞指的是尚未发生的动作，在日语和中文里更是彻头彻尾说错了。";
 "Opening Keyboard without Accessibility granted now shows a plain “Helm is not watching the keyboard” instead of a page of settings that do nothing without it." = "在未授予“辅助功能”权限的情况下打开“键盘”，现在会直接显示“Helm 未在监视键盘”，而不是一页在没有权限时根本不起作用的设置。";
 "If Accessibility is switched off and back on, Keyboard notices and starts watching again on its own — it used to need Helm relaunched to come back." = "如果关闭又重新开启“辅助功能”，“键盘”模块会自行察觉并恢复监视——以前必须重新启动 Helm 才能恢复。";
+"A VPN rule that cannot get at its saved secret now says so on the page and asks for one press of Connect. It used to stop working in silence, with the reason only in the diagnostics log." = "无法取用已保存密钥的 VPN 规则现在会在页面上说明，并请你按一次“连接”。以前它会悄悄失效，原因只留在诊断日志里。";

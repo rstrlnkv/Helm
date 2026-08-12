@@ -66,14 +66,19 @@ struct VPNSettingsPage: View {
                     .padding(.top, 8)
             }
             if let failure = vm.lastFailure {
-                HelmBanner(VPNStr.failure(failure), symbol: "exclamationmark.triangle.fill")
-                    .padding(.top, HelmSpace.s4)
-                    // **It has a fill, so it is a card.** A section header is
-                    // inset 10 pt further than the section's own card, which is
-                    // right for text and wrong for a filled field: measured, the
-                    // banner ran 30…713 against 20…723 for every card on the
-                    // page. Back out the same way the connections grid does.
-                    .padding(.horizontal, -HelmLayout.groupedHeaderOutset)
+                banner(VPNStr.failure(failure), symbol: "exclamationmark.triangle.fill")
+            }
+            // **Under the refusal, not instead of it.** A refusal is the answer to
+            // something the person just pressed; this is a standing state that
+            // outlives it — the tool «accepts» a `--nc start` it cannot perform, so
+            // nothing above would ever mention it — and the two can be about
+            // different configurations. Choosing between them would hide one.
+            //
+            // Only what no rule speaks for, though: a rule pointing at one of these
+            // says the same sentence on its own row, 230 pt below, which is where it
+            // names the automation that is dead (`VPNRules.unspokenFor`).
+            ForEach(VPNRules.unspokenFor(vm.secretsBehindAPrompt, by: rules), id: \.self) { name in
+                banner(VPNStr.secretNeedsAPress(name), symbol: "key.slash.fill")
             }
             if hasConnections {
                 // The gap the grouped form puts between a card and the next
@@ -82,6 +87,20 @@ struct VPNSettingsPage: View {
                     .padding(.top, HelmSpace.s7)
             }
         }
+    }
+
+    /// A sentence over the connections, in the cards' own column.
+    ///
+    /// **A banner has a fill, so it is a card.** A section header is inset 10 pt
+    /// further than the section's own card, which is right for text and wrong for a
+    /// filled field: measured, the banner ran 30…713 against 20…723 for every card
+    /// on the page. Back out the same way the connections grid does. Written once —
+    /// there are two of these now, and the second copy is where the inset gets
+    /// forgotten.
+    private func banner(_ text: String, symbol: String) -> some View {
+        HelmBanner(text, symbol: symbol)
+            .padding(.top, HelmSpace.s4)
+            .padding(.horizontal, -HelmLayout.groupedHeaderOutset)
     }
 
     private var vpnForm: some View {
