@@ -55,17 +55,17 @@ final class RadiusLadderRatchetTests: XCTestCase {
     /// reproduces it anywhere else.
     ///
     /// **Read that sixteen with the paragraph below in hand.** Setting
-    /// `HelmRadius.card` to 11 draws no 11 pt layer anywhere, and 12 pt still
-    /// reads off the same three pages — so whatever those sixteen layers were,
-    /// they were not `.helmCard()`, which nothing on a first-launch page draws.
-    /// Nobody has re-derived them; the claim is left standing with its doubt
-    /// beside it rather than quietly replaced by a second guess.
+    /// `HelmRadius.card` to 11 drew no 11 pt layer anywhere when this was written,
+    /// and 12 pt still read off the same three pages — so whatever those sixteen
+    /// layers were, they were not `.helmCard()`. That half of the claim expired on
+    /// 2026-08-12: `card` = 11 now draws on seven pages, and the paragraph below
+    /// carries the reading. Nobody has re-derived the sixteen.
     ///
     /// **And 6 is a ceiling over a wobble, which costs resolution.** The reading
     /// is 6 when Disk draws a tree and 5 when it does not. The wobble is *not*
     /// the mounted volumes this comment first blamed — those arrive through
-    /// `DiskCommand.volumes` and `SilentTransport` refuses them, so the picker is
-    /// empty on every Mac. It is the person's own last scan, read straight off
+    /// `DiskCommand.volumes`, which no fixture answers and none should, so the
+    /// picker is empty on every Mac. It is the person's own last scan, read off
     /// `~/Library/Application Support/Helm/Disk/last-scan.json` because
     /// `DiskViewModel.shared(vm:)` takes no store, and 1.25 is a 6 pt corner
     /// clamped by a bar 2.5 pt wide — arithmetic on the byte distribution of
@@ -80,18 +80,32 @@ final class RadiusLadderRatchetTests: XCTestCase {
     /// slot of slack, deliberately, and the guard that removes it is red until
     /// somebody does.
     ///
-    /// **What that costs is measured, and it is not what was written here
-    /// first.** `HelmRadius.card` = 11 pt passes this test with the wobble gone
-    /// and the mutant provably live — the test process printed `card = 11.0` and
-    /// no 11 pt layer was drawn — because *none* of that token's five call sites
-    /// is on screen at first launch: Disk's volume cards, VPN's connection cards,
-    /// Autopilot's history and rule editor and `HelmBanner` all need a reply the
-    /// silent transport never gives, and `AboutPage`, `PanelBars` and
-    /// `SidebarComposerList` are not pages this harness renders. That is a reach
-    /// problem, not a wobble problem, and stopping the wobble does not fix it.
-    /// A mutation this test *does* catch, for the next person who needs a probe:
-    /// `HelmChoiceCards`' 6 pt `clipShape` → 19 pt, drawn on VPN's page, takes
-    /// the count to 6 in three consecutive runs.
+    /// **What that costs was measured, and both halves of the measurement have
+    /// since expired. Read the next paragraph, not this one.** It said:
+    /// `HelmRadius.card` = 11 pt passes this test and no 11 pt layer is drawn,
+    /// because none of that token's five call sites is on screen at first launch —
+    /// Disk's volume cards, VPN's connection cards, Autopilot's history and rule
+    /// editor and `HelmBanner` all needing a reply the transport never gave. And:
+    /// a mutation this test *does* catch is `HelmChoiceCards`' 6 pt `clipShape` →
+    /// 19 pt, drawn on VPN's page.
+    ///
+    /// **Both re-measured 2026-08-12 and neither holds.** `HelmRadius.card` = 11
+    /// now draws `11.00 pt on autopilot, disk, duplicates, layout, leftovers,
+    /// uninstaller, vpn` and takes this count to 8 — six of those seven pages need
+    /// no fixture at all, so the token reached the first-launch screens somewhere
+    /// between that reading and the tree-wide vocabulary sweep, and the reach
+    /// problem this paragraph described is smaller than it was. The choice-cards
+    /// mutation went the other way: `HelmChoiceCards` is drawn on exactly one
+    /// module page, VPN's notice section, which `5b675ad` put behind
+    /// `!connections.isEmpty` — so from that commit until the wire fixture landed
+    /// a 19 pt corner on it was caught by **nothing**, measured both ways on
+    /// 2026-08-12 (unwired: five green; wired: `19.00 pt on vpn`, 8 and 7). It is a
+    /// live probe again, and it is the one to reach for: nothing else in this
+    /// render draws that component.
+    ///
+    /// A claim about what a check cannot see is itself a measurement, and it goes
+    /// stale in whichever direction the tree moves. Both of these were true when
+    /// written.
     ///
     /// So this number goes down by one, and the reason is the 8 rather than the
     /// card. What that says about the 12 is worth reading before anybody lowers
@@ -133,7 +147,25 @@ final class RadiusLadderRatchetTests: XCTestCase {
     ///
     /// So the floor here is unreachable by a vocabulary pass, and the reason is
     /// the one written above: every value left belongs to SwiftUI, not to Helm.
-    private static let recorded: [NSAppearance.Name: Int] = [.aqua: 6, .darkAqua: 5]
+    ///
+    /// **7 and 6 as of 2026-08-12, and the seventh value is a capsule.**
+    /// `ModulePageRender.Wire` answers Homebrew's `status` from a fixture, so this
+    /// reading covers its *manager* screen for the first time — the render had only
+    /// ever drawn the «not installed» screen, 12 layers of it — and that screen
+    /// draws `HelmBadge`. Probed layer by layer: **7.50 pt, on a 33 × 15 layer
+    /// inside a `CellHostingView`, on homebrew, in both appearances**, three
+    /// consecutive runs. `HelmBadge.quiet` is a `Capsule`, so its radius is half
+    /// its own height and 15 pt of pill gives 7.5 — which is the third value in
+    /// this count that no commit can lower without changing what the shape *is*,
+    /// beside SwiftUI's 12 pt form card and 5 pt pop-up bezel.
+    ///
+    /// That is a decision this file should not take on its own: a capsule is not a
+    /// corner chosen by eye, and a ratchet counting it has one more slot that can
+    /// never be spent. Either `Drawn` learns to name a capsule (`radius` ≈
+    /// `height / 2`) and this count excludes it the way `isSystemDrawn` excludes
+    /// AppKit's, or the pair below carries it for good. Recorded honestly until
+    /// somebody decides, and named here so the next reader does not re-derive it.
+    private static let recorded: [NSAppearance.Name: Int] = [.aqua: 7, .darkAqua: 6]
 
     private static let ladder: [CGFloat] = [0, 4, 6, 10, 14, 26]
 

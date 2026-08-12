@@ -13,14 +13,19 @@ import XCTest
 /// **This is the measurement `LongStringGeometryRatchetTests` cannot take, and the
 /// reason that file used to carry a red reminder instead.** That ratchet reads
 /// `intrinsicContentSize` off the AppKit-backed views inside a rendered page, and
-/// what it finds, measured over all nine pages, is 23 controls — 18 switches, 3
-/// text fields, one search field, one segmented control. Two things keep it away
-/// from the rest: SwiftUI draws `Picker(.menu)`, `Button` and `Slider` itself on
-/// macOS 26/27, so they are in no view tree at all; and six of the nine pages draw
-/// almost nothing under `SilentTransport`, because their content arrives from an
-/// engine — Homebrew's whole page is 12 layers. So the segmented control in
-/// Homebrew's toolbar, the one in Leftovers' filter row and the log's level filter
-/// are measured in no render, in no language.
+/// what it finds, measured over all nine pages, is 24 controls — 18 switches, 3
+/// text fields, one search field, two segmented controls. What keeps it away from
+/// the rest is that SwiftUI draws `Picker(.menu)`, `Button` and `Slider` itself on
+/// macOS 26/27, so they are in no view tree at all.
+///
+/// **The second reason is gone, and this paragraph is what says so.** It used to
+/// be that pages whose content arrives from an engine drew almost nothing —
+/// Homebrew's whole page was 12 layers — so the segmented control in its toolbar
+/// was measured in no render, in no language. `ModulePageRender.Wire` answers
+/// those pages from a fixture now, and Homebrew's toolbar is in the ratchet's
+/// reading. Leftovers' filter row and the log's level filter are the two left,
+/// which is why they are the two `recorded` below: this file is the measurement of
+/// what the render still cannot see, and it shrinks when the render grows.
 ///
 /// **The rule here is the ratchet's own rule**, not a new one: a control drawn
 /// narrower than the width it asks for clips (`testWhatDoesNotFitTodayDoesNotGrow`),

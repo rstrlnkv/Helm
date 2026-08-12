@@ -27,10 +27,13 @@ import XCTest
 ///    the audit's inflation, applied to the arithmetic instead of to the text.
 ///
 /// **What it can see, and what it cannot.** `intrinsicContentSize` is AppKit's,
-/// so this reads the AppKit-backed controls in a page. Measured 2026-08-11, all
-/// nine pages, with the configured fixture below: **22 controls in the whole
-/// app** — 17 switches, 3 text fields (Layout), one search field and one
-/// segmented control (Uninstaller). This comment used to name pop-ups as well,
+/// so this reads the AppKit-backed controls in a page. Re-measured 2026-08-12
+/// with the store fixture *and* the wire fixture below, all nine pages: **24
+/// controls in the whole app** — 18 switches, 3 text fields (Layout), one search
+/// field (Uninstaller) and two segmented controls (Uninstaller, Homebrew). It read
+/// 22 while the render answered nothing over the wire, and the two it was missing
+/// are named at `testTheControlsFoundAreTheOnesRecorded`.
+/// This comment used to name pop-ups as well,
 /// and there is not one in any page's view tree: SwiftUI's `Picker(.menu)`,
 /// `Button` and `Slider` are drawn by SwiftUI itself on macOS 26/27, so a walk
 /// for `_NSCoreHostingView<AppKit…>` cannot find them however the page is seeded.
@@ -73,8 +76,27 @@ final class LongStringGeometryRatchetTests: XCTestCase {
     /// is its intrinsic width whenever it has the room, and `drawn < intrinsic × 1.4`
     /// holds for every segmented control at any width. What lowers this number is a
     /// shorter label or a different control.
+    ///
+    /// **`atFortyPercent` is 16 as of 2026-08-12, and it doubled because the
+    /// measurement can see twice as much — not because anything got worse.**
+    /// `ModulePageRender.Wire` answers Homebrew's `status` from a fixture, so this
+    /// render draws its manager screen instead of its «not installed» screen for the
+    /// first time, and that screen has a second segmented control in its toolbar.
+    /// Eight languages × one more control = eight more readings, and every one of
+    /// them is the same unavoidable arithmetic as the Uninstaller's: the control is
+    /// `.fixedSize()`, so drawn *is* intrinsic and `drawn < intrinsic × 1.4` is true
+    /// by construction. Three consecutive runs, 16 each.
+    ///
+    /// Which is worth saying plainly, because a ratchet that only ever goes down is
+    /// being raised here: **the eight new readings are ground that was invisible,
+    /// not ground that was lost.** The number this file guards against is a control
+    /// that stops fitting; what moved is the size of the field it looks at. The
+    /// floor for this ratchet is unreachable while any page draws a `.fixedSize()`
+    /// segmented control — the comment above has said so since it was written — and
+    /// the decision that would fix it belongs to whoever separates «cannot grow»
+    /// from «has no headroom», not to the commit that widens the reach.
     private static let recordedAtFullSize = 0
-    private static let recordedAtFortyPercent = 8
+    private static let recordedAtFortyPercent = 16
 
     /// The audit's number, and the reason it is 1.4 and not 2: a translation is
     /// longer, not unrecognisable.
@@ -217,9 +239,9 @@ final class LongStringGeometryRatchetTests: XCTestCase {
     ///
     /// The two numbers above are only as wide as the set of controls this walk
     /// finds, and that set is much narrower than it reads: measured over all nine
-    /// pages, in every language, it is 22 controls — 17 switches (which the text
+    /// pages, in every language, it is 24 controls — 18 switches (which the text
     /// rule excludes, because a switch is 36 pt in every language), 3 text fields,
-    /// one search field and one segmented control. The configured Keep Awake page
+    /// one search field and two segmented controls. The configured Keep Awake page
     /// alone draws four `Picker(.menu)` and a row of buttons, and its whole view
     /// tree holds ten switches and nothing else: SwiftUI draws menus, buttons and
     /// sliders itself on macOS 26/27, so there is no AppKit view to ask.
@@ -241,13 +263,17 @@ final class LongStringGeometryRatchetTests: XCTestCase {
         }
         XCTAssertFalse(tally.isEmpty, "no control was found in any page, in any language")
 
-        // **17 switches, and the one that left is recorded rather than
-        // absorbed.** VPN's «spin the icon» toggle is behind
-        // `connections.isEmpty` since 2026-08-12, and this render's transport
-        // never sends a connection — so on a page nobody with a VPN sees, that
-        // switch is not drawn. It is the only count this fixture moved.
-        XCTAssertEqual(tally, ["AppKitSwitch": 17, "AppKitTextField": 3,
-                               "AppKitSearchField": 1, "AppKitSegmentedControl": 1], """
+        // **18 switches and 2 segmented controls, and both are what the wire
+        // fixture handed back.** VPN's «spin the icon» toggle went behind
+        // `connections.isEmpty` on 2026-08-12 and this render answered nothing, so
+        // for one commit it was drawn on no page — the switch count read 17.
+        // `ModulePageRender.Wire` sends three connections now, so it is 18 again;
+        // and Homebrew's `status` reply puts its manager screen in the render for
+        // the first time, which is where the second segmented control lives. Both
+        // numbers are the fixture's reach rather than a change to any page, and
+        // `recordedAtFortyPercent` above moved with the second one.
+        XCTAssertEqual(tally, ["AppKitSwitch": 18, "AppKitTextField": 3,
+                               "AppKitSearchField": 1, "AppKitSegmentedControl": 2], """
             the controls this measurement can see are not the ones it was measured with: \
             \(tally.sorted { $0.key < $1.key }.map { "\($0.key)×\($0.value)" }.joined(separator: " ")).
             A pop-up, a button or a slider appearing here means the platform now backs them with \

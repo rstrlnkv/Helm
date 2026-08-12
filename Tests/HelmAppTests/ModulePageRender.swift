@@ -1,7 +1,5 @@
 import AppKit
-import HelmContract
 import HelmRuntime
-import Module_KeepAwake_Engine
 import SwiftUI
 import XCTest
 @testable import HelmApp
@@ -22,16 +20,25 @@ import XCTest
 /// without one — the reason `SidebarComposerHeightTests` builds one. The
 /// uninstaller's page is a list.
 ///
-/// **The engines are built and never activated, and they never answer.**
-/// `activate()` is where a module reaches the machine — Layout installs a
-/// `CGEvent` tap — and a measurement has no business doing that. Beyond that,
-/// every page is drawn against `SilentTransport`, so what is measured is the
-/// page before any engine has replied: the screen every module shows at first
-/// launch. That is less than a module shows in use, and it is the only state
-/// that is the same on every Mac. With the real transport, Homebrew's page grew
-/// from 12 layers to 681 — this machine's package list — and the numbers in the
-/// ratchets would then have been a fact about this Mac's software, which is the
-/// measurement that is a report and not a gate.
+/// **The engines are built and never activated, and they answer only from a
+/// fixture.** `activate()` is where a module reaches the machine — Layout
+/// installs a `CGEvent` tap — and a measurement has no business doing that. So
+/// no page is drawn against a live engine: with the real transport, Homebrew's
+/// page grew from 12 layers to 681 — this machine's package list — and the
+/// numbers in the ratchets would then have been a fact about this Mac's
+/// software, which is the measurement that is a report and not a gate.
+///
+/// What replaced the live engine was silence, and silence turned out to be its
+/// own kind of lie. A page whose whole content arrives over the wire draws its
+/// empty state against a transport that never answers, and three modules are
+/// that shape — so the ratchets were measuring a screen at first launch and
+/// calling it the page. VPN made it visible: `hasConnections` put the rules
+/// card, the notice cards and the spin section behind one question on
+/// 2026-08-12, the render fell from 160-odd layers to 55, and nothing went red.
+/// `ModulePageFixtures.swift` is the answer — a table of command→reply and a
+/// list of events, per module, fixed and identical on every Mac. That is the
+/// distinction the old comment here was missing: the hazard was never
+/// *answering*, it was answering **out of the machine**.
 ///
 /// **Settling is measured, not slept through.** A fixed pump gave 1374, 1371
 /// and 1367 layers over three consecutive runs and the set of radii moved with
@@ -97,13 +104,19 @@ enum ModulePageRender {
         let id: String
         let layers: [Drawn]
         let controls: [Control]
+        /// The wire this page was drawn against, so a test can ask whether it is
+        /// still live. A stream that has finished and one that never had anything
+        /// to say draw the same page, and only one of those is a working harness.
+        let transport: FixtureTransport
         /// Held so the objects behind the measurement outlive it.
         private let keepAlive: [AnyObject]
 
-        init(id: String, layers: [Drawn], controls: [Control], keepAlive: [AnyObject]) {
+        init(id: String, layers: [Drawn], controls: [Control],
+             transport: FixtureTransport, keepAlive: [AnyObject]) {
             self.id = id
             self.layers = layers
             self.controls = controls
+            self.transport = transport
             self.keepAlive = keepAlive
         }
     }
@@ -124,8 +137,11 @@ enum ModulePageRender {
     /// arrive in these ratchets without anybody remembering to add it.
     static func pages(in appearance: NSAppearance.Name,
                       width: CGFloat = pageWidth,
-                      seededBy seed: Seed = { _, _ in }) -> [Page] {
-        ModuleRegistry.all.map { page(for: $0, in: appearance, width: width, seededBy: seed) }
+                      seededBy seed: Seed = { _, _ in },
+                      wiredBy wire: Wiring = answering) -> [Page] {
+        ModuleRegistry.all.map {
+            page(for: $0, in: appearance, width: width, seededBy: seed, wiredBy: wire)
+        }
     }
 
     /// Settings a page is opened *on*, written into its store before it is built.
@@ -151,17 +167,22 @@ enum ModulePageRender {
     typealias Seed = (String, NamespacedStore) -> Void
 
     static func page(for descriptor: any ModuleDescriptor, in appearance: NSAppearance.Name,
-                     width: CGFloat, seededBy seed: Seed = { _, _ in }) -> Page {
+                     width: CGFloat, seededBy seed: Seed = { _, _ in },
+                     wiredBy wire: Wiring = answering) -> Page {
         let id = type(of: descriptor).id.rawValue
         let store = NamespacedStore(namespace: id, backing: InMemoryKeyValueStore())
         // Before the engine and before the page: both read the store as they are
         // built, which is what a page opened on somebody's existing settings does.
         seed(id, store)
-        // Built for its type and its lifetime, never asked anything: the page is
-        // drawn against `SilentTransport`. The store is in memory, so nothing
-        // here reaches `UserDefaults.standard`.
+        // Built for its type and its lifetime, and never asked anything: the
+        // module's *own* engine plays no part in what the page sees. What the page
+        // sees is the fixture, which is on the wire before the view model
+        // subscribes — the state a page opened during a running session finds
+        // waiting for it. The store is in memory, so nothing here reaches
+        // `UserDefaults.standard`.
         let engine = descriptor.makeEngine(store: store)
-        let viewModel = ModuleViewModel(transport: SilentTransport())
+        let transport = FixtureTransport(wire(id))
+        let viewModel = ModuleViewModel(transport: transport)
         let view = NSHostingView(rootView: descriptor.settingsPage(viewModel).frame(width: width))
         view.frame = NSRect(x: 0, y: 0, width: width, height: pageHeight)
         let window = NSWindow(contentRect: view.frame, styleMask: [.titled],
@@ -175,7 +196,7 @@ enum ModulePageRender {
         window.contentView = view
         settle(view)
         return Page(id: id, layers: layers(of: view), controls: controls(of: view, module: id),
-                    keepAlive: [engine, viewModel, view, window])
+                    transport: transport, keepAlive: [engine, viewModel, view, window])
     }
 
     /// Pump the run loop until the drawn tree has stopped moving for twelve
@@ -258,8 +279,14 @@ extension ModulePageRender.Page {
     /// layers and the richest nearly three hundred, and a page that has lost its
     /// own content should say so rather than sit under one shared number chosen
     /// for the emptiest of them.
-    func assertItDrewSomething(file: StaticString = #filePath, line: UInt = #line) {
-        let floor = Self.floors[id] ?? 9
+    /// - Parameter atLeast: a floor for this reading rather than the module's own.
+    ///   The table below is what a page draws **wired**, which is what every
+    ///   ratchet renders; a test that deliberately renders one `unwired` is
+    ///   measuring a different screen and has to say which floor it means, or it
+    ///   fails a guard about content while proving the point of the guard.
+    func assertItDrewSomething(atLeast: Int? = nil,
+                               file: StaticString = #filePath, line: UInt = #line) {
+        let floor = atLeast ?? Self.floors[id] ?? 9
         XCTAssertGreaterThanOrEqual(layers.count, floor, """
             \(id) drew \(layers.count) layers where it drew at least \(floor) when this was \
             measured. Either the page has lost its content or nothing rendered at all — and in \
@@ -274,8 +301,10 @@ extension ModulePageRender.Page {
     /// **Disk's is low on purpose, and it is the exception worth naming.** 49,
     /// 129, 170, 172 and 50 layers were all measured on this Mac in one
     /// afternoon, and the reason is not the one written here first. The volume
-    /// list *does* come through the transport (`DiskCommand.volumes`), so under
-    /// `SilentTransport` it is empty and the same on every Mac. What is not is
+    /// list *does* come through the transport (`DiskCommand.volumes`), and no
+    /// fixture answers it, so it is empty and the same on every Mac — and it must
+    /// stay that way: a fixture of volumes here would be inventing hardware.
+    /// What is not the same on every Mac is
     /// the **person's last scan**: `DiskSettingsPage` builds its view model
     /// through `DiskViewModel.shared(vm:)`, which has no store parameter, so
     /// `restoreLastScan()` reads `~/Library/Application Support/Helm/Disk/last-scan.json`
@@ -287,79 +316,39 @@ extension ModulePageRender.Page {
     /// here asks only whether the page drew at all, which is the question this
     /// guard exists for.
     ///
-    /// **VPN's is 45 because its page got shorter on purpose, and the number
-    /// that fell says something this render cannot otherwise see.** It drew 160+
-    /// layers here only because a Mac with no VPN configured was shown 800 pt of
-    /// settings for events that cannot happen — a rules card, a notice card and a
-    /// spin card under an empty state. Those are behind `connections.isEmpty`
-    /// now, and `SilentTransport` never sends connections, so what this render
-    /// reads is the empty state: 55 layers in light and 58 in dark, identical in
-    /// all eight languages, measured 2026-08-12.
+    /// **VPN's is 190, and it has been 45 and 160 in one day.** 160 was the page a
+    /// Mac with no VPN was shown before 2026-08-12 — 800 pt of automation for
+    /// events that cannot happen. 45 was the empty state that correctly replaced
+    /// it, drawn because connections arrive as an **event** and this render
+    /// answered nothing: 55 layers in light, 58 in dark, and three cards measured
+    /// by nobody. 190 is the page with `Wire.answering` in it — **211 in light and
+    /// 214 in dark unseeded, 247 seeded, identical in all eight languages, three
+    /// consecutive runs each, measured 2026-08-12** — set a card's worth below the
+    /// lowest of those. The fixture is fixed, so a reading that falls is a page
+    /// that changed and not a Mac that differs, and this floor can afford to be
+    /// tight: the empty state is 55, so losing the wire fails by 135.
     ///
-    /// The rest of that page is therefore measured by nothing here, and the
-    /// connections grid never was: connections arrive as an **event**, and the
-    /// `Seed` above only reaches the store. A fixture for the wire — one state
-    /// payload, then the same silence — is what would give this page back to all
-    /// three ratchets built on this render.
+    /// **Homebrew's is 70 for the same reason and a smaller number.**
+    /// `HomebrewSettingsPage.body` branches on `hb.status.installed`, which is a
+    /// *reply*, so every reading before the fixture was of the «not installed»
+    /// screen: 12 layers in both appearances, on a Mac that has brew. Wired it is
+    /// **79 in light and 80 in dark, all eight languages, three consecutive
+    /// runs**, and the four fixture packages are about 12 layers a row — so 70
+    /// says «the manager screen, with at most one row missing» and 12 fails it by
+    /// a mile.
+    ///
+    /// **Layout's stays 230, and that is a decision rather than an oversight.**
+    /// Its wire is fixtured too, but a `LayoutState` is worth only 20 layers there
+    /// (275 → 295 in light, 278 → 298 in dark, three runs) and this page carries a
+    /// permission note that depends on the **machine**: `AXIsProcessTrusted()` is
+    /// false in this test process, so the note is drawn here and would not be on a
+    /// Mac whose terminal holds Accessibility. A floor placed in a 20-layer band
+    /// under a 45-layer machine dependence is a red CI for somebody else's grant.
+    /// What arrives over Layout's wire is guarded by comparison instead, in
+    /// `TheWireFixtureReachesThePagesTests`, where both sides are rendered in the
+    /// same process and the machine cancels out.
     static let floors: [String: Int] = [
-        "keep-awake": 250, "vpn": 45, "uninstaller": 45, "homebrew": 10,
+        "keep-awake": 250, "vpn": 190, "uninstaller": 45, "homebrew": 70,
         "leftovers": 25, "disk": 40, "duplicates": 12, "autopilot": 12, "layout": 230,
     ]
-}
-
-extension ModulePageRender {
-
-    /// The rows a person has, for the modules whose pages hide their widest
-    /// controls until something is configured.
-    ///
-    /// Keep Awake is the one written so far, because it is the one that was
-    /// measured: three shapes of control were in none of the 72 renders — the
-    /// per-app rule rows, the condition pop-up each of them carries, and the
-    /// battery floor's slider under its own figure. What the page drew instead was
-    /// the empty state's single prominent button.
-    ///
-    /// **Bundle ids that resolve to nothing, on purpose.** `AppInfo.resolve` falls
-    /// back to the id itself for an app this Mac does not have, so the row's name
-    /// is the fixture's own string rather than a fact about what is installed —
-    /// and the icon is the system's generic bundle icon rather than somebody's
-    /// software. A real id would make these numbers a measurement of this machine,
-    /// which is the thing `SilentTransport` exists to avoid one line up.
-    ///
-    /// Two rules, not one: a list is what the page draws differently from an empty
-    /// state, and the second row is where the «Add app…» line at the foot of the
-    /// list appears.
-    static let configured: Seed = { id, store in
-        guard id == KeepAwakeEngine.moduleID else { return }
-        let settings = KeepAwakeSettings(store: store)
-        settings.setAppTriggers([
-            AppTrigger(bundleID: "com.example.render", needsPower: true),
-            AppTrigger(bundleID: "com.example.conference", needsExternalDisplay: true),
-        ])
-        // The two rule rows switched on, so their notes and marks are drawn as
-        // well as their switches, and the mark column exists at all.
-        settings.setAutoExternalDisplay(true)
-        settings.setAutoPower(true)
-        // The floor's own row carries the figure beside the slider, and the note
-        // under it is only drawn with the guard armed.
-        settings.setBatteryGuardEnabled(true)
-        settings.setBatteryGuardPercent(45)
-        // The interval pop-up beside «Move the pointer» is disabled until this is
-        // on — a disabled control is still measured, but a page with it off is not
-        // a page anybody has once they have asked for the feature.
-        settings.setJiggleEnabled(true)
-        settings.setJiggleIntervalMinutes(30)
-        settings.setDefaultDurationMinutes(120)
-    }
-}
-
-/// A transport that never answers.
-///
-/// Not a convenience: a fake that answers *instantly* is the shape that makes a
-/// test of a wait vacuous, and one that answers out of the machine makes a
-/// measurement a fact about the machine. This one refuses — the state every
-/// module is in between its page opening and its first reply — and its event
-/// stream never finishes, which is what the real one does too.
-final class SilentTransport: EngineTransport, @unchecked Sendable {
-    func send(_ command: EngineCommand) async throws -> Data { throw CancellationError() }
-    let events: AsyncStream<EngineEvent> = AsyncStream { _ in }
 }
