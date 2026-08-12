@@ -37,6 +37,18 @@ import XCTest
 /// and 1367 layers over three consecutive runs and the set of radii moved with
 /// it, which is a ratchet that fires on the weather. `settle` pumps until the
 /// tree stops moving; three consecutive runs then agreed to the layer.
+///
+/// **The appearance is named by the caller, and that is the second weather this
+/// render had.** It used to inherit `NSApp.effectiveAppearance`, which in a test
+/// process is whatever the person's Mac is set to that hour — and this Mac has
+/// `AppleInterfaceStyleSwitchesAutomatically` on. At 04:34:58 on 2026-08-12 it
+/// went from dark to light by itself and `RadiusLadderRatchetTests` went red with
+/// nothing committed in between: SwiftUI draws a `Slider`'s knob as a 20 × 16
+/// capsule layer of `cornerRadius` 8 in light and does not draw that layer at all
+/// in dark, so the count of distinct off-ladder radii is 6 on one screen and 5 on
+/// the other. Six of the nine pages are the same either way; the two that are not
+/// are named in that file. So there is no default here: a reading has a screen,
+/// and it says which.
 @MainActor
 enum ModulePageRender {
 
@@ -110,9 +122,10 @@ enum ModulePageRender {
     ///
     /// The registry, not a list written here: a module added to the app has to
     /// arrive in these ratchets without anybody remembering to add it.
-    static func pages(width: CGFloat = pageWidth,
+    static func pages(in appearance: NSAppearance.Name,
+                      width: CGFloat = pageWidth,
                       seededBy seed: Seed = { _, _ in }) -> [Page] {
-        ModuleRegistry.all.map { page(for: $0, width: width, seededBy: seed) }
+        ModuleRegistry.all.map { page(for: $0, in: appearance, width: width, seededBy: seed) }
     }
 
     /// Settings a page is opened *on*, written into its store before it is built.
@@ -137,8 +150,8 @@ enum ModulePageRender {
     /// separate measurement, taken by whoever wants it.
     typealias Seed = (String, NamespacedStore) -> Void
 
-    static func page(for descriptor: any ModuleDescriptor, width: CGFloat,
-                     seededBy seed: Seed = { _, _ in }) -> Page {
+    static func page(for descriptor: any ModuleDescriptor, in appearance: NSAppearance.Name,
+                     width: CGFloat, seededBy seed: Seed = { _, _ in }) -> Page {
         let id = type(of: descriptor).id.rawValue
         let store = NamespacedStore(namespace: id, backing: InMemoryKeyValueStore())
         // Before the engine and before the page: both read the store as they are
@@ -153,6 +166,12 @@ enum ModulePageRender {
         view.frame = NSRect(x: 0, y: 0, width: width, height: pageHeight)
         let window = NSWindow(contentRect: view.frame, styleMask: [.titled],
                               backing: .buffered, defer: false)
+        // Both, and neither is redundant: the window's appearance is what the
+        // hosting view's environment resolves against, and the view's own is what
+        // a layer drawn by AppKit inside it reads. Pinned before the content is
+        // installed, so nothing is laid out twice.
+        window.appearance = NSAppearance(named: appearance)
+        view.appearance = NSAppearance(named: appearance)
         window.contentView = view
         settle(view)
         return Page(id: id, layers: layers(of: view), controls: controls(of: view, module: id),

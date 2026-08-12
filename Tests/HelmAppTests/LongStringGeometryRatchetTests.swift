@@ -110,7 +110,14 @@ final class LongStringGeometryRatchetTests: XCTestCase {
             // per-app rule rows, the condition pop-up in each of them and the
             // battery slider were in none of these 72 renders. The widest label a
             // configured page has was measured in no language at all.
-            for page in ModulePageRender.pages(seededBy: ModulePageRender.configured) {
+            // One screen, named rather than inherited: what is read here is
+            // control metrics, and those do not move with the appearance — the
+            // same 72 renders gave the same widths in dark at 03:05 and in light
+            // at 05:40 on 2026-08-12, the switch that moved
+            // `RadiusLadderRatchetTests` by a whole radius. Light because it is
+            // the screen that draws the most layers.
+            for page in ModulePageRender.pages(in: .aqua,
+                                               seededBy: ModulePageRender.configured) {
                 page.assertItDrewSomething()
                 out += page.controls.map { Seen(language: language, module: page.id, control: $0) }
             }
@@ -169,7 +176,8 @@ final class LongStringGeometryRatchetTests: XCTestCase {
             let previous = AppLanguage.override
             AppLanguage.override = language
             defer { AppLanguage.override = previous }
-            let page = ModulePageRender.page(for: uninstaller, width: ModulePageRender.pageWidth)
+            let page = ModulePageRender.page(for: uninstaller, in: .aqua,
+                                             width: ModulePageRender.pageWidth)
             page.assertItDrewSomething()
             let segmented = page.controls.first { $0.name.contains("SegmentedControl") }
             widths[language.rawValue] = segmented?.intrinsic.width ?? 0
@@ -189,8 +197,10 @@ final class LongStringGeometryRatchetTests: XCTestCase {
     /// with a condition menu and a remove button each, and the battery figure
     /// beside its slider, against the empty state's one button. Measured 296 → 322.
     func testTheConfiguredRowsAreDrawn() {
-        let plain = ModulePageRender.page(for: keepAwake, width: ModulePageRender.pageWidth)
-        let seeded = ModulePageRender.page(for: keepAwake, width: ModulePageRender.pageWidth,
+        let plain = ModulePageRender.page(for: keepAwake, in: .aqua,
+                                         width: ModulePageRender.pageWidth)
+        let seeded = ModulePageRender.page(for: keepAwake, in: .aqua,
+                                          width: ModulePageRender.pageWidth,
                                           seededBy: ModulePageRender.configured)
         plain.assertItDrewSomething()
         seeded.assertItDrewSomething()

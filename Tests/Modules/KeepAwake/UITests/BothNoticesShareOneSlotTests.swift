@@ -46,7 +46,7 @@ final class BothNoticesShareOneSlotTests: XCTestCase {
     /// plausible rather than exact.
     private static var tileWidth: CGFloat { PanelGrid.narrowestPanel - PanelGrid.padding * 2 }
 
-    private var mounted: [NSWindow] = []
+    private var mounted: [MountedRender] = []
     private var alive: [AnyObject] = []
 
     /// Every window a reading opened is dropped here, and with it the hosted view
@@ -60,7 +60,7 @@ final class BothNoticesShareOneSlotTests: XCTestCase {
     /// risks causing data races`). The `async` override inherits the class's
     /// isolation instead, so the properties are reached where they live.
     override func tearDown() async throws {
-        mounted.forEach { $0.contentView = nil }
+        mounted.forEach { $0.drop() }
         mounted = []
         alive = []
         try await super.tearDown()
@@ -77,9 +77,16 @@ final class BothNoticesShareOneSlotTests: XCTestCase {
     /// the same notice. Height answers «is there one of them»: a slot holding two
     /// banners is taller by a banner, whatever either of them says.
     ///
-    /// Colour, not alpha: the panel tile draws itself on an opaque card, where
-    /// alpha is 255 at every pixel — the mistake `SettingsPageProbe` records
-    /// making once, in the file next door.
+    /// **Not colour, and not alpha: the departure from the background.** Colour
+    /// mass — r + g + b — was the first instrument and it could only ever work on
+    /// one of the two screens: `labelColor` is black in light, `cacheDisplay`
+    /// premultiplies, so a quiet hero of type and buttons summed to *exactly zero*
+    /// and `colourMass` reported «nothing drew». Two tests here failed in 0.08 s
+    /// the morning this Mac turned itself light. Alpha is no better the other way
+    /// round: the panel tile draws on an opaque card where every pixel is 255 —
+    /// the mistake `SettingsPageProbe` records making once, in the file next door.
+    /// `RenderedInk` answers both, and the readings below are taken in both
+    /// screens.
     private struct Still {
         let mass: Int
         let height: CGFloat
@@ -97,45 +104,20 @@ final class BothNoticesShareOneSlotTests: XCTestCase {
     /// 9 690 566 / 10 435 283 and 9 360 957 / 9 944 005 — six different numbers
     /// for two renders, which is a check that reports the weather.
     ///
-    /// So the loop reads the bitmap every turn and stops when the reading has
-    /// repeated eight times running. A block that never settles returns nothing at
-    /// all rather than its last frame: an unsettled still is not a slower
-    /// measurement, it is a different one every time.
-    private func still<V: View>(_ view: V, width: CGFloat, height: CGFloat) -> Still? {
-        let host = NSHostingView(rootView: AnyView(
-            VStack(spacing: 0) { view }.frame(width: width)))
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: width, height: height),
-                              styleMask: [.titled], backing: .buffered, defer: false)
-        window.contentView = host
-        host.frame = NSRect(x: 0, y: 0, width: width, height: height)
-        mounted.append(window)
-
-        var previous = -1
-        var same = 0
-        for _ in 0..<200 {
-            host.layoutSubtreeIfNeeded()
-            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
-            guard let mass = colourMass(of: host) else { return nil }
-            same = mass == previous ? same + 1 : 0
-            previous = mass
-            if same >= 8 { return Still(mass: mass, height: host.fittingSize.height) }
-        }
-        return nil
-    }
-
-    /// Every channel of every pixel of one frame, or `nil` when nothing drew.
-    private func colourMass(of host: NSHostingView<AnyView>) -> Int? {
-        guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return nil }
-        host.cacheDisplay(in: host.bounds, to: rep)
-        guard let data = rep.bitmapData, rep.samplesPerPixel == 4 else { return nil }
-        var mass = 0
-        for y in 0..<rep.pixelsHigh {
-            for x in 0..<rep.pixelsWide {
-                let at = y * rep.bytesPerRow + x * 4
-                mass += Int(data[at]) + Int(data[at + 1]) + Int(data[at + 2])
-            }
-        }
-        return mass > 0 ? mass : nil
+    /// So `MountedRender.settledInk` reads the bitmap every turn and stops when the
+    /// reading has repeated eight times running — the loop was written here and
+    /// moved to `Tests/Support` when the second file needed it. A block that never
+    /// settles returns nothing at all rather than its last frame: an unsettled
+    /// still is not a slower measurement, it is a different one every time.
+    private func still<V: View>(_ view: V, width: CGFloat, height: CGFloat,
+                                in appearance: NSAppearance.Name) -> Still? {
+        let render = MountedRender(view, width: width, height: height, appearance: appearance)
+        mounted.append(render)
+        // Zero ink is a bitmap holding nothing but its own background, which is a
+        // machine with no window server rather than a still — and every equality
+        // below would be satisfied by two of them.
+        guard let mass = render.settledInk(), mass > 0 else { return nil }
+        return Still(mass: mass, height: render.fittingHeight)
     }
 
     // MARK: - The settings page's block
@@ -162,71 +144,97 @@ final class BothNoticesShareOneSlotTests: XCTestCase {
                       start: { _ in }, stop: {}, resume: {})
     }
 
-    private func heroStill(suppressed: Bool, batteryStopped: Bool) -> Still? {
+    private func heroStill(suppressed: Bool, batteryStopped: Bool,
+                           in appearance: NSAppearance.Name) -> Still? {
         still(hero(suppressed: suppressed, batteryStopped: batteryStopped),
-              width: HelmLayout.settingsColumn, height: 420)
+              width: HelmLayout.settingsColumn, height: 420, in: appearance)
     }
 
     /// The subject, before anything is said about precedence: a notice arrives at
     /// all, and it arrives by making the block taller. An assertion about which of
     /// two notices is drawn is empty if neither is.
     func testANoticeArrivesInTheSlotAndTakesRoom() throws {
-        let quiet = try XCTUnwrap(heroStill(suppressed: false, batteryStopped: false),
-                                  "nothing drew, or the block never settled")
-        let battery = try XCTUnwrap(heroStill(suppressed: false, batteryStopped: true))
-        let paused = try XCTUnwrap(heroStill(suppressed: true, batteryStopped: false))
+        for appearance in RenderedInk.bothAppearances {
+            let screen = RenderedInk.label(of: appearance)
+            let quiet = try XCTUnwrap(heroStill(suppressed: false, batteryStopped: false,
+                                                in: appearance),
+                                      "nothing drew in \(screen), or the block never settled")
+            let battery = try XCTUnwrap(heroStill(suppressed: false, batteryStopped: true,
+                                                  in: appearance))
+            let paused = try XCTUnwrap(heroStill(suppressed: true, batteryStopped: false,
+                                                 in: appearance))
 
-        XCTAssertGreaterThan(battery.height, quiet.height,
-                            "the battery notice takes no height, so the slot never opened and "
-                            + "every reading below is of an empty block")
-        XCTAssertGreaterThan(paused.height, quiet.height,
-                             "the paused notice takes no height either")
-        XCTAssertNotEqual(battery.mass, quiet.mass)
+            XCTAssertGreaterThan(battery.height, quiet.height,
+                                 "in \(screen) the battery notice takes no height, so the slot "
+                                 + "never opened and every reading below is of an empty block")
+            XCTAssertGreaterThan(paused.height, quiet.height,
+                                 "the paused notice takes no height either, in \(screen)")
+            XCTAssertNotEqual(battery.mass, quiet.mass)
+        }
     }
 
     /// Which of the two wins. Identical pixels, not «the battery one is bigger»:
     /// what is being pinned is that the *same* notice is drawn, and two notices
     /// that merely differ in size would satisfy anything weaker.
     func testTheBatteryNoticeIsTheOneDrawnWhenBothApply() throws {
-        let battery = try XCTUnwrap(heroStill(suppressed: false, batteryStopped: true),
-                                    "nothing drew, or the block never settled")
-        let both = try XCTUnwrap(heroStill(suppressed: true, batteryStopped: true))
+        for appearance in RenderedInk.bothAppearances {
+            let screen = RenderedInk.label(of: appearance)
+            let battery = try XCTUnwrap(heroStill(suppressed: false, batteryStopped: true,
+                                                  in: appearance),
+                                        "nothing drew in \(screen), or the block never settled")
+            let both = try XCTUnwrap(heroStill(suppressed: true, batteryStopped: true,
+                                               in: appearance))
 
-        XCTAssertEqual(both.mass, battery.mass,
-                       "a rule is paused and the charge is under the floor, and the block is "
-                       + "not the one the battery guard draws on its own: \(both.mass) vs "
-                       + "\(battery.mass). «Resume» cannot resume anything while the veto is "
-                       + "in force")
+            XCTAssertEqual(both.mass, battery.mass,
+                           "in \(screen) a rule is paused and the charge is under the floor, and "
+                           + "the block is not the one the battery guard draws on its own: "
+                           + "\(both.mass) vs \(battery.mass). «Resume» cannot resume anything "
+                           + "while the veto is in force")
+        }
     }
 
     /// And there is one of them. The slot's own height is measured from the two
     /// readings that bracket it, so the assertion is «one notice tall», not a
     /// number typed here that a redesign would falsify.
     func testTheTwoNoticesNeverStack() throws {
-        let quiet = try XCTUnwrap(heroStill(suppressed: false, batteryStopped: false),
-                                 "nothing drew, or the block never settled")
-        let battery = try XCTUnwrap(heroStill(suppressed: false, batteryStopped: true))
-        let both = try XCTUnwrap(heroStill(suppressed: true, batteryStopped: true))
+        for appearance in RenderedInk.bothAppearances {
+            let screen = RenderedInk.label(of: appearance)
+            let quiet = try XCTUnwrap(heroStill(suppressed: false, batteryStopped: false,
+                                                in: appearance),
+                                      "nothing drew in \(screen), or the block never settled")
+            let battery = try XCTUnwrap(heroStill(suppressed: false, batteryStopped: true,
+                                                  in: appearance))
+            let both = try XCTUnwrap(heroStill(suppressed: true, batteryStopped: true,
+                                               in: appearance))
 
-        let oneNotice = battery.height - quiet.height
-        XCTAssertGreaterThan(oneNotice, 10, "precondition: a notice is worth some height")
-        XCTAssertLessThan(both.height, quiet.height + oneNotice * 1.5,
-                          "the block is \(both.height) pt with both notices against "
-                          + "\(battery.height) with one, and a notice is \(oneNotice) pt — the "
-                          + "two are stacked in a slot that has room for one")
+            let oneNotice = battery.height - quiet.height
+            XCTAssertGreaterThan(oneNotice, 10,
+                                 "precondition: a notice is worth some height in \(screen)")
+            XCTAssertLessThan(both.height, quiet.height + oneNotice * 1.5,
+                              "in \(screen) the block is \(both.height) pt with both notices "
+                              + "against \(battery.height) with one, and a notice is "
+                              + "\(oneNotice) pt — the two are stacked in a slot that has room "
+                              + "for one")
+        }
     }
 
     /// The instrument. Both readings above are of production code, so the equality
     /// would hold just as well if the two notices were one sentence — this is the
     /// assertion that says the measurement can tell them apart at all.
     func testTheMeasurementTellsTheTwoNoticesApart() throws {
-        let battery = try XCTUnwrap(heroStill(suppressed: false, batteryStopped: true),
-                                    "nothing drew, or the block never settled")
-        let paused = try XCTUnwrap(heroStill(suppressed: true, batteryStopped: false))
+        for appearance in RenderedInk.bothAppearances {
+            let screen = RenderedInk.label(of: appearance)
+            let battery = try XCTUnwrap(heroStill(suppressed: false, batteryStopped: true,
+                                                  in: appearance),
+                                        "nothing drew in \(screen), or the block never settled")
+            let paused = try XCTUnwrap(heroStill(suppressed: true, batteryStopped: false,
+                                                 in: appearance))
 
-        XCTAssertNotEqual(battery.mass, paused.mass,
-                          "«Stopped below 20 %» and «Paused until the rule applies again» draw "
-                          + "the same pixels, so the equality above cannot fail")
+            XCTAssertNotEqual(battery.mass, paused.mass,
+                              "in \(screen), «Stopped below 20 %» and «Paused until the rule "
+                              + "applies again» draw the same pixels, so the equality above "
+                              + "cannot fail")
+        }
     }
 
     // MARK: - The panel's block
@@ -237,7 +245,8 @@ final class BothNoticesShareOneSlotTests: XCTestCase {
     /// there is no way to ask it this question without the hop — which is the half
     /// the old source check could not see. The payload is the engine's own type;
     /// a dictionary written here would be a second declaration of the wire.
-    private func tileStill(suppressed: Bool, batteryStopped: Bool) -> Still? {
+    private func tileStill(suppressed: Bool, batteryStopped: Bool,
+                           in appearance: NSAppearance.Name) -> Still? {
         let transport = LocalTransport()
         let host = ModuleViewModel(transport: transport)
         let store = NamespacedStore(namespace: KeepAwakeEngine.moduleID,
@@ -252,7 +261,7 @@ final class BothNoticesShareOneSlotTests: XCTestCase {
         guard let data = try? JSONEncoder().encode(payload) else { return nil }
         transport.emit(EngineEvent(name: KeepAwakeEvent.state.rawValue, payload: data))
         let reading = still(KeepAwakePanelTile(vm: host, store: store),
-                            width: Self.tileWidth, height: 420)
+                            width: Self.tileWidth, height: 420, in: appearance)
         // The subject, checked where it is knowable: the payload really arrived,
         // so a still that says nothing changed is a fact about the tile rather
         // than about a wire that never delivered.
@@ -266,32 +275,46 @@ final class BothNoticesShareOneSlotTests: XCTestCase {
     /// somebody opens deliberately, while the panel they actually use kept the
     /// silence the whole change was about.
     func testThePanelDrawsTheBatteryNotice() throws {
-        let quiet = try XCTUnwrap(tileStill(suppressed: false, batteryStopped: false),
-                                 "nothing drew, the block never settled, or the payload never arrived")
-        let battery = try XCTUnwrap(tileStill(suppressed: false, batteryStopped: true))
+        for appearance in RenderedInk.bothAppearances {
+            let screen = RenderedInk.label(of: appearance)
+            let quiet = try XCTUnwrap(tileStill(suppressed: false, batteryStopped: false,
+                                                in: appearance),
+                                      "in \(screen) nothing drew, the block never settled, or "
+                                      + "the payload never arrived")
+            let battery = try XCTUnwrap(tileStill(suppressed: false, batteryStopped: true,
+                                                  in: appearance))
 
-        XCTAssertGreaterThan(battery.height, quiet.height,
-                             "the guard stopped everything and the tile is the same height it "
-                             + "is when nothing is wrong: pressing «15 min» at 5 % is silence "
-                             + "in the panel")
+            XCTAssertGreaterThan(battery.height, quiet.height,
+                                 "in \(screen) the guard stopped everything and the tile is the "
+                                 + "same height it is when nothing is wrong: pressing «15 min» "
+                                 + "at 5 % is silence in the panel")
+        }
     }
 
     /// …and the same one wins there, in the same direction.
     func testTheBatteryNoticeWinsInThePanelToo() throws {
-        let battery = try XCTUnwrap(tileStill(suppressed: false, batteryStopped: true),
-                                    "nothing drew, the block never settled, or the payload never arrived")
-        let both = try XCTUnwrap(tileStill(suppressed: true, batteryStopped: true))
-        let paused = try XCTUnwrap(tileStill(suppressed: true, batteryStopped: false))
+        for appearance in RenderedInk.bothAppearances {
+            let screen = RenderedInk.label(of: appearance)
+            let battery = try XCTUnwrap(tileStill(suppressed: false, batteryStopped: true,
+                                                  in: appearance),
+                                        "in \(screen) nothing drew, the block never settled, or "
+                                        + "the payload never arrived")
+            let both = try XCTUnwrap(tileStill(suppressed: true, batteryStopped: true,
+                                               in: appearance))
+            let paused = try XCTUnwrap(tileStill(suppressed: true, batteryStopped: false,
+                                                 in: appearance))
 
-        XCTAssertNotEqual(battery.mass, paused.mass,
-                          "the two notices draw the same pixels in the panel, so the equality "
-                          + "below cannot fail")
-        XCTAssertEqual(both.mass, battery.mass,
-                       "the panel draws «Rule paused» with a Resume button while the battery "
-                       + "guard has everything stopped: \(both.mass) vs \(battery.mass)")
-        XCTAssertEqual(both.height, battery.height,
-                       "the panel stacks the two notices: \(both.height) pt against "
-                       + "\(battery.height)")
+            XCTAssertNotEqual(battery.mass, paused.mass,
+                              "the two notices draw the same pixels in the panel in \(screen), "
+                              + "so the equality below cannot fail")
+            XCTAssertEqual(both.mass, battery.mass,
+                           "in \(screen) the panel draws «Rule paused» with a Resume button "
+                           + "while the battery guard has everything stopped: \(both.mass) vs "
+                           + "\(battery.mass)")
+            XCTAssertEqual(both.height, battery.height,
+                           "the panel stacks the two notices in \(screen): \(both.height) pt "
+                           + "against \(battery.height)")
+        }
     }
 
     // MARK: - The shape that let the wiring break

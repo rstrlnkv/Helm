@@ -1,4 +1,5 @@
 import AppKit
+import HelmTestSupport
 import XCTest
 @testable import HelmApp
 @testable import HelmUI
@@ -100,7 +101,19 @@ final class RadiusLadderRatchetTests: XCTestCase {
     /// — which hides a real value in order to make a number move — or the floor
     /// is stated out loud as 1. That is a decision for the commit that rebuilds
     /// the pages, not for the one that lands the tokens.
-    private static let recorded = 5
+    ///
+    /// **And the 8 came back, in light mode, because this reading had a second
+    /// weather nobody had named: the screen.** The render inherited
+    /// `NSApp.effectiveAppearance`, this Mac switches appearance by the sun, and
+    /// at 04:34:58 on 2026-08-12 the ratchet went red with nothing committed since
+    /// 03:05. The value is `Slider`'s knob — a 20 × 16 pt capsule at (556.5, 473)
+    /// on Keep Awake's battery-floor row, `cornerRadius` 8, owned by
+    /// `PlatformGroupContainer` — and SwiftUI draws that layer **in light only**.
+    /// So the number is per appearance now, six in light and five in dark,
+    /// measured three consecutive runs each; `testTheOnlyRadiusLightAddsIsTheSliderKnob`
+    /// holds the difference by value, so light's extra slot cannot quietly absorb
+    /// a new radius the way a count on its own would.
+    private static let recorded: [NSAppearance.Name: Int] = [.aqua: 6, .darkAqua: 5]
 
     private static let ladder: [CGFloat] = [0, 4, 6, 10, 14, 26]
 
@@ -108,24 +121,62 @@ final class RadiusLadderRatchetTests: XCTestCase {
     private static let tolerance: CGFloat = 0.6
 
     func testRadiiOffTheLadderDoNotGrow() {
-        var values: [String: [String]] = [:]
-        for page in ModulePageRender.pages() {
-            page.assertItDrewSomething()
+        for appearance in RenderedInk.bothAppearances {
+            let screen = RenderedInk.label(of: appearance)
+            let values = offLadder(in: appearance, checkingEachPageDrew: true)
+            let report = values.sorted { $0.key < $1.key }.map { value, pages in
+                "\(value) pt on \(pages.sorted().joined(separator: ", "))"
+            }
+            let recorded = Self.recorded[appearance] ?? 0
+            XCTAssertLessThanOrEqual(values.count, recorded, """
+                \(values.count) distinct corner radii are off the ladder \
+                \(Self.ladder.dropFirst().map { String(Int($0)) }.joined(separator: "·")) \
+                in \(screen); the recorded number for that screen is \(recorded).
+                This number is only ever lowered, by the commit that lowers it.
+                \(report.joined(separator: "\n"))
+                """)
+        }
+    }
+
+    /// **Light's extra slot is spent, and on what.** A ratchet of two counts would
+    /// let a genuinely new radius arrive in light for nothing, as long as it
+    /// arrived while the knob was still there — six is six. So the difference
+    /// between the two screens is pinned by value: light draws everything dark
+    /// draws, plus 8 pt and nothing else.
+    ///
+    /// The 8 is not Helm's and no commit here can lower it — it is SwiftUI's own
+    /// slider knob, and `isSystemDrawn` cannot see it because that layer has no
+    /// view of its own to be named after, only the `PlatformGroupContainer` it
+    /// hangs under. Teaching the filter that class name would hide `PanelBars`'
+    /// and `HelmChoiceCards`' layers with it, which is a real value hidden to make
+    /// a number move.
+    func testTheOnlyRadiusLightAddsIsTheSliderKnob() {
+        let light = Set(offLadder(in: .aqua, checkingEachPageDrew: false).keys)
+        let dark = Set(offLadder(in: .darkAqua, checkingEachPageDrew: false).keys)
+
+        XCTAssertFalse(light.isEmpty, "nothing was measured in either screen")
+        XCTAssertEqual(light.subtracting(dark), ["8.00"], """
+            light draws \(light.subtracting(dark).sorted()) where dark does not, and the only \
+            one of those anybody has accounted for is 8.00 pt — SwiftUI's slider knob on Keep \
+            Awake's battery row.
+            """)
+        XCTAssertEqual(dark.subtracting(light), [], """
+            dark draws \(dark.subtracting(light).sorted()) where light does not, which is a \
+            radius no reading of this tree has seen before.
+            """)
+    }
+
+    /// The off-ladder radii of one screen, each with the pages that drew it.
+    private func offLadder(in appearance: NSAppearance.Name,
+                           checkingEachPageDrew: Bool) -> [String: Set<String>] {
+        var values: [String: Set<String>] = [:]
+        for page in ModulePageRender.pages(in: appearance) {
+            if checkingEachPageDrew { page.assertItDrewSomething() }
             for layer in page.layers where isOffLadder(layer) {
-                values[String(format: "%.2f", layer.radius), default: []].append(page.id)
+                values[String(format: "%.2f", layer.radius), default: []].insert(page.id)
             }
         }
-
-        let report = values.sorted { $0.key < $1.key }.map { value, pages in
-            "\(value) pt on \(Set(pages).sorted().joined(separator: ", "))"
-        }
-        XCTAssertLessThanOrEqual(values.count, Self.recorded, """
-            \(values.count) distinct corner radii are off the ladder \
-            \(Self.ladder.dropFirst().map { String(Int($0)) }.joined(separator: "·")); \
-            the recorded number is \(Self.recorded).
-            This number is only ever lowered, by the commit that lowers it.
-            \(report.joined(separator: "\n"))
-            """)
+        return values
     }
 
     private func isOffLadder(_ layer: ModulePageRender.Drawn) -> Bool {
@@ -138,20 +189,29 @@ final class RadiusLadderRatchetTests: XCTestCase {
     /// The render reaches every module, and every module draws. Without this the
     /// test above passes on a process with no window server, where nine empty
     /// bitmaps have no radii at all and the ratchet reads zero.
+    ///
+    /// In both screens, because a page that draws nothing in one of them is a page
+    /// half the people using the app cannot see.
     func testEveryModulePageDrawsSomethingToMeasure() {
-        let pages = ModulePageRender.pages()
-        XCTAssertEqual(pages.map(\.id).sorted(),
-                       ModuleRegistry.all.map(\.idRaw).sorted(),
-                       "the render is not covering the registry")
-        for page in pages { page.assertItDrewSomething() }
-        XCTAssertGreaterThan(pages.flatMap(\.layers).filter { $0.radius > 0.01 }.count, 100,
-                             "no page drew a rounded corner at all — the reading is not radii")
+        for appearance in RenderedInk.bothAppearances {
+            let pages = ModulePageRender.pages(in: appearance)
+            XCTAssertEqual(pages.map(\.id).sorted(),
+                           ModuleRegistry.all.map(\.idRaw).sorted(),
+                           "the render is not covering the registry")
+            for page in pages { page.assertItDrewSomething() }
+            XCTAssertGreaterThan(pages.flatMap(\.layers).filter { $0.radius > 0.01 }.count, 100,
+                                 "no page drew a rounded corner at all in "
+                                 + "\(RenderedInk.label(of: appearance)) — the reading is not radii")
+        }
     }
 
-    /// The ladder is doing work: most of what is drawn *is* on it, so the seven
-    /// above read as seven exceptions rather than as an arbitrary slice.
+    /// The ladder is doing work: most of what is drawn *is* on it, so the values
+    /// above read as exceptions rather than as an arbitrary slice.
+    ///
+    /// Light, which is the screen that draws the superset: whatever this says of
+    /// light it says of dark, plus the knob.
     func testMostDrawnRadiiAreOnTheLadder() {
-        let drawn = ModulePageRender.pages().flatMap(\.layers)
+        let drawn = ModulePageRender.pages(in: .aqua).flatMap(\.layers)
             .filter { !$0.isSystemDrawn && $0.radius > 0.01 && $0.radius.isFinite }
         let off = drawn.filter(isOffLadder)
         XCTAssertFalse(drawn.isEmpty)

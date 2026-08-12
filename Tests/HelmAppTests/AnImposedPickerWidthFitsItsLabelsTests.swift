@@ -272,7 +272,8 @@ final class AnImposedPickerWidthFitsItsLabelsTests: XCTestCase {
 
         for language in [AppLanguage.en, .ru, .de] {
             AppLanguage.override = language
-            let page = ModulePageRender.page(for: uninstaller, width: ModulePageRender.pageWidth)
+            let page = ModulePageRender.page(for: uninstaller, in: .aqua,
+                                             width: ModulePageRender.pageWidth)
             page.assertItDrewSomething()
             let drawn = try XCTUnwrap(page.controls.first { $0.name.contains("SegmentedControl") },
                                       "the uninstaller page drew no segmented control in "
