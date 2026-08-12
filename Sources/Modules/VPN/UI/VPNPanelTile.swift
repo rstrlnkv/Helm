@@ -49,24 +49,36 @@ struct VPNPanelTile: View {
         }
     }
 
+    /// **`isConnected`, not `isUp`** — the same distinction the settings page
+    /// draws its dot by and argues for at its own call site: `isUp` includes
+    /// `.connecting`, and a green dot on a tunnel three seconds into a handshake
+    /// is the panel saying this Mac is protected while it is not. This is the
+    /// surface somebody glances at before sending something they would not send
+    /// in clear.
     private var anyConnected: Bool {
-        vm.connections.contains(where: \.status.isUp)
+        vm.connections.contains(where: \.status.isConnected)
     }
 
     private func connectionRow(_ c: VPNConnection) -> some View {
-        let active = c.status.isUp
-        let transitioning = c.status.isTransitioning
+        // Three questions, and the dot and the switch used to share one answer.
+        // Whether traffic is on the tunnel is `isConnected` (above); what can be
+        // *asked for* while it is coming up is `VPNCardAction`, which is the
+        // engine's to answer and says «stop» — so the switch stays thrown while a
+        // handshake runs and can be turned off, which is exactly when somebody
+        // wants out.
+        let action = VPNCardAction.of(c.status)
         return HStack(spacing: 8) {
-            HelmStatusDot(active: active)
+            HelmStatusDot(active: c.status.isConnected)
             Text(c.name).lineLimit(1)
             Spacer(minLength: 8)
-            if transitioning { ProgressView().controlSize(.small) }
+            if c.status.isTransitioning { ProgressView().controlSize(.small) }
             Toggle("", isOn: Binding(
-                get: { active },
+                get: { action.verb == .disconnect },
                 set: { on in on ? vm.connect(c.name) : vm.disconnect(c.name) }))
                 .toggleStyle(.switch)
                 .labelsHidden()
                 .controlSize(.mini)
+                .disabled(!action.enabled)
                 .accessibilityLabel(c.name)
         }
     }

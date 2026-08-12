@@ -12,9 +12,21 @@ public struct VPNCredentials: Sendable {
     }
 }
 
-/// Runs `scutil` with the given args, returns stdout.
+/// Runs `scutil` with the given args and hands back everything it answered.
+///
+/// **The status is half the answer, and this port used to drop it.** It returned
+/// a bare `String`, so `scutil` succeeding silently — which is how it reports a
+/// connect it performed — and `scutil` never running at all were one value: the
+/// same empty string, indistinguishable to every caller, though `HelmProcess`
+/// had read the status and thrown it away one line earlier. A tool that did not
+/// run was therefore announced as a tunnel that came up, and no fake could have
+/// caught it, because no fake can separate what the port has already folded
+/// together (ARCHITECTURE.md § A nil from a system read is two questions in one).
+///
+/// `HelmProcess.Result` rather than a type of this module's own: it is already
+/// the shape of "what a command-line tool answered", and there is one of those.
 public protocol VPNRunnerPort: AnyObject {
-    func run(_ args: [String]) -> String
+    func run(_ args: [String]) -> HelmProcess.Result
 }
 
 /// Supplies --user/--password/--secret for a keychain-backed VPN.

@@ -12,7 +12,9 @@ import SystemConfiguration
 /// Production `VPNRunnerPort`: shells out to `/usr/sbin/scutil`.
 public final class ScutilRunner: VPNRunnerPort {
     public init() {}
-    public func run(_ args: [String]) -> String { HelmProcess.run("/usr/sbin/scutil", args).output }
+    public func run(_ args: [String]) -> HelmProcess.Result {
+        HelmProcess.run("/usr/sbin/scutil", args)
+    }
 }
 
 // MARK: - WorkspaceAppObserver

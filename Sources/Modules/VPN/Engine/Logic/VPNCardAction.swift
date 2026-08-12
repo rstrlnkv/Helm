@@ -11,14 +11,13 @@ import Foundation
 /// disabled its button for *every* transition, including the one the engine can
 /// act on, under a comment saying the opposite.
 public struct VPNCardAction: Equatable, Sendable {
-    /// Which way the request goes. Not a `Bool`: the card draws two different
-    /// buttons, one of them prominent, and «up» is not the same question.
-    public enum Verb: Equatable, Sendable { case connect, disconnect }
-
-    public let verb: Verb
+    /// Which way the request goes — `VPNVerb`, the module's own, not a nested
+    /// copy of it. Not a `Bool`: the card draws two different buttons, one of
+    /// them prominent, and «up» is not the same question.
+    public let verb: VPNVerb
     public let enabled: Bool
 
-    public init(verb: Verb, enabled: Bool) {
+    public init(verb: VPNVerb, enabled: Bool) {
         self.verb = verb
         self.enabled = enabled
     }

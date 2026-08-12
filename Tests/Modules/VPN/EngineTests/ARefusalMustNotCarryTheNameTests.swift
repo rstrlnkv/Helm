@@ -33,7 +33,7 @@ final class ARefusalMustNotCarryTheNameTests: XCTestCase {
     // MARK: - The reading
 
     func testARefusalDoesNotCarryTheNameItIsAbout() throws {
-        let reply = VPNCommandReply.of("cannot start \(service): busy", name: service)
+        let reply = VPNCommandReply.of(.init(status: 0, output: "cannot start \(service): busy"), name: service)
 
         guard case .refused(let text) = reply else {
             return XCTFail("expected a refusal, got \(reply)")
@@ -51,7 +51,7 @@ final class ARefusalMustNotCarryTheNameTests: XCTestCase {
     /// The tool has no reason to spell it the way the person did, and a case that
     /// slips through is the whole name in the file.
     func testTheNameIsFoundWhateverItsCase() throws {
-        let reply = VPNCommandReply.of("Cannot start CONTOSO field OFFICE — retry", name: service)
+        let reply = VPNCommandReply.of(.init(status: 0, output: "Cannot start CONTOSO field OFFICE — retry"), name: service)
 
         guard case .refused(let text) = reply else {
             return XCTFail("expected a refusal, got \(reply)")
@@ -62,7 +62,8 @@ final class ARefusalMustNotCarryTheNameTests: XCTestCase {
     /// A tool that prints a wall of text is a log entry that pushes everything
     /// else out of a 2 MB file with one rollover.
     func testTheTextIsCapped() throws {
-        let reply = VPNCommandReply.of(String(repeating: "e", count: 5_000), name: service)
+        let reply = VPNCommandReply.of(.init(status: 0, output: String(repeating: "e", count: 5_000)),
+                                       name: service)
 
         guard case .refused(let text) = reply else {
             return XCTFail("expected a refusal, got \(reply)")
@@ -76,7 +77,7 @@ final class ARefusalMustNotCarryTheNameTests: XCTestCase {
     /// that could change it: a configuration called «No» would otherwise have the
     /// tool's own «No service» rewritten into something this enum cannot read.
     func testAConfigurationCalledNoStillReportsAMissingService() {
-        XCTAssertEqual(VPNCommandReply.of("No service", name: "No"), .noSuchService)
+        XCTAssertEqual(VPNCommandReply.of(.init(status: 0, output: "No service"), name: "No"), .noSuchService)
     }
 
     /// An empty name is not a pattern to search for. Replacing every empty
@@ -84,12 +85,12 @@ final class ARefusalMustNotCarryTheNameTests: XCTestCase {
     /// implementation, and the engine can be asked to connect `""` by a rule
     /// pointing at a configuration that has been renamed away.
     func testAnEmptyNameLeavesTheTextAlone() {
-        XCTAssertEqual(VPNCommandReply.of("cannot start: busy", name: ""),
+        XCTAssertEqual(VPNCommandReply.of(.init(status: 0, output: "cannot start: busy"), name: ""),
                        .refused("cannot start: busy"))
     }
 
     func testSilenceIsStillSuccess() {
-        XCTAssertEqual(VPNCommandReply.of("", name: service), .accepted)
+        XCTAssertEqual(VPNCommandReply.of(.init(status: 0, output: ""), name: service), .accepted)
     }
 
     // MARK: - Through the engine, which is what writes the file
@@ -129,7 +130,8 @@ final class ARefusalMustNotCarryTheNameTests: XCTestCase {
 
         engine.connect(service)
 
-        XCTAssertEqual(engine.lastFailure, VPNFailure(name: service, reason: .refused),
+        XCTAssertEqual(engine.lastFailure,
+                       VPNFailure(name: service, reason: .refused, verb: .connect),
                        "the page says «macOS refused to connect «\(service)»» from this")
     }
 }

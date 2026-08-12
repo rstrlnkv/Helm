@@ -33,23 +33,23 @@ final class ARefusedCommandIsNotSilenceTests: XCTestCase {
     // MARK: - The reading
 
     func testSilenceIsSuccess() {
-        XCTAssertEqual(VPNCommandReply.of("", name: "Office"), .accepted)
-        XCTAssertEqual(VPNCommandReply.of("   \n ", name: "Office"), .accepted)
+        XCTAssertEqual(VPNCommandReply.of(.init(status: 0, output: ""), name: "Office"), .accepted)
+        XCTAssertEqual(VPNCommandReply.of(.init(status: 0, output: "   \n "), name: "Office"), .accepted)
     }
 
     func testTheToolsOwnWordsForAMissingConfiguration() {
-        XCTAssertEqual(VPNCommandReply.of("No service", name: "Office"), .noSuchService)
-        XCTAssertEqual(VPNCommandReply.of("No service\n", name: "Office"), .noSuchService)
+        XCTAssertEqual(VPNCommandReply.of(.init(status: 0, output: "No service"), name: "Office"), .noSuchService)
+        XCTAssertEqual(VPNCommandReply.of(.init(status: 0, output: "No service\n"), name: "Office"), .noSuchService)
         // Matched case-insensitively but never translated: `scutil` is not
         // localized, and a Mac in another language still prints English.
-        XCTAssertEqual(VPNCommandReply.of("no service", name: "Office"), .noSuchService)
+        XCTAssertEqual(VPNCommandReply.of(.init(status: 0, output: "no service"), name: "Office"), .noSuchService)
     }
 
     /// Anything else is kept verbatim rather than mapped to «failed». The set
     /// of things this tool can print is not ours to enumerate, and an unknown
     /// message is worth more in the trail than a word we chose.
     func testAnythingElseIsCarriedThrough() {
-        XCTAssertEqual(VPNCommandReply.of("Some future complaint", name: "Office"),
+        XCTAssertEqual(VPNCommandReply.of(.init(status: 0, output: "Some future complaint"), name: "Office"),
                        .refused("Some future complaint"))
     }
 
@@ -77,7 +77,8 @@ final class ARefusedCommandIsNotSilenceTests: XCTestCase {
         let e = engine(runner)
         e.connect("Old office")
 
-        XCTAssertEqual(e.lastFailure, VPNFailure(name: "Old office", reason: .noSuchService),
+        XCTAssertEqual(e.lastFailure,
+                       VPNFailure(name: "Old office", reason: .noSuchService, verb: .connect),
                        "the tunnel never came up and nothing anywhere said why")
     }
 

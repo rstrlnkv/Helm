@@ -70,15 +70,55 @@ enum VPNStr {
            .zh: "“\(name)”已不在系统设置中",
            .pt: "«\(name)» não está mais nos Ajustes do Sistema"])
     }
-    static func failureRefused(_ name: String) -> String {
-        L("macOS refused to connect «\(name)» — the log has what it said",
-          [.ru: "macOS отказалась подключить «\(name)» — что именно, записано в журнале",
-           .es: "macOS se negó a conectar «\(name)»; lo que dijo está en el registro",
-           .fr: "macOS a refusé de connecter «\u{00A0}\(name)\u{00A0}»\u{00A0}: le journal a sa réponse",
-           .de: "macOS hat „\(name)“ nicht verbunden — was es sagte, steht im Protokoll",
-           .ja: "macOS が「\(name)」の接続を拒否しました。内容はログにあります",
-           .zh: "macOS 拒绝连接“\(name)”——具体原因见日志",
-           .pt: "o macOS recusou conectar «\(name)» — o que ele disse está no registro"])
+    /// **Two sentences, because a refusal has a verb.** This said «refused to
+    /// connect» about a `--nc stop` the tool would not perform: the person who
+    /// asked to bring a tunnel down read that Helm could not bring it up, while
+    /// it stayed up and carried everything the Mac sent. The verbs are macOS's
+    /// own words for its own two actions — *verbunden*/*getrennt*, 接続/切断 —
+    /// the same table the labels above are read out of.
+    ///
+    /// The language is a parameter, defaulted, so the eight can be checked: a
+    /// test reading `AppLanguage.current` checks this machine's language eight
+    /// times.
+    static func failureRefused(_ name: String, verb: VPNVerb,
+                               language: AppLanguage = AppLanguage.current) -> String {
+        switch verb {
+        case .connect:
+            return L("macOS refused to connect «\(name)» — the log has what it said",
+                     [.ru: "macOS отказалась подключить «\(name)» — что именно, записано в журнале",
+                      .es: "macOS se negó a conectar «\(name)»; lo que dijo está en el registro",
+                      .fr: "macOS a refusé de connecter «\u{00A0}\(name)\u{00A0}»\u{00A0}: le journal a sa réponse",
+                      .de: "macOS hat „\(name)“ nicht verbunden — was es sagte, steht im Protokoll",
+                      .ja: "macOS が「\(name)」の接続を拒否しました。内容はログにあります",
+                      .zh: "macOS 拒绝连接“\(name)”——具体原因见日志",
+                      .pt: "o macOS recusou conectar «\(name)» — o que ele disse está no registro"],
+                     language: language)
+        case .disconnect:
+            return L("macOS refused to disconnect «\(name)» — the log has what it said",
+                     [.ru: "macOS отказалась отключить «\(name)» — что именно, записано в журнале",
+                      .es: "macOS se negó a desconectar «\(name)»; lo que dijo está en el registro",
+                      .fr: "macOS a refusé de déconnecter «\u{00A0}\(name)\u{00A0}»\u{00A0}: le journal a sa réponse",
+                      .de: "macOS hat „\(name)“ nicht getrennt — was es sagte, steht im Protokoll",
+                      .ja: "macOS が「\(name)」の切断を拒否しました。内容はログにあります",
+                      .zh: "macOS 拒绝断开“\(name)”——具体原因见日志",
+                      .pt: "o macOS recusou desconectar «\(name)» — o que ele disse está no registro"],
+                     language: language)
+        }
+    }
+
+    /// The whole sentence, from the failure itself — the one reader of `reason`
+    /// and `verb` together.
+    ///
+    /// Here rather than in the page for the reason `VPNCardAction` is in the
+    /// engine: which words a refusal gets is one decision, and a second surface
+    /// switching on `reason` for itself would be free to answer differently — or
+    /// to forget that the verb is part of the question, which is what the page
+    /// did for as long as `VPNFailure` had no verb to read.
+    static func failure(_ failure: VPNFailure) -> String {
+        switch failure.reason {
+        case .noSuchService: return failureNoSuchService(failure.name)
+        case .refused: return failureRefused(failure.name, verb: failure.verb)
+        }
     }
 
     /// The name a rule still points at, in the picker, when the system no

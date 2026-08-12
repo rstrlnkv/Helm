@@ -49,8 +49,19 @@ public enum VPNCommandReply: Equatable, Sendable {
     /// - Parameter name: the configuration the command was about, so its every
     ///   occurrence in the tool's answer can be replaced by the same tag the rest
     ///   of the module's log lines carry.
-    public static func of(_ output: String, name: String) -> VPNCommandReply {
-        let text = output.trimmingCharacters(in: .whitespacesAndNewlines)
+    public static func of(_ result: HelmProcess.Result, name: String) -> VPNCommandReply {
+        // **A tool that never ran is not a tool that agreed.** The table above
+        // is about `scutil`'s own answers, all of which arrive with status 0 —
+        // but a spawn that fails answers nothing at all, and that used to be
+        // the same empty string as a connect it had performed. `HelmProcess`
+        // reports a non-zero status for exactly that case, so it is read first
+        // and separately: silence is only consent when the tool was there to
+        // give it.
+        let text = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard result.status == 0 else {
+            return .refused(text.isEmpty ? "scutil did not run (status \(result.status))"
+                                         : withoutTheName(text, name: name))
+        }
         guard !text.isEmpty else { return .accepted }
         // The tool's own wording, matched case-insensitively but not
         // translated: `scutil` is not localized, and a machine whose language

@@ -53,9 +53,32 @@ public struct VPNFailure: Codable, Equatable, Sendable {
     }
     public let name: String
     public let reason: Reason
+    /// Which command was refused.
+    ///
+    /// **The screen said «connect» whatever had happened.** A refused `--nc stop`
+    /// drew «macOS refused to connect «Office»», so the person who had just asked
+    /// to bring a tunnel down read a sentence about bringing one up — and the
+    /// tunnel they wanted closed was still carrying their traffic. The reason and
+    /// the verb are two different facts and the sentence needs both.
+    public let verb: VPNVerb
 
-    public init(name: String, reason: Reason) {
+    public init(name: String, reason: Reason, verb: VPNVerb) {
         self.name = name
         self.reason = reason
+        self.verb = verb
+    }
+
+    /// Hand-written because a stored default does **not** make an older payload
+    /// decode: Swift's synthesised `Decodable` requires the key regardless, and
+    /// `JSONDecoder` then gives up on the whole document rather than on the one
+    /// field — which here would cost the page every connection it draws for the
+    /// sake of a word (CLAUDE.md § a `defaulted` property on a `Codable`
+    /// payload). `.connect` is what a payload from before this field existed
+    /// meant, because that is the only sentence such a build could draw.
+    public init(from decoder: Decoder) throws {
+        let box = try decoder.container(keyedBy: CodingKeys.self)
+        name = try box.decode(String.self, forKey: .name)
+        reason = try box.decode(Reason.self, forKey: .reason)
+        verb = try box.decodeIfPresent(VPNVerb.self, forKey: .verb) ?? .connect
     }
 }

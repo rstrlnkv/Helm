@@ -12,7 +12,12 @@ struct VPNCompactWidget: View {
 
     init(vm: VPNViewModel) { self.vm = vm }
 
-    private var up: Int { vm.connections.filter { $0.status.isUp }.count }
+    /// **`isConnected`, not `isUp`.** This is the number `isConnected`'s own doc
+    /// comment was written about: `isUp` includes `.connecting`, so the figure
+    /// counted a tunnel that had not come up and the dot beside it went green for
+    /// it — the smallest surface in the app, saying the Mac is protected while a
+    /// handshake is still out. The tile next door drew its dot the same way.
+    private var up: Int { vm.connections.filter { $0.status.isConnected }.count }
 
     var body: some View {
         HelmWidgetBody {

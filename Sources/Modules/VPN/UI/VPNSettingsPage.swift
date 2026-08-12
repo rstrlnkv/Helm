@@ -63,7 +63,7 @@ struct VPNSettingsPage: View {
                     .padding(.top, 8)
             }
             if let failure = vm.lastFailure {
-                HelmBanner(failureText(failure), symbol: "exclamationmark.triangle.fill")
+                HelmBanner(VPNStr.failure(failure), symbol: "exclamationmark.triangle.fill")
                     .padding(.top, HelmSpace.s4)
                     // **It has a fill, so it is a card.** A section header is
                     // inset 10 pt further than the section's own card, which is
@@ -488,13 +488,6 @@ struct VPNSettingsPage: View {
             .buttonStyle(.borderedProminent)
             .disabled(!action.enabled)
             .accessibilityLabel("\(VPNStr.connect), \(c.name)")
-        }
-    }
-
-    private func failureText(_ f: VPNFailure) -> String {
-        switch f.reason {
-        case .noSuchService: return VPNStr.failureNoSuchService(f.name)
-        case .refused: return VPNStr.failureRefused(f.name)
         }
     }
 

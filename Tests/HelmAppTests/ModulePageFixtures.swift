@@ -264,7 +264,7 @@ extension ModulePageRender {
         autoConnected: ["Fixture Amsterdam"],
         defaultName: "Fixture Amsterdam",
         lastAutomation: nil,
-        lastFailure: VPNFailure(name: "Fixture Reykjavík", reason: .refused))
+        lastFailure: VPNFailure(name: "Fixture Reykjavík", reason: .refused, verb: .connect))
 
     /// A path nothing on this Mac is at, so the page's own «found at» line is the
     /// fixture's string. `/opt/homebrew` and `/usr/local` are the two real ones
