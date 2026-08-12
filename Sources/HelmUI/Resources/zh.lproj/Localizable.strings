@@ -730,7 +730,6 @@
 "Rule paused" = "规则已暂停";
 "Brown" = "棕色";
 "Other colour…" = "其他…";
-"The battery guard says so on screen. It used to end sessions in silence — you pressed “15 min” at 5% and nothing happened, with the reason only in the log. The panel and the settings page both say it now." = "电量保护会在界面上说明。以前它会悄悄结束会话：你在 5% 时按下“15 分钟”，什么都没发生，原因只在日志里。现在面板和设置页都会说明。";
 "A colour of your own: the colour menu ends with “Other…”, which opens the system colour panel — the way Calendar offers one. The palette itself is Calendar’s, and follows light and dark the way the system’s colours do." = "自定义颜色：颜色菜单末尾是“其他…”，会打开系统调色板——和“日历”的做法一致。调色板本身也取自“日历”，并像系统颜色那样跟随浅色与深色。";
 "“Stop on low battery” is a slider with stops, the way the charge limit is set in Battery. And the two colour rows are a dot and a name instead of two rows of ten swatches." = "“低电量时停止”改成带档位的滑块，与“电池”中的充电上限一致。两行颜色选择也从两排十个色块，变成一个圆点加名称。";
 "No VPNs are set up on this Mac" = "这台 Mac 上没有配置任何 VPN";
@@ -748,3 +747,10 @@
 "A VPN that drops on its own can be announced louder than the rules. A tunnel that goes down because the network changed is the one thing here nobody asked for, and it used to arrive in the same words, at the same volume, as a rule doing what it was told." = "自行断开的 VPN 可以比规则提示得更响。因网络变化而断掉的隧道是这里唯一没人要求的事，却和规则照办时用同样的措辞、同样的音量来通报。";
 "A per-app rule says when it is holding a tunnel up right now." = "按应用的规则会显示它此刻是否正在保持隧道。";
 "The VPN page lines up. The connections take up the whole row and sit in the same column as everything under them, and the notice modes are picked the way light and dark are picked in General." = "VPN 页面对齐了。连接占满整行，并与下方所有内容位于同一列；提示方式的选择方式与“通用”中选择浅色和深色相同。";
+"The battery guard says so on screen, names the setting that stopped it and how to lift it, and now reaches you with a notification even when you are not looking at Helm. It used to end sessions in silence — you pressed “15 min” at 5% and nothing happened, with the reason only in the log." = "电量保护现在会在界面上说明是哪项设置结束了会话，以及如何解除；即使你没有在看 Helm，它也会通过通知告诉你。以前它会悄悄结束会话：你在 5% 时按下“15 分钟”，什么都没发生，原因只在日志里。";
+"The lid row says when sleep is off for the whole Mac right now, and how to bring it back — it used to show only what turning the switch on costs, never what had happened once you had." = "合盖行现在会说明当前是否整台 Mac 的睡眠已关闭，以及如何恢复——以前它只显示打开开关的代价，从不说明打开之后发生了什么。";
+"A refused lid says so, instead of leaving the switch on with nothing behind it. If macOS declines to turn system sleep off, the row now says the Mac will sleep with the lid closed after all." = "合盖被拒绝时会有提示，而不是让开关看起来已打开却毫无实际效果。如果 macOS 拒绝关闭系统睡眠，该行现在会说明合盖后 Mac 仍会进入睡眠。";
+"Helm says when it cannot read your saved app rules, and to add them again. Unreadable rules used to stop holding the Mac awake in silence, with only one line in the diagnostics log — the page looked exactly as if you had chosen no apps." = "当无法读取已保存的 App 规则时，Helm 现在会说明，并提示你重新添加。以前无法读取的规则会悄悄停止让 Mac 保持唤醒，诊断日志里只留下一行记录——页面看起来就像你根本没有选择任何 App。";
+"The note about the lid’s password prompt no longer overstates what quitting Helm costs: quitting turns sleep back on right away, and only a crash or a force quit needs the next launch to put it right." = "关于合盖密码提示的说明不再夸大退出 Helm 的代价：退出会立即重新开启睡眠，只有崩溃或强制退出才需要下次启动来恢复。";
+"The log’s level filter, and the Uninstaller’s and Homebrew’s pickers, no longer clip in long languages — the control now sizes itself to what it draws instead of a width guessed from English." = "日志的级别筛选器，以及卸载工具和 Homebrew 的选择器，在长文本语言下不再被裁切——控件现在会根据实际绘制内容自行调整宽度，而不是套用按英文猜测的宽度。";
+"Permission notices look the same everywhere Helm asks for one — the several places across the app that said a grant was missing used to each draw it slightly differently." = "无论 Helm 在哪里请求权限，权限提示的样式现在都一致了——应用中原本各自以略有不同的方式绘制“缺少授权”提示的几个位置，现在统一了。";

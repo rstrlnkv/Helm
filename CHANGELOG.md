@@ -5,6 +5,134 @@ All notable changes to Helm are documented here. The format is loosely based on
 global changes, MINOR = new/polished features, PATCH = fixes. Every release
 bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 
+## [0.10.0-dev.6] — 2026-08-12
+
+> Keep Awake's v3 page, and three passes over it — adversarial, security,
+> accessibility/UX/localizer — before anything else touched it.
+
+### Added
+- **The page now says what the engine already knew.** The battery guard's stop
+  reaches the panel and the settings page (`batteryStopped`/`batteryFloor` are
+  wired into `KeepAwakeHero`, no longer defaulted and silently dropped by the
+  one call site that built it). The lid row carries a live mark and note —
+  `sleepIsOffNow` in the panel's subtitle, `sleepIsOffNote` on the settings
+  row — instead of always showing what turning the switch on costs. An
+  unreadable app-rules file draws a banner over the apps section
+  (`KAStr.appRulesUnreadable`) rather than looking exactly like "no apps
+  chosen". `MarkableRules` gives the lid row a mark on the same one-clock
+  animation as the two condition rules.
+- **The battery veto posts a system notification on its rising edge** — the
+  one event this module produces with nobody in front of the screen — carrying
+  the same sentence as the banner. Cancelled on `deactivate()`, since the
+  authorization prompt can stand for minutes and a notification from a module
+  the person just switched off is worse than none (`BatteryVetoChannel`,
+  moved out of the VPN module into `HelmRuntime` rather than written twice).
+
+### Changed
+- **Permission notices are one shape.** `HelmPermissionNote` now draws a
+  `HelmBanner` instead of a bare `HStack` with 10 pt caption text where every
+  other note on the page is 11 pt — nine call sites across eight modules
+  landed on v3 in one edit.
+- **Segmented pickers size themselves to what they draw.** `PickerWidth` now
+  models the control the way SwiftUI actually lays it out rather than a fixed
+  guess; the log's level filter clipped in seven of eight languages, the
+  Uninstaller's picker clipped Russian at a fixed 200 pt (208 needed, fixed
+  first in isolation, then folded into the general model), and Homebrew's
+  picker had the same defect.
+- **The battery boundary is spelled once and reused.** `atPercentOrLess`
+  composes the row under the slider, the panel's short form and the hero's
+  long form; previously each of the three translated the phrase separately —
+  twenty-four spellings of one boundary, which is how "below" (exclusive)
+  survived in one sentence for ten days after `BatteryGuard.shouldDeactivate`
+  (`percent <= threshold`, inclusive) had been corrected in another. All eight
+  languages now read "at N% or less" / equivalent, with the no-break space
+  before the sign that macOS's own tables use in ru/de/fr/es.
+- **The admin paragraph stops overstating what quitting Helm costs.** It said
+  "if Helm quits while sleep is off, sleep stays off until Helm runs again",
+  which described the crash/force-quit path, not the ordinary one:
+  `applicationWillTerminate` calls `deactivate()` on every live engine, which
+  restores sleep synchronously before the process exits. The sentence now
+  says quitting turns sleep back on, and only a crash or force-quit needs the
+  next launch to do it (`recoverAtLaunch`).
+- **The passwordless sudoers grant is no longer removed on quit.** `tearDown()`
+  used to call `removeSudoers`, which dispatches to a background queue and
+  raises an administrator dialog through `osascript … with administrator
+  privileges` — on behalf of a process that was already exiting. The grant's
+  lifetime is now the lid *setting*, taken out on its own falling edge where
+  somebody is at the screen to answer the dialog; switching the module off, or
+  quitting, leaves the rule, the same as a crash always did.
+- Caption/quiet text contrast: `HelmText.faint` raised from `0.55` to `0.65`
+  opacity (3.54:1 light, under the accessibility floor written down in the
+  property's own comment for months — under, `RecessedTextIsReadableTests`
+  now holds it at ≥0.631) and `HelmText.quiet` to `0.66` where paired with a
+  warning fill that measured 4.44:1 against a 4.5 floor. Design tokens
+  `HelmSpace` (2·4·6·8·12·18·28·40 pt) and `HelmRadius`
+  (4·6·10·14·26 pt) land as named constants; `HelmSurface.cardRadius` is
+  retired in favour of `HelmRadius.card`.
+
+### Fixed
+- **A Mac could be left unable to sleep forever.** `recoverAtLaunch` discarded
+  the result of `setDisableSleep(false)` (`_ = clamshell.setDisableSleep(false)`)
+  — if `pmset` refused because the sudoers rule had been edited or removed,
+  the guard flag was cleared anyway, taking away the only thing that brings
+  the next launch back to look. `restoreSleep(refused:restored:)` is now one
+  path for both the launch-recovery and `disengage()` callers, and a refusal
+  is logged and re-checked at the next launch rather than silently accepted.
+  Recovery is now also triggered by the sudoers rule's own presence
+  (`clamshell.isSudoersInstalled()`), not only by a guard flag stored in a
+  plist any process running as this user can rewrite.
+- **The battery guard could hold an indefinite session on a laptop whose power
+  reading failed.** `power.snapshot() == nil` was read as "no veto" for both a
+  desktop (no battery) and a laptop on battery whose IOKit dictionary came
+  back incomplete — the second is exactly the case the guard exists for.
+  `PowerSource.supply()` reads `IOPSGetProvidingPowerSourceType` independently
+  of the source list, so "on mains" no longer folds an unreadable read into
+  "yes" (`BatteryGuard.shouldDeactivateWithNoReading`, `PowerInfoPort.supply()`
+  replacing the old `Bool isOnMains`).
+- The log line for a battery-guard stop no longer reports an unreadable charge
+  as `0%` (`power.snapshot()?.percent ?? 0` → `"an unreadable charge"` when
+  there is no reading).
+- **"On an external display" could be offered, and counted as an active rule,
+  on a Mac with no display of its own** (mini, Studio) — every display such a
+  Mac has is external, so the rule can never be turned off in effect. The
+  settings page already hid the row and the engine already refused the rule;
+  the panel tile now hides it too (`MacHardware.hasBuiltInDisplay`), and
+  `anyRuleOn` on the settings page no longer counts a rule the engine has
+  refused.
+- **A refused lid says so, instead of leaving the switch on with nothing
+  behind it.** If macOS declines `sudo -n pmset disablesleep 1`, the row now
+  shows `lidRefused` — "macOS refused to turn sleep off, so closing the lid
+  will let the Mac sleep" — naming the file and what closing the lid actually
+  does, rather than drawing the standing "what this costs" note as though
+  nothing had been attempted. A declined *removal* (switching the option off)
+  now shows `lidGrantRemains` instead of blaming a third party for a rule Helm
+  wrote itself.
+- **A plist holding the wrong type under the app-rules key read as "no rules
+  ever written" rather than "unreadable".** `store.string(...)` (an `as?
+  String`) answered `""` for an array value — which is what the legacy
+  `autoApps` key still is on a migrating install — so a corrupted rules value
+  fell through to migration and held the Mac awake on stale rules while the
+  banner stayed silent. `KeepAwakeSettings.appRulesReading` is now one read
+  shared by `appTriggers` and `appRulesUnreadable`, so the two cannot
+  disagree.
+- App rules read from the plist are now bounded (200 rules, 256-character
+  bundle ids, 128 KB encoded) and refused rather than silently truncated over
+  the limit — the value is unbounded input re-read on every recompute, driven
+  by whatever else is running as this user.
+- VPN's `scutil` refusal text is redacted at the point it is created, not only
+  where it is logged: the tool's message is usually *about* the configuration
+  and therefore contains its name (`VPNCommandReply.refused`), so the case can
+  no longer hold an unredacted name for a caller to forget to sanitize later.
+  Bounded to 200 characters.
+- `swift test` no longer reads, and could clear, the real `~/Library/Application
+  Support/Helm/Disk/last-scan.json` — `ScanStore()`'s default directory now
+  resolves through the same per-process `TestScratch` the journal next door
+  already uses when a test process is detected.
+
+### Removed
+- `HelmSurface.cardRadius` — replaced by `HelmRadius.card` (same value, 12→10;
+  see Changed).
+
 ## [0.10.0-dev.5] — 2026-08-11
 
 > The VPN page, and the one event on it nobody asked for.
