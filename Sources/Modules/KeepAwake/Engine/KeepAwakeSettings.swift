@@ -77,7 +77,10 @@ public struct KeepAwakeSettings {
     /// The older key, read only when the current one has nothing to say — this is
     /// on `recompute`'s path, which runs from three observers.
     private func migrated() -> AppRulesReading {
-        .rules(AppTriggerRules.migrating(from: store.stringArray(Key.autoApps)))
+        guard let rules = AppTriggerRules.migrating(from: store.stringArray(Key.autoApps)) else {
+            return .unreadable
+        }
+        return .rules(rules)
     }
 
     /// Per-app rules. Reads the new encoded form, falling back to the plain

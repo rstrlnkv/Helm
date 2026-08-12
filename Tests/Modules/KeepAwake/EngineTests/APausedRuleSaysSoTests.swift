@@ -18,7 +18,7 @@ final class APausedRuleSaysSoTests: XCTestCase {
     // MARK: - The note
 
     func testAPausedRuleReadsAsPausedRatherThanAsNotApplying() {
-        let note = RuleNote.of(enabled: true, satisfied: false,
+        let note = RuleNote.of(enabled: true, satisfied: false, batteryStopped: false,
                               suppressed: true, triggerHolds: true)
         XCTAssertEqual(note, .paused,
                        "the row said «Not applying right now» under a banner saying the rule "
@@ -29,21 +29,21 @@ final class APausedRuleSaysSoTests: XCTestCase {
     /// rule whose own trigger is false is not the rule that was paused, and
     /// marking it so would put «Paused» on every switched-on row on the page.
     func testARuleWhoseTriggerIsFalseIsStillJustWaiting() {
-        let note = RuleNote.of(enabled: true, satisfied: false,
+        let note = RuleNote.of(enabled: true, satisfied: false, batteryStopped: false,
                                suppressed: true, triggerHolds: false)
         XCTAssertEqual(note, .waiting)
     }
 
     func testTheOtherThreeStatesAreUnchanged() {
-        XCTAssertEqual(RuleNote.of(enabled: false, satisfied: false,
+        XCTAssertEqual(RuleNote.of(enabled: false, satisfied: false, batteryStopped: false,
                                    suppressed: false, triggerHolds: false), .meaning)
-        XCTAssertEqual(RuleNote.of(enabled: true, satisfied: true,
+        XCTAssertEqual(RuleNote.of(enabled: true, satisfied: true, batteryStopped: false,
                                    suppressed: false, triggerHolds: true), .applies)
-        XCTAssertEqual(RuleNote.of(enabled: true, satisfied: false,
+        XCTAssertEqual(RuleNote.of(enabled: true, satisfied: false, batteryStopped: false,
                                    suppressed: false, triggerHolds: false), .waiting)
         // Switched off wins over everything: a paused module does not turn an
         // off switch into a paused rule.
-        XCTAssertEqual(RuleNote.of(enabled: false, satisfied: false,
+        XCTAssertEqual(RuleNote.of(enabled: false, satisfied: false, batteryStopped: false,
                                    suppressed: true, triggerHolds: true), .meaning)
     }
 

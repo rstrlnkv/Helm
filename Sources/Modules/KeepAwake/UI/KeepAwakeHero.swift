@@ -104,6 +104,15 @@ struct KeepAwakeHero: View {
     let start: (Int) -> Void
     let stop: () -> Void
     let resume: () -> Void
+    /// How the veto is said out loud, once, when it arrives.
+    ///
+    /// Substitutable because an announcement leaves nothing behind that a test
+    /// could read: `AccessibilityNotification.Announcement.post()` returns
+    /// nothing, records nothing and does nothing at all with VoiceOver off, so
+    /// the alternative is the promise this file's own notes warn about — a rule
+    /// written in prose with nothing under it. `HelmA11y.announce` is the one
+    /// that ships.
+    let announce: (String) -> Void
 
     /// Natural height of whichever state is showing, so the block can ramp
     /// between two of them instead of snapping. Written inside the transaction
@@ -158,7 +167,8 @@ struct KeepAwakeHero: View {
          batteryStopped: Bool, batteryFloor: Int,
          timedNote: @escaping (Date) -> String,
          start: @escaping (Int) -> Void, stop: @escaping () -> Void,
-         resume: @escaping () -> Void) {
+         resume: @escaping () -> Void,
+         announce: @escaping (String) -> Void = HelmA11y.announce) {
         self.state = state
         self.now = now
         self.anyRuleOn = anyRuleOn
@@ -172,6 +182,7 @@ struct KeepAwakeHero: View {
         self.start = start
         self.stop = stop
         self.resume = resume
+        self.announce = announce
         _shownState = State(initialValue: state)
         _shownSuppressed = State(initialValue: suppressed || batteryStopped)
     }
@@ -245,6 +256,21 @@ struct KeepAwakeHero: View {
         .onChange(of: hasNotice) { _, notice in
             withAnimation(HelmMotion.disclosure) { shownSuppressed = notice }
         }
+        // **The one change on this page that nobody caused.** Every other state
+        // here follows a press: the reader has just pressed Stop, or a preset, and
+        // whatever the screen does next is the answer to it. The veto arrives
+        // because a charge fell — the session ends, five buttons go grey and a
+        // notice grows in, and none of that moves focus or changes the value of
+        // anything a VoiceOver reader is on. Without this the page went silent and
+        // stayed silent.
+        //
+        // On the rising edge only: `onChange` fires on a change, and the guard
+        // lifting is not news that needs interrupting anybody — the buttons work
+        // again, which is what pressing one will say. Said with the long form,
+        // because the way out is the whole point of speaking at all.
+        .onChange(of: batteryStopped) { _, stopped in
+            if stopped { announce(KAStr.stoppedByBattery(batteryFloor)) }
+        }
     }
 
     // MARK: - The four states
@@ -280,8 +306,21 @@ struct KeepAwakeHero: View {
             // third branch — «something other than Helm is keeping this Mac
             // awake» — which contradicted the 40 pt sentence directly above it
             // (see the note on `heroIdle`).
+            //
+            // And it steps aside for the banner, which is the reason. Under the
+            // veto this line said «No rule applies right now» — true, and the
+            // vaguest of the three things the screen then knew, sitting between a
+            // figure saying the Mac sleeps and a notice naming the charge. Two
+            // answers to one question, and the useful one was the lower.
+            //
+            // Opacity, not an `if`: the condition arrives from the engine and
+            // changes under the reader, and `.idle` and `.timed` are the same
+            // height by design — the note on `stopNote` below is the same rule.
             Text(anyRuleOn ? KAStr.heroIdleReason : KAStr.heroNoRules)
                 .font(.system(size: 13)).foregroundStyle(HelmText.faint)
+                .opacity(batteryStopped ? 0 : 1)
+                .animation(HelmMotion.interface, value: batteryStopped)
+                .accessibilityHidden(batteryStopped)
             HelmWrappingRow {
                 presetButtons
                 // Lengths first, then the one that has none. Every button up to
@@ -514,9 +553,19 @@ struct KeepAwakeHero: View {
     /// is: «Default duration» on this same page, three cards down, names the
     /// two controls that use it. A row of verbs is not the place to annotate a
     /// preference.
+    /// Disabled while the battery guard vetoes, which is the one state where
+    /// every verb on this row is a verb that does nothing.
+    ///
+    /// `recompute` reaches `releaseForBattery` before anything is held, so a
+    /// session asked for under the veto is refused *instantly* — «a person who
+    /// pressed 15 min at 5 % saw nothing happen», which is the sentence the
+    /// notice was written for. The notice explains it; a live button beside it
+    /// invites the person to test the explanation, and the second press is what
+    /// makes somebody decide the app is broken rather than the battery flat.
     private func startButton(_ title: String, minutes: Int) -> some View {
         Button(title) { start(minutes) }
             .controlSize(.large)
+            .disabled(batteryStopped)
     }
 
     private var stopButton: some View {
@@ -537,6 +586,10 @@ struct KeepAwakeHero: View {
             showCustomTime = true
         }
         .controlSize(.large)
+        // The fourth answer to «for how long», and under the veto it is as dead
+        // as the three presets beside it — see `startButton`. Worse than dead, in
+        // fact: this one opens a popover and takes a number before refusing.
+        .disabled(batteryStopped)
         .popover(isPresented: $showCustomTime, arrowEdge: .bottom) { customTimeEditor }
     }
 

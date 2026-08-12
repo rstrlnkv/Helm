@@ -236,7 +236,6 @@
 "Letters" = "文字";
 "Letters in a frame" = "文字（枠のみ）";
 "Letters on a filled badge" = "文字（背景あり）";
-"Lid closed — staying awake" = "ふたを閉じてもスリープ防止";
 "Light" = "ライト";
 "Log" = "ログ";
 "Login Items" = "ログイン項目";
@@ -689,8 +688,11 @@
 "Paused until the rule applies again" = "次に条件を満たすまで一時停止中";
 "Stop on low battery" = "バッテリー残量が少ないときは停止";
 "Stay awake with the lid closed" = "ふたを閉じても起きたまま";
-"Sleep is off right now" = "いまスリープは切になっています";
-"The saved app rules could not be read, so no app is keeping the Mac awake" = "保存されたアプリのルールを読み取れなかったため、どのアプリも Mac を起きたままにしていません";
+"Sleep is off for the whole Mac right now" = "いま Mac 全体でスリープがオフになっています";
+"Sleep is off for the whole Mac right now. Turning this setting off brings it back" = "いま Mac 全体でスリープがオフになっています。この設定をオフにすると戻ります";
+"macOS refused to turn sleep off — the rule in /etc/sudoers.d may have been changed" = "macOS がスリープをオフにするのを拒否しました。/etc/sudoers.d のルールが変更されている可能性があります";
+"The rule in /etc/sudoers.d is still there. Switch this on and off again to remove it" = "/etc/sudoers.d のルールがまだ残っています。この設定をオンにして再度オフにすると削除できます";
+"Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again" = "Helm が保存されたアプリのルールを読み取れないため、どのアプリも Mac を起きたままにしていません。アプリをもう一度追加してください";
 "A timer pauses the rule too" = "タイマーはルールも一時停止する";
 "Move the pointer" = "ポインタを動かす";
 "Keep the display on" = "ディスプレイを消さない";
@@ -709,7 +711,7 @@
 "Until you stop it" = "停止するまで";
 "While an external display is connected" = "外部ディスプレイが接続されている間";
 "While the Mac is on power" = "Mac が電源に接続されている間";
-"macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "初回に macOS が管理者パスワードを求め、以後は確認なしにスリープを切れるルールを残します。この設定を切ると、そのルールも消えます。スリープを切ったまま Helm を終了すると、次に Helm を起動するまで切のままです。";
+"macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. Quitting Helm turns sleep back on; if Helm crashes or is force-quit, the next launch turns it back on." = "初回に macOS が管理者パスワードを求め、以後は確認なしにスリープをオフにできるルールを残します。この設定をオフにすると、そのルールも消えます。Helm を終了するとスリープはオンに戻ります。Helm がクラッシュしたり強制終了された場合は、次回の起動でオンに戻ります。";
 "Developer" = "開発";
 "Interface language" = "インターフェイスの言語";
 "Dev builds only, for reading the app in a language this Mac is not set to." = "dev ビルド専用。この Mac に設定されていない言語でアプリを読むためのものです。";
@@ -728,7 +730,7 @@
 "Rule paused" = "ルール一時停止";
 "Brown" = "ブラウン";
 "Other colour…" = "その他…";
-"The battery guard says so on screen. It used to end sessions in silence — you pressed “15 min” at 5 % and nothing happened, with the reason only in the log. The panel and the settings page both say it now." = "バッテリー保護が画面で知らせます。これまでは黙ってセッションを終えていました。残り 5 % で“15 分”を押しても何も起きず、理由はログにしかありませんでした。今はパネルと設定ページの両方が伝えます。";
+"The battery guard says so on screen. It used to end sessions in silence — you pressed “15 min” at 5% and nothing happened, with the reason only in the log. The panel and the settings page both say it now." = "バッテリー保護が画面で知らせます。これまでは黙ってセッションを終えていました。残り 5% で“15 分”を押しても何も起きず、理由はログにしかありませんでした。今はパネルと設定ページの両方が伝えます。";
 "A colour of your own: the colour menu ends with “Other…”, which opens the system colour panel — the way Calendar offers one. The palette itself is Calendar’s, and follows light and dark the way the system’s colours do." = "自分の色を。カラーメニューの最後に“その他…”があり、システムのカラーパネルが開きます。カレンダーと同じやり方です。パレット自体もカレンダーのもので、システムの色と同じくライトとダークに追随します。";
 "“Stop on low battery” is a slider with stops, the way the charge limit is set in Battery. And the two colour rows are a dot and a name instead of two rows of ten swatches." = "“バッテリー残量が少ないときは停止”はステップ付きのスライダになりました。“バッテリー”の充電上限と同じ操作です。色の 2 行も、10 個ずつ並ぶ見本ではなく、点と名前になりました。";
 "No VPNs are set up on this Mac" = "この Mac には VPN が設定されていません";

@@ -26,16 +26,32 @@ public enum RuleNote: Equatable, Sendable {
     /// On, its trigger *is* true, and it is being ignored until the trigger
     /// drops and comes back.
     case paused
+    /// On, and the battery guard has everything stopped: nothing this module does
+    /// will run until the charge comes back or the charger goes in, whatever this
+    /// rule's own trigger says.
+    ///
+    /// The fifth case, and the second one added for the same reason as the
+    /// fourth: `satisfied` is false under the veto — `releaseForBattery` empties
+    /// `activeConditions` — so a rule whose trigger was still true fell to «Not
+    /// applying right now», which is true and is the least useful of the three
+    /// things the screen knew.
+    case vetoed
 
     /// - Parameter satisfied: the rule is in `activeConditions` — which a
     ///   paused rule never is, hence the separate flag below.
+    /// - Parameter batteryStopped: the guard is vetoing everything. A property of
+    ///   the *Mac* rather than of this rule, so unlike `suppressed` it does not
+    ///   ask whether the rule's own trigger holds — and it outranks the pause,
+    ///   because both can be true and only one of them explains why nothing at
+    ///   all is happening.
     /// - Parameter suppressed: the module as a whole is suppressed. It applies
     ///   to this row only when the rule's own trigger holds; a rule that is
     ///   merely waiting is not the one that was paused, and marking it so would
     ///   put «Paused» on every switched-on rule on the page.
-    public static func of(enabled: Bool, satisfied: Bool,
+    public static func of(enabled: Bool, satisfied: Bool, batteryStopped: Bool,
                           suppressed: Bool, triggerHolds: Bool) -> RuleNote {
         guard enabled else { return .meaning }
+        if batteryStopped { return .vetoed }
         if satisfied { return .applies }
         return suppressed && triggerHolds ? .paused : .waiting
     }

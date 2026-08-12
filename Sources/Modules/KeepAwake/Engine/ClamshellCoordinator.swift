@@ -39,9 +39,32 @@ final class ClamshellCoordinator: @unchecked Sendable {
     var stateChanged: () -> Void = {}
 
     /// Sleep really is disabled system-wide, as far as `pmset` was willing to
-    /// say. The panel draws «Lid closed — staying awake» from this, so it is
-    /// false whenever the call refused.
+    /// say. Every surface that says «sleep is off for the whole Mac» draws this,
+    /// so it is false whenever the call refused.
     private(set) var active = false
+
+    /// macOS was asked to turn sleep off and said no.
+    ///
+    /// `active` going false already carried this, and carried it as *nothing has
+    /// happened* — which is what the row then said, in a paragraph about what an
+    /// administrator password buys. The two states have to be told apart on the
+    /// wire, because only one of them is a switch that says one thing while the
+    /// machine does another, and this module's whole claim is that a lid is safe
+    /// to close.
+    ///
+    /// Cleared by the next attempt that succeeds, so it is the state of the last
+    /// answer rather than a memory of the worst one.
+    private(set) var refused = false
+
+    /// The option went off, the rule was asked to go with it, and it is still
+    /// there.
+    ///
+    /// A declined administrator dialog is an answer; what it leaves behind is a
+    /// permanent passwordless `pmset disablesleep` for this account, which is the
+    /// price of a feature nobody is using any more. `removeSudoers`' own `Bool`
+    /// was discarded, so the only record of it was a log line blaming somebody
+    /// else for a rule Helm wrote.
+    private(set) var grantRemains = false
 
     /// An admin password prompt is on screen and has not been answered.
     ///
@@ -227,10 +250,18 @@ final class ClamshellCoordinator: @unchecked Sendable {
         guard clamshell.setDisableSleep(true) else {
             HelmLog.shared.warn("keepawake", "closed-lid sleep could not be disabled")
             active = false
+            // Asked and refused, which is not the same as never asked — and it is
+            // the difference the lid row draws. Set before the emit, or the
+            // payload this very call publishes still says nothing is wrong.
+            refused = true
             stateChanged()
             return
         }
         active = true
+        refused = false
+        // A grant that is being used is not a grant left behind. The complaint
+        // only makes sense while the option is off.
+        grantRemains = false
         // A change to the system's own sleep setting, made through sudo and
         // outliving the process — the one thing here a crash can leave behind.
         // Both ends of it belong in the trail.
@@ -263,35 +294,70 @@ final class ClamshellCoordinator: @unchecked Sendable {
 
     /// Switching the option off takes the passwordless rule back out. The rule
     /// is the price of the feature, not of having installed Helm.
-    ///
-    /// Silent on failure — the person declined the password prompt, which is an
-    /// answer, and the rule stays until they say otherwise.
     func releaseIfUnneeded() {
-        guard !settings.clamshellEnabled, clamshell.isSudoersInstalled() else { return }
+        guard !settings.clamshellEnabled else { return }
+        removeGrant()
+    }
+
+    /// The module itself is being switched off, by hand, in Settings.
+    ///
+    /// The same falling edge as the option's own, arrived at from one screen over:
+    /// a module that is off will not use the grant either, and this is the last
+    /// moment there is somebody at the screen to answer the dialog. `tearDown`
+    /// cannot do it — `applicationWillTerminate` calls that on every live engine,
+    /// so removing the rule there put an administrator password dialog on screen
+    /// on behalf of an app that was already gone (`tearDown` has the story). What
+    /// tells the two apart is `ModuleEngine.willDisable`, which only the person's
+    /// own switch calls.
+    ///
+    /// The setting is left where it is: somebody who switches the module back on
+    /// asked for the lid option once and will be asked for the password again,
+    /// which is the same round trip switching the option off and on already makes.
+    func releaseOnModuleDisabled() { removeGrant() }
+
+    /// Silent on a declined prompt in the log's terms — that is an answer, not a
+    /// fault — and **not** silent on screen: what a decline leaves behind is a
+    /// permanent grant for a feature nobody is using.
+    private func removeGrant() {
+        guard clamshell.isSudoersInstalled() else { return }
         guard !removalInFlight else { return }
         removalInFlight = true
-        clamshell.removeSudoers { [weak self] _ in
+        clamshell.removeSudoers { [weak self] removed in
             guard let self else { return }
-            // The file is gone and the grant may not be. Measured on a real
-            // machine: `/etc/sudoers.d` held the identical rule under another
-            // name, so «removed» was reported while any process running as this
-            // user still had passwordless `pmset disablesleep`. A revocation
-            // that revokes nothing is worse than none, because it is reported as
-            // done.
+            // **Which rule survived decides who is being talked about.** Both
+            // branches were one line accusing a third party, and one of the two
+            // cases it fired in is the case where Helm wrote the rule itself: a
+            // declined dialog leaves *our* file exactly where it was, and the
+            // report «a rule survives that Helm did not write» then sent whoever
+            // read the log looking for a second one.
             //
-            // Read here rather than after a hop: this touches no state of ours,
+            // Read here rather than after a hop: these touch no state of ours,
             // and a hop would put the check after the caller returns — which is
             // how a synchronous fake releases a gate before the thing it gates
             // has happened, and how a test of it passes for free.
-            if self.clamshell.canDisableSleepWithoutPassword() {
+            let ours = !removed && self.clamshell.isSudoersInstalled()
+            if ours {
+                HelmLog.shared.warn("keepawake",
+                                    "the passwordless pmset rule Helm wrote was not removed")
+            } else if self.clamshell.canDisableSleepWithoutPassword() {
+                // The file is gone and the grant is not. Measured on a real
+                // machine: `/etc/sudoers.d` held the identical rule under another
+                // name, so «removed» was reported while any process running as
+                // this user still had passwordless `pmset disablesleep`. A
+                // revocation that revokes nothing is worse than none, because it
+                // is reported as done.
                 HelmLog.shared.warn("keepawake",
                                     "a passwordless pmset rule survives that Helm did not write")
             }
-            // Our own flag does hop: cleared whatever the answer was, because a
-            // declined removal has to be askable again, and a flag left standing
-            // would mean the rule could never come off for the life of the
-            // process.
-            Task { @MainActor in self.removalInFlight = false }
+            // State of ours does hop. `removalInFlight` is cleared whatever the
+            // answer was, because a declined removal has to be askable again, and
+            // a flag left standing would mean the rule could never come off for
+            // the life of the process.
+            Task { @MainActor in
+                self.removalInFlight = false
+                self.grantRemains = ours
+                self.stateChanged()
+            }
         }
     }
 }

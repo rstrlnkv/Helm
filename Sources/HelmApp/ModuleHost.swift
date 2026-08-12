@@ -105,6 +105,11 @@ import HelmUI
         let key = type(of: d).id.rawValue
         HelmLog.shared.info("host", "disable \(key)")
         let before = MemoryFootprint.current()
+        // Before the teardown, and only from here: this is the person's own
+        // switch, so it is the last moment an engine may ask them something.
+        // `shutdown()` — quitting — deliberately does not call it
+        // (`ModuleEngine.willDisable` has the story).
+        live[key]?.engine.willDisable()
         live[key]?.engine.deactivate()
         live[key] = nil
         // A scan task can outlive the engine that started it, and an interval

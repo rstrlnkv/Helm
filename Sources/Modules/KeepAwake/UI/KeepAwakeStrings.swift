@@ -95,10 +95,6 @@ enum KAStr {
         let h = minutes / 60, m = minutes % 60
         return m == 0 ? "\(h)\u{00A0}\(hUnit)" : "\(h)\u{00A0}\(hUnit) \(m)\u{00A0}\(mUnit)"
     }
-    static var lidClosed: String {
-        L("Lid closed — staying awake")
-    }
-
     /// **The case, not its spelling.** This took the wire string and ended in
     /// `default: return wire` — so a condition this build did not know was
     /// drawn on screen as `externalDisplay`, in every language, and a renamed
@@ -143,13 +139,32 @@ enum KAStr {
     ///
     /// `.paused` deliberately re-uses `automationPaused` — the banner's own
     /// sentence. Two spellings of one fact was the defect; a second key here
-    /// would have been a third.
-    static func ruleNote(_ note: RuleNote, _ condition: ActiveCondition) -> String {
+    /// would have been a third. `.vetoed` re-uses the battery notice for the
+    /// same reason, in its short form: the banner above the card carries the way
+    /// out, and repeating it on every rule row would be the page saying «plug
+    /// in» four times.
+    static func ruleNote(_ note: RuleNote, _ condition: ActiveCondition,
+                         batteryFloor: Int) -> String {
         switch note {
         case .meaning: return ruleMeaning(condition)
         case .applies: return ruleApplies
         case .waiting: return ruleWaiting
         case .paused: return automationPaused
+        case .vetoed: return stoppedByBatteryShort(batteryFloor)
+        }
+    }
+    /// The lid row's line, from the four states the machine can be in.
+    ///
+    /// Two of them are new and both are the same kind of silence the rest of this
+    /// module has been spending the release closing: something was attempted, it
+    /// did not work, and the row went on explaining what the password buys. See
+    /// `LidRowNote`.
+    static func lidNote(_ note: LidRowNote) -> String {
+        switch note {
+        case .refused: return lidRefused
+        case .grantRemains: return lidGrantRemains
+        case .sleepIsOff: return sleepIsOffNote
+        case .whatItCosts: return adminNote
         }
     }
     /// The reason line under the figure: «External display · Safari».
@@ -190,8 +205,15 @@ enum KAStr {
     /// of it: the apps somebody picked stopped holding the Mac awake, and this
     /// page went on looking perfectly well. Says what was lost and what follows
     /// from it, because the second half is what the person actually noticed.
+    ///
+    /// **And then what to do.** «Could not be read» is a passive report of a
+    /// state, and the state is not recoverable by waiting: the string in the file
+    /// is not going to become readable, and the only way back is to pick the apps
+    /// again — which rewrites the key and takes the banner away with it. The
+    /// English is the key and the meaning gained a verb, so this is a new key
+    /// rather than eight corrections.
     static var appRulesUnreadable: String {
-        L("The saved app rules could not be read, so no app is keeping the Mac awake")
+        L("Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again")
     }
     /// What an app rule *is*, said where somebody would otherwise find out by
     /// trying. The section heading used to carry this job in its own tail —
@@ -316,19 +338,66 @@ enum KAStr {
     static var globalShortcut: String { L("Global shortcut") }
     static var toggleAction: String { L("Toggle Keep Awake") }
     static var keepAwakeLidClosed: String { L("Stay awake with the lid closed") }
-    /// The live half of the lid row, and the only place any window says it.
+    /// Sleep is off, and **for the whole Mac** — the scope is the point.
     ///
-    /// What the setting does is turn system sleep off for the whole Mac, through
-    /// a sudoers rule that outlives this process — the one thing this module does
-    /// that a person cannot see by looking at their menu bar. It was published on
-    /// the wire from the first version and read by the panel tile's subtitle
-    /// alone, so the page carrying the switch never mentioned it.
+    /// What the setting does is turn system sleep off machine-wide, through a
+    /// sudoers rule that outlives this process: the one thing this module does
+    /// that a person cannot see by looking at their menu bar. «Sleep is off right
+    /// now» could be read as Keep Awake holding an assertion, which is what every
+    /// other row on the page does and is nothing like this. So the new English
+    /// says whose sleep — and a Mac whose sleep is off is a Mac that will not
+    /// sleep in a bag, which is the fact worth spelling out.
     ///
-    /// Deliberately not `lidClosed`, which is the panel's «Lid closed — staying
-    /// awake»: that names the lid, in a subtitle listing what is holding the Mac.
-    /// This row's title already says «with the lid closed», so what is left to
-    /// say is the state of the machine.
-    static var sleepIsOffNow: String { L("Sleep is off right now") }
+    /// This is the panel's spelling of it, in the subtitle beside the switch. That
+    /// subtitle is a fragment in a list joined with « · » inside a 320 pt card, so
+    /// it takes the sentence and not the way out of it; the settings row, which
+    /// has the width, takes `sleepIsOffNote` — the same sentence with the
+    /// revocation clause after it. One wording, two lengths, and
+    /// `testTheLidNoteOpensOnTheSentenceThePanelDraws` fails, in all eight, if the
+    /// long form stops opening on the short one.
+    ///
+    /// It replaced `lidClosed` — «Lid closed — staying awake» — which named the
+    /// lid in a list of what was holding the Mac. The lid is not what is holding
+    /// it; the lid is the thing that is safe to close *because* sleep is off, and
+    /// saying so was the half the panel never had.
+    static var sleepIsOffNow: String { L("Sleep is off for the whole Mac right now") }
+    /// The same fact where there is room for the way back out of it.
+    ///
+    /// A row that reports a system-wide setting has to say what un-does it, and
+    /// this one is not obvious: nothing in `/etc/sudoers.d` is going to un-do
+    /// itself, and the control that takes it back is the switch on this very row.
+    /// Without the second clause the row stated a permanent-sounding change to
+    /// somebody's Mac and left them looking for a way out of it.
+    static var sleepIsOffNote: String {
+        L("Sleep is off for the whole Mac right now. Turning this setting off brings it back")
+    }
+    /// macOS said no.
+    ///
+    /// `reallyEngage` reads `setDisableSleep(true)` — `sudo -n pmset disablesleep
+    /// 1` — and it fails whenever the NOPASSWD rule is not what Helm wrote:
+    /// removed by an admin, edited by a migration, tidied out of
+    /// `/etc/sudoers.d`. The engine logs it and holds `active` false, and the row
+    /// then drew the standing explanation of what the password buys, as though
+    /// nothing had been attempted. This is the one state in which the switch says
+    /// one thing and the machine does another, and a closed lid on that promise is
+    /// a flat battery in a bag.
+    ///
+    /// Names the file, because the person who can fix this is the person who can
+    /// read that directory.
+    static var lidRefused: String {
+        L("macOS refused to turn sleep off — the rule in /etc/sudoers.d may have been changed")
+    }
+    /// The option went off and the rule did not go with it.
+    ///
+    /// `releaseIfUnneeded` asks for the rule to be removed, which raises an
+    /// administrator dialog; a declined dialog is an answer, and the rule stays.
+    /// Its `Bool` was discarded, so the only record was a log line accusing
+    /// something else of having written a rule Helm wrote itself. A passwordless
+    /// `pmset disablesleep` for this account is not something to leave behind
+    /// silently.
+    static var lidGrantRemains: String {
+        L("The rule in /etc/sudoers.d is still there. Switch this on and off again to remove it")
+    }
     /// What the person is about to face and what they get for it. `pmset` was
     /// the tool's name, which answers a question nobody asked: the two things
     /// worth knowing are that the password prompt is macOS's own — not this
@@ -350,8 +419,19 @@ enum KAStr {
     /// say «it stays off», where «it» could attach to Helm as easily as to
     /// sleep — and the Russian resolved it to the wrong one, promising that
     /// *Helm* would start at Helm's next start. The noun is repeated.
+    ///
+    /// **And the third sentence was simply false.** «If Helm quits while sleep is
+    /// off, sleep stays off until Helm runs again» describes a Mac that cannot
+    /// sleep for as long as its owner leaves Helm closed, and that is not what
+    /// this code does: `applicationWillTerminate` calls `deactivate()` on every
+    /// live engine, which calls `ClamshellCoordinator.tearDown`, which puts sleep
+    /// back **synchronously** before the process goes. The state the old sentence
+    /// described is the crash and the force-quit — the two ways out that run no
+    /// code — and those are what `recoverAtLaunch` exists for. So the sentence now
+    /// says what happens, which is also the reassuring half; it read as a warning
+    /// about the ordinary case for eight languages.
     static var adminNote: String {
-        L("macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. If Helm quits while sleep is off, sleep stays off until Helm runs again.")
+        L("macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. Quitting Helm turns sleep back on; if Helm crashes or is force-quit, the next launch turns it back on.")
     }
     /// A timer started while a rule is already holding the Mac ends the rule as
     /// well. Says «too» because the timer already ends the session it started —
@@ -383,42 +463,83 @@ enum KAStr {
     /// settings page has room to add; here the word «paused» is the whole of
     /// what has to arrive, and the button beside it says what to do about it.
     static var automationPausedShort: String { L("Rule paused") }
-    /// The battery guard has everything stopped. Said on screen because the
-    /// session ends with nobody touching anything: a person who pressed «15
-    /// min» at 5 % saw nothing happen, and the only account of it was the log.
+    /// The boundary itself, mid-sentence: «при 20 % и ниже», «bei 20 % oder
+    /// weniger», «20% 以下».
     ///
-    /// **The floor is inclusive and the sentence says so.** This said «below» in
-    /// all eight languages — with 未満 and 低于, the strict operators, in the two
-    /// languages that have an inclusive one — while `BatteryGuard.shouldDeactivate`
-    /// is `percent <= threshold` and stops *at* the figure. That is the same
-    /// mismatch the audit corrected in `belowPercent` six rows down, and this
-    /// sentence was written ten days after that correction; it could not be seen
-    /// until the notice was wired up, because nothing drew the branch.
+    /// **One declaration, three sentences.** The floor is named by the row under
+    /// the slider, by the panel's notice and by the hero's, and each of the three
+    /// used to spell it again in eight languages — twenty-four spellings of one
+    /// phrase, which is how «below» survived in one of them for ten days after it
+    /// had been corrected in another (`BatteryGuard.shouldDeactivate` is
+    /// `percent <= threshold`, so the boundary is inclusive: 以下 and 及以下, never
+    /// 未満 or 低于). The three sentences are composed from this one now, so a
+    /// person who reads the row and then the banner reads the same words, and
+    /// `TheBoundaryIsSpelledOnceTests` fails on any of the three that stops
+    /// containing it.
     ///
-    /// The English is the key and the meaning changed, so this is a **new** key
-    /// rather than eight corrections, and each language spells the boundary the
-    /// way its corrected sibling already does — no-break space before the sign
-    /// included, which is macOS's own.
+    /// **The space before the sign is per language, not universal**, which is
+    /// what the note on this function used to claim. Counted over the 1176
+    /// `.loctable` files macOS ships, for a number and a literal per-cent sign:
+    /// ru, de, fr and es put a no-break space there, while pt-BR joins (143
+    /// joined, 0 spaced) and ja and zh join as a matter of course. English joins.
+    static func atPercentOrLess(_ n: Int) -> String {
+        L("at \(n)% or less",
+          [.ru: "при \(n)\u{00A0}% и ниже", .es: "al \(n)\u{00A0}% o menos",
+           .fr: "à \(n)\u{00A0}% ou moins", .de: "bei \(n)\u{00A0}% oder weniger",
+           .ja: "\(n)% 以下", .zh: "\(n)% 及以下", .pt: "em \(n)% ou menos"])
+    }
+
+    /// The battery guard has everything stopped, said where there is room to say
+    /// what to do about it: the hero, which is a 40 pt figure and a paragraph's
+    /// width under it.
+    ///
+    /// **The short form was the whole notice, and it named no way out.** «Stopped
+    /// at 20 % or less» is a fact; the person reading it has pressed a button and
+    /// watched nothing happen, and what they need next is *plug in* — the veto
+    /// lifts by itself the moment the charger goes in, which is the one thing
+    /// none of the three surfaces said. The panel keeps the short form, because
+    /// 320 pt beside a symbol is a row rather than a sentence
+    /// (`stoppedByBatteryShort`).
     static func stoppedByBattery(_ percent: Int) -> String {
-        L("Stopped at \(percent)% or less",
-          [.ru: "Остановлено при \(percent)\u{00A0}% и ниже",
-           .es: "Detenido al \(percent)\u{00A0}% o menos",
-           .fr: "Arrêté à \(percent)\u{00A0}% ou moins",
-           .de: "Bei \(percent)\u{00A0}% oder weniger gestoppt",
-           .ja: "\(percent)% 以下で停止",
-           .zh: "\(percent)% 及以下时停止",
-           .pt: "Parado em \(percent)\u{00A0}% ou menos"])
+        let at = atPercentOrLess(percent)
+        return L("Nothing keeps the Mac awake \(at) — plug in",
+                 [.ru: "Ничто не мешает Mac заснуть \(at) — подключите зарядку",
+                  .es: "Nada mantiene el Mac despierto \(at) — conéctalo a la corriente",
+                  .fr: "Rien ne maintient le Mac éveillé \(at) — branchez-le",
+                  .de: "Nichts hält den Mac \(at) wach — schließe ihn an das Netzteil an",
+                  .ja: "\(at)では Mac は起きたままになりません。電源に接続してください",
+                  .zh: "\(at)时不会让 Mac 保持唤醒 —— 请接通电源",
+                  .pt: "Nada mantém o Mac acordado \(at) — conecte-o à energia"])
+    }
+
+    /// The same fact for the panel, and for a rule's own row.
+    ///
+    /// 320 pt with a symbol beside it: the long form above wraps to four lines
+    /// there, which is a paragraph in a card that is otherwise a row — the same
+    /// reasoning `automationPausedShort` already carries one screen over. A rule
+    /// row's note is 11 pt secondary copy under a title, and the way out belongs
+    /// in the banner above it rather than repeated on three rows.
+    static func stoppedByBatteryShort(_ percent: Int) -> String {
+        let at = atPercentOrLess(percent)
+        return L("Stopped \(at)",
+                 [.ru: "Остановлено \(at)", .es: "Detenido \(at)", .fr: "Arrêté \(at)",
+                  .de: "\(belowPercent(percent)) gestoppt",
+                  .ja: "\(at)で停止", .zh: "\(at)时停止",
+                  .pt: "Parado \(at)"])
     }
     static var resume: String { L("Resume") }
     static var turnOffLowBattery: String { L("Stop on low battery") }
-    /// `BatteryGuard.shouldDeactivate` is `percent <= threshold`: at exactly the
-    /// figure shown, the session stops. Every language used to say "below" — and
-    /// ja/zh said it with 未満 / 低于, the strict operators, in languages that have
-    /// the inclusive one. The string named an operator the code does not use.
+    /// The boundary as a line of its own — the note under the slider — which is
+    /// the same phrase with its first letter raised.
     ///
-    /// The no-break space before the sign is macOS's own: every literal percent
-    /// in the system's own extension tables is joined.
-    static func belowPercent(_ n: Int) -> String { L("At \(n)% or less", [.ru: "При \(n)\u{00A0}% и ниже", .es: "Al \(n)\u{00A0}% o menos", .fr: "À \(n)\u{00A0}% ou moins", .de: "Bei \(n)\u{00A0}% oder weniger", .ja: "\(n)% 以下", .zh: "\(n)% 及以下", .pt: "Em \(n)\u{00A0}% ou menos"]) }
+    /// Raised rather than written out again: the five cased languages of the
+    /// eight all differ from `atPercentOrLess` in exactly that character, and ja
+    /// and zh open on the figure, where the operation is a no-op. A second table
+    /// here is how the two came to disagree about the operator once already.
+    static func belowPercent(_ n: Int) -> String {
+        let at = atPercentOrLess(n)
+        return at.prefix(1).uppercased() + at.dropFirst()
+    }
     static var activeIconColor: String { L("Active icon colour") }
     static var ringColorNote: String { L("Only while the Mac is kept awake. At other times Helm shows its shared icon") }
     static var addApp: String { L("Add app…") }

@@ -19,18 +19,27 @@ import SwiftUI
 ///
 /// The difference is which arguments are given, so a caller cannot accidentally
 /// make one look like the other.
+///
+/// **And the sentence is optional too**, which is the third case: a page whose
+/// explanation is already on screen, in a banner directly above. Keep Awake's app
+/// list draws one when its stored rules cannot be read — «add the apps again» is
+/// the banner's own last clause, and the invitation underneath was explaining
+/// what an app rule is and reporting that none was chosen, which the banner had
+/// just contradicted. So an invitation may be a plate and a verb. Every other
+/// call site says something, and should: `nil` here is for when the words are
+/// somewhere the reader is already looking.
 public struct HelmEmptyState<Actions: View>: View {
     private let symbol: String?
     private let tint: Color
     private let title: String?
-    private let message: String
+    private let message: String?
     private let note: String?
     private let actions: Actions
 
     public init(symbol: String? = nil,
                 tint: Color = .secondary,
                 title: String? = nil,
-                message: String,
+                message: String? = nil,
                 note: String? = nil,
                 @ViewBuilder actions: () -> Actions) {
         self.symbol = symbol
@@ -49,10 +58,12 @@ public struct HelmEmptyState<Actions: View>: View {
             if let title {
                 Text(title).font(.system(size: 17, weight: .semibold))
             }
-            Text(message)
-                .foregroundStyle(HelmText.quiet)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: Self.textWidth)
+            if let message {
+                Text(message)
+                    .foregroundStyle(HelmText.quiet)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: Self.textWidth)
+            }
             if let note {
                 // The second sentence of a statement: why there is nothing, or
                 // what was not looked at. Quieter than the first, because

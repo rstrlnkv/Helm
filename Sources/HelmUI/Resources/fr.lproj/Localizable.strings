@@ -236,7 +236,6 @@
 "Letters" = "Lettres";
 "Letters in a frame" = "Lettres dans un cadre";
 "Letters on a filled badge" = "Lettres sur un fond";
-"Lid closed — staying awake" = "Couvercle fermé — reste éveillé";
 "Light" = "Clair";
 "Log" = "Journal";
 "Login Items" = "Ouverture";
@@ -451,7 +450,7 @@
 "The Uninstaller’s last screen before deleting now names the app itself, not only its leftover files. Homebrew says plainly that its removal skips the Trash and can’t be undone — it’s the one deletion in Helm that really is permanent. Duplicates now confirms with the same count, size and named paths as Disk, and Disk’s advice about an old file now cites the date it was last written rather than calling it “untouched.” Safari is marked as a system app rather than offered for removal at “0 B.”" = "Le dernier écran de la désinstallation avant la suppression nomme désormais l’app elle-même, pas seulement ses résidus. Homebrew indique clairement que sa suppression saute la corbeille et est irréversible — c’est la seule suppression vraiment permanente dans Helm. Doublons confirme maintenant avec le même décompte, la même taille et les mêmes chemins nommés que Disque, et le conseil de Disque sur un vieux fichier cite désormais la date de sa dernière écriture plutôt que de le dire « intact ». Safari est marqué comme app système plutôt que proposé à la suppression pour « 0 Ko ».";
 "The VPN dial counted connections that had started themselves automatically, sitting right above the list of rules it looked like it was counting. Login Items & Extensions’ bottom bar mixed how many items were found with the size of what you’d selected." = "Le cadran VPN comptait les connexions qui s’étaient lancées automatiquement, juste au-dessus de la liste de règles qu’il semblait compter. Le bas de page d’Ouverture et extensions mélangeait le nombre d’éléments trouvés avec la taille de ce que vous aviez sélectionné.";
 "The app itself — always removed" = "L’app elle-même — toujours supprimée";
-"The battery guard — which stops Keep Awake from running a session down to empty — now starts on for new installs, at 20%. It shipped off by default, beside a session length that defaults to indefinite." = "La protection de batterie — celle qui empêche Rester éveillé de la vider complètement — est désormais activée par défaut à 20 % sur les nouvelles installations. Elle était désactivée par défaut, juste à côté d’une durée qui vaut par défaut « indéfinie ».";
+"The battery guard — which stops Keep Awake from running a session down to empty — now starts on for new installs, at 20%. It shipped off by default, beside a session length that defaults to indefinite." = "La protection de batterie — celle qui empêche Rester éveillé de la vider complètement — est désormais activée par défaut à 20 % sur les nouvelles installations. Elle était désactivée par défaut, juste à côté d’une durée qui vaut par défaut « indéfinie ».";
 "The copy that was there first. Helm never offers every copy of a file." = "La copie présente depuis le plus longtemps. Helm ne propose jamais toutes les copies d’un fichier.";
 "The disk is full. Moving to the Trash needs room, because the Trash is a folder on the same disk — empty it and try again." = "Le disque est plein. Placer dans la corbeille demande de la place, car la corbeille est un dossier du même disque — videz-la et réessayez.";
 "The disk list can be walked from the keyboard: arrow keys between rows, Return to go into a folder, ⌘↑ to come back out. And the screen now fits the width it has: on a narrow window the ring gives way to the list, which carries the same facts in less room." = "La liste du disque se parcourt au clavier : flèches entre les lignes, Retour pour entrer dans un dossier, ⌘↑ pour ressortir. Et la barre du haut tient à nouveau : l’info d’analyse est passée sous l’anneau.";
@@ -689,8 +688,11 @@
 "Paused until the rule applies again" = "En pause jusqu’au prochain déclenchement";
 "Stop on low battery" = "Arrêter si la batterie est faible";
 "Stay awake with the lid closed" = "Rester éveillé, couvercle fermé";
-"Sleep is off right now" = "La veille est désactivée en ce moment";
-"The saved app rules could not be read, so no app is keeping the Mac awake" = "Les règles d’apps enregistrées n’ont pas pu être lues, donc aucune app ne maintient le Mac éveillé";
+"Sleep is off for the whole Mac right now" = "La veille est désactivée en ce moment pour tout le Mac";
+"Sleep is off for the whole Mac right now. Turning this setting off brings it back" = "La veille est désactivée en ce moment pour tout le Mac. Désactiver ce réglage la rétablit";
+"macOS refused to turn sleep off — the rule in /etc/sudoers.d may have been changed" = "macOS a refusé de désactiver la veille — la règle dans /etc/sudoers.d a peut-être été modifiée";
+"The rule in /etc/sudoers.d is still there. Switch this on and off again to remove it" = "La règle dans /etc/sudoers.d est toujours là. Activez puis désactivez ce réglage pour la supprimer";
+"Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again" = "Helm ne peut pas lire les règles d’apps enregistrées, donc aucune app ne maintient le Mac éveillé. Ajoutez à nouveau les apps";
 "A timer pauses the rule too" = "Le minuteur met aussi la règle en pause";
 "Move the pointer" = "Bouger le pointeur";
 "Keep the display on" = "Garder l’écran allumé";
@@ -709,7 +711,7 @@
 "Until you stop it" = "Jusqu’à ce que vous l’arrêtiez";
 "While an external display is connected" = "Tant qu’un écran externe est branché";
 "While the Mac is on power" = "Tant que le Mac est sur secteur";
-"macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "La première fois, macOS demande un mot de passe administrateur et conserve une règle qui laisse Helm désactiver la veille sans redemander. Désactiver ceci la supprime. Si Helm est quitté alors que la veille est désactivée, elle le reste jusqu’au prochain lancement de Helm.";
+"macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. Quitting Helm turns sleep back on; if Helm crashes or is force-quit, the next launch turns it back on." = "La première fois, macOS demande un mot de passe administrateur et conserve une règle qui laisse Helm désactiver la veille sans redemander. Désactiver ceci la supprime. Quitter Helm réactive la veille. Si Helm plante ou est forcé à quitter, le lancement suivant la réactive.";
 "Developer" = "Développement";
 "Interface language" = "Langue de l’interface";
 "Dev builds only, for reading the app in a language this Mac is not set to." = "Versions dev uniquement, pour lire l’app dans une langue que ce Mac n’a pas.";
@@ -728,7 +730,7 @@
 "Rule paused" = "Règle en pause";
 "Brown" = "Marron";
 "Other colour…" = "Autre…";
-"The battery guard says so on screen. It used to end sessions in silence — you pressed “15 min” at 5 % and nothing happened, with the reason only in the log. The panel and the settings page both say it now." = "La protection de la batterie le dit à l’écran. Elle mettait fin aux sessions en silence : vous appuyiez sur « 15 min » à 5 %, rien ne se passait, et la raison n’était que dans le journal. Le panneau et la page des réglages le disent désormais.";
+"The battery guard says so on screen. It used to end sessions in silence — you pressed “15 min” at 5% and nothing happened, with the reason only in the log. The panel and the settings page both say it now." = "La protection de la batterie le dit à l’écran. Elle mettait fin aux sessions en silence : vous appuyiez sur « 15 min » à 5 %, rien ne se passait, et la raison n’était que dans le journal. Le panneau et la page des réglages le disent désormais.";
 "A colour of your own: the colour menu ends with “Other…”, which opens the system colour panel — the way Calendar offers one. The palette itself is Calendar’s, and follows light and dark the way the system’s colours do." = "Une couleur à vous : le menu des couleurs se termine par « Autre… », qui ouvre la palette du système — comme le propose Calendrier. La palette elle-même vient de Calendrier et suit le clair et le sombre comme les couleurs du système.";
 "“Stop on low battery” is a slider with stops, the way the charge limit is set in Battery. And the two colour rows are a dot and a name instead of two rows of ten swatches." = "« Arrêter à batterie faible » est un curseur à crans, comme la limite de charge dans « Batterie ». Et les deux lignes de couleur sont une pastille et un nom au lieu de deux rangées de dix.";
 "No VPNs are set up on this Mac" = "Aucun VPN n’est configuré sur ce Mac";

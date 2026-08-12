@@ -43,9 +43,22 @@ import Module_KeepAwake_Engine
     /// The battery guard has everything stopped, and nothing will run until
     /// the charge comes back or the charger goes in.
     @Published public private(set) var batteryStopped = false
+    /// macOS was asked to turn sleep off for the whole Mac and refused. The one
+    /// state in which the lid switch says one thing and the machine does another.
+    @Published public private(set) var lidRefused = false
+    /// The lid option is off and the `/etc/sudoers.d` rule it needed is still
+    /// there, because the removal was declined.
+    @Published public private(set) var lidGrantRemains = false
     /// Any rule at all — the condition under which Stop silences a rule as
     /// well as ending the session.
     public var ruleHolds: Bool { !triggeredConditions.isEmpty }
+    /// What the lid row's note says, from the three facts the engine publishes
+    /// about it. The rule is `LidRowNote`'s, out in the engine's logic where a
+    /// test can reach it, for the same reason `RuleNote` is.
+    public var lidRowNote: LidRowNote {
+        LidRowNote.of(refused: lidRefused, grantRemains: lidGrantRemains,
+                      holding: clamshellActive)
+    }
 
     public let vm: ModuleViewModel
 
@@ -97,6 +110,8 @@ import Module_KeepAwake_Engine
         triggeredConditions = Set(p.triggeredConditions.compactMap(ActiveCondition.init(rawValue:)))
         holdingApps = p.holdingApps
         batteryStopped = p.batteryStopped
+        lidRefused = p.lidRefused
+        lidGrantRemains = p.lidGrantRemains
     }
 
     /// Named by the engine's own enum, and only that.

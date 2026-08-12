@@ -41,6 +41,11 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     public private(set) var activeConditions: Set<ActiveCondition> = []
     /// Forwarded, because the wire and the panel have always called it this.
     public var clamshellActive: Bool { lid.active }
+    /// macOS was asked to turn sleep off and refused, and the lid row says so —
+    /// see `ClamshellCoordinator.refused`.
+    public var lidRefused: Bool { lid.refused }
+    /// The option is off and its passwordless rule is still in `/etc/sudoers.d`.
+    public var lidGrantRemains: Bool { lid.grantRemains }
     public private(set) var endDate: Date?
     /// When the current timed session began (nil when there is no timer).
     public private(set) var startDate: Date?
@@ -141,6 +146,20 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         // conditions it resolves rather than something added afterwards.
         restoreSession()
         recompute()
+    }
+
+    /// The person switched the module off, and is still looking at the screen.
+    ///
+    /// The grant's lifetime is the *feature*, not the process, and until now the
+    /// only falling edge that took it out was the lid option's own switch — so
+    /// somebody who switched all of Keep Awake off left a permanent passwordless
+    /// `pmset disablesleep` behind for a module they had just turned off, with the
+    /// only way back to it being to switch the module on again and find the
+    /// option. This is the same edge, reached from one screen up, and it is the
+    /// last moment there is anybody to answer the administrator dialog: quitting
+    /// runs `deactivate()` and must not ask (`ModuleEngine.willDisable`).
+    public func willDisable() {
+        lid.releaseOnModuleDisabled()
     }
 
     public func deactivate() {
@@ -649,35 +668,6 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 
     // MARK: - Transport
 
-    /// Public because the page decodes it. It was typed out again over there,
-    /// matched to this one by field names across a JSON hop with no compiler
-    /// in between — and a field that stops matching does not fail, it silently
-    /// decodes to nothing and the screen keeps its defaults forever. That is
-    /// the bug `ModuleViewModel`'s own doc comment records, shipped once and
-    /// then re-created inside the modules.
-    public struct StatePayload: Codable {
-        public let isActive: Bool
-        public let conditions: [String]
-        public let clamshellActive: Bool
-        public let endDate: Date?
-        public let startDate: Date?
-        /// A rule that applies and is being ignored. Every other field here
-        /// describes a Mac being held awake; this one is the only account of a
-        /// Mac that is not, while everything on screen says it should be.
-        public let suppressed: Bool
-        /// Defaulted, because this field arrived after the wire did and an
-        /// older payload still has to decode. Absent means «no rule's trigger
-        /// holds», which is the reading that shows no caption and no «Paused»
-        /// note — a screen that says nothing beats a screen that says the
-        /// wrong thing.
-        public var triggeredConditions: [String] = []
-        /// Defaulted for the same reason as the field above: it arrived after
-        /// the wire did, and an older payload has to decode.
-        public var holdingApps: [String] = []
-        /// Defaulted like the two above: it arrived after the wire did.
-        public var batteryStopped: Bool = false
-    }
-
     private func wireTransport() {
         localTransport.setHandler { [weak self] cmd in
             guard let self else { return Data() }
@@ -722,7 +712,9 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                                     triggeredConditions: triggeredConditions
                                         .map(\.rawValue).sorted(),
                                     holdingApps: holdingApps,
-                                    batteryStopped: batteryStopped)
+                                    batteryStopped: batteryStopped,
+                                    lidRefused: lidRefused,
+                                    lidGrantRemains: lidGrantRemains)
         localTransport.emit(KeepAwakeEvent.state, encoding: payload)
     }
 }

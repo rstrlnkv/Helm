@@ -88,7 +88,7 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
         XCTAssertEqual(survivorLines(), 0)
     }
 
-    /// **Switching the module off leaves the rule, and that is the decision.**
+    /// **Quitting leaves the rule, and that is the decision.**
     ///
     /// It used to remove it here, which read well and could not work:
     /// `deactivate()` is what `applicationWillTerminate` calls on every live
@@ -97,11 +97,13 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
     /// two abandoned NOPASSWD files on this machine are what that looks like a
     /// year later, and Helm's own removal was written the same way.
     ///
-    /// The grant belongs to the lid option: `releaseIfUnneeded` takes it out on
-    /// that setting's falling edge, with somebody at the screen to answer the
-    /// dialog (the two tests above, and
-    /// `AGrantIsNotRevokedByQuittingTests`).
-    func testSwitchingTheModuleOffLeavesTheRuleToTheLidOption() {
+    /// The grant belongs to the *feature*, and there are two falling edges of it
+    /// now: the lid option's own switch (`releaseIfUnneeded`, the two tests above)
+    /// and the module's (`willDisable`, which the host calls from the person's
+    /// switch and never from quitting —
+    /// `ALidThatDidNotWorkSaysSoTests`). `deactivate()` is the one route out that
+    /// may not ask, because it is the one nobody is watching.
+    func testQuittingLeavesTheRuleToTheTwoEdgesThatMayAsk() {
         clamshell.sudoersInstalled = true
         clamshell.passwordlessGrantExists = true
 

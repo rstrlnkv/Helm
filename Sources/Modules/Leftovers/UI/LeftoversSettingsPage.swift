@@ -179,7 +179,7 @@ struct LeftoversSettingsPage: View {
                     Text(item.identifier)
                         .lineLimit(1)
                         // Not SwiftUI's `.secondary`: it measures 3.95:1 here,
-                        // under the 4.5:1 body floor `HelmText.quiet` (4.62:1)
+                        // under the 4.5:1 body floor `HelmText.quiet` (4.92:1)
                         // exists to hold. A row nobody may delete is still a row
                         // somebody has to read.
                         .foregroundStyle(item.removable ? Color.primary : HelmText.quiet)

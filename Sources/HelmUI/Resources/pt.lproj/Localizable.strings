@@ -236,7 +236,6 @@
 "Letters" = "Letras";
 "Letters in a frame" = "Letras em uma moldura";
 "Letters on a filled badge" = "Letras sobre um fundo";
-"Lid closed — staying awake" = "Tampa fechada — continua ativo";
 "Light" = "Claro";
 "Log" = "Registro";
 "Login Items" = "Itens de Início";
@@ -689,8 +688,11 @@
 "Paused until the rule applies again" = "Em pausa até a regra se aplicar de novo";
 "Stop on low battery" = "Parar com bateria fraca";
 "Stay awake with the lid closed" = "Ficar acordado com a tampa fechada";
-"Sleep is off right now" = "O repouso está desativado agora";
-"The saved app rules could not be read, so no app is keeping the Mac awake" = "Não foi possível ler as regras de apps salvas, então nenhum app mantém o Mac acordado";
+"Sleep is off for the whole Mac right now" = "O repouso está desativado agora para todo o Mac";
+"Sleep is off for the whole Mac right now. Turning this setting off brings it back" = "O repouso está desativado agora para todo o Mac. Ao desativar este ajuste, ele volta";
+"macOS refused to turn sleep off — the rule in /etc/sudoers.d may have been changed" = "O macOS recusou desligar o repouso — a regra em /etc/sudoers.d pode ter sido alterada";
+"The rule in /etc/sudoers.d is still there. Switch this on and off again to remove it" = "A regra em /etc/sudoers.d ainda está lá. Ative e desative este ajuste de novo para removê-la";
+"Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again" = "O Helm não consegue ler as regras de apps salvas, então nenhum app mantém o Mac acordado. Adicione os apps de novo";
 "A timer pauses the rule too" = "O timer também pausa a regra";
 "Move the pointer" = "Mover o ponteiro";
 "Keep the display on" = "Não apagar a tela";
@@ -709,7 +711,7 @@
 "Until you stop it" = "Até você parar";
 "While an external display is connected" = "Enquanto um monitor externo estiver conectado";
 "While the Mac is on power" = "Enquanto o Mac estiver na tomada";
-"macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "Na primeira vez, o macOS pede uma senha de administrador e mantém uma regra que deixa o Helm desligar o repouso sem perguntar de novo. Desativar isto a remove. Se o Helm for encerrado enquanto o repouso está desativado, ele continua desativado até o Helm rodar de novo.";
+"macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. Quitting Helm turns sleep back on; if Helm crashes or is force-quit, the next launch turns it back on." = "Na primeira vez, o macOS pede uma senha de administrador e mantém uma regra que deixa o Helm desligar o repouso sem perguntar de novo. Desativar isto a remove. Sair do Helm liga o repouso de novo; se o Helm travar ou for forçado a sair, a próxima execução o liga de volta.";
 "Developer" = "Desenvolvimento";
 "Interface language" = "Idioma da interface";
 "Dev builds only, for reading the app in a language this Mac is not set to." = "Apenas versões dev, para ler o app num idioma que este Mac não tem definido.";
@@ -728,7 +730,7 @@
 "Rule paused" = "Regra em pausa";
 "Brown" = "Marrom";
 "Other colour…" = "Outra…";
-"The battery guard says so on screen. It used to end sessions in silence — you pressed “15 min” at 5 % and nothing happened, with the reason only in the log. The panel and the settings page both say it now." = "A proteção de bateria diz isso na tela. Antes encerrava as sessões em silêncio: você tocava em “15 min” com 5 % e nada acontecia, e o motivo ficava só no registro. Agora o painel e a página de ajustes dizem.";
+"The battery guard says so on screen. It used to end sessions in silence — you pressed “15 min” at 5% and nothing happened, with the reason only in the log. The panel and the settings page both say it now." = "A proteção de bateria diz isso na tela. Antes encerrava as sessões em silêncio: você tocava em “15 min” com 5% e nada acontecia, e o motivo ficava só no registro. Agora o painel e a página de ajustes dizem.";
 "A colour of your own: the colour menu ends with “Other…”, which opens the system colour panel — the way Calendar offers one. The palette itself is Calendar’s, and follows light and dark the way the system’s colours do." = "Uma cor sua: o menu de cores termina com “Outra…”, que abre a paleta do sistema — como o Calendário oferece. A paleta é a do Calendário e acompanha claro e escuro como as cores do sistema.";
 "“Stop on low battery” is a slider with stops, the way the charge limit is set in Battery. And the two colour rows are a dot and a name instead of two rows of ten swatches." = "“Parar com bateria fraca” é um controle deslizante com paradas, como o limite de carga em “Bateria”. E as duas linhas de cor viraram um ponto com o nome, em vez de duas fileiras de dez amostras.";
 "No VPNs are set up on this Mac" = "Nenhuma VPN configurada neste Mac";

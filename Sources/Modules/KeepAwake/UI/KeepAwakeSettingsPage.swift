@@ -12,13 +12,16 @@ struct KeepAwakeSettingsPage: View {
     // Observed, not held: the state strip reads isActive and the live
     // conditions, and a plain `let` means SwiftUI never hears them change —
     // the figures froze at whatever they were when the page opened.
-    @ObservedObject private var vm: KeepAwakeViewModel
-    private let store: NamespacedStore
+    @ObservedObject var vm: KeepAwakeViewModel
+    let store: NamespacedStore
 
     @State private var accessibility: PermissionState = .granted
     @State private var autoExternalDisplay: Bool
     @State private var autoPower: Bool
-    @State private var appTriggers: [AppTrigger]
+    /// Internal, not private: the app-rules editor reads and writes it from
+    /// `KeepAwakeAppRules.swift`, and an extension in another file of the same
+    /// module sees `internal` and not `private`.
+    @State var appTriggers: [AppTrigger]
 
     @State private var keepDisplayOn: Bool
     @State private var jiggleEnabled: Bool
@@ -271,22 +274,19 @@ struct KeepAwakeSettingsPage: View {
             // window said so.** `clamshellActive` was published, crossed the wire,
             // and was read by the panel tile's subtitle alone — so this row was
             // nailed to `.spacer`, and somebody who shut the lid saw the switch
-            // they had set and nothing of what it was doing. While sleep is off
-            // that is the note worth having; what the grant costs is what the row
-            // says the rest of the time, swapped like the rule rows above it.
+            // they had set and nothing of what it was doing.
             //
             // `.holding` or nothing, and no `.waiting` between: the switch on with
-            // the lid open is what the control itself says, and a clock there
-            // would be the row reporting the setting twice.
-            //
-            // No lid, nothing to keep awake with it closed — and this is the row
-            // that writes a passwordless sudo rule into `/etc/sudoers.d`, so
-            // drawing it where it can do nothing offers a permanent system grant
-            // for a feature the machine cannot use.
+            // the lid open is what the control says, and a clock there would be the
+            // row reporting the setting twice. No lid, no row — this is what writes
+            // a passwordless sudo rule into `/etc/sudoers.d`, so drawing it where it
+            // can do nothing offers a permanent grant for an unusable feature.
             if MacHardware.hasLid {
+                // Four sentences, and `LidRowNote` says which. The note reads the
+                // live values while the mark reads the drawn one: a mark shares the
+                // column's clock (`enabledRules`), a sentence has no column.
                 HelmSettingRow(KAStr.keepAwakeLidClosed,
-                               note: shownEnabled.lidHolding ? KAStr.sleepIsOffNow
-                                                             : KAStr.adminNote,
+                               note: KAStr.lidNote(vm.lidRowNote),
                                mark: shownEnabled.lidHolding
                                    ? .holding
                                    : .spacer(inCardWithMarks: shownMarksPossible)) {
@@ -311,10 +311,10 @@ struct KeepAwakeSettingsPage: View {
                         vm.save(in: store) { $0.setTimerEndsAutomation(v) }
                     }
             }
-            // The threshold and the switch on one row: a level means nothing
-            // with the guard off, and the pop-up is disabled rather than hidden
-            // so the number you set is still the number you see.
-            // A guard on a battery this Mac does not have.
+            // The threshold and the switch on one row — a level means nothing with
+            // the guard off, and the control is disabled rather than hidden so the
+            // number you set is still the number you see. Not drawn at all on a
+            // Mac with no battery for the guard to watch.
             if MacHardware.hasBattery {
                 // A slider with stops, the way Battery's own charge limit is
                 // set. The menu it replaces made a *quantity* into a list of
@@ -421,10 +421,11 @@ struct KeepAwakeSettingsPage: View {
         // which is paused — so it read as «Not applying right now» directly
         // under a banner saying it was paused.
         let note = RuleNote.of(enabled: enabled, satisfied: satisfied,
+                               batteryStopped: vm.batteryStopped,
                                suppressed: shownSuppressed,
                                triggerHolds: shownTriggered.contains(condition))
         HelmSettingRow(title,
-                       note: KAStr.ruleNote(note, condition),
+                       note: KAStr.ruleNote(note, condition, batteryFloor: batteryGuardPercent),
                        mark: .of(enabled: enabled, satisfied: satisfied,
                                  inCardWithMarks: shownMarksPossible)) {
             Toggle(title, isOn: binding)
@@ -442,10 +443,11 @@ struct KeepAwakeSettingsPage: View {
             // Asked of the store on every pass rather than mirrored into `@State`:
             // the way out of this state is adding an app, which rewrites the string
             // through `setAppTriggers`, so the answer has to be the file's own.
-            if KeepAwakeSettings(store: store).appRulesUnreadable {
+            let unreadable = KeepAwakeSettings(store: store).appRulesUnreadable
+            if unreadable {
                 HelmBanner(KAStr.appRulesUnreadable)
             }
-            appTriggersEditor
+            appRules(explained: !unreadable)
         }
     }
 
@@ -574,104 +576,6 @@ struct KeepAwakeSettingsPage: View {
     private func writeLook(_ value: Any?, _ key: String) {
         store.set(value, for: key)
         vm.send(KeepAwakeCommand.settingsChanged)
-    }
-
-    // MARK: - App picker
-
-    /// Rows handed to the `Section` one by one, not wrapped in a `VStack`.
-    ///
-    /// The wrapper made this the only per-app list in Helm without the system's
-    /// row padding and hairlines: measured against the identical list in VPN it
-    /// came out 13 pt shorter with no separators at all. The form draws both,
-    /// and draws them the way every other section is drawn.
-    @ViewBuilder
-    private var appTriggersEditor: some View {
-        if appTriggers.isEmpty {
-            // A sentence, not a shrug. «No apps yet.» said nothing about what
-            // an app rule is or why anybody would want one, and the section
-            // heading used to carry that job in its tail — re-explaining it on
-            // every visit for ever, including to people who already had a list.
-            // The explanation belongs where there is nothing to look at, and
-            // goes away as soon as there is.
-            HelmEmptyState(symbol: "plus.app",
-                           tint: KeepAwakeDescriptor.tint.colour,
-                           title: KAStr.noAppsYet,
-                           message: KAStr.noAppsYetNote) {
-                Button(KAStr.addApp) { pickApp() }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-            }
-        }
-            // One row per app: icon, name, when it applies, and the remove
-            // button. The condition is a single menu because the two flags are
-            // not independent choices — "display and power" means both.
-            ForEach(Array(appTriggers.enumerated()), id: \.element.bundleID) { index, trigger in
-                HelmAppRuleRow(bundleID: trigger.bundleID) {
-                    Picker(AppInfo.resolve(trigger.bundleID).name,
-                           selection: conditionBinding(index)) {
-                        ForEach(AppTrigger.Condition.allCases, id: \.self) { condition in
-                            Text(KAStr.triggerCondition(condition)).tag(condition)
-                        }
-                    }
-                    .labelsHidden()
-                    .fixedSize()
-                } remove: {
-                    appTriggers.remove(at: index)
-                    saveTriggers()
-                }
-        }
-        // Under a list, never under the empty state: there the one prominent
-        // button already carries this action, and two «Add app…» in one card is
-        // the app asking the same question twice.
-        if !appTriggers.isEmpty {
-            // The card's last row, not a button sitting in one: v3 draws it as
-            // a line of the list it adds to, in the accent, which is also how
-            // macOS's own lists offer «add».
-            Button {
-                pickApp()
-            } label: {
-                // The app rows above are a 22 pt icon and a 12 pt gap, and a
-                // `Label` uses neither — its own spacing put this title 6.5 pt
-                // to the left of every app name it sits under, which on a card
-                // of otherwise aligned rows reads as the last row being
-                // slightly broken. Spelled out, so the two agree by
-                // construction rather than by coincidence.
-                HStack(spacing: 12) {
-                    Image(systemName: "plus")
-                        .frame(width: 22, height: 22)
-                    Text(KAStr.addApp)
-                }
-                .foregroundStyle(Color.accentColor)
-                // The row is one target and one announcement, not a glyph and
-                // a word to stop on separately.
-                .accessibilityElement(children: .combine)
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
-    private func conditionBinding(_ index: Int) -> Binding<AppTrigger.Condition> {
-        Binding(
-            get: { appTriggers.indices.contains(index) ? appTriggers[index].condition : .always },
-            set: { newValue in
-                guard appTriggers.indices.contains(index) else { return }
-                appTriggers[index].set(newValue)
-                saveTriggers()
-            })
-    }
-
-    private func saveTriggers() {
-        vm.save(in: store) { $0.setAppTriggers(appTriggers) }
-    }
-
-    private func pickApp() {
-        var added = false
-        for bundleID in AppPicker.choose()
-        where !appTriggers.contains(where: { $0.bundleID == bundleID }) {
-            appTriggers.append(AppTrigger(bundleID: bundleID))
-            added = true
-        }
-        if added { saveTriggers() }
     }
 
     // MARK: - Color swatches

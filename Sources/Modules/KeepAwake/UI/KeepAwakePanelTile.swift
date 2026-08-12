@@ -154,6 +154,13 @@ struct KeepAwakePanelTile: View {
                 // Orange switch = an automation rule (display/power/app) is
                 // holding the session, so flipping it off may not stick.
                 .tint(autoDriven ? .orange : nil)
+                // Live but dead while the battery guard vetoes: the engine
+                // refuses the session instantly and the switch springs back, so
+                // the one control in the menu bar that starts a session was a
+                // control that visibly did nothing. The notice below it is on
+                // screen saying why, which is what makes disabling honest rather
+                // than mute.
+                .disabled(vm.batteryStopped)
                 .accessibilityLabel(KAStr.moduleName)
         }
     }
@@ -171,7 +178,13 @@ struct KeepAwakePanelTile: View {
         if !vm.activeConditions.isEmpty {
             parts.append(vm.activeConditions.map(KAStr.condition).sorted().joined(separator: ", "))
         }
-        if vm.clamshellActive { parts.append(KAStr.lidClosed) }
+        // **What is true of the machine, not what is true of the lid.** This said
+        // «Lid closed — staying awake», in a list of what was holding the Mac —
+        // and the lid is not holding anything: sleep is off for the whole Mac,
+        // through a rule that outlives this process, and the lid being closed is
+        // merely the reason somebody asked for that. The settings row says the
+        // same sentence, with the way back out of it after it.
+        if vm.clamshellActive { parts.append(KAStr.sleepIsOffNow) }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
@@ -190,6 +203,12 @@ struct KeepAwakePanelTile: View {
         }
     }
 
+    /// Every one of these asks the engine for a session, and while the battery
+    /// guard vetoes, the engine refuses instantly — `releaseForBattery` is
+    /// reached before anything is held. Pressing one was silence with a banner
+    /// beside it explaining a state the person had no reason to connect to the
+    /// press. Disabled, not hidden: a row of pills that came and went would take
+    /// the card's height with it, and the notice is the sentence.
     private func presetPill(_ label: String, _ minutes: Int,
                             spoken: String? = nil) -> some View {
         Button {
@@ -198,6 +217,7 @@ struct KeepAwakePanelTile: View {
             pillLabel(Text(label))
         }
         .buttonStyle(.plain)
+        .disabled(vm.batteryStopped)
         .accessibilityLabel(spoken ?? label)
     }
 
@@ -257,7 +277,11 @@ struct KeepAwakePanelTile: View {
             // what it says, and the notice goes by itself when the charger goes
             // in. The settings page draws the same pair the same way round.
             if vm.batteryStopped {
-                HelmBanner(KAStr.stoppedByBattery(batteryFloor), symbol: "battery.25")
+                // The short form. The hero says «— plug in» after it, which is
+                // the way out; here there is no room for a second clause beside a
+                // symbol in a 320 pt card, and the presets going grey above it
+                // are what says the panel cannot help.
+                HelmBanner(KAStr.stoppedByBatteryShort(batteryFloor), symbol: "battery.25")
             } else {
                 // The short form. In a 320 pt card beside a button the long
                 // sentence wrapped to four lines — a paragraph where everything

@@ -236,7 +236,6 @@
 "Letters" = "Letters";
 "Letters in a frame" = "Letters in a frame";
 "Letters on a filled badge" = "Letters on a filled badge";
-"Lid closed — staying awake" = "Lid closed — staying awake";
 "Light" = "Light";
 "Log" = "Log";
 "Login Items" = "Login Items";
@@ -689,8 +688,11 @@
 "Paused until the rule applies again" = "Paused until the rule applies again";
 "Stop on low battery" = "Stop on low battery";
 "Stay awake with the lid closed" = "Stay awake with the lid closed";
-"Sleep is off right now" = "Sleep is off right now";
-"The saved app rules could not be read, so no app is keeping the Mac awake" = "The saved app rules could not be read, so no app is keeping the Mac awake";
+"Sleep is off for the whole Mac right now" = "Sleep is off for the whole Mac right now";
+"Sleep is off for the whole Mac right now. Turning this setting off brings it back" = "Sleep is off for the whole Mac right now. Turning this setting off brings it back";
+"macOS refused to turn sleep off — the rule in /etc/sudoers.d may have been changed" = "macOS refused to turn sleep off — the rule in /etc/sudoers.d may have been changed";
+"The rule in /etc/sudoers.d is still there. Switch this on and off again to remove it" = "The rule in /etc/sudoers.d is still there. Switch this on and off again to remove it";
+"Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again" = "Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again";
 "A timer pauses the rule too" = "A timer pauses the rule too";
 "Move the pointer" = "Move the pointer";
 "Keep the display on" = "Keep the display on";
@@ -709,7 +711,7 @@
 "Until you stop it" = "Until you stop it";
 "While an external display is connected" = "While an external display is connected";
 "While the Mac is on power" = "While the Mac is on power";
-"macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. If Helm quits while sleep is off, sleep stays off until Helm runs again.";
+"macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. Quitting Helm turns sleep back on; if Helm crashes or is force-quit, the next launch turns it back on." = "macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. Quitting Helm turns sleep back on; if Helm crashes or is force-quit, the next launch turns it back on.";
 "Developer" = "Developer";
 "Interface language" = "Interface language";
 "Dev builds only, for reading the app in a language this Mac is not set to." = "Dev builds only, for reading the app in a language this Mac is not set to.";
@@ -728,7 +730,7 @@
 "Rule paused" = "Rule paused";
 "Brown" = "Brown";
 "Other colour…" = "Other colour…";
-"The battery guard says so on screen. It used to end sessions in silence — you pressed “15 min” at 5 % and nothing happened, with the reason only in the log. The panel and the settings page both say it now." = "The battery guard says so on screen. It used to end sessions in silence — you pressed “15 min” at 5 % and nothing happened, with the reason only in the log. The panel and the settings page both say it now.";
+"The battery guard says so on screen. It used to end sessions in silence — you pressed “15 min” at 5% and nothing happened, with the reason only in the log. The panel and the settings page both say it now." = "The battery guard says so on screen. It used to end sessions in silence — you pressed “15 min” at 5% and nothing happened, with the reason only in the log. The panel and the settings page both say it now.";
 "A colour of your own: the colour menu ends with “Other…”, which opens the system colour panel — the way Calendar offers one. The palette itself is Calendar’s, and follows light and dark the way the system’s colours do." = "A colour of your own: the colour menu ends with “Other…”, which opens the system colour panel — the way Calendar offers one. The palette itself is Calendar’s, and follows light and dark the way the system’s colours do.";
 "“Stop on low battery” is a slider with stops, the way the charge limit is set in Battery. And the two colour rows are a dot and a name instead of two rows of ten swatches." = "“Stop on low battery” is a slider with stops, the way the charge limit is set in Battery. And the two colour rows are a dot and a name instead of two rows of ten swatches.";
 "No VPNs are set up on this Mac" = "No VPNs are set up on this Mac";

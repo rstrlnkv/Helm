@@ -78,7 +78,7 @@ final class AppTriggerTests: XCTestCase {
     func testMigrationFromThePlainList() {
         let migrated = AppTriggerRules.migrating(from: ["a", "b"])
         XCTAssertEqual(migrated, [AppTrigger(bundleID: "a"), AppTrigger(bundleID: "b")])
-        XCTAssertFalse(migrated.contains { $0.needsExternalDisplay || $0.needsPower })
+        XCTAssertFalse(migrated?.contains { $0.needsExternalDisplay || $0.needsPower } ?? true)
     }
 
     // MARK: - The four states one control offers

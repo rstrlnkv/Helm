@@ -124,10 +124,18 @@ final class FakeClamshell: ClamshellPort {
         done?(granted)
     }
     var removeCalls = 0
+    /// Whether the removal goes through. **A fake that always succeeded made «the
+    /// administrator dialog was declined» an unrepresentable state**, so no test
+    /// of it could exist whatever anybody wrote — and what a declined removal
+    /// leaves behind is a permanent passwordless `pmset disablesleep` for this
+    /// account, for a feature that has just been switched off. `removeSudoers`
+    /// answering `false` while the file stays put is exactly what `osascript`
+    /// does when somebody presses Cancel.
+    var removalSucceeds = true
     func removeSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
         removeCalls += 1
-        sudoersInstalled = false
-        done(true)
+        if removalSucceeds { sudoersInstalled = false }
+        done(removalSucceeds)
     }
     /// Whether `pmset` accepts the call. A fake that always succeeds makes
     /// «the sudoers rule was removed behind the app's back» an unrepresentable

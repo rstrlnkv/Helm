@@ -209,9 +209,27 @@ public enum HelmLayout {
 /// two appearances rather than chosen and described afterwards.
 public enum HelmText {
     /// Secondary copy inside cards and rows: body text that happens to be
-    /// quieter, so it answers to the body threshold. 4.62:1 light, 5.78:1 dark
+    /// quieter, so it answers to the body threshold. 4.92:1 light, 6.06:1 dark
     /// — where the platform's own `.secondary` is 3.95:1 light.
-    public static let quiet = Color.primary.opacity(0.64)
+    ///
+    /// **It was 0.64, and 0.64 is not enough on a tinted field.** The four
+    /// surfaces this token was solved against are the page's — window, control,
+    /// and Helm's card and well on top of them — and there is a fifth that
+    /// belongs to a component: `HelmBanner` writes this ink on its own signal
+    /// colour at 13 %, which darkens the ground in light and lightens it in dark,
+    /// so it is stricter than all four in both appearances. Measured there,
+    /// 0.64 gave 4.44:1 on the window, 4.37:1 in a card and 4.34:1 in a well —
+    /// three readings under the body floor, on the field this app puts every
+    /// warning it has in.
+    ///
+    /// Lowering the *fill* cannot fix it: at 0.08, well past the point where the
+    /// field stops reading as a field, a card still measures 4.45:1. So the ink
+    /// moved, and 0.66 is the ladder step that clears all six banner readings
+    /// (worst 4.60:1 light, 4.88:1 dark) while taking the four page surfaces up
+    /// with it. It also puts `quiet` back above `faint`, which it had not been:
+    /// `faint` was raised to 0.65 to clear its own floor and had quietly become
+    /// the darker of the two.
+    public static let quiet = Color.primary.opacity(0.66)
     /// Captions that must recede and stay readable — short, and never the only
     /// place a fact appears. 4.77:1 / 5.92:1.
     ///

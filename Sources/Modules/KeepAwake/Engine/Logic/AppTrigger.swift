@@ -132,7 +132,29 @@ enum AppTriggerRules {
 
     /// Earlier versions stored a plain list of bundle ids. Those apps kept the
     /// Mac awake unconditionally, so that is what they migrate to.
-    static func migrating(from bundleIDs: [String]) -> [AppTrigger] {
-        deduplicated(bundleIDs.map { AppTrigger(bundleID: $0) })
+    ///
+    /// **The ceilings above guard one of the two readers, and the file chooses
+    /// which reader it goes to.** This one mapped whatever it found and answered
+    /// with all of it: 50 001 rules, ids a million characters long, on
+    /// `recompute`'s path — which runs from three observers. And reaching it takes
+    /// no cunning at all, because an absent or empty `autoAppRules` is exactly
+    /// what an older file looks like: the whole ceiling was one missing key away
+    /// from not existing.
+    ///
+    /// So `nil` here means the same as `nil` from `readable` — refused, not
+    /// truncated, and the refusal has a place to go (`AppRulesReading.unreadable`,
+    /// and the banner over the list).
+    ///
+    /// Both ceilings are checked before anything is built, for the reason
+    /// `maxEncodedBytes` is checked before anything is decoded: the cost is the
+    /// work, not the answer. The byte ceiling needs no check of its own here —
+    /// `maxRules` ids of `maxBundleIDLength` are about 64 KB encoded, half of it —
+    /// and `testTheTwoCheckedCeilingsKeepTheThirdOutOfReach` is what keeps that
+    /// arithmetic true if any of the three moves.
+    static func migrating(from bundleIDs: [String]) -> [AppTrigger]? {
+        guard bundleIDs.count <= maxRules,
+              bundleIDs.allSatisfy({ $0.count <= maxBundleIDLength })
+        else { return nil }
+        return deduplicated(bundleIDs.map { AppTrigger(bundleID: $0) })
     }
 }

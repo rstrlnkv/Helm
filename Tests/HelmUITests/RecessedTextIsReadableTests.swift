@@ -48,6 +48,28 @@ final class RecessedTextIsReadableTests: XCTestCase {
         return out
     }
 
+    /// **The fifth surface, and the one pairing that lands on it.**
+    ///
+    /// `HelmBanner` fills itself with its signal colour at 13 % and writes its
+    /// sentence on that in `HelmText.quiet`. The fill is not neutral: in light it
+    /// *darkens* the ground under dark ink and in dark it *lightens* it under
+    /// light ink, so it is stricter than any of the four above in both
+    /// appearances — and it went unmeasured, because the four surfaces were the
+    /// page's and this one belongs to a component.
+    ///
+    /// It is not in `surfaces(_:)`, deliberately. A banner draws exactly two
+    /// inks — the mark in the signal colour, the sentence in `quiet` — and
+    /// `separator` measures 2.96:1 there, under the 3:1 mark floor, for a pairing
+    /// the app never draws. Raising a chevron's opacity to satisfy a banner it
+    /// never sits on would be the guard inventing work; naming the pairing is what
+    /// keeps the reading about something real.
+    private func bannerSurfaces(_ appearance: NSAppearance.Name) -> [(String, NSColor)] {
+        let fill = Contrast.resolved(HelmSignal.warning.opacity(0.13), appearance)
+        return surfaces(appearance).filter { !$0.0.contains("control") }.map { name, ground in
+            ("\(name) + banner", Contrast.over(fill, ground))
+        }
+    }
+
     private func measure(_ ink: Color, on surface: NSColor,
                          _ appearance: NSAppearance.Name) -> Double {
         let resolved = Contrast.resolved(ink, appearance)
@@ -55,9 +77,10 @@ final class RecessedTextIsReadableTests: XCTestCase {
     }
 
     private func assertClears(_ ink: Color, _ name: String, _ floor: Double,
+                              on grounds: ((NSAppearance.Name) -> [(String, NSColor)])? = nil,
                               file: StaticString = #filePath, line: UInt = #line) {
         for appearance in Self.appearances {
-            for (surface, ground) in surfaces(appearance) {
+            for (surface, ground) in (grounds ?? surfaces)(appearance) {
                 let measured = measure(ink, on: ground, appearance)
                 XCTAssertGreaterThanOrEqual(
                     measured, floor,
@@ -84,6 +107,41 @@ final class RecessedTextIsReadableTests: XCTestCase {
     /// A chevron is a mark, so it answers to 3:1 rather than to nothing.
     func testSeparatorClearsTheMarkFloor() {
         assertClears(HelmText.separator, "separator", Contrast.markFloor)
+    }
+
+    /// **The banner's own sentence on the banner's own fill.** `HelmBanner`'s
+    /// pairing, named: `HelmText.quiet` over `HelmSignal.warning` at 13 %.
+    ///
+    /// Measured at 0.64 the day this was written: 4.44:1 on the bare window,
+    /// 4.37:1 inside a card, 4.34:1 in a well — three readings under the body
+    /// floor on the field this app puts its warnings in, every one of them a
+    /// sentence somebody has to read to find out that something stopped working.
+    /// Lowering the fill cannot solve it (0.08 still measures 4.45:1 in a card);
+    /// the ink is what moves, and 0.66 is the ladder step that clears all six.
+    func testTheBannersSentenceClearsTheBodyFloorOnItsOwnFill() {
+        assertClears(HelmText.quiet, "quiet", Contrast.bodyFloor, on: bannerSurfaces)
+    }
+
+    /// And the mark beside it is still a mark: the signal colour on 13 % of
+    /// itself is the weakest thing a banner draws, 3.53:1 at its worst.
+    func testTheBannersMarkClearsTheMarkFloorOnItsOwnFill() {
+        assertClears(HelmSignal.warning, "warning", Contrast.markFloor, on: bannerSurfaces)
+    }
+
+    /// The fifth surface is a fifth surface. A fill that resolved to nothing —
+    /// a tone whose colour went clear, an opacity edited to zero — would make
+    /// this whole file's newest reading the same one it already had.
+    func testTheBannerFillIsNotTheGroundUnderIt() {
+        for appearance in Self.appearances {
+            let plain = surfaces(appearance).filter { !$0.0.contains("control") }
+            let banner = bannerSurfaces(appearance)
+            XCTAssertEqual(plain.count, banner.count)
+            for (index, pair) in banner.enumerated() {
+                XCTAssertNotEqual(Contrast.luminance(pair.1),
+                                  Contrast.luminance(plain[index].1),
+                                  "the banner fill landed on nothing in \(appearance.rawValue)")
+            }
+        }
     }
 
     // MARK: - The measurement itself

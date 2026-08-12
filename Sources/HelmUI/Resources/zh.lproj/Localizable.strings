@@ -236,7 +236,6 @@
 "Letters" = "字母";
 "Letters in a frame" = "字母（描边框）";
 "Letters on a filled badge" = "字母（实心底）";
-"Lid closed — staying awake" = "合盖仍保持唤醒";
 "Light" = "浅色";
 "Log" = "日志";
 "Login Items" = "登录项";
@@ -689,8 +688,11 @@
 "Paused until the rule applies again" = "已暂停，直到规则再次满足";
 "Stop on low battery" = "低电量时停止";
 "Stay awake with the lid closed" = "合盖后仍保持唤醒";
-"Sleep is off right now" = "当前睡眠已关闭";
-"The saved app rules could not be read, so no app is keeping the Mac awake" = "无法读取已保存的 App 规则，因此没有 App 让 Mac 保持唤醒";
+"Sleep is off for the whole Mac right now" = "当前整台 Mac 的睡眠已关闭";
+"Sleep is off for the whole Mac right now. Turning this setting off brings it back" = "当前整台 Mac 的睡眠已关闭。关掉此设置即可恢复";
+"macOS refused to turn sleep off — the rule in /etc/sudoers.d may have been changed" = "macOS 拒绝关闭睡眠 —— /etc/sudoers.d 中的规则可能已被更改";
+"The rule in /etc/sudoers.d is still there. Switch this on and off again to remove it" = "/etc/sudoers.d 中的规则仍然存在。将此设置开启后再关闭即可移除";
+"Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again" = "Helm 无法读取已保存的 App 规则，因此没有 App 让 Mac 保持唤醒。请重新添加这些 App";
 "A timer pauses the rule too" = "计时结束也暂停规则";
 "Move the pointer" = "移动指针";
 "Keep the display on" = "不熄屏";
@@ -709,7 +711,7 @@
 "Until you stop it" = "直到你停止";
 "While an external display is connected" = "接着外接显示器时";
 "While the Mac is on power" = "Mac 接着电源时";
-"macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "首次启用时 macOS 会要求输入管理员密码，并保留一条规则，让 Helm 以后无需再询问就能关闭睡眠。关掉此设置会移除它。若在睡眠被关闭时退出 Helm，睡眠会一直关闭，直到 Helm 再次运行。";
+"macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. Quitting Helm turns sleep back on; if Helm crashes or is force-quit, the next launch turns it back on." = "首次启用时 macOS 会要求输入管理员密码，并保留一条规则，让 Helm 以后无需再询问就能关闭睡眠。关掉此设置会移除它。退出 Helm 会重新开启睡眠；若 Helm 崩溃或被强制退出，下次启动会重新开启。";
 "Developer" = "开发";
 "Interface language" = "界面语言";
 "Dev builds only, for reading the app in a language this Mac is not set to." = "仅限 dev 版本，用于以这台 Mac 未设置的语言阅读应用。";
@@ -728,7 +730,7 @@
 "Rule paused" = "规则已暂停";
 "Brown" = "棕色";
 "Other colour…" = "其他…";
-"The battery guard says so on screen. It used to end sessions in silence — you pressed “15 min” at 5 % and nothing happened, with the reason only in the log. The panel and the settings page both say it now." = "电量保护会在界面上说明。以前它会悄悄结束会话：你在 5 % 时按下“15 分钟”，什么都没发生，原因只在日志里。现在面板和设置页都会说明。";
+"The battery guard says so on screen. It used to end sessions in silence — you pressed “15 min” at 5% and nothing happened, with the reason only in the log. The panel and the settings page both say it now." = "电量保护会在界面上说明。以前它会悄悄结束会话：你在 5% 时按下“15 分钟”，什么都没发生，原因只在日志里。现在面板和设置页都会说明。";
 "A colour of your own: the colour menu ends with “Other…”, which opens the system colour panel — the way Calendar offers one. The palette itself is Calendar’s, and follows light and dark the way the system’s colours do." = "自定义颜色：颜色菜单末尾是“其他…”，会打开系统调色板——和“日历”的做法一致。调色板本身也取自“日历”，并像系统颜色那样跟随浅色与深色。";
 "“Stop on low battery” is a slider with stops, the way the charge limit is set in Battery. And the two colour rows are a dot and a name instead of two rows of ten swatches." = "“电量低时停止”改成带档位的滑块，与“电池”中的充电上限一致。两行颜色选择也从两排十个色块，变成一个圆点加名称。";
 "No VPNs are set up on this Mac" = "这台 Mac 上没有配置任何 VPN";

@@ -1,6 +1,8 @@
 import Foundation
+import SwiftUI
 
-/// Names for controls that show only an icon.
+/// What the app says to a reader who is not looking at it: names for controls
+/// that show only an icon, and — at the bottom — the one way it speaks unasked.
 ///
 /// `.help()` fills `accessibilityHelp`, which is a hint — it does not name the
 /// control. Without a label these read as "button" in the rotor and in the item
@@ -58,4 +60,20 @@ public enum HelmA11y {
     /// `CalendarUI.framework`'s table, «Другой…» in Russian — where a
     /// translator reaching for the dictionary writes «Свой цвет…».
     public static var otherColour: String { L("Other colour…") }
+
+    /// Said once, out loud, for a change nobody pressed a button to cause.
+    ///
+    /// A sighted reader sees a notice grow into a page; VoiceOver does not,
+    /// because nothing moved focus and nothing the reader is on has changed its
+    /// value. The state that needs this is the one where the app stops doing what
+    /// it was asked and the only account of it is a new field on screen.
+    ///
+    /// A function rather than an announcement inlined at the call site, so the
+    /// one call is nameable and so a second surface cannot spell it differently.
+    /// Callers hold it as a closure they can substitute in a test: an
+    /// announcement leaves no trace anything can read back, so the alternative is
+    /// a promise with no test under it.
+    public static func announce(_ text: String) {
+        AccessibilityNotification.Announcement(text).post()
+    }
 }

@@ -22,11 +22,12 @@ import HelmRuntime
 /// the grant this was removing on the way out. So the one path where the rule is
 /// load-bearing is the one where it was being taken away.
 ///
-/// The decision: **the grant's lifetime is the lid option, not the process.**
-/// `releaseIfUnneeded()` removes it on the setting's falling edge, where there
-/// is a person present to answer the dialog, and that is the whole of it.
-/// Switching the module off or quitting leaves it, the same way it survives a
-/// crash.
+/// The decision: **the grant's lifetime is the feature, not the process.**
+/// `releaseIfUnneeded()` removes it on the lid option's falling edge and
+/// `releaseOnModuleDisabled()` on the module's, both where there is a person
+/// present to answer the dialog. Quitting leaves it, the same way a crash does —
+/// and `ModuleEngine.willDisable` is what lets the host tell «somebody switched
+/// this off» from «the process is ending», which `deactivate()` alone could not.
 final class AGrantIsNotRevokedByQuittingTests: XCTestCase {
     private var backing: InMemoryKeyValueStore!
     private var store: NamespacedStore!

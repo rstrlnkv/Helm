@@ -236,7 +236,6 @@
 "Letters" = "Буквы";
 "Letters in a frame" = "Буквы в рамке";
 "Letters on a filled badge" = "Буквы на плашке";
-"Lid closed — staying awake" = "Крышка закрыта — не спит";
 "Light" = "Светлое";
 "Log" = "Журнал";
 "Login Items" = "Объекты входа";
@@ -451,7 +450,7 @@
 "The Uninstaller’s last screen before deleting now names the app itself, not only its leftover files. Homebrew says plainly that its removal skips the Trash and can’t be undone — it’s the one deletion in Helm that really is permanent. Duplicates now confirms with the same count, size and named paths as Disk, and Disk’s advice about an old file now cites the date it was last written rather than calling it “untouched.” Safari is marked as a system app rather than offered for removal at “0 B.”" = "Последний экран «Удаления приложений» перед удалением теперь называет само приложение, а не только его остатки. Homebrew честно предупреждает, что его удаление минует Корзину и его нельзя отменить — это единственное по-настоящему необратимое удаление в Helm. «Дубликаты» теперь подтверждают удаление так же, как «Диск» — количеством, размером и названными путями, а совет «Диска» о старом файле теперь ссылается на дату последней записи, а не называет файл «нетронутым». Safari помечается как системное приложение, а не предлагается к удалению за «0 Б».";
 "The VPN dial counted connections that had started themselves automatically, sitting right above the list of rules it looked like it was counting. Login Items & Extensions’ bottom bar mixed how many items were found with the size of what you’d selected." = "Циферблат VPN считал соединения, установленные автоматически, находясь прямо над списком правил, который он, казалось бы, и считал. Нижняя панель «Объектов входа и расширений» путала количество найденного с размером выбранного.";
 "The app itself — always removed" = "Само приложение удаляется всегда";
-"The battery guard — which stops Keep Awake from running a session down to empty — now starts on for new installs, at 20%. It shipped off by default, beside a session length that defaults to indefinite." = "Защита батареи — та, что не даёт «Не спать» разряжать её в ноль, — теперь при новой установке включена по умолчанию, на уровне 20%. Раньше она была выключена по умолчанию рядом с настройкой длительности, которая по умолчанию — «бессрочно».";
+"The battery guard — which stops Keep Awake from running a session down to empty — now starts on for new installs, at 20%. It shipped off by default, beside a session length that defaults to indefinite." = "Защита батареи — та, что не даёт «Не спать» разряжать её в ноль, — теперь при новой установке включена по умолчанию, на уровне 20 %. Раньше она была выключена по умолчанию рядом с настройкой длительности, которая по умолчанию — «бессрочно».";
 "The copy that was there first. Helm never offers every copy of a file." = "Копия, появившаяся раньше остальных. Helm никогда не предлагает удалить все копии файла.";
 "The disk is full. Moving to the Trash needs room, because the Trash is a folder on the same disk — empty it and try again." = "На диске нет места. Перемещение в Корзину требует места: Корзина — папка на том же диске. Очистите её и попробуйте снова.";
 "The disk list can be walked from the keyboard: arrow keys between rows, Return to go into a folder, ⌘↑ to come back out. And the screen now fits the width it has: on a narrow window the ring gives way to the list, which carries the same facts in less room." = "По списку в «Диске» теперь можно ходить с клавиатуры: стрелки между строками, Return — войти в папку, ⌘↑ — вернуться. А экран подстраивается под ширину окна: когда её мало, кольцо уступает место списку — он несёт те же факты и требует меньше места.";
@@ -670,7 +669,7 @@
 "The line Helm shows when an update check fails is readable in every language. It was cut short in five of the eight, and a German reader saw the first half of it and nothing else." = "Строка о неудавшейся проверке обновлений теперь читается целиком на всех языках. В пяти из восьми её обрезало, и по-немецки было видно только начало.";
 "Helm could crash while you were typing. The part that watches the keyboard went on running after the module had let it go." = "Helm мог аварийно завершиться прямо во время набора текста. То, что следит за клавиатурой, продолжало работать после того, как модуль его отпустил.";
 "Keyboard could stop converting words without saying so. macOS switches the keyboard watcher off by itself when it judges an app too slow to answer; Helm now notices and turns it back on." = "«Клавиатура» могла перестать исправлять слова и промолчать об этом. macOS сама выключает слежение за клавиатурой, если считает, что приложение отвечает слишком медленно; теперь Helm это замечает и включает его обратно.";
-"Keep Awake could leave the Mac unable to sleep, with its own switch saying it was off." = "«Не засыпать» мог оставить Mac без возможности уснуть, хотя его собственный переключатель показывал, что он выключен.";
+"Keep Awake could leave the Mac unable to sleep, with its own switch saying it was off." = "«Не спать» мог оставить Mac без возможности уснуть, хотя его собственный переключатель показывал, что он выключен.";
 "Resume" = "Возобновить";
 "The sidebar is narrower and you can drag it wider or thinner — whatever you settle on comes back next time." = "Сайдбар стал уже, и его ширину можно тянуть — то, на чём остановитесь, вернётся в следующий раз.";
 "A silenced rule says so in the panel, with a way to start it again. Stopping a session by hand, or a timer that ends automation, leaves the rule quiet until it applies afresh — and nothing said so where you would look." = "Приглушённое правило говорит об этом в панели, и там же кнопка вернуть его. Остановка вручную или таймер, отключающий автоматику, оставляют правило молчать до следующего срабатывания — и нигде, куда смотрят, об этом не сообщалось.";
@@ -689,8 +688,11 @@
 "Paused until the rule applies again" = "Правило на паузе до следующего срабатывания";
 "Stop on low battery" = "Останавливать при низком заряде";
 "Stay awake with the lid closed" = "Не спать с закрытой крышкой";
-"Sleep is off right now" = "Сон сейчас выключен";
-"The saved app rules could not be read, so no app is keeping the Mac awake" = "Сохранённые правила приложений не удалось прочитать, поэтому ни одно приложение не мешает Mac заснуть";
+"Sleep is off for the whole Mac right now" = "Режим сна сейчас выключен для всего Mac";
+"Sleep is off for the whole Mac right now. Turning this setting off brings it back" = "Режим сна сейчас выключен для всего Mac. Выключите эту настройку, и он вернётся";
+"macOS refused to turn sleep off — the rule in /etc/sudoers.d may have been changed" = "macOS отказался выключить режим сна — возможно, правило в /etc/sudoers.d изменили";
+"The rule in /etc/sudoers.d is still there. Switch this on and off again to remove it" = "Правило в /etc/sudoers.d осталось. Включите и снова выключите эту настройку, чтобы его убрать";
+"Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again" = "Helm не может прочитать сохранённые правила приложений, поэтому ни одно приложение не мешает Mac заснуть. Добавьте приложения заново";
 "A timer pauses the rule too" = "Таймер ставит на паузу и правило";
 "Move the pointer" = "Двигать курсор";
 "Keep the display on" = "Не гасить дисплей";
@@ -709,7 +711,7 @@
 "Until you stop it" = "Пока вы не остановите";
 "While an external display is connected" = "Пока подключён внешний дисплей";
 "While the Mac is on power" = "Пока Mac подключён к питанию";
-"macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. If Helm quits while sleep is off, sleep stays off until Helm runs again." = "При первом включении macOS запросит пароль администратора и оставит правило, позволяющее Helm выключать сон без нового запроса. Выключение этой настройки его убирает. Если закрыть Helm, пока сон выключен, Mac не сможет заснуть до следующего запуска Helm.";
+"macOS asks for an administrator password the first time, and keeps a rule that lets Helm turn sleep off without asking again. Switching this off removes it. Quitting Helm turns sleep back on; if Helm crashes or is force-quit, the next launch turns it back on." = "При первом включении macOS запросит пароль администратора и оставит правило, позволяющее Helm выключать режим сна без нового запроса. Выключение этой настройки его убирает. При выходе из Helm режим сна включается обратно; если Helm аварийно завершится или будет закрыт принудительно, следующий запуск включит его снова.";
 "Developer" = "Для разработки";
 "Interface language" = "Язык интерфейса";
 "Dev builds only, for reading the app in a language this Mac is not set to." = "Только для сборок dev — чтобы прочитать приложение на языке, который не выбран на этом Mac.";
@@ -728,7 +730,7 @@
 "Rule paused" = "Приостановлено";
 "Brown" = "Коричневый";
 "Other colour…" = "Другой…";
-"The battery guard says so on screen. It used to end sessions in silence — you pressed “15 min” at 5 % and nothing happened, with the reason only in the log. The panel and the settings page both say it now." = "Защита по заряду говорит об этом на экране. Раньше она завершала сеанс молча: вы жали «15 мин» на 5 %, ничего не происходило, а причина была только в журнале. Теперь об этом сообщают и панель, и страница настроек.";
+"The battery guard says so on screen. It used to end sessions in silence — you pressed “15 min” at 5% and nothing happened, with the reason only in the log. The panel and the settings page both say it now." = "Защита по заряду говорит об этом на экране. Раньше она завершала сеанс молча: вы жали «15 мин» на 5 %, ничего не происходило, а причина была только в журнале. Теперь об этом сообщают и панель, и страница настроек.";
 "A colour of your own: the colour menu ends with “Other…”, which opens the system colour panel — the way Calendar offers one. The palette itself is Calendar’s, and follows light and dark the way the system’s colours do." = "Свой цвет: меню цвета заканчивается пунктом «Другой…», открывающим системную палитру — как это сделано в Календаре. Сама палитра тоже из Календаря и следует светлой и тёмной теме, как системные цвета.";
 "“Stop on low battery” is a slider with stops, the way the charge limit is set in Battery. And the two colour rows are a dot and a name instead of two rows of ten swatches." = "«Останавливать при низком заряде» — теперь ползунок с делениями, как лимит зарядки в разделе «Аккумулятор». А две строки выбора цвета стали точкой с названием вместо двух рядов по десять образцов.";
 "No VPNs are set up on this Mac" = "На этом Mac не настроен ни один VPN";
