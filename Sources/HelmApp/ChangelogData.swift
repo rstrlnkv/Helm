@@ -86,6 +86,12 @@ enum Changelog {
                 ChangeItem(kind: .fix, text: L("The note about the lid\u{2019}s password prompt no longer overstates what quitting Helm costs: quitting turns sleep back on right away, and only a crash or a force quit needs the next launch to put it right.")),
                 ChangeItem(kind: .fix, text: L("The log\u{2019}s level filter, and the Uninstaller\u{2019}s and Homebrew\u{2019}s pickers, no longer clip in long languages \u{2014} the control now sizes itself to what it draws instead of a width guessed from English.")),
                 ChangeItem(kind: .upd, text: L("Permission notices look the same everywhere Helm asks for one \u{2014} the several places across the app that said a grant was missing used to each draw it slightly differently.")),
+                ChangeItem(kind: .fix, text: L("Per-app VPN rules now check which app is actually running before connecting or disconnecting a tunnel, so a fake app cannot pose as a real one to raise or drop your VPN. Rules you already had need the app chosen once more — until then the row says “Choose this app again to confirm which app it is” and does nothing.")),
+                ChangeItem(kind: .fix, text: L("A refused VPN command is reported as refused, not as connected — and a tunnel that drops is no longer missed just because another VPN happens to share its name.")),
+                ChangeItem(kind: .fix, text: L("The VPN notice options are Nothing, Menu bar, and Notification — the warning underneath them used to name an option the picker itself called something else.")),
+                ChangeItem(kind: .fix, text: L("A VPN card mid-handshake says Cancel, not Disconnect — the old word named an act that had not happened yet, and was flatly wrong in Japanese and Chinese.")),
+                ChangeItem(kind: .fix, text: L("Opening Keyboard without Accessibility granted now shows a plain “Helm is not watching the keyboard” instead of a page of settings that do nothing without it.")),
+                ChangeItem(kind: .fix, text: L("If Accessibility is switched off and back on, Keyboard notices and starts watching again on its own — it used to need Helm relaunched to come back.")),
             ]),
             ChangelogEntry(version: "0.9.0", date: "2026-08-09", items: [
                 ChangeItem(kind: .new, text: L("Widgets are moved by hand. Pick one up and it follows the pointer; the others slide aside; letting go sets it down where the space opened.")),

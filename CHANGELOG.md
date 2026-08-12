@@ -8,7 +8,10 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 ## [0.10.0-dev.6] — 2026-08-12
 
 > Keep Awake's v3 page, and three passes over it — adversarial, security,
-> accessibility/UX/localizer — before anything else touched it.
+> accessibility/UX/localizer — before anything else touched it. `dev.6` was
+> never tagged, so the VPN security audit and Layout's tap-recovery fix that
+> landed afterwards ride the same untagged version rather than opening
+> `dev.7` for a build that has never itself gone out.
 
 ### Added
 - **The page now says what the engine already knew.** The battery guard's stop
@@ -27,6 +30,21 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   authorization prompt can stand for minutes and a notification from a module
   the person just switched off is worse than none (`BatteryVetoChannel`,
   moved out of the VPN module into `HelmRuntime` rather than written twice).
+- **The VPN audit, landed after the Keep Awake work above.** A per-app rule
+  now records the app's code-signing identity when it is picked
+  (`CodeIdentity`) and the running instance is verified against it before a
+  launch is acted on (`VPNRuleTrust.judge`); a rule with no recorded identity
+  refuses and the row says so. Verifying by bundle identifier alone — a
+  string in anyone's `Info.plist` — let a forged bundle carrying a mapped id
+  raise and drop somebody's tunnel by launching and quitting, and the
+  teardown booked itself as the rule doing as asked, which also cleared the
+  books that let a *real* later drop be reported. Existing rules made before
+  this release carry no identity and refuse until the app is picked again;
+  `VPNRules.adopting` records the identity without disturbing the rest of the
+  rule.
+- Layout's port gained a `died` channel (`LayoutEngine.tapped`), so the page
+  can tell "the grant was revoked" from "the tap was never asked for" instead
+  of `guard running, !tapped` reading both as the same silence.
 
 ### Changed
 - **Permission notices are one shape.** `HelmPermissionNote` now draws a
@@ -69,6 +87,54 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   `HelmSpace` (2·4·6·8·12·18·28·40 pt) and `HelmRadius`
   (4·6·10·14·26 pt) land as named constants; `HelmSurface.cardRadius` is
   retired in favour of `HelmRadius.card`.
+- **VPN's notice picker options are renamed** — "Do not notify"/"Name in menu
+  bar"/"Notification" become "Nothing"/"Menu bar"/"Notification", three short
+  nouns instead of a mix of a verb phrase, a sentence and a noun, to fit the
+  104 pt card in all eight languages (worst case 84 pt of 104; Russian had
+  3.2 pt of slack, so fitting once was not evidence it fit generally). This
+  also closes the mismatch 0.9.0 shipped: the silent-notice warning quoted an
+  option called "Nothing" while the control itself said "Do not notify"
+  (Russian: «Не уведомлять» vs. «ничего») — the warning and the picker now
+  read the same option because both draw from `VPNStr.noticeOption`.
+- **The connecting card says Cancel**, not Disconnect, while a handshake is
+  still coming up — the same word was being asked to mean both "stop this
+  handshake" and "disconnect this tunnel", and in Japanese and Chinese it was
+  wrong outright: both words there name releasing a connection that does not
+  exist yet. The dimmed control mid-cancel keeps the word that was pressed
+  rather than switching to the one that was not (`VPNCardAction.Word`).
+- **An automatic teardown can no longer be quieter than the fall it
+  resembles.** A quit rule taking a tunnel down used to always post at the
+  rules-notice volume; it now takes the louder of the rules and drop notices,
+  since to the person watching it is the same event — the tunnel went away
+  with nobody at the keyboard asking for that.
+- **An automatic connect no longer reads the system keychain.** A rule firing
+  on its own (an app opening) now draws its credential only from Helm's own
+  cache; a connect a person starts by pressing Connect is what still asks
+  Keychain and can raise its consent dialog — previously any automatic
+  connect could summon that dialog at a moment the person had not chosen.
+- The VPN front door's explanation is two sentences instead of four (five in
+  Russian) — the middle sentence was the module's pitch, read by the one
+  person on this screen who has no VPN to connect. The hint below it no
+  longer repeats it.
+- The VPN vocabulary: three words for one object in the notice hint, six
+  Russian words for two events crossed against what the code actually maps,
+  a transitive verb with no object, a masculine adjective against a feminine
+  VPN, "Off" where the popup asks *when*, and quotation marks in three inline
+  tables that disagreed with the measured table — those now interpolate
+  `Quoted`, so the marks come from one place rather than twenty-four
+  literals.
+- Layout's keyboard page draws `HelmEmptyState` when Accessibility is not
+  granted, keeping only the one section that still works without it (the
+  language indicator), instead of drawing all seventeen hundred points of
+  settings that change nothing underneath a banner.
+- Layout's introduction moved out of a `.sheet` (five windows per render, and
+  none of it in the page's own layers) into the page's first section, where
+  it is part of what a new user of the module actually sees measured.
+- The settings-page render harness now replays each module's own
+  command-to-reply table and event list instead of answering silence
+  (`ModulePageRender.Wire`, wrapping the real `LocalTransport`), which is
+  what let VPN's notice cards and spin section, and Homebrew's toolbar
+  picker, be checked at all — they were drawing in no render before this.
 
 ### Fixed
 - **A Mac could be left unable to sleep forever.** `recoverAtLaunch` discarded
@@ -128,6 +194,66 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   Support/Helm/Disk/last-scan.json` — `ScanStore()`'s default directory now
   resolves through the same per-process `TestScratch` the journal next door
   already uses when a test process is detected.
+- **A refused VPN command is no longer announced as done.** Announcing ran
+  before `scutil` did, so a rule pointing at a configuration renamed in
+  System Settings could post "Connected to Old office" with no tunnel behind
+  it. The runner port now hands back the whole result instead of folding
+  "never ran" into "succeeded" through a bare string that could not tell the
+  two apart; the status is read before anything is announced.
+- **A drop is no longer missed because a namesake happened to be up.** macOS
+  allows two configurations to share a display name, and the book of what was
+  up was keyed by name — so a tunnel a rule was holding could fall while
+  another configuration of the same name was connected, and nothing was said.
+  Connections are now tracked by id, with the name kept alongside for a
+  configuration that is deleted between two reads.
+- The configuration-list parser no longer truncates a name at its first
+  closing quote (which collapsed two configurations into one and made every
+  command built from the wrong string fail), and a name of nothing but spaces
+  no longer walks past the guard written for an empty one.
+- **The connect/disconnect poll now ends on the state it is waiting for.** It
+  previously ended on `Disconnected`, which is not a transition, so its
+  twenty-five attempts were never actually spent watching for the answer. It
+  now polls until the connection settles into what the verb asked for, and
+  only once the tool has accepted the command.
+- A refused disconnect is reported as a refused disconnect, not a refused
+  connect — the failure now carries its own verb.
+- The panel dot, the panel tile, and the 1×1 widget no longer show a tunnel
+  as connected while it is still mid-handshake; all three now read the same
+  success state, measured in pixels of the token that marks it.
+- **A newline embedded in a configuration's name can no longer forge a
+  whole row** — badge, tile and widget all reading "connected" for a tunnel
+  that does not exist. The fragments a line break produces are rejoined
+  before the name is read, and the row is refused rather than merely
+  guarded at input. A name reaching the menu bar is bounded at 4000
+  characters (measured 39 238 points unbounded).
+- `swift test` no longer purges the real VPN keychain item on every run —
+  every descriptor's `init` purged unconditionally, and the guard against
+  that was a per-process default the test domain never carried, so the
+  purge repeated on every run. The latch is now a file beside what it
+  guards, and the purge asks whether this process is the app.
+- The cached secret's keychain entry no longer claims a "device-only"
+  protection that measurement shows the attribute does not provide in this
+  keychain; the comment now names what actually protects it — the item's
+  ACL.
+- VPN's `scutil` refusal text is redacted at the point it is created, not
+  only where it is logged — the tool's message is usually *about* the
+  configuration and therefore contains its name, so the case can no longer
+  hold an unredacted name for a caller to forget to sanitize later. Bounded
+  to 200 characters.
+- **The tap says when macOS takes it away.** `startTap` ran on every
+  activation and died on `guard running, !tapped`, because standing down
+  stopped the tap without clearing the flag — so restoring Accessibility
+  after macOS revoked it turned the page green with nobody listening, until
+  the next relaunch. The port's new `died` channel lets the page tell that
+  state apart and rebuild the tap.
+- Building `LayoutEngine` no longer puts a real status item in the menu bar
+  the moment it reads the language-indicator setting as on — which meant a
+  test that only seeded this module's store decorated the menu bar of
+  whatever else was running. The descriptor now has a seam for this.
+- `LayoutEngine.moduleID` and the two hotkey names are now one declaration
+  each, read from both sides of the target boundary — they were literals
+  typed on both sides, where a rename on one side would have made the
+  recorder write a key the host does not read, silently.
 
 ### Removed
 - `HelmSurface.cardRadius` — replaced by `HelmRadius.card` (same value, 12→10;
