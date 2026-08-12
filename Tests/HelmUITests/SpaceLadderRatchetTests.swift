@@ -12,8 +12,13 @@ import XCTest
 /// **A ratchet, not a gate.** The number below is what the tree measured on the
 /// day this landed. It is only ever *lowered*, by the same commit that lowers
 /// it — a test that fails on the day it is written is a red CI for a week, and
-/// the plan (`v2/migration.md` § "Шаг 0") says so in as many words. `HelmSpace`
-/// has not landed yet; when it does, this number falls a long way at once.
+/// the plan (`v2/migration.md` § "Шаг 0") says so in as many words.
+///
+/// This paragraph used to end «`HelmSpace` has not landed yet; when it does,
+/// this number falls a long way at once». It landed in `a49c09d` and the number
+/// did not move for a day, because landing a vocabulary is not adopting one:
+/// for one commit `HelmSpace` had five tests and no speakers in `Sources/`. The
+/// fall is in the number below.
 ///
 /// **What it is a count of.** Occurrences, not distinct values: a source scan
 /// can name a file and a line, so the useful unit is the edit somebody has to
@@ -24,16 +29,33 @@ import XCTest
 /// is macOS's own number and not a choice made here; `.frame(width:height:)`,
 /// which is a size and not a space; and anything inside a comment, since every
 /// rule in this repository is explained by quoting the thing it forbids.
+///
+/// **And what it cannot see, which is not the same thing.** A number reached
+/// through a name is invisible to a scan that reads call sites: a default
+/// argument (`helmCard(padding: CGFloat = 14)`) and a computed constant
+/// (`private static var spacing: CGFloat { 14 }`) are each one decision applied
+/// at every call site, and neither is in this count. The first of those is the
+/// most-drawn padding in the app and is off the ladder — recorded here so the
+/// number below is not read as «twelve left», which it is not.
 final class SpaceLadderRatchetTests: XCTestCase {
 
-    /// Measured 2026-08-11 against `main` = `8b8c547`, at **133**; lowered to 126
+    /// Measured 2026-08-11 against `main` = `8b8c547` at **133**; lowered to 126
     /// the same day by the Keep Awake v3 move, which took seven values off the
-    /// ladder in two files — the hero's four button-row gaps and its popover's
-    /// stack (10, 10, 10, 10, 14) and the two paddings around the hero on the
-    /// page (24 above, 31 below). Still dominated by 10 pt (49) and 20 pt (37) —
-    /// the two values `HelmSpace.s?` will absorb — with `UninstallerSettingsPage`
-    /// the worst single file at 21.
-    private static let recorded = 126
+    /// ladder in two files, and to **12** by the tree-wide sweep the day after.
+    ///
+    /// **12**, measured 2026-08-12 against `main` = `83af00f`. Eight are on the
+    /// menu-bar panel and its two tiles, which keep their own numbers; three are
+    /// `HelmBadge`'s, where the padding is half of a capsule's silhouette rather
+    /// than a gap between two things; one is `HelmPageHeader`'s 9, which is the
+    /// mockup's 46 pt strip minus its 28 pt plate, halved.
+    ///
+    /// **Read the fall from 126 with this in hand: 40 of it is one rename.**
+    /// `.padding(.horizontal, 20)` is `HelmLayout.formInset` — what a grouped
+    /// `Form` insets its cards by — and a literal spelling of macOS's own number
+    /// leaves this scan for the same reason `.padding()` with no argument never
+    /// entered it. Nothing moved on screen at those forty sites. The rest did
+    /// move, by 1 or 2 pt each, onto `HelmSpace`.
+    private static let recorded = 12
 
     private static let ladder: Set<Double> = [0, 2, 4, 6, 8, 12, 18, 28, 40]
 
@@ -46,8 +68,34 @@ final class SpaceLadderRatchetTests: XCTestCase {
         #"\b(?:top|leading|bottom|trailing):\s*(-?\d+(?:\.\d+)?)"#,
     ]
 
+    /// The ladder said in words rather than in digits — `spacing: HelmSpace.s5`.
+    ///
+    /// **Counted, and this is the half adoption would otherwise have deleted.**
+    /// The floor below exists so a pattern that has stopped matching cannot
+    /// report zero offenders for ever; measured against literals alone that
+    /// floor *falls* every time somebody does the right thing, and the first
+    /// real sweep took it from 313 to 215 and failed a test about ladders. A
+    /// token is a spacing decision spelled correctly, so it belongs in the
+    /// denominator: with these counted the total tracks how much spacing the
+    /// tree has, and adoption moves the *ratio* rather than the floor.
+    ///
+    /// `HelmLayout.formInset` is deliberately not here, for the reason
+    /// `.padding()` with no argument is not: 20 is what a grouped `Form` insets
+    /// its cards by, so it is macOS's number and not a choice made here.
+    private static let tokens: [String: Double] = [
+        #"\bHelmSpace\.s1\b"#: 2, #"\bHelmSpace\.s2\b"#: 4,
+        #"\bHelmSpace\.s3\b"#: 6, #"\bHelmSpace\.s4\b"#: 8,
+        #"\bHelmSpace\.s5\b"#: 12, #"\bHelmSpace\.s6\b"#: 18,
+        #"\bHelmSpace\.s7\b"#: 28, #"\bHelmSpace\.s8\b"#: 40,
+    ]
+
     private func hits() throws -> [UISources.Hit] {
         try UISources.hits(matching: Self.patterns, in: UISources.files())
+    }
+
+    /// Every spacing decision in the UI layer: the numbers and the words.
+    private func everySpacing() throws -> [UISources.Hit] {
+        try hits() + UISources.sites(matching: Self.tokens, in: UISources.files())
     }
 
     func testSpaceOffTheLadderDoesNotGrow() throws {
@@ -83,14 +131,30 @@ final class SpaceLadderRatchetTests: XCTestCase {
     /// of what they find is *on* the ladder, which is the only reading under
     /// which the off-ladder count means anything.
     func testTheScanStillFindsSpacingAtAll() throws {
-        let all = try hits()
-        // 315 the day this was written; the floor is set below that rather than
-        // at it, so adding a stack does not fail a test about ladders.
+        let all = try everySpacing()
+        // 315 the day this was written and 313 the day of the sweep, of which
+        // 98 became tokens; the floor is set below that rather than at it, so
+        // adding a stack does not fail a test about ladders.
         XCTAssertGreaterThan(all.count, 250, "the space patterns matched \(all.count) values")
         let off = UISources.offLadder(all, ladder: Self.ladder)
         XCTAssertLessThan(off.count, all.count / 2,
                           "more than half of all spacing is off the ladder — "
                           + "either the ladder is wrong or the scan is")
+    }
+
+    /// And the ladder has speakers, which for one commit it did not.
+    ///
+    /// `HelmSpace` landed in `a49c09d` with five tests around it and **zero**
+    /// call sites in `Sources/` — a vocabulary nobody spoke, which no ratchet
+    /// then measured could tell apart from a vocabulary that was working. The
+    /// floor above would have been satisfied by literals alone.
+    func testTheLadderIsSpokenAndNotOnlyDeclared() throws {
+        let spoken = try UISources.sites(matching: Self.tokens, in: UISources.files())
+        XCTAssertGreaterThan(spoken.count, 40,
+                             "`HelmSpace` is named at \(spoken.count) sites in the UI layer")
+        XCTAssertGreaterThan(Set(spoken.map(\.file)).count, 10,
+                             "the ladder is spoken in \(Set(spoken.map(\.file)).count) files — "
+                             + "a vocabulary one file uses is that file's private number")
     }
 
     /// The rule objects to the shape it was written for — the Swift twin of the
@@ -102,7 +166,7 @@ final class SpaceLadderRatchetTests: XCTestCase {
             VStack(spacing: 15) { Text("на глаз").padding(15) }
                 .padding(.horizontal, 15)
             """
-        let hits = try Self.matches(in: sample)
+        let hits = try UISources.hits(matching: Self.patterns, in: sample)
         XCTAssertEqual(hits.count, 3, "the three shapes are spacing:, .padding(n) and .padding(edge, n)")
         XCTAssertEqual(UISources.offLadder(hits, ladder: Self.ladder).count, 3,
                        "15 is on no step of the ladder and must be reported by all three")
@@ -111,28 +175,10 @@ final class SpaceLadderRatchetTests: XCTestCase {
     /// And it does *not* object to a value on the ladder, or the count above is
     /// a count of every spacing in the tree.
     func testTheRuleLetsALadderValuePass() throws {
-        let hits = try Self.matches(in: #"HStack(spacing: 8) { }.padding(12)"#)
+        let hits = try UISources.hits(matching: Self.patterns,
+                                      in: #"HStack(spacing: 8) { }.padding(12)"#)
         XCTAssertEqual(hits.count, 2)
         XCTAssertEqual(UISources.offLadder(hits, ladder: Self.ladder), [])
     }
 
-    /// A tiny in-memory run of the same regular expressions, so the fixtures
-    /// above go through exactly what the tree goes through.
-    private static func matches(in source: String) throws -> [UISources.Hit] {
-        var out: [UISources.Hit] = []
-        for (index, line) in source.components(separatedBy: "\n").enumerated() {
-            let code = RepoSource.code(line)
-            let range = NSRange(code.startIndex..., in: code)
-            for pattern in patterns {
-                let expression = try NSRegularExpression(pattern: pattern)
-                for match in expression.matches(in: code, range: range) {
-                    guard let captured = Range(match.range(at: 1), in: code),
-                          let value = Double(code[captured]) else { continue }
-                    out.append(UISources.Hit(file: "fixture", line: index + 1,
-                                             value: value, text: code))
-                }
-            }
-        }
-        return out
-    }
 }

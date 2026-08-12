@@ -32,7 +32,7 @@ struct RuleEditor: View {
                     action
                     dryRun
                 }
-                .padding(20)
+                .padding(HelmLayout.formInset)
             }
             Divider()
             footer
@@ -43,21 +43,21 @@ struct RuleEditor: View {
     }
 
     private var header: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: HelmSpace.s5) {
             HelmIconPlate(symbol: "location.north.circle",
                           tint: ModuleCategory.files.tint, size: 26)
             TextField(ApStr.ruleName, text: $rule.name)
                 .textFieldStyle(.plain)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 16, weight: .semibold))
             Spacer()
         }
-        .padding(.horizontal, 20).padding(.vertical, 14)
+        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
     }
 
     // MARK: - When
 
     private var conditions: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: HelmSpace.s5) {
             HStack(spacing: 8) {
                 Text(ApStr.whenLabel).font(.headline)
                 // "When" is a heading beside it, not this control's name:
@@ -88,7 +88,7 @@ struct RuleEditor: View {
                 // matching nothing is a deliberate choice, and the screen that
                 // lets someone make one has to say so.
                 Text(ApStr.nothingWouldHappen)
-                    .font(.caption).foregroundStyle(HelmText.faint)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
             }
         }
     }
@@ -96,7 +96,7 @@ struct RuleEditor: View {
     // MARK: - Then
 
     private var action: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: HelmSpace.s5) {
             Text(ApStr.thenLabel).font(.headline)
             ActionRow(action: $rule.action)
         }
@@ -111,7 +111,7 @@ struct RuleEditor: View {
                 Spacer()
                 if rvm.previewingRuleID == rule.id, !rvm.preview.isEmpty {
                     Text("\(rvm.preview.count)")
-                        .font(.caption).foregroundStyle(HelmText.faint)
+                        .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
                         .contentTransition(.numericText())
                         // A `contentTransition` outside a transaction is a
                         // decoration that cannot fire: measured on a digit
@@ -122,11 +122,11 @@ struct RuleEditor: View {
                 }
             }
             Text(ApStr.dryRunNote)
-                .font(.caption).foregroundStyle(HelmText.faint)
+                .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
                 .fixedSize(horizontal: false, vertical: true)
             if rvm.preview.isEmpty {
                 Text(ApStr.nothingWouldHappen)
-                    .font(.callout).foregroundStyle(HelmText.quiet)
+                    .font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
                     .padding(.vertical, 6)
             } else {
                 VStack(spacing: 0) {
@@ -140,16 +140,16 @@ struct RuleEditor: View {
                             // the rule they just wrote does not tell them.
                             if let destination = row.destination {
                                 Text(destination)
-                                    .font(.caption.monospaced())
+                                    .font(.system(size: 11, design: .monospaced))
                                     .foregroundStyle(HelmText.quiet)
                                     .lineLimit(1).truncationMode(.middle)
-                                Text("←").font(.caption).foregroundStyle(HelmText.separator)
+                                Text("←").font(HelmText.rowDetail).foregroundStyle(HelmText.separator)
                             }
                             Text(RuleSummary.describe(row.action))
-                                .font(.caption).foregroundStyle(HelmText.faint)
+                                .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
                                 .lineLimit(1)
                         }
-                        .padding(.vertical, 5)
+                        .padding(.vertical, HelmSpace.s2)
                         // One stop per file, not four. This is the list whose
                         // whole purpose is making the consequence audible before
                         // the switch is reachable, and read as loose fragments —
@@ -201,6 +201,6 @@ struct RuleEditor: View {
             .buttonStyle(.borderedProminent)
             .keyboardShortcut(.defaultAction)
         }
-        .padding(.horizontal, 20).padding(.vertical, 14)
+        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
     }
 }

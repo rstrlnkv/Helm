@@ -229,21 +229,21 @@ struct RingView: View {
             Circle().fill(color(for: segment)).frame(width: 7, height: 7)
             Text(segment.isOther ? DkStr.otherItems
                                  : (DiskViewModel.folderName(for: segment.path) ?? segment.name))
-                .font(.caption)
+                .font(HelmText.rowDetail)
                 .lineLimit(1)
             Text(Bytes(segment.bytes))
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(HelmText.quiet)
         }
-        .padding(.horizontal, 9).padding(.vertical, 5)
+        .padding(.horizontal, HelmSpace.s4).padding(.vertical, HelmSpace.s2)
         .glassEffect(.regular, in: .capsule)
         .fixedSize()
     }
 
     private var centerLabel: some View {
-        VStack(spacing: 3) {
+        VStack(spacing: HelmSpace.s1) {
             Text(focusName)
-                .font(.caption)
+                .font(HelmText.rowDetail)
                 .foregroundStyle(HelmText.quiet)
                 .lineLimit(1).truncationMode(.middle)
             Text(Bytes(focusBytes))

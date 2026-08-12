@@ -89,6 +89,11 @@ public struct HelmDurationField: View {
             VStack(spacing: 2) {
                 Text(hourLabel).font(.system(size: 11, weight: .semibold)).hidden()
                 Text(":")
+                    // 34 is on no step, and the step it means does not exist:
+                    // the scale goes 22 · 40 and this is «the hero's figure,
+                    // one down». 40 is the hero itself and 22 halves the
+                    // field. Recorded by `TypeScaleRatchetTests` as an
+                    // exception rather than swept into a screen redrawn.
                     .font(.system(size: 34, weight: .light, design: .monospaced))
                     .foregroundStyle(HelmText.faint)
                     .frame(height: fieldHeight)
@@ -124,7 +129,7 @@ public struct HelmDurationField: View {
                 .focused($focus, equals: field)
                 .accessibilityLabel(label)
                 .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous)
                         .fill(HelmText.quiet.opacity(focus == field ? 0.12 : 0.06))
                 )
         }

@@ -47,6 +47,11 @@ public struct HelmBadge: View {
             // Literal rather than `.primary`: badges appear inside rows that
             // animate in, where hierarchical styles re-resolve.
             .foregroundStyle(Color.primary.opacity(0.85))
+            // **Off the ladder on purpose, and measured rather than rounded.**
+            // A capsule's padding is not a gap between two things; it is half
+            // of the pill's own silhouette, solved against the rows this
+            // badge sits in. The ladder's neighbours are 4/6 and 0/2, and any
+            // of the four takes the pill 2 pt out of the row it was fitted to.
             .padding(.horizontal, 5).padding(.vertical, 1)
             .background(Capsule().fill(tint.opacity(0.20)))
     }
@@ -61,9 +66,10 @@ public struct HelmBadge: View {
     /// low opacity: a neutral drop under a coloured object reads as dirt.
     private var prominent: some View {
         Text(text)
-            .font(.system(size: 9, weight: .bold, design: .rounded))
+            .font(.system(size: 10, weight: .bold, design: .rounded))
             .tracking(0.5)
             .foregroundStyle(.white)
+            // 2.5, for the same reason as `quiet`'s 1: the silhouette, not a gap.
             .padding(.horizontal, 6).padding(.vertical, 2.5)
             .background {
                 Capsule()

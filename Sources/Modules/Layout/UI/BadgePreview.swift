@@ -23,11 +23,11 @@ struct BadgePreview: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(LyStr.badgePreview)
-                .font(.caption).foregroundStyle(HelmText.quiet)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 132), spacing: 10)],
+                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 132), spacing: HelmSpace.s5)],
                       alignment: .leading, spacing: 8) {
                 ForEach(sources, id: \.id) { source in
-                    HStack(spacing: 7) {
+                    HStack(spacing: HelmSpace.s3) {
                         // The real image, not an impression of it: the whole
                         // point is that this cannot disagree with the menu bar.
                         Image(nsImage: HelmAppearance.rasterize(
@@ -40,6 +40,12 @@ struct BadgePreview: View {
                             .frame(width: 26, alignment: .center)
                             .accessibilityHidden(true)
                         Text(source.name)
+                            // **10 is meant here.** A caption under a picture,
+                            // like the choice cards': the badge is the subject
+                            // of this tile and the name is the tick label under
+                            // it. The tile is 132 pt of which 26 is the badge,
+                            // and this row already truncates — a step up buys
+                            // nothing and truncates one language sooner.
                             .font(.caption)
                             .lineLimit(1)
                             .truncationMode(.tail)

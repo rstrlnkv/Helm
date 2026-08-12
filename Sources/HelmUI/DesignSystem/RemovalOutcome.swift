@@ -80,16 +80,22 @@ public struct HelmRemovalOutcome: View {
             EmptyView()
         case .succeeded:
             Text(succeededText)
-                .font(.caption)
+                .font(HelmText.rowDetail)
                 .foregroundStyle(HelmText.quiet)
         case .failed:
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 8) {
+            // **The two levels below were one level.** The heading was
+            // `.caption` and the failures under it `.caption2`, which macOS
+            // resolves to 10 both — so the hierarchy was in the source and not
+            // on the screen. The heading is the note step (11) and the list
+            // under it stays at 10, which is the difference this block was
+            // always written to have.
+            VStack(alignment: .leading, spacing: HelmSpace.s3) {
+                HStack(spacing: HelmSpace.s4) {
                     Image(systemName: "exclamationmark.circle.fill")
                         .foregroundStyle(HelmSignal.warning)
                     Text(Self.heading(succeeded: removed > 0 ? succeededText : nil,
                                       failed: failures.count))
-                        .font(.caption)
+                        .font(HelmText.rowDetail)
                         .foregroundStyle(HelmText.quiet)
                     Spacer(minLength: 8)
                     if needsFullDiskAccess {

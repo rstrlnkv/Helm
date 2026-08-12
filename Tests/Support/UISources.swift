@@ -68,26 +68,97 @@ public enum UISources {
         return out.sorted()
     }
 
-    /// Every capture of `patterns` in `files`, with comments stripped first.
+    /// The same, plus the app shell — every file that draws a *window*.
+    ///
+    /// Wider than `files()` on purpose, and only one scan wants it. Space and
+    /// type numbers are read off the module pages because that is the surface
+    /// the mockups were audited against; a **font style** is a word of the
+    /// vocabulary rather than a measurement of a page, and `AboutPage`,
+    /// `LogView` and `SettingsWindow` say it as loudly as any module does. A
+    /// sweep that converted them with nothing counting them would leave the
+    /// eighty-sixth site free to arrive in the one target nobody was reading.
+    public static func everyDrawnFile() throws -> [String] {
+        (try files() + RepoSource.swiftFiles(under: "Sources/HelmApp")).sorted()
+    }
+
+    /// One compiled pattern and the way it answers with a number.
+    ///
+    /// Two kinds of scan share this walk and differ only here: a ladder reads
+    /// the value out of the match (`spacing: 15` → 15), and a vocabulary is
+    /// handed the value from outside (`.font(.callout)` → 12, which is macOS's
+    /// fact and not the line's). Everything else — the file list, the comment
+    /// strip, the line number, the reported text — is the same scan, and was
+    /// written twice before this type existed.
+    private struct Rule {
+        let expression: NSRegularExpression
+        let value: (NSTextCheckingResult, String) -> Double?
+    }
+
+    /// Every capture of `patterns`, with comments stripped first.
     ///
     /// The comment strip is `RepoSource.code`'s and it is not optional: every
     /// rule in this repository is explained in a comment that quotes the very
     /// thing it forbids, so a scan that reads comments reports the explanation
     /// as the offence.
     public static func hits(matching patterns: [String], in files: [String]) throws -> [Hit] {
-        let compiled = try patterns.map { try NSRegularExpression(pattern: $0) }
+        try scan(try ladderRules(patterns), in: files)
+    }
+
+    /// The same patterns against a string, for a fixture.
+    ///
+    /// **The reason this is here and not in each test.** Both ratchets carry a
+    /// fixture case whose comment says it goes «through exactly what the tree
+    /// goes through», and both then re-implemented the walk beside it — so the
+    /// sentence was a claim about two copies staying in step, which is the
+    /// shape this repository keeps paying for. One walk now, and the claim is
+    /// true by construction.
+    public static func hits(matching patterns: [String], in source: String) throws -> [Hit] {
+        scan(try ladderRules(patterns), lines: source.components(separatedBy: "\n"),
+             of: "fixture")
+    }
+
+    /// Every line a pattern matches at all, with no number in it — a style
+    /// rather than a size. The value is what macOS resolves that style to.
+    public static func sites(matching patterns: [String: Double],
+                             in files: [String]) throws -> [Hit] {
+        try scan(try styleRules(patterns), in: files)
+    }
+
+    /// The same, against a string.
+    public static func sites(matching patterns: [String: Double],
+                             in source: String) throws -> [Hit] {
+        scan(try styleRules(patterns), lines: source.components(separatedBy: "\n"),
+             of: "fixture")
+    }
+
+    private static func ladderRules(_ patterns: [String]) throws -> [Rule] {
+        try patterns.map { pattern in
+            Rule(expression: try NSRegularExpression(pattern: pattern)) { match, code in
+                Range(match.range(at: 1), in: code).flatMap { Double(code[$0]) }
+            }
+        }
+    }
+
+    private static func styleRules(_ patterns: [String: Double]) throws -> [Rule] {
+        try patterns.map { pattern, size in
+            Rule(expression: try NSRegularExpression(pattern: pattern)) { _, _ in size }
+        }
+    }
+
+    private static func scan(_ rules: [Rule], in files: [String]) throws -> [Hit] {
+        try files.flatMap { scan(rules, lines: try RepoSource.lines(of: $0), of: $0) }
+    }
+
+    private static func scan(_ rules: [Rule], lines: [String], of file: String) -> [Hit] {
         var out: [Hit] = []
-        for file in files {
-            for (index, raw) in try RepoSource.lines(of: file).enumerated() {
-                let code = RepoSource.code(raw)
-                let range = NSRange(code.startIndex..., in: code)
-                for pattern in compiled {
-                    for match in pattern.matches(in: code, range: range) {
-                        guard let captured = Range(match.range(at: 1), in: code),
-                              let value = Double(code[captured]) else { continue }
-                        out.append(Hit(file: file, line: index + 1, value: value,
-                                       text: code.trimmingCharacters(in: .whitespaces)))
-                    }
+        for (index, raw) in lines.enumerated() {
+            let code = RepoSource.code(raw)
+            let range = NSRange(code.startIndex..., in: code)
+            for rule in rules {
+                for match in rule.expression.matches(in: code, range: range) {
+                    guard let value = rule.value(match, code) else { continue }
+                    out.append(Hit(file: file, line: index + 1, value: value,
+                                   text: code.trimmingCharacters(in: .whitespaces)))
                 }
             }
         }

@@ -27,7 +27,7 @@ public extension View {
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                RoundedRectangle(cornerRadius: HelmRadius.frame, style: .continuous)
                     .fill(HelmSurface.panelCardFill)
             )
     }

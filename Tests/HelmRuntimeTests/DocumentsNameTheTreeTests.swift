@@ -42,6 +42,14 @@ final class DocumentsNameTheTreeTests: XCTestCase {
         // that half of the namespace. Programs the documents name because a
         // script runs them, and two AppKit/SwiftUI members named in passages
         // about what they cannot do.
+        // The four names the 2026-08-12 privilege measurement needed. Two are
+        // IOKit's, and the point of that passage is precisely that neither is
+        // reachable from this tree: Swift exports neither symbol, which is why
+        // the probe had to go through the other two.
+        "kIOReturnNotPrivileged": "IOKit's refusal, the answer the probe got as the user",
+        "IOPMCopySystemPowerSettings": "IOKit's reader, named because Swift does not export it",
+        "dlsym": "the loader's own lookup, named as the way those symbols are reachable at all",
+        "ctypes": "Python's foreign-function module, which is what the probe used in the end",
         "backupd": "a macOS daemon, named in the measurement of which processes hold sleep",
         "sharingd": "the same measurement — the one that answers NSRunningApplication and still is not an app",
         "dmgbuild": "the tool that lays out the disk image window",

@@ -49,19 +49,19 @@ struct VPNSettingsPage: View {
             connectionsList
             if !vm.connections.isEmpty {
                 Text(VPNStr.connectionsHint)
-                    .font(.caption)
+                    .font(HelmText.rowDetail)
                     .foregroundStyle(HelmText.quiet)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 8)
             }
             if let failure = vm.lastFailure {
                 HelmBanner(failureText(failure), symbol: "exclamationmark.triangle.fill")
-                    .padding(.top, 10)
+                    .padding(.top, HelmSpace.s4)
             }
             // The gap the grouped form puts between a card and the next
             // heading, which this block is now standing in for.
             HelmSectionTitle(VPNStr.perAppAutomation)
-                .padding(.top, 20)
+                .padding(.top, HelmSpace.s7)
         }
     }
 
@@ -159,7 +159,7 @@ struct VPNSettingsPage: View {
                                openSettings: PermissionCheck.openNotificationSettings)
         }
         Text(VPNStr.noticeHint)
-            .font(.caption)
+            .font(HelmText.rowDetail)
             .foregroundStyle(HelmText.quiet)
 
         // The second event, and the reason this section is a pair. Everything
@@ -179,7 +179,7 @@ struct VPNSettingsPage: View {
                                openSettings: PermissionCheck.openNotificationSettings)
         }
         Text(VPNStr.noticeDropHint)
-            .font(.caption)
+            .font(HelmText.rowDetail)
             .foregroundStyle(HelmText.quiet)
             .fixedSize(horizontal: false, vertical: true)
     }
@@ -253,7 +253,7 @@ struct VPNSettingsPage: View {
         // Said where the two settings are, not only in a spec file.
         if !spin, notice == .silent {
             Text(VPNStr.spinSilentWarning)
-                .font(.caption)
+                .font(HelmText.rowDetail)
                 .foregroundStyle(HelmSignal.warning)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -505,7 +505,7 @@ struct VPNSettingsPage: View {
         // puts this text under the group it qualifies, which is also where a
         // person looks after reading the rows rather than before.
         Text(VPNStr.perAppScopeNote)
-            .font(.caption)
+            .font(HelmText.rowDetail)
             .foregroundStyle(HelmText.quiet)
             .fixedSize(horizontal: false, vertical: true)
     }
@@ -560,7 +560,7 @@ struct VPNSettingsPage: View {
                         .foregroundStyle(HelmSignal.warning)
                         .accessibilityHidden(true)   // the text beside it says it
                     Text(VPNStr.ruleVPNMissing(name))
-                        .font(.caption)
+                        .font(HelmText.rowDetail)
                         .foregroundStyle(HelmText.quiet)
                 }
             } else if holdingNow(bundleID) {
@@ -578,7 +578,7 @@ struct VPNSettingsPage: View {
                 HStack(spacing: 6) {
                     HelmStatusDot(active: true)
                     Text(VPNStr.ruleHoldingNow)
-                        .font(.caption)
+                        .font(HelmText.rowDetail)
                         .foregroundStyle(HelmText.quiet)
                 }
                 .accessibilityElement(children: .combine)

@@ -120,8 +120,8 @@ public struct HelmHotkeyRow: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: HelmSpace.s2) {
+            HStack(spacing: HelmSpace.s5) {
                 Text(title)
                 Spacer()
                 if recorder.recording {
@@ -141,7 +141,7 @@ public struct HelmHotkeyRow: View {
             }
             if taken, !recorder.label.isEmpty {
                 Text(Self.takenNote)
-                    .font(.caption).foregroundStyle(HelmSignal.warning)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmSignal.warning)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }

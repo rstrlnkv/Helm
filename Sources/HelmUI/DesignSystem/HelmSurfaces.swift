@@ -267,6 +267,14 @@ public enum HelmText {
     // somebody has to argue for rather than type.
 
     /// A row's own name: the thing the row is about. macOS's settings rows.
+    ///
+    /// **And a sentence on a page, which is the same decision.** 13 is what
+    /// macOS resolves `.body` to, so a paragraph, a hint and a row's name are
+    /// one size — and the app had been reaching for `.callout` (12) at thirty
+    /// sites to mean «body, but a little quieter», which is a fifth size on a
+    /// window the scale gives four and a distinction nobody can see. Quieter is
+    /// what `HelmText.quiet` is for. A *fifth token* spelling 13 a second time
+    /// would be a synonym, and a scale exists to have fewer of those.
     public static let rowTitle = Font.system(size: 13)
     /// The line under a row's name, and the note under a group: secondary copy
     /// that a reader takes in after the thing it describes.
@@ -420,9 +428,12 @@ public struct HelmPageHeader<Trailing: View>: View {
         // at 20, and `StartScreenColumnTests` measures that the two begin at
         // the same x. The gutter is an app-wide number; changing it is its own
         // pass, not a side effect of restyling a header.
-        .padding(.horizontal, 20)
+        .padding(.horizontal, HelmLayout.formInset)
         // 9 above and below a 28 pt plate is the mockup's 46 pt strip. It was
-        // 18, which with the old plate made 80.
+        // 18, which with the old plate made 80. Off the ladder and derived
+        // rather than chosen: it is 46 minus the plate, halved, so rounding it
+        // to 8 changes the strip the mockup specifies rather than a gap
+        // somebody picked.
         .padding(.vertical, 9)
         // On the same column as the content below it. Which column that is
         // depends on the page: a grouped Form is capped at 744 pt and centred,
@@ -505,7 +516,7 @@ public struct HelmMetricStrip: View {
                         .fill(HelmSurface.hairline)
                         .frame(width: 1, height: 26)
                 }
-                VStack(spacing: 3) {
+                VStack(spacing: HelmSpace.s1) {
                     Text(metric.value)
                         .font(.system(size: 16, weight: .medium, design: .monospaced))
                         // Figures roll rather than cut. The ring already did
@@ -522,7 +533,10 @@ public struct HelmMetricStrip: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
                     Text(metric.label)
-                        .font(.system(size: 9, weight: .semibold))
+                        // 10, the scale's bottom step. It was 9 — a size on no
+                        // step, under a figure that is on one, in the strip
+                        // that appears on every module page.
+                        .font(.system(size: 10, weight: .semibold))
                         .tracking(0.7)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)

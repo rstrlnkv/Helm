@@ -56,7 +56,11 @@ public struct HelmEmptyState<Actions: View>: View {
                 HelmIconPlate(symbol: symbol, tint: tint, size: Self.plate)
             }
             if let title {
-                Text(title).font(.system(size: 17, weight: .semibold))
+                // 16, not 17. `.title2` is 17 on macOS and this was typed as
+                // one; the scale steps 13 · 16 · 22, and an empty state's
+                // heading is the step above a section heading and well below a
+                // hero figure.
+                Text(title).font(.system(size: 16, weight: .semibold))
             }
             if let message {
                 Text(message)
@@ -69,7 +73,7 @@ public struct HelmEmptyState<Actions: View>: View {
                 // what was not looked at. Quieter than the first, because
                 // somebody who has their answer should not have to read it.
                 Text(note)
-                    .font(.caption)
+                    .font(HelmText.rowDetail)
                     .foregroundStyle(HelmText.faint)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: Self.textWidth)
@@ -82,7 +86,7 @@ public struct HelmEmptyState<Actions: View>: View {
     }
 
     /// One answer each, so there is nothing left to decide at a call site.
-    private static var spacing: CGFloat { 14 }
+    private static var spacing: CGFloat { HelmSpace.s5 }
     private static var plate: CGFloat { 56 }
     /// Wide enough for two lines of a sentence at this size, narrow enough that
     /// the eye does not have to travel back across the window to read them.
@@ -125,11 +129,11 @@ public struct HelmBusyState<Actions: View>: View {
     }
 
     public var body: some View {
-        HelmCenteredContent(spacing: 10) {
+        HelmCenteredContent(spacing: HelmSpace.s5) {
             ProgressView().controlSize(.small)
             if let message {
                 Text(message)
-                    .font(.caption)
+                    .font(HelmText.rowDetail)
                     .foregroundStyle(HelmText.quiet)
                     .multilineTextAlignment(.center)
             }
@@ -138,9 +142,9 @@ public struct HelmBusyState<Actions: View>: View {
                 // that one is the page's invitation and this one interrupts
                 // something. Set here all the same, so the answer is given once.
                 .controlSize(.regular)
-                // The spinner sits 10 pt above its caption; a button that close
-                // to a line of text reads as part of the sentence.
-                .padding(.top, 4)
+                // The spinner sits one step above its caption; a button that
+                // close to a line of text reads as part of the sentence.
+                .padding(.top, HelmSpace.s2)
         }
     }
 }

@@ -47,12 +47,12 @@ public struct WelcomeView: View {
     public var body: some View {
         VStack(spacing: 0) {
             if let step {
-                VStack(spacing: 16) {
+                VStack(spacing: HelmSpace.s6) {
                     stepContent(step)
                     switchSection(step)
                 }
                 .frame(maxWidth: 420)
-                .padding(.horizontal, 32)
+                .padding(.horizontal, HelmSpace.s7)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 // Identity by step so the transition runs, the reveal
                 // animation replays, and the switch below re-seeds from the
@@ -73,7 +73,7 @@ public struct WelcomeView: View {
                     .keyboardShortcut(.cancelAction)
                 Spacer()
                 Text(WelcomeStr.stepPosition(flow.step + 1, steps.count))
-                    .font(.caption)
+                    .font(HelmText.rowDetail)
                     .foregroundStyle(HelmText.faint)
                 Spacer()
                 Button(WelcomeStr.back) { flow.back() }
@@ -83,7 +83,7 @@ public struct WelcomeView: View {
                 }
                 .keyboardShortcut(.defaultAction)
             }
-            .padding(16)
+            .padding(HelmSpace.s6)
         }
         .animation(HelmMotion.interface, value: flow.step)
         .frame(width: 560, height: 420)
@@ -94,26 +94,26 @@ public struct WelcomeView: View {
     /// stop rather than being folded into the same combined utterance.
     @ViewBuilder
     private func stepContent(_ step: WelcomeStep) -> some View {
-        VStack(spacing: 16) {
+        VStack(spacing: HelmSpace.s6) {
             if step.moduleSymbols.isEmpty {
                 Image(systemName: step.sfSymbol)
-                    .font(.system(size: 44, weight: .light))
+                    .font(.system(size: 40, weight: .light))
                     .foregroundStyle(HelmText.quiet)
                     .accessibilityHidden(true)
             } else {
                 // The mark and the title/body stand still; only the
                 // icon row moves — one thing moves, the rest doesn't.
-                VStack(spacing: 20) {
+                VStack(spacing: HelmSpace.s6) {
                     HelmAppMark(size: 72)
                     // The app's parts, arriving one after another — the
                     // first screen answers "what is this made of" before
                     // a word is read. Icons are decorative here; the step
                     // text carries the meaning, and the row is hidden
                     // from accessibility as a whole.
-                    HStack(spacing: 14) {
+                    HStack(spacing: HelmSpace.s5) {
                         ForEach(Array(step.moduleSymbols.enumerated()), id: \.offset) { index, symbol in
                             Image(systemName: symbol)
-                                .font(.system(size: 17, weight: .medium))
+                                .font(.system(size: 16, weight: .medium))
                                 .foregroundStyle(HelmText.quiet)
                                 .frame(width: 36, height: 36)
                                 .background(Circle().fill(Color.primary.opacity(0.06)))
@@ -133,10 +133,10 @@ public struct WelcomeView: View {
                 .onAppear { revealed = true }
             }
             Text(step.title)
-                .font(.title2.weight(.semibold))
+                .font(.system(size: 16, weight: .semibold))
                 .multilineTextAlignment(.center)
             Text(step.body)
-                .font(.callout)
+                .font(HelmText.rowTitle)
                 .foregroundStyle(HelmText.quiet)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
@@ -158,7 +158,7 @@ public struct WelcomeView: View {
                     .toggleStyle(.switch)
                     .onChange(of: switchOn) { _, on in setModuleEnabled(moduleID, on) }
                 Text(WelcomeStr.switchHint)
-                    .font(.caption)
+                    .font(HelmText.rowDetail)
                     .foregroundStyle(HelmText.quiet)
             }
         } else {

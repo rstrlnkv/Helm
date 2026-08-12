@@ -38,7 +38,7 @@ struct DuplicatesSettingsPage: View {
             // short answer looks exactly like a clean one.
             if diskAccess == .denied {
                 HelmPermissionNote(need: .fullDiskAccess, text: DupStr.needsAccess)
-                    .padding(.horizontal, 20).padding(.vertical, 10)
+                    .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
                 Divider()
             }
             if dvm.folder != nil || dvm.phase != .start {
@@ -52,10 +52,10 @@ struct DuplicatesSettingsPage: View {
             // was never told that files under a megabyte were never compared.
             if dvm.phase == .result, !dvm.groups.isEmpty {
                 Text(DupStr.floorNote)
-                    .font(.caption).foregroundStyle(HelmText.quiet)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 20).padding(.vertical, 8)
+                    .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 8)
                 Divider()
             }
             content
@@ -107,7 +107,7 @@ struct DuplicatesSettingsPage: View {
                     .foregroundStyle(HelmText.quiet)
                     .accessibilityHidden(true)
                 Text(Redact.path(folder.path))
-                    .font(.callout.weight(.semibold))
+                    .font(HelmText.sectionHeading)
                     .lineLimit(1).truncationMode(.middle)
                     .frame(minWidth: 180, maxWidth: 260, alignment: .leading)
             }
@@ -123,7 +123,7 @@ struct DuplicatesSettingsPage: View {
                     // taller than the buttons in it; the path yields first,
                     // being the thing that already truncates.
                     Text(DupStr.found(dvm.groups.count, Bytes(dvm.wastedBytes)))
-                        .font(.caption).foregroundStyle(HelmText.faint)
+                        .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
                         .lineLimit(1).fixedSize()
                 }
                 // Every control stays at every width. What a narrow pane takes
@@ -153,7 +153,7 @@ struct DuplicatesSettingsPage: View {
                 }
             }
         }
-        .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
+        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
     }
 
     /// A toolbar control that keeps its name where there is room for it, and
@@ -221,13 +221,13 @@ struct DuplicatesSettingsPage: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 20).padding(.vertical, 12)
+        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
     }
 
     /// What actually happened, named and reasoned — the component Disk,
     /// Leftovers and the orphans tab already use.
     private var outcomeRow: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: HelmSpace.s5) {
             HelmRemovalOutcome(
                 succeededText: dvm.banner ?? "",
                 removed: dvm.removedCount,
@@ -244,7 +244,7 @@ struct DuplicatesSettingsPage: View {
     }
 
     private var basketRow: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: HelmSpace.s5) {
             // A count is not a list. Everything about to be trashed can be
             // named here, and taken back out without hunting for its row.
             Menu {

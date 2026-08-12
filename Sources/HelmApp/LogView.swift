@@ -72,9 +72,9 @@ struct LogView: View {
         HStack(alignment: .firstTextBaseline, spacing: 16) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(AppBuild.isDev ? AppStr.logNoteDev : AppStr.logNoteStable)
-                    .font(.callout)
+                    .font(HelmText.rowTitle)
                 Text(AppStr.logRedactionNote)
-                    .font(.caption).foregroundStyle(HelmText.quiet)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
@@ -94,7 +94,7 @@ struct LogView: View {
                     HelmLog.shared.setEnabled(value)
                 }
         }
-        .padding(.horizontal, 20).padding(.vertical, 10)
+        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
     }
 
     private var levelLabels: [String] {
@@ -147,7 +147,7 @@ struct LogView: View {
             .toggleStyle(.button)
             .fixedSize()
         }
-        .padding(.horizontal, 20).padding(.vertical, 10)
+        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
     }
 
     @ViewBuilder private var lines: some View {
@@ -210,22 +210,29 @@ struct LogView: View {
             Text("\(Text(HelmDates.logTime(entry.date)).foregroundStyle(HelmText.quiet))\(Text(HelmDates.logMillis(entry.date)).foregroundStyle(HelmText.faint))")
                 .helmFigure()
             Text(entry.category)
-                .font(.caption.weight(.medium))
+                .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(HelmText.faint)
-                // 116, and a limit: three categories in the source are longer
+                // 126, and a limit: three categories in the source are longer
                 // than the old 92 — `homebrew.listInstalled` wrapped and made
                 // the row twice as tall with a blank half beside it.
+                //
+                // It was 116 at 10 pt, and the number moved with the size
+                // rather than being left behind by it: re-measured, the same
+                // three that fitted at 10/116 fit at 11/126
+                // (`homebrew.listInstalled` 121.1, `keepawake.assertions`
+                // 118.6, `autopilot.applyRules` 110.1) and the same one still
+                // truncates (`uninstaller.scanLeftovers`, 134.7).
                 .lineLimit(1).truncationMode(.tail)
-                .frame(width: 116, alignment: .leading)
+                .frame(width: 126, alignment: .leading)
             Text(entry.message)
-                .font(.caption)
+                .font(HelmText.rowDetail)
                 .foregroundStyle(entry.level == .info ? HelmText.quiet : .primary)
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
         }
         .padding(.vertical, 2)
-        .padding(.horizontal, 20)
+        .padding(.horizontal, HelmLayout.formInset)
         // The wash fills the row; the rule sits at its left edge. Written as
         // two views inside `background(alignment:)` first, which stacks them
         // with the *default* centre alignment — so the 3 pt rule landed in the
@@ -271,9 +278,9 @@ struct LogView: View {
             .disabled(entries.isEmpty)
             Spacer()
             Text(AppStr.logCount(shown.count, entries.count))
-                .font(.caption).foregroundStyle(HelmText.quiet)
+                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
         }
-        .padding(.horizontal, 20).padding(.vertical, 12)
+        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
     }
 
     private func refresh() {

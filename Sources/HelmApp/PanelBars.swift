@@ -130,7 +130,7 @@ struct PanelTabStrip: View {
                     // was ~0.6% black, which is nothing. A material composites
                     // against whatever is behind it, which is what a raised
                     // segment is.
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous)
                         .fill(.regularMaterial)
                         .shadow(color: .black.opacity(0.18), radius: 1.5, y: 1)
                         // One shape that moves between tabs rather than one
@@ -138,7 +138,7 @@ struct PanelTabStrip: View {
                         .matchedGeometryEffect(id: "tab.selection", in: selection)
                 }
             }
-            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous))
         }
         .buttonStyle(.plain)
         // Glyph-only tabs have nowhere to put their name; the pointer is where

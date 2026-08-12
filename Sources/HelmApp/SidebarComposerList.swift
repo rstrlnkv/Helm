@@ -234,7 +234,7 @@ struct SidebarComposerListRow: View {
 
     private func module(_ descriptor: any ModuleDescriptor, in sectionID: String) -> some View {
         let first = isFirstInSection(sectionID)
-        return HStack(spacing: 10) {
+        return HStack(spacing: HelmSpace.s5) {
             // Plain insertion, as before the redesign: one tree, so the
             // `withAnimation` that flips the mode reaches this.
             if editing {

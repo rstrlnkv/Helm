@@ -24,7 +24,7 @@ struct DiskSettingsPage: View {
             // screen used to say nothing at all about that.
             if diskAccess == .denied {
                 HelmPermissionNote(need: .fullDiskAccess, text: DkStr.scanNeedsAccess)
-                    .padding(.horizontal, 20).padding(.vertical, 10)
+                    .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
                 Divider()
             }
             switch dvm.phase {
@@ -71,7 +71,7 @@ struct DiskSettingsPage: View {
         ScrollView {
             VStack(spacing: 12) {
                 Text(DkStr.startHint)
-                    .font(.callout).foregroundStyle(HelmText.quiet)
+                    .font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
                     .padding(.top, 4)
                 ForEach(dvm.volumes) { volume in
                     volumeCard(volume)
@@ -92,7 +92,7 @@ struct DiskSettingsPage: View {
             // full-bleed content, so a column here put the cards 32.5 pt right
             // of the note introducing them at the default window, and 202.5 at
             // 1400 — measured in `StartScreenColumnTests`.
-            .padding(20)
+            .padding(HelmLayout.formInset)
         }
     }
 
@@ -121,7 +121,7 @@ struct DiskSettingsPage: View {
                 }
                 .frame(height: 6)
                 Text(formatted(volume.freeBytes) + " " + DkStr.free)
-                    .font(.caption).foregroundStyle(HelmText.quiet)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
             }
             .helmCard()
         }
@@ -143,7 +143,7 @@ struct DiskSettingsPage: View {
     // MARK: - Basket
 
     private var basketBar: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: HelmSpace.s5) {
             if dvm.basket.isEmpty {
                 if let banner = dvm.banner {
                     HelmRemovalOutcome(
@@ -153,7 +153,7 @@ struct DiskSettingsPage: View {
                         needsFullDiskAccess: diskAccess == .denied)
                 } else {
                     Text(DkStr.emptyBasket)
-                        .font(.caption).foregroundStyle(HelmText.quiet)
+                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                 }
             } else {
                 // A count is not a list. Everything about to be trashed can be
@@ -183,7 +183,7 @@ struct DiskSettingsPage: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 20).padding(.vertical, 12)
+        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
     }
 
     // MARK: - Helpers

@@ -139,9 +139,9 @@ struct SidebarComposerSheet: View {
                 Button(AppStr.done) { dismiss() }
                     .keyboardShortcut(.defaultAction)
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, HelmLayout.formInset)
             .padding(.top, 18)
-            .padding(.bottom, 10)
+            .padding(.bottom, HelmSpace.s5)
 
             // The same `note` `noteHeight` measures — the sheet's window is
             // sized from it, so the two must be one value.
@@ -195,7 +195,7 @@ struct SidebarComposerSheet: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
-            .padding(.horizontal, 20)
+            .padding(.horizontal, HelmLayout.formInset)
             .padding(.vertical, 12)
         }
         .frame(width: Self.width, height: Self.windowHeight(table: tableHeight, chrome: chrome))

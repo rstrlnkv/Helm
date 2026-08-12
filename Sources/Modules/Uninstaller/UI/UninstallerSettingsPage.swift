@@ -66,7 +66,7 @@ struct UninstallerSettingsPage: View {
         VStack(spacing: 0) {
             // One toolbar row instead of a metric panel, a segmented row and a
             // search row stacked on top of each other.
-            HStack(spacing: 10) {
+            HStack(spacing: HelmSpace.s5) {
                 Picker(HelmA11y.whatToShow, selection: $tab) {
                     Text(UnStr.tabApps).tag(0)
                     Text(UnStr.tabOrphans).tag(1)
@@ -108,7 +108,7 @@ struct UninstallerSettingsPage: View {
                 .accessibilityLabel(UnStr.refreshList)
                 }
             }
-            .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
+            .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
 
             Divider()
 
@@ -123,7 +123,7 @@ struct UninstallerSettingsPage: View {
                 HelmPermissionNote(need: .fullDiskAccess,
                                    text: watchingTrash ? UnStr.accessNeededWithWatch
                                                        : UnStr.removalNeedsAccess)
-                    .padding(.horizontal, 20).padding(.vertical, 10)
+                    .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
                 Divider()
             }
 
@@ -182,14 +182,14 @@ struct UninstallerSettingsPage: View {
                 .listStyle(.inset)
             }
             Divider()
-            HStack(spacing: 10) {
+            HStack(spacing: HelmSpace.s5) {
                 Button(UnStr.selectNone) { uvm.clearChecked() }
                     .disabled(checked.isEmpty)
                 Text(statusLine)
-                    .font(.caption).foregroundStyle(HelmText.quiet)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                 Spacer()
                 if let banner = uvm.resultBanner {
-                    Text(banner).font(.caption).foregroundStyle(HelmText.quiet).lineLimit(1)
+                    Text(banner).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet).lineLimit(1)
                 }
                 Button {
                     Task { await uvm.prepareReview() }
@@ -206,7 +206,7 @@ struct UninstallerSettingsPage: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(checked.isEmpty || uvm.scanning)
             }
-            .padding(.horizontal, 20).padding(.vertical, 12)
+            .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
         }
     }
 
@@ -214,7 +214,7 @@ struct UninstallerSettingsPage: View {
         // The checkbox is its own control centred against the row, so it lines
         // up with the icon and the name instead of hanging above them.
         let system = SystemApp.isSystem(bundleID: app.bundleID)
-        return HStack(spacing: 10) {
+        return HStack(spacing: HelmSpace.s5) {
             if system {
                 // Marked the way Disk marks a row it cannot remove: no
                 // checkbox, and a word saying why. Safari sat here tickable at
@@ -236,7 +236,7 @@ struct UninstallerSettingsPage: View {
             Image(nsImage: AppInfo.icon(forFile: app.path))
                 .resizable().frame(width: 28, height: 28)
                 .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 // **Two lines in every row, whatever the row is.** The System
                 // mark used to be a third line, so the rows that had it stood
                 // taller than the rows that did not and the list went down the
@@ -248,7 +248,7 @@ struct UninstallerSettingsPage: View {
                     if system { HelmBadge(UnStr.systemApp) }
                 }
                 Text(app.path)
-                    .font(.caption).foregroundStyle(HelmText.quiet).lineLimit(1)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet).lineLimit(1)
                     .truncationMode(.middle)
             }
             // A name, a path and the System caption are one thing to read, in
@@ -283,7 +283,7 @@ struct UninstallerSettingsPage: View {
                         }
                         if group.leftovers.isEmpty {
                             Text(UnStr.noLeftoversForApp)
-                                .font(.caption).foregroundStyle(HelmText.quiet)
+                                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                         }
                     } header: {
                         groupHeader(group)
@@ -295,7 +295,7 @@ struct UninstallerSettingsPage: View {
             Divider()
 
             if !runningNames.isEmpty {
-                HStack(alignment: .top, spacing: 10) {
+                HStack(alignment: .top, spacing: HelmSpace.s5) {
                     // The sentence beside it already says an app is still
                     // running; read aloud, the triangle adds "warning" and no
                     // information.
@@ -304,20 +304,20 @@ struct UninstallerSettingsPage: View {
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 4) {
                         Text(UnStr.runningWarning(runningNames.joined(separator: ", ")))
-                            .font(.callout)
+                            .font(HelmText.rowTitle)
                             .fixedSize(horizontal: false, vertical: true)
                         Toggle(UnStr.forceQuitAndRemove, isOn: $uvm.forceQuit)
-                            .font(.callout)
+                            .font(HelmText.rowTitle)
                     }
                     Spacer()
                 }
-                .padding(.horizontal, 20).padding(.vertical, 12)
+                .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
             }
 
-            HStack(spacing: 10) {
+            HStack(spacing: HelmSpace.s5) {
                 Button(UnStr.back) { uvm.backToPick() }
                 Spacer()
-                Text(UnStr.toTrash(sizeText)).font(.caption).foregroundStyle(HelmText.quiet)
+                Text(UnStr.toTrash(sizeText)).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                 let ready = UninstallPlan.readiness(groups, forceQuit: uvm.forceQuit) == .ready
                 Button {
                     Task { await uvm.removeSelection() }
@@ -340,21 +340,21 @@ struct UninstallerSettingsPage: View {
                 .disabled(uvm.busy || !ready)
                 .help(ready ? "" : UnStr.blockedByRunning)
             }
-            .padding(.horizontal, 20).padding(.vertical, 12)
+            .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
         }
     }
 
     /// The app itself, first in its group and with no checkbox: `paths` always
     /// takes it, so a box to untick would be an offer the plan does not honour.
     private func bundleRow(_ app: InstalledApp) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: HelmSpace.s5) {
             // Where the leftover rows put their checkbox, so the paths line up.
             Color.clear.frame(width: 16, height: 1)
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 Text(app.path)
                     .lineLimit(1).truncationMode(.middle)
                 Text(UnStr.theAppItself)
-                    .font(.caption).foregroundStyle(HelmText.quiet)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
             }
             .accessibilityElement(children: .combine)
             Spacer()
@@ -371,7 +371,7 @@ struct UninstallerSettingsPage: View {
                 Section {
                     ForEach(failures, id: \.path) { failure in
                         HStack(alignment: .top, spacing: 8) {
-                            VStack(alignment: .leading, spacing: 3) {
+                            VStack(alignment: .leading, spacing: HelmSpace.s1) {
                                 HStack(spacing: 8) {
                                     // The line under it names the reason in
                                     // words; the triangle only repeats it.
@@ -382,10 +382,10 @@ struct UninstallerSettingsPage: View {
                                         .lineLimit(1)
                                 }
                                 Text(failure.path)
-                                    .font(.caption).foregroundStyle(HelmText.quiet)
+                                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                                     .lineLimit(1).truncationMode(.middle)
                                 Text(UnStr.failureReason(failure.reason))
-                                    .font(.caption).foregroundStyle(HelmSignal.warning)
+                                    .font(HelmText.rowDetail).foregroundStyle(HelmSignal.warning)
                                 if !failure.message.isEmpty {
                                     // macOS's own words: the classification is a
                                     // summary, this is the evidence behind it.
@@ -401,7 +401,7 @@ struct UninstallerSettingsPage: View {
                             Button(HelmA11y.showInFinder) { HelmReveal.inFinder(failure.path) }
                                 .controlSize(.small)
                         }
-                        .padding(.vertical, 3)
+                        .padding(.vertical, HelmSpace.s1)
                     }
                 } header: {
                     Text(UnStr.couldNotRemove(failures.count))
@@ -410,7 +410,7 @@ struct UninstallerSettingsPage: View {
             .listStyle(.inset)
 
             Divider()
-            HStack(spacing: 10) {
+            HStack(spacing: HelmSpace.s5) {
                 if failures.contains(where: { $0.reason == .needsFullDiskAccess }) {
                     Button(UnStr.openDiskAccess) { PermissionCheck.openFullDiskAccessSettings() }
                 }
@@ -421,7 +421,7 @@ struct UninstallerSettingsPage: View {
                 Button(UnStr.done) { uvm.dismissFailures() }
                     .buttonStyle(.borderedProminent)
             }
-            .padding(.horizontal, 20).padding(.vertical, 12)
+            .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
         }
     }
 
@@ -432,27 +432,27 @@ struct UninstallerSettingsPage: View {
             Image(nsImage: AppInfo.icon(forFile: group.app.path))
                 .resizable().frame(width: 18, height: 18)
                 .accessibilityHidden(true)
-            Text(group.app.name).font(.callout.weight(.semibold))
+            Text(group.app.name).font(HelmText.sectionHeading)
             if group.running {
                 HelmBadge(UnStr.runningBadge, tint: .orange)
             }
             Spacer()
             Text(Bytes(group.app.sizeBytes))
-                .font(.caption).foregroundStyle(HelmText.quiet).monospacedDigit()
+                .helmFigure().foregroundStyle(HelmText.quiet)
         }
         // A name, a "Running" badge and a size: one heading, read in order.
         .accessibilityElement(children: .combine)
     }
 
     private func leftoverRow(_ leftover: Leftover) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: HelmSpace.s5) {
             Toggle((leftover.path as NSString).lastPathComponent, isOn: Binding(
                 get: { uvm.isSelected(leftover: leftover.path) },
                 set: { on in uvm.setSelected(leftover: leftover.path, on) }
             ))
             .toggleStyle(.checkbox)
             .labelsHidden()
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 HStack(spacing: 6) {
                     Text((leftover.path as NSString).lastPathComponent).lineLimit(1)
                     // Says why the box is empty: this one was found by the app's
@@ -462,7 +462,7 @@ struct UninstallerSettingsPage: View {
                     }
                 }
                 Text(leftover.path)
-                    .font(.caption).foregroundStyle(HelmText.quiet)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                     .lineLimit(1).truncationMode(.middle)
             }
             // The name, the badge that qualifies it and the path are one thing
@@ -470,7 +470,7 @@ struct UninstallerSettingsPage: View {
             .accessibilityElement(children: .combine)
             Spacer()
             Text(Bytes(leftover.sizeBytes))
-                .font(.caption).foregroundStyle(HelmText.quiet).monospacedDigit()
+                .helmFigure().foregroundStyle(HelmText.quiet)
         }
         .frame(minHeight: 32)
     }

@@ -22,11 +22,11 @@ struct HistorySection: View {
     private var summary: ActionHistory.Summary { ActionHistory.summary(of: history) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: HelmSpace.s5) {
             header
             if history.isEmpty {
                 Text(ApStr.historyEmpty)
-                    .font(.callout)
+                    .font(HelmText.rowTitle)
                     .foregroundStyle(HelmText.quiet)
             } else {
                 VStack(alignment: .leading, spacing: 6) {
@@ -50,7 +50,7 @@ struct HistorySection: View {
             let problems = summary.refused + summary.failed
             if problems > 0 {
                 Text(ApStr.historyProblems(problems))
-                    .font(.caption)
+                    .font(HelmText.rowDetail)
                     .foregroundStyle(HelmText.quiet)
             }
             Spacer(minLength: 8)
@@ -64,6 +64,14 @@ struct HistorySection: View {
     private func row(_ record: ActionRecord) -> some View {
         HStack(spacing: 8) {
             Text(HelmDates.dayAndMinute(record.at))
+                // **10 is meant here, and the column is why.** This is a figure
+                // read down a column, so the house says `.helmFigure()` — and
+                // that is SF Mono 11, where the widest of the eight languages
+                // measures 115.6 pt against a frame of 96. At tabular 11 the
+                // widest is 100.4, still over. Moving the size means moving the
+                // column,
+                // and the column belongs to the row's composition rather than
+                // to its vocabulary: recorded as a finding, not swept.
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(HelmText.quiet)
                 // The width is fixed and the format is macOS's, not ours:
@@ -73,10 +81,10 @@ struct HistorySection: View {
                 .lineLimit(1)
                 .frame(width: 96, alignment: .leading)
             Text(record.file)
-                .font(.callout)
+                .font(HelmText.rowTitle)
                 .lineLimit(1).truncationMode(.middle)
             Text(detail(record))
-                .font(.caption)
+                .font(HelmText.rowDetail)
                 .foregroundStyle(record.kind == .failed || record.kind == .refused
                                  ? Color.orange : HelmText.quiet)
                 .lineLimit(1).truncationMode(.middle)
@@ -85,7 +93,7 @@ struct HistorySection: View {
             // writing it chose it: "Invoices" explains more than any sentence
             // this screen could compose.
             Text(record.rule)
-                .font(.caption)
+                .font(HelmText.rowDetail)
                 .foregroundStyle(HelmText.quiet)
                 .lineLimit(1)
         }

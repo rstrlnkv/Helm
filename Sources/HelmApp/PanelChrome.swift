@@ -72,7 +72,7 @@ struct EditChrome: ViewModifier {
                 // is governed by its scoped animation, always — including at
                 // the drop, where the content above it swaps inside a
                 // transaction that has animations off.
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                RoundedRectangle(cornerRadius: HelmRadius.frame, style: .continuous)
                     .fill(HelmSurface.wellFill)
                     .opacity(wellVisible ? 1 : 0)
                     .animation(HelmMotion.wellFade, value: wellVisible)
@@ -83,7 +83,7 @@ struct EditChrome: ViewModifier {
             .animation(HelmMotion.slotFade, value: lifted)
             .overlay {
                 if shielded {
-                    Color.clear.contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    Color.clear.contentShape(RoundedRectangle(cornerRadius: HelmRadius.frame, style: .continuous))
                 }
             }
             .overlay(alignment: .topLeading) {
@@ -240,6 +240,9 @@ struct UtilitiesSection: View {
                         .foregroundStyle(HelmText.quiet)
                     Text(AppStr.utilities).font(.subheadline.weight(.medium))
                     Spacer()
+                    // The panel keeps its own scale — 9 · 10 · 11 · 12, spelled
+                    // out beside this line — and does not answer to the settings
+                    // window's four tokens (ARCHITECTURE.md § Design language).
                     Text("\(modules.count)").font(.caption).foregroundStyle(HelmText.faint)
                     Image(systemName: "chevron.right")
                         .font(.system(size: 10, weight: .semibold))
@@ -317,6 +320,11 @@ struct UtilitiesSection: View {
                               tint: live.descriptor.moduleTint.colour, size: 20)
                 // The short name, as the sidebar asks for: this column is
                 // fixed and «Объекты входа и расширения» is cut mid-word in it.
+                // `.callout` is 12, which is off the settings scale and *on*
+                // the panel's own — the sizes around it in this file are 9,
+                // 10, 11 and 12. The panel is a transient surface with its
+                // own rules (ARCHITECTURE.md § Design language); this is the
+                // one style the tree-wide sweep left where it was.
                 Text(meta.shortName).font(.callout).lineLimit(1)
                 Spacer()
                 Image(systemName: "arrow.up.forward")

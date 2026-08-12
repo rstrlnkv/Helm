@@ -98,10 +98,10 @@ public struct HelmGlyphPicker: View {
                 ForEach(Array(symbols.enumerated()), id: \.element) { index, symbol in
                     Button { choose(symbol) } label: {
                         Image(systemName: symbol)
-                            .font(.system(size: 15, weight: .medium))
+                            .font(.system(size: 16, weight: .medium))
                             .foregroundStyle(symbol == selected ? Color.white : Color.primary)
                             .frame(width: 40, height: 32)
-                            .background(RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            .background(RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous)
                                 .fill(symbol == selected ? AnyShapeStyle(Color.accentColor)
                                       : AnyShapeStyle(HelmSurface.wellFill)))
                     }

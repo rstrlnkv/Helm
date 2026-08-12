@@ -69,7 +69,7 @@ public struct HelmChoiceCards<Value: Hashable, Preview: View>: View {
                     VStack(spacing: 6) {
                         item.preview
                             .frame(width: thumbnail.width, height: thumbnail.height)
-                            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                            .clipShape(RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous))
                             // The accent ring on the chosen one; a hairline on
                             // all of them so the unchosen ones have an edge at
                             // all. A preview whose own fill matches the card
@@ -77,12 +77,22 @@ public struct HelmChoiceCards<Value: Hashable, Preview: View>: View {
                             // at 1.00:1 for the light thumbnail in light
                             // appearance, and 1.12:1 dark on dark.
                             .overlay {
-                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous)
                                     .strokeBorder(selected ? Color.accentColor
                                                            : HelmSurface.hairline,
                                                   lineWidth: selected ? 2.5 : 0.5)
                             }
                         Text(item.label)
+                            // **10 is meant here**, and it is the one place in
+                            // this file a size may not move: the thumbnail
+                            // widths above were measured against this label at
+                            // this size — «Имя в строке меню» folds onto two
+                            // lines under 104 pt and fits on one at it. At 11
+                            // that measurement is a different measurement, and
+                            // a row of cards where one label wraps and two do
+                            // not has three baselines and no alignment at all.
+                            // A tick label under a picture is what the scale's
+                            // bottom step is for.
                             .font(.caption)
                             // Weight, not colour: the ring already says which
                             // one is chosen, and a second colour saying it

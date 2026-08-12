@@ -159,7 +159,7 @@ struct ConditionRow: View {
                 .frame(width: HelmPickerWidth.fitting(
                     [ApStr.comparisonLarger, ApStr.comparisonSmaller], minimum: 140))
             numberField(megabytes, ApStr.a11yMegabytes) { condition = .size(comparison, megabytes: $0) }
-            Text(ApStr.unitMegabytes).font(.callout).foregroundStyle(HelmText.quiet)
+            Text(ApStr.unitMegabytes).font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
 
         case let .dateAdded(comparison, days):
             dateDetail(comparison, days) { condition = .dateAdded($0, days: $1) }
@@ -168,13 +168,13 @@ struct ConditionRow: View {
             dateDetail(comparison, days) { condition = .dateModified($0, days: $1) }
 
         case let .downloadedFrom(host):
-            Text(ApStr.comparisonContains).font(.callout).foregroundStyle(HelmText.quiet)
+            Text(ApStr.comparisonContains).font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
             TextField("example.com", text: Binding(get: { host },
                                                    set: { condition = .downloadedFrom($0) }))
                 .accessibilityLabel(ApStr.a11yHost)
 
         case let .tag(tag):
-            Text(ApStr.comparisonIs).font(.callout).foregroundStyle(HelmText.quiet)
+            Text(ApStr.comparisonIs).font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
             TextField("", text: Binding(get: { tag }, set: { condition = .tag($0) }))
                 .accessibilityLabel(ApStr.a11yTagValue)
         }
@@ -192,7 +192,7 @@ struct ConditionRow: View {
         .frame(width: HelmPickerWidth.fitting(
             [ApStr.comparisonOlder, ApStr.comparisonNewer], minimum: 140))
         numberField(days, ApStr.a11yDays) { rebuild(comparison, $0) }
-        Text(ApStr.unitDays(for: days)).font(.callout).foregroundStyle(HelmText.quiet)
+        Text(ApStr.unitDays(for: days)).font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
     }
 
     /// Typed rather than stepped: 30 days and 500 MB are both a number someone

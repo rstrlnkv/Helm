@@ -25,7 +25,7 @@ struct ActionRow: View {
             }
             if case .rename = action {
                 Text(ApStr.patternHint)
-                    .font(.caption).foregroundStyle(HelmText.faint)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -82,7 +82,7 @@ struct ActionRow: View {
         switch action {
         case let .move(to: path):
             Text(path.isEmpty ? "—" : Redact.path(path))
-                .font(.callout).foregroundStyle(path.isEmpty ? HelmText.faint : .primary)
+                .font(HelmText.rowTitle).foregroundStyle(path.isEmpty ? HelmText.faint : .primary)
                 .lineLimit(1).truncationMode(.middle)
             // The panel is the only way a destination gets in, so a rule cannot
             // name a folder nobody looked at.

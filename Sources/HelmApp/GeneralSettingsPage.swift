@@ -48,7 +48,7 @@ struct MenuBarSettingsView: View {
 
     private func permissionRow(_ title: String, detail: String, granted: Bool,
                                action: @escaping () -> Void) -> some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .top, spacing: HelmSpace.s5) {
             Image(systemName: granted ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
                 .foregroundStyle(granted ? HelmSignal.success : HelmSignal.warning)
             VStack(alignment: .leading, spacing: 2) {
@@ -76,7 +76,7 @@ struct MenuBarSettingsView: View {
             // granted is a row teaching people to ignore this space.
             if !withheldPermissions.isEmpty {
                 Section {
-                    HStack(spacing: 10) {
+                    HStack(spacing: HelmSpace.s5) {
                         Image(systemName: "exclamationmark.circle.fill")
                             .foregroundStyle(HelmSignal.warning)
                         Text(AppStr.permissionsWithheld(count: withheldPermissions.count,

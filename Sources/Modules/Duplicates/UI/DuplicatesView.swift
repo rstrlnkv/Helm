@@ -32,7 +32,7 @@ struct DuplicatesView: View {
                 } header: {
                     HStack {
                         Text("\(Bytes(group.bytes)) × \(group.paths.count)")
-                            .font(.caption.weight(.semibold))
+                            .font(HelmText.groupLabel)
                         Spacer()
                         Button(DupStr.markGroupExtras) { dvm.basketExtras(of: group) }
                             .controlSize(.small)
@@ -76,7 +76,7 @@ struct DuplicatesView: View {
                     Divider()
                     HStack {
                         Text((path as NSString).lastPathComponent)
-                            .font(.caption)
+                            .font(HelmText.rowDetail)
                             .foregroundStyle(HelmText.quiet)
                             .lineLimit(1).truncationMode(.middle)
                         Spacer()
@@ -110,7 +110,7 @@ struct DuplicatesView: View {
                 // light mode against `HelmSignal.success`'s 4.58:1.
                 .foregroundStyle(stays ? HelmSignal.success : HelmText.quiet)
                 .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 Text((path as NSString).lastPathComponent)
                     .lineLimit(1).truncationMode(.middle)
                 Text(Redact.path((path as NSString).deletingLastPathComponent))

@@ -937,8 +937,8 @@ struct HelmPanelContent: View {
         // rather than 20 so the radius is concentric with the 14 pt tile cards
         // inside at 12 pt of padding — that is what makes them read as nested
         // rather than merely stacked.
-        .glassEffect(.regular, in: .rect(cornerRadius: 26))
-        .containerShape(.rect(cornerRadius: 26))
+        .glassEffect(.regular, in: .rect(cornerRadius: HelmRadius.panel))
+        .containerShape(.rect(cornerRadius: HelmRadius.panel))
         // Centred in a strip that is wider than the card, so the glass has
         // somewhere to cast. This must come after the glass: applied before
         // it, the effect painted the whole strip and the card came out 56 pt

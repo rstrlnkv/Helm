@@ -11,20 +11,34 @@ import XCTest
 /// A ratchet like the space ladder beside it: the number is what the tree
 /// measured on the day it landed, and only the commit that lowers it lowers it.
 ///
-/// **Explicit sizes only, and that is a decision.** `.font(.callout)` resolves
-/// to 12 pt on macOS and is off this scale — as are `.title2` at 17 and
-/// `.title3` at 15 — but a semantic style is a name for a *role*, and it is the
-/// vocabulary v3 replaces rather than a number somebody picked. Counting the 29
-/// of them here would put a number in this test that nothing can lower until
-/// the tokens land, and would tie the count to what macOS resolves a style to,
-/// which is a fact about the OS and not about this tree. What is counted is a
-/// number typed by hand: `.system(size: 15)` and the `NSFont` builders.
+/// **Two units, because a size can be typed or it can be named.** The first
+/// ratchet counts a number written by hand — `.system(size: 15)` and the
+/// `NSFont` builders. The second counts a *style*: `.font(.callout)`, which is
+/// a name for a role and resolves to a size all the same.
+///
+/// This file used to count only the first, and said why: counting the 29
+/// semantic styles «would put a number in this test that nothing can lower
+/// until the tokens land». They landed in `a49c09d` — `HelmText.rowTitle`,
+/// `.rowDetail`, `.sectionHeading`, `.groupLabel` — so the reason has lapsed
+/// and the count is here. The other half of that paragraph still stands and is
+/// answered rather than dropped: what macOS resolves a style to is a fact about
+/// the OS, so it is **measured** in `testTheStylesStillResolveWhereTheyDid`
+/// rather than remembered here. A macOS release that moves `.callout` to 13
+/// fails that test instead of quietly leaving these two ratchets guarding
+/// nothing.
 final class TypeScaleRatchetTests: XCTestCase {
 
-    /// Measured 2026-08-11 against `main` = `8b8c547`. No single value
-    /// dominates — 9, 12, 15, 17, 19, 34 and 44, one or two each, which is what
+    /// Measured 2026-08-11 against `main` = `8b8c547` at **11**. No single value
+    /// dominated — 9, 12, 15, 17, 19, 34 and 44, one or two each, which is what
     /// «more differences than are visible» looks like when it is written down.
-    private static let recorded = 11
+    ///
+    /// **3** after the sweep of 2026-08-12, and all three are one shape: a
+    /// figure sized to a *drawn* thing rather than to a page. `RingView`'s 19
+    /// sits inside the ring it reports on and `HelmDurationField`'s 34 twice is
+    /// «the hero's figure, one down» — a step the scale does not have, since it
+    /// goes 22 · 40. Moving either is redrawing a screen, and the reason is at
+    /// each line.
+    private static let recorded = 3
 
     private static let ladder: Set<Double> = [10, 11, 13, 16, 22, 40]
 
@@ -50,6 +64,145 @@ final class TypeScaleRatchetTests: XCTestCase {
             """)
     }
 
+    // MARK: - The second unit: a size that was named rather than typed
+
+    /// A style whose size is on no step of the scale.
+    ///
+    /// `.callout` is 12 and `.title3` is 15 — two of the seventeen sizes the
+    /// mockups carried, arriving under a role name so that nobody typing one
+    /// had to notice. The floor here is genuinely 0: every one of them has a
+    /// step to go to, and where the *role* is right and the size is not, the
+    /// answer is one of `HelmText`'s four tokens.
+    ///
+    /// Wider than the ladder scans on purpose — `everyDrawnFile()`, so the app
+    /// shell is read too. A vocabulary that stops at the module boundary is not
+    /// the app's vocabulary.
+    ///
+    /// **1**, measured 2026-08-12 against `main` = `83af00f` after the sweep,
+    /// down from 33. The one that stays is `PanelChrome`'s module name: 12 is
+    /// off the settings scale and on the *panel's* own — 9 · 10 · 11 · 12 in
+    /// that file — and the menu-bar panel deliberately does not follow the
+    /// settings language (ARCHITECTURE.md § Design language). The reason is at
+    /// the line as well as here.
+    private static let recordedOffScaleStyles = 1
+
+    /// A style that resolves to 10 where the step a note uses is 11.
+    ///
+    /// `.caption`, `.caption2` and `.footnote` are three names for **one** size
+    /// on macOS, so a file writing a heading in `.caption` over a detail in
+    /// `.caption2` has drawn one size and written two — the hierarchy is in the
+    /// source and not on the screen. `HelmText.rowDetail` is 11 and is what a
+    /// note under a control is set in.
+    ///
+    /// **The floor is not 0, and that is the point of recording it.** 10 is a
+    /// step of the scale, and a tick label under a picture card or a pill's own
+    /// word means it. What this number says is how many sites still claim it —
+    /// each of which carries the reason at the line, or should.
+    ///
+    /// **6**, measured 2026-08-12 against `main` = `83af00f` after the sweep,
+    /// down from 89. Every one carries its reason at the line: four are on the
+    /// menu-bar panel, which keeps its own scale; `HelmChoiceCards` and
+    /// `BadgePreview` are tick labels under a picture whose tile widths were
+    /// measured at this size; `HistorySection`'s is a timestamp in a 96 pt
+    /// column that 11 pt overflows in two languages.
+    private static let recordedCaptions = 6
+
+    /// The three styles that resolve to 10, and the four that are off the scale
+    /// altogether, with the size macOS gives each. Measured, not assumed:
+    /// `testTheStylesStillResolveWhereTheyDid` reads them back off `NSFont`.
+    private static let offScaleStyles: [String: Double] = [
+        #"\.font\(\.callout\b"#: 12,
+        #"\.font\(\.title2\b"#: 17,
+        #"\.font\(\.title3\b"#: 15,
+        #"\.font\(\.largeTitle\b"#: 26,
+    ]
+
+    private static let tenPointStyles: [String: Double] = [
+        #"\.font\(\.caption\b(?!2)"#: 10,
+        #"\.font\(\.footnote\b"#: 10,
+    ]
+
+    /// Both style families as one table, which is what a fixture wants and
+    /// what neither ratchet wants: they are separate above so each carries its
+    /// own recorded number and its own reason.
+    private static var everyStyle: [String: Double] {
+        offScaleStyles.merging(tenPointStyles) { first, _ in first }
+    }
+
+    func testASemanticStyleOffTheScaleDoesNotGrow() throws {
+        let sites = try UISources.sites(matching: Self.offScaleStyles,
+                                        in: UISources.everyDrawnFile())
+        XCTAssertLessThanOrEqual(sites.count, Self.recordedOffScaleStyles, """
+            \(sites.count) font styles resolve to a size on no step of \
+            \(Self.ladder.sorted().map { String(Int($0)) }.joined(separator: "·")); \
+            the recorded number is \(Self.recordedOffScaleStyles).
+            This number is only ever lowered, by the commit that lowers it.
+            \(UISources.summary(sites))
+            """)
+    }
+
+    func testACaptionWhereTheStepIsElevenDoesNotGrow() throws {
+        let sites = try UISources.sites(matching: Self.tenPointStyles,
+                                        in: UISources.everyDrawnFile())
+        XCTAssertLessThanOrEqual(sites.count, Self.recordedCaptions, """
+            \(sites.count) sites are set in a style macOS resolves to 10 pt, where the \
+            step a note under a control uses is 11 (`HelmText.rowDetail`); the recorded \
+            number is \(Self.recordedCaptions).
+            Where 10 is meant, the reason belongs at the line — and this number carries it.
+            \(UISources.summary(sites))
+            """)
+    }
+
+    /// **The premise, measured.** Both ratchets above rest on what macOS
+    /// resolves a style to, which is not this repository's fact to assert. If a
+    /// release moves `.callout` onto the scale, the first ratchet is guarding
+    /// nothing and should be deleted rather than left green; if it moves
+    /// `.caption2` off 10, the second one's whole complaint — three names, one
+    /// size — has evaporated.
+    func testTheStylesStillResolveWhereTheyDid() {
+        XCTAssertEqual(NSFont.preferredFont(forTextStyle: .callout).pointSize, 12)
+        XCTAssertEqual(NSFont.preferredFont(forTextStyle: .title3).pointSize, 15)
+        XCTAssertEqual(NSFont.preferredFont(forTextStyle: .title2).pointSize, 17)
+        for style in [NSFont.TextStyle.caption1, .caption2, .footnote] {
+            XCTAssertEqual(NSFont.preferredFont(forTextStyle: style).pointSize, 10,
+                           "\(style) no longer resolves to 10 — the three-names-one-size "
+                           + "complaint this ratchet is built on has changed")
+        }
+        XCTAssertEqual(NSFont.preferredFont(forTextStyle: .body).pointSize, 13,
+                       "body is the scale's own 13, which is why a sentence on a page "
+                       + "takes `HelmText.rowTitle` rather than a fifth token")
+    }
+
+    /// And the style scan is still matching, which is the half that goes quiet.
+    /// `.caption2` is deliberately outside both ratchets — it is the honest
+    /// spelling of the 10 pt step — so it is the control: the same family of
+    /// patterns finds plenty of it, in both targets the scan claims to read.
+    func testTheStyleScanStillReadsBothTargets() throws {
+        let files = try UISources.everyDrawnFile()
+        XCTAssertTrue(files.contains { $0.hasPrefix("Sources/HelmApp/") },
+                      "the style scan is not reading the app shell")
+        XCTAssertTrue(files.contains { $0.hasPrefix("Sources/HelmUI/") },
+                      "the style scan is not reading the design system")
+        let control = try UISources.sites(matching: [#"\.font\(\.caption2\b"#: 10], in: files)
+        XCTAssertGreaterThan(control.count, 5,
+                             "the style patterns matched \(control.count) uses of `.caption2` — "
+                             + "a family that has stopped matching reports no offenders for ever")
+    }
+
+    /// The rule objects to the shape it was written for and lets the tokens
+    /// through, against a fixture rather than the tree.
+    func testTheStyleRuleReadsAStyleAndNotAToken() throws {
+        let fixture = try UISources.sites(matching: Self.everyStyle, in: """
+            Text("a").font(.callout)
+            Text("b").font(.caption).foregroundStyle(HelmText.quiet)
+            Text("c").font(HelmText.rowDetail)
+            Text("d").font(.caption2)
+            """).sorted { $0.line < $1.line }
+        XCTAssertEqual(fixture.map(\.value), [12, 10],
+                       "the callout and the caption are the two it must see; the token and "
+                       + "`.caption2` are the two it must not")
+    }
+
     // MARK: - The scan itself
 
     /// The same floor the space ladder asserts, for the same reason: a pattern
@@ -68,11 +221,11 @@ final class TypeScaleRatchetTests: XCTestCase {
     /// through. Against a fixture, so it goes on saying this after the tree is
     /// fixed.
     func testTheRuleRecognisesASizeOffTheScale() throws {
-        let off = try Self.matches(in: #"Text("x").font(.system(size: 15, weight: .semibold))"#)
+        let off = try UISources.hits(matching: Self.patterns, in: #"Text("x").font(.system(size: 15, weight: .semibold))"#)
         XCTAssertEqual(off.map(\.value), [15])
         XCTAssertEqual(UISources.offLadder(off, ladder: Self.ladder).count, 1)
 
-        let on = try Self.matches(in: #"Text("x").font(.system(size: 13))"#)
+        let on = try UISources.hits(matching: Self.patterns, in: #"Text("x").font(.system(size: 13))"#)
         XCTAssertEqual(on.map(\.value), [13])
         XCTAssertEqual(UISources.offLadder(on, ladder: Self.ladder), [])
     }
@@ -81,25 +234,8 @@ final class TypeScaleRatchetTests: XCTestCase {
     /// it directly, and a size typed there is as much a size as one typed in
     /// SwiftUI.
     func testTheRuleReadsTheAppKitBuildersToo() throws {
-        let hits = try Self.matches(in: "NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .regular)")
+        let hits = try UISources.hits(matching: Self.patterns, in: "NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .regular)")
         XCTAssertEqual(hits.map(\.value), [9])
     }
 
-    private static func matches(in source: String) throws -> [UISources.Hit] {
-        var out: [UISources.Hit] = []
-        for (index, line) in source.components(separatedBy: "\n").enumerated() {
-            let code = RepoSource.code(line)
-            let range = NSRange(code.startIndex..., in: code)
-            for pattern in patterns {
-                let expression = try NSRegularExpression(pattern: pattern)
-                for match in expression.matches(in: code, range: range) {
-                    guard let captured = Range(match.range(at: 1), in: code),
-                          let value = Double(code[captured]) else { continue }
-                    out.append(UISources.Hit(file: "fixture", line: index + 1,
-                                             value: value, text: code))
-                }
-            }
-        }
-        return out
-    }
 }

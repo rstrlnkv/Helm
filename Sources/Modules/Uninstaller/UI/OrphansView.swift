@@ -40,7 +40,7 @@ struct OrphansView: View {
                                    })
                     // 20/12 like every other bar in Helm. At 12/10 this one sat
                     // narrower than the toolbar above it and the footer below.
-                    .padding(.horizontal, 20).padding(.vertical, 12)
+                    .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             content
@@ -81,8 +81,8 @@ struct OrphansView: View {
                     Section {
                         ForEach(group.leftovers, id: \.path) { item in
                             Toggle(isOn: binding(for: item.path)) {
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(item.path).font(.caption).lineLimit(1).truncationMode(.middle)
+                                VStack(alignment: .leading, spacing: HelmSpace.s1) {
+                                    Text(item.path).font(HelmText.rowDetail).lineLimit(1).truncationMode(.middle)
                                     Text(UnStr.kindAndSize(item.kind, Bytes(item.sizeBytes)))
                                         .font(.caption2).foregroundStyle(HelmText.quiet)
                                 }
@@ -93,9 +93,9 @@ struct OrphansView: View {
                         }
                     } header: {
                         HStack {
-                            Text(group.bundleID).font(.callout.weight(.medium))
+                            Text(group.bundleID).font(HelmText.sectionHeading)
                             Spacer()
-                            Text(Bytes(group.totalBytes)).font(.caption).foregroundStyle(HelmText.quiet)
+                            Text(Bytes(group.totalBytes)).helmFigure().foregroundStyle(HelmText.quiet)
                         }
                     }
                 }
@@ -114,16 +114,16 @@ struct OrphansView: View {
     /// Off by default: a window that appears unasked is not something to hand
     /// somebody without their say-so.
     private var watchRow: some View {
-        HStack(alignment: .center, spacing: 16) {
+        HStack(alignment: .center, spacing: HelmSpace.s6) {
             // Label above its own explanation, switch hard right — the macOS
             // order, and the one every other settings row in Helm keeps. Written
             // as one HStack rather than a Toggle with a label because a label
             // that wraps to two lines pushed the switch into the middle of the
             // row, between the sentence and its own footnote.
             VStack(alignment: .leading, spacing: 2) {
-                Text(UnStr.watchTrash).font(.callout)
+                Text(UnStr.watchTrash).font(HelmText.rowTitle)
                 Text(UnStr.watchTrashNote)
-                    .font(.caption).foregroundStyle(HelmText.quiet)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
@@ -136,7 +136,7 @@ struct OrphansView: View {
                 .labelsHidden()
                 .accessibilityLabel(UnStr.watchTrash)
         }
-        .padding(.horizontal, 20).padding(.vertical, 10)
+        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
         .task { watching = await uvm.watchingTrash() }
     }
 
@@ -159,12 +159,12 @@ struct OrphansView: View {
             .disabled(busy)
             Spacer()
             Text(UnStr.selectedSummary(selected.count, Bytes(selectedBytes)))
-                .font(.caption).foregroundStyle(HelmText.quiet)
+                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
             Button(UnStr.moveToTrash) { confirming = true }
                 .buttonStyle(.borderedProminent)
                 .disabled(selected.isEmpty || busy)
         }
-        .padding(.horizontal, 20).padding(.vertical, 12)
+        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
         .confirmationDialog(UnStr.confirmTrash(selected.count, Bytes(selectedBytes)),
                             isPresented: $confirming, titleVisibility: .visible) {
             Button(UnStr.moveToTrash, role: .destructive) { Task { await trashSelected() } }

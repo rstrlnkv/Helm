@@ -40,7 +40,7 @@ struct LeftoversSettingsPage: View {
             Divider()
             if diskAccess == .denied {
                 HelmPermissionNote(need: .fullDiskAccess, text: LfStr.removalNeedsAccess)
-                    .padding(.horizontal, 20).padding(.vertical, 10)
+                    .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
                 Divider()
             }
             // The safety line, where the thing it is about is: over the list,
@@ -49,10 +49,10 @@ struct LeftoversSettingsPage: View {
             // one sentence on this screen a person must not miss.
             if !lvm.items.isEmpty {
                 Text(LfStr.reviewNote)
-                    .font(.caption).foregroundStyle(HelmText.quiet)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 20).padding(.top, 10)
+                    .padding(.horizontal, HelmLayout.formInset).padding(.top, HelmSpace.s5)
             }
             content
             Divider()
@@ -80,14 +80,14 @@ struct LeftoversSettingsPage: View {
         // underneath it. Two bars of the same weight, stacked, read as one
         // thing said twice. Every other list screen puts controls here and
         // nothing else; this one does now too.
-        HStack(spacing: 10) {
+        HStack(spacing: HelmSpace.s5) {
             Spacer(minLength: 8)
             if !lvm.items.isEmpty {
                 // What the scan found, beside the control that filters it. It
                 // used to sit in the bar at the bottom joined to the size of the
                 // selection, where the two read as one measurement.
                 Text(LfStr.foundLine(lvm.leftoverCount))
-                    .font(.caption).foregroundStyle(HelmText.quiet)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                     .lineLimit(1).fixedSize()
                 Menu {
                     ForEach(StaleKind.allCases, id: \.self) { kind in
@@ -128,7 +128,7 @@ struct LeftoversSettingsPage: View {
             }
             .disabled(lvm.scanning)
         }
-        .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
+        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
     }
 
     @ViewBuilder private var content: some View {
@@ -159,7 +159,7 @@ struct LeftoversSettingsPage: View {
     }
 
     private func row(_ item: StaleItem) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: HelmSpace.s5) {
             if item.removable {
                 Toggle(item.identifier, isOn: Binding(
                     get: { lvm.selected.contains(item.path) },
@@ -194,7 +194,7 @@ struct LeftoversSettingsPage: View {
                 }
                 if item.kind != .systemExtension {
                     Text(item.path)
-                        .font(.caption).foregroundStyle(HelmText.quiet)
+                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                         .lineLimit(1).truncationMode(.middle)
                 }
                 if let target = item.missingTarget {
@@ -225,7 +225,7 @@ struct LeftoversSettingsPage: View {
                     .controlSize(.small)
             } else {
                 Text(Bytes(item.sizeBytes))
-                    .font(.caption).foregroundStyle(HelmText.quiet).monospacedDigit()
+                    .helmFigure().foregroundStyle(HelmText.quiet)
                 Menu {
                     Button(HelmA11y.showInFinder) { HelmReveal.inFinder(item.path) }
                     if item.actions.contains(.delete) {
@@ -262,7 +262,7 @@ struct LeftoversSettingsPage: View {
     }
 
     private var actionBar: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: HelmSpace.s5) {
             Button(LfStr.selectAll) {
                 lvm.selected = lvm.selectablePaths
             }
@@ -271,7 +271,7 @@ struct LeftoversSettingsPage: View {
                 .disabled(lvm.selected.isEmpty || lvm.busy)
             if !lvm.items.isEmpty {
                 Text(LfStr.selectedLine(lvm.selectedCount, Bytes(lvm.selectedBytes)))
-                    .font(.caption).foregroundStyle(HelmText.quiet)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
             }
             Spacer()
             if let banner = lvm.banner {
@@ -295,6 +295,6 @@ struct LeftoversSettingsPage: View {
                     Button(LfStr.cancelAction, role: .cancel) { }
                 }
         }
-        .padding(.horizontal, 20).padding(.vertical, 12)
+        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
     }
 }

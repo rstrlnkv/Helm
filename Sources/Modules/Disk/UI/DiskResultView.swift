@@ -55,7 +55,7 @@ struct DiskResultView: View {
                 }
                 .frame(minWidth: 300, idealWidth: 360, maxWidth: 380)
                 .aspectRatio(1, contentMode: .fit)
-                .padding(14)
+                .padding(HelmSpace.s5)
                 Divider()
                 childList
             }
@@ -229,7 +229,7 @@ private struct BreadcrumbBar: View {
             }
             .controlSize(.small)
         }
-        .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
+        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
     }
 
     /// What the ring is showing: a stopped walk, a fresh measurement, or a memory
@@ -241,17 +241,17 @@ private struct BreadcrumbBar: View {
     @ViewBuilder private var scanStatement: some View {
         if dvm.stopped, let result = dvm.result {
             Text(DkStr.stopped)
-                .font(.caption).foregroundStyle(HelmText.faint).lineLimit(1)
+                .font(HelmText.rowDetail).foregroundStyle(HelmText.faint).lineLimit(1)
                 .help(DkStr.stoppedHint(result.filesScanned))
                 .accessibilityHint(DkStr.stoppedHint(result.filesScanned))
         } else if dvm.restored, let savedAt = dvm.completedAt {
             // A restored tree is a memory, not a measurement: say when.
             Text(DkStr.measured(HelmDates.relative(savedAt)))
-                .font(.caption).foregroundStyle(HelmText.faint).lineLimit(1)
+                .font(HelmText.rowDetail).foregroundStyle(HelmText.faint).lineLimit(1)
         } else if let result = dvm.result {
             Text(DkStr.scannedIn(result.filesScanned,
                                  Decimal(result.seconds)))
-                .font(.caption).foregroundStyle(HelmText.faint).lineLimit(1)
+                .font(HelmText.rowDetail).foregroundStyle(HelmText.faint).lineLimit(1)
         }
     }
 
@@ -289,7 +289,7 @@ private struct BreadcrumbBar: View {
         if isLast {
             // The current folder is a fact, not a control.
             Text(dvm.displayName(for: entry))
-                .font(.callout.weight(.semibold))
+                .font(HelmText.sectionHeading)
                 .lineLimit(1).truncationMode(.middle)
                 .frame(maxWidth: 150, alignment: .leading)
         } else {
@@ -345,7 +345,7 @@ private struct ChildRow: View {
                 .fill(child.isDirectory ? DiskPalette.base(for: child.path)
                                         : Color.secondary.opacity(0.5))
                 .frame(width: 8, height: 8)
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 // The flag, not the name: a person's own file called "…" was
                 // labelled "Other items" and given the bucket's size.
                 Text(child.isFolded ? DkStr.otherItems : title)
@@ -378,17 +378,17 @@ private struct ChildRow: View {
                 .accessibilityAddTraits(basketed ? .isSelected : [])
             }
         }
-        .padding(.vertical, 3)
+        .padding(.vertical, HelmSpace.s1)
         .padding(.horizontal, 6)
         .background(
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
                     if isHovered {
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous)
                             .fill(DiskPalette.base(for: child.path)
                                 .opacity(colorScheme == .light ? 0.38 : 0.16))
                     }
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous)
                         // Heavier in light. `DiskPalette` is eight fixed HSB
                         // constants with no idea what it is drawn on, and one
                         // opacity does not carry the same weight on both: at
@@ -438,7 +438,7 @@ private struct AdviceList: View {
         VStack(alignment: .leading, spacing: 0) {
             Text(DkStr.advice)
                 .font(.headline)
-                .padding(.horizontal, 14).padding(.top, 12).padding(.bottom, 8)
+                .padding(.horizontal, HelmSpace.s5).padding(.top, HelmSpace.s5).padding(.bottom, HelmSpace.s4)
             Divider()
             ScrollView {
                 VStack(spacing: 2) {
@@ -456,11 +456,11 @@ private struct AdviceList: View {
     private func row(_ item: DiskAdvice) -> some View {
         let entry = dvm.entry(for: item)
         let basketed = dvm.isBasketed(entry)
-        return HStack(spacing: 10) {
+        return HStack(spacing: HelmSpace.s5) {
             Image(systemName: icon(item.kind))
                 .foregroundStyle(HelmText.quiet)
                 .frame(width: 18)
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 Text(item.name).lineLimit(1).truncationMode(.middle)
                 Text(DkStr.adviceReason(item))
                     .font(.caption2)
@@ -481,7 +481,7 @@ private struct AdviceList: View {
             .accessibilityLabel(DkStr.basketAction(basketed: basketed))
             .accessibilityAddTraits(basketed ? .isSelected : [])
         }
-        .padding(.vertical, 5).padding(.horizontal, 8)
+        .padding(.vertical, HelmSpace.s2).padding(.horizontal, HelmSpace.s4)
         .contextMenu {
             Button(HelmA11y.showInFinder) { reveal(item) }
         }

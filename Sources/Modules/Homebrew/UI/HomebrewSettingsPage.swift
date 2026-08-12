@@ -97,7 +97,7 @@ struct HomebrewSettingsPage: View {
 
     private var managerBody: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 10) {
+            HStack(spacing: HelmSpace.s5) {
                 Picker(HelmA11y.whatToShow, selection: $segment) {
                     Text(HbStr.segInstalled).tag(Segment.installed)
                     Text(HbStr.segUpdates).tag(Segment.updates)
@@ -124,7 +124,7 @@ struct HomebrewSettingsPage: View {
                 .help(HbStr.refreshList)
                 .accessibilityLabel(HbStr.refreshList)
             }
-            .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
+            .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
             Divider()
             Group {
                 switch segment {
@@ -139,14 +139,14 @@ struct HomebrewSettingsPage: View {
             Divider()
             HStack {
                 Text(statusLine)
-                    .font(.caption).foregroundStyle(HelmText.quiet)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                 Spacer()
             }
             // A caption is shorter than a button: without this the bar was
             // 38 pt where the other two list screens are 49, and the content
             // jumped when switching between them.
             .frame(minHeight: 25)
-            .padding(.horizontal, 20).padding(.vertical, 12)
+            .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
         }
     }
 
@@ -197,9 +197,9 @@ struct HomebrewSettingsPage: View {
             HelmSearchField(text: $query, placeholder: HbStr.searchPlaceholder,
                             onSubmit: { Task { await hb.search(query) } })
                 .frame(height: 22)
-                .padding(.horizontal, 20)
+                .padding(.horizontal, HelmLayout.formInset)
                 .padding(.top, 12)
-                .padding(.bottom, 10)
+                .padding(.bottom, HelmSpace.s5)
             Divider()
             if query.isEmpty && hb.searchHits.isEmpty {
                 HelmEmptyState(message: HbStr.typeToSearch)
@@ -227,7 +227,7 @@ struct HomebrewSettingsPage: View {
             }
             ScrollViewReader { proxy in
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 1) {
+                    VStack(alignment: .leading, spacing: HelmSpace.s1) {
                         ForEach(Array(hb.consoleLines.enumerated()), id: \.offset) { i, line in
                             Text(line).font(.system(size: 11, design: .monospaced))
                                 .frame(maxWidth: .infinity, alignment: .leading).id(i)
@@ -241,7 +241,7 @@ struct HomebrewSettingsPage: View {
             }
             .frame(height: 160)
             // The token's own doc comment names console output as its call site.
-            .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
+            .background(RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous)
                 .fill(HelmSurface.wellFill))
         }
         .padding(12)
@@ -250,11 +250,11 @@ struct HomebrewSettingsPage: View {
     @ViewBuilder private var statusPill: some View {
         switch hb.op.phase {
         case .running:
-            HStack(spacing: 6) { ProgressView().controlSize(.small); Text(hb.op.label).font(.caption) }
+            HStack(spacing: 6) { ProgressView().controlSize(.small); Text(hb.op.label).font(HelmText.rowDetail) }
         case .done:
-            Label(HbStr.done, systemImage: "checkmark.circle.fill").foregroundStyle(HelmSignal.success).font(.caption)
+            Label(HbStr.done, systemImage: "checkmark.circle.fill").foregroundStyle(HelmSignal.success).font(HelmText.rowDetail)
         case .failed:
-            Label(HbStr.failed, systemImage: "xmark.octagon.fill").foregroundStyle(HelmSignal.danger).font(.caption)
+            Label(HbStr.failed, systemImage: "xmark.octagon.fill").foregroundStyle(HelmSignal.danger).font(HelmText.rowDetail)
         case .idle:
             EmptyView()
         }
@@ -265,8 +265,8 @@ struct HomebrewSettingsPage: View {
     private func pkgRow<Action: View>(name: String, detail: String?, isCask: Bool,
                                       desc: String? = nil,
                                       @ViewBuilder action: () -> Action) -> some View {
-        HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 1) {
+        HStack(spacing: HelmSpace.s5) {
+            VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 HStack(spacing: 6) {
                     Text(name).lineLimit(1)
                     // Only when it says something: 46 of 47 rows were

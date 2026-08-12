@@ -113,6 +113,26 @@ final class RadiusLadderRatchetTests: XCTestCase {
     /// measured three consecutive runs each; `testTheOnlyRadiusLightAddsIsTheSliderKnob`
     /// holds the difference by value, so light's extra slot cannot quietly absorb
     /// a new radius the way a count on its own would.
+    /// **Re-read 2026-08-12 by the tree-wide typography and space sweep, and it
+    /// does not move — which is the answer, not a failure to try.** That sweep
+    /// took every corner radius Helm types onto `HelmRadius`, including the two
+    /// that were off this ladder: `HelmGlyphPicker`'s 7 and `HelmDurationField`'s
+    /// 8, both now `.ctl`. Three consecutive runs after it read **1, 2, 3, 5, 8,
+    /// 12** in light and the same without 8 in dark — the numbers below, exactly.
+    ///
+    /// Two things that reading settles, both of which this comment had been
+    /// carrying as claims:
+    ///
+    /// - **The 8 really is the slider knob.** Helm's own 8 pt corner left the
+    ///   tree in this sweep and an 8 still draws, on keep-awake, in light only.
+    ///   That is now a measurement rather than an attribution.
+    /// - **The 1.25 did not appear in any of the three runs.** The wobble this
+    ///   number carries a slot of slack for is quiet today, which is not the same
+    ///   as gone: it comes and goes with the person's own last scan, and the seam
+    ///   that ends it is still owed.
+    ///
+    /// So the floor here is unreachable by a vocabulary pass, and the reason is
+    /// the one written above: every value left belongs to SwiftUI, not to Helm.
     private static let recorded: [NSAppearance.Name: Int] = [.aqua: 6, .darkAqua: 5]
 
     private static let ladder: [CGFloat] = [0, 4, 6, 10, 14, 26]

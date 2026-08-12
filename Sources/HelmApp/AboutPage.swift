@@ -105,15 +105,15 @@ struct AboutHelmView: View {
             hero
             Spacer(minLength: 22).frame(maxHeight: 30)
             instrumentRow
-                .padding(.bottom, 10)
+                .padding(.bottom, HelmSpace.s5)
             // 10, the same gap the strip above it takes. Down the page the
             // gaps were 22, 10, 20, 14, 24 — the author card glued to the
             // strip above and adrift from the update card below, which is one
             // card reading as two different distances from its neighbours.
             authorRow
-                .padding(.bottom, 10)
+                .padding(.bottom, HelmSpace.s5)
             updateCard
-            HStack(spacing: 10) {
+            HStack(spacing: HelmSpace.s5) {
                 Button {
                     showWhatsNew = true
                 } label: {
@@ -387,8 +387,8 @@ struct AboutHelmView: View {
         case .installing:
             statusLine(AppStr.installingUpdate)
         case .digestMismatch:
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: HelmSpace.s5) {
+                HStack(spacing: HelmSpace.s5) {
                     statusIcon("exclamationmark.triangle.fill", HelmSignal.danger)
                     Text(AppStr.updateDigestMismatch).lineLimit(3)
                     Spacer()
@@ -402,14 +402,14 @@ struct AboutHelmView: View {
                 }
             }
         case .failed:
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: HelmSpace.s5) {
+                HStack(spacing: HelmSpace.s5) {
                     statusIcon("exclamationmark.triangle.fill", HelmSignal.warning)
                     Text(AppStr.updateFailed).lineLimit(2)
                     Spacer()
                 }
                 if let rel = updater.available {
-                    HStack(spacing: 10) {
+                    HStack(spacing: HelmSpace.s5) {
                         Button(AppStr.retry) { updater.downloadAndInstall() }
                             .frame(maxWidth: .infinity)
                         Link(AppStr.download, destination: rel.downloadURL ?? rel.pageURL)
@@ -423,8 +423,8 @@ struct AboutHelmView: View {
             } else if let rel = updater.available {
                 // The offer is the card's main action, so it gets full width
                 // instead of being squeezed next to the label.
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: HelmSpace.s5) {
+                    HStack(spacing: HelmSpace.s5) {
                         statusIcon("arrow.down.circle.fill", .accentColor)
                         Text(AppStr.updateReady).lineLimit(1)
                         Spacer()
@@ -438,13 +438,13 @@ struct AboutHelmView: View {
                         .frame(maxWidth: .infinity)
                 }
             } else if updater.lastMessage == "manual-install" {
-                HStack(spacing: 10) {
+                HStack(spacing: HelmSpace.s5) {
                     statusIcon("exclamationmark.triangle.fill", HelmSignal.warning)
                     Text(AppStr.updateManualInstall).lineLimit(3)
                     Spacer()
                 }
             } else if updater.lastMessage == "error" {
-                HStack(spacing: 10) {
+                HStack(spacing: HelmSpace.s5) {
                     statusIcon("exclamationmark.triangle.fill", HelmSignal.warning)
                     // Two lines, like the `aheadOfChannel` branch below. At one
                     // this sentence was cut in five of the eight languages: a
@@ -462,7 +462,7 @@ struct AboutHelmView: View {
                 // Before "up to date", which this state used to be read as: the
                 // check reports both, and being ahead is the more specific
                 // answer of the two.
-                HStack(spacing: 10) {
+                HStack(spacing: HelmSpace.s5) {
                     statusIcon("arrow.up.circle.fill", HelmSignal.warning)
                     Text(AppStr.aheadOfChannel(newest))
                         .lineLimit(2)
@@ -471,7 +471,7 @@ struct AboutHelmView: View {
                     Button(AppStr.checkNow) { updater.checkNow() }
                 }
             } else if updater.lastMessage == "up-to-date" {
-                HStack(spacing: 10) {
+                HStack(spacing: HelmSpace.s5) {
                     statusIcon("checkmark.circle.fill", HelmSignal.success)
                     Text(AppStr.upToDate).lineLimit(1)
                     Spacer()
@@ -480,7 +480,7 @@ struct AboutHelmView: View {
             } else {
                 // Nothing has been checked in this session: report when the
                 // last check happened rather than claiming to be current.
-                HStack(spacing: 10) {
+                HStack(spacing: HelmSpace.s5) {
                     statusIcon("arrow.triangle.2.circlepath", .secondary)
                     Text(lastCheckedText).lineLimit(1).foregroundStyle(HelmText.quiet)
                     Spacer()
@@ -506,7 +506,7 @@ struct AboutHelmView: View {
     /// took a `spinning:` flag that all three call sites passed `true` and the
     /// body never read.
     private func statusLine(_ text: String) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: HelmSpace.s5) {
             ProgressView().controlSize(.small)
             Text(text).foregroundStyle(HelmText.quiet)
             Spacer()
@@ -608,16 +608,16 @@ private struct WhatsNewView: View {
                     ForEach(Changelog.entries) { entry in
                         VStack(alignment: .leading, spacing: 8) {
                             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                                Text(entry.version).font(.title3.bold())
+                                Text(entry.version).font(.system(size: 16, weight: .bold))
                                 // The entry stores "2026-07-28" because that is
                                 // what sorts; no language writes it that way.
                                 Text(HelmDates.day(entry.date))
-                                    .font(.caption).foregroundStyle(HelmText.faint)
+                                    .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
                             }
                             ForEach(entry.items) { item in
                                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                                     badge(item.kind)
-                                    Text(item.text).font(.callout).foregroundStyle(HelmText.quiet)
+                                    Text(item.text).font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
                                 }
                             }
                         }
@@ -625,7 +625,7 @@ private struct WhatsNewView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 // Matches the header plate above it, which sits at 20.
-                .padding(.horizontal, 20).padding(.vertical, 16)
+                .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 16)
             }
         }
         .frame(width: 520, height: 460)

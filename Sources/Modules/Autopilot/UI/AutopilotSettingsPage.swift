@@ -25,7 +25,7 @@ struct AutopilotSettingsPage: View {
         VStack(spacing: 0) {
             if diskAccess == .denied {
                 HelmPermissionNote(need: .fullDiskAccess, text: ApStr.needsAccess)
-                    .padding(.horizontal, 20).padding(.vertical, 10)
+                    .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
                 Divider()
             }
             // Nothing to say about the order of rules when there are no
@@ -38,11 +38,11 @@ struct AutopilotSettingsPage: View {
             if let banner = rvm.banner {
                 Divider()
                 HStack {
-                    Text(banner).font(.callout)
+                    Text(banner).font(HelmText.rowTitle)
                     Spacer()
                     Button(ApStr.done) { rvm.dismissBanner() }.controlSize(.small)
                 }
-                .padding(.horizontal, 20).padding(.vertical, 12)
+                .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
             }
         }
         .helmTracksFullDiskAccess($diskAccess)
@@ -55,14 +55,14 @@ struct AutopilotSettingsPage: View {
     private var toolbar: some View {
         HStack(spacing: 8) {
             Text(ApStr.firstMatchNote)
-                .font(.caption).foregroundStyle(HelmText.faint)
+                .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
                 .lineLimit(2).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 12)
             Button(ApStr.addFolder) { rvm.addFolder() }
                 .controlSize(.small)
                 .fixedSize()
         }
-        .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
+        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
     }
 
     @ViewBuilder private var content: some View {
@@ -101,7 +101,7 @@ struct AutopilotSettingsPage: View {
                 .labelsHidden()
                 .accessibilityLabel(Redact.path(folder.path))
             Text(Redact.path(folder.path))
-                .font(.callout.weight(.semibold))
+                .font(HelmText.sectionHeading)
                 .lineLimit(1).truncationMode(.middle)
             Spacer(minLength: 8)
             Button(ApStr.runNow) { Task { await rvm.runNow(folder) } }
@@ -123,7 +123,7 @@ struct AutopilotSettingsPage: View {
     @ViewBuilder private func folderRows(_ folder: WatchedFolder) -> some View {
         if folder.rules.isEmpty {
             Text(ApStr.noRules)
-                .font(.callout).foregroundStyle(HelmText.faint)
+                .font(HelmText.rowTitle).foregroundStyle(HelmText.faint)
         }
         ForEach(folder.rules) { rule in
             ruleRow(rule, in: folder)
@@ -135,7 +135,7 @@ struct AutopilotSettingsPage: View {
     }
 
     private func ruleRow(_ rule: Rule, in folder: WatchedFolder) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: HelmSpace.s5) {
             // A rule is on or off; it is never half-on, so the switch is the
             // whole story and the row does not need a badge as well.
             Toggle("", isOn: Binding(get: { rule.enabled }, set: { on in
@@ -148,7 +148,7 @@ struct AutopilotSettingsPage: View {
             .labelsHidden()
             .accessibilityLabel(rule.name)
 
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 Text(rule.name).lineLimit(1)
                 Text(RuleSummary.describe(rule))
                     .font(.caption2).foregroundStyle(HelmText.faint)

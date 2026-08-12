@@ -202,7 +202,7 @@ struct TrashedLeftoversView: View {
                                    needsFullDiskAccess: model.failures.contains {
                                        $0.reason == .needsFullDiskAccess
                                    })
-                    .padding(.horizontal, 20).padding(.vertical, 12)
+                    .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 list
@@ -237,11 +237,11 @@ struct TrashedLeftoversView: View {
     /// and putting it back does not bring these files with it.
     private var header: some View {
         Text(UnStr.trashOfferNote)
-            .font(.callout)
+            .font(HelmText.rowTitle)
             .foregroundStyle(HelmText.quiet)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 20).padding(.vertical, 12)
+            .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
     }
 
     /// One card per app, rather than a `List` of sections.
@@ -255,7 +255,7 @@ struct TrashedLeftoversView: View {
     /// app" without a separator having to.
     private var list: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: HelmSpace.s5) {
                 ForEach(model.groups) { group in
                     VStack(alignment: .leading, spacing: 4) {
                         groupHeader(group)
@@ -264,7 +264,7 @@ struct TrashedLeftoversView: View {
                     .helmCard(padding: 12)
                 }
             }
-            .padding(.horizontal, 20).padding(.vertical, 14)
+            .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
             .frame(maxWidth: .infinity, alignment: .leading)
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
         }
@@ -276,7 +276,7 @@ struct TrashedLeftoversView: View {
     /// what tells two apps of the same name apart, and it is what every row below
     /// was derived from.
     private func groupHeader(_ group: TrashedAppLeftovers) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: HelmSpace.s5) {
             Image(nsImage: AppInfo.icon(forFile: group.appPath))
                 .resizable().frame(width: 28, height: 28)
                 .accessibilityHidden(true)
@@ -304,9 +304,9 @@ struct TrashedLeftoversView: View {
     private func row(_ item: Leftover, in group: TrashedAppLeftovers) -> some View {
         Toggle(isOn: binding(for: item.path)) {
             HStack(spacing: 6) {
-                Text(UnStr.kind(item.kind)).font(.callout).lineLimit(1)
+                Text(UnStr.kind(item.kind)).font(HelmText.rowTitle).lineLimit(1)
                 if let leaf = distinguishingLeaf(item, in: group) {
-                    Text(leaf).font(.caption).foregroundStyle(HelmText.faint)
+                    Text(leaf).font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
                         .lineLimit(1).truncationMode(.head)
                 }
                 // A path found under the app's display name is a guess, and it
@@ -340,12 +340,12 @@ struct TrashedLeftoversView: View {
             Spacer()
             if model.busy {
                 ProgressView().controlSize(.small)
-                Text(UnStr.removing).font(.caption).foregroundStyle(HelmText.quiet)
+                Text(UnStr.removing).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
             }
             if model.outcome == nil {
                 if !model.busy {
                     Text(UnStr.selectedSummary(model.selected.count, Bytes(model.totalBytes)))
-                        .font(.caption).foregroundStyle(HelmText.quiet)
+                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                 }
                 Button(UnStr.moveToTrash) {
                     Task {
@@ -364,7 +364,7 @@ struct TrashedLeftoversView: View {
                     .keyboardShortcut(.defaultAction)
             }
         }
-        .padding(.horizontal, 20).padding(.vertical, 12)
+        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
     }
 
     private func binding(for path: String) -> Binding<Bool> {

@@ -341,6 +341,8 @@ struct KeepAwakePanelTile: View {
             }
 
             Text(KAStr.automation)
+                // 10, and the panel's own scale rather than the settings
+                // window's — this tile is drawn inside the menu-bar panel.
                 .font(.caption)
                 // A literal colour, not `.secondary`. Hierarchical styles are
                 // resolved against the rendering context, and this block gets

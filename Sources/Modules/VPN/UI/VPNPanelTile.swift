@@ -17,6 +17,7 @@ struct VPNPanelTile: View {
             header
             if vm.connections.isEmpty {
                 Text(VPNStr.noVPNs)
+                    // The panel's scale, not the settings window's.
                     .font(.caption)
                     .foregroundStyle(HelmText.quiet)
             } else {
