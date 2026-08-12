@@ -366,6 +366,15 @@ public struct KeepAwakeSystemPorts {
     public let pointer = CGEventPointer()
     public let clamshell = PmsetClamshellPort()
     public let clock = DispatchClock()
+    /// Where the battery veto's one notification goes. The log area is spelled
+    /// here rather than at the descriptor: «keepawake» is this target's word for
+    /// itself, written in every `HelmLog` call in it, and a second spelling of it
+    /// one target up is a name only one side would ever change.
+    ///
+    /// Its `init` touches nothing — `UNUserNotificationCenter.current()` is
+    /// reached inside each method, and would end a whole test run if it were
+    /// reached here.
+    public let notices = SystemAutomationNotice(area: "keepawake")
 
     public init() {}
 }

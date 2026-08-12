@@ -2,10 +2,14 @@
 // Copyright (C) 2026 Helm
 
 import XCTest
-@testable import Module_VPN_Engine
+@testable import HelmRuntime
 
-/// The one class in the module that talks to `UNUserNotificationCenter`, and
-/// the one that could not be run at all.
+/// The one class in the tree that talks to `UNUserNotificationCenter`, and the
+/// one that could not be run at all.
+///
+/// It sat in VPN's engine until Keep Awake's battery veto needed a banner too;
+/// the class and this file moved to `HelmRuntime` together, because a test that
+/// stays behind in the module the code left is a test of nothing.
 ///
 /// `UNUserNotificationCenter.current()` raises `NSInternalInconsistencyException`
 /// — "bundleProxyForCurrentProcess is nil" — in a process that is not a bundled
@@ -28,7 +32,7 @@ final class SystemAutomationNoticeTests: XCTestCase {
 
     /// Every method, because any one of them reaching the centre ends the run.
     func testNothingReachesMacOSFromHere() async {
-        let port = SystemAutomationNotice()
+        let port = SystemAutomationNotice(area: "test")
         let state = await port.authorizationState()
         XCTAssertEqual(state, .notDetermined)
         let requested = await port.requestAuthorization()

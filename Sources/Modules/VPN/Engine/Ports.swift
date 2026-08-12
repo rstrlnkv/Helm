@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 /// Credentials some VPNs (L2TP/IPSec) need at connect time; nil for VPNs that
 /// connect on their own (IKEv2). Secrets never logged.
@@ -45,21 +46,10 @@ public protocol NetworkWatchPort: AnyObject {
 
 // MARK: - Banners
 
-/// What macOS says about this app's permission to post banners.
-public enum NoticeAuthorization: Sendable {
-    case notDetermined, authorized, denied
-}
-
-/// Posts a macOS banner, and answers for the permission macOS gates it behind.
-///
-/// Reading the state and asking for it are separate calls on purpose: reading
-/// prompts nobody, asking prompts once and is never undone. `AutomationNotice`
-/// is the only thing that decides which of the two happens.
-public protocol AutomationNoticePort: AnyObject, Sendable {
-    func authorizationState() async -> NoticeAuthorization
-    func requestAuthorization() async -> NoticeAuthorization
-    func post(title: String, body: String) async
-}
+// `AutomationNoticePort`, `NoticeAuthorization` and the `UNUserNotificationCenter`
+// implementation of the port live in `HelmRuntime`: Keep Awake's battery veto
+// needed a banner too, and a port two modules speak is plumbing. What stays here
+// is this module's own policy about *when* to ask and when to post, below.
 
 /// Who gets asked for a permission, and what the banner says when a rule fires.
 public enum AutomationNotice {

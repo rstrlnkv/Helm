@@ -92,6 +92,15 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     private var jiggleToken: AnyObject?
     private var batteryToken: AnyObject?
 
+    /// Where the battery veto's one notification goes — nil in every test that
+    /// is not about it, and in any build with no way to reach macOS.
+    private let batteryVeto: BatteryVetoChannel?
+    /// Cancelled by `deactivate()`: `requestAuthorization` waits for the person
+    /// to answer a system prompt, which can be minutes, and a banner from a
+    /// module they have switched off in the meantime is worse than none. Holds
+    /// nothing of `self` — see `tellSomebodyTheVetoArrived`.
+    private var noticeTask: Task<Void, Never>?
+
     public init(settings: KeepAwakeSettings,
                 store: NamespacedStore,
                 assertions: SleepAssertions,
@@ -102,7 +111,9 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                 pointer: PointerPort,
                 clamshell: ClamshellPort,
                 clock: Clock,
-                transport: LocalTransport = LocalTransport()) {
+                transport: LocalTransport = LocalTransport(),
+                batteryVeto: BatteryVetoChannel? = nil) {
+        self.batteryVeto = batteryVeto
         self.settings = settings
         self.store = store
         self.assertions = assertions
@@ -194,6 +205,10 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         // raised on the way out is one nobody answers.
         lid.tearDown()
         cancelTimers()
+        // A notification still waiting on macOS's permission prompt belongs to a
+        // module that no longer exists — see `tellSomebodyTheVetoArrived`.
+        noticeTask?.cancel()
+        noticeTask = nil
         expiryToken = nil
         isActive = false
         manualOn = false
@@ -317,8 +332,17 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         // an app that had since quit.
         refreshTriggers()
         guard !batteryVetoes() else {
+            // **The arrival is the news, and only if it took something away.**
+            // Asked before `releaseForBattery` clears the three facts it reads,
+            // and only on the rising edge: this runs from every power event
+            // IOKit reports, which on a draining battery is one per percentage
+            // step.
+            let news = !batteryStopped
+                && BatteryVetoNews.tookSomethingAway(active: isActive, manual: manualOn,
+                                                     hasDeadline: endDate != nil)
             batteryStopped = true
             releaseForBattery()
+            if news { tellSomebodyTheVetoArrived() }
             return
         }
         batteryStopped = false
@@ -586,8 +610,13 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         // active: pressing «15 min» at 5 % now refuses instantly rather than
         // holding the Mac for the thirty seconds until the watch ticks, and a
         // refusal nobody is told about is the module failing silently at the
-        // one thing it was asked to do.
-        guard isActive || manualOn || endDate != nil else { emitState(); return }
+        // one thing it was asked to do. The question is `BatteryVetoNews`'s, not
+        // a second copy of it: the log line below and the notification the
+        // caller posts must not be able to disagree about whether anything
+        // happened.
+        guard BatteryVetoNews.tookSomethingAway(active: isActive, manual: manualOn,
+                                                hasDeadline: endDate != nil)
+        else { emitState(); return }
         // The session ends without the person touching anything, so the log is the
         // only place that can say who ended it and why — and a figure it did not
         // read has no business in it. This was `percent ?? 0`, which reads as 0%:
@@ -716,5 +745,38 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                                     lidRefused: lidRefused,
                                     lidGrantRemains: lidGrantRemains)
         localTransport.emit(KeepAwakeEvent.state, encoding: payload)
+    }
+}
+
+// MARK: - The one notification
+
+/// An extension rather than more of the class above, because this is a concern
+/// of its own: the two members here are the whole of what the engine does about
+/// a person who is not at the screen.
+extension KeepAwakeEngine {
+
+    /// Whether the battery veto can reach anybody who is not looking.
+    ///
+    /// Exists to be *asked*: every test of the posting itself hands in a fake, so
+    /// a `makeEngine` that forgot the real channel would leave the feature
+    /// switched off in the app behind a green suite.
+    var reachesBanners: Bool { batteryVeto != nil }
+
+    /// One system notification, on the arrival of the veto that ended something
+    /// — the only event this module has that happens with nobody in front of the
+    /// screen. What is said and who is asked is `BatteryVetoNews`'s; this is the
+    /// call and the task that carries it.
+    ///
+    /// **The task captures no `self`.** The words are written and the port bound
+    /// out of the channel before it starts, so a notification waiting on a system
+    /// prompt holds none of the engine; `deactivate()` cancels it, because the
+    /// prompt can stand for minutes and a banner from a module the person has
+    /// just switched off is worse than no banner at all.
+    func tellSomebodyTheVetoArrived() {
+        guard let batteryVeto else { return }
+        let port = batteryVeto.port
+        let words = batteryVeto.words(settings.batteryGuardPercent)
+        noticeTask?.cancel()
+        noticeTask = Task { await BatteryVetoNews.tell(port, words) }
     }
 }

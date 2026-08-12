@@ -688,9 +688,9 @@
 "Paused until the rule applies again" = "En pausa hasta que la regla vuelva a cumplirse";
 "Stop on low battery" = "Parar con poca batería";
 "Stay awake with the lid closed" = "Seguir despierto con la tapa cerrada";
-"Sleep is off for the whole Mac right now" = "El reposo está desactivado ahora para todo el Mac";
-"Sleep is off for the whole Mac right now. Turning this setting off brings it back" = "El reposo está desactivado ahora para todo el Mac. Al desactivar este ajuste, vuelve";
-"macOS refused to turn sleep off — the rule in /etc/sudoers.d may have been changed" = "macOS se negó a desactivar el reposo — puede que la regla en /etc/sudoers.d haya cambiado";
+"Sleep is off for the whole Mac right now" = "El reposo está desactivado ahora mismo en todo el Mac";
+"Sleep is off for the whole Mac right now. Switching this off turns sleep back on" = "El reposo está desactivado ahora mismo en todo el Mac. Desactiva este ajuste para volver a activar el reposo";
+"macOS refused to turn sleep off, so closing the lid will let the Mac sleep. The rule in /etc/sudoers.d may have been changed" = "macOS se negó a desactivar el reposo, así que el Mac entrará en reposo al cerrar la tapa. Puede que la regla en /etc/sudoers.d haya cambiado";
 "The rule in /etc/sudoers.d is still there. Switch this on and off again to remove it" = "La regla en /etc/sudoers.d sigue ahí. Activa y desactiva este ajuste de nuevo para eliminarla";
 "Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again" = "Helm no puede leer las reglas de apps guardadas, así que ninguna app mantiene el Mac despierto. Añade las apps de nuevo";
 "A timer pauses the rule too" = "El temporizador también pausa la regla";
@@ -732,7 +732,7 @@
 "Other colour…" = "Otro…";
 "The battery guard says so on screen. It used to end sessions in silence — you pressed “15 min” at 5% and nothing happened, with the reason only in the log. The panel and the settings page both say it now." = "La protección de batería lo dice en pantalla. Antes terminaba las sesiones en silencio: pulsabas “15 min” al 5 %, no pasaba nada y el motivo estaba solo en el registro. Ahora lo dicen el panel y la página de ajustes.";
 "A colour of your own: the colour menu ends with “Other…”, which opens the system colour panel — the way Calendar offers one. The palette itself is Calendar’s, and follows light and dark the way the system’s colours do." = "Un color propio: el menú de colores termina con “Otro…”, que abre la paleta del sistema, como lo ofrece Calendario. La paleta es la de Calendario y sigue el modo claro y oscuro como los colores del sistema.";
-"“Stop on low battery” is a slider with stops, the way the charge limit is set in Battery. And the two colour rows are a dot and a name instead of two rows of ten swatches." = "“Detener con poca batería” es un regulador con posiciones, como el límite de carga en “Batería”. Y las dos filas de color son un punto con su nombre en vez de dos filas de diez muestras.";
+"“Stop on low battery” is a slider with stops, the way the charge limit is set in Battery. And the two colour rows are a dot and a name instead of two rows of ten swatches." = "“Parar con poca batería” es un regulador con posiciones, como el límite de carga en “Batería”. Y las dos filas de color son un punto con su nombre en vez de dos filas de diez muestras.";
 "No VPNs are set up on this Mac" = "No hay ninguna VPN configurada en este Mac";
 "Helm connects and disconnects the configurations macOS holds, and can do it by rule — bringing up the work VPN when Slack opens, for example. The configuration itself is added in System Settings." = "Helm conecta y desconecta las configuraciones que guarda macOS, y puede hacerlo por reglas: levantar la VPN del trabajo al abrir Slack, por ejemplo. La configuración se añade en Ajustes del Sistema.";
 "Open Network settings" = "Abrir los ajustes de Red";

@@ -6,7 +6,6 @@ import Foundation
 import HelmRuntime
 import Security
 import SystemConfiguration
-import UserNotifications
 
 // MARK: - ScutilRunner
 
@@ -272,88 +271,6 @@ public final class KeychainCredentials: VPNCredentialsPort {
         guard result.status == 0 else { return nil }
         let value = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
         return value.isEmpty ? nil : value
-    }
-}
-
-// MARK: - SystemAutomationNotice
-
-/// Production `AutomationNoticePort`: `UNUserNotificationCenter`.
-///
-/// `UNUserNotificationCenter.current()` raises `NSInternalInconsistencyException`
-/// — "bundleProxyForCurrentProcess is nil" — in any process that is not a
-/// bundled app, and an ObjC exception does not fail a test case: it kills the
-/// whole `swift test` run. Hence two defences. The centre is reached inside
-/// each method and never in `init`, so constructing `VPNSystemPorts` stays free
-/// for the tests that build a descriptor or an engine; and `isBundledApp` below
-/// answers before anything is asked, so a test that does reach one of these
-/// methods gets a refusal instead of ending the run.
-public final class SystemAutomationNotice: AutomationNoticePort {
-    public init() {}
-
-    /// Whether this process is the kind macOS will answer for.
-    ///
-    /// Measured, not assumed — the identifier is no help: under `xctest`
-    /// `Bundle.main.bundleIdentifier` is `com.apple.dt.xctest.tool`, thoroughly
-    /// non-nil, while its bundle path is
-    /// `/Applications/Xcode.app/Contents/Developer/usr/bin`, which is a
-    /// directory and not a bundle. The shipped app's is `Helm.app`.
-    private var isBundledApp: Bool { Bundle.main.bundleURL.pathExtension == "app" }
-
-    /// Says so in the log, because in the app this can only mean the banners
-    /// are dead: `notDetermined` is what an unbundled process knows about
-    /// permissions, which is nothing.
-    @discardableResult
-    private func unbundled() -> NoticeAuthorization {
-        HelmLog.shared.warn("vpn", "no bundle identity, so macOS was not asked about banners")
-        return .notDetermined
-    }
-
-    public func authorizationState() async -> NoticeAuthorization {
-        guard isBundledApp else { return unbundled() }
-        let settings = await UNUserNotificationCenter.current().notificationSettings()
-        switch settings.authorizationStatus {
-        // Provisional and ephemeral both post without a prompt, so for the one
-        // question this port answers — will a banner appear — they are yes.
-        case .authorized, .provisional, .ephemeral: return .authorized
-        case .denied: return .denied
-        case .notDetermined: return .notDetermined
-        @unknown default: return .notDetermined
-        }
-    }
-
-    /// Asked once, when the person picks the banner mode. macOS shows the
-    /// prompt only the first time; afterwards this returns the standing answer
-    /// without troubling anyone.
-    public func requestAuthorization() async -> NoticeAuthorization {
-        guard isBundledApp else { return unbundled() }
-        do {
-            let granted = try await UNUserNotificationCenter.current()
-                .requestAuthorization(options: [.alert])
-            return granted ? .authorized : .denied
-        } catch {
-            HelmLog.shared.warn("vpn", "could not ask macOS about banners: "
-                + HelmFailure.describe(error))
-            return .denied
-        }
-    }
-
-    /// No trigger: nil means now, which is what a rule that has already fired
-    /// needs. The identifier is fresh each time so two firings stack instead of
-    /// the second replacing the first.
-    public func post(title: String, body: String) async {
-        guard isBundledApp else { unbundled(); return }
-        let content = UNMutableNotificationContent()
-        content.title = title
-        content.body = body
-        let request = UNNotificationRequest(identifier: UUID().uuidString,
-                                            content: content, trigger: nil)
-        do {
-            try await UNUserNotificationCenter.current().add(request)
-        } catch {
-            // The name is in `body`, and the log carries no names.
-            HelmLog.shared.warn("vpn", "macOS refused the banner: "
-                + HelmFailure.describe(error))
-        }
     }
 }
 

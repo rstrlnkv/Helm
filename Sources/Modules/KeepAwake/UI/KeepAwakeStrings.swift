@@ -368,8 +368,15 @@ enum KAStr {
     /// itself, and the control that takes it back is the switch on this very row.
     /// Without the second clause the row stated a permanent-sounding change to
     /// somebody's Mac and left them looking for a way out of it.
+    ///
+    /// **«Brings it back» lost its antecedent in four of the eight.** The clause
+    /// names two things a pronoun could point at — the setting and the Mac's
+    /// sleep — and in ru, es, de and pt the two have different genders, so the
+    /// translations had to pick one and half of them picked the setting. The
+    /// English says which noun comes back, and `adminNote` two states over
+    /// already had the verb for it.
     static var sleepIsOffNote: String {
-        L("Sleep is off for the whole Mac right now. Turning this setting off brings it back")
+        L("Sleep is off for the whole Mac right now. Switching this off turns sleep back on")
     }
     /// macOS said no.
     ///
@@ -384,8 +391,17 @@ enum KAStr {
     ///
     /// Names the file, because the person who can fix this is the person who can
     /// read that directory.
+    ///
+    /// **And names what the person loses**, which the sentence never did: the
+    /// switch is still on, so a reader who is told only that macOS refused
+    /// something will close the lid and believe the Mac keeps working. It is the
+    /// closed lid that is the consequence, and it belongs in the first clause
+    /// rather than behind the file name.
     static var lidRefused: String {
-        L("macOS refused to turn sleep off — the rule in /etc/sudoers.d may have been changed")
+        // One literal, however long: `NoOrphanTranslationsTests` looks for
+        // `"<the whole key>"` in the concatenated source, and a key split over a
+        // `+` is a key nothing in the tree asks for.
+        L("macOS refused to turn sleep off, so closing the lid will let the Mac sleep. The rule in /etc/sudoers.d may have been changed")
     }
     /// The option went off and the rule did not go with it.
     ///
@@ -500,16 +516,43 @@ enum KAStr {
     /// none of the three surfaces said. The panel keeps the short form, because
     /// 320 pt beside a symbol is a row rather than a sentence
     /// (`stoppedByBatteryShort`).
+    ///
+    /// **And it then said what the 40 pt headline above it already said.** Under
+    /// the veto the page draws `heroIdle` — «The Mac sleeps as usual» — and hides
+    /// the reason line beneath it, so «Nothing keeps the Mac awake at 20 % or
+    /// less» was one fact stated twice on one screen with the weaker,
+    /// smaller copy underneath: exactly the duplication `heroIdle`'s own comment
+    /// records being removed once already. What the headline cannot say is
+    /// *which* setting stopped this and how to lift it, so the banner names the
+    /// guard by the feature it belongs to and keeps the way out. This is also
+    /// the sentence the system notification carries when nobody is at the
+    /// screen (`batteryVetoNotice`).
     static func stoppedByBattery(_ percent: Int) -> String {
         let at = atPercentOrLess(percent)
-        return L("Nothing keeps the Mac awake \(at) — plug in",
-                 [.ru: "Ничто не мешает Mac заснуть \(at) — подключите зарядку",
-                  .es: "Nada mantiene el Mac despierto \(at) — conéctalo a la corriente",
-                  .fr: "Rien ne maintient le Mac éveillé \(at) — branchez-le",
-                  .de: "Nichts hält den Mac \(at) wach — schließe ihn an das Netzteil an",
-                  .ja: "\(at)では Mac は起きたままになりません。電源に接続してください",
-                  .zh: "\(at)时不会让 Mac 保持唤醒 —— 请接通电源",
-                  .pt: "Nada mantém o Mac acordado \(at) — conecte-o à energia"])
+        return L("The battery guard stops sessions \(at) — plug in",
+                 [.ru: "Защита батареи не даёт начать сеанс \(at) — подключите адаптер питания",
+                  .es: "La protección de batería detiene las sesiones \(at) — conecta el Mac a la corriente",
+                  .fr: "La protection de batterie arrête les sessions \(at) — branchez le Mac sur secteur",
+                  .de: "Der Batterieschutz stoppt Sitzungen \(at) — schließe das Netzteil an",
+                  .ja: "バッテリー保護により\(at)ではセッションを開始できません。電源に接続してください",
+                  .zh: "电量保护会在\(at)时停止会话，请接入电源",
+                  .pt: "A proteção de bateria interrompe as sessões \(at) — conecte o Mac a uma fonte de alimentação"])
+    }
+
+    /// The same sentence again, for the one surface the person is not looking at.
+    ///
+    /// The battery veto ends a session with nobody at the Mac, so it is the one
+    /// event this app sends a system notification for — and the notification says
+    /// what the banner says, rather than a wording of its own. The engine posts
+    /// it and cannot write it: `L()` is `HelmUI`'s and no engine target may
+    /// import it, so the words are handed over as they are here
+    /// (`BatteryVetoChannel`).
+    ///
+    /// Titled with the module's name because a notification with no title is
+    /// drawn as the app's name and a body, and «Helm» does not say which of nine
+    /// modules is speaking.
+    static func batteryVetoNotice(_ percent: Int) -> NoticeText {
+        NoticeText(title: moduleName, body: stoppedByBattery(percent))
     }
 
     /// The same fact for the panel, and for a rule's own row.

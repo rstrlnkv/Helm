@@ -42,7 +42,13 @@ import Module_KeepAwake_Engine
             assertions: ports.assertions, displayInfo: ports.displayInfo,
             displayObserver: ports.displayObserver, power: ports.power,
             apps: ports.apps, pointer: ports.pointer,
-            clamshell: ports.clamshell, clock: ports.clock)
+            clamshell: ports.clamshell, clock: ports.clock,
+            // The battery veto is the one event with nobody in front of the
+            // screen, so it is the one that posts a system notification — and
+            // the sentence comes from here, because `L()` is `HelmUI`'s and the
+            // engine cannot see it.
+            batteryVeto: BatteryVetoChannel(port: ports.notices,
+                                            words: { KAStr.batteryVetoNotice($0) }))
     }
 
     public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? {

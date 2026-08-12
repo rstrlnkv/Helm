@@ -688,9 +688,9 @@
 "Paused until the rule applies again" = "Em pausa até a regra se aplicar de novo";
 "Stop on low battery" = "Parar com bateria fraca";
 "Stay awake with the lid closed" = "Ficar acordado com a tampa fechada";
-"Sleep is off for the whole Mac right now" = "O repouso está desativado agora para todo o Mac";
-"Sleep is off for the whole Mac right now. Turning this setting off brings it back" = "O repouso está desativado agora para todo o Mac. Ao desativar este ajuste, ele volta";
-"macOS refused to turn sleep off — the rule in /etc/sudoers.d may have been changed" = "O macOS recusou desligar o repouso — a regra em /etc/sudoers.d pode ter sido alterada";
+"Sleep is off for the whole Mac right now" = "O repouso está desativado em todo o Mac neste momento";
+"Sleep is off for the whole Mac right now. Switching this off turns sleep back on" = "O repouso está desativado em todo o Mac neste momento. Desative este ajuste para reativar o repouso";
+"macOS refused to turn sleep off, so closing the lid will let the Mac sleep. The rule in /etc/sudoers.d may have been changed" = "O macOS recusou-se a desligar o repouso, então o Mac entra em repouso ao fechar a tampa. A regra em /etc/sudoers.d pode ter sido alterada";
 "The rule in /etc/sudoers.d is still there. Switch this on and off again to remove it" = "A regra em /etc/sudoers.d ainda está lá. Ative e desative este ajuste de novo para removê-la";
 "Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again" = "O Helm não consegue ler as regras de apps salvas, então nenhum app mantém o Mac acordado. Adicione os apps de novo";
 "A timer pauses the rule too" = "O timer também pausa a regra";

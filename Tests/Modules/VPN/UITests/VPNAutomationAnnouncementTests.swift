@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Helm
 
 import HelmContract
+import HelmRuntime
 import HelmUI
 import XCTest
 @testable import Module_VPN_Engine

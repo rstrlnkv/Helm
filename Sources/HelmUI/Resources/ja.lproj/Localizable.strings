@@ -688,9 +688,9 @@
 "Paused until the rule applies again" = "次に条件を満たすまで一時停止中";
 "Stop on low battery" = "バッテリー残量が少ないときは停止";
 "Stay awake with the lid closed" = "ふたを閉じても起きたまま";
-"Sleep is off for the whole Mac right now" = "いま Mac 全体でスリープがオフになっています";
-"Sleep is off for the whole Mac right now. Turning this setting off brings it back" = "いま Mac 全体でスリープがオフになっています。この設定をオフにすると戻ります";
-"macOS refused to turn sleep off — the rule in /etc/sudoers.d may have been changed" = "macOS がスリープをオフにするのを拒否しました。/etc/sudoers.d のルールが変更されている可能性があります";
+"Sleep is off for the whole Mac right now" = "Mac 全体でスリープが現在オフになっています";
+"Sleep is off for the whole Mac right now. Switching this off turns sleep back on" = "Mac 全体でスリープが現在オフになっています。この設定をオフにするとスリープがオンに戻ります";
+"macOS refused to turn sleep off, so closing the lid will let the Mac sleep. The rule in /etc/sudoers.d may have been changed" = "macOS がスリープをオフにするのを拒否したため、ふたを閉じると Mac はスリープ状態になります。/etc/sudoers.d のルールが変更されている可能性があります";
 "The rule in /etc/sudoers.d is still there. Switch this on and off again to remove it" = "/etc/sudoers.d のルールがまだ残っています。この設定をオンにして再度オフにすると削除できます";
 "Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again" = "Helm が保存されたアプリのルールを読み取れないため、どのアプリも Mac を起きたままにしていません。アプリをもう一度追加してください";
 "A timer pauses the rule too" = "タイマーはルールも一時停止する";

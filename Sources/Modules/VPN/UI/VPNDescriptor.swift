@@ -42,7 +42,7 @@ import Module_VPN_Engine
         // Its own init touches nothing, so this stays free in a test.
         let m = VPNViewModel(transport: hostVM.transport,
                              settings: VPNSettings(store: settingsStore),
-                             notices: SystemAutomationNotice())
+                             notices: SystemAutomationNotice(area: "vpn"))
         cached = (hostVM, m)
         ModuleUICache.dropWhenDisabled(Self.id.rawValue) { [weak self] in self?.cached = nil }
         return m

@@ -689,9 +689,9 @@
 "Stop on low battery" = "Останавливать при низком заряде";
 "Stay awake with the lid closed" = "Не спать с закрытой крышкой";
 "Sleep is off for the whole Mac right now" = "Режим сна сейчас выключен для всего Mac";
-"Sleep is off for the whole Mac right now. Turning this setting off brings it back" = "Режим сна сейчас выключен для всего Mac. Выключите эту настройку, и он вернётся";
-"macOS refused to turn sleep off — the rule in /etc/sudoers.d may have been changed" = "macOS отказался выключить режим сна — возможно, правило в /etc/sudoers.d изменили";
-"The rule in /etc/sudoers.d is still there. Switch this on and off again to remove it" = "Правило в /etc/sudoers.d осталось. Включите и снова выключите эту настройку, чтобы его убрать";
+"Sleep is off for the whole Mac right now. Switching this off turns sleep back on" = "Режим сна сейчас выключен для всего Mac. Выключите эту настройку, чтобы вернуть режим сна";
+"macOS refused to turn sleep off, so closing the lid will let the Mac sleep. The rule in /etc/sudoers.d may have been changed" = "macOS отказалась выключить режим сна, поэтому с закрытой крышкой Mac всё равно заснёт. Возможно, правило в /etc/sudoers.d изменили";
+"The rule in /etc/sudoers.d is still there. Switch this on and off again to remove it" = "Правило в /etc/sudoers.d осталось. Включите и снова выключите эту настройку, чтобы его убрать";
 "Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again" = "Helm не может прочитать сохранённые правила приложений, поэтому ни одно приложение не мешает Mac заснуть. Добавьте приложения заново";
 "A timer pauses the rule too" = "Таймер ставит на паузу и правило";
 "Move the pointer" = "Двигать курсор";

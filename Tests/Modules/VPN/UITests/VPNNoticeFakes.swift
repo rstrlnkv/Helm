@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Helm
 
 import Foundation
+import HelmRuntime
 @testable import Module_VPN_Engine
 
 /// Stands in for macOS's notification centre, which no test may touch: the real

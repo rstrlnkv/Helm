@@ -689,8 +689,8 @@
 "Stop on low battery" = "Stop on low battery";
 "Stay awake with the lid closed" = "Stay awake with the lid closed";
 "Sleep is off for the whole Mac right now" = "Sleep is off for the whole Mac right now";
-"Sleep is off for the whole Mac right now. Turning this setting off brings it back" = "Sleep is off for the whole Mac right now. Turning this setting off brings it back";
-"macOS refused to turn sleep off — the rule in /etc/sudoers.d may have been changed" = "macOS refused to turn sleep off — the rule in /etc/sudoers.d may have been changed";
+"Sleep is off for the whole Mac right now. Switching this off turns sleep back on" = "Sleep is off for the whole Mac right now. Switching this off turns sleep back on";
+"macOS refused to turn sleep off, so closing the lid will let the Mac sleep. The rule in /etc/sudoers.d may have been changed" = "macOS refused to turn sleep off, so closing the lid will let the Mac sleep. The rule in /etc/sudoers.d may have been changed";
 "The rule in /etc/sudoers.d is still there. Switch this on and off again to remove it" = "The rule in /etc/sudoers.d is still there. Switch this on and off again to remove it";
 "Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again" = "Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again";
 "A timer pauses the rule too" = "A timer pauses the rule too";
