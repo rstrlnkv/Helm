@@ -132,6 +132,18 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 ### Removed
 - `HelmSurface.cardRadius` — replaced by `HelmRadius.card` (same value, 12→10;
   see Changed).
+- **Dead code and dead names, in eight passes that landed after `dev.5` was
+  tagged and belong to this release rather than to that one.** 138 files under
+  `Sources/`, 591 lines out against 544 in: `public` demoted where it did not
+  cross a target boundary (it had stopped meaning "another target uses this",
+  which is the only thing it can honestly mean in a nine-target package);
+  imports nothing was using; declarations nothing reached; three ports and a
+  path nobody read, taken out of fifty-three the scan proposed — the other
+  fifty had reasons, and the difference is why the scan's output is not a
+  to-do list; twenty-four translations whose keys had gone; three spellings of
+  "run a process" reduced to one. `swiftlint` went from 163 findings to 87 by
+  retiring rules that were always wrong here, which is what makes the
+  remaining 87 worth reading.
 
 ## [0.10.0-dev.5] — 2026-08-11
 
