@@ -34,7 +34,11 @@ import XCTest
 /// green" must not be read as "all three were fixed":
 ///
 /// - `KeepAwakeSettingsPage` has no tap gesture left at all. Fixed.
-/// - `DiskResultView` still has one, and it is the recorded offender below.
+/// - `DiskResultView` was the recorded offender and is fixed: the row's drill is
+///   a `Button` now, and the double-click that was the only way in is a mouse
+///   shortcut for it. Its `.accessibilityActions` went with the fix rather than
+///   beside it — a Button is reachable by VoiceOver *and* by the keyboard, so
+///   keeping the action would have been the same drill written down twice.
 /// - `RingView`'s tap gesture is **not** reported, and not because it is fine:
 ///   its chain carries no action of its own. The ring is a `Canvas`, and its
 ///   activation is offered through `accessibilityChildren` — `Color.clear`
@@ -43,30 +47,51 @@ import XCTest
 ///   the one this rule reads, and whether a virtual accessibility element with
 ///   an action is reachable by Full Keyboard Access is a question about macOS
 ///   this suite cannot answer without changing a setting on the machine it runs
-///   on. It is reported to `helm-engineer` as prose rather than pinned here on a
-///   premise nobody has measured. **Do not read its absence as a verdict.**
+///   on. **Do not read its absence as a verdict.**
+///
+///   Two ways of answering it without touching that setting were tried on
+///   2026-08-12 and **both are blind**, which is worth writing down so nobody
+///   spends the afternoon twice:
+///
+///   1. *Walking the hosted view's accessibility children in this process.* The
+///      whole subtree of an `NSHostingView` of the result screen comes back as
+///      one `AXGroup` and nothing under it — SwiftUI's elements are not objects
+///      the view vends, so there is nothing to ask. Asking the accessibility API
+///      about one's own process does not work either: the element for our own
+///      pid answers no role at all.
+///   2. *Reading, from a second process, whether the focused attribute is
+///      settable on each element* — which is what keyboard focus moves between.
+///      The shape reproduces faithfully: the ring's virtual children appear as
+///      two buttons under a group. But **a real `Button` mounted beside them
+///      reads exactly the same**, false for both, so the reading separates
+///      nothing. A control that answers like the suspect is an instrument, not
+///      an answer.
+///
+///   What is left is the direct one: switch Full Keyboard Access on, press Tab,
+///   and read where the focus went — a change to the machine, so it is asked for
+///   rather than done.
 ///
 /// A tap gesture that merely duplicates a real control in the same row — the
 /// uninstaller's row tap, which sits beside its own checkbox — is not this
 /// defect and carries no accessibility action, so the rule does not catch it.
 final class KeyboardReachableControlsTests: XCTestCase {
 
-    /// **Recorded 2026-08-12, three consecutive runs in agreement: 1.**
+    /// **Recorded 2026-08-12 as 1, lowered to 0 the same day by the commit that
+    /// fixed the one site.**
     ///
-    /// `DiskResultView.swift:410` — the double-click that drills into a folder or
-    /// reveals a file in Finder, with `.accessibilityActions` under it offering
-    /// the drill to VoiceOver. Double-click is mouse-only by construction, so the
-    /// row's primary gesture has no keyboard equivalent; the context menu beside
-    /// it is reachable, which is what keeps this a finding rather than an outage.
+    /// It was `DiskResultView`'s row: a double-click that drilled into a folder
+    /// or revealed a file, with `.accessibilityActions` under it handing the
+    /// drill to VoiceOver and nothing at all to the keyboard. The row carries a
+    /// `Button` now.
     ///
     /// This number is only ever lowered, by the commit that lowers it. Raising it
     /// to admit a new offender is writing the defect down twice.
-    private static let recorded = 1
+    private static let recorded = 0
 
     /// And *which* file, so a new violation somewhere else cannot hide behind a
     /// count that stayed at one while the recorded site was fixed in the same
-    /// commit. A bare ratchet is blind to a swap.
-    private static let recordedFiles: Set<String> = ["Sources/Modules/Disk/UI/DiskResultView.swift"]
+    /// commit. A bare ratchet is blind to a swap. Empty, now that the count is.
+    private static let recordedFiles: Set<String> = []
 
     // MARK: - The finding
 
@@ -192,15 +217,16 @@ final class KeyboardReachableControlsTests: XCTestCase {
             """)
     }
 
-    /// **And the recorded site is still there.** Without this the ratchet is
-    /// green on an empty list — a scan that has quietly stopped matching, a
-    /// `UISources` that lost the module directories, a regular expression that
-    /// went stale, all read as "nothing left to fix". `<=` cannot tell the
-    /// difference between clean and blind.
+    /// **And the record still names something that is there.** While the record
+    /// held `DiskResultView` this was the whole guard against a ratchet that is
+    /// green because it is blind: a scan that has quietly stopped matching, a
+    /// `UISources` that lost the module directories, a `RepoSource` returning
+    /// nothing, all read as "nothing left to fix" — `<=` cannot tell clean from
+    /// blind.
     ///
-    /// So the day `DiskResultView` is fixed, this fails, and the commit that
-    /// fixed it lowers `recorded` to 0 and empties `recordedFiles` — which is how
-    /// a ratchet is lowered here, in the commit that earns it.
+    /// The record is empty now, so the loop below guards a future entry and
+    /// nothing today; `testTheScanIsReadingTheTextOfTheseFiles` is what took over
+    /// its job, because a test that iterates an empty set is not a check.
     func testTheRecordNamesNothingThatHasGone() throws {
         let found = try offenders()
         for file in Self.recordedFiles {
@@ -212,6 +238,36 @@ final class KeyboardReachableControlsTests: XCTestCase {
                 found: \(found.map(\.described).sorted().joined(separator: "\n"))
                 """)
         }
+    }
+
+    /// **A zero has to be a zero somebody read, not a zero nobody looked for.**
+    ///
+    /// With the record empty, every test above this line passes on a scan that
+    /// reads nothing at all: `uiFiles()` can list fifty files and `offenders()`
+    /// still find none if the lines come back empty. The fixtures prove the
+    /// matcher; the file list proves the enumeration; this is the third leg —
+    /// that the text of those files reaches the matcher.
+    ///
+    /// The tap gestures it counts are the legitimate ones, which is why the
+    /// number is not recorded: a mouse shortcut beside a real control is the
+    /// shape this rule deliberately allows, and there are several in the tree.
+    /// The day there is not one left, this fails and says so — and that is a
+    /// decision to make, not a line to delete: a rule about tap gestures in a
+    /// tree with no tap gestures is guarding nothing.
+    func testTheScanIsReadingTheTextOfTheseFiles() throws {
+        var gestures = 0
+        for file in try uiFiles() {
+            let lines = try RepoSource.lines(of: file)
+            XCTAssertFalse(lines.isEmpty, "\(file) came back as no lines at all")
+            gestures += lines.filter { RepoSource.code($0).contains(".onTapGesture") }.count
+        }
+
+        XCTAssertGreaterThan(gestures, 0, """
+            not one `.onTapGesture` in the whole of HelmUI and the module UIs. Either the source \
+            is not reaching the matcher — in which case the ratchet above is counting an empty \
+            list and the recorded 0 means nothing — or the app really has none left, and this \
+            rule now guards a shape the codebase does not use
+            """)
     }
 
     // MARK: - The scan is looking at the app
