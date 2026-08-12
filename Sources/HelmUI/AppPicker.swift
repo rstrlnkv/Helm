@@ -99,6 +99,19 @@ public enum AppInfo {
 /// Present an open-panel to pick one or more apps; returns their bundle IDs.
 public enum AppPicker {
     @MainActor public static func choose() -> [String] {
+        chooseApps().map(\.bundleID)
+    }
+
+    /// The same panel, with **where each chosen app is** as well as what it calls
+    /// itself.
+    ///
+    /// A bundle identifier is a string in a plist anybody can write, so a caller
+    /// that wants to bind a rule to the app a person actually pointed at needs the
+    /// path: `CodeIdentity.of(bundleAt:)` reads the signature there, and the choice
+    /// in front of a file dialog is the only moment that path is somebody's
+    /// deliberate answer. VPN's rules record it; the two callers that watch apps
+    /// without acting on their behalf still take `choose()`.
+    @MainActor public static func chooseApps() -> [(bundleID: String, url: URL)] {
         let panel = NSOpenPanel()
         panel.title = L("Choose apps")
         panel.directoryURL = URL(fileURLWithPath: "/Applications")
@@ -107,6 +120,8 @@ public enum AppPicker {
         panel.canChooseDirectories = false
         panel.canChooseFiles = true
         guard panel.runModal() == .OK else { return [] }
-        return panel.urls.compactMap { Bundle(url: $0)?.bundleIdentifier }
+        return panel.urls.compactMap { url in
+            Bundle(url: url)?.bundleIdentifier.map { (bundleID: $0, url: url) }
+        }
     }
 }

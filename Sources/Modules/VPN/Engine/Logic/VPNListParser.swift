@@ -42,8 +42,7 @@ enum VPNListParser {
 
     static func parseList(_ output: String) -> [VPNConnection] {
         var result: [VPNConnection] = []
-        for rawLine in output.split(separator: "\n", omittingEmptySubsequences: true) {
-            let line = String(rawLine)
+        for line in records(in: output) {
             guard let statusToken = between(line, "(", ")"),
                   let quoted = quotedName(line),
                   // An empty quoted name parses fine and then becomes a row with
@@ -55,13 +54,40 @@ enum VPNListParser {
                   // blank either way. The name itself is never trimmed — it is
                   // the command, and a configuration whose name really does end
                   // in a space has to be spelled the way it was stored.
-                  !quoted.name.trimmingCharacters(in: .whitespaces).isEmpty else { continue }
+                  !quoted.name.trimmingCharacters(in: .whitespaces).isEmpty,
+                  // **A name that spans a line break wrote a row of this
+                  // format, and no row of this format is a configuration.** The
+                  // Service Name field is free text and takes a newline, and
+                  // this output is line-oriented: one such name printed two
+                  // rows, the second of which said `(Connected)` — the header
+                  // badge, the tile's dot and the 1×1 widget all lit for a
+                  // tunnel that does not exist, which is the false assurance
+                  // `VPNAutomation.Kind.dropped` exists to warn about,
+                  // manufactured here. Measured with this parser.
+                  //
+                  // The row is dropped rather than repaired: `records(in:)`
+                  // above has already refused to read the forged half as a
+                  // configuration of its own, and what is left is a name this
+                  // module cannot draw on one line or put in front of a person
+                  // to confirm.
+                  !quoted.name.contains(where: \.isNewline) else { continue }
             // Falling back to the name makes two rows one `Identifiable` id
             // whenever macOS has two configurations of one name, which it
-            // allows — undefined in a `ForEach`, and this engine now keys its
-            // memory of what it raised by id. The row's own place in the list
-            // is the only other thing a line without a service id carries.
-            let id = uuidLike(in: line) ?? "\(quoted.name)#\(result.count)"
+            // allows — undefined in a `ForEach`, and this engine keys its memory
+            // of what it raised by id.
+            //
+            // **The tie is broken by how many rows of that name came before, not
+            // by how many rows came before.** The row's place in the list was the
+            // first thing to hand and it is not a fact about the configuration:
+            // `_cameUp` reads an id to tell «this came up and then went» from
+            // «this is not up yet», so a list printed in another order changed
+            // the identity of a stationary tunnel and the module announced a
+            // drop — the one event it interrupts somebody for — for a tunnel
+            // that never went. Counting namesakes keeps the ids unique, which is
+            // the other half of the question, and leaves them alone when nothing
+            // but the order moved.
+            let sameName = result.count { $0.name == quoted.name }
+            let id = uuidLike(in: line) ?? "\(quoted.name)#\(sameName)"
             // The kind comes from after the name, not from anywhere on the line:
             // `scutil` writes the protocol in brackets *following* the quoted
             // name, and searching the whole line found a connection called
@@ -80,10 +106,52 @@ enum VPNListParser {
     static func defaultConnection(from connections: [VPNConnection],
                                   lastUsedName: String?) -> VPNConnection? {
         if connections.count == 1 { return connections.first }
+        // **A lookup key, never a command.** The name comes out of an unsealed
+        // plist any process running as this user can rewrite, and the bound —
+        // that it can only nominate a configuration this Mac already has — is the
+        // whole of what stands between a forged value and the tool being handed a
+        // name nobody configured. `AForgedLastUsedNameIsBoundedTests` holds it
+        // from both ends, and says there why sealing the value is refused.
         if let lastUsedName, let match = connections.first(where: { $0.name == lastUsedName }) {
             return match
         }
         return connections.first
+    }
+
+    /// The rows of the output, which is **not** the same as its lines.
+    ///
+    /// A row's name is printed between two quote delimiters, so a fragment
+    /// holding exactly one quote cannot be a row: it is the front half of a name
+    /// that carried a line break, and the rest of that name — including anything
+    /// shaped like a row of this format — belongs to it. Joining the halves back
+    /// together is what lets the name guard in `parseList` see the newline;
+    /// splitting on `\n` first destroys the evidence, and a forged row is
+    /// byte-identical to a real one, so there is nothing local to it left to
+    /// check.
+    ///
+    /// **Exactly one**, not "an odd number": a name may legitimately carry an
+    /// unbalanced quotation mark, which prints three on a perfectly whole row —
+    /// `quotedName` reads first-to-last quote precisely so that «Office "B» can
+    /// be spelled back to the tool. Counting parity instead swallowed the row
+    /// after that one.
+    private static func records(in output: String) -> [String] {
+        var records: [String] = []
+        var pending: String?
+        for line in output.split(separator: "\n", omittingEmptySubsequences: true) {
+            let joined = pending.map { $0 + "\n" + line } ?? String(line)
+            if joined.count(where: { $0 == "\"" }) == 1 {
+                pending = joined
+            } else {
+                records.append(joined)
+                pending = nil
+            }
+        }
+        // Whatever never closed. Kept rather than dropped so that a name broken
+        // by the last line of the output is still a row the guards above judge,
+        // instead of a configuration that quietly vanishes for a different
+        // reason than the one this module would report.
+        if let pending { records.append(pending) }
+        return records
     }
 
     /// The whole quoted run — first quote to **last** — rather than the first

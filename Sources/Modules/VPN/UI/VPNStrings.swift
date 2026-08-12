@@ -171,6 +171,20 @@ enum VPNStr {
         }
     }
     static func ruleVPNMissing(_ name: String) -> String { L("“\(name)” is no longer set up — this rule never fires", [.ru: "«\(name)» больше не настроен — правило не срабатывает", .es: "«\(name)» ya no está configurado: la regla no se ejecuta", .fr: "« \(name) » n’est plus configuré — la règle ne se déclenche pas", .de: "„\(name)“ ist nicht mehr eingerichtet — die Regel greift nie", .ja: "「\(name)」は設定されていません。このルールは動作しません", .zh: "“\(name)”已不存在，此规则不会生效", .pt: "“\(name)” não está mais configurado — a regra nunca dispara"]) }
+    /// Why a rule that looks set up does not fire, when the reason is the rule
+    /// itself rather than what happens to be running.
+    ///
+    /// Nil for the three verdicts that are about this instant: `.act` is fine, and
+    /// «the running copy could not be read» or «it is signed as something else»
+    /// would have the page inventing a problem under a rule whose app is not even
+    /// running. Those go to the log, where the moment is part of the record.
+    static func ruleTrustNote(_ verdict: VPNRuleTrust.Verdict) -> String? {
+        switch verdict {
+        case .act, .runningInstanceUnreadable, .mismatch: return nil
+        case .noIdentityRecorded: return L("Choose this app again to confirm which app it is")
+        case .appNotSigned: return L("This app is not signed — this rule never fires")
+        }
+    }
     static var addApp: String {
         L("Add app…")
     }

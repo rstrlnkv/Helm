@@ -75,6 +75,7 @@
 "Choose another…" = "別の場所を選択…";
 "Choose apps" = "アプリを選択";
 "Choose folder" = "フォルダを選択";
+"Choose this app again to confirm which app it is" = "このアプリをもう一度選んで、どのアプリかを確認してください";
 "Choose…" = "選択…";
 "Clear" = "消去";
 "Clear selection" = "選択を解除";
@@ -473,6 +474,7 @@
 "The small labels above each module’s figures are legible again, in both light and dark." = "各モジュールの数値の上にある小さなラベルが、ライトでもダークでも読めるようになりました。";
 "The update status no longer claims you are current when no check has run — it shows when the last check happened." = "未確認のまま“最新です”と表示せず、最後に確認した時刻を表示します。";
 "Then" = "その時";
+"This app is not signed — this rule never fires" = "このアプリは署名されていません。このルールは動作しません";
 "This decides the words. Whether the ring turns is the switch below." = "ここで決まるのは文字だけです。リングが回るかどうかは下のスイッチで決まります。";
 "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word." = "これは入力に使うキーです。押しっぱなしや同時押しでは通常どおりですが、単独でうっかり叩くと直前の単語が修正されます。";
 "This is the real thing, not a demonstration: it works here exactly as it does anywhere else." = "これはデモではなく本物の入力欄です。ここでも他のアプリと同じように動きます。";

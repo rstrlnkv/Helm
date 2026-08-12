@@ -118,7 +118,11 @@ import Module_VPN_Engine
             && VPNAutomation.spinPhase(firing, now: now) != nil
         let names = model.effectiveNotice(for: firing.kind).showsMenuBarName
             && VPNAutomation.showsName(firing, now: now)
-        return StatusAppearance(title: names ? firing.name : nil,
+        // Bounded here, because this is where the unbounded string is: the name
+        // comes out of a configuration somebody else wrote, and the host draws
+        // whatever a descriptor hands it. The rule is `StatusPlan`'s, next to the
+        // rest of what the host knows about its own menu bar.
+        return StatusAppearance(title: names ? StatusPlan.menuBarTitle(firing.name) : nil,
                                 spinUntil: spinning ? VPNAutomation.spinEnd(firing) : nil,
                                 spinTintToken: spinning ? model.spinTint(for: firing.kind) : nil)
     }

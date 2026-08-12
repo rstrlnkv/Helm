@@ -58,17 +58,22 @@ final class StoresOfTheirsAskIfThisIsATestTests: XCTestCase {
     // MARK: - The scan itself, which is the half that goes quiet
 
     /// A `grep` that has stopped matching is a green test about nothing. The two
-    /// known sites are the floor: `ScanJournal` is one of them and it is not
-    /// going anywhere, so a reading below two means the walk, the extension
-    /// filter or the spelling has broken rather than that the tree has improved.
+    /// known sites are the floor: `HelmSupport` is one of them and it is not going
+    /// anywhere, so a reading below two means the walk, the extension filter or
+    /// the spelling has broken rather than that the tree has improved.
+    ///
+    /// It named `ScanJournal` until the folder it resolved by hand moved to
+    /// `HelmSupport`, which three places had spelled out — the journal reads it
+    /// from there now, so the site is one file over. A floor naming a file is the
+    /// price of a floor that cannot be satisfied by a scan reading nothing.
     func testTheScanIsStillReadingTheTree() throws {
         let sites = try self.sites()
         XCTAssertGreaterThanOrEqual(sites.count, 2, """
             \(sites.count) sites resolve one of the person's folders, where the tree has at least \
             two — the scan is not reading anything.
             """)
-        XCTAssertTrue(sites.contains { $0.file.hasSuffix("ScanJournal.swift") },
-                      "ScanJournal resolves Application Support and the scan did not find it")
+        XCTAssertTrue(sites.contains { $0.file.hasSuffix("HelmSupport.swift") },
+                      "HelmSupport resolves Application Support and the scan did not find it")
     }
 
     /// And it reads code rather than prose — asserted on the line reader the scan

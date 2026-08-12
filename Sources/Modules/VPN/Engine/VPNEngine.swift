@@ -162,10 +162,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             guard let self else { return }
             self.reloadRulesNow()
             self.knownBundleIDs = launched
-            for id in launched {
-                self.core.appLaunched(id,
-                                      connect: { [weak self] in self?.connect($0, auto: true) })
-            }
+            for id in launched { self.launchIfTrusted(id) }
         }
         apps.startObserving { [weak self] in self?.appsChanged() }
         // The one question this module answers is asked of the system, not of a
@@ -291,18 +288,42 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         // when the rule asked rather than what Helm has since written down.
         let alreadyUp = auto ? status(name).isUp : false
         var args = ["--nc", "start", name]
-        // Known limitation: scutil takes the shared secret only as an argument,
-        // and process arguments are readable by every process running as this
-        // user while scutil lives (a fraction of a second, but not zero). There
-        // is no stdin form — `nc` is not a command scutil's interactive mode
-        // accepts. Closing this means driving NEVPNManager/NEConfiguration
-        // instead of the tool, which is a rewrite of this path, not a patch.
-        if let creds = credentials?.credentials(for: name), creds.secret?.isEmpty == false {
+        // **Known limitation, and the window is not small.** `scutil` takes the
+        // shared secret, the password and the user name only as arguments, and
+        // an argument list is readable by every process running as this user for
+        // as long as the process lives. That used to be written down here as "a
+        // fraction of a second, but not zero", which understates it by an order
+        // of magnitude. Measured with an unprivileged same-user sweeper against
+        // a child of a known lifetime:
+        //
+        // | child lifetime | caught out of 25 |
+        // |---|---|
+        // | 16 ms | 24 |
+        //
+        // and 16 ms is this repository's own measured figure for one
+        // `scutil --nc` call. So the honest sentence is: any process running as
+        // this user that is looking will get the shared secret, the password and
+        // the user name. There is no stdin form — `nc` is not a command
+        // `scutil`'s interactive mode accepts — so closing this means driving
+        // `NEVPNManager`/`NEConfiguration` instead of the tool, which needs a
+        // Developer ID and is a rewrite of this path rather than a patch.
+        //
+        // What is cheap is not opening the window when nothing needs doing, which
+        // is the `!alreadyUp` below: `--nc start` on a tunnel that is up is a
+        // no-op, and `activate()` replays `appLaunched` for every app already
+        // running, so a rule whose app runs all day published the secret at every
+        // launch of Helm for a command that changed nothing.
+        //
+        // `promptingAllowed: !auto` is the other half, and it is about a
+        // different exposure — see `VPNCredentialsPort`.
+        if !alreadyUp,
+           let creds = credentials?.credentials(for: name, promptingAllowed: !auto),
+           creds.secret?.isEmpty == false {
             if let u = creds.user, !u.isEmpty { args += ["--user", u] }
             if let p = creds.password, !p.isEmpty { args += ["--password", p] }
             if let s = creds.secret, !s.isEmpty { args += ["--secret", s] }
         }
-        let reply = VPNCommandReply.of(runner.run(args), name: name)
+        let reply = VPNCommandReply.of(runner.run(args), name: name, knownNames: knownNames)
         report(reply, verb: .connect, name: name)
         // **Announced after the tool answered, and only what it did.** This
         // block used to run *before* `scutil`, so a rule pointing at a
@@ -344,7 +365,8 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         // Announcing it anyway would name a disconnection the user never had,
         // which is the same lie as announcing one that never happened.
         let wasUp = status(name).isUp
-        let reply = VPNCommandReply.of(runner.run(["--nc", "stop", name]), name: name)
+        let reply = VPNCommandReply.of(runner.run(["--nc", "stop", name]), name: name,
+                                       knownNames: knownNames)
         report(reply, verb: .disconnect, name: name)
         // Same rule as the connect side, and the same harm read backwards: this
         // used to record `.disconnected` and clear both books *before* the stop
@@ -384,6 +406,12 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     public func status(_ name: String) -> VPNStatus {
         connections.first(where: { $0.name == name })?.status ?? .unknown
     }
+
+    /// Every configuration this Mac has, for the redaction of what the tool says
+    /// about one of them. `scutil` explains a refusal by naming whichever
+    /// configuration is in the way, not the one it was asked about, and the log
+    /// carries no names.
+    private var knownNames: [String] { connections.map(\.name) }
 
     /// Whether the command a poll is following has arrived: the connection it
     /// was about has reached the state the verb asked for.
@@ -501,11 +529,8 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         let launched = now.subtracting(knownBundleIDs)
         let quit = knownBundleIDs.subtracting(now)
         knownBundleIDs = now
-        let connectAuto: (String) -> Void = { [weak self] in self?.connect($0, auto: true) }
         let disconnectClosure: (String) -> Void = { [weak self] in self?.disconnect($0, auto: true) }
-        for id in launched where core.rules[id] != nil {
-            core.appLaunched(id, connect: connectAuto)
-        }
+        for id in launched { launchIfTrusted(id) }
         // Every quit, not only the ones a rule still covers. `appTerminated`
         // consults `launched` — the record of what Helm actually did — and the
         // core's own comment says `rules` "cannot be trusted to say what a quit
@@ -519,6 +544,36 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         for id in quit {
             core.appTerminated(id, disconnect: disconnectClosure)
         }
+    }
+
+    /// A launch acts only if the instance running under that identifier is signed
+    /// as the app the person picked.
+    ///
+    /// **One gate, at the launch, and the quit follows from it.** `appTerminated`
+    /// undoes only launches `core` recorded, and by the time an app has quit there
+    /// is no bundle left to read a signature from — so refusing the launch is what
+    /// makes the teardown unreachable too. That is the whole of the repair for a
+    /// bundle anybody can build taking somebody's tunnel down by starting and
+    /// stopping.
+    ///
+    /// Both routes into a launch come through here: the live one, and `activate()`
+    /// replaying everything already running — a gate on only the first would let a
+    /// forged bundle that was started before Helm straight through.
+    ///
+    /// The refusal is logged with its reason, because a rule that has quietly
+    /// stopped firing looks exactly like one that fires every day
+    /// (ARCHITECTURE.md § A rule that is being ignored is not a rule that is
+    /// quiet). The identifier goes through `Redact.app`, like every other name in
+    /// this file.
+    private func launchIfTrusted(_ bundleID: String) {
+        guard let rule = core.rules[bundleID] else { return }
+        let verdict = VPNRuleTrust.judge(rule: rule, running: apps.identity(of: bundleID))
+        guard verdict == .act else {
+            HelmLog.shared.warn("vpn", "rule for \(Redact.app(bundleID)) did not fire: "
+                + verdict.rawValue)
+            return
+        }
+        core.appLaunched(bundleID, connect: { [weak self] in self?.connect($0, auto: true) })
     }
 
     // MARK: - Transport

@@ -20,7 +20,7 @@ final class VPNAutomationRecordingTests: XCTestCase {
     private func list(_ status: String) -> String { "(\(status)) \(uuid) IPSec \"A\"" }
 
     private func makeEngine(_ runner: FakeRunner,
-                            apps: FakeApps = FakeApps(),
+                            apps: FakeApps = FakeApps.trustingA(),
                             settings: VPNSettings? = nil) -> VPNEngine {
         let at = self.at
         return VPNEngine(settings: settings ?? makeSettings(),
@@ -107,7 +107,7 @@ final class VPNAutomationRecordingTests: XCTestCase {
     }
 
     private func alreadyRunning() -> FakeApps {
-        let apps = FakeApps()
+        let apps = FakeApps.trustingA()
         apps.bundleIDs = ["com.a"]
         return apps
     }
@@ -115,7 +115,7 @@ final class VPNAutomationRecordingTests: XCTestCase {
     private func ruleForA() -> VPNSettings {
         let settings = makeSettings()
         settings.setRulesJSON(
-            "{\"com.a\":{\"vpnName\":\"A\",\"connectOnLaunch\":true,\"disconnectOnQuit\":true}}")
+            ruleJSONForA)
         return settings
     }
 
@@ -220,8 +220,8 @@ final class VPNAutomationRecordingTests: XCTestCase {
         runner.listOutput = list("Disconnected")
         let settings = makeSettings()
         settings.setRulesJSON(
-            "{\"com.a\":{\"vpnName\":\"A\",\"connectOnLaunch\":true,\"disconnectOnQuit\":true}}")
-        let apps = FakeApps()
+            ruleJSONForA)
+        let apps = FakeApps.trustingA()
         let engine = makeEngine(runner, apps: apps, settings: settings)
 
         engine.activate()
@@ -245,8 +245,8 @@ final class VPNAutomationRecordingTests: XCTestCase {
         runner.listOutput = list("Disconnected")
         let settings = makeSettings()
         settings.setRulesJSON(
-            "{\"com.a\":{\"vpnName\":\"A\",\"connectOnLaunch\":true,\"disconnectOnQuit\":true}}")
-        let apps = FakeApps()
+            ruleJSONForA)
+        let apps = FakeApps.trustingA()
         let engine = makeEngine(runner, apps: apps, settings: settings)
 
         engine.activate()

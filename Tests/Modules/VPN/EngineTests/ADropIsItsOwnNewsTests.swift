@@ -37,8 +37,15 @@ final class ADropIsItsOwnNewsTests: XCTestCase {
         settings.setDropNotice(.system)
 
         XCTAssertEqual(settings.notice(for: .connected), .silent)
-        XCTAssertEqual(settings.notice(for: .disconnected), .silent,
-                       "a quit rule is a rule; it answers to the rules' setting")
+        // **This used to read `.silent`, on the argument that a quit rule is a
+        // rule.** It is a rule nobody asked for at that moment, and a quit can be
+        // provoked by anything running as this user — so a teardown took the quiet
+        // channel while the person had asked to be told loudly about losing a
+        // tunnel. `VPNNotice.mode` gives it the louder of the two; `VPNNoticeTests`
+        // holds the rule and the controls that keep it from being «always loud».
+        XCTAssertEqual(settings.notice(for: .disconnected), .system,
+                       "a teardown Helm performed was announced more quietly than the fall it "
+                       + "looks like from outside")
         XCTAssertEqual(settings.notice(for: .dropped), .system,
                        "the tunnel fell over and the module read the rules' setting")
     }

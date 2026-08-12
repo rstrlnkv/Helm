@@ -26,6 +26,17 @@ public final class RunningApps: @unchecked Sendable {
 
     private let lock = NSLock()
     private var snapshot: Set<String> = []
+    /// Where each running identifier's bundle is, taken in the same main-thread
+    /// read as the identifiers themselves.
+    ///
+    /// Here rather than asked for on demand for the reason the whole class exists:
+    /// `NSRunningApplication` is AppKit's, and a caller on a background queue
+    /// asking «where is the bundle for this id» would be the same crash the
+    /// identifiers were moved here to avoid. Two instances of one identifier
+    /// collapse to one entry, which is what the identifier-set diff above does
+    /// too — a bundle squatting a running app's identifier is invisible to both,
+    /// and `VPNRuleTrust` says why that is the safe direction.
+    private var bundleURLs: [String: URL] = [:]
     private var seeded = false
 
     private init() {}
@@ -56,12 +67,25 @@ public final class RunningApps: @unchecked Sendable {
             lock.lock(); defer { lock.unlock() }
             return snapshot
         }
-        let current = Set(NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier))
+        let running = NSWorkspace.shared.runningApplications
+        let current = Set(running.compactMap(\.bundleIdentifier))
+        let urls = running.reduce(into: [String: URL]()) { map, app in
+            if let id = app.bundleIdentifier, let url = app.bundleURL { map[id] = url }
+        }
         lock.lock()
         snapshot = current
+        bundleURLs = urls
         seeded = true
         lock.unlock()
         return current
+    }
+
+    /// Where the bundle of the instance running under that identifier is, as of
+    /// the last snapshot. Nil when nothing of that identifier is running, or when
+    /// macOS did not say where it came from.
+    public func bundleURL(of bundleID: String) -> URL? {
+        lock.lock(); defer { lock.unlock() }
+        return bundleURLs[bundleID]
     }
 
     /// Refreshes on the main thread, then runs the block there. For an
@@ -86,10 +110,13 @@ public final class RunningApps: @unchecked Sendable {
         return seeded
     }
 
-    /// Test seam: fills the snapshot without AppKit.
-    func seed(_ ids: Set<String>) {
+    /// Test seam: fills the snapshot without AppKit. The bundle locations come
+    /// with it, because a snapshot that knows who is running and not where they
+    /// came from is a state the real read cannot be in.
+    func seed(_ ids: Set<String>, urls: [String: URL] = [:]) {
         lock.lock()
         snapshot = ids
+        bundleURLs = urls
         seeded = true
         lock.unlock()
     }

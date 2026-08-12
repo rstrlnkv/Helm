@@ -27,6 +27,24 @@ public enum AppBuild {
         Bundle.main.infoDictionary?["CFBundleVersion"] as? String
     }
 
+    /// Whether this process is the app rather than a test runner or a script.
+    ///
+    /// **Measured, not assumed — the identifier is no help:** under `xctest`
+    /// `Bundle.main.bundleIdentifier` is `com.apple.dt.xctest.tool`, thoroughly
+    /// non-nil, while its bundle path is
+    /// `/Applications/Xcode.app/Contents/Developer/usr/bin`, which is a directory
+    /// and not a bundle. The shipped app's is `Helm.app`.
+    ///
+    /// Asked by anything that would otherwise do something irreversible to a
+    /// person's own things from a process that is not their app: banners
+    /// (`SystemAutomationNotice`, where this sentence was written first) and the
+    /// one-time purge of the old VPN credential cache, which deleted the real
+    /// keychain items on every `swift test` run. `TestProcess.isRunning` answers
+    /// the neighbouring question — "is XCTest loaded" — and the two are not
+    /// interchangeable: the env-gated screenshot harness *is* the app, and a
+    /// bare script linking `HelmRuntime` is neither.
+    public static var isBundledApp: Bool { Bundle.main.bundleURL.pathExtension == "app" }
+
     /// A prerelease off the dev channel.
     ///
     /// The **build**, never the update channel: the channel is a picker anybody

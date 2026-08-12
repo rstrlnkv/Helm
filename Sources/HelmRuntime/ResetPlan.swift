@@ -20,7 +20,7 @@ import Foundation
 /// domain, which is exact and has no path to get wrong.
 public enum ResetPlan {
     public static func roots(home: String) -> [String] {
-        ["\(home)/Library/Application Support/Helm",
+        [HelmSupport.path(home: home),
          "\(home)/Library/Logs/Helm"]
     }
 

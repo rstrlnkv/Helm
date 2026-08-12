@@ -30,14 +30,34 @@ public protocol VPNRunnerPort: AnyObject {
 }
 
 /// Supplies --user/--password/--secret for a keychain-backed VPN.
+///
+/// - Parameter promptingAllowed: whether this read may reach somewhere macOS
+///   guards with a dialog. **False for anything a rule started.** The secret
+///   lives in the System keychain, and a third-party app reading it there is
+///   gated behind an authorization prompt attributed to `/usr/bin/security`;
+///   `vpnAppRules` is an unsealed plist decoded during `activate()`, so a forged
+///   rule otherwise chooses both the configuration and the moment that prompt
+///   appears in front of somebody who did nothing. Helm's own cache needs no
+///   prompt and stays readable either way, so an automatic connect that has been
+///   made once before is unaffected; one that has not gives up, and the System
+///   keychain then waits for the gesture of a person pressing Connect.
 public protocol VPNCredentialsPort: AnyObject {
-    func credentials(for name: String) -> VPNCredentials?
+    func credentials(for name: String, promptingAllowed: Bool) -> VPNCredentials?
 }
 
 /// Reports currently-running app bundle IDs and notifies on any change; the
 /// engine computes launch/quit diffs itself.
 public protocol AppObserverPort: AnyObject {
     func runningBundleIDs() -> Set<String>
+    /// What the instance running under that identifier is **signed** as, or nil
+    /// when nothing could be read.
+    ///
+    /// A second question because the first one cannot be trusted: a bundle
+    /// identifier is a string in a plist anybody can write, and a rule keyed on it
+    /// alone let a bundle nobody signed raise and drop somebody's tunnel by
+    /// launching and quitting (`VPNRuleTrust`). Nil is «could not tell», which is
+    /// treated as no rule rather than as permission.
+    func identity(of bundleID: String) -> CodeIdentity?
     func startObserving(_ onChange: @escaping @Sendable () -> Void)
 }
 

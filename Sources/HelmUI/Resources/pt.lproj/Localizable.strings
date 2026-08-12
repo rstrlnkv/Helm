@@ -75,6 +75,7 @@
 "Choose another…" = "Escolher outro…";
 "Choose apps" = "Escolher apps";
 "Choose folder" = "Escolher pasta";
+"Choose this app again to confirm which app it is" = "Escolha este app novamente para confirmar sua identidade";
 "Choose…" = "Escolher…";
 "Clear" = "Limpar";
 "Clear selection" = "Limpar seleção";
@@ -473,6 +474,7 @@
 "The small labels above each module’s figures are legible again, in both light and dark." = "As legendas pequenas acima dos números de cada módulo voltaram a ser legíveis, no claro e no escuro.";
 "The update status no longer claims you are current when no check has run — it shows when the last check happened." = "O status de atualização não afirma mais que você está atualizado sem ter verificado — mostra a última verificação.";
 "Then" = "Então";
+"This app is not signed — this rule never fires" = "Este app não está assinado — a regra nunca dispara";
 "This decides the words. Whether the ring turns is the switch below." = "Isto decide as palavras. Se o anel gira é o interruptor abaixo que decide.";
 "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word." = "Esta é uma tecla que você usa para digitar. Segurada ou combinada funciona normalmente, mas um toque solto por acidente vai corrigir a última palavra.";
 "This is the real thing, not a demonstration: it works here exactly as it does anywhere else." = "O campo é real, não uma demonstração: aqui o módulo funciona como em qualquer outro app.";

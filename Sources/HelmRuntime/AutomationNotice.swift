@@ -59,14 +59,11 @@ public final class SystemAutomationNotice: AutomationNoticePort {
 
     public init(area: String) { self.area = area }
 
-    /// Whether this process is the kind macOS will answer for.
-    ///
-    /// Measured, not assumed — the identifier is no help: under `xctest`
-    /// `Bundle.main.bundleIdentifier` is `com.apple.dt.xctest.tool`, thoroughly
-    /// non-nil, while its bundle path is
-    /// `/Applications/Xcode.app/Contents/Developer/usr/bin`, which is a
-    /// directory and not a bundle. The shipped app's is `Helm.app`.
-    private var isBundledApp: Bool { Bundle.main.bundleURL.pathExtension == "app" }
+    /// Whether this process is the kind macOS will answer for. `AppBuild` owns
+    /// the question and says why the identifier is no help — VPN's credential
+    /// purge asks the same thing for the same class of reason, and a second
+    /// spelling of it is one nobody would keep in step.
+    private var isBundledApp: Bool { AppBuild.isBundledApp }
 
     /// Says so in the log, because in the app this can only mean the banners
     /// are dead: `notDetermined` is what an unbundled process knows about

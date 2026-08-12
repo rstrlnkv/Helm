@@ -155,10 +155,8 @@ final class ARefusalIsNotAnnouncedAsDoneTests: XCTestCase {
     func testATeardownTheToolRefusedIsNotADisconnection() {
         let runner = FakeRunner()
         runner.listOutput = list("Disconnected")
-        let apps = FakeApps()
-        let e = engine(runner, apps: apps, settings: settings(
-            rules: "{\"com.a\":{\"vpnName\":\"A\",\"connectOnLaunch\":true,"
-                + "\"disconnectOnQuit\":true}}"))
+        let apps = FakeApps.trustingA()
+        let e = engine(runner, apps: apps, settings: settings(rules: ruleJSONForA))
 
         e.activate()
         apps.bundleIDs = ["com.a"]
@@ -187,10 +185,8 @@ final class ARefusalIsNotAnnouncedAsDoneTests: XCTestCase {
     func testARefusedTeardownDoesNotForgetTheTunnelItLeftUp() {
         let runner = FakeRunner()
         runner.listOutput = list("Disconnected")
-        let apps = FakeApps()
-        let e = engine(runner, apps: apps, settings: settings(
-            rules: "{\"com.a\":{\"vpnName\":\"A\",\"connectOnLaunch\":true,"
-                + "\"disconnectOnQuit\":true}}"))
+        let apps = FakeApps.trustingA()
+        let e = engine(runner, apps: apps, settings: settings(rules: ruleJSONForA))
 
         e.activate()
         apps.bundleIDs = ["com.a"]

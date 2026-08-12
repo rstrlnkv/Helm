@@ -75,6 +75,7 @@
 "Choose another…" = "Choose another…";
 "Choose apps" = "Choose apps";
 "Choose folder" = "Choose folder";
+"Choose this app again to confirm which app it is" = "Choose this app again to confirm which app it is";
 "Choose…" = "Choose…";
 "Clear" = "Clear";
 "Clear selection" = "Clear selection";
@@ -473,6 +474,7 @@
 "The small labels above each module’s figures are legible again, in both light and dark." = "The small labels above each module’s figures are legible again, in both light and dark.";
 "The update status no longer claims you are current when no check has run — it shows when the last check happened." = "The update status no longer claims you are current when no check has run — it shows when the last check happened.";
 "Then" = "Then";
+"This app is not signed — this rule never fires" = "This app is not signed — this rule never fires";
 "This decides the words. Whether the ring turns is the switch below." = "This decides the words. Whether the ring turns is the switch below.";
 "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word." = "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word.";
 "This is the real thing, not a demonstration: it works here exactly as it does anywhere else." = "This is the real thing, not a demonstration: it works here exactly as it does anywhere else.";

@@ -92,6 +92,30 @@ final class ADropIsAnnouncedOnItsOwnSettingTests: XCTestCase {
                        + "is the drop's setting rather than a model that announces nothing")
     }
 
+    /// The teardown a quit rule performs is announced no more quietly than the
+    /// fall it looks like from the outside — through the real path, because the
+    /// view model chooses the mode and a test of `VPNSettings` alone would pass
+    /// with this end still reading the rules' setting.
+    ///
+    /// The reason it is a security fix and not a preference: a quit can be
+    /// provoked by anything running as this user, and a teardown is booked as a
+    /// rule doing as it was told.
+    func testAProvokedTeardownIsNotQuieterThanTheFallItLooksLike() async {
+        let said = await announce(kind: .disconnected, rules: .silent, drop: .system)
+
+        XCTAssertEqual(said.banner.count, 1,
+                       "Helm took the tunnel down by itself and said so on the quiet channel, "
+                       + "while the person had asked to hear about losing a tunnel")
+    }
+
+    /// And the control from the other side: with both settings quiet, nothing is
+    /// said — the rule is «no quieter than a drop», not «always loud».
+    func testATeardownIsStillSilentWhenBothChoicesAre() async {
+        let said = await announce(kind: .disconnected, rules: .silent, drop: .silent)
+        XCTAssertTrue(said.banner.isEmpty, "chosen silence was broken: \(said.banner)")
+        XCTAssertNil(said.label)
+    }
+
     /// A drop and a quit rule are different words, not only different volumes.
     /// «Not connected» is the state either way; what differs is that nobody
     /// asked for this one.

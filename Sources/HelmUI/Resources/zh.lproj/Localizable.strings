@@ -75,6 +75,7 @@
 "Choose another…" = "选择其他…";
 "Choose apps" = "选择应用";
 "Choose folder" = "选择文件夹";
+"Choose this app again to confirm which app it is" = "请重新选择此应用以确认其身份";
 "Choose…" = "选择…";
 "Clear" = "清除";
 "Clear selection" = "取消选择";
@@ -473,6 +474,7 @@
 "The small labels above each module’s figures are legible again, in both light and dark." = "各模块数字上方的小标签重新变得清晰，浅色与深色模式皆是。";
 "The update status no longer claims you are current when no check has run — it shows when the last check happened." = "未执行检查时不再声称已是最新，而是显示上次检查时间。";
 "Then" = "则";
+"This app is not signed — this rule never fires" = "此应用未签名，此规则不会生效";
 "This decides the words. Whether the ring turns is the switch below." = "这里只决定文字。圆环是否转动由下面的开关决定。";
 "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word." = "这是你打字时会用到的键。按住或组合使用时一切照常，但不小心单独敲一下就会修正上一个词。";
 "This is the real thing, not a demonstration: it works here exactly as it does anywhere else." = "这是真实的输入框，不是演示：它在这里的行为和在别处完全一样。";

@@ -49,7 +49,14 @@ public enum VPNCommandReply: Equatable, Sendable {
     /// - Parameter name: the configuration the command was about, so its every
     ///   occurrence in the tool's answer can be replaced by the same tag the rest
     ///   of the module's log lines carry.
-    public static func of(_ result: HelmProcess.Result, name: String) -> VPNCommandReply {
+    /// - Parameter knownNames: every configuration this Mac has. **The tool's
+    ///   explanation is often about a different one** — the configuration already
+    ///   holding the interface, the one whose gateway answered — and one name in
+    ///   the diagnostic file is the whole of what redaction exists to prevent.
+    ///   Defaulted to nothing so a caller that has no list still gets the name it
+    ///   asked about taken out; the engine passes the list it has just read.
+    public static func of(_ result: HelmProcess.Result, name: String,
+                          knownNames: [String] = []) -> VPNCommandReply {
         // **A tool that never ran is not a tool that agreed.** The table above
         // is about `scutil`'s own answers, all of which arrive with status 0 —
         // but a spawn that fails answers nothing at all, and that used to be
@@ -58,9 +65,10 @@ public enum VPNCommandReply: Equatable, Sendable {
         // and separately: silence is only consent when the tool was there to
         // give it.
         let text = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+        let names = [name] + knownNames
         guard result.status == 0 else {
             return .refused(text.isEmpty ? "scutil did not run (status \(result.status))"
-                                         : withoutTheName(text, name: name))
+                                         : withoutTheNames(text, names: names))
         }
         guard !text.isEmpty else { return .accepted }
         // The tool's own wording, matched case-insensitively but not
@@ -71,20 +79,36 @@ public enum VPNCommandReply: Equatable, Sendable {
         // wording: a configuration called «No» would otherwise turn `No service`
         // into a sentence this enum cannot classify at all.
         if text.lowercased().hasPrefix("no service") { return .noSuchService }
-        return .refused(withoutTheName(text, name: name))
+        return .refused(withoutTheNames(text, names: names))
     }
 
-    /// The name gone, case-insensitively — the tool has no reason to spell it the
-    /// way the person did — and the result bounded. One log line is not the place
-    /// for a wall of text: the file is 2 MB with a single rollover, so an
+    /// Every name gone, case-insensitively — the tool has no reason to spell one
+    /// the way the person did — and the result bounded. One log line is not the
+    /// place for a wall of text: the file is 2 MB with a single rollover, so an
     /// unbounded message is everything else's trail pushed out of it.
-    private static func withoutTheName(_ text: String, name: String) -> String {
+    ///
+    /// **Longest first**, or a name that contains another leaves half of itself
+    /// standing beside the shorter one's tag: «Office VPN Backup» swept for
+    /// «Office» first reads `vpn#1a2b VPN Backup`, which names the configuration
+    /// as plainly as printing it would.
+    ///
+    /// **Not `.literal`.** Foundation's non-literal search compares canonically,
+    /// so a name the tool prints decomposed is found by a rule that stored it
+    /// precomposed and the other way round — `scutil` reads the name out of the
+    /// network configuration store and the rule was written into a text field, so
+    /// the two spellings differ byte for byte while naming one configuration.
+    /// That property is Foundation's rather than this function's, which is why
+    /// `ARefusalNamesNoConfigurationTests` pins it: adding `.literal` for speed
+    /// would put the name back in the file with nothing to say so.
+    private static func withoutTheNames(_ text: String, names: [String]) -> String {
         // An empty name is not a pattern. `replacingOccurrences` of "" is at best
         // a no-op, and the engine can be asked for one by a rule pointing at a
         // configuration that has since been renamed away.
-        let named = name.isEmpty
-            ? text
-            : text.replacingOccurrences(of: name, with: Redact.vpn(name), options: [.caseInsensitive])
-        return String(named.prefix(200))
+        var swept = text
+        for name in Set(names.filter { !$0.isEmpty }).sorted(by: { $0.count > $1.count }) {
+            swept = swept.replacingOccurrences(of: name, with: Redact.vpn(name),
+                                               options: [.caseInsensitive])
+        }
+        return String(swept.prefix(200))
     }
 }

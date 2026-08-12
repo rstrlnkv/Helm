@@ -32,6 +32,17 @@ public final class WorkspaceAppObserver: AppObserverPort {
     /// segfaulted the app whenever a program quit at the wrong moment.
     public func runningBundleIDs() -> Set<String> { RunningApps.shared.bundleIDs() }
 
+    /// The signature of what is running under that identifier.
+    ///
+    /// Two steps, on two sides of the same rule: *where* the bundle is comes from
+    /// the snapshot `RunningApps` took on the main thread, and reading the
+    /// signature at that path is Security's, which is safe anywhere. Asking AppKit
+    /// for the running application here instead would be the crash this whole
+    /// arrangement exists to prevent.
+    public func identity(of bundleID: String) -> CodeIdentity? {
+        RunningApps.shared.bundleURL(of: bundleID).flatMap(CodeIdentity.of(bundleAt:))
+    }
+
     public func startObserving(_ onChange: @escaping @Sendable () -> Void) {
         // No .initial: the engine seeds already-running apps itself, so firing
         // on registration would just cause a redundant full app-list scan.
@@ -165,9 +176,18 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// this user could take the secret. Updating them in place would keep that
     /// list, so they are removed once; the next connect re-reads the System
     /// keychain (one prompt) and re-caches them properly.
+    ///
+    /// **Who may run this, and the record that it has, are `CredentialCachePurge`'s
+    /// to answer** — this deletes somebody's stored secrets, and it used to do so
+    /// on every `swift test` run with a latch that could not remember it had.
     private static func purgeItemsWithTheOldAccessList() {
-        let key = "module.vpn.credentialCachePurged"
-        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        let marker = CredentialCachePurge.markerURL
+        let fm = FileManager.default
+        // The bundle question first, so a test runner reaches neither the disk nor
+        // the keychain.
+        guard CredentialCachePurge.shouldRun(bundledApp: AppBuild.isBundledApp,
+                                             recorded: fm.fileExists(atPath: marker.path))
+        else { return }
         let status = SecItemDelete([kSecClass as String: kSecClassGenericPassword,
                                     kSecAttrService as String: "com.helm.vpn"] as CFDictionary)
         // Only once it is actually gone. Helm starts at login, when the keychain
@@ -175,13 +195,14 @@ public final class KeychainCredentials: VPNCredentialsPort {
         // done first would leave the readable-by-anything item in place forever,
         // which is the one thing this exists to prevent.
         guard status == errSecSuccess || status == errSecItemNotFound else { return }
-        UserDefaults.standard.set(true, forKey: key)
+        PrivateFile.directory(at: marker.deletingLastPathComponent())
+        PrivateFile.write(Data(), to: marker)
         if status == errSecSuccess {
             HelmLog.shared.info("vpn", "cleared the old credential cache")
         }
     }
 
-    public func credentials(for name: String) -> VPNCredentials? {
+    public func credentials(for name: String, promptingAllowed: Bool) -> VPNCredentials? {
         let show = HelmProcess.run("/usr/sbin/scutil", ["--nc", "show", name]).output
         guard let uuid = Self.value(inScutilShow: show, field: "AuthPassword") else { return nil }
         let authName = Self.value(inScutilShow: show, field: "AuthName")
@@ -193,7 +214,16 @@ public final class KeychainCredentials: VPNCredentialsPort {
                                   secret: secret)
         }
 
-        // 2. First time: read the System keychain (this may prompt once).
+        // 2. First time: read the System keychain, which macOS gates behind an
+        // authorization dialog — and that is the whole reason a caller may
+        // refuse it. A rule out of an unsealed plist decides both which
+        // configuration and *when*, so it gets the cache or nothing; the prompt
+        // waits for somebody pressing Connect.
+        guard promptingAllowed else {
+            HelmLog.shared.info("vpn", "no cached credentials for \(Redact.vpn(name)); an "
+                + "automatic connect does not ask the System keychain")
+            return nil
+        }
         let secret = Self.keychainSecret(service: "\(uuid).SS", account: nil,
                                          keychain: "/Library/Keychains/System.keychain")
         guard let secret, !secret.isEmpty else { return nil }
@@ -236,12 +266,30 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// created it, and the value never appears in an argument list. Delete
     /// before add, so an item left behind by the old path loses its access list
     /// rather than keeping it through an update.
+    ///
+    /// **What protects this item is that access list, and nothing else.** It used
+    /// to set `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` under a comment saying
+    /// the secret was "useless on another Mac and pointless while locked" — a claim
+    /// that was not in force. Without `kSecUseDataProtectionKeychain` the item
+    /// lands in the file-based login keychain, where that attribute does not
+    /// apply: measured on the two live items, neither carried a `pdmn` at all. A
+    /// comment claiming a protection that is not applied is worse than no comment,
+    /// because it closes the question, so the claim is gone rather than the
+    /// attribute being left to look like it does something.
+    ///
+    /// Moving to the data-protection keychain is the real fix and it is not
+    /// available yet: it needs the flag on the write, the read *and* the delete
+    /// (they must agree or the read stops finding the write), and it needs an
+    /// `application-identifier` entitlement this ad-hoc-signed bundle has not got
+    /// — the same Developer ID already blocking `NEVPNManager`, the seal on
+    /// `clamshellEnabled` and notarization. It would also be a change to the
+    /// credential path that cannot be tested without writing to somebody's real
+    /// keychain. `ASecretsProtectionIsNotClaimedTwiceTests` holds the pair
+    /// together: the attribute may come back only with the flag beside it.
     private func helmCacheWrite(_ account: String, _ value: String) {
         var attributes = query(account)
         SecItemDelete(attributes as CFDictionary)
         attributes[kSecValueData as String] = Data(value.utf8)
-        // The secret is useless on another Mac and pointless while locked.
-        attributes[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
         let status = SecItemAdd(attributes as CFDictionary, nil)
         if status != errSecSuccess {
             HelmLog.shared.warn("vpn", "could not cache credentials: \(HelmFailure.osStatus(status))")

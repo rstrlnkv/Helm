@@ -45,8 +45,8 @@ final class VPNEngineTests: XCTestCase {
         let runner = FakeRunner()
         runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
         let settings = makeSettings()
-        settings.setRulesJSON("{\"com.a\":{\"vpnName\":\"A\",\"connectOnLaunch\":true,\"disconnectOnQuit\":true}}")
-        let apps = FakeApps()
+        settings.setRulesJSON(ruleJSONForA)
+        let apps = FakeApps.trustingA()
         apps.bundleIDs = []
         let engine = VPNEngine(settings: settings, runner: runner, apps: apps, work: .inline)
 
@@ -62,8 +62,8 @@ final class VPNEngineTests: XCTestCase {
         let runner = FakeRunner()
         runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
         let settings = makeSettings()
-        settings.setRulesJSON("{\"com.a\":{\"vpnName\":\"A\",\"connectOnLaunch\":true,\"disconnectOnQuit\":true}}")
-        let apps = FakeApps()
+        settings.setRulesJSON(ruleJSONForA)
+        let apps = FakeApps.trustingA()
         apps.bundleIDs = []
         let engine = VPNEngine(settings: settings, runner: runner, apps: apps, work: .inline)
 

@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Helm
 
 import Foundation
+import HelmRuntime
 
 /// One per-app auto-VPN rule: which VPN the app maps to, and what Helm does on
 /// the app's launch and quit.
@@ -9,11 +10,21 @@ public struct VPNAppRule: Codable, Equatable {
     public var vpnName: String
     public var connectOnLaunch: Bool
     public var disconnectOnQuit: Bool
+    /// What the app the person picked is **signed** as.
+    ///
+    /// The rule used to be a bundle identifier and nothing else, which is a string
+    /// in a plist anybody can write: a bundle carrying a mapped identifier could
+    /// launch and quit and take somebody's tunnel down. `VPNRuleTrust` is what
+    /// reads this; it is optional because rules written before it existed have no
+    /// identity, and that is a state with its own answer rather than a default.
+    public var identity: CodeIdentity?
 
-    public init(vpnName: String, connectOnLaunch: Bool = true, disconnectOnQuit: Bool = true) {
+    public init(vpnName: String, connectOnLaunch: Bool = true, disconnectOnQuit: Bool = true,
+                identity: CodeIdentity? = nil) {
         self.vpnName = vpnName
         self.connectOnLaunch = connectOnLaunch
         self.disconnectOnQuit = disconnectOnQuit
+        self.identity = identity
     }
 
     /// The four states the two flags can express, named as the row reads.
@@ -59,6 +70,33 @@ public enum VPNRules {
             return legacy.mapValues { VPNAppRule(vpnName: $0) }
         }
         return [:]
+    }
+
+    /// The rules after somebody picked apps in the panel, which is the only place
+    /// an identity is recorded.
+    ///
+    /// **Picking an app that already has a rule is how a rule from before
+    /// identities existed is repaired.** It used to be ignored outright (`where
+    /// rules[bundleID] == nil`), so «choose the app again» — which is what the row
+    /// under such a rule now says — was advice the page had no way to carry out.
+    /// The identity is written and every choice the person made is left as it was.
+    ///
+    /// A bundle whose signature could not be read at all gets no rule: a rule that
+    /// can never fire is worse than no rule, because it looks like one that does.
+    public static func adopting(_ picked: [(bundleID: String, identity: CodeIdentity?)],
+                                into rules: [String: VPNAppRule],
+                                defaultVPN: String) -> [String: VPNAppRule] {
+        var updated = rules
+        for app in picked {
+            guard let identity = app.identity else { continue }
+            if var existing = updated[app.bundleID] {
+                existing.identity = identity
+                updated[app.bundleID] = existing
+            } else {
+                updated[app.bundleID] = VPNAppRule(vpnName: defaultVPN, identity: identity)
+            }
+        }
+        return updated
     }
 
     /// Drop rules whose VPN is not among the currently-configured connections.

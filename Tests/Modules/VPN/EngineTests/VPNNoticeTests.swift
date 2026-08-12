@@ -63,6 +63,47 @@ final class VPNNoticeTests: XCTestCase {
         XCTAssertFalse(s.bannerAuthorized)
     }
 
+    // MARK: - A teardown nobody asked for at that moment
+
+    /// **An automatic disconnect is not quieter than a drop.**
+    ///
+    /// `.disconnected` is Helm taking a tunnel down because a mapped app quit,
+    /// and it answered to the *rules'* setting — which on this machine is
+    /// `silent` while `dropNotice` is `system`: the person asked to be told
+    /// loudly about losing a tunnel and quietly about rules doing as they were
+    /// told, and a teardown they did not ask for at that instant took the quiet
+    /// channel. The two events end the same way, with traffic in clear after the
+    /// last thing said was that it was not, so the teardown is announced at least
+    /// as loudly as the fall would have been.
+    ///
+    /// It matters more than a volume: a quit can be provoked. Anything running as
+    /// this user can launch and quit a bundle carrying a mapped identifier, and
+    /// the teardown that follows is booked as a rule doing as asked.
+    func testAnAutomaticTeardownTakesTheLouderOfTheTwoSettings() {
+        XCTAssertEqual(VPNNotice.mode(for: .disconnected, rules: .silent, drop: .system), .system)
+        XCTAssertEqual(VPNNotice.mode(for: .disconnected, rules: .system, drop: .silent), .system)
+        XCTAssertEqual(VPNNotice.mode(for: .disconnected, rules: .silent, drop: .menuBar), .menuBar)
+    }
+
+    /// The controls: the other two kinds each answer to one setting, and only
+    /// one. Without them «the louder of the two» could be applied to everything,
+    /// which is a module that announces whatever is loudest and reads neither
+    /// choice.
+    func testTheOtherTwoKindsEachAnswerToTheirOwnSetting() {
+        XCTAssertEqual(VPNNotice.mode(for: .connected, rules: .silent, drop: .system), .silent)
+        XCTAssertEqual(VPNNotice.mode(for: .dropped, rules: .system, drop: .silent), .silent)
+    }
+
+    /// The store reads the same rule, so nothing decides this twice.
+    func testTheSettingsAgreeWithTheRule() {
+        let s = settings()
+        s.setNotice(.silent)
+        s.setDropNotice(.system)
+        XCTAssertEqual(s.notice(for: .disconnected), .system)
+        XCTAssertEqual(s.notice(for: .connected), .silent)
+        XCTAssertEqual(s.notice(for: .dropped), .system)
+    }
+
     /// Authorization refused: the loud mode becomes the quiet one, never
     /// silence. The person asked to be told.
     func testADeniedBannerFallsBackToTheLabelAndNotToSilence() {

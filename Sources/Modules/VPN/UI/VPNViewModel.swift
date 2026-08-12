@@ -51,10 +51,15 @@ import Module_VPN_Engine
     /// setting because it is separate news. `noticeForTesting` covers both: a
     /// test that sets a mode is setting the module's voice, and one that wants
     /// them to differ passes `dropNotice`.
+    /// Through `VPNNotice.mode`, which is the same rule the store reads: this end
+    /// used to answer «the drop setting for a drop, the rules' setting for
+    /// everything else» in its own words, and a teardown Helm performed then took
+    /// the rules' volume however loudly the person had asked to hear about losing
+    /// a tunnel. Two spellings of one decision, and only one of them was fixed.
     func notice(for kind: VPNAutomation.Kind) -> VPNNotice {
-        if let forced = kind == .dropped ? dropNoticeForTesting : noticeForTesting { return forced }
-        if let forced = noticeForTesting { return forced }
-        return settings?.notice(for: kind) ?? .menuBar
+        let rules = noticeForTesting ?? settings?.notice ?? .menuBar
+        let drop = dropNoticeForTesting ?? noticeForTesting ?? settings?.dropNotice ?? .menuBar
+        return VPNNotice.mode(for: kind, rules: rules, drop: drop)
     }
 
     /// Whether the menu-bar ring turns when a rule fires. Read at every ask

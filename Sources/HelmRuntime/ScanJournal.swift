@@ -60,10 +60,7 @@ public final class ScanJournal: @unchecked Sendable {
 
     public static let defaultDirectory: URL = {
         if TestProcess.isRunning { return testScratch.directory() }
-        let base = FileManager.default.urls(for: .applicationSupportDirectory,
-                                            in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSHomeDirectory() + "/Library/Application Support")
-        return base.appendingPathComponent("Helm/Scans", isDirectory: true)
+        return HelmSupport.directory.appendingPathComponent("Scans", isDirectory: true)
     }()
 
     /// The journal's own name for `TestScratch`'s judgement, narrowed to the

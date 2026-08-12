@@ -30,7 +30,6 @@ final class VPNEngineRuleReloadTests: XCTestCase {
         VPNSettings(store: NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore()))
     }
 
-    private let ruleForA = "{\"com.a\":{\"vpnName\":\"A\",\"connectOnLaunch\":true,\"disconnectOnQuit\":true}}"
 
     /// Off and on again. The rule is present, the VPN is present, the app
     /// launches — and the second launch issues nothing.
@@ -38,8 +37,8 @@ final class VPNEngineRuleReloadTests: XCTestCase {
         let runner = FakeRunner()
         runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
         let store = settings()
-        store.setRulesJSON(ruleForA)
-        let apps = FakeApps()
+        store.setRulesJSON(ruleJSONForA)
+        let apps = FakeApps.trustingA()
         let engine = VPNEngine(settings: store, runner: runner, apps: apps, work: .inline)
 
         engine.activate()
@@ -55,7 +54,7 @@ final class VPNEngineRuleReloadTests: XCTestCase {
         apps.bundleIDs = []
         apps.fire()
         // …then switches the rule back on.
-        store.setRulesJSON(ruleForA)
+        store.setRulesJSON(ruleJSONForA)
         engine.reloadRules()
 
         // A live rule, a configured VPN, and the app launches again.
@@ -76,8 +75,8 @@ final class VPNEngineRuleReloadTests: XCTestCase {
         let runner = FakeRunner()
         runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
         let store = settings()
-        store.setRulesJSON(ruleForA)
-        let apps = FakeApps()
+        store.setRulesJSON(ruleJSONForA)
+        let apps = FakeApps.trustingA()
         let engine = VPNEngine(settings: store, runner: runner, apps: apps, work: .inline)
 
         engine.activate()
@@ -87,7 +86,7 @@ final class VPNEngineRuleReloadTests: XCTestCase {
         apps.fire()
         store.setRulesJSON("{}")
         engine.reloadRules()
-        store.setRulesJSON(ruleForA)
+        store.setRulesJSON(ruleJSONForA)
         engine.reloadRules()
         apps.bundleIDs = ["com.a"]
         apps.fire()
@@ -103,8 +102,8 @@ final class VPNEngineRuleReloadTests: XCTestCase {
         let runner = FakeRunner()
         runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
         let store = settings()
-        store.setRulesJSON(ruleForA)
-        let apps = FakeApps()
+        store.setRulesJSON(ruleJSONForA)
+        let apps = FakeApps.trustingA()
         let engine = VPNEngine(settings: store, runner: runner, apps: apps, work: .inline)
 
         engine.activate()

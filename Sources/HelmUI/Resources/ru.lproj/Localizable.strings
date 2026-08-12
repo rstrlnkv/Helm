@@ -75,6 +75,7 @@
 "Choose another…" = "Выбрать другое…";
 "Choose apps" = "Выбор приложений";
 "Choose folder" = "Выбрать папку";
+"Choose this app again to confirm which app it is" = "Выберите приложение заново, чтобы подтвердить его подлинность";
 "Choose…" = "Выбрать…";
 "Clear" = "Очистить";
 "Clear selection" = "Снять выбор";
@@ -473,6 +474,7 @@
 "The small labels above each module’s figures are legible again, in both light and dark." = "Мелкие подписи над показателями модулей снова читаются — и в светлой теме, и в тёмной.";
 "The update status no longer claims you are current when no check has run — it shows when the last check happened." = "Статус обновлений больше не утверждает, что версия последняя, если проверки не было — показывает, когда проверяли в последний раз.";
 "Then" = "То";
+"This app is not signed — this rule never fires" = "Приложение не подписано — правило не срабатывает";
 "This decides the words. Whether the ring turns is the switch below." = "Это решает про слова. Вращается ли кольцо — переключатель ниже.";
 "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word." = "Это клавиша, которой вы печатаете. Зажатая или в сочетании она работает как обычно, но случайное одиночное нажатие исправит последнее слово.";
 "This is the real thing, not a demonstration: it works here exactly as it does anywhere else." = "Поле настоящее, а не демонстрация: здесь модуль работает точно так же, как в любом другом приложении.";

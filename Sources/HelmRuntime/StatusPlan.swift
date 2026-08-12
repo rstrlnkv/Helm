@@ -136,6 +136,38 @@ public enum StatusPlan {
                 frame.map { "=\($0)" } ?? "-", part(spinTint)].joined(separator: "|")
     }
 
+    /// The title as the menu bar can actually carry it, or nil when there is
+    /// nothing left to draw.
+    ///
+    /// **The one part of the status item a stranger writes.** The glyph, the
+    /// tint and a countdown are the app's own; a VPN configuration's name is free
+    /// text read out of `scutil --nc list`, and it reached
+    /// `StatusItemController`'s `attributedTitle` verbatim. A 4000-character name
+    /// parses perfectly well and measures 39 238 pt at the font that item sets —
+    /// twenty-six times the width of the narrowest built-in display on this Mac —
+    /// for the three seconds `VPNAutomation.nameDuration` holds it.
+    ///
+    /// 24 characters, because that is the widest a name can be and still be a
+    /// label rather than a takeover: 24 of the widest glyph measure 235 pt and an
+    /// ordinary name of that length about 140, against 1512 pt of narrowest
+    /// display shared with every other menu extra. The ellipsis is inside the
+    /// bound, so what is drawn is never more than the bound, and a name that was
+    /// cut looks cut.
+    ///
+    /// It lives here rather than in the module because the bound is a fact about
+    /// the menu bar, which is the host's, and the next module to put a person's
+    /// word up there should find this instead of writing it again. The module
+    /// applies it, because that is where the unbounded string is.
+    public static func menuBarTitle(_ text: String) -> String? {
+        let flattened = text.components(separatedBy: .controlCharacters).joined()
+            .trimmingCharacters(in: .whitespaces)
+        guard !flattened.isEmpty else { return nil }
+        guard flattened.count > titleLimit else { return flattened }
+        return String(flattened.prefix(titleLimit - 1)) + "…"
+    }
+
+    private static let titleLimit = 24
+
     /// Whether the chosen appearance should actually move right now.
     public static func spins(_ appearance: StatusAppearance,
                              now: Date, reduceMotion: Bool) -> Bool {
