@@ -6,6 +6,12 @@ import HelmRuntime
 /// Wires the ports to the logic. Holds no rules of its own: every decision is
 /// made by a unit in `Logic/`, so it can be checked without typing.
 public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
+    /// The module's own id, where the engine can read it: the log tag, the
+    /// store's namespace and the hotkey slot are all this one string, and it
+    /// was spelled as a literal a dozen times. The descriptor forwards it
+    /// upward — the same direction the command enums travel.
+    public static let moduleID = "layout"
+
     private let tap: KeyTapPort
     private let typing: TypingPort
     private let sources: LayoutSourcePort
@@ -127,13 +133,27 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         starting = true
         lock.unlock()
         let started = tap.start({ [weak self] event in self?.handle(event) },
-                                onModifier: { [weak self] input in self?.handleModifier(input) })
+                                onModifier: { [weak self] input in self?.handleModifier(input) },
+                                died: { [weak self] in self?.tapDied() })
         lock.lock(); tapped = started; starting = false; lock.unlock()
         if started {
-            HelmLog.shared.info("layout", "watching for mislayout words")
+            HelmLog.shared.info(Self.moduleID, "watching for mislayout words")
         } else {
-            HelmLog.shared.warn("layout", "no accessibility grant — not watching")
+            HelmLog.shared.warn(Self.moduleID, "no accessibility grant — not watching")
         }
+        emitState()
+    }
+
+    /// macOS took the tap away.
+    ///
+    /// `tapped` is the engine's belief about a fact the system owns, and
+    /// `standDown` used to stop the tap without correcting it — so the next
+    /// `didBecomeActive` hit `guard running, !tapped` and refused to build
+    /// another one. The person who restored the grant got a page that said
+    /// «Active» with nobody listening, until they relaunched. Clearing the flag
+    /// is what makes the retry the module already had reach the tap.
+    private func tapDied() {
+        lock.lock(); tapped = false; lock.unlock()
         emitState()
     }
 
@@ -346,7 +366,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             // Silence was the whole problem with this path: the gesture fired,
             // the translation declined, and nothing on screen or in the log
             // said so. A count, not the text — the log carries no content.
-            HelmLog.shared.info("layout",
+            HelmLog.shared.info(Self.moduleID,
                                 "selection left alone: no conversion for \(text.count) characters")
             return
         }
@@ -359,7 +379,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         lock.lock(); performing = false; forgetTheWord(); lock.unlock()
 
         guard done else {
-            HelmLog.shared.warn("layout", "selection \(action.rawValue) refused by \(Redact.app(bundleID))")
+            HelmLog.shared.warn(Self.moduleID, "selection \(action.rawValue) refused by \(Redact.app(bundleID))")
             return
         }
         if audible { sound?.playSwitch() }
@@ -413,7 +433,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // a success on top of that would be the app claiming work it did not do.
         guard perform(plan) else {
             // Counts and shapes, never the word itself.
-            HelmLog.shared.warn("layout", "\(Redact.app(bundleID)) refused a replacement of "
+            HelmLog.shared.warn(Self.moduleID, "\(Redact.app(bundleID)) refused a replacement of "
                                 + "\(plan.backspaces) characters (\(from) → \(to))")
             return
         }
@@ -427,7 +447,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         _ = conversions.add(on: Date())
         lock.unlock()
         // Counts, never content: the words themselves stay out of the log.
-        HelmLog.shared.info("layout", "converted a word in \(Redact.app(bundleID))")
+        HelmLog.shared.info(Self.moduleID, "converted a word in \(Redact.app(bundleID))")
         emitState()
     }
 
@@ -461,7 +481,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             // Only the bound key's own release is reported, so an ordinary
             // day's typing adds nothing to the log.
             if case let .up(code, _) = input, code == bound, let refusal {
-                HelmLog.shared.info("layout", "tap refused: \(refusal.rawValue)")
+                HelmLog.shared.info(Self.moduleID, "tap refused: \(refusal.rawValue)")
             }
             return
         }
@@ -495,7 +515,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             let hasSelection = !(selected ?? "")
                 .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             DispatchQueue.main.async { [self] in
-                HelmLog.shared.info("layout",
+                HelmLog.shared.info(Self.moduleID,
                                     "gesture: \(hasSelection ? "selection" : "last word")")
                 if hasSelection { transform(.convert, selected: selected); return }
                 let bundleID = secure.frontmostBundleID()

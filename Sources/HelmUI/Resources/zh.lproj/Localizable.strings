@@ -141,6 +141,7 @@
 "Escape closes the menu-bar panel, the way it closes every other menu on the Mac. It could be opened with a keyboard shortcut and then only be closed with the mouse." = "按 Esc 键即可关闭菜单栏面板，就像关闭 Mac 上的其他菜单一样。此前可以用快捷键打开，却只能用鼠标关闭。";
 "Every change can be undone — tap the same key again, in the app it happened in. And there is a field on this page to try it in, before it touches anything real." = "任何替换都可以撤销——在发生替换的那个应用里再敲一次同一个键。本页还有一个可以先试试的输入框。";
 "Every layout has a real flag now. Helm drew them itself for a while, but a table of bands and crosses cannot hold Mexico’s eagle, Portugal’s armillary sphere or Korea’s trigrams — half a dozen flags were approximations because of it. These come from flag-icons under the MIT licence (credited on this page): rectangular, accurate, and legible down to the smallest badge size. A layout that names no country still keeps its letters." = "每个布局现在都有真正的旗帜：MIT 许可的 flag-icons（本页已署名）。矩形、准确，最小尺寸下依然清晰。没有国家归属的布局仍保持字母显示。";
+"Every setting here needs Accessibility: without it Helm sees no keystrokes and changes nothing." = "此处的所有设置都需要无障碍权限：没有它，Helm 读不到按键，也不会更改任何内容。";
 "Everything" = "全部";
 "Everything is up to date." = "全部已是最新。";
 "Expanded" = "已展开";
@@ -181,6 +182,7 @@
 "Helm introduces itself. On a new installation a short tour opens once: what Helm is, then one screen per module, with Back, Next and Skip. It only tells you what is there — nothing is switched on and no permission is asked for. If Helm was already installed, you get it once too, because Autopilot and Duplicates arrived without ever being introduced." = "Helm 会自我介绍了。全新安装时会打开一次简短导览：先说明 Helm 是什么，然后每个模块一屏，可以上一步、下一步或跳过。它只做介绍——不会开启任何功能，也不索取权限。如果你已经在用 Helm，同样会看到一次：自动整理和重复文件当初是悄悄出现的。";
 "Helm is made of modules. Each one does a single job, and you can switch off the ones you do not want." = "Helm 由若干模块组成。每个模块只做一件事，不需要的可以关掉。";
 "Helm is missing permissions it needs" = "Helm 缺少所需权限";
+"Helm is not watching the keyboard" = "Helm 未在监视键盘";
 "Helm is still in development. Beta builds are the steadier of the two." = "Helm 仍在开发中。两者之中 Beta 更稳定。";
 "Helm needs Full Disk Access to move this." = "移动此项需要完全磁盘访问权限。";
 "Helm returns to how it was just after installing. Access you granted in System Settings stays as it is." = "Helm 会回到刚安装完的状态。你在系统设置中授予的权限不受影响。";
@@ -384,7 +386,6 @@
 "Run now" = "立即运行";
 "Running" = "运行中";
 "Runs at login" = "登录时运行";
-"STATE" = "状态";
 "Saved windows" = "保存的窗口";
 "Scan" = "扫描";
 "Scan a folder…" = "扫描文件夹…";
@@ -439,7 +440,6 @@
 "Switching to another module and back no longer throws away what you were doing. The Uninstaller used to lose every tick, the whole review step, and the record of what macOS had refused, the moment you left its page; Login Items & Extensions restarted its scan — the slowest one in the app — the same way. Both remember now." = "切换到其他模块再切回来，不会再丢掉你正在做的事情了。以前，卸载器一旦离开页面，就会丢失所有勾选、整个审阅步骤，以及 macOS 拒绝了哪些内容的记录；“登录项与扩展”——应用里最慢的一项扫描——也会以同样的方式重新开始。现在两者都会记住。";
 "System" = "系统";
 "System extensions" = "系统扩展";
-"TODAY" = "今日";
 "Tag" = "标签";
 "Tag name" = "标签名称";
 "Tap it on its own. With text selected it fixes the selection; otherwise it fixes the last word, and tapping again puts it back. Held down or pressed with anything else it is still an ordinary modifier." = "单独按下再松开。若已选中文本则修正选区，否则修正上一个词，再按一次还原。按住不放或与其他键同时按下时仍是普通修饰键。";

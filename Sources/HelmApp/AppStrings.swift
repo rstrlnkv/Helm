@@ -48,10 +48,6 @@ enum AppStr {
     }
     /// Sidebar entry for the app-level pane (login item, panel layout, menu-bar icon).
     static var settingsPane: String { L("Settings") }
-    /// What Helm does on its own. `General` was the name when the section held
-    /// three unrelated decisions — a login item, a theme and a colour choice —
-    /// and a heading that promises nothing is a heading nobody reads.
-    static var behaviour: String { L("Behaviour") }
     /// The light/dark control, which macOS itself calls «Appearance» — the same
     /// word as the section it now sits in. A section and its first row reading
     /// identically is how a person stops seeing the heading at all, so the row

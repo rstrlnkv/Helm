@@ -141,6 +141,7 @@
 "Escape closes the menu-bar panel, the way it closes every other menu on the Mac. It could be opened with a keyboard shortcut and then only be closed with the mouse." = "Escape schließt das Menüleisten-Panel, so wie es jedes andere Menü am Mac schließt. Es ließ sich per Tastatur öffnen und nur mit der Maus schließen.";
 "Every change can be undone — tap the same key again, in the app it happened in. And there is a field on this page to try it in, before it touches anything real." = "Jede Änderung lässt sich zurücknehmen — tippe dieselbe Taste noch einmal, in der App, in der sie passiert ist. Und auf dieser Seite gibt es ein Feld zum Ausprobieren.";
 "Every layout has a real flag now. Helm drew them itself for a while, but a table of bands and crosses cannot hold Mexico’s eagle, Portugal’s armillary sphere or Korea’s trigrams — half a dozen flags were approximations because of it. These come from flag-icons under the MIT licence (credited on this page): rectangular, accurate, and legible down to the smallest badge size. A layout that names no country still keeps its letters." = "Jede Belegung hat jetzt eine echte Flagge: flag-icons unter MIT-Lizenz (auf dieser Seite genannt). Rechteckig, korrekt und bis zur kleinsten Größe lesbar. Eine Belegung ohne Land behält ihre Buchstaben.";
+"Every setting here needs Accessibility: without it Helm sees no keystrokes and changes nothing." = "Alle Einstellungen hier brauchen die Bedienungshilfen: ohne sie sieht Helm keine Tastenanschläge und ändert nichts.";
 "Everything" = "Alles";
 "Everything is up to date." = "Alles ist aktuell.";
 "Expanded" = "Aufgeklappt";
@@ -181,6 +182,7 @@
 "Helm introduces itself. On a new installation a short tour opens once: what Helm is, then one screen per module, with Back, Next and Skip. It only tells you what is there — nothing is switched on and no permission is asked for. If Helm was already installed, you get it once too, because Autopilot and Duplicates arrived without ever being introduced." = "Helm stellt sich vor. Bei einer neuen Installation öffnet sich einmal ein kurzer Rundgang: was Helm ist, dann ein Bildschirm je Modul, mit Zurück, Weiter und Überspringen. Er erzählt nur — nichts wird eingeschaltet, nach keiner Berechtigung gefragt. War Helm schon installiert, siehst du ihn ebenfalls einmal: Autopilot und Duplikate kamen ohne ein Wort.";
 "Helm is made of modules. Each one does a single job, and you can switch off the ones you do not want." = "Helm besteht aus Modulen. Jedes erledigt eine Sache, und was du nicht brauchst, schaltest du ab.";
 "Helm is missing permissions it needs" = "Helm fehlen benötigte Berechtigungen";
+"Helm is not watching the keyboard" = "Helm überwacht die Tastatur nicht";
 "Helm is still in development. Beta builds are the steadier of the two." = "Helm ist noch in Entwicklung. Beta-Builds sind die stabileren von beiden.";
 "Helm needs Full Disk Access to move this." = "Helm braucht Festplattenvollzugriff dafür.";
 "Helm returns to how it was just after installing. Access you granted in System Settings stays as it is." = "Helm kehrt in den Zustand direkt nach der Installation zurück. In den Systemeinstellungen erteilte Zugriffe bleiben, wie sie sind.";
@@ -384,7 +386,6 @@
 "Run now" = "Jetzt ausführen";
 "Running" = "Läuft";
 "Runs at login" = "Startet bei der Anmeldung";
-"STATE" = "STATUS";
 "Saved windows" = "Gespeicherte Fenster";
 "Scan" = "Scannen";
 "Scan a folder…" = "Ordner scannen…";
@@ -439,7 +440,6 @@
 "Switching to another module and back no longer throws away what you were doing. The Uninstaller used to lose every tick, the whole review step, and the record of what macOS had refused, the moment you left its page; Login Items & Extensions restarted its scan — the slowest one in the app — the same way. Both remember now." = "Zu einem anderen Modul zu wechseln und zurückzukehren verwirft jetzt nicht mehr, was du gerade getan hast. Die Deinstallation verlor früher jedes Häkchen, den ganzen Prüfschritt und den Hinweis darauf, was macOS verweigert hatte, sobald du die Seite verlassen hast; Anmeldeobjekte & Erweiterungen startete seinen Scan — den langsamsten der App — genauso neu. Beide merken sich das jetzt.";
 "System" = "System";
 "System extensions" = "Systemerweiterungen";
-"TODAY" = "HEUTE";
 "Tag" = "Tag";
 "Tag name" = "Name des Tags";
 "Tap it on its own. With text selected it fixes the selection; otherwise it fixes the last word, and tapping again puts it back. Held down or pressed with anything else it is still an ordinary modifier." = "Allein drücken und loslassen. Ist Text markiert, korrigiert sie die Markierung, sonst das letzte Wort — und noch einmal stellt es zurück. Gehalten oder mit etwas anderem gedrückt bleibt sie ein gewöhnlicher Modifikator.";

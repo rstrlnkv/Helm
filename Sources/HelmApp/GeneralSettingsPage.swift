@@ -109,7 +109,7 @@ struct MenuBarSettingsView: View {
             }
 
             // What Helm does on its own.
-            Section(header: HelmSectionTitle(AppStr.behaviour)) {
+            Section(header: HelmSectionTitle(HelmSectionName.behaviour)) {
                 Toggle(AppStr.launchAtLogin, isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, v in LoginItem.setEnabled(v) }
             }

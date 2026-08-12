@@ -110,8 +110,7 @@ struct KeepAwakeSettingsPage: View {
 
     var body: some View {
         keepAwakeForm
-            .helmOnAppActive { accessibility = PermissionCheck.currentAccessibility() }
-            .task { accessibility = PermissionCheck.currentAccessibility() }
+            .helmTracksAccessibility($accessibility)
     }
 
     /// Seven sections, each its own fragment.
@@ -452,7 +451,7 @@ struct KeepAwakeSettingsPage: View {
     }
 
     @ViewBuilder private var behaviourSection: some View {
-        Section(header: HelmSectionTitle(KAStr.behavior)) {
+        Section(header: HelmSectionTitle(HelmSectionName.behaviour)) {
             HelmSettingRow(KAStr.keepDisplayOn) {
                 Toggle(KAStr.keepDisplayOn, isOn: $keepDisplayOn)
                     .labelsHidden()

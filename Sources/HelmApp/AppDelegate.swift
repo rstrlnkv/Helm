@@ -75,9 +75,9 @@ import Module_Uninstaller_UI
         // other four were rows asking the user to assemble a gesture the app
         // could assemble itself.
         HotkeyManager.shared.register(
-            "layout.fix",
+            LayoutHotkey.fix,
             store: NamespacedStore(namespace: LayoutDescriptor.id.rawValue, backing: UserDefaults.standard),
-            prefix: "convertHotkey",
+            prefix: LayoutHotkey.storePrefix,
             action: send(LayoutCommand.fix.rawValue, to: LayoutDescriptor.id.rawValue))
         // Keeps the frontmost-app snapshot current, so every thread that asks
         // reads a value rather than reaching into AppKit for it.

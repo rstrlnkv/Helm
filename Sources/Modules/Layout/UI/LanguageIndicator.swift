@@ -22,7 +22,7 @@ import Module_Layout_Engine
     }
 
     func refresh() {
-        guard store.bool(LayoutKey.indicator, default: false) else { teardown(); return }
+        guard store.bool(LayoutKey.indicator, default: false) else { detach(); return }
         if item == nil { build() }
         redraw()
     }
@@ -52,7 +52,11 @@ import Module_Layout_Engine
         }
     }
 
-    private func teardown() {
+    /// Off the menu bar, with its two observers. Called by `refresh` when the
+    /// setting goes off and by the descriptor when the module stops running —
+    /// which is one route more than this had: nothing removed the item when
+    /// Keyboard was switched off.
+    func detach() {
         if let observer { DistributedNotificationCenter.default().removeObserver(observer) }
         if let themeObserver { DistributedNotificationCenter.default().removeObserver(themeObserver) }
         observer = nil

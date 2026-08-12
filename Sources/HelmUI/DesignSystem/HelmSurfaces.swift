@@ -19,6 +19,46 @@ public enum HelmSurface {
 }
 
 public extension View {
+    /// A multi-line field that reads as a field.
+    ///
+    /// **The chrome is `TextEditor`'s own, and it is the problem.** SwiftUI draws
+    /// an `NSTextView`'s scroll background — `textBackgroundColor`, which is
+    /// white in light and near-black in dark — and inside a grouped `Form` that
+    /// lands on a card of very nearly the same value: measured 1.02:1 in light
+    /// and 1.18:1 in dark, against a 3:1 floor for anything that is not text.
+    /// A person could not see where the box was. So the platform's own fill is
+    /// hidden and the field is drawn as a well with an edge: the fill says
+    /// «recessed», and the border is what actually carries the boundary — a
+    /// difference of a few per cent in fill can never reach 3:1 whatever
+    /// opacity it is given.
+    ///
+    /// Here rather than in the one page that has a `TextEditor` today, because
+    /// the defect belongs to the control and not to the page: the second
+    /// multi-line field anybody adds needs the same three decisions, and would
+    /// otherwise be borderless again.
+    func helmFieldWell() -> some View {
+        scrollContentBackground(.hidden)
+            // The text's own inset. Without it the first glyph sits on the
+            // border, which is what a hidden scroll background takes away.
+            .padding(HelmSpace.s3)
+            .background(
+                RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous)
+                    .fill(HelmSurface.wellFill)
+            )
+            .overlay(
+                // `HelmText.separator`, not `HelmSurface.hairline`: a hairline
+                // separates two rows of one list and measures 1.25:1 against
+                // this well — right for what it does and useless as a boundary
+                // somebody has to find. `separator` is the house's token for a
+                // mark that carries meaning and answers to 3:1; measured here
+                // with `Scripts/design/contrast.swift` it is 3.83:1 against the
+                // well in light and 4.52:1 in dark, where the fill difference
+                // this replaces was 1.08:1 and 1.10:1.
+                RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous)
+                    .strokeBorder(HelmText.separator)
+            )
+    }
+
     /// The one card in Helm: soft fill, continuous corners, no border.
     ///
     /// No border on purpose. Half of Helm's containers are macOS grouped-Form

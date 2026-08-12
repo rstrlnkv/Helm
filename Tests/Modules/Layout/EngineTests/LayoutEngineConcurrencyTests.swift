@@ -37,7 +37,8 @@ private final class ConcurrentTap: KeyTapPort, @unchecked Sendable {
     var handler: (@Sendable (TypingBuffer.Event) -> Void)?
     var modifiers: (@Sendable (ModifierTap.Input) -> Void)?
     func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void) -> Bool {
+               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
+               died: @escaping @Sendable () -> Void) -> Bool {
         lock.lock(); starts += 1; lock.unlock()
         handler = onEvent
         modifiers = onModifier

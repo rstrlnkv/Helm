@@ -36,12 +36,15 @@ public struct HelmPermissionNote: View {
         // one notice in the app that macOS itself draws, and the panel's own
         // permissions widget has always used this glyph for it.
         HelmBanner(text, symbol: "exclamationmark.circle.fill") {
-            Button(Self.grant) { openSettings() }
+            Button(Self.grantLabel) { openSettings() }
                 .controlSize(.small)
         }
     }
 
-    private static var grant: String {
+    /// The verb, where an empty state can read it too: a page whose whole
+    /// content is «this needs a permission» draws the same word on a prominent
+    /// button rather than inventing a second one for the same act.
+    public static var grantLabel: String {
         L("Grant…")
     }
 }
@@ -52,6 +55,32 @@ public extension View {
     func helmOnAppActive(_ action: @escaping () -> Void) -> some View {
         onReceive(NotificationCenter.default.publisher(
             for: NSApplication.didBecomeActiveNotification)) { _ in action() }
+    }
+
+    /// Keeps `state` on whether Accessibility has been granted: once as the page
+    /// appears, and again every time Helm comes back to the front, which is how
+    /// it hears about a grant made in System Settings.
+    ///
+    /// The twin of `helmTracksFullDiskAccess`, and it existed as three hand-held
+    /// lines in the two modules that need this grant — the `@State`, the `.task`
+    /// and the `.helmOnAppActive` — with nothing to keep the two copies agreeing
+    /// about which of the three they had.
+    ///
+    /// Synchronous, unlike the disk probe: `AXIsProcessTrusted()` is one
+    /// non-blocking call and needs no hop, so the answer is there on the first
+    /// frame rather than one later.
+    ///
+    /// **A page that draws a different screen per grant needs a reading that can
+    /// name the grant.** `helmGrants` is that, and it is nil everywhere in the
+    /// app: the probe is asked, as it always was. Keyboard replaced its banner
+    /// with an empty state, so the *content* of its page — not a 45 pt notice on
+    /// it — now depends on whether the process running the measurement holds
+    /// Accessibility, and every ratchet built on the offscreen render became a
+    /// fact about somebody's terminal. This is the same discipline
+    /// `ModulePageRender` applies to the appearance: a reading says which screen
+    /// it is of, rather than inheriting whatever this Mac happens to be.
+    func helmTracksAccessibility(_ state: Binding<PermissionState>) -> some View {
+        modifier(HelmAccessibilityTracker(state: state))
     }
 
     /// Keeps `state` on whether Full Disk Access has been granted: once as the
@@ -75,5 +104,46 @@ public extension View {
             .helmOnAppActive {
                 Task { @MainActor in state.wrappedValue = await PermissionCheck.fullDiskAccess() }
             }
+    }
+}
+
+/// What a reading of a page says about the grants it was taken under, or nil for
+/// «ask the machine», which is every path in the running app.
+///
+/// A `PermissionState` per grant rather than one flag: a page can depend on more
+/// than one, and «tell me about Accessibility» must not silently answer for Full
+/// Disk Access as well.
+public struct HelmGrants: Sendable, Equatable {
+    public var accessibility: PermissionState?
+
+    public init(accessibility: PermissionState? = nil) {
+        self.accessibility = accessibility
+    }
+}
+
+public extension EnvironmentValues {
+    /// Set by a measurement, never by the app. It changes what a view *draws*
+    /// about a grant and nothing about what the app is allowed to do — the
+    /// engines ask macOS for themselves, and a refusal comes from macOS.
+    @Entry var helmGrants = HelmGrants()
+}
+
+/// The `.task` and the «Helm came back to the front» re-read, in one place, with
+/// the override in front of the probe.
+///
+/// A `ViewModifier` rather than the two modifiers inline: the override lives in
+/// the environment, and a `View` extension function cannot read it.
+private struct HelmAccessibilityTracker: ViewModifier {
+    @Environment(\.helmGrants) private var grants
+    let state: Binding<PermissionState>
+
+    func body(content: Content) -> some View {
+        content
+            .task { state.wrappedValue = answer }
+            .helmOnAppActive { state.wrappedValue = answer }
+    }
+
+    private var answer: PermissionState {
+        grants.accessibility ?? PermissionCheck.currentAccessibility()
     }
 }

@@ -41,7 +41,8 @@ private final class EdgeTap: KeyTapPort, @unchecked Sendable {
     var handler: (@Sendable (TypingBuffer.Event) -> Void)?
     var modifiers: (@Sendable (ModifierTap.Input) -> Void)?
     func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void) -> Bool {
+               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
+               died: @escaping @Sendable () -> Void) -> Bool {
         handler = onEvent
         modifiers = onModifier
         return true
@@ -246,7 +247,8 @@ final class SettingsAtStartTests: XCTestCase {
     private final class CountingTap: KeyTapPort, @unchecked Sendable {
         var modifiers: (@Sendable (ModifierTap.Input) -> Void)?
         func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-                   onModifier: @escaping @Sendable (ModifierTap.Input) -> Void) -> Bool {
+                   onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
+                   died: @escaping @Sendable () -> Void) -> Bool {
             modifiers = onModifier
             return true
         }

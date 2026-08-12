@@ -19,7 +19,7 @@ struct LayoutSettingsPage: View {
     @State private var badgeStyle: BadgeStyle
     @State private var badgeSize: MenuBarIconSize
     @State private var tapKey: TapKey
-    @State private var showingIntro = false
+    @State private var introSeen: Bool
     @StateObject private var convertKey: HelmHotkeyRecorder
     @State private var abbreviations: [AutoReplace.Entry]
     @State private var newShort = ""
@@ -42,37 +42,65 @@ struct LayoutSettingsPage: View {
         _badgeSize = State(initialValue:
             MenuBarIconSize(stored: store.string(LayoutKey.badgeSize, default: "small")))
         _tapKey = State(initialValue: TapKey.from(store.string(LayoutKey.tapKey, default: TapKey.rightCommand.rawValue)))
+        _introSeen = State(initialValue: store.bool(LayoutKey.introSeen, default: false))
         _convertKey = StateObject(wrappedValue:
-            HelmHotkeyRecorder(store: store, prefix: "convertHotkey"))
+            HelmHotkeyRecorder(store: store, prefix: LayoutHotkey.storePrefix))
         _abbreviations = State(initialValue: AutoReplaceStore.load(store))
         _fixCapitals = State(initialValue: store.bool(LayoutKey.fixCapitals, default: false))
     }
 
     var body: some View {
         Form {
-            stateSection
-            behaviourSection
-            triggersSection
-            shortcutsSection
-            autoReplaceSection
-            tryItSection
-            exceptionsSection
-            indicatorSection
-            appsSection
+            // Once, and to the person who came looking for the module — rather
+            // than in a queue of notices at first launch that nobody reads.
+            if !introSeen { introSection }
+            if accessibility == .denied {
+                // Nothing below this works without the grant, and the module
+                // says so once instead of drawing 1867 pt of settings macOS
+                // ignores. The indicator is the exception and stays: it reads
+                // the input source through TIS and needs no grant at all.
+                deniedSection
+                indicatorSection
+            } else {
+                // The order is against the fold. «Try it» — which the
+                // introduction promises — sat at 1045 pt, below a key
+                // combination somebody sets once; the first screen now carries
+                // the figure, what it does, and the field to try it in.
+                behaviourSection
+                tryItSection
+                triggersSection
+                exceptionsSection
+                appsSection
+                autoReplaceSection
+                shortcutsSection
+                indicatorSection
+            }
         }
         .formStyle(.grouped)
         .helmSettingsColumn()
-        .helmOnAppActive { accessibility = PermissionCheck.currentAccessibility() }
-        .task {
-            accessibility = PermissionCheck.currentAccessibility()
-            // Once, and to the person who came looking for the module — rather
-            // than in a queue of notices at first launch that nobody reads.
-            if !store.bool(LayoutKey.introSeen, default: false) { showingIntro = true }
-        }
-        .sheet(isPresented: $showingIntro) {
+        .helmTracksAccessibility($accessibility)
+        // The two things on this page that arrive rather than being drawn once.
+        // The indicator's own block is 174.5 pt and appeared instantly under the
+        // switch that asks for it; a fix arrives from the engine while the page
+        // is open — reachable by typing `ghbdtn` into the field above — and its
+        // row appeared the same way.
+        .animation(HelmMotion.interface, value: indicator)
+        .animation(HelmMotion.interface, value: lvm.state.lastConversion)
+    }
+
+    /// **In the page, not in a sheet.**
+    ///
+    /// It was `.sheet(isPresented:)`, which is a window: five of them per
+    /// offscreen render, nothing of the introduction inside the page's own
+    /// layers, and therefore the first screen a new user meets measured by
+    /// nothing at all. A sheet's modality was protecting nothing either — the
+    /// module is already running when the page opens, so this explains rather
+    /// than asks — and «Got it» does exactly what it did.
+    private var introSection: some View {
+        Section {
             LayoutIntro {
                 store.set(true, for: LayoutKey.introSeen)
-                showingIntro = false
+                withAnimation(HelmMotion.disclosure) { introSeen = true }
             }
         }
     }
@@ -90,77 +118,138 @@ struct LayoutSettingsPage: View {
         return lvm.state.suspended ? LyStr.paused : LyStr.on
     }
 
+    /// From `HelmSignal`, never the raw system palette: orange measures 2.31:1
+    /// and green 2.22:1 against this page's own background in light.
     private var stateTint: Color {
-        if accessibility == .denied { return .orange }
-        if !lvm.state.enabled { return .orange }
-        return lvm.state.suspended ? .orange : .green
+        if accessibility == .denied { return HelmSignal.warning }
+        if !lvm.state.enabled { return HelmSignal.warning }
+        return lvm.state.suspended ? HelmSignal.warning : HelmSignal.success
     }
 
-    private var stateSection: some View {
-        Section {
-            HelmMetricStrip([
-                .init(stateLabel, LyStr.metricState, tint: stateTint),
-                .init("\(lvm.state.conversionsToday)", LyStr.metricToday),
-            ])
+    /// The figure this module has, at the size a figure gets.
+    ///
+    /// It was a `HelmMetricStrip` — «Active · 17» over 9 pt capitals reading
+    /// STATE and TODAY, which is a label for a number nobody needs labelled and
+    /// a second word for the badge in the page header. The count of words put
+    /// right today is the one thing here worth a glance, and the type scale's
+    /// top step is what it is set in — the same 40 pt light monospaced figure
+    /// Keep Awake's hero draws, so two pages of this app do not measure their
+    /// own heroes differently.
+    private var hero: some View {
+        VStack(alignment: .leading, spacing: HelmSpace.s2) {
+            HStack(alignment: .firstTextBaseline, spacing: HelmSpace.s5) {
+                Text("\(lvm.state.conversionsToday)")
+                    .font(.system(size: 40, weight: .light, design: .monospaced))
+                    .tracking(-2)
+                    // A count that changes while the page is open changes by
+                    // one, and the digits should roll rather than cut.
+                    .contentTransition(.numericText())
+                    .animation(HelmMotion.interface, value: lvm.state.conversionsToday)
+                HelmBadge(stateLabel, tint: stateTint)
+            }
+            Text(LyStr.fixedToday(lvm.state.conversionsToday))
+                .font(HelmText.rowDetail)
+                .foregroundStyle(HelmText.quiet)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
+    /// The hero rides on the first section's header, for the reason Keep Awake's
+    /// does: a section **header** is the one part of a grouped `Form` that is
+    /// drawn on the bare pane and still scrolls with the page. A row would be
+    /// inside the card, and pinning it above the form would spend a fifth of the
+    /// window on a figure however far down the settings somebody had gone.
+    private var heroAndTitle: some View {
+        VStack(alignment: .leading, spacing: HelmSpace.s6) {
+            hero
+            HelmSectionTitle(HelmSectionName.behaviour)
+        }
+        // Level with the cards below it: a grouped form insets a header 10 pt
+        // further than the section it belongs to (`groupedHeaderOutset`), and a
+        // 40 pt figure standing 10 pt right of every card on the page is the
+        // sort of thing nobody can name and everybody sees.
+        .padding(.leading, -HelmLayout.groupedHeaderOutset)
+        .padding(.bottom, HelmSpace.s5)
+    }
+
+    /// What it does, and the last thing it did.
+    ///
+    /// It had no heading at all — a 10 pt gap where every other section has 54 —
+    /// so it and the block above read as one card.
     @ViewBuilder private var behaviourSection: some View {
-        Section {
-            Toggle(LyStr.automatic, isOn: $automatic)
-                .onChange(of: automatic) { _, value in write(value, LayoutKey.automatic) }
-            Text(LyStr.automaticNote)
-                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                .fixedSize(horizontal: false, vertical: true)
-            Toggle(LyStr.audible, isOn: $audible)
-                .onChange(of: audible) { _, value in write(value, LayoutKey.audible) }
-            // macOS gives a key tap nothing without this grant, so the switch
-            // above would be on and silent.
-            if accessibility == .denied {
-                HelmPermissionNote(need: .accessibility, text: LyStr.needsAccessibility)
+        Section(header: heroAndTitle) {
+            HelmSettingRow(LyStr.automatic, note: LyStr.automaticNote) {
+                Toggle(LyStr.automatic, isOn: $automatic)
+                    .labelsHidden()
+                    .onChange(of: automatic) { _, value in write(value, LayoutKey.automatic) }
+            }
+            HelmSettingRow(LyStr.audible) {
+                Toggle(LyStr.audible, isOn: $audible)
+                    .labelsHidden()
+                    .onChange(of: audible) { _, value in write(value, LayoutKey.audible) }
             }
             if lvm.state.suspended {
                 Text(LyStr.suspended).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             if let last = lvm.state.lastConversion {
                 // Shown, not offered. Undoing has to happen in the app the
                 // conversion happened in, and reaching a button here means
                 // bringing Helm forward — which is both the wrong app and, as a
                 // click, the thing that ends the chance to undo. A button that
-                // cannot fire is worse than no button.
-                LabeledContent(LyStr.lastChange) {
-                    HStack(spacing: 8) {
-                        Text("\(last.before) → \(last.after)")
-                            .font(HelmText.figureFont)
-                            .lineLimit(1).truncationMode(.middle)
-                        // Unlike undoing, this works from anywhere: it changes
-                        // a list, not somebody else's text.
-                        Button(LyStr.neverThisWord) { addException(last.before) }
-                            .controlSize(.small)
-                            .disabled(exceptionsContain(last.before))
-                    }
+                // cannot fire is worse than no button. So the sentence saying
+                // how to undo is this row's own note rather than a row of its
+                // own with a hairline between it and the thing it explains.
+                HelmSettingRow(LyStr.lastChange, note: LyStr.undoHint) {
+                    // A 48-character word used to put «Last change» on two
+                    // lines: inside `HelmSettingRow` the label holds the layout
+                    // priority and a value with a line limit gives way, so the
+                    // long one truncates in the middle and the row keeps its
+                    // height.
+                    Text("\(last.before) → \(last.after)")
+                        .font(HelmText.figureFont)
+                        .lineLimit(1).truncationMode(.middle)
+                    // Unlike undoing, this works from anywhere: it changes
+                    // a list, not somebody else's text.
+                    Button(LyStr.neverThisWord) { addException(last.before) }
+                        .controlSize(.small)
+                        .disabled(exceptionsContain(last.before))
                 }
-                Text(LyStr.undoHint).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+            }
+        }
+    }
+
+    /// Without the grant the whole page is inert, and it said so in a banner
+    /// over 1867 pt of settings macOS ignores.
+    private var deniedSection: some View {
+        Section {
+            HelmEmptyState(symbol: "keyboard",
+                           tint: LayoutDescriptor.tint.colour,
+                           title: LyStr.deniedTitle,
+                           message: LyStr.deniedMessage) {
+                Button(HelmPermissionNote.grantLabel) { PermissionNeed.accessibility.openSettings() }
+                    .buttonStyle(.borderedProminent)
             }
         }
     }
 
     private var triggersSection: some View {
-        Section(header: HelmSectionTitle(LyStr.triggers)) {
-            Text(LyStr.triggersHint)
-                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                .fixedSize(horizontal: false, vertical: true)
+        Section {
             Toggle(LyStr.onSpace, isOn: $onSpace)
                 .onChange(of: onSpace) { _, value in write(value, LayoutKey.onSpace) }
             Toggle(LyStr.onReturn, isOn: $onReturn)
                 .onChange(of: onReturn) { _, value in write(value, LayoutKey.onReturn) }
             Toggle(LyStr.onPunctuation, isOn: $onPunctuation)
                 .onChange(of: onPunctuation) { _, value in write(value, LayoutKey.onPunctuation) }
+        } header: {
+            HelmSectionTitle(LyStr.triggers)
+        } footer: {
+            sectionNote(LyStr.triggersHint)
         }
     }
 
     private var shortcutsSection: some View {
-        Section(header: HelmSectionTitle(LyStr.shortcuts)) {
+        Section {
             // One gesture. This was two sections and eleven controls: chords for
             // "convert the last word" and "undo", and three more for the three
             // things that could be done to a selection. The engine already chose
@@ -168,42 +257,47 @@ struct LayoutSettingsPage: View {
             // between the selection and the last word too — so every one of
             // those rows was asking the reader to assemble something the app
             // assembles better.
-            Picker(LyStr.tapKey, selection: $tapKey) {
-                ForEach(TapKey.allCases, id: \.self) { key in
-                    Text(LyStr.tapKeyName(key)).tag(key)
+            HelmSettingRow(LyStr.tapKey, note: tapKeyNote) {
+                Picker(LyStr.tapKey, selection: $tapKey) {
+                    ForEach(TapKey.allCases, id: \.self) { key in
+                        Text(LyStr.tapKeyName(key)).tag(key)
+                    }
                 }
-            }
-            .onChange(of: tapKey) { _, value in write(value.rawValue, LayoutKey.tapKey) }
-            Text(LyStr.tapKeyHint)
-                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                .fixedSize(horizontal: false, vertical: true)
-            // 🌐︎ is the system's key first. Helm cannot take it, and cannot even
-            // read what it is set to until the person has changed it once, so
-            // the note states the precondition instead of promising anything.
-            if tapKey == .globe {
-                Text(LyStr.globeNote)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
-                    .fixedSize(horizontal: false, vertical: true)
-            } else if tapKey.isFrequentlyUsed {
-                Text(LyStr.leftKeyNote)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
-                    .fixedSize(horizontal: false, vertical: true)
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .fixedSize()
+                .onChange(of: tapKey) { _, value in write(value.rawValue, LayoutKey.tapKey) }
             }
             // For keyboards with no right-hand modifier to tap: 60% boards,
             // HHKB. Same action, so there is no second behaviour to explain and
             // no way to bind the two against each other.
             HelmHotkeyRow(LyStr.orShortcut, recorder: convertKey,
-                          taken: HotkeyStatus.isTaken("layout.fix"))
+                          taken: HotkeyStatus.isTaken(LayoutHotkey.fix))
+        } header: {
+            HelmSectionTitle(LyStr.shortcuts)
         }
+    }
+
+    /// The note under the key's own row, and it is two sentences at most: what
+    /// the gesture is, plus whatever that particular key costs.
+    ///
+    /// 🌐︎ is the system's key first — Helm cannot take it, and cannot even read
+    /// what it is set to until the person has changed it once, so the note states
+    /// the precondition instead of promising anything. A left-hand key is a key
+    /// you type with, which is not a warning against it but should be visible at
+    /// the moment the choice is made rather than discovered later. Both used to
+    /// be rows of their own, under the hint, which is three rows and two
+    /// hairlines for one control.
+    private var tapKeyNote: String {
+        if tapKey == .globe { return LyStr.tapKeyHint + " " + LyStr.globeNote }
+        if tapKey.isFrequentlyUsed { return LyStr.tapKeyHint + " " + LyStr.leftKeyNote }
+        return LyStr.tapKeyHint
     }
 
     /// Abbreviations, and the one typing habit Helm is sure enough about to
     /// correct.
     private var autoReplaceSection: some View {
-        Section(header: HelmSectionTitle(LyStr.autoReplaceSection)) {
-            Text(LyStr.autoReplaceNote)
-                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                .fixedSize(horizontal: false, vertical: true)
+        Section {
             if abbreviations.isEmpty {
                 Text(LyStr.noAbbreviations).font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
             }
@@ -246,11 +340,15 @@ struct LayoutSettingsPage: View {
                     .disabled(newShort.trimmingCharacters(in: .whitespaces).isEmpty
                               || newLong.isEmpty)
             }
-            Toggle(LyStr.fixCapitals, isOn: $fixCapitals)
-                .onChange(of: fixCapitals) { _, value in write(value, LayoutKey.fixCapitals) }
-            Text(LyStr.fixCapitalsNote)
-                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                .fixedSize(horizontal: false, vertical: true)
+            HelmSettingRow(LyStr.fixCapitals, note: LyStr.fixCapitalsNote) {
+                Toggle(LyStr.fixCapitals, isOn: $fixCapitals)
+                    .labelsHidden()
+                    .onChange(of: fixCapitals) { _, value in write(value, LayoutKey.fixCapitals) }
+            }
+        } header: {
+            HelmSectionTitle(LyStr.autoReplaceSection)
+        } footer: {
+            sectionNote(LyStr.autoReplaceNote)
         }
     }
 
@@ -268,34 +366,37 @@ struct LayoutSettingsPage: View {
         newLong = ""
     }
 
-    /// The three that act on a selection.
-    ///
-    /// A separate section from the shortcuts above, because they are a separate
-    /// promise: those two edit a word Helm watched being typed a keystroke ago,
-    /// these edit whatever is selected in whatever app is in front. Mixing them
-    /// into one list would read as five variations of the same thing.
     /// A place to try it without risking anything that was being written.
+    ///
+    /// Above the triggers and the lists now: it is what the introduction
+    /// promises, and it was at 1045 pt — under two sections of things somebody
+    /// sets once and then never opens this page for again.
     private var tryItSection: some View {
         Section(header: HelmSectionTitle(LyStr.tryIt)) { LayoutTestField() }
     }
 
     private var exceptionsSection: some View {
-        Section(header: HelmSectionTitle(LyStr.exceptions)) {
-            Text(LyStr.exceptionsHint).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+        Section {
             TextEditor(text: $exceptions)
                 .font(.system(size: 13, design: .monospaced))
-                .frame(minHeight: 90)
+                // **A ceiling, because the list is somebody else's length.** At
+                // 14.55 pt a line, 200 words made the page 4695 pt: an editor
+                // with no maximum grows the whole form instead of scrolling
+                // itself, and it scrolls itself perfectly well.
+                .frame(minHeight: 90, maxHeight: 220)
+                .helmFieldWell()
                 .onChange(of: exceptions) { _, value in
                     write(value.split(separator: "\n").map(String.init), LayoutKey.exceptions)
                 }
+        } header: {
+            HelmSectionTitle(LyStr.exceptions)
+        } footer: {
+            sectionNote(LyStr.exceptionsHint)
         }
     }
 
     @ViewBuilder private var appsSection: some View {
-        Section(header: HelmSectionTitle(LyStr.apps)) {
-            Text(LyStr.appsHint)
-                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                .fixedSize(horizontal: false, vertical: true)
+        Section {
             if appRules.isEmpty {
                 Text(LyStr.noAppsYet).font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
             }
@@ -306,6 +407,10 @@ struct LayoutSettingsPage: View {
                 appRow(bundleID)
             }
             Button { pickApps() } label: { Label(LyStr.addApp, systemImage: "plus") }
+        } header: {
+            HelmSectionTitle(LyStr.apps)
+        } footer: {
+            sectionNote(LyStr.appsHint)
         }
     }
 
@@ -326,33 +431,55 @@ struct LayoutSettingsPage: View {
     }
 
     @ViewBuilder private var indicatorSection: some View {
-        Section(header: HelmSectionTitle(LyStr.indicator)) {
-            Text(LyStr.indicatorHint)
-                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                .fixedSize(horizontal: false, vertical: true)
-            Toggle(LyStr.indicatorShow, isOn: $indicator)
-                .onChange(of: indicator) { _, value in write(value, LayoutKey.indicator) }
+        Section {
+            HelmSettingRow(LyStr.indicatorShow) {
+                Toggle(LyStr.indicatorShow, isOn: $indicator)
+                    .labelsHidden()
+                    .onChange(of: indicator) { _, value in write(value, LayoutKey.indicator) }
+            }
             if indicator {
-                Picker(LyStr.badgeStyle, selection: $badgeStyle) {
-                    ForEach(BadgeStyle.allCases, id: \.self) { style in
-                        Text(LyStr.badgeStyleName(style)).tag(style)
+                // The note about a layout that names no country belongs to the
+                // style row: it explains what that choice does, and as a row of
+                // its own it had a hairline between the control and its own
+                // explanation.
+                HelmSettingRow(LyStr.badgeStyle,
+                               note: badgeStyle.needsRegion ? LyStr.flagNote : nil) {
+                    Picker(LyStr.badgeStyle, selection: $badgeStyle) {
+                        ForEach(BadgeStyle.allCases, id: \.self) { style in
+                            Text(LyStr.badgeStyleName(style)).tag(style)
+                        }
                     }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .fixedSize()
+                    .onChange(of: badgeStyle) { _, value in write(value.rawValue, LayoutKey.badgeStyle) }
                 }
-                .onChange(of: badgeStyle) { _, value in write(value.rawValue, LayoutKey.badgeStyle) }
-                if badgeStyle.needsRegion {
-                    Text(LyStr.flagNote)
-                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Picker(LyStr.badgeSize, selection: $badgeSize) {
-                    ForEach(MenuBarIconSize.allCases, id: \.self) { size in
-                        Text(size.label).tag(size)
+                HelmSettingRow(LyStr.badgeSize) {
+                    Picker(LyStr.badgeSize, selection: $badgeSize) {
+                        ForEach(MenuBarIconSize.allCases, id: \.self) { size in
+                            Text(size.label).tag(size)
+                        }
                     }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .fixedSize()
+                    .onChange(of: badgeSize) { _, value in write(value.rawValue, LayoutKey.badgeSize) }
                 }
-                .onChange(of: badgeSize) { _, value in write(value.rawValue, LayoutKey.badgeSize) }
                 BadgePreview(style: badgeStyle, size: badgeSize)
             }
+        } header: {
+            HelmSectionTitle(LyStr.indicator)
+        } footer: {
+            sectionNote(LyStr.indicatorHint)
         }
+    }
+
+    /// The one shape a note under a card takes on this page.
+    private func sectionNote(_ text: String) -> some View {
+        Text(text)
+            .font(HelmText.rowDetail)
+            .foregroundStyle(HelmText.quiet)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private func exceptionsContain(_ word: String) -> Bool {

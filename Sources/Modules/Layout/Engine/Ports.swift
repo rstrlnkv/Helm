@@ -11,8 +11,19 @@ public protocol KeyTapPort: AnyObject, Sendable {
     /// are not typing: a modifier that types nothing must never reach the
     /// buffer, and the tap that watches for one must still see the keys that
     /// prove it was used as a modifier.
+    ///
+    /// `died` is the tap saying it has stopped without being asked to.
+    /// **A live tap is a fact about the system, not a flag the caller owns.**
+    /// macOS revokes one when Accessibility is withdrawn mid-session, and the
+    /// port stands down; without this channel the engine went on believing the
+    /// tap it started was still there, refused to build another after the person
+    /// restored the grant, and published a state saying it was watching. It is a
+    /// parameter rather than an optional setter so that a port cannot be
+    /// implemented — or faked — without an answer to «what happens when this
+    /// stops on its own».
     func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void) -> Bool
+               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
+               died: @escaping @Sendable () -> Void) -> Bool
     func stop()
 }
 

@@ -1,3 +1,4 @@
+import HelmRuntime
 import HelmUI
 import Module_Layout_Engine
 
@@ -28,12 +29,35 @@ enum LyStr {
     static var shortcuts: String { L("Shortcuts") }
     static var apps: String { L("Rules for specific apps") }
     static var appsHint: String { L("Terminals and password managers are left alone: there, a wrong-looking word is often exactly right.") }
-    static var metricToday: String { L("TODAY") }
-    static var metricState: String { L("STATE") }
     static var on: String { L("Active") }
     static var notWatching: String { L("Not running") }
     static var paused: String { L("Paused") }
     static var lastChange: String { L("Last change") }
+
+    /// Without the grant this module can do nothing at all, so the page says
+    /// that instead of drawing every setting under a banner.
+    static var deniedTitle: String { L("Helm is not watching the keyboard") }
+    static var deniedMessage: String {
+        L("Every setting here needs Accessibility: without it Helm sees no keystrokes and changes nothing.")
+    }
+
+    /// The caption under the hero figure, which has to agree with it: «1 слово»,
+    /// «17 слов». Interpolated, so it keeps its own table — the lookup would
+    /// happen after the number was already in the string (CLAUDE.md §
+    /// Localization).
+    static func fixedToday(_ count: Int, language: AppLanguage = AppLanguage.current) -> String {
+        let table: [AppLanguage: String] = [
+            .ru: Plural.russian(count, "слово", "слова", "слов") + " исправлено сегодня",
+            .es: count == 1 ? "palabra corregida hoy" : "palabras corregidas hoy",
+            .fr: count <= 1 ? "mot corrigé aujourd’hui" : "mots corrigés aujourd’hui",
+            .de: count == 1 ? "Wort heute korrigiert" : "Wörter heute korrigiert",
+            .pt: count == 1 ? "palavra corrigida hoje" : "palavras corrigidas hoje",
+            .ja: "語を今日修正",
+            .zh: "个词今天已修正",
+        ]
+        let english = count == 1 ? "word fixed today" : "words fixed today"
+        return language == .en ? english : table[language] ?? english
+    }
     static var introTitle: String { L("Keyboard") }
     static var introSubtitle: String { L("Before it starts changing what you type.") }
     static var introWhat: String { L("Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match.") }

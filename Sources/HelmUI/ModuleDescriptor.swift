@@ -15,7 +15,23 @@ import HelmRuntime
     /// blue. The compiler asking is better than a test noticing.
     static var tint: ModuleTint { get }
     /// Build the engine for this module (host owns lifecycle). `store` is the module's namespaced store.
+    ///
+    /// **And nothing else.** It builds an object; it does not start anything and
+    /// does not touch the machine — `activate()` is where a module reaches the
+    /// system, and `attachMenuBarPresence()` is where it appears in the menu
+    /// bar. Keyboard's used to do the third of those inside the first, so a
+    /// measurement that built an engine against a configured store put a status
+    /// item on somebody's Mac.
     func makeEngine(store: NamespacedStore) -> any ModuleEngine
+    /// A presence in the menu bar this module owns outright, apart from Helm's
+    /// own status item — Keyboard's language indicator is the only one today.
+    ///
+    /// Called by the host when the module starts running and undone when it
+    /// stops, so «this module is live» and «this module is in the menu bar» are
+    /// one fact. Both default to nothing: a module with no presence of its own
+    /// says so by not overriding them.
+    func attachMenuBarPresence()
+    func detachMenuBarPresence()
     func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution?
     func settingsPage(_ vm: ModuleViewModel) -> AnyView
     /// Whether this module is doing something right now — for the badge beside
@@ -70,6 +86,8 @@ public extension ModuleDescriptor {
     /// 744 pt form column, so its header knows not to centre itself.
     var pageBleeds: Bool { false }
     func statusAppearance(_ vm: ModuleViewModel) -> StatusAppearance { .inactive }
+    func attachMenuBarPresence() {}
+    func detachMenuBarPresence() {}
     func activity(_ vm: ModuleViewModel) -> ModuleActivity? { nil }
     func currentPermissions() -> [ModulePermission] {
         Self.metadata.permissions

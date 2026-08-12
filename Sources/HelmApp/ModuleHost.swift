@@ -67,6 +67,7 @@ import HelmUI
     func shutdown() {
         for key in live.keys.sorted() {
             live[key]?.engine.deactivate()
+            live[key]?.descriptor.detachMenuBarPresence()
             live[key] = nil
             // The same sweep `disable` does: a scan task can outlive the
             // engine that started it.
@@ -94,6 +95,12 @@ import HelmUI
         let s = store(for: d)
         let engine = d.makeEngine(store: s)
         engine.activate()
+        // After the engine is running, and from here rather than from
+        // `makeEngine`: a module's own menu-bar item is part of it running, not
+        // part of it being constructed. Keyboard's indicator was built inside
+        // `makeEngine`, so every process that asked a descriptor for an engine —
+        // the offscreen render harness included — got a status item on its Mac.
+        d.attachMenuBarPresence()
         let vm = ModuleViewModel(transport: engine.transport)
         live[key] = Live(descriptor: d, engine: engine, vm: vm, store: s)
         if let before, let after = MemoryFootprint.current() {
@@ -111,6 +118,10 @@ import HelmUI
         // (`ModuleEngine.willDisable` has the story).
         live[key]?.engine.willDisable()
         live[key]?.engine.deactivate()
+        // The module's own menu-bar item goes with the module. Nothing used to
+        // take Keyboard's indicator away here at all: it sat in the menu bar
+        // until somebody switched the module back on, which is what rebuilt it.
+        d.detachMenuBarPresence()
         live[key] = nil
         // A scan task can outlive the engine that started it, and an interval
         // nobody closes would name a module that is no longer there.

@@ -49,6 +49,10 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
     private var source: CFRunLoopSource?
     private var handler: (@Sendable (TypingBuffer.Event) -> Void)?
     private var modifierHandler: (@Sendable (ModifierTap.Input) -> Void)?
+    /// Told when this tap stops without being asked to. Read out before
+    /// `stop()` clears the handlers, because standing down is the one case where
+    /// the teardown and the announcement are the same moment.
+    private var diedHandler: (@Sendable () -> Void)?
 
     /// Synchronous readers rather than `await`, for the reason `LocalTransport`
     /// has them: Swift 6 refuses `NSLock.lock()` across a suspension, and a
@@ -78,13 +82,15 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
     deinit { stop() }
 
     public func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-                      onModifier: @escaping @Sendable (ModifierTap.Input) -> Void) -> Bool {
+                      onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
+                      died: @escaping @Sendable () -> Void) -> Bool {
         // Non-prompting: the module says so in its own settings rather than
         // throwing a system dialog at someone who has not asked for one.
         guard AXIsProcessTrusted() else { return false }
         lock.lock()
         handler = onEvent
         modifierHandler = onModifier
+        diedHandler = died
         lock.unlock()
         // flagsChanged as well: a key bound on its own is recognised from the
         // press and the release, and neither is a keyDown.
@@ -126,6 +132,7 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
         self.source = nil
         handler = nil
         modifierHandler = nil
+        diedHandler = nil
         lock.unlock()
 
         if let source { CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes) }
@@ -160,16 +167,21 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
     /// for the frontmost app on every key, and one slow app in front is enough
     /// to be judged too slow and switched off for the rest of the session.
     private func theSystemDisabledUs() {
-        lock.lock(); let tap = self.tap; lock.unlock()
+        lock.lock(); let tap = self.tap; let died = self.diedHandler; lock.unlock()
         guard let tap else { return }
         switch TapDisabled.response(stillTrusted: AXIsProcessTrusted()) {
         case .enableItAgain:
             CGEvent.tapEnable(tap: tap, enable: true)
-            HelmLog.shared.warn("layout", "the system switched the keyboard tap off; back on")
+            HelmLog.shared.warn(LayoutEngine.moduleID,
+                                "the system switched the keyboard tap off; back on")
         case .standDown:
             stop()
-            HelmLog.shared.warn("layout",
+            HelmLog.shared.warn(LayoutEngine.moduleID,
                                 "the accessibility grant was withdrawn — no longer watching")
+            // Read before `stop()` and called after it: standing down clears the
+            // handlers, and the engine has to hear about it or it will believe
+            // this tap is alive until the process ends.
+            died?()
         }
     }
 
@@ -548,7 +560,7 @@ public struct AXSelection: SelectionPort {
         // person still has both their selection and their clipboard.
         let held = NSPasteboard.general.types?.map(\.rawValue) ?? []
         guard PasteboardSafety.canBorrow(types: held) else {
-            HelmLog.shared.warn("layout",
+            HelmLog.shared.warn(LayoutEngine.moduleID,
                                 "selection left alone: the clipboard holds \(held.count) type(s) " +
                                 "that would not survive being borrowed")
             return false
@@ -600,7 +612,7 @@ public struct AXSelection: SelectionPort {
         // API will not answer for, which is most Electron apps and web views.
         let held = pasteboard.types?.map(\.rawValue) ?? []
         guard PasteboardSafety.canBorrow(types: held) else {
-            HelmLog.shared.warn("layout",
+            HelmLog.shared.warn(LayoutEngine.moduleID,
                                 "selection left alone: the clipboard holds \(held.count) " +
                                 "type(s) that would not survive being borrowed")
             return nil

@@ -138,11 +138,35 @@ enum ModulePageRender {
     static func pages(in appearance: NSAppearance.Name,
                       width: CGFloat = pageWidth,
                       seededBy seed: Seed = { _, _ in },
-                      wiredBy wire: Wiring = answering) -> [Page] {
+                      wiredBy wire: Wiring = answering,
+                      granting grants: HelmGrants = granted) -> [Page] {
         ModuleRegistry.all.map {
-            page(for: $0, in: appearance, width: width, seededBy: seed, wiredBy: wire)
+            page(for: $0, in: appearance, width: width,
+                 seededBy: seed, wiredBy: wire, granting: grants)
         }
     }
+
+    /// **The grants a reading is taken under, and the third weather this render
+    /// had.** The first two were the appearance and the wire; this is the
+    /// permission held by the process running the suite.
+    ///
+    /// It used to cost 45 layers — a `HelmPermissionNote` banner on the Keyboard
+    /// page, drawn here because `AXIsProcessTrusted()` is false in a test process
+    /// and not drawn on a Mac whose terminal holds the grant. It costs the whole
+    /// page now: Keyboard replaced that banner with an empty state, correctly —
+    /// 1867 pt of settings macOS ignores is not a page anybody should be shown —
+    /// so an ungranted reading of it is 95 layers and a granted one is the module.
+    /// Every ratchet built on this render would have become a fact about
+    /// somebody's terminal, and `floors["layout"]` said as much before it could.
+    ///
+    /// Granted is the default, because the configured page is the one worth
+    /// measuring, for the same reason `Seed` exists: a page drawn against an
+    /// empty store draws a page nobody has. What it costs is stated plainly — the
+    /// *withheld* screen is measured by nothing here unless a test asks for it,
+    /// which is what `granting:` is for, and `TheKeyboardPageWithoutTheGrantTests`
+    /// is the test that asks.
+    static let granted = HelmGrants(accessibility: .granted)
+    static let withheld = HelmGrants(accessibility: .denied)
 
     /// Settings a page is opened *on*, written into its store before it is built.
     ///
@@ -168,7 +192,8 @@ enum ModulePageRender {
 
     static func page(for descriptor: any ModuleDescriptor, in appearance: NSAppearance.Name,
                      width: CGFloat, seededBy seed: Seed = { _, _ in },
-                     wiredBy wire: Wiring = answering) -> Page {
+                     wiredBy wire: Wiring = answering,
+                     granting grants: HelmGrants = granted) -> Page {
         let id = type(of: descriptor).id.rawValue
         let store = NamespacedStore(namespace: id, backing: InMemoryKeyValueStore())
         // Before the engine and before the page: both read the store as they are
@@ -183,7 +208,11 @@ enum ModulePageRender {
         let engine = descriptor.makeEngine(store: store)
         let transport = FixtureTransport(wire(id))
         let viewModel = ModuleViewModel(transport: transport)
-        let view = NSHostingView(rootView: descriptor.settingsPage(viewModel).frame(width: width))
+        let view = NSHostingView(rootView: descriptor.settingsPage(viewModel)
+            .frame(width: width)
+            // Named, not inherited: see `granted` above. Nil inside would mean
+            // «ask this Mac», which is the dependence this parameter removes.
+            .environment(\.helmGrants, grants))
         view.frame = NSRect(x: 0, y: 0, width: width, height: pageHeight)
         let window = NSWindow(contentRect: view.frame, styleMask: [.titled],
                               backing: .buffered, defer: false)
@@ -337,16 +366,24 @@ extension ModulePageRender.Page {
     /// says «the manager screen, with at most one row missing» and 12 fails it by
     /// a mile.
     ///
-    /// **Layout's stays 230, and that is a decision rather than an oversight.**
-    /// Its wire is fixtured too, but a `LayoutState` is worth only 20 layers there
-    /// (275 → 295 in light, 278 → 298 in dark, three runs) and this page carries a
-    /// permission note that depends on the **machine**: `AXIsProcessTrusted()` is
-    /// false in this test process, so the note is drawn here and would not be on a
-    /// Mac whose terminal holds Accessibility. A floor placed in a 20-layer band
-    /// under a 45-layer machine dependence is a red CI for somebody else's grant.
-    /// What arrives over Layout's wire is guarded by comparison instead, in
-    /// `TheWireFixtureReachesThePagesTests`, where both sides are rendered in the
-    /// same process and the machine cancels out.
+    /// **Layout's stays 230, and the reason it stays is no longer the reason it
+    /// was set.** It was set loose because the page carried a permission note
+    /// whose presence depended on the **machine** — `AXIsProcessTrusted()` is
+    /// false in this test process — and a floor 20 layers under a 45-layer
+    /// machine dependence is a red CI for somebody else's grant. That dependence
+    /// is gone: `granting:` names the grant, so this reading is the page a person
+    /// who has granted Accessibility sees, on every Mac. The page is **276 layers
+    /// in light and 279 in dark, three consecutive runs each, measured
+    /// 2026-08-12**, and 95/98 with the grant withheld — the empty state that
+    /// replaced 1867 pt of dead settings, measured by
+    /// `TheKeyboardPageWithoutTheGrantTests`.
+    ///
+    /// 230 is a card's worth under the granted reading and well over twice the
+    /// withheld one, so a page that has quietly fallen back to the empty state
+    /// fails here by 135. What arrives over Layout's *wire* is still guarded by
+    /// comparison in `TheWireFixtureReachesThePagesTests` rather than by this
+    /// number: a `LayoutState` is worth about 20 layers, which is finer than any
+    /// floor should try to resolve.
     static let floors: [String: Int] = [
         "keep-awake": 250, "vpn": 190, "uninstaller": 45, "homebrew": 70,
         "leftovers": 25, "disk": 40, "duplicates": 12, "autopilot": 12, "layout": 230,

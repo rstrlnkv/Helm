@@ -165,7 +165,21 @@ final class RadiusLadderRatchetTests: XCTestCase {
     /// `height / 2`) and this count excludes it the way `isSystemDrawn` excludes
     /// AppKit's, or the pair below carries it for good. Recorded honestly until
     /// somebody decides, and named here so the next reader does not re-derive it.
-    private static let recorded: [NSAppearance.Name: Int] = [.aqua: 7, .darkAqua: 6]
+    /// **8 and 7 as of 2026-08-12, and the eighth value is a plate.** The
+    /// Keyboard module's introduction was a `.sheet`, which is a window — five
+    /// per render and nothing of it inside the page's own layers, so the first
+    /// screen a new user meets was measured by nothing at all. It is the page's
+    /// own first section now, and it brings `HelmIconPlate` with it: **11.44 pt
+    /// on layout, in both appearances, three consecutive runs**, which is
+    /// `size * 0.26` at the 44 pt plate an introduction draws.
+    ///
+    /// The same kind of value as the 7.5 pt capsule above and not a corner
+    /// anybody chose: the plate's radius is a fixed proportion of its size, so
+    /// there is no size on this ladder to move it to — 26 pt would give 6.76 and
+    /// 40 pt 10.4. Lowering it means changing what the shape *is*, and the
+    /// decision named for the capsule — `Drawn` learning to name a derived
+    /// radius — is the same decision that would take this slot back.
+    private static let recorded: [NSAppearance.Name: Int] = [.aqua: 8, .darkAqua: 7]
 
     private static let ladder: [CGFloat] = [0, 4, 6, 10, 14, 26]
 

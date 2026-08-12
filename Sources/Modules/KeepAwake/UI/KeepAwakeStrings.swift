@@ -222,7 +222,6 @@ enum KAStr {
     static var noAppsYetNote: String {
         L("Add an app and the Mac stays awake while it is running. You can limit a rule to power, to an external display, or to both.")
     }
-    static var behavior: String { L("Behaviour") }
     static var keepDisplayOn: String { L("Keep the display on") }
     static var movePointer: String { L("Move the pointer") }
     /// "Каждые 1 мин" is wrong, and the stepper starts at 1: the Russian

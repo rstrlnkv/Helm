@@ -141,6 +141,7 @@
 "Escape closes the menu-bar panel, the way it closes every other menu on the Mac. It could be opened with a keyboard shortcut and then only be closed with the mouse." = "Escape cierra el panel de la barra de menús, como cierra cualquier otro menú del Mac. Se podía abrir con el teclado y solo cerrar con el ratón.";
 "Every change can be undone — tap the same key again, in the app it happened in. And there is a field on this page to try it in, before it touches anything real." = "Todo cambio se puede deshacer: pulsa la misma tecla otra vez, en la app donde ocurrió. Y en esta página hay un campo para probarlo antes de que toque nada real.";
 "Every layout has a real flag now. Helm drew them itself for a while, but a table of bands and crosses cannot hold Mexico’s eagle, Portugal’s armillary sphere or Korea’s trigrams — half a dozen flags were approximations because of it. These come from flag-icons under the MIT licence (credited on this page): rectangular, accurate, and legible down to the smallest badge size. A layout that names no country still keeps its letters." = "Cada distribución tiene ahora una bandera de verdad: flag-icons bajo licencia MIT (acreditado en esta página). Rectangulares, precisas y legibles hasta el tamaño más pequeño. Una distribución sin país conserva sus letras.";
+"Every setting here needs Accessibility: without it Helm sees no keystrokes and changes nothing." = "Todos los ajustes de aquí necesitan Accesibilidad: sin ella Helm no ve las pulsaciones y no cambia nada.";
 "Everything" = "Todo";
 "Everything is up to date." = "Todo está actualizado.";
 "Expanded" = "Desplegado";
@@ -181,6 +182,7 @@
 "Helm introduces itself. On a new installation a short tour opens once: what Helm is, then one screen per module, with Back, Next and Skip. It only tells you what is there — nothing is switched on and no permission is asked for. If Helm was already installed, you get it once too, because Autopilot and Duplicates arrived without ever being introduced." = "Helm se presenta. En una instalación nueva se abre una vez un recorrido breve: qué es Helm y luego una pantalla por módulo, con Atrás, Siguiente y Omitir. Solo cuenta lo que hay: no activa nada ni pide permisos. Si ya tenías Helm, también lo verás una vez, porque Piloto automático y Duplicados llegaron sin presentación.";
 "Helm is made of modules. Each one does a single job, and you can switch off the ones you do not want." = "Helm está hecho de módulos. Cada uno hace una sola cosa, y puedes desactivar los que no quieras.";
 "Helm is missing permissions it needs" = "Helm no tiene los permisos que necesita";
+"Helm is not watching the keyboard" = "Helm no está observando el teclado";
 "Helm is still in development. Beta builds are the steadier of the two." = "Helm sigue en desarrollo. Las compilaciones Beta son las más estables de las dos.";
 "Helm needs Full Disk Access to move this." = "Helm necesita Acceso total al disco para moverlo.";
 "Helm returns to how it was just after installing. Access you granted in System Settings stays as it is." = "Helm vuelve a como estaba recién instalado. El acceso que concediste en Ajustes del Sistema no cambia.";
@@ -384,7 +386,6 @@
 "Run now" = "Ejecutar ahora";
 "Running" = "En ejecución";
 "Runs at login" = "Se ejecuta al iniciar sesión";
-"STATE" = "ESTADO";
 "Saved windows" = "Ventanas guardadas";
 "Scan" = "Analizar";
 "Scan a folder…" = "Analizar una carpeta…";
@@ -439,7 +440,6 @@
 "Switching to another module and back no longer throws away what you were doing. The Uninstaller used to lose every tick, the whole review step, and the record of what macOS had refused, the moment you left its page; Login Items & Extensions restarted its scan — the slowest one in the app — the same way. Both remember now." = "Cambiar a otro módulo y volver ya no descarta lo que estabas haciendo. El Desinstalador solía perder cada marca, todo el paso de revisión y el registro de lo que macOS había rechazado en cuanto salías de su página; Ítems de inicio y extensiones reiniciaba su escaneo — el más lento de la app — de la misma manera. Ahora ambos recuerdan.";
 "System" = "Del sistema";
 "System extensions" = "Extensiones del sistema";
-"TODAY" = "HOY";
 "Tag" = "Etiqueta";
 "Tag name" = "Nombre de la etiqueta";
 "Tap it on its own. With text selected it fixes the selection; otherwise it fixes the last word, and tapping again puts it back. Held down or pressed with anything else it is still an ordinary modifier." = "Púlsala y suéltala sola. Si hay texto seleccionado corrige la selección; si no, la última palabra, y al pulsarla otra vez la devuelve. Mantenida o con otra tecla sigue siendo un modificador normal.";

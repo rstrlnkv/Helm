@@ -26,14 +26,47 @@ struct FakeSpell: SpellPort {
     func isWord(_ word: String, sourceID: String) -> Bool? { valid.contains(word) }
 }
 
+/// A tap that can be in the three states the real one can: watching, refused
+/// for want of the grant, and stopped by macOS behind the app's back.
+///
+/// `start` used to return `true` unconditionally, so «macOS would not give us a
+/// tap» and «macOS took the tap away» were states no test could write down —
+/// which is why the second one shipped as a page that said «Active» with nobody
+/// listening (CLAUDE.md § A fake simpler than the thing it stands for).
 final class FakeTap: KeyTapPort, @unchecked Sendable {
     var handler: (@Sendable (TypingBuffer.Event) -> Void)?
     var modifiers: (@Sendable (ModifierTap.Input) -> Void)?
+    private var died: (@Sendable () -> Void)?
+    /// Whether Accessibility is granted. False is a refusal, exactly as
+    /// `AXIsProcessTrusted()` failing is.
+    var grant = true
+    /// How many taps have been asked for — the difference between «it was
+    /// rebuilt» and «the engine still believes in the first one».
+    var starts = 0
+    /// Fired after each `start`, so a test can wait for the rebuild that the
+    /// `didBecomeActive` observer performs on the main queue.
+    var onStart: (@Sendable () -> Void)?
+
     func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void) -> Bool {
+               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
+               died: @escaping @Sendable () -> Void) -> Bool {
+        starts += 1
+        guard grant else { onStart?(); return false }
         handler = onEvent
         modifiers = onModifier
+        self.died = died
+        onStart?()
         return true
+    }
+
+    /// The grant is withdrawn mid-session: macOS disables the tap and the port
+    /// stands down, which is a teardown the engine did not ask for.
+    func macOSTakesItAway() {
+        grant = false
+        let announce = died
+        stop()
+        died = nil
+        announce?()
     }
     /// One clean press and release of the bound key.
     func tapKey(_ code: Int64, at: TimeInterval = 0) {

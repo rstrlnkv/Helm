@@ -35,7 +35,8 @@ private struct ReachSpell: SpellPort {
 private final class ReachTap: KeyTapPort, @unchecked Sendable {
     var handler: (@Sendable (TypingBuffer.Event) -> Void)?
     func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void) -> Bool {
+               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
+               died: @escaping @Sendable () -> Void) -> Bool {
         handler = onEvent
         return true
     }

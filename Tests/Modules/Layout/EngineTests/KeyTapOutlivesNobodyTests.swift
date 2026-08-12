@@ -62,7 +62,7 @@ final class KeyTapOutlivesNobodyTests: XCTestCase {
     private func skipWithoutTheGrant() throws {
         let tap = CGKeyTap()
         defer { tap.stop() }
-        try XCTSkipUnless(tap.start({ _ in }, onModifier: { _ in }),
+        try XCTSkipUnless(tap.start({ _ in }, onModifier: { _ in }, died: {}),
                           "no accessibility grant for the test runner — no tap to tear down")
     }
 
@@ -75,7 +75,7 @@ final class KeyTapOutlivesNobodyTests: XCTestCase {
             let tap = CGKeyTap()
             // Asserted, not assumed: a `start` that refused would make the loop
             // below a loop over nothing and this test vacuous.
-            XCTAssertTrue(tap.start({ _ in }, onModifier: { _ in }))
+            XCTAssertTrue(tap.start({ _ in }, onModifier: { _ in }, died: {}))
             // Recorded while live — after teardown there is nothing to ask.
             // The subject must exist before its absence can mean anything.
             guard let name = tap.portName else {
@@ -106,7 +106,7 @@ final class KeyTapOutlivesNobodyTests: XCTestCase {
         var names: [mach_port_name_t] = []
         for _ in 0..<cycles {
             let tap = CGKeyTap()
-            XCTAssertTrue(tap.start({ _ in }, onModifier: { _ in }))
+            XCTAssertTrue(tap.start({ _ in }, onModifier: { _ in }, died: {}))
             guard let name = tap.portName else {
                 XCTFail("a started tap reported no port name"); return
             }

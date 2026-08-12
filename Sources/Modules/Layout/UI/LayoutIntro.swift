@@ -34,8 +34,12 @@ struct LayoutIntro: View {
                     .keyboardShortcut(.defaultAction)
             }
         }
-        .padding(HelmSpace.s6)
-        .frame(width: 460)
+        // No fixed width and no padding of its own: this is drawn as the first
+        // section of the page now rather than in a sheet, and the form row it
+        // sits in owns the margins. As a sheet it was five extra `NSWindow`s per
+        // offscreen render and nothing of the first screen a new user sees
+        // inside the page's own layers.
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func point(_ symbol: String, _ text: String) -> some View {

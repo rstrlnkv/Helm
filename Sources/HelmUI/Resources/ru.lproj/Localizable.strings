@@ -141,6 +141,7 @@
 "Escape closes the menu-bar panel, the way it closes every other menu on the Mac. It could be opened with a keyboard shortcut and then only be closed with the mouse." = "Escape закрывает панель в строке меню — как закрывается любое меню на Mac. Открыть её можно было с клавиатуры, а закрыть только мышью.";
 "Every change can be undone — tap the same key again, in the app it happened in. And there is a field on this page to try it in, before it touches anything real." = "Любую замену можно отменить — нажмите ту же клавишу ещё раз, в том приложении, где она произошла. А на этой странице есть поле, где всё можно попробовать, прежде чем это коснётся настоящего текста.";
 "Every layout has a real flag now. Helm drew them itself for a while, but a table of bands and crosses cannot hold Mexico’s eagle, Portugal’s armillary sphere or Korea’s trigrams — half a dozen flags were approximations because of it. These come from flag-icons under the MIT licence (credited on this page): rectangular, accurate, and legible down to the smallest badge size. A layout that names no country still keeps its letters." = "У каждой раскладки теперь настоящий флаг. Helm какое-то время рисовал их сам, но таблица полос и крестов не вмещает мексиканского орла, португальскую армиллярную сферу и корейские триграммы — с полдюжины флагов из-за этого были приближениями. Теперь это flag-icons под лицензией MIT (указано на этой же странице): прямоугольные, точные и читаемые вплоть до самого мелкого размера значка. Раскладка без страны по-прежнему остаётся буквами.";
+"Every setting here needs Accessibility: without it Helm sees no keystrokes and changes nothing." = "Всё на этой странице требует универсального доступа: без него Helm не видит нажатий и ничего не меняет.";
 "Everything" = "Всё";
 "Everything is up to date." = "Всё обновлено.";
 "Expanded" = "Развёрнуто";
@@ -181,6 +182,7 @@
 "Helm introduces itself. On a new installation a short tour opens once: what Helm is, then one screen per module, with Back, Next and Skip. It only tells you what is there — nothing is switched on and no permission is asked for. If Helm was already installed, you get it once too, because Autopilot and Duplicates arrived without ever being introduced." = "Helm теперь представляется. При первой установке один раз открывается короткий тур: что такое Helm, затем по экрану на модуль, с кнопками «Назад», «Далее» и «Пропустить». Он только рассказывает — ничего не включает и никаких разрешений не просит. Если Helm уже стоял, тур покажется один раз и вам: «Автопилот» и «Дубликаты» появились, когда о них никто не рассказал.";
 "Helm is made of modules. Each one does a single job, and you can switch off the ones you do not want." = "Helm состоит из модулей. Каждый делает одно дело, и ненужные можно выключить.";
 "Helm is missing permissions it needs" = "У Helm нет нужных разрешений";
+"Helm is not watching the keyboard" = "Helm не следит за клавиатурой";
 "Helm is still in development. Beta builds are the steadier of the two." = "Helm ещё в разработке. Из двух каналов Beta — устойчивее.";
 "Helm needs Full Disk Access to move this." = "Для перемещения нужен «Доступ к диску».";
 "Helm returns to how it was just after installing. Access you granted in System Settings stays as it is." = "Helm вернётся к состоянию сразу после установки. Доступ, выданный в Системных настройках, останется как есть.";
@@ -384,7 +386,6 @@
 "Run now" = "Прогнать сейчас";
 "Running" = "Запущено";
 "Runs at login" = "Запускается при входе";
-"STATE" = "СТАТУС";
 "Saved windows" = "Сохранённые окна";
 "Scan" = "Сканировать";
 "Scan a folder…" = "Сканировать папку…";
@@ -439,7 +440,6 @@
 "Switching to another module and back no longer throws away what you were doing. The Uninstaller used to lose every tick, the whole review step, and the record of what macOS had refused, the moment you left its page; Login Items & Extensions restarted its scan — the slowest one in the app — the same way. Both remember now." = "Переход на другой модуль и обратно больше не отбрасывает то, чем вы занимались. «Удаление приложений» раньше теряло все отметки, весь шаг проверки и запись о том, что отклонила macOS, в момент ухода со страницы; «Объекты входа и расширения» точно так же перезапускали свой скан — самый медленный в приложении. Теперь оба всё помнят.";
 "System" = "Системный";
 "System extensions" = "Системные расширения";
-"TODAY" = "СЕГОДНЯ";
 "Tag" = "Тег";
 "Tag name" = "Имя тега";
 "Tap it on its own. With text selected it fixes the selection; otherwise it fixes the last word, and tapping again puts it back. Held down or pressed with anything else it is still an ordinary modifier." = "Нажмите и отпустите её, ничего больше не нажимая. Если текст выделен — исправит выделенное, если нет — последнее слово, а повторное нажатие вернёт замену. Зажатая или нажатая вместе с чем-то ещё, она остаётся обычным модификатором.";
