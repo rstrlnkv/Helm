@@ -100,19 +100,33 @@ private struct AppearanceThumbnail: View {
         GeometryReader { proxy in
             let w = proxy.size.width, h = proxy.size.height
             ZStack(alignment: .topLeading) {
-                LinearGradient(colors: dark
-                               ? [Color(red: 0.16, green: 0.18, blue: 0.34),
-                                  Color(red: 0.07, green: 0.08, blue: 0.16)]
-                               : [Color(red: 0.78, green: 0.84, blue: 0.94),
-                                  Color(red: 0.55, green: 0.66, blue: 0.86)],
-                               startPoint: .topLeading, endPoint: .bottomTrailing)
+                HelmWallpaper(dark: dark)
 
                 // The window, offset down and right so the wallpaper shows on
                 // two sides — the same asymmetry the system's own thumbnail has.
                 // Padded on two edges only, so it always runs exactly to the
                 // right and bottom of the frame.
+                //
+                // **Two tones, not one**: the sidebar and what it opens. The
+                // mockup draws them (measured `#E1E7F7` against `#FFFEFF`
+                // light, `#494E5C` against `#383838` dark), and at 74 pt they
+                // are what makes the picture read as *this* app's window
+                // rather than as a plain rectangle — Helm has a sidebar on
+                // every screen a person will see after choosing.
                 RoundedRectangle(cornerRadius: w * 0.068, style: .continuous)
-                    .fill(dark ? Color(white: 0.17) : Color(white: 0.97))
+                    .fill(dark ? Color(white: 0.22) : Color(white: 1.0))
+                    .overlay(alignment: .leading) {
+                        Rectangle()
+                            .fill(dark ? Color(red: 0.286, green: 0.306, blue: 0.361)
+                                       : Color(red: 0.882, green: 0.906, blue: 0.969))
+                            .frame(width: w * 0.36)
+                            .clipShape(
+                                .rect(topLeadingRadius: w * 0.068,
+                                      bottomLeadingRadius: w * 0.068,
+                                      bottomTrailingRadius: 0, topTrailingRadius: 0,
+                                      style: .continuous)
+                            )
+                    }
                     .overlay(alignment: .topLeading) {
                         // Three lights in the corner of the title bar, and
                         // nothing else. There was a selected row under them in

@@ -190,11 +190,11 @@ struct VPNSettingsPage: View {
         HelmChoiceCards(selection: selection,
                         items: [
                             .init(id: .silent, label: VPNStr.noticeOption(.silent),
-                                  preview: NoticePreview.strip(name: false, banner: false)),
+                                  preview: NoticePreview.of(.silent)),
                             .init(id: .menuBar, label: VPNStr.noticeOption(.menuBar),
-                                  preview: NoticePreview.strip(name: true, banner: false)),
+                                  preview: NoticePreview.of(.menuBar)),
                             .init(id: .system, label: VPNStr.noticeOption(.system),
-                                  preview: NoticePreview.strip(name: true, banner: true)),
+                                  preview: NoticePreview.of(.system)),
                         ],
                         // Wider than the appearance picker's, and the labels are
                         // why: «Имя в строке меню» is one line at 104 and two at
