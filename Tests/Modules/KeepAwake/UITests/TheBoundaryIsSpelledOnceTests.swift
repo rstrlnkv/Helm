@@ -55,6 +55,80 @@ final class TheBoundaryIsSpelledOnceTests: XCTestCase {
         }
     }
 
+    /// The spelling each language uses for **«and everything under it»** — the
+    /// inclusive marker, in the positive.
+    ///
+    /// Six of these eight are checked nowhere else, and that is the hole this
+    /// table fills. Every other check on this phrase is either a *negative* —
+    /// `TheNoticeNamesTheGuardsOperatorTests` asserts the strict operator is
+    /// absent — or a *containment*: the three sentences carry whatever the one
+    /// declaration says. A phrase that names no boundary at all satisfies both.
+    /// «при 20 % и ниже» → «до 20 %», or «не выше 20 %», or the bare «20 %»,
+    /// composed into all three sentences, passes every other assertion in these
+    /// two files: it carries the figure, it keeps its per-language space before
+    /// the sign, it is still one declaration, the hero still says more than the
+    /// panel — and it no longer says the session ends *at* the figure.
+    ///
+    /// ja and zh keep their own test below rather than only appearing here,
+    /// because those are the two where the marker has a wrong twin (未満 / 低于)
+    /// and the pair is the point: 及以下 present is a different fact from 低于
+    /// absent, and a string can fail one without failing the other.
+    private static func inclusiveMarker(in language: AppLanguage) -> String {
+        switch language {
+        case .en: return "or less"
+        case .ru: return "и ниже"
+        case .es: return "o menos"
+        case .fr: return "ou moins"
+        case .de: return "oder weniger"
+        case .ja: return "以下"
+        case .zh: return "及以下"
+        case .pt: return "ou menos"
+        }
+    }
+
+    /// The marker is in the phrase, and in every sentence composed from it.
+    ///
+    /// Asserted against each sentence directly rather than against the phrase
+    /// alone: the two sides of a check must not both read one thing, and «the
+    /// phrase says *or less*» plus «the sentences contain the phrase» is one
+    /// reading with a second test's conclusion standing in for the other half.
+    /// A sentence that stopped composing would then be reported by that test and
+    /// not by this one, which is how a person reads a failure as a naming
+    /// quibble rather than as a sentence that lost its boundary.
+    func testEveryLanguageSaysOrLessInThePhraseAndInEverySentenceDrawnFromIt() {
+        inEveryLanguage { language in
+            let marker = Self.inclusiveMarker(in: language)
+            for (name, sentence) in [("the phrase itself", KAStr.atPercentOrLess(Self.floor)),
+                                     ("the row's note", KAStr.belowPercent(Self.floor)),
+                                     ("the panel's notice",
+                                      KAStr.stoppedByBatteryShort(Self.floor)),
+                                     ("the hero's notice", KAStr.stoppedByBattery(Self.floor))] {
+                XCTAssertTrue(sentence.lowercased().contains(marker.lowercased()),
+                              "\(language.rawValue): \(name) does not say «\(marker)» — "
+                              + "«\(sentence)». `BatteryGuard.shouldDeactivate` is "
+                              + "`percent <= threshold`, so the session ends **at** "
+                              + "\(Self.floor) %, and a sentence that names the figure without "
+                              + "the inclusive marker promises a Mac that is still awake there")
+            }
+        }
+    }
+
+    /// And the table above is eight spellings rather than one repeated.
+    ///
+    /// An inline table wins outright over the `.lproj` files, so a language that
+    /// never reaches `L` gives English eight times — and were every row of this
+    /// table «or less», the check above would pass on eight English readings of a
+    /// phrase no translator had ever seen. Distinct, non-empty: a hole in the
+    /// table is a `contains("")`, which is true of every string there is.
+    func testTheMarkerTableIsEightDistinctSpellings() {
+        let markers = AppLanguage.allCases.map { Self.inclusiveMarker(in: $0) }
+        XCTAssertFalse(markers.contains(where: \.isEmpty),
+                       "an empty marker matches every sentence: \(markers)")
+        XCTAssertEqual(Set(markers).count, AppLanguage.allCases.count,
+                       "two languages are looked up by the same marker, so one of them is "
+                       + "checked against another language's word: \(markers)")
+    }
+
     /// And it is the *inclusive* operator in the two languages where that is a
     /// word rather than a sign. This is the correction that had to be made twice.
     func testJapaneseAndChineseUseTheInclusiveOperator() {
