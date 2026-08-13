@@ -19,6 +19,38 @@ import Foundation
 /// Preferences are not here: they live in `UserDefaults` and are removed by
 /// domain, which is exact and has no path to get wrong.
 public enum ResetPlan {
+
+    /// What a reset does. Every case is a thing the promise «Helm returns to how
+    /// it was just after installing» covers, and the enum is switched over
+    /// exhaustively where it is carried out — a case added without an arm is a
+    /// build error, never a step that silently never happens.
+    public enum Step: CaseIterable, Sendable {
+        /// **The part that is not a path.** Helm changes exactly one thing
+        /// outside its own two folders: the passwordless `pmset` rule Keep
+        /// Awake's closed-lid option installs in `/etc/sudoers.d`, which is
+        /// root's and can only come out through an administrator dialog. A reset
+        /// that taught itself that filename would be the rule in the wrong
+        /// place; it asks the engines instead, through the one call that means
+        /// «the person is here and this is the last moment to ask»
+        /// (`ModuleEngine.willDisable`). The answer can be *no* — a declined
+        /// dialog leaves the rule exactly where it was — which is why this is
+        /// asked rather than assumed, and why it is asked **first**, while the
+        /// settings an engine decides with are still there.
+        case handBackWhatIsOutsideHelm
+        case trashHelmsOwnFolders
+        case forgetPreferences
+        case relaunch
+    }
+
+    /// The order, as a value. It was the shape of a function body, and what was
+    /// missing from it was invisible for exactly that reason.
+    public static let order: [Step] = [
+        .handBackWhatIsOutsideHelm,
+        .trashHelmsOwnFolders,
+        .forgetPreferences,
+        .relaunch,
+    ]
+
     public static func roots(home: String) -> [String] {
         [HelmSupport.path(home: home),
          "\(home)/Library/Logs/Helm"]

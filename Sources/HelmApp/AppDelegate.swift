@@ -40,6 +40,11 @@ import Module_Uninstaller_UI
         // build graduates to the stable channel.
         let version = AppBuild.shortVersion ?? "0"
         HelmLog.shared.start(version: version, override: AppSettings.loggingOverride)
+        // Straight after the log opens, because this is the one thing that can
+        // have gone wrong while there was no log: an update swap that never
+        // completed leaves its note behind, and this launch is either the copy
+        // that was put back or the one that landed (`UpdateHandoff`).
+        UpdateHandoff.reportAtLaunch()
 
         host.bootstrap()
         statusController = StatusItemController(host: host)

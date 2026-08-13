@@ -37,7 +37,8 @@ enum Installer {
             throw InstallError.notReplaceable
         }
 
-        try launchSwapScript(newApp: newApp.path, installPath: installPath, workDir: work.path)
+        try launchSwapScript(newApp: newApp.path, installPath: installPath,
+                             workDir: work.path, version: expectedVersion)
         NSApp.terminate(nil)
     }
 
@@ -62,38 +63,42 @@ enum Installer {
         return norm(a) == norm(b)
     }
 
-    private static func launchSwapScript(newApp: String, installPath: String, workDir: String) throws {
+    private static func launchSwapScript(newApp: String, installPath: String,
+                                         workDir: String, version: String) throws {
         // Keep the script OUTSIDE workDir so it can delete workDir (which holds the
         // unzipped bundle) as its final act without unlinking itself mid-run.
         let scriptURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("HelmSwap-\(UUID().uuidString).sh")
-        let pid = ProcessInfo.processInfo.processIdentifier
-        // Quote-safe: paths are passed as positional args, not interpolated into commands.
-        let script = """
-        #!/bin/bash
-        NEW="$1"; INSTALL="$2"; PID="$3"; WORK="$4"; SELF="$5"
-        # Wait for the running Helm to exit before touching its bundle.
-        while /bin/kill -0 "$PID" 2>/dev/null; do /bin/sleep 0.2; done
-        /bin/sleep 0.3
-        /bin/rm -rf "$INSTALL"
-        /usr/bin/ditto "$NEW" "$INSTALL"
-        /usr/bin/xattr -cr "$INSTALL" 2>/dev/null || true
-        /usr/bin/open "$INSTALL"
-        # Clean up every temp artifact: unzipped bundle dir, then this script.
-        /bin/rm -rf "$WORK"
-        /bin/rm -f "$SELF"
-        """
-        try script.write(to: scriptURL, atomically: true, encoding: .utf8)
+        try UpdateSwap.script.write(to: scriptURL, atomically: true, encoding: .utf8)
+
+        // Before the spawn, because after it there is nobody here to write
+        // anything: this process is about to end and the script has no screen.
+        // The script removes it when the copy landed, so what a failure leaves
+        // behind is the note itself (`UpdateHandoff`).
+        UpdateHandoff.note(version: version)
 
         // The one spawn here that is not `HelmProcess`: that runner reads the
         // child to EOF and waits for its status, and this child is waiting for
         // *this* process to exit before it does any work.
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/bin/bash")
-        proc.arguments = [scriptURL.path, newApp, installPath, String(pid), workDir, scriptURL.path]
+        proc.arguments = [scriptURL.path]
+            + UpdateSwap.arguments(newApp: newApp,
+                                   installPath: installPath,
+                                   pid: ProcessInfo.processInfo.processIdentifier,
+                                   workDir: workDir,
+                                   script: scriptURL.path)
         // Detach: the script must outlive this process (it swaps + relaunches us).
         proc.standardOutput = nil
         proc.standardError = nil
-        try proc.run()
+        do {
+            try proc.run()
+        } catch {
+            // Nothing was handed over, so there is nothing for the next launch
+            // to report — and a note left here would accuse a swap that never
+            // happened.
+            UpdateHandoff.clear()
+            throw error
+        }
     }
 }

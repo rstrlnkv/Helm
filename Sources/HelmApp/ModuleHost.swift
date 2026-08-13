@@ -137,6 +137,32 @@ import HelmUI
         }
     }
 
+    /// Every live engine asked for what it holds **outside** Helm's own folders,
+    /// with the person still at the screen.
+    ///
+    /// The second caller of `willDisable()`, and the only one that is not a
+    /// module being switched off: «Reset all settings» promises the machine is
+    /// as it was just after installing, and the one thing Helm changes beyond
+    /// its two directories is the passwordless `pmset` rule Keep Awake's lid
+    /// option installs. A reset that reached for `/etc/sudoers.d` itself would
+    /// be the rule in the wrong place — and could not remove it anyway, since it
+    /// is root's and comes out through an administrator dialog. So the module
+    /// that installed it is asked to give it back, which is exactly what
+    /// `willDisable` means (`ModuleEngine.willDisable`).
+    ///
+    /// **Asking is not being given.** The dialog can be declined, and what that
+    /// leaves behind is the rule; nothing here can wait for the answer, because
+    /// `willDisable` returns before the prompt is even on screen. What this
+    /// guarantees is that the ask happens, first, and with the person there —
+    /// not that the machine is clean afterwards.
+    ///
+    /// No store write, no `.helmModuleDisabled`, no teardown: the reset ends in
+    /// a relaunch, and `applicationWillTerminate` runs `shutdown()` on the way
+    /// out as it does for every quit.
+    func handBackSystemState() {
+        for key in live.keys.sorted() { live[key]?.engine.willDisable() }
+    }
+
     func liveModule(_ id: String) -> Live? { live[id] }
 
     /// `live` entries in the arrangement the person composed.
