@@ -96,6 +96,23 @@ enum LfStr {
     static var selectAll: String { L("Select all") }
     static var deselectAll: String { L("Clear selection") }
     static var runsAtLogin: String { L("Runs at login") }
+    /// The one line under a row's name: where the file is, and what is wrong with
+    /// it if anything is.
+    ///
+    /// **One line, because the list had three heights.** The path and the missing
+    /// target were two `Text`s — 44 pt with a path, 59 pt with both, 32 pt for a
+    /// system extension — and two of those are the same row wearing a fact it
+    /// happens to carry. Interpolated rather than a key of its own: both halves are
+    /// already looked up, and the middle dot is the only new thing in it.
+    ///
+    /// Nil for a system extension, and that is not an omission: the scan gives one
+    /// its identifier as its path (`LeftoversScanner.systemExtensions`), so the
+    /// line would be the name again a step quieter.
+    static func detailLine(for item: StaleItem) -> String? {
+        guard item.kind != .systemExtension else { return nil }
+        guard let target = item.missingTarget else { return item.path }
+        return "\(item.path) · \(missingTarget(target))"
+    }
     static func missingTarget(_ path: String) -> String { L("Points at a missing file: \(path)", [.ru: "Ссылается на отсутствующий файл: \(path)", .es: "Apunta a un archivo inexistente: \(path)", .fr: "Pointe vers un fichier absent : \(path)", .de: "Verweist auf eine fehlende Datei: \(path)", .ja: "存在しないファイルを参照: \(path)", .zh: "指向缺失的文件：\(path)", .pt: "Aponta para um arquivo ausente: \(path)"]) }
     /// The bar under the list, about the selection and nothing else. It used to
     /// pair the number of rows found with the size of the selection, and a

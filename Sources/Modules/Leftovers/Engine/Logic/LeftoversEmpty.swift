@@ -23,6 +23,24 @@ public enum LeftoversEmpty {
         case notScanned, nothingFound, hiddenByFilter
     }
 
+    /// Whether this screen is an **invitation** — nothing here yet, and something
+    /// to do about it — or a statement of what was found.
+    ///
+    /// `HelmEmptyState` splits its arguments along exactly this line, so the
+    /// answer belongs beside the reason rather than inside a view: a button on a
+    /// statement offers to repeat the scan that has just answered, and on the
+    /// filtered list it offers to rescan a Mac when the verb the person wants is
+    /// in the menu directly above the message.
+    ///
+    /// Exhaustive on purpose. A `default` here is how a fourth state would come to
+    /// be given a verb, or lose one, without anybody deciding.
+    public static func invites(_ reason: Reason) -> Bool {
+        switch reason {
+        case .notScanned: true
+        case .nothingFound, .hiddenByFilter: false
+        }
+    }
+
     /// - Parameters:
     ///   - scanned: whether this session has asked the engine at all.
     ///   - visible: rows the list would draw — after both filters.

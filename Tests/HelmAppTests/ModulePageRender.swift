@@ -409,8 +409,17 @@ extension ModulePageRender.Page {
     /// Duplicates' and Autopilot's 8 is not slack, it is the whole page: both draw
     /// an empty state until a folder is chosen, and the question their floor can
     /// answer is «did anything render at all».
+    ///
+    /// **Leftovers is 24 from 2026-08-13, because its invitation gained a verb.**
+    /// The only «Scan» was in the toolbar, 374 pt above the sentence that asks for
+    /// it, so the empty state now carries the button as `HelmEmptyState`'s own
+    /// documentation splits it — and the page reads **28 layers in both
+    /// appearances, three consecutive runs**, against 24 without it. The floor keeps
+    /// the margin it had, four under the reading. It is still the *invitation*:
+    /// nothing answers `LeftoversCommand.scan` in this render, and the fixture that
+    /// will is what takes this number to something like 190.
     static let floors: [String: Int] = [
         "keep-awake": 250, "vpn": 190, "uninstaller": 45, "homebrew": 70,
-        "leftovers": 20, "disk": 40, "duplicates": 8, "autopilot": 8, "layout": 230,
+        "leftovers": 24, "disk": 40, "duplicates": 8, "autopilot": 8, "layout": 230,
     ]
 }

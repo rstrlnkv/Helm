@@ -97,8 +97,13 @@ final class AnImposedPickerWidthFitsItsLabelsTests: XCTestCase {
     /// a fact about everything above it, so an edit elsewhere in the page would
     /// break the record without touching the picker. Changing the width does break
     /// it, which is the moment it has to be measured again.
+    /// **One entry, and it is the computed one.** Leftovers' written 180 came off on
+    /// 2026-08-13 in favour of `.fixedSize()` — the sixth page to have that figure
+    /// and the last one in the tree — so what is left here is a width the labels
+    /// themselves answer. The scan above is what keeps a seventh from arriving
+    /// unmeasured: a new hand-written width fails `testTheScanAndTheRecordAgree`
+    /// until somebody records the labels it is supposed to fit.
     private static let recorded: [String: @Sendable () -> [String]] = [
-        "LeftoversSettingsPage.swift|180": { [LfStr.filterLeftovers, LfStr.filterAll] },
         "LogView.swift|HelmPickerWidth": { [AppStr.logLevelAll, AppStr.logLevelWarnings,
                                             AppStr.logLevelErrors] },
     ]
@@ -115,12 +120,9 @@ final class AnImposedPickerWidthFitsItsLabelsTests: XCTestCase {
     /// `LogView` filter (short in seven of eight languages — ru 263 against 403.5)
     /// and Homebrew's toolbar (short in four — ru 366, ja 370.5, es 357, pt 303).
     ///
-    /// `tight` is a site with less than 40 % of room, and the two left are both
-    /// there honestly:
+    /// `tight` is a site with less than 40 % of room, and **one** is left, there
+    /// honestly:
     ///
-    /// - `LeftoversSettingsPage.swift`'s written 180 fits every language, and
-    ///   Russian asks 152 — 1.18 ×. A number chosen by hand, and the one site here
-    ///   that a longer translation could still overtake.
     /// - `LogView.swift` is at **exactly** 1.00 × in all eight, because a computed
     ///   width *is* what the control asks for. That is the fix, not a finding:
     ///   headroom would be slack, AppKit centres a segmented control in the width
@@ -128,10 +130,16 @@ final class AnImposedPickerWidthFitsItsLabelsTests: XCTestCase {
     ///   with the language. Padding this number to satisfy the ratchet would be
     ///   putting the defect back.
     ///
-    /// Both numbers are only ever lowered, by the commit that lowers them. What is
-    /// left to lower is Leftovers' 180.
+    /// It was 2 until 2026-08-13, and the other one was `LeftoversSettingsPage`'s
+    /// written 180 — a control that asks 161 pt in English, 152 in Russian and 117
+    /// in German, so up to 63 pt of the frame was slack AppKit spent on centring the
+    /// control away from the page's gutter. `.fixedSize()` is what it takes now, and
+    /// with it the last hand-written picker width in the tree is gone: every entry
+    /// in `recorded` is computed from the labels it draws.
+    ///
+    /// Both numbers are only ever lowered, by the commit that lowers them.
     private static let recordedClipping = 0
-    private static let recordedTight = 2
+    private static let recordedTight = 1
     private static let inflation: CGFloat = 1.4
 
     /// Every file a picker can be written in: the shared enumeration the ladder

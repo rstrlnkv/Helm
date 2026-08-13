@@ -220,7 +220,7 @@ struct UninstallerSettingsPage: View {
                 // checkbox, and a word saying why. Safari sat here tickable at
                 // 0 bytes, and macOS refuses it — after the scan and the click.
                 // The space keeps the icons in one column.
-                Color.clear.frame(width: 16, height: 1)
+                HelmCheckboxSlot()
             } else {
                 // Named, though the label stays hidden: `.labelsHidden()` hides a
                 // label visually and keeps it for VoiceOver, but an empty string
@@ -349,7 +349,7 @@ struct UninstallerSettingsPage: View {
     private func bundleRow(_ app: InstalledApp) -> some View {
         HStack(spacing: HelmSpace.s5) {
             // Where the leftover rows put their checkbox, so the paths line up.
-            Color.clear.frame(width: 16, height: 1)
+            HelmCheckboxSlot()
             VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 Text(app.path)
                     .lineLimit(1).truncationMode(.middle)

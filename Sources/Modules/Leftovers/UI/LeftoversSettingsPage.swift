@@ -61,6 +61,7 @@ struct LeftoversSettingsPage: View {
             }
             content
             Divider()
+            outcomeRow
             actionBar
         }
         .helmTracksFullDiskAccess($diskAccess)
@@ -85,7 +86,16 @@ struct LeftoversSettingsPage: View {
         // underneath it. Two bars of the same weight, stacked, read as one
         // thing said twice. Every other list screen puts controls here and
         // nothing else; this one does now too.
+        //
+        // **The main filter is at the left edge, and the rail is after it.** The
+        // `Spacer` was first, so every control in this row began where the longest
+        // translation of the three to its right left off: the first of them stood
+        // at x 463.5 in English, 435.5 in German and 384.0 in Russian at 845 pt —
+        // 79.5 pt of the row moving because a word got longer, over 440 pt of empty
+        // rail. What the page is filtered by is the thing a person comes back to,
+        // so it starts where every row under it starts.
         HStack(spacing: HelmSpace.s5) {
+            if !lvm.items.isEmpty { statusFilter }
             Spacer(minLength: 8)
             if !lvm.items.isEmpty {
                 // What the scan found, beside the control that filters it. It
@@ -103,46 +113,74 @@ struct LeftoversSettingsPage: View {
                         .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                         .lineLimit(1).fixedSize()
                 }
-                Menu {
-                    ForEach(StaleKind.allCases, id: \.self) { kind in
-                        Toggle(LfStr.kindName(kind), isOn: Binding(
-                            get: { !lvm.hiddenKinds.contains(kind) },
-                            set: { on in
-                                if on { lvm.hiddenKinds.remove(kind) } else { lvm.hiddenKinds.insert(kind) }
-                                lvm.dropHiddenSelections()
-                            }))
-                    }
-                } label: {
-                    Label(LfStr.filter, systemImage: "line.3.horizontal.decrease")
-                }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
-                Picker(HelmA11y.whatToShow, selection: $lvm.showAll) {
-                    Text(LfStr.filterLeftovers).tag(false)
-                    Text(LfStr.filterAll).tag(true)
-                }
-                .pickerStyle(.segmented).labelsHidden()
-                // Narrowing the list drops the ticks it hides, the way the kind
-                // filter and a fresh scan already do. Without this the segmented
-                // control was the one way a selection could outlive its row.
-                .onChange(of: lvm.showAll) { _, _ in lvm.dropHiddenSelections() }
-                .frame(width: 180)
+                kindFilter
             }
-            Button {
-                Task { await lvm.scan() }
-            } label: {
-                if lvm.scanning {
-                    HStack(spacing: 6) {
-                        ProgressView().controlSize(.small)
-                        Text(LfStr.scanning)
-                    }
-                } else {
-                    Text(lvm.scanned ? LfStr.rescan : LfStr.scan)
-                }
-            }
-            .disabled(lvm.scanning)
+            scanButton
         }
         .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+    }
+
+    /// Leftovers, or everything the scan found.
+    ///
+    /// **`.fixedSize()`, not a written width.** A `.frame(width: 180)` held a
+    /// control that asks for 161 pt in English, 152 in Russian and 117 in German —
+    /// up to 63 pt of slack that AppKit spends by *centring* the control in it, so
+    /// the gap to the rail wandered 21.5…43.5 pt with the language while the number
+    /// looked deliberate. It was the last hand-written picker width in the tree;
+    /// `AnImposedPickerWidthFitsItsLabelsTests` is what keeps a seventh from
+    /// arriving unmeasured.
+    private var statusFilter: some View {
+        Picker(HelmA11y.whatToShow, selection: $lvm.showAll) {
+            Text(LfStr.filterLeftovers).tag(false)
+            Text(LfStr.filterAll).tag(true)
+        }
+        .pickerStyle(.segmented).labelsHidden()
+        // Narrowing the list drops the ticks it hides, the way the kind
+        // filter and a fresh scan already do. Without this the segmented
+        // control was the one way a selection could outlive its row.
+        .onChange(of: lvm.showAll) { _, _ in lvm.dropHiddenSelections() }
+        .fixedSize()
+    }
+
+    /// Which kinds are in the list at all.
+    private var kindFilter: some View {
+        Menu {
+            ForEach(StaleKind.allCases, id: \.self) { kind in
+                Toggle(LfStr.kindName(kind), isOn: Binding(
+                    get: { !lvm.hiddenKinds.contains(kind) },
+                    set: { on in
+                        if on { lvm.hiddenKinds.remove(kind) } else { lvm.hiddenKinds.insert(kind) }
+                        lvm.dropHiddenSelections()
+                    }))
+            }
+        } label: {
+            Label(LfStr.filter, systemImage: "line.3.horizontal.decrease")
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+    }
+
+    /// The one Scan button, drawn twice: at the end of the toolbar, and as the verb
+    /// on the invitation, where the call site adds the prominence.
+    ///
+    /// One member rather than two buttons, because everything about it moves —
+    /// «Scan» becomes «Scan again» once something has been scanned, and both become
+    /// a spinner while it runs. Two spellings of that would drift, and the copy on
+    /// the invitation is the one nobody would look at again.
+    private var scanButton: some View {
+        Button {
+            Task { await lvm.scan() }
+        } label: {
+            if lvm.scanning {
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.small)
+                    Text(LfStr.scanning)
+                }
+            } else {
+                Text(lvm.scanned ? LfStr.rescan : LfStr.scan)
+            }
+        }
+        .disabled(lvm.scanning)
     }
 
     @ViewBuilder private var content: some View {
@@ -158,7 +196,20 @@ struct LeftoversSettingsPage: View {
             HelmEmptyState(symbol: Self.symbol(for: nothing),
                            tint: ModuleCategory.utilities.tint,
                            message: LfStr.emptyMessage(nothing),
-                           note: nothing == .notScanned ? LfStr.intro : nil)
+                           note: nothing == .notScanned ? LfStr.intro : nil) {
+                // **The verb, where the sentence that asks for it is.** The only
+                // «Scan» was in the toolbar, 374 pt above this line and 400 pt to
+                // its right, so the first screen of the module was an invitation
+                // with nothing to accept. Asked of `LeftoversEmpty.invites`, which
+                // is the same split `HelmEmptyState` documents: a statement gets no
+                // button, because one here offers to repeat the scan that has just
+                // answered.
+                if LeftoversEmpty.invites(nothing) {
+                    // The page's own call to action, in the weight every other
+                    // invitation in the app gives one.
+                    scanButton.buttonStyle(.borderedProminent)
+                }
+            }
             // A bounded minimum: enough to centre the message, without the
             // unbounded height that made the window grow to fill the screen.
             .frame(maxWidth: .infinity, minHeight: 260)
@@ -189,8 +240,12 @@ struct LeftoversSettingsPage: View {
                 .toggleStyle(.checkbox)
                 .labelsHidden()
             } else {
-                // Keeps rows aligned where there is nothing to tick.
-                Color.clear.frame(width: 14, height: 14)
+                // Keeps rows aligned where there is nothing to tick — and it is
+                // `HelmCheckboxSlot` rather than a rectangle of a width typed here,
+                // because the one typed here was 14 against a checkbox macOS draws
+                // at 16, so every protected row's name began 2 pt left of every
+                // markable one.
+                HelmCheckboxSlot()
             }
 
             VStack(alignment: .leading, spacing: 2) {
@@ -211,22 +266,32 @@ struct LeftoversSettingsPage: View {
                         HelmBadge(LfStr.runsAtLogin, tint: .orange)
                     }
                 }
-                if item.kind != .systemExtension {
-                    Text(item.path)
+                // **One line under the name, not two.** The path and the missing
+                // target were a `Text` each — 44 pt with a path, 59 with both — so
+                // one list held three row heights and the third arrived on whichever
+                // rows happened to be broken. `LfStr.detailLine` joins them.
+                //
+                // **Which end gets cut is decided by what the line says**, and it was
+                // read off the render rather than reasoned about: a path is truncated
+                // in the middle, because both its ends carry meaning, and the joined
+                // line is truncated at the *end*, because cutting the middle cuts
+                // through the sentence — «…/com.vendor.b…айл: /Applications/Gone.app»
+                // in Russian, and in English the words «Points at a missing file»
+                // vanished entirely, leaving two paths and an ellipsis between them.
+                // Cut at the end, the row keeps the fact and loses the detail behind
+                // it, which is the right way round.
+                if let detail = LfStr.detailLine(for: item) {
+                    Text(detail)
                         .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                        .lineLimit(1).truncationMode(.middle)
-                }
-                if let target = item.missingTarget {
-                    Text(LfStr.missingTarget(target))
-                        .font(.caption2).foregroundStyle(HelmText.faint)
-                        .lineLimit(1).truncationMode(.middle)
+                        .lineLimit(1)
+                        .truncationMode(item.missingTarget == nil ? .middle : .tail)
                 }
             }
-            // A name, up to two badges, a path and a note about a missing
-            // target: five stops per row on a list that holds dozens, and the
-            // name arrives without the badge that qualifies it. One element,
-            // read in the order it is drawn — the checkbox and the buttons stay
-            // their own, being things to operate rather than to read.
+            // A name, up to two badges and a line saying where the file is and
+            // what is wrong with it: four stops per row on a list that holds
+            // dozens, and the name arrives without the badge that qualifies it.
+            // One element, read in the order it is drawn — the checkbox and the
+            // buttons stay their own, being things to operate rather than to read.
             .accessibilityElement(children: .combine)
             Spacer()
             controls(for: item)
@@ -310,6 +375,44 @@ struct LeftoversSettingsPage: View {
         return HelmBadge(text, tint: color)
     }
 
+    /// What actually happened, in a row of its own above the bar.
+    ///
+    /// **It was the fifth thing in the bar's `HStack`**, beside three buttons and
+    /// two lines of text, and an `HStack` does not wrap: the report took the width
+    /// the buttons left over and paid for it in height. Measured at 646 × 540 with
+    /// one file moved and two refused, the bar went 49 → 171 pt and the list fell
+    /// 416 → 294 — and inside that column the German heading was laid out seven
+    /// lines deep, the file names truncated to «co….plist» and the reasons to «Helm
+    /// braucht…», which is the half of each sentence that says what to do next. The
+    /// buttons either side of it clipped too.
+    ///
+    /// Its own row costs the list one row's worth of height instead, in every
+    /// language, and `ARemovalReportDoesNotEatTheListTests` holds both numbers.
+    ///
+    /// **Nothing here asks whether the outcome has anything to say**, and a first
+    /// version of this did: a removal that moved nothing and refused nothing —
+    /// which is a real round, the one the Uninstaller's orphans view produces —
+    /// draws `EmptyView`, and the question was there so a row of padding would not
+    /// be drawn around it. Measured, it was inert: SwiftUI gives a view whose body
+    /// is `EmptyView` no layout at all, so the padding and the frame here cost
+    /// exactly 0 pt, and the same reading came back for a silent round as for a
+    /// page nobody had pressed anything on. The component owns that decision; a
+    /// second copy of it here would have been a guard against nothing. What is
+    /// **not** free is anything drawn beside it: a `Divider()` added here cost the
+    /// list 1 pt on a silent round, which is what the test above measures.
+    @ViewBuilder private var outcomeRow: some View {
+        if let banner = lvm.banner {
+            HelmRemovalOutcome(
+                succeededText: banner,
+                removed: lvm.removedCount,
+                failures: lvm.failures.map(HelmRemovalFailure.init),
+                needsFullDiskAccess: diskAccess == .denied)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, HelmLayout.formInset)
+                .padding(.top, HelmSpace.s5)
+        }
+    }
+
     private var actionBar: some View {
         HStack(spacing: HelmSpace.s5) {
             Button(LfStr.selectAll) {
@@ -327,15 +430,6 @@ struct LeftoversSettingsPage: View {
                     .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
             }
             Spacer()
-            if let banner = lvm.banner {
-                // The outcome, not a slogan: what stayed behind is named.
-                HelmRemovalOutcome(
-                    succeededText: banner,
-                    removed: lvm.removedCount,
-                    failures: lvm.failures.map(HelmRemovalFailure.init),
-                    needsFullDiskAccess: diskAccess == .denied)
-                    .frame(maxWidth: 420, alignment: .leading)
-            }
             Button(LfStr.removeSelected) { confirmingBatch = true }
                 .buttonStyle(.borderedProminent)
                 .disabled(lvm.selected.isEmpty || lvm.busy)
