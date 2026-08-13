@@ -51,6 +51,7 @@
 "Application Support" = "Данные приложения";
 "Apps" = "Приложения";
 "Archive" = "Архив";
+"At login" = "При входе";
 "Audio" = "Аудио";
 "Auto" = "Авто";
 "Automation" = "Автоматизация";
@@ -98,12 +99,18 @@
 "Custom duration" = "Своё время";
 "Custom icon when active" = "Свой значок в активном состоянии";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm подключает конфигурации, которые хранит macOS, — вручную или по правилам, когда открывается приложение. Новую добавьте в Системных настройках.";
+"Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm не получил ответа и не знает, какие файлы переместились. Список выше показывает, где они сейчас.";
 "Icon spin" = "Вращение значка";
+"Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "Агенты запуска, файлы настроек, плагины и системные расширения. В Корзину можно отправить только остатки.";
 "Menu bar" = "Строка меню";
+"Move to Trash…" = "Переместить в Корзину…";
 "Nothing" = "Ничего";
+"Nothing is selected for you: macOS loads every item in this list." = "Ничего не выбрано заранее: каждый объект в этом списке загружает macOS.";
+"Only an administrator can move this" = "Переместить может только администратор";
 "Other…" = "Другое…";
 "Spin the menu-bar icon" = "Вращать значок в строке меню";
 "This decides the words. Whether the icon turns is the switch below." = "Здесь только слова. Вращается ли значок — решает переключатель ниже.";
+"This is not where Helm found it, so nothing was moved. Scan again to see where it is now." = "Файл уже не там, где его нашли, — Helm его не тронул. Сканируйте заново, чтобы увидеть, где он теперь.";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "Если это выключено, а уведомление — «Ничего», правило подключит или отключит туннель незаметно.";
 "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "macOS не разрешает уведомления от Helm — имя появится в строке меню.";
 "Cyan" = "Голубой";
@@ -113,11 +120,10 @@
 "Date modified" = "Дата изменения";
 "Default duration" = "Длительность по умолчанию";
 "Delete" = "Удалить";
-"Delete…" = "Удалить…";
 "Dev" = "Dev";
 "Dev builds always log. The file lives in ~/Library/Logs/Helm." = "В dev-сборках журнал всегда включён. Файл — в ~/Library/Logs/Helm.";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "Диагностика: Helm может вести журнал своих действий, чтобы было что прислать, если что-то пошло не так. В Dev-сборках включён всегда.";
-"Disabled" = "Отключено";
+"Disabled" = "Выключено";
 "Disconnected" = "Не подключено";
 "Disconnecting…" = "Отключение…";
 "Disk" = "Диск";
@@ -217,7 +223,7 @@
 "Installed" = "Установленные";
 "Installing…" = "Установка…";
 "It leaves terminals and password managers alone, stops while the system is in secure input, and never writes down what you type. Every change can be undone with a shortcut, and you can list words and apps it must not touch." = "Он не трогает терминалы и менеджеры паролей, останавливается при защищённом вводе системы и никогда не записывает набранное. Любую замену можно вернуть горячей клавишей, а слова и приложения, которые трогать нельзя, задаются списком.";
-"Its system extension is still active — turn it off in Login Items & Extensions." = "Системное расширение приложения ещё работает — выключите его в «Объектах входа и расширениях».";
+"Its system extension is still active — turn it off in Login Items & Extensions." = "Системное расширение приложения ещё работает — выключите его в «Объектах входа и расширениях».";
 "Keep Awake" = "Не спать";
 "Keep Awake module: manual, timed or automatic (external display, power, chosen apps), closed-lid mode, battery guard, global hotkey." = "Модуль «Не спать»: вручную, по таймеру или автоматически (внешний дисплей, питание, выбранные приложения), режим с закрытой крышкой, защита батареи, глобальный хоткей.";
 "Keep Awake’s status figures update as things happen instead of freezing at whatever they were when the page opened." = "Показатели состояния «Не спать» обновляются по ходу дела, а не застывают на том, что было при открытии страницы.";
@@ -235,7 +241,6 @@
 "Last change" = "Последняя замена";
 "Later" = "Позже";
 "Launch agents" = "Агенты запуска";
-"Launch agents, settings files, plug-ins and system extensions on this Mac. Leftovers can be removed; the rest is shown for context." = "Агенты запуска, файлы настроек, плагины и системные расширения на этом Mac. Остатки можно удалить, остальное — для справки.";
 "Launch daemons" = "Демоны запуска";
 "Left ⇧" = "Левая ⇧";
 "Left ⌃" = "Левая ⌃";
@@ -250,7 +255,7 @@
 "Light" = "Светлое";
 "Log" = "Журнал";
 "Login Items" = "Объекты входа";
-"Login Items & Extensions" = "Объекты входа и расширения";
+"Login Items & Extensions" = "Объекты входа и расширения";
 "Login Items & Extensions now lists system extensions themselves — what they are, whose they are, and which ones outlived the app that installed them." = "«Объекты входа и расширения» теперь показывает и сами системные расширения: что это, чьё это и какие из них пережили удалённое приложение.";
 "Login Items & Extensions: see everything that loads with your Mac, marked as in use, system, or leftover — and remove the leftovers." = "«Объекты входа и расширения»: видно всё, что грузится вместе с Mac, с пометками «используется», «системный» и «остаток» — остатки можно удалить.";
 "Login items can be switched off instead of only deleted. Helm uses the same list macOS itself uses, so the choice survives a reboot, needs no password, and can be undone here or in System Settings." = "Объекты входа теперь можно отключить, а не только удалить. Helm пользуется тем же списком, что и сама macOS: выбор переживает перезагрузку, пароль не нужен, вернуть можно здесь или в Системных настройках.";
@@ -260,7 +265,7 @@
 "MB" = "МБ";
 "MODULES" = "МОДУЛИ";
 "Manage Homebrew packages" = "Управление пакетами Homebrew";
-"Manage…" = "Управление…";
+"Manage…" = "Управлять…";
 "Manual" = "Вручную";
 "Mark every extra copy" = "Отметить все лишние копии";
 "Mark for removal" = "Отметить к удалению";
@@ -283,7 +288,6 @@
 "Name without extension" = "Имя без расширения";
 "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works." = "Нужен, чтобы «Клавиатура» исправляла раскладку набранного, а «Не спать» двигал указатель. Без него не работает ни то, ни другое.";
 "Needed to remove app containers and to read every folder when scanning the disk." = "Нужен, чтобы удалять контейнеры приложений и видеть все папки при сканировании диска.";
-"Needs an administrator to delete" = "Для удаления нужен администратор";
 "Network" = "Сеть";
 "Network cache and cookies" = "Сетевой кеш и cookie";
 "Never" = "Никогда";
@@ -311,7 +315,6 @@
 "Nothing Helm runs can hang. Homebrew, the VPN list and the power settings are read by running the system's own tools, and a tool that was talkative enough about its own warnings could stop forever, taking the screen waiting for it with it." = "Ничто из запускаемого Helm не зависает. Homebrew, список VPN и настройки питания читаются системными утилитами, и достаточно многословная утилита могла остановиться навсегда, забрав с собой ждавший её экран.";
 "Nothing in this folder matches yet." = "Пока ничто в этой папке не подходит.";
 "Nothing in this folder." = "В этой папке ничего нет.";
-"Nothing is selected by default — macOS loads these, so choose deliberately." = "Ничего не выбрано заранее: эти файлы загружает macOS — выбирайте осознанно.";
 "Nothing listed. A few terminals and password managers are left alone already — add any others here." = "Список пуст. Несколько терминалов и менеджеров паролей Helm уже обходит стороной — остальные добавьте сами.";
 "Nothing logged yet." = "Пока ничего не записано.";
 "Nothing matches these filters." = "Под эти фильтры ничего не попало.";
@@ -338,7 +341,7 @@
 "Or a key combination" = "Или сочетание клавиш";
 "Orange" = "Оранжевый";
 "Other" = "Другое";
-"Outside the folders Helm may clean — Helm did not touch it." = "За пределами папок, которые Helm может чистить, — он ничего не тронул.";
+"Outside the folders Helm may clean — Helm did not touch it." = "Файл вне папок, которые Helm может чистить, — он остался на месте.";
 "Panel" = "Панель";
 "Panel toggles show the real state right after launch." = "Тумблеры панели показывают реальное состояние сразу после запуска.";
 "Panels and cards now look the same on every screen: one border-free container, and the figures at the top of a module line up with the settings below them." = "Панели и карточки теперь выглядят одинаково на всех экранах: один вид блока без рамки, а цифры вверху модуля выровнены по настройкам под ними.";
@@ -393,7 +396,6 @@
 "Rules run top to bottom and the first match wins — a file gets one action, not several." = "Правила идут сверху вниз, побеждает первое подошедшее — с файлом происходит одно действие, а не несколько.";
 "Run now" = "Прогнать сейчас";
 "Running" = "Запущено";
-"Runs at login" = "Запускается при входе";
 "Saved windows" = "Сохранённые окна";
 "Scan" = "Сканировать";
 "Scan a folder…" = "Сканировать папку…";
@@ -460,12 +462,12 @@
 "The app itself — always removed" = "Само приложение удаляется всегда";
 "The battery guard — which stops Keep Awake from running a session down to empty — now starts on for new installs, at 20%. It shipped off by default, beside a session length that defaults to indefinite." = "Защита батареи — та, что не даёт «Не спать» разряжать её в ноль, — теперь при новой установке включена по умолчанию, на уровне 20 %. Раньше она была выключена по умолчанию рядом с настройкой длительности, которая по умолчанию — «бессрочно».";
 "The copy that was there first. Helm never offers every copy of a file." = "Копия, появившаяся раньше остальных. Helm никогда не предлагает удалить все копии файла.";
-"The disk is full. Moving to the Trash needs room, because the Trash is a folder on the same disk — empty it and try again." = "На диске нет места. Перемещение в Корзину требует места: Корзина — папка на том же диске. Очистите её и попробуйте снова.";
+"The disk is full. Moving to the Trash needs room, because the Trash is a folder on the same disk — empty it and try again." = "На диске нет места. Корзина — папка на том же диске, поэтому для перемещения тоже нужно место. Очистите Корзину и попробуйте снова.";
 "The disk list can be walked from the keyboard: arrow keys between rows, Return to go into a folder, ⌘↑ to come back out. And the screen now fits the width it has: on a narrow window the ring gives way to the list, which carries the same facts in less room." = "По списку в «Диске» теперь можно ходить с клавиатуры: стрелки между строками, Return — войти в папку, ⌘↑ — вернуться. А экран подстраивается под ширину окна: когда её мало, кольцо уступает место списку — он несёт те же факты и требует меньше места.";
 "The disk map now answers VoiceOver: every wedge reads its name, its size and its share of the folder, and can be opened from there. Folders in the list beside it can be opened from the context menu too — the double-click still works and is no longer the only way." = "Карта диска теперь отвечает VoiceOver: каждый сегмент называет папку, размер и её долю, и оттуда же в неё можно провалиться. Папки в списке рядом открываются и через контекстное меню — двойной клик работает по-прежнему, но перестал быть единственным способом.";
 "The disk ring grows into the folder you opened. It shows three levels at a time, and the level that arrived when you drilled in had nowhere to come from — it appeared all at once at the end of the animation. Now it slides in with the rest." = "Кольцо «Диска» теперь врастает в папку, в которую вы вошли. Оно показывает три уровня сразу, и третий уровень появлялся резко в конце анимации — ему было просто неоткуда ехать. Теперь он въезжает вместе со всеми.";
 "The disk ring was measuring the wrong thing when you scanned a folder: it drew the volume's free space alongside the folder's contents, so a small folder came out as a blank grey circle. And “Scan again” now scans the same place again instead of sending you back to the volume list. In the duplicate finder, files that refused to move stay ticked, so you can fix the reason and try again without starting over. Homebrew search puts the name you typed first." = "Кольцо «Диска» мерило не то, когда вы сканировали папку: рядом с содержимым оно рисовало свободное место всего тома, и небольшая папка выходила пустым серым кругом. А «Сканировать заново» теперь и правда сканирует то же самое место, а не возвращает к списку томов. В поиске дубликатов файлы, которые не удалось переместить, остаются отмеченными — можно устранить причину и повторить, не начиная заново. Поиск в Homebrew ставит первым то имя, которое вы набрали.";
-"The disk this is on is read-only. Eject it and unlock it, or copy what you need elsewhere." = "Диск, на котором это лежит, — только для чтения. Извлеките его и снимите защиту или скопируйте нужное в другое место.";
+"The disk this is on is read-only. Eject it and unlock it, or copy what you need elsewhere." = "Диск, на котором лежит файл, — только для чтения. Извлеките его и снимите защиту от записи или скопируйте нужное в другое место.";
 "The download did not match what the release published, so Helm did not install it." = "Загруженный файл не совпал с тем, что опубликовано в релизе, поэтому Helm его не установил.";
 "The duplicate finder is its own screen now, right after Disk. It used to search whatever folder the ring happened to be showing, so you could only look where you had already scanned; now you point it at a folder and it remembers it. It still compares content rather than names, still keeps one copy of every group, and still never offers a hard link." = "Поиск дубликатов теперь отдельный экран, сразу после «Диска». Раньше он искал в той папке, которую показывало кольцо, — то есть только там, где вы уже сканировали. Теперь вы сами указываете папку, и он её запоминает. Содержимое по-прежнему сравнивается вместо имён, одна копия в каждой группе остаётся, а жёсткие ссылки не предлагаются.";
 "The duplicate finder no longer holds on to everything it reads. It compares files a megabyte at a time so a video never has to fit in memory — but the app kept every one of those megabytes until the scan ended, so the memory it used followed the size of the folder rather than the size of a slice. The background check for updates had the same defect in its own file check. Memory is also handed back to macOS when a scan finishes and when a module is switched off, instead of being kept for later." = "Поиск дубликатов больше не держит всё, что прочитал. Файлы сравниваются по мегабайту, чтобы видео не приходилось целиком держать в памяти, но каждый такой мегабайт жил до конца скана — и память росла по размеру папки, а не по размеру куска. Та же беда была и у фоновой проверки обновлений, в её собственной проверке файла. Кроме того, память теперь возвращается системе после скана и при выключении модуля, а не придерживается на потом.";
@@ -491,7 +493,7 @@
 "Tools for your Mac" = "Инструменты для вашего Mac";
 "Try again" = "Повторить";
 "Try it" = "Попробовать";
-"Turn off" = "Отключить";
+"Turn off" = "Выключить";
 "Turn on" = "Включить";
 "Turn on before reporting a problem. The file lives in ~/Library/Logs/Helm." = "Включите перед тем, как сообщить о проблеме. Файл — в ~/Library/Logs/Helm.";
 "Turn the rule on" = "Включить правило";
@@ -587,7 +589,7 @@
 "larger than" = "больше чем";
 "m" = "мин";
 "macOS may already use 🌐︎ to switch input source, open emoji or start dictation. Set “Press 🌐︎ to: Do Nothing” in Keyboard settings, or it will do both. Keyboards without a 🌐︎ key never send it." = "macOS может уже использовать 🌐︎ — для смены языка, эмодзи или диктовки. Поставьте «Клавиша 🌐︎: ничего не делать» в настройках клавиатуры, иначе сработает и то и другое. Клавиатуры без 🌐︎ её не отправляют.";
-"macOS would not move this. Show it in the Finder and try from there — the Finder says more about why." = "macOS не дала это переместить. Покажите файл в Finder и попробуйте оттуда — Finder объясняет причину подробнее.";
+"macOS would not move this. Show it in the Finder and try from there — the Finder says more about why." = "macOS не дала переместить файл. Покажите его в Finder и попробуйте оттуда — Finder объясняет причину подробнее.";
 "min" = "мин";
 "moved to" = "перемещено в";
 "moved to Trash" = "отправлено в Корзину";
@@ -603,7 +605,6 @@
 "🌐︎" = "🌐︎";
 
 /* Duplicates */
-"This file has changed since it was found, so it is no longer a duplicate — Helm did not touch it." = "Файл изменился с момента, когда его нашли, и больше не дубликат — Helm его не трогал.";
 "Module icons" = "Иконки модулей";
 "Colour" = "Цветные";
 "Plain" = "Простые";

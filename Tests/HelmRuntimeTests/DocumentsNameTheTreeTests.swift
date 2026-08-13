@@ -50,6 +50,7 @@ final class DocumentsNameTheTreeTests: XCTestCase {
         "IOPMCopySystemPowerSettings": "IOKit's reader, named because Swift does not export it",
         "dlsym": "the loader's own lookup, named as the way those symbols are reachable at all",
         "ctypes": "Python's foreign-function module, which is what the probe used in the end",
+        "AppleLanguages": "the defaults key macOS resolves a bundle's language from — named because the value on this machine is what made a language mutation pass",
         "backupd": "a macOS daemon, named in the measurement of which processes hold sleep",
         "sharingd": "the same measurement — the one that answers NSRunningApplication and still is not an app",
         "dmgbuild": "the tool that lays out the disk image window",

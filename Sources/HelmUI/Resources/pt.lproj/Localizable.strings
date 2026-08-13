@@ -51,6 +51,7 @@
 "Application Support" = "Dados do app";
 "Apps" = "Apps";
 "Archive" = "Arquivo compactado";
+"At login" = "Ao iniciar sessão";
 "Audio" = "Áudio";
 "Auto" = "Automático";
 "Automation" = "Automação";
@@ -98,12 +99,18 @@
 "Custom duration" = "Duração personalizada";
 "Custom icon when active" = "Ícone personalizado quando ativo";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "O Helm conecta as configurações que o macOS mantém — à mão ou por regra, quando um app abre. Adicione uma nos Ajustes do Sistema.";
+"Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "O Helm não recebeu resposta e não sabe quais arquivos foram movidos. A lista acima mostra onde eles estão agora.";
 "Icon spin" = "Giro do ícone";
+"Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "Agentes de início, arquivos de ajustes, plug-ins e extensões do sistema. Só os restos podem ir para o Lixo.";
 "Menu bar" = "Barra de menus";
+"Move to Trash…" = "Mover para o Lixo…";
 "Nothing" = "Nada";
+"Nothing is selected for you: macOS loads every item in this list." = "Nada vem selecionado: o macOS carrega cada item desta lista.";
+"Only an administrator can move this" = "Só um administrador pode mover isto";
 "Other…" = "Outro…";
 "Spin the menu-bar icon" = "Girar o ícone da barra de menus";
 "This decides the words. Whether the icon turns is the switch below." = "Isto decide as palavras. Se o ícone gira é o interruptor abaixo que decide.";
+"This is not where Helm found it, so nothing was moved. Scan again to see where it is now." = "Isto já não está onde o Helm encontrou, então nada foi movido. Escaneie de novo para ver onde está agora.";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "Com isto desligado e o aviso em “Nada”, uma regra que conecta ou derruba um túnel não dá sinal algum.";
 "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "O macOS não está permitindo notificações do Helm, então o nome aparece na barra de menus.";
 "Cyan" = "Ciano";
@@ -113,7 +120,6 @@
 "Date modified" = "Data de modificação";
 "Default duration" = "Duração padrão";
 "Delete" = "Excluir";
-"Delete…" = "Excluir…";
 "Dev" = "Dev";
 "Dev builds always log. The file lives in ~/Library/Logs/Helm." = "Builds Dev sempre registram. O arquivo fica em ~/Library/Logs/Helm.";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "Diagnóstico: o Helm pode manter um registro do que faz, pronto para compartilhar se algo der errado. Sempre ativo em builds Dev.";
@@ -235,7 +241,6 @@
 "Last change" = "Última alteração";
 "Later" = "Depois";
 "Launch agents" = "Agentes de início";
-"Launch agents, settings files, plug-ins and system extensions on this Mac. Leftovers can be removed; the rest is shown for context." = "Agentes de início, arquivos de ajustes, plug-ins e extensões do sistema neste Mac. Restos podem ser removidos; o resto é informativo.";
 "Launch daemons" = "Daemons de início";
 "Left ⇧" = "⇧ esquerda";
 "Left ⌃" = "⌃ esquerda";
@@ -283,7 +288,6 @@
 "Name without extension" = "Nome sem extensão";
 "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works." = "Necessário para o Teclado corrigir o layout do que você digita e para o Manter ativo mover o ponteiro. Sem ele, nenhum dos dois funciona.";
 "Needed to remove app containers and to read every folder when scanning the disk." = "Necessário para remover contêineres de apps e ler todas as pastas ao escanear o disco.";
-"Needs an administrator to delete" = "Excluir exige um administrador";
 "Network" = "Rede";
 "Network cache and cookies" = "Cache de rede e cookies";
 "Never" = "Nunca";
@@ -311,7 +315,6 @@
 "Nothing Helm runs can hang. Homebrew, the VPN list and the power settings are read by running the system's own tools, and a tool that was talkative enough about its own warnings could stop forever, taking the screen waiting for it with it." = "Nada do que o Helm executa pode travar. Uma ferramenta suficientemente verbosa nos próprios avisos podia parar para sempre e levar junto a tela que a aguardava.";
 "Nothing in this folder matches yet." = "Por ora nada nesta pasta corresponde.";
 "Nothing in this folder." = "Não há nada nesta pasta.";
-"Nothing is selected by default — macOS loads these, so choose deliberately." = "Nada vem selecionado: o macOS carrega esses arquivos, escolha com cuidado.";
 "Nothing listed. A few terminals and password managers are left alone already — add any others here." = "Lista vazia. Alguns terminais e gerenciadores de senha já ficam de fora — acrescente os outros aqui.";
 "Nothing logged yet." = "Ainda não há nada registrado.";
 "Nothing matches these filters." = "Nada corresponde a estes filtros.";
@@ -393,15 +396,14 @@
 "Rules run top to bottom and the first match wins — a file gets one action, not several." = "As regras vão de cima para baixo e a primeira que casa vence — o arquivo recebe uma ação, não várias.";
 "Run now" = "Executar agora";
 "Running" = "Em execução";
-"Runs at login" = "Executa ao iniciar sessão";
 "Saved windows" = "Janelas salvas";
-"Scan" = "Analisar";
-"Scan a folder…" = "Analisar uma pasta…";
+"Scan" = "Escanear";
+"Scan a folder…" = "Escanear uma pasta…";
 "Scan again" = "Escanear de novo";
 "Scan for leftovers" = "Procurar restos";
 "Scan to see what apps left behind." = "Escaneie para ver o que os apps deixaram.";
-"Scanning" = "Analisando";
-"Scanning…" = "Analisando…";
+"Scanning" = "Escaneando";
+"Scanning…" = "Escaneando…";
 "Search" = "Buscar";
 "Search again" = "Buscar de novo";
 "Search apps" = "Buscar apps";
@@ -603,7 +605,6 @@
 "🌐︎" = "🌐︎";
 
 /* Duplicates */
-"This file has changed since it was found, so it is no longer a duplicate — Helm did not touch it." = "Este arquivo mudou desde que foi encontrado, então não é mais um duplicado — o Helm não mexeu nele.";
 "Module icons" = "Ícones dos módulos";
 "Colour" = "Coloridos";
 "Plain" = "Simples";

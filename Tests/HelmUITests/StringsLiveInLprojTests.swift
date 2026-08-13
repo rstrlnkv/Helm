@@ -184,7 +184,8 @@ final class StringsLiveInLprojTests: XCTestCase {
         "OK": [.fr, .pt],
         "Orange": [.fr, .de],
         "Panel": [.es, .de],
-        "Plug-ins": [.es, .de, .pt],
+        // es reads «Módulos» now, System Information's own name for the section.
+        "Plug-ins": [.de, .pt],
         "Ring": [.de],
         "Rostislav Strelnikov": [.es, .fr, .de, .ja, .zh, .pt],
         "Start": [.de],

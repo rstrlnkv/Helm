@@ -137,9 +137,9 @@ final class AnUnansweredRequestIsNotAnAnswerTests: XCTestCase {
 
             XCTAssertTrue(wire.commands.contains(.trash),
                           "precondition: the batch really was sent (\(silence))")
-            XCTAssertNotEqual(model.banner, LfStr.movedToTrash(Bytes(0)), """
+            XCTAssertNotEqual(model.banner, LfStr.movedToTrash(0, Bytes(0)), """
                 a removal the engine never answered (\(silence)) reports «\
-                \(LfStr.movedToTrash(Bytes(0)))» with no refusal beside it, which the outcome row \
+                \(LfStr.movedToTrash(0, Bytes(0)))» with no refusal beside it, which the outcome row \
                 draws as nothing at all — so the one thing the person is told about a batch that \
                 never happened is that it did.
                 """)

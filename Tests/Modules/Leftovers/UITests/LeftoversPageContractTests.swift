@@ -127,7 +127,7 @@ final class LeftoversPageContractTests: XCTestCase {
 
         await lvm.removeSelected()
 
-        XCTAssertEqual(lvm.banner, LfStr.movedToTrash(Bytes(4_096)),
+        XCTAssertEqual(lvm.banner, LfStr.movedToTrash(1, Bytes(4_096)),
                        "the banner promises space that only emptying the Trash gives back")
         XCTAssertEqual(lvm.removedCount, 1)
     }

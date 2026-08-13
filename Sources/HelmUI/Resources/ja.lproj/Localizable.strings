@@ -51,6 +51,7 @@
 "Application Support" = "アプリのデータ";
 "Apps" = "アプリ";
 "Archive" = "アーカイブ";
+"At login" = "ログイン時";
 "Audio" = "オーディオ";
 "Auto" = "自動";
 "Automation" = "自動化";
@@ -98,12 +99,18 @@
 "Custom duration" = "カスタム時間";
 "Custom icon when active" = "アクティブ時にカスタムアイコン";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm は macOS が保持する構成を、手動でも、アプリの起動に合わせたルールでも接続できます。構成そのものはシステム設定で追加します。";
+"Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm は応答を受け取れず、どのファイルが移動したかわかりません。上のリストが現在の場所を示しています。";
 "Icon spin" = "アイコンの回転";
+"Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "起動エージェント・設定ファイル・プラグイン・システム機能拡張。ゴミ箱に入れられるのは残存物だけです。";
 "Menu bar" = "メニューバー";
+"Move to Trash…" = "ゴミ箱に入れる…";
 "Nothing" = "なし";
+"Nothing is selected for you: macOS loads every item in this list." = "既定では何も選択されていません。このリストの項目はすべて macOS が読み込みます。";
+"Only an administrator can move this" = "移動できるのは管理者のみです";
 "Other…" = "その他…";
 "Spin the menu-bar icon" = "メニューバーのアイコンを回す";
 "This decides the words. Whether the icon turns is the switch below." = "ここで決まるのは文字だけです。アイコンが回るかどうかは下のスイッチで決まります。";
+"This is not where Helm found it, so nothing was moved. Scan again to see where it is now." = "Helm が見つけた場所にもう存在しないため、何も移動していません。再スキャンして現在の場所を確認してください。";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "これをオフにし、通知も“なし”にすると、ルールが接続・切断しても何も知らせません。";
 "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "macOS が Helm の通知を許可していません。代わりにメニューバーに名前を表示します。";
 "Cyan" = "シアン";
@@ -113,11 +120,10 @@
 "Date modified" = "変更日";
 "Default duration" = "デフォルトの継続時間";
 "Delete" = "削除";
-"Delete…" = "削除…";
 "Dev" = "Dev";
 "Dev builds always log. The file lives in ~/Library/Logs/Helm." = "Dev ビルドは常にログを記録します。ファイルは ~/Library/Logs/Helm。";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "診断：Helm は動作のログを記録でき、問題時にすぐ共有できます。Dev ビルドでは常時オン。";
-"Disabled" = "オフ";
+"Disabled" = "無効";
 "Disconnected" = "接続解除済み";
 "Disconnecting…" = "接続解除中…";
 "Disk" = "ディスク";
@@ -235,7 +241,6 @@
 "Last change" = "直近の変更";
 "Later" = "後で";
 "Launch agents" = "起動エージェント";
-"Launch agents, settings files, plug-ins and system extensions on this Mac. Leftovers can be removed; the rest is shown for context." = "この Mac の起動エージェント・設定ファイル・プラグイン・システム機能拡張。残存物は削除でき、その他は参考表示です。";
 "Launch daemons" = "起動デーモン";
 "Left ⇧" = "左 ⇧";
 "Left ⌃" = "左 ⌃";
@@ -283,7 +288,6 @@
 "Name without extension" = "拡張子なしの名前";
 "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works." = "“キーボード”が入力したテキストの配列を直し、“スリープ防止”がポインタを動かすために必要です。許可がないとどちらも機能しません。";
 "Needed to remove app containers and to read every folder when scanning the disk." = "アプリのコンテナ削除と、ディスクスキャン時に全フォルダを読むために必要です。";
-"Needs an administrator to delete" = "削除には管理者権限が必要です";
 "Network" = "ネットワーク";
 "Network cache and cookies" = "ネットワークキャッシュと Cookie";
 "Never" = "しない";
@@ -311,7 +315,6 @@
 "Nothing Helm runs can hang. Homebrew, the VPN list and the power settings are read by running the system's own tools, and a tool that was talkative enough about its own warnings could stop forever, taking the screen waiting for it with it." = "Helm が実行するコマンドがハングしなくなりました。警告を大量に出すツールが永久に停止し、待っている画面を巻き添えにすることがありました。";
 "Nothing in this folder matches yet." = "今のところ、このフォルダに一致するものはありません。";
 "Nothing in this folder." = "このフォルダには何もありません。";
-"Nothing is selected by default — macOS loads these, so choose deliberately." = "既定では未選択です。macOS が読み込むファイルなので慎重に選んでください。";
 "Nothing listed. A few terminals and password managers are left alone already — add any others here." = "一覧は空です。主なターミナルとパスワード管理アプリは最初から対象外です。ほかは自分で追加してください。";
 "Nothing logged yet." = "まだ記録はありません。";
 "Nothing matches these filters." = "この条件に一致する行はありません。";
@@ -393,7 +396,6 @@
 "Rules run top to bottom and the first match wins — a file gets one action, not several." = "ルールは上から順に評価され、最初に一致したものが実行されます。ファイルに起きることは 1 つだけです。";
 "Run now" = "今すぐ実行";
 "Running" = "実行中";
-"Runs at login" = "ログイン時に実行";
 "Saved windows" = "保存されたウインドウ";
 "Scan" = "スキャン";
 "Scan a folder…" = "フォルダをスキャン…";
@@ -408,7 +410,7 @@
 "Search now" = "検索";
 "Search packages" = "パッケージを検索";
 "Searching…" = "検索中…";
-"Select all" = "すべて選択";
+"Select all" = "すべてを選択";
 "Set" = "設定";
 "Settings" = "設定";
 "Settings are ordered by how often you need them — what Helm looks like first, permissions and diagnostics last — and Keep Awake keeps all four of its automatic rules in one place." = "設定は使用頻度順に並べ替え（見た目が先、アクセス権と診断は最後）、“スリープ防止”の4つの自動ルールは1か所にまとめました。";
@@ -603,7 +605,6 @@
 "🌐︎" = "🌐︎";
 
 /* Duplicates */
-"This file has changed since it was found, so it is no longer a duplicate — Helm did not touch it." = "このファイルは検出後に変更されたため、重複ではなくなりました。Helm は手を触れていません。";
 "Module icons" = "モジュールのアイコン";
 "Colour" = "カラー";
 "Plain" = "シンプル";

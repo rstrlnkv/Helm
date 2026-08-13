@@ -68,7 +68,7 @@ struct LeftoversSettingsPage: View {
         // The question names the reason it is being asked — «it is loaded now» for a
         // row the Mac has open, and «Helm could not read this file» for one it never
         // got to see.
-        .confirmationDialog(pendingDeletion.flatMap(LfStr.confirmDelete) ?? "",
+        .confirmationDialog(pendingDeletion.flatMap { LfStr.confirmDelete($0) } ?? "",
                             isPresented: Binding(get: { pendingDeletion != nil },
                                                  set: { if !$0 { pendingDeletion = nil } }),
                             titleVisibility: .visible) {
@@ -313,7 +313,7 @@ struct LeftoversSettingsPage: View {
         if item.canToggle {
             // Not everything here is rubbish to delete — most of it is
             // working software the user may simply want quiet.
-            Button(item.disabled ? LfStr.enable : LfStr.disable) {
+            Button(item.disabled ? LfStr.enable() : LfStr.disable()) {
                 Task { await lvm.setDisabled(!item.disabled, item: item) }
             }
             .controlSize(.small)
@@ -415,16 +415,29 @@ struct LeftoversSettingsPage: View {
     /// **not** free is anything drawn beside it: a `Divider()` added here cost the
     /// list 1 pt on a silent round, which is what the test above measures.
     @ViewBuilder private var outcomeRow: some View {
-        if let banner = lvm.banner {
-            HelmRemovalOutcome(
-                succeededText: banner,
-                removed: lvm.removedCount,
-                failures: lvm.failures.map(HelmRemovalFailure.init),
-                needsFullDiskAccess: diskAccess == .denied)
+        if let outcome = removalOutcome {
+            outcome
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, HelmLayout.formInset)
                 .padding(.top, HelmSpace.s5)
         }
+    }
+
+    /// Which of the component's four verdicts this round is, or nil for a page
+    /// nobody has pressed anything on.
+    ///
+    /// Its own member so the frame and the padding above are written once: the
+    /// lost reply has no banner to key off, and drawing it in a branch of its own
+    /// meant that chain twice.
+    private var removalOutcome: HelmRemovalOutcome? {
+        // Ahead of the banner, which is nil in this state: a reply that never came
+        // says so rather than nothing.
+        if lvm.replyLost { return .unanswered }
+        guard let banner = lvm.banner else { return nil }
+        return HelmRemovalOutcome(succeededText: banner,
+                                  removed: lvm.removedCount,
+                                  failures: lvm.failures.map(HelmRemovalFailure.init),
+                                  needsFullDiskAccess: diskAccess == .denied)
     }
 
     private var actionBar: some View {

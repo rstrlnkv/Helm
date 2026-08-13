@@ -51,6 +51,7 @@
 "Application Support" = "应用数据";
 "Apps" = "应用";
 "Archive" = "压缩包";
+"At login" = "登录时";
 "Audio" = "音频";
 "Auto" = "自动";
 "Automation" = "自动化";
@@ -98,12 +99,18 @@
 "Custom duration" = "自定义时长";
 "Custom icon when active" = "激活时使用自定义图标";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm 可以手动连接 macOS 保存的配置，也可以在应用启动时按规则连接。配置本身在“系统设置”中添加。";
+"Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm 未收到回应，无法判断哪些文件已移动。上方列表显示它们现在的位置。";
 "Icon spin" = "图标转动";
+"Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "启动代理、设置文件、插件与系统扩展。只有残留项可以移到废纸篓。";
 "Menu bar" = "菜单栏";
+"Move to Trash…" = "移到废纸篓…";
 "Nothing" = "无";
+"Nothing is selected for you: macOS loads every item in this list." = "默认不选择任何项目：这个列表里的每一项都由 macOS 加载。";
+"Only an administrator can move this" = "只有管理员才能移动";
 "Other…" = "其他…";
 "Spin the menu-bar icon" = "转动菜单栏图标";
 "This decides the words. Whether the icon turns is the switch below." = "这里只决定文字。图标是否转动由下面的开关决定。";
+"This is not where Helm found it, so nothing was moved. Scan again to see where it is now." = "它已不在 Helm 找到它的位置，因此没有移动任何内容。请重新扫描以查看它现在的位置。";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "关闭此项且提示设为“无”时，规则连接或断开隧道将没有任何提示。";
 "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "macOS 不允许 Helm 发送通知。将改为在菜单栏显示名称。";
 "Cyan" = "青色";
@@ -113,11 +120,10 @@
 "Date modified" = "修改日期";
 "Default duration" = "默认时长";
 "Delete" = "删除";
-"Delete…" = "删除…";
 "Dev" = "Dev";
 "Dev builds always log. The file lives in ~/Library/Logs/Helm." = "开发版始终记录日志。文件位于 ~/Library/Logs/Helm。";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "诊断：Helm 可记录自身操作日志，出问题时随时分享。开发版始终开启。";
-"Disabled" = "已关闭";
+"Disabled" = "已停用";
 "Disconnected" = "已断开连接";
 "Disconnecting…" = "正在断开连接…";
 "Disk" = "磁盘";
@@ -235,7 +241,6 @@
 "Last change" = "最近一次修改";
 "Later" = "稍后";
 "Launch agents" = "启动代理";
-"Launch agents, settings files, plug-ins and system extensions on this Mac. Leftovers can be removed; the rest is shown for context." = "本机的启动代理、设置文件、插件与系统扩展。残留项可删除，其余仅供参考。";
 "Launch daemons" = "启动守护进程";
 "Left ⇧" = "左 ⇧";
 "Left ⌃" = "左 ⌃";
@@ -283,7 +288,6 @@
 "Name without extension" = "不含扩展名的名称";
 "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works." = "“键盘”纠正你输入内容的布局、“保持唤醒”移动指针都需要此权限。未授予时两者都不起作用。";
 "Needed to remove app containers and to read every folder when scanning the disk." = "用于删除应用容器，以及扫描磁盘时读取所有文件夹。";
-"Needs an administrator to delete" = "删除需要管理员权限";
 "Network" = "网络";
 "Network cache and cookies" = "网络缓存与 Cookie";
 "Never" = "永不";
@@ -311,7 +315,6 @@
 "Nothing Helm runs can hang. Homebrew, the VPN list and the power settings are read by running the system's own tools, and a tool that was talkative enough about its own warnings could stop forever, taking the screen waiting for it with it." = "Helm 运行的命令不会再卡死。此前某个工具若输出足够多的警告，就会永远停住，并拖住等待它的界面。";
 "Nothing in this folder matches yet." = "目前这个文件夹里没有匹配的内容。";
 "Nothing in this folder." = "这个文件夹里没有内容。";
-"Nothing is selected by default — macOS loads these, so choose deliberately." = "默认未选择：这些文件由 macOS 加载，请谨慎选择。";
 "Nothing listed. A few terminals and password managers are left alone already — add any others here." = "列表为空。少数终端和密码管理器已经排除在外，其他的请自行添加。";
 "Nothing logged yet." = "暂无记录。";
 "Nothing matches these filters." = "没有符合这些筛选条件的行。";
@@ -393,7 +396,6 @@
 "Rules run top to bottom and the first match wins — a file gets one action, not several." = "规则自上而下执行，第一条匹配的生效——一个文件只会发生一件事，不会连续发生多件。";
 "Run now" = "立即运行";
 "Running" = "运行中";
-"Runs at login" = "登录时运行";
 "Saved windows" = "保存的窗口";
 "Scan" = "扫描";
 "Scan a folder…" = "扫描文件夹…";
@@ -492,7 +494,7 @@
 "Try again" = "重试";
 "Try it" = "试一试";
 "Turn off" = "关闭";
-"Turn on" = "开启";
+"Turn on" = "打开";
 "Turn on before reporting a problem. The file lives in ~/Library/Logs/Helm." = "报告问题前请开启。文件位于 ~/Library/Logs/Helm。";
 "Turn the rule on" = "开启规则";
 "Turning a login item off no longer clears everything else you had ticked." = "关闭某个登录项时，不再清空你已勾选的其他项。";
@@ -603,7 +605,6 @@
 "🌐︎" = "🌐︎";
 
 /* Duplicates */
-"This file has changed since it was found, so it is no longer a duplicate — Helm did not touch it." = "此文件自被找到后已更改，不再是重复文件——Helm 未作处理。";
 "Module icons" = "模块图标";
 "Colour" = "彩色";
 "Plain" = "简约";

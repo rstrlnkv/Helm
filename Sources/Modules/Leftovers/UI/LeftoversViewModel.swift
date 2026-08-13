@@ -14,6 +14,15 @@ import Module_Leftovers_Engine
     @Published public private(set) var failures: [HelmTrash.Refusal] = []
     /// How many actually moved — see `DiskViewModel.removedCount`.
     @Published public private(set) var removedCount = 0
+    /// The last removal's reply never came back.
+    ///
+    /// The fourth thing the report is read as: not a claim that anything moved,
+    /// not a refusal, and not silence. Clearing the other three was the right
+    /// half of the fix and only half of it — `HelmRemovalOutcome.verdict(removed:
+    /// 0, failed: 0)` is `.silent`, so the page said nothing at all about a
+    /// destructive press somebody had made, while the rescan underneath quietly
+    /// changed the list.
+    @Published public private(set) var replyLost = false
     /// A removal is running. The page dims what would start a second one — see
     /// `trash`, where the cost of the second is a wrong report about the first.
     @Published public private(set) var busy = false
@@ -239,24 +248,37 @@ import Module_Leftovers_Engine
         // happened is that it did, in a row that draws nothing.
         //
         // Nor is it a batch that failed: the engine may have moved the files and
-        // the reply been lost. So the report is cleared rather than replaced by a
-        // guess, and the rescan below is what says where the files actually are.
+        // the reply been lost. So the report claims nothing about what moved, and
+        // says instead that it does not know — the rescan below is what puts the
+        // list right, and the sentence points at it. Clearing the three fields
+        // and stopping there left the page silent about a destructive press.
         guard let result else {
             clearRemovalReport()
+            replyLost = true
+            // Counts and outcomes are free; nothing here names a file. It was the
+            // one branch in this module that reached the screen without reaching
+            // the log, which is the branch a person would be attaching a log to
+            // ask about.
+            HelmLog.shared.info(LeftoversEngine.moduleID, "trash reply lost")
             await scan()
             return
         }
+        // The four fields are one report, so a round that *was* answered has to
+        // put the previous round's «no answer» down as well — otherwise the
+        // sentence outlives the press it was about.
+        replyLost = false
         failures = result.refused
         removedCount = result.removed.count
-        banner = LfStr.movedToTrash(Bytes(result.freedBytes))
+        banner = LfStr.movedToTrash(result.removed.count, Bytes(result.freedBytes))
         await scan()
     }
 
     /// Nothing on screen about a removal — the shape `DiskViewModel` already
-    /// keeps, and the three fields are read as one report.
+    /// keeps, and the four fields are read as one report.
     private func clearRemovalReport() {
         banner = nil
         failures = []
         removedCount = 0
+        replyLost = false
     }
 }

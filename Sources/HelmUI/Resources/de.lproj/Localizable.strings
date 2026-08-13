@@ -51,6 +51,7 @@
 "Application Support" = "App-Daten";
 "Apps" = "Apps";
 "Archive" = "Archiv";
+"At login" = "Bei der Anmeldung";
 "Audio" = "Audio";
 "Auto" = "Automatisch";
 "Automation" = "Automatisierung";
@@ -98,12 +99,18 @@
 "Custom duration" = "Eigene Dauer";
 "Custom icon when active" = "Eigenes Symbol bei Aktivität";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm verbindet die Konfigurationen, die macOS verwaltet — von Hand oder nach einer Regel, wenn eine App startet. Neue legst du in den Systemeinstellungen an.";
+"Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm hat keine Antwort erhalten und weiß nicht, welche Dateien verschoben wurden. Die Liste oben zeigt, wo sie jetzt sind.";
 "Icon spin" = "Drehung des Symbols";
+"Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "Startagenten, Einstellungsdateien, Plug-ins und Systemerweiterungen. Nur Reste können in den Papierkorb.";
 "Menu bar" = "Menüleiste";
+"Move to Trash…" = "In den Papierkorb legen …";
 "Nothing" = "Nichts";
+"Nothing is selected for you: macOS loads every item in this list." = "Nichts ist vorausgewählt: macOS lädt jedes Objekt in dieser Liste.";
+"Only an administrator can move this" = "Nur ein Administrator kann das verschieben";
 "Other…" = "Andere …";
 "Spin the menu-bar icon" = "Menüleistensymbol drehen";
 "This decides the words. Whether the icon turns is the switch below." = "Dies entscheidet über die Worte. Ob sich das Symbol dreht, entscheidet der Schalter darunter.";
+"This is not where Helm found it, so nothing was moved. Scan again to see where it is now." = "Das ist nicht mehr dort, wo Helm es gefunden hat — es wurde nichts verschoben. Scanne erneut, um zu sehen, wo es jetzt ist.";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "Ist dies aus und der Hinweis auf „Nichts“ gestellt, verbindet oder trennt eine Regel ohne jedes Zeichen.";
 "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "macOS lässt keine Mitteilungen von Helm zu — der Name erscheint stattdessen in der Menüleiste.";
 "Cyan" = "Cyan";
@@ -113,11 +120,10 @@
 "Date modified" = "Geändert am";
 "Default duration" = "Standarddauer";
 "Delete" = "Löschen";
-"Delete…" = "Löschen…";
 "Dev" = "Dev";
 "Dev builds always log. The file lives in ~/Library/Logs/Helm." = "Dev-Builds protokollieren immer. Die Datei liegt in ~/Library/Logs/Helm.";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "Diagnose: Helm kann protokollieren, was es tut — bereit zum Teilen, wenn etwas schiefgeht. In Dev-Builds immer an.";
-"Disabled" = "Aus";
+"Disabled" = "Deaktiviert";
 "Disconnected" = "Getrennt";
 "Disconnecting…" = "Verbindung trennen …";
 "Disk" = "Festplatte";
@@ -181,7 +187,7 @@
 "GitHub update check and the What’s New window." = "GitHub-Update-Prüfung und das Neuigkeiten-Fenster.";
 "Global shortcut" = "Globaler Kurzbefehl";
 "Got it" = "Verstanden";
-"Grant…" = "Erteilen…";
+"Grant…" = "Erteilen …";
 "Green" = "Grün";
 "Group Containers" = "Gruppencontainer";
 "Helm Settings" = "Helm-Einstellungen";
@@ -235,7 +241,6 @@
 "Last change" = "Letzte Änderung";
 "Later" = "Später";
 "Launch agents" = "Startagenten";
-"Launch agents, settings files, plug-ins and system extensions on this Mac. Leftovers can be removed; the rest is shown for context." = "Startagenten, Einstellungsdateien, Plug-ins und Systemerweiterungen auf diesem Mac. Reste lassen sich entfernen, der Rest dient der Übersicht.";
 "Launch daemons" = "Start-Daemons";
 "Left ⇧" = "Linke ⇧";
 "Left ⌃" = "Linke ⌃";
@@ -250,7 +255,7 @@
 "Light" = "Hell";
 "Log" = "Protokoll";
 "Login Items" = "Anmeldeobjekte";
-"Login Items & Extensions" = "Anmeldeobjekte & Erweiterungen";
+"Login Items & Extensions" = "Anmeldeobjekte & Erweiterungen";
 "Login Items & Extensions now lists system extensions themselves — what they are, whose they are, and which ones outlived the app that installed them." = "Anmeldeobjekte & Erweiterungen listet jetzt die Systemerweiterungen selbst: was sie sind, zu wem sie gehören und welche ihre App überlebt haben.";
 "Login Items & Extensions: see everything that loads with your Mac, marked as in use, system, or leftover — and remove the leftovers." = "Anmeldeobjekte & Erweiterungen: alles sehen, was mit dem Mac lädt — als in Benutzung, System oder Rest markiert — und die Reste entfernen.";
 "Login items can be switched off instead of only deleted. Helm uses the same list macOS itself uses, so the choice survives a reboot, needs no password, and can be undone here or in System Settings." = "Anmeldeobjekte lassen sich ausschalten statt nur löschen. Helm nutzt dieselbe Liste wie macOS: die Wahl übersteht einen Neustart, braucht kein Passwort und ist umkehrbar.";
@@ -260,7 +265,7 @@
 "MB" = "MB";
 "MODULES" = "MODULE";
 "Manage Homebrew packages" = "Homebrew-Pakete verwalten";
-"Manage…" = "Verwalten…";
+"Manage…" = "Verwalten …";
 "Manual" = "Manuell";
 "Mark every extra copy" = "Alle Überzähligen markieren";
 "Mark for removal" = "Zum Entfernen markieren";
@@ -283,7 +288,6 @@
 "Name without extension" = "Name ohne Endung";
 "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works." = "Nötig, damit Tastatur die Belegung des Getippten korrigiert und Wach halten den Zeiger bewegt. Ohne die Freigabe funktioniert beides nicht.";
 "Needed to remove app containers and to read every folder when scanning the disk." = "Nötig, um App-Container zu entfernen und beim Scannen alle Ordner zu lesen.";
-"Needs an administrator to delete" = "Zum Löschen sind Admin-Rechte nötig";
 "Network" = "Netzwerk";
 "Network cache and cookies" = "Netzwerk-Cache und Cookies";
 "Never" = "Nie";
@@ -311,7 +315,6 @@
 "Nothing Helm runs can hang. Homebrew, the VPN list and the power settings are read by running the system's own tools, and a tool that was talkative enough about its own warnings could stop forever, taking the screen waiting for it with it." = "Nichts, was Helm ausführt, kann hängen bleiben. Ein Werkzeug mit genügend eigenen Warnungen konnte für immer stehen bleiben und den wartenden Bildschirm mitnehmen.";
 "Nothing in this folder matches yet." = "Derzeit passt nichts in diesem Ordner.";
 "Nothing in this folder." = "In diesem Ordner ist nichts.";
-"Nothing is selected by default — macOS loads these, so choose deliberately." = "Nichts ist vorausgewählt: macOS lädt diese Dateien — bewusst auswählen.";
 "Nothing listed. A few terminals and password managers are left alone already — add any others here." = "Nichts eingetragen. Einige Terminals und Passwortmanager bleiben schon außen vor — weitere kannst du hier ergänzen.";
 "Nothing logged yet." = "Noch nichts protokolliert.";
 "Nothing matches these filters." = "Nichts passt zu diesen Filtern.";
@@ -393,7 +396,6 @@
 "Rules run top to bottom and the first match wins — a file gets one action, not several." = "Regeln laufen von oben nach unten, die erste Übereinstimmung gewinnt — eine Datei bekommt eine Aktion, nicht mehrere.";
 "Run now" = "Jetzt ausführen";
 "Running" = "Läuft";
-"Runs at login" = "Startet bei der Anmeldung";
 "Saved windows" = "Gespeicherte Fenster";
 "Scan" = "Scannen";
 "Scan a folder…" = "Ordner scannen…";
@@ -401,7 +403,7 @@
 "Scan for leftovers" = "Nach Resten scannen";
 "Scan to see what apps left behind." = "Scannen, um zu sehen, was Apps hinterlassen haben.";
 "Scanning" = "Wird gescannt";
-"Scanning…" = "Wird gescannt…";
+"Scanning…" = "Wird gescannt …";
 "Search" = "Suchen";
 "Search again" = "Erneut suchen";
 "Search apps" = "Apps suchen";
@@ -469,7 +471,7 @@
 "The download did not match what the release published, so Helm did not install it." = "Der Download stimmt nicht mit dem überein, was die Version veröffentlicht hat — Helm hat ihn nicht installiert.";
 "The duplicate finder is its own screen now, right after Disk. It used to search whatever folder the ring happened to be showing, so you could only look where you had already scanned; now you point it at a folder and it remembers it. It still compares content rather than names, still keeps one copy of every group, and still never offers a hard link." = "Die Duplikatsuche hat einen eigenen Bereich, direkt nach Festplatte. Bisher durchsuchte sie den Ordner, den gerade der Ring zeigte; jetzt wählst du den Ordner, und sie merkt ihn sich. Verglichen wird weiter der Inhalt statt der Namen, und eine Kopie bleibt immer.";
 "The duplicate finder no longer holds on to everything it reads. It compares files a megabyte at a time so a video never has to fit in memory — but the app kept every one of those megabytes until the scan ended, so the memory it used followed the size of the folder rather than the size of a slice. The background check for updates had the same defect in its own file check. Memory is also handed back to macOS when a scan finishes and when a module is switched off, instead of being kept for later." = "Die Duplikatsuche hält nicht mehr alles fest, was sie liest: der Speicher folgte der Größe des Ordners statt der eines Stücks. Die Prüfung auf Updates im Hintergrund hatte denselben Fehler in ihrer eigenen Dateiüberprüfung. Er wird jetzt auch nach einem Scan und beim Ausschalten eines Moduls an das System zurückgegeben.";
-"The file is locked, or you are not its owner. Open Get Info in the Finder to unlock it or change its permissions." = "Die Datei ist geschützt oder gehört dir nicht. Öffne „Informationen“ im Finder, um sie zu entsperren oder die Rechte zu ändern.";
+"The file is locked, or you are not its owner. Open Get Info in the Finder to unlock it or change its permissions." = "Die Datei ist gesperrt oder gehört dir nicht. Öffne „Informationen“ im Finder, um sie zu entsperren oder die Rechte zu ändern.";
 "The icon is white when idle and takes on the colour of whichever module is active." = "Im Ruhezustand ist das Symbol weiß; es nimmt die Farbe des aktiven Moduls an.";
 "The icon shape, icon size and both colours can be chosen from the keyboard, and Escape leaves the shortcut recorder." = "Symbolform, Symbolgröße und beide Farben lassen sich mit der Tastatur wählen, und Escape verlässt die Kurzbefehl-Aufnahme.";
 "The log Helm keeps for troubleshooting no longer writes down the names of your VPN connections, your apps, or the path to your home folder." = "Das Diagnoseprotokoll notiert keine Namen deiner VPN-Verbindungen, Apps oder den Pfad zu deinem Benutzerordner mehr.";
@@ -491,8 +493,8 @@
 "Tools for your Mac" = "Werkzeuge für deinen Mac";
 "Try again" = "Erneut versuchen";
 "Try it" = "Ausprobieren";
-"Turn off" = "Ausschalten";
-"Turn on" = "Einschalten";
+"Turn off" = "Deaktivieren";
+"Turn on" = "Aktivieren";
 "Turn on before reporting a problem. The file lives in ~/Library/Logs/Helm." = "Vor einer Problemmeldung einschalten. Die Datei liegt in ~/Library/Logs/Helm.";
 "Turn the rule on" = "Regel einschalten";
 "Turning a login item off no longer clears everything else you had ticked." = "Ein Startobjekt auszuschalten löscht nicht mehr deine übrige Auswahl.";
@@ -603,7 +605,6 @@
 "🌐︎" = "🌐︎";
 
 /* Duplicates */
-"This file has changed since it was found, so it is no longer a duplicate — Helm did not touch it." = "Diese Datei hat sich seit dem Fund geändert und ist kein Duplikat mehr — Helm hat sie nicht angerührt.";
 "Module icons" = "Modulsymbole";
 "Colour" = "Farbig";
 "Plain" = "Schlicht";

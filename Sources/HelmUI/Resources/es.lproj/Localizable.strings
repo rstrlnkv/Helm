@@ -51,6 +51,7 @@
 "Application Support" = "Datos de la app";
 "Apps" = "Apps";
 "Archive" = "Archivo comprimido";
+"At login" = "Al iniciar sesión";
 "Audio" = "Audio";
 "Auto" = "Automático";
 "Automation" = "Automatización";
@@ -98,12 +99,18 @@
 "Custom duration" = "Duración personalizada";
 "Custom icon when active" = "Icono propio cuando está activo";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm conecta las configuraciones que guarda macOS, a mano o por reglas cuando se abre una app. Añade una en Ajustes del Sistema.";
+"Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm no recibió respuesta y no sabe qué archivos se movieron. La lista de arriba muestra dónde están ahora.";
 "Icon spin" = "Giro del icono";
+"Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "Agentes de inicio, archivos de ajustes, módulos y extensiones del sistema. Solo los restos pueden ir a la papelera.";
 "Menu bar" = "Barra de menús";
+"Move to Trash…" = "Trasladar a la papelera…";
 "Nothing" = "Nada";
+"Nothing is selected for you: macOS loads every item in this list." = "Nada viene seleccionado: macOS carga cada ítem de esta lista.";
+"Only an administrator can move this" = "Solo un administrador puede moverlo";
 "Other…" = "Otro…";
 "Spin the menu-bar icon" = "Girar el icono de la barra de menús";
 "This decides the words. Whether the icon turns is the switch below." = "Esto decide las palabras. Si el icono gira lo decide el interruptor de abajo.";
+"This is not where Helm found it, so nothing was moved. Scan again to see where it is now." = "Esto ya no está donde Helm lo encontró, así que no se movió nada. Escanea de nuevo para ver dónde está ahora.";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "Con esto desactivado y el aviso en “Nada”, una regla que conecta o corta un túnel no da ninguna señal.";
 "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "macOS no permite notificaciones de Helm, así que el nombre aparece en la barra de menús.";
 "Cyan" = "Cian";
@@ -113,7 +120,6 @@
 "Date modified" = "Fecha de modificación";
 "Default duration" = "Duración por defecto";
 "Delete" = "Eliminar";
-"Delete…" = "Eliminar…";
 "Dev" = "Dev";
 "Dev builds always log. The file lives in ~/Library/Logs/Helm." = "Las compilaciones Dev siempre registran. El archivo está en ~/Library/Logs/Helm.";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "Diagnóstico: Helm puede registrar lo que hace, listo para compartir si algo falla. Siempre activo en compilaciones Dev.";
@@ -235,7 +241,6 @@
 "Last change" = "Último cambio";
 "Later" = "Más tarde";
 "Launch agents" = "Agentes de inicio";
-"Launch agents, settings files, plug-ins and system extensions on this Mac. Leftovers can be removed; the rest is shown for context." = "Agentes de inicio, archivos de ajustes, plug-ins y extensiones del sistema de este Mac. Los restos se pueden eliminar; el resto es informativo.";
 "Launch daemons" = "Demonios de inicio";
 "Left ⇧" = "⇧ izquierda";
 "Left ⌃" = "⌃ izquierda";
@@ -283,7 +288,6 @@
 "Name without extension" = "Nombre sin extensión";
 "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works." = "Necesario para que Teclado corrija la distribución de lo que escribes y para que Mantener activo mueva el puntero. Sin él no funciona ninguno de los dos.";
 "Needed to remove app containers and to read every folder when scanning the disk." = "Necesario para eliminar contenedores de apps y leer todas las carpetas al escanear el disco.";
-"Needs an administrator to delete" = "Se necesita un administrador para eliminar";
 "Network" = "Red";
 "Network cache and cookies" = "Caché de red y cookies";
 "Never" = "Nunca";
@@ -311,7 +315,6 @@
 "Nothing Helm runs can hang. Homebrew, the VPN list and the power settings are read by running the system's own tools, and a tool that was talkative enough about its own warnings could stop forever, taking the screen waiting for it with it." = "Nada de lo que Helm ejecuta puede colgarse. Una herramienta lo bastante verbosa en sus avisos podía detenerse para siempre y bloquear la pantalla que la esperaba.";
 "Nothing in this folder matches yet." = "Por ahora nada en esta carpeta coincide.";
 "Nothing in this folder." = "No hay nada en esta carpeta.";
-"Nothing is selected by default — macOS loads these, so choose deliberately." = "Nada está seleccionado: macOS carga estos archivos, elige con cuidado.";
 "Nothing listed. A few terminals and password managers are left alone already — add any others here." = "Lista vacía. Ya se dejan en paz algunos terminales y gestores de contraseñas; añade aquí los demás.";
 "Nothing logged yet." = "Aún no hay nada registrado.";
 "Nothing matches these filters." = "Nada coincide con estos filtros.";
@@ -354,7 +357,7 @@
 "Pink" = "Rosa";
 "Pinned" = "Fijado";
 "Play a sound when a word is fixed" = "Sonido al corregir una palabra";
-"Plug-ins" = "Plug-ins";
+"Plug-ins" = "Módulos";
 "Point Helm at a folder and give it rules. A file that arrives is checked against them in order and the first match wins — and every watched folder is checked again once an hour, so age rules come round." = "Indica una carpeta y dale reglas. Un archivo que llega se comprueba en orden y gana la primera coincidencia; además, cada carpeta se repasa una vez por hora, para que las reglas de antigüedad también lleguen a actuar.";
 "Power" = "Energía";
 "Press keys…" = "Pulsa teclas…";
@@ -393,15 +396,14 @@
 "Rules run top to bottom and the first match wins — a file gets one action, not several." = "Las reglas van de arriba abajo y gana la primera que coincide: al archivo le ocurre una acción, no varias.";
 "Run now" = "Ejecutar ahora";
 "Running" = "En ejecución";
-"Runs at login" = "Se ejecuta al iniciar sesión";
 "Saved windows" = "Ventanas guardadas";
-"Scan" = "Analizar";
-"Scan a folder…" = "Analizar una carpeta…";
+"Scan" = "Escanear";
+"Scan a folder…" = "Escanear una carpeta…";
 "Scan again" = "Escanear de nuevo";
 "Scan for leftovers" = "Buscar restos";
 "Scan to see what apps left behind." = "Escanea para ver qué dejaron las apps.";
-"Scanning" = "Analizando";
-"Scanning…" = "Analizando…";
+"Scanning" = "Escaneando";
+"Scanning…" = "Escaneando…";
 "Search" = "Buscar";
 "Search again" = "Buscar de nuevo";
 "Search apps" = "Buscar apps";
@@ -603,7 +605,6 @@
 "🌐︎" = "🌐︎";
 
 /* Duplicates */
-"This file has changed since it was found, so it is no longer a duplicate — Helm did not touch it." = "Este archivo ha cambiado desde que se encontró, así que ya no es un duplicado; Helm no lo tocó.";
 "Module icons" = "Iconos de módulos";
 "Colour" = "En color";
 "Plain" = "Sencillos";

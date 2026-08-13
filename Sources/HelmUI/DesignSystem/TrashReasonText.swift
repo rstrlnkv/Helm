@@ -20,7 +20,13 @@ public enum TrashReasonText {
             // Names what changed rather than apologising for the refusal: the
             // person chose this file on the strength of a scan, and the scan is
             // what stopped being true.
-            return L("This file has changed since it was found, so it is no longer a duplicate — Helm did not touch it.")
+            //
+            // **Module-neutral, because the refusal is.** `HelmTrash` raises this
+            // for every module — an ancestor of the path changed since the gate —
+            // and the sentence said "it is no longer a duplicate", which is
+            // Duplicates' claim and was untrue even there: nothing re-checks
+            // duplication. Drawn over a launch agent it was simply false.
+            return L("This is not where Helm found it, so nothing was moved. Scan again to see where it is now.")
         case TrashFailure.Reason.readOnlyVolume.rawValue:
             return L("The disk this is on is read-only. Eject it and unlock it, or copy what you need elsewhere.")
         case TrashFailure.Reason.diskFull.rawValue:

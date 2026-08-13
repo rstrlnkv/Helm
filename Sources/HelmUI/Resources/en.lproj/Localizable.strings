@@ -51,6 +51,7 @@
 "Application Support" = "Application Support";
 "Apps" = "Apps";
 "Archive" = "Archive";
+"At login" = "At login";
 "Audio" = "Audio";
 "Auto" = "Auto";
 "Automation" = "Automation";
@@ -98,12 +99,18 @@
 "Custom duration" = "Custom duration";
 "Custom icon when active" = "Custom icon when active";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings.";
+"Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm got no answer, so it does not know what moved. The list above shows where the files are now.";
 "Icon spin" = "Menu-bar spin";
+"Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash.";
 "Menu bar" = "Menu bar";
+"Move to Trash…" = "Move to Trash…";
 "Nothing" = "Nothing";
+"Nothing is selected for you: macOS loads every item in this list." = "Nothing is selected for you: macOS loads every item in this list.";
+"Only an administrator can move this" = "Only an administrator can move this";
 "Other…" = "Other…";
 "Spin the menu-bar icon" = "Turn the menu-bar icon";
 "This decides the words. Whether the icon turns is the switch below." = "This decides the words. Whether the icon turns is the switch below.";
+"This is not where Helm found it, so nothing was moved. Scan again to see where it is now." = "This is not where Helm found it, so nothing was moved. Scan again to see where it is now.";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all.";
 "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead.";
 "Cyan" = "Cyan";
@@ -113,7 +120,6 @@
 "Date modified" = "Date modified";
 "Default duration" = "Default duration";
 "Delete" = "Delete";
-"Delete…" = "Delete…";
 "Dev" = "Dev";
 "Dev builds always log. The file lives in ~/Library/Logs/Helm." = "Dev builds always log. The file lives in ~/Library/Logs/Helm.";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds.";
@@ -235,7 +241,6 @@
 "Last change" = "Last change";
 "Later" = "Later";
 "Launch agents" = "Launch agents";
-"Launch agents, settings files, plug-ins and system extensions on this Mac. Leftovers can be removed; the rest is shown for context." = "Launch agents, settings files, plug-ins and system extensions on this Mac. Leftovers can be removed; the rest is shown for context.";
 "Launch daemons" = "Launch daemons";
 "Left ⇧" = "Left ⇧";
 "Left ⌃" = "Left ⌃";
@@ -283,7 +288,6 @@
 "Name without extension" = "Name without extension";
 "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works." = "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works.";
 "Needed to remove app containers and to read every folder when scanning the disk." = "Needed to remove app containers and to read every folder when scanning the disk.";
-"Needs an administrator to delete" = "Needs an administrator to delete";
 "Network" = "Network";
 "Network cache and cookies" = "Network cache and cookies";
 "Never" = "Never";
@@ -311,7 +315,6 @@
 "Nothing Helm runs can hang. Homebrew, the VPN list and the power settings are read by running the system's own tools, and a tool that was talkative enough about its own warnings could stop forever, taking the screen waiting for it with it." = "Nothing Helm runs can hang. Homebrew, the VPN list and the power settings are read by running the system's own tools, and a tool that was talkative enough about its own warnings could stop forever, taking the screen waiting for it with it.";
 "Nothing in this folder matches yet." = "Nothing in this folder matches yet.";
 "Nothing in this folder." = "Nothing in this folder.";
-"Nothing is selected by default — macOS loads these, so choose deliberately." = "Nothing is selected by default — macOS loads these, so choose deliberately.";
 "Nothing listed. A few terminals and password managers are left alone already — add any others here." = "Nothing listed. A few terminals and password managers are left alone already — add any others here.";
 "Nothing logged yet." = "Nothing logged yet.";
 "Nothing matches these filters." = "Nothing matches these filters.";
@@ -393,7 +396,6 @@
 "Rules run top to bottom and the first match wins — a file gets one action, not several." = "Rules run top to bottom and the first match wins — a file gets one action, not several.";
 "Run now" = "Run now";
 "Running" = "Running";
-"Runs at login" = "Runs at login";
 "Saved windows" = "Saved windows";
 "Scan" = "Scan";
 "Scan a folder…" = "Scan a folder…";
@@ -603,7 +605,6 @@
 "🌐︎" = "🌐︎";
 
 /* Duplicates */
-"This file has changed since it was found, so it is no longer a duplicate — Helm did not touch it." = "This file has changed since it was found, so it is no longer a duplicate — Helm did not touch it.";
 "Module icons" = "Module icons";
 "Colour" = "Colour";
 "Plain" = "Plain";
