@@ -46,6 +46,7 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
     @Published public private(set) var scanning = false
     @Published public private(set) var busy = false
     @Published public private(set) var resultBanner: String?
+    @Published public private(set) var replyLost = false
 
     /// One instance per host view model, for the app's lifetime. Keyed to the
     /// view model rather than merely "exists": turning the module off drops the
@@ -120,9 +121,15 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
         if on { selectedLeftovers.insert(path) } else { selectedLeftovers.remove(path) }
     }
 
+    /// Leaving the review ends the round, so the report of the last press goes
+    /// with it — the pick screen's own footer draws `resultBanner`, and a
+    /// sentence about a batch that was refused for a running app has nothing to
+    /// say there.
     public func backToPick() {
         step = .pick
         forceQuit = false
+        resultBanner = nil
+        replyLost = false
     }
 
     public func dismissFailures() { failures = [] }
@@ -131,11 +138,32 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
     public func prepareReview() async {
         scanning = true
         resultBanner = nil
+        replyLost = false
         defer { scanning = false }
-        // Concurrently: the scans are independent, each already hops to a
-        // background queue, and awaiting them in a row stacked every delay.
-        // Order comes from `apps`, not from whichever finishes first.
         let chosen = apps.filter { checked.contains($0.bundleID) }
+        let built = await scanned(chosen, keeping: [])
+        groups = built
+        selectedLeftovers = Set(UninstallPlan.defaultSelection(built))
+        forceQuit = false
+        HelmLog.shared.info(UninstallerEngine.moduleID,
+                            "review \(built.count) apps, \(selectedLeftovers.count) leftovers, running: "
+                            + built.filter(\.running).map { Redact.app($0.app.name) }.joined(separator: ","))
+        step = .review
+    }
+
+    /// One review group per app, from a scan each.
+    ///
+    /// Concurrently: the scans are independent, each already hops to a background
+    /// queue, and awaiting them in a row stacked every delay. Order comes from the
+    /// list handed in, not from whichever finishes first.
+    ///
+    /// **A scan that was not answered leaves its group as it was.** `scan()` is a
+    /// request like any other and comes back nil for an engine that is gone or a
+    /// reply that would not decode; folded to `[]` it would report "this app left
+    /// nothing behind" — and on the rescan below that reads as *the removal
+    /// worked*, over a list that is the person's own review.
+    private func scanned(_ chosen: [InstalledApp],
+                         keeping previous: [UninstallGroup]) async -> [UninstallGroup] {
         var scans: [String: ScanResult] = [:]
         await withTaskGroup(of: (String, ScanResult?).self) { group in
             for app in chosen {
@@ -143,52 +171,82 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
             }
             for await (id, scan) in group { scans[id] = scan }
         }
-        let built = chosen.map { app in
-            UninstallGroup(app: app,
-                           leftovers: scans[app.bundleID]?.leftovers ?? [],
-                           running: scans[app.bundleID]?.runningNow ?? false)
+        return chosen.map { app in
+            guard let scan = scans[app.bundleID] else {
+                return previous.first { $0.app.path == app.path }
+                    ?? UninstallGroup(app: app, leftovers: [], running: false)
+            }
+            return UninstallGroup(app: app, leftovers: scan.leftovers, running: scan.runningNow)
         }
-        groups = built
-        selectedLeftovers = Set(UninstallPlan.defaultSelection(built))
-        forceQuit = false
-        HelmLog.shared.info("uninstaller",
-                            "review \(built.count) apps, \(selectedLeftovers.count) leftovers, running: "
-                            + built.filter(\.running).map { Redact.app($0.app.name) }.joined(separator: ","))
-        step = .review
     }
 
     // MARK: - Removing
 
+    /// **Which apps are still up is the engine's question now, asked at the point
+    /// of removal.** This used to quit them here, from `group.running` — a flag
+    /// read when the review was built, so an app the person had since quit left
+    /// the button dead and an app started since then was never asked to quit at
+    /// all, and had its bundle moved out from under it.
     public func removeSelection() async {
-        guard UninstallPlan.readiness(groups, forceQuit: forceQuit) == .ready else { return }
         // The model refuses a second run itself rather than trusting the page
         // to have dimmed the button: `.disabled(model.busy)` is a redraw away,
         // and the row menu reaches this by another road.
         guard !busy else { return }
+        let paths = UninstallPlan.paths(groups, selectedLeftovers: selectedLeftovers)
+        // An empty batch would come back as "moved 0 items, 0 bytes" — a success
+        // sentence about a removal nobody asked for.
+        guard !paths.isEmpty else { return }
         busy = true
         defer { busy = false }
 
-        if forceQuit {
-            for group in groups where group.running {
-                HelmLog.shared.info("uninstaller", "force quit \(Redact.app(group.app.bundleID))")
-                // Returns when the app is actually gone: the engine holds the
-                // port that can be asked and waits on it. This was a flat
-                // `Task.sleep(800ms)` afterwards — a guess where the answer was
-                // available. Too short and a bundle moves while its app still
-                // runs, which writes its preferences on exit and puts back the
-                // leftovers the uninstall had just taken; too long and everyone
-                // waits for an app that stopped in 50 ms.
-                await quit(bundleID: group.app.bundleID, force: true)
+        HelmLog.shared.info(UninstallerEngine.moduleID, "trashing \(paths.count) paths")
+        let result = await trashPaths(paths, quittingRunningApps: forceQuit)
+
+        // **A batch nobody answered is not a batch that moved nothing.** Folded
+        // with `??`, this said «Moved to the Trash — 0 bytes» over applications
+        // that are exactly where they were, and cleared the review — the scan of
+        // every ticked app — on the strength of it. Nor is it a batch that
+        // failed: the engine may have moved everything and the reply been lost.
+        // So it claims nothing, keeps what the person is looking at, and says
+        // that it does not know.
+        guard let result else {
+            resultBanner = nil
+            failures = []
+            replyLost = true
+            // Counts and outcomes are free; nothing here names an application.
+            // It was the one branch that reached the screen without reaching the
+            // file a person attaches to a bug report.
+            HelmLog.shared.info(UninstallerEngine.moduleID, "trash reply lost")
+            // What the report over the review says is that the list under it is
+            // where the files are now, so the list is read again — and a scan
+            // that is also unanswered leaves each group as it was rather than
+            // reporting it empty.
+            groups = await scanned(groups.map(\.app), keeping: groups)
+            selectedLeftovers.formIntersection(groups.flatMap(\.leftovers).map(\.path))
+            return
+        }
+        replyLost = false
+
+        // Nothing moved: an app in the batch was up and nobody had allowed Helm
+        // to quit it. The review stays, its `running` flags are replaced by what
+        // the engine has just read, and the offer the person needs — quit it, or
+        // tick the force quit — is the one already on this screen.
+        guard result.stillRunning.isEmpty else {
+            let up = Set(result.stillRunning)
+            groups = groups.map {
+                UninstallGroup(app: $0.app, leftovers: $0.leftovers, running: up.contains($0.app.path))
             }
+            failures = []
+            resultBanner = UnStr.blockedByRunning
+            HelmLog.shared.info(UninstallerEngine.moduleID,
+                                "batch held: \(up.count) app(s) still running")
+            return
         }
 
-        let paths = UninstallPlan.paths(groups, selectedLeftovers: selectedLeftovers)
-        HelmLog.shared.info("uninstaller", "trashing \(paths.count) paths")
-        let result = await trashPaths(paths)
-
-        let moved = Bytes(result?.freedBytes ?? 0)
-        if let result, !result.failed.isEmpty {
-            HelmLog.shared.warn("uninstaller", "failed to trash: \(Redact.paths(result.failed))")
+        let moved = Bytes(result.freedBytes)
+        if !result.failed.isEmpty {
+            HelmLog.shared.warn(UninstallerEngine.moduleID,
+                                "failed to trash: \(Redact.paths(result.failed))")
             resultBanner = UnStr.movedWithFailures(moved, result.failed.count)
             // Leftovers that stayed put are the whole point of the module, so
             // they get a screen of their own rather than a line to overlook.
@@ -219,9 +277,9 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
     // side and `Bool?` on the other. See `UninstallerCommand.swift`.
 
     public func listApps() async -> [InstalledApp] {
-        HelmLog.shared.info("uninstaller", "listApps requested")
+        HelmLog.shared.info(UninstallerEngine.moduleID, "listApps requested")
         let apps: [InstalledApp] = await client.request(UninstallerCommand.listApps) ?? []
-        HelmLog.shared.info("uninstaller", "listApps returned \(apps.count)")
+        HelmLog.shared.info(UninstallerEngine.moduleID, "listApps returned \(apps.count)")
         return apps
     }
 
@@ -253,12 +311,16 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
         await client.send(UninstallerCommand.setWatchingTrash, encoding: on)
     }
 
-    /// Trash arbitrary leftover paths (used by the orphans view).
-    public func trashPaths(_ paths: [String]) async -> UninstallResult? {
-        await client.request(UninstallerCommand.trashPaths, encoding: paths)
-    }
-
-    public func quit(bundleID: String, force: Bool = false) async {
-        await client.send(UninstallerCommand.quit, encoding: QuitRequest(bundleID: bundleID, force: force))
+    /// Trash a batch of paths — leftovers alone from the orphans view, or a
+    /// review's app bundles and everything ticked with them.
+    ///
+    /// `quittingRunningApps` is the person's answer to «Force quit and remove
+    /// anyway», and it travels with the batch because the engine is what asks
+    /// whether the app is *still* up. The alternative was what this module did:
+    /// quit here, from a flag the scan read minutes ago.
+    public func trashPaths(_ paths: [String],
+                           quittingRunningApps mayQuit: Bool = false) async -> UninstallResult? {
+        await client.request(UninstallerCommand.trashPaths,
+                             encoding: TrashBatchRequest(paths: paths, quitRunningApps: mayQuit))
     }
 }

@@ -25,7 +25,7 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { bundleID }
         let model = TrashedLeftoversModel(vm: vm)
         await model.load()
         guard !model.groups.isEmpty else { return nil }
-        HelmLog.shared.info("uninstaller",
+        HelmLog.shared.info(UninstallerEngine.moduleID,
                             "trash offer: \(model.groups.count) app(s), "
                             + "\(model.groups.reduce(0) { $0 + $1.leftovers.count }) file(s)")
         return AnyView(TrashedLeftoversView(model: model, onClose: onClose))
@@ -66,6 +66,7 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { bundleID }
     @Published private(set) var failures: [TrashFailureInfo] = []
     @Published private(set) var outcome: String?
     @Published private(set) var removedCount = 0
+    @Published private(set) var replyLost = false
 
     init(vm: ModuleViewModel) {
         client = TransportClient(vm.transport)
@@ -107,7 +108,7 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { bundleID }
         // nothing is recorded as declined, because nobody declined anything.
         if fresh.isEmpty {
             groups = []
-            HelmLog.shared.info("uninstaller", "trash offer: the Trash gave everything back")
+            HelmLog.shared.info(UninstallerEngine.moduleID, "trash offer: the Trash gave everything back")
             onVoid?()
             return
         }
@@ -115,7 +116,7 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { bundleID }
         selected = TrashOfferPlan.selectionAfterRefresh(previous: groups,
                                                         selected: selected, current: fresh)
         groups = fresh
-        HelmLog.shared.info("uninstaller", "trash offer: now \(groups.count) app(s) on screen")
+        HelmLog.shared.info(UninstallerEngine.moduleID, "trash offer: now \(groups.count) app(s) on screen")
     }
 
     var totalBytes: Int { TrashOfferPlan.totalBytes(groups, selected: selected) }
@@ -140,22 +141,40 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { bundleID }
         let paths = TrashOfferPlan.paths(groups, selected: selected)
         guard !paths.isEmpty else { return true }
         busy = true
-        HelmLog.shared.info("uninstaller", "trash offer: trashing \(paths.count) path(s)")
-        let result = await client.request(UninstallerCommand.trashPaths, encoding: paths, as: UninstallResult.self)
+        HelmLog.shared.info(UninstallerEngine.moduleID, "trash offer: trashing \(paths.count) path(s)")
+        // No app bundle is ever in this batch — the one the person dragged to the
+        // Trash is deliberately not offered — so there is nothing here to quit.
+        let result = await client.request(UninstallerCommand.trashPaths,
+                                          encoding: TrashBatchRequest(paths: paths),
+                                          as: UninstallResult.self)
         busy = false
         // Only the apps this actually answered for. A refusal from macOS is not
         // the person's "no", and the record is final for as long as the app sits
         // in the Trash — see `TrashOfferPlan.answered`.
-        await answered(TrashOfferPlan.answered(answering, failed: Set(result?.failed ?? [])))
+        await answered(TrashOfferPlan.answered(answering, to: result))
+        // **A reply that never came is not "nothing failed".** Folded that way,
+        // every group on screen was written to `trashOfferDismissed` — a record
+        // that is final for as long as the app sits in the Trash — and the window
+        // closed as if the job were done, over files that are on no other screen
+        // this app has. Nothing is recorded, the window stays, and it says what
+        // is true: nobody knows what moved.
+        guard let result else {
+            replyLost = true
+            HelmLog.shared.info(UninstallerEngine.moduleID,
+                                "trash offer: no reply, \(paths.count) path(s) unaccounted for, "
+                                + "nothing recorded")
+            return false
+        }
+        replyLost = false
         // Said even when everything worked. The window vanishes on success, and
         // an outcome nobody can read afterwards is the shape of the report that
         // took two days to trace once already.
         let leftUnticked = answering.flatMap(\.leftovers).count - paths.count
-        HelmLog.shared.info("uninstaller",
-                            "trash offer: \(result?.trashed.count ?? 0) moved, "
-                            + "\(Bytes(result?.freedBytes ?? 0)), "
-                            + "\(leftUnticked) left by choice, \(result?.failed.count ?? 0) refused")
-        guard let result, !result.failures.isEmpty else { return true }
+        HelmLog.shared.info(UninstallerEngine.moduleID,
+                            "trash offer: \(result.trashed.count) moved, "
+                            + "\(Bytes(result.freedBytes)), "
+                            + "\(leftUnticked) left by choice, \(result.failed.count) refused")
+        guard !result.failures.isEmpty else { return true }
         failures = result.failures
         removedCount = result.trashed.count
         outcome = UnStr.movedToTrash(Bytes(result.freedBytes))
@@ -192,16 +211,8 @@ struct TrashedLeftoversView: View {
         VStack(spacing: 0) {
             header
             Divider()
-            if let outcome = model.outcome {
-                HelmRemovalOutcome(succeededText: outcome,
-                                   removed: model.removedCount,
-                                   failures: model.failures.map {
-                                       HelmRemovalFailure(path: $0.path,
-                                                          reason: UnStr.failureReason($0.reason))
-                                   },
-                                   needsFullDiskAccess: model.failures.contains {
-                                       $0.reason == .needsFullDiskAccess
-                                   })
+            if let report = removalReport {
+                report
                     .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
@@ -230,6 +241,26 @@ struct TrashedLeftoversView: View {
             model.stopWatching()
             Task { await model.answered() }
         }
+    }
+
+    /// What the removal had to say, or nil while the window is still asking.
+    ///
+    /// Its own member because the padding and the frame above are written once,
+    /// and the lost reply has no `outcome` string to key off — it is the state
+    /// where there is nothing to build a sentence out of.
+    private var removalReport: HelmRemovalOutcome? {
+        // Ahead of the outcome, which is nil in this state.
+        if model.replyLost { return .unanswered }
+        guard let outcome = model.outcome else { return nil }
+        return HelmRemovalOutcome(succeededText: outcome,
+                                  removed: model.removedCount,
+                                  failures: model.failures.map {
+                                      HelmRemovalFailure(path: $0.path,
+                                                         reason: UnStr.failureReason($0.reason))
+                                  },
+                                  needsFullDiskAccess: model.failures.contains {
+                                      $0.reason == .needsFullDiskAccess
+                                  })
     }
 
     /// The standing line, and it is the honest cost of offering now rather than
@@ -342,7 +373,10 @@ struct TrashedLeftoversView: View {
                 ProgressView().controlSize(.small)
                 Text(UnStr.removing).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
             }
-            if model.outcome == nil {
+            // The report replaces the list, whichever report it is: a window that
+            // has said something has nothing left to offer, and a second press
+            // would be about a list that is no longer on screen.
+            if removalReport == nil {
                 if !model.busy {
                     Text(UnStr.selectedSummary(model.selected.count, Bytes(model.totalBytes)))
                         .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)

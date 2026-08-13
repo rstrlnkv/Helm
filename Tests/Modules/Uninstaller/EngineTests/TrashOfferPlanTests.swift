@@ -185,7 +185,7 @@ final class TrashOfferPlanTests: XCTestCase {
     func testAppsWhosePathsAllMovedAreAnswered() {
         let groups = [group("com.a", [leftover("/a1")]), group("com.b", [leftover("/b1")])]
         let result = UninstallResult(trashed: ["/a1", "/b1"], freedBytes: 20)
-        XCTAssertEqual(TrashOfferPlan.answered(groups, failed: Set(result.failed)).map(\.bundleID),
+        XCTAssertEqual(TrashOfferPlan.answered(groups, to: result).map(\.bundleID),
                        ["com.a", "com.b"])
     }
 
@@ -194,7 +194,10 @@ final class TrashOfferPlanTests: XCTestCase {
     /// has to be able to come back.
     func testAnAppWhosePathWasRefusedIsNotAnswered() {
         let groups = [group("com.a", [leftover("/a1")]), group("com.b", [leftover("/b1")])]
-        XCTAssertEqual(TrashOfferPlan.answered(groups, failed: ["/a1"]).map(\.bundleID),
+        let result = UninstallResult(
+            trashed: ["/b1"], freedBytes: 10,
+            failures: [TrashFailureInfo(path: "/a1", reason: .noPermission)])
+        XCTAssertEqual(TrashOfferPlan.answered(groups, to: result).map(\.bundleID),
                        ["com.b"], "an app macOS refused was filed as the person's no")
     }
 
@@ -202,14 +205,18 @@ final class TrashOfferPlanTests: XCTestCase {
     /// disk, and that is the state the offer exists for.
     func testOneRefusalInAGroupHoldsTheWholeGroupOpen() {
         let groups = [group("com.a", [leftover("/a1"), leftover("/a2")])]
-        XCTAssertTrue(TrashOfferPlan.answered(groups, failed: ["/a2"]).isEmpty)
+        let result = UninstallResult(
+            trashed: ["/a1"], freedBytes: 10,
+            failures: [TrashFailureInfo(path: "/a2", reason: .noPermission)])
+        XCTAssertTrue(TrashOfferPlan.answered(groups, to: result).isEmpty)
     }
 
     /// A path the person left unticked is not a refusal — they saw it and said
     /// no to that one. The app has been answered.
     func testAnUntickedPathDoesNotHoldTheGroupOpen() {
         let groups = [group("com.a", [leftover("/a1"), leftover("/a2", byName: true)])]
-        XCTAssertEqual(TrashOfferPlan.answered(groups, failed: []).map(\.bundleID), ["com.a"])
+        let result = UninstallResult(trashed: ["/a1"], freedBytes: 10)
+        XCTAssertEqual(TrashOfferPlan.answered(groups, to: result).map(\.bundleID), ["com.a"])
     }
 
     /// A refresh that changes nothing must change nothing.

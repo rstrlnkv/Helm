@@ -78,13 +78,13 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         watcher?.stop()
         watcher = nil
         guard watchingTrash else {
-            HelmLog.shared.info("uninstaller", "trash offer: off")
+            HelmLog.shared.info(UninstallerEngine.moduleID, "trash offer: off")
             return
         }
         let trash = home.appendingPathComponent(".Trash", isDirectory: true).path
         let made = FolderWatcher { [weak self] changed in
             guard let self, TrashArrival.namesAnApp(changed, trash: trash) else { return }
-            HelmLog.shared.info("uninstaller", "an app reached the Trash")
+            HelmLog.shared.info(UninstallerEngine.moduleID, "an app reached the Trash")
             self.localTransport.emit(EngineEvent(name: UninstallerEvent.trashChanged.rawValue))
         }
         watcher = made
@@ -203,12 +203,12 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// log. Ids are tags: a bundle id names somebody's habits.
     private func report(_ refused: Set<String>, bundleID: String, contested: Bool) {
         if contested {
-            HelmLog.shared.warn("uninstaller",
+            HelmLog.shared.warn(UninstallerEngine.moduleID,
                                 "scan \(Redact.app(bundleID)): the id is declared by more than one "
                                 + "installed bundle, so nothing derived from it is this app's")
         }
         guard !refused.isEmpty else { return }
-        HelmLog.shared.info("uninstaller",
+        HelmLog.shared.info(UninstallerEngine.moduleID,
                             "scan \(Redact.app(bundleID)): refused \(refused.count) "
                             + "candidate(s) belonging to another installed app")
     }
@@ -216,11 +216,11 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// Trashes the selected leftover paths plus the app bundle. Sizes are read
     /// before trashing; only successfully trashed items count toward freedBytes.
     public func uninstall(appPath: String, paths: [String]) async throws -> UninstallResult {
-        await offTheCooperativePool {
-            var targets = paths
-            if !targets.contains(appPath) { targets.append(appPath) }
-            return self.trashSync(targets)
-        }
+        var targets = paths
+        if !targets.contains(appPath) { targets.append(appPath) }
+        // Through the same door as every other batch, so the running app is asked
+        // about here too rather than in whichever caller remembered to.
+        return await removeBatch(targets, quittingRunningApps: false)
     }
 
     public func quit(bundleID: String, force: Bool = false) { running.quit(bundleID: bundleID, force: force) }
@@ -321,7 +321,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                 return TrashedAppLeftovers(bundleID: app.bundleID, name: app.name,
                                            appPath: app.path, leftovers: result.leftovers)
             }
-        HelmLog.shared.info("uninstaller",
+        HelmLog.shared.info(UninstallerEngine.moduleID,
                             "trash sweep: \(found.count) app(s) in the Trash, "
                             + "\(found.count - offerable.count) declined before, "
                             + "\(stillInstalled) still installed elsewhere, "
@@ -340,7 +340,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     public func setWatchingTrash(_ on: Bool) {
         guard on != watchingTrash else { return }
         store.set(on, for: Self.watchKey)
-        HelmLog.shared.info("uninstaller", "trash offer switched \(on ? "on" : "off")")
+        HelmLog.shared.info(UninstallerEngine.moduleID, "trash offer switched \(on ? "on" : "off")")
         startWatchingTrashIfAsked()
         if on { localTransport.emit(EngineEvent(name: UninstallerEvent.trashChanged.rawValue)) }
     }
@@ -431,10 +431,68 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
             .sorted { $0.totalBytes > $1.totalBytes }
     }
 
-    /// Trashes arbitrary leftover paths (no app bundle involved).
-    public func trashPaths(_ paths: [String]) async -> UninstallResult {
-        await offTheCooperativePool { self.trashSync(paths) }
+    /// Trashes a batch of paths, which may hold app bundles.
+    public func trashPaths(_ paths: [String],
+                           quittingRunningApps mayQuit: Bool = false) async -> UninstallResult {
+        await removeBatch(paths, quittingRunningApps: mayQuit)
     }
+
+    /// The batch, with the one question that must not be carried from the scan
+    /// asked again first.
+    ///
+    /// The review screen's `running` flag is `ScanResult.runningNow`, read when
+    /// the review was built, and it is stale in both directions by the time
+    /// anybody presses anything: an app the person has since quit leaves the
+    /// button dead, and an app started since then has its bundle moved out from
+    /// under a live process — which then writes its preferences on exit and puts
+    /// back the leftovers this batch has just taken. That is the family CLAUDE.md
+    /// names: a local flag standing in for a live external fact. The flag is not
+    /// made fresher; the question is asked where the answer is used.
+    private func removeBatch(_ paths: [String],
+                             quittingRunningApps mayQuit: Bool) async -> UninstallResult {
+        // Off the pool: this reads each bundle's `Info.plist`, and the running
+        // port reaches AppKit through the main thread (ARCHITECTURE § Running
+        // applications).
+        let upNow = await offTheCooperativePool { self.runningApps(among: paths) }
+        switch UninstallPlan.verdict(running: upNow, mayQuit: mayQuit) {
+        case .proceed:
+            break
+        case .refuse(let apps):
+            // Counts and tags: a bundle id names somebody's habits.
+            HelmLog.shared.info(UninstallerEngine.moduleID,
+                                "batch held: \(apps.count) app(s) running, no quit allowed "
+                                + "(\(apps.map { Redact.app($0.bundleID) }.joined(separator: ",")))")
+            return UninstallResult(trashed: [], freedBytes: 0, stillRunning: apps.map(\.path))
+        case .quitFirst(let apps):
+            for app in apps {
+                HelmLog.shared.info(UninstallerEngine.moduleID, "force quit \(Redact.app(app.bundleID))")
+                quit(bundleID: app.bundleID, force: true)
+                // Returns when the app is actually gone. It used to be the view
+                // model's business, decided there from the same stale flag.
+                await waitUntilGone(bundleID: app.bundleID)
+            }
+        }
+        return await offTheCooperativePool { self.trashSync(paths) }
+    }
+
+    /// The applications in a batch that are up at this moment.
+    ///
+    /// The id comes from the bundle's own `Info.plist` — the same read that ties
+    /// a refusal to the app owning a system extension — because a path is what a
+    /// batch carries and the port answers about ids. A batch of leftovers alone
+    /// asks nothing of anybody.
+    private func runningApps(among paths: [String]) -> [UninstallPlan.RunningApp] {
+        paths.filter(Self.isAppBundle).compactMap { path in
+            guard let id = bundleID(forAppAt: path),
+                  running.isRunning(bundleID: id) else { return nil }
+            return UninstallPlan.RunningApp(path: path, bundleID: id)
+        }
+    }
+
+    /// The two questions a batch asks only of applications — is this one still
+    /// running, and is it the host of a live system extension — asked the same
+    /// way, because they are the same question about the path.
+    private static func isAppBundle(_ path: String) -> Bool { path.hasSuffix(".app") }
 
     /// Reads Info.plist for a bundle so failures can be tied to the app that
     /// owns an active system extension.
@@ -468,7 +526,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         let result = HelmTrash.remove(
             allowed: allowed, outOfScope: refused, module: Self.moduleID,
             hasSystemExtension: { path in
-                guard path.hasSuffix(".app") else { return false }
+                guard Self.isAppBundle(path) else { return false }
                 let hosts = extensionHosts ?? self.extensions.activeExtensionHosts()
                 extensionHosts = hosts
                 // Match the app's bundle id, not the path: /Applications/X.app
@@ -504,9 +562,9 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
             guard let name = UninstallerCommand(rawValue: cmd.name) else { return Data() }
             switch name {
             case .listApps:
-                HelmLog.shared.info("uninstaller", "engine listApps start")
+                HelmLog.shared.info(UninstallerEngine.moduleID, "engine listApps start")
                 let list = await self.listApps()
-                HelmLog.shared.info("uninstaller", "engine listApps done: \(list.count)")
+                HelmLog.shared.info(UninstallerEngine.moduleID, "engine listApps done: \(list.count)")
                 return EngineReply.encode(list, for: cmd)
             case .appSizes:
                 guard let list = EngineReply.decode([InstalledApp].self, from: cmd)
@@ -545,8 +603,11 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                 self.dismissTrashedApp(bundleID: String(decoding: cmd.payload, as: UTF8.self))
                 return Data()
             case .trashPaths:
-                guard let paths = EngineReply.decode([String].self, from: cmd) else { return Data() }
-                return EngineReply.encode(await self.trashPaths(paths), for: cmd)
+                guard let batch = EngineReply.decode(TrashBatchRequest.self, from: cmd)
+                else { return Data() }
+                let done = await self.trashPaths(batch.paths,
+                                                 quittingRunningApps: batch.quitRunningApps)
+                return EngineReply.encode(done, for: cmd)
             case .quit:
                 if let r = EngineReply.decode(QuitRequest.self, from: cmd) {
                     self.quit(bundleID: r.bundleID, force: r.force)

@@ -94,6 +94,18 @@ public struct UninstallResult: Codable, Equatable, Sendable {
     public let freedBytes: Int
     public let failures: [TrashFailureInfo]
 
+    /// The application bundles in the batch that were still running when it came
+    /// to move them, and which nobody had allowed Helm to quit. Non-empty means
+    /// **nothing moved**: a leftover in the batch carries no link back to the app
+    /// it belongs to, so there is no such thing as "the rest of it" — see
+    /// `UninstallPlan.verdict`.
+    ///
+    /// Its own field rather than a `TrashFailureInfo`: nothing was attempted and
+    /// macOS said nothing, so there is no failure to classify, and the screen's
+    /// answer to it is not a report but the offer it already has — quit the app,
+    /// or allow the quit.
+    public let stillRunning: [String]
+
     /// The refused paths, which the two screens read one each: this one decides
     /// which apps a removal answered for, and `failures` is what the report
     /// lists. It was a stored field beside `failures`, appended to on the same
@@ -102,9 +114,26 @@ public struct UninstallResult: Codable, Equatable, Sendable {
     /// the person's own "no", which takes it off every screen Helm has.
     public var failed: [String] { failures.map(\.path) }
 
-    public init(trashed: [String], freedBytes: Int, failures: [TrashFailureInfo] = []) {
+    public init(trashed: [String], freedBytes: Int, failures: [TrashFailureInfo] = [],
+                stillRunning: [String] = []) {
         self.trashed = trashed; self.freedBytes = freedBytes
-        self.failures = failures
+        self.failures = failures; self.stillRunning = stillRunning
+    }
+
+    /// Hand-written for the field that arrived last, and the stored default above
+    /// is not what makes an older payload decode: Swift's synthesised `Decodable`
+    /// requires the coding key whatever the property's initial value is, and
+    /// `JSONDecoder` gives up on the *whole* document rather than filling in the
+    /// one field. A reply written by anything that does not know `stillRunning`
+    /// would then decode as nothing at all — which this module reads as «the
+    /// engine did not answer», the very silence the rest of this change is about.
+    /// `RefusedPathsAreOneListTests` is the guard, and it caught this.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        trashed = try container.decode([String].self, forKey: .trashed)
+        freedBytes = try container.decode(Int.self, forKey: .freedBytes)
+        failures = try container.decode([TrashFailureInfo].self, forKey: .failures)
+        stillRunning = try container.decodeIfPresent([String].self, forKey: .stillRunning) ?? []
     }
 }
 

@@ -82,6 +82,26 @@ struct UninstallRequest: Codable, Sendable {
     }
 }
 
+/// A batch to move to the Trash, and what Helm may do about an application in it
+/// that turns out to still be running.
+///
+/// The permission travels with the batch because the *question* belongs to the
+/// engine: whether an app is up can only be answered at the moment of removal,
+/// and the answer the review screen holds was read when the scan ran. The view
+/// model used to ask it there and quit the apps itself, which is how an app
+/// started since the review got its bundle moved out from under it.
+public struct TrashBatchRequest: Codable, Sendable {
+    public let paths: [String]
+    /// The person's answer to «Force quit and remove anyway». False means: if
+    /// anything in this batch is up, move nothing.
+    public let quitRunningApps: Bool
+
+    public init(paths: [String], quitRunningApps: Bool = false) {
+        self.paths = paths
+        self.quitRunningApps = quitRunningApps
+    }
+}
+
 /// Ask a running app to quit before its bundle is taken away.
 public struct QuitRequest: Codable, Sendable {
     public let bundleID: String

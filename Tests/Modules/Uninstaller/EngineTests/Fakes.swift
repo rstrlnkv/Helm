@@ -46,11 +46,18 @@ final class FakeTrash: TrashPort, @unchecked Sendable {
         return .success
     }
 }
-/// A running app that can actually stop running.
+/// A running app that can actually stop running — and start again.
 ///
 /// `running` was a `let`, so quitting changed nothing the port could report and
 /// "the app is gone now" was unrepresentable — which is why nothing could test
 /// a wait for it, and why the wait was a fixed 800 ms sleep in the view model.
+///
+/// It could then go down and never up, which left the other direction
+/// unrepresentable in exactly the same way: the person reviews an app that is
+/// closed, launches it again while reading, and presses Move to Trash. That is
+/// the state `waitUntilGone` exists for, and no test of it could have been
+/// written. `launch` is the port's own missing half — an application starting is
+/// something `NSWorkspace` reports and this fake could not be told.
 final class FakeRunning: RunningAppsPort, @unchecked Sendable {
     private let lock = NSLock()
     private var running: Set<String>
@@ -76,6 +83,13 @@ final class FakeRunning: RunningAppsPort, @unchecked Sendable {
     func isRunning(bundleID: String) -> Bool {
         lock.lock(); defer { lock.unlock() }
         return running.contains(bundleID)
+    }
+
+    /// The app is up again — started by the person, or by a login item, or by
+    /// whatever else starts applications while somebody reads a review screen.
+    /// Nothing asked Helm's permission, which is the whole point of it.
+    func launch(_ bundleID: String) {
+        lock.lock(); running.insert(bundleID); lock.unlock()
     }
 
     func quit(bundleID: String, force: Bool) {

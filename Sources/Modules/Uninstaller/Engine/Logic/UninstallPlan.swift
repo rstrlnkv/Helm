@@ -60,6 +60,47 @@ public enum UninstallPlan {
         return .ready
     }
 
+    /// An application that is up at the moment a batch is about to move.
+    public struct RunningApp: Equatable, Sendable {
+        /// The bundle in the batch, as the batch spells it.
+        public let path: String
+        public let bundleID: String
+
+        public init(path: String, bundleID: String) {
+            self.path = path
+            self.bundleID = bundleID
+        }
+    }
+
+    /// What a batch may do about the applications that are up.
+    public enum RunningVerdict: Equatable, Sendable {
+        case proceed
+        /// Ask each of these to quit, wait for it to be gone, then move.
+        case quitFirst([RunningApp])
+        /// Move nothing.
+        case refuse([RunningApp])
+    }
+
+    /// What to do about the apps that are up, asked at the moment of removal and
+    /// never carried from the scan.
+    ///
+    /// `readiness` above answers the same question from `ScanResult.runningNow`,
+    /// which is a reading taken when the review was built and stale in both
+    /// directions by the time anybody presses anything — an app quit since then
+    /// leaves the button dead, and an app started since then has its bundle moved
+    /// out from under it. That one dims a button; this one decides what moves.
+    ///
+    /// **A refusal takes the whole batch.** The batch is a flat list of paths: a
+    /// leftover carries no link back to the app it was found for, so "move
+    /// everything except that bundle" removes a live app's preferences and caches
+    /// and leaves the app running to write them back — the half-uninstall
+    /// `waitUntilGone` exists to prevent. Nothing moves, the review stays, and the
+    /// person can untick the app or allow the quit.
+    public static func verdict(running: [RunningApp], mayQuit: Bool) -> RunningVerdict {
+        guard !running.isEmpty else { return .proceed }
+        return mayQuit ? .quitFirst(running) : .refuse(running)
+    }
+
     /// Bundles always go; leftovers only when ticked on the review screen.
     /// Deduplicated in order: a prefix glob and an exact candidate can resolve
     /// to the same directory, and trashing it twice makes the second attempt

@@ -314,6 +314,8 @@ struct UninstallerSettingsPage: View {
                 .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
             }
 
+            reviewReport
+
             HStack(spacing: HelmSpace.s5) {
                 Button(UnStr.back) { uvm.backToPick() }
                 Spacer()
@@ -332,15 +334,44 @@ struct UninstallerSettingsPage: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                // `.disabled` alone, like every other disabled button in the
-                // app: a grey tint and an opacity stacked on top of it dimmed
-                // the same button three times over, and the two extras only
-                // said what the system already draws. The `.help` stays — it is
-                // the one part that says *why*.
-                .disabled(uvm.busy || !ready)
+                // **Not `!ready`.** That reads `group.running`, which is what the
+                // scan saw when the review was built: an app the person has quit
+                // since then left this button dead for good, and the only way out
+                // was Back → Review, which pays for a fresh scan of every ticked
+                // app. The live question is asked in the engine at the moment of
+                // removal now, and a batch it refuses says so above this row. The
+                // `.help` stays — it is the one part that says *why*, and it is
+                // advice rather than a claim about the button.
+                .disabled(uvm.busy)
                 .help(ready ? "" : UnStr.blockedByRunning)
             }
             .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
+        }
+    }
+
+    /// What the last press said, drawn on the screen the person is still on.
+    ///
+    /// A full-width line of its own rather than a `lineLimit(1)` passenger in the
+    /// bar below: both of these sentences are two clauses long, and the clause
+    /// that says what to do next is the one that gets truncated.
+    @ViewBuilder private var reviewReport: some View {
+        if uvm.replyLost || uvm.resultBanner != nil {
+            Group {
+                // Ahead of the banner, which is nil in this state: a reply that
+                // never came says so rather than nothing. Drawn exactly as a
+                // success is — no triangle, no list, no Grant button — because
+                // nothing was refused and nothing here is anybody's to fix.
+                if uvm.replyLost {
+                    HelmRemovalOutcome.unanswered
+                } else if let banner = uvm.resultBanner {
+                    Text(banner)
+                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, HelmLayout.formInset)
+            .padding(.top, HelmSpace.s5)
         }
     }
 

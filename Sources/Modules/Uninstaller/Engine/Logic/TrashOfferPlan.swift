@@ -86,9 +86,22 @@ public enum TrashOfferPlan {
     ///
     /// A path the person simply left unticked is a different thing and does not
     /// hold the group open: they were shown it and left it alone.
+    ///
+    /// **It takes the answer, not a count taken out of it.** With a
+    /// `failed: Set<String>` parameter the caller wrote `Set(result?.failed ?? [])`,
+    /// so a reply that never came read as "no path failed" — which reads as "every
+    /// group was answered for", which wrote the permanent record and closed the
+    /// window over files that are still there. `nil` is the third state and cannot
+    /// be folded into a count at the call site, because there is no count there to
+    /// fold.
     public static func answered(_ groups: [TrashedAppLeftovers],
-                                failed: Set<String>) -> [TrashedAppLeftovers] {
-        groups.filter { group in !group.leftovers.contains { failed.contains($0.path) } }
+                                to result: UninstallResult?) -> [TrashedAppLeftovers] {
+        guard let result else { return [] }
+        // A batch the engine held because an application in it was still running
+        // moved nothing at all, which is not an answer about anything either.
+        guard result.stillRunning.isEmpty else { return [] }
+        let failed = Set(result.failed)
+        return groups.filter { group in !group.leftovers.contains { failed.contains($0.path) } }
     }
 
     /// The size under the list, counting what `paths` would send.

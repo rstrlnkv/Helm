@@ -71,7 +71,7 @@ final class WorkspaceAppLister: AppLister {
             // silence to whoever opens the log, and they want different answers:
             // the first is usually Full Disk Access, which every install takes
             // away again. The path is the user's home and is not written.
-            HelmLog.shared.warn("uninstaller",
+            HelmLog.shared.warn(UninstallerEngine.moduleID,
                                 "the Trash could not be read: \((error as NSError).code)")
             return []
         }
