@@ -26,32 +26,11 @@ import Module_Leftovers_Engine
 @MainActor
 final class ARemovalReportDoesNotEatTheListTests: XCTestCase {
 
-    // MARK: - The wire, answering a scan and a removal with refusals in it
-
-    private final class Wire: EngineTransport, @unchecked Sendable {
-        private let lock = NSLock()
-        private let items: [StaleItem]
-        private let removal: LeftoversRemoval
-        var events: AsyncStream<EngineEvent> { AsyncStream { _ in } }
-
-        init(items: [StaleItem], removal: LeftoversRemoval) {
-            self.items = items
-            self.removal = removal
-        }
-
-        private var currentItems: [StaleItem] { lock.lock(); defer { lock.unlock() }; return items }
-        private var currentRemoval: LeftoversRemoval {
-            lock.lock(); defer { lock.unlock() }; return removal
-        }
-
-        func send(_ command: EngineCommand) async throws -> Data {
-            switch LeftoversCommand(rawValue: command.name) {
-            case .scan: return (try? JSONEncoder().encode(currentItems)) ?? Data()
-            case .trash: return (try? JSONEncoder().encode(currentRemoval)) ?? Data()
-            case .setDisabled, .none: return Data()
-            }
-        }
-    }
+    // MARK: - The rows and the removal this file measures
+    //
+    // The wire itself is `LeftoversWire`, shared with the other page tests in this
+    // target: two private fakes of one transport lived in these two files, and the
+    // one here could not be told what the rescan after a removal would find.
 
     private static func agent(_ name: String, bytes: Int,
                               missingTarget: String? = nil) -> StaleItem {
@@ -101,8 +80,8 @@ final class ARemovalReportDoesNotEatTheListTests: XCTestCase {
         defer { AppLanguage.override = previous }
         AppLanguage.override = language
 
-        let vm = ModuleViewModel(transport: Wire(items: Self.items,
-                                                 removal: removal ?? Self.silent))
+        let vm = ModuleViewModel(transport: LeftoversWire(items: Self.items,
+                                                         removal: removal ?? Self.silent))
         let lvm = LeftoversViewModel.shared(vm: vm)
         let mount = MountedRender(LeftoversSettingsPage(vm: vm)
             // Named, never inherited: the banner this page draws when the grant is

@@ -6,6 +6,8 @@ import Module_Homebrew_UI
 import Module_KeepAwake_Engine
 import Module_Layout_Engine
 import Module_Layout_UI
+import Module_Leftovers_Engine
+import Module_Leftovers_UI
 import Module_VPN_UI
 // `@testable` for one reason: `VPNEngine.StatePayload`'s memberwise init is
 // internal, the way every synthesized one is, and the wire fixture below builds
@@ -233,6 +235,15 @@ extension ModulePageRender {
     /// `DistributedNotificationCenter` observers behind it, held by a descriptor
     /// that lives as long as the process. A measurement may read this Mac; it may
     /// not decorate it.
+    ///
+    /// **Leftovers, because its page is a list and the render had never drawn one.**
+    /// Everything on that screen is the answer to `LeftoversCommand.scan`, and
+    /// nothing asks for it by itself, so the render measured the invitation: 28
+    /// layers against 224/229 for a page with rows, and the bottom bar's report of
+    /// a partly-failed removal rendered in no ratchet at all. Two replies, because
+    /// the screen has two states worth measuring and the second is only reachable
+    /// through the first — a scan, and then the removal the page's own button
+    /// sends. `opened` below is what presses them.
     static let answering: Wiring = { id in
         var wire = Wire()
         switch id {
@@ -244,6 +255,9 @@ extension ModulePageRender {
             wire.answers(HomebrewCommand.descriptions, with: brewDescriptions)
         case LayoutDescriptor.id.rawValue:
             wire.says(LayoutEvent.layoutState, layoutState)
+        case LeftoversEngine.moduleID:
+            wire.answers(LeftoversCommand.scan, with: leftovers)
+            wire.answers(LeftoversCommand.trash, with: leftoversRemoval)
         default:
             break
         }
@@ -316,6 +330,132 @@ extension ModulePageRender {
         lastConversion: ConversionEvent(before: "ghbdtn", after: "привет",
                                         app: "com.example.render", trailing: " "),
         conversionsToday: 17)
+
+    // MARK: - Leftovers
+
+    /// A home nobody has, so no path here can be a fact about this Mac.
+    ///
+    /// The identifiers are `com.example.*` and `systemgroup.com.example.*` —
+    /// reserved for documentation, resolving to nothing, and the same care
+    /// `configured` takes with bundle ids one section up. Nothing in this module's
+    /// page resolves an identifier or reads a path (the row draws both as text), so
+    /// what a real id would buy is a render that differs between Macs.
+    private static let fixtureHome = "/Users/fixture"
+
+    /// Seven rows: **all five `StaleKind`s, all three `ItemStatus`, one folder Helm
+    /// cannot write in, one item launchd has switched off, and one job pointing at a
+    /// file that is gone.**
+    ///
+    /// Every one of those changes what a row draws, and none of them was in any
+    /// reading of this render:
+    ///   • the two `.launchAgent`s carry the switch, and the second carries the
+    ///     «Disabled» badge in place of a status badge and «Turn on» in place of
+    ///     «Turn off»;
+    ///   • the `.launchDaemon` is `writable: false`, which is the row with no
+    ///     checkbox, no switch and «Needs an administrator to delete» in its menu —
+    ///     the sentence 4c8bbed9 split in two;
+    ///   • the protected `.preference` is the other half of that split, «Protected
+    ///     by macOS», and the row whose name is drawn in `HelmText.quiet`;
+    ///   • the `.plugin` is megabytes rather than kilobytes, so the figure column is
+    ///     measured at the width a real one takes;
+    ///   • the `.systemExtension` draws «Manage…» instead of a size and a menu, and
+    ///     its path *is* its identifier, which is why its row has no second line;
+    ///   • the first row's `missingTarget` is the long detail line — a path and a
+    ///     sentence about another path — which is the case the row's truncation rule
+    ///     was written for and the one that made the list carry three row heights.
+    ///
+    /// Sizes are spread across three orders of magnitude on purpose: the bar under
+    /// the list adds them up, and a selection of three 4 KB files measures the
+    /// narrowest figure that bar can be asked to draw.
+    private static let leftovers = [
+        StaleItem(path: "\(fixtureHome)/Library/LaunchAgents/com.example.render.updater.plist",
+                  identifier: "com.example.render.updater", kind: .launchAgent, sizeBytes: 4_096,
+                  missingTarget: "/Applications/Fixture Render.app/Contents/MacOS/updater",
+                  runAtLoad: true, status: .orphaned),
+        StaleItem(path: "\(fixtureHome)/Library/LaunchAgents/com.example.conference.helper.plist",
+                  identifier: "com.example.conference.helper", kind: .launchAgent,
+                  sizeBytes: 8_192, runAtLoad: true, status: .inUse, disabled: true),
+        // Root's folder: the row that may be neither ticked nor switched, and says why.
+        StaleItem(path: "/Library/LaunchDaemons/com.example.render.privileged.plist",
+                  identifier: "com.example.render.privileged", kind: .launchDaemon,
+                  sizeBytes: 12_288, runAtLoad: true, status: .orphaned, writable: false),
+        StaleItem(path: "\(fixtureHome)/Library/Preferences/com.example.render.plist",
+                  identifier: "com.example.render", kind: .preference, sizeBytes: 24_576),
+        // A namespace `StaleItemRules` protects, rather than one of Apple's: the
+        // status is the fixture's to state, and borrowing `com.apple.` for it would
+        // be a fixture naming somebody else's software to get a badge drawn.
+        StaleItem(path: "\(fixtureHome)/Library/Preferences/systemgroup.com.example.shared.plist",
+                  identifier: "systemgroup.com.example.shared", kind: .preference,
+                  sizeBytes: 6_144, status: .protectedItem),
+        StaleItem(path: "\(fixtureHome)/Library/QuickLook/Fixture Preview.qlgenerator",
+                  identifier: "com.example.render.quicklook", kind: .plugin,
+                  sizeBytes: 3_356_672),
+        // The scan gives an extension its identifier as its path, and the row is
+        // read back off that — `LfStr.detailLine` returns nil for this kind.
+        StaleItem(path: "com.example.conference.networkextension",
+                  identifier: "com.example.conference.networkextension", kind: .systemExtension,
+                  sizeBytes: 0, runAtLoad: true, status: .orphaned),
+    ]
+
+    /// One file moved and two refused — **the only shape that draws the report at
+    /// all**, and the row the survey measured at 48 → 115 pt (en) / 156 (ru) / 184
+    /// (de) before it was lifted out of the button row.
+    ///
+    /// `HelmRemovalOutcome.verdict` is `.failed` only with a refusal in it and
+    /// `.silent` with neither, so a fixture of a clean removal would draw one quiet
+    /// sentence and a fixture of nothing would draw `EmptyView` — the state every
+    /// reading of this page was already in.
+    ///
+    /// **It is an answer to a batch that was really sent.** `opened` builds the
+    /// selection *from this value*, so the three paths the page ticks are the three
+    /// this reply is about: a removal naming a path nobody asked to remove is a state
+    /// `HelmTrash.remove` cannot produce, and a fixture free to plant it would be
+    /// proving the page against an impossible round (CLAUDE.md § A fake can also be
+    /// freer than the port).
+    ///
+    /// The two reasons are the two a person can act on and the two the row can
+    /// carry: `needsFullDiskAccess` is what puts the «Open Settings» button in the
+    /// report when the grant is withheld, and `noPermission` is the one that names a
+    /// folder rather than a setting.
+    ///
+    /// The settings file it did move is still in the scan above, and that is not a
+    /// contradiction: this module's own confirmation says so — «the app that
+    /// installed it may put it back» — and a preferences file is the case that
+    /// happens to. What the page must not do is claim the *list* changed, which is
+    /// why the rescan after a removal answers the same seven rows.
+    private static let leftoversRemoval = LeftoversRemoval(
+        removed: [leftovers[3].path],
+        refused: [HelmTrash.Refusal(path: leftovers[0].path, reason: .needsFullDiskAccess),
+                  HelmTrash.Refusal(path: leftovers[5].path, reason: .noPermission)],
+        freedBytes: 24_576)
+
+    /// The two presses this page needs before it holds anything: **Scan, then Move
+    /// to Trash.**
+    ///
+    /// Through the model's own calls, in the order a person makes them: `scan()`
+    /// sets `scanned`, drops the ticks a rescan invalidates and takes a
+    /// `LatestRequest` token; `removeSelected()` runs the busy gate, writes the
+    /// report and rescans behind it. Assigning `items` or `failures` instead would
+    /// fixture a state the module cannot reach, and the whole point of this render
+    /// is the page somebody is actually looking at. `selected` **is** written
+    /// directly, because that is the view's own write path — the row's checkbox
+    /// binding and «Select all» both set exactly this property.
+    ///
+    /// `LeftoversViewModel.shared(vm:)` is the seam because it is what the page's own
+    /// `init` calls — keyed to this `ModuleViewModel`, so this is the same object the
+    /// page draws and not a second one beside it.
+    static let opened: Priming = { id, vm in
+        guard id == LeftoversEngine.moduleID else { return nil }
+        return { @MainActor in
+            let lvm = LeftoversViewModel.shared(vm: vm)
+            await lvm.scan()
+            // Exactly the batch `leftoversRemoval` answers, read off that value
+            // rather than written out again beside it.
+            lvm.selected = Set(leftoversRemoval.removed
+                + leftoversRemoval.refused.map(\.path))
+            await lvm.removeSelected()
+        }
+    }
 }
 
 /// A transport that answers exactly what a fixture gave it, and nothing else.

@@ -95,8 +95,17 @@ final class LongStringGeometryRatchetTests: XCTestCase {
     /// segmented control — the comment above has said so since it was written — and
     /// the decision that would fix it belongs to whoever separates «cannot grow»
     /// from «has no headroom», not to the commit that widens the reach.
+    ///
+    /// **24 as of 2026-08-13, and it is the same arithmetic a third time.** The
+    /// leftovers page's «Leftovers · All» filter is inside `if !lvm.items.isEmpty`,
+    /// so it was drawn in none of these 72 renders until the module's page was given
+    /// a scan to hold (`ModulePageRender.Priming`). Eight languages × one more
+    /// `.fixedSize()` segmented control = eight more readings, each true by
+    /// construction — three consecutive runs, 24 each. `atFullSize` is still 0,
+    /// which is the half of this pair that can actually fall: the new control fits
+    /// the label it has in all eight.
     private static let recordedAtFullSize = 0
-    private static let recordedAtFortyPercent = 16
+    private static let recordedAtFortyPercent = 24
 
     /// The audit's number, and the reason it is 1.4 and not 2: a translation is
     /// longer, not unrecognisable.
@@ -263,17 +272,20 @@ final class LongStringGeometryRatchetTests: XCTestCase {
         }
         XCTAssertFalse(tally.isEmpty, "no control was found in any page, in any language")
 
-        // **18 switches and 2 segmented controls, and both are what the wire
-        // fixture handed back.** VPN's «spin the icon» toggle went behind
+        // **18 switches and 3 segmented controls, and every one of those numbers is
+        // what the fixture handed back.** VPN's «spin the icon» toggle went behind
         // `connections.isEmpty` on 2026-08-12 and this render answered nothing, so
         // for one commit it was drawn on no page — the switch count read 17.
         // `ModulePageRender.Wire` sends three connections now, so it is 18 again;
-        // and Homebrew's `status` reply puts its manager screen in the render for
-        // the first time, which is where the second segmented control lives. Both
-        // numbers are the fixture's reach rather than a change to any page, and
-        // `recordedAtFortyPercent` above moved with the second one.
+        // Homebrew's `status` reply puts its manager screen in the render, which is
+        // where the second segmented control lives; and the third is the leftovers
+        // page's status filter, drawn only when that page holds rows — which it does
+        // from 2026-08-13, because the fixture now presses Scan for it
+        // (`ModulePageRender.Priming`). All three are the fixture's reach rather than
+        // a change to any page, and `recordedAtFortyPercent` above moved with the
+        // last two.
         XCTAssertEqual(tally, ["AppKitSwitch": 18, "AppKitTextField": 3,
-                               "AppKitSearchField": 1, "AppKitSegmentedControl": 2], """
+                               "AppKitSearchField": 1, "AppKitSegmentedControl": 3], """
             the controls this measurement can see are not the ones it was measured with: \
             \(tally.sorted { $0.key < $1.key }.map { "\($0.key)×\($0.value)" }.joined(separator: " ")).
             A pop-up, a button or a slider appearing here means the platform now backs them with \

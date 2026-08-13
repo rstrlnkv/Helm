@@ -2,40 +2,13 @@ import XCTest
 import HelmRuntime
 @testable import Module_Leftovers_Engine
 
-private struct FakeFiles: LeftoversFilePort {
-    var writable = true
-    func isWritableDirectory(_ url: URL) -> Bool { writable }
-
-    var listing: [String: [String]] = [:]
-    var existing: Set<String> = []
-    var plists: [String: PlistData] = [:]
-    func children(of url: URL) -> [URL] {
-        (listing[url.path] ?? []).map { url.appendingPathComponent($0) }
-    }
-    func exists(_ path: String) -> Bool { existing.contains(path) }
-    func size(_ url: URL) -> Int { 100 }
-    func readPlist(_ url: URL) -> PlistData? { plists[url.path] }
-}
-
-private struct FakeApps: InstalledAppsPort {
-    let ids: Set<String>
-    func installedBundleIDs() -> Set<String> { ids }
-}
-
-private struct FakeExtensions: LoadedItemsPort {
-    var installed: [SystemExtensionInfo] = []
-    func installedExtensions() -> [SystemExtensionInfo] { installed }
-    var disabled: Set<String> = []
-    func disabledLabels() -> Set<String> { disabled }
-}
-
 final class LeftoversScanTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
 
-    private func scanner(files: FakeFiles, installed: Set<String> = [],
-                         extensions: FakeExtensions = FakeExtensions()) -> LeftoversScanner {
+    private func scanner(files: LeftoversFakeFiles, installed: Set<String> = [],
+                         extensions: LeftoversFakeLoaded = LeftoversFakeLoaded()) -> LeftoversScanner {
         LeftoversScanner(home: home, files: files,
-                         apps: FakeApps(ids: installed), extensions: extensions)
+                         apps: LeftoversFakeApps(ids: installed), extensions: extensions)
     }
 
     // MARK: - Everything is listed; status says what it is
@@ -43,7 +16,7 @@ final class LeftoversScanTests: XCTestCase {
     /// The list shows what is running as well as what is left over, so the user
     /// can see the whole picture instead of a list they must take on trust.
     func testAgentsInUseAreListedAsInUse() {
-        var files = FakeFiles()
+        var files = LeftoversFakeFiles()
         files.listing["/Users/x/Library/LaunchAgents"] = ["com.live.vendor.agent.plist"]
         files.plists["/Users/x/Library/LaunchAgents/com.live.vendor.agent.plist"] = PlistData([
             "Label": "com.live.vendor.agent",
@@ -57,7 +30,7 @@ final class LeftoversScanTests: XCTestCase {
     }
 
     func testAppleAndSystemItemsAreListedAsProtected() {
-        var files = FakeFiles()
+        var files = LeftoversFakeFiles()
         files.listing["/Users/x/Library/Preferences"] = ["com.apple.dock.plist"]
         let items = scanner(files: files).scan()
         XCTAssertEqual(items.map(\.status), [.protectedItem])
@@ -65,7 +38,7 @@ final class LeftoversScanTests: XCTestCase {
     }
 
     func testOrphansAreTheOnlyRemovableOnes() {
-        var files = FakeFiles()
+        var files = LeftoversFakeFiles()
         files.listing["/Users/x/Library/Preferences"] = [
             "com.gone.vendor.app.plist", "com.acme.tool.plist", "com.apple.dock.plist",
         ]
@@ -75,7 +48,7 @@ final class LeftoversScanTests: XCTestCase {
     }
 
     func testFindsAnAgentWhoseAppIsGone() {
-        var files = FakeFiles()
+        var files = LeftoversFakeFiles()
         files.listing["/Users/x/Library/LaunchAgents"] = ["com.gone.vendor.agent.plist"]
         files.plists["/Users/x/Library/LaunchAgents/com.gone.vendor.agent.plist"] = PlistData([
             "Label": "com.gone.vendor.agent",
@@ -95,7 +68,7 @@ final class LeftoversScanTests: XCTestCase {
 
     /// The job's target still exists — listed, but not as a leftover.
     func testKeepsAnAgentWhoseProgramIsPresent() {
-        var files = FakeFiles()
+        var files = LeftoversFakeFiles()
         files.listing["/Users/x/Library/LaunchAgents"] = ["com.live.vendor.agent.plist"]
         files.plists["/Users/x/Library/LaunchAgents/com.live.vendor.agent.plist"] = PlistData([
             "Label": "com.live.vendor.agent",
@@ -106,7 +79,7 @@ final class LeftoversScanTests: XCTestCase {
     }
 
     func testFindsPreferencesOfUninstalledApps() {
-        var files = FakeFiles()
+        var files = LeftoversFakeFiles()
         files.listing["/Users/x/Library/Preferences"] = [
             "com.gone.vendor.app.plist",     // owner missing → offered
             "com.acme.tool.plist",           // still installed → kept
@@ -121,13 +94,13 @@ final class LeftoversScanTests: XCTestCase {
 
     /// An extension is only stale when its app is gone AND it is not activated.
     func testExtensionsOfMissingAppsAreOfferedUnlessStillActive() {
-        var files = FakeFiles()
+        var files = LeftoversFakeFiles()
         files.listing["/Users/x/Library/Preferences"] = []
         // Through the field the port actually answers with. `ids` was a
         // leftover of `activeExtensionIdentifiers`, deleted today, and the
         // fixture went on setting it — so the scan saw no extensions at all and
         // the rule below was asserted over an empty list.
-        let active = FakeExtensions(installed: [
+        let active = LeftoversFakeLoaded(installed: [
             SystemExtensionInfo(identifier: "com.gone.vendor.app.ext", teamID: "T",
                                 name: "Ext", version: "1", state: "activated enabled",
                                 enabled: true),
@@ -144,12 +117,12 @@ final class LeftoversScanTests: XCTestCase {
     /// were the one thing it never listed: they showed up only as a count on
     /// another page, with no names.
     func testInstalledExtensionsAreListed() {
-        let extensions = FakeExtensions(installed: [
+        let extensions = LeftoversFakeLoaded(installed: [
             SystemExtensionInfo(identifier: "com.acme.app.network", teamID: "T1",
                                 name: "Acme Network", version: "1.0",
                                 state: "activated enabled", enabled: true),
         ])
-        let items = scanner(files: FakeFiles(), installed: ["com.acme.app"],
+        let items = scanner(files: LeftoversFakeFiles(), installed: ["com.acme.app"],
                             extensions: extensions).scan()
         let extensionItems = items.filter { $0.kind == .systemExtension }
         XCTAssertEqual(extensionItems.count, 1)
@@ -162,12 +135,12 @@ final class LeftoversScanTests: XCTestCase {
         let info = SystemExtensionInfo(identifier: "com.acme.app.network", teamID: "T1",
                                        name: "Acme Network", version: "1.0",
                                        state: "activated enabled", enabled: true)
-        let live = scanner(files: FakeFiles(), installed: ["com.acme.app"],
-                           extensions: FakeExtensions(installed: [info])).scan()
+        let live = scanner(files: LeftoversFakeFiles(), installed: ["com.acme.app"],
+                           extensions: LeftoversFakeLoaded(installed: [info])).scan()
         XCTAssertEqual(live.first { $0.kind == .systemExtension }?.status, .inUse)
 
-        let orphan = scanner(files: FakeFiles(), installed: [],
-                             extensions: FakeExtensions(installed: [info])).scan()
+        let orphan = scanner(files: LeftoversFakeFiles(), installed: [],
+                             extensions: LeftoversFakeLoaded(installed: [info])).scan()
         XCTAssertEqual(orphan.first { $0.kind == .systemExtension }?.status, .orphaned)
     }
 
@@ -177,8 +150,8 @@ final class LeftoversScanTests: XCTestCase {
         let info = SystemExtensionInfo(identifier: "com.acme.app.network", teamID: "T1",
                                        name: "Acme Network", version: "1.0",
                                        state: "activated enabled", enabled: true)
-        let items = scanner(files: FakeFiles(), installed: [],
-                            extensions: FakeExtensions(installed: [info])).scan()
+        let items = scanner(files: LeftoversFakeFiles(), installed: [],
+                            extensions: LeftoversFakeLoaded(installed: [info])).scan()
         let ext = items.first { $0.kind == .systemExtension }
         XCTAssertEqual(ext?.removable, false)
     }
@@ -197,7 +170,7 @@ final class ScanOrderIsTotalTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
 
     private func twoAgentsSharingALabel() -> [StaleItem] {
-        var files = FakeFiles()
+        var files = LeftoversFakeFiles()
         // The user's copy is read first, so a sort that does not break the tie
         // has every reason to leave it first.
         files.listing["/Users/x/Library/LaunchAgents"] = ["com.vendor.updater.plist"]
@@ -206,8 +179,8 @@ final class ScanOrderIsTotalTests: XCTestCase {
                      "/Library/LaunchAgents/com.vendor.updater.plist"] {
             files.plists[path] = PlistData(["Label": "com.vendor.updater"])
         }
-        return LeftoversScanner(home: home, files: files, apps: FakeApps(ids: []),
-                                extensions: FakeExtensions()).scan()
+        return LeftoversScanner(home: home, files: files, apps: LeftoversFakeApps(ids: []),
+                                extensions: LeftoversFakeLoaded()).scan()
     }
 
     func testRowsSharingAnIdentifierAreOrderedByPath() throws {

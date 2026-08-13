@@ -9,39 +9,6 @@ import Module_Leftovers_Engine
 @MainActor
 final class LeftoversPageContractTests: XCTestCase {
 
-    private final class ScanTransport: EngineTransport, @unchecked Sendable {
-        private let lock = NSLock()
-        private var items: [StaleItem]
-        private var removal: LeftoversRemoval
-        var events: AsyncStream<EngineEvent> { AsyncStream { _ in } }
-
-        init(items: [StaleItem],
-             removal: LeftoversRemoval = LeftoversRemoval(removed: [], refused: [], freedBytes: 0)) {
-            self.items = items
-            self.removal = removal
-        }
-
-        /// What the rescan after a removal will see.
-        func setItems(_ next: [StaleItem]) { lock.lock(); items = next; lock.unlock() }
-
-        private var current: [StaleItem] { lock.lock(); defer { lock.unlock() }; return items }
-        private var currentRemoval: LeftoversRemoval {
-            lock.lock(); defer { lock.unlock() }; return removal
-        }
-
-        /// The enum, not the two literals this used to switch on. A fake that
-        /// answers names of its own is a fake that goes on answering after the
-        /// module renames one — and what it answers then is `Data()`, which this
-        /// codebase spells «the module could not answer».
-        func send(_ command: EngineCommand) async throws -> Data {
-            switch LeftoversCommand(rawValue: command.name) {
-            case .scan: return (try? JSONEncoder().encode(current)) ?? Data()
-            case .trash: return (try? JSONEncoder().encode(currentRemoval)) ?? Data()
-            case .setDisabled, .none: return Data()
-            }
-        }
-    }
-
     private func agent(_ name: String, bytes: Int, status: ItemStatus = .orphaned) -> StaleItem {
         StaleItem(path: "\(NSHomeDirectory())/Library/LaunchAgents/\(name).plist",
                   identifier: name, kind: .launchAgent, sizeBytes: bytes, status: status)
@@ -53,7 +20,7 @@ final class LeftoversPageContractTests: XCTestCase {
     /// saying 4 КБ: the count was everything found and removable, the size was
     /// the selection, and the middle dot made them look like one measurement.
     func testTheBarsCountAndSizeAreBothAboutTheSelection() async {
-        let transport = ScanTransport(items: [agent("one", bytes: 4_096),
+        let transport = LeftoversWire(items: [agent("one", bytes: 4_096),
                                               agent("two", bytes: 8_192)])
         let lvm = LeftoversViewModel(vm: ModuleViewModel(transport: transport))
         await lvm.scan()
@@ -71,7 +38,7 @@ final class LeftoversPageContractTests: XCTestCase {
     /// A tick on a row that is no longer shown counts for neither figure — the
     /// same rule `removeSelected` follows when it decides what may go.
     func testAHiddenTickIsCountedByNeitherFigure() async {
-        let transport = ScanTransport(items: [agent("kept", bytes: 4_096),
+        let transport = LeftoversWire(items: [agent("kept", bytes: 4_096),
                                               agent("busy", bytes: 8_192, status: .inUse)])
         let lvm = LeftoversViewModel(vm: ModuleViewModel(transport: transport))
         lvm.showAll = true
@@ -93,7 +60,7 @@ final class LeftoversPageContractTests: XCTestCase {
     /// rows in `items`, none in `visibleItems`, and drew the list's branch — an
     /// empty area under «Found: 0 items» and the note about nothing being ticked.
     func testAScanThatFoundNoLeftoversHasSomethingToSay() async {
-        let transport = ScanTransport(items: [agent("busy", bytes: 4_096, status: .inUse),
+        let transport = LeftoversWire(items: [agent("busy", bytes: 4_096, status: .inUse),
                                               agent("system", bytes: 8_192, status: .protectedItem)])
         let lvm = LeftoversViewModel(vm: ModuleViewModel(transport: transport))
         await lvm.scan()
@@ -109,7 +76,7 @@ final class LeftoversPageContractTests: XCTestCase {
     /// menu is on screen above the message, and «No leftovers found» would be a
     /// claim about the Mac where the truth is a claim about a menu.
     func testRowsHiddenByTheKindFilterAreNotReportedAsACleanMac() async {
-        let transport = ScanTransport(items: [agent("gone", bytes: 4_096)])
+        let transport = LeftoversWire(items: [agent("gone", bytes: 4_096)])
         let lvm = LeftoversViewModel(vm: ModuleViewModel(transport: transport))
         await lvm.scan()
         XCTAssertNil(lvm.nothingToShow, "precondition: there is a row to draw")
@@ -121,7 +88,7 @@ final class LeftoversPageContractTests: XCTestCase {
 
     /// Before the first scan it is the invitation, whatever is in the model.
     func testAnUnscannedPageInvites() {
-        let lvm = LeftoversViewModel(vm: ModuleViewModel(transport: ScanTransport(items: [])))
+        let lvm = LeftoversViewModel(vm: ModuleViewModel(transport: LeftoversWire(items: [])))
 
         XCTAssertEqual(lvm.nothingToShow, .notScanned)
     }
@@ -150,7 +117,7 @@ final class LeftoversPageContractTests: XCTestCase {
     /// words for the act, and this module now says the same thing.
     func testTheBannerReportsTheMoveRatherThanFreedSpace() async {
         let item = agent("gone", bytes: 4_096)
-        let transport = ScanTransport(
+        let transport = LeftoversWire(
             items: [item],
             removal: LeftoversRemoval(removed: [item.path], refused: [], freedBytes: 4_096))
         let lvm = LeftoversViewModel(vm: ModuleViewModel(transport: transport))
@@ -176,7 +143,7 @@ final class LeftoversPageContractTests: XCTestCase {
     func testARefusalArrivesWithItsReasonRatherThanAWordInAMessage() async {
         let item = agent("locked", bytes: 4_096)
         let refusal = HelmTrash.Refusal(path: item.path, reason: .needsFullDiskAccess)
-        let transport = ScanTransport(
+        let transport = LeftoversWire(
             items: [item],
             removal: LeftoversRemoval(removed: [], refused: [refusal], freedBytes: 0))
         let lvm = LeftoversViewModel(vm: ModuleViewModel(transport: transport))

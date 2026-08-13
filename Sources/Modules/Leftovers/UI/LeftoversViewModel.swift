@@ -105,8 +105,38 @@ import Module_Leftovers_Engine
     }
 
     /// A hidden row must not stay ticked from before it was hidden.
+    ///
+    /// **No `busy` guard here, and that is the point of the comment.** `trash`
+    /// holds `busy` across the rescan it makes afterwards, and that rescan is what
+    /// drops the ticks on rows the removal took — a guard here would be inert
+    /// where it looked most careful, and would leave a batch's own rows ticked
+    /// under the report saying they are gone.
     public func dropHiddenSelections() {
         selected.formIntersection(selectablePaths)
+    }
+
+    /// The three gestures that change the selection: the bar's two buttons and a
+    /// row's checkbox.
+    ///
+    /// **On the model, because the dimming cannot be the whole guard.** The page
+    /// wrote `selected` directly, so «the model refuses this while a removal runs;
+    /// the page has to say so» — this page's own comment about the switch — had
+    /// only its second half here: `.disabled(lvm.busy)` was one redraw away from
+    /// being everything that stood between a press and the selection changing
+    /// under a report about to arrive.
+    public func tickAll() {
+        guard !busy else { return }
+        selected = selectablePaths
+    }
+
+    public func untickAll() {
+        guard !busy else { return }
+        selected.removeAll()
+    }
+
+    public func setTicked(_ ticked: Bool, path: String) {
+        guard !busy else { return }
+        if ticked { selected.insert(path) } else { selected.remove(path) }
     }
 
     /// Which request the list belongs to.
@@ -126,8 +156,19 @@ import Module_Leftovers_Engine
         // finishing would otherwise re-enable the button over a scan still
         // running.
         defer { if scans.isLatest(mine) { scanning = false } }
-        let found: [StaleItem] = await client.request(LeftoversCommand.scan) ?? []
+        let found: [StaleItem]? = await client.request(LeftoversCommand.scan)
         guard scans.isLatest(mine) else { return }
+        // **An unanswered request is not an answer.** `TransportClient.request`
+        // answers nil for a request that threw and for a reply that would not
+        // decode — and this module reaches the second in the tree:
+        // `LeftoversEngine.wireTransport` returns empty `Data` when the engine has
+        // gone under a page that is still up, which is also what `shared(vm:)`
+        // says a cached model outliving its engine gets from then on. Folded to
+        // `[]` that became «No leftovers found» — this page's one claim about the
+        // state of somebody's Mac — and on a rescan it threw away the list they
+        // were working through with every tick on it. `DiskViewModel.scan` keeps
+        // its screen where it was for the same nil.
+        guard let found else { return }
         items = found
         // Nothing is ticked by default: these files are load-bearing, so the
         // user chooses each one. But a rescan is not a fresh start — switching
@@ -190,9 +231,31 @@ import Module_Leftovers_Engine
         defer { busy = false }
         let result: LeftoversRemoval? = await client.request(LeftoversCommand.trash,
                                                             encoding: paths)
-        failures = result?.refused ?? []
-        removedCount = result?.removed.count ?? 0
-        banner = LfStr.movedToTrash(Bytes(result?.freedBytes ?? 0))
+        // **A batch nobody answered is not a batch that moved nothing.** Folded
+        // with `??`, «Moved to the Trash — 0 B» stood over an empty refusal list,
+        // and `HelmRemovalOutcome.verdict(removed: 0, failed: 0)` is `.silent` —
+        // so the one thing the person was told about a removal that never
+        // happened is that it did, in a row that draws nothing.
+        //
+        // Nor is it a batch that failed: the engine may have moved the files and
+        // the reply been lost. So the report is cleared rather than replaced by a
+        // guess, and the rescan below is what says where the files actually are.
+        guard let result else {
+            clearRemovalReport()
+            await scan()
+            return
+        }
+        failures = result.refused
+        removedCount = result.removed.count
+        banner = LfStr.movedToTrash(Bytes(result.freedBytes))
         await scan()
+    }
+
+    /// Nothing on screen about a removal — the shape `DiskViewModel` already
+    /// keeps, and the three fields are read as one report.
+    private func clearRemovalReport() {
+        banner = nil
+        failures = []
+        removedCount = 0
     }
 }

@@ -26,5 +26,18 @@ final class LiveExtensionScan: XCTestCase {
         for item in off { print("  off: \(item.identifier)") }
         // Anything switchable must have a label to switch.
         XCTAssertFalse(toggleable.contains { $0.identifier.isEmpty })
+        // And a label the switch will carry: `ActiveExtensions.setDisabled` refuses
+        // a `/` outright, so a row offering «Turn off» for one is a button that does
+        // nothing (`ASwitchTheSystemWillRefuseTests` has the fixtures and the
+        // reasoning). Read here as well because this is the only reading taken over
+        // labels nobody in this repository wrote — whatever is really in the
+        // LaunchAgents folders of the Mac running it.
+        let unusable = toggleable.filter {
+            $0.identifier.contains("/") || $0.identifier.contains("\"")
+                || $0.identifier.contains(where: \.isNewline)
+        }
+        XCTAssertEqual(unusable.count, 0,
+                       "\(unusable.count) row(s) on this Mac offer a switch for a label launchd "
+                       + "will not be asked about")
     }
 }

@@ -65,7 +65,10 @@ struct LeftoversSettingsPage: View {
             actionBar
         }
         .helmTracksFullDiskAccess($diskAccess)
-        .confirmationDialog(pendingDeletion.map { LfStr.confirmDeleteInUse($0.identifier) } ?? "",
+        // The question names the reason it is being asked — «it is loaded now» for a
+        // row the Mac has open, and «Helm could not read this file» for one it never
+        // got to see.
+        .confirmationDialog(pendingDeletion.flatMap(LfStr.confirmDelete) ?? "",
                             isPresented: Binding(get: { pendingDeletion != nil },
                                                  set: { if !$0 { pendingDeletion = nil } }),
                             titleVisibility: .visible) {
@@ -233,9 +236,10 @@ struct LeftoversSettingsPage: View {
             if item.removable {
                 Toggle(item.identifier, isOn: Binding(
                     get: { lvm.selected.contains(item.path) },
-                    set: { on in
-                        if on { lvm.selected.insert(item.path) } else { lvm.selected.remove(item.path) }
-                    }
+                    // Through the model, which refuses while a removal runs. A
+                    // checkbox inside a row is the Uninstaller's own defect again:
+                    // a bar that dims does not cover a control drawn per row.
+                    set: { on in lvm.setTicked(on, path: item.path) }
                 ))
                 .toggleStyle(.checkbox)
                 .labelsHidden()
@@ -371,6 +375,13 @@ struct LeftoversSettingsPage: View {
         case .orphaned: (LfStr.statusOrphaned, .orange)
         case .inUse: (LfStr.statusInUse, .green)
         case .protectedItem: (LfStr.statusProtected, .secondary)
+        // **Grey, read off the render rather than reasoned about.** The first
+        // version used `HelmSignal.warning`, whose 20 % wash at badge size is not
+        // distinguishable from `.orange`'s — so «Остаток» and «Не читается» drew as
+        // the same pill two rows apart, and the colour separating «ticked by Select
+        // all» from «never ticked» said nothing. Grey is what the other two facts
+        // nobody may tick already wear.
+        case .unreadable: (LfStr.statusUnreadable, .secondary)
         }
         return HelmBadge(text, tint: color)
     }
@@ -415,15 +426,13 @@ struct LeftoversSettingsPage: View {
 
     private var actionBar: some View {
         HStack(spacing: HelmSpace.s5) {
-            Button(LfStr.selectAll) {
-                lvm.selected = lvm.selectablePaths
-            }
+            Button(LfStr.selectAll) { lvm.tickAll() }
             // `busy` for the same reason as its neighbour: five controls on this
             // page can start or change an act, and two of them dimmed during a
             // removal. Ticking rows mid-request changes what the report that comes
             // back is about.
             .disabled(lvm.leftoverCount == 0 || lvm.busy)
-            Button(LfStr.deselectAll) { lvm.selected.removeAll() }
+            Button(LfStr.deselectAll) { lvm.untickAll() }
                 .disabled(lvm.selected.isEmpty || lvm.busy)
             if !lvm.items.isEmpty {
                 Text(LfStr.selectedLine(lvm.selectedCount, Bytes(lvm.selectedBytes)))
@@ -433,7 +442,11 @@ struct LeftoversSettingsPage: View {
             Button(LfStr.removeSelected) { confirmingBatch = true }
                 .buttonStyle(.borderedProminent)
                 .disabled(lvm.selected.isEmpty || lvm.busy)
-                .confirmationDialog(LfStr.confirmSelected(lvm.selected.count,
+                // `selectedCount`, not `selected.count`: the bar above this button
+                // counts what the list shows, and the question about to be asked
+                // has to be about the same rows. One quantity, one derivation —
+                // today they cannot differ, which is luck rather than a guard.
+                .confirmationDialog(LfStr.confirmSelected(lvm.selectedCount,
                                                           Bytes(lvm.selectedBytes)),
                                     isPresented: $confirmingBatch, titleVisibility: .visible) {
                     Button(LfStr.removeSelected, role: .destructive) {

@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 
 /// Every view model that can put files in the Trash refuses to do it twice at
@@ -31,11 +32,13 @@ import XCTest
 final class OneRemovalAtATimeEverywhereTests: XCTestCase {
 
     func testEveryTrashingViewModelRefusesASecondRun() throws {
-        let modules = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()   // HelmAppTests
-            .deletingLastPathComponent()   // Tests
-            .deletingLastPathComponent()   // repo
-            .appendingPathComponent("Sources/Modules")
+        // `RepoSource.root`, not three `deletingLastPathComponent`s: that count is a
+        // fact about where this file sits, and moving the file makes the walk land
+        // somewhere with no `Sources/Modules` in it — an enumerator over nothing,
+        // `checked.count == 0`, and a scan that fails for a reason that reads like
+        // the finding it is looking for. `RepoSource` walks up to `Package.swift`
+        // and answers the same from any depth (CLAUDE.md § Test plumbing).
+        let modules = RepoSource.root.appendingPathComponent("Sources/Modules")
 
         var checked: [String] = []
         var offenders: [String] = []

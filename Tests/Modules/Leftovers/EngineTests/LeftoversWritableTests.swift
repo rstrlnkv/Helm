@@ -24,45 +24,22 @@ import XCTest
 /// tests proved was one no scan can produce, and the case they were written for
 /// — a root-owned `/Library` folder — went through the same assertion by
 /// accident. They lock the directory now, which is the only lock that decides
-/// this.
+/// this — and the fake that does it is `LeftoversFakeFiles`, shared with the rest
+/// of this target since 2026-08-13, because the two fakes that folded writability
+/// to a single flag could not describe one scan with both answers in it. The last
+/// test below is the case they made unwritable.
 final class LeftoversWritableTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
 
-    /// Writability by directory, because that is the only distinction the
-    /// filesystem offers here: `~/Library/Preferences` against
-    /// `/Library/LaunchAgents`.
-    private struct FakeFiles: LeftoversFilePort {
-        var unwritable: Set<String> = []
-        var listing: [String: [String]] = [:]
-        var plists: [String: PlistData] = [:]
-
-        func isWritableDirectory(_ url: URL) -> Bool { !unwritable.contains(url.path) }
-        func children(of url: URL) -> [URL] {
-            (listing[url.path] ?? []).map { url.appendingPathComponent($0) }
-        }
-        func exists(_ path: String) -> Bool { false }
-        func size(_ url: URL) -> Int { 100 }
-        func readPlist(_ url: URL) -> PlistData? { plists[url.path] }
-    }
-
-    private struct FakeApps: InstalledAppsPort {
-        func installedBundleIDs() -> Set<String> { [] }
-    }
-
-    private struct FakeExtensions: LoadedItemsPort {
-        func installedExtensions() -> [SystemExtensionInfo] { [] }
-        func disabledLabels() -> Set<String> { [] }
-    }
-
-    private func scan(_ files: FakeFiles) -> [StaleItem] {
-        LeftoversScanner(home: home, files: files, apps: FakeApps(),
-                         extensions: FakeExtensions()).scan()
+    private func scan(_ files: LeftoversFakeFiles) -> [StaleItem] {
+        LeftoversScanner(home: home, files: files, apps: LeftoversFakeApps(),
+                         extensions: LeftoversFakeLoaded()).scan()
     }
 
     // MARK: - Preferences
 
     private func preferences(locked: Bool) -> StaleItem? {
-        var files = FakeFiles()
+        var files = LeftoversFakeFiles()
         files.listing["/Users/x/Library/Preferences"] = ["com.gone.vendor.app.plist"]
         if locked { files.unwritable = ["/Users/x/Library/Preferences"] }
         return scan(files).first { $0.kind == .preference }
@@ -85,7 +62,7 @@ final class LeftoversWritableTests: XCTestCase {
     // MARK: - Plug-ins
 
     private func plugins(locked: Bool) -> StaleItem? {
-        var files = FakeFiles()
+        var files = LeftoversFakeFiles()
         files.listing["/Users/x/Library/QuickLook"] = ["Gone.qlgenerator"]
         files.plists["/Users/x/Library/QuickLook/Gone.qlgenerator/Contents/Info.plist"] =
             PlistData(["CFBundleIdentifier": "com.gone.vendor.quicklook"])
@@ -105,5 +82,56 @@ final class LeftoversWritableTests: XCTestCase {
         let item = try XCTUnwrap(plugins(locked: false))
         XCTAssertTrue(item.writable)
         XCTAssertTrue(item.removable)
+    }
+
+    // MARK: - One scan, both answers
+
+    /// **The pair every Mac with an updater on it has, and no test could hold it.**
+    /// `com.vendor.updater` sits in `~/Library/LaunchAgents` for this person and in
+    /// `/Library/LaunchAgents` for everybody — the same label, two files, and the
+    /// second is root's. `ScanOrderIsTotalTests` already builds that pair for its
+    /// sort, against a fake whose writability was one flag: both rows came back
+    /// `writable: true`, so the row that needs an administrator was ticked in every
+    /// fixture the suite had.
+    ///
+    /// Three things have to be true of it at once, and only the third is about the
+    /// sort: the person's copy may be moved, root's may not — and both may still be
+    /// switched off, because launchd's disabled list is per-user and works on a
+    /// system-wide agent without a password. That last one is why the row offers
+    /// «Turn off» where it offers no delete, and it is the whole of what
+    /// `LeftoverActions` documents about the two.
+    func testTheSameLabelInBothFoldersIsTwoRowsWithDifferentOffers() throws {
+        var files = LeftoversFakeFiles()
+        for directory in ["/Users/x/Library/LaunchAgents", "/Library/LaunchAgents"] {
+            files.listing[directory] = ["com.vendor.updater.plist"]
+            files.plists["\(directory)/com.vendor.updater.plist"] =
+                PlistData(["Label": "com.vendor.updater",
+                           "Program": "/Library/Application Support/Vendor/updater"])
+        }
+        // Root's folder, and only root's.
+        files.unwritable = ["/Library/LaunchAgents"]
+
+        let items = scan(files)
+
+        XCTAssertEqual(items.count, 2, "precondition: both copies of the label were found")
+        let mine = try XCTUnwrap(items.first { $0.path.hasPrefix("/Users/x/") })
+        let everybodys = try XCTUnwrap(items.first { $0.path.hasPrefix("/Library/") })
+        XCTAssertEqual(mine.identifier, everybodys.identifier,
+                       "precondition: one label, two files — the case the sort breaks by path")
+
+        XCTAssertTrue(mine.writable)
+        XCTAssertTrue(mine.removable, "the person's own LaunchAgents folder is theirs to unlink in")
+
+        XCTAssertFalse(everybodys.writable)
+        XCTAssertFalse(everybodys.removable,
+                       "«Select all» ticked a file in root's folder, and the batch then asked "
+                       + "`HelmTrash` for something no password here can give it")
+        XCTAssertEqual(LeftoverActions.whyDeleteIsWithheld(from: everybodys), .needsAdministrator,
+                       "and this is the row where that sentence is the true one")
+
+        XCTAssertTrue(mine.canToggle)
+        XCTAssertTrue(everybodys.canToggle,
+                      "launchd's disabled list is the user's own, so a system-wide agent can be "
+                      + "switched off without a password — the one offer this row keeps")
     }
 }

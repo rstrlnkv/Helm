@@ -94,11 +94,23 @@ struct LeftoversScanner: Sendable {
                     // Foundation objects — ARCHITECTURE.md § Memory. Inside the
                     // iteration, never around it.
                     autoreleasepool {
-                    let info = LaunchAgentReader.read(plist: files.readPlist(url)?.raw ?? [:], path: url.path)
+                    // **The read is kept, not spent.** `readPlist` answers nil for
+                    // every reason a file resists being read, and `?? [:]` made all
+                    // of them «this job has no `Program`» — which the status rule
+                    // below reads as «points at nothing», which is a leftover. «I
+                    // read it and there is nothing in it» and «I could not read it»
+                    // are two facts, and `.unreadable` is the second of them.
+                    let definition = files.readPlist(url)
+                    let info = LaunchAgentReader.read(plist: definition?.raw ?? [:], path: url.path)
                     let targetAlive = info.program.map(files.exists) ?? false
-                    let status = self.status(identifier: info.identifier, path: url.path,
-                                             installed: installed,
-                                             inUse: targetAlive || activeExtensions.contains(info.identifier))
+                    let verdict = self.status(identifier: info.identifier, path: url.path,
+                                              installed: installed,
+                                              inUse: targetAlive || activeExtensions.contains(info.identifier))
+                    // Only the leftover verdict is withdrawn: whatever else the
+                    // rules found — an owner installed, a protected namespace — is
+                    // a fact about the *name*, which was read from the file's own
+                    // name when the contents would not come.
+                    let status = definition == nil && verdict == .orphaned ? .unreadable : verdict
                     return StaleItem(path: url.path, identifier: info.identifier, kind: kind,
                                      sizeBytes: files.size(url),
                                      missingTarget: targetAlive ? nil : info.program,

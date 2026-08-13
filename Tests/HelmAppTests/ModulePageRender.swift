@@ -108,15 +108,24 @@ enum ModulePageRender {
         /// still live. A stream that has finished and one that never had anything
         /// to say draw the same page, and only one of those is a working harness.
         let transport: FixtureTransport
+        /// The view model the page was built on, so a test can ask what the page's
+        /// *own* module model is holding rather than infer it from layer counts.
+        /// A module's model reached through `<Module>ViewModel.shared(vm:)` with
+        /// this is the same object the page draws — and asking a fresh one instead
+        /// fails a precondition (`scanned` is false on a model nobody scanned),
+        /// which is the direction a wrong assumption should fail in.
+        let viewModel: ModuleViewModel
         /// Held so the objects behind the measurement outlive it.
         private let keepAlive: [AnyObject]
 
         init(id: String, layers: [Drawn], controls: [Control],
-             transport: FixtureTransport, keepAlive: [AnyObject]) {
+             transport: FixtureTransport, viewModel: ModuleViewModel,
+             keepAlive: [AnyObject]) {
             self.id = id
             self.layers = layers
             self.controls = controls
             self.transport = transport
+            self.viewModel = viewModel
             self.keepAlive = keepAlive
         }
     }
@@ -139,10 +148,11 @@ enum ModulePageRender {
                       width: CGFloat = pageWidth,
                       seededBy seed: Seed = { _, _ in },
                       wiredBy wire: Wiring = answering,
+                      primedBy prime: Priming = opened,
                       granting grants: HelmGrants = granted) -> [Page] {
         ModuleRegistry.all.map {
             page(for: $0, in: appearance, width: width,
-                 seededBy: seed, wiredBy: wire, granting: grants)
+                 seededBy: seed, wiredBy: wire, primedBy: prime, granting: grants)
         }
     }
 
@@ -202,9 +212,36 @@ enum ModulePageRender {
     /// separate measurement, taken by whoever wants it.
     typealias Seed = (String, NamespacedStore) -> Void
 
+    /// The question a page's own screen would have asked, for the pages that ask
+    /// one — and nil for the eight that do not.
+    ///
+    /// **The wire is not enough on its own for a page nobody presses.** `Seed` is
+    /// what a person has configured and `Wiring` is what their engine has already
+    /// said; both arrive before the page is built. A page whose content comes from a
+    /// *reply* has a third requirement, and Leftovers is the module that makes it
+    /// visible: nothing calls `LeftoversViewModel.scan()` — not `.task`, not
+    /// `onAppear` — so a fixture answering `LeftoversCommand.scan` reaches a page
+    /// that never asks, and the render stays on the invitation whatever the table
+    /// holds. That the module does not scan by itself is a decision with a reason
+    /// (the only measurement of an auto-scan's cost runs against the owner's real
+    /// home directory), so the harness presses the button instead of the module
+    /// growing one.
+    ///
+    /// The work is `async` because every one of these is a request over a
+    /// transport, and it is run to completion before the page is measured —
+    /// `drive` below is what waits, by pumping the run loop rather than by
+    /// sleeping, for the same reason `settle` does.
+    typealias Priming = (String, ModuleViewModel) -> (@MainActor () async -> Void)?
+
+    /// No page is asked anything: the harness as it was before the priming, kept
+    /// for the same reason `unwired` is — every guard on the fixture is a
+    /// comparison, and one side of it has to be the page that was never pressed.
+    static let unprimed: Priming = { _, _ in nil }
+
     static func page(for descriptor: any ModuleDescriptor, in appearance: NSAppearance.Name,
                      width: CGFloat, seededBy seed: Seed = { _, _ in },
                      wiredBy wire: Wiring = answering,
+                     primedBy prime: Priming = opened,
                      granting grants: HelmGrants = granted) -> Page {
         let id = type(of: descriptor).id.rawValue
         let store = NamespacedStore(namespace: id, backing: InMemoryKeyValueStore())
@@ -235,9 +272,43 @@ enum ModulePageRender {
         window.appearance = NSAppearance(named: appearance)
         view.appearance = NSAppearance(named: appearance)
         window.contentView = view
+        // Before the settling, and after the window: the work is a request whose
+        // reply changes the tree, so `settle` has to be measuring the page that
+        // holds the answer rather than the one still waiting for it.
+        if let work = prime(id, viewModel) { drive(work, in: view) }
         settle(view)
         return Page(id: id, layers: layers(of: view), controls: controls(of: view, module: id),
-                    transport: transport, keepAlive: [engine, viewModel, view, window])
+                    transport: transport, viewModel: viewModel,
+                    keepAlive: [engine, viewModel, view, window])
+    }
+
+    /// A flag two isolated contexts share: the priming's task sets it, the pump
+    /// below reads it. Both are the main actor, so this is a hand-off and never a
+    /// race — spelled as a type so the compiler agrees.
+    @MainActor private final class Turn { var finished = false }
+
+    /// Run a page's opening question to completion, pumping the run loop the way
+    /// `settle` does.
+    ///
+    /// **Bounded, and silent about running out.** A priming that never finishes
+    /// leaves the page holding what it held before, which is the empty state — and
+    /// that is caught where it should be, by `assertItDrewSomething` and by the
+    /// structural guards in `TheWireFixtureReachesThePagesTests`, rather than by a
+    /// message from inside the harness that no test is reading. 300 turns of 0.01 s
+    /// against a fixture that answers from a table: the leftovers priming, which is
+    /// two requests and two rescans, finishes in single digits.
+    private static func drive(_ work: @MainActor @escaping () async -> Void, in view: NSView) {
+        let turn = Turn()
+        Task { @MainActor in
+            await work()
+            turn.finished = true
+        }
+        var turns = 0
+        while !turn.finished, turns < 300 {
+            turns += 1
+            view.layoutSubtreeIfNeeded()
+            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
+        }
     }
 
     /// Pump the run loop until the drawn tree has stopped moving for twelve
@@ -410,16 +481,23 @@ extension ModulePageRender.Page {
     /// an empty state until a folder is chosen, and the question their floor can
     /// answer is «did anything render at all».
     ///
-    /// **Leftovers is 24 from 2026-08-13, because its invitation gained a verb.**
-    /// The only «Scan» was in the toolbar, 374 pt above the sentence that asks for
-    /// it, so the empty state now carries the button as `HelmEmptyState`'s own
-    /// documentation splits it — and the page reads **28 layers in both
-    /// appearances, three consecutive runs**, against 24 without it. The floor keeps
-    /// the margin it had, four under the reading. It is still the *invitation*:
-    /// nothing answers `LeftoversCommand.scan` in this render, and the fixture that
-    /// will is what takes this number to something like 190.
+    /// **Leftovers is 210 from 2026-08-13, and it has been 24 and 28 in one day.**
+    /// 24 was the invitation before it gained a verb; 28 the same invitation with the
+    /// prominent button in it. Both were the *unscanned* page, because this module's
+    /// whole screen is the answer to `LeftoversCommand.scan` and nothing asks for it
+    /// by itself — so the fixture is two parts, a table (`answering`) and a press
+    /// (`opened`), and the page with both reads **233 layers in light and 238 in
+    /// dark, identical in all eight languages, three consecutive runs, measured
+    /// 2026-08-13**: seven rows in five sections, a ticked selection, and the report
+    /// of a partly-failed removal above the bar.
+    ///
+    /// 210 is a section's worth under the lowest of those. Losing the press or the
+    /// table fails it by about 185, because the page without either is 23 (a wire
+    /// that refuses, which this module reads as «nothing found») or 28 (the
+    /// invitation) — and both of those are what every ratchet built on this render
+    /// measured before today.
     static let floors: [String: Int] = [
         "keep-awake": 250, "vpn": 190, "uninstaller": 45, "homebrew": 70,
-        "leftovers": 24, "disk": 40, "duplicates": 8, "autopilot": 8, "layout": 230,
+        "leftovers": 210, "disk": 40, "duplicates": 8, "autopilot": 8, "layout": 230,
     ]
 }

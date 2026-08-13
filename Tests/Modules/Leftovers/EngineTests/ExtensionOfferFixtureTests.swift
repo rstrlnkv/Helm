@@ -3,32 +3,10 @@ import XCTest
 import HelmRuntime
 @testable import Module_Leftovers_Engine
 
-private struct SilentFiles: LeftoversFilePort {
-    func isWritableDirectory(_ url: URL) -> Bool { true }
-    func children(of url: URL) -> [URL] { [] }
-    func exists(_ path: String) -> Bool { false }
-    func size(_ url: URL) -> Int { 100 }
-    func readPlist(_ url: URL) -> PlistData? { nil }
-}
-
-private struct NoApps: InstalledAppsPort {
-    let ids: Set<String>
-    func installedBundleIDs() -> Set<String> { ids }
-}
-
-/// The port as the existing suite fakes it. `ids` is a stored property and
-/// nothing reads it: `installedExtensions()` answers `installed`, which is a
-/// different field.
-private struct FakeExtensions: LoadedItemsPort {
-    var installed: [SystemExtensionInfo] = []
-    var disabled: Set<String> = []
-    func installedExtensions() -> [SystemExtensionInfo] { installed }
-    func disabledLabels() -> Set<String> { disabled }
-}
-
 /// `LeftoversScanTests.testExtensionsOfMissingAppsAreOfferedUnlessStillActive`
-/// builds its extension with `FakeExtensions(ids: ["com.gone.vendor.app.ext"])`
-/// and then asserts that nothing removable came back.
+/// built its extension with `FakeExtensions(ids: ["com.gone.vendor.app.ext"])` —
+/// the name that fixture had when this was written — and then asserted that
+/// nothing removable came back.
 ///
 /// Nothing removable came back because nothing came back. `ids` is not the
 /// field `installedExtensions()` returns — the scan is handed an empty list, so
@@ -45,15 +23,15 @@ final class ExtensionOfferFixtureTests: XCTestCase {
                                            version: "1.0", state: "activated enabled",
                                            enabled: true)
 
-    private func scan(_ extensions: FakeExtensions, installed: Set<String> = []) -> [StaleItem] {
-        LeftoversScanner(home: home, files: SilentFiles(),
-                         apps: NoApps(ids: installed), extensions: extensions).scan()
+    private func scan(_ extensions: LeftoversFakeLoaded, installed: Set<String> = []) -> [StaleItem] {
+        LeftoversScanner(home: home, files: LeftoversFakeFiles(),
+                         apps: LeftoversFakeApps(ids: installed), extensions: extensions).scan()
     }
 
     /// The precondition the existing test never states. An assertion about what
     /// is offered has to be made over a list that has the thing in it.
     func testTheFixtureThatNamesAnActivatedExtensionActuallyContainsOne() {
-        let items = scan(FakeExtensions(installed: [
+        let items = scan(LeftoversFakeLoaded(installed: [
             SystemExtensionInfo(identifier: "com.gone.vendor.app.ext", teamID: "T",
                                 name: "Ext", version: "1", state: "activated enabled",
                                 enabled: true),
@@ -74,7 +52,7 @@ final class ExtensionOfferFixtureTests: XCTestCase {
     /// the same thing about the same items, which is why the "…AreOffered…"
     /// name above it should never have been able to pass.
     func testAnExtensionWhoseHostIsGoneIsListedOrphanedAndStillNotOffered() throws {
-        let items = scan(FakeExtensions(installed: [info]))
+        let items = scan(LeftoversFakeLoaded(installed: [info]))
         let extensionItem = try XCTUnwrap(items.first { $0.kind == .systemExtension })
 
         XCTAssertEqual(extensionItem.status, .orphaned, "its host app is not installed")
@@ -89,7 +67,7 @@ final class ExtensionOfferFixtureTests: XCTestCase {
     /// above is a fact about the app being gone and not the only answer this
     /// branch can give.
     func testTheSameExtensionWithItsHostInstalledIsInUse() throws {
-        let items = scan(FakeExtensions(installed: [info]), installed: ["com.gone.vendor.app"])
+        let items = scan(LeftoversFakeLoaded(installed: [info]), installed: ["com.gone.vendor.app"])
         let extensionItem = try XCTUnwrap(items.first { $0.kind == .systemExtension })
 
         XCTAssertEqual(extensionItem.status, .inUse)

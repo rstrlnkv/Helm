@@ -3,6 +3,8 @@ import HelmContract
 import Module_Duplicates_Engine
 import Module_Homebrew_UI
 import Module_Layout_UI
+import Module_Leftovers_Engine
+import Module_Leftovers_UI
 import Module_VPN_Engine
 import Module_VPN_UI
 import XCTest
@@ -147,6 +149,79 @@ final class TheWireFixtureReachesThePagesTests: XCTestCase {
             """)
     }
 
+    /// **Leftovers' whole page is a reply, and nothing asks for it.** `scan()` is
+    /// called by no `.task` and no `onAppear`, deliberately — so a table answering
+    /// `LeftoversCommand.scan` reaches a page that never asks, and the render stays
+    /// on the invitation whatever the fixture holds. `ModulePageRender.Priming` is
+    /// the press, and this is the guard that it lands.
+    ///
+    /// Three assertions about structure rather than one about size. The segmented
+    /// control is the sharpest: the status filter is inside `if !lvm.items.isEmpty`,
+    /// so it exists on a page with rows and on no other. The model's own state is the
+    /// second — a list of the fixture's length, and a report of one moved file and
+    /// two refusals, which is the row that rendered in no ratchet before this. The
+    /// layer count is the loosest and is asserted as a comparison, because it is the
+    /// one that moves when a row gains a badge.
+    func testTheWiredLeftoversPageDrawsTheListAndTheRemovalReport() throws {
+        let silent = page(for: leftovers, wiredBy: ModulePageRender.unwired)
+        let wired = page(for: leftovers, wiredBy: ModulePageRender.answering)
+        // A refused scan is not the invitation: the page believes it has scanned and
+        // found nothing, which is the empty state without a button. Measured at 24
+        // layers, which is the floor this module carried before the fixture.
+        silent.assertItDrewSomething(atLeast: 20)
+        wired.assertItDrewSomething()
+
+        XCTAssertEqual(segmentedControls(in: silent), 0,
+                       "the status filter is behind `!items.isEmpty`, so a page with no rows "
+                       + "has none")
+        XCTAssertEqual(segmentedControls(in: wired), 1, """
+            the wired leftovers page draws \(segmentedControls(in: wired)) segmented controls where \
+            a page with rows has one — so either the scan reply is not arriving or the toolbar has \
+            gained a second, and `LongStringGeometryRatchetTests`' inventory is where that is said.
+            """)
+
+        let model = LeftoversViewModel.shared(vm: wired.viewModel)
+        XCTAssertTrue(model.scanned, """
+            the page's own model has never scanned, so this is not the model the render drew — \
+            `LeftoversViewModel.shared(vm:)` keys its cache on the view model, and a fresh one \
+            here means the priming never ran.
+            """)
+        XCTAssertEqual(model.items.count, 7,
+                       "the scan reply reached the model as \(model.items.count) rows")
+        XCTAssertEqual(model.failures.count, 2, """
+            the removal report is \(model.failures.count) refusals rather than two, so the row \
+            above the action bar — the one the reflow in 1657762f is about — is drawn by no \
+            reading of this render.
+            """)
+        XCTAssertEqual(model.removedCount, 1)
+
+        XCTAssertGreaterThan(wired.layers.count, silent.layers.count + 100, """
+            the wired leftovers page draws \(wired.layers.count) layers against \
+            \(silent.layers.count) for a page with no rows — a list of seven rows in five \
+            sections is worth about 200, so the fixture is reaching the model and not the screen.
+            """)
+    }
+
+    /// And the priming is a press, not a second fixture: the same wire with nobody
+    /// pressing anything draws the invitation, which is what every reading of this
+    /// page was before today.
+    func testWithoutThePressTheWiredLeftoversPageIsStillTheInvitation() {
+        let pressed = page(for: leftovers, wiredBy: ModulePageRender.answering)
+        let untouched = ModulePageRender.page(for: leftovers, in: .aqua,
+                                              width: ModulePageRender.pageWidth,
+                                              wiredBy: ModulePageRender.answering,
+                                              primedBy: ModulePageRender.unprimed)
+        untouched.assertItDrewSomething(atLeast: 20)
+
+        XCTAssertEqual(segmentedControls(in: untouched), 0, """
+            an unprimed leftovers page has \(segmentedControls(in: untouched)) segmented controls, \
+            so it is holding rows — something now asks for the scan by itself, and if that is \
+            deliberate the priming is what should go rather than this assertion.
+            """)
+        XCTAssertGreaterThan(pressed.layers.count, untouched.layers.count + 100,
+                            "the press is what the fixture needs, and it changed nothing")
+    }
+
     // MARK: - The fixture is a wire, not a value
 
     /// **A fake that finishes is not this port.** `LocalTransport`'s stream never
@@ -255,4 +330,5 @@ final class TheWireFixtureReachesThePagesTests: XCTestCase {
     private var layout: any ModuleDescriptor { descriptor(LayoutDescriptor.id.rawValue) }
     /// The module with no fixture, and it stands for the other five.
     private var duplicates: any ModuleDescriptor { descriptor(DuplicatesEngine.moduleID) }
+    private var leftovers: any ModuleDescriptor { descriptor(LeftoversEngine.moduleID) }
 }

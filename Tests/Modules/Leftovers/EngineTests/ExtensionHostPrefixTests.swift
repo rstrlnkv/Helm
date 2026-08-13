@@ -2,25 +2,6 @@ import XCTest
 import HelmRuntime
 @testable import Module_Leftovers_Engine
 
-private struct HostFakeFiles: LeftoversFilePort {
-    func isWritableDirectory(_ url: URL) -> Bool { true }
-    func children(of url: URL) -> [URL] { [] }
-    func exists(_ path: String) -> Bool { false }
-    func size(_ url: URL) -> Int { 0 }
-    func readPlist(_ url: URL) -> PlistData? { nil }
-}
-
-private struct HostFakeApps: InstalledAppsPort {
-    let ids: Set<String>
-    func installedBundleIDs() -> Set<String> { ids }
-}
-
-private struct HostFakeExtensions: LoadedItemsPort {
-    var installed: [SystemExtensionInfo] = []
-    func installedExtensions() -> [SystemExtensionInfo] { installed }
-    func disabledLabels() -> Set<String> { [] }
-}
-
 /// The bug family this file exists for: an id matched as a bare character
 /// prefix instead of as a namespace. `UninstallerEngine` (extension-host blame)
 /// and `LeftoversScanner.owner(of:)` both spell it `$0 + "."`; the system
@@ -31,9 +12,9 @@ final class ExtensionHostPrefixTests: XCTestCase {
                                        name: "Ext", version: "1.0",
                                        state: "activated enabled", enabled: true)
         let scanner = LeftoversScanner(home: URL(fileURLWithPath: "/Users/x"),
-                                       files: HostFakeFiles(),
-                                       apps: HostFakeApps(ids: installed),
-                                       extensions: HostFakeExtensions(installed: [info]))
+                                       files: LeftoversFakeFiles(),
+                                       apps: LeftoversFakeApps(ids: installed),
+                                       extensions: LeftoversFakeLoaded(installed: [info]))
         return scanner.scan().first { $0.kind == .systemExtension }?.status
     }
 

@@ -99,10 +99,11 @@ public struct ActiveExtensions: LoadedItemsPort, LoginItemSwitchPort {
     }
 
     public func setDisabled(_ disabled: Bool, label: String) {
-        // The label comes from a plist on disk. A `/` in it re-points the
-        // service target at the domain itself, and `launchctl bootout gui/<uid>`
-        // ends the user's login session.
-        guard !label.isEmpty, !label.contains("/") else { return }
+        // The label comes from a plist on disk, and `LaunchLabel` is the rule
+        // about which of those launchctl can be asked about — the same one
+        // `LeftoverActions.available` reads before offering the switch, so the
+        // page and the port cannot come to disagree about a row.
+        guard LaunchLabel.isSwitchable(label) else { return }
         let domain = "gui/\(getuid())"
         _ = run([disabled ? "disable" : "enable", "\(domain)/\(label)"])
         // `disable` only stops it from loading next time; boot it out so the

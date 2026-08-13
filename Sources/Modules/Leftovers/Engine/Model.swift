@@ -17,6 +17,14 @@ public enum ItemStatus: String, Codable, Sendable, Equatable {
     case inUse
     /// Apple's, shared plumbing, or a system location: never removable.
     case protectedItem
+    /// The job's own definition could not be read — corrupt, truncated, an array
+    /// at the root, or a file this process may not open. Not a leftover: the
+    /// scanner's rule is that anything whose owner cannot be identified stays
+    /// put, and a file whose contents nobody could read is the plainest case of
+    /// one. It used to be folded into «this job has no `Program`» → «points at
+    /// nothing» → `.orphaned`, which is a tick from «Select all» and a place in
+    /// the batch (`APlistNobodyCouldReadTests`).
+    case unreadable
 }
 
 public struct StaleItem: Codable, Equatable, Sendable, Identifiable {

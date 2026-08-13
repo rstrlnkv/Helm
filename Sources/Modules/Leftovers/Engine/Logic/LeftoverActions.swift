@@ -23,6 +23,14 @@ public enum NoDelete: Equatable, Sendable {
     case needsAdministrator, protectedByMacOS
 }
 
+/// Why the row asks before deleting, in the two shapes that put a different fact
+/// in front of the person: the Mac is loading this one, or Helm could not read it.
+/// Beside `NoDelete` because it is the same kind of answer — a reason the page
+/// turns into a sentence — read by `askBeforeDeleting` below.
+public enum AskFirst: Equatable, Sendable {
+    case loadedNow, cannotBeRead
+}
+
 public enum LeftoverActions {
     /// **One argument, and it is the item.**
     ///
@@ -40,7 +48,17 @@ public enum LeftoverActions {
             return [.reveal]
         }
         var actions: Set<LeftoverAction> = [.reveal]
-        if item.kind == .launchAgent, !item.identifier.isEmpty { actions.insert(.turnOff) }
+        // **The switch needs a label that is the job's, and one launchctl will
+        // take.** `LaunchLabel` is the second half and the same predicate
+        // `ActiveExtensions.setDisabled` guards on, so the page and the port cannot
+        // disagree about a row. The first half is `.unreadable`: the identifier is
+        // then the file's own name, which is right for a job that omits `Label`
+        // and an invention for one whose contents never came — and disabling an
+        // invented label writes an entry the next scan reads back as «Disabled».
+        if item.kind == .launchAgent, item.status != .unreadable,
+           LaunchLabel.isSwitchable(item.identifier) {
+            actions.insert(.turnOff)
+        }
         if item.kind != .launchDaemon, item.writable { actions.insert(.delete) }
         return actions
     }
@@ -73,7 +91,33 @@ public enum LeftoverActions {
 
     /// Clearing a leftover is tidying; deleting something the Mac is currently
     /// loading is a decision, and the app may put it back on next launch.
+    ///
+    /// Asked of `askBeforeDeleting`, so the page cannot dim the ellipsis on one
+    /// rule and word the dialog from another.
     public static func needsConfirmation(_ item: StaleItem) -> Bool {
-        item.status != .orphaned
+        askBeforeDeleting(item) != nil
+    }
+
+    /// Why Helm asks before deleting this one — or nil, when it does not ask.
+    ///
+    /// The shape `whyDeleteIsWithheld` already uses, and here for the same
+    /// reason: there was one question, «It is loaded now, and the app that
+    /// installed it may put it back», and it was asked of every row that is not a
+    /// leftover. A job whose plist could not be read is one of those now, and
+    /// «loaded now» is a claim about contents Helm never got to see.
+    ///
+    /// Exhaustive over the status: a fifth one must be a build error here rather
+    /// than inherit whichever sentence sits nearest.
+    public static func askBeforeDeleting(_ item: StaleItem) -> AskFirst? {
+        switch item.status {
+        case .orphaned: return nil
+        case .inUse: return .loadedNow
+        // Never reached — `available` withholds `.delete` from a protected row,
+        // so no dialog is drawn for one. It answers the same as `.inUse` rather
+        // than nil because the honest reading of a protected item is that macOS
+        // is using it, and a nil here would say «delete this without asking».
+        case .protectedItem: return .loadedNow
+        case .unreadable: return .cannotBeRead
+        }
     }
 }

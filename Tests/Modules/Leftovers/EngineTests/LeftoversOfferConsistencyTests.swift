@@ -3,31 +3,6 @@ import XCTest
 @testable import HelmRuntime
 @testable import Module_Leftovers_Engine
 
-private struct FakeFiles: LeftoversFilePort {
-    var writable = true
-    var listing: [String: [String]] = [:]
-    var existing: Set<String> = []
-    var plists: [String: PlistData] = [:]
-
-    func isWritableDirectory(_ url: URL) -> Bool { writable }
-    func children(of url: URL) -> [URL] {
-        (listing[url.path] ?? []).map { url.appendingPathComponent($0) }
-    }
-    func exists(_ path: String) -> Bool { existing.contains(path) }
-    func size(_ url: URL) -> Int { 100 }
-    func readPlist(_ url: URL) -> PlistData? { plists[url.path] }
-}
-
-private struct FakeApps: InstalledAppsPort {
-    let ids: Set<String>
-    func installedBundleIDs() -> Set<String> { ids }
-}
-
-private struct FakeExtensions: LoadedItemsPort {
-    func installedExtensions() -> [SystemExtensionInfo] { [] }
-    func disabledLabels() -> Set<String> { [] }
-}
-
 /// A row on this page makes two offers, and they are computed by two different
 /// pieces of code that never consult each other.
 ///
@@ -42,9 +17,9 @@ final class LeftoversOfferConsistencyTests: XCTestCase {
 
     private let home = URL(fileURLWithPath: "/Users/x")
 
-    private func scan(_ files: FakeFiles, installed: Set<String> = []) -> [StaleItem] {
-        LeftoversScanner(home: home, files: files, apps: FakeApps(ids: installed),
-                         extensions: FakeExtensions()).scan()
+    private func scan(_ files: LeftoversFakeFiles, installed: Set<String> = []) -> [StaleItem] {
+        LeftoversScanner(home: home, files: files, apps: LeftoversFakeApps(ids: installed),
+                         extensions: LeftoversFakeLoaded()).scan()
     }
 
     /// A daemon whose owner is gone, in a folder that can be written to.
@@ -55,7 +30,7 @@ final class LeftoversOfferConsistencyTests: XCTestCase {
     /// checks the status, the kind-is-not-an-extension and the writability, and
     /// never asks about the daemon at all.
     func testABulkTickIsNeverOfferedForSomethingTheRowRefusesToDelete() {
-        var files = FakeFiles()
+        var files = LeftoversFakeFiles()
         files.listing["/Library/LaunchDaemons"] = ["com.gone.vendor.helper.plist"]
         files.plists["/Library/LaunchDaemons/com.gone.vendor.helper.plist"] =
             PlistData(["Label": "com.gone.vendor.helper"])
@@ -74,10 +49,21 @@ final class LeftoversOfferConsistencyTests: XCTestCase {
     /// Said over a whole scan rather than one fixture, so a later kind cannot
     /// reintroduce the same disagreement somewhere else.
     func testTheCheckboxAndTheRowMenuAgreeAboutEveryItemAScanReturns() {
-        var files = FakeFiles()
+        var files = LeftoversFakeFiles()
         files.listing["/Users/x/Library/LaunchAgents"] = ["com.gone.vendor.agent.plist"]
         files.listing["/Library/LaunchAgents"] = ["com.gone.other.agent.plist"]
         files.listing["/Library/LaunchDaemons"] = ["com.gone.vendor.helper.plist"]
+        // **Listed *and* readable, which are two facts in the fake as they are on
+        // disk.** These three were listed and never given a plist, so the scan read
+        // them as jobs whose definition would not come — `.unreadable` since
+        // `APlistNobodyCouldReadTests`, and before that `.orphaned` by way of «no
+        // `Program`, so it points at nothing». A row this file is about is an
+        // ordinary orphan: a job Helm read, whose owner is gone.
+        for (directory, label) in [("/Users/x/Library/LaunchAgents", "com.gone.vendor.agent"),
+                                   ("/Library/LaunchAgents", "com.gone.other.agent"),
+                                   ("/Library/LaunchDaemons", "com.gone.vendor.helper")] {
+            files.plists["\(directory)/\(label).plist"] = PlistData(["Label": label])
+        }
         files.listing["/Users/x/Library/Preferences"] = ["com.gone.vendor.app.plist",
                                                          "com.apple.dock.plist"]
         files.listing["/Users/x/Library/QuickLook"] = ["Gone.qlgenerator"]
