@@ -763,3 +763,5 @@
 "Opening Keyboard without Accessibility granted now shows a plain “Helm is not watching the keyboard” instead of a page of settings that do nothing without it." = "“アクセシビリティ”の許可がない状態でキーボードを開くと、何も効かない設定のページの代わりに、“Helm はキーボードを監視していません”とだけ表示されるようになりました。";
 "If Accessibility is switched off and back on, Keyboard notices and starts watching again on its own — it used to need Helm relaunched to come back." = "“アクセシビリティ”をオフにしてから再度オンにすると、“キーボード”がそれに気づき、自分で監視を再開します。以前は Helm を再起動しないと元に戻りませんでした。";
 "A VPN rule that cannot get at its saved secret now says so on the page and asks for one press of Connect. It used to stop working in silence, with the reason only in the diagnostics log." = "保存された鍵を読み出せない VPN ルールが、その旨をページに表示し、一度“接続”を押すよう促します。以前は黙って動かなくなり、理由は診断ログにしか残りませんでした。";
+"Everything found is hidden by the filter." = "見つかった項目はすべてフィルタで非表示です。";
+"Protected by macOS" = "macOS によって保護されています";

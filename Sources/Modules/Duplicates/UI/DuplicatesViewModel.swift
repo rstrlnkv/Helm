@@ -23,9 +23,11 @@ import SwiftUI
     /// this and `failures`: a sentence cannot be asked whether it is true.
     @Published public private(set) var removedCount = 0
 
-    /// Bumped whenever the running search stops being the one we want, so a
-    /// late answer cannot resurrect itself over a newer one.
-    private var generation = 0
+    /// Which search the groups belong to, so a late answer cannot resurrect
+    /// itself over a newer one — or over a cancellation, which is a token taken
+    /// and dropped. `LatestRequest` (HelmRuntime) is the counter; this view model
+    /// and Leftovers' had both written it out by hand.
+    private var searches = LatestRequest()
 
     let vm: ModuleViewModel
     private let client: TransportClient
@@ -120,13 +122,12 @@ import SwiftUI
         progress = nil
         groups = []
         basket = []
-        generation += 1
-        let mine = generation
+        let mine = searches.take()
         let path = folder.path
         Task {
             let found: [DuplicateGroup]? = await client.request(DuplicatesCommand.find,
                                                                  encoding: DuplicateSearchRequest(path: path))
-            guard mine == generation else { return }
+            guard searches.isLatest(mine) else { return }
             // Cancelled comes back nil: go back to where we were rather than
             // announce a clean folder nobody finished checking.
             guard let found else { phase = .start; return }
@@ -136,7 +137,8 @@ import SwiftUI
     }
 
     public func cancel() {
-        generation += 1
+        // Taken and dropped: everything in flight is stale from here.
+        _ = searches.take()
         // No payload. It used to encode an empty `[String]` the engine never
         // decodes — two bytes of JSON standing where «nothing» was meant.
         Task { await client.send(DuplicatesCommand.cancel) }

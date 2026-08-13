@@ -47,7 +47,12 @@ struct LeftoversSettingsPage: View {
             // in the page's own copy rather than in its chrome. It says nothing
             // is ticked by default *because macOS loads these*, which is the
             // one sentence on this screen a person must not miss.
-            if !lvm.items.isEmpty {
+            // Over the list, and only when there is one: with the rows filtered
+            // away this sentence stood over the empty area explaining ticks
+            // nobody could see. The toolbar's own «Found: N» and its filters stay
+            // whatever the list holds — the menu that hid the rows has to remain
+            // reachable, or the page is a dead end.
+            if lvm.nothingToShow == nil {
                 Text(LfStr.reviewNote)
                     .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                     .fixedSize(horizontal: false, vertical: true)
@@ -86,9 +91,18 @@ struct LeftoversSettingsPage: View {
                 // What the scan found, beside the control that filters it. It
                 // used to sit in the bar at the bottom joined to the size of the
                 // selection, where the two read as one measurement.
-                Text(LfStr.foundLine(lvm.leftoverCount))
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                    .lineLimit(1).fixedSize()
+                //
+                // Counted over the list, so it is drawn only where there is one:
+                // «Found: 0 items» over «Everything found is hidden by the filter»
+                // is one screen contradicting itself, and over «No leftovers
+                // found» it is the same sentence twice. The filter controls stay
+                // whatever the list holds — the menu that hid the rows has to
+                // remain reachable.
+                if lvm.nothingToShow == nil {
+                    Text(LfStr.foundLine(lvm.leftoverCount))
+                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                        .lineLimit(1).fixedSize()
+                }
                 Menu {
                     ForEach(StaleKind.allCases, id: \.self) { kind in
                         Toggle(LfStr.kindName(kind), isOn: Binding(
@@ -132,14 +146,19 @@ struct LeftoversSettingsPage: View {
     }
 
     @ViewBuilder private var content: some View {
-        if lvm.items.isEmpty {
+        if let nothing = lvm.nothingToShow {
+            // **`nothingToShow`, not `items.isEmpty`.** The list is built from
+            // `visibleItems`, and on an ordinary Mac the two disagree: the scan
+            // finds hundreds of settings files in use and no leftovers, so this
+            // branch was skipped and the page drew an empty list area instead.
+            //
             // Before the first scan the page has nothing to show and room to
             // explain itself, so the sentence that was in the toolbar is here,
             // under the call to action it belongs to.
-            HelmEmptyState(symbol: lvm.scanned ? "checkmark.circle" : "wand.and.rays",
+            HelmEmptyState(symbol: Self.symbol(for: nothing),
                            tint: ModuleCategory.utilities.tint,
-                           message: lvm.scanned ? LfStr.nothingFound : LfStr.notScannedYet,
-                           note: lvm.scanned ? nil : LfStr.intro)
+                           message: LfStr.emptyMessage(nothing),
+                           note: nothing == .notScanned ? LfStr.intro : nil)
             // A bounded minimum: enough to centre the message, without the
             // unbounded height that made the window grow to fill the screen.
             .frame(maxWidth: .infinity, minHeight: 260)
@@ -210,46 +229,76 @@ struct LeftoversSettingsPage: View {
             // their own, being things to operate rather than to read.
             .accessibilityElement(children: .combine)
             Spacer()
-            if item.canToggle {
-                // Not everything here is rubbish to delete — most of it is
-                // working software the user may simply want quiet.
-                Button(item.disabled ? LfStr.enable : LfStr.disable) {
-                    Task { await lvm.setDisabled(!item.disabled, item: item) }
-                }
-                .controlSize(.small)
-            }
-            if item.actions.contains(.systemSettings) {
-                // Not a file: macOS removes an extension with its app, and SIP
-                // stops anyone else from uninstalling it.
-                Button(LfStr.manageExtensions) { PermissionCheck.openExtensionSettings() }
-                    .controlSize(.small)
-            } else {
-                Text(Bytes(item.sizeBytes))
-                    .helmFigure().foregroundStyle(HelmText.quiet)
-                Menu {
-                    Button(HelmA11y.showInFinder) { HelmReveal.inFinder(item.path) }
-                    if item.actions.contains(.delete) {
-                        Button(Self.deleteLabel(for: item), role: .destructive) {
-                            if LeftoverActions.needsConfirmation(item) {
-                                pendingDeletion = item
-                            } else {
-                                Task { await lvm.remove(item) }
-                            }
-                        }
-                    } else {
-                        // Say why rather than hide it: the row looks broken
-                        // otherwise, and the reason is not the user's fault.
-                        Text(LfStr.needsAdmin)
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                }
-                .menuStyle(.borderlessButton)
-                .accessibilityLabel("\(HelmA11y.moreActions), \(item.identifier)")
-                .fixedSize()
-            }
+            controls(for: item)
         }
         .padding(.vertical, 2)
+    }
+
+    /// What a row offers at its trailing edge: the switch, and then either the way
+    /// to System Settings or the size and the menu.
+    ///
+    /// Its own function because the row's was over the complexity the lint allows
+    /// once the menu could say two things instead of one — and this half is about
+    /// what may be *done* to an item, where the half above it is what the item is.
+    @ViewBuilder private func controls(for item: StaleItem) -> some View {
+        if item.canToggle {
+            // Not everything here is rubbish to delete — most of it is
+            // working software the user may simply want quiet.
+            Button(item.disabled ? LfStr.enable : LfStr.disable) {
+                Task { await lvm.setDisabled(!item.disabled, item: item) }
+            }
+            .controlSize(.small)
+            // The model refuses this while a removal runs; the page has to
+            // say so, or the press is a control that does nothing.
+            .disabled(lvm.busy)
+        }
+        if item.actions.contains(.systemSettings) {
+            // Not a file: macOS removes an extension with its app, and SIP
+            // stops anyone else from uninstalling it.
+            Button(LfStr.manageExtensions) { PermissionCheck.openExtensionSettings() }
+                .controlSize(.small)
+        } else {
+            Text(Bytes(item.sizeBytes))
+                .helmFigure().foregroundStyle(HelmText.quiet)
+            Menu {
+                Button(HelmA11y.showInFinder) { HelmReveal.inFinder(item.path) }
+                if item.actions.contains(.delete) {
+                    Button(Self.deleteLabel(for: item), role: .destructive) {
+                        if LeftoverActions.needsConfirmation(item) {
+                            pendingDeletion = item
+                        } else {
+                            Task { await lvm.remove(item) }
+                        }
+                    }
+                    // `trash` refuses a second round; without this the menu
+                    // offers one anyway, which is the Uninstaller's own defect
+                    // — a bar that dims does not cover a menu inside a row.
+                    .disabled(lvm.busy)
+                } else if let withheld = LeftoverActions.whyDeleteIsWithheld(from: item) {
+                    // Say why rather than hide it: the row looks broken
+                    // otherwise, and the reason is not the user's fault. Which
+                    // reason matters — this line said «find an administrator»
+                    // over Apple's own files, where no password helps.
+                    Text(LfStr.noDelete(withheld))
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .menuStyle(.borderlessButton)
+            .accessibilityLabel("\(HelmA11y.moreActions), \(item.identifier)")
+            .fixedSize()
+        }
+    }
+
+    /// The mark over each empty state. The filter's own glyph for the filter's
+    /// own message — the menu that caused it is on screen directly above, wearing
+    /// the same symbol.
+    private static func symbol(for nothing: LeftoversEmpty.Reason) -> String {
+        switch nothing {
+        case .notScanned: "wand.and.rays"
+        case .nothingFound: "checkmark.circle"
+        case .hiddenByFilter: "line.3.horizontal.decrease.circle"
+        }
     }
 
     private func statusBadge(_ status: ItemStatus) -> some View {
@@ -266,7 +315,11 @@ struct LeftoversSettingsPage: View {
             Button(LfStr.selectAll) {
                 lvm.selected = lvm.selectablePaths
             }
-            .disabled(lvm.leftoverCount == 0)
+            // `busy` for the same reason as its neighbour: five controls on this
+            // page can start or change an act, and two of them dimmed during a
+            // removal. Ticking rows mid-request changes what the report that comes
+            // back is about.
+            .disabled(lvm.leftoverCount == 0 || lvm.busy)
             Button(LfStr.deselectAll) { lvm.selected.removeAll() }
                 .disabled(lvm.selected.isEmpty || lvm.busy)
             if !lvm.items.isEmpty {

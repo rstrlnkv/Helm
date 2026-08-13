@@ -95,15 +95,13 @@ public extension View {
     /// The probe is `PermissionCheck.fullDiskAccess()`, which is four blocking
     /// file reads and says at its own declaration why it does them off the
     /// cooperative pool.
+    ///
+    /// `helmGrants` comes in front of that probe, for the reason
+    /// `helmTracksAccessibility` states: five pages draw a 61 pt banner off this
+    /// answer, so without a reading a measurement of any of them is a fact about
+    /// the grants of whichever process drew it.
     func helmTracksFullDiskAccess(_ state: Binding<PermissionState>) -> some View {
-        task { state.wrappedValue = await PermissionCheck.fullDiskAccess() }
-            // A `Task` rather than the synchronous read this replaced: the
-            // answer lands a hop later than it used to, and the note with it.
-            // Measured offscreen against the old wiring — the page settles at
-            // the same height, and only the first frame differs.
-            .helmOnAppActive {
-                Task { @MainActor in state.wrappedValue = await PermissionCheck.fullDiskAccess() }
-            }
+        modifier(HelmFullDiskTracker(state: state))
     }
 }
 
@@ -115,9 +113,11 @@ public extension View {
 /// Disk Access as well.
 public struct HelmGrants: Sendable, Equatable {
     public var accessibility: PermissionState?
+    public var fullDisk: PermissionState?
 
-    public init(accessibility: PermissionState? = nil) {
+    public init(accessibility: PermissionState? = nil, fullDisk: PermissionState? = nil) {
         self.accessibility = accessibility
+        self.fullDisk = fullDisk
     }
 }
 
@@ -145,5 +145,37 @@ private struct HelmAccessibilityTracker: ViewModifier {
 
     private var answer: PermissionState {
         grants.accessibility ?? PermissionCheck.currentAccessibility()
+    }
+}
+
+/// The same three lines for the other grant, and a `ViewModifier` for the same
+/// reason: the reading lives in the environment, and a `View` extension function
+/// cannot read it — which is why this grant stayed machine weather for as long as
+/// it did while its twin had already been named.
+///
+/// The probe stays asynchronous, unlike Accessibility's: four blocking file reads
+/// belong off the cooperative pool, and a reading skips them altogether.
+private struct HelmFullDiskTracker: ViewModifier {
+    @Environment(\.helmGrants) private var grants
+    let state: Binding<PermissionState>
+
+    func body(content: Content) -> some View {
+        content
+            .task { state.wrappedValue = await answer() }
+            // A `Task` rather than the synchronous read this replaced: the answer
+            // lands a hop later than it used to, and the note with it. Measured
+            // offscreen against the old wiring — the page settles at the same
+            // height, and only the first frame differs.
+            .helmOnAppActive {
+                Task { @MainActor in state.wrappedValue = await answer() }
+            }
+    }
+
+    /// Not `grants.fullDisk ?? await …`: Swift refuses an `await` on the right of
+    /// `??`, since the autoclosure it builds is synchronous. Written out, the
+    /// reading also short-circuits the four file reads rather than racing them.
+    private func answer() async -> PermissionState {
+        if let named = grants.fullDisk { return named }
+        return await PermissionCheck.fullDiskAccess()
     }
 }

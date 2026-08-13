@@ -165,8 +165,20 @@ enum ModulePageRender {
     /// *withheld* screen is measured by nothing here unless a test asks for it,
     /// which is what `granting:` is for, and `TheKeyboardPageWithoutTheGrantTests`
     /// is the test that asks.
-    static let granted = HelmGrants(accessibility: .granted)
-    static let withheld = HelmGrants(accessibility: .denied)
+    /// **Both grants, because there were two weathers here and only one had been
+    /// named.** `HelmGrants` knew `accessibility` alone, so Full Disk Access went
+    /// on being asked of the process running the suite — and five pages draw a
+    /// 61 pt banner off that answer (72 in French, where the sentence wraps and
+    /// moves the list under it). A terminal that holds the grant and one that does
+    /// not read three of these pages eight layers apart.
+    ///
+    /// Naming it granted lowered `floors` for the three pages whose recorded
+    /// reading had that banner in it — see the note there. The withheld screen is
+    /// measured by `PagesAreToldAboutTheDiskGrantTests`, the way the
+    /// withheld Accessibility screen is measured by
+    /// `TheKeyboardPageWithoutTheGrantTests`.
+    static let granted = HelmGrants(accessibility: .granted, fullDisk: .granted)
+    static let withheld = HelmGrants(accessibility: .denied, fullDisk: .denied)
 
     /// Settings a page is opened *on*, written into its store before it is built.
     ///
@@ -384,8 +396,21 @@ extension ModulePageRender.Page {
     /// comparison in `TheWireFixtureReachesThePagesTests` rather than by this
     /// number: a `LayoutState` is worth about 20 layers, which is finer than any
     /// floor should try to resolve.
+    /// **Three of these fell when the disk grant was named, and the eight layers
+    /// they lost were never theirs.** `granted` above says why: until 2026-08-13
+    /// this render asked the machine about Full Disk Access, this test process has
+    /// not got it, so the recorded readings for the five pages that draw that
+    /// banner each carried a notice a Mac with the grant does not draw. Measured
+    /// after naming it, both appearances, three consecutive runs: **leftovers 24,
+    /// duplicates 9, autopilot 9** — against 32, 17 and 17 with the banner, which
+    /// is the same eight layers three times. Disk (42/43) and the uninstaller
+    /// (48/49) stayed above their floors and are untouched.
+    ///
+    /// Duplicates' and Autopilot's 8 is not slack, it is the whole page: both draw
+    /// an empty state until a folder is chosen, and the question their floor can
+    /// answer is «did anything render at all».
     static let floors: [String: Int] = [
         "keep-awake": 250, "vpn": 190, "uninstaller": 45, "homebrew": 70,
-        "leftovers": 25, "disk": 40, "duplicates": 12, "autopilot": 12, "layout": 230,
+        "leftovers": 20, "disk": 40, "duplicates": 8, "autopilot": 8, "layout": 230,
     ]
 }

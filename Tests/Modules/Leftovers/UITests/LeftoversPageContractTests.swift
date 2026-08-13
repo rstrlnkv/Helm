@@ -86,6 +86,46 @@ final class LeftoversPageContractTests: XCTestCase {
         XCTAssertEqual(lvm.selectedBytes, 4_096)
     }
 
+    // MARK: - What the page says when the list is empty
+
+    /// **The ordinary first impression, and it was 515 pt of nothing.** A scan of
+    /// a clean Mac finds hundreds of settings files and no leftovers: the page had
+    /// rows in `items`, none in `visibleItems`, and drew the list's branch — an
+    /// empty area under «Found: 0 items» and the note about nothing being ticked.
+    func testAScanThatFoundNoLeftoversHasSomethingToSay() async {
+        let transport = ScanTransport(items: [agent("busy", bytes: 4_096, status: .inUse),
+                                              agent("system", bytes: 8_192, status: .protectedItem)])
+        let lvm = LeftoversViewModel(vm: ModuleViewModel(transport: transport))
+        await lvm.scan()
+
+        XCTAssertFalse(lvm.items.isEmpty, "precondition: the scan found something")
+        XCTAssertTrue(lvm.visibleItems.isEmpty, "precondition: none of it is a leftover")
+        XCTAssertEqual(lvm.nothingToShow, .nothingFound,
+                       "the page draws its list against no rows, so the screen is the note "
+                       + "about nothing being ticked over an empty area")
+    }
+
+    /// And when the kind filter is what emptied it, the page says *that* — the
+    /// menu is on screen above the message, and «No leftovers found» would be a
+    /// claim about the Mac where the truth is a claim about a menu.
+    func testRowsHiddenByTheKindFilterAreNotReportedAsACleanMac() async {
+        let transport = ScanTransport(items: [agent("gone", bytes: 4_096)])
+        let lvm = LeftoversViewModel(vm: ModuleViewModel(transport: transport))
+        await lvm.scan()
+        XCTAssertNil(lvm.nothingToShow, "precondition: there is a row to draw")
+
+        lvm.hiddenKinds.insert(.launchAgent)
+
+        XCTAssertEqual(lvm.nothingToShow, .hiddenByFilter)
+    }
+
+    /// Before the first scan it is the invitation, whatever is in the model.
+    func testAnUnscannedPageInvites() {
+        let lvm = LeftoversViewModel(vm: ModuleViewModel(transport: ScanTransport(items: [])))
+
+        XCTAssertEqual(lvm.nothingToShow, .notScanned)
+    }
+
     // MARK: - One act, one name
 
     /// The ellipsis is a promise of a dialog. For a leftover there is none, and

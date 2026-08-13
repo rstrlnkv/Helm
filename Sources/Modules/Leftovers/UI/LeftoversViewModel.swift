@@ -49,11 +49,36 @@ import Module_Leftovers_Engine
     @Published public var hiddenKinds: Set<StaleKind> = []
 
     public var visibleItems: [StaleItem] {
-        // "Leftovers" is a status, not a permission to delete: an extension
-        // whose app is gone belongs here even though clearing it happens in
-        // System Settings.
-        (showAll ? items : items.filter { $0.status == .orphaned })
-            .filter { !hiddenKinds.contains($0.kind) }
+        matchingStatus.filter { !hiddenKinds.contains($0.kind) }
+    }
+
+    /// What the page draws instead of the list, or nil when there is a list.
+    ///
+    /// Asked of `visibleItems`, which is what the `List` is built from — the page
+    /// asked `items.isEmpty`, and on any ordinary Mac those differ: the scan finds
+    /// hundreds of settings files in use and no leftovers at all.
+    /// `LeftoversEmpty.reason` holds the rule and says why there are three answers.
+    public var nothingToShow: LeftoversEmpty.Reason? {
+        LeftoversEmpty.reason(scanned: scanned, visible: visibleItems.count,
+                              hiddenByKind: hiddenByKindCount)
+    }
+
+    /// How many rows the kind filter is holding back — answered without walking
+    /// the scan at all until somebody has hidden a kind, which is every session by
+    /// default. The page asks this on each pass over `body`, over a list that is
+    /// hundreds of items long on an ordinary Mac.
+    private var hiddenByKindCount: Int {
+        guard !hiddenKinds.isEmpty else { return 0 }
+        return matchingStatus.count { hiddenKinds.contains($0.kind) }
+    }
+
+    /// The rows the status filter keeps, before the kind filter runs — the half of
+    /// `visibleItems` that says whether the filter menu is what emptied the list.
+    ///
+    /// "Leftovers" is a status, not a permission to delete: an extension whose app
+    /// is gone belongs here even though clearing it happens in System Settings.
+    private var matchingStatus: [StaleItem] {
+        showAll ? items : items.filter { $0.status == .orphaned }
     }
 
     /// Counted over what the list actually shows. Counting the whole scan
@@ -84,10 +109,26 @@ import Module_Leftovers_Engine
         selected.formIntersection(selectablePaths)
     }
 
+    /// Which request the list belongs to.
+    ///
+    /// **The Scan button is not the only caller.** `setDisabled` rescans so the row
+    /// shows what launchd actually did, and `trash` rescans after a removal — so
+    /// two quick toggles are two scans over the same `items`, and without this the
+    /// list went to whichever the machine answered *last* rather than to the last
+    /// thing the person asked for. `LatestRequest` carries why it is a counter and
+    /// not a latch.
+    private var scans = LatestRequest()
+
     public func scan() async {
+        let mine = scans.take()
         scanning = true
-        defer { scanning = false }
-        items = await client.request(LeftoversCommand.scan) ?? []
+        // Only the newest request may say the page is idle: an older scan
+        // finishing would otherwise re-enable the button over a scan still
+        // running.
+        defer { if scans.isLatest(mine) { scanning = false } }
+        let found: [StaleItem] = await client.request(LeftoversCommand.scan) ?? []
+        guard scans.isLatest(mine) else { return }
+        items = found
         // Nothing is ticked by default: these files are load-bearing, so the
         // user chooses each one. But a rescan is not a fresh start — switching
         // one row off rescans, and clearing the set threw away every other tick
@@ -98,7 +139,14 @@ import Module_Leftovers_Engine
 
     /// Switches a login item off through launchd, then rescans so the row
     /// shows what actually happened rather than what we hoped.
+    ///
+    /// **Not while a removal is running.** This was one of three controls that
+    /// stayed live for the length of a `trash` request, and the least harmless of
+    /// them: it rescans, so the fresh `items` land on top of the list the removal
+    /// is about to report on. The page dims the button as well — both, or neither
+    /// is reliable (ARCHITECTURE.md § One removal at a time).
     public func setDisabled(_ disabled: Bool, item: StaleItem) async {
+        guard !busy else { return }
         await client.send(LeftoversCommand.setDisabled,
                           encoding: LeftoversToggle(label: item.identifier, disabled: disabled))
         await scan()

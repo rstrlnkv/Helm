@@ -34,6 +34,9 @@ final class OneRemovalAtATimeTests: XCTestCase {
     private final class HeldTransport: EngineTransport, @unchecked Sendable {
         var events: AsyncStream<EngineEvent> { AsyncStream { _ in } }
         private(set) var trashRequests = 0
+        /// The other command a control on this page sends, counted for the same
+        /// reason: «Turn off» stayed live through the whole removal.
+        private(set) var setDisabledRequests = 0
         private let released = AsyncStream<Void>.makeStream()
         let items: [StaleItem]
 
@@ -41,18 +44,25 @@ final class OneRemovalAtATimeTests: XCTestCase {
 
         func release() { released.continuation.finish() }
 
+        /// The enum rather than the raw names this switched on before: a fake
+        /// answering strings of its own goes on answering after the module renames
+        /// a command, and what it answers then is `Data()` — which this codebase
+        /// spells «the module could not answer».
         func send(_ command: EngineCommand) async throws -> Data {
-            switch command.name {
-            case LeftoversCommand.scan.rawValue:
+            switch LeftoversCommand(rawValue: command.name) {
+            case .scan:
                 return (try? JSONEncoder().encode(items)) ?? Data()
-            case LeftoversCommand.trash.rawValue:
+            case .trash:
                 trashRequests += 1
                 // Hangs until `release()`. A `return` here would clear the flag
                 // before the caller resumed, and the gate would be untested.
                 for await _ in released.stream {}
                 return (try? JSONEncoder().encode(
                     LeftoversRemoval(removed: [], refused: [], freedBytes: 0))) ?? Data()
-            default:
+            case .setDisabled:
+                setDisabledRequests += 1
+                return Data()
+            case .none:
                 return Data()
             }
         }
@@ -105,5 +115,59 @@ final class OneRemovalAtATimeTests: XCTestCase {
         transport.release()
         await running.value
         XCTAssertFalse(model.busy, "the flag outlived the work it describes")
+    }
+
+    // MARK: - The other three controls
+
+    /// **Five controls can start an act on this page and two of them dimmed.**
+    /// «Turn off» is one of the three that stayed live, and it is not a harmless
+    /// one: it asks launchd to switch a job off and then **rescans**, so a press
+    /// during a removal lands a fresh `items` on top of the list the removal is
+    /// about to report on.
+    func testTurningARowOffWhileARemovalRunsIsRefused() async throws {
+        let one = item("/tmp/one.plist")
+        let transport = HeldTransport(items: [one])
+        let model = LeftoversViewModel(vm: ModuleViewModel(transport: transport))
+        await model.scan()
+        model.selected = Set(model.selectablePaths)
+
+        let removal = Task { await model.removeSelected() }
+        for _ in 0..<50 where transport.trashRequests == 0 { await Task.yield() }
+        XCTAssertEqual(transport.trashRequests, 1, "precondition: the removal is in flight")
+
+        let press = Task { await model.setDisabled(true, item: one) }
+        for _ in 0..<50 { await Task.yield() }
+
+        XCTAssertEqual(transport.setDisabledRequests, 0,
+                       "launchd was asked to switch a job off in the middle of a removal, and "
+                       + "the rescan that follows lands on top of the removal's own report")
+
+        transport.release()
+        _ = await (removal.value, press.value)
+    }
+
+    /// And the row's own delete, which is the control the Uninstaller's pass found
+    /// last: `.disabled(busy)` on a bar does not cover a menu inside a row.
+    func testTheRowsOwnDeleteWhileARemovalRunsIsRefused() async throws {
+        let one = item("/tmp/one.plist")
+        let two = item("/tmp/two.plist")
+        let transport = HeldTransport(items: [one, two])
+        let model = LeftoversViewModel(vm: ModuleViewModel(transport: transport))
+        await model.scan()
+        model.selected = [one.path]
+
+        let removal = Task { await model.removeSelected() }
+        for _ in 0..<50 where transport.trashRequests == 0 { await Task.yield() }
+        XCTAssertEqual(transport.trashRequests, 1, "precondition: the removal is in flight")
+
+        let fromTheMenu = Task { await model.remove(two) }
+        for _ in 0..<50 { await Task.yield() }
+
+        XCTAssertEqual(transport.trashRequests, 1,
+                       "a second batch went out from the row's menu while the first was still "
+                       + "running, and its answer overwrites the report of the first")
+
+        transport.release()
+        _ = await (removal.value, fromTheMenu.value)
     }
 }

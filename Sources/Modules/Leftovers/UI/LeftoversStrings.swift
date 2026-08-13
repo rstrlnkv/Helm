@@ -51,8 +51,37 @@ enum LfStr {
     static var cancelAction: String { L("Cancel") }
     static var deleteItem: String { L("Delete…") }
     static func confirmDeleteInUse(_ name: String) -> String { L("Delete \(name)? It is loaded now, and the app that installed it may put it back.", [.ru: "Удалить \(name)? Он сейчас загружен, и установившее его приложение может создать его заново.", .es: "¿Eliminar \(name)? Está cargado ahora y la app que lo instaló podría volver a crearlo.", .fr: "Supprimer \(name) ? Il est chargé, et l’app qui l’a installé peut le recréer.", .de: "\(name) löschen? Es ist gerade geladen, und die App, die es installiert hat, kann es neu anlegen.", .ja: "\(name) を削除しますか？現在読み込まれており、インストールしたアプリが再作成する場合があります。", .zh: "删除 \(name)？它当前已加载，安装它的应用可能会重新创建。", .pt: "Excluir \(name)? Está carregado agora, e o app que o instalou pode recriá-lo."]) }
+    /// Why there is no delete button on this row, in the person's terms. Two
+    /// sentences, because the two states ask different things of them: one is a
+    /// password somebody has, the other is nothing anybody can do.
+    ///
+    /// Exhaustive over the reason for the same cause `kindName` records — a
+    /// `default` here is how one of the two sentences would come to be drawn for
+    /// both, which is the defect this pair exists to end.
+    static func noDelete(_ reason: NoDelete) -> String {
+        switch reason {
+        case .needsAdministrator: return needsAdmin
+        case .protectedByMacOS: return L("Protected by macOS")
+        }
+    }
+
     static var needsAdmin: String { L("Needs an administrator to delete") }
     static var nothingFound: String { L("No leftovers found.") }
+    /// The message over the empty list, one per reason there is no list.
+    ///
+    /// Over the enum and exhaustive, for the reason `kindName` records: a
+    /// `default` here would draw a sentence about a clean Mac for a fourth state
+    /// nobody had looked at, which is how «No leftovers found» came to be shown
+    /// with rows in the model in the first place.
+    static func emptyMessage(_ nothing: LeftoversEmpty.Reason) -> String {
+        switch nothing {
+        case .notScanned: return notScannedYet
+        case .nothingFound: return nothingFound
+        // A claim about the filter, not about the Mac — and the filter menu is on
+        // screen above this line, which is what makes it worth its own sentence.
+        case .hiddenByFilter: return L("Everything found is hidden by the filter.")
+        }
+    }
     /// Asked before the batch, because this button is the one that acts on the
     /// most load-bearing files in the app — launch agents and login items —
     /// and it was the only multi-file removal in Helm that did not ask.
