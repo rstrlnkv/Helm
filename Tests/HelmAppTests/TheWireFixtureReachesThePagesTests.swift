@@ -166,9 +166,12 @@ final class TheWireFixtureReachesThePagesTests: XCTestCase {
         let silent = page(for: leftovers, wiredBy: ModulePageRender.unwired)
         let wired = page(for: leftovers, wiredBy: ModulePageRender.answering)
         // A refused scan is not the invitation: the page believes it has scanned and
-        // found nothing, which is the empty state without a button. Measured at 24
-        // layers, which is the floor this module carried before the fixture.
-        silent.assertItDrewSomething(atLeast: 20)
+        // found nothing, which is the empty state without a button. **10, not the 20
+        // this carried until 2026-08-14**: a page with nothing on it drew «Select
+        // all», «Clear selection» and «Move to Trash» — the bar had no emptiness
+        // guard where the toolbar had one — and the four controls it lost are worth
+        // eight layers. Measured at 12, twice.
+        silent.assertItDrewSomething(atLeast: 10)
         wired.assertItDrewSomething()
 
         XCTAssertEqual(segmentedControls(in: silent), 0,
@@ -211,7 +214,10 @@ final class TheWireFixtureReachesThePagesTests: XCTestCase {
                                               width: ModulePageRender.pageWidth,
                                               wiredBy: ModulePageRender.answering,
                                               primedBy: ModulePageRender.unprimed)
-        untouched.assertItDrewSomething(atLeast: 20)
+        // 10 for the reason the reading above says: the invitation is one button
+        // now, where it used to be that button plus a second Scan in the toolbar
+        // and a bar of three. Measured at 12, twice.
+        untouched.assertItDrewSomething(atLeast: 10)
 
         XCTAssertEqual(segmentedControls(in: untouched), 0, """
             an unprimed leftovers page has \(segmentedControls(in: untouched)) segmented controls, \

@@ -391,7 +391,7 @@ extension ModulePageRender {
                   identifier: "com.example.render.quicklook", kind: .plugin,
                   sizeBytes: 3_356_672),
         // The scan gives an extension its identifier as its path, and the row is
-        // read back off that — `LfStr.detailLine` returns nil for this kind.
+        // read back off that — `LfStr.detail` returns nil for this kind.
         StaleItem(path: "com.example.conference.networkextension",
                   identifier: "com.example.conference.networkextension", kind: .systemExtension,
                   sizeBytes: 0, runAtLoad: true, status: .orphaned),

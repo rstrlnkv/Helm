@@ -207,10 +207,11 @@ enum LfStr {
     /// it if anything is.
     ///
     /// **One line, because the list had three heights.** The path and the missing
-    /// target were two `Text`s — 44 pt with a path, 59 pt with both, 32 pt for a
-    /// system extension — and two of those are the same row wearing a fact it
-    /// happens to carry. Interpolated rather than a key of its own: both halves are
-    /// already looked up, and the middle dot is the only new thing in it.
+    /// target were two rows of their own — 44 pt with a path, 59 pt with both, 32 pt
+    /// for a system extension — and two of those are the same row wearing a fact it
+    /// happens to carry. One line, and the row draws it as two `Text`s side by side:
+    /// which of the two gives way when the width runs out is the whole point, and a
+    /// single joined string can only ever surrender its own end.
     ///
     /// Nil for a system extension, and that is not an omission: the scan gives one
     /// its identifier as its path (`LeftoversScanner.systemExtensions`), so the
@@ -219,14 +220,28 @@ enum LfStr {
     /// that did not know it: `selectedLine` twenty lines down sets `・` for
     /// Japanese, as does every other join in the app, and this one handed all eight
     /// languages a Latin middle dot.
-    static func detailLine(for item: StaleItem,
-                           language: AppLanguage = AppLanguage.current) -> String? {
+    ///
+    /// **The separator belongs to the reason.** Left on the path it is the first
+    /// thing a truncation eats, and a middle dot with nothing after it is the same
+    /// defect one character shorter.
+    struct Detail: Equatable, Sendable {
+        /// Where the file is: the half that gives way, and is cut in the middle,
+        /// because both its ends carry meaning.
+        let path: String
+        /// What is wrong with it, separator and all — or nil where nothing is.
+        /// Drawn whole: it is the strongest evidence a login item is dead.
+        let reason: String?
+    }
+
+    static func detail(for item: StaleItem,
+                       language: AppLanguage = AppLanguage.current) -> Detail? {
         guard item.kind != .systemExtension else { return nil }
-        guard let target = item.missingTarget else { return item.path }
+        guard let target = item.missingTarget else { return Detail(path: item.path, reason: nil) }
         // Written as the one difference rather than as eight rows of which seven
         // are identical: only Japanese changes the mark.
         let dot = language == .ja ? "・" : " · "
-        return "\(item.path)\(dot)\(missingTarget(target, language: language))"
+        return Detail(path: item.path,
+                      reason: "\(dot)\(missingTarget(target, language: language))")
     }
     static func missingTarget(_ path: String,
                               language: AppLanguage = AppLanguage.current) -> String {

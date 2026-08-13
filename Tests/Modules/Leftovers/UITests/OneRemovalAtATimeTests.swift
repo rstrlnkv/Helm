@@ -1,17 +1,21 @@
-import XCTest
+import AppKit
 import HelmContract
 import HelmRuntime
+import HelmTestSupport
 import HelmUI
+import SwiftUI
+import XCTest
 import Module_Leftovers_Engine
 @testable import Module_Leftovers_UI
 
 /// Pressing "Move to Trash" twice must not send the batch twice.
 ///
-/// The Scan button is `.disabled(lvm.scanning)` and nothing else here is gated:
+/// The Scan button was `.disabled(lvm.scanning)` and nothing else here was gated:
 /// the two removal buttons go dark only when the selection is empty, and the
 /// selection is not emptied until the rescan that *follows* the removal has
 /// come back. Between the press and that moment the button is live and the
-/// paths are still in `selected`.
+/// paths are still in `selected`. Six controls on this page can start work; the
+/// last of them to be found was Scan itself, and its own reading is below.
 ///
 /// What the second press costs is not a second deletion — the files are already
 /// in the Trash — it is a **wrong report about the first**. `HelmTrash` answers
@@ -34,6 +38,12 @@ final class OneRemovalAtATimeTests: XCTestCase {
     private final class HeldTransport: EngineTransport, @unchecked Sendable {
         var events: AsyncStream<EngineEvent> { AsyncStream { _ in } }
         private(set) var trashRequests = 0
+        /// Counted for the same reason as the two below, and one more: the rescan
+        /// `trash` makes *itself* is a scan too, so a guard that refused every scan
+        /// while a removal runs would leave the list claiming what the removal has
+        /// just taken away. A fake that cannot count these cannot tell the guard
+        /// from the breakage.
+        private(set) var scanRequests = 0
         /// The other command a control on this page sends, counted for the same
         /// reason: «Turn off» stayed live through the whole removal.
         private(set) var setDisabledRequests = 0
@@ -51,6 +61,7 @@ final class OneRemovalAtATimeTests: XCTestCase {
         func send(_ command: EngineCommand) async throws -> Data {
             switch LeftoversCommand(rawValue: command.name) {
             case .scan:
+                scanRequests += 1
                 return (try? JSONEncoder().encode(items)) ?? Data()
             case .trash:
                 trashRequests += 1
@@ -144,6 +155,84 @@ final class OneRemovalAtATimeTests: XCTestCase {
 
         transport.release()
         _ = await (removal.value, press.value)
+    }
+
+    /// **Scan is the sixth**, and it was gated on `scanning` alone — which is
+    /// nothing at all during a removal. What it costs is exactly what «Turn off»
+    /// costs and the note on that test spells out: it rescans, so a fresh `items`
+    /// lands on top of the list the removal is about to report on. The button is
+    /// on screen for the whole request, at the end of the toolbar.
+    ///
+    /// **And the guard cannot be «no scanning while busy»**, which is the shape
+    /// the other five take: `trash` holds `busy` across the rescan it makes
+    /// *itself*, so a guard written that way would leave the list showing the rows
+    /// the removal had just taken, under a report saying they are gone. So the
+    /// second half of this test is a control: the rescan still arrives.
+    func testAScanStartedByHandWhileARemovalRunsIsRefused() async throws {
+        let one = item("/tmp/one.plist")
+        let transport = HeldTransport(items: [one])
+        let model = LeftoversViewModel(vm: ModuleViewModel(transport: transport))
+        await model.scan()
+        model.selected = Set(model.selectablePaths)
+        let before = transport.scanRequests
+        XCTAssertEqual(before, 1, "precondition: the first scan reached the transport")
+
+        let removal = Task { await model.removeSelected() }
+        for _ in 0..<50 where transport.trashRequests == 0 { await Task.yield() }
+        XCTAssertEqual(transport.trashRequests, 1, "precondition: the removal is in flight")
+
+        let press = Task { await model.scan() }
+        for _ in 0..<50 { await Task.yield() }
+
+        XCTAssertEqual(transport.scanRequests, before,
+                       "the toolbar's Scan started a scan in the middle of a removal, and its "
+                       + "fresh list lands on top of the one the removal is about to report on")
+
+        transport.release()
+        _ = await (removal.value, press.value)
+
+        XCTAssertEqual(transport.scanRequests, before + 1,
+                       "the rescan a removal makes for itself was refused with the rest — the "
+                       + "list still shows the rows that have just gone to the Trash")
+    }
+
+    /// **And the page has to say so**, or the model's refusal is a press that does
+    /// nothing — «the model refuses; the page dims. Both, or neither is reliable.»
+    ///
+    /// Read off the drawing rather than off the source: `.disabled` leaves no view
+    /// to ask, and what a person sees is ink. The band is the toolbar's own 48 pt,
+    /// which holds the filter, the caption and this button — nothing else in it
+    /// changes when a removal starts, so a difference there is this control
+    /// dimming. Measured before the fix: 1 272 404 idle and 1 272 404 busy, the
+    /// same number to the unit.
+    func testTheToolbarsScanGoesDimWhileARemovalRuns() async throws {
+        for appearance in RenderedInk.bothAppearances {
+            let one = item("/tmp/one.plist")
+            let transport = HeldTransport(items: [one])
+            // The model the mount hands back is the page's own — `shared(vm:)`,
+            // keyed to the view model the page was built on.
+            let (mount, page) = await LeftoversPageRender.page(on: transport, language: .en,
+                                                               width: 606,
+                                                               appearance: appearance)
+            defer { mount.drop() }
+            let idle = try XCTUnwrap(mount.ink(0...48), "the toolbar band was not drawn")
+            XCTAssertGreaterThan(idle, 0, "precondition: the toolbar drew something at all")
+
+            page.selected = Set(page.selectablePaths)
+            let removal = Task { await page.removeSelected() }
+            for _ in 0..<50 where transport.trashRequests == 0 { await Task.yield() }
+            XCTAssertEqual(transport.trashRequests, 1, "precondition: the removal is in flight")
+            mount.settle(20)
+            let busy = try XCTUnwrap(mount.ink(0...48))
+
+            XCTAssertLessThan(busy, idle, """
+                the toolbar is drawn identically while a removal runs, in \
+                \(RenderedInk.label(of: appearance)): Scan is live under a press the model \
+                now refuses, which is a button that does nothing.
+                """)
+            transport.release()
+            await removal.value
+        }
     }
 
     /// And the row's own delete, which is the control the Uninstaller's pass found

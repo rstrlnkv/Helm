@@ -158,7 +158,26 @@ import Module_Leftovers_Engine
     /// not a latch.
     private var scans = LatestRequest()
 
+    /// The Scan button, and the sixth control on this page that can start work in
+    /// the middle of a removal.
+    ///
+    /// It was gated on `scanning` alone, which is nothing at all while a removal
+    /// runs — and what a scan costs there is what `setDisabled` costs, in that
+    /// method's own words: the fresh `items` land on top of the list the removal is
+    /// about to report on.
+    ///
+    /// **The guard is on the press, not on the reading.** `trash` holds `busy`
+    /// across the rescan it makes for itself, so `guard !busy` inside `reload`
+    /// would refuse that one too and leave the list showing rows that are already
+    /// in the Trash — the inert half of a fix that looks most careful where it does
+    /// the most harm, which is the trap `dropHiddenSelections` records.
     public func scan() async {
+        guard !busy else { return }
+        await reload()
+    }
+
+    /// Bring the list up to date. Every caller that has already decided it may act.
+    private func reload() async {
         let mine = scans.take()
         scanning = true
         // Only the newest request may say the page is idle: an older scan
@@ -200,7 +219,7 @@ import Module_Leftovers_Engine
         await client.send(LeftoversCommand.setDisabled,
                           encoding: LeftoversToggle(label: item.identifier, path: item.path,
                                                     disabled: disabled))
-        await scan()
+        await reload()
     }
 
     /// Deletes one item, in use or not — the row asks first when it matters.
@@ -260,7 +279,7 @@ import Module_Leftovers_Engine
             // the log, which is the branch a person would be attaching a log to
             // ask about.
             HelmLog.shared.info(LeftoversEngine.moduleID, "trash reply lost")
-            await scan()
+            await reload()
             return
         }
         // The four fields are one report, so a round that *was* answered has to
@@ -270,7 +289,7 @@ import Module_Leftovers_Engine
         failures = result.refused
         removedCount = result.removed.count
         banner = LfStr.movedToTrash(result.removed.count, Bytes(result.freedBytes))
-        await scan()
+        await reload()
     }
 
     /// Nothing on screen about a removal — the shape `DiskViewModel` already

@@ -106,7 +106,7 @@ final class OneActHasOneNameTests: XCTestCase {
     /// joined with a Latin one for all eight languages.
     func testTheJapaneseRowJoinsWithJapanesesOwnMiddleDot() throws {
         AppLanguage.override = .ja
-        let line = try XCTUnwrap(LfStr.detailLine(for: agent(missingTarget: "/opt/gone/helper")))
+        let line = try XCTUnwrap(OneLineUnderTheNameTests.joined(agent(missingTarget: "/opt/gone/helper")))
 
         XCTAssertTrue(line.contains("・"), "the Japanese row joins with a Latin dot: \(line)")
         XCTAssertFalse(line.contains(" · "), "and it still carries the Latin one: \(line)")
@@ -151,6 +151,6 @@ final class OneActHasOneNameTests: XCTestCase {
          LfStr.confirmDeleteUnreadable("com.vendor.updater"),
          LfStr.confirmDeleteUnchecked("com.vendor.updater"),
          LfStr.missingTarget("/opt/gone/helper"),
-         LfStr.detailLine(for: broken) ?? ""]
+         OneLineUnderTheNameTests.joined(broken) ?? ""]
     }
 }

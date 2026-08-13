@@ -11,9 +11,14 @@ import Module_Leftovers_Engine
 /// 10 pt. Two of those are the same row wearing a fact it happens to carry, and a
 /// list whose rows are three heights has no rhythm to read down.
 ///
-/// So the path and the reason are **one** line — interpolated, which is why this
-/// costs no `.strings` edit: both halves are already keys, and what is new is the
+/// So the path and the reason are **one** line — built from the two keys that were
+/// already there, which is why this costs no `.strings` edit: what is new is the
 /// middle dot between them.
+///
+/// The line is one and it is drawn as two `Text`s, because which half gives way
+/// when the width runs out is the point — `TheReasonIsNotWhatGetsCutTests` is that
+/// half of it, measured off the render. Here it is still the same one line: two
+/// parts, one of them a fact the row happens to carry.
 @MainActor
 final class OneLineUnderTheNameTests: XCTestCase {
 
@@ -27,14 +32,14 @@ final class OneLineUnderTheNameTests: XCTestCase {
     func testARowWithNothingWrongWithItSaysWhereItIs() throws {
         let item = agent("plain")
 
-        XCTAssertEqual(LfStr.detailLine(for: item), item.path)
+        XCTAssertEqual(LfStr.detail(for: item), LfStr.Detail(path: item.path, reason: nil))
     }
 
     /// And a row that points at a file that has gone says both facts on one line,
     /// in the order a person reads them: where it is, then what is wrong.
     func testAMissingTargetJoinsThePathRatherThanAddingALine() throws {
         let item = agent("broken", missingTarget: "/opt/gone/helper")
-        let line = try XCTUnwrap(LfStr.detailLine(for: item))
+        let line = try XCTUnwrap(Self.joined(item))
 
         XCTAssertFalse(line.contains("\n"), "the two facts are on two lines again: \(line)")
         XCTAssertTrue(line.hasPrefix(item.path),
@@ -54,7 +59,15 @@ final class OneLineUnderTheNameTests: XCTestCase {
         XCTAssertEqual(extensionItem.path, extensionItem.identifier,
                        "precondition: the scan gives an extension its identifier as its path")
 
-        XCTAssertNil(LfStr.detailLine(for: extensionItem))
+        XCTAssertNil(LfStr.detail(for: extensionItem))
+    }
+
+    /// The line the row says, both parts of it — what a reader of this list hears
+    /// read out, and what the two checks above are about.
+    static func joined(_ item: StaleItem,
+                       language: AppLanguage = AppLanguage.current) -> String? {
+        guard let detail = LfStr.detail(for: item, language: language) else { return nil }
+        return detail.path + (detail.reason ?? "")
     }
 
     /// The reason is written in the reader's language on both halves of the join —
@@ -66,7 +79,7 @@ final class OneLineUnderTheNameTests: XCTestCase {
         AppLanguage.override = .ru
 
         let item = agent("broken", missingTarget: "/opt/gone/helper")
-        let line = try XCTUnwrap(LfStr.detailLine(for: item))
+        let line = try XCTUnwrap(Self.joined(item))
 
         XCTAssertTrue(line.contains("Ссылается на отсутствующий файл"),
                       "the reason is in English inside a Russian row: \(line)")

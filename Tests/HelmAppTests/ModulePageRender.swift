@@ -318,6 +318,16 @@ enum ModulePageRender {
     /// page whose rows have settled their count while their geometry is still
     /// resolving answers differently the next time it is asked, and that is the
     /// state three of these pages were caught in.
+    ///
+    /// **And its opacity, which this was blind to.** A view SwiftUI is fading out
+    /// keeps its frame for the whole 0.3 s of the fade, so the signature was
+    /// already steady while a departing subtree was still in the tree — and
+    /// `layers(of:)` counts it. Measured on the leftovers page, whose invitation
+    /// gives way to a list: the same page read 233 layers in one render and 246 in
+    /// the next, the thirteen being an empty state that was on its way out, and the
+    /// comparison in `PagesAreToldAboutTheDiskGrantTests` — where the difference is
+    /// supposed to be a permission banner and nothing else — came out even. A page
+    /// that is still fading has not settled.
     private static func settle(_ view: NSView) {
         var previous = ""
         var same = 0
@@ -337,7 +347,7 @@ enum ModulePageRender {
         func walk(_ layer: CALayer) {
             let frame = root.convert(layer.bounds, from: layer)
             out += "\(frame.origin.x),\(frame.origin.y),\(frame.width),\(frame.height)"
-            out += ",\(layer.cornerRadius);"
+            out += ",\(layer.cornerRadius),\(layer.presentation()?.opacity ?? layer.opacity);"
             for sub in layer.sublayers ?? [] { walk(sub) }
         }
         walk(root)
@@ -492,10 +502,11 @@ extension ModulePageRender.Page {
     /// of a partly-failed removal above the bar.
     ///
     /// 210 is a section's worth under the lowest of those. Losing the press or the
-    /// table fails it by about 185, because the page without either is 23 (a wire
-    /// that refuses, which this module reads as «nothing found») or 28 (the
-    /// invitation) — and both of those are what every ratchet built on this render
-    /// measured before today.
+    /// table fails it by about 200, because the page without either is **12** — a
+    /// wire that refuses, which this module reads as «nothing found», and the
+    /// invitation both measure that since 2026-08-14. They were 23 and 28: a page
+    /// with nothing on it drew a second Scan in the toolbar beside the invitation's
+    /// own, and a bar of three buttons with nothing to select or move.
     static let floors: [String: Int] = [
         "keep-awake": 250, "vpn": 190, "uninstaller": 45, "homebrew": 70,
         "leftovers": 210, "disk": 40, "duplicates": 8, "autopilot": 8, "layout": 230,
