@@ -8,10 +8,23 @@ public struct FileSystemLeftovers: LeftoversFilePort {
         FileManager.default.isWritableFile(atPath: url.path)
     }
 
+    public func resolvingSymlinks(_ url: URL) -> URL { url.resolvingSymlinksInPath() }
+
     public func children(of url: URL) -> [URL] { DirectoryListing.children(of: url) }
 
-    public func exists(_ path: String) -> Bool {
-        FileManager.default.fileExists(atPath: path)
+    /// `stat`, not `FileManager.fileExists`, because the errno is the answer.
+    ///
+    /// `ENOENT` and `ENOTDIR` are «there is nothing there»; `ENAMETOOLONG` is a
+    /// path no file can have. Everything else — `EACCES` above all, and the one
+    /// this Mac gives for a file under a mode-000 parent — is «this process may
+    /// not look», which is not a fact about the file.
+    public func exists(_ path: String) -> Bool? {
+        var info = stat()
+        guard stat(path, &info) != 0 else { return true }
+        switch errno {
+        case ENOENT, ENOTDIR, ENAMETOOLONG: return false
+        default: return nil
+        }
     }
 
     public func size(_ url: URL) -> Int { FileWeight.allocated(of: url) }
@@ -90,12 +103,17 @@ public struct WorkspaceInstalledApps: InstalledAppsPort {
 /// may do, and the scanner is handed only the reading half.
 public struct ActiveExtensions: LoadedItemsPort, LoginItemSwitchPort {
     public init() {}
-    public func installedExtensions() -> [SystemExtensionInfo] {
-        SystemExtensionCLI.installed()
+    public func installedExtensions() -> [SystemExtensionInfo]? {
+        SystemExtensionCLI.installedIfAnswered()
     }
 
-    public func disabledLabels() -> Set<String> {
-        LaunchctlDisabled.parse(run(["print-disabled", "gui/\(getuid())"]))
+    /// `nil` for a `launchctl` that did not answer, which is not an empty disabled
+    /// list: the exit status is the only thing that tells them apart, and dropping
+    /// it made a tool that failed say «nobody has switched anything off».
+    public func disabledLabels() -> Set<String>? {
+        let result = HelmProcess.run("/bin/launchctl", ["print-disabled", "gui/\(getuid())"])
+        guard result.status == 0 else { return nil }
+        return LaunchctlDisabled.parse(result.output)
     }
 
     public func setDisabled(_ disabled: Bool, label: String) {

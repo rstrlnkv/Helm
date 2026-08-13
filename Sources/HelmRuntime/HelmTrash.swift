@@ -82,9 +82,16 @@ public enum HelmTrash {
     /// duration an attacker sets by handing over a large batch. A full close
     /// needs an `O_DIRECTORY | O_NOFOLLOW` parent with a relative unlink, which
     /// `trashItem` cannot express.
+    /// `leaf` says what the last component of these paths is, and it decides what
+    /// the three lines below may print. It is a fact only the module knows — for
+    /// Disk and Duplicates the leaf is the person's own document, for Leftovers and
+    /// the uninstaller it is a bundle id — and the loop that writes the lines is
+    /// shared, so it has to be told. Left at `.fileName`, every line reads exactly
+    /// as it did.
     public static func remove(allowed: [String],
                               outOfScope: [String] = [],
                               module: String,
+                              leaf: Redact.Leaf = .fileName,
                               hasSystemExtension: (String) -> Bool = { _ in false },
                               ancestry: (String) -> PathCanonical.AncestryIdentity? = {
                                   PathCanonical.ancestryIdentity(of: $0)
@@ -99,7 +106,8 @@ public enum HelmTrash {
         var freed = 0
 
         for path in outOfScope {
-            HelmLog.shared.warn(module, "refused out-of-scope path: \(Redact.path(path))")
+            HelmLog.shared.warn(module,
+                                "refused out-of-scope path: \(Redact.path(path, leaf: leaf))")
         }
 
         // One set for the batch: a hard link is one allocation under several
@@ -169,7 +177,7 @@ public enum HelmTrash {
             if let now = ancestry(path), now != approvedAncestry[index] {
                 refused.append(Refusal(path: path, reason: .changedSinceScan))
                 HelmLog.shared.warn(module,
-                    "refused: ancestor changed since the gate: \(Redact.path(path))")
+                    "refused: ancestor changed since the gate: \(Redact.path(path, leaf: leaf))")
                 continue
             }
             do {
@@ -199,7 +207,14 @@ public enum HelmTrash {
                                                  errorCode: (error as NSError).code,
                                                  hasSystemExtension: hasSystemExtension(path))
                 refused.append(Refusal(path: path, reason: reason))
-                HelmLog.shared.failure(module, "trash refused \(Redact.path(path))", error)
+                // Composed here rather than through `HelmLog.failure`, which is the
+                // same line at the same level, because **the system's half of it
+                // names the file too**: `trashItem` refusing answers «The file
+                // “com.acme.tool.plist” doesn’t exist» and repeats the path under
+                // `NSFilePathErrorKey`, so redacting Helm's own half would leave a
+                // module whose leaf is a bundle id naming it twice more.
+                HelmLog.shared.error(module, "trash refused \(Redact.path(path, leaf: leaf)): "
+                    + Redact.naming(HelmFailure.describe(error), software: path, leaf: leaf))
             }
         }
 

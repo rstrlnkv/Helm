@@ -80,7 +80,14 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
             // an inert check is worse than none: it says a question was answered
             // that was not. The uninstaller, which does hand over `.app` bundles,
             // wires the real one.
-            return HelmTrash.remove(allowed: allowed, outOfScope: refused, module: Self.moduleID)
+            // **The leaf of every path here is a bundle id**, which is what
+            // `Redact.app` exists for — a settings file is `com.acme.tool.plist`, a
+            // launch agent its label, a plug-in the product's own name. A refusal by
+            // Full Disk Access is an ordinary outcome for this module, so these
+            // lines are what a person's log fills up with before they attach it to a
+            // bug report.
+            return HelmTrash.remove(allowed: allowed, outOfScope: refused,
+                                    module: Self.moduleID, leaf: .softwareName)
         }
     }
 
@@ -94,6 +101,19 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
             case .setDisabled:
                 guard let request = EngineReply.decode(LeftoversToggle.self, from: command)
                 else { return Data() }
+                // **The engine has the last word on the label, as it has on a
+                // path.** A label is whatever a `.plist` claims, and a file may
+                // claim another job's: `zz-innocent.plist` saying it is
+                // `com.securityvendor.agent` sends `launchctl disable` at the real
+                // job of that name. `LaunchLabel.mayBeSwitched` is the same
+                // predicate the row's offer reads, so this refuses nothing the page
+                // draws — it refuses whatever else builds a request.
+                guard LaunchLabel.mayBeSwitched(label: request.label, path: request.path) else {
+                    HelmLog.shared.warn(Self.moduleID,
+                                        "refused a switch: the label is not the one that file "
+                                        + "would register")
+                    return Data()
+                }
                 await offTheCooperativePool { self.switcher.setDisabled(request.disabled,
                                                                         label: request.label) }
                 return Data()

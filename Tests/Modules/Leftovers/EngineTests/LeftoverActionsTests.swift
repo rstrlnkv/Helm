@@ -85,8 +85,14 @@ final class LeftoverActionsTests: XCTestCase {
 /// prefix instead.
 final class OneToggleRuleTests: XCTestCase {
 
+    /// A file in the folder this module actually reads, named after its own label —
+    /// see `offer` below for why the fixture has to be a shape a scan can produce.
+    /// In `/tmp` these rows were unswitchable for a second reason, so
+    /// `testAProtectedAgentIsNotToggleable` would have passed with the protected rule
+    /// deleted.
     private func item(kind: StaleKind, status: ItemStatus, identifier: String) -> StaleItem {
-        StaleItem(path: "/tmp/\(identifier).plist", identifier: identifier, kind: kind,
+        StaleItem(path: "/Users/x/Library/LaunchAgents/\(identifier).plist",
+                  identifier: identifier, kind: kind,
                   sizeBytes: 0, status: status, writable: true)
     }
 
@@ -138,8 +144,15 @@ extension OneToggleRuleTests {
         XCTAssertFalse(offer(kind: .launchAgent, status: .inUse, id: ""))
     }
 
+    /// **The path is the file the label came from, and it used to be `/tmp/x.plist`
+    /// for every id.** That is a file called `x.plist` claiming to be
+    /// `com.acme.helper` — the shape `ALabelTheFileWouldNotRegisterTests` is about,
+    /// used here to assert the *ordinary* case, and a shape no scan can produce:
+    /// this module reads two LaunchAgents folders, and launchd's convention is that
+    /// a job's file is named after its label. The fixture now says what an agent
+    /// really looks like, so what these three assertions vary is the kind.
     private func offer(kind: StaleKind, status: ItemStatus, id: String) -> Bool {
-        StaleItem(path: "/tmp/x.plist", identifier: id, kind: kind, sizeBytes: 0,
-                  status: status, writable: true).canToggle
+        StaleItem(path: "/Users/x/Library/LaunchAgents/\(id).plist", identifier: id, kind: kind,
+                  sizeBytes: 0, status: status, writable: true).canToggle
     }
 }

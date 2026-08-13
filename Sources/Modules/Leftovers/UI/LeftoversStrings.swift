@@ -32,6 +32,11 @@ enum LfStr {
     /// English key means one thing, and what this one says is that the file
     /// itself could not be read.
     static var statusUnreadable: String { L("Unreadable") }
+    /// The badge on a row whose *file* was read and whose verdict still could not be
+    /// reached: the program it points at is somewhere this process may not look, or
+    /// the tool that lists what macOS has loaded did not answer. Not
+    /// «Unreadable» — that word is about this file, and this file was fine.
+    static var statusUndetermined: String { L("Not checked") }
     static var scan: String { L("Scan") }
     static var scanning: String { L("Scanning…") }
     static var rescan: String { L("Scan again") }
@@ -71,9 +76,15 @@ enum LfStr {
         switch LeftoverActions.askBeforeDeleting(item) {
         case .loadedNow: return confirmDeleteInUse(item.identifier)
         case .cannotBeRead: return confirmDeleteUnreadable(item.identifier)
+        case .cannotBeChecked: return confirmDeleteUnchecked(item.identifier)
         case nil: return nil
         }
     }
+    /// The file read fine; what Helm could not do is check whether anything still
+    /// uses it — the program it points at sits where this process may not look, or
+    /// macOS's own list of what is loaded did not come. So the sentence says that,
+    /// rather than blaming the file the way `confirmDeleteUnreadable` does.
+    static func confirmDeleteUnchecked(_ name: String) -> String { L("Delete \(name)? Helm could not check whether anything still uses it.", [.ru: "Удалить \(name)? Helm не смог проверить, использует ли его что-нибудь.", .es: "¿Eliminar \(name)? Helm no pudo comprobar si algo lo sigue usando.", .fr: "Supprimer \(name) ? Helm n’a pas pu vérifier si quelque chose l’utilise encore.", .de: "\(name) löschen? Helm konnte nicht prüfen, ob es noch verwendet wird.", .ja: "\(name) を削除しますか？何かがまだ使用しているか、Helm は確認できませんでした。", .zh: "删除 \(name)？Helm 无法确认是否还有程序在使用它。", .pt: "Excluir \(name)? O Helm não conseguiu verificar se algo ainda o usa."]) }
     static func confirmDeleteUnreadable(_ name: String) -> String { L("Delete \(name)? Helm could not read this file, so it cannot tell what installed it.", [.ru: "Удалить \(name)? Helm не смог прочитать этот файл и не может определить, что его установило.", .es: "¿Eliminar \(name)? Helm no pudo leer este archivo, así que no sabe qué lo instaló.", .fr: "Supprimer \(name) ? Helm n’a pas pu lire ce fichier et ne sait donc pas ce qui l’a installé.", .de: "\(name) löschen? Helm konnte diese Datei nicht lesen und weiß daher nicht, was sie installiert hat.", .ja: "\(name) を削除しますか？Helm はこのファイルを読み取れず、何がインストールしたか判断できません。", .zh: "删除 \(name)？Helm 无法读取此文件，因此无法判断是什么安装了它。", .pt: "Excluir \(name)? O Helm não conseguiu ler este arquivo, portanto não sabe o que o instalou."]) }
     static func confirmDeleteInUse(_ name: String) -> String { L("Delete \(name)? It is loaded now, and the app that installed it may put it back.", [.ru: "Удалить \(name)? Он сейчас загружен, и установившее его приложение может создать его заново.", .es: "¿Eliminar \(name)? Está cargado ahora y la app que lo instaló podría volver a crearlo.", .fr: "Supprimer \(name) ? Il est chargé, et l’app qui l’a installé peut le recréer.", .de: "\(name) löschen? Es ist gerade geladen, und die App, die es installiert hat, kann es neu anlegen.", .ja: "\(name) を削除しますか？現在読み込まれており、インストールしたアプリが再作成する場合があります。", .zh: "删除 \(name)？它当前已加载，安装它的应用可能会重新创建。", .pt: "Excluir \(name)? Está carregado agora, e o app que o instalou pode recriá-lo."]) }
     /// Why there is no delete button on this row, in the person's terms. Two

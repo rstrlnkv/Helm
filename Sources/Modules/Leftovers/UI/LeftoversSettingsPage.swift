@@ -382,6 +382,9 @@ struct LeftoversSettingsPage: View {
         // all» from «never ticked» said nothing. Grey is what the other two facts
         // nobody may tick already wear.
         case .unreadable: (LfStr.statusUnreadable, .secondary)
+        // Grey for the reason above: what separates a colour here is «ticked by
+        // Select all» from «never ticked», and this is one of the never-ticked.
+        case .undetermined: (LfStr.statusUndetermined, .secondary)
         }
         return HelmBadge(text, tint: color)
     }

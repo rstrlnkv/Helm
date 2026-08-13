@@ -189,7 +189,8 @@ import Module_Leftovers_Engine
     public func setDisabled(_ disabled: Bool, item: StaleItem) async {
         guard !busy else { return }
         await client.send(LeftoversCommand.setDisabled,
-                          encoding: LeftoversToggle(label: item.identifier, disabled: disabled))
+                          encoding: LeftoversToggle(label: item.identifier, path: item.path,
+                                                    disabled: disabled))
         await scan()
     }
 

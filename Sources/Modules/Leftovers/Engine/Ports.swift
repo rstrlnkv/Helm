@@ -27,8 +27,40 @@ public protocol LeftoversFilePort: Sendable {
     /// tests modelled one locked file among readable ones — a distinction the
     /// shipping code cannot make and does not need to.
     func isWritableDirectory(_ url: URL) -> Bool
+    /// Where this path actually leads, with **every** symbolic link in it followed.
+    ///
+    /// Asked of each of the seven directories the scan is compiled with, because a
+    /// name is not a place: four of them do not exist on a stock install, so any
+    /// process running as the user can create one as a link to somewhere else and
+    /// have the whole enumeration happen there — under Helm's Full Disk Access,
+    /// with the row still spelling the directory it was compiled with.
+    ///
+    /// **The whole path, not its last component.** `isSymbolicLinkKey` on
+    /// `~/Library/QuickLook` answers about `QuickLook` alone, and a link at
+    /// `~/Library` redirects the same scan without that ever being true — the
+    /// ancestor case `PathCanonical` was written for, one layer up from the removal
+    /// gate. A source whose resolved spelling is its own is canonical in every
+    /// component, so the children built from it are honest by construction and need
+    /// no second resolution of their own.
+    func resolvingSymlinks(_ url: URL) -> URL
     func children(of url: URL) -> [URL]
-    func exists(_ path: String) -> Bool
+    /// Whether something is at this path — and `nil` when this process cannot tell.
+    ///
+    /// **It answered `Bool`, and `false` meant two things.**
+    /// `FileManager.fileExists` returns false for a path that is not there *and*
+    /// for one inside a directory this process may not search: measured on this
+    /// Mac, a file under a mode-000 parent answers `false` while `stat` answers
+    /// `EACCES`. The one thing between a live login item and `.orphaned` is
+    /// whether its `Program` is there, so a refused read made a working job point
+    /// at nothing — an orange «Leftover» badge, a tick from «Select all», and a
+    /// «Turn off» that really does switch off working software. It bites hardest
+    /// with Full Disk Access denied, which is 23 of 42 launches on the machine
+    /// ARCHITECTURE.md records.
+    ///
+    /// The same fold, one file over, that commit `6de0a337` closed for the plist
+    /// read: `nil` is «I could not tell», and the scan answers `.undetermined`
+    /// rather than guessing which of the two it was.
+    func exists(_ path: String) -> Bool?
     func size(_ url: URL) -> Int
     func readPlist(_ url: URL) -> PlistData?
 }
@@ -46,11 +78,19 @@ public protocol InstalledAppsPort: Sendable {
 /// switched off — and they travel together because one scan wants both and
 /// neither is a file. Activated extensions are here so an extension whose app is
 /// gone can be told apart from one that is simply not running.
+/// **Both readings are optional, and `nil` is «the tool did not answer».** They
+/// answered `[]` and `[]`, which is the unsafe direction for each: no active
+/// extension means a launch agent whose label *is* a live system extension stops
+/// being in use and becomes a leftover with a tick beside it, and no disabled label
+/// means a login item somebody switched off loses the badge that says so. Two
+/// facts — «nothing is loaded» and «nobody asked» — and a dropped exit status made
+/// them one (§ Anything that can stop being true on its own owns a channel to say
+/// so). Nothing is promoted to `.orphaned` on a reading that did not happen.
 public protocol LoadedItemsPort: Sendable {
     /// The full list, so the module can name them instead of counting them.
-    func installedExtensions() -> [SystemExtensionInfo]
+    func installedExtensions() -> [SystemExtensionInfo]?
     /// launchd labels the user has switched off.
-    func disabledLabels() -> Set<String>
+    func disabledLabels() -> Set<String>?
 }
 
 /// Switching a login item off or back on, and stopping it now if it is running.

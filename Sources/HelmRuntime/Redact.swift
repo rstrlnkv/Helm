@@ -31,6 +31,62 @@ public enum Redact {
         static let dataMount = "/System/Volumes/Data"
     }
 
+    /// What the last component of a module's paths is, which decides how much of a
+    /// line about one may stay in clear.
+    ///
+    /// For Disk and Duplicates it is a document of the person's own, and `path`
+    /// above is the whole of the redaction: their folders are the point of those
+    /// screens. For the app-cleanup modules the leaf **is a bundle id** —
+    /// `~/Library/Preferences/com.acme.tool.plist` — which is the thing `app`
+    /// exists for: ARCHITECTURE.md § What must not reach the file says a bundle id
+    /// names a person's habits. Two kinds of leaf, one shared removal loop, and a
+    /// caller has to say which it hands over.
+    public enum Leaf: Sendable {
+        case fileName, softwareName
+    }
+
+    /// A path as a log line spells it, given what its last component is.
+    ///
+    /// The extension stays in clear on purpose: whether a refusal was about a
+    /// `.plist`, a `.qlgenerator` or a bundle is worth reading and names nobody.
+    public static func path(_ path: String, leaf: Leaf,
+                            home: String = NSHomeDirectory()) -> String {
+        let shown = self.path(path, home: home)
+        guard leaf == .softwareName, shown.contains("/") else { return shown }
+        let stem = softwareStem(path)
+        guard !stem.isEmpty else { return shown }
+        let name = (shown as NSString).lastPathComponent
+        let ext = (name as NSString).pathExtension
+        return ((shown as NSString).deletingLastPathComponent as NSString)
+            .appendingPathComponent(app(stem) + (ext.isEmpty ? "" : "." + ext))
+    }
+
+    /// Any text that may quote the software a path names, with that name tagged.
+    ///
+    /// **Because Helm's half of a line is not all of it.** A refusal is logged as
+    /// what Helm was doing plus what the system said, and what the system said is
+    /// composed out of the file: `NSFileNoSuchFileError` arrives as «The file
+    /// “com.acme.tool.plist” doesn’t exist», with the name in the message and again
+    /// under `NSFilePathErrorKey`. Redacting only the path Helm wrote leaves the
+    /// name in the line two more times.
+    ///
+    /// Four characters at least, because this replaces every occurrence rather than
+    /// a delimited one: swapping a two-letter name out of a sentence rewrites the
+    /// sentence instead of redacting it. Such a name survives inside a system
+    /// message — never in the path, where the leaf is delimited and `path(_:leaf:)`
+    /// replaces it whatever its length.
+    public static func naming(_ text: String, software path: String, leaf: Leaf) -> String {
+        guard leaf == .softwareName else { return text }
+        let stem = softwareStem(path)
+        guard stem.count >= 4 else { return text }
+        return text.replacingOccurrences(of: stem, with: app(stem))
+    }
+
+    /// The part of a leaf that names software: everything but the extension.
+    private static func softwareStem(_ path: String) -> String {
+        ((path as NSString).lastPathComponent as NSString).deletingPathExtension
+    }
+
     public static func paths(_ paths: [String], home: String = NSHomeDirectory()) -> String {
         paths.map { self.path($0, home: home) }.joined(separator: ", ")
     }

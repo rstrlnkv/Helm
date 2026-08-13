@@ -58,14 +58,34 @@ enum SystemExtensionParser {
 /// The one place that shells out to `systemextensionsctl` — every consumer
 /// (uninstaller, leftovers scanner, the settings audit) parses the same list.
 public enum SystemExtensionCLI {
-    public static func listOutput() -> String {
+    /// The tool's own answer, or `nil` when it did not give one.
+    ///
+    /// **An empty list and a tool that failed are two facts.** The exit status was
+    /// dropped here, so a `systemextensionsctl` that could not run read as «nothing
+    /// is loaded on this Mac» — and «nothing is loaded» is what stops a launch agent
+    /// whose label is a live system extension from being called a leftover.
+    public static func listing() -> String? {
         // This used to wait before reading, which is the deadlock order, and
         // paid 67 ms in the run-loop poll on every call.
-        HelmProcess.run("/usr/bin/systemextensionsctl", ["list"]).output
+        let result = HelmProcess.run("/usr/bin/systemextensionsctl", ["list"])
+        return result.status == 0 ? result.output : nil
     }
+
+    /// The folded reading: empty for a tool that did not answer.
+    ///
+    /// Kept for the callers that count rather than judge — the settings audit and
+    /// the uninstaller's host lookup, where an absent reading and an empty one lead
+    /// to the same screen. A caller that decides whether something may be *deleted*
+    /// takes `listing()` or `installedIfAnswered()` instead.
+    public static func listOutput() -> String { listing() ?? "" }
 
     public static func installed() -> [SystemExtensionInfo] {
         SystemExtensionParser.parse(listOutput())
+    }
+
+    /// The list, or `nil` when `systemextensionsctl` itself did not answer.
+    public static func installedIfAnswered() -> [SystemExtensionInfo]? {
+        listing().map(SystemExtensionParser.parse)
     }
 
     public static func hostIdentifiers() -> Set<String> {

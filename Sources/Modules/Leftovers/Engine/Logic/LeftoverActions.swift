@@ -28,7 +28,7 @@ public enum NoDelete: Equatable, Sendable {
 /// Beside `NoDelete` because it is the same kind of answer — a reason the page
 /// turns into a sentence — read by `askBeforeDeleting` below.
 public enum AskFirst: Equatable, Sendable {
-    case loadedNow, cannotBeRead
+    case loadedNow, cannotBeRead, cannotBeChecked
 }
 
 public enum LeftoverActions {
@@ -49,14 +49,16 @@ public enum LeftoverActions {
         }
         var actions: Set<LeftoverAction> = [.reveal]
         // **The switch needs a label that is the job's, and one launchctl will
-        // take.** `LaunchLabel` is the second half and the same predicate
-        // `ActiveExtensions.setDisabled` guards on, so the page and the port cannot
-        // disagree about a row. The first half is `.unreadable`: the identifier is
-        // then the file's own name, which is right for a job that omits `Label`
-        // and an invention for one whose contents never came — and disabling an
-        // invented label writes an entry the next scan reads back as «Disabled».
+        // take.** `LaunchLabel.mayBeSwitched` is the second half and the same
+        // predicate `LeftoversEngine` guards on before it acts, so the page and the
+        // engine cannot disagree about a row — and it is where «a file may claim
+        // another job's label» is refused. The first half is `.unreadable`: the
+        // identifier is then the file's own name, which is right for a job that
+        // omits `Label` and an invention for one whose contents never came — and
+        // disabling an invented label writes an entry the next scan reads back as
+        // «Disabled».
         if item.kind == .launchAgent, item.status != .unreadable,
-           LaunchLabel.isSwitchable(item.identifier) {
+           LaunchLabel.mayBeSwitched(label: item.identifier, path: item.path) {
             actions.insert(.turnOff)
         }
         if item.kind != .launchDaemon, item.writable { actions.insert(.delete) }
@@ -118,6 +120,11 @@ public enum LeftoverActions {
         // is using it, and a nil here would say «delete this without asking».
         case .protectedItem: return .loadedNow
         case .unreadable: return .cannotBeRead
+        // The file was read; what could not be read is elsewhere — the program it
+        // points at, or macOS's own list of what is loaded. «Loaded now» would
+        // claim the reading that failed, and «could not read this file» would
+        // blame the file.
+        case .undetermined: return .cannotBeChecked
         }
     }
 }

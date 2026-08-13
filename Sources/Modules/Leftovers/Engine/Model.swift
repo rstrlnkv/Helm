@@ -25,6 +25,21 @@ public enum ItemStatus: String, Codable, Sendable, Equatable {
     /// nothing» → `.orphaned`, which is a tick from «Select all» and a place in
     /// the batch (`APlistNobodyCouldReadTests`).
     case unreadable
+    /// The file read fine and a reading its verdict depends on did not happen, so
+    /// Helm cannot say whether anything still uses it.
+    ///
+    /// Two readings put a row here, and neither is about this file: the existence
+    /// of the program the job points at, when it sits in a directory this process
+    /// may not search (`LeftoversFilePort.exists` → nil), and the list of what
+    /// macOS has loaded, when the tool that answers it did not
+    /// (`LoadedItemsPort.installedExtensions` → nil).
+    ///
+    /// **Its own case rather than `.unreadable`**, which is the sentence
+    /// «Helm could not read this file» — false of both of these, and drawn over a
+    /// plist that reads perfectly. ARCHITECTURE.md § A nil from a system read can
+    /// be folding two questions into one is the rule being followed: a reason that
+    /// needs telling apart gets named, not read out of a shared one.
+    case undetermined
 }
 
 public struct StaleItem: Codable, Equatable, Sendable, Identifiable {
@@ -92,10 +107,17 @@ public struct StaleItem: Codable, Equatable, Sendable, Identifiable {
 }
 
 /// Which login item to switch, and which way.
+///
+/// **The file comes with the label, because the label alone cannot be checked.** A
+/// label is whatever string a `.plist` put in its `Label` key, and a file may claim
+/// another job's — so the engine, which is the last word on what happens to
+/// somebody's login items, needs the path to ask whether this label is the one that
+/// file would register (`LaunchLabel.mayBeSwitched`).
 public struct LeftoversToggle: Codable, Sendable {
     public let label: String
+    public let path: String
     public let disabled: Bool
-    public init(label: String, disabled: Bool) {
-        self.label = label; self.disabled = disabled
+    public init(label: String, path: String, disabled: Bool) {
+        self.label = label; self.path = path; self.disabled = disabled
     }
 }

@@ -30,13 +30,38 @@ struct LeftoversFakeFiles: LeftoversFilePort {
     var listing: [String: [String]] = [:]
     /// Paths that exist — a job's `Program`, so far.
     var existing: Set<String> = []
+    /// Paths whose existence this process may not check: a program inside a
+    /// directory it cannot search, where `stat` answers `EACCES` and
+    /// `FileManager.fileExists` folds that to «not there». The port's third answer,
+    /// and without it «the read was refused» was a state no fixture could hold —
+    /// which is `ARefusedReadIsNotAMissingProgramTests`.
+    var unreadable: Set<String> = []
     var plists: [String: PlistData] = [:]
+
+    /// **A path that leads somewhere other than where it is spelled.** One entry
+    /// per symbolic link: the key is the spelling, the value is what it points at.
+    ///
+    /// Everything this fake answers goes through `resolve` below, so a redirect on
+    /// a directory moves its children, their contents and their sizes with it —
+    /// which is what the real `FileManager` does and what `listing`, keyed by
+    /// spelling alone, could not describe. «These children actually live somewhere
+    /// else» was therefore a state no test in this target could write down, which
+    /// is why the scan trusted the seven directory names it is compiled with:
+    /// `ADirectoryThatIsNotTheOneItNamesTests` is the case that had nowhere to go.
+    var redirects: [String: String] = [:]
 
     func isWritableDirectory(_ url: URL) -> Bool { !unwritable.contains(url.path) }
     func children(of url: URL) -> [URL] {
-        (listing[url.path] ?? []).map { url.appendingPathComponent($0) }
+        // The child keeps the spelling it was asked for, exactly as
+        // `DirectoryListing.children` builds it out of the URL handed in — that
+        // false spelling is the whole of the finding.
+        (listing[resolve(url.path)] ?? []).map { url.appendingPathComponent($0) }
     }
-    func exists(_ path: String) -> Bool { existing.contains(path) }
+    func exists(_ path: String) -> Bool? {
+        let real = resolve(path)
+        guard !unreadable.contains(real) else { return nil }
+        return existing.contains(real)
+    }
     /// One size for everything: what this port answers is measured against the real
     /// filesystem in `LeftoversRemovalTests`, and a fixture size here is only ever
     /// «some bytes».
@@ -44,7 +69,28 @@ struct LeftoversFakeFiles: LeftoversFilePort {
     /// Nil for a plist nobody put here — which is also the port's answer for a file
     /// it could not read, and `APlistNobodyCouldReadTests` is about that being one
     /// answer for two facts.
-    func readPlist(_ url: URL) -> PlistData? { plists[url.path] }
+    func readPlist(_ url: URL) -> PlistData? { plists[resolve(url.path)] }
+
+    func resolvingSymlinks(_ url: URL) -> URL { URL(fileURLWithPath: resolve(url.path)) }
+
+    /// Where a path leads once every link in it has been followed — component by
+    /// component, so a redirected *ancestor* moves everything under it. A source
+    /// whose own last component is a link and one three folders up are the same
+    /// escape, and a fake that could only do the first would bless the second.
+    private func resolve(_ path: String) -> String {
+        var resolved = "/"
+        for component in path.split(separator: "/") {
+            resolved = (resolved as NSString).appendingPathComponent(String(component))
+            // Bounded: a fixture may point two links at each other, and a test
+            // hanging is a worse answer than a test failing.
+            var hops = 0
+            while let target = redirects[resolved], hops < 8 {
+                resolved = target
+                hops += 1
+            }
+        }
+        return resolved
+    }
 }
 
 struct LeftoversFakeApps: InstalledAppsPort {
@@ -58,9 +104,12 @@ struct LeftoversFakeApps: InstalledAppsPort {
 /// `installedExtensions()` returns, and `disabled` is the labels the person has
 /// switched off. A fixture that set an `ids` field nothing read is the defect
 /// `ExtensionOfferFixtureTests` exists for.
+/// Both fields are optional the way the port is: `nil` is «the tool did not
+/// answer», which is the state a dropped exit status made unrepresentable — and
+/// therefore untestable — while `[]` went on meaning «nothing is loaded».
 struct LeftoversFakeLoaded: LoadedItemsPort {
-    var installed: [SystemExtensionInfo] = []
-    var disabled: Set<String> = []
-    func installedExtensions() -> [SystemExtensionInfo] { installed }
-    func disabledLabels() -> Set<String> { disabled }
+    var installed: [SystemExtensionInfo]? = []
+    var disabled: Set<String>? = []
+    func installedExtensions() -> [SystemExtensionInfo]? { installed }
+    func disabledLabels() -> Set<String>? { disabled }
 }
