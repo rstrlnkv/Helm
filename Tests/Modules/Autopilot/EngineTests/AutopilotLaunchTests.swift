@@ -70,7 +70,7 @@ final class AutopilotLaunchTests: XCTestCase {
     }
 
     private func engine(_ keys: RuleKeyPort) -> AutopilotEngine {
-        AutopilotEngine(store: store(), home: home.path, keys: keys)
+        AutopilotEngine(store: store(), home: home.path, keys: keys, sequence: TestRuleSequence())
     }
 
     /// Builds the engine on another thread and gives up after five seconds.
@@ -84,7 +84,7 @@ final class AutopilotLaunchTests: XCTestCase {
         let home = self.home!
         let box = Box()
         DispatchQueue.global().async {
-            box.engine = AutopilotEngine(store: store, home: home.path, keys: keys)
+            box.engine = AutopilotEngine(store: store, home: home.path, keys: keys, sequence: TestRuleSequence())
             built.fulfill()
         }
         wait(for: [built], timeout: 5)

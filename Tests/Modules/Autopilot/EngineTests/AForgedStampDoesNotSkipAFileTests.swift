@@ -29,7 +29,7 @@ final class AForgedStampDoesNotSkipAFileTests: XCTestCase {
         engine = AutopilotEngine(
             store: NamespacedStore(namespace: "rules.test.\(UUID().uuidString)",
                                    backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey())
+            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
     }
 
     private func folder(_ rules: [Rule]) -> WatchedFolder {

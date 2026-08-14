@@ -31,7 +31,7 @@ final class AutopilotSealTests: XCTestCase {
 
     private func engine() -> AutopilotEngine {
         AutopilotEngine(store: NamespacedStore(namespace: namespace, backing: backing),
-                        home: home.path, keys: keys)
+                        home: home.path, keys: keys, sequence: TestRuleSequence())
     }
 
     // MARK: - The plist, as something else sees it

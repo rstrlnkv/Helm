@@ -42,7 +42,7 @@ final class TheWatcherAndTheSweepAskOneQuestionTests: XCTestCase {
         engine = AutopilotEngine(
             store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
                                    backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey())
+            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
     }
 
     private func path(_ relative: String) -> String {

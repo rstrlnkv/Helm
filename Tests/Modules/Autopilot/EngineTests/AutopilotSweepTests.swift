@@ -37,7 +37,7 @@ final class AutopilotSweepTests: XCTestCase {
         // read their rules through it exactly as the app does.
         engine = AutopilotEngine(store: NamespacedStore(namespace: "rules.test.\(UUID().uuidString)",
                                                     backing: InMemoryKeyValueStore()),
-                             home: home.path, keys: TestRuleKey())
+                             home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
     }
 
     private func exists(_ relative: String) -> Bool {

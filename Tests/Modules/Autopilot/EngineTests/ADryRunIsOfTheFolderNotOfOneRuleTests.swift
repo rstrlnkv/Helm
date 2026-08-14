@@ -28,7 +28,7 @@ final class ADryRunIsOfTheFolderNotOfOneRuleTests: XCTestCase {
         engine = AutopilotEngine(
             store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
                                    backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey())
+            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
     }
 
     private func rule(_ id: String, enabled: Bool = true,

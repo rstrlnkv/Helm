@@ -29,7 +29,7 @@ final class PreviewRowIdentityTests: XCTestCase {
         engine = AutopilotEngine(
             store: NamespacedStore(namespace: "rules.test.\(UUID().uuidString)",
                                    backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey())
+            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
     }
 
     /// Two files, one rule, one folder watched two levels deep.

@@ -145,7 +145,7 @@ final class AnEmptyFolderIsNotAnUnreadableOneTests: XCTestCase {
     private func engine() -> AutopilotEngine {
         AutopilotEngine(store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
                                                backing: InMemoryKeyValueStore()),
-                        home: home.path, keys: TestRuleKey())
+                        home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
     }
 
     private func folder(at path: String) -> WatchedFolder {

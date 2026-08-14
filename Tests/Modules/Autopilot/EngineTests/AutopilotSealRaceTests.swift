@@ -98,7 +98,7 @@ final class AutopilotSealRaceTests: XCTestCase {
 
     private func engine() -> AutopilotEngine {
         AutopilotEngine(store: NamespacedStore(namespace: namespace, backing: backing),
-                        home: home.path, keys: TestRuleKey())
+                        home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
     }
 
     private var payloadKey: String { "module.\(namespace!).folders" }

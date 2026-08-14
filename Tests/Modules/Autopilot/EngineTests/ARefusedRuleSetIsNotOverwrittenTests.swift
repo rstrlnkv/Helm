@@ -41,7 +41,7 @@ final class ARefusedRuleSetIsNotOverwrittenTests: XCTestCase {
 
     private func engine() -> AutopilotEngine {
         AutopilotEngine(store: NamespacedStore(namespace: namespace, backing: backing),
-                        home: home.path, keys: keys)
+                        home: home.path, keys: keys, sequence: TestRuleSequence())
     }
 
     private var payloadKey: String { "module.\(namespace!).folders" }
