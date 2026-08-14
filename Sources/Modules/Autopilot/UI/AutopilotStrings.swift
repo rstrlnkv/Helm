@@ -24,6 +24,19 @@ enum ApStr {
     static var startHint: String { L("Point Helm at a folder and give it rules. A file that arrives is checked against them in order and the first match wins — and every watched folder is checked again once an hour, so age rules come round.") }
     static var needsAccess: String { L("Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do.") }
 
+    // MARK: - Rules that are not Helm's to run
+
+    /// **Two sentences for two states, and the split is the point.** The rules
+    /// being unreadable and the rules being somebody else's leave the same empty
+    /// folder list behind, and a person can do something about only one of them:
+    /// a locked keychain is waited out, a rewritten plist is not.
+    static var rulesTampered: String { L("The rules stored on this Mac were not written by Helm, so none of them are running.") }
+    static var rulesUnreadable: String { L("Helm cannot read the key its rules are sealed with, so none of them are running.") }
+    /// The verb beside the first of those, and the only thing a refused page may
+    /// send. It says what it does — the rules go, and the folder list starts
+    /// again — rather than «OK».
+    static var discardRules: String { L("Discard and start again") }
+
     // MARK: - Folders
 
     static var addFolder: String { L("Add folder…") }
@@ -31,6 +44,29 @@ enum ApStr {
     static var runNow: String { L("Run now") }
     static var noRules: String { L("No rules yet") }
     static var depth: String { L("Include subfolders") }
+
+    /// **What a switch that says «on» is not saying.** A folder that was renamed,
+    /// a folder behind Full Disk Access and a folder with nothing in it were one
+    /// screen: the path, a live switch, and «Acted on 0 of 0». These are the three
+    /// separate things, and they are separate because a person can do something
+    /// different about each — point the rule somewhere else, grant the
+    /// permission, or nothing at all.
+    ///
+    /// Each takes the language, so a test can read all eight rather than reading
+    /// this Mac's eight times.
+    static func folderMissing(language: AppLanguage = AppLanguage.current) -> String {
+        L("This folder is no longer there", language: language)
+    }
+
+    static func folderUnreadable(language: AppLanguage = AppLanguage.current) -> String {
+        L("Helm cannot read this folder", language: language)
+    }
+
+    /// The hourly sweep still runs, which is why this says what stopped rather
+    /// than «this folder is not being tidied».
+    static func notWatching(language: AppLanguage = AppLanguage.current) -> String {
+        L("Changes here are not being noticed", language: language)
+    }
 
     // MARK: - Rules
 
@@ -49,8 +85,36 @@ enum ApStr {
     static var dryRun: String { L("What would happen") }
     static var dryRunNote: String { L("A rule is a decision made once and carried out from then on, so it is shown before it is switched on.") }
     static var nothingWouldHappen: String { L("Nothing in this folder matches yet.") }
+    /// The heading over the rows this rule does not get.
+    ///
+    /// The dry run is of the folder now, top to bottom, first match wins — so a
+    /// file another rule takes appears in the list the editor draws, and without
+    /// a line saying so it reads as this rule's work. Written as a whole sentence
+    /// rather than as a word beside each row: the rows carry the rule's own name,
+    /// and a name is not a claim.
+    static var takenByAnotherRule: String { L("Another rule takes these files") }
     static var enableRule: String { L("Turn the rule on") }
-    static func swept(_ acted: Int, _ examined: Int) -> String { L("Acted on \(acted) of \(examined)", [.ru: "Обработано \(acted) из \(examined)", .es: "Se actuó sobre \(acted) de \(examined)", .fr: "\(acted) sur \(examined) traités", .de: "\(acted) von \(examined) bearbeitet", .ja: "\(examined) 件中 \(acted) 件を処理", .zh: "处理了 \(examined) 个中的 \(acted) 个", .pt: "Agiu sobre \(acted) de \(examined)"]) }
+    /// What a Run now did — and, when there is one, what it did not do.
+    ///
+    /// **«Acted on 0 of 3» is also what a refusal on every file looks like.** The
+    /// report has carried `refused` and `failed` all along and this sentence took
+    /// neither, so the press whose whole purpose is "show me that this works"
+    /// answered a rule that is refusing every file with a figure that reads as
+    /// "nothing here matched".
+    ///
+    /// The two halves are joined rather than rewritten: `historyProblems` already
+    /// says the second one in eight languages, with the colon-before-count that
+    /// keeps the agreement right, and one sentence that said both would be eight
+    /// new translations of two that exist. The language is a parameter for the
+    /// reason `HelmConfirm.trash` takes one — the suite runs in whatever language
+    /// this Mac is set to, so a composition checked through `current` is checked
+    /// in one language eight times.
+    static func swept(_ acted: Int, _ examined: Int, notCompleted: Int = 0,
+                      language: AppLanguage = AppLanguage.current) -> String {
+        let sentence = L("Acted on \(acted) of \(examined)", [.ru: "Обработано \(acted) из \(examined)", .es: "Se actuó sobre \(acted) de \(examined)", .fr: "\(acted) sur \(examined) traités", .de: "\(acted) von \(examined) bearbeitet", .ja: "\(examined) 件中 \(acted) 件を処理", .zh: "处理了 \(examined) 个中的 \(acted) 个", .pt: "Agiu sobre \(acted) de \(examined)"], language: language)
+        guard notCompleted > 0 else { return sentence }
+        return sentence + " · " + historyProblems(notCompleted, language: language)
+    }
 
     // MARK: - Fields
 
@@ -153,12 +217,13 @@ enum ApStr {
     static var historyClear: String { L("Clear") }
     /// Refusals and failures counted together: both mean a file the rule meant
     /// to act on is still sitting where it was.
-    static func historyProblems(_ count: Int) -> String {
+    static func historyProblems(_ count: Int,
+                                language: AppLanguage = AppLanguage.current) -> String {
         // Written as label-then-count on purpose. "2 не прошло" needs "прошли"
         // for two through four in Russian, and the same trap waits in every
         // language that agrees a verb with a numeral; a colon makes the number
         // a count rather than a subject and the agreement question disappears.
-        L("not completed: \(count)", [.ru: "не выполнено: \(count)", .es: "sin completar: \(count)", .fr: "non effectuées : \(count)", .de: "nicht ausgeführt: \(count)", .ja: "未実行: \(count)", .zh: "未完成：\(count)", .pt: "não concluídas: \(count)"])
+        L("not completed: \(count)", [.ru: "не выполнено: \(count)", .es: "sin completar: \(count)", .fr: "non effectuées : \(count)", .de: "nicht ausgeführt: \(count)", .ja: "未実行: \(count)", .zh: "未完成：\(count)", .pt: "não concluídas: \(count)"], language: language)
     }
 
     /// The verb for one row. Past tense, because the row is a record of

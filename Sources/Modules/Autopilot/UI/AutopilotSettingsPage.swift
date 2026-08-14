@@ -28,9 +28,13 @@ struct AutopilotSettingsPage: View {
                     .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
                 Divider()
             }
-            // Nothing to say about the order of rules when there are no
-            // folders: the page's own call to action is the whole screen.
-            if !rvm.folders.isEmpty {
+            // Nothing to say about the order of rules unless the rules are what
+            // is on screen: the empty state's own call to action is the whole
+            // page, and a refusal is a statement about rules that are not
+            // running. One value decides both halves — `folders.isEmpty` was a
+            // second answer to the same question, and it read a refused rule set
+            // as a Mac with nothing on it.
+            if rvm.screen == .folders {
                 toolbar
                 Divider()
             }
@@ -66,13 +70,16 @@ struct AutopilotSettingsPage: View {
     }
 
     @ViewBuilder private var content: some View {
-        if rvm.folders.isEmpty {
+        switch rvm.screen {
+        case let .rulesRefused(reason):
+            refused(reason)
+        case .noFolders:
             HelmEmptyState(symbol: "location.north.circle", tint: ModuleCategory.files.tint,
                            message: ApStr.startHint) {
                 Button(ApStr.addFolder) { rvm.addFolder() }
                     .buttonStyle(.borderedProminent)
             }
-        } else {
+        case .folders:
             List {
                 ForEach(rvm.folders) { folder in
                     Section {
@@ -92,7 +99,49 @@ struct AutopilotSettingsPage: View {
         }
     }
 
+    /// The screen a person gets instead of «you have no folders» when the rules
+    /// on disk are not Helm's to run.
+    ///
+    /// Not dismissible, and not a `banner`: the banner is a report of a sweep
+    /// that has finished, and this is a standing statement about work that is not
+    /// happening. The only control is on the branch where there is something to
+    /// do — a keychain that would not answer is answered by waiting, and offering
+    /// to delete somebody's rules over it would be the worst button in the app.
+    @ViewBuilder private func refused(_ reason: RuleRefusal) -> some View {
+        VStack(alignment: .leading, spacing: HelmSpace.s5) {
+            switch reason {
+            case .tampered:
+                HelmBanner(ApStr.rulesTampered) {
+                    Button(ApStr.discardRules, role: .destructive) {
+                        Task { await rvm.discardRefusedRules() }
+                    }
+                    .controlSize(.small)
+                }
+            case .noKey:
+                HelmBanner(ApStr.rulesUnreadable)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, HelmLayout.formInset)
+        .padding(.vertical, HelmSpace.s5)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     private func folderHeader(_ folder: WatchedFolder) -> some View {
+        VStack(alignment: .leading, spacing: HelmSpace.s2) {
+            folderRow(folder)
+            // **A switch that says «on» over a folder that is gone.** The reading
+            // and the stream are facts about the world, not about the rules, and
+            // both stop being true with nobody touching Helm. Beside the path
+            // rather than in a banner at the foot of the page: the page can watch
+            // several folders and only one of them is the one this is about.
+            if let notice = rvm.notice(for: folder) {
+                HelmBanner(notice)
+            }
+        }
+    }
+
+    private func folderRow(_ folder: WatchedFolder) -> some View {
         HStack(spacing: 8) {
             Toggle("", isOn: Binding(get: { folder.enabled },
                                      set: { rvm.setEnabled($0, folder: folder) }))

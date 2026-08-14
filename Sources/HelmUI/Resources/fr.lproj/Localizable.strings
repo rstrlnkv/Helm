@@ -40,6 +40,7 @@
 "An app can no longer claim other apps' files as its own leftovers by naming itself unusually." = "Une app ne peut plus revendiquer les fichiers des autres comme ses résidus en se donnant un nom inhabituel.";
 "An app that keeps the Mac awake can now be narrowed to the situation you mean: only with an external display, only on power, or both." = "Une app qui garde le Mac éveillé peut désormais être limitée : seulement avec un écran externe, seulement sur secteur, ou les deux.";
 "Another app already uses this combination, so it does nothing here." = "Une autre app utilise déjà cette combinaison ; ici elle ne fait rien.";
+"Another rule takes these files" = "Une autre règle prend ces fichiers";
 "Anything that needs a system permission now says so where you turn it on — Disk, App Uninstaller, Login Items and Keep Awake all warn before they can disappoint you." = "Tout ce qui exige une autorisation système le signale là où vous l’activez — Disque, Désinstallation, Ouverture et Rester éveillé.";
 "App" = "App";
 "App Uninstaller module: remove apps together with their caches, settings and other leftovers; find leftovers of apps that are already gone." = "Module Désinstallation : supprime les apps avec leurs caches, réglages et autres restes ; retrouve les restes d’apps déjà supprimées.";
@@ -73,6 +74,7 @@
 "Check" = "Vérifier";
 "Checking for updates…" = "Recherche de mises à jour…";
 "Checking…" = "Recherche…";
+"Changes here are not being noticed" = "Les changements ici ne sont pas détectés";
 "Choose another folder" = "Choisir un autre dossier";
 "Choose another…" = "Choisir autre chose…";
 "Choose apps" = "Choisir des apps";
@@ -98,7 +100,10 @@
 "Custom active-state icon for Keep Awake." = "Icône active personnalisée pour Rester éveillé.";
 "Custom duration" = "Durée personnalisée";
 "Custom icon when active" = "Icône personnalisée si actif";
+"Discard and start again" = "Supprimer et recommencer";
 "Error" = "Erreur";
+"Helm cannot read the key its rules are sealed with, so none of them are running." = "Helm ne peut pas lire la clé qui scelle ses règles : aucune ne s’exécute.";
+"Helm cannot read this folder" = "Helm ne peut pas lire ce dossier";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm connecte les configurations que macOS conserve — à la main, ou selon une règle à l’ouverture d’une app. Ajoutez-en une dans les Réglages Système.";
 "Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm n’a reçu aucune réponse et ne sait pas quels fichiers ont été déplacés. La liste ci-dessus montre où ils sont maintenant.";
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm n’a reçu aucune réponse et ne sait pas quels fichiers ont été déplacés. La liste ci-dessus montre encore où ils étaient avant.";
@@ -112,7 +117,9 @@
 "Only an administrator can move this" = "Seul un administrateur peut le déplacer";
 "Other…" = "Autre…";
 "Spin the menu-bar icon" = "Faire tourner l’icône de la barre des menus";
+"The rules stored on this Mac were not written by Helm, so none of them are running." = "Les règles enregistrées sur ce Mac n’ont pas été écrites par Helm : aucune ne s’exécute.";
 "This decides the words. Whether the icon turns is the switch below." = "Ceci décide des mots. C’est l’interrupteur ci-dessous qui décide si l’icône tourne.";
+"This folder is no longer there" = "Ce dossier n’existe plus";
 "This is not where Helm found it, so nothing was moved. Scan again to see where it is now." = "Ce fichier n’est plus là où Helm l’a trouvé — rien n’a été déplacé. Réanalysez pour voir où il est maintenant.";
 "Warning" = "Avertissement";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "Avec ceci désactivé et l’avis réglé sur « Rien », une règle qui connecte ou coupe un tunnel ne donne aucun signe.";

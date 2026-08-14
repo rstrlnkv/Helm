@@ -162,6 +162,10 @@ final class StringsLiveInLprojTests: XCTestCase {
         "DEV": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         "Dev": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         "Document": [.fr],
+        // The log row's spoken level. Spanish spells it the way English does —
+        // «Error» is the RAE's word and the one this file's own «Errors» =
+        // «Errores» is the plural of.
+        "Error": [.es],
         "Extension": [.fr],
         "General": [.es],
         "h": [.es, .fr, .pt],

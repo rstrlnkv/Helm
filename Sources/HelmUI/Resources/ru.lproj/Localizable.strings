@@ -40,6 +40,7 @@
 "An app can no longer claim other apps' files as its own leftovers by naming itself unusually." = "Программа больше не может выдать чужие файлы за свои остатки, назвавшись необычным образом.";
 "An app that keeps the Mac awake can now be narrowed to the situation you mean: only with an external display, only on power, or both." = "Приложение, не дающее Mac спать, теперь можно ограничить условием: только при внешнем дисплее, только при питании или и то и другое.";
 "Another app already uses this combination, so it does nothing here." = "Это сочетание уже занято другим приложением, поэтому здесь оно не работает.";
+"Another rule takes these files" = "Эти файлы забирает другое правило";
 "Anything that needs a system permission now says so where you turn it on — Disk, App Uninstaller, Login Items and Keep Awake all warn before they can disappoint you." = "Всё, чему нужно разрешение системы, теперь предупреждает прямо там, где вы это включаете — «Диск», «Удаление приложений», «Объекты входа и расширения» и «Не спать».";
 "App" = "Приложение";
 "App Uninstaller module: remove apps together with their caches, settings and other leftovers; find leftovers of apps that are already gone." = "Модуль «Удаление приложений»: удаление вместе с кешами, настройками и другими остатками; поиск остатков уже удалённых приложений.";
@@ -73,6 +74,7 @@
 "Check" = "Проверить";
 "Checking for updates…" = "Проверяем обновления…";
 "Checking…" = "Проверка…";
+"Changes here are not being noticed" = "Изменения здесь не отслеживаются";
 "Choose another folder" = "Выбрать другую папку";
 "Choose another…" = "Выбрать другое…";
 "Choose apps" = "Выбор приложений";
@@ -98,7 +100,10 @@
 "Custom active-state icon for Keep Awake." = "Своя иконка активного состояния для «Не спать».";
 "Custom duration" = "Своё время";
 "Custom icon when active" = "Свой значок в активном состоянии";
+"Discard and start again" = "Удалить и начать заново";
 "Error" = "Ошибка";
+"Helm cannot read the key its rules are sealed with, so none of them are running." = "Helm не может прочитать ключ, которым подписаны правила, — ни одно из них не выполняется.";
+"Helm cannot read this folder" = "Helm не может прочитать эту папку";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm подключает конфигурации, которые хранит macOS, — вручную или по правилам, когда открывается приложение. Новую добавьте в Системных настройках.";
 "Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm не получил ответа и не знает, какие файлы перемещены. Список выше показывает, где они сейчас.";
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm не получил ответа и не знает, какие файлы перемещены. Список выше по-прежнему показывает, где они были до перемещения.";
@@ -112,7 +117,9 @@
 "Only an administrator can move this" = "Переместить может только администратор";
 "Other…" = "Другое…";
 "Spin the menu-bar icon" = "Вращать значок в строке меню";
+"The rules stored on this Mac were not written by Helm, so none of them are running." = "Правила, сохранённые на этом Mac, записаны не приложением Helm — ни одно из них не выполняется.";
 "This decides the words. Whether the icon turns is the switch below." = "Здесь только слова. Вращается ли значок — решает переключатель ниже.";
+"This folder is no longer there" = "Этой папки больше нет";
 "This is not where Helm found it, so nothing was moved. Scan again to see where it is now." = "Файл уже не там, где его нашли, — Helm его не тронул. Сканируйте заново, чтобы увидеть, где он теперь.";
 "Warning" = "Предупреждение";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "Если это выключено, а уведомление — «Ничего», правило подключит или отключит туннель незаметно.";

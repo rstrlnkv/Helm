@@ -22,6 +22,12 @@ public enum AutopilotCommand: String, CaseIterable, Sendable {
     case runNow
     case history
     case clearHistory
+    /// What the folder list cannot say: whether it is empty because there are no
+    /// rules, or because the ones on disk are not Helm's to run.
+    case status
+    /// Throw away a rule set that was refused. The one gesture a refused page is
+    /// allowed to make, and the only way past the guard in `AutopilotEngine.save`.
+    case discardRefusedRules
 }
 
 /// Which watched folder a command is about.

@@ -41,7 +41,67 @@ import SwiftUI
 
     func load() async {
         folders = await client.request(AutopilotCommand.folders) ?? []
+        // Asked for in the same breath as the folders, because an empty list is
+        // not a fact on its own: the engine hands `[]` out for a rule set
+        // something else wrote exactly as it does for a Mac that never had one,
+        // and a folder that is gone looks exactly like one with nothing to do.
+        let status = await client.request(AutopilotCommand.status, as: AutopilotStatus.self)
+        refusal = status?.refusal
+        folderStates = status?.folders ?? [:]
+        watching = status?.watching
         await loadHistory()
+    }
+
+    /// Why none of the stored rules are running, or `nil` when they are.
+    ///
+    /// A lost reply leaves this `nil`, which is the page it was already drawing:
+    /// a refusal is a claim about somebody's Mac and a request that came back
+    /// with nothing cannot make one.
+    @Published private(set) var refusal: RuleRefusal?
+
+    /// What reading each watched folder came to, by folder id, and whether a
+    /// stream is running over them.
+    ///
+    /// Both are facts about the world rather than about the rules, and both can
+    /// stop being true with nobody touching Helm — a folder is renamed, a volume
+    /// unmounts, a permission is declined. `nil` for `watching` is "nothing has
+    /// asked yet", which is not "nothing is watching".
+    @Published private(set) var folderStates: [String: FolderState] = [:]
+    @Published private(set) var watching: Bool?
+
+    /// The one sentence this folder's row has to carry, or nothing.
+    ///
+    /// The reading comes first: a folder that is gone is also a folder nothing is
+    /// watching, and saying the second would be true and useless. A folder
+    /// somebody switched off is not being watched on purpose and says nothing.
+    func notice(for folder: WatchedFolder) -> String? {
+        switch folderStates[folder.id] {
+        case .missing: return ApStr.folderMissing()
+        case .refused: return ApStr.folderUnreadable()
+        case .read, .none:
+            guard folder.enabled, watching == false else { return nil }
+            return ApStr.notWatching()
+        }
+    }
+
+    /// What the page draws where the folder list goes.
+    ///
+    /// A value rather than three `if`s in the body, so the one case that used to
+    /// be missing — a refusal drawn as an empty Mac — is a case of an enum the
+    /// page switches over without a `default`.
+    var screen: AutopilotScreen {
+        if let refusal { return .rulesRefused(refusal) }
+        return folders.isEmpty ? .noFolders : .folders
+    }
+
+    /// Throw away a rule set that was not written by Helm.
+    ///
+    /// The only gesture a refused page may make. Everything else it could send
+    /// is a save, and while the rules are refused a save is refused with them —
+    /// so without this the page never takes another edit.
+    func discardRefusedRules() async {
+        await client.send(AutopilotCommand.discardRefusedRules)
+        await load()
     }
 
     // MARK: - What it did
@@ -62,7 +122,11 @@ import SwiftUI
         }
     }
 
+    /// **Nothing is sent while the rules are refused.** The engine refuses the
+    /// write too, and that is the guard that matters; this is the half that stops
+    /// the page offering a gesture whose only outcome is a line in the log.
     private func save() {
+        guard refusal == nil else { return }
         let list = folders
         Task { await client.send(AutopilotCommand.setFolders, encoding: list) }
     }
@@ -148,20 +212,22 @@ import SwiftUI
     /// the last keystroke.
     func runPreview(for folder: WatchedFolder, rule: Rule) async {
         previewingRuleID = rule.id
-        var probe = folder
-        probe.rules = [enabled(rule)]
-        // A folder with a single enabled rule: the dry run is about this rule,
-        // and a rule above it in the real list would otherwise take the files.
+        // The whole folder, in the order it is read. This used to send a folder
+        // holding this rule alone — which answers a question nobody asked, since
+        // the first match wins and a rule above takes the files first.
+        let probe = folder.previewing(rule)
         let rows: [PreviewRow]? = await client.request(AutopilotCommand.previewDraft, encoding: probe)
         guard previewingRuleID == rule.id else { return }
         preview = rows ?? []
     }
 
-    private func enabled(_ rule: Rule) -> Rule {
-        var copy = rule
-        copy.enabled = true
-        return copy
-    }
+    /// What the rule being written takes, and what another rule takes instead.
+    ///
+    /// Split by rule identity, never by name: two rules in one folder may be
+    /// called the same thing, and the row this tells apart is the row the editor
+    /// dims.
+    var previewByThisRule: [PreviewRow] { preview.filter { $0.ruleID == previewingRuleID } }
+    var previewByOtherRules: [PreviewRow] { preview.filter { $0.ruleID != previewingRuleID } }
 
     func clearPreview() {
         previewingRuleID = nil
@@ -174,8 +240,33 @@ import SwiftUI
                                                         encoding: WatchedFolderRef(id: folder.id))
         guard let report else { return }
         bannerFolderID = folder.id
-        banner = ApStr.swept(report.acted, report.examined)
+        banner = ApStr.swept(report.acted, report.examined,
+                             notCompleted: report.refused + report.failed)
+        // The run just walked the folder, so its reading is newer than the one
+        // the page opened with — and «examined 0» over a folder that has since
+        // been renamed is the sentence this whole state exists to stop.
+        folderStates[folder.id] = report.folder
+        // **The record was written by the sweep this call just waited for.** The
+        // page reads the history once, from the List's own `.task`, which has
+        // long since run — so «Acted on 0 of 3» arrived over a history that
+        // still said nothing, at the one moment somebody is looking straight at
+        // the module asking why a rule did nothing.
+        await loadHistory()
     }
 
     func dismissBanner() { banner = nil; bannerFolderID = nil }
+}
+
+/// What the page draws where the folder list goes.
+///
+/// Three states and no `default` at the switch that draws them, because the
+/// fourth one is what this enum was made for: a rule set the engine refuses used
+/// to arrive on screen as `folders.isEmpty`, which is the sentence «point Helm at
+/// a folder» over rules the person already wrote.
+enum AutopilotScreen: Equatable {
+    /// The stored rules are not Helm's to run, for one of two reasons the person
+    /// can do different things about.
+    case rulesRefused(RuleRefusal)
+    case noFolders
+    case folders
 }

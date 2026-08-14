@@ -109,8 +109,11 @@ struct RuleEditor: View {
             HStack {
                 Text(ApStr.dryRun).font(.headline)
                 Spacer()
-                if rvm.previewingRuleID == rule.id, !rvm.preview.isEmpty {
-                    Text("\(rvm.preview.count)")
+                // This rule's own count, not the folder's: the list below holds
+                // the rows another rule takes as well, and a figure that counted
+                // those would be the old promise with a number on it.
+                if rvm.previewingRuleID == rule.id, !rvm.previewByThisRule.isEmpty {
+                    Text("\(rvm.previewByThisRule.count)")
                         .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
                         .contentTransition(.numericText())
                         // A `contentTransition` outside a transaction is a
@@ -118,53 +121,81 @@ struct RuleEditor: View {
                         // changing, the bare modifier draws one value and the
                         // same view with this line draws twelve. Every other
                         // rolling figure in the app already carries it.
-                        .animation(HelmMotion.interface, value: rvm.preview.count)
+                        .animation(HelmMotion.interface, value: rvm.previewByThisRule.count)
                 }
             }
             Text(ApStr.dryRunNote)
                 .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
                 .fixedSize(horizontal: false, vertical: true)
-            if rvm.preview.isEmpty {
+            if rvm.previewByThisRule.isEmpty {
                 Text(ApStr.nothingWouldHappen)
                     .font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
                     .padding(.vertical, 6)
             } else {
-                VStack(spacing: 0) {
-                    ForEach(rvm.preview) { row in
-                        HStack(spacing: 8) {
-                            Text(row.name).lineLimit(1).truncationMode(.middle)
-                            Spacer()
-                            // The action, and where it lands. Naming only the
-                            // action left the reader to work out which
-                            // subfolder "sort by kind" meant — the one thing
-                            // the rule they just wrote does not tell them.
-                            if let destination = row.destination {
-                                Text(destination)
-                                    .font(.system(size: 11, design: .monospaced))
-                                    .foregroundStyle(HelmText.quiet)
-                                    .lineLimit(1).truncationMode(.middle)
-                                Text("←").font(HelmText.rowDetail).foregroundStyle(HelmText.separator)
-                            }
-                            Text(RuleSummary.describe(row.action))
-                                .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
-                                .lineLimit(1)
-                        }
-                        .padding(.vertical, HelmSpace.s2)
-                        // One stop per file, not four. This is the list whose
-                        // whole purpose is making the consequence audible before
-                        // the switch is reachable, and read as loose fragments —
-                        // name, destination, arrow, action — it says least to
-                        // the reader who most depends on it.
-                        .accessibilityElement(children: .combine)
-                        if row.id != rvm.preview.last?.id { Divider() }
-                    }
-                }
-                .helmCard()
+                rows(rvm.previewByThisRule, takenByAnother: false)
+            }
+            // **The files this rule will never get.** They are in the folder and
+            // they match — and a rule above takes them first, which is the whole
+            // of what the old dry run could not say. Drawn under a line that
+            // names them as somebody else's rather than left out: a person
+            // writing a narrower rule below a broad one needs to see where their
+            // files are actually going, and the rule that takes each one is on
+            // the row.
+            if !rvm.previewByOtherRules.isEmpty {
+                Text(ApStr.takenByAnotherRule)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
+                    .padding(.top, HelmSpace.s2)
+                rows(rvm.previewByOtherRules, takenByAnother: true)
             }
         }
         // Re-asked as the rule is written, so the list answers the rule on
         // screen rather than the one before the last keystroke.
         .task(id: previewKey) { await rvm.runPreview(for: folder, rule: rule) }
+    }
+
+    /// One card of dry-run rows. Written once for both lists, so the row another
+    /// rule takes is the same row with its rule named beside it rather than a
+    /// second shape that can drift from this one.
+    private func rows(_ list: [PreviewRow], takenByAnother: Bool) -> some View {
+        VStack(spacing: 0) {
+            ForEach(list) { row in
+                HStack(spacing: 8) {
+                    Text(row.name).lineLimit(1).truncationMode(.middle)
+                        // Recessed, not hidden: these files are in the folder
+                        // and something is going to happen to them.
+                        .foregroundStyle(takenByAnother ? HelmText.quiet : Color.primary)
+                    if takenByAnother {
+                        Text(row.ruleName)
+                            .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
+                            .lineLimit(1).truncationMode(.tail)
+                    }
+                    Spacer()
+                    // The action, and where it lands. Naming only the
+                    // action left the reader to work out which
+                    // subfolder "sort by kind" meant — the one thing
+                    // the rule they just wrote does not tell them.
+                    if let destination = row.destination {
+                        Text(destination)
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(HelmText.quiet)
+                            .lineLimit(1).truncationMode(.middle)
+                        Text("←").font(HelmText.rowDetail).foregroundStyle(HelmText.separator)
+                    }
+                    Text(RuleSummary.describe(row.action))
+                        .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
+                        .lineLimit(1)
+                }
+                .padding(.vertical, HelmSpace.s2)
+                // One stop per file, not four. This is the list whose
+                // whole purpose is making the consequence audible before
+                // the switch is reachable, and read as loose fragments —
+                // name, destination, arrow, action — it says least to
+                // the reader who most depends on it.
+                .accessibilityElement(children: .combine)
+                if row.id != list.last?.id { Divider() }
+            }
+        }
+        .helmCard()
     }
 
     /// What a change to the rule means for the preview. The name is not in it:

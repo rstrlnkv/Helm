@@ -57,7 +57,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// the rule set, which is what `keyLock` makes them queue for in any case.
     private let decisionLock = NSLock()
     private var key: RuleKey?
-    private var refusal: Refusal?
+    private var refusalReason: RuleRefusal?
     /// Whether the one trust-on-first-use adoption is still unspent. See
     /// `takeTheOneAdoption`.
     private var adoptable = false
@@ -172,6 +172,18 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
                                  "could not seal \(folders.count) folders, so they were not saved")
             return false
         }
+        // **A rule set the engine refuses to run is one it must not overwrite.**
+        // Judged from the plist rather than from `refusalReason`, so the answer
+        // does not depend on whether anything has read the rules yet this run —
+        // a save is the one moment where a stale verdict would be spent
+        // destroying the thing it exists to protect.
+        guard RuleSeal.mayOverwrite(storedVerdict(key)) else {
+            refusing(.tampered)
+            HelmLog.shared.error("autopilot",
+                                 "the stored rules were not written by Helm, so \(folders.count) " +
+                                 "folders were not saved over them")
+            return false
+        }
         // Encoding a rule list can genuinely fail — `JSONEncoder` refuses a
         // non-finite `Double`, which a condition can hold — and returning
         // quietly discarded every folder and every rule while the screen
@@ -203,46 +215,82 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         return mac.isEmpty ? nil : mac
     }
 
+    /// What the seal says about the rules in the plist right now, or `nil` when
+    /// there are none. Behind `decisionLock`, like both of its callers.
+    private func storedVerdict(_ key: RuleKey) -> RuleSeal.Verdict? {
+        guard let data = store.data("folders"), !data.isEmpty else { return nil }
+        return RuleSeal.verdict(payload: data, mac: storedMAC, key: key)
+    }
+
+    /// Throw away a rule set that was not written by Helm, so the page can be
+    /// used again.
+    ///
+    /// The one thing the card above the folder list may send, and the only way
+    /// past the guard in `save`. It takes `tampered` alone: a `noKey` refusal is
+    /// a keychain that would not answer, where the rules are very probably the
+    /// person's own and the answer is to wait rather than to delete them.
+    public func discardRefusedRules() {
+        decisionLock.withLock {
+            guard refusal == .tampered else { return }
+            store.set(nil, for: "folders")
+            store.set(nil, for: RuleSeal.storeKey)
+            refusing(nil)
+            HelmLog.shared.info("autopilot", "the rules that did not match their seal were discarded")
+        }
+    }
+
     // MARK: - Whose rules these are
 
-    /// True while the stored rule set is not being run — it does not match its
-    /// seal, or there is no key to check it against.
+    /// Why the stored rule set is not being run, or `nil` when it is.
     ///
-    /// **This has no reader yet, and that is a known gap rather than an
-    /// oversight.** A refused rule set makes `folders` empty, so the settings
-    /// page draws its "no folders yet" empty state: a person whose rules were
-    /// tampered with is told they never had any. The log says what happened and
-    /// nothing on screen does.
+    /// **The two reasons are not one sentence, and folding them was half of what
+    /// made this dangerous.** `noKey` is a keychain that would not answer: the
+    /// rules may be perfectly good and unreadable for as long as a login
+    /// keychain stays locked, and the answer is to wait. `tampered` is a rule
+    /// set something else wrote, where waiting changes nothing and the only way
+    /// forward is to throw it away — which is why `discardRefusedRules` takes
+    /// only that one.
     ///
-    /// What closing it takes, precisely:
-    ///
-    /// 1. a `rulesRefused` command in `wireTransport`, beside `history`;
-    /// 2. `@Published var rulesRefused` on `AutopilotViewModel`, read in
-    ///    `load()` — not the existing `banner`, which is a dismissible report
-    ///    of a sweep and this must not be dismissible;
-    /// 3. a card above the folder list in `AutopilotSettingsPage`, with an
-    ///    `ApStr` string in all eight languages saying the rules on disk were
-    ///    not written by Helm and none of them are running.
-    ///
-    /// It is left undone deliberately. The affordance beside that message is a
-    /// real decision — the obvious one, "discard them and start again", throws
-    /// away the person's own rules on the reading of a machine that has just
-    /// been told it cannot trust what it is reading — and the house rule is
-    /// that UI is verified in the running app through the env-gated screenshot
-    /// harness, which lives in a target this work may not touch. A card that
-    /// compiles is not a card that was seen.
-    public var rulesRefused: Bool { trustLock.withLock { refusal != nil } }
+    /// Read by `AutopilotCommand.status`, which is how the page draws a card
+    /// saying the rules could not be read instead of an empty state saying there
+    /// were never any.
+    public var refusal: RuleRefusal? { trustLock.withLock { refusalReason } }
 
-    private enum Refusal { case tampered, noKey }
+    /// The same fact as a flag, which is how ARCHITECTURE.md § Autopilot names
+    /// it. Derived, never stored beside `refusal`: two spellings of one verdict
+    /// is how the two would come to disagree.
+    public var rulesRefused: Bool { refusal != nil }
+
+    /// What the page asks for beside the folder list.
+    ///
+    /// The verdict is a *side effect* of judging the stored rules, so this
+    /// judges them rather than repeating whatever the last read decided — the
+    /// page sends this and `folders` in the same breath, and which arrives first
+    /// is the transport's business, not something a screen should depend on.
+    /// The judgement and the reading of it are one critical section for the
+    /// reason `decisionLock` exists at all.
+    public var status: AutopilotStatus {
+        let (reason, watched) = decisionLock.withLock { () -> (RuleRefusal?, [WatchedFolder]) in
+            let list = decided()
+            return (trustLock.withLock { refusalReason }, list)
+        }
+        // One question per folder, asked outside the lock: a page opening is not
+        // a reason to hold every other reader of the rule set behind a
+        // filesystem call, and `state(of:)` never touches the rules.
+        var states: [String: FolderState] = [:]
+        for folder in watched { states[folder.id] = reader.state(of: folder.path) }
+        return AutopilotStatus(refusal: reason, folders: states,
+                               watching: watchLock.withLock { watching })
+    }
 
     /// Logged on the way in, once per transition. The rules are read on every
     /// sweep, every filesystem event and every settings request, and a line per
     /// read would bury the log in the state it is warning about.
-    private func refusing(_ next: Refusal?) {
+    private func refusing(_ next: RuleRefusal?) {
         trustLock.lock()
         defer { trustLock.unlock() }
-        guard next != refusal else { return }
-        refusal = next
+        guard next != refusalReason else { return }
+        refusalReason = next
         switch next {
         case .tampered:
             // No path, no folder, no rule name: the log ships to strangers, and
@@ -332,7 +380,36 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     private func refreshWatch() {
         queue.async { [self] in
             let paths = folders.filter(\.enabled).map(\.path)
-            watcher?.watch(paths)
+            // **The answer is taken.** `watch` grew this channel because both
+            // engines that use it logged that they were watching a folder with
+            // no way to know whether they were — and this one went on throwing
+            // it away, which is the switch saying «on» over a folder nothing is
+            // looking at.
+            watcher?.watch(paths) { [weak self] started in
+                self?.record(watching: started, over: paths.count)
+            }
+        }
+    }
+
+    /// Whether a stream is running, as the watcher last answered. `nil` until it
+    /// has been asked — an engine nobody activated does not know, and "does not
+    /// know" is not "no".
+    private let watchLock = NSLock()
+    private var watching: Bool?
+
+    private func record(watching started: Bool, over count: Int) {
+        let changed: Bool = watchLock.withLock {
+            guard watching != started else { return false }
+            watching = started
+            return true
+        }
+        guard changed else { return }
+        if started {
+            HelmLog.shared.info("autopilot", "watching \(count) folder(s)")
+        } else if count > 0 {
+            HelmLog.shared.error("autopilot",
+                                 "nothing is watching \(count) folder(s); "
+                                 + "only the hourly sweep will act")
         }
     }
 
@@ -397,7 +474,8 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
 
     @discardableResult
     public func sweep(_ folder: WatchedFolder) -> SweepReport {
-        let files = reader.facts(in: folder.path, depth: folder.depth)
+        let reading = reader.reading(in: folder.path, depth: folder.depth)
+        let files = reading.files
         let plans = RulePlan.decide(files, rules: folder.activeRules)
         var acted = 0, refused = 0, failed = 0
         var records: [ActionRecord] = []
@@ -420,10 +498,18 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         }
         remember(records)
         let report = SweepReport(folderID: folder.id, examined: files.count,
-                                 acted: acted, refused: refused, failed: failed)
+                                 acted: acted, refused: refused, failed: failed,
+                                 folder: reading.state)
         if acted + refused + failed > 0 {
             HelmLog.shared.info("autopilot", "swept \(files.count), acted \(acted), " +
                                          "refused \(refused), failed \(failed)")
+        }
+        // A folder that could not be read at all is the one thing a sweep of
+        // nothing has to say out loud: unattended, hourly, and otherwise
+        // indistinguishable from a folder where there was nothing to do.
+        if reading.state != .read {
+            HelmLog.shared.warn("autopilot",
+                                "\(Redact.path(folder.path)) could not be swept: \(reading.state.rawValue)")
         }
         return report
     }
@@ -452,54 +538,27 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// One event's worth of work. The paths FSEvents reports are files, and the
     /// folder they belong to decides which rules they meet.
     ///
-    /// An FSEvents stream is recursive whether or not anyone asked, so the depth
-    /// has to be applied here — without it, the folder's own "include
-    /// subfolders" setting did not reach the module's primary trigger and a
-    /// depth-1 watch on Downloads acted on every file in every project unzipped
-    /// into it.
-    /// The unattended path: a file arrived and a rule acted on it with nobody
-    /// looking. Which is exactly why it is logged — this used to record only
-    /// refusals and failures, so a rule that worked left no trace at all, and
-    /// the answer to "what moved my file" was nowhere. `sweep` has always
-    /// logged its totals; this had `default: break`.
-    private func handle(_ changed: [String]) {
+    /// An FSEvents stream is recursive whether or not anyone asked, so which
+    /// files a rule may be offered has to be decided here — `plan(for:among:)`,
+    /// which asks the reader the same question the sweep's enumerator asks.
+    /// Without it a depth-1 watch on Downloads acted on every file in every
+    /// project unzipped into it, and on the contents of application bundles.
+    ///
+    /// Internal rather than private because this is the only way a test can drive
+    /// the leg: `FolderWatcher` carries `kFSEventStreamCreateFlagIgnoreSelf`, so
+    /// a file a test writes raises no event of its own, and a test of the stream
+    /// would be a test of a child process.
+    func handle(_ changed: [String]) {
         let watched = folders.filter(\.enabled)
         guard !watched.isEmpty else { return }
         queue.async { [self] in
             var acted = 0
             var records: [ActionRecord] = []
             for path in Set(changed) {
-                guard let folder = self.folder(for: path, among: watched),
-                      FileManager.default.fileExists(atPath: path),
-                      let facts = reader.facts(of: URL(fileURLWithPath: path)),
-                      let plan = RulePlan.decide(facts, rules: folder.activeRules)
-                else { continue }
+                guard let plan = self.plan(for: path, among: watched) else { continue }
                 let outcome = runner.run(plan, at: path)
                 if let record = ActionRecord.of(plan, outcome) { records.append(record) }
-                switch outcome {
-                case let .moved(destination):
-                    acted += 1
-                    HelmLog.shared.info("autopilot",
-                                        "moved \(Redact.path(path)) → \(Redact.path(destination))")
-                case let .renamed(name):
-                    acted += 1
-                    HelmLog.shared.info("autopilot",
-                                        "renamed \(Redact.path(path)) → \(Redact.path(name))")
-                case let .tagged(tag):
-                    acted += 1
-                    HelmLog.shared.info("autopilot", "tagged \(Redact.path(path)): \(tag)")
-                case .trashed:
-                    acted += 1
-                    HelmLog.shared.info("autopilot", "trashed \(Redact.path(path))")
-                case .alreadyDone:
-                    break
-                case let .refused(reason):
-                    HelmLog.shared.warn("autopilot",
-                                        "refused \(Redact.path(path)): \(reason.rawValue)")
-                case let .failed(description):
-                    HelmLog.shared.warn("autopilot",
-                                        "failed \(Redact.path(path)): \(description)")
-                }
+                if self.note(outcome, at: path) { acted += 1 }
             }
             self.remember(records)
             if acted > 0 {
@@ -517,18 +576,66 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         }
     }
 
-    /// The watched folder a changed path belongs to, at that folder's depth.
+    /// One file's outcome in the log, and whether it counts as work.
+    ///
+    /// The unattended path: a file arrived and a rule acted on it with nobody
+    /// looking, which is exactly why every case is logged — this once recorded
+    /// only refusals and failures, so a rule that worked left no trace and "what
+    /// moved my file" had no answer anywhere.
+    private func note(_ outcome: RuleOutcome, at path: String) -> Bool {
+        switch outcome {
+        case let .moved(destination):
+            HelmLog.shared.info("autopilot",
+                                "moved \(Redact.path(path)) → \(Redact.path(destination))")
+        case let .renamed(name):
+            HelmLog.shared.info("autopilot",
+                                "renamed \(Redact.path(path)) → \(Redact.path(name))")
+        case let .tagged(tag):
+            HelmLog.shared.info("autopilot", "tagged \(Redact.path(path)): \(tag)")
+        case .trashed:
+            HelmLog.shared.info("autopilot", "trashed \(Redact.path(path))")
+        case .alreadyDone:
+            return false
+        case let .refused(reason):
+            HelmLog.shared.warn("autopilot", "refused \(Redact.path(path)): \(reason.rawValue)")
+            return false
+        case let .failed(description):
+            HelmLog.shared.warn("autopilot", "failed \(Redact.path(path)): \(description)")
+            return false
+        }
+        return true
+    }
+
+    /// What a changed path has coming to it, or nothing.
+    ///
+    /// Every question the FSEvents leg asks before acting, in one place: which
+    /// folder's rules these are, whether those rules may be offered this file at
+    /// all, whether it is still there, and which rule takes it.
+    private func plan(for path: String, among watched: [WatchedFolder]) -> RulePlan? {
+        let url = URL(fileURLWithPath: path)
+        guard let folder = folder(for: path, among: watched),
+              // The same question the sweep's reader asks, so a rule means one
+              // thing whichever trigger fires it.
+              reader.admits(url, under: folder),
+              FileManager.default.fileExists(atPath: path),
+              let facts = reader.facts(of: url)
+        else { return nil }
+        return RulePlan.decide(facts, rules: folder.activeRules)
+    }
+
+    /// The watched folder a changed path belongs to.
     ///
     /// Longest match, not first: with a folder and a subfolder of it both
     /// watched, the inner one's rules are the ones that were written about
     /// these files. And the prefix carries its separator — without it
     /// `~/Downloads` claimed the files in `~/Downloads Old`.
+    ///
+    /// Whether the folder's rules may be offered *this* file — its depth, and
+    /// the hidden and package questions the sweep's enumerator asks — is
+    /// `FolderReader.admits`, which used to be half here and half nowhere.
     private func folder(for path: String, among watched: [WatchedFolder]) -> WatchedFolder? {
-        let candidates = watched.filter { path.hasPrefix($0.path + "/") }
-        guard let folder = candidates.max(by: { $0.path.count < $1.path.count })
-        else { return nil }
-        let below = path.dropFirst(folder.path.count + 1).filter { $0 == "/" }.count
-        return below < folder.depth ? folder : nil
+        watched.filter { path.hasPrefix($0.path + "/") }
+            .max(by: { $0.path.count < $1.path.count })
     }
 
     // MARK: - Transport
@@ -540,64 +647,53 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
             switch name {
             case .folders:
                 return EngineReply.encode(self.folders, for: command)
+            case .status:
+                return EngineReply.encode(self.status, for: command)
+            case .discardRefusedRules:
+                self.discardRefusedRules()
+                return Data()
             case .history:
                 return EngineReply.encode(self.history, for: command)
             case .clearHistory:
                 self.clearHistory()
                 return Data()
             case .setFolders:
-                guard let list = EngineReply.decode([WatchedFolder].self, from: command)
-                else { return Data() }
-                self.folders = list
+                self.setFolders(command)
                 return Data()
             case .previewDraft:
-                // The folder arrives as a draft rather than by id: a rule being
-                // written has not been saved, and a preview of the saved
-                // version would answer a question nobody asked.
-                guard let draft = EngineReply.decode(WatchedFolder.self, from: command)
-                else { return Data() }
-                // Runs on every keystroke in the rule editor.
-                let rows = await self.offQueue { self.preview(draft).map(PreviewRow.init) }
-                return EngineReply.encode(rows, for: command)
+                return await self.previewed(command)
             case .runNow:
-                guard let payload = EngineReply.decode(WatchedFolderRef.self, from: command),
-                      let folder = self.folders.first(where: { $0.id == payload.id })
-                else { return Data() }
-                // A walk plus N moves, off the cooperative pool — and serialised
-                // with the hourly sweep, which is reachable at the same moment.
-                let report = await self.offQueue { self.sweep(folder) }
-                return EngineReply.encode(report, for: command)
+                return await self.swept(command)
             }
         }
     }
-}
 
-/// One line of a dry run: the file, and the one thing that would happen to it.
-public struct PreviewRow: Codable, Equatable, Identifiable, Sendable {
-    /// The path, not the name. `ForEach` draws one row per identity, and two
-    /// files called `report.pdf` in two folders were two plans and one row — so
-    /// the screen a person reads before letting a rule loose hid a file the
-    /// rule was about to touch. Ordinary at any depth above one.
-    public var id: String { path }
-    /// Shown as the name; carried as the path for exactly the reason above.
-    public var name: String { (path as NSString).lastPathComponent }
-    public let path: String
-    public let ruleName: String
-    public let action: RuleAction
-    /// Where it lands, when the action has a where. The preview named the
-    /// action — "sort into subfolders by kind" — and left the person to work
-    /// out which subfolder, which is the only part they could not have known
-    /// from the rule they had just written.
-    ///
-    /// The folder, not the final filename: a name already taken gets numbered
-    /// at the moment of the move, and touching the disk to find out on every
-    /// keystroke of the editor is not worth knowing it a second early.
-    public let destination: String?
+    /// A list that will not decode changes nothing: the setter is what refuses a
+    /// rule set it may not overwrite, and it must not be handed an empty one
+    /// because a payload was truncated.
+    private func setFolders(_ command: EngineCommand) {
+        guard let list = EngineReply.decode([WatchedFolder].self, from: command) else { return }
+        folders = list
+    }
 
-    public init(_ plan: RulePlan) {
-        path = plan.facts.path
-        ruleName = plan.rule.name
-        action = plan.action
-        destination = PlannedDestination.describe(plan)
+    /// The folder arrives as a draft rather than by id: a rule being written has
+    /// not been saved, and a preview of the saved version would answer a question
+    /// nobody asked.
+    private func previewed(_ command: EngineCommand) async -> Data {
+        guard let draft = EngineReply.decode(WatchedFolder.self, from: command)
+        else { return Data() }
+        // Runs on every keystroke in the rule editor.
+        let rows = await offQueue { self.preview(draft).map(PreviewRow.init) }
+        return EngineReply.encode(rows, for: command)
+    }
+
+    private func swept(_ command: EngineCommand) async -> Data {
+        guard let payload = EngineReply.decode(WatchedFolderRef.self, from: command),
+              let folder = folders.first(where: { $0.id == payload.id })
+        else { return Data() }
+        // A walk plus N moves, off the cooperative pool — and serialised with the
+        // hourly sweep, which is reachable at the same moment.
+        let report = await offQueue { self.sweep(folder) }
+        return EngineReply.encode(report, for: command)
     }
 }
