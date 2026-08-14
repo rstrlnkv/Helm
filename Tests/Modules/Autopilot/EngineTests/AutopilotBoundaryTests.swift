@@ -9,6 +9,7 @@ import HelmTestSupport
 /// scope gate a destination has to pass.
 final class AutopilotBoundaryTests: XCTestCase {
 
+    private let stamp = RuleStamp(key: TestRuleKey.material)
     private var root: URL!
 
     override func setUpWithError() throws {
@@ -44,7 +45,7 @@ final class AutopilotBoundaryTests: XCTestCase {
                         conditions: [.fileExtension(["pdf"])],
                         action: .move(to: destination.path))
         let outcome = RuleRunner().run(RulePlan(facts: facts("a.pdf", added: Date()), rule: rule),
-                                       at: arriving.path)
+                                       at: arriving.path, key: TestRuleKey.material)
 
         XCTAssertEqual(try String(contentsOf: destination.appendingPathComponent("a.pdf"),
                                   encoding: .utf8), "ORIGINAL",
@@ -52,7 +53,7 @@ final class AutopilotBoundaryTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: arriving.path),
                       "the arriving file went somewhere and it was not the destination")
         if case .moved = outcome { XCTFail("reported a move that cannot have happened safely") }
-        XCTAssertFalse(RuleStamp.isStamped(arriving.path, by: "r"),
+        XCTAssertFalse(stamp.isStamped(arriving.path, by: "r"),
                        "a move that did not happen was recorded as done")
     }
 
@@ -70,10 +71,10 @@ final class AutopilotBoundaryTests: XCTestCase {
             setxattr(file.path, RuleStamp.attribute, $0.baseAddress, $0.count, 0, 0)
         }
 
-        XCTAssertFalse(RuleStamp.isStamped(file.path, by: "r"))
-        XCTAssertTrue(RuleStamp.stamp(file.path, by: "r"),
+        XCTAssertFalse(stamp.isStamped(file.path, by: "r"))
+        XCTAssertTrue(stamp.stamp(file.path, by: "r"),
                       "a file whose attribute holds junk can never be marked again")
-        XCTAssertTrue(RuleStamp.isStamped(file.path, by: "r"))
+        XCTAssertTrue(stamp.isStamped(file.path, by: "r"))
     }
 
     /// Rule ids are `UUID` strings today, but they are stored, migrated and
@@ -86,13 +87,13 @@ final class AutopilotBoundaryTests: XCTestCase {
         let ids = ["plain", "a\"quoted\"", "back\\slash", "🙂", "правило", "", "  ", "[]"]
 
         for id in ids {
-            XCTAssertTrue(RuleStamp.stamp(file.path, by: id), "\(id.debugDescription) would not stick")
+            XCTAssertTrue(stamp.stamp(file.path, by: id), "\(id.debugDescription) would not stick")
         }
         for id in ids {
-            XCTAssertTrue(RuleStamp.isStamped(file.path, by: id),
+            XCTAssertTrue(stamp.isStamped(file.path, by: id),
                           "\(id.debugDescription) was lost when a later rule stamped the same file")
         }
-        XCTAssertFalse(RuleStamp.isStamped(file.path, by: "not-one-of-them"))
+        XCTAssertFalse(stamp.isStamped(file.path, by: "not-one-of-them"))
     }
 
     // MARK: - Dates with nothing behind them
@@ -352,7 +353,7 @@ final class AutopilotSelfSortTests: XCTestCase {
             rule: Rule(id: "r", name: "r", enabled: true,
                        conditions: [.kind(.folder)], action: .move(to: bucket.path)))
 
-        XCTAssertEqual(runner.run(plan, at: bucket.path), .refused(.outOfScope))
+        XCTAssertEqual(runner.run(plan, at: bucket.path, key: TestRuleKey.material), .refused(.outOfScope))
         XCTAssertTrue(FileManager.default.fileExists(atPath: bucket.path))
     }
 }

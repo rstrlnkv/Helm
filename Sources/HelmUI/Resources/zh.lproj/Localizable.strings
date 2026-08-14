@@ -777,6 +777,9 @@
 "Opening Keyboard without Accessibility granted now shows a plain “Helm is not watching the keyboard” instead of a page of settings that do nothing without it." = "在未授予“辅助功能”权限的情况下打开“键盘”，现在会直接显示“Helm 未在监视键盘”，而不是一页在没有权限时根本不起作用的设置。";
 "If Accessibility is switched off and back on, Keyboard notices and starts watching again on its own — it used to need Helm relaunched to come back." = "如果关闭又重新开启“辅助功能”，“键盘”模块会自行察觉并恢复监视——以前必须重新启动 Helm 才能恢复。";
 "A VPN rule that cannot get at its saved secret now says so on the page and asks for one press of Connect. It used to stop working in silence, with the reason only in the diagnostics log." = "无法取用已保存密钥的 VPN 规则现在会在页面上说明，并请你按一次“连接”。以前它会悄悄失效，原因只留在诊断日志里。";
+"Autopilot checks a file is still where it was a moment ago, right before it moves, renames or bins it. If the folder changes underneath a rule while it runs, the rule stops instead — it used to be possible to make a rule carry a file out of the folder you pointed it at." = "自动整理在移动、重命名或丢进废纸篓之前，会再确认文件仍在原处。如果规则运行时它所在的文件夹被换掉，规则会停下——以前可以让规则把文件带出你指定的那个文件夹。";
+"Autopilot’s “already done” mark on a file is signed now, so nothing else on your Mac can put one there. Something arriving in a watched folder could mark itself as dealt with and be passed over for ever, with nothing in the report to say a file had been skipped." = "文件上的“已处理”标记现在带签名，Mac 上的其他东西无法自行加上。以前，进入受监视文件夹的东西可以把自己标成已处理，从此被一直跳过，报告里也不会提到有文件被略过。";
+"Putting an older copy of Helm’s settings back no longer brings your deleted Autopilot rules with it. Helm knows which set of rules is the current one and refuses an earlier one, saying so on the page instead of quietly running it." = "把 Helm 的设置换回旧的副本，不会再把你删掉的自动整理规则一起带回来。Helm 知道哪一套规则是当前的，遇到更早的那一套会拒绝，并在页面上说明，而不是悄悄照着运行。";
 "Everything found is hidden by the filter." = "找到的项目已全部被筛选条件隐藏。";
 "Protected by macOS" = "受 macOS 保护";
 "While you are away" = "在你离开时";

@@ -17,6 +17,7 @@ final class RuleRunnerRenameTests: XCTestCase {
     private var root: URL!
     private var home: URL!
     private var runner: RuleRunner!
+    private let stamp = RuleStamp(key: TestRuleKey.material)
 
     override func setUpWithError() throws {
         // Inside a temporary directory the runner is told to treat as home:
@@ -35,7 +36,7 @@ final class RuleRunnerRenameTests: XCTestCase {
                               added: now, modified: now, now: now)
         let rule = Rule(id: id, name: id, enabled: true,
                         conditions: [.fileExtension(["pdf"])], action: .rename(pattern: pattern))
-        return runner.run(RulePlan(facts: facts, rule: rule), at: url.path)
+        return runner.run(RulePlan(facts: facts, rule: rule), at: url.path, key: TestRuleKey.material)
     }
 
     private func listing() throws -> [String] {
@@ -70,9 +71,9 @@ final class RuleRunnerRenameTests: XCTestCase {
 
         _ = rename(file, pattern: "b")
 
-        XCTAssertFalse(RuleStamp.isStamped(bystander.path, by: "r"),
+        XCTAssertFalse(stamp.isStamped(bystander.path, by: "r"),
                        "a file the rule never acted on was marked as done")
-        XCTAssertTrue(RuleStamp.isStamped(root.appendingPathComponent("b 2.pdf").path, by: "r"),
+        XCTAssertTrue(stamp.isStamped(root.appendingPathComponent("b 2.pdf").path, by: "r"),
                       "the file that was actually renamed carries no mark, so the rule will rename it again")
     }
 
@@ -111,7 +112,7 @@ final class RuleRunnerRenameTests: XCTestCase {
         XCTAssertEqual(try listing(), ["a.pdf"])
         XCTAssertEqual(try Data(contentsOf: file).count, 7)
         if case .renamed = outcome { XCTFail("reported a rename that did not happen") }
-        XCTAssertFalse(RuleStamp.isStamped(file.path, by: "r"),
+        XCTAssertFalse(stamp.isStamped(file.path, by: "r"),
                        "a rename that failed must not be recorded as having happened")
     }
 

@@ -93,6 +93,9 @@ enum Changelog {
                 ChangeItem(kind: .fix, text: L("A VPN card mid-handshake says Cancel, not Disconnect — the old word named an act that had not happened yet, and was flatly wrong in Japanese and Chinese.")),
                 ChangeItem(kind: .fix, text: L("Opening Keyboard without Accessibility granted now shows a plain “Helm is not watching the keyboard” instead of a page of settings that do nothing without it.")),
                 ChangeItem(kind: .fix, text: L("If Accessibility is switched off and back on, Keyboard notices and starts watching again on its own — it used to need Helm relaunched to come back.")),
+                ChangeItem(kind: .fix, text: L("Autopilot checks a file is still where it was a moment ago, right before it moves, renames or bins it. If the folder changes underneath a rule while it runs, the rule stops instead — it used to be possible to make a rule carry a file out of the folder you pointed it at.")),
+                ChangeItem(kind: .fix, text: L("Autopilot’s “already done” mark on a file is signed now, so nothing else on your Mac can put one there. Something arriving in a watched folder could mark itself as dealt with and be passed over for ever, with nothing in the report to say a file had been skipped.")),
+                ChangeItem(kind: .fix, text: L("Putting an older copy of Helm’s settings back no longer brings your deleted Autopilot rules with it. Helm knows which set of rules is the current one and refuses an earlier one, saying so on the page instead of quietly running it.")),
             ]),
             ChangelogEntry(version: "0.9.0", date: "2026-08-09", items: [
                 ChangeItem(kind: .new, text: L("Widgets are moved by hand. Pick one up and it follows the pointer; the others slide aside; letting go sets it down where the space opened.")),

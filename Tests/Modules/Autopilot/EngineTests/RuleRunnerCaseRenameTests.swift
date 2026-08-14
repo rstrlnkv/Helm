@@ -44,7 +44,7 @@ final class RuleRunnerCaseRenameTests: XCTestCase {
         let rule = Rule(id: "r", name: "Tidy names", enabled: true,
                         conditions: [.fileExtension(["pdf"])],
                         action: .rename(pattern: pattern))
-        return runner.run(RulePlan(facts: facts, rule: rule), at: url.path)
+        return runner.run(RulePlan(facts: facts, rule: rule), at: url.path, key: TestRuleKey.material)
     }
 
     private func listing() throws -> [String] {

@@ -278,6 +278,59 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   each, read from both sides of the target boundary — they were literals
   typed on both sides, where a rename on one side would have made the
   recorder write a key the host does not read, silently.
+- **Autopilot could be made to carry a file out of the folder its gate had
+  approved.** `WatchScope.allows` resolves a path's symlinked ancestors when it
+  is asked; `moveItem`, `trashItem` and `setResourceValues` each resolve them
+  again when they run, and between the two sit a `fileExists`, a
+  `createDirectory` and the collision loop — a window whose width is set by
+  whoever can write in the watched folder. Measured against the real runner,
+  1642 of 20 000 attempts carried a file out of a folder `WatchScope` had
+  refused, and *out* is the direction that matters: Helm holds Full Disk Access
+  and the swapper need not. `RuleRunner` now takes the resolved parent's device
+  and inode at the gate and again one statement before the syscall — both ends
+  of a move, since the destination folder is a window of its own and
+  `createDirectory` is content with a symlink that already points somewhere —
+  and answers `RuleOutcome.Refusal.changedSinceCheck` when the two readings
+  disagree. It narrows and does not close: one stat chain still separates the
+  recheck from the kernel's own resolve, the same bound `HelmTrash.remove`
+  already carries for batch removals. The tag arm takes no recheck because it
+  asks the stronger question — it refuses any path that resolves to something
+  other than its own spelling, which a swapped ancestor fails.
+- **The "already done" mark on a file could be written by anything running as
+  the user.** The mark was the rule's id: a UUID in
+  `~/Library/Preferences/com.helm.app.plist`, which any process running as this
+  user can read, and setting `com.helm.autopilot.stamp` needs no permission at
+  all. So a program that had just landed in `~/Downloads` could stamp itself
+  with the id of the rule written to catch it and be skipped for ever, leaving
+  nothing in the history to say a file had been passed over. The mark is now a
+  `StampMark` — an HMAC under the same key the rule set is sealed with, taken
+  over the rule and the file's device and inode together — so it can neither be
+  written without the key nor lifted off one file onto its neighbour.
+  `RuleStamp` is a value holding that key rather than a namespace of statics; a
+  mark that does not verify makes an unstamped file, which costs a rule one
+  more turn at it and nothing else.
+- **An older rule set put back over the plist verified, because it really was
+  Helm's own.** The seal answers whose rules these are and never answered
+  *which* of the person's they are: a `(payload, MAC)` pair verifies for ever,
+  and the plist it lives in is readable by anything running as this user and is
+  in every backup. Measured before this landed — rules saved, edited, and the
+  old pair written back — the engine reported the old rules with no refusal,
+  nothing in the log and nothing on the page, so a rule deleted this morning
+  runs again tonight. Each save now numbers the rule set *inside* the sealed
+  message (`RuleSeal.sequenceKey`, appended as a fixed nine bytes so no
+  payload-and-number pair can spell another's message), and the highest number
+  this Mac has ever sealed is kept in a keychain item of its own —
+  `KeychainRuleSequence`, a new account beside the key rather than a change to
+  the one already deployed on every Mac that has run Autopilot. A stored set
+  below the mark is `RuleSeal.Judgement.rolledBack`: refused like tampering,
+  kept rather than overwritten (`RuleSeal.mayOverwrite`), and logged as an
+  earlier copy put back rather than as forgery, which would send a person
+  hunting for the wrong thing. A keychain that will not answer is
+  `RuleSequence.unavailable` and refuses; it is never folded into "never sealed
+  one", which would make a locked keychain the way past the check. The mark is
+  raised after the plist is written, so a failure to raise it leaves a saved
+  rule set at or above the mark rather than below it — the person's own rules
+  are never what this refuses.
 
 ### Removed
 - `HelmSurface.cardRadius` — replaced by `HelmRadius.card` (same value, 12→10;
