@@ -45,5 +45,34 @@ struct DiskLayout {
 
     /// The sentence about the measurement is the first thing to go: it is
     /// neither the path nor a control, and it is the widest item in the row.
+    ///
+    /// **This is the budget for the cosmetic sentence only.** The 788 pt it was
+    /// measured for is the bar carrying «N files in M s», which is the widest of
+    /// the three statements and the only one nobody needs — see `statement`.
     var showsScanStatement: Bool { availableWidth >= Self.barWithStatement }
+
+    /// What the bar says about the tree beside it.
+    ///
+    /// Three sentences, and only one of them is decoration. `stopped` says every
+    /// folder figure on the screen is a floor rather than a total; `measured`
+    /// says the map is a memory and how old. `scanned` says how long the walk
+    /// took, which changes nothing about what the numbers mean.
+    enum ScanStatement: Equatable { case stopped, measured, scanned }
+
+    /// **A warning is not a thing to drop when the window is small.** All three
+    /// sentences used to sit behind `showsScanStatement`, so below 800 pt of pane
+    /// — which is the pane the app opens at its own minimum, 610, and at the
+    /// default window with the sidebar, 645 — a stopped tree was drawn in full
+    /// with nothing saying its figures are floors, and yesterday's map was
+    /// indistinguishable from one measured a second ago. The `stoppedHint` that
+    /// explains it hangs on that same `Text`, so a screen reader lost it too.
+    ///
+    /// Stopped comes first because it is the only one of the three that makes the
+    /// sizes beside it untrue as totals.
+    func statement(stopped: Bool, restored: Bool, hasResult: Bool) -> ScanStatement? {
+        guard hasResult else { return nil }
+        if stopped { return .stopped }
+        if restored { return .measured }
+        return showsScanStatement ? .scanned : nil
+    }
 }

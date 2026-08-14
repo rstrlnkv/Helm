@@ -64,8 +64,17 @@ enum DkStr {
     /// the same volume, so nothing is free until it is emptied. Same wording as
     /// the button that started it (Finder's `AL13`), in the past tense.
     static func movedToTrash(_ size: String) -> String { L("Moved to the Trash — \(size)", [.ru: "Перемещено в Корзину — \(size)", .es: "Trasladado a la papelera — \(size)", .fr: "Placé dans la corbeille — \(size)", .de: "In den Papierkorb gelegt — \(size)", .ja: "ゴミ箱に入れました — \(size)", .zh: "已移到废纸篓 — \(size)", .pt: "Movido para o Lixo — \(size)"]) }
-    static func confirmTrash(_ count: Int, _ size: String) -> String {
-        HelmConfirm.trash(Plural.items(count, language: AppLanguage.current.rawValue), size)
+    /// Takes the plan, not a count and a size the caller worked out for itself.
+    ///
+    /// The page had both to hand — `basket.count` and `basketBytes` — and they
+    /// describe the basket, which for a cache row is one entry standing for the
+    /// contents of a folder. Passing the question along is the same repair
+    /// `VPNStr.secretNeedsAPress` made by construction: the sentence cannot name
+    /// something other than what the button does, because it is handed nothing
+    /// else to name.
+    static func confirmTrash(_ question: DiskRemovalPlan.Question) -> String {
+        HelmConfirm.trash(Plural.items(question.count, language: AppLanguage.current.rawValue),
+                          Bytes(question.bytes))
     }
     static func measured(_ ago: String) -> String { L("Measured \(ago)", [.ru: "Измерено \(ago)", .es: "Medido \(ago)", .fr: "Mesuré \(ago)", .de: "Gemessen \(ago)", .ja: "計測 \(ago)", .zh: "测量于 \(ago)", .pt: "Medido \(ago)"]) }
     /// The third thing the ring can be showing, beside a fresh measurement and a

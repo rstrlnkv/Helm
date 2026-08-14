@@ -26,9 +26,35 @@ import XCTest
 /// about what the view model *keeps* across a transition rather than about
 /// interleaving.
 final class AnsweringTransport: EngineTransport, @unchecked Sendable {
+
+    /// What the engine behind this wire does with a request.
+    ///
+    /// **A fake that can only answer is simpler than the port it stands for.**
+    /// `EngineTransport.send` is declared `throws` and its only implementation
+    /// answers empty `Data` for a handler whose engine has gone — which
+    /// `DiskViewModel.shared(vm:)`'s own comment describes in as many words:
+    /// a cached view model outliving its engine gets "every request with empty
+    /// Data from then on", the state switching the module off and on produces.
+    /// Without these two cases, «the removal nobody answered» was a state no
+    /// test in this target could write down, whatever anybody wrote.
+    ///
+    /// Kept apart from each other rather than folded together: JSON decodes
+    /// nothing from either, but they are not the same wire, and a command
+    /// answering a raw payload would tell them apart.
+    enum Answer: Equatable {
+        /// The fixture's reply: an engine that is there and answers.
+        case reply
+        /// `send` throws, which `TransportClient.request` folds to the same nil
+        /// as a reply that will not decode.
+        case refuse
+        /// Empty `Data` — an engine that is gone, or a command it does not know.
+        case nothing
+    }
+
     private let lock = NSLock()
     private var results: [String: ScanResult] = [:]
     private var removal = DiskRemoval(removed: [], refused: [], freedBytes: 0)
+    private var answer: Answer = .reply
     private let volumes: [VolumeInfo]
     let events: AsyncStream<EngineEvent>
 
@@ -43,6 +69,17 @@ final class AnsweringTransport: EngineTransport, @unchecked Sendable {
 
     func answerTrash(with removal: DiskRemoval) {
         lock.lock(); self.removal = removal; lock.unlock()
+    }
+
+    /// The engine going away under the page, or coming back. A port that can
+    /// change while the app is running says so rather than being fixed at init
+    /// (CLAUDE.md § Anything that can stop being true on its own).
+    func answers(_ answer: Answer) {
+        lock.lock(); self.answer = answer; lock.unlock()
+    }
+
+    private var currentAnswer: Answer {
+        lock.lock(); defer { lock.unlock() }; return answer
     }
 
     /// What the engine was actually asked to trash. A basket row and a removal
@@ -66,6 +103,17 @@ final class AnsweringTransport: EngineTransport, @unchecked Sendable {
     }
 
     func send(_ command: EngineCommand) async throws -> Data {
+        // The request is recorded before the wire is consulted: a test of a
+        // silence has to be able to assert that the batch really was sent, or it
+        // is asserting an absence over a press that never happened.
+        if command.name == DiskCommand.trash.rawValue {
+            noteTrash((try? JSONDecoder().decode([String].self, from: command.payload)) ?? [])
+        }
+        switch currentAnswer {
+        case .refuse: throw NoEngine.gone
+        case .nothing: return Data()
+        case .reply: break
+        }
         switch command.name {
         case "volumes":
             return (try? JSONEncoder().encode(volumes)) ?? Data()
@@ -73,13 +121,15 @@ final class AnsweringTransport: EngineTransport, @unchecked Sendable {
             let request = try? JSONDecoder().decode(ScanRequest.self, from: command.payload)
             return (try? JSONEncoder().encode(request.flatMap { result(for: $0.path) })) ?? Data()
         case "trash":
-            noteTrash((try? JSONDecoder().decode([String].self, from: command.payload)) ?? [])
             return (try? JSONEncoder().encode(currentRemoval)) ?? Data()
         default:
             return Data()
         }
     }
 }
+
+/// What a transport with nothing behind it throws.
+enum NoEngine: Error { case gone }
 
 // MARK: - Parks until released
 

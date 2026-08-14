@@ -46,6 +46,12 @@ import Module_Disk_Engine
     /// How many actually moved. The banner is built before the outcome is
     /// known, so it cannot be asked whether it is true.
     @Published public private(set) var removedCount = 0
+    /// The removal whose reply never came back.
+    ///
+    /// A flag rather than a count, and that is the whole point: what a lost reply
+    /// knows is nothing, so it must not be expressible as a number. It is read
+    /// with the three fields above as one report — see `emptyBasket`.
+    @Published public private(set) var replyLost = false
 
     private let client: TransportClient
     private let vm: ModuleViewModel
@@ -203,7 +209,9 @@ import Module_Disk_Engine
     /// Here rather than in the page because it is the condition three exits have
     /// to satisfy, and a copy of it in the view is a copy that can be satisfied
     /// while the screen still shows the bar.
-    public var showsRemovalBar: Bool { !basket.isEmpty || banner != nil }
+    /// `replyLost` is here for the same reason `banner` is: it is a sentence the
+    /// bar has to draw, and a bar that is not there cannot draw it.
+    public var showsRemovalBar: Bool { !basket.isEmpty || banner != nil || replyLost }
 
     public func loadVolumes() async {
         volumes = await client.request(DiskCommand.volumes) ?? []
@@ -309,10 +317,14 @@ import Module_Disk_Engine
         stopped = true
     }
 
+    /// Nothing on screen about a removal. The four fields are read as one report,
+    /// so they are put down together — a silence left standing over a fresh tree
+    /// is a sentence about a press that belonged to another screen.
     private func clearRemovalReport() {
         banner = nil
         failures = []
         removedCount = 0
+        replyLost = false
     }
 
     public func newScan() {
@@ -444,13 +456,21 @@ import Module_Disk_Engine
     /// A removal is running. The page dims what would start a second one.
     @Published public private(set) var busy = false
 
+    /// What a press would really do — the list the engine is handed, its total,
+    /// and the paths the confirmation names.
+    ///
+    /// One row in the basket is not always one removal: a cache row names a
+    /// folder macOS will not part with and stands for everything inside it. The
+    /// question the person answers is asked of *this*, not of the basket, so the
+    /// dialog cannot describe a different act from the one it starts.
+    public var removalQuestion: DiskRemovalPlan.Question {
+        DiskRemovalPlan.question(basket: basket, advice: result?.advice ?? [])
+    }
+
     public func emptyBasket() async {
-        // One row in the basket is not always one removal: a cache row names a
-        // folder macOS will not part with and stands for everything inside it.
         // The gate is unchanged — the engine partitions whatever comes out of
         // here and `HelmTrash` still has the last word.
-        let paths = DiskRemovalPlan.targets(basket: basket.map(\.path),
-                                            advice: result?.advice ?? [])
+        let paths = removalQuestion.paths
         guard !paths.isEmpty else { return }
         // **One removal at a time**, the rule `UninstallerViewModel` already
         // follows. The basket is not emptied until the answer comes back, so
@@ -462,15 +482,40 @@ import Module_Disk_Engine
         busy = true
         defer { busy = false }
         let removal: DiskRemoval? = await client.request(DiskCommand.trash, encoding: paths)
-        let freed = removal?.freedBytes ?? 0
-        failures = removal?.refused ?? []
-        removedCount = removal?.removed.count ?? 0
-        banner = DkStr.movedToTrash(Bytes(freed))
+        // **A batch nobody answered is not a batch that moved nothing.** Folded
+        // with `??`, this stood «Moved to the Trash — 0 bytes» over folders that
+        // are exactly where they were — and never even drew it, because
+        // `HelmRemovalOutcome.verdict(removed: 0, failed: 0)` is `.silent`. Nor
+        // is it a batch that failed: the engine may have moved everything and
+        // the reply been lost.
+        //
+        // **So the basket stays.** It is the one piece of state in this module
+        // that nothing can reconstruct — folders picked across several drills
+        // into a tree that took a minute to walk — and emptying it on the
+        // strength of an answer nobody received left the person with no sentence,
+        // no list, and nothing to press again.
+        guard let removal else {
+            clearRemovalReport()
+            replyLost = true
+            // Counts and outcomes are free; nothing here names a path. It was the
+            // one branch in this module that reached the screen without reaching
+            // the file a person attaches to a bug report.
+            HelmLog.shared.info(DiskEngine.moduleID, "trash reply lost")
+            return
+        }
+        // The four fields are one report, so a round that *was* answered puts the
+        // previous round's «no answer» down as well — otherwise the sentence
+        // outlives the press it was about.
+        replyLost = false
+        failures = removal.refused
+        removedCount = removal.removed.count
+        banner = DkStr.movedToTrash(Bytes(removal.freedBytes))
         basket = []
         // Re-walking the disk to learn what we already know — those paths are
         // gone, and by how much — costs a minute on a full volume. Apply the
         // deletion to the tree in hand instead.
-        guard let previous = result, let removed = removal?.removed, !removed.isEmpty else { return }
+        let removed = removal.removed
+        guard let previous = result, !removed.isEmpty else { return }
         let pruned = DiskTreePrune.removing(paths: removed, from: previous.root)
         // Free space stays as measured: `HelmTrash` moved these paths to
         // `~/.Trash`, a folder on this same volume, so the disk gained nothing

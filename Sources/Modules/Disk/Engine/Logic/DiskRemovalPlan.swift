@@ -14,6 +14,46 @@ import Foundation
 /// still has the last word (ARCHITECTURE.md § Removal scope).
 public enum DiskRemovalPlan {
 
+    /// What the confirmation is about.
+    ///
+    /// **Taken from the plan, never from the basket.** The two are different for
+    /// a cache row by design — one row, and everything inside the folder it names
+    /// — so a dialog built from the basket asked about «1 item» and named a
+    /// folder that is still there afterwards, while the press sent its four
+    /// children. A confirmation that misstates its own act is the worst string in
+    /// a module that deletes things, and this one understated.
+    public struct Question: Equatable, Sendable {
+        /// Exactly what the engine will be handed, in the order it will be.
+        public let paths: [String]
+        public let bytes: Int
+        public var count: Int { paths.count }
+
+        /// The paths as the dialog lists them: the home prefix shortened the way
+        /// AppKit does it, capped, and an ellipsis only when something is really
+        /// left out.
+        ///
+        /// Paths rather than the names the ring shows, and the reason is at the
+        /// call site: "Library" alone could equally be `/Library` or `~/Library`,
+        /// and one of those is the system's.
+        public func named(limit: Int = 4) -> String {
+            paths.prefix(limit).map { ($0 as NSString).abbreviatingWithTildeInPath }
+                .joined(separator: "\n")
+                + (paths.count > limit ? "\n…" : "")
+        }
+    }
+
+    /// The question the person is answering.
+    ///
+    /// The paths are `targets` itself — the very list the press hands over, not a
+    /// second walk of the basket that agrees with it today. The size comes from
+    /// the advice's own total, which `DiskAdvice` derives from those same targets.
+    public static func question(basket: [DiskEntry], advice: [DiskAdvice]) -> Question {
+        Question(paths: targets(basket: basket.map(\.path), advice: advice),
+                 bytes: basket.reduce(0) { total, entry in
+                     total + (advice.first { $0.path == entry.path }?.bytes ?? entry.bytes)
+                 })
+    }
+
     /// The paths a basket really hands to the Trash, in the order it holds them.
     ///
     /// Duplicates are the engine's business — it already takes `Array(Set(…))`,

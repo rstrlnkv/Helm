@@ -110,9 +110,11 @@ public enum HelmTrash {
                                 "refused out-of-scope path: \(Redact.path(path, leaf: leaf))")
         }
 
-        // One set for the batch: a hard link is one allocation under several
-        // names, and the second name frees nothing.
-        var counted: Set<UInt64> = []
+        // One ledger for the batch: a hard link is one allocation under several
+        // names, and the second name frees nothing — and neither does the second
+        // member of an APFS clone family, whose blocks come back once when the
+        // family goes (`FileWeight.reclaimed`).
+        var counted = FileWeight.Ledger()
 
         // One outcome per path, whatever the caller handed over. `removed` and
         // `failed` are read as one description of one batch, and the same file
@@ -162,7 +164,7 @@ public enum HelmTrash {
             // reporting that it freed nothing about a file it really did trash.
             var slate = counted
             // Read before the move: afterwards the URL points at nothing.
-            let size = FileWeight.allocated(of: url, countingOnce: &slate)
+            let size = FileWeight.reclaimed(of: url, charging: &slate)
             // Read the ancestry again, now, against what the gate approved. A
             // swapped symlink lands on a *different existing* directory object, so
             // a redirected subtree stops here rather than in someone's Documents.

@@ -197,9 +197,12 @@ private struct BreadcrumbBar: View {
                     Button(DkStr.stop) { dvm.cancel() }
                         .controlSize(.small)
                 }
-            } else if layout.showsScanStatement {
-                // Between the path and the controls: it is what fills the gap
-                // on a wide window, and the first thing to go on a narrow one.
+            } else {
+                // Between the path and the controls: it is what fills the gap on
+                // a wide window. Which of the three sentences this is — and
+                // whether the width has anything to say about it — is
+                // `DiskLayout.statement`, because two of the three are warnings
+                // and a warning is not a thing to drop when the window is small.
                 scanStatement
             }
 
@@ -232,26 +235,39 @@ private struct BreadcrumbBar: View {
         .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
     }
 
-    /// What the ring is showing: a stopped walk, a fresh measurement, or a memory
-    /// of one.
+    /// What the ring is showing: a stopped walk, a memory of a measurement, or a
+    /// fresh one.
     ///
-    /// Stopped comes first because it is the only one of the three that makes the
-    /// sizes beside it untrue as totals, and the line is the only place on the
-    /// screen that says so.
+    /// The choice is `DiskLayout.statement`, and exhaustively — no `default`, so a
+    /// fourth sentence is a build error here rather than a line that silently
+    /// never draws.
     @ViewBuilder private var scanStatement: some View {
-        if dvm.stopped, let result = dvm.result {
-            Text(DkStr.stopped)
-                .font(HelmText.rowDetail).foregroundStyle(HelmText.faint).lineLimit(1)
-                .help(DkStr.stoppedHint(result.filesScanned))
-                .accessibilityHint(DkStr.stoppedHint(result.filesScanned))
-        } else if dvm.restored, let savedAt = dvm.completedAt {
+        switch layout.statement(stopped: dvm.stopped, restored: dvm.restored,
+                                hasResult: dvm.result != nil) {
+        case .stopped:
+            if let result = dvm.result {
+                Text(DkStr.stopped)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.faint).lineLimit(1)
+                    // The hint carries the count and the consequence, and it rode
+                    // on a `Text` that was not drawn below 800 pt of pane — so the
+                    // screen reader lost it exactly where the sighted reader did.
+                    .help(DkStr.stoppedHint(result.filesScanned))
+                    .accessibilityHint(DkStr.stoppedHint(result.filesScanned))
+            }
+        case .measured:
             // A restored tree is a memory, not a measurement: say when.
-            Text(DkStr.measured(HelmDates.relative(savedAt)))
-                .font(HelmText.rowDetail).foregroundStyle(HelmText.faint).lineLimit(1)
-        } else if let result = dvm.result {
-            Text(DkStr.scannedIn(result.filesScanned,
-                                 Decimal(result.seconds)))
-                .font(HelmText.rowDetail).foregroundStyle(HelmText.faint).lineLimit(1)
+            if let savedAt = dvm.completedAt {
+                Text(DkStr.measured(HelmDates.relative(savedAt)))
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.faint).lineLimit(1)
+            }
+        case .scanned:
+            if let result = dvm.result {
+                Text(DkStr.scannedIn(result.filesScanned,
+                                     Decimal(result.seconds)))
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.faint).lineLimit(1)
+            }
+        case .none:
+            EmptyView()
         }
     }
 

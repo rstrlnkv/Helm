@@ -18,7 +18,11 @@ struct DiskSettingsPage: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        // Once per pass, and read by both halves of the dialog: the expansion
+        // walks the basket against the advice, and the title and the message are
+        // two questions about one plan.
+        let question = dvm.removalQuestion
+        return VStack(spacing: 0) {
             // Page-level, not phase-level: without the grant a scan still runs
             // and still draws a ring, it simply under-reports — and the result
             // screen used to say nothing at all about that.
@@ -46,22 +50,26 @@ struct DiskSettingsPage: View {
         // The basket bar inserts a divider and 45 pt under the ring; without
         // this the whole screen jumped upward when the sheet closed.
         .animation(HelmMotion.interface, value: dvm.basket.isEmpty)
-        .confirmationDialog(DkStr.confirmTrash(dvm.basket.count, formatted(dvm.basketBytes)),
+        // **The question is asked of the plan.** Both halves used to be built from
+        // the basket, which for a cache row is one entry standing for the contents
+        // of a folder that stays exactly where it is: «Move 1 item (120 MB) to the
+        // Trash?» over a press that sent four paths and left the named folder
+        // behind. `removalQuestion` is what the press hands over, so the count,
+        // the size and the names are the act itself.
+        //
+        // Paths, not display names: the ring shows localized folder names, so
+        // "Library" in this list could equally be /Library or ~/Library — and one
+        // of those is the system's. Abbreviated by AppKit, not by `Redact` — that
+        // one exists for the log, and if it is ever made to hash a component this
+        // dialog would start asking about `app#3f9a`.
+        .confirmationDialog(DkStr.confirmTrash(question),
                             isPresented: $confirming, titleVisibility: .visible) {
             Button(DkStr.moveToTrash, role: .destructive) {
                 Task { await dvm.emptyBasket() }
             }
             Button(DkStr.cancel, role: .cancel) {}
         } message: {
-            // Paths, not names: the ring shows localized folder names, so
-            // "Library" in this list could equally be /Library or ~/Library —
-            // and one of those is the system's. Abbreviated by AppKit, not by
-            // `Redact` — that one exists for the log, and if it is ever made to
-            // hash a component this dialog would start asking about `app#3f9a`.
-            Text(dvm.basket.prefix(4)
-                    .map { ($0.path as NSString).abbreviatingWithTildeInPath }
-                    .joined(separator: "\n")
-                 + (dvm.basket.count > 4 ? "\n…" : ""))
+            Text(question.named())
         }
     }
 
@@ -142,20 +150,60 @@ struct DiskSettingsPage: View {
 
     // MARK: - Basket
 
+    /// The report of the last press, and what is waiting for the next one.
+    ///
+    /// A column, because the two are no longer alternatives: a removal nobody
+    /// answered keeps the basket, so the sentence about it stands over rows that
+    /// are still ticked. As a passenger in that row it would have been a
+    /// two-clause sentence sharing a line with a menu and a button, and the
+    /// clause that says what to do next is the one that gets truncated — the
+    /// shape `UninstallerSettingsPage.reviewReport` already landed on.
     private var basketBar: some View {
-        HStack(spacing: HelmSpace.s5) {
-            if dvm.basket.isEmpty {
-                if let banner = dvm.banner {
-                    HelmRemovalOutcome(
-                        succeededText: banner,
-                        removed: dvm.removedCount,
-                        failures: dvm.failures.map(HelmRemovalFailure.init),
-                        needsFullDiskAccess: diskAccess == .denied)
-                } else {
-                    Text(DkStr.emptyBasket)
-                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                }
-            } else {
+        VStack(alignment: .leading, spacing: HelmSpace.s5) {
+            removalReport
+            basketRow
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
+    }
+
+    /// What the last press said.
+    ///
+    /// **The lost reply comes first, and it is the stale-list wording.** Disk does
+    /// not re-read anything after a removal: the answered path prunes the tree
+    /// with the paths the engine says it moved, so a reply that never came leaves
+    /// the ring and the list showing exactly where the files were *before* the
+    /// press. `HelmRemovalOutcome.unanswered` ends by promising the list is where
+    /// they are now, which is true for the two modules that rescan and not here.
+    /// Whether the row above the basket has anything to say. One spelling, read
+    /// by both halves of the bar: a second copy of it in `basketRow` could be
+    /// satisfied while the report was drawing.
+    private var hasReport: Bool { dvm.replyLost || dvm.banner != nil }
+
+    @ViewBuilder private var removalReport: some View {
+        if dvm.replyLost {
+            HelmRemovalOutcome.unansweredWithStaleList
+        } else if let banner = dvm.banner {
+            HelmRemovalOutcome(
+                succeededText: banner,
+                removed: dvm.removedCount,
+                failures: dvm.failures.map(HelmRemovalFailure.init),
+                needsFullDiskAccess: diskAccess == .denied)
+        }
+    }
+
+    @ViewBuilder private var basketRow: some View {
+        if dvm.basket.isEmpty {
+            // Drawn by nothing: `showsRemovalBar` is false for an empty basket
+            // with nothing to report, so there is no bar to hold this. Left as it
+            // was found rather than removed here — the dead key is its own
+            // finding.
+            if !hasReport {
+                Text(DkStr.emptyBasket)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+            }
+        } else {
+            HStack(spacing: HelmSpace.s5) {
                 // A count is not a list. Everything about to be trashed can be
                 // named here, and removed from the basket without hunting for
                 // its row back in the ring.
@@ -182,8 +230,6 @@ struct DiskSettingsPage: View {
                     .buttonStyle(.borderedProminent)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
     }
 
     // MARK: - Helpers
