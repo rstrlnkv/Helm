@@ -34,6 +34,10 @@ final class UninstallerWire: EngineTransport, @unchecked Sendable {
     private var scans: [String: ScanResult]
     private var removal: UninstallResult
     private var offers: [TrashedAppLeftovers]
+    /// What the engine says the Trash-offer switch is *doing*, which is not the
+    /// same as what it says: a `Bool` here is how the switch came to be the only
+    /// thing the page could know (`TrashWatch`).
+    private var watch: TrashWatch
     private var answer: Answer
     /// A reply that will not decode is a fact about one command, not about the
     /// engine: the removal can be lost while the scan behind it still answers.
@@ -47,11 +51,13 @@ final class UninstallerWire: EngineTransport, @unchecked Sendable {
          scans: [String: ScanResult] = [:],
          removal: UninstallResult = UninstallResult(trashed: [], freedBytes: 0),
          offers: [TrashedAppLeftovers] = [],
+         watching watch: TrashWatch = .off,
          answering answer: Answer = .reply) {
         self.apps = apps
         self.scans = scans
         self.removal = removal
         self.offers = offers
+        self.watch = watch
         self.answer = answer
     }
 
@@ -64,6 +70,10 @@ final class UninstallerWire: EngineTransport, @unchecked Sendable {
     func answers(_ next: Answer, to command: UninstallerCommand) {
         lock.withLock { perCommand[command] = next }
     }
+
+    /// The state the engine reports for the switch. Its own setter, because the
+    /// grant it depends on is taken away and given back while the app runs.
+    func setWatch(_ next: TrashWatch) { lock.withLock { watch = next } }
 
     /// What the next removal comes back with.
     func setRemoval(_ next: UninstallResult) { lock.withLock { removal = next } }
@@ -123,7 +133,7 @@ final class UninstallerWire: EngineTransport, @unchecked Sendable {
                                              runningNow: false))
         case .trashPaths, .uninstall: return .json(removal)
         case .trashedAppLeftovers: return .json(offers)
-        case .watchingTrash: return .json(false)
+        case .watchingTrash: return .json(watch)
         case .scanOrphans: return .json([OrphanGroup]())
         case .systemExtensions: return .json([SystemExtensionInfo]())
         // No reply at all is what the engine itself answers to these.

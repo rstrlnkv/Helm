@@ -26,7 +26,24 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
     /// True while the names are being fetched. Sizes land afterwards and do not
     /// hold the list back — the names are what somebody is looking for.
     @Published public private(set) var loadingApps = false
+    /// Whether the list has ever been **answered**, which is not the same as
+    /// having been asked for. It used to be set whatever came back, so one lost
+    /// reply left the module holding «you have no applications» for the life of
+    /// the process — `loadAppsIfNeeded` would not ask again, and only the Refresh
+    /// button would.
     private var loadedApps = false
+
+    /// How many applications are installed, or nil while Helm does not know.
+    ///
+    /// The page's footer draws this through `UnStr.appsCount`, which already has a
+    /// sentence for the unknown — «Counting apps…» — and that is the honest state
+    /// for a query still out **and** for one that came back with nothing at all.
+    /// Read from the flag rather than from `apps.isEmpty`, because a Mac with no
+    /// applications on it is an answer and reads as «0 apps».
+    public var appCount: Int? {
+        guard loadedApps, !loadingApps else { return nil }
+        return apps.count
+    }
 
     // MARK: - Where the person is, and what they chose
 
@@ -47,6 +64,11 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
     @Published public private(set) var busy = false
     @Published public private(set) var resultBanner: String?
     @Published public private(set) var replyLost = false
+
+    /// What the Trash-offer switch is doing, from the engine — the switch's own
+    /// position and, when it is on, whether either of the two things it depends on
+    /// has refused. See `TrashWatch`.
+    @Published public private(set) var trashWatch: TrashWatch = .off
 
     /// One instance per host view model, for the app's lifetime. Keyed to the
     /// view model rather than merely "exists": turning the module off drops the
@@ -75,10 +97,21 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
 
     /// What the Refresh button asks for, and what a removal asks for once it
     /// has changed the list.
+    ///
+    /// **A list nobody answered is not a Mac with no applications on it.** Folded
+    /// with `??`, this drew «0 apps» over somebody's Mac and set the flag anyway,
+    /// so nothing asked again — and a Refresh that went unanswered emptied the list
+    /// the person was looking at. It keeps what it has and stays in the state the
+    /// footer already has a sentence for.
     public func reloadApps() async {
         loadingApps = true
-        apps = await listApps()
-        loadedApps = true
+        if let list = await listApps() {
+            apps = list
+            loadedApps = true
+        } else {
+            // Counts and outcomes are free; nothing here names an application.
+            HelmLog.shared.info(UninstallerEngine.moduleID, "app list reply lost")
+        }
         loadingApps = false
         await fillInSizes()
     }
@@ -276,10 +309,15 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
     // as well, and `QuitReq` had already drifted: `force` was `Bool` on this
     // side and `Bool?` on the other. See `UninstallerCommand.swift`.
 
-    public func listApps() async -> [InstalledApp] {
+    /// The installed apps, or nil for a request the engine did not answer — an
+    /// engine that has gone under a page that is still up, a command it could not
+    /// parse, a reply that would not decode. The nil is the caller's to read; it
+    /// used to be folded here, where the difference stopped existing.
+    public func listApps() async -> [InstalledApp]? {
         HelmLog.shared.info(UninstallerEngine.moduleID, "listApps requested")
-        let apps: [InstalledApp] = await client.request(UninstallerCommand.listApps) ?? []
-        HelmLog.shared.info(UninstallerEngine.moduleID, "listApps returned \(apps.count)")
+        let apps: [InstalledApp]? = await client.request(UninstallerCommand.listApps)
+        HelmLog.shared.info(UninstallerEngine.moduleID,
+                            "listApps returned \(apps.map { "\($0.count)" } ?? "nothing")")
         return apps
     }
 
@@ -300,15 +338,32 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
     }
 
     /// Whether Helm offers to clean up after an app the person drags to the
-    /// Trash. Read from the engine rather than from a store this page could reach
-    /// on its own: the engine is what acts on it, and one reader means the switch
-    /// and the behaviour cannot disagree.
-    public func watchingTrash() async -> Bool {
-        await client.request(UninstallerCommand.watchingTrash) ?? false
+    /// Trash — **and whether it is in a position to.** Read from the engine rather
+    /// than from a store this page could reach on its own: the engine is what acts
+    /// on it, and one reader means the switch and the behaviour cannot disagree.
+    ///
+    /// It lives here rather than in two `@State`s, which is where it was: the page
+    /// kept one for its permission note and the Leftovers tab another for the
+    /// switch, and the fact is the module's.
+    public func refreshTrashWatch() async {
+        // A request nobody answered leaves the last reading where it is. Folded to
+        // `false`, an unanswered read drew the switch as off — which is a claim
+        // about a setting, on the control the person would press to change it.
+        guard let state: TrashWatch = await client.request(UninstallerCommand.watchingTrash)
+        else {
+            HelmLog.shared.info(UninstallerEngine.moduleID, "trash watch reply lost")
+            return
+        }
+        trashWatch = state
     }
 
+    /// The press answers the switch at once — waiting for the round trip would let
+    /// a `Toggle` snap back under the pointer — and the engine's own reading of what
+    /// it is now doing arrives immediately after.
     public func setWatchingTrash(_ on: Bool) async {
+        trashWatch = on ? .on : .off
         await client.send(UninstallerCommand.setWatchingTrash, encoding: on)
+        await refreshTrashWatch()
     }
 
     /// Trash a batch of paths — leftovers alone from the orphans view, or a

@@ -17,8 +17,6 @@ struct OrphansView: View {
     @State private var busy = false
     @State private var confirming = false
     @State private var banner: String?
-    /// Read from the engine on appear; written straight through on a change.
-    @State private var watching = false
 
     private var selectedBytes: Int {
         groups.flatMap(\.leftovers).filter { selected.contains($0.path) }.reduce(0) { $0 + $1.sizeBytes }
@@ -127,17 +125,18 @@ struct OrphansView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
-            Toggle("", isOn: Binding(get: { watching },
-                                     set: { on in
-                                         watching = on
-                                         Task { await uvm.setWatchingTrash(on) }
-                                     }))
+            // The switch's position comes from the engine, which is also the only
+            // thing that knows whether it is doing anything — this view kept a
+            // `@State` of its own, and the page kept a second one for its
+            // permission note.
+            Toggle("", isOn: Binding(get: { uvm.trashWatch.isOn },
+                                     set: { on in Task { await uvm.setWatchingTrash(on) } }))
                 .toggleStyle(.switch)
                 .labelsHidden()
                 .accessibilityLabel(UnStr.watchTrash)
         }
         .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
-        .task { watching = await uvm.watchingTrash() }
+        .task { await uvm.refreshTrashWatch() }
     }
 
     // Every group's leftovers, which is every leftover on screen: the sections

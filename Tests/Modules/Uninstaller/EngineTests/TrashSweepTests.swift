@@ -16,12 +16,17 @@ final class TrashSweepTests: XCTestCase {
     /// both at once, and that is the case where offering would be wrong.
     private struct Lister: AppLister {
         var installed: [InstalledApp] = []
-        var trashed: [TrashedApp] = []
+        /// Optional, the way the port is: `nil` is a Trash this process was not
+        /// allowed to read, which is a different fact from an empty one and has its
+        /// own tests in `TheOfferSwitchSaysWhatItIsDoingTests`. A non-optional here
+        /// would satisfy nothing and hand every test in this file the protocol's
+        /// default of `[]` — with no error anywhere.
+        var trashed: [TrashedApp]? = []
         func installedApps() -> [InstalledApp] { installed }
         func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
         func installedBundleIDs() -> Set<String> { Set(installed.map(\.bundleID)) }
         func isKnownToSystem(bundleID: String) -> Bool { false }
-        func trashedApps() -> [TrashedApp] { trashed }
+        func trashedApps() -> [TrashedApp]? { trashed }
     }
 
     /// Reports every candidate path as present and non-empty, so the leftover scan

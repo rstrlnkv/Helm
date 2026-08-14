@@ -73,10 +73,19 @@ public enum SystemExtensionCLI {
 
     /// The folded reading: empty for a tool that did not answer.
     ///
-    /// Kept for the callers that count rather than judge — the settings audit and
-    /// the uninstaller's host lookup, where an absent reading and an empty one lead
-    /// to the same screen. A caller that decides whether something may be *deleted*
-    /// takes `listing()` or `installedIfAnswered()` instead.
+    /// **This used to say that the two readings «lead to the same screen» for the
+    /// callers that count rather than judge, and named the uninstaller's host
+    /// lookup as one of them. They do not.** An absent reading made
+    /// `hasSystemExtension` answer false, so a bundle macOS had refused *because
+    /// its extension is live* was classified from the bare Cocoa code and the
+    /// failure sheet lost its «Open Extensions…» button — the one thing on that
+    /// screen anybody can act on. That lookup takes `hostIdentifiersIfAnswered()`
+    /// now, and this is left with one caller, `installed()`.
+    ///
+    /// A caller that decides whether something may be *deleted*, or draws a control
+    /// on the strength of what is loaded, takes `listing()`,
+    /// `installedIfAnswered()` or `hostIdentifiersIfAnswered()` — every one of
+    /// which can say that the tool was not there.
     public static func listOutput() -> String { listing() ?? "" }
 
     public static func installed() -> [SystemExtensionInfo] {
@@ -88,7 +97,15 @@ public enum SystemExtensionCLI {
         listing().map(SystemExtensionParser.parse)
     }
 
-    public static func hostIdentifiers() -> Set<String> {
-        SystemExtensionParser.hostIdentifiers(listOutput())
+    /// The apps whose extensions are loaded, or `nil` when `systemextensionsctl`
+    /// itself did not answer.
+    ///
+    /// It replaces a folded `hostIdentifiers()` built on `listOutput()`, whose
+    /// empty answer meant «this Mac has no extensions» and «the tool did not run»
+    /// in one value. The uninstaller reads it to decide whether a live extension
+    /// is why macOS refused to move a bundle, which is a claim, so the two have to
+    /// be different values.
+    public static func hostIdentifiersIfAnswered() -> Set<String>? {
+        listing().map(SystemExtensionParser.hostIdentifiers)
     }
 }

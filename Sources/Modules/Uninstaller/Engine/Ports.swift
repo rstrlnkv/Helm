@@ -25,18 +25,24 @@ public protocol AppLister: Sendable {
     /// looks the same and means the same thing — the data stays in use.
     func installedPaths(forBundleID id: String) -> [String]
 
-    /// Application bundles sitting in the user's Trash.
+    /// Application bundles sitting in the user's Trash, or `nil` when the Trash
+    /// could not be read at all.
     ///
     /// Dragging an app there is how almost everyone uninstalls on a Mac, and it is
     /// the one removal Helm never saw. The bundle is intact while it waits, so its
     /// own `Info.plist` still answers the only question the leftover scan needs.
     ///
     /// Reading `~/.Trash` requires Full Disk Access — measured: a process without it
-    /// gets `Operation not permitted`. Empty is therefore the honest answer both
-    /// when the Trash holds no applications and when Helm is not allowed to look,
-    /// and the module's page is where the second case is explained, since
-    /// `permissions: [.fullDisk]` is already what it declares.
-    func trashedApps() -> [TrashedApp]
+    /// gets `Operation not permitted`. **Empty was the answer to both, and that is
+    /// what made the switch on the Leftovers tab a claim nobody had checked:** a
+    /// grant every install takes away again arrived here as «there is nothing in
+    /// the Trash», so the sweep said so and the switch said on. The refusal is its
+    /// own answer now, and `TrashWatch` is what the page draws it from.
+    ///
+    /// A Trash that is not there yet — a fresh account has none until something is
+    /// deleted — is `[]` and not nil: nothing in it is the true answer for that
+    /// one, and it must not be reported as a missing permission.
+    func trashedApps() -> [TrashedApp]?
 }
 
 public extension AppLister {
@@ -46,8 +52,9 @@ public extension AppLister {
         installedApps().filter { $0.bundleID == id }.map(\.path)
     }
 
-    /// Nothing, for a lister that only knows what is installed.
-    func trashedApps() -> [TrashedApp] { [] }
+    /// Nothing, for a lister that only knows what is installed — an answer, since
+    /// such a lister is not the one being refused a read.
+    func trashedApps() -> [TrashedApp]? { [] }
 }
 
 public protocol FileSystemPort: Sendable {
@@ -84,8 +91,18 @@ public protocol TrashPort: Sendable {
 /// System extensions block their host app from being moved; the UI needs to
 /// name that reason instead of reporting a bare failure.
 public protocol SystemExtensionPort: Sendable {
-    /// Bundle ids that currently have an activated system extension.
-    func activeExtensionHosts() -> Set<String>
+    /// Bundle ids that currently have an activated system extension, or `nil` when
+    /// `systemextensionsctl` did not answer at all.
+    ///
+    /// **The two were one value, and that cost the module its best sentence.** The
+    /// tool's exit status was folded to an empty listing, so «no extensions on this
+    /// Mac» and «the tool did not run» arrived as the same empty set — and a bundle
+    /// macOS refused *because its extension is live* was then classified from the
+    /// bare Cocoa code, with the failure sheet's «Open Extensions…» button missing.
+    /// It is also the state no test could plant while both members answered
+    /// non-optionals, which is the `PowerSource.supply()` lesson one module over:
+    /// the repair belongs on the port.
+    func activeExtensionHosts() -> Set<String>?
     func installedExtensions() -> [SystemExtensionInfo]
 }
 
@@ -96,12 +113,12 @@ public protocol RunningAppsPort: Sendable {
     func quit(bundleID: String, force: Bool)
 }
 
-public extension RunningAppsPort {
-}
-
-/// Default when no lister is injected (tests, previews).
+/// Default when no lister is injected (tests, previews). A Mac with no system
+/// extensions on it — which is an answer, and deliberately not the silence above:
+/// a test that wants the tool to have said nothing says so with a double of its
+/// own.
 public struct NoSystemExtensions: SystemExtensionPort {
     public init() {}
-    public func activeExtensionHosts() -> Set<String> { [] }
+    public func activeExtensionHosts() -> Set<String>? { [] }
     public func installedExtensions() -> [SystemExtensionInfo] { [] }
 }

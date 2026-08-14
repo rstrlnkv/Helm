@@ -23,7 +23,10 @@ private final class BlamingTrash: TrashPort, @unchecked Sendable {
 }
 private struct HostsExtension: SystemExtensionPort {
     let hosts: Set<String>
-    func activeExtensionHosts() -> Set<String> { hosts }
+    /// A tool that answered. The silence — `nil` — is
+    /// `ASilentToolIsNotNoExtensionsTests`' subject, and it is a state
+    /// this file must not be able to plant by accident.
+    func activeExtensionHosts() -> Set<String>? { hosts }
     func installedExtensions() -> [SystemExtensionInfo] { [] }
 }
 private struct AnyFS: FileSystemPort {

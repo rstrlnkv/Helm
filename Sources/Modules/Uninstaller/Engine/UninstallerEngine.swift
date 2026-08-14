@@ -29,6 +29,14 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// from `ModuleHost`, which is `@MainActor`; the `setWatchingTrash` arm of
     /// the transport handler hops there for the same reason.
     private var watcher: FolderWatcher?
+    /// The two live facts behind the Trash-offer switch, and the lock is because
+    /// neither of them arrives on the main actor: the watcher answers on its own
+    /// queue, and the Trash read happens inside a sweep off the cooperative pool.
+    /// `nil` means "no answer yet" in both, which `TrashWatch.state` reads as
+    /// nothing-known-against-it rather than as a failure.
+    private let watchLock = NSLock()
+    private var watcherStarted: Bool?
+    private var trashReadable: Bool?
     private let localTransport: LocalTransport
     public let transport: EngineTransport
 
@@ -74,9 +82,21 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
 
     private var watchingTrash: Bool { store.bool(Self.watchKey, default: false) }
 
+    /// What the switch is doing, as against what it says — read, never remembered.
+    /// Both things that can make «on» a lie change while the app is running:
+    /// FSEvents can refuse the stream, and the grant the read depends on is taken
+    /// away by every install and given back in System Settings.
+    public var trashWatch: TrashWatch {
+        watchLock.withLock {
+            TrashWatch.state(on: watchingTrash, watching: watcherStarted,
+                             trashReadable: trashReadable)
+        }
+    }
+
     private func startWatchingTrashIfAsked() {
         watcher?.stop()
         watcher = nil
+        watchLock.withLock { watcherStarted = nil }
         guard watchingTrash else {
             HelmLog.shared.info(UninstallerEngine.moduleID, "trash offer: off")
             return
@@ -88,7 +108,29 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
             self.localTransport.emit(EngineEvent(name: UninstallerEvent.trashChanged.rawValue))
         }
         watcher = made
-        made.watch([trash])
+        // The stream's own answer, which used to be thrown away — so this method
+        // logged «trash offer switched on» whether or not anything was watching.
+        made.watch([trash]) { [weak self] started in
+            guard let self else { return }
+            self.watchLock.withLock { self.watcherStarted = started }
+            guard !started else { return }
+            HelmLog.shared.warn(UninstallerEngine.moduleID,
+                                "the Trash watcher did not start, so nothing will be noticed "
+                                + "until the next launch")
+        }
+    }
+
+    /// Whether Helm can read the Trash, from a read that really happened — a `nil`
+    /// out of `trashedApps()` is a refused `contentsOfDirectory`, not a probe of
+    /// the grant. Recorded when the switch goes on, because the person is owed the
+    /// answer at the moment they press it, and by every sweep after that, which is
+    /// what notices the grant being taken away or given back. Logged on every
+    /// refusal rather than on a change: each one is an offer that did not happen.
+    private func recordTrashReadable(_ readable: Bool) {
+        watchLock.withLock { trashReadable = readable }
+        guard !readable else { return }
+        HelmLog.shared.warn(UninstallerEngine.moduleID,
+                            "Helm cannot read the Trash, so the offer will not appear")
     }
 
     /// Stopped here and not only in `deinit`: the stream holds this object, so a
@@ -282,7 +324,16 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         // authority on what it will offer, and a host that had the answer and was
         // trusted to keep quiet about it is a rule enforced in the wrong place.
         guard watchingTrash else { return [] }
-        let found = apps.trashedApps()
+        // The read is the reverse channel: a refusal here is the switch's own row
+        // being wrong, and it used to arrive as «the Trash holds no apps» — the
+        // same silence a working sweep of an empty Trash gives.
+        guard let found = apps.trashedApps() else {
+            recordTrashReadable(false)
+            HelmLog.shared.info(UninstallerEngine.moduleID,
+                                "trash sweep: nothing to offer, the Trash was not readable")
+            return []
+        }
+        recordTrashReadable(true)
         // Four different outcomes used to look identical from outside — no
         // window — and one of them is a defect while three are the feature
         // working: the Trash holds no app, the app was declined before, another
@@ -337,12 +388,18 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// Turning it on also emits `trashChanged`, which makes the host sweep: the
     /// person just asked to be told about apps in the Trash, and the ones already
     /// sitting there are the first thing they meant.
+    /// Turning it on also asks the one question the whole feature rests on — can
+    /// this process read the Trash — because the person is owed the answer at the
+    /// moment they press the switch and not at whichever sweep comes next. One
+    /// `contentsOfDirectory`, on a press.
     public func setWatchingTrash(_ on: Bool) {
         guard on != watchingTrash else { return }
         store.set(on, for: Self.watchKey)
         HelmLog.shared.info(UninstallerEngine.moduleID, "trash offer switched \(on ? "on" : "off")")
         startWatchingTrashIfAsked()
-        if on { localTransport.emit(EngineEvent(name: UninstallerEvent.trashChanged.rawValue)) }
+        guard on else { return }
+        recordTrashReadable(apps.trashedApps() != nil)
+        localTransport.emit(EngineEvent(name: UninstallerEvent.trashChanged.rawValue))
     }
 
     /// Cancel. Remembered so the window does not return for this app at the next
@@ -516,7 +573,11 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         // deleted. A candidate that escaped its folder stops here.
         let (allowed, refused) = RemovableScope.partition(paths, home: home.path)
         // Only queried when a bundle actually fails to move — the lookup shells
-        // out.
+        // out. **A silence is never stored here**: this holds an answer, so nil
+        // means "ask again". One `systemextensionsctl` that failed to run was
+        // remembered as «this Mac has no extensions» for the rest of the batch, and
+        // every bundle after it lost the one reason on that sheet a person can act
+        // on. Asking again costs one shell-out per *failing* app bundle.
         var extensionHosts: Set<String>?
         // What macOS said, verbatim, per path. `HelmTrash` classifies the error
         // and logs the sentence, and the sentence does not cross its `Result`;
@@ -527,15 +588,24 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
             allowed: allowed, outOfScope: refused, module: Self.moduleID,
             hasSystemExtension: { path in
                 guard Self.isAppBundle(path) else { return false }
-                let hosts = extensionHosts ?? self.extensions.activeExtensionHosts()
-                extensionHosts = hosts
                 // Match the app's bundle id, not the path: /Applications/X.app
                 // never contains "com.vendor.x".
+                guard let id = self.bundleID(forAppAt: path) else { return false }
+                guard let hosts = extensionHosts ?? self.extensions.activeExtensionHosts() else {
+                    // The tool did not answer, so nothing here knows whether an
+                    // extension is why macOS refused. It claims neither way and
+                    // says so: `HelmTrash` keeps macOS's own classification, and
+                    // the log is where a missing button is explained.
+                    HelmLog.shared.warn(Self.moduleID,
+                                        "the extension list could not be read, so a refusal "
+                                        + "cannot be blamed on a live extension")
+                    return false
+                }
+                extensionHosts = hosts
                 // The separator matters: "at.obdev.littlesnitchmini" starts with
                 // "at.obdev.littlesnitch" and is a different product. Without the
                 // dot, the user is sent to turn off someone else's extension while
                 // the real reason — no permission — is hidden.
-                guard let id = self.bundleID(forAppAt: path) else { return false }
                 return hosts.contains { id == $0 || id.hasPrefix($0 + ".") }
             },
             trashing: { url in
@@ -590,7 +660,9 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
             case .trashedAppLeftovers:
                 return EngineReply.encode(await self.trashedAppLeftovers(), for: cmd)
             case .watchingTrash:
-                return EngineReply.encode(self.watchingTrash, for: cmd)
+                // The state, not the flag: a `Bool` here was the whole of what the
+                // page could know, so «on» was all it could draw.
+                return EngineReply.encode(self.trashWatch, for: cmd)
             case .setWatchingTrash:
                 // The one arm that writes `watcher`, so it goes where the other
                 // two writers already are. `send` runs this handler on the

@@ -27,17 +27,33 @@ public final class FolderWatcher: @unchecked Sendable {
     /// Replaces whatever was being watched. Called when the folder list
     /// changes, which is rare enough that rebuilding the stream is simpler than
     /// adding to it — and an FSEvents stream cannot have paths added anyway.
-    public func watch(_ folders: [String]) {
+    ///
+    /// **`started` is how a caller finds out that it is not watching anything.**
+    /// This used to answer nothing at all: `FSEventStreamStart`'s return was
+    /// discarded and a nil from `FSEventStreamCreate` returned silently, so both
+    /// engines logged that they were watching a folder with no way to know whether
+    /// they were — the Uninstaller's switch said «on» over a Trash nothing was
+    /// looking at. Watching *nothing* answers `false` too: an empty folder list is
+    /// how a caller reaches this with nothing to do, and that is not a stream.
+    ///
+    /// A channel rather than a return value, and the queue is the reason: the work
+    /// is handed to this instance's serial queue, where the change callbacks are
+    /// delivered as well — and one of those can take as long as Autopilot's
+    /// `folders` getter, which reads a keychain item. A `queue.sync` here would
+    /// park whoever asked, up to and including the thread that draws, until a
+    /// change notification finished.
+    public func watch(_ folders: [String], started: (@Sendable (Bool) -> Void)? = nil) {
         queue.async { [self] in
             stopStream()
-            guard !folders.isEmpty else { return }
-            start(folders)
+            guard !folders.isEmpty else { started?(false); return }
+            started?(start(folders))
         }
     }
 
     public func stop() { queue.async { [self] in stopStream() } }
 
-    private func start(_ folders: [String]) {
+    /// Whether a stream is running when this returns.
+    private func start(_ folders: [String]) -> Bool {
         var context = FSEventStreamContext(
             version: 0,
             info: Unmanaged.passUnretained(self).toOpaque(),
@@ -63,9 +79,19 @@ public final class FolderWatcher: @unchecked Sendable {
             FSEventStreamCreateFlags(kFSEventStreamCreateFlagFileEvents |
                                      kFSEventStreamCreateFlagNoDefer |
                                      kFSEventStreamCreateFlagIgnoreSelf))
-        guard let stream else { return }
+        guard let stream else { return false }
         FSEventStreamSetDispatchQueue(stream, queue)
-        FSEventStreamStart(stream)
+        guard FSEventStreamStart(stream) else {
+            // A stream that never started must not be stopped — and leaving it in
+            // `self.stream` would have `stopStream` do exactly that, on an object
+            // FSEvents never scheduled. Released here, so the next `watch` builds
+            // a fresh one rather than reusing a dead handle.
+            FSEventStreamInvalidate(stream)
+            FSEventStreamRelease(stream)
+            self.stream = nil
+            return false
+        }
+        return true
     }
 
     private func stopStream() {

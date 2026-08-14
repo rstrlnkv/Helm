@@ -58,9 +58,15 @@ final class WorkspaceAppLister: AppLister {
     /// Something in there that is not a readable app bundle — a broken download, a
     /// folder somebody named `.app` — yields nothing rather than an error. There is
     /// no failure to report to anyone: the question is whether there is anything to
-    /// offer, and the answer is no. The same is true without Full Disk Access,
-    /// which is what the directory read needs.
-    func trashedApps() -> [TrashedApp] {
+    /// offer, and the answer is no.
+    ///
+    /// **A read Helm was not allowed to make is `nil`, not empty.** That is the
+    /// Full Disk Access case, which is every install (CLAUDE.md), and folded into
+    /// `[]` it made the switch on the Leftovers tab say on over a Trash nothing
+    /// could see. A Trash that is simply *not there* — a fresh account has none
+    /// until something is deleted — is empty rather than nil, or the page would
+    /// report a missing permission to somebody who has all of them.
+    func trashedApps() -> [TrashedApp]? {
         let trash = home.appendingPathComponent(".Trash", isDirectory: true)
         let items: [URL]
         do {
@@ -71,9 +77,10 @@ final class WorkspaceAppLister: AppLister {
             // silence to whoever opens the log, and they want different answers:
             // the first is usually Full Disk Access, which every install takes
             // away again. The path is the user's home and is not written.
+            let code = (error as NSError).code
             HelmLog.shared.warn(UninstallerEngine.moduleID,
-                                "the Trash could not be read: \((error as NSError).code)")
-            return []
+                                "the Trash could not be read: \(code)")
+            return code == NSFileReadNoSuchFileError ? [] : nil
         }
         return items
             .filter { $0.pathExtension == "app" }
@@ -88,14 +95,26 @@ final class WorkspaceAppLister: AppLister {
         let fm = FileManager.default
         var seen = Set<String>()
         var out: [InstalledApp] = []
+        // Counted rather than named: a bundle id names somebody's habits, and a
+        // row that is missing with nothing anywhere saying why reads as a folder
+        // Helm could not see.
+        var linked = 0
         for dir in searchDirs {
             guard let items = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) else { continue }
+            // Once for the folder, not once per bundle: where the folder itself
+            // leads is one fact about the listing, and `resolvingSymlinksInPath`
+            // is a `realpath` each time it is asked.
+            let folder = dir.resolvingSymlinksInPath().standardizedFileURL
             for app in items where app.pathExtension == "app" {
                 guard !seen.contains(app.path) else { continue }
                 seen.insert(app.path)
                 let info = app.appendingPathComponent("Contents/Info.plist")
                 let dict = NSDictionary(contentsOf: info)
                 guard let bundleID = dict?["CFBundleIdentifier"] as? String, !bundleID.isEmpty else { continue }
+                if !SystemApp.isSystem(bundleID: bundleID), Self.leadsElsewhere(app, inside: folder) {
+                    linked += 1
+                    continue
+                }
                 let name = (dict?["CFBundleDisplayName"] as? String)
                     ?? (dict?["CFBundleName"] as? String)
                     ?? app.deletingPathExtension().lastPathComponent
@@ -105,7 +124,51 @@ final class WorkspaceAppLister: AppLister {
                                         path: app.path, sizeBytes: 0))
             }
         }
+        if linked > 0 {
+            HelmLog.shared.info(UninstallerEngine.moduleID,
+                                "\(linked) linked bundle(s) not offered: what a move would take, "
+                                + "the link or the app behind it, is not a question this app answers")
+        }
         return out.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    /// Whether a listed entry leads somewhere other than where it is spelled.
+    ///
+    /// **Measured**, in a scratch directory: a symlink named `Linked.app` pointing
+    /// at a real 3 MB bundle is returned by `contentsOfDirectory`, has the `.app`
+    /// extension, and `NSDictionary(contentsOf:)` reads the *target's*
+    /// `Info.plist` through it — so the row carried the real name and the real
+    /// bundle id while `FileWeight.allocated` answered **0** bytes for it, and
+    /// `RemovableScope.isRemovable` allowed the move. What `FileManager.trashItem`
+    /// does with such a leaf, take the link or take the target, is a question this
+    /// app has no answer to, and **both answers are defects**: one leaves the app
+    /// installed with its containers gone under a banner saying it is in the
+    /// Trash, the other breaks "the leaf is left unresolved on purpose"
+    /// (ARCHITECTURE § Removal scope). So the offer is withdrawn rather than
+    /// guessed at. Who has one: anyone whose apps arrive as links — nix-darwin,
+    /// some cask layouts, hand-made links.
+    ///
+    /// **Both sides are resolved, and that is not a shortcut** — it is what
+    /// `ScanRoot.resolve` records one target over: `resolvingSymlinksInPath()`
+    /// rewrites `/private/var/…` to `/var/…`, so a folder compared against its own
+    /// unresolved spelling answers "this leads somewhere else" for every entry in
+    /// any temporary tree on this machine. What is left is the question that
+    /// matters here — does *this entry* lead out of the folder it was listed in.
+    /// The ancestor case, a link at `/Applications` redirecting everything under it
+    /// without any single entry being a link, is not answered here on purpose: it
+    /// is one question about the folder rather than one per row, and the removal
+    /// gate already refuses what it leads to, since `RemovableScope.partition`
+    /// resolves a path's ancestors before judging it.
+    ///
+    /// The caller exempts a `com.apple.` bundle, and that is not a courtesy:
+    /// **measured on this Mac, `/Applications/Safari.app` is itself a link**, into
+    /// `/System/Volumes/Preboot/Cryptexes/App/…`. Its row carries no checkbox and
+    /// `setChecked` refuses the id (`SystemApp`), so it is not an offer to remove
+    /// anything and there is nothing to withdraw — dropping it would only take the
+    /// row that says «System» away from a person who can see the app in Finder.
+    private static func leadsElsewhere(_ app: URL, inside folder: URL) -> Bool {
+        app.resolvingSymlinksInPath().standardizedFileURL.path
+            != folder.appendingPathComponent(app.lastPathComponent).path
     }
 
     /// Measured in parallel: the walks are independent, and one slow bundle
@@ -216,6 +279,11 @@ public struct UninstallerSystemPorts {
 /// Both uninstaller checks go through the shared CLI in HelmRuntime.
 public struct SystemExtensionLister: SystemExtensionPort {
     public init() {}
-    public func activeExtensionHosts() -> Set<String> { SystemExtensionCLI.hostIdentifiers() }
+    /// `hostIdentifiersIfAnswered`, never the folded reader: a tool that did not
+    /// run is not a Mac with no extensions on it, and this answer decides whether
+    /// the failure sheet offers to open the Extensions pane.
+    public func activeExtensionHosts() -> Set<String>? {
+        SystemExtensionCLI.hostIdentifiersIfAnswered()
+    }
     public func installedExtensions() -> [SystemExtensionInfo] { SystemExtensionCLI.installed() }
 }

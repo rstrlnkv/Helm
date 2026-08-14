@@ -18,10 +18,6 @@ struct UninstallerSettingsPage: View {
     /// failure report — is on the view model. See `UninstallerViewModel.step`.
     @State private var diskAccess: PermissionState = .granted
     @State private var search = ""
-    /// Read from the engine so the page's one permission note can say what the
-    /// missing grant actually costs *here* — the Trash switch being on makes it
-    /// cost more than containers.
-    @State private var watchingTrash = false
 
     /// 0 = installed apps, 1 = leftovers from apps that are already gone.
     @State private var tab = 0
@@ -53,7 +49,7 @@ struct UninstallerSettingsPage: View {
         pageBody
             .helmTracksFullDiskAccess($diskAccess)
             .task {
-                watchingTrash = await uvm.watchingTrash()
+                await uvm.refreshTrashWatch()
                 await uvm.loadAppsIfNeeded()
             }
     }
@@ -114,15 +110,8 @@ struct UninstallerSettingsPage: View {
 
             // Page level: the user used to tick apps, sit through a scan and
             // only then learn the removal would be refused.
-            // One note for one permission. There used to be a second under the
-            // Trash switch with its own Grant button — same grant, same pane,
-            // two rows a person has to work out are the same thing. What the
-            // switch adds is a consequence, not a notice, so it lands in this
-            // sentence instead.
-            if diskAccess == .denied {
-                HelmPermissionNote(need: .fullDiskAccess,
-                                   text: watchingTrash ? UnStr.accessNeededWithWatch
-                                                       : UnStr.removalNeedsAccess)
+            if let note = permissionNote {
+                HelmPermissionNote(need: .fullDiskAccess, text: note)
                     .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
                 Divider()
             }
@@ -145,9 +134,39 @@ struct UninstallerSettingsPage: View {
         .animation(HelmMotion.interface, value: apps.count)
     }
 
+    /// The one note about the one permission, or nil when there is nothing to say.
+    ///
+    /// **Two readings stand behind it, and only one of them is a probe.**
+    /// `diskAccess` is `PermissionCheck`'s answer, taken on every appearance; the
+    /// other is a `contentsOfDirectory` on the Trash that the engine really
+    /// attempted and was refused (`TrashWatch.cannotReadTrash`). A refused read is
+    /// the stronger evidence of the two — reading `~/.Trash` is exactly what this
+    /// grant covers — so the note stands over it as well, and the switch on the
+    /// Leftovers tab stops being a control that says on with nothing behind it.
+    ///
+    /// One note for one permission. There used to be a second under the Trash
+    /// switch with its own Grant button — same grant, same pane, two rows a person
+    /// has to work out are the same thing. What the switch adds is a consequence,
+    /// not a notice, so it lands in this sentence instead.
+    ///
+    /// Internal rather than private, for the reason `statusLine` gives: which of
+    /// these two sentences stands over which state is the whole of a fix, and a
+    /// `body` is not somewhere a test can reach.
+    var permissionNote: String? {
+        guard diskAccess == .denied || uvm.trashWatch == .cannotReadTrash else { return nil }
+        return uvm.trashWatch.isOn ? UnStr.accessNeededWithWatch : UnStr.removalNeedsAccess
+    }
+
     /// Counts read as a quiet status line instead of a panel of dials.
-    private var statusLine: String {
-        let count: Int? = loading ? nil : apps.count
+    ///
+    /// The count comes from the model — `loading ? nil : apps.count` here said «0
+    /// apps» about a list the engine never answered, which is a sentence about
+    /// somebody's Mac that Helm did not check.
+    /// Internal rather than private: which of `UnStr.appsCount`'s two sentences
+    /// stands over a list the engine never answered is the whole of that fix, and a
+    /// `body` is not somewhere a test can reach.
+    var statusLine: String {
+        let count = uvm.appCount
         guard !checked.isEmpty else { return UnStr.appsCount(count) }
         return UnStr.appsCountSelected(count, checked.count, sizeText)
     }
@@ -182,15 +201,20 @@ struct UninstallerSettingsPage: View {
                 .listStyle(.inset)
             }
             Divider()
+            // The same line the review step draws, and for the same reason: it was
+            // a `lineLimit(1)` passenger in the row below, between a status line
+            // and two buttons. Measured at 845 pt against 646, which is the detail
+            // pane at `contentMinSize`: English unchanged, German −30 %, Russian
+            // −39 %, and the row did not grow — so what a partly-failed removal
+            // lost was the tail of its own sentence, the half saying how many items
+            // stayed behind.
+            report
             HStack(spacing: HelmSpace.s5) {
                 Button(UnStr.selectNone) { uvm.clearChecked() }
                     .disabled(checked.isEmpty)
                 Text(statusLine)
                     .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                 Spacer()
-                if let banner = uvm.resultBanner {
-                    Text(banner).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet).lineLimit(1)
-                }
                 Button {
                     Task { await uvm.prepareReview() }
                 } label: {
@@ -314,7 +338,7 @@ struct UninstallerSettingsPage: View {
                 .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
             }
 
-            reviewReport
+            report
 
             HStack(spacing: HelmSpace.s5) {
                 Button(UnStr.back) { uvm.backToPick() }
@@ -352,9 +376,14 @@ struct UninstallerSettingsPage: View {
     /// What the last press said, drawn on the screen the person is still on.
     ///
     /// A full-width line of its own rather than a `lineLimit(1)` passenger in the
-    /// bar below: both of these sentences are two clauses long, and the clause
-    /// that says what to do next is the one that gets truncated.
-    @ViewBuilder private var reviewReport: some View {
+    /// bar below: every sentence that can stand here is two clauses long, and the
+    /// clause that says what happened to the rest is the one that gets truncated.
+    ///
+    /// **One line for both steps.** It was written for the review step and the
+    /// picker kept a truncating copy of its own — two spellings of one act, and the
+    /// measured defect was in the copy. Whichever step is up, the last press reads
+    /// the same way.
+    @ViewBuilder private var report: some View {
         if uvm.replyLost || uvm.resultBanner != nil {
             Group {
                 // Ahead of the banner, which is nil in this state: a reply that
