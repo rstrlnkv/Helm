@@ -69,6 +69,31 @@ final class PrivateFileTests: XCTestCase {
         XCTAssertEqual(try mode(of: url), 0o700)
     }
 
+    /// A file this app appends to rather than rewrites never passes through
+    /// `write`, so its mode is whatever the umask gave it on the day it was
+    /// created — `~/Library/Logs/Helm/helm.log` is 0644 on the machine this was
+    /// measured on, in a 0700 folder that ARCHITECTURE.md describes as the whole
+    /// protection. Tightening it is a separate call because it is a separate
+    /// moment: once at launch, not once a line.
+    func testAnExistingLooseFileIsTightened() throws {
+        let url = directory.appendingPathComponent("appended.log")
+        FileManager.default.createFile(atPath: url.path, contents: Data("line\n".utf8),
+                                       attributes: [.posixPermissions: 0o644])
+        XCTAssertEqual(try mode(of: url), 0o644)
+
+        XCTAssertTrue(PrivateFile.harden(at: url))
+
+        XCTAssertEqual(try mode(of: url), 0o600)
+        XCTAssertEqual(try Data(contentsOf: url), Data("line\n".utf8),
+                       "tightening the mode rewrote the file")
+    }
+
+    /// And a file that is not there is not an error: the log is hardened at
+    /// launch, before anything has been written.
+    func testTighteningWhatIsNotThereIsNotAnError() {
+        XCTAssertFalse(PrivateFile.harden(at: directory.appendingPathComponent("absent.log")))
+    }
+
     /// A write that cannot happen is never a reason to fail the work that asked
     /// for it — these files are caches, journals and salts — so it reports
     /// rather than throws, and the caller decides.

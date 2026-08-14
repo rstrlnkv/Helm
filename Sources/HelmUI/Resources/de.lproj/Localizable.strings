@@ -98,6 +98,7 @@
 "Custom active-state icon for Keep Awake." = "Eigenes Aktiv-Symbol für Wach halten.";
 "Custom duration" = "Eigene Dauer";
 "Custom icon when active" = "Eigenes Symbol bei Aktivität";
+"Error" = "Fehler";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm verbindet die Konfigurationen, die macOS verwaltet — von Hand oder nach einer Regel, wenn eine App startet. Neue legst du in den Systemeinstellungen an.";
 "Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm hat keine Antwort erhalten und weiß nicht, welche Dateien verschoben wurden. Die Liste oben zeigt, wo sie jetzt sind.";
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm hat keine Antwort erhalten und weiß nicht, welche Dateien verschoben wurden. Die Liste oben zeigt weiterhin, wo die Dateien vorher lagen.";
@@ -113,6 +114,7 @@
 "Spin the menu-bar icon" = "Menüleistensymbol drehen";
 "This decides the words. Whether the icon turns is the switch below." = "Dies entscheidet über die Worte. Ob sich das Symbol dreht, entscheidet der Schalter darunter.";
 "This is not where Helm found it, so nothing was moved. Scan again to see where it is now." = "Das ist nicht mehr dort, wo Helm es gefunden hat — es wurde nichts verschoben. Scanne erneut, um zu sehen, wo es jetzt ist.";
+"Warning" = "Warnung";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "Ist dies aus und der Hinweis auf „Nichts“ gestellt, verbindet oder trennt eine Regel ohne jedes Zeichen.";
 "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "macOS lässt keine Mitteilungen von Helm zu — der Name erscheint stattdessen in der Menüleiste.";
 "Cyan" = "Cyan";

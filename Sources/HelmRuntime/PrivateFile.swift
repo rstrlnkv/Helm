@@ -47,6 +47,28 @@ public enum PrivateFile {
         return true
     }
 
+    /// 0600 on a file that is already there, without rewriting it.
+    ///
+    /// For the one file this app **appends** to rather than replaces: the log
+    /// never passes through `write`, so its mode is whatever the umask gave it
+    /// the day it was created — measured 0644 on the machine it was found on,
+    /// where ARCHITECTURE.md § Diagnostics log says 0700 and the folder was
+    /// doing all the work. Called once at launch, never per line: the mode of an
+    /// open file is not a question worth asking of every write to it.
+    ///
+    /// - Returns: whether there was a file to tighten. Absent is not a failure —
+    ///   the log is hardened before anything has been written to it.
+    @discardableResult
+    public static func harden(at url: URL) -> Bool {
+        let fm = FileManager.default
+        var isDirectory: ObjCBool = false
+        guard fm.fileExists(atPath: url.path, isDirectory: &isDirectory),
+              !isDirectory.boolValue
+        else { return false }
+        try? fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        return true
+    }
+
     /// Create at 0700, and re-apply it to what was already there.
     @discardableResult
     public static func directory(at url: URL) -> Bool {

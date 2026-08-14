@@ -5,22 +5,35 @@ import Foundation
 /// The file gets a formatted string; a reader wants the parts back, so the tail
 /// keeps them apart rather than parsing them out again. `LogLine.format` remains
 /// the one place a line is spelled — this is what it is spelled *from*.
+///
+/// **All five parts, and it used to be four.** `site` was the one the file had
+/// and the tail did not, so the page could not draw where a warning came from and
+/// «Copy log» could not put it in a bug report — on the owner's own machine, 469
+/// of 500 warnings were one wording from one place, arriving in a report with
+/// neither its level nor its origin. A part the file carries and this does not is
+/// a tail that is no longer spelled from what the line is spelled from.
 public struct LogEntry: Sendable, Equatable, Identifiable {
     public let id = UUID()
     public let date: Date
     public let level: LogLevel
     public let category: String
     public let message: String
+    /// Where the line came from — `HelmLog.warn` and `.error` capture it, `info`
+    /// does not, and a seeded line has whatever the file recorded.
+    public let site: LogSite?
 
-    public init(date: Date, level: LogLevel, category: String, message: String) {
+    public init(date: Date, level: LogLevel, category: String, message: String,
+                site: LogSite? = nil) {
         self.date = date
         self.level = level
         self.category = category
         self.message = message
+        self.site = site
     }
 
     public static func == (a: LogEntry, b: LogEntry) -> Bool {
-        a.date == b.date && a.level == b.level && a.category == b.category && a.message == b.message
+        a.date == b.date && a.level == b.level && a.category == b.category
+            && a.message == b.message && a.site == b.site
     }
 }
 
@@ -46,6 +59,13 @@ struct LogTail: Sendable {
     }
 
     mutating func clear() { buffer.removeAll(keepingCapacity: true) }
+
+    /// The whole buffer at once, for the seed: the file's lines and this
+    /// session's are one list, computed together, and appending them one by one
+    /// would trim the oldest of them against a bound they are already inside.
+    mutating func replace(with entries: [LogEntry]) {
+        buffer = Array(entries.suffix(limit))
+    }
 }
 
 /// What the reader chose to see.

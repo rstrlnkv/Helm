@@ -282,6 +282,42 @@ enum ModulePageRender {
                     keepAlive: [engine, viewModel, view, window])
     }
 
+    /// What a page drawn by the shell itself came to — the log, the general page,
+    /// about. No module, no store and no wire, so none of `page(for:)`'s three
+    /// weathers apply; the appearance still does, and is still named.
+    struct Shell {
+        /// The pane it was drawn at, so a reading carries the width it is about:
+        /// every question asked of these layers — what is past the inset, what is
+        /// a full-width rule — is a question about the pane.
+        let width: CGFloat
+        let layers: [Drawn]
+        /// Held so the objects behind the measurement outlive it.
+        private let keepAlive: [AnyObject]
+
+        init(width: CGFloat, layers: [Drawn], keepAlive: [AnyObject]) {
+            self.width = width
+            self.layers = layers
+            self.keepAlive = keepAlive
+        }
+    }
+
+    /// The same host, settling and layer walk as a module page, for a view that
+    /// is not one. Written rather than repeated: `settle` is the part that must
+    /// not be re-derived, and a hand-rolled pump beside it is how two readings of
+    /// the same window come to disagree.
+    static func drawn(_ view: some View, in appearance: NSAppearance.Name,
+                      width: CGFloat, height: CGFloat = pageHeight) -> Shell {
+        let host = NSHostingView(rootView: view.frame(width: width))
+        host.frame = NSRect(x: 0, y: 0, width: width, height: height)
+        let window = NSWindow(contentRect: host.frame, styleMask: [.titled],
+                              backing: .buffered, defer: false)
+        window.appearance = NSAppearance(named: appearance)
+        host.appearance = NSAppearance(named: appearance)
+        window.contentView = host
+        settle(host)
+        return Shell(width: width, layers: layers(of: host), keepAlive: [host, window])
+    }
+
     /// A flag two isolated contexts share: the priming's task sets it, the pump
     /// below reads it. Both are the main actor, so this is a hand-off and never a
     /// race — spelled as a type so the compiler agrees.

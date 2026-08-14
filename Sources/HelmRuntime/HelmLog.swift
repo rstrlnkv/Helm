@@ -46,24 +46,87 @@ public enum LogDestination {
             ? temporary.appendingPathComponent("helm-test-logs", isDirectory: true)
             : home.appendingPathComponent("Library/Logs/Helm", isDirectory: true)
     }
+
+    /// What the page's tail is seeded from — the same decision read from the
+    /// other side, and it has to be taken here rather than left implied.
+    ///
+    /// The test folder above is deliberately **one** folder, reused by every run
+    /// of every bundle, so that the file writing stays exercised and nothing
+    /// accumulates unboundedly. Reading it back makes that shared file part of
+    /// every test's tail: `recentEntries()` after a `clearTail()` would answer
+    /// with the accumulated history of every run there has ever been — measured
+    /// at 46 copies of one line where the test that counted them wanted 1. So a
+    /// test process seeds from nothing, and `HelmLog.seed(from:)` is what a test
+    /// of the seed hands its own files to.
+    static func seedSources(files: [URL], underTest: Bool) -> [URL] {
+        underTest ? [] : files
+    }
 }
 
 /// One event, one line: the file is parsed line-by-line when triaging.
-enum LogLine {
+///
+/// `LogSeed` is the inverse and the only one — see the rule on that type.
+public enum LogLine {
+    /// The line an entry would be written as, for anything outside this target
+    /// that has to spell one: «Copy log» is the caller, and what it puts on the
+    /// pasteboard is the line the file carries rather than a second format
+    /// invented at the button. The one that shipped dropped the level, the date
+    /// and the source site.
+    public static func line(_ entry: LogEntry, timeZone: TimeZone = .current) -> String {
+        line(entry, using: stamper(timeZone))
+    }
+
+    /// A whole tail of them, on **one** formatter.
+    ///
+    /// The bulk caller has to exist rather than being a `map` at the call site:
+    /// building a `DateFormatter` is the 42.3 µs ARCHITECTURE.md § What is
+    /// running already records — the 42 ms hitch «Copy log» paid on a full tail
+    /// before `HelmDates` cached its own — and this one carries a time zone as
+    /// well, which measured 77–100 µs on 2026-08-14. A thousand of them is a
+    /// tenth of a second on the main thread for one press of a button.
+    public static func lines(_ entries: [LogEntry], timeZone: TimeZone = .current) -> String {
+        let formatter = stamper(timeZone)
+        return entries.map { line($0, using: formatter) }.joined(separator: "\n")
+    }
+
+    /// The stamp every line opens with, spelled once.
+    ///
+    /// `LogSeed` reads it back and needs the same pattern to the character —
+    /// two spellings of it are the drift this repository names as a defect of
+    /// its own: one side changes and nothing is an error anywhere. It is also
+    /// what makes the seed's fixed-width arithmetic legitimate.
+    static let stampFormat = "yyyy-MM-dd HH:mm:ss.SSS"
+
+    static func stamper(_ timeZone: TimeZone) -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateFormat = stampFormat
+        formatter.timeZone = timeZone
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter
+    }
+
+    /// The five parts as they were always spelled, for a caller holding parts
+    /// rather than an entry.
     static func format(date: Date, level: LogLevel, category: String,
                        message: String, site: LogSite? = nil,
                        timeZone: TimeZone = .current) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
-        formatter.timeZone = timeZone
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        let flat = message
+        line(LogEntry(date: date, level: level, category: category, message: message, site: site),
+             using: stamper(timeZone))
+    }
+
+    /// The one place a line is spelled. An entry rather than five parameters,
+    /// because the five parts of a line *are* a `LogEntry` — carrying them
+    /// separately alongside the type that holds them is how the tail came to be
+    /// missing one of them.
+    private static func line(_ entry: LogEntry, using formatter: DateFormatter) -> String {
+        let flat = entry.message
             .replacingOccurrences(of: "\r\n", with: "\n")
             .replacingOccurrences(of: "\n", with: " ⏎ ")
         // The site goes last: the message is what you read, the place is what
         // you need once you have decided to look.
-        let where_ = site.map { "  (\($0.description))" } ?? ""
-        return "\(formatter.string(from: date)) [\(level.rawValue)] [\(category)] \(flat)\(where_)"
+        let where_ = entry.site.map { "  (\($0.description))" } ?? ""
+        return "\(formatter.string(from: entry.date)) [\(entry.level.rawValue)] "
+            + "[\(entry.category)] \(flat)\(where_)"
     }
 }
 
@@ -108,6 +171,12 @@ public final class HelmLog: @unchecked Sendable {
     /// Everything the log can leave on disk. Anything that clears the log
     /// clears all of it.
     public static var allFileURLs: [URL] { [fileURL, previousFileURL] }
+    /// The same two, oldest half first, and none of them under test — the reason
+    /// is on `LogDestination.seedSources`.
+    static var seedSources: [URL] {
+        LogDestination.seedSources(files: [previousFileURL, fileURL],
+                                   underTest: TestProcess.isRunning)
+    }
     /// The latch for the one-time pre-redaction purge.
     ///
     /// Deliberately **not** in `allFileURLs`: it is the record that the purge
@@ -121,8 +190,20 @@ public final class HelmLog: @unchecked Sendable {
 
     private let queue = DispatchQueue(label: "helm.log", qos: .utility)
     private var enabled = false
+    /// The files the first `recentEntries()` reads back — this process's two, in
+    /// the order they happened.
+    ///
+    /// Held per instance rather than taken from the static at the moment of the
+    /// read, because under test the honest answer is *no files at all*
+    /// (`LogDestination.seedSources`) — so a log built with files of its own is
+    /// the only way the first read can be exercised, and the first read is the
+    /// whole of this. `shared` is the one instance the app has, and `init` is
+    /// internal, so nothing outside this target can make a second.
+    private let seedFiles: [URL]
 
-    private init() {}
+    init(seedFiles: [URL] = HelmLog.seedSources) {
+        self.seedFiles = seedFiles
+    }
 
     /// Called once at launch with the running version; `override` comes from
     /// the user-facing switch (nil = follow the build type).
@@ -130,6 +211,11 @@ public final class HelmLog: @unchecked Sendable {
         let on = LogPolicy.isEnabled(version: version, override: override)
         queue.async { self.enabled = on }
         discardPreRedactionLog()
+        // Once a launch, not once a line. `append` creates the file privately,
+        // but a file an earlier build created keeps its 0644 for ever otherwise —
+        // which is what `~/Library/Logs/Helm/helm.log` was measured at, inside
+        // the 0700 folder that was doing all of the protecting.
+        queue.async { Self.allFileURLs.forEach { PrivateFile.harden(at: $0) } }
         guard on else { return }
         write(.info, "app", "Helm \(version) started")
     }
@@ -158,7 +244,11 @@ public final class HelmLog: @unchecked Sendable {
         }
     }
 
+    /// Both edges are written, and the off edge is written **before** the flag
+    /// moves: a file that simply stops cannot be told from an app that died, and
+    /// «the person switched it off» is the commonest reason of the two.
     public func setEnabled(_ on: Bool) {
+        if !on { write(.info, "app", "logging disabled") }
         queue.async { self.enabled = on }
         if on { write(.info, "app", "logging enabled") }
     }
@@ -167,12 +257,51 @@ public final class HelmLog: @unchecked Sendable {
     /// than open the file afterwards. Guarded by the same queue as the file, so
     /// a reader never sees a half-written line.
     private var tail = LogTail()
+    /// The file has been read once. It is read at the first `recentEntries()`
+    /// rather than at launch: nothing but the page asks, and a launch that reads
+    /// two megabytes for a window nobody opened is a cost paid by everybody.
+    private var seeded = false
 
     /// A snapshot, oldest first. Taken on the queue and handed back by value:
     /// the page that draws it must not hold anything the logger is still
     /// writing to.
+    ///
+    /// **The first call reads the file.** Until 2026-08-14 this answered with
+    /// what *this process* had written since launch, which on the owner's own
+    /// machine was 45 lines of a 5 306-line log — so the page called Log showed
+    /// 0.85 % of it under a footer that read as the whole thing, and the event
+    /// somebody opened it for was almost never there.
     public func recentEntries() -> [LogEntry] {
-        queue.sync { tail.entries }
+        queue.sync {
+            if !seeded {
+                seeded = true
+                seedLocked(from: seedFiles)
+            }
+            return tail.entries
+        }
+    }
+
+    private func seedLocked(from urls: [URL]) {
+        let onDisk = LogSeed.read(urls, atMost: Self.seedByteLimit, limit: tail.limit)
+        tail.replace(with: LogSeed.seeded(file: onDisk, live: tail.entries, limit: tail.limit))
+    }
+
+    /// How much of each file the seed reads, against the two megabytes reading
+    /// the whole of it would cost for a page showing its end.
+    ///
+    /// Measured on the owner's log, 2026-08-14: 5 327 lines in 396 912 bytes,
+    /// and its newest thousand lines 76 460 of them — so a quarter of a megabyte
+    /// is that thousand three times over. A bound in bytes and not in lines,
+    /// because bytes are what the read costs; a log of unusually wide lines (the
+    /// widest here is 540 characters) seeds fewer than a thousand rather than
+    /// reading more, which is the direction for this to fail in.
+    private static let seedByteLimit = 256 * 1024
+
+    /// Whether there is a log on disk at all — the question «Clear» is drawn
+    /// from, asked of the file system every time rather than remembered, because
+    /// the file can go without this process doing it.
+    public static func anyFileExists(among urls: [URL] = allFileURLs) -> Bool {
+        urls.contains { FileManager.default.fileExists(atPath: $0.path) }
     }
 
     public func clearTail() {
@@ -189,11 +318,14 @@ public final class HelmLog: @unchecked Sendable {
         queue.async {
             guard self.enabled else { return }
             // The tail is filled from the same parts the line is spelled from,
-            // not by parsing the line back apart.
-            self.tail.append(LogEntry(date: now, level: level, category: category,
-                                      message: message))
-            self.append(LogLine.format(date: now, level: level, category: category,
-                                       message: message, site: site) + "\n")
+            // not by parsing the line back apart — one value handed to both, so
+            // they are the same five parts by construction rather than by two
+            // call sites agreeing. (`LogSeed` is the one place a line is read
+            // back, and it is for the file this process did not write.)
+            let entry = LogEntry(date: now, level: level, category: category,
+                                 message: message, site: site)
+            self.tail.append(entry)
+            self.append(LogLine.line(entry) + "\n")
         }
     }
 
@@ -291,12 +423,15 @@ public final class HelmLog: @unchecked Sendable {
             if LogRotation.shouldRotate(currentSize: size, limit: Self.sizeLimit) {
                 try? handle.close()
                 rotate()
-                try? data.write(to: url)
+                // Both branches that *create* the file go through `PrivateFile`:
+                // a bare write takes the umask, which is 0644 here, and the file
+                // then keeps it for as long as it is appended to.
+                PrivateFile.write(data, to: url)
                 return
             }
             try? handle.write(contentsOf: data)
         } else {
-            try? data.write(to: url)
+            PrivateFile.write(data, to: url)
         }
     }
 

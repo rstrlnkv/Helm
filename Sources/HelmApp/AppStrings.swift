@@ -308,11 +308,36 @@ enum AppStr {
                            .ja: "\(n) 個のモジュール", .zh: "\(n) 个模块",
                            .pt: n == 1 ? "1 módulo" : "\(n) módulos"])
     }
+    /// The level of one line, **said** rather than shown.
+    ///
+    /// A row tells info from warn from error with a 6 % wash and a 3 pt rule:
+    /// nothing at all to a screen reader, which was handed the row as one
+    /// combined element whose value never named the level, and a hue-only
+    /// distinction between the two that matter for everybody else.
+    ///
+    /// Singular, and deliberately not the filter's «Warnings» / «Errors»: one
+    /// English key means one thing, and those two name a *filter setting*. Nil
+    /// for an ordinary line — a value on every row would be a word read out
+    /// nine hundred times to say nothing happened.
+    static func logLevelWord(_ level: LogLevel) -> String? {
+        switch level {
+        case .info: return nil
+        case .warn: return L("Warning")
+        case .error: return L("Error")
+        }
+    }
     /// Stays pinned to the newest line while it is on. Off is what somebody
     /// wants the moment they see the line they were waiting for.
     static var logFollow: String { L("Follow") }
     static var logEmpty: String { L("Nothing logged yet.") }
     static var logNothingMatches: String { L("Nothing matches these filters.") }
+    /// **This sentence is owed a rewrite, and it is a localizer's.** It was
+    /// written when `total` was everything this process had logged, so «45 of 45
+    /// lines» was true twice over. The tail is seeded from the file now, so
+    /// `total` is the last thousand lines of a log that may hold five thousand,
+    /// and the same words read as «the log is 1 000 lines long». Eight languages
+    /// say it, and the fix is the English key — «Showing the last N lines», or a
+    /// count of the file — not seven corrections underneath the wrong one.
     static func logCount(_ shown: Int, _ total: Int) -> String {
         L("\(shown) of \(total) lines", [.ru: "Строк: \(shown) из \(total)",
                                           .es: "\(shown) de \(total) líneas",

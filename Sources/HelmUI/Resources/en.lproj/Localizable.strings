@@ -98,6 +98,7 @@
 "Custom active-state icon for Keep Awake." = "Custom active-state icon for Keep Awake.";
 "Custom duration" = "Custom duration";
 "Custom icon when active" = "Custom icon when active";
+"Error" = "Error";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings.";
 "Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm got no answer, so it does not know what moved. The list above shows where the files are now.";
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm got no answer, so it does not know what moved. The list above still shows where the files were before.";
@@ -113,6 +114,7 @@
 "Spin the menu-bar icon" = "Turn the menu-bar icon";
 "This decides the words. Whether the icon turns is the switch below." = "This decides the words. Whether the icon turns is the switch below.";
 "This is not where Helm found it, so nothing was moved. Scan again to see where it is now." = "This is not where Helm found it, so nothing was moved. Scan again to see where it is now.";
+"Warning" = "Warning";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all.";
 "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead.";
 "Cyan" = "Cyan";

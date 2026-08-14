@@ -30,6 +30,15 @@ final class LogTailTests: XCTestCase {
         XCTAssertTrue(LogTail(limit: 10).entries.isEmpty)
     }
 
+    /// The seed hands over a whole buffer at once, and the bound is the type's
+    /// rather than the caller's: a list arriving by the door `append` does not
+    /// use is still a list this must not grow past.
+    func testAWholeBufferHandedOverIsBoundedToo() {
+        var tail = LogTail(limit: 3)
+        tail.replace(with: (1...5).map { entry(.info, "app", "line \($0)", at: TimeInterval($0)) })
+        XCTAssertEqual(tail.entries.map(\.message), ["line 3", "line 4", "line 5"])
+    }
+
     // MARK: - Filtering
 
     private var sample: [LogEntry] {

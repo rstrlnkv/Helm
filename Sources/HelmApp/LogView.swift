@@ -17,10 +17,25 @@ import HelmUI
 /// two places for one subject, and the one a person is told to press when they
 /// report a problem was not the one named after it.
 struct LogView: View {
+    /// Where the lines come from, and whether there is a log on disk behind them.
+    ///
+    /// The app passes the log; the defaults are what every caller uses. They are
+    /// parameters because a measurement of this page otherwise reads whatever
+    /// this Mac happens to have logged — the row's own geometry was unmeasurable
+    /// for exactly that reason, and the filter row's overflow in Russian was
+    /// found on a page with no lines in it because that was the only page a
+    /// harness could draw.
+    var source: () -> [LogEntry] = { HelmLog.shared.recentEntries() }
+    var storedLog: () -> Bool = { HelmLog.anyFileExists() }
+
     /// Polled rather than subscribed. A log has no interesting event to observe
     /// — it has a tail — and one timer that exists while the page is on screen
     /// is cheaper to reason about than a stream that has to be finished.
     @State private var entries: [LogEntry] = []
+    /// A file can appear and go without this process doing it — a rollover, a
+    /// person emptying the folder — so it is re-read on the same tick the lines
+    /// are, never remembered from the first read.
+    @State private var hasStoredLog = false
     @State private var minimumLevel: LogLevel = .info
     @State private var chosen: Set<String> = []
     @State private var following = true
@@ -101,53 +116,86 @@ struct LogView: View {
         [AppStr.logLevelAll, AppStr.logLevelWarnings, AppStr.logLevelErrors]
     }
 
+    /// Three controls of fixed width in a row that has the pane minus two insets.
+    ///
+    /// **Measured 2026-08-14**: at 645 pt — `contentMinSize` 860 with the default
+    /// 214 pt sidebar, the narrowest window the app allows — the Russian row asks
+    /// for 625.5 pt of the 605 it has, and the Follow toggle was drawn to
+    /// x = 644.5 against a 625.0 inset. None of the three widths can give way:
+    /// the picker's is its own labels' (`HelmPickerWidth.segmented`, 403.5 pt in
+    /// Russian), and the other two are `.fixedSize()` for the reasons written at
+    /// them.
+    ///
+    /// So the row folds instead. `ViewThatFits` takes the first arrangement whose
+    /// ideal width the pane can give it — the row as it has always been drawn,
+    /// and where that will not fit, the same three controls on two lines through
+    /// `HelmWrappingRow`, which is what that `Layout` exists for: an `HStack`
+    /// asked for more than it has *compresses* its children rather than moving
+    /// one down.
     private var filters: some View {
-        HStack(spacing: 12) {
-            Picker(AppStr.logLevel, selection: $minimumLevel) {
-                Text(levelLabels[0]).tag(LogLevel.info)
-                Text(levelLabels[1]).tag(LogLevel.warn)
-                Text(levelLabels[2]).tag(LogLevel.error)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                levelFilter
+                moduleFilter
+                Spacer(minLength: 12)
+                followToggle
             }
-            .pickerStyle(.segmented).labelsHidden()
-            // Measured per language, not 260 and not 263: a segmented control
-            // draws every segment as wide as the widest label, so its width is
-            // the widest × three — 403.5 pt in Russian, where adding the three
-            // labels up answered 263 and clipped two of them.
-            .frame(width: HelmPickerWidth.segmented(levelLabels))
-
-            // Built from what has arrived, so it names the modules that spoke
-            // rather than the nine that exist.
-            Menu {
-                Button(AppStr.logAllModules) { chosen = [] }
-                Divider()
-                ForEach(LogFilter.categories(in: entries), id: \.self) { category in
-                    Toggle(category, isOn: Binding(
-                        get: { chosen.contains(category) },
-                        set: { on in
-                            if on { chosen.insert(category) } else { chosen.remove(category) }
-                        }))
-                }
-            } label: {
-                Text(chosen.isEmpty ? AppStr.logAllModules
-                                    : AppStr.logSomeModules(chosen.count))
+            HelmWrappingRow(spacing: 12, lineSpacing: HelmSpace.s3, alignment: .leading) {
+                levelFilter
+                moduleFilter
+                followToggle
             }
-            .menuStyle(.borderlessButton)
-            // 200 was never needed — the widest label wants 133 — and a
-            // borderless menu centres its label in whatever frame it is given,
-            // leaving 57 pt of gap and 59 pt of invisible clickable area.
-            .fixedSize()
-
-            Spacer(minLength: 12)
-            // A button rather than a checkbox: three bezelled controls read as
-            // one row, and the Portuguese label wrapped to two lines inside a
-            // checkbox at the minimum window.
-            Toggle(isOn: $following) {
-                Label(AppStr.logFollow, systemImage: "arrow.down.to.line")
-            }
-            .toggleStyle(.button)
-            .fixedSize()
         }
         .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+    }
+
+    private var levelFilter: some View {
+        Picker(AppStr.logLevel, selection: $minimumLevel) {
+            Text(levelLabels[0]).tag(LogLevel.info)
+            Text(levelLabels[1]).tag(LogLevel.warn)
+            Text(levelLabels[2]).tag(LogLevel.error)
+        }
+        .pickerStyle(.segmented).labelsHidden()
+        // Measured per language, not 260 and not 263: a segmented control
+        // draws every segment as wide as the widest label, so its width is
+        // the widest × three — 403.5 pt in Russian, where adding the three
+        // labels up answered 263 and clipped two of them.
+        .frame(width: HelmPickerWidth.segmented(levelLabels))
+    }
+
+    /// Built from what has arrived, so it names the modules that spoke rather
+    /// than the nine that exist.
+    private var moduleFilter: some View {
+        Menu {
+            Button(AppStr.logAllModules) { chosen = [] }
+            Divider()
+            ForEach(LogFilter.categories(in: entries), id: \.self) { category in
+                Toggle(category, isOn: Binding(
+                    get: { chosen.contains(category) },
+                    set: { on in
+                        if on { chosen.insert(category) } else { chosen.remove(category) }
+                    }))
+            }
+        } label: {
+            Text(chosen.isEmpty ? AppStr.logAllModules
+                                : AppStr.logSomeModules(chosen.count))
+        }
+        .menuStyle(.borderlessButton)
+        // 200 was never needed — the widest label wants 133 — and a
+        // borderless menu centres its label in whatever frame it is given,
+        // leaving 57 pt of gap and 59 pt of invisible clickable area.
+        .fixedSize()
+    }
+
+    /// A button rather than a checkbox: three bezelled controls read as one row,
+    /// and the Portuguese label wrapped to two lines inside a checkbox at the
+    /// minimum window.
+    private var followToggle: some View {
+        Toggle(isOn: $following) {
+            Label(AppStr.logFollow, systemImage: "arrow.down.to.line")
+        }
+        .toggleStyle(.button)
+        .fixedSize()
     }
 
     @ViewBuilder private var lines: some View {
@@ -246,6 +294,9 @@ struct LogView: View {
             }
         }
         .accessibilityElement(children: .combine)
+        // The row's only mark of severity is a colour, and a combined element
+        // has no colour. Empty for an ordinary line: see `logLevelWord`.
+        .accessibilityValue(AppStr.logLevelWord(entry.level) ?? "")
     }
 
     /// Nil for an ordinary line, so an info row gains no layers at all: only
@@ -259,13 +310,32 @@ struct LogView: View {
         }
     }
 
+    /// What the button puts on the pasteboard: the lines the file carries.
+    ///
+    /// It used to be `"\(time) [\(category)] \(message)"` — a second format,
+    /// written here, which dropped the level, the date and the source site. On
+    /// the machine this was measured on, 469 of 500 warnings in the file were one
+    /// wording from one place, and pasted out of Helm they arrived with neither.
+    static func pasteboardText(_ entries: [LogEntry]) -> String {
+        LogLine.lines(entries)
+    }
+
+    /// Whether «Clear» has anything to clear.
+    ///
+    /// **The file, not the page.** It was gated on the tail, so a build with
+    /// logging switched off said «Nothing logged yet», greyed both buttons, and
+    /// left the log on disk — which is exactly the person who most wants it gone.
+    /// Clear means the log: both files and the window onto them, which is what
+    /// the button has always done once it could be pressed.
+    static func canClear(entries: [LogEntry], storedLog: Bool) -> Bool {
+        !entries.isEmpty || storedLog
+    }
+
     private var footer: some View {
         HStack {
             Button(AppStr.copyLog) {
                 NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(
-                    shown.map { "\(HelmDates.logTime($0.date)) [\($0.category)] \($0.message)" }
-                        .joined(separator: "\n"), forType: .string)
+                NSPasteboard.general.setString(Self.pasteboardText(shown), forType: .string)
             }
             .disabled(shown.isEmpty)
             Button(AppStr.clearLog) {
@@ -274,8 +344,9 @@ struct LogView: View {
                 HelmLog.shared.clear()
                 HelmLog.shared.clearTail()
                 entries = []
+                hasStoredLog = false
             }
-            .disabled(entries.isEmpty)
+            .disabled(!Self.canClear(entries: entries, storedLog: hasStoredLog))
             Spacer()
             Text(AppStr.logCount(shown.count, entries.count))
                 .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
@@ -284,6 +355,7 @@ struct LogView: View {
     }
 
     private func refresh() {
-        entries = HelmLog.shared.recentEntries()
+        entries = source()
+        hasStoredLog = storedLog()
     }
 }

@@ -98,6 +98,7 @@
 "Custom active-state icon for Keep Awake." = "保持唤醒的自定义激活图标。";
 "Custom duration" = "自定义时长";
 "Custom icon when active" = "激活时使用自定义图标";
+"Error" = "错误";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm 可以手动连接 macOS 保存的配置，也可以在应用启动时按规则连接。配置本身在“系统设置”中添加。";
 "Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm 未收到回应，无法判断哪些文件已移动。上方列表显示它们现在的位置。";
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm 未收到回应，无法判断哪些文件已移动。上方列表显示的仍是移动前的位置。";
@@ -113,6 +114,7 @@
 "Spin the menu-bar icon" = "转动菜单栏图标";
 "This decides the words. Whether the icon turns is the switch below." = "这里只决定文字。图标是否转动由下面的开关决定。";
 "This is not where Helm found it, so nothing was moved. Scan again to see where it is now." = "它已不在 Helm 找到它的位置，因此没有移动任何内容。请重新扫描以查看它现在的位置。";
+"Warning" = "警告";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "关闭此项且提示设为“无”时，规则连接或断开隧道将没有任何提示。";
 "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "macOS 不允许 Helm 发送通知。将改为在菜单栏显示名称。";
 "Cyan" = "青色";
