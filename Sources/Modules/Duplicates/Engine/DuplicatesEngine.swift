@@ -36,17 +36,27 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     /// - Parameter settings: how a stored setting is judged to be Helm's own.
     ///   Injectable for the same reason every other port here is: the production
     ///   answer is the login keychain, and a test must not write to the user's.
+    /// - Parameter trashing: the move itself, the parameter `HelmTrash.remove`
+    ///   already takes and for the same reason. What this engine reports as
+    ///   freed is arithmetic over a *clone family*, and the only fixture that can
+    ///   exercise it is a real `clonefile` pair — so the test that proves the
+    ///   figure must be able to run without moving anybody's file to the Trash.
     public init(transport: LocalTransport = LocalTransport(),
                 store: NamespacedStore? = nil,
-                settings: SettingGuard = DuplicatesSettings.guardOfFolder) {
+                settings: SettingGuard = DuplicatesSettings.guardOfFolder,
+                trashing: @escaping @Sendable (URL) throws -> Void = {
+                    try FileManager.default.trashItem(at: $0, resultingItemURL: nil)
+                }) {
         self.localTransport = transport
         self.transport = transport
         self.store = store
         self.settings = settings
+        self.trashing = trashing
         wireTransport()
     }
 
     private let settings: SettingGuard
+    private let trashing: @Sendable (URL) throws -> Void
 
     public func activate() {}
     public func deactivate() { finderBox.current?.cancel() }
@@ -63,22 +73,37 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     /// the part that must not drift: `FinderBox`'s own comment records what a
     /// slot cleared by the wrong search cost, which was a Stop button that
     /// reached nothing and a `deactivate()` that left the hashing running.
+    ///
+    /// **What it could not look at travels with what it found.** The two counts
+    /// are read off the scanner the moment its walk returns, here, where the
+    /// instance that did the walking is still in hand — a hole nobody is told
+    /// about reads as a clean folder, which was this module's whole answer in the
+    /// case where it is most likely to be wrong.
     private func run(under path: String, cache: HashCache?,
                      onProgress: (@Sendable (DuplicateProgress) -> Void)?)
-    async -> [DuplicateGroup]? {
+    async -> DuplicateFindings? {
         // A new search supersedes any still running.
         finderBox.current?.cancel()
         let finder = DuplicateScanner()
         let slot = finderBox.start(finder)
         defer { slot.finish() }
         return await offTheCooperativePool {
-            finder.find(under: path, cache: cache, onProgress: onProgress)
+            guard let groups = finder.find(under: path, cache: cache,
+                                           onProgress: onProgress) else { return nil }
+            return DuplicateFindings(
+                groups: groups,
+                // One number, because one sentence: a directory the walk was
+                // refused and a file whose digest failed are both "this scan did
+                // not compare that", and the person can do the same thing about
+                // either.
+                unreadable: finder.unreadablePaths + finder.unreadableFiles,
+                librariesSkipped: finder.librariesSkipped)
         }
     }
 
     /// The search a person is watching: no cache — they have already accepted
     /// the wait — and every tick of progress crosses the transport.
-    public func find(under path: String) async -> [DuplicateGroup]? {
+    public func find(under path: String) async -> DuplicateFindings? {
         await run(under: path, cache: nil, onProgress: { progress in
             self.localTransport.emit(DuplicatesEvent.progress, encoding: progress)
         })
@@ -151,7 +176,8 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
         // No progress: nobody is watching, so every tick would cross the
         // transport to a view model that may not exist.
         let cache = Self.loadCache() ?? HashCache()
-        guard let groups = await run(under: root, cache: cache, onProgress: nil) else { return nil }
+        guard let found = await run(under: root, cache: cache, onProgress: nil) else { return nil }
+        let groups = found.groups
         // Compacted on the way out, never on the way in: a scan cut short would
         // otherwise replace the settled segment with a fresh one holding only
         // the files it reached before it stopped.
@@ -191,7 +217,8 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     /// different question from whether this particular deletion still makes
     /// sense, and the engine has the last word on both.
     public func trash(_ plans: [DuplicatePlan]) async -> DuplicateRemoval {
-        await offTheCooperativePool {
+        let trashing = self.trashing
+        return await offTheCooperativePool {
             var byPath: [String: DuplicatePlan] = [:]
             for plan in plans { byPath[plan.remove] = plan }
             let (inScope, outOfScope) = UserFileScope.partition(Array(byPath.keys))
@@ -209,8 +236,13 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
                 HelmLog.shared.info("duplicates",
                                     "refused \(stale.count) — changed since the scan")
             }
+            // The copies that stay, named for the batch's clone accounting: a
+            // marked copy that shares its blocks with its survivor gives the disk
+            // nothing back, and it is this module — where the survivor is never in
+            // the batch — that the seed exists for.
             let result = HelmTrash.remove(allowed: allowed, outOfScope: outOfScope,
-                                          module: Self.moduleID)
+                                          sharedWith: Array(Set(plans.map(\.keep))),
+                                          module: Self.moduleID, trashing: trashing)
             // A new value rather than a mutation: `Result` is immutable on
             // purpose, so a refusal cannot be quietly dropped from one after the
             // fact. The stale ones join the scope refusals, and none of them is
@@ -253,6 +285,45 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
                 return EngineReply.encode(await self.trash(plans), for: command)
             }
         }
+    }
+}
+
+/// What a search answers with: the groups, and what the walk could not look at.
+///
+/// **A bare array had nowhere to put the second half.** The scanner counts the
+/// directories it was refused, the files whose digest it could not take and the
+/// application libraries it declined to enter, and all three ended in the log —
+/// so the page drew «Every large file under this folder is one of a kind» over a
+/// tree that had been refused at every door. `DuplicatesEmpty` is the rule that
+/// reads these; this is how they cross the wire.
+///
+/// The counts and not the paths: whose folder was in the way is nobody's
+/// business but the reader's, and a count is what the sentence needs.
+public struct DuplicateFindings: Codable, Equatable, Sendable {
+    public let groups: [DuplicateGroup]
+    /// Directories the walk was refused, plus files whose digest could not be
+    /// taken.
+    public let unreadable: Int
+    /// Application libraries stepped over rather than opened.
+    public let librariesSkipped: Int
+
+    public init(groups: [DuplicateGroup], unreadable: Int = 0, librariesSkipped: Int = 0) {
+        self.groups = groups
+        self.unreadable = unreadable
+        self.librariesSkipped = librariesSkipped
+    }
+
+    /// **Hand-written, because a synthesised `Decodable` requires every key.**
+    /// A reply from a build without the two counts would throw, and
+    /// `JSONDecoder` gives up on the whole document rather than on the field —
+    /// so a page would read a lost search where there was a perfectly good list
+    /// (CLAUDE.md § A `defaulted` property on a `Codable` payload).
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        groups = try container.decode([DuplicateGroup].self, forKey: .groups)
+        unreadable = try container.decodeIfPresent(Int.self, forKey: .unreadable) ?? 0
+        librariesSkipped = try container.decodeIfPresent(Int.self,
+                                                         forKey: .librariesSkipped) ?? 0
     }
 }
 

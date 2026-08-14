@@ -30,6 +30,8 @@ final class DuplicateScanner: @unchecked Sendable {
     private var cancelled = false
     private let lock = NSLock()
     private var unreadable = 0
+    private var skippedLibraries = 0
+    private var unreadableDigests = 0
 
     /// Paths the walk was refused — a folder without read permission, an item
     /// that vanished between being listed and being read. A count, not the
@@ -42,6 +44,30 @@ final class DuplicateScanner: @unchecked Sendable {
 
     private func noteUnreadable() {
         lock.lock(); unreadable += 1; lock.unlock()
+    }
+
+    /// Files whose digest could not be taken, over both hashing passes.
+    ///
+    /// Read off the scanner rather than left inside `find`: they leave the
+    /// running by design — unknown is not identical — and a search that found
+    /// nothing because nothing could be read is a different answer from a clean
+    /// one. Kept beside `unreadablePaths` so the engine has one place to ask
+    /// what the answer is missing.
+    var unreadableFiles: Int {
+        lock.lock(); defer { lock.unlock() }
+        return unreadableDigests
+    }
+
+    /// Application libraries the walk declined to enter — a photo library, a
+    /// Music library, a Final Cut bundle. Not a fault and still a hole: the
+    /// largest things under `~/Pictures` are inside one.
+    var librariesSkipped: Int {
+        lock.lock(); defer { lock.unlock() }
+        return skippedLibraries
+    }
+
+    private func noteSkippedLibrary() {
+        lock.lock(); skippedLibraries += 1; lock.unlock()
     }
 
     init() {}
@@ -158,11 +184,18 @@ final class DuplicateScanner: @unchecked Sendable {
         if isCancelled { return nil }
         let groups = buckets.flatMap { $0 }.sorted { $0.wasted > $1.wasted }
         // Unreadable files leave the running silently by design; the count is
-        // what tells a triage session whether "no duplicates" meant "none" or
-        // "nothing could be read".
-        let unreadable = progress.unreadableCount
+        // what tells a triage session — and now the page — whether "no
+        // duplicates" meant "none" or "nothing could be read". Kept on the
+        // scanner, so the engine reads one object rather than reaching into the
+        // progress meter this function owns.
+        // Named apart from the `unreadable` property, which counts what the
+        // *walk* was refused: two different holes, and a local shadowing the
+        // other one while being assigned into a third name is a line nobody can
+        // read twice the same way.
+        let digestFailures = progress.unreadableCount
+        lock.lock(); unreadableDigests = digestFailures; lock.unlock()
         HelmLog.shared.info("duplicates", "\(groups.count) groups from \(total) candidates"
-                            + (unreadable > 0 ? ", \(unreadable) unreadable" : ""))
+                            + (digestFailures > 0 ? ", \(digestFailures) unreadable" : ""))
         return groups
     }
 
@@ -235,6 +268,7 @@ final class DuplicateScanner: @unchecked Sendable {
                 // The unattended case is worse than meaningless — see
                 // `ScanRoot.refusesDescent`.
                 if ScanRoot.refusesDescent(into: item.path) {
+                    noteSkippedLibrary()
                     enumerator.skipDescendants()
                     continue
                 }

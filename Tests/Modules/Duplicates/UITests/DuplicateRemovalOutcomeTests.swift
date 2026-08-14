@@ -30,7 +30,7 @@ final class DuplicateRemovalOutcomeTests: XCTestCase {
 
         func send(_ command: EngineCommand) async throws -> Data {
             switch command.name {
-            case "find": return (try? JSONEncoder().encode(groups)) ?? Data()
+            case "find": return searchReply(groups)
             case "trash": return (try? JSONEncoder().encode(removal)) ?? Data()
             default: return Data()
             }

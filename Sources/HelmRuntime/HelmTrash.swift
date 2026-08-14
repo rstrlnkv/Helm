@@ -88,8 +88,18 @@ public enum HelmTrash {
     /// the uninstaller it is a bundle id — and the loop that writes the lines is
     /// shared, so it has to be told. Left at `.fileName`, every line reads exactly
     /// as it did.
+    ///
+    /// `sharedWith` names the files that **stay** — the ones this batch is being
+    /// removed *around*. Their clone families are seeded into the ledger below, so
+    /// a copy whose blocks a survivor goes on holding is reported as the nothing
+    /// it frees. The ledger cannot work this out for itself: there is no reverse
+    /// lookup from a family to its members, so a family whose survivor is outside
+    /// the batch was charged in full. Three of the four callers leave it empty and
+    /// behave exactly as they did; Duplicates is the module where the survivor is
+    /// by construction never in the batch, so for it that was every family.
     public static func remove(allowed: [String],
                               outOfScope: [String] = [],
+                              sharedWith: [String] = [],
                               module: String,
                               leaf: Redact.Leaf = .fileName,
                               hasSystemExtension: (String) -> Bool = { _ in false },
@@ -113,8 +123,10 @@ public enum HelmTrash {
         // One ledger for the batch: a hard link is one allocation under several
         // names, and the second name frees nothing — and neither does the second
         // member of an APFS clone family, whose blocks come back once when the
-        // family goes (`FileWeight.reclaimed`).
-        var counted = FileWeight.Ledger()
+        // family goes (`FileWeight.reclaimed`). Opened owing whatever the files
+        // that stay already hold: a family with a survivor gives back nothing at
+        // all, however many of its members this batch takes.
+        var counted = FileWeight.Ledger(sharedWith: sharedWith)
 
         // One outcome per path, whatever the caller handed over. `removed` and
         // `failed` are read as one description of one batch, and the same file

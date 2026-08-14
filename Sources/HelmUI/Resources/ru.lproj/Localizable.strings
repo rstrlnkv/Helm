@@ -303,6 +303,7 @@
 "No abbreviations yet" = "Сокращений пока нет";
 "No access" = "Нет доступа";
 "No duplicates here. Every large file under this folder is one of a kind." = "Дубликатов нет. Каждый крупный файл в этой папке существует в единственном экземпляре.";
+"Photo and music libraries were not opened, so what is inside them was not compared." = "Медиатеки «Фото» и «Музыка» не открывались, поэтому их содержимое не сравнивалось.";
 "No extra files found." = "Дополнительных файлов не найдено.";
 "No leftovers found." = "Остатков не найдено.";
 "No modules enabled" = "Нет включённых модулей";

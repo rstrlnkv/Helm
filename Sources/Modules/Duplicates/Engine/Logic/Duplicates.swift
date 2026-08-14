@@ -94,9 +94,35 @@ public struct DuplicateGroup: Codable, Equatable, Sendable, Identifiable {
     /// Adding the sizes up promised space the disk would not give back, and the
     /// promise was exactly double for a folder of Finder duplicates.
     public var wasted: Int {
-        CloneShare.reclaimable(
-            removing: copies.dropFirst().map { (id: $0.cloneFamily, bytes: $0.bytes) },
-            keeping: copies.first.map { [$0.cloneFamily] } ?? [])
+        Self.reclaimable(marking: Set(copies.dropFirst().map(\.path)), in: [self])
+    }
+
+    /// Bytes the disk gains when `marked` goes and every other copy on the
+    /// screen stays.
+    ///
+    /// The one rule, asked by the group (`wasted`), by the bar under the list and
+    /// by the toolbar's total — which had been three answers: `wasted` folded the
+    /// clone family, and the other two added `Copy.bytes` up. On the ordinary case
+    /// — Finder's Duplicate command, which makes clones — those two were exactly
+    /// double, so one screen quoted 300 MB above the list and 321 MB below it
+    /// about the same two files, and the confirmation and the banner inherited the
+    /// wrong one.
+    ///
+    /// **Over every group at once, not group by group.** It is the same slate
+    /// `HelmTrash` opens for the batch, so the figure before the press and the
+    /// figure after it are arithmetic of the same shape; a family counted once per
+    /// group would part company with the banner the moment one spanned two.
+    ///
+    /// What stays is every copy that is not marked — not merely each group's
+    /// survivor. A clone left unticked holds its family's blocks exactly as the
+    /// survivor does.
+    public static func reclaimable(marking marked: Set<String>,
+                                   in groups: [DuplicateGroup]) -> Int {
+        let copies = groups.flatMap(\.copies)
+        return CloneShare.reclaimable(
+            removing: copies.filter { marked.contains($0.path) }
+                .map { (id: $0.cloneFamily, bytes: $0.bytes) },
+            keeping: copies.filter { !marked.contains($0.path) }.map(\.cloneFamily))
     }
 
     public init(copies: [Copy]) {

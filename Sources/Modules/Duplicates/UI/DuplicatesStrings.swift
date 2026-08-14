@@ -10,6 +10,7 @@
 
 import HelmRuntime
 import HelmUI
+import Module_Duplicates_Engine
 
 /// Every user-visible string in the duplicate finder, in eight languages.
 enum DupStr {
@@ -53,7 +54,51 @@ enum DupStr {
     static var summary: String { L("Files that exist more than once") }
     static var searching: String { L("Reading files…") }
     static func progressLine(_ done: Int, _ total: Int) -> String { L("\(done) of \(total) checks done", [.ru: "Проверок сделано: \(done) из \(total)", .es: "\(done) de \(total) comprobaciones hechas", .fr: "\(done) vérifications sur \(total)", .de: "\(done) von \(total) Prüfungen erledigt", .ja: "\(total) 件中 \(done) 件を確認済み", .zh: "已完成 \(done) / \(total) 项检查", .pt: "\(done) de \(total) verificações feitas"]) }
-    static var none: String { L("No duplicates here. Every large file under this folder is one of a kind.") }
+    /// Takes the language, as `found` above does and for the same reason: the
+    /// suite runs in this machine's language, so a sentence that reads
+    /// `AppLanguage.current` is checked in one language eight times. This one is
+    /// compared against its two neighbours below, and a comparison where only
+    /// one side moves is a check that cannot fail — measured: with the refusal
+    /// folded back into this sentence, every language still read Russian here.
+    static func none(language: AppLanguage = AppLanguage.current) -> String {
+        L("No duplicates here. Every large file under this folder is one of a kind.", language: language)
+    }
+    /// The message over an empty result, one per reason there is no list.
+    ///
+    /// **The message, not a note under «No duplicates here».** A headline with a
+    /// footnote invites the reader to trust the headline, and that headline is
+    /// exactly the claim a walk that was refused cannot back — the same choice
+    /// `LfStr.emptyMessage` records, and the same repair.
+    ///
+    /// Exhaustive over the enum, with no `default`: a fourth reason would
+    /// otherwise be drawn as the all-clear, which is the defect the type exists
+    /// for.
+    static func emptyMessage(_ nothing: DuplicatesEmpty.Reason,
+                             language: AppLanguage = AppLanguage.current) -> String {
+        switch nothing {
+        case .nothingFound: return none(language: language)
+        case .notEverythingRead(let count): return couldNotRead(count, language: language)
+        case .librariesNotOpened: return librariesNotOpened(language: language)
+        }
+    }
+    static func couldNotRead(_ n: Int, language: AppLanguage = AppLanguage.current) -> String {
+        let items = Plural.items(n, language: language.rawValue)
+        return L("Helm could not read \(items), so the answer is incomplete.",
+                 [.ru: "Helm не смог прочитать \(items), поэтому ответ неполный.",
+                  .es: "Helm no pudo leer \(items), por lo que la respuesta está incompleta.",
+                  .fr: "Helm n’a pas pu lire \(items), la réponse est donc incomplète.",
+                  .de: "Helm konnte \(items) nicht lesen, die Antwort ist daher unvollständig.",
+                  .ja: "Helm は\(items)を読み取れなかったため、この結果は完全ではありません。",
+                  .zh: "Helm 无法读取\(items)，因此这不是完整的结果。",
+                  .pt: "O Helm não conseguiu ler \(items), portanto a resposta está incompleta."],
+                 language: language)
+    }
+    /// No count, on purpose: the walk cannot see a library macOS already knows
+    /// as a package, so any figure it quoted would be short — and a number that
+    /// is known to be wrong is worse than the sentence without one.
+    static func librariesNotOpened(language: AppLanguage = AppLanguage.current) -> String {
+        L("Photo and music libraries were not opened, so what is inside them was not compared.", language: language)
+    }
     static var floorNote: String { L("Files from 1 MB. Hard links are one file and are never offered.") }
     /// The size of the extra copies, not a promise about free space.
     /// `DuplicateGroup.wasted` sums the allocated size of every copy after the

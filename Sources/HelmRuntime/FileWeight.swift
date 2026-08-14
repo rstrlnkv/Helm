@@ -57,6 +57,21 @@ public enum FileWeight {
 
         public init() { asksAboutClones = true }
 
+        /// The books of a batch that leaves some files behind.
+        ///
+        /// `sharedWith` names paths that **stay**, and their clone families are
+        /// entered as already counted — so a member of one that the batch does
+        /// take gives nothing back, which is what the disk does. Without it the
+        /// ledger can only see families whose members are all inside the batch,
+        /// and in Duplicates that is none of them: the copy that stays is by
+        /// construction excluded from the plan. Measured on a `clonefile` pair,
+        /// the batch reported 8 003 584 bytes freed where the disk gains
+        /// 4 001 792.
+        public init(sharedWith paths: [String]) {
+            asksAboutClones = true
+            families = Set(paths.compactMap(CloneShare.familyID(ofFileAt:)))
+        }
+
         fileprivate init(inodes: Set<UInt64>, asksAboutClones: Bool) {
             self.inodes = inodes
             self.asksAboutClones = asksAboutClones

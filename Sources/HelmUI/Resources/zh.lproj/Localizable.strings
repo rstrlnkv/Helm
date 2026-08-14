@@ -303,6 +303,7 @@
 "No abbreviations yet" = "还没有缩写";
 "No access" = "无访问权限";
 "No duplicates here. Every large file under this folder is one of a kind." = "没有重复文件。此文件夹下的每个大文件都只有一份。";
+"Photo and music libraries were not opened, so what is inside them was not compared." = "照片图库和音乐资料库未打开，因此其中的内容未参与比较。";
 "No extra files found." = "未找到附加文件。";
 "No leftovers found." = "未找到残留项。";
 "No modules enabled" = "未启用任何模块";

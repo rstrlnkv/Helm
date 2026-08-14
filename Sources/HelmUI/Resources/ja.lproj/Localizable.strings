@@ -303,6 +303,7 @@
 "No abbreviations yet" = "短縮入力はまだありません";
 "No access" = "アクセス不可";
 "No duplicates here. Every large file under this folder is one of a kind." = "重複はありません。このフォルダの大きなファイルはすべて 1 つだけです。";
+"Photo and music libraries were not opened, so what is inside them was not compared." = "写真やミュージックのライブラリは開いていないため、その中身は比較されていません。";
 "No extra files found." = "追加ファイルは見つかりませんでした。";
 "No leftovers found." = "残存物は見つかりませんでした。";
 "No modules enabled" = "有効なモジュールがありません";

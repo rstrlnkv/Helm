@@ -303,6 +303,7 @@
 "No abbreviations yet" = "Noch keine Abkürzungen";
 "No access" = "Kein Zugriff";
 "No duplicates here. Every large file under this folder is one of a kind." = "Keine Duplikate. Jede große Datei in diesem Ordner gibt es genau einmal.";
+"Photo and music libraries were not opened, so what is inside them was not compared." = "Foto- und Musikmediatheken wurden nicht geöffnet, ihr Inhalt wurde daher nicht verglichen.";
 "No extra files found." = "Keine zusätzlichen Dateien gefunden.";
 "No leftovers found." = "Keine Reste gefunden.";
 "No modules enabled" = "Keine Module aktiviert";

@@ -303,6 +303,7 @@
 "No abbreviations yet" = "Ainda sem abreviações";
 "No access" = "Sem acesso";
 "No duplicates here. Every large file under this folder is one of a kind." = "Sem duplicatas. Cada arquivo grande nesta pasta é único.";
+"Photo and music libraries were not opened, so what is inside them was not compared." = "As fototecas e bibliotecas de música não foram abertas, portanto o conteúdo delas não foi comparado.";
 "No extra files found." = "Nenhum arquivo adicional encontrado.";
 "No leftovers found." = "Nenhum resto encontrado.";
 "No modules enabled" = "Nenhum módulo ativado";

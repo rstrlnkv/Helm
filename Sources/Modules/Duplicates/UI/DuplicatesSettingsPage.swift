@@ -59,7 +59,7 @@ struct DuplicatesSettingsPage: View {
                 Divider()
             }
             content
-            if !dvm.basket.isEmpty || dvm.banner != nil || !dvm.failures.isEmpty {
+            if !dvm.basket.isEmpty || hasReport {
                 Divider()
                 basketBar
             }
@@ -196,8 +196,12 @@ struct DuplicatesSettingsPage: View {
                                              ? DupStr.progressLine($0.hashed, $0.candidates)
                                              : DupStr.searching } ?? DupStr.searching)
         case .result:
-            if dvm.groups.isEmpty {
-                HelmEmptyState(message: DupStr.none, note: DupStr.floorNote)
+            // **`nothingToShow`, not `groups.isEmpty`.** The two agree on when
+            // there is no list and not on what to say about it: a walk refused
+            // at every door produced the same «Every large file under this
+            // folder is one of a kind» as a walk that read the lot.
+            if let nothing = dvm.nothingToShow {
+                HelmEmptyState(message: DupStr.emptyMessage(nothing), note: DupStr.floorNote)
             } else {
                 DuplicatesView(dvm: dvm)
             }
@@ -213,7 +217,7 @@ struct DuplicatesSettingsPage: View {
         // outcome only for an empty basket hid the failure list in exactly the
         // case it exists for — seen on a render, not reasoned about.
         VStack(alignment: .leading, spacing: 8) {
-            if dvm.banner != nil || !dvm.failures.isEmpty {
+            if hasReport {
                 outcomeRow
             }
             if !dvm.basket.isEmpty {
@@ -224,15 +228,26 @@ struct DuplicatesSettingsPage: View {
         .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
     }
 
+    /// Whether the row above the basket has anything to say. One spelling, read
+    /// by the bar and by the block inside it — two copies of this question could
+    /// disagree, and the one that draws the report is not the one that makes room
+    /// for it.
+    private var hasReport: Bool {
+        dvm.replyLost || dvm.banner != nil || !dvm.failures.isEmpty
+    }
+
     /// What actually happened, named and reasoned — the component Disk,
     /// Leftovers and the orphans tab already use.
+    ///
+    /// **The lost reply comes first, and it is the stale-list wording.** This
+    /// module never re-reads after a removal: the answered path prunes `groups`
+    /// with the paths the engine says it took, so a reply that never came leaves
+    /// the list showing where the copies were *before* the press.
+    /// `HelmRemovalOutcome.unanswered` ends by pointing at the list as where they
+    /// are now, which is true for the modules that rescan and not for this one.
     private var outcomeRow: some View {
         HStack(spacing: HelmSpace.s5) {
-            HelmRemovalOutcome(
-                succeededText: dvm.banner ?? "",
-                removed: dvm.removedCount,
-                failures: dvm.failures.map(HelmRemovalFailure.init),
-                needsFullDiskAccess: diskAccess == .denied)
+            removalReport
                 // Bounded, as Leftovers bounds it: unbounded, each named
                 // failure's Reveal button ran to the right edge and sat under
                 // the Close button.
@@ -240,6 +255,26 @@ struct DuplicatesSettingsPage: View {
             Spacer(minLength: 8)
             Button(DupStr.close) { dvm.dismissBanner() }
                 .controlSize(.small)
+        }
+    }
+
+    /// `DiskSettingsPage.removalReport`'s shape, for the same two states — a
+    /// builder rather than a ternary over two different initializers of one
+    /// component, which is the same thing said in a way nobody can read.
+    ///
+    /// The condition below it is this page's own: an outcome here is drawn for a
+    /// batch that refused *everything* as well, where there is no banner and a
+    /// list of failures, and drawing it only for a banner hid that list in
+    /// exactly the case it exists for.
+    @ViewBuilder private var removalReport: some View {
+        if dvm.replyLost {
+            HelmRemovalOutcome.unansweredWithStaleList
+        } else {
+            HelmRemovalOutcome(
+                succeededText: dvm.banner ?? "",
+                removed: dvm.removedCount,
+                failures: dvm.failures.map(HelmRemovalFailure.init),
+                needsFullDiskAccess: diskAccess == .denied)
         }
     }
 
@@ -266,7 +301,11 @@ struct DuplicatesSettingsPage: View {
             .fixedSize()
             .help(DupStr.basketContents)
             Spacer()
+            // Dimmed while a removal runs, for the reason `clearBasket` states:
+            // the paths are already on the wire, so emptying the basket here
+            // clears the screen and not the request.
             Button(DupStr.clearBasket) { dvm.clearBasket() }
+                .disabled(dvm.busy)
                 .controlSize(.small)
             Button(DupStr.moveToTrash) { confirming = true }
                     .disabled(dvm.busy)
