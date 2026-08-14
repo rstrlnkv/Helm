@@ -607,6 +607,10 @@
 "newer than" = "より新しい";
 "older than" = "より古い";
 "refused" = "拒否";
+"refused: outside the allowed folders" = "拒否：許可されたフォルダの外です";
+"refused: unusable rename pattern" = "拒否：名前変更パターンが使えません";
+"refused: the file is no longer there" = "拒否：ファイルはもうありません";
+"refused: the path changed underneath" = "拒否：直前にパスが変わりました";
 "renamed to" = "名前変更";
 "smaller than" = "より小さい";
 "stays" = "残す";

@@ -607,6 +607,10 @@
 "newer than" = "newer than";
 "older than" = "older than";
 "refused" = "refused";
+"refused: outside the allowed folders" = "refused: outside the allowed folders";
+"refused: unusable rename pattern" = "refused: unusable rename pattern";
+"refused: the file is no longer there" = "refused: the file is no longer there";
+"refused: the path changed underneath" = "refused: the path changed underneath";
 "renamed to" = "renamed to";
 "smaller than" = "smaller than";
 "stays" = "stays";

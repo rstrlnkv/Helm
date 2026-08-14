@@ -607,6 +607,10 @@
 "newer than" = "neuer als";
 "older than" = "älter als";
 "refused" = "abgelehnt";
+"refused: outside the allowed folders" = "abgelehnt: außerhalb der erlaubten Ordner";
+"refused: unusable rename pattern" = "abgelehnt: Namensmuster unbrauchbar";
+"refused: the file is no longer there" = "abgelehnt: Datei gibt es nicht mehr";
+"refused: the path changed underneath" = "abgelehnt: Pfad änderte sich unerwartet";
 "renamed to" = "umbenannt in";
 "smaller than" = "kleiner als";
 "stays" = "bleibt";
