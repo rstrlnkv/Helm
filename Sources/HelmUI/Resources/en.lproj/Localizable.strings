@@ -100,6 +100,8 @@
 "Custom icon when active" = "Custom icon when active";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings.";
 "Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm got no answer, so it does not know what moved. The list above shows where the files are now.";
+"Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm got no answer, so it does not know what moved. The list above still shows where the files were before.";
+"Helm got no answer, so the list above is still from the previous scan." = "Helm got no answer, so the list above is still from the previous scan.";
 "Icon spin" = "Menu-bar spin";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash.";
 "Menu bar" = "Menu bar";
@@ -265,7 +267,6 @@
 "MB" = "MB";
 "MODULES" = "MODULES";
 "Manage Homebrew packages" = "Manage Homebrew packages";
-"Manage…" = "Manage…";
 "Manual" = "Manual";
 "Mark every extra copy" = "Mark every extra copy";
 "Mark for removal" = "Mark for removal";
@@ -559,11 +560,11 @@
 "Window" = "Window";
 "With an external display" = "With an external display";
 "Without Accessibility Helm cannot see what you type, and this does nothing." = "Without Accessibility Helm cannot see what you type, and this does nothing.";
+"Without Full Disk Access Helm cannot check every item, and a short list of leftovers looks exactly like a Mac with none." = "Without Full Disk Access Helm cannot check every item, and a short list of leftovers looks exactly like a Mac with none.";
 "Without Full Disk Access Helm cannot read every folder, and a short list of duplicates looks exactly like a folder that has none." = "Without Full Disk Access Helm cannot read every folder, and a short list of duplicates looks exactly like a folder that has none.";
 "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do." = "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do.";
 "Without Full Disk Access an app’s containers stay behind, and Helm cannot see the Trash to look for leftovers." = "Without Full Disk Access an app’s containers stay behind, and Helm cannot see the Trash to look for leftovers.";
 "Without Full Disk Access an app’s containers stay behind." = "Without Full Disk Access an app’s containers stay behind.";
-"Without Full Disk Access some files cannot be moved." = "Without Full Disk Access some files cannot be moved.";
 "Without Full Disk Access some folders scan as empty." = "Without Full Disk Access some folders scan as empty.";
 "Wording and sizes reviewed across the app: shorter labels, one name per thing, and sizes in your language — “432,95 ГБ”, not “432,95 GB”." = "Wording and sizes reviewed across the app: shorter labels, one name per thing, and sizes in your language — “432,95 ГБ”, not “432,95 GB”.";
 "Write a log file" = "Write a log file";

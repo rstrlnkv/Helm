@@ -16,23 +16,23 @@ import Module_Leftovers_Engine
 final class WhatAnEmptyListSaysTests: XCTestCase {
 
     func testBeforeTheFirstScanThePageInvites() {
-        XCTAssertEqual(LeftoversEmpty.reason(scanned: false, visible: 0, hiddenByKind: 0),
+        XCTAssertEqual(LeftoversEmpty.reason(scanned: false, visible: 0, hiddenByKind: 0, unchecked: 0),
                        .notScanned)
     }
 
     /// And it goes on inviting even if a previous session's counts are lying
     /// around: nothing has been asked of the machine yet.
     func testAnUnscannedPageInvitesWhateverTheCountsSay() {
-        XCTAssertEqual(LeftoversEmpty.reason(scanned: false, visible: 4, hiddenByKind: 2),
+        XCTAssertEqual(LeftoversEmpty.reason(scanned: false, visible: 4, hiddenByKind: 2, unchecked: 0),
                        .notScanned)
     }
 
     func testARowToDrawIsNotAnEmptyList() {
-        XCTAssertNil(LeftoversEmpty.reason(scanned: true, visible: 3, hiddenByKind: 9))
+        XCTAssertNil(LeftoversEmpty.reason(scanned: true, visible: 3, hiddenByKind: 9, unchecked: 0))
     }
 
     func testAScanWithNothingLeftOverSaysSo() {
-        XCTAssertEqual(LeftoversEmpty.reason(scanned: true, visible: 0, hiddenByKind: 0),
+        XCTAssertEqual(LeftoversEmpty.reason(scanned: true, visible: 0, hiddenByKind: 0, unchecked: 0),
                        .nothingFound)
     }
 
@@ -40,7 +40,7 @@ final class WhatAnEmptyListSaysTests: XCTestCase {
     /// hiding all of them, and «No leftovers found» would be a claim about the
     /// Mac where the truth is a claim about a menu.
     func testRowsHiddenByTheFilterSayThatInstead() {
-        XCTAssertEqual(LeftoversEmpty.reason(scanned: true, visible: 0, hiddenByKind: 7),
+        XCTAssertEqual(LeftoversEmpty.reason(scanned: true, visible: 0, hiddenByKind: 7, unchecked: 0),
                        .hiddenByFilter)
     }
 }

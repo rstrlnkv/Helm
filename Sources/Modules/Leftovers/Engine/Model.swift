@@ -40,6 +40,24 @@ public enum ItemStatus: String, Codable, Sendable, Equatable {
     /// be folding two questions into one is the rule being followed: a reason that
     /// needs telling apart gets named, not read out of a shared one.
     case undetermined
+
+    /// Whether this status is a verdict about the item at all.
+    ///
+    /// Two of the five are the *absence* of one, and the page had no way to ask:
+    /// neither is `.orphaned`, so the default filter drops both, the list comes
+    /// out empty and «No leftovers found» — this module's strongest claim about
+    /// somebody's Mac — was drawn under a green check over items nobody had
+    /// judged. `LeftoversEmpty.reason` counts the unjudged ones through this.
+    ///
+    /// Exhaustive on purpose: a sixth status has to be placed on one side of this
+    /// line by whoever adds it, and a `default` here is how one would come to be
+    /// counted as a verdict it never reached.
+    public var judged: Bool {
+        switch self {
+        case .orphaned, .inUse, .protectedItem: true
+        case .unreadable, .undetermined: false
+        }
+    }
 }
 
 public struct StaleItem: Codable, Equatable, Sendable, Identifiable {

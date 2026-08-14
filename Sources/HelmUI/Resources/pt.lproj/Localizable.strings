@@ -100,6 +100,8 @@
 "Custom icon when active" = "Ícone personalizado quando ativo";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "O Helm conecta as configurações que o macOS mantém — à mão ou por regra, quando um app abre. Adicione uma nos Ajustes do Sistema.";
 "Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "O Helm não recebeu resposta e não sabe quais arquivos foram movidos. A lista acima mostra onde eles estão agora.";
+"Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "O Helm não recebeu resposta e não sabe quais arquivos foram movidos. A lista acima ainda mostra onde os arquivos estavam antes.";
+"Helm got no answer, so the list above is still from the previous scan." = "O Helm não recebeu resposta, então a lista acima ainda é a do escaneamento anterior.";
 "Icon spin" = "Giro do ícone";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "Agentes de início, arquivos de ajustes, plug-ins e extensões do sistema. Só os restos podem ir para o Lixo.";
 "Menu bar" = "Barra de menus";
@@ -265,7 +267,6 @@
 "MB" = "MB";
 "MODULES" = "MÓDULOS";
 "Manage Homebrew packages" = "Gerencie pacotes do Homebrew";
-"Manage…" = "Gerenciar…";
 "Manual" = "Manual";
 "Mark every extra copy" = "Marcar todos os excedentes";
 "Mark for removal" = "Marcar para remoção";
@@ -559,11 +560,11 @@
 "Window" = "Janelas";
 "With an external display" = "Com tela externa";
 "Without Accessibility Helm cannot see what you type, and this does nothing." = "Sem Acessibilidade o Helm não vê o que você digita e isto não faz nada.";
+"Without Full Disk Access Helm cannot check every item, and a short list of leftovers looks exactly like a Mac with none." = "Sem Acesso Total ao Disco o Helm não consegue verificar todos os itens, e uma lista curta de restos parece exatamente um Mac sem nenhum.";
 "Without Full Disk Access Helm cannot read every folder, and a short list of duplicates looks exactly like a folder that has none." = "Sem Acesso Total ao Disco o Helm não consegue ler todas as pastas, e uma lista curta parece exatamente uma pasta sem duplicatas.";
 "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do." = "Sem Acesso Total ao Disco uma pasta protegida é lida como vazia: nenhuma regra casa, e isso parece igual a uma pasta sem nada a fazer.";
 "Without Full Disk Access an app’s containers stay behind, and Helm cannot see the Trash to look for leftovers." = "Sem Acesso Total ao Disco os contêineres do app ficam para trás e o Helm não vê o Lixo para procurar restos.";
 "Without Full Disk Access an app’s containers stay behind." = "Sem Acesso Total ao Disco os contêineres do app permanecem.";
-"Without Full Disk Access some files cannot be moved." = "Sem Acesso Total ao Disco alguns arquivos não poderão ser movidos.";
 "Without Full Disk Access some folders scan as empty." = "Sem Acesso Total ao Disco algumas pastas aparecerão vazias.";
 "Wording and sizes reviewed across the app: shorter labels, one name per thing, and sizes in your language — “432,95 ГБ”, not “432,95 GB”." = "Textos e tamanhos revisados em todo o app: rótulos mais curtos, um nome por coisa e tamanhos no seu idioma.";
 "Write a log file" = "Gravar um registro";

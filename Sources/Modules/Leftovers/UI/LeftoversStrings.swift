@@ -42,8 +42,32 @@ enum LfStr {
     /// rather than telling them how to behave: nothing is pre-ticked *because
     /// macOS loads every one of these*.
     static var reviewNote: String { L("Nothing is selected for you: macOS loads every item in this list.") }
-    static var removalNeedsAccess: String { L("Without Full Disk Access some files cannot be moved.") }
-    static var manageExtensions: String { L("Manage…") }
+    /// **What the grant buys here is judgement, not removal.**
+    /// `PermissionCheck.reason` names Full Disk Access for `/Library/Containers/`
+    /// and `/Library/Group Containers/` paths only, and none of the scanner's
+    /// seven sources can reach one — so no removal on this page can fail that
+    /// way, and the note promised a consequence this module cannot have. What a
+    /// refused read actually costs is a verdict: `exists` answers nil, the row is
+    /// `.undetermined`, and a short list of leftovers then looks exactly like a
+    /// Mac with none. Duplicates' own note says the same thing about folders.
+    static var scanNeedsAccess: String {
+        L("Without Full Disk Access Helm cannot check every item, and a short list of leftovers looks exactly like a Mac with none.")
+    }
+    /// A scan nobody answered, said where the list it is about is. Its opening is
+    /// the removal's own lost-reply sentence character for character, because it
+    /// is literally the same nil coming back from `TransportClient.request` — two
+    /// phrasings of one machine fact is a defect this codebase keeps catching.
+    static var rescanLost: String {
+        L("Helm got no answer, so the list above is still from the previous scan.")
+    }
+    /// **The button opens a pane; it manages nothing.** It calls
+    /// `PermissionCheck.openExtensionSettings()`, and the Uninstaller's own
+    /// button drives the identical call — so «Manage…» was a second label for one
+    /// act, and the vaguer of the two. The Russian aspect problem goes with it:
+    /// «Открыть» is perfective, which is what a button that acts once should be.
+    ///
+    /// The label itself is `HelmUI`'s, because two modules draw it.
+    static var openExtensions: String { HelmControlName.openExtensions }
     /// The switch on a row, both ways round. Functions rather than properties
     /// because `confirmDeleteInUse` names this control inside a sentence, and an
     /// inline table can only be read back in the other seven languages if the
@@ -183,7 +207,40 @@ enum LfStr {
         // A claim about the filter, not about the Mac — and the filter menu is on
         // screen above this line, which is what makes it worth its own sentence.
         case .hiddenByFilter: return L("Everything found is hidden by the filter.")
+        // **The message, not a note under «No leftovers found».** A headline with
+        // a footnote invites the reader to trust the headline, and that headline
+        // is exactly the claim this scan cannot back.
+        case .notEverythingChecked(let count): return couldNotCheck(count)
         }
+    }
+
+    /// What the scan could not judge, beside what it found — a label, because the
+    /// strip it sits in holds controls and no prose, and its neighbour is
+    /// «Found: N».
+    ///
+    /// **Two sentences rather than one for both places.** The prose form measured
+    /// 194 pt in Russian against `foundLine`'s 108 in that bar; and on the empty
+    /// screen the reverse fails, where a bare label is a number with no claim
+    /// under it. Both are built from each language's own `statusUndetermined`
+    /// badge and `confirmDeleteUnchecked` question, so the count, the pill and the
+    /// delete question cannot drift apart. Neither names the verb: the Scan button
+    /// is the answer and it is on screen either way.
+    static func uncheckedLine(_ n: Int, language: AppLanguage = AppLanguage.current) -> String {
+        let items = Plural.items(n, language: language.rawValue)
+        return L("Not checked: \(items)",
+                 [.ru: "Не проверено: \(items)", .es: "Sin comprobar: \(items)",
+                  .fr: "Non vérifié\u{00A0}: \(items)", .de: "Ungeprüft: \(items)",
+                  .ja: "未確認：\(items)", .zh: "未检查：\(items)",
+                  .pt: "Não verificado: \(items)"], language: language)
+    }
+
+    static func couldNotCheck(_ n: Int, language: AppLanguage = AppLanguage.current) -> String {
+        let items = Plural.items(n, language: language.rawValue)
+        return L("Helm could not check \(items).",
+                 [.ru: "Helm не смог проверить \(items).", .es: "Helm no pudo comprobar \(items).",
+                  .fr: "Helm n’a pas pu vérifier \(items).", .de: "Helm konnte \(items) nicht prüfen.",
+                  .ja: "Helm は\(items)を確認できませんでした。", .zh: "Helm 无法检查\(items)。",
+                  .pt: "O Helm não conseguiu verificar \(items)."], language: language)
     }
     /// Asked before the batch, because this button is the one that acts on the
     /// most load-bearing files in the app — launch agents and login items —

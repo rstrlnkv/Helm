@@ -72,14 +72,30 @@ public struct HelmRemovalOutcome: View {
     /// It is not `.succeeded` and it is not `.failed`: nothing is known to have
     /// moved, nothing is known to have stayed, and nothing failed. It carries
     /// no numbers because there are none to carry.
-    public static var unanswered: HelmRemovalOutcome { HelmRemovalOutcome() }
+    public static var unanswered: HelmRemovalOutcome { HelmRemovalOutcome(verdict: .unanswered) }
 
-    private init() {
+    /// The removal whose reply was lost **and whose refresh was lost with it**.
+    ///
+    /// `unanswered` ends by pointing at the list — «the list above shows where the
+    /// files are now» — and that is true only because the caller rescans on the
+    /// same path. The rescan is a request like any other and can go unanswered
+    /// too, and there the sentence was guaranteeing exactly what nothing knew.
+    /// So the caller says which round this is, and this one claims nothing about
+    /// the list except that it is old.
+    ///
+    /// Two entry points rather than a parameter beside the counts, for the reason
+    /// `unanswered`'s own comment gives: a lost reply carries no numbers, and the
+    /// combination «nothing came back, and five moved» must not be writable.
+    public static var unansweredWithStaleList: HelmRemovalOutcome {
+        HelmRemovalOutcome(verdict: .unansweredStaleList)
+    }
+
+    private init(verdict: Verdict) {
         succeededText = ""
         removed = 0
         failures = []
         needsFullDiskAccess = false
-        verdict = .unanswered
+        self.verdict = verdict
     }
 
     /// What this line has to say, given what actually happened.
@@ -100,6 +116,9 @@ public struct HelmRemovalOutcome: View {
         /// The reply was lost, so none of the three above can be told apart.
         /// Reached only through `unanswered`, never from a count.
         case unanswered
+        /// The reply was lost and so was the refresh that would have brought the
+        /// list up to date. Reached only through `unansweredWithStaleList`.
+        case unansweredStaleList
     }
 
     static func verdict(removed: Int, failed: Int) -> Verdict {
@@ -118,6 +137,10 @@ public struct HelmRemovalOutcome: View {
         // nothing was refused, and nothing here is anybody's to fix.
         case .unanswered:
             quiet(Self.noAnswer)
+        // The same shape again, and only the words differ: what this round knows
+        // about the list is one fact less.
+        case .unansweredStaleList:
+            quiet(Self.noAnswerStaleList)
         case .failed:
             // **The two levels below were one level.** The heading was
             // `.caption` and the failures under it `.caption2`, which macOS
@@ -225,8 +248,22 @@ public struct HelmRemovalOutcome: View {
     /// apologises for nothing — it points at the list, which the rescan
     /// underneath has just brought up to date, as the answer to the only
     /// question left.
-    private static var noAnswer: String {
+    ///
+    /// Internal rather than private: the pair below is one machine fact in two
+    /// sentences, and that they open the same way is a claim with a test under it.
+    static var noAnswer: String {
         L("Helm got no answer, so it does not know what moved. The list above shows where the files are now.")
+    }
+
+    /// And what it says when the refresh was lost too. It withdraws the second
+    /// half of the promise: nothing on this page has been read since before the
+    /// press, so the list is where the files *were*.
+    ///
+    /// It names no verb for trying again. Five call sites in four modules draw
+    /// this component and their refresh buttons say three different things, so a
+    /// literal here would be wrong in two of five.
+    static var noAnswerStaleList: String {
+        L("Helm got no answer, so it does not know what moved. The list above still shows where the files were before.")
     }
 
     /// The two sentences this row says quietly, drawn identically because they

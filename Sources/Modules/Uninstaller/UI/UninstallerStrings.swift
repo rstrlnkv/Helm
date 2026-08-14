@@ -151,7 +151,9 @@ enum UnStr {
     /// The word this app already uses for the thing is a guess.
     static var matchedByName: String { L("guess") }
     static var openDiskAccess: String { L("Open Full Disk Access…") }
-    static var openExtensions: String { L("Open Extensions…") }
+    /// `HelmUI`'s, because Leftovers' extension row draws the same label over the
+    /// same call — it said «Manage…» there until the two were made one.
+    static var openExtensions: String { HelmControlName.openExtensions }
     static var done: String { L("Done") }
     static var refreshList: String { L("Refresh list") }
     /// Nil while the first query is still out: the line reads as a count that

@@ -100,6 +100,8 @@
 "Custom icon when active" = "激活时使用自定义图标";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm 可以手动连接 macOS 保存的配置，也可以在应用启动时按规则连接。配置本身在“系统设置”中添加。";
 "Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm 未收到回应，无法判断哪些文件已移动。上方列表显示它们现在的位置。";
+"Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm 未收到回应，无法判断哪些文件已移动。上方列表显示的仍是移动前的位置。";
+"Helm got no answer, so the list above is still from the previous scan." = "Helm 未收到回应，上方列表仍是上次扫描的结果。";
 "Icon spin" = "图标转动";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "启动代理、设置文件、插件与系统扩展。只有残留项可以移到废纸篓。";
 "Menu bar" = "菜单栏";
@@ -265,7 +267,6 @@
 "MB" = "MB";
 "MODULES" = "模块";
 "Manage Homebrew packages" = "管理 Homebrew 软件包";
-"Manage…" = "管理…";
 "Manual" = "手动";
 "Mark every extra copy" = "全部多余副本标记为待删除";
 "Mark for removal" = "标记为待删除";
@@ -559,11 +560,11 @@
 "Window" = "窗口";
 "With an external display" = "连接外接显示器时";
 "Without Accessibility Helm cannot see what you type, and this does nothing." = "没有无障碍权限，Helm 无法读取输入，此功能不起作用。";
+"Without Full Disk Access Helm cannot check every item, and a short list of leftovers looks exactly like a Mac with none." = "没有完全磁盘访问权限时，Helm 无法检查全部项目；残留项少和没有残留看起来一模一样。";
 "Without Full Disk Access Helm cannot read every folder, and a short list of duplicates looks exactly like a folder that has none." = "没有完全磁盘访问权限时，Helm 无法读取全部文件夹；结果少和没有重复看起来一模一样。";
 "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do." = "没有完全磁盘访问权限时，受保护的文件夹会被读成空的：没有规则匹配，而这看起来和一个无事可做的文件夹一模一样。";
 "Without Full Disk Access an app’s containers stay behind, and Helm cannot see the Trash to look for leftovers." = "没有完全磁盘访问权限，App 的容器会残留，Helm 也看不到废纸篓、无法查找残留文件。";
 "Without Full Disk Access an app’s containers stay behind." = "没有完全磁盘访问权限时，应用的容器会残留。";
-"Without Full Disk Access some files cannot be moved." = "没有完全磁盘访问权限时，部分文件无法移动。";
 "Without Full Disk Access some folders scan as empty." = "没有完全磁盘访问权限时，部分文件夹会显示为空。";
 "Wording and sizes reviewed across the app: shorter labels, one name per thing, and sizes in your language — “432,95 ГБ”, not “432,95 GB”." = "全应用文案与大小显示梳理：标签更简短、同一事物统一称呼、大小按你的语言显示。";
 "Write a log file" = "记录日志";

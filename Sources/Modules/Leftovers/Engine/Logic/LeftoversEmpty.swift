@@ -14,13 +14,20 @@ import Foundation
 /// row happens to have.
 public enum LeftoversEmpty {
 
-    /// Three, not two. «Nothing is left over» is a fact about the Mac; «all of it
+    /// Four, not two. «Nothing is left over» is a fact about the Mac; «all of it
     /// is hidden by the filter» is a fact about a menu that is on screen directly
     /// above the message, and only the second one tells the person what to do
     /// next. Answering the first for both would be the page claiming a clean Mac
     /// while holding rows it has been told to hide.
+    ///
+    /// The fourth is a fact about the scan rather than about the Mac: some items
+    /// were never judged (`ItemStatus.judged`), so «no leftovers found» is a
+    /// claim this scan cannot back. **It carries its own count**, because the
+    /// sentence interpolates one — a reason without it would have the page fetch
+    /// the number from somewhere else, which is one question with two answers.
     public enum Reason: Equatable, Sendable {
         case notScanned, nothingFound, hiddenByFilter
+        case notEverythingChecked(Int)
     }
 
     /// Whether this screen is an **invitation** — nothing here yet, and something
@@ -32,11 +39,16 @@ public enum LeftoversEmpty {
     /// filtered list it offers to rescan a Mac when the verb the person wants is
     /// in the menu directly above the message.
     ///
-    /// Exhaustive on purpose. A `default` here is how a fourth state would come to
+    /// **And the fourth invites.** It is not a statement about the Mac — it says
+    /// Helm did not finish, and the verb that answers that is the Scan button; a
+    /// screen reporting an unfinished scan with no way to run it again is a dead
+    /// end.
+    ///
+    /// Exhaustive on purpose. A `default` here is how a fifth state would come to
     /// be given a verb, or lose one, without anybody deciding.
     public static func invites(_ reason: Reason) -> Bool {
         switch reason {
-        case .notScanned: true
+        case .notScanned, .notEverythingChecked: true
         case .nothingFound, .hiddenByFilter: false
         }
     }
@@ -45,11 +57,20 @@ public enum LeftoversEmpty {
     ///   - scanned: whether this session has asked the engine at all.
     ///   - visible: rows the list would draw — after both filters.
     ///   - hiddenByKind: rows the status filter keeps and the kind filter hides.
-    public static func reason(scanned: Bool, visible: Int, hiddenByKind: Int) -> Reason? {
+    ///   - unchecked: rows the scan never reached a verdict on, over the whole
+    ///     scan and not over the list: they are `.undetermined` or `.unreadable`,
+    ///     so the default filter is exactly what hides them, and counting them
+    ///     over what is drawn would answer zero in the state this exists for.
+    public static func reason(scanned: Bool, visible: Int, hiddenByKind: Int,
+                              unchecked: Int) -> Reason? {
         // Before anything has been asked, counts left over from a previous state
         // are not an answer about this Mac.
         guard scanned else { return .notScanned }
         guard visible == 0 else { return nil }
-        return hiddenByKind > 0 ? .hiddenByFilter : .nothingFound
+        // The filter keeps its precedence: that message claims nothing about the
+        // Mac, so the unjudged items contradict nothing in it, and the menu that
+        // caused it is on screen directly above.
+        if hiddenByKind > 0 { return .hiddenByFilter }
+        return unchecked > 0 ? .notEverythingChecked(unchecked) : .nothingFound
     }
 }

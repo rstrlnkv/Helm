@@ -28,23 +28,28 @@ enum LeftoversPageRender {
     /// outlive this call and every `settle` the caller makes.
     static func page(_ items: [StaleItem], language: AppLanguage, width: CGFloat,
                      height: CGFloat = 540, appearance: NSAppearance.Name,
-                     scanned: Bool = true) async -> (MountedRender, LeftoversViewModel) {
+                     scanned: Bool = true,
+                     grants: HelmGrants = HelmGrants(accessibility: .granted, fullDisk: .granted)) async -> (MountedRender, LeftoversViewModel) {
         await page(on: LeftoversWire(items: items), language: language, width: width,
-                   height: height, appearance: appearance, scanned: scanned)
+                   height: height, appearance: appearance, scanned: scanned, grants: grants)
     }
 
     /// The same page over a wire the caller built: one that holds a removal reply,
     /// or one that does not answer until it is told to. Hand-rolled in two files
     /// before it took a transport, which is the same argument as the mount itself.
+    /// - Parameter grants: named, never inherited — without the disk grant the
+    ///   page draws a permission note and every measurement below moves 61 pt. It
+    ///   is an argument rather than a constant because the denied state is a
+    ///   branch of this page: the note, and the Grant button the report used to
+    ///   key to this probe instead of to the refusal under it.
     static func page(on transport: EngineTransport, language: AppLanguage, width: CGFloat,
                      height: CGFloat = 540, appearance: NSAppearance.Name,
-                     scanned: Bool = true) async -> (MountedRender, LeftoversViewModel) {
+                     scanned: Bool = true,
+                     grants: HelmGrants = HelmGrants(accessibility: .granted, fullDisk: .granted)) async -> (MountedRender, LeftoversViewModel) {
         AppLanguage.override = language
         let vm = ModuleViewModel(transport: transport)
         let mount = MountedRender(LeftoversSettingsPage(vm: vm)
-            // Named, never inherited: without the grant the page draws a
-            // permission note and every measurement below moves 61 pt.
-            .environment(\.helmGrants, HelmGrants(accessibility: .granted, fullDisk: .granted)),
+            .environment(\.helmGrants, grants),
                                   width: width, height: height, appearance: appearance)
         let model = LeftoversViewModel.shared(vm: vm)
         if scanned { await model.scan() }
@@ -67,12 +72,18 @@ enum LeftoversPageRender {
 
     /// What one button asks for when nothing is squeezing it: the same control,
     /// alone, in a mount far wider than any translation of it.
+    ///
+    /// - Parameter controlSize: the page draws two sizes and this measured one.
+    ///   Every language came out ~19 pt «squeezed» against a regular control when
+    ///   the row's button is `.small` — a difference in the *baseline*, which
+    ///   would have read as a truncation on all eight and hidden a real one.
     static func naturalWidth(of title: String, prominent: Bool,
-                             appearance: NSAppearance.Name) -> CGFloat {
+                             appearance: NSAppearance.Name,
+                             controlSize: ControlSize = .regular) -> CGFloat {
         let button = Button(title) {}
         let mount = MountedRender(Group {
             if prominent { button.buttonStyle(.borderedProminent) } else { button }
-        }, width: 900, height: 60, appearance: appearance)
+        }.controlSize(controlSize), width: 900, height: 60, appearance: appearance)
         defer { mount.drop() }
         mount.settle(6)
         return controls(in: mount).first?.width ?? 0

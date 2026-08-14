@@ -100,6 +100,8 @@
 "Custom icon when active" = "Icône personnalisée si actif";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm connecte les configurations que macOS conserve — à la main, ou selon une règle à l’ouverture d’une app. Ajoutez-en une dans les Réglages Système.";
 "Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm n’a reçu aucune réponse et ne sait pas quels fichiers ont été déplacés. La liste ci-dessus montre où ils sont maintenant.";
+"Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm n’a reçu aucune réponse et ne sait pas quels fichiers ont été déplacés. La liste ci-dessus montre encore où ils étaient avant.";
+"Helm got no answer, so the list above is still from the previous scan." = "Helm n’a reçu aucune réponse, la liste ci-dessus est donc encore celle de l’analyse précédente.";
 "Icon spin" = "Rotation de l’icône";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "Agents de lancement, fichiers de réglages, modules et extensions système. Seuls les restes peuvent aller à la corbeille.";
 "Menu bar" = "Barre des menus";
@@ -265,7 +267,6 @@
 "MB" = "Mo";
 "MODULES" = "MODULES";
 "Manage Homebrew packages" = "Gérer les paquets Homebrew";
-"Manage…" = "Gérer…";
 "Manual" = "Manuel";
 "Mark every extra copy" = "Marquer tous les surplus";
 "Mark for removal" = "Marquer pour suppression";
@@ -559,11 +560,11 @@
 "Window" = "Fenêtres";
 "With an external display" = "Avec un écran externe";
 "Without Accessibility Helm cannot see what you type, and this does nothing." = "Sans l’Accessibilité, Helm ne voit pas ce que vous tapez et ceci ne fait rien.";
+"Without Full Disk Access Helm cannot check every item, and a short list of leftovers looks exactly like a Mac with none." = "Sans accès complet au disque, Helm ne peut pas vérifier tous les éléments, et une courte liste de restes ressemble exactement à un Mac qui n’en a aucun.";
 "Without Full Disk Access Helm cannot read every folder, and a short list of duplicates looks exactly like a folder that has none." = "Sans accès complet au disque, Helm ne peut pas lire tous les dossiers, et une courte liste ressemble exactement à un dossier sans doublons.";
 "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do." = "Sans accès complet au disque, un dossier protégé se lit comme vide : aucune règle ne correspond, et cela ressemble exactement à un dossier sans rien à faire.";
 "Without Full Disk Access an app’s containers stay behind, and Helm cannot see the Trash to look for leftovers." = "Sans accès complet au disque, les conteneurs d’une app restent en place et Helm ne voit pas la corbeille pour y chercher des restes.";
 "Without Full Disk Access an app’s containers stay behind." = "Sans accès complet au disque, les conteneurs de l’app resteront.";
-"Without Full Disk Access some files cannot be moved." = "Sans accès complet au disque, certains fichiers ne pourront pas être déplacés.";
 "Without Full Disk Access some folders scan as empty." = "Sans accès complet au disque, certains dossiers apparaîtront vides.";
 "Wording and sizes reviewed across the app: shorter labels, one name per thing, and sizes in your language — “432,95 ГБ”, not “432,95 GB”." = "Textes et tailles revus dans toute l’app : libellés plus courts, un nom par chose, et des tailles dans votre langue.";
 "Write a log file" = "Écrire un journal";

@@ -55,7 +55,7 @@ struct LeftoversSettingsPage: View {
                 Divider()
             }
             if diskAccess == .denied {
-                HelmPermissionNote(need: .fullDiskAccess, text: LfStr.removalNeedsAccess)
+                HelmPermissionNote(need: .fullDiskAccess, text: LfStr.scanNeedsAccess)
                     .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
                 Divider()
             }
@@ -80,6 +80,9 @@ struct LeftoversSettingsPage: View {
             // under it.
             if footHasSomethingToSay {
                 Divider()
+                // Nearest the list, because it is about the list: the report
+                // under it is about the press.
+                staleListNote
                 outcomeRow
                 // Both are about the selection, so both need rows to be about —
                 // and the report above them is not: a removal that emptied the
@@ -139,11 +142,14 @@ struct LeftoversSettingsPage: View {
                 // found» it is the same sentence twice. The filter controls stay
                 // whatever the list holds — the menu that hid the rows has to
                 // remain reachable.
-                if lvm.nothingToShow == nil {
-                    Text(Self.foundCaption(lvm))
-                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                        .lineLimit(1).fixedSize()
-                }
+                // **Last in the queue for width, and it has to be said out
+                // loud.** `ViewThatFits` chooses against the proposal it is
+                // handed, and inside an `HStack` that is the room left after the
+                // *equal-priority* children have taken their ideal — so with the
+                // default priority the strip offered it more than it had and the
+                // button paid the difference (Russian 154.0 → 128.0 at 606 pt).
+                // Lowest priority is what makes the proposal the truth.
+                if lvm.nothingToShow == nil { captions.layoutPriority(-1) }
                 kindFilter
             }
             // **One Scan, not two.** Before the first scan this drew the same
@@ -156,6 +162,53 @@ struct LeftoversSettingsPage: View {
         .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
     }
 
+    /// What the scan found, and what it could not judge — one caption or two,
+    /// whichever the pane can hold.
+    ///
+    /// **The strip had no slack, and an `HStack` pays for that out of whatever is
+    /// flexible.** With both captions fixed, at the narrowest pane the window
+    /// allows (606 pt): «Сканировать заново» drawn 20.5 pt against the 154.0 its
+    /// words need, «Escanear de nuevo» 20.5 against 139.0, German 92.5 against
+    /// 118.5 — the verb reduced to an ellipsis by two labels, which is
+    /// `TheActionBarKeepsItsWordsTests`' defect one row up.
+    ///
+    /// So the captions give way, in an order: what survives a narrow pane is the
+    /// one saying the number beside it is incomplete, because a count with no
+    /// qualifier reads as the whole answer. `ViewThatFits` takes the first
+    /// arrangement whose ideal width the strip can give it, so nothing here is
+    /// measured by hand or truncated.
+    @ViewBuilder private var captions: some View {
+        let found = caption(Self.foundCaption(lvm))
+        if lvm.uncheckedCount > 0 {
+            let unchecked = caption(LfStr.uncheckedLine(lvm.uncheckedCount))
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: HelmSpace.s5) { found; unchecked }
+                unchecked
+                // Where even one will not fit — Russian at 606 pt — the strip
+                // keeps its controls, and nothing said only here is lost: the
+                // screen this is about is the *empty* one, where the sentence is
+                // the message and no width can take it away.
+                //
+                // **A zero-width view, not `EmptyView`**, which contributes no
+                // subview at all: `ViewThatFits` then never sees a third candidate
+                // and falls back to its last whether it fits or not — measured,
+                // Russian went on drawing one caption and the button stayed
+                // 26.0 pt short.
+                Color.clear.frame(width: 0, height: 0)
+            }
+        } else {
+            found
+        }
+    }
+
+    /// One quiet figure in the strip: a statement about the list, never wrapped
+    /// and never cut — the count is the whole of what it carries.
+    private func caption(_ text: String) -> some View {
+        Text(text)
+            .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+            .lineLimit(1).fixedSize()
+    }
+
     /// Whether the top strip holds anything: the filters, which are behind
     /// `items.isEmpty`, or the Scan the invitation is not carrying.
     private var toolbarHasSomethingToSay: Bool {
@@ -166,7 +219,7 @@ struct LeftoversSettingsPage: View {
     /// the report of the removal that emptied it, which is the one thing down here
     /// that is not about the selection.
     private var footHasSomethingToSay: Bool {
-        !lvm.items.isEmpty || removalOutcome != nil
+        !lvm.items.isEmpty || removalOutcome != nil || silence == .listLost
     }
 
     /// Whether the screen under the toolbar is drawing a Scan button of its own.
@@ -392,7 +445,7 @@ struct LeftoversSettingsPage: View {
         if item.actions.contains(.systemSettings) {
             // Not a file: macOS removes an extension with its app, and SIP
             // stops anyone else from uninstalling it.
-            Button(LfStr.manageExtensions) { PermissionCheck.openExtensionSettings() }
+            Button(LfStr.openExtensions) { PermissionCheck.openExtensionSettings() }
                 .controlSize(.small)
         } else {
             Text(Bytes(item.sizeBytes))
@@ -430,11 +483,19 @@ struct LeftoversSettingsPage: View {
     /// The mark over each empty state. The filter's own glyph for the filter's
     /// own message — the menu that caused it is on screen directly above, wearing
     /// the same symbol.
-    private static func symbol(for nothing: LeftoversEmpty.Reason) -> String {
+    ///
+    /// Internal rather than private, for the reason `deleteLabel(for:)` and
+    /// `foundCaption` above are: which mark stands over which sentence is a claim
+    /// this page makes, and a claim with no test under it is a promise in prose.
+    static func symbol(for nothing: LeftoversEmpty.Reason) -> String {
         switch nothing {
         case .notScanned: "wand.and.rays"
         case .nothingFound: "checkmark.circle"
         case .hiddenByFilter: "line.3.horizontal.decrease.circle"
+        // **Not the check.** A green tick over «Helm could not check 3 items» is
+        // the mark contradicting the sentence under it, and the mark is what a
+        // person reads first.
+        case .notEverythingChecked: "questionmark.circle"
         }
     }
 
@@ -502,6 +563,19 @@ struct LeftoversSettingsPage: View {
         if let outcome = removalOutcome { statement(outcome) }
     }
 
+    /// What a rescan nobody answered says: the rows above are the previous
+    /// scan's, and nothing else about the page changed.
+    ///
+    /// Drawn only where the removal is not already saying it — when both requests
+    /// were lost, `silenceOutcome` draws one sentence that covers both, and two
+    /// phrasings of one machine fact is the defect this pass exists to end.
+    @ViewBuilder private var staleListNote: some View {
+        if silence == .listLost {
+            statement(Text(LfStr.rescanLost)
+                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet))
+        }
+    }
+
     /// A full-width line of prose at the foot of the page, in the shape this row
     /// established and the selection line then needed as well.
     ///
@@ -516,21 +590,56 @@ struct LeftoversSettingsPage: View {
             .padding(.top, HelmSpace.s5)
     }
 
-    /// Which of the component's four verdicts this round is, or nil for a page
-    /// nobody has pressed anything on.
+    /// Which of the component's verdicts this round is, or nil for a page nobody
+    /// has pressed anything on.
     ///
     /// Its own member so the frame and the padding above are written once: the
     /// lost reply has no banner to key off, and drawing it in a branch of its own
     /// meant that chain twice.
+    ///
+    /// **The Grant button is keyed to the refusal, not to the page's own probe.**
+    /// Keyed to `diskAccess` it stood beside every refusal on a Mac without the
+    /// grant — over `noPermission` on a launch daemon, where the answer is a
+    /// password and not a setting — and never appeared for the right reason:
+    /// `PermissionCheck.reason` names Full Disk Access for container paths only,
+    /// and this module's sources reach none.
     private var removalOutcome: HelmRemovalOutcome? {
         // Ahead of the banner, which is nil in this state: a reply that never came
         // says so rather than nothing.
-        if lvm.replyLost { return .unanswered }
+        if let unanswered = Self.silenceOutcome(silence) { return unanswered }
         guard let banner = lvm.banner else { return nil }
         return HelmRemovalOutcome(succeededText: banner,
                                   removed: lvm.removedCount,
                                   failures: lvm.failures.map(HelmRemovalFailure.init),
-                                  needsFullDiskAccess: diskAccess == .denied)
+                                  needsFullDiskAccess: lvm.failures.contains {
+                                      $0.reason == .needsFullDiskAccess
+                                  })
+    }
+
+    /// Which of this page's two requests went unanswered, if either.
+    private var silence: LeftoversSilence.Note? {
+        LeftoversSilence.note(removalUnanswered: lvm.replyLost,
+                              rescanUnanswered: lvm.scanReplyLost,
+                              scanned: lvm.scanned)
+    }
+
+    /// The report a silence draws, or nil where the silence is not about a
+    /// removal at all.
+    ///
+    /// Its own function, and exhaustive over the note for the reason
+    /// `LfStr.kindName` records: which sentence stands over which silence is the
+    /// whole of this fix, and a `switch` inside a `body` is a rule no test can
+    /// reach.
+    static func silenceOutcome(_ note: LeftoversSilence.Note?) -> HelmRemovalOutcome? {
+        switch note {
+        case .removalLost: .unanswered
+        // The rescan that would have made «the list above shows where the files
+        // are now» true was lost with it.
+        case .removalAndListLost: .unansweredWithStaleList
+        // Not a removal: the sentence for it is `staleListNote`, and drawing both
+        // would say one silence twice.
+        case .listLost, nil: nil
+        }
     }
 
     /// What is ticked, on a line of its own above the buttons.

@@ -14,6 +14,21 @@ import Module_Leftovers_Engine
     @Published public private(set) var failures: [HelmTrash.Refusal] = []
     /// How many actually moved — see `DiskViewModel.removedCount`.
     @Published public private(set) var removedCount = 0
+    /// How many rows this scan never reached a verdict on — `.undetermined` and
+    /// `.unreadable` together, asked of `ItemStatus.judged` rather than listed
+    /// here.
+    ///
+    /// **Counted where the scan lands, not on every pass over `body`.** The page
+    /// asks `nothingToShow` four times a pass and the scan is hundreds of rows on
+    /// an ordinary Mac — the question belongs to the list, and the list changes in
+    /// one place. `hiddenByKindCount` next to it answers the same shape of
+    /// question with a short-circuit; this one has none to take, because any scan
+    /// can hold unjudged rows.
+    ///
+    /// **Over the whole scan, not over the list.** Neither status is `.orphaned`,
+    /// so the default filter is precisely what hides them: counted over
+    /// `visibleItems` it would answer zero in the state it exists to report.
+    @Published public private(set) var uncheckedCount = 0
     /// The last removal's reply never came back.
     ///
     /// The fourth thing the report is read as: not a claim that anything moved,
@@ -23,6 +38,16 @@ import Module_Leftovers_Engine
     /// destructive press somebody had made, while the rescan underneath quietly
     /// changed the list.
     @Published public private(set) var replyLost = false
+    /// The last scan's reply never came back either.
+    ///
+    /// `reload`'s `guard let found else { return }` is the right thing to do —
+    /// folding an unanswered request to `[]` threw away the list somebody was
+    /// working through — and it was mute: the button dimmed, spun and came back,
+    /// the rows were exactly as they had been, and nothing said the machine never
+    /// replied. It is also what `replyLost` needs beside it, because `trash`
+    /// rescans on its own lost-reply path: the sentence about a lost removal
+    /// points at the list, and whether it may is this.
+    @Published public private(set) var scanReplyLost = false
     /// A removal is running. The page dims what would start a second one — see
     /// `trash`, where the cost of the second is a wrong report about the first.
     @Published public private(set) var busy = false
@@ -69,7 +94,7 @@ import Module_Leftovers_Engine
     /// `LeftoversEmpty.reason` holds the rule and says why there are three answers.
     public var nothingToShow: LeftoversEmpty.Reason? {
         LeftoversEmpty.reason(scanned: scanned, visible: visibleItems.count,
-                              hiddenByKind: hiddenByKindCount)
+                              hiddenByKind: hiddenByKindCount, unchecked: uncheckedCount)
     }
 
     /// How many rows the kind filter is holding back — answered without walking
@@ -196,8 +221,19 @@ import Module_Leftovers_Engine
         // state of somebody's Mac — and on a rescan it threw away the list they
         // were working through with every tick on it. `DiskViewModel.scan` keeps
         // its screen where it was for the same nil.
-        guard let found else { return }
+        guard let found else {
+            // Said, not only survived. Counts and outcomes are free; nothing here
+            // names a file, and this is the branch a person would be attaching a
+            // log to — the same reason `trash` writes its own line.
+            scanReplyLost = true
+            HelmLog.shared.info(LeftoversEngine.moduleID, "scan reply lost")
+            return
+        }
+        // A scan that answered puts the previous one's silence down, or the
+        // sentence stands over every list from then on.
+        scanReplyLost = false
         items = found
+        uncheckedCount = found.count { !$0.status.judged }
         // Nothing is ticked by default: these files are load-bearing, so the
         // user chooses each one. But a rescan is not a fresh start — switching
         // one row off rescans, and clearing the set threw away every other tick

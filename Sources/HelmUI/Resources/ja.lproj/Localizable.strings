@@ -100,6 +100,8 @@
 "Custom icon when active" = "アクティブ時にカスタムアイコン";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm は macOS が保持する構成を、手動でも、アプリの起動に合わせたルールでも接続できます。構成そのものはシステム設定で追加します。";
 "Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm は応答を受け取れず、どのファイルが移動したかわかりません。上のリストが現在の場所を示しています。";
+"Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm は応答を受け取れず、どのファイルが移動したかわかりません。上のリストは移動前の場所を示したままです。";
+"Helm got no answer, so the list above is still from the previous scan." = "Helm は応答を受け取れず、上のリストは前回のスキャンのままです。";
 "Icon spin" = "アイコンの回転";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "起動エージェント・設定ファイル・プラグイン・システム機能拡張。ゴミ箱に入れられるのは残存物だけです。";
 "Menu bar" = "メニューバー";
@@ -265,7 +267,6 @@
 "MB" = "MB";
 "MODULES" = "モジュール";
 "Manage Homebrew packages" = "Homebrew パッケージを管理";
-"Manage…" = "管理…";
 "Manual" = "手動";
 "Mark every extra copy" = "余分をすべて削除予定に";
 "Mark for removal" = "削除予定に追加";
@@ -559,11 +560,11 @@
 "Window" = "ウインドウ";
 "With an external display" = "外部ディスプレイ接続時";
 "Without Accessibility Helm cannot see what you type, and this does nothing." = "アクセシビリティがないと入力内容を読み取れず、この機能は動作しません。";
+"Without Full Disk Access Helm cannot check every item, and a short list of leftovers looks exactly like a Mac with none." = "フルディスクアクセスがないとすべての項目を確認できず、残存物が少ないのか無いのか区別できません。";
 "Without Full Disk Access Helm cannot read every folder, and a short list of duplicates looks exactly like a folder that has none." = "フルディスクアクセスがないとすべてのフォルダを読めず、結果が少ないのか重複がないのか区別できません。";
 "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do." = "フルディスクアクセスがないと、保護されたフォルダは空として読まれます。どのルールも一致せず、片づけるものがないフォルダと見分けがつきません。";
 "Without Full Disk Access an app’s containers stay behind, and Helm cannot see the Trash to look for leftovers." = "フルディスクアクセスがないと App のコンテナが残り、Helm はゴミ箱を見て残存ファイルを探すこともできません。";
 "Without Full Disk Access an app’s containers stay behind." = "フルディスクアクセスがないと、アプリのコンテナが残ります。";
-"Without Full Disk Access some files cannot be moved." = "フルディスクアクセスがないと、一部のファイルは移動できません。";
 "Without Full Disk Access some folders scan as empty." = "フルディスクアクセスがないと、一部のフォルダは空として表示されます。";
 "Wording and sizes reviewed across the app: shorter labels, one name per thing, and sizes in your language — “432,95 ГБ”, not “432,95 GB”." = "アプリ全体の文言とサイズ表記を見直し：ラベルを簡潔に、名称を統一し、サイズを各言語の単位で表示。";
 "Write a log file" = "ログを記録";

@@ -146,6 +146,8 @@ final class OneActHasOneNameTests: XCTestCase {
     private static func everyInterpolatedLine(broken: StaleItem) -> [String] {
         [LfStr.selectedLine(3, "4 KB"),
          LfStr.foundLine(3),
+         LfStr.uncheckedLine(3),
+         LfStr.couldNotCheck(3),
          LfStr.movedToTrash(3, "4 KB"),
          LfStr.confirmDeleteInUse("com.vendor.updater"),
          LfStr.confirmDeleteUnreadable("com.vendor.updater"),

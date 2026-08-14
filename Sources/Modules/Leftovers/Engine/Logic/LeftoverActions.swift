@@ -80,8 +80,9 @@ public enum LeftoverActions {
     public static func whyDeleteIsWithheld(from item: StaleItem) -> NoDelete? {
         guard !available(for: item).contains(.delete) else { return nil }
         // A system extension is not a file: macOS removes it with the app that
-        // installed it and SIP refuses everyone else. The row draws «Manage…»
-        // instead of this menu, and the answer is still the honest one.
+        // installed it and SIP refuses everyone else. The row draws the button
+        // that opens the pane instead of this menu, and the answer is still the
+        // honest one.
         if item.kind == .systemExtension { return .protectedByMacOS }
         if item.identifier.hasPrefix("com.apple.") || item.status == .protectedItem {
             return .protectedByMacOS

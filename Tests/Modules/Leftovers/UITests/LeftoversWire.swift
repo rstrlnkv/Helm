@@ -60,6 +60,15 @@ final class LeftoversWire: EngineTransport, @unchecked Sendable {
     private var items: [StaleItem]
     private var removal: LeftoversRemoval
     private var answer: Answer
+    /// What one command gets, where that differs from what the wire is doing.
+    ///
+    /// **A wire that answers all or nothing is simpler than the one it stands
+    /// for.** `LeftoversViewModel.trash` rescans on its own lost-reply path, so
+    /// «the removal was lost and the rescan came back» is a round the real
+    /// transport produces on every retry that works — and with one field for
+    /// every command it was a state no test in this target could write down,
+    /// which is precisely the round the lost-reply sentence was written for.
+    private var overrides: [LeftoversCommand: Answer] = [:]
     private var seen: [LeftoversCommand] = []
 
     var events: AsyncStream<EngineEvent> { AsyncStream { _ in } }
@@ -80,6 +89,12 @@ final class LeftoversWire: EngineTransport, @unchecked Sendable {
     /// fixed at init (CLAUDE.md § Anything that can stop being true on its own).
     func answers(_ next: Answer) { lock.withLock { answer = next } }
 
+    /// The same, for one command only — the request that is lost while the next
+    /// one is answered.
+    func answers(_ next: Answer, to command: LeftoversCommand) {
+        lock.withLock { overrides[command] = next }
+    }
+
     /// Which commands reached the wire, in order — so a test can assert that the
     /// act it is about really was attempted before asserting what was said about
     /// it. An assertion about an absence passes when the subject never happened.
@@ -96,6 +111,7 @@ final class LeftoversWire: EngineTransport, @unchecked Sendable {
         // between them makes the reply describe a wire nobody was in.
         let reply: Reply = lock.withLock {
             if let name { seen.append(name) }
+            let answer = name.flatMap { overrides[$0] } ?? answer
             switch (answer, name) {
             case (.refuse, _): return .refuse
             case (.nothing, _), (_, .none), (_, .setDisabled): return .empty
