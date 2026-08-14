@@ -134,7 +134,7 @@ final class RenameIdempotenceTests: XCTestCase {
                                 rule: Rule(id: "unstamped-\(UUID().uuidString)", name: "r",
                                            enabled: true, conditions: [.name(.contains, "")],
                                            action: .rename(pattern: "{date}-{name}")))
-            return runner.run(plan, at: url.path)
+            return runner.run(plan, at: url.path, key: TestRuleKey.material)
         }
 
         try Data(repeating: 0x41, count: 4).write(to: root.appendingPathComponent("report.pdf"))

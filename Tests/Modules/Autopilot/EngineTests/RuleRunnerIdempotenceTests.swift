@@ -61,7 +61,7 @@ final class RuleRunnerIdempotenceTests: XCTestCase {
     func testAFileAlreadyInItsBucketIsNotSortedIntoAnotherOne() throws {
         let file = try write("Images/a.jpg", in: root)
 
-        let outcome = runner.run(plan(file, .sortIntoSubfolder(.kind), kind: .image), at: file.path)
+        let outcome = runner.run(plan(file, .sortIntoSubfolder(.kind), kind: .image), at: file.path, key: TestRuleKey.material)
 
         XCTAssertEqual(outcome, .alreadyDone)
         XCTAssertEqual(tree(), ["Images", "Images/a.jpg"],
@@ -73,7 +73,7 @@ final class RuleRunnerIdempotenceTests: XCTestCase {
     func testAFileAlreadyInItsMonthFolderIsNotSortedAgain() throws {
         let file = try write("2026-07/a.pdf", in: root)
 
-        let outcome = runner.run(plan(file, .sortIntoSubfolder(.month)), at: file.path)
+        let outcome = runner.run(plan(file, .sortIntoSubfolder(.month)), at: file.path, key: TestRuleKey.material)
 
         XCTAssertEqual(outcome, .alreadyDone)
         XCTAssertEqual(tree(), ["2026-07", "2026-07/a.pdf"])
@@ -85,7 +85,7 @@ final class RuleRunnerIdempotenceTests: XCTestCase {
     func testAFileThatIsNotInItsBucketIsStillSorted() throws {
         let file = try write("a.jpg", in: root)
 
-        let outcome = runner.run(plan(file, .sortIntoSubfolder(.kind), kind: .image), at: file.path)
+        let outcome = runner.run(plan(file, .sortIntoSubfolder(.kind), kind: .image), at: file.path, key: TestRuleKey.material)
 
         XCTAssertEqual(outcome, .moved(to: root.appendingPathComponent("Images/a.jpg").path))
         XCTAssertEqual(tree(), ["Images", "Images/a.jpg"])
@@ -96,7 +96,7 @@ final class RuleRunnerIdempotenceTests: XCTestCase {
     func testOnlyTheFolderTheFileIsInCounts() throws {
         let file = try write("Images/Holiday/a.jpg", in: root)
 
-        let outcome = runner.run(plan(file, .sortIntoSubfolder(.kind), kind: .image), at: file.path)
+        let outcome = runner.run(plan(file, .sortIntoSubfolder(.kind), kind: .image), at: file.path, key: TestRuleKey.material)
 
         XCTAssertEqual(outcome,
                        .moved(to: root.appendingPathComponent("Images/Holiday/Images/a.jpg").path),
@@ -115,7 +115,7 @@ final class RuleRunnerIdempotenceTests: XCTestCase {
     func testMovingAFileIntoTheFolderItIsAlreadyInDoesNothing() throws {
         let file = try write("photo.jpg", in: root)
 
-        let outcome = runner.run(plan(file, .move(to: root.path), kind: .image), at: file.path)
+        let outcome = runner.run(plan(file, .move(to: root.path), kind: .image), at: file.path, key: TestRuleKey.material)
 
         XCTAssertEqual(outcome, .alreadyDone)
         XCTAssertEqual(tree(), ["photo.jpg"], "the file was renamed rather than left alone")
@@ -128,7 +128,7 @@ final class RuleRunnerIdempotenceTests: XCTestCase {
         let file = try write("photo.jpg", in: root)
 
         let outcome = runner.run(plan(file, .move(to: root.path + "/"), kind: .image),
-                                 at: file.path)
+                                 at: file.path, key: TestRuleKey.material)
 
         XCTAssertEqual(outcome, .alreadyDone)
         XCTAssertEqual(tree(), ["photo.jpg"])
@@ -139,7 +139,7 @@ final class RuleRunnerIdempotenceTests: XCTestCase {
         let file = try write("photo.jpg", in: root)
         let elsewhere = root.appendingPathComponent("Sorted")
 
-        let outcome = runner.run(plan(file, .move(to: elsewhere.path), kind: .image), at: file.path)
+        let outcome = runner.run(plan(file, .move(to: elsewhere.path), kind: .image), at: file.path, key: TestRuleKey.material)
 
         XCTAssertEqual(outcome, .moved(to: elsewhere.appendingPathComponent("photo.jpg").path))
         XCTAssertEqual(tree(), ["Sorted", "Sorted/photo.jpg"])

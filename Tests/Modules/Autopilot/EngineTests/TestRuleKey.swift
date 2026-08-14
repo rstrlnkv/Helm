@@ -10,7 +10,10 @@ import Foundation
 /// that behind would be a harness leaving something behind; worse, the second
 /// run would find the first run's key and no longer be testing a first run.
 final class TestRuleKey: RuleKeyPort, @unchecked Sendable {
-    private let material = Data(repeating: 0x11, count: 32)
+    /// The key itself, so a test can ask the same questions of a file that the
+    /// engine holding one of these will ask — whether a mark on it is Helm's.
+    static let material = Data(repeating: 0x11, count: 32)
+    private let material = TestRuleKey.material
     private let lock = NSLock()
     private var exists: Bool
     private let available: Bool

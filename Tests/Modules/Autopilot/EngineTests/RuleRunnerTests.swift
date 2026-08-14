@@ -46,7 +46,7 @@ final class RuleRunnerTests: XCTestCase {
     func testMoveIntoAnotherFolder() throws {
         let file = try write("a.pdf", in: root)
         let destination = root.appendingPathComponent("Sorted")
-        let outcome = runner.run(plan(file, .move(to: destination.path)), at: file.path)
+        let outcome = runner.run(plan(file, .move(to: destination.path)), at: file.path, key: TestRuleKey.material)
         XCTAssertEqual(outcome, .moved(to: destination.appendingPathComponent("a.pdf").path))
         XCTAssertFalse(exists(file.path))
         XCTAssertTrue(exists(destination.appendingPathComponent("a.pdf").path))
@@ -57,7 +57,7 @@ final class RuleRunnerTests: XCTestCase {
     func testTheDestinationIsCreated() throws {
         let file = try write("a.pdf", in: root)
         let deep = root.appendingPathComponent("One/Two/Three")
-        _ = runner.run(plan(file, .move(to: deep.path)), at: file.path)
+        _ = runner.run(plan(file, .move(to: deep.path)), at: file.path, key: TestRuleKey.material)
         XCTAssertTrue(exists(deep.appendingPathComponent("a.pdf").path))
     }
 
@@ -69,7 +69,7 @@ final class RuleRunnerTests: XCTestCase {
         try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
         try Data(repeating: 0x42, count: 99).write(to: destination.appendingPathComponent("a.pdf"))
 
-        _ = runner.run(plan(file, .move(to: destination.path)), at: file.path)
+        _ = runner.run(plan(file, .move(to: destination.path)), at: file.path, key: TestRuleKey.material)
 
         let kept = try Data(contentsOf: destination.appendingPathComponent("a.pdf"))
         XCTAssertEqual(kept.count, 99, "the file that was already there was overwritten")
@@ -80,7 +80,7 @@ final class RuleRunnerTests: XCTestCase {
     /// however the destination got into the rule.
     func testADestinationOutsideTheUsersFilesIsRefused() throws {
         let file = try write("a.pdf", in: root)
-        let outcome = runner.run(plan(file, .move(to: "/System/Library/Helm")), at: file.path)
+        let outcome = runner.run(plan(file, .move(to: "/System/Library/Helm")), at: file.path, key: TestRuleKey.material)
         XCTAssertEqual(outcome, .refused(.outOfScope))
         XCTAssertTrue(exists(file.path), "the file was moved anyway")
     }
@@ -89,19 +89,19 @@ final class RuleRunnerTests: XCTestCase {
 
     func testSortIntoSubfolderByKind() throws {
         let file = try write("a.png", in: root)
-        _ = runner.run(plan(file, .sortIntoSubfolder(.kind), kind: .image), at: file.path)
+        _ = runner.run(plan(file, .sortIntoSubfolder(.kind), kind: .image), at: file.path, key: TestRuleKey.material)
         XCTAssertTrue(exists(root.appendingPathComponent("Images/a.png").path))
     }
 
     func testSortIntoSubfolderByMonth() throws {
         let file = try write("a.pdf", in: root)
-        _ = runner.run(plan(file, .sortIntoSubfolder(.month)), at: file.path)
+        _ = runner.run(plan(file, .sortIntoSubfolder(.month)), at: file.path, key: TestRuleKey.material)
         XCTAssertTrue(exists(root.appendingPathComponent("2026-07/a.pdf").path))
     }
 
     func testRename() throws {
         let file = try write("report.pdf", in: root)
-        let outcome = runner.run(plan(file, .rename(pattern: "{name}-final")), at: file.path)
+        let outcome = runner.run(plan(file, .rename(pattern: "{name}-final")), at: file.path, key: TestRuleKey.material)
         XCTAssertEqual(outcome, .renamed(to: "report-final.pdf"))
         XCTAssertTrue(exists(root.appendingPathComponent("report-final.pdf").path))
     }
@@ -110,7 +110,7 @@ final class RuleRunnerTests: XCTestCase {
     /// alone and says so, rather than half-renaming it.
     func testARefusedPatternLeavesTheFileAlone() throws {
         let file = try write("report.pdf", in: root)
-        let outcome = runner.run(plan(file, .rename(pattern: "../{name}")), at: file.path)
+        let outcome = runner.run(plan(file, .rename(pattern: "../{name}")), at: file.path, key: TestRuleKey.material)
         XCTAssertEqual(outcome, .refused(.badPattern))
         XCTAssertTrue(exists(file.path))
     }
@@ -121,7 +121,7 @@ final class RuleRunnerTests: XCTestCase {
     /// engine, not in the view model that built the plan.
     func testTrashGoesThroughTheUserFileGate() throws {
         let file = try write("a.pdf", in: root)
-        let outcome = runner.run(plan(file, .trash), at: file.path)
+        let outcome = runner.run(plan(file, .trash), at: file.path, key: TestRuleKey.material)
         XCTAssertEqual(outcome, .trashed)
         XCTAssertFalse(exists(file.path))
     }
@@ -129,7 +129,7 @@ final class RuleRunnerTests: XCTestCase {
     func testTrashingSomethingOutOfScopeIsRefused() {
         let outcome = runner.run(plan(URL(fileURLWithPath: "/System/Library/Fonts/Helvetica.ttc"),
                                       .trash),
-                                 at: "/System/Library/Fonts/Helvetica.ttc")
+                                 at: "/System/Library/Fonts/Helvetica.ttc", key: TestRuleKey.material)
         XCTAssertEqual(outcome, .refused(.outOfScope))
     }
 
@@ -145,19 +145,19 @@ final class RuleRunnerTests: XCTestCase {
     func testARuleDoesNotActOnTheSameFileTwice() throws {
         let file = try write("a.pdf", in: root)
         let destination = root.appendingPathComponent("Sorted")
-        let first = runner.run(plan(file, .move(to: destination.path)), at: file.path)
+        let first = runner.run(plan(file, .move(to: destination.path)), at: file.path, key: TestRuleKey.material)
         XCTAssertEqual(first, .moved(to: destination.appendingPathComponent("a.pdf").path))
 
         let landed = destination.appendingPathComponent("a.pdf")
-        let second = runner.run(plan(landed, .move(to: destination.path)), at: landed.path)
+        let second = runner.run(plan(landed, .move(to: destination.path)), at: landed.path, key: TestRuleKey.material)
         XCTAssertEqual(second, .alreadyDone)
     }
 
     /// A different rule is not blocked by the first one's mark.
     func testAnotherRuleStillGetsItsTurn() throws {
         let file = try write("a.pdf", in: root)
-        _ = runner.run(plan(file, .addTag("one"), id: "rule-1"), at: file.path)
-        let outcome = runner.run(plan(file, .addTag("two"), id: "rule-2"), at: file.path)
+        _ = runner.run(plan(file, .addTag("one"), id: "rule-1"), at: file.path, key: TestRuleKey.material)
+        let outcome = runner.run(plan(file, .addTag("two"), id: "rule-2"), at: file.path, key: TestRuleKey.material)
         XCTAssertEqual(outcome, .tagged("two"))
     }
 }
