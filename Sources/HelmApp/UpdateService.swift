@@ -27,6 +27,24 @@ import HelmRuntime
         case digestMismatch
     }
 
+    /// What the card has to say beyond the three published facts above it.
+    ///
+    /// **An enum because it was a state machine with no compiler between its
+    /// halves.** `lastMessage` was a bare `String?` with five values written and
+    /// three read: `"ahead"` and `"available"` were written here and named
+    /// nowhere else in `Sources/`, and `"manual-install"` was read by a branch
+    /// nothing could reach. The two dead ones are gone rather than kept — each
+    /// duplicated a fact the card already had, `aheadOfChannel` and `available`
+    /// itself — and the three that remain cannot now be misspelled on one side
+    /// of the pair.
+    enum Note: Equatable {
+        case upToDate
+        case checkFailed
+        /// The release published no digest for its asset, or no installable
+        /// asset at all: the browser was opened and nothing was swapped.
+        case manualInstall
+    }
+
     @Published private(set) var available: Release?
     /// What the channel's newest release is, when the running build is a
     /// prerelease ahead of it. Nil in every other state, including while an
@@ -35,7 +53,33 @@ import HelmRuntime
     @Published private(set) var checking = false
     @Published private(set) var installState: InstallState = .idle
     /// A short status for the settings row after a manual check (nil = idle).
-    @Published private(set) var lastMessage: String?
+    @Published private(set) var note: Note?
+
+    /// The singleton is one state of this type, and every other state was
+    /// unreachable from any harness — which is why the card shipped with a
+    /// branch nothing could draw. Nothing in the app calls this; `shared` is
+    /// what the app uses, and a service in a named state is what a test needs.
+    init(available: Release? = nil, installState: InstallState = .idle,
+         aheadOfChannel: String? = nil, note: Note? = nil) {
+        self.available = available
+        self.installState = installState
+        self.aheadOfChannel = aheadOfChannel
+        self.note = note
+    }
+
+    /// The release cannot be installed from inside Helm, and the browser has
+    /// been sent to the page instead.
+    ///
+    /// **The offer goes with it.** The card asks about `available` before it
+    /// asks about the note, so leaving the release in place kept «Update ready»
+    /// and «Update & Relaunch» on screen while a browser opened by itself — the
+    /// exact reading the note was written to prevent. The offer is not on offer
+    /// any more: Helm has just declined to take it.
+    func noteManualInstall() {
+        installState = .idle
+        note = .manualInstall
+        available = nil
+    }
 
     private let repo = "rstrlnkv/Helm"
     private var currentVersion: String {
@@ -72,7 +116,13 @@ import HelmRuntime
         // Retry after a failure must work: only an in-flight download/install blocks.
         guard let rel = available, installState != .downloading, installState != .installing else { return }
         guard let zip = rel.zipURL else {
-            NSWorkspace.shared.open(rel.pageURL)   // no installable asset — manual path
+            // The other silent path, and the same repair: a release with no
+            // installable asset opened a browser and changed no state at all,
+            // so the card went on offering to install what it had just sent
+            // somebody else to fetch.
+            HelmLog.shared.warn("update", "no installable asset for \(rel.version) — manual install")
+            noteManualInstall()
+            NSWorkspace.shared.open(rel.pageURL)
             return
         }
         Task {
@@ -93,8 +143,7 @@ import HelmRuntime
                     // The browser opening on its own, with the row still saying
                     // "update available", reads as the button having done
                     // nothing. Say why before the window goes away.
-                    installState = .idle
-                    lastMessage = "manual-install"
+                    noteManualInstall()
                     NSWorkspace.shared.open(rel.pageURL)
                     return
                 }
@@ -143,7 +192,7 @@ import HelmRuntime
     }
 
     private func performCheck(manual: Bool) async {
-        if manual { checking = true; lastMessage = nil }
+        if manual { checking = true; note = nil }
         defer { checking = false }
 
         let channel = Self.channel
@@ -171,19 +220,21 @@ import HelmRuntime
                 HelmLog.shared.info("update", "up to date on \(channel.rawValue)")
                 available = nil
                 aheadOfChannel = nil
-                if manual { lastMessage = "up-to-date" }
+                if manual { note = .upToDate }
             case .ahead(let newest):
                 HelmLog.shared.info("update", "ahead of \(channel.rawValue) (newest \(newest))")
                 available = nil
                 aheadOfChannel = newest
-                if manual { lastMessage = "ahead" }
+                // No note: `aheadOfChannel` is the fact, and a second spelling
+                // of it was written here and read nowhere.
+                note = nil
             case .error:
                 HelmLog.shared.warn("update", "check failed (HTTP \(http.statusCode), \(channel.rawValue))")
-                if manual { lastMessage = "error" }
+                if manual { note = .checkFailed }
             case .available(let r):
                 HelmLog.shared.info("update", "available \(r.version) on \(channel.rawValue)")
                 guard let page = URL(string: r.pageURL) else {
-                    if manual { lastMessage = "error" }
+                    if manual { note = .checkFailed }
                     return
                 }
                 aheadOfChannel = nil
@@ -192,10 +243,11 @@ import HelmRuntime
                                     zipURL: r.zipURL.flatMap(URL.init(string:)),
                                     downloadURL: r.downloadURL.flatMap(URL.init(string:)),
                                     notes: r.notes)
-                if manual { lastMessage = "available" }
+                // No note either: the offer itself is what the card draws.
+                note = nil
             }
         } catch {
-            if manual { lastMessage = "error" }
+            if manual { note = .checkFailed }
         }
     }
 }

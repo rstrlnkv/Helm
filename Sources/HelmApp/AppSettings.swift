@@ -88,6 +88,13 @@ extension Notification.Name {
         }
     }
 
+    /// What is off before anybody has said anything.
+    ///
+    /// Declared once because three readers want it: the getter's own "nothing
+    /// stored" answer, the consent section on the General page, and the tests
+    /// that hold the two together.
+    static let defaultDisabledScans: Set<String> = ["disk"]
+
     /// Background scans the person switched off, by module id.
     ///
     /// An off-list rather than an on-list, so a scan added by a future version
@@ -107,7 +114,15 @@ extension Notification.Name {
     static var disabledScans: Set<String> {
         get {
             guard let stored = store.object("disabledScans") as? [String] else {
-                return ["disk"]
+                // Nothing stored, and this is where the seal's one door used to
+                // stand open: `.adopt` is granted while the keychain item does
+                // not exist, and returning here never created it. So no
+                // installation ever spent its own first use, and the first value
+                // the app saw — `defaults write com.helm.app disabledScans
+                // -array`, a full-volume walk switched on unattended — was
+                // adopted and sealed as Helm's own. Day one is Helm's.
+                scanGuard.establishKey()
+                return defaultDisabledScans
             }
             switch scanGuard.verdict(payload: Self.payload(of: stored),
                                      mac: store.string(SettingGuard.macKey(for: "disabledScans"),

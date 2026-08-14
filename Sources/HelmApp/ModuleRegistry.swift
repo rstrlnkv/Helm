@@ -13,6 +13,14 @@ import Module_Layout_UI
 /// All compiled-in module descriptors. Add future modules here.
 @MainActor enum ModuleRegistry {
     static let all: [any ModuleDescriptor] = [KeepAwakeDescriptor(), VPNDescriptor(), UninstallerDescriptor(), HomebrewDescriptor(), LeftoversDescriptor(), DiskDescriptor(), DuplicatesDescriptor(), AutopilotDescriptor(), LayoutDescriptor()]
+
+    /// The descriptor an id names, or nil for an id from a store written by
+    /// another build. Spelled here because everything that reads a stored
+    /// arrangement — the sidebar, the panel, the composer, the status menu —
+    /// needs it, and each had written the search out again.
+    static func descriptor(_ id: String) -> (any ModuleDescriptor)? {
+        all.first { $0.idRaw == id }
+    }
 }
 
 extension ModuleDescriptor {

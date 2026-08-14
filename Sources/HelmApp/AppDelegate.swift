@@ -116,8 +116,8 @@ import Module_Uninstaller_UI
                     guard let d = ModuleRegistry.all.first(where: { $0.idRaw == id }) else { return }
                     host.setEnabled(d, on)
                 },
-                isLaunchAtLogin: { LoginItem.isEnabled },
-                setLaunchAtLogin: { LoginItem.setEnabled($0) })
+                isLaunchAtLogin: { LoginItem.current().isOn },
+                setLaunchAtLogin: { LoginItem.setEnabled($0).isOn })
         } else {
             PermissionAudit.run()
             offerTrashLeftovers()

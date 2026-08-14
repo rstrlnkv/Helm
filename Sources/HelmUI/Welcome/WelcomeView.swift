@@ -13,7 +13,10 @@ public struct WelcomeView: View {
     private let isModuleEnabled: (String) -> Bool
     private let setModuleEnabled: (String, Bool) -> Void
     private let isLaunchAtLogin: () -> Bool
-    private let setLaunchAtLogin: (Bool) -> Void
+    /// Answers with what the login item **is** afterwards, not with what it
+    /// was asked to be: registration can be refused, and a tour switch that
+    /// stays where the finger left it is the same lie the settings page had.
+    private let setLaunchAtLogin: (Bool) -> Bool
     private let onClose: () -> Void
     @State private var flow: WelcomeFlow
     @State private var revealed = false
@@ -29,7 +32,7 @@ public struct WelcomeView: View {
                 isModuleEnabled: @escaping (String) -> Bool = { _ in true },
                 setModuleEnabled: @escaping (String, Bool) -> Void = { _, _ in },
                 isLaunchAtLogin: @escaping () -> Bool = { false },
-                setLaunchAtLogin: @escaping (Bool) -> Void = { _ in },
+                setLaunchAtLogin: @escaping (Bool) -> Bool = { $0 },
                 onClose: @escaping () -> Void) {
         self.steps = steps
         self.isModuleEnabled = isModuleEnabled
@@ -164,7 +167,10 @@ public struct WelcomeView: View {
         } else {
             Toggle(WelcomeStr.launchAtLogin, isOn: $switchOn)
                 .toggleStyle(.switch)
-                .onChange(of: switchOn) { _, on in setLaunchAtLogin(on) }
+                .onChange(of: switchOn) { _, on in
+                    let settled = setLaunchAtLogin(on)
+                    if settled != on { switchOn = settled }
+                }
         }
     }
 

@@ -44,6 +44,16 @@ public struct SettingGuard: Sendable {
         return SettingSeal.verdict(payload: payload, mac: mac, key: key)
     }
 
+    /// Spend first use, so the door `.adopt` leaves open is Helm's to walk
+    /// through and nobody else's.
+    ///
+    /// `firstUse` is true only for the run that creates the key, and a caller
+    /// that returns a default *before* asking anything of this guard never
+    /// creates it: the installation then sits for ever one unsealed value away
+    /// from adopting a stranger's. So a setting with a default worth defending
+    /// establishes the key on its first read, whatever is stored.
+    public func establishKey() { _ = keys.key() }
+
     /// The key a MAC is stored under, beside the value's own.
     ///
     /// One spelling, because the writer and the reader are usually in different

@@ -22,7 +22,7 @@ import HelmUI
               isModuleEnabled: @escaping (String) -> Bool,
               setModuleEnabled: @escaping (String, Bool) -> Void,
               isLaunchAtLogin: @escaping () -> Bool,
-              setLaunchAtLogin: @escaping (Bool) -> Void) {
+              setLaunchAtLogin: @escaping (Bool) -> Bool) {
         // Written when the window opens, not when it closes: a person who
         // force-quits mid-tour has still been shown it, and showing it again
         // at every launch until they press Done is worse than not showing it.

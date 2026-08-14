@@ -779,3 +779,10 @@
 "A VPN rule that cannot get at its saved secret now says so on the page and asks for one press of Connect. It used to stop working in silence, with the reason only in the diagnostics log." = "A VPN rule that cannot get at its saved secret now says so on the page and asks for one press of Connect. It used to stop working in silence, with the reason only in the diagnostics log.";
 "Everything found is hidden by the filter." = "Everything found is hidden by the filter.";
 "Protected by macOS" = "Protected by macOS";
+"While you are away" = "While you are away";
+"These modules look through your files on their own — only when the Mac is idle, unlocked and on power, and no more than twice a day each." = "These modules look through your files on their own — only when the Mac is idle, unlocked and on power, and no more than twice a day each.";
+"Hasn’t run yet" = "Hasn’t run yet";
+"Waiting for you to allow Helm in System Settings." = "Waiting for you to allow Helm in System Settings.";
+"macOS would not add Helm to your login items, so it will not open by itself." = "macOS would not add Helm to your login items, so it will not open by itself.";
+"Open Login Items & Extensions…" = "Open Login Items & Extensions…";
+"Switched off" = "Switched off";

@@ -216,7 +216,71 @@ enum AppStr {
         L("The log records what Helm did, not what you have: app names, VPN names and paths are replaced before anything is written.")
     }
     static var clearLog: String { L("Clear") }
+
+    /// What the login switch has to say, and the two states where it says
+    /// nothing: a caption under an ordinary switch is a caption nobody reads.
+    ///
+    /// Optional rather than an empty string, so the page cannot draw an empty
+    /// `Text` — and so the compiler is what decides whether a new
+    /// `LoginItemState` is spoken for.
+    static func loginItemNote(_ state: LoginItemState,
+                              language: AppLanguage = AppLanguage.current) -> String? {
+        switch state {
+        case .on, .off: return nil
+        case .needsApproval:
+            return L("Waiting for you to allow Helm in System Settings.", language: language)
+        case .refused:
+            return L("macOS would not add Helm to your login items, so it will not open by itself.",
+                     language: language)
+        }
+    }
+
+    /// Named the way macOS names the row, so the row Helm points at is the row
+    /// that is found: on macOS 27 it is «Login Items & Extensions»
+    /// (`LoginItems.appex`), and each language's spelling is that bundle's.
+    static func openLoginItems(language: AppLanguage = AppLanguage.current) -> String {
+        L("Open Login Items & Extensions…", language: language)
+    }
+    static var openLoginItems: String { openLoginItems() }
+
     static var modulesSection: String { L("Modules") }
+    /// The section that says Helm reads the disk with nobody at the desk.
+    ///
+    /// It had no screen at all: `ScanCoordinator` walks the volume for three
+    /// modules while the Mac is idle, and `AppSettings.disabledScans` — the one
+    /// switch — was written by nothing in `Sources/`. The heading names the act
+    /// rather than the setting, because the setting is not what the person is
+    /// being asked about.
+    ///
+    /// Each takes a language, for the reason `showPermissions` does: the suite
+    /// runs in this Mac's own, so a check gated on `.current` never reads the
+    /// other seven.
+    static func backgroundScansSection(language: AppLanguage = AppLanguage.current) -> String {
+        L("While you are away", language: language)
+    }
+    static var backgroundScansSection: String { backgroundScansSection() }
+
+    static func backgroundScansNote(language: AppLanguage = AppLanguage.current) -> String {
+        L("These modules look through your files on their own — only when the Mac is idle, unlocked and on power, and no more than twice a day each.",
+          language: language)
+    }
+    static var backgroundScansNote: String { backgroundScansNote() }
+
+    /// The row's own caption. «Not yet» rather than «never»: a scan that has not
+    /// run today is the ordinary state of a Mac somebody uses.
+    static func scanNeverRun(language: AppLanguage = AppLanguage.current) -> String {
+        L("Hasn’t run yet", language: language)
+    }
+    static var scanNeverRun: String { scanNeverRun() }
+
+    static func scanLastRun(_ when: String,
+                            language: AppLanguage = AppLanguage.current) -> String {
+        L("Last run \(when)",
+          [.ru: "Последний раз \(when)", .es: "Última vez \(when)",
+           .fr: "Dernière fois \(when)", .de: "Zuletzt \(when)",
+           .ja: "前回: \(when)", .zh: "上次\(when)", .pt: "Última vez \(when)"],
+          language: language)
+    }
     /// «in your menu bar» was false and had been since the panel: Helm is also
     /// a panel, a settings window and a sidebar the person arranges. A tagline
     /// under the wordmark is the app's own claim about itself, so it names the
@@ -492,6 +556,16 @@ enum AppStr {
     static var menuBarNote: String {
         L("The icon is white when idle and takes on the colour of whichever module is active.")
     }
+
+    /// The sidebar's last group of modules: the ones somebody switched off.
+    ///
+    /// Not `L("Off")`, which Layout's sound setting already owns and which
+    /// seven languages have translated as the state of *that* — one English key
+    /// means one thing.
+    static func switchedOffSection(language: AppLanguage = AppLanguage.current) -> String {
+        L("Switched off", language: language)
+    }
+    static var switchedOffSection: String { switchedOffSection() }
 
     /// A section's heading: the name somebody typed, or its seed translated.
     ///

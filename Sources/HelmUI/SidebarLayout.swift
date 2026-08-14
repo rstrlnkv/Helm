@@ -108,6 +108,26 @@ public struct SidebarLayout: Equatable, Codable, Sendable {
         return SidebarLayout(sections: sections)
     }
 
+    // MARK: - What the sidebar lists
+
+    /// The modules of a section that are switched on, in the section's order.
+    public func live(in section: Section, enabled: Set<String>) -> [String] {
+        section.modules.filter(enabled.contains)
+    }
+
+    /// Every module that is switched off, in layout order across the sections.
+    ///
+    /// **Because the sidebar used to answer this by dropping them.** A module
+    /// switched off then had no page anywhere: all four routes to `.module(id)`
+    /// refuse it, so the empty state written for exactly that case — symbol,
+    /// name, summary and a «Turn on» button — could not be reached in the
+    /// shipping app, and the only trace of a module somebody switched off was a
+    /// tooltip in the composer. One list at the foot of the sidebar is the door;
+    /// this is the list.
+    public func off(enabled: Set<String>) -> [String] {
+        sections.flatMap(\.modules).filter { !enabled.contains($0) }
+    }
+
     // MARK: - Moving
 
     /// Moves a module into `section`, before `before`, or to its end.

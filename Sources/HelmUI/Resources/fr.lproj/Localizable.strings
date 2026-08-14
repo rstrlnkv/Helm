@@ -779,3 +779,10 @@
 "A VPN rule that cannot get at its saved secret now says so on the page and asks for one press of Connect. It used to stop working in silence, with the reason only in the diagnostics log." = "Une règle VPN qui ne peut pas accéder à sa clé enregistrée le dit désormais sur la page et demande d’appuyer une fois sur « Se connecter ». Elle cessait auparavant de fonctionner en silence, la raison ne figurant que dans le journal de diagnostic.";
 "Everything found is hidden by the filter." = "Tout ce qui a été trouvé est masqué par le filtre.";
 "Protected by macOS" = "Protégé par macOS";
+"While you are away" = "Pendant votre absence";
+"These modules look through your files on their own — only when the Mac is idle, unlocked and on power, and no more than twice a day each." = "Ces modules parcourent vos fichiers d’eux-mêmes, uniquement quand le Mac est inactif, déverrouillé et branché, et au maximum deux fois par jour chacun.";
+"Hasn’t run yet" = "Aucune analyse pour l’instant";
+"Waiting for you to allow Helm in System Settings." = "En attente de votre autorisation dans Réglages Système.";
+"macOS would not add Helm to your login items, so it will not open by itself." = "macOS n’a pas ajouté Helm à l’ouverture de session, il ne s’ouvrira donc pas tout seul.";
+"Open Login Items & Extensions…" = "Ouvrir Ouverture et extensions…";
+"Switched off" = "Désactivés";

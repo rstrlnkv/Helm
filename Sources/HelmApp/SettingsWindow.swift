@@ -320,14 +320,19 @@ private struct SettingsSidebar: View {
     }
 
     private var sidebarList: some View {
-        List(selection: $model.selection) {
+        // Both asked once for the whole list. `isEnabled` is a store read per
+        // module and `layout` is a store read plus a reconcile, and each is a
+        // question about the group rather than about a row.
+        let enabled = enabledModules
+        let layout = self.layout
+        return List(selection: $model.selection) {
             // The modules first. The sidebar is where you go to *use* one, and
             // the three pages under them are about Helm rather than about
             // anything it does — Settings was above the whole arrangement,
             // which put the least-visited page of the window in the first row
             // and pushed every module down by one.
             ForEach(layout.sections) { section in
-                let modules = visibleModules(in: section)
+                let modules = descriptors(layout.live(in: section, enabled: enabled))
                 if !modules.isEmpty {
                     Section(AppStr.sectionTitle(section)) {
                         ForEach(modules, id: \.idRaw) { descriptor in
@@ -339,6 +344,29 @@ private struct SettingsSidebar: View {
                                        blocked: isBlocked(descriptor))
                                 .tag(SettingsSelection.module(descriptor.idRaw))
                         }
+                    }
+                }
+            }
+            // The modules that are off, below the ones that are on and drawn
+            // the way the composer draws them — dimmed, and reachable.
+            //
+            // **They were dropped, and that left a written screen with no
+            // door.** `ModuleDetailView`'s else-branch says what the module is
+            // and offers «Turn on», and none of the four routes to
+            // `.module(id)` would give a switched-off module one: the person
+            // who switched Disk off and later wondered what it did had a
+            // tooltip in the composer and nothing else. The section costs one
+            // row per module somebody has switched off, which is a number they
+            // chose.
+            let off = descriptors(layout.off(enabled: enabled))
+            if !off.isEmpty {
+                Section(AppStr.switchedOffSection) {
+                    ForEach(off, id: \.idRaw) { descriptor in
+                        sidebarRow(descriptor.moduleMetadata.shortName,
+                                   descriptor.moduleMetadata.sfSymbol,
+                                   descriptor.moduleTint.colour)
+                            .opacity(0.55)
+                            .tag(SettingsSelection.module(descriptor.idRaw))
                     }
                 }
             }
@@ -382,14 +410,12 @@ private struct SettingsSidebar: View {
                                        registry: SidebarLayoutStore.registry())
     }
 
-    /// The sidebar shows only what is on; Settings shows everything. The two
-    /// answer different questions — this is where a module is used, and that is
-    /// where it is decided which modules exist at all.
-    private func visibleModules(in section: SidebarLayout.Section) -> [any ModuleDescriptor] {
-        section.modules.compactMap { id in
-            ModuleRegistry.all.first { $0.idRaw == id }
-        }
-        .filter { model.host.isEnabled($0) }
+    /// Which modules are on. The sidebar lists those first and the rest under
+    /// «Switched off»; Settings is where it is decided which exist at all.
+    private var enabledModules: Set<String> { model.host.enabledModuleIDs }
+
+    private func descriptors(_ ids: [String]) -> [any ModuleDescriptor] {
+        ids.compactMap(ModuleRegistry.descriptor)
     }
 
     private func sidebarRow(_ title: String, _ symbol: String, _ color: Color,

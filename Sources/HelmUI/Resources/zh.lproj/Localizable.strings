@@ -779,3 +779,10 @@
 "A VPN rule that cannot get at its saved secret now says so on the page and asks for one press of Connect. It used to stop working in silence, with the reason only in the diagnostics log." = "无法取用已保存密钥的 VPN 规则现在会在页面上说明，并请你按一次“连接”。以前它会悄悄失效，原因只留在诊断日志里。";
 "Everything found is hidden by the filter." = "找到的项目已全部被筛选条件隐藏。";
 "Protected by macOS" = "受 macOS 保护";
+"While you are away" = "在你离开时";
+"These modules look through your files on their own — only when the Mac is idle, unlocked and on power, and no more than twice a day each." = "这些模块会自行浏览你的文件——仅在 Mac 闲置、已解锁并接通电源时，每个每天最多两次。";
+"Hasn’t run yet" = "尚未运行";
+"Waiting for you to allow Helm in System Settings." = "正在等待你在系统设置中允许。";
+"macOS would not add Helm to your login items, so it will not open by itself." = "macOS 未将 Helm 加入登录项，因此它不会自动打开。";
+"Open Login Items & Extensions…" = "打开登录项与扩展…";
+"Switched off" = "已关闭";

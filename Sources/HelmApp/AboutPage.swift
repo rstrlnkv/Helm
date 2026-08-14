@@ -83,7 +83,14 @@ enum ChannelInk {
 struct AboutHelmView: View {
     @State private var showWhatsNew = false
     @State private var channel = UpdateService.channel
-    @ObservedObject private var updater = UpdateService.shared
+    @ObservedObject private var updater: UpdateService
+
+    /// Takes the updater, defaulting to the app's own.
+    ///
+    /// The card has eleven states and the singleton could only ever be in one
+    /// of them, so nothing could draw the other ten — which is how an
+    /// unreachable branch shipped. This is the whole seam.
+    init(updater: UpdateService = .shared) { self.updater = updater }
 
     private var shortVersion: String {
         AppBuild.shortVersion ?? "0.1.0"
@@ -379,13 +386,28 @@ struct AboutHelmView: View {
         .accessibilityLabel(AppStr.updateChannel)
     }
 
+    /// What this card is drawing, decided in one place that can be asked.
+    ///
+    /// It was a chain of `else if`s inside the builder, and the order of that
+    /// chain is what made the manual-install sentence unreachable — see
+    /// `UpdateCard`.
+    private var card: UpdateCard {
+        UpdateCard.drawn(installState: updater.installState, checking: updater.checking,
+                         hasRelease: updater.available != nil,
+                         hasAhead: updater.aheadOfChannel != nil, note: updater.note)
+    }
+
     @ViewBuilder
     private var updateRow: some View {
-        switch updater.installState {
+        // Exhaustive, no `default`: a state the updater learns to write is a
+        // build error here rather than a card quietly drawing the wrong thing.
+        switch card {
         case .downloading:
             statusLine(AppStr.downloadingUpdate)
         case .installing:
             statusLine(AppStr.installingUpdate)
+        case .checking:
+            statusLine(AppStr.checking)
         case .digestMismatch:
             VStack(alignment: .leading, spacing: HelmSpace.s5) {
                 HStack(spacing: HelmSpace.s5) {
@@ -417,75 +439,68 @@ struct AboutHelmView: View {
                     }
                 }
             }
-        case .idle:
-            if updater.checking {
-                statusLine(AppStr.checking)
-            } else if let rel = updater.available {
-                // The offer is the card's main action, so it gets full width
-                // instead of being squeezed next to the label.
-                VStack(alignment: .leading, spacing: HelmSpace.s5) {
-                    HStack(spacing: HelmSpace.s5) {
-                        statusIcon("arrow.down.circle.fill", .accentColor)
-                        Text(AppStr.updateReady).lineLimit(1)
-                        Spacer()
-                        Text(rel.version)
-                            .font(HelmText.figureFont)
-                            .foregroundStyle(HelmText.quiet)
-                    }
-                    Button(AppStr.updateAndRelaunch) { updater.downloadAndInstall() }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
-                        .frame(maxWidth: .infinity)
-                }
-            } else if updater.lastMessage == "manual-install" {
+        case .ready:
+            // The offer is the card's main action, so it gets full width
+            // instead of being squeezed next to the label.
+            VStack(alignment: .leading, spacing: HelmSpace.s5) {
                 HStack(spacing: HelmSpace.s5) {
-                    statusIcon("exclamationmark.triangle.fill", HelmSignal.warning)
-                    Text(AppStr.updateManualInstall).lineLimit(3)
+                    statusIcon("arrow.down.circle.fill", .accentColor)
+                    Text(AppStr.updateReady).lineLimit(1)
                     Spacer()
+                    Text(updater.available?.version ?? "")
+                        .font(HelmText.figureFont)
+                        .foregroundStyle(HelmText.quiet)
                 }
-            } else if updater.lastMessage == "error" {
-                HStack(spacing: HelmSpace.s5) {
-                    statusIcon("exclamationmark.triangle.fill", HelmSignal.warning)
-                    // Two lines, like the `aheadOfChannel` branch below. At one
-                    // this sentence was cut in five of the eight languages: a
-                    // German whose update check failed read «Update-Prüfung
-                    // fehl…», where the string wants 198 pt of the roughly 240
-                    // the row leaves it. French wants 253, Portuguese 234,
-                    // Russian 225, Spanish 215. Only en, ja and zh ever fitted.
-                    Text(AppStr.updateCheckFailed)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Spacer()
-                    Button(AppStr.retry) { updater.checkNow() }
-                }
-            } else if let newest = updater.aheadOfChannel {
-                // Before "up to date", which this state used to be read as: the
-                // check reports both, and being ahead is the more specific
-                // answer of the two.
-                HStack(spacing: HelmSpace.s5) {
-                    statusIcon("arrow.up.circle.fill", HelmSignal.warning)
-                    Text(AppStr.aheadOfChannel(newest))
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Spacer()
-                    Button(AppStr.checkNow) { updater.checkNow() }
-                }
-            } else if updater.lastMessage == "up-to-date" {
-                HStack(spacing: HelmSpace.s5) {
-                    statusIcon("checkmark.circle.fill", HelmSignal.success)
-                    Text(AppStr.upToDate).lineLimit(1)
-                    Spacer()
-                    Button(AppStr.checkNow) { updater.checkNow() }
-                }
-            } else {
-                // Nothing has been checked in this session: report when the
-                // last check happened rather than claiming to be current.
-                HStack(spacing: HelmSpace.s5) {
-                    statusIcon("arrow.triangle.2.circlepath", .secondary)
-                    Text(lastCheckedText).lineLimit(1).foregroundStyle(HelmText.quiet)
-                    Spacer()
-                    Button(AppStr.checkNow) { updater.checkNow() }
-                }
+                Button(AppStr.updateAndRelaunch) { updater.downloadAndInstall() }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .frame(maxWidth: .infinity)
+            }
+        case .manualInstall:
+            HStack(spacing: HelmSpace.s5) {
+                statusIcon("exclamationmark.triangle.fill", HelmSignal.warning)
+                Text(AppStr.updateManualInstall).lineLimit(3)
+                Spacer()
+            }
+        case .checkFailed:
+            HStack(spacing: HelmSpace.s5) {
+                statusIcon("exclamationmark.triangle.fill", HelmSignal.warning)
+                // Two lines, like the `ahead` arm below. At one this sentence
+                // was cut in five of the eight languages: a German whose update
+                // check failed read «Update-Prüfung fehl…», where the string
+                // wants 198 pt of the roughly 240 the row leaves it. French
+                // wants 253, Portuguese 234, Russian 225, Spanish 215. Only en,
+                // ja and zh ever fitted.
+                Text(AppStr.updateCheckFailed)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer()
+                Button(AppStr.retry) { updater.checkNow() }
+            }
+        case .ahead:
+            HStack(spacing: HelmSpace.s5) {
+                statusIcon("arrow.up.circle.fill", HelmSignal.warning)
+                Text(AppStr.aheadOfChannel(updater.aheadOfChannel ?? ""))
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer()
+                Button(AppStr.checkNow) { updater.checkNow() }
+            }
+        case .upToDate:
+            HStack(spacing: HelmSpace.s5) {
+                statusIcon("checkmark.circle.fill", HelmSignal.success)
+                Text(AppStr.upToDate).lineLimit(1)
+                Spacer()
+                Button(AppStr.checkNow) { updater.checkNow() }
+            }
+        case .lastChecked:
+            // Nothing has been decided this session: report when the last
+            // check happened rather than claiming to be current.
+            HStack(spacing: HelmSpace.s5) {
+                statusIcon("arrow.triangle.2.circlepath", .secondary)
+                Text(lastCheckedText).lineLimit(1).foregroundStyle(HelmText.quiet)
+                Spacer()
+                Button(AppStr.checkNow) { updater.checkNow() }
             }
         }
     }

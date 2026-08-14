@@ -9,10 +9,16 @@ import HelmUI
 /// Internal rather than `private` because the router that chooses it lives in
 /// `SettingsWindow.swift`, and nothing outside `HelmApp` names it.
 struct MenuBarSettingsView: View {
+    /// Observed for the same reason the sidebar observes it: the consent rows
+    /// below are filtered by which modules are on, and that is switched in the
+    /// composer sheet this very page opens.
+    @ObservedObject private var host = ModuleHost.shared
     @State private var composing = false
     @State private var style: String = AppSettings.menuBarIconStyle
     @State private var size: String = AppSettings.menuBarIconSize
-    @State private var launchAtLogin: Bool = LoginItem.isEnabled
+    /// The state macOS is in, not the answer the switch was given — and
+    /// re-probed on activation like the permission rows below it.
+    @State private var launchAtLogin: LoginItemState = LoginItem.current()
     @State private var appearance: AppAppearance = AppSettings.appearance
     @State private var language: String? = AppSettings.language?.rawValue
     @State private var sidebarStyle: SidebarStyle = AppSettings.sidebarStyle
@@ -23,6 +29,12 @@ struct MenuBarSettingsView: View {
     @State private var diskAccess: PermissionState = .granted
     @State private var accessibility: PermissionState = .granted
     @State private var confirmingReset = false
+    /// Read back after every write rather than kept as the answer given: a
+    /// broken seal answers "every scan is off" whatever was just pressed, and a
+    /// switch that stays where the finger left it would be the screen telling
+    /// the person something the coordinator does not believe.
+    @State private var disabledScans = AppSettings.disabledScans
+    @State private var lastScanAt = AppSettings.lastScanAt
     private let adHocBuild = PermissionCheck.isAdHocSigned()
 
     /// The needed permissions macOS is currently withholding.
@@ -36,6 +48,23 @@ struct MenuBarSettingsView: View {
 
     /// The permissions an enabled module actually uses, in table order.
     private var neededPermissions: [PermissionNeed] { PermissionSummary.needed() }
+
+    /// The consent rows, from the list the coordinator itself loops over.
+    ///
+    /// Static and taking its three facts, so the screen's half of finding 4 is
+    /// testable at all: what a person is asked about must be
+    /// `ScanRunner.scannableModules` and not a second list written for the view
+    /// — a scan added there and forgotten here would run with nobody asked.
+    static func scanRows(enabled: Set<String>, disabledScans: Set<String>,
+                         lastRun: [String: Date]) -> [ScanConsent.Row] {
+        ScanConsent.rows(scannable: ScanRunner.scannableModules, enabled: enabled,
+                         disabledScans: disabledScans, lastRun: lastRun)
+    }
+
+    private var scanRows: [ScanConsent.Row] {
+        Self.scanRows(enabled: host.enabledModuleIDs,
+                      disabledScans: disabledScans, lastRun: lastScanAt)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -61,6 +90,34 @@ struct MenuBarSettingsView: View {
                 Button(AppStr.grant, action: action).controlSize(.small)
             }
         }
+    }
+
+    /// One scan, named by its module and captioned with when it last came back.
+    ///
+    /// The date is `lastScanAt` — when a scan **finished**, with a report — and
+    /// not the attempt beside it: "we started looking on Tuesday" is not an
+    /// answer to "what has Helm read".
+    private func scanRow(_ row: ScanConsent.Row) -> some View {
+        let module = ModuleRegistry.descriptor(row.id)
+        return Toggle(isOn: Binding(get: { row.isOn },
+                                    set: { setScan(row.id, on: $0) })) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(module?.moduleMetadata.name ?? row.id)
+                Text(row.lastRun.map { AppStr.scanLastRun(HelmDates.relative($0)) }
+                        ?? AppStr.scanNeverRun)
+                    .font(HelmText.rowDetail)
+                    .foregroundStyle(HelmText.quiet)
+            }
+        }
+    }
+
+    /// Write, then read back — the reverse channel this switch would otherwise
+    /// be missing. `disabledScans` refuses a value that is not Helm's own and
+    /// answers "every scan off"; a screen that kept the answer it was given
+    /// would be the last place that fact could be seen.
+    private func setScan(_ id: String, on: Bool) {
+        AppSettings.disabledScans = ScanConsent.toggling(id, to: on, in: disabledScans)
+        disabledScans = AppSettings.disabledScans
     }
 
     private var settingsForm: some View {
@@ -110,8 +167,47 @@ struct MenuBarSettingsView: View {
 
             // What Helm does on its own.
             Section(header: HelmSectionTitle(HelmSectionName.behaviour)) {
-                Toggle(AppStr.launchAtLogin, isOn: $launchAtLogin)
-                    .onChange(of: launchAtLogin) { _, v in LoginItem.setEnabled(v) }
+                // The switch draws what macOS says, and the write answers with
+                // what macOS says afterwards: `register()` can throw, and the
+                // person can take the registration away in System Settings
+                // while this window is open. Both used to leave the switch on.
+                Toggle(AppStr.launchAtLogin,
+                       isOn: Binding(get: { launchAtLogin.isOn },
+                                     set: { launchAtLogin = LoginItem.setEnabled($0) }))
+                if let note = AppStr.loginItemNote(launchAtLogin) {
+                    HStack(alignment: .top, spacing: HelmSpace.s5) {
+                        Text(note)
+                            .font(HelmText.rowDetail)
+                            .foregroundStyle(HelmText.quiet)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 12)
+                        // A door, not only a sentence: this state is finished
+                        // by one press in a pane nobody navigates to by name.
+                        if launchAtLogin == .needsApproval {
+                            Button(AppStr.openLoginItems) { LoginItem.openSettings() }
+                                .controlSize(.small)
+                        }
+                    }
+                }
+            }
+
+            // What Helm does when nobody is at the desk, on the one page that
+            // is about Helm rather than about a module. It is the app's largest
+            // difference in kind from the tools it is compared to — three
+            // modules reading the volume twice a day — and until this section
+            // the only place it was ever said was the log.
+            //
+            // Only when there is a row: with all three of those modules
+            // switched off the heading would stand over an empty card, which is
+            // the gap the Permissions section documents just below.
+            if !scanRows.isEmpty {
+                Section(header: HelmSectionTitle(AppStr.backgroundScansSection)) {
+                    ForEach(scanRows, id: \.id) { row in scanRow(row) }
+                    Text(AppStr.backgroundScansNote)
+                        .font(HelmText.rowDetail)
+                        .foregroundStyle(HelmText.quiet)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
 
             // Which modules there are and how they are grouped, which is not
@@ -274,6 +370,15 @@ struct MenuBarSettingsView: View {
             // to notice without being told.
             diskAccess = PermissionCheck.currentFullDiskAccess()
             accessibility = PermissionCheck.currentAccessibility()
+            // A background scan runs when the person is away, which is exactly
+            // the interval this window spends inactive: coming back is when
+            // «hasn't run yet» can have stopped being true.
+            lastScanAt = AppSettings.lastScanAt
+            disabledScans = AppSettings.disabledScans
+            // Login Items is one of the panes a person leaves this window for,
+            // and the registration can be taken away there. The refusal Helm
+            // remembers survives only while the system still agrees with it.
+            launchAtLogin = LoginItem.current(refused: launchAtLogin == .refused)
         }
         .task {
             diskAccess = PermissionCheck.currentFullDiskAccess()

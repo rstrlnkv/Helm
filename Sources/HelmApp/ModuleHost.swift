@@ -28,6 +28,13 @@ import HelmUI
         store(for: d).bool("enabled", default: true)
     }
 
+    /// Which modules are on, as ids — the question the sidebar and the consent
+    /// section each ask about a *group*, and each had answered one store read
+    /// per module of their own.
+    var enabledModuleIDs: Set<String> {
+        Set(ModuleRegistry.all.filter(isEnabled).map(\.idRaw))
+    }
+
     /// Idempotent, on the same test `setEnabled` has always made and this one
     /// had not: a module already live is left alone.
     ///
