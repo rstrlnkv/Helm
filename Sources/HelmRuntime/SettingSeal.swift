@@ -63,7 +63,10 @@ public enum SettingSeal {
     public static func mac(for payload: Data, key: Data) -> String {
         let code = HMAC<SHA256>.authenticationCode(for: payload,
                                                    using: SymmetricKey(data: key))
-        return code.map { String(format: "%02x", $0) }.joined()
+        // The same spelling every digest in Helm gets, and here it is a
+        // compatibility surface: this string is compared against one an earlier
+        // build wrote into somebody's settings.
+        return HexDigest.string(of: code)
     }
 
     public static func verdict(payload: Data, mac: String?, key: SealKey) -> Verdict {

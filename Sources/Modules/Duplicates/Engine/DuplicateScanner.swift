@@ -405,6 +405,6 @@ final class DuplicateScanner: @unchecked Sendable {
             break
         }
         guard hashed >= expecting else { return nil }
-        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+        return HexDigest.string(of: hasher.finalize())
     }
 }

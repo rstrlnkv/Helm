@@ -72,7 +72,7 @@ public enum ReleaseDigest {
             }
             if !more { break }
         }
-        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+        return HexDigest.string(of: hasher.finalize())
     }
 
     /// Constant-time in the sense that matters here: both are fixed-length hex

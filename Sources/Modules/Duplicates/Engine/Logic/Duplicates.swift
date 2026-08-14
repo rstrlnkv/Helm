@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import HelmRuntime
 
@@ -69,18 +70,53 @@ public struct DuplicateGroup: Codable, Equatable, Sendable, Identifiable {
         /// file of its own: under-reporting space somebody really gets back is
         /// the worse of the two errors.
         public let cloneFamily: UInt64?
+        /// When this copy arrived in its folder — the Finder's "Date Added",
+        /// the one thing `SurvivingCopy` decides on first.
+        ///
+        /// The walk already reads it for that decision; carrying it here is what
+        /// lets the copy that stays be re-decided from the group alone, without
+        /// reading the folder again. `nil` on a volume that does not record it,
+        /// and **optional rather than defaulted**: a synthesised `Decodable`
+        /// demands the key for a non-optional property whatever its initial
+        /// value is, and `JSONDecoder` then abandons the whole document rather
+        /// than the one field (CLAUDE.md § A `defaulted` property on a `Codable`
+        /// payload).
+        public let added: Date?
 
-        public init(path: String, bytes: Int, cloneFamily: UInt64? = nil) {
+        public init(path: String, bytes: Int, cloneFamily: UInt64? = nil,
+                    added: Date? = nil) {
             self.path = path
             self.bytes = bytes
             self.cloneFamily = cloneFamily
+            self.added = added
         }
     }
 
     /// The copies, the one that stays first — `SurvivingCopy`'s order.
     public let copies: [Copy]
 
-    public var id: String { copies.first?.path ?? "" }
+    /// What the group is, independent of how its copies are arranged.
+    ///
+    /// It used to be `copies.first?.path` — the survivor — which is a fact about
+    /// the *order* of the array rather than about the group. The order is not
+    /// fixed: re-deciding which copy stays permutes `copies`, and
+    /// `ForEach(dvm.groups)` would then read one group as a removal and an
+    /// insertion, animating a change nobody made. The paths sorted are the same
+    /// set however it is arranged.
+    ///
+    /// A digest and not the paths themselves: an identity travels into places a
+    /// path may not go — the log carries no names — and it stays one short
+    /// string for a group of forty copies. Separated by NUL, which is the one
+    /// byte a POSIX path cannot hold, so two copies cannot be run together into
+    /// the spelling of a third.
+    public var id: String {
+        var bytes: [UInt8] = []
+        for path in copies.map(\.path).sorted() {
+            bytes.append(contentsOf: path.utf8)
+            bytes.append(0)
+        }
+        return HexDigest.string(of: SHA256.hash(data: bytes))
+    }
     /// Every path holding this content, in the same order.
     public var paths: [String] { copies.map(\.path) }
     /// The size of one copy: the one that stays.
@@ -214,13 +250,20 @@ enum Duplicates {
         // came from the survivor rule — two orderings of one array — so a clone
         // beside its original reported nothing wasted or everything wasted
         // depending on which was reached first.
-        let occupied = Dictionary(identical.map { ($0.path, $0.allocated) },
-                                  uniquingKeysWith: { first, _ in first })
-        let families = Dictionary(identical.map { ($0.path, $0.cloneFamily) },
-                                  uniquingKeysWith: { first, _ in first })
-        return DuplicateGroup(copies: SurvivingCopy.order(identical).map {
-            DuplicateGroup.Copy(path: $0, bytes: occupied[$0] ?? 0,
-                                cloneFamily: families[$0] ?? nil)
+        //
+        // One table and not one per field: three parallel dictionaries keyed on
+        // the same path is three chances for a field to be looked up in the
+        // wrong one, and every field a copy gains adds another.
+        let facts = Dictionary(identical.map { ($0.path, $0) },
+                               uniquingKeysWith: { first, _ in first })
+        return DuplicateGroup(copies: SurvivingCopy.order(identical).map { path in
+            let fact = facts[path]
+            // The date the walk already read for the survivor rule, carried
+            // instead of dropped: re-deciding which copy stays needs it and
+            // nothing else.
+            return DuplicateGroup.Copy(path: path, bytes: fact?.allocated ?? 0,
+                                       cloneFamily: fact?.cloneFamily,
+                                       added: fact?.added)
         })
     }
 
