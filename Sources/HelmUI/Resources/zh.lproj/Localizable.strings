@@ -607,6 +607,10 @@
 "newer than" = "晚于";
 "older than" = "早于";
 "refused" = "已拒绝";
+"refused: outside the allowed folders" = "已拒绝：超出允许的文件夹";
+"refused: unusable rename pattern" = "已拒绝：重命名模式无法使用";
+"refused: the file is no longer there" = "已拒绝：文件已不存在";
+"refused: the path changed underneath" = "已拒绝：路径突然改变";
 "renamed to" = "重命名为";
 "smaller than" = "小于";
 "stays" = "保留";

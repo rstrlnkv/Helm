@@ -607,6 +607,10 @@
 "newer than" = "posterior a";
 "older than" = "anterior a";
 "refused" = "rechazado";
+"refused: outside the allowed folders" = "rechazado: fuera de las carpetas permitidas";
+"refused: unusable rename pattern" = "rechazado: patrón de nombre inservible";
+"refused: the file is no longer there" = "rechazado: el archivo ya no existe";
+"refused: the path changed underneath" = "rechazado: la ruta cambió justo antes";
 "renamed to" = "renombrado a";
 "smaller than" = "menor que";
 "stays" = "se queda";

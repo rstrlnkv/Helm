@@ -244,4 +244,20 @@ enum ApStr {
         case .failed: L("failed")
         }
     }
+
+    /// Why a row was refused, in the reader's language. The record stores the
+    /// reason's rawValue — data, stable across releases — and this is the only
+    /// place it turns into words; the row used to glue that rawValue straight
+    /// onto the verb and read «refused changedSinceCheck» in all eight
+    /// languages. Exhaustive on purpose: a new reason refuses to build until
+    /// it can say itself.
+    static func historyRefusal(_ reason: RuleOutcome.Refusal,
+                               language: AppLanguage = AppLanguage.current) -> String {
+        switch reason {
+        case .outOfScope: L("refused: outside the allowed folders", language: language)
+        case .badPattern: L("refused: unusable rename pattern", language: language)
+        case .missing: L("refused: the file is no longer there", language: language)
+        case .changedSinceCheck: L("refused: the path changed underneath", language: language)
+        }
+    }
 }

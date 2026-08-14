@@ -13,7 +13,9 @@ public enum RuleOutcome: Equatable, Sendable {
     case refused(Refusal)
     case failed(String)
 
-    public enum Refusal: String, Equatable, Sendable {
+    // CaseIterable so the guard on how these read on screen loops the real
+    // list instead of keeping a copy — see `ARefusalSpeaksTheLanguageTests`.
+    public enum Refusal: String, CaseIterable, Equatable, Sendable {
         /// The file or the destination is not the user's to move.
         case outOfScope
         /// A rename pattern the filesystem should not be asked to take.

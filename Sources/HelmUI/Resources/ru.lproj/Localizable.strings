@@ -607,6 +607,10 @@
 "newer than" = "новее";
 "older than" = "старше";
 "refused" = "отказано";
+"refused: outside the allowed folders" = "отказано: вне разрешённых папок";
+"refused: unusable rename pattern" = "отказано: шаблон имени непригоден";
+"refused: the file is no longer there" = "отказано: файла больше нет";
+"refused: the path changed underneath" = "отказано: путь успел измениться";
 "renamed to" = "переименовано в";
 "smaller than" = "меньше чем";
 "stays" = "останется";

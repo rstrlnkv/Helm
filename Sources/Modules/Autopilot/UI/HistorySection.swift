@@ -120,8 +120,16 @@ struct HistorySection: View {
 
     private func reveal(_ path: String) { HelmReveal.inFinder(path) }
 
-    /// "trashed" needs no second half; the rest read as verb then value.
+    /// "trashed" needs no second half; the rest read as verb then value. A
+    /// refusal is the exception: its detail is the reason's rawValue — stored
+    /// data, not words — so it is read back into the enum and spoken whole. A
+    /// detail no current reason claims (a record a newer Helm wrote) falls
+    /// through to the verb-and-value form rather than to silence.
     private func detail(_ record: ActionRecord) -> String {
+        if record.kind == .refused,
+           let reason = RuleOutcome.Refusal(rawValue: record.detail) {
+            return ApStr.historyRefusal(reason)
+        }
         let verb = ApStr.historyVerb(record.kind)
         return record.detail.isEmpty ? verb : "\(verb) \(record.detail)"
     }

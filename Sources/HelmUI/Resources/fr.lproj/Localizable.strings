@@ -607,6 +607,10 @@
 "newer than" = "plus récent que";
 "older than" = "plus ancien que";
 "refused" = "refusé";
+"refused: outside the allowed folders" = "refusé : hors des dossiers autorisés";
+"refused: unusable rename pattern" = "refusé : motif de renommage inutilisable";
+"refused: the file is no longer there" = "refusé : le fichier n’existe plus";
+"refused: the path changed underneath" = "refusé : le chemin a changé entre-temps";
 "renamed to" = "renommé en";
 "smaller than" = "plus petit que";
 "stays" = "reste";
