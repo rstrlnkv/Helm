@@ -53,6 +53,35 @@ public enum PathCanonical {
         }
     }
 
+    /// Who a file is, as opposed to what it is called.
+    ///
+    /// Device and inode together name one object on one volume, and they
+    /// survive both a rename and a move within that volume — which is what
+    /// makes them the right answer to "is the thing at this path still the
+    /// thing I acted on". A move *across* volumes changes the inode, and the
+    /// two callers here fail in the same direction when it does: a mark stops
+    /// matching, and a return refuses rather than moving a stranger's file.
+    public struct FileIdentity: Equatable, Sendable, Codable {
+        public let device: UInt64
+        public let inode: UInt64
+        public init(device: UInt64, inode: UInt64) {
+            self.device = device
+            self.inode = inode
+        }
+    }
+
+    /// The identity of whatever is at `path`, or nothing when there is nothing.
+    ///
+    /// `lstat`, so a symlink answers with its own identity rather than its
+    /// target's — the same reading `RuleStamp` takes for the same reason: an
+    /// answer about the target would let a link stand in for the file it points
+    /// at.
+    public static func identity(of path: String) -> FileIdentity? {
+        var info = stat()
+        guard lstat(path, &info) == 0 else { return nil }
+        return FileIdentity(device: UInt64(bitPattern: Int64(info.st_dev)), inode: info.st_ino)
+    }
+
     /// The identity of the directory `path`'s resolved parent chain leads to.
     ///
     /// Read once at the gate and once immediately before the move: if the two

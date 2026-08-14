@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 /// The mark that says "this rule has already had its turn at this file".
 ///
@@ -64,14 +65,12 @@ struct RuleStamp: Sendable {
     /// `lstat`, matching the `XATTR_NOFOLLOW` below: the mark belongs to the
     /// object the attribute is on, and for a symlink that is the link itself.
     /// Identifying the target instead would let a link's mark serve for the file
-    /// it points at.
+    /// it points at. `PathCanonical.identity` is that reading, shared with the
+    /// undo — which has to arrive at the same answer about the same file, since
+    /// a return re-stamps what it puts back.
     private func mark(_ path: String, _ ruleID: String) -> String? {
-        var info = stat()
-        guard lstat(path, &info) == 0 else { return nil }
-        return StampMark.of(rule: ruleID,
-                            device: UInt64(bitPattern: Int64(info.st_dev)),
-                            inode: info.st_ino,
-                            key: key)
+        guard let who = PathCanonical.identity(of: path) else { return nil }
+        return StampMark.of(rule: ruleID, device: who.device, inode: who.inode, key: key)
     }
 
     /// Whatever the attribute holds, as strings. Anything else — junk, a value
