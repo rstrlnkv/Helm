@@ -203,6 +203,15 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { bundleID }
 struct TrashedLeftoversView: View {
     @ObservedObject var model: TrashedLeftoversModel
     let onClose: () -> Void
+    /// The window's width, named so `TheTrashOfferFooterFitsTheWindowTests`
+    /// measures the number that ships rather than a copy of it.
+    ///
+    /// 560, not the 460 the group header needed: that comment said outright
+    /// the footer was never measured, and the footer's two verbs are the wide
+    /// part — 544 pt in Spanish with the count between them. The verbs never
+    /// truncate (a cut «Keep these files» is the worst button in the window to
+    /// cut); the count is the half that yields.
+    static let windowWidth: CGFloat = 560
     /// The content's own height, so the window ends where its content does —
     /// one file no longer leaves 35 pt of empty list under it.
     @State private var contentHeight: CGFloat = 0
@@ -221,9 +230,7 @@ struct TrashedLeftoversView: View {
             Divider()
             footer
         }
-        // 460, not 520: 520 was sized for a 465 pt path column that no longer
-        // exists. The widest thing left is a German group header, which fits.
-        .frame(width: 460)
+        .frame(width: Self.windowWidth)
         // No growth animation. Measured at 120 Hz, the window went 374 -> 596 pt
         // between consecutive samples: `NSHostingController` resizes the window
         // in one step and a SwiftUI token cannot reach an `NSWindow` frame, so
@@ -364,10 +371,14 @@ struct TrashedLeftoversView: View {
     }
 
     private var footer: some View {
-        HStack {
+        // The spacing is what `TheTrashOfferFooterFitsTheWindowTests` mirrors.
+        // The verbs are `fixedSize` and the count is not: when the figures
+        // outgrow the room, the count truncates and the buttons stay whole.
+        HStack(spacing: 8) {
             Button(UnStr.trashOfferKeep) { onClose() }
             .keyboardShortcut(.cancelAction)
             .disabled(model.busy)
+            .fixedSize()
             Spacer()
             if model.busy {
                 ProgressView().controlSize(.small)
@@ -380,6 +391,7 @@ struct TrashedLeftoversView: View {
                 if !model.busy {
                     Text(UnStr.selectedSummary(model.selected.count, Bytes(model.totalBytes)))
                         .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                        .lineLimit(1)
                 }
                 Button(UnStr.moveToTrash) {
                     Task {
@@ -387,6 +399,7 @@ struct TrashedLeftoversView: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
+                .fixedSize()
                 // No `.defaultAction`. This window arrives unasked, a second
                 // after a drag, and puts itself in front; a Return meant for
                 // whatever the person was typing must not be able to delete

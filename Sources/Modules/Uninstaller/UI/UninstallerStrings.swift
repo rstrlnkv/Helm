@@ -105,7 +105,8 @@ enum UnStr {
     static var noOrphans: String { L("No leftovers found.") }
     static var selectAll: String { L("Select all") }
     static var rescan: String { L("Scan again") }
-    static func selectedSummary(_ n: Int, _ size: String) -> String { L("\(n) selected · \(size)", [.ru: "Выбрано: \(n) · \(size)", .es: "\(n) seleccionados · \(size)", .fr: "\(n) sélectionnés · \(size)", .de: "\(n) ausgewählt · \(size)", .ja: "\(n) 件選択・\(size)", .zh: "已选 \(n) 项 · \(size)", .pt: "\(n) selecionados · \(size)"]) }
+    static func selectedSummary(_ n: Int, _ size: String,
+                                language: AppLanguage = AppLanguage.current) -> String { L("\(n) selected · \(size)", [.ru: "Выбрано: \(n) · \(size)", .es: "\(n) seleccionados · \(size)", .fr: "\(n) sélectionnés · \(size)", .de: "\(n) ausgewählt · \(size)", .ja: "\(n) 件選択・\(size)", .zh: "已选 \(n) 项 · \(size)", .pt: "\(n) selecionados · \(size)"], language: language) }
     static var selectNone: String { L("Clear selection") }
     static func reviewCount(_ n: Int) -> String { L("Review \(n)", [.ru: "Просмотреть: \(n)", .es: "Revisar \(n)", .fr: "Vérifier \(n)", .de: "\(n) prüfen", .ja: "\(n) 件を確認", .zh: "查看 \(n) 项", .pt: "Revisar \(n)"]) }
     static var back: String { L("Back") }
