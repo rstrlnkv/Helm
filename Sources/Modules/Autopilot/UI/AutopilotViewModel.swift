@@ -39,6 +39,17 @@ import SwiftUI
     /// If Autopilot does get a tile, the thing to bring back is this cache: the
     /// initialiser asks the engine for the folders and the history, and a view
     /// that rebuilds would send both requests again every time.
+    /// The load the initialiser starts, held rather than fired and forgotten.
+    ///
+    /// A task no caller can reach is a task no caller can wait out: every test
+    /// that builds this model and then calls `load()` itself has a second
+    /// reader racing this one on the same wire, and the race surfaced as a
+    /// history read landing *after* a count of them had been taken — «3 is not
+    /// equal to 2», in full-suite runs only, measured at 8 constructions in
+    /// 200. The page is unaffected: it builds the model once, waits for
+    /// nothing, and reads whatever state the load publishes.
+    private(set) var firstLoad: Task<Void, Never>?
+
     init(vm: ModuleViewModel,
          presetFolders: any PresetFolderPort = SystemPresetFolders(),
          home: String = NSHomeDirectory()) {
@@ -46,7 +57,7 @@ import SwiftUI
         self.client = TransportClient(vm.transport)
         self.presetFolders = presetFolders
         self.home = home
-        Task { await load() }
+        firstLoad = Task { await load() }
     }
 
     func load() async {

@@ -66,6 +66,11 @@ final class APageOffersTheReturnItCanMakeTests: XCTestCase {
         let wire = AutopilotWire(history: [record("a.pdf")])
         let model = model(on: wire)
         await model.load()
+        // The initialiser starts a load of its own, and a count taken while it
+        // is still in flight is a count of a moving target: its history read
+        // landed during the `undo` below in 8 constructions of 200, and this
+        // line then failed — «3 is not equal to 2» — in full-suite runs only.
+        await model.firstLoad?.value
         wire.answers(UndoReport(lines: [line("a.pdf", .restored(to: "/tmp/watched/a.pdf",
                                                                 stamped: true))]))
         let readsBefore = wire.commands.filter { $0 == .history }.count
