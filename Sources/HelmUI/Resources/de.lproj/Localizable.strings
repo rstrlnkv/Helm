@@ -330,7 +330,6 @@
 "Nothing listed. A few terminals and password managers are left alone already — add any others here." = "Nichts eingetragen. Einige Terminals und Passwortmanager bleiben schon außen vor — weitere kannst du hier ergänzen.";
 "Nothing logged yet." = "Noch nichts protokolliert.";
 "Nothing matches these filters." = "Nichts passt zu diesen Filtern.";
-"Nothing selected" = "Nichts ausgewählt";
 "Nothing was actually “freed” by trashing something — it just moved to the Trash, on the same volume. Disk, Duplicates, Login Items & Extensions and the Uninstaller now say so plainly (“Moved to the Trash — 4 KB”), and Disk stopped counting it as space regained until the Trash itself is emptied." = "Beim Verschieben in den Papierkorb wurde in Wirklichkeit nichts „freigegeben“ — die Datei landete nur dort, auf demselben Volume. Festplatte, Duplikate, Anmeldeobjekte & Erweiterungen und die Deinstallation sagen das jetzt so („In den Papierkorb gelegt — 4 KB“), und Festplatte zählt es erst als zurückgewonnenen Platz, wenn der Papierkorb geleert wird.";
 "Notification" = "Mitteilung";
 "Number of days" = "Anzahl der Tage";

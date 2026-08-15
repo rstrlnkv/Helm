@@ -330,7 +330,6 @@
 "Nothing listed. A few terminals and password managers are left alone already — add any others here." = "Lista vacía. Ya se dejan en paz algunos terminales y gestores de contraseñas; añade aquí los demás.";
 "Nothing logged yet." = "Aún no hay nada registrado.";
 "Nothing matches these filters." = "Nada coincide con estos filtros.";
-"Nothing selected" = "Nada seleccionado";
 "Nothing was actually “freed” by trashing something — it just moved to the Trash, on the same volume. Disk, Duplicates, Login Items & Extensions and the Uninstaller now say so plainly (“Moved to the Trash — 4 KB”), and Disk stopped counting it as space regained until the Trash itself is emptied." = "En realidad nada quedaba “liberado” al enviarlo a la papelera — solo se movía allí, en el mismo volumen. Disco, Duplicados, Ítems de inicio y extensiones, y el Desinstalador ahora lo dicen tal cual (“Trasladado a la papelera — 4 KB”), y Disco dejó de contarlo como espacio recuperado hasta que la papelera se vacía.";
 "Notification" = "Notificación";
 "Number of days" = "Número de días";

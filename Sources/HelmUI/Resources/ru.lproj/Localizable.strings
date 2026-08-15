@@ -330,7 +330,6 @@
 "Nothing listed. A few terminals and password managers are left alone already — add any others here." = "Список пуст. Несколько терминалов и менеджеров паролей Helm уже обходит стороной — остальные добавьте сами.";
 "Nothing logged yet." = "Пока ничего не записано.";
 "Nothing matches these filters." = "Под эти фильтры ничего не попало.";
-"Nothing selected" = "Ничего не выбрано";
 "Nothing was actually “freed” by trashing something — it just moved to the Trash, on the same volume. Disk, Duplicates, Login Items & Extensions and the Uninstaller now say so plainly (“Moved to the Trash — 4 KB”), and Disk stopped counting it as space regained until the Trash itself is emptied." = "Ничего на самом деле не «освобождалось» при перемещении в Корзину — файл просто оказывался в Корзине, на том же томе. «Диск», «Дубликаты», «Объекты входа и расширения» и «Удаление приложений» теперь так и говорят («Перемещено в Корзину — 4 КБ»), а «Диск» больше не считает это освобождённым местом, пока Корзина не очищена.";
 "Notification" = "Уведомление";
 "Number of days" = "Число дней";

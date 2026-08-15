@@ -330,7 +330,6 @@
 "Nothing listed. A few terminals and password managers are left alone already — add any others here." = "一覧は空です。主なターミナルとパスワード管理アプリは最初から対象外です。ほかは自分で追加してください。";
 "Nothing logged yet." = "まだ記録はありません。";
 "Nothing matches these filters." = "この条件に一致する行はありません。";
-"Nothing selected" = "未選択";
 "Nothing was actually “freed” by trashing something — it just moved to the Trash, on the same volume. Disk, Duplicates, Login Items & Extensions and the Uninstaller now say so plainly (“Moved to the Trash — 4 KB”), and Disk stopped counting it as space regained until the Trash itself is emptied." = "ゴミ箱に入れても、実際には何も“解放”されていませんでした——同じボリューム上のゴミ箱に移動しただけです。“ディスク”、“重複”、“ログイン項目と機能拡張”、“アンインストーラ”は今、そのとおりに表示します（“ゴミ箱に入れました — 4 KB”）。“ディスク”もゴミ箱を空にするまで空き容量として数えなくなりました。";
 "Notification" = "通知";
 "Number of days" = "日数";

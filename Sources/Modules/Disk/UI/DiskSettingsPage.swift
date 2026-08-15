@@ -183,11 +183,6 @@ struct DiskSettingsPage: View {
     /// the ring and the list showing exactly where the files were *before* the
     /// press. `HelmRemovalOutcome.unanswered` ends by promising the list is where
     /// they are now, which is true for the two modules that rescan and not here.
-    /// Whether the row above the basket has anything to say. One spelling, read
-    /// by both halves of the bar: a second copy of it in `basketRow` could be
-    /// satisfied while the report was drawing.
-    private var hasReport: Bool { dvm.replyLost || dvm.banner != nil }
-
     @ViewBuilder private var removalReport: some View {
         if dvm.replyLost {
             HelmRemovalOutcome.unansweredWithStaleList
@@ -201,16 +196,12 @@ struct DiskSettingsPage: View {
     }
 
     @ViewBuilder private var basketRow: some View {
-        if dvm.basket.isEmpty {
-            // Drawn by nothing: `showsRemovalBar` is false for an empty basket
-            // with nothing to report, so there is no bar to hold this. Left as it
-            // was found rather than removed here — the dead key is its own
-            // finding.
-            if !hasReport {
-                Text(DkStr.emptyBasket)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-            }
-        } else {
+        // **An empty basket draws nothing here, and cannot.** `showsRemovalBar`
+        // is `!basket.isEmpty || banner != nil || replyLost`, and the branch this
+        // used to hold asked for an empty basket with nothing reported — the one
+        // state in which there is no bar to draw it in. «Nothing selected» went
+        // with it, in eight languages.
+        if !dvm.basket.isEmpty {
             HStack(spacing: HelmSpace.s5) {
                 // A count is not a list. Everything about to be trashed can be
                 // named here, and removed from the basket without hunting for

@@ -330,7 +330,6 @@
 "Nothing listed. A few terminals and password managers are left alone already — add any others here." = "Liste vide. Quelques terminaux et gestionnaires de mots de passe sont déjà laissés de côté — ajoutez les autres ici.";
 "Nothing logged yet." = "Rien de journalisé pour l’instant.";
 "Nothing matches these filters." = "Rien ne correspond à ces filtres.";
-"Nothing selected" = "Rien de sélectionné";
 "Nothing was actually “freed” by trashing something — it just moved to the Trash, on the same volume. Disk, Duplicates, Login Items & Extensions and the Uninstaller now say so plainly (“Moved to the Trash — 4 KB”), and Disk stopped counting it as space regained until the Trash itself is emptied." = "Rien n’était vraiment « libéré » en mettant quelque chose à la corbeille — cela y était simplement déplacé, sur le même volume. Disque, Doublons, Ouverture et extensions, et la désinstallation le disent maintenant clairement (« Placé dans la corbeille — 4 Ko »), et Disque ne le compte plus comme de l’espace récupéré tant que la corbeille n’est pas vidée.";
 "Notification" = "Notification";
 "Number of days" = "Nombre de jours";

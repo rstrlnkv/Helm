@@ -330,7 +330,6 @@
 "Nothing listed. A few terminals and password managers are left alone already — add any others here." = "列表为空。少数终端和密码管理器已经排除在外，其他的请自行添加。";
 "Nothing logged yet." = "暂无记录。";
 "Nothing matches these filters." = "没有符合这些筛选条件的行。";
-"Nothing selected" = "未选择任何项";
 "Nothing was actually “freed” by trashing something — it just moved to the Trash, on the same volume. Disk, Duplicates, Login Items & Extensions and the Uninstaller now say so plainly (“Moved to the Trash — 4 KB”), and Disk stopped counting it as space regained until the Trash itself is emptied." = "把东西移到废纸篓其实并没有真正“释放”任何空间——它只是移到了同一宗卷上的废纸篓里。“磁盘”“重复文件”“登录项与扩展”和“卸载器”现在都如实显示（“已移到废纸篓 — 4 KB”），“磁盘”也不再把它计入已释放的空间，直到废纸篓真正清空。";
 "Notification" = "通知";
 "Number of days" = "天数";

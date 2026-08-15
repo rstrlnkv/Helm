@@ -41,7 +41,6 @@ enum DkStr {
     static func basketItem(_ name: String, _ size: String) -> String {
         HelmBasket.item(name: name, size: size)
     }
-    static var emptyBasket: String { L("Nothing selected") }
     /// The name of the action, not of the gesture: "Add" has no object, and a
     /// screen reader says it once per row down a list of two hundred.
     static var markForRemoval: String { L("Mark for removal") }
