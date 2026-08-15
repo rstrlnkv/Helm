@@ -676,6 +676,14 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         }
     }
 
+    /// What `emitState` last put on the wire — under the class's one lock.
+    private var _lastEmitted: StatePayload?
+
+    /// Emits the state — unless it is **equal in every field** to the last one
+    /// sent: the poll above re-reads up to 26 times behind one connect, and
+    /// each duplicate re-rendered every mounted page all night
+    /// (`HiddenPageEventChurnBenchmark` prices that). Exact equality withholds
+    /// only duplicates, never a change, and replay still serves late subscribers.
     private func emitState() {
         let payload = StatePayload(connections: connections,
                                     autoConnected: autoConnected.sorted(),
@@ -683,6 +691,9 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
                                     lastAutomation: lastAutomation,
                                     lastFailure: lastFailure,
                                     secretsBehindAPrompt: secretsBehindAPrompt)
+        lock.lock(); let isDuplicate = payload == _lastEmitted
+        _lastEmitted = payload; lock.unlock()
+        guard !isDuplicate else { return }
         localTransport.emit(VPNEvent.state, encoding: payload)
     }
 }

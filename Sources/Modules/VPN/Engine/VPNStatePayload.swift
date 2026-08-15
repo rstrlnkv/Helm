@@ -13,7 +13,11 @@ import Foundation
 /// matched by field name across a JSON hop with no compiler in between.
 extension VPNEngine {
     /// Public because the page decodes it — see the note on KeepAwake's.
-    public struct StatePayload: Codable {
+    /// `Equatable` because the engine refuses to emit a payload equal to the
+    /// last one it sent (`emitState`): the poll re-reads up to 26 times behind
+    /// one connect, and every field-for-field duplicate it produced re-rendered
+    /// every mounted page to learn nothing.
+    public struct StatePayload: Codable, Equatable {
         public let connections: [VPNConnection]
         public let autoConnected: [String]
         public let defaultName: String?
