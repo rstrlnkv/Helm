@@ -32,23 +32,6 @@ final class ARemovalCanBeWatchedAndStoppedTests: XCTestCase {
         return url.path
     }
 
-    /// A verification mid-read: each call announces itself and then waits for
-    /// the test, so the interleaving is chosen rather than raced.
-    private final class ParkedVerify: @unchecked Sendable {
-        private let lock = NSLock()
-        private var count = 0
-        private let gate = DispatchSemaphore(value: 0)
-
-        var calls: Int { lock.lock(); defer { lock.unlock() }; return count }
-        func release(_ n: Int) { for _ in 0..<n { gate.signal() } }
-
-        func check(_ remove: String, _ keep: String) -> DuplicateVerification.Verdict {
-            lock.lock(); count += 1; lock.unlock()
-            gate.wait()
-            return .identical
-        }
-    }
-
     /// What the engine was told to trash — nothing, if Stop worked.
     private final class TrashRecorder: @unchecked Sendable {
         private let lock = NSLock()
@@ -183,12 +166,5 @@ final class ARemovalCanBeWatchedAndStoppedTests: XCTestCase {
         XCTAssertFalse(result.cancelled,
                        "a stop pressed before the removal cancelled the removal after it")
         XCTAssertEqual(result.removed.count, 1)
-    }
-
-    private final class ProgressCollector: @unchecked Sendable {
-        private let lock = NSLock()
-        private var collected: [DuplicateProgress] = []
-        var ticks: [DuplicateProgress] { lock.lock(); defer { lock.unlock() }; return collected }
-        func add(_ tick: DuplicateProgress) { lock.lock(); collected.append(tick); lock.unlock() }
     }
 }

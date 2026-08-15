@@ -51,7 +51,7 @@ final class AnUnreadablePairIsItsOwnRefusalTests: XCTestCase {
     /// parks so the stop lands *between* the two files, not after the reply:
     /// a check that answers on the spot is over before Stop can be pressed.
     func testAStoppedRemovalStillReportsTheUnreadablePairAsUnreadable() async throws {
-        let parked = ParkedUnreadableVerify()
+        let parked = ParkedVerify(answering: .unreadable)
         let engine = DuplicatesEngine(settings: suiteSealGuard(),
                                       trashing: { _ in XCTFail("nothing may move") },
                                       verifying: { { parked.check($0, $1) } })
@@ -73,24 +73,5 @@ final class AnUnreadablePairIsItsOwnRefusalTests: XCTestCase {
         XCTAssertTrue(result.cancelled, "the stop never landed — this test is about nothing")
         XCTAssertEqual(result.refused.map(\.reason), [.unreadable],
                        "the stopped path dropped or renamed the unreadable refusal")
-    }
-}
-
-/// A verification mid-read that answers `.unreadable`: each call announces
-/// itself and then waits for the test, so the interleaving is chosen rather
-/// than raced — `ARemovalCanBeWatchedAndStoppedTests.ParkedVerify` with the
-/// other verdict.
-private final class ParkedUnreadableVerify: @unchecked Sendable {
-    private let lock = NSLock()
-    private var count = 0
-    private let gate = DispatchSemaphore(value: 0)
-
-    var calls: Int { lock.lock(); defer { lock.unlock() }; return count }
-    func release(_ n: Int) { for _ in 0..<n { gate.signal() } }
-
-    func check(_ remove: String, _ keep: String) -> DuplicateVerification.Verdict {
-        lock.lock(); count += 1; lock.unlock()
-        gate.wait()
-        return .unreadable
     }
 }
