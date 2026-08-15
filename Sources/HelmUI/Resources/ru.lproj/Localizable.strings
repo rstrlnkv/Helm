@@ -57,7 +57,6 @@
 "Auto" = "Авто";
 "Automation" = "Автоматизация";
 "Autopilot" = "Автопилот";
-"Autopilot has not done anything yet." = "Автопилот пока ничего не делал.";
 "Autopilot shows what it did. A report of the last 30 days at the bottom of the page: which file, where it went, and which rule decided — because a folder that tidies itself is only worth trusting if it can say what it tidied." = "Автопилот показывает, что сделал. Отчёт за последние 30 дней внизу страницы: какой файл, куда уехал и какое правило так решило, — папка, которая убирается сама, заслуживает доверия только если может рассказать, что убрала.";
 "Autopilot stops sinking files on a USB stick. Sorting into a subfolder used the file’s current parent, so on a disk that cannot carry Helm’s “already done” mark every sweep sorted the result again. A rule with nowhere to move to can no longer be switched on." = "Автопилот больше не закапывает файлы на флешке. Раскладка по подпапкам считалась от текущей папки файла, и на диске, который не держит метку «уже сделано», каждый проход раскладывал результат заново. Правило без папки назначения теперь нельзя включить.";
 "Autopilot's preview now says where each file would land, not only what would be done to it. And About shows both badges that apply: the program is in beta, and this copy is on the dev channel." = "Превью «Автопилота» теперь говорит, куда именно уедет каждый файл, а не только что с ним будет. А в «О Helm» видны оба шильдика: приложение в бете, и эта копия — на канале dev.";
@@ -818,3 +817,13 @@
 "An extra copy is" = "Лишняя копия —";
 "the one that arrived later" = "та, что появилась позже";
 "Duplicates asks what an extra copy is: the one sitting in Downloads or on the Desktop, or the one that arrived later. It followed the second rule in silence before, so a file you downloaded and then filed away kept the download — and Helm offered to delete the copy you had put away. Every group now says why its copy was kept, any row can be made the one that stays, and “Restore the recommendation” puts that back." = "«Дубликаты» спрашивают, что считать лишней копией: ту, что лежит в Загрузках или на Рабочем столе, или ту, что появилась позже. Раньше молча действовало второе правило — файл, который вы скачали, а потом разложили по папкам, оставался в Загрузках, а Helm предлагал удалить как раз ту копию, которую вы убрали на место. Теперь каждая группа говорит, почему оставлена именно эта копия, любую строку можно сделать оставшейся, а «Вернуть рекомендацию» возвращает всё как было.";
+"Rules to start with" = "С чего начать";
+"Screenshots into their own folder" = "Скриншоты — в свою папку";
+"Downloads sorted by kind" = "Загрузки — по типам";
+"Old installers to the Trash" = "Старые установщики — в Корзину";
+"A tag on big downloads" = "Метка на крупные загрузки";
+"Desktop sorted by month" = "Рабочий стол — по месяцам";
+"Nothing is being watched yet, so there is nothing to record." = "Пока ничего не отслеживается, поэтому и записывать нечего.";
+"Every rule is switched off, so nothing will be recorded here until one is switched on." = "Все правила выключены — пока хотя бы одно не включат, здесь ничего не появится.";
+"Nothing yet. A file that arrives is checked as it lands, and every watched folder is swept once an hour." = "Пока ничего. Новый файл проверяется сразу, а все отслеживаемые папки — раз в час.";
+"Subfolders are included for this folder, so this rule reaches into them too." = "Для этой папки включены вложенные, поэтому правило дойдёт и до них.";

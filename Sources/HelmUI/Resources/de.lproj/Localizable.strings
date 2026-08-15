@@ -57,7 +57,6 @@
 "Auto" = "Automatisch";
 "Automation" = "Automatisierung";
 "Autopilot" = "Autopilot";
-"Autopilot has not done anything yet." = "Der Autopilot hat noch nichts getan.";
 "Autopilot shows what it did. A report of the last 30 days at the bottom of the page: which file, where it went, and which rule decided — because a folder that tidies itself is only worth trusting if it can say what it tidied." = "Der Autopilot zeigt, was er getan hat. Ein Bericht der letzten 30 Tage: welche Datei, wohin sie ging und welche Regel das entschieden hat.";
 "Autopilot stops sinking files on a USB stick. Sorting into a subfolder used the file’s current parent, so on a disk that cannot carry Helm’s “already done” mark every sweep sorted the result again. A rule with nowhere to move to can no longer be switched on." = "Der Autopilot vergräbt Dateien auf einem USB-Stick nicht mehr, und eine Regel ohne Ziel lässt sich nicht mehr einschalten.";
 "Autopilot's preview now says where each file would land, not only what would be done to it. And About shows both badges that apply: the program is in beta, and this copy is on the dev channel." = "Die Vorschau des Autopiloten sagt jetzt, wo jede Datei landen würde, nicht nur, was mit ihr geschieht. Und „Über“ zeigt beide zutreffenden Badges.";
@@ -818,3 +817,13 @@
 "An extra copy is" = "Eine überzählige Kopie ist";
 "the one that arrived later" = "die, die später hinzukam";
 "Duplicates asks what an extra copy is: the one sitting in Downloads or on the Desktop, or the one that arrived later. It followed the second rule in silence before, so a file you downloaded and then filed away kept the download — and Helm offered to delete the copy you had put away. Every group now says why its copy was kept, any row can be made the one that stays, and “Restore the recommendation” puts that back." = "Duplikate fragt, was eine überzählige Kopie ist: die in Downloads oder auf dem Schreibtisch oder die, die später hinzukam. Zuvor galt die zweite Regel stillschweigend, sodass eine heruntergeladene und danach abgelegte Datei den Download behielt – und Helm ausgerechnet die abgelegte Kopie zum Löschen anbot. Jede Gruppe sagt jetzt, warum ihre Kopie bleibt, jede Zeile kann dazu gemacht werden, und „Empfehlung wiederherstellen“ nimmt das zurück.";
+"Rules to start with" = "Regeln für den Anfang";
+"Screenshots into their own folder" = "Bildschirmfotos in einen eigenen Ordner";
+"Downloads sorted by kind" = "Downloads nach Art sortiert";
+"Old installers to the Trash" = "Alte Installationsprogramme in den Papierkorb";
+"A tag on big downloads" = "Ein Tag für große Downloads";
+"Desktop sorted by month" = "Schreibtisch nach Monat sortiert";
+"Nothing is being watched yet, so there is nothing to record." = "Es wird noch kein Ordner beobachtet, also gibt es nichts aufzuzeichnen.";
+"Every rule is switched off, so nothing will be recorded here until one is switched on." = "Alle Regeln sind ausgeschaltet, hier erscheint nichts, bis eine eingeschaltet wird.";
+"Nothing yet. A file that arrives is checked as it lands, and every watched folder is swept once an hour." = "Noch nichts. Eine ankommende Datei wird sofort geprüft, und jeder beobachtete Ordner wird einmal pro Stunde durchgegangen.";
+"Subfolders are included for this folder, so this rule reaches into them too." = "Für diesen Ordner sind Unterordner eingeschlossen, die Regel greift also auch dort.";

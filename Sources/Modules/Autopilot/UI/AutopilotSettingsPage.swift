@@ -88,10 +88,22 @@ struct AutopilotSettingsPage: View {
         case let .rulesRefused(reason):
             refused(reason)
         case .noFolders:
-            HelmEmptyState(symbol: "location.north.circle", tint: ModuleCategory.files.tint,
-                           message: ApStr.startHint) {
-                Button(ApStr.addFolder) { rvm.addFolder() }
-                    .buttonStyle(.borderedProminent)
+            ScrollView {
+                VStack(spacing: HelmSpace.s6) {
+                    HelmEmptyState(symbol: "location.north.circle",
+                                   tint: ModuleCategory.files.tint,
+                                   message: ApStr.startHint) {
+                        Button(ApStr.addFolder) { rvm.addFolder() }
+                            .buttonStyle(.borderedProminent)
+                    }
+                    // The second answer to «what do I do with this page», and
+                    // on a Mac that has never had a rule it is the easier one:
+                    // the empty state's button opens a panel and asks for a
+                    // decision, and this one shows what a decision would do.
+                    presets
+                }
+                .padding(.horizontal, HelmLayout.formInset)
+                .padding(.vertical, HelmSpace.s5)
             }
         case .folders:
             List {
@@ -102,8 +114,10 @@ struct AutopilotSettingsPage: View {
                         folderHeader(folder)
                     }
                 }
+                Section { presets }
                 Section {
                     HistorySection(history: rvm.history, runs: rvm.runs,
+                                   empty: rvm.historyEmpty,
                                    clear: { rvm.clearHistory() },
                                    refused: rvm.historyRefused,
                                    canPutBack: rvm.canPutBack,
@@ -116,6 +130,21 @@ struct AutopilotSettingsPage: View {
             // The engine acts on a timer and on files arriving, so what the
             // page holds is whatever was true when it opened.
             .task { await rvm.loadHistory() }
+        }
+    }
+
+    /// The presets still worth offering, in both the places they appear — and
+    /// nowhere at all when there are none left, which is what the empty view
+    /// answers with.
+    ///
+    /// Not drawn on the refused screen: `content` never reaches this branch
+    /// there, and the view model empties the list as well. Two halves of one
+    /// rule, and the second is the one with a test under it.
+    @ViewBuilder private var presets: some View {
+        if !rvm.presets.isEmpty {
+            PresetSection(presets: rvm.presets, diskAccess: diskAccess) { offer in
+                editing = EditingRule(folder: offer.folder, rule: offer.draft)
+            }
         }
     }
 

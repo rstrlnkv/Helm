@@ -57,7 +57,6 @@
 "Auto" = "Automático";
 "Automation" = "Automatización";
 "Autopilot" = "Piloto automático";
-"Autopilot has not done anything yet." = "El piloto automático aún no ha hecho nada.";
 "Autopilot shows what it did. A report of the last 30 days at the bottom of the page: which file, where it went, and which rule decided — because a folder that tidies itself is only worth trusting if it can say what it tidied." = "El piloto automático muestra lo que hizo. Un informe de los últimos 30 días: qué archivo, adónde fue y qué regla lo decidió.";
 "Autopilot stops sinking files on a USB stick. Sorting into a subfolder used the file’s current parent, so on a disk that cannot carry Helm’s “already done” mark every sweep sorted the result again. A rule with nowhere to move to can no longer be switched on." = "El piloto automático deja de hundir archivos en una memoria USB, y una regla sin destino ya no puede activarse.";
 "Autopilot's preview now says where each file would land, not only what would be done to it. And About shows both badges that apply: the program is in beta, and this copy is on the dev channel." = "La vista previa del Piloto automático dice ahora dónde acabaría cada archivo, no solo qué se le haría. Y “Acerca de” muestra las dos insignias que aplican.";
@@ -818,3 +817,13 @@
 "An extra copy is" = "Una copia de más es";
 "the one that arrived later" = "la que llegó después";
 "Duplicates asks what an extra copy is: the one sitting in Downloads or on the Desktop, or the one that arrived later. It followed the second rule in silence before, so a file you downloaded and then filed away kept the download — and Helm offered to delete the copy you had put away. Every group now says why its copy was kept, any row can be made the one that stays, and “Restore the recommendation” puts that back." = "Duplicados pregunta qué es una copia de más: la que está en Descargas o en el Escritorio, o la que llegó después. Antes seguía la segunda regla en silencio, así que un archivo que descargabas y luego guardabas en su sitio conservaba la descarga, y Helm ofrecía borrar justo la copia que habías ordenado. Ahora cada grupo dice por qué se conserva esa copia, cualquier fila puede pasar a ser la que se conserva y “Volver a la recomendación” lo deshace.";
+"Rules to start with" = "Reglas para empezar";
+"Screenshots into their own folder" = "Capturas de pantalla a su propia carpeta";
+"Downloads sorted by kind" = "Descargas ordenadas por tipo";
+"Old installers to the Trash" = "Instaladores antiguos a la papelera";
+"A tag on big downloads" = "Una etiqueta en las descargas grandes";
+"Desktop sorted by month" = "Escritorio ordenado por mes";
+"Nothing is being watched yet, so there is nothing to record." = "Todavía no se vigila ninguna carpeta, así que no hay nada que registrar.";
+"Every rule is switched off, so nothing will be recorded here until one is switched on." = "Todas las reglas están desactivadas: aquí no aparecerá nada hasta que se active alguna.";
+"Nothing yet. A file that arrives is checked as it lands, and every watched folder is swept once an hour." = "Nada por ahora. Un archivo que llega se comprueba al momento, y cada carpeta vigilada se repasa una vez por hora.";
+"Subfolders are included for this folder, so this rule reaches into them too." = "Esta carpeta incluye sus subcarpetas, así que la regla también llegará a ellas.";

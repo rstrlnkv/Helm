@@ -57,7 +57,6 @@
 "Auto" = "Auto";
 "Automation" = "Automation";
 "Autopilot" = "Autopilot";
-"Autopilot has not done anything yet." = "Autopilot has not done anything yet.";
 "Autopilot shows what it did. A report of the last 30 days at the bottom of the page: which file, where it went, and which rule decided — because a folder that tidies itself is only worth trusting if it can say what it tidied." = "Autopilot shows what it did. A report of the last 30 days at the bottom of the page: which file, where it went, and which rule decided — because a folder that tidies itself is only worth trusting if it can say what it tidied.";
 "Autopilot stops sinking files on a USB stick. Sorting into a subfolder used the file’s current parent, so on a disk that cannot carry Helm’s “already done” mark every sweep sorted the result again. A rule with nowhere to move to can no longer be switched on." = "Autopilot stops sinking files on a USB stick. Sorting into a subfolder used the file’s current parent, so on a disk that cannot carry Helm’s “already done” mark every sweep sorted the result again. A rule with nowhere to move to can no longer be switched on.";
 "Autopilot's preview now says where each file would land, not only what would be done to it. And About shows both badges that apply: the program is in beta, and this copy is on the dev channel." = "Autopilot's preview now says where each file would land, not only what would be done to it. And About shows both badges that apply: the program is in beta, and this copy is on the dev channel.";
@@ -818,3 +817,13 @@
 "An extra copy is" = "An extra copy is";
 "the one that arrived later" = "the one that arrived later";
 "Duplicates asks what an extra copy is: the one sitting in Downloads or on the Desktop, or the one that arrived later. It followed the second rule in silence before, so a file you downloaded and then filed away kept the download — and Helm offered to delete the copy you had put away. Every group now says why its copy was kept, any row can be made the one that stays, and “Restore the recommendation” puts that back." = "Duplicates asks what an extra copy is: the one sitting in Downloads or on the Desktop, or the one that arrived later. It followed the second rule in silence before, so a file you downloaded and then filed away kept the download — and Helm offered to delete the copy you had put away. Every group now says why its copy was kept, any row can be made the one that stays, and “Restore the recommendation” puts that back.";
+"Rules to start with" = "Rules to start with";
+"Screenshots into their own folder" = "Screenshots into their own folder";
+"Downloads sorted by kind" = "Downloads sorted by kind";
+"Old installers to the Trash" = "Old installers to the Trash";
+"A tag on big downloads" = "A tag on big downloads";
+"Desktop sorted by month" = "Desktop sorted by month";
+"Nothing is being watched yet, so there is nothing to record." = "Nothing is being watched yet, so there is nothing to record.";
+"Every rule is switched off, so nothing will be recorded here until one is switched on." = "Every rule is switched off, so nothing will be recorded here until one is switched on.";
+"Nothing yet. A file that arrives is checked as it lands, and every watched folder is swept once an hour." = "Nothing yet. A file that arrives is checked as it lands, and every watched folder is swept once an hour.";
+"Subfolders are included for this folder, so this rule reaches into them too." = "Subfolders are included for this folder, so this rule reaches into them too.";

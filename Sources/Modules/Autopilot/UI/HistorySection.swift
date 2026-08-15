@@ -22,6 +22,11 @@ struct HistorySection: View {
     /// The same history in passes, grouped once by the view model rather than
     /// on every body pass.
     let runs: [ActionRun]
+    /// Why there is nothing to draw, when there is nothing. Decided by the
+    /// engine over the folders as well as the passes — two of the three reasons
+    /// are about the rules, which this view has never been given and should not
+    /// be.
+    let empty: HistoryEmpty.Reason?
     let clear: () -> Void
 
     /// Whether the stored history is not Helm's, and the two gestures. Passed
@@ -43,10 +48,11 @@ struct HistorySection: View {
         VStack(alignment: .leading, spacing: HelmSpace.s5) {
             header
             if refused { refusedCard }
-            if history.isEmpty {
-                Text(ApStr.historyEmpty)
+            if let empty {
+                Text(ApStr.historyEmpty(empty))
                     .font(HelmText.rowTitle)
                     .foregroundStyle(HelmText.quiet)
+                    .fixedSize(horizontal: false, vertical: true)
             } else {
                 VStack(alignment: .leading, spacing: HelmSpace.s4) {
                     ForEach(runs) { pass($0) }

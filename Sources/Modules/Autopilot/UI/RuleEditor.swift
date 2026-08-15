@@ -127,6 +127,16 @@ struct RuleEditor: View {
             Text(ApStr.dryRunNote)
                 .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
                 .fixedSize(horizontal: false, vertical: true)
+            // **The one thing about this rule that is not on this screen.** How
+            // deep a folder is watched belongs to the folder, not to the rule —
+            // a preset does not change it, and neither does this editor — and
+            // it decides how much of somebody's tree the rule below reaches.
+            // Beside the dry run, which is where the consequence is being read.
+            if folder.depth > 1 {
+                Text(ApStr.folderIncludesSubfolders)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if rvm.previewByThisRule.isEmpty {
                 Text(ApStr.nothingWouldHappen)
                     .font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)

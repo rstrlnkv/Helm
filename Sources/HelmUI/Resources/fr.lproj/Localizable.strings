@@ -57,7 +57,6 @@
 "Auto" = "Auto";
 "Automation" = "Automatisation";
 "Autopilot" = "Pilote automatique";
-"Autopilot has not done anything yet." = "Le pilote automatique n’a encore rien fait.";
 "Autopilot shows what it did. A report of the last 30 days at the bottom of the page: which file, where it went, and which rule decided — because a folder that tidies itself is only worth trusting if it can say what it tidied." = "Le pilote automatique montre ce qu’il a fait. Un rapport des 30 derniers jours : quel fichier, où il est allé et quelle règle en a décidé.";
 "Autopilot stops sinking files on a USB stick. Sorting into a subfolder used the file’s current parent, so on a disk that cannot carry Helm’s “already done” mark every sweep sorted the result again. A rule with nowhere to move to can no longer be switched on." = "Le pilote automatique n’enfonce plus les fichiers sur une clé USB, et une règle sans destination ne peut plus être activée.";
 "Autopilot's preview now says where each file would land, not only what would be done to it. And About shows both badges that apply: the program is in beta, and this copy is on the dev channel." = "L’aperçu du Pilote automatique indique désormais où chaque fichier atterrirait, pas seulement ce qui lui arriverait. Et « À propos » affiche les deux badges qui s’appliquent.";
@@ -818,3 +817,13 @@
 "An extra copy is" = "Une copie en trop :";
 "the one that arrived later" = "celle qui est arrivée plus tard";
 "Duplicates asks what an extra copy is: the one sitting in Downloads or on the Desktop, or the one that arrived later. It followed the second rule in silence before, so a file you downloaded and then filed away kept the download — and Helm offered to delete the copy you had put away. Every group now says why its copy was kept, any row can be made the one that stays, and “Restore the recommendation” puts that back." = "Doublons demande ce qu’est une copie en trop : celle qui est dans Téléchargements ou sur le Bureau, ou celle qui est arrivée plus tard. La seconde règle s’appliquait en silence : un fichier téléchargé puis rangé gardait le téléchargement, et Helm proposait de supprimer justement la copie que vous aviez rangée. Chaque groupe dit désormais pourquoi sa copie est conservée, n’importe quelle ligne peut le devenir, et « Rétablir la recommandation » revient en arrière.";
+"Rules to start with" = "Règles pour commencer";
+"Screenshots into their own folder" = "Les captures d’écran dans leur propre dossier";
+"Downloads sorted by kind" = "Téléchargements triés par type";
+"Old installers to the Trash" = "Anciens programmes d’installation dans la corbeille";
+"A tag on big downloads" = "Un tag sur les gros téléchargements";
+"Desktop sorted by month" = "Bureau trié par mois";
+"Nothing is being watched yet, so there is nothing to record." = "Aucun dossier n’est encore surveillé, il n’y a donc rien à consigner.";
+"Every rule is switched off, so nothing will be recorded here until one is switched on." = "Toutes les règles sont désactivées : rien n’apparaîtra ici tant que l’une d’elles ne sera pas activée.";
+"Nothing yet. A file that arrives is checked as it lands, and every watched folder is swept once an hour." = "Rien pour l’instant. Un fichier qui arrive est examiné aussitôt, et chaque dossier surveillé est parcouru une fois par heure.";
+"Subfolders are included for this folder, so this rule reaches into them too." = "Les sous-dossiers sont inclus pour ce dossier, la règle les atteindra donc aussi.";

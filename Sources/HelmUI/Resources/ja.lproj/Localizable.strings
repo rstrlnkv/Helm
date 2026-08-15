@@ -57,7 +57,6 @@
 "Auto" = "自動";
 "Automation" = "自動化";
 "Autopilot" = "オートパイロット";
-"Autopilot has not done anything yet." = "オートパイロットはまだ何もしていません。";
 "Autopilot shows what it did. A report of the last 30 days at the bottom of the page: which file, where it went, and which rule decided — because a folder that tidies itself is only worth trusting if it can say what it tidied." = "オートパイロットが何をしたかを表示します。過去30日のレポート — どのファイルが、どこへ、どのルールで動いたか。";
 "Autopilot stops sinking files on a USB stick. Sorting into a subfolder used the file’s current parent, so on a disk that cannot carry Helm’s “already done” mark every sweep sorted the result again. A rule with nowhere to move to can no longer be switched on." = "USB メモリ上でファイルが毎回深く埋もれる問題を修正。移動先のないルールは有効にできません。";
 "Autopilot's preview now says where each file would land, not only what would be done to it. And About shows both badges that apply: the program is in beta, and this copy is on the dev channel." = "“オートパイロット”のプレビューが、何をするかだけでなく、どこに置かれるかも示すようになりました。“Helm について”には当てはまる 2 つのバッジが並びます。";
@@ -818,3 +817,13 @@
 "An extra copy is" = "余分なコピーとは";
 "the one that arrived later" = "あとから来たもの";
 "Duplicates asks what an extra copy is: the one sitting in Downloads or on the Desktop, or the one that arrived later. It followed the second rule in silence before, so a file you downloaded and then filed away kept the download — and Helm offered to delete the copy you had put away. Every group now says why its copy was kept, any row can be made the one that stays, and “Restore the recommendation” puts that back." = "“重複”は、余分なコピーとは何かを尋ねるようになりました。ダウンロードやデスクトップにあるものか、あとから来たものかです。以前は後者の規則が黙って使われていたため、ダウンロードしてから整理したファイルはダウンロード側が残り、Helm は片づけたほうのコピーの削除を勧めていました。今はグループごとに残す理由が表示され、どの行でも残す側にでき、“おすすめに戻す”で元に戻せます。";
+"Rules to start with" = "はじめの一歩となるルール";
+"Screenshots into their own folder" = "スクリーンショットを専用フォルダへ";
+"Downloads sorted by kind" = "ダウンロードを種類別に整理";
+"Old installers to the Trash" = "古いインストーラをゴミ箱へ";
+"A tag on big downloads" = "大きなダウンロードにタグを付ける";
+"Desktop sorted by month" = "デスクトップを月別に整理";
+"Nothing is being watched yet, so there is nothing to record." = "まだ監視しているフォルダがないので、記録するものもありません。";
+"Every rule is switched off, so nothing will be recorded here until one is switched on." = "すべてのルールがオフになっています。どれかをオンにするまで、ここには何も記録されません。";
+"Nothing yet. A file that arrives is checked as it lands, and every watched folder is swept once an hour." = "まだ何もありません。届いたファイルはその場で確認され、監視中のフォルダは1時間に1度点検されます。";
+"Subfolders are included for this folder, so this rule reaches into them too." = "このフォルダはサブフォルダも対象なので、このルールはそこまで届きます。";

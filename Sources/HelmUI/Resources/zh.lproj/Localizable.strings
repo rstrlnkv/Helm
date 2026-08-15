@@ -57,7 +57,6 @@
 "Auto" = "自动";
 "Automation" = "自动化";
 "Autopilot" = "自动整理";
-"Autopilot has not done anything yet." = "自动整理还没有做过任何事。";
 "Autopilot shows what it did. A report of the last 30 days at the bottom of the page: which file, where it went, and which rule decided — because a folder that tidies itself is only worth trusting if it can say what it tidied." = "自动整理会说明它做过什么。最近 30 天的报告：哪个文件、去了哪里、由哪条规则决定。";
 "Autopilot stops sinking files on a USB stick. Sorting into a subfolder used the file’s current parent, so on a disk that cannot carry Helm’s “already done” mark every sweep sorted the result again. A rule with nowhere to move to can no longer be switched on." = "修正了文件在 U 盘上被逐层埋深的问题；没有目标文件夹的规则不能再开启。";
 "Autopilot's preview now says where each file would land, not only what would be done to it. And About shows both badges that apply: the program is in beta, and this copy is on the dev channel." = "“自动驾驶”的预览现在会说明每个文件会落到哪里，而不只是会发生什么。“关于 Helm”同时显示两个适用的标签。";
@@ -818,3 +817,13 @@
 "An extra copy is" = "多余的副本是指";
 "the one that arrived later" = "较晚出现的那份";
 "Duplicates asks what an extra copy is: the one sitting in Downloads or on the Desktop, or the one that arrived later. It followed the second rule in silence before, so a file you downloaded and then filed away kept the download — and Helm offered to delete the copy you had put away. Every group now says why its copy was kept, any row can be made the one that stays, and “Restore the recommendation” puts that back." = "“重复文件”会先问什么算多余的副本：位于“下载”或“桌面”中的那份，还是较晚出现的那份。以前默认按后一条规则处理，于是先下载、后整理归档的文件反而保留了下载的那份，Helm 建议删除的恰恰是你收好的副本。现在每组都会说明为什么保留这份副本，任意一行都可以设为保留，“恢复推荐选择”可以撤回。";
+"Rules to start with" = "从这些规则开始";
+"Screenshots into their own folder" = "截屏放进专属文件夹";
+"Downloads sorted by kind" = "下载按类型归类";
+"Old installers to the Trash" = "旧安装包移到废纸篓";
+"A tag on big downloads" = "给较大的下载加标记";
+"Desktop sorted by month" = "桌面按月份归类";
+"Nothing is being watched yet, so there is nothing to record." = "还没有监视任何文件夹，因此没有可记录的内容。";
+"Every rule is switched off, so nothing will be recorded here until one is switched on." = "所有规则都已关闭，在开启任意一条之前这里不会有记录。";
+"Nothing yet. A file that arrives is checked as it lands, and every watched folder is swept once an hour." = "暂时还没有。文件一到就会检查，每个受监视的文件夹每小时清理一次。";
+"Subfolders are included for this folder, so this rule reaches into them too." = "该文件夹已包含子文件夹，因此这条规则也会作用到子文件夹里。";

@@ -82,6 +82,41 @@ enum ApStr {
     static var addCondition: String { L("Add condition") }
     static var firstMatchNote: String { L("Rules run top to bottom and the first match wins — a file gets one action, not several.") }
 
+    // MARK: - Rules somebody can have without writing one
+
+    static var presetsTitle: String { L("Rules to start with") }
+
+    /// The five names, and the only part of a preset that is translated.
+    ///
+    /// What each one *does* is `RuleSummary.describe(rule)` — built from the
+    /// rule itself, so a name and a description cannot drift apart, which is
+    /// what the changelog entry naming a button that did not exist cost.
+    ///
+    /// Exhaustive, and the `PresetKind` it switches over is the engine's: a
+    /// sixth preset does not build until it has a name in eight languages.
+    static func presetName(_ kind: PresetKind,
+                           language: AppLanguage = AppLanguage.current) -> String {
+        switch kind {
+        case .screenshots: L("Screenshots into their own folder", language: language)
+        case .downloadsByKind: L("Downloads sorted by kind", language: language)
+        case .oldInstallers: L("Old installers to the Trash", language: language)
+        case .largeDownloads: L("A tag on big downloads", language: language)
+        case .desktopByMonth: L("Desktop sorted by month", language: language)
+        }
+    }
+
+    /// **The button says which folder, because pressing it is what adds one.**
+    ///
+    /// Every other folder in this module arrives through the open panel, where
+    /// the person picks the path. This one arrives because `FileManager` named
+    /// it, so the name has to be on the control rather than discovered
+    /// afterwards on the page — and it is macOS's own name for that folder,
+    /// never a ninth translation of one the system already has.
+    static func seePreset(in folder: String,
+                          language: AppLanguage = AppLanguage.current) -> String {
+        L("See what it would do in \(folder)", [.ru: "Посмотреть, что будет в папке \(folder)", .es: "Ver qué haría en \(folder)", .fr: "Voir ce que ça donnerait dans \(folder)", .de: "Ansehen, was in \(folder) passieren würde", .ja: "\(folder) で何が起きるか見る", .zh: "看看在\(folder)里会发生什么", .pt: "Ver o que faria em \(folder)"], language: language)
+    }
+
     // MARK: - Dry run
 
     static var dryRun: String { L("What would happen") }
@@ -96,6 +131,12 @@ enum ApStr {
     /// and a name is not a claim.
     static var takenByAnotherRule: String { L("Another rule takes these files") }
     static var enableRule: String { L("Turn the rule on") }
+    /// **What the dry run above it is not showing.** A folder watched with
+    /// subfolders included hands every rule in it the whole tree, and a preset
+    /// does not change that setting — it is the person's, made about their own
+    /// folder. So the editor says it instead, where the consequence is being
+    /// read.
+    static var folderIncludesSubfolders: String { L("Subfolders are included for this folder, so this rule reaches into them too.") }
     /// What a Run now did — and, when there is one, what it did not do.
     ///
     /// **«Acted on 0 of 3» is also what a refusal on every file looks like.** The
@@ -215,8 +256,26 @@ enum ApStr {
     // MARK: - What it did
 
     static var historyTitle: String { L("Last 30 days") }
-    static var historyEmpty: String { L("Autopilot has not done anything yet.") }
     static var historyClear: String { L("Clear") }
+
+    /// **Why the record is empty, which was three sentences wearing one.**
+    ///
+    /// «Autopilot has not done anything yet» was drawn over a Mac with no
+    /// watched folder, over a rule set the person had switched off entirely,
+    /// and over one that is running and has found nothing — three states with
+    /// three different next steps, told as one. Exhaustive, so a fourth reason
+    /// cannot be added to the engine without a sentence to say it with.
+    static func historyEmpty(_ reason: HistoryEmpty.Reason,
+                             language: AppLanguage = AppLanguage.current) -> String {
+        switch reason {
+        case .noFolders:
+            L("Nothing is being watched yet, so there is nothing to record.", language: language)
+        case .everyRuleOff:
+            L("Every rule is switched off, so nothing will be recorded here until one is switched on.", language: language)
+        case .nothingYet:
+            L("Nothing yet. A file that arrives is checked as it lands, and every watched folder is swept once an hour.", language: language)
+        }
+    }
     /// Refusals and failures counted together: both mean a file the rule meant
     /// to act on is still sitting where it was.
     static func historyProblems(_ count: Int,
