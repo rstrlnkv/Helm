@@ -119,11 +119,22 @@ final class RuleRunnerTests: XCTestCase {
 
     /// Deletion goes through the same gate as every other module's, inside the
     /// engine, not in the view model that built the plan.
+    ///
+    /// **This trashes for real**, so the leaf carries a UUID nobody else could
+    /// own and the teardown takes it back out — and the outcome now names where
+    /// the Trash put it, which is what the undo fetches back.
     func testTrashGoesThroughTheUserFileGate() throws {
-        let file = try write("a.pdf", in: root)
+        let leaf = unownableLeaf("a.pdf")
+        reclaimFromTrash(leaf)
+        let file = try write(leaf, in: root)
         let outcome = runner.run(plan(file, .trash), at: file.path, key: TestRuleKey.material)
-        XCTAssertEqual(outcome, .trashed)
+
+        guard case let .trashed(to: bin) = outcome else {
+            return XCTFail("expected a trashing, got \(outcome)")
+        }
         XCTAssertFalse(exists(file.path))
+        XCTAssertTrue(exists(bin), "the outcome names a path nothing is at: \(bin)")
+        XCTAssertNotEqual(bin, file.path, "the Trash was said to hold the path the file had")
     }
 
     func testTrashingSomethingOutOfScopeIsRefused() {

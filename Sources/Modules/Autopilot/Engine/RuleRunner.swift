@@ -7,7 +7,12 @@ public enum RuleOutcome: Equatable, Sendable {
     case moved(to: String)
     case renamed(to: String)
     case tagged(String)
-    case trashed
+    /// Where the Trash put it, which is not the path it had: the Trash renames
+    /// what it takes when the name is occupied. Asked for so that the one
+    /// action nobody could undo has somewhere to be put back from. Empty when
+    /// macOS took the file and would not say where, which is a removal the
+    /// module can report and cannot reverse.
+    case trashed(to: String)
     /// The rule had already had its turn at this file.
     case alreadyDone
     case refused(Refusal)
@@ -184,7 +189,11 @@ struct RuleRunner: Sendable {
         do {
             var values = URLResourceValues()
             var tags = (try url.resourceValues(forKeys: [.tagNamesKey])).tagNames ?? []
-            guard !tags.contains(tag) else { return .tagged(tag) }
+            // **A tag that was already there is not this rule's doing**, and
+            // saying it was is how an undo takes a label off somebody's file.
+            // This used to answer `.tagged(tag)` — true of the file, false of
+            // the run — which cost nothing while nothing could be put back.
+            guard !tags.contains(tag) else { return .alreadyDone }
             tags.append(tag)
             values.tagNames = tags
             var mutable = url
@@ -205,8 +214,13 @@ struct RuleRunner: Sendable {
         guard !allowed.isEmpty else { return .refused(.outOfScope) }
         guard leadsWhereItLed(path, approved) else { return .refused(.changedSinceCheck) }
         do {
-            try FileManager.default.trashItem(at: url, resultingItemURL: nil)
-            return .trashed
+            // **The resulting URL, at last.** Passing `nil` here was what made
+            // trashing the one action with nowhere to put the file back to —
+            // the Trash renames what it takes, so the path the file had is not
+            // a path anything is at.
+            var landed: NSURL?
+            try FileManager.default.trashItem(at: url, resultingItemURL: &landed)
+            return .trashed(to: (landed as URL?)?.path ?? "")
         } catch {
             return .failed(HelmFailure.describe(error))
         }

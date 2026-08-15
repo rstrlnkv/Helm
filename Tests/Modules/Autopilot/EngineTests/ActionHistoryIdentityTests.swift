@@ -68,10 +68,10 @@ final class ActionHistoryIdentityTests: XCTestCase {
     func test_a_record_identifies_the_file_it_is_about() throws {
         let a = try XCTUnwrap(ActionRecord.of(
             RulePlan(facts: facts("/Users/x/Downloads/2025/report.pdf"), rule: rule),
-            .trashed, at: at(3)))
+            .trashed(to: "/Users/x/.Trash/report.pdf"), at: at(3)))
         let b = try XCTUnwrap(ActionRecord.of(
             RulePlan(facts: facts("/Users/x/Downloads/2026/report.pdf"), rule: rule),
-            .trashed, at: at(3)))
+            .trashed(to: "/Users/x/.Trash/report 2.pdf"), at: at(3)))
 
         XCTAssertNotEqual(a.id, b.id,
                           "two files trashed in the same sweep share one identity: \(a.id)")

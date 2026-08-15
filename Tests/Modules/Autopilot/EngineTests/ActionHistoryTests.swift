@@ -122,8 +122,8 @@ final class ActionRecordFromOutcomeTests: XCTestCase {
         XCTAssertEqual(ActionRecord.of(plan, .renamed(to: "2026-07 march.pdf"))?.detail,
                        "2026-07 march.pdf")
         XCTAssertEqual(ActionRecord.of(plan, .tagged("Paid"))?.detail, "Paid")
-        XCTAssertEqual(ActionRecord.of(plan, .trashed)?.kind, .trashed)
-        XCTAssertEqual(ActionRecord.of(plan, .trashed)?.detail, "")
+        XCTAssertEqual(ActionRecord.of(plan, .trashed(to: "/Users/x/.Trash/march.pdf"))?.kind, .trashed)
+        XCTAssertEqual(ActionRecord.of(plan, .trashed(to: "/Users/x/.Trash/march.pdf"))?.detail, "")
         XCTAssertEqual(ActionRecord.of(plan, .refused(.outOfScope))?.detail, "outOfScope")
         XCTAssertEqual(ActionRecord.of(plan, .failed("no permission"))?.detail, "no permission")
     }

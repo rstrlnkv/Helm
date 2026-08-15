@@ -55,11 +55,28 @@ final class ActionHistoryDestinationTests: XCTestCase {
     }
 
     /// The Trash renames what it takes when a name is occupied, so the path the
-    /// file used to have is not where it is, and Helm never asked for the
-    /// resulting URL. Nothing knowable, therefore nothing offered.
+    /// file used to have is not where it is — which is why the resulting URL is
+    /// asked for now and kept. The row can open the Trash on the file, and the
+    /// undo has somewhere to fetch it back from.
+    func test_a_trashed_file_points_at_where_the_trash_put_it() throws {
+        let r = try record("/Users/x/Downloads/a.pdf", .trashed(to: "/Users/x/.Trash/a 2.pdf"))
+        XCTAssertEqual(r.detail, "", "the row's short form changed")
+        XCTAssertEqual(r.destination, "/Users/x/.Trash/a 2.pdf")
+        XCTAssertEqual(r.revealPath, "/Users/x/.Trash/a 2.pdf")
+    }
+
+    /// macOS took the file and would not say where. A removal the module can
+    /// report and cannot reverse, which is the same rule as everywhere else
+    /// here: no location, no offer.
+    func test_a_trashing_that_would_not_say_where_offers_nothing() throws {
+        let r = try record("/Users/x/Downloads/a.pdf", .trashed(to: ""))
+        XCTAssertNil(r.revealPath)
+    }
+
+    /// A refusal or a failure may or may not have left the file where it stood.
+    /// Nothing knowable, therefore nothing offered.
     func test_the_outcomes_that_leave_no_knowable_location_offer_nothing() throws {
-        for outcome in [RuleOutcome.trashed,
-                        .refused(.missing),
+        for outcome in [RuleOutcome.refused(.missing),
                         .refused(.outOfScope),
                         .failed("permission denied")] {
             let r = try record("/Users/x/Downloads/a.pdf", outcome)
