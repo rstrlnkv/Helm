@@ -51,9 +51,14 @@ struct DiskWidget: View {
             }
         }
         .task {
-            // Asked once, and only if nobody has asked yet: `shared(vm:)` means
-            // the page and the widget are looking at the same list.
-            if vm.volumes.isEmpty { await vm.loadVolumes() }
+            // **Every time it is shown**, not once per launch. `shared(vm:)`
+            // lives as long as the app does, so `if vm.volumes.isEmpty` meant
+            // the free space on this tile was the figure from the first opening
+            // of the panel — for weeks, on a menu-bar app — and `CapacityBar`'s
+            // red-over-90 % could never fire on a disk filling up while Helm
+            // ran, which is the only way disks fill up. The panel rebuilds its
+            // widgets on every opening, and this read is a `statfs`.
+            await vm.loadVolumes()
         }
     }
 }

@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import HelmContract
 import HelmRuntime
@@ -56,6 +57,10 @@ import Module_Disk_Engine
     private let client: TransportClient
     private let vm: ModuleViewModel
     private var eventsTask: Task<Void, Never>?
+    /// Held so the observers can be taken back out: a view model dropped when
+    /// the module is switched off must not be woken by the next disk somebody
+    /// plugs in (ARCHITECTURE.md § An observer outlives the thing it points at).
+    private var mounts: MountWatch?
     /// Injectable so a test does not read — and overwrite — the person's own
     /// last scan.
     private let store: ScanStore
@@ -142,9 +147,27 @@ import Module_Disk_Engine
             }
         }
         Task { [weak self] in await self?.restoreLastScan() }
+        // **A disk arriving or leaving is a fact only macOS knows.** Without
+        // this the volume list is a local copy of a live external fact with no
+        // channel from the port that knows — the family CLAUDE.md names. The
+        // page re-asked on every appearance and so covered it up; the panel tile
+        // is rebuilt rather than reappearing, and a drive plugged in while the
+        // page is open never showed up in the picker at all.
+        //
+        // `loadVolumes` is one request and returns, so the strong hold the task
+        // takes on `self` once it starts lasts as long as a `statfs` — not the
+        // trap CLAUDE.md records for a `for await` over a stream nothing
+        // finishes.
+        mounts = MountWatch { [weak self] in
+            Task { @MainActor [weak self] in await self?.loadVolumes() }
+        }
     }
 
-    /// Ends the event loop, which unregisters the transport subscriber.
+    /// Ends the event loop, which unregisters the transport subscriber. The
+    /// mount observers go out with `mounts`, whose own lifetime is the
+    /// subscription — Swift 6 refuses a nonisolated `deinit` reading this
+    /// object's state, and a teardown that cannot be written is a teardown
+    /// nobody will write.
     ///
     /// Cancelling is what makes `AsyncStream` finish its iteration and fire
     /// `onTermination`; the `guard let self` above only notices at the next
@@ -637,4 +660,33 @@ import Module_Disk_Engine
                  children: entry.children.map(node(from:)))
     }
 
+}
+
+/// Disks appearing and disappearing, for as long as this object is held.
+///
+/// A separate type because its `deinit` is the whole point and a `@MainActor`
+/// class cannot have one that reads its own tokens — Swift 6 refuses a
+/// nonisolated `deinit` touching non-`Sendable` state, which is how «the
+/// observer nobody takes out» gets written by accident. Here the subscription
+/// *is* the lifetime, so there is nothing left to remember.
+///
+/// `NSWorkspace`'s own centre, not `NotificationCenter.default`: these two
+/// notifications are posted there and nowhere else. Delivered on the main
+/// queue, where every reader of this lives. Local to Disk while Disk is the
+/// only module that wants it; a second one moves it to `HelmRuntime`.
+private final class MountWatch {
+    private let tokens: [NSObjectProtocol]
+
+    init(_ onChange: @escaping @Sendable () -> Void) {
+        let center = NSWorkspace.shared.notificationCenter
+        tokens = [NSWorkspace.didMountNotification,
+                  NSWorkspace.didUnmountNotification].map { name in
+            center.addObserver(forName: name, object: nil, queue: .main) { _ in onChange() }
+        }
+    }
+
+    deinit {
+        let center = NSWorkspace.shared.notificationCenter
+        for token in tokens { center.removeObserver(token) }
+    }
 }

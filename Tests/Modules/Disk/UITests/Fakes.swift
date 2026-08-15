@@ -55,12 +55,39 @@ final class AnsweringTransport: EngineTransport, @unchecked Sendable {
     private var results: [String: ScanResult] = [:]
     private var removal = DiskRemoval(removed: [], refused: [], freedBytes: 0)
     private var answer: Answer = .reply
-    private let volumes: [VolumeInfo]
+    private var volumes: [VolumeInfo]
+    private var volumeRequests = 0
     let events: AsyncStream<EngineEvent>
 
     init(volumes: [VolumeInfo]) {
         self.volumes = volumes
         events = AsyncStream { _ in }
+    }
+
+    /// A disk plugged in, ejected, or filling up while the app runs.
+    ///
+    /// **A volume list fixed at init cannot change under the app**, which is the
+    /// one thing this port really does: `statfs` answers a different number every
+    /// time somebody writes a file, and a Mac gains and loses disks. A fake that
+    /// answers the same list for ever makes «the tile is showing what the disk
+    /// held at launch» unrepresentable (CLAUDE.md § Anything that can stop being
+    /// true on its own).
+    func answerVolumes(with volumes: [VolumeInfo]) {
+        lock.lock(); self.volumes = volumes; lock.unlock()
+    }
+
+    /// How many times the list was really asked for. The tile asked once per
+    /// launch and this is what says so.
+    var volumeReads: Int {
+        lock.lock(); defer { lock.unlock() }; return volumeRequests
+    }
+
+    private var currentVolumes: [VolumeInfo] {
+        lock.lock(); defer { lock.unlock() }; return volumes
+    }
+
+    private func noteVolumes() {
+        lock.lock(); volumeRequests += 1; lock.unlock()
     }
 
     func answer(_ path: String, with result: ScanResult) {
@@ -109,6 +136,7 @@ final class AnsweringTransport: EngineTransport, @unchecked Sendable {
         if command.name == DiskCommand.trash.rawValue {
             noteTrash((try? JSONDecoder().decode([String].self, from: command.payload)) ?? [])
         }
+        if command.name == DiskCommand.volumes.rawValue { noteVolumes() }
         switch currentAnswer {
         case .refuse: throw NoEngine.gone
         case .nothing: return Data()
@@ -116,7 +144,7 @@ final class AnsweringTransport: EngineTransport, @unchecked Sendable {
         }
         switch command.name {
         case "volumes":
-            return (try? JSONEncoder().encode(volumes)) ?? Data()
+            return (try? JSONEncoder().encode(currentVolumes)) ?? Data()
         case "scan":
             let request = try? JSONDecoder().decode(ScanRequest.self, from: command.payload)
             return (try? JSONEncoder().encode(request.flatMap { result(for: $0.path) })) ?? Data()
