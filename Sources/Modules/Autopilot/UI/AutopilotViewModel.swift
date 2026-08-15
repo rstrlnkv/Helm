@@ -127,16 +127,15 @@ import SwiftUI
     /// somebody else's work from an hour ago.
     @Published private(set) var bannerRun: ActionRun?
 
-    /// The history in passes, which is what the section draws: five hundred
-    /// rows is not a thing anybody can act on, and "the twelve files that
-    /// arrived at 14:22" is.
-    var runs: [ActionRun] { ActionHistory.runs(of: history) }
-
     /// Asked for rather than pushed, like the folders: the engine acts on its
     /// own queue and on FSEvents, and a page that is not open does not need
     /// telling.
     func loadHistory() async {
         history = await client.request(AutopilotCommand.history) ?? []
+        // The one place the grouping is computed. Five hundred rows is not a
+        // thing anybody can act on, and "the twelve files that arrived at
+        // 14:22" is.
+        runs = ActionHistory.runs(of: history)
     }
 
     func clearHistory() {
@@ -158,6 +157,11 @@ import SwiftUI
     func canPutBack(_ record: ActionRecord) -> Bool { !historyRefused && record.undoable }
 
     func canPutBack(_ run: ActionRun) -> Bool { !historyRefused && run.canBePutBack }
+
+    /// The passes the section draws, held rather than derived on every body
+    /// pass: grouping five hundred records is cheap once and not cheap thirty
+    /// times a second, and the history only changes when it is read back.
+    @Published private(set) var runs: [ActionRun] = []
 
     func undo(_ record: ActionRecord) async {
         await putBack(AutopilotCommand.undo, id: record.id)
@@ -191,7 +195,7 @@ import SwiftUI
     private func sentence(for report: UndoReport) -> String {
         var lines = [ApStr.putBackReport(report.restored.count, notPutBack: report.notPutBack.count)]
         for line in report.notPutBack {
-            lines.append("\(line.file) — \(reason(for: line.outcome))")
+            lines.append(ApStr.notPutBack(line.file, reason(for: line.outcome)))
         }
         for line in report.restored {
             guard let name = line.landedAs else { continue }
@@ -209,7 +213,7 @@ import SwiftUI
         case let .failed(description): description
         // Not reachable — these are the lines that did *not* go back — and
         // named rather than defaulted, so a fourth outcome is a build error.
-        case let .restored(to: path, stamped: _): (path as NSString).lastPathComponent
+        case .restored: ""
         }
     }
 
@@ -348,13 +352,13 @@ import SwiftUI
         // the newest pass is then work from an hour ago, and offering to put
         // *that* back beside «Acted on 0 of 3» would be the wrong sentence
         // attached to the wrong twelve files.
-        bannerRun = report.acted > 0 ? runs.first.flatMap { canPutBack($0.id) } : nil
+        bannerRun = report.acted > 0 ? runs.first.flatMap { offerable($0.id) } : nil
     }
 
     /// The pass with that id, when there is anything in it a return could act
     /// on. One place, so the banner and the section cannot disagree about what
     /// is offered.
-    private func canPutBack(_ run: String) -> ActionRun? {
+    private func offerable(_ run: String) -> ActionRun? {
         guard !historyRefused, let pass = runs.first(where: { $0.id == run }),
               !pass.undoable.isEmpty
         else { return nil }

@@ -312,6 +312,17 @@ enum ApStr {
         L("\(Quoted(file, language: language)) came back as \(Quoted(name, language: language))", [.ru: "\(Quoted(file, language: language)) вернулся как \(Quoted(name, language: language))", .es: "\(Quoted(file, language: language)) volvió como \(Quoted(name, language: language))", .fr: "\(Quoted(file, language: language)) est revenu sous le nom \(Quoted(name, language: language))", .de: "\(Quoted(file, language: language)) kam zurück als \(Quoted(name, language: language))", .ja: "\(Quoted(file, language: language)) は \(Quoted(name, language: language)) として戻りました", .zh: "\(Quoted(file, language: language)) 已作为 \(Quoted(name, language: language)) 放回", .pt: "\(Quoted(file, language: language)) voltou como \(Quoted(name, language: language))"], language: language)
     }
 
+    /// One file that did not go back, and why.
+    ///
+    /// The separator is the table's, not a dash written once for eight
+    /// languages: Japanese and Chinese punctuate an apposition with their own
+    /// marks, and an em dash between two of their phrases is a European
+    /// sentence wearing their words.
+    static func notPutBack(_ file: String, _ reason: String,
+                           language: AppLanguage = AppLanguage.current) -> String {
+        L("\(file) — \(reason)", [.ru: "\(file) — \(reason)", .es: "\(file): \(reason)", .fr: "\(file)\u{00a0}: \(reason)", .de: "\(file) – \(reason)", .ja: "\(file)：\(reason)", .zh: "\(file)：\(reason)", .pt: "\(file): \(reason)"], language: language)
+    }
+
     /// The mark that stops a rule acting twice did not stick, so the rule will
     /// take this file again on the next sweep. The one line in this report with
     /// something for a person to do about it.

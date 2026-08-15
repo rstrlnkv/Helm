@@ -245,7 +245,7 @@ final class SealedRules: @unchecked Sendable {
     /// behind: a MAC with no payload under it is the state the next write
     /// replaces anyway, and leaving one is a fact about a history nobody has.
     func clearHistory() {
-        store.set(nil, for: "history")
+        store.set(nil, for: ActionHistory.storeKey)
         store.set(nil, for: RuleSeal.historyKey)
     }
 

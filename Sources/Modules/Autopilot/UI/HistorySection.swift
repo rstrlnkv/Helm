@@ -19,19 +19,25 @@ import SwiftUI
 /// 14:22" is.
 struct HistorySection: View {
     let history: [ActionRecord]
+    /// The same history in passes, grouped once by the view model rather than
+    /// on every body pass.
+    let runs: [ActionRun]
     let clear: () -> Void
 
     /// Whether the stored history is not Helm's, and the two gestures. Passed
     /// in rather than reached for, like `clear`: this view draws and asks, and
     /// the view model is what knows how to send.
-    var refused = false
-    var canPutBack: (ActionRecord) -> Bool = { _ in false }
-    var canPutBackRun: (ActionRun) -> Bool = { _ in false }
-    var putBack: (ActionRecord) -> Void = { _ in }
-    var putBackRun: (ActionRun) -> Void = { _ in }
+    ///
+    /// **No defaults.** A default here is "offer no return", which is a whole
+    /// feature switched off by a call site that forgot an argument — silently,
+    /// with nothing failing.
+    let refused: Bool
+    let canPutBack: (ActionRecord) -> Bool
+    let canPutBackRun: (ActionRun) -> Bool
+    let putBack: (ActionRecord) -> Void
+    let putBackRun: (ActionRun) -> Void
 
     private var summary: ActionHistory.Summary { ActionHistory.summary(of: history) }
-    private var runs: [ActionRun] { ActionHistory.runs(of: history) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s5) {

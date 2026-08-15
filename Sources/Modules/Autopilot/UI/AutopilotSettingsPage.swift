@@ -103,7 +103,8 @@ struct AutopilotSettingsPage: View {
                     }
                 }
                 Section {
-                    HistorySection(history: rvm.history, clear: { rvm.clearHistory() },
+                    HistorySection(history: rvm.history, runs: rvm.runs,
+                                   clear: { rvm.clearHistory() },
                                    refused: rvm.historyRefused,
                                    canPutBack: rvm.canPutBack,
                                    canPutBackRun: rvm.canPutBack,

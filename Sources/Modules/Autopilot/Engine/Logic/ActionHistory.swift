@@ -164,6 +164,13 @@ public struct ActionRecord: Codable, Equatable, Sendable, Identifiable {
 /// What Autopilot did, over the last thirty days.
 public enum ActionHistory {
 
+    /// Where the history lives in the module's own namespace.
+    ///
+    /// Here rather than on the engine, because the engine is not the only
+    /// reader any more: the seal is written and thrown away beside the payload,
+    /// and a key spelled in two places is one that only one of them renames.
+    public static let storeKey = "history"
+
     /// Thirty days, because that is the promise the page makes. Anything older
     /// is a file somebody has long since stopped looking for.
     public static let window: TimeInterval = 30 * 86_400

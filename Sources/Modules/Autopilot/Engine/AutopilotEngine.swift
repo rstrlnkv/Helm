@@ -177,7 +177,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// store left behind by a machine that was asleep for a month shows nothing
     /// rather than a page of history that is no longer true.
     public var history: [ActionRecord] {
-        ActionHistory.within(ActionHistory.decode(store.data(Self.historyKey)))
+        ActionHistory.within(ActionHistory.decode(store.data(ActionHistory.storeKey)))
     }
 
     /// Whether the stored history is not Helm's, in which case nothing in it
@@ -186,7 +186,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// Shown all the same: the page's job is to say what happened, and a
     /// history that has been rewritten is itself something that happened.
     public var historyRefused: Bool {
-        !rules.historyIsHelms(queue.sync { store.data(Self.historyKey) })
+        !rules.historyIsHelms(queue.sync { store.data(ActionHistory.storeKey) })
     }
 
     /// On the engine's own queue, like every write to this key.
@@ -204,8 +204,6 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         queue.sync { rules.clearHistory() }
     }
 
-    private static let historyKey = "history"
-
     /// Written once for a whole pass rather than once per file: a sweep of a
     /// full Downloads folder is one write, not two hundred.
     ///
@@ -218,7 +216,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// the run's work is in the log as it always was.
     private func remember(_ records: [ActionRecord]) {
         guard !records.isEmpty else { return }
-        let stored = store.data(Self.historyKey)
+        let stored = store.data(ActionHistory.storeKey)
         guard rules.historyIsHelms(stored) else {
             HelmLog.shared.error("autopilot",
                                  "the stored history was not written by Helm, so \(records.count) "
@@ -242,7 +240,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// the history, still signed.
     private func write(_ history: [ActionRecord]) {
         guard let data = ActionHistory.encode(history), rules.seal(history: data) else { return }
-        store.set(data, for: Self.historyKey)
+        store.set(data, for: ActionHistory.storeKey)
     }
 
     // MARK: - Putting it back
@@ -276,7 +274,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// believing — and the refusal is reported per line, because the page's
     /// report is the only place it can be said.
     private func putBack(_ matching: (ActionRecord) -> Bool) -> UndoReport {
-        let stored = store.data(Self.historyKey)
+        let stored = store.data(ActionHistory.storeKey)
         var history = ActionHistory.within(ActionHistory.decode(stored))
         let chosen = history.filter(matching)
         guard rules.historyIsHelms(stored) else {
