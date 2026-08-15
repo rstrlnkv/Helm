@@ -48,6 +48,11 @@ final class MemoryTrailCoverageTests: XCTestCase {
         ("uninstaller.appSizes", "Modules/Uninstaller/Engine/UninstallerEngine.swift"),
         ("autopilot.sweep", "Modules/Autopilot/Engine/AutopilotEngine.swift"),
         ("autopilot.runNow", "Modules/Autopilot/Engine/AutopilotEngine.swift"),
+        // The FSEvents leg — where the module does all of its unattended work —
+        // and the dry run, which is a full folder read per keystroke. Both were
+        // invisible to the trail while the hourly sweep could name itself.
+        ("autopilot.watch", "Modules/Autopilot/Engine/AutopilotEngine.swift"),
+        ("autopilot.preview", "Modules/Autopilot/Engine/AutopilotEngine.swift"),
         ("homebrew.listInstalled", "Modules/Homebrew/Engine/HomebrewEngine.swift"),
         ("homebrew.outdated", "Modules/Homebrew/Engine/HomebrewEngine.swift"),
         ("update.digest", "HelmApp/UpdateService.swift"),

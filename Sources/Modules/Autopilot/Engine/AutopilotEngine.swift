@@ -314,8 +314,16 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// fourth guarantee — a rule must not run before it has been seen — and the
     /// sentence had come loose from the function that keeps it.
     public func preview(_ folder: WatchedFolder) -> [RulePlan] {
-        let files = reader.facts(in: folder.path, depth: folder.depth)
-        return RulePlan.decide(files, rules: folder.rules.filter(\.enabled))
+        // A full folder read per keystroke in the editor, which is bulk work
+        // whatever the folder — so it names itself the way `runNow` does, and
+        // the reading is inside the phase for the same reason: a phase that has
+        // ended cannot be excluded from its own line. `memory` is a delta and
+        // silent below its threshold, so an ordinary keystroke writes nothing.
+        HelmActivity.phase("autopilot.preview") {
+            defer { HelmLog.shared.memory("autopilot.preview") }
+            let files = reader.facts(in: folder.path, depth: folder.depth)
+            return RulePlan.decide(files, rules: folder.rules.filter(\.enabled))
+        }
     }
 
     /// `manual` is the trigger, and it decides the sweep's voice alone —
@@ -421,20 +429,35 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         let watched = folders.filter(\.enabled)
         guard !watched.isEmpty else { return }
         queue.async { [self] in
-            var acted = 0
-            var records: [ActionRecord] = []
-            let key = rules.keyMaterial
-            // One batch of events is one pass, the way one sweep is.
-            let pass = UUID().uuidString
-            for path in Set(changed) {
-                guard let plan = self.plan(for: path, among: watched) else { continue }
-                let outcome = runner.run(plan, at: path, key: key)
-                if let record = ActionRecord.of(plan, outcome, run: pass) { records.append(record) }
-                if self.note(outcome, at: path) { acted += 1 }
-            }
-            self.remember(records)
-            if acted > 0 {
-                HelmLog.shared.info("autopilot", "watcher acted on \(acted) of \(Set(changed).count)")
+            // Named while it runs, like the sweep — this is where the module
+            // does all of its unattended work, and it was the one leg the
+            // memory trail could not blame. The phase itself writes no log
+            // line, so a quiet batch costs the trail nothing.
+            HelmActivity.phase("autopilot.watch") {
+                var acted = 0
+                var records: [ActionRecord] = []
+                let key = rules.keyMaterial
+                // One batch of events is one pass, the way one sweep is.
+                let pass = UUID().uuidString
+                for path in Set(changed) {
+                    guard let plan = self.plan(for: path, among: watched) else { continue }
+                    let outcome = runner.run(plan, at: path, key: key)
+                    if let record = ActionRecord.of(plan, outcome, run: pass) {
+                        records.append(record)
+                    }
+                    if self.note(outcome, at: path) { acted += 1 }
+                }
+                self.remember(records)
+                if acted > 0 {
+                    HelmLog.shared.info("autopilot",
+                                        "watcher acted on \(acted) of \(Set(changed).count)")
+                }
+                // Only a batch that did something is read: events coalesce to
+                // about one batch a second while files are being written, and a
+                // batch where no rule matched must not fill the one trail that
+                // has to stay readable — the same line `sweepAll` draws.
+                guard !records.isEmpty else { return }
+                HelmLog.shared.memory("autopilot.watch")
             }
         }
     }
