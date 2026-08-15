@@ -216,8 +216,81 @@ import SwiftUI
         guard let report else { return }
         bannerFolderID = nil
         bannerRun = nil
+        // Read off the report before the history is reloaded, while the records
+        // its lines name are still the ones the page is holding.
+        unmarkedRules = unmarked(in: report)
+        undoNotes = notes(in: report)
         banner = sentence(for: report)
         await loadHistory()
+    }
+
+    /// What became of one row's return, keyed by the record's id.
+    ///
+    /// The banner reports the whole pass, which for a single return is one line
+    /// standing at the foot of the page far from the file it names. A file that
+    /// did not go back, or came back under another name, is a fact about *that
+    /// row* — so it is said on it too.
+    @Published private(set) var undoNotes: [String: String] = [:]
+
+    /// The note for one row, or nothing.
+    func undoNote(for record: ActionRecord) -> String? { undoNotes[record.id] }
+
+    /// The per-row notes a report leaves: a reason for each file that did not go
+    /// back, and the new name for each that came back under one. Keyed by the
+    /// line's id, which is the record's — the seam the engine builds them across.
+    private func notes(in report: UndoReport) -> [String: String] {
+        var out: [String: String] = [:]
+        for line in report.lines {
+            if let note = note(for: line) { out[line.id] = note }
+        }
+        return out
+    }
+
+    /// What one line of a return says about itself, or nothing: the reason a
+    /// file did not go back, or the new name it came back under. The banner
+    /// joins these and the rows carry them, so both read from one place.
+    private func note(for line: UndoReport.Line) -> String? {
+        line.restored
+            ? line.landedAs.map { ApStr.landedAs(line.file, as: $0) }
+            : ApStr.notPutBack(line.file, reason(for: line.outcome))
+    }
+
+    /// The rules the last return could not re-mark, by name.
+    ///
+    /// The one line in a return's report with something to *do* about it: the
+    /// mark that stops a rule acting twice did not stick, so the rule takes the
+    /// file again within the hour. One button each, named, because a person with
+    /// four rules needs to know which one is about to take the file back.
+    @Published private(set) var unmarkedRules: [UnmarkedRule] = []
+
+    /// Walked from each unmarked line back through the history to the record that
+    /// names its rule — by id, so the right one is switched off when two rules in
+    /// one folder share a name.
+    private func unmarked(in report: UndoReport) -> [UnmarkedRule] {
+        var ids: [String: Set<String>] = [:]
+        for line in report.unmarked {
+            guard let record = history.first(where: { $0.id == line.id }) else { continue }
+            var set = ids[record.rule] ?? []
+            if let ruleID = record.ruleID { set.insert(ruleID) }
+            ids[record.rule] = set
+        }
+        return ids.map { UnmarkedRule(name: $0.key, ruleIDs: $0.value) }
+            .sorted { $0.name < $1.name }
+    }
+
+    /// Switch off a rule the last return could not re-mark, through the same
+    /// write a rule's own toggle takes — off, it stops taking the file back. The
+    /// offer goes with the press: the rule cannot un-stick a mark it no longer
+    /// writes.
+    func turnOffRule(_ rule: UnmarkedRule) {
+        for folderIndex in folders.indices {
+            for ruleIndex in folders[folderIndex].rules.indices
+            where rule.matches(folders[folderIndex].rules[ruleIndex]) {
+                folders[folderIndex].rules[ruleIndex].enabled = false
+            }
+        }
+        unmarkedRules.removeAll { $0.id == rule.id }
+        save()
     }
 
     /// What a return says afterwards.
@@ -229,13 +302,10 @@ import SwiftUI
     /// sentence this whole report exists to avoid.
     private func sentence(for report: UndoReport) -> String {
         var lines = [ApStr.putBackReport(report.restored.count, notPutBack: report.notPutBack.count)]
-        for line in report.notPutBack {
-            lines.append(ApStr.notPutBack(line.file, reason(for: line.outcome)))
-        }
-        for line in report.restored {
-            guard let name = line.landedAs else { continue }
-            lines.append(ApStr.landedAs(line.file, as: name))
-        }
+        // Failures with their reasons first, then the files that changed name —
+        // the same two groups the rows carry, built from one per-line formatter.
+        lines += report.notPutBack.compactMap(note(for:))
+        lines += report.restored.compactMap(note(for:))
         if !report.unmarked.isEmpty { lines.append(ApStr.ruleMayTakeItAgain) }
         return lines.joined(separator: "\n")
     }
@@ -442,6 +512,10 @@ import SwiftUI
                                                         encoding: WatchedFolderRef(id: folder.id))
         guard let report else { return }
         bannerFolderID = folder.id
+        // A sweep's report is a different banner; the return's offer and its
+        // per-row notes do not belong under it.
+        unmarkedRules = []
+        undoNotes = [:]
         banner = ApStr.swept(report.acted, report.examined,
                              notCompleted: report.refused + report.failed)
         // The run just walked the folder, so its reading is newer than the one
@@ -472,7 +546,28 @@ import SwiftUI
         return pass
     }
 
-    func dismissBanner() { banner = nil; bannerFolderID = nil; bannerRun = nil }
+    func dismissBanner() {
+        banner = nil; bannerFolderID = nil; bannerRun = nil
+        unmarkedRules = []; undoNotes = [:]
+    }
+}
+
+/// A rule a return could not re-mark, as the banner offers to switch it off.
+///
+/// Named for display and identified by the ids the record carried, so the button
+/// says which rule and switches the right one — two rules in one folder may be
+/// called the same thing, and the id is what tells them apart. Grouped by name,
+/// so one button turns off both when they do share it.
+struct UnmarkedRule: Identifiable, Equatable {
+    let name: String
+    let ruleIDs: Set<String>
+    var id: String { name }
+
+    /// By id when the record carried one — which a return that reached this
+    /// warning always did — and by name only as a fallback that should not fire.
+    func matches(_ rule: Rule) -> Bool {
+        ruleIDs.isEmpty ? rule.name == name : ruleIDs.contains(rule.id)
+    }
 }
 
 /// What the page draws where the folder list goes.

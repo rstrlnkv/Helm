@@ -41,6 +41,12 @@ struct HistorySection: View {
     let canPutBackRun: (ActionRun) -> Bool
     let putBack: (ActionRecord) -> Void
     let putBackRun: (ActionRun) -> Void
+    /// What the last return came to for this row, when there is something to
+    /// say — a file that did not go back, or one that came back under another
+    /// name. On the row it is about, not only in the banner at the foot of the
+    /// page. No default, like the gestures above: a call site that forgot it
+    /// would drop the note in silence.
+    let note: (ActionRecord) -> String?
 
     private var summary: ActionHistory.Summary { ActionHistory.summary(of: history) }
 
@@ -65,6 +71,9 @@ struct HistorySection: View {
     private var header: some View {
         HStack(spacing: 8) {
             Text(ApStr.historyTitle).font(.headline)
+                // A heading, so the rotor can reach the record without reading
+                // the whole list above it.
+                .accessibilityAddTraits(.isHeader)
             // The count is a promise the list has to keep, so both come from
             // the same window: a header saying seventeen over a list of nine is
             // worse than no header.
@@ -121,6 +130,7 @@ struct HistorySection: View {
     }
 
     private func row(_ record: ActionRecord) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
         HStack(spacing: 8) {
             // **The time is the pass's, not the row's.** It used to sit here, in
             // a 96-point column, and once the rows were grouped it said the same
@@ -150,6 +160,21 @@ struct HistorySection: View {
                 .font(HelmText.rowDetail)
                 .foregroundStyle(HelmText.quiet)
                 .lineLimit(1)
+        }
+        // What the last return came to for this file, on its own row. Aligned
+        // under the file name — the same leading gap the row opens with — so a
+        // «march.pdf came back as march 2.pdf» sits with the file it renames
+        // rather than in the banner alone.
+        if let note = note(record) {
+            HStack(spacing: 8) {
+                Spacer().frame(width: HelmSpace.s4)
+                Text(note)
+                    .font(HelmText.rowDetail)
+                    .foregroundStyle(HelmText.quiet)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 8)
+            }
+        }
         }
         // Read as one thing. Six separate labels per row turns a page of
         // twenty into a hundred and twenty stops.

@@ -29,6 +29,9 @@ struct PresetSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s5) {
             Text(ApStr.presetsTitle).font(.headline)
+                // A heading, so VoiceOver's rotor can jump to it rather than
+                // reading every preset row to find where the section starts.
+                .accessibilityAddTraits(.isHeader)
             if diskAccess == .denied {
                 // The sentence, and not a second `HelmPermissionNote`: the page
                 // already draws one with the button in it, and two grants side

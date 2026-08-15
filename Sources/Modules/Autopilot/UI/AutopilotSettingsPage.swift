@@ -58,6 +58,14 @@ struct AutopilotSettingsPage: View {
                         }
                         .controlSize(.small)
                     }
+                    // The one line in a return's report with something to do:
+                    // a rule that could not be re-marked will take the file back
+                    // within the hour, so the lever to switch it off is here,
+                    // named, beside the warning that says so.
+                    ForEach(rvm.unmarkedRules) { rule in
+                        Button(ApStr.turnRuleOff(rule.name)) { rvm.turnOffRule(rule) }
+                            .controlSize(.small)
+                    }
                     Button(ApStr.done) { rvm.dismissBanner() }.controlSize(.small)
                 }
                 .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
@@ -65,6 +73,9 @@ struct AutopilotSettingsPage: View {
         }
         .helmTracksFullDiskAccess($diskAccess)
         .animation(HelmMotion.interface, value: rvm.folders.count)
+        // A sweep's report and a return's report grow into the banner without
+        // moving focus, so they are silent to VoiceOver unless said.
+        .helmAnnounces(rvm.banner)
         .sheet(item: $editing) { context in
             RuleEditor(rvm: rvm, folder: context.folder, rule: context.rule)
         }
@@ -128,7 +139,8 @@ struct AutopilotSettingsPage: View {
                                    canPutBack: rvm.canPutBack,
                                    canPutBackRun: rvm.canPutBack,
                                    putBack: { record in Task { await rvm.undo(record) } },
-                                   putBackRun: { pass in Task { await rvm.undoRun(pass) } })
+                                   putBackRun: { pass in Task { await rvm.undoRun(pass) } },
+                                   note: { rvm.undoNote(for: $0) })
                 }
             }
             .listStyle(.inset)
@@ -285,9 +297,16 @@ struct AutopilotSettingsPage: View {
             .disabled(folder.rules.last?.id == rule.id)
         }
         .contentShape(Rectangle())
-        .contextMenu {
-            Button(ApStr.edit) { editing = EditingRule(folder: folder, rule: rule) }
-            Button(ApStr.delete, role: .destructive) { rvm.remove(rule, from: folder) }
-        }
+        .contextMenu { ruleActions(rule, in: folder) }
+        // The same actions where VoiceOver and Full Keyboard Access can reach
+        // them, since the menu above needs a right-click. Without this a rule
+        // could be edited from the row's own button but only *deleted* with a
+        // mouse. `HistorySection` documents the pairing.
+        .accessibilityActions { ruleActions(rule, in: folder) }
+    }
+
+    @ViewBuilder private func ruleActions(_ rule: Rule, in folder: WatchedFolder) -> some View {
+        Button(ApStr.edit) { editing = EditingRule(folder: folder, rule: rule) }
+        Button(ApStr.delete, role: .destructive) { rvm.remove(rule, from: folder) }
     }
 }
