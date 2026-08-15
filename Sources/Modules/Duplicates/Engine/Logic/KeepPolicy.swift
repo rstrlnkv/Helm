@@ -116,6 +116,16 @@ struct TransitFolders: Sendable {
     }
 
     /// Where this Mac lands what arrives.
+    ///
+    /// **It does not ask `TestProcess.isRunning`, and that is the answer rather
+    /// than the omission.** Every other site that resolves one of the person's
+    /// own folders redirects under the suite, because it is about to *write*
+    /// there — the log and the scan journal both land in `$TMPDIR` instead.
+    /// Nothing here is a destination: `create: false`, no read of any content,
+    /// and what comes back is compared against a path as a string. Substituting
+    /// it under test would cost the one thing worth having, which is that
+    /// `testTheSystemTierIsTheFoldersMacOSNames` asks this Mac where Downloads
+    /// really is rather than asking a fixture what it was told.
     static let system = TransitFolders(roots: systemRoots())
 
     private static func systemRoots() -> [String] {
