@@ -159,7 +159,7 @@ import Module_Disk_Engine
         // trap CLAUDE.md records for a `for await` over a stream nothing
         // finishes.
         mounts = MountWatch { [weak self] in
-            Task { @MainActor [weak self] in await self?.loadVolumes() }
+            Task { @MainActor in await self?.loadVolumes() }
         }
     }
 

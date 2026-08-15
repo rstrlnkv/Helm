@@ -177,8 +177,9 @@ final class TheTileReadsTheDiskAgainTests: XCTestCase {
                        "a dropped view model went on reading the disk when one was plugged in")
     }
 
-    /// The condition rather than a fixed number of yields: the reload is a task
-    /// of the model's own.
+    /// The condition rather than a fixed number of yields, and here rather than
+    /// beside `untilParked` in `Fakes.swift`: that file is the transports and
+    /// knows nothing of the UI target this view model lives in.
     private func untilVolumes(_ dvm: DiskViewModel, count: Int) async {
         for _ in 0..<1000 where dvm.volumes.count != count { await Task.yield() }
     }
