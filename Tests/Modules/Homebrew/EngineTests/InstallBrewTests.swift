@@ -15,6 +15,13 @@ import HelmRuntime
 /// keeps the last event per name and replays it to a new subscriber, so what a
 /// test sees is exactly what a page opened after the fact would see — the
 /// final `opState` and the final console line.
+/// One recorded `stream` invocation: what would have been launched, with what.
+private struct StreamCall {
+    let launch: String
+    let args: [String]
+    let env: [String: String]
+}
+
 final class InstallBrewTests: XCTestCase {
 
     // MARK: - Fakes
@@ -44,13 +51,12 @@ final class InstallBrewTests: XCTestCase {
     /// returned, and every gate assertion below would pass with the gate
     /// deleted.
     private final class HangingRunner: ProcessRunner, @unchecked Sendable {
-        struct Call { let launch: String; let args: [String]; let env: [String: String] }
         private let lock = NSLock()
-        private var _streamCalls: [Call] = []
+        private var _streamCalls: [StreamCall] = []
         private var _exits: [@Sendable (Int32) -> Void] = []
         private var _runCalls: [[String]] = []
 
-        var streamCalls: [Call] { lock.lock(); defer { lock.unlock() }; return _streamCalls }
+        var streamCalls: [StreamCall] { lock.lock(); defer { lock.unlock() }; return _streamCalls }
         var runCalls: [[String]] { lock.lock(); defer { lock.unlock() }; return _runCalls }
 
         func run(_ launchPath: String, _ args: [String],
@@ -63,7 +69,7 @@ final class InstallBrewTests: XCTestCase {
                     onLine: @escaping @Sendable (String) -> Void,
                     onExit: @escaping @Sendable (Int32) -> Void) {
             lock.lock()
-            _streamCalls.append(Call(launch: launchPath, args: args, env: env))
+            _streamCalls.append(StreamCall(launch: launchPath, args: args, env: env))
             _exits.append(onExit)
             lock.unlock()
         }
@@ -98,7 +104,7 @@ final class InstallBrewTests: XCTestCase {
             if event.name == "test.sentinel" { break }
             switch HomebrewEvent(rawValue: event.name) {
             case .opState: state = try? JSONDecoder().decode(OpState.self, from: event.payload)
-            case .opLog: log = String(decoding: event.payload, as: UTF8.self)
+            case .opLog: log = String(bytes: event.payload, encoding: .utf8)
             case .none: break
             }
         }
