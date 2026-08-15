@@ -43,7 +43,7 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     ///   figure must be able to run without moving anybody's file to the Trash.
     public init(transport: LocalTransport = LocalTransport(),
                 store: NamespacedStore? = nil,
-                settings: SettingGuard = DuplicatesSettings.guardOfFolder,
+                settings: SettingGuard = DuplicatesSettings.guardOfScanSettings,
                 trashing: @escaping @Sendable (URL) throws -> Void = {
                     try FileManager.default.trashItem(at: $0, resultingItemURL: nil)
                 }) {
@@ -115,6 +115,52 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
         })
     }
 
+    /// The policy the module was left set to, judged against its seal.
+    ///
+    /// **A broken seal is the default, not a refusal.** The other sealed setting
+    /// here — the folder — decides *where* an unattended reader walks, so a
+    /// value Helm did not write must stop the walk. This one decides only which
+    /// of two identical files is offered for deletion: refusing to scan over it
+    /// would take the whole feature away to defend a preference, and the safe
+    /// direction is the one the person would have got before they ever chose.
+    ///
+    /// **The key is established on the first read, whatever is stored.** A
+    /// getter that answers with its default before touching the guard leaves the
+    /// `.adopt` door open for ever, and the first value anybody plants would be
+    /// adopted and sealed as Helm's own — `AppSettings.disabledScans` shipped
+    /// exactly that (ARCHITECTURE.md § And a seal's first use has to actually
+    /// happen).
+    func storedKeepPolicy() -> KeepPolicy {
+        // No store is no settings at all — the shape every test that never asked
+        // for one is in, and there is nothing to seal or to adopt.
+        guard let store else { return .standard }
+        let key = DuplicatesSettings.keepPolicyKey
+        let stored = store.string(key, default: "")
+        guard !stored.isEmpty else {
+            settings.establishKey()
+            return .standard
+        }
+        switch settings.verdict(payload: Data(stored.utf8),
+                                mac: store.string(SettingGuard.macKey(for: key), default: "")) {
+        case .sealed:
+            break
+        case .adopt:
+            // Chosen before this setting was sealed, on an installation that has
+            // never sealed anything: accepted once and sealed, so tomorrow's run
+            // has nothing to trust.
+            store.set(settings.seal(Data(stored.utf8)) ?? "",
+                      for: SettingGuard.macKey(for: key))
+        case .broken:
+            HelmLog.shared.warn("duplicates", "the stored keep policy is not Helm's own; "
+                                + "keeping the copy that was filed rather than downloaded")
+            return .standard
+        }
+        // Read only after the seal has spoken. A value from the file that no
+        // longer matches its MAC is somebody else's opinion about which of the
+        // person's files is the spare one.
+        return KeepPolicy(rawValue: stored) ?? .standard
+    }
+
     /// Beside the journal, and private for the same reason: the keys name
     /// nothing but inodes, yet the file is a record of what was on this disk.
     static func cacheURL() -> URL {
@@ -182,7 +228,7 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
         // No progress: nobody is watching, so every tick would cross the
         // transport to a view model that may not exist.
         let cache = Self.loadCache() ?? HashCache()
-        guard let found = await run(under: root, by: KeepRule(.standard),
+        guard let found = await run(under: root, by: KeepRule(storedKeepPolicy()),
                                     cache: cache, onProgress: nil) else { return nil }
         let groups = found.groups
         // Compacted on the way out, never on the way in: a scan cut short would
@@ -275,10 +321,11 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
             case .find:
                 guard let payload = EngineReply.decode(DuplicateSearchRequest.self, from: command)
                 else { return Data() }
-                // What the page asked for. A payload from before the policy
-                // existed carries none, and takes what a Mac that was never
-                // asked gets.
-                let policy = payload.keepPolicy ?? .standard
+                // What the page asked for, and what the module was left set to
+                // when it asked for nothing — a payload from before the policy
+                // existed carries none, and the stored value is the same one the
+                // background scan reads.
+                let policy = payload.keepPolicy ?? self.storedKeepPolicy()
                 return EngineReply.encode(await self.find(under: payload.path, keeping: policy),
                                           for: command)
             case .backgroundScan:

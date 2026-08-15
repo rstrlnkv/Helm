@@ -156,7 +156,7 @@ import SwiftUI
         // Sealed here because here is where the authority is: an open panel the
         // person just used. The background scan reads this value with nobody
         // watching and refuses it if the seal does not match — see `SettingGuard`.
-        store.set(DuplicatesSettings.guardOfFolder.seal(Data(url.path.utf8)) ?? "",
+        store.set(DuplicatesSettings.guardOfScanSettings.seal(Data(url.path.utf8)) ?? "",
                   for: SettingGuard.macKey(for: "folder"))
         search()
     }
