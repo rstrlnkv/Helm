@@ -213,7 +213,7 @@ import HelmUI
     }
 
     /// Open Settings focused on a module (panel utility rows pass an id).
-    private func showSettings(module moduleID: String?) {
+    func showSettings(module moduleID: String?) {
         settingsWindow.show(selecting: moduleID)
     }
 

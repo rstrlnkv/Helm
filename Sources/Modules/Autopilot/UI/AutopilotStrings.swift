@@ -85,6 +85,10 @@ enum ApStr {
     // MARK: - Rules somebody can have without writing one
 
     static var presetsTitle: String { L("Rules to start with") }
+    /// The same offer worded as a button, for the tour's Autopilot step. Its own
+    /// key rather than the heading's: a heading and a button are two different
+    /// things to say, and one English key means one thing.
+    static var welcomeOffer: String { L("Show the rules to start with") }
 
     /// The five names, and the only part of a preset that is translated.
     ///

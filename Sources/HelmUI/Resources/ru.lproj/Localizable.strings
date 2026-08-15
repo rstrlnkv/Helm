@@ -827,3 +827,4 @@
 "Every rule is switched off, so nothing will be recorded here until one is switched on." = "Все правила выключены — пока хотя бы одно не включат, здесь ничего не появится.";
 "Nothing yet. A file that arrives is checked as it lands, and every watched folder is swept once an hour." = "Пока ничего. Новый файл проверяется сразу, а все отслеживаемые папки — раз в час.";
 "Subfolders are included for this folder, so this rule reaches into them too." = "Для этой папки включены вложенные, поэтому правило дойдёт и до них.";
+"Show the rules to start with" = "Показать, с чего начать";

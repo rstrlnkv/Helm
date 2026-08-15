@@ -94,34 +94,7 @@ import Module_Uninstaller_UI
         // First launch: find out what macOS is withholding before a removal
         // silently leaves files behind.
         PermissionAudit.host = host
-        // The audit puts up an alert when macOS is withholding something, and
-        // on a first launch that is the same moment the welcome window wants.
-        // Two of them arriving together is not an introduction, it is a
-        // pile-up — so the audit waits for the window to go away, by Done, by
-        // Skip or by the close button.
-        if WelcomeWindow.shouldShow(store: AppSettings.store) {
-            let welcome = WelcomeWindow { [weak self] in
-                self?.welcomeWindow = nil
-                PermissionAudit.run()
-                self?.offerTrashLeftovers()
-            }
-            welcomeWindow = welcome
-            welcome.show(
-                steps: WelcomeSteps.build(from: ModuleRegistry.all.map(\.moduleMetadata)),
-                store: AppSettings.store,
-                isModuleEnabled: { [host] id in
-                    ModuleRegistry.all.first { $0.idRaw == id }.map { host.isEnabled($0) } ?? true
-                },
-                setModuleEnabled: { [host] id, on in
-                    guard let d = ModuleRegistry.all.first(where: { $0.idRaw == id }) else { return }
-                    host.setEnabled(d, on)
-                },
-                isLaunchAtLogin: { LoginItem.current().isOn },
-                setLaunchAtLogin: { LoginItem.setEnabled($0).isOn })
-        } else {
-            PermissionAudit.run()
-            offerTrashLeftovers()
-        }
+        introduceOrAudit()
         // An app dragged to the Trash while Helm is running is the case the
         // sweep alone cannot see, and it is the one people actually do.
         watchTrashArrivals()
@@ -152,6 +125,48 @@ import Module_Uninstaller_UI
         HelmLog.shared.memory("launch")
         startFootprintWatch()
 
+    }
+
+    /// The tour on a first launch, and the permission audit whenever the tour is
+    /// not shown.
+    ///
+    /// The audit puts up an alert when macOS is withholding something, and on a
+    /// first launch that is the same moment the welcome window wants. Two of
+    /// them arriving together is not an introduction, it is a pile-up — so the
+    /// audit waits for the window to go away, by Done, by Skip or by the close
+    /// button.
+    private func introduceOrAudit() {
+        guard WelcomeWindow.shouldShow(store: AppSettings.store) else {
+            PermissionAudit.run()
+            offerTrashLeftovers()
+            return
+        }
+        let welcome = WelcomeWindow { [weak self] in
+            self?.welcomeWindow = nil
+            PermissionAudit.run()
+            self?.offerTrashLeftovers()
+        }
+        welcomeWindow = welcome
+        welcome.show(
+            steps: WelcomeSteps.build(from: ModuleRegistry.all.map(\.moduleMetadata)),
+            store: AppSettings.store,
+            actions: WelcomeActions(
+                isModuleEnabled: { [host] id in
+                    ModuleRegistry.all.first { $0.idRaw == id }.map { host.isEnabled($0) } ?? true
+                },
+                setModuleEnabled: { [host] id, on in
+                    guard let d = ModuleRegistry.all.first(where: { $0.idRaw == id }) else { return }
+                    host.setEnabled(d, on)
+                },
+                isLaunchAtLogin: { LoginItem.current().isOn },
+                setLaunchAtLogin: { LoginItem.setEnabled($0).isOn },
+                // The page first, then the tour goes away: closing it runs the
+                // permission audit, and an alert arriving over a window that has
+                // not been drawn yet is the pile-up the line above is about.
+                openModule: { [weak self] id in
+                    self?.statusController.showSettings(module: id)
+                    self?.welcomeWindow?.close()
+                }))
     }
 
     /// Asks the Uninstaller what is sitting in the Trash and shows the offer if

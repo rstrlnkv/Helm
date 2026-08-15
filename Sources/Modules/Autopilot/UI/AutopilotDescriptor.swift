@@ -6,9 +6,16 @@ import SwiftUI
 
 @MainActor public final class AutopilotDescriptor: ModuleDescriptor {
     public static let id = ModuleID("autopilot")
+    /// **The one module that has something to hand over on a first launch.**
+    /// Every other one either works the moment it is switched on or waits for a
+    /// gesture; this one does nothing at all until somebody writes a rule, and a
+    /// tour that left them at «Autopilot: folders that keep themselves in order»
+    /// has described a feature and delivered none of it. The offer is the way to
+    /// the five rules they can have without writing one.
     public static var metadata: ModuleMetadata { ModuleMetadata(
         id: id, name: ApStr.moduleName, summary: ApStr.summary,
-        sfSymbol: "location.north.circle", permissions: [.fullDisk]) }
+        sfSymbol: "location.north.circle", permissions: [.fullDisk],
+        welcomeOffer: ApStr.welcomeOffer) }
     public static let category: ModuleCategory = .files
     public static let tint: ModuleTint = .autopilot
     /// Folders and their rules span the pane; the header must not centre itself

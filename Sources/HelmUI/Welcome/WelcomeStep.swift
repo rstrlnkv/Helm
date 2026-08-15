@@ -15,15 +15,21 @@ public struct WelcomeStep: Equatable, Identifiable, Sendable {
     /// The module this step is about, so its switch has something to bind to.
     /// Nil on the intro, which is not a module.
     public let moduleID: String?
+    /// The one thing this module offers to set up, worded as the button that
+    /// takes somebody there. The module's own word, out of its descriptor —
+    /// this file knows of no module by name and must not start.
+    public let offer: String?
 
     public init(id: String, sfSymbol: String, title: String, body: String,
-                moduleSymbols: [String] = [], moduleID: String? = nil) {
+                moduleSymbols: [String] = [], moduleID: String? = nil,
+                offer: String? = nil) {
         self.id = id
         self.sfSymbol = sfSymbol
         self.title = title
         self.body = body
         self.moduleSymbols = moduleSymbols
         self.moduleID = moduleID
+        self.offer = offer
     }
 }
 
@@ -38,7 +44,8 @@ public enum WelcomeSteps {
                                 moduleSymbols: modules.map(\.sfSymbol))
         return [intro] + modules.map {
             WelcomeStep(id: $0.id.rawValue, sfSymbol: $0.sfSymbol,
-                        title: $0.name, body: $0.summary, moduleID: $0.id.rawValue)
+                        title: $0.name, body: $0.summary, moduleID: $0.id.rawValue,
+                        offer: $0.welcomeOffer)
         }
     }
 }

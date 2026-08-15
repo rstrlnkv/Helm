@@ -827,3 +827,4 @@
 "Every rule is switched off, so nothing will be recorded here until one is switched on." = "所有规则都已关闭，在开启任意一条之前这里不会有记录。";
 "Nothing yet. A file that arrives is checked as it lands, and every watched folder is swept once an hour." = "暂时还没有。文件一到就会检查，每个受监视的文件夹每小时清理一次。";
 "Subfolders are included for this folder, so this rule reaches into them too." = "该文件夹已包含子文件夹，因此这条规则也会作用到子文件夹里。";
+"Show the rules to start with" = "查看可以从这里开始的规则";

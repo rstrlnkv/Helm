@@ -10,13 +10,7 @@ import SwiftUI
 /// walk through it reads as the window flinching.
 public struct WelcomeView: View {
     private let steps: [WelcomeStep]
-    private let isModuleEnabled: (String) -> Bool
-    private let setModuleEnabled: (String, Bool) -> Void
-    private let isLaunchAtLogin: () -> Bool
-    /// Answers with what the login item **is** afterwards, not with what it
-    /// was asked to be: registration can be refused, and a tour switch that
-    /// stays where the finger left it is the same lie the settings page had.
-    private let setLaunchAtLogin: (Bool) -> Bool
+    private let actions: WelcomeActions
     private let onClose: () -> Void
     @State private var flow: WelcomeFlow
     @State private var revealed = false
@@ -29,16 +23,10 @@ public struct WelcomeView: View {
     @State private var switchOn = false
 
     public init(steps: [WelcomeStep],
-                isModuleEnabled: @escaping (String) -> Bool = { _ in true },
-                setModuleEnabled: @escaping (String, Bool) -> Void = { _, _ in },
-                isLaunchAtLogin: @escaping () -> Bool = { false },
-                setLaunchAtLogin: @escaping (Bool) -> Bool = { $0 },
+                actions: WelcomeActions = WelcomeActions(),
                 onClose: @escaping () -> Void) {
         self.steps = steps
-        self.isModuleEnabled = isModuleEnabled
-        self.setModuleEnabled = setModuleEnabled
-        self.isLaunchAtLogin = isLaunchAtLogin
-        self.setLaunchAtLogin = setLaunchAtLogin
+        self.actions = actions
         self.onClose = onClose
         _flow = State(initialValue: WelcomeFlow(stepCount: steps.count))
     }
@@ -159,23 +147,34 @@ public struct WelcomeView: View {
             VStack(spacing: 6) {
                 Toggle(WelcomeStr.useThisModule, isOn: $switchOn)
                     .toggleStyle(.switch)
-                    .onChange(of: switchOn) { _, on in setModuleEnabled(moduleID, on) }
+                    .onChange(of: switchOn) { _, on in actions.setModuleEnabled(moduleID, on) }
                 Text(WelcomeStr.switchHint)
                     .font(HelmText.rowDetail)
                     .foregroundStyle(HelmText.quiet)
+                // **The one thing a step can do besides keeping its module.**
+                // A tour that only describes leaves everybody at the end of it
+                // with nine descriptions and nothing set up; a module with
+                // something ready to hand over says so here, in its own words,
+                // and the button goes straight to it. Under the switch, and
+                // only while the module is on: taking somebody to a page for a
+                // module they have just switched off is a door to a dark room.
+                if let offer = step.offer, switchOn {
+                    Button(offer) { actions.openModule(moduleID) }
+                        .controlSize(.small)
+                }
             }
         } else {
             Toggle(WelcomeStr.launchAtLogin, isOn: $switchOn)
                 .toggleStyle(.switch)
                 .onChange(of: switchOn) { _, on in
-                    let settled = setLaunchAtLogin(on)
+                    let settled = actions.setLaunchAtLogin(on)
                     if settled != on { switchOn = settled }
                 }
         }
     }
 
     private func currentSwitchValue(_ step: WelcomeStep) -> Bool {
-        if let moduleID = step.moduleID { return isModuleEnabled(moduleID) }
-        return isLaunchAtLogin()
+        if let moduleID = step.moduleID { return actions.isModuleEnabled(moduleID) }
+        return actions.isLaunchAtLogin()
     }
 }

@@ -827,3 +827,4 @@
 "Every rule is switched off, so nothing will be recorded here until one is switched on." = "Todas as regras estão desativadas: nada aparecerá aqui até que uma seja ativada.";
 "Nothing yet. A file that arrives is checked as it lands, and every watched folder is swept once an hour." = "Nada ainda. Um arquivo que chega é verificado na hora, e cada pasta observada é percorrida uma vez por hora.";
 "Subfolders are included for this folder, so this rule reaches into them too." = "As subpastas estão incluídas nesta pasta, então a regra também alcança as subpastas.";
+"Show the rules to start with" = "Ver as regras para começar";

@@ -6,9 +6,9 @@ import HelmContract
 /// the generation, not the wording: the wording belongs to each module and is
 /// tested where it lives.
 final class WelcomeStepsTests: XCTestCase {
-    private func metadata(_ name: String) -> ModuleMetadata {
+    private func metadata(_ name: String, offering offer: String? = nil) -> ModuleMetadata {
         ModuleMetadata(id: ModuleID(rawValue: name.lowercased()), name: name,
-                       summary: "what \(name) does", sfSymbol: "circle")
+                       summary: "what \(name) does", sfSymbol: "circle", welcomeOffer: offer)
     }
 
     func testEveryModuleGetsOneStepAfterTheIntro() {
@@ -75,6 +75,20 @@ final class WelcomeStepsTests: XCTestCase {
         let steps = WelcomeSteps.build(from: [metadata("Alpha"), metadata("Beta")])
         XCTAssertEqual(steps[0].moduleSymbols, ["circle", "circle"])
         XCTAssertTrue(steps[1].moduleSymbols.isEmpty, "module steps are not showcases")
+    }
+
+    /// **A step may offer one thing to set up, and the offer is the module's
+    /// own.** A tour that could take somebody somewhere would otherwise need a
+    /// list of which module has something worth setting up — the tenth
+    /// hand-written list of module ids in this app, and the one nothing would
+    /// fail on when it went stale. The descriptor says it instead, beside the
+    /// name and the summary the step is already built from.
+    func testAStepCarriesTheOfferItsModuleMakes() {
+        let steps = WelcomeSteps.build(from: [metadata("Alpha", offering: "Set Alpha up"),
+                                              metadata("Beta")])
+        XCTAssertEqual(steps[1].offer, "Set Alpha up")
+        XCTAssertNil(steps[2].offer, "a module that offers nothing gets no button")
+        XCTAssertNil(steps[0].offer, "the intro is not a module")
     }
 
     /// A module step has to know which module it is, or its switch cannot be

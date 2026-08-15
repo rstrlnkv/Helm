@@ -28,12 +28,24 @@ public struct ModuleMetadata: Sendable {
     /// Empty by default, so a module that says nothing is never accused of
     /// being broken.
     public let inertWithout: [ModulePermission]
+    /// The one thing this module offers to set up on a first launch, worded as
+    /// the button that takes somebody there — or nothing, which is what eight of
+    /// the nine say.
+    ///
+    /// **Here rather than in the tour**, which is where a list of «modules with
+    /// something worth setting up» would have been: a tenth hand-written list of
+    /// module ids, in a target that cannot see the modules, with nothing failing
+    /// on the day it went stale. The descriptor already says the module's name
+    /// and its summary and the tour is built from those; this is one more
+    /// sentence of the same kind.
+    public let welcomeOffer: String?
     public init(id: ModuleID, name: String, shortName: String? = nil, summary: String,
                 sfSymbol: String, permissions: [ModulePermission] = [],
-                inertWithout: [ModulePermission] = []) {
+                inertWithout: [ModulePermission] = [], welcomeOffer: String? = nil) {
         self.id = id; self.name = name; self.shortName = shortName ?? name
         self.summary = summary
         self.sfSymbol = sfSymbol; self.permissions = permissions
         self.inertWithout = inertWithout
+        self.welcomeOffer = welcomeOffer
     }
 }

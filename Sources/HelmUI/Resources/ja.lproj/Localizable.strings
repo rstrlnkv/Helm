@@ -827,3 +827,4 @@
 "Every rule is switched off, so nothing will be recorded here until one is switched on." = "すべてのルールがオフになっています。どれかをオンにするまで、ここには何も記録されません。";
 "Nothing yet. A file that arrives is checked as it lands, and every watched folder is swept once an hour." = "まだ何もありません。届いたファイルはその場で確認され、監視中のフォルダは1時間に1度点検されます。";
 "Subfolders are included for this folder, so this rule reaches into them too." = "このフォルダはサブフォルダも対象なので、このルールはそこまで届きます。";
+"Show the rules to start with" = "はじめの一歩となるルールを見る";
