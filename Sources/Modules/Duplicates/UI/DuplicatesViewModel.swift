@@ -78,12 +78,22 @@ public enum KeepGrounds: Equatable, Sendable {
     /// person is holding a figure about, and both happen mostly below the fold.
     @Published public private(set) var marksNote: String?
 
-    /// Groups whose survivor the person chose by hand, by `DuplicateGroup.id`.
+    /// Groups whose survivor the person chose by hand, keyed by that survivor's
+    /// own path.
     ///
     /// **In memory, for the session.** The choice is about the list on screen;
     /// the next search reads the folder again and re-decides everything, which
-    /// is what somebody pressing Search again is asking for. The id is a digest
-    /// of the paths sorted, so it survives the rearrangement it is recording.
+    /// is what somebody pressing Search again is asking for.
+    ///
+    /// Keyed by the survivor's path and not by `DuplicateGroup.id`: that id is a
+    /// digest of the group's paths, so it survives a rearrangement but not a
+    /// change of membership, and a removal is exactly that — `emptyBasket`
+    /// rebuilds the group from the copies that are left and the digest moves,
+    /// leaving a pin nothing on screen answers to. The survivor's path is the one
+    /// copy a removal may never take (the group is rebuilt from the copies after
+    /// the first), so it is stable across the very removal the id is not — and it
+    /// is the thing the person actually chose. A path is in one group, so it
+    /// names no other.
     private var pinned: Set<String> = []
 
     let vm: ModuleViewModel
@@ -236,8 +246,28 @@ public enum KeepGrounds: Equatable, Sendable {
     /// that disagreement is the defect `KeepPolicy.ladder` exists to prevent.
     private func rearrange() {
         let rule = KeepRule(policy)
-        groups = groups.map { pinned.contains($0.id) ? $0 : ordered($0, by: rule) }
+        groups = groups.map { isPinned($0) ? $0 : ordered($0, by: rule) }
         dropMarksOnCopiesThatStay()
+    }
+
+    /// Whether the person chose this group's survivor by hand — the one question
+    /// `pinned` answers, asked in one place so its keying lives here and not at
+    /// every reader.
+    private func isPinned(_ group: DuplicateGroup) -> Bool {
+        group.copies.first.map { pinned.contains($0.path) } ?? false
+    }
+
+    /// Records that this group's survivor was chosen by hand, by that survivor's
+    /// own path (see `pinned`). Any earlier survivor of the group demoted itself,
+    /// so its pin goes with it — one path pinned per group.
+    private func pin(_ path: String, in group: DuplicateGroup) {
+        unpin(group)
+        pinned.insert(path)
+    }
+
+    /// Releases this group's hand-made choice, whichever of its copies holds it.
+    private func unpin(_ group: DuplicateGroup) {
+        pinned.subtract(group.copies.map(\.path))
     }
 
     /// One group in the ladder's order — the one spelling, since the policy and
@@ -260,13 +290,14 @@ public enum KeepGrounds: Equatable, Sendable {
     /// the plans and the background scan's report would each have to be taught
     /// about it. Moving the copy to the front teaches none of them anything.
     ///
-    /// The group is pinned by the same act, and its id is a digest of the paths
-    /// *sorted*, so pinning survives the very rearrangement it records.
+    /// The group is pinned by the same act — by the chosen copy's own path, which
+    /// is the survivor a removal may never take, so the pin outlives the removal
+    /// that re-keys the group (see `pinned`).
     public func keep(_ path: String, in group: DuplicateGroup) {
         guard let index = groups.firstIndex(where: { $0.id == group.id }),
               let chosen = groups[index].copies.first(where: { $0.path == path })
         else { return }
-        pinned.insert(group.id)
+        pin(path, in: groups[index])
         groups[index] = DuplicateGroup(copies: [chosen]
             + groups[index].copies.filter { $0.path != path })
         // Silently, unlike a policy change: the row the person just clicked is
@@ -284,7 +315,7 @@ public enum KeepGrounds: Equatable, Sendable {
     /// policy change, and nothing on screen would say why.
     public func restoreRecommendation(for group: DuplicateGroup) {
         guard let index = groups.firstIndex(where: { $0.id == group.id }) else { return }
-        pinned.remove(group.id)
+        unpin(groups[index])
         groups[index] = ordered(groups[index], by: KeepRule(policy))
         dropMarksOnCopiesThatStay()
     }
@@ -295,7 +326,7 @@ public enum KeepGrounds: Equatable, Sendable {
     /// answers the rung that separated the survivor from the copy that came
     /// closest, and with nothing to compare against there is no rung.
     public func grounds(of group: DuplicateGroup) -> KeepGrounds? {
-        if pinned.contains(group.id) { return .byHand }
+        if isPinned(group) { return .byHand }
         return SurvivingCopy.reason(among: group.copies, by: KeepRule(policy)).map(KeepGrounds.rung)
     }
 
