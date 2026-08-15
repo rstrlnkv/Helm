@@ -383,10 +383,16 @@ import SwiftUI
 
     // MARK: - Rules
 
+    /// The draft «New rule» opens the editor on. A draft and nothing else:
+    /// this used to write the rule into the folder — through `update`, which
+    /// saves and re-seals — before the editor had even opened, so Cancel meant
+    /// «keep an Untitled rule». The editor's Done already goes through
+    /// `save(_:in:)`, which appends a rule the folder has never seen — the
+    /// same discipline as a preset's draft, whose folder is not even watched
+    /// yet. The folder is named so the call site reads as what it is; the
+    /// draft does not touch it until Done.
     func addRule(to folder: WatchedFolder) -> Rule {
-        let rule = Rule(name: ApStr.untitledRule, action: .sortIntoSubfolder(.kind))
-        update(folder) { $0.rules.append(rule) }
-        return rule
+        Rule(name: ApStr.untitledRule, action: .sortIntoSubfolder(.kind))
     }
 
     /// The editor's Done, for every rule in the module.
