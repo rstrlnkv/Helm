@@ -128,4 +128,83 @@ final class FolderReaderTests: XCTestCase {
         XCTAssertTrue(reader.facts(in: root.appendingPathComponent("gone").path,
                                    depth: 1).isEmpty)
     }
+
+    // MARK: - What is weighed
+
+    /// The only reader of `bytes` refuses a directory outright
+    /// (`RuleMatcher`'s `.size` guard), so walking a plain folder for its
+    /// weight is work computed and thrown away — measured at 33× the cost of
+    /// the whole read on an ordinary tree. A package must keep its walk: it
+    /// passes that guard by design, and a zero there once meant «smaller than
+    /// 1 MB → Trash» matched every application in the folder
+    /// (`PackageFactsTests`).
+    ///
+    /// Asked through the reader's own seam rather than timed: the assertion is
+    /// that the question is never put, not that it is answered quickly.
+    func testAPlainFolderIsNotWeighedAndWeighsNothing() throws {
+        try write("sub/inner.bin", in: root)
+        try write("Thing.app/Contents/MacOS/Thing", in: root)
+        try write("plain.txt", in: root)
+
+        let scale = Scale()
+        let reader = FolderReader(weigh: { url in scale.weigh(url.lastPathComponent) })
+        let facts = reader.facts(in: root.path, depth: 2)
+
+        // First that the read happened at all, so an empty answer cannot buy
+        // the absence asserted below.
+        XCTAssertEqual(facts.map(\.name).sorted(),
+                       ["Thing.app", "inner.bin", "plain.txt", "sub"])
+        XCTAssertFalse(scale.weighed.contains("sub"),
+                       "a plain folder was weighed for a number no rule can read")
+        // The weights that must survive, read back through the same seam so a
+        // reader that stopped weighing everything cannot pass.
+        XCTAssertEqual(facts.first { $0.name == "sub" }?.bytes, 0)
+        XCTAssertEqual(facts.first { $0.name == "Thing.app" }?.bytes, 7)
+        XCTAssertEqual(facts.first { $0.name == "plain.txt" }?.bytes, 7)
+        XCTAssertEqual(facts.first { $0.name == "inner.bin" }?.bytes, 7)
+    }
+
+    /// The watcher's single-file read takes the same rule: it is handed
+    /// directories too — a sort rule's own buckets arrive as FSEvents.
+    func testTheWatchersReadDoesNotWeighAPlainFolderEither() throws {
+        try write("bucket/inner.bin", in: root)
+
+        let scale = Scale()
+        let reader = FolderReader(weigh: { url in scale.weigh(url.lastPathComponent) })
+        let facts = reader.facts(of: root.appendingPathComponent("bucket"))
+
+        XCTAssertEqual(facts?.name, "bucket", "the folder was not read at all")
+        XCTAssertEqual(facts?.bytes, 0)
+        XCTAssertTrue(scale.weighed.isEmpty)
+    }
+
+    /// What the reader's `weigh` answers, and which names it was asked about.
+    private final class Scale: @unchecked Sendable {
+        private let lock = NSLock()
+        private var names: [String] = []
+        var weighed: [String] { lock.withLock { names } }
+        func weigh(_ name: String) -> Int {
+            lock.withLock { names.append(name) }
+            return 7
+        }
+    }
+
+    // MARK: - Where the walk may descend
+
+    /// The other half of the same cost: `skipDescendants()` after the
+    /// enumerator has already returned an entry filters, pruning *at* the
+    /// limit is what stops a depth-1 read of Downloads enumerating every file
+    /// in every project tree inside it. The decision is pure so it can be held
+    /// still here; the fact set it must not change is pinned at four depths
+    /// above.
+    func testTheWalkDoesNotDescendPastADirectoryAtTheLimit() {
+        XCTAssertTrue(FolderReader.prunes(atLevel: 2, depth: 2, isDirectory: true))
+        XCTAssertTrue(FolderReader.prunes(atLevel: 3, depth: 2, isDirectory: true),
+                      "past the limit is past the limit, however it was reached")
+        XCTAssertFalse(FolderReader.prunes(atLevel: 1, depth: 2, isDirectory: true),
+                       "a directory inside the limit has contents the rules are owed")
+        XCTAssertFalse(FolderReader.prunes(atLevel: 2, depth: 2, isDirectory: false),
+                       "pruning at a file skips the recursion of whatever directory "
+                       + "came before it")
+    }
 }

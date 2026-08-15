@@ -38,7 +38,10 @@ struct RuleEditor: View {
             footer
         }
         .frame(width: 640, height: 620)
-        .task { await rvm.runPreview(for: folder, rule: rule) }
+        // No bare `.task` here: the dry-run section's `.task(id: previewKey)`
+        // fires on appearance too, so a second one at the root made every
+        // opening read the whole watched folder twice, back to back —
+        // `TheEditorAsksForOneDryRunTests` counts.
         .onDisappear { rvm.clearPreview() }
     }
 

@@ -9,6 +9,24 @@ import UniformTypeIdentifiers
 /// rule know about a file" is a single file to read.
 struct FolderReader: Sendable {
 
+    /// How an entry's on-disk weight is read. A seam, because what a test has
+    /// to be able to assert is that the question is *never put* for a plain
+    /// folder — `FileWeight` walks one in full, and the only reader of the
+    /// answer refuses directories — which no timing or output can show.
+    var weigh: @Sendable (URL) -> Int = { FileWeight.allocated(of: $0) }
+
+    /// Whether the walk may descend past an entry at `level` of a read bounded
+    /// by `depth`.
+    ///
+    /// Pure, so the decision that keeps a depth-1 read of Downloads from
+    /// enumerating every file in every project tree inside it is one a test
+    /// can hold still. A directory *at* the limit is offered as a thing and
+    /// its contents can never be: descending into it pays for every entry
+    /// below the limit only to filter them out again one at a time.
+    static func prunes(atLevel level: Int, depth: Int, isDirectory: Bool) -> Bool {
+        isDirectory && level >= depth
+    }
+
     /// The files a folder's rules will be offered, at the folder's depth.
     ///
     /// Depth 1 is the folder's own contents. Deeper is the folder's own
@@ -53,8 +71,17 @@ struct FolderReader: Sendable {
 
         var found: [FileFacts] = []
         for case let url as URL in enumerator {
+            // Cheap and first: an entry past the limit needs no facts read.
+            // One can still arrive — the pruning below cannot fire for a
+            // directory whose facts refused to be read — so the filter stays
+            // as the belt behind it.
             if enumerator.level > depth { enumerator.skipDescendants(); continue }
-            if let facts = facts(of: url, keys: keys, now: now) { found.append(facts) }
+            guard let facts = facts(of: url, keys: keys, now: now) else { continue }
+            found.append(facts)
+            if Self.prunes(atLevel: enumerator.level, depth: depth,
+                           isDirectory: facts.isDirectory) {
+                enumerator.skipDescendants()
+            }
         }
         return .read(found)
     }
@@ -138,8 +165,11 @@ struct FolderReader: Sendable {
             // `.app` a package rather than a directory, so it slipped past the
             // size rule's directory guard and answered zero. "Smaller than 1 MB
             // → Trash" then matched every application in the folder, hourly,
-            // unattended.
-            bytes: FileWeight.allocated(of: url),
+            // unattended. A *plain* folder is the opposite trade: the walk
+            // `FileWeight` makes of one is the module's whole time budget, and
+            // the only reader of `bytes` refuses a directory outright — so the
+            // number is never computed rather than computed and thrown away.
+            bytes: isDirectory ? 0 : weigh(url),
             // `addedToDirectoryDate` is what "date added" means in the Finder
             // and it is what a Downloads rule is asking about; a file copied in
             // from elsewhere keeps its old creation date, which would make
