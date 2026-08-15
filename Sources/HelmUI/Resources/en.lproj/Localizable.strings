@@ -107,6 +107,7 @@
 "Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm got no answer, so it does not know what moved. The list above shows where the files are now.";
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm got no answer, so it does not know what moved. The list above still shows where the files were before.";
 "Helm got no answer, so the list above is still from the previous scan." = "Helm got no answer, so the list above is still from the previous scan.";
+"Helm got no answer, so this may not be every volume." = "Helm got no answer, so this may not be every volume.";
 "Icon spin" = "Menu-bar spin";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash.";
 "Menu bar" = "Menu bar";

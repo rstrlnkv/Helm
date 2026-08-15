@@ -107,6 +107,7 @@
 "Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm no recibió respuesta y no sabe qué archivos se movieron. La lista de arriba muestra dónde están ahora.";
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm no recibió respuesta y no sabe qué archivos se movieron. La lista de arriba sigue mostrando dónde estaban antes.";
 "Helm got no answer, so the list above is still from the previous scan." = "Helm no recibió respuesta, así que la lista de arriba sigue siendo la del escaneo anterior.";
+"Helm got no answer, so this may not be every volume." = "Helm no recibió respuesta, así que puede que no estén todos los volúmenes.";
 "Icon spin" = "Giro del icono";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "Agentes de inicio, archivos de ajustes, módulos y extensiones del sistema. Solo los restos pueden ir a la papelera.";
 "Menu bar" = "Barra de menús";

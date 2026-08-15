@@ -107,6 +107,7 @@
 "Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm 未收到回应，无法判断哪些文件已移动。上方列表显示它们现在的位置。";
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm 未收到回应，无法判断哪些文件已移动。上方列表显示的仍是移动前的位置。";
 "Helm got no answer, so the list above is still from the previous scan." = "Helm 未收到回应，上方列表仍是上次扫描的结果。";
+"Helm got no answer, so this may not be every volume." = "Helm 未收到回应，这里可能不是全部宗卷。";
 "Icon spin" = "图标转动";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "启动代理、设置文件、插件与系统扩展。只有残留项可以移到废纸篓。";
 "Menu bar" = "菜单栏";

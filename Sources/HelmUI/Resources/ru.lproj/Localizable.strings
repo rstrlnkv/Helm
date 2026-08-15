@@ -107,6 +107,7 @@
 "Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm не получил ответа и не знает, какие файлы перемещены. Список выше показывает, где они сейчас.";
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm не получил ответа и не знает, какие файлы перемещены. Список выше по-прежнему показывает, где они были до перемещения.";
 "Helm got no answer, so the list above is still from the previous scan." = "Helm не получил ответа, поэтому список выше остался от прошлого сканирования.";
+"Helm got no answer, so this may not be every volume." = "Helm не получил ответа, поэтому здесь могут быть не все тома.";
 "Icon spin" = "Вращение значка";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "Агенты запуска, файлы настроек, плагины и системные расширения. В Корзину можно отправить только остатки.";
 "Menu bar" = "Строка меню";

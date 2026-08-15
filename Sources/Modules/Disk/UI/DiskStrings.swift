@@ -59,6 +59,13 @@ enum DkStr {
     static var noAccess: String { L("No access") }
     static var scanNeedsAccess: String { L("Without Full Disk Access some folders scan as empty.") }
     static var startHint: String { L("Pick a volume, or scan any folder.") }
+    /// The start screen's silence. Its opening is Leftovers' `rescanLost` word for
+    /// word, because it is literally the same nil coming back from
+    /// `TransportClient.request` — two phrasings of one machine fact is a defect
+    /// this codebase keeps catching. What follows differs because what is under it
+    /// differs: there, a list from the previous scan; here, a picker that may be
+    /// missing a disk somebody is looking for.
+    static var volumeListLost: String { L("Helm got no answer, so this may not be every volume.") }
     static func scannedIn(_ files: Int, _ seconds: String) -> String { L("\(files) files in \(seconds) s", [.ru: "Файлов: \(files) за \(seconds) с", .es: "\(files) archivos en \(seconds) s", .fr: "\(files) fichiers en \(seconds) s", .de: "\(files) Dateien in \(seconds) s", .ja: "\(files) ファイル / \(seconds) 秒", .zh: "\(files) 个文件，\(seconds) 秒", .pt: "\(files) arquivos em \(seconds) s"]) }
     /// Where the files went, not what the disk gained: the Trash is a folder on
     /// the same volume, so nothing is free until it is emptied. Same wording as

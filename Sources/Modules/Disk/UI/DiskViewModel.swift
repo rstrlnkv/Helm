@@ -224,15 +224,10 @@ import Module_Disk_Engine
         newScan()
     }
 
-    /// A walk is running — the volume's, or one folder's measured on demand.
-    ///
-    /// Here rather than in the header because it is what the spinner and Stop are
-    /// drawn by, and the two flags behind it are not interchangeable anywhere
-    /// else: `live` is also what says snapshots may repaint the ring, and
-    /// `measuring` is also the guard against a second walk of the same folder. The
-    /// header wants neither of those questions — it wants «is Helm reading the
-    /// disk right now», and that question had no name, which is how a folder
-    /// measurement came to run in complete silence.
+    /// A walk is running — the volume's, or one folder's measured on demand. The
+    /// header's question, and it had no name: `live` also gates whether snapshots
+    /// may repaint the ring and `measuring` is also the second-walk guard, so the
+    /// spinner hung on one of them and a folder measurement ran in silence.
     public var walking: Bool { live || measuring }
 
     public var focus: DiskEntry? { focusPath.last }
@@ -247,8 +242,28 @@ import Module_Disk_Engine
     /// bar has to draw, and a bar that is not there cannot draw it.
     public var showsRemovalBar: Bool { !basket.isEmpty || banner != nil || replyLost }
 
+    /// The last read of the volume list went unanswered. Read with `volumes` as
+    /// one report, the way `replyLost` is read with the removal's three fields:
+    /// without it, «no volumes» and «no answer» are the same screen.
+    @Published public private(set) var volumeListLost = false
+
+    /// **A list nobody answered is not a Mac with no disks.**
+    ///
+    /// Folded with `??`, this drew the start screen's invitation over an empty
+    /// picker, and every Mac has at least one browsable volume. The quieter half
+    /// is `isVolumeScan`, a membership test against this list: with it emptied a
+    /// volume scan is taken for a folder scan and `recomputeSegments` leaves the
+    /// free-space wedge off — the flat disc that method's own comment exists to
+    /// prevent, from the other side. So the list stays and the page says so.
     public func loadVolumes() async {
-        volumes = await client.request(DiskCommand.volumes) ?? []
+        guard let list: [VolumeInfo] = await client.request(DiskCommand.volumes) else {
+            volumeListLost = true
+            // Counts and outcomes are free; nothing here names a volume.
+            HelmLog.shared.info(DiskEngine.moduleID, "volume list reply lost")
+            return
+        }
+        volumes = list
+        volumeListLost = false
     }
 
     public func scan(path: String) async {
@@ -335,10 +350,9 @@ import Module_Disk_Engine
         showingScan = nextScanID()
         Task { await client.send(DiskCommand.cancel, encoding: [String]()) }
         let wasWalking = live
-        // The other walk this button is drawn over. Cleared here rather than left
-        // to `measureAndDrill`'s own `defer`, which cannot run until the engine
-        // answers a request the person has just withdrawn — the spinner would
-        // keep turning for as long as the folder took.
+        // The other walk this button is drawn over. Put down here rather than by
+        // `measureAndDrill`'s own `defer`, which cannot run until the engine
+        // answers a request the person has just withdrawn.
         let wasMeasuring = measuring
         live = false
         measuring = false
@@ -354,10 +368,9 @@ import Module_Disk_Engine
             clearRemovalReport()
             return
         }
-        // **Only a stopped *walk* leaves floors.** A folder measurement that was
-        // stopped simply never grafted anything: the tree on screen is the one the
-        // volume walk finished, and marking it stopped would put «a folder may
-        // hold more than it shows» over numbers that are totals.
+        // **Only a stopped *walk* leaves floors.** A withdrawn measurement grafts
+        // nothing, so the tree is the one the volume walk finished and marking it
+        // stopped would put «a folder may hold more» over figures that are totals.
         if wasWalking { stopped = true }
     }
 
@@ -430,9 +443,9 @@ import Module_Disk_Engine
         // volume. Only its final tree is wanted, and only if the tree it is
         // grafted into is still the one on screen.
         let owner = showingScan
-        // The screen's own scan, so a withdrawn measurement cannot put down the
-        // flag of the one that replaced it: Stop clears it and moves `showingScan`
-        // on, and this arrives afterwards.
+        // Against `owner`, so a withdrawn measurement arriving late cannot put
+        // down the flag of the one that replaced it — Stop clears it and moves
+        // `showingScan` on.
         defer { if owner == showingScan { measuring = false } }
         let scan: ScanResult? = await client.request(DiskCommand.scan,
                                                      encoding: ScanRequest(path: path,

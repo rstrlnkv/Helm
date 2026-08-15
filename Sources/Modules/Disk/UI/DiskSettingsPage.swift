@@ -81,6 +81,14 @@ struct DiskSettingsPage: View {
                 Text(DkStr.startHint)
                     .font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
                     .padding(.top, 4)
+                // Above the cards rather than under them: with the list missing
+                // there are no cards, and the sentence is what the person is
+                // reading the gap for.
+                if dvm.volumeListLost {
+                    Text(DkStr.volumeListLost)
+                        .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
                 ForEach(dvm.volumes) { volume in
                     volumeCard(volume)
                 }

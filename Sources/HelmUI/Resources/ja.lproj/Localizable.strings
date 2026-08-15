@@ -107,6 +107,7 @@
 "Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm は応答を受け取れず、どのファイルが移動したかわかりません。上のリストが現在の場所を示しています。";
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm は応答を受け取れず、どのファイルが移動したかわかりません。上のリストは移動前の場所を示したままです。";
 "Helm got no answer, so the list above is still from the previous scan." = "Helm は応答を受け取れず、上のリストは前回のスキャンのままです。";
+"Helm got no answer, so this may not be every volume." = "Helm は応答を受け取れず、ここにすべてのボリュームが表示されていない可能性があります。";
 "Icon spin" = "アイコンの回転";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "起動エージェント・設定ファイル・プラグイン・システム機能拡張。ゴミ箱に入れられるのは残存物だけです。";
 "Menu bar" = "メニューバー";
