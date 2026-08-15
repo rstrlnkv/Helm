@@ -55,6 +55,23 @@ import SwiftUI
     /// one place.
     @Published public private(set) var policy: KeepPolicy
 
+    /// One line about what the last press did to the marks, or nil.
+    ///
+    /// **One channel, because the two things it says are about the same thing**
+    /// — what is ticked — and only ever one of them is current: a policy change
+    /// takes marks off copies that now stay, and «mark every extra copy» passes
+    /// over what Helm may not remove. Both are silent changes to a list the
+    /// person is holding a figure about, and both happen mostly below the fold.
+    @Published public private(set) var marksNote: String?
+
+    /// Groups whose survivor the person chose by hand, by `DuplicateGroup.id`.
+    ///
+    /// **In memory, for the session.** The choice is about the list on screen;
+    /// the next search reads the folder again and re-decides everything, which
+    /// is what somebody pressing Search again is asking for. The id is a digest
+    /// of the paths sorted, so it survives the rearrangement it is recording.
+    private var pinned: Set<String> = []
+
     let vm: ModuleViewModel
     private let client: TransportClient
     private let store: NamespacedStore
@@ -189,6 +206,43 @@ import SwiftUI
         guard chosen != policy else { return }
         policy = chosen
         DuplicatesSettings.setKeepPolicy(chosen, in: store, guardedBy: settings)
+        rearrange()
+    }
+
+    /// Which copy stays, decided again for every group the person has not
+    /// decided themselves.
+    ///
+    /// **Nothing is read again.** The copies carry their own date added, so the
+    /// same ladder the engine applied at the end of the walk answers here from
+    /// what is already on screen — a policy change costs no hashing, which is
+    /// what makes an immediate answer possible at all.
+    ///
+    /// `SurvivingCopy.order` and not a second implementation of it: the page
+    /// would otherwise be free to disagree with the search it is displaying, and
+    /// that disagreement is the defect `KeepPolicy.ladder` exists to prevent.
+    private func rearrange() {
+        let rule = KeepRule(policy)
+        groups = groups.map { group in
+            guard !pinned.contains(group.id) else { return group }
+            return DuplicateGroup(copies: SurvivingCopy.order(group.copies, by: rule))
+        }
+        dropMarksOnCopiesThatStay()
+    }
+
+    /// A ticked copy that has just become the one that stays comes off the list.
+    ///
+    /// The invariant the whole page rests on is that the first copy of a group is
+    /// never removed, and `emptyBasket` enforces it by building its plans from
+    /// the copies after the first. So a mark left on a promoted survivor is not a
+    /// file at risk — it is a *count* at risk: the bar would promise four files
+    /// and three would go, which is the arithmetic this module is measured by.
+    private func dropMarksOnCopiesThatStay() {
+        let staying = Set(groups.compactMap { $0.copies.first?.path })
+        let freed = basket.filter { staying.contains($0) }
+        basket.removeAll { staying.contains($0) }
+        // Nil rather than left standing: a note about the previous change is a
+        // report about a list that has moved on.
+        marksNote = freed.isEmpty ? nil : DupStr.unmarkedSurvivors(freed.count)
     }
 
     // MARK: - Searching

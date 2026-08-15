@@ -21,7 +21,7 @@ import Foundation
 /// reports nothing, and nothing is evidence for neither copy. Read as a loss it
 /// handed the whole decision to a fact the filesystem happened to keep, skipping
 /// every rung below.
-enum SurvivingCopy {
+public enum SurvivingCopy {
 
     /// The group's copies, the survivor first.
     ///
@@ -29,7 +29,7 @@ enum SurvivingCopy {
     /// each one — its size, its clone family, its date — and a list of paths
     /// made it look them up again in a table built for the purpose, which is one
     /// ordering of an array joined to another by a dictionary.
-    static func order<T: KeepCandidate>(_ files: [T], by rule: KeepRule) -> [T] {
+    public static func order<T: KeepCandidate>(_ files: [T], by rule: KeepRule) -> [T] {
         files.sorted { decide($0, over: $1, by: rule).keepsFirst }
     }
 
@@ -39,7 +39,7 @@ enum SurvivingCopy {
     /// Nil when there is nothing to compare it against. Not «the reason it beat
     /// the worst of them», which would be the rung that separates the group's
     /// two extremes and says nothing about the choice actually made.
-    static func reason<T: KeepCandidate>(among files: [T], by rule: KeepRule) -> KeepReason? {
+    public static func reason<T: KeepCandidate>(among files: [T], by rule: KeepRule) -> KeepReason? {
         let ordered = order(files, by: rule)
         guard ordered.count > 1 else { return nil }
         return decide(ordered[0], over: ordered[1], by: rule).reason

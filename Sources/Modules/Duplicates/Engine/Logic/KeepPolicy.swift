@@ -62,7 +62,7 @@ public enum KeepPolicy: String, CaseIterable, Sendable {
 /// `.name` is a coin toss and has to be visible as one — two copies alike in
 /// every way the rule can see are separated by the alphabet, which is a fact
 /// about their spelling and about nothing else.
-enum KeepReason: String, Sendable {
+public enum KeepReason: String, Sendable {
     /// The tier said so: one is filed, the other is in transit.
     case place
     /// One arrived earlier. Only ever true of two dates that are both known and
@@ -82,7 +82,7 @@ enum KeepReason: String, Sendable {
 /// really is, and `SystemFolderNames` is what turns it back into a word for the
 /// person. `~/Public/Drop Box` has no search-path constant and is a real
 /// on-disk name, so it is built from the home directory.
-struct TransitFolders: Sendable {
+public struct TransitFolders: Sendable {
 
     /// Lower-cased directory paths, each ending in a separator, so a prefix test
     /// cannot mistake `~/DownloadsArchive` for something inside `~/Downloads`.
@@ -99,7 +99,7 @@ struct TransitFolders: Sendable {
     /// Resolved once here rather than per candidate: a file's own path comes out
     /// of the walk already real, and asking the filesystem again for each of a
     /// hundred thousand of them is a question that belongs to the group.
-    init(roots: [String]) {
+    public init(roots: [String]) {
         self.roots = Set(roots.flatMap { raw -> [String] in
             let named = (raw as NSString).standardizingPath
             return [named, PathCanonical.resolvingWholePath(named)].map {
@@ -122,7 +122,7 @@ struct TransitFolders: Sendable {
     /// it under test would cost the one thing worth having, which is that
     /// `testTheSystemTierIsTheFoldersMacOSNames` asks this Mac where Downloads
     /// really is rather than asking a fixture what it was told.
-    static let system = TransitFolders(roots: systemRoots())
+    public static let system = TransitFolders(roots: systemRoots())
 
     private static func systemRoots() -> [String] {
         let manager = FileManager.default
@@ -137,7 +137,7 @@ struct TransitFolders: Sendable {
     }
 
     /// Whether this file is sitting in one of them.
-    func holds(_ path: String) -> Bool {
+    public func holds(_ path: String) -> Bool {
         let lowered = path.lowercased()
         return roots.contains { lowered.hasPrefix($0) }
     }
@@ -148,11 +148,11 @@ struct TransitFolders: Sendable {
 /// One value because the two are never useful apart, and because the alternative
 /// is threading a second parameter through every function of the pipeline — the
 /// shape in which one call site keeps the old behaviour and nothing says so.
-struct KeepRule: Sendable {
-    let policy: KeepPolicy
-    let transit: TransitFolders
+public struct KeepRule: Sendable {
+    public let policy: KeepPolicy
+    public let transit: TransitFolders
 
-    init(_ policy: KeepPolicy, transit: TransitFolders = .system) {
+    public init(_ policy: KeepPolicy, transit: TransitFolders = .system) {
         self.policy = policy
         self.transit = transit
     }
@@ -164,7 +164,7 @@ struct KeepRule: Sendable {
 /// screen holds — and the screen re-decides which copy stays whenever the policy
 /// changes, without hashing anything again. Two types, one question, so the rule
 /// is written once and both answer it.
-protocol KeepCandidate {
+public protocol KeepCandidate {
     var path: String { get }
     /// The Finder's "Date Added". `nil` on a volume that does not record it, and
     /// that is a fact the ladder treats as silence rather than as a loss.

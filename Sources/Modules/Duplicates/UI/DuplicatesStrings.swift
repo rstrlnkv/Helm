@@ -129,6 +129,20 @@ enum DupStr {
     /// this page is most exposed to.
     static var basketAllExtras: String { L("Mark every extra copy") }
     static var clearBasket: String { L("Clear selection") }
+
+    // MARK: - What the last press did to the marks
+
+    /// Marks taken off copies that have just become the ones that stay.
+    ///
+    /// Label-then-count, the shape `ApStr.historyProblems` records: «Снято
+    /// отметок: 2» makes the number a count rather than the subject of a verb,
+    /// and the agreement question every Slavic and Romance language would
+    /// otherwise ask disappears. No noun after the colon for the same reason —
+    /// what was unmarked is on the screen the sentence is under.
+    static func unmarkedSurvivors(_ count: Int,
+                                  language: AppLanguage = AppLanguage.current) -> String {
+        L("Unmarked: \(count) — those copies stay now", [.ru: "Снято отметок: \(count) — эти копии теперь остаются", .es: "Desmarcados: \(count): esas copias ahora se conservan", .fr: "Décochés : \(count) — ces copies sont désormais conservées", .de: "Markierung entfernt: \(count) – diese Kopien bleiben jetzt", .ja: "選択を解除: \(count) — これらのコピーは残ります", .zh: "已取消勾选：\(count) — 这些副本现在会保留", .pt: "Desmarcados: \(count) — essas cópias agora ficam"], language: language)
+    }
     static var cancel: String { L("Cancel") }
     static var close: String { L("Close") }
 }
