@@ -254,11 +254,11 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
             let result = HelmTrash.remove(allowed: allowed, outOfScope: outOfScope,
                                           sharedWith: Array(Set(plans.map(\.keep))),
                                           module: Self.moduleID, trashing: trashing)
-            // A new value rather than a mutation: `Result` is immutable on
+            // A new value rather than a mutation: the reply is immutable on
             // purpose, so a refusal cannot be quietly dropped from one after the
             // fact. The stale ones join the scope refusals, and none of them is
             // ever silently discarded — the house rule this module answers to.
-            return HelmTrash.Result(
+            return DuplicateRemoval(
                 removed: result.removed,
                 refused: result.refused + stale.map {
                     HelmTrash.Refusal(path: $0, reason: .changedSinceScan)
@@ -344,10 +344,55 @@ public struct DuplicateFindings: Codable, Equatable, Sendable {
     }
 }
 
-/// What the trash command answers with — the same value `DiskRemoval` names,
-/// and for the same reason. Its doc comment used to point at `DiskRemoval` for
-/// the explanation of a field, which is a type citing its own duplicate.
-public typealias DuplicateRemoval = HelmTrash.Result
+/// What the trash command answers with: everything `HelmTrash.Result` says,
+/// plus whether the person stopped it first.
+///
+/// It was a bare typealias of the result until the removal learned to stop.
+/// A stopped removal is a fourth outcome — not a success, not a refusal, not
+/// silence — and folding it to zeroes drew nothing at all, which reads as
+/// «press it again». `cancelled` rides beside the counts rather than replacing
+/// them, because a stop can land after some files have already moved and those
+/// are still honestly counted; a reply that is both cancelled and lists what
+/// went is exactly the state the sentence has to cover.
+public struct DuplicateRemoval: Codable, Equatable, Sendable {
+    public let removed: [String]
+    public let refused: [HelmTrash.Refusal]
+    public let freedBytes: Int
+    /// The person pressed Stop and the engine obeyed between files. What was
+    /// already moved stays moved and is counted above; what was not yet
+    /// verified was never attempted.
+    public let cancelled: Bool
+
+    public var failed: [String] { refused.map(\.path) }
+
+    public init(removed: [String], refused: [HelmTrash.Refusal],
+                freedBytes: Int, cancelled: Bool = false) {
+        self.removed = removed
+        self.refused = refused
+        self.freedBytes = freedBytes
+        self.cancelled = cancelled
+    }
+
+    /// The engine's own construction: the trash result whole, nothing dropped
+    /// on the way through — a refusal is never silently discarded.
+    public init(_ result: HelmTrash.Result, cancelled: Bool) {
+        self.init(removed: result.removed, refused: result.refused,
+                  freedBytes: result.freedBytes, cancelled: cancelled)
+    }
+
+    /// **Hand-written, because a synthesised `Decodable` requires every key.**
+    /// A reply from before the removal could be stopped carries no `cancelled`,
+    /// and `JSONDecoder` gives up on the whole document rather than the one
+    /// field (CLAUDE.md § A `defaulted` property on a `Codable` payload).
+    /// Missing means «it ran to the end».
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        removed = try container.decode([String].self, forKey: .removed)
+        refused = try container.decode([HelmTrash.Refusal].self, forKey: .refused)
+        freedBytes = try container.decode(Int.self, forKey: .freedBytes)
+        cancelled = try container.decodeIfPresent(Bool.self, forKey: .cancelled) ?? false
+    }
+}
 
 /// One removal, with the copy it duplicates named beside it.
 ///
