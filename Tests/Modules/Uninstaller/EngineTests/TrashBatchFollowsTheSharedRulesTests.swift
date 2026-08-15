@@ -169,7 +169,9 @@ final class TrashBatchFollowsTheSharedRulesTests: XCTestCase {
         XCTAssertEqual(result.failed, [vanished],
                        "a stale row reached neither list, so the count lied about it")
         XCTAssertEqual(result.failures.first?.reason,
-                       TrashFailure.Reason.systemRefused)
+                       TrashFailure.Reason.missing,
+                       "a stale row was told macOS refused it, which sends somebody to the "
+                       + "Finder to look at a file that is not there")
     }
 
     // MARK: - What the refusal carries

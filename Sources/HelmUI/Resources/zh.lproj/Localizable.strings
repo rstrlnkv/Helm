@@ -120,6 +120,7 @@
 "The rules stored on this Mac were not written by Helm, so none of them are running." = "这台 Mac 上保存的规则不是 Helm 写入的，因此没有任何规则在运行。";
 "This decides the words. Whether the icon turns is the switch below." = "这里只决定文字。图标是否转动由下面的开关决定。";
 "This folder is no longer there" = "此文件夹已不存在";
+"This is not there any more, so nothing was moved. Scan again to see what is left." = "它已不存在，因此没有移动任何内容。请重新扫描以查看还剩下什么。";
 "This is not where Helm found it, so nothing was moved. Scan again to see where it is now." = "它已不在 Helm 找到它的位置，因此没有移动任何内容。请重新扫描以查看它现在的位置。";
 "Warning" = "警告";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "关闭此项且提示设为“无”时，规则连接或断开隧道将没有任何提示。";

@@ -120,6 +120,7 @@
 "The rules stored on this Mac were not written by Helm, so none of them are running." = "As regras guardadas neste Mac não foram escritas pelo Helm, por isso nenhuma está a ser executada.";
 "This decides the words. Whether the icon turns is the switch below." = "Isto decide as palavras. Se o ícone gira é o interruptor abaixo que decide.";
 "This folder is no longer there" = "Esta pasta não existe mais";
+"This is not there any more, so nothing was moved. Scan again to see what is left." = "Isto já não existe, então nada foi movido. Escaneie de novo para ver o que restou.";
 "This is not where Helm found it, so nothing was moved. Scan again to see where it is now." = "Isto já não está onde o Helm encontrou, então nada foi movido. Escaneie de novo para ver onde está agora.";
 "Warning" = "Aviso";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "Com isto desligado e o aviso em “Nada”, uma regra que conecta ou derruba um túnel não dá sinal algum.";

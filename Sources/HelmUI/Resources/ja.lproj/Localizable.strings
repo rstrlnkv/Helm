@@ -120,6 +120,7 @@
 "The rules stored on this Mac were not written by Helm, so none of them are running." = "この Mac に保存されているルールは Helm が書いたものではありません。どのルールも実行されません。";
 "This decides the words. Whether the icon turns is the switch below." = "ここで決まるのは文字だけです。アイコンが回るかどうかは下のスイッチで決まります。";
 "This folder is no longer there" = "このフォルダはもうありません";
+"This is not there any more, so nothing was moved. Scan again to see what is left." = "これはもう存在しないため、何も移動していません。再スキャンして残りを確認してください。";
 "This is not where Helm found it, so nothing was moved. Scan again to see where it is now." = "Helm が見つけた場所にもう存在しないため、何も移動していません。再スキャンして現在の場所を確認してください。";
 "Warning" = "警告";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "これをオフにし、通知も“なし”にすると、ルールが接続・切断しても何も知らせません。";

@@ -120,6 +120,7 @@
 "The rules stored on this Mac were not written by Helm, so none of them are running." = "The rules stored on this Mac were not written by Helm, so none of them are running.";
 "This decides the words. Whether the icon turns is the switch below." = "This decides the words. Whether the icon turns is the switch below.";
 "This folder is no longer there" = "This folder is no longer there";
+"This is not there any more, so nothing was moved. Scan again to see what is left." = "This is not there any more, so nothing was moved. Scan again to see what is left.";
 "This is not where Helm found it, so nothing was moved. Scan again to see where it is now." = "This is not where Helm found it, so nothing was moved. Scan again to see where it is now.";
 "Warning" = "Warning";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all.";

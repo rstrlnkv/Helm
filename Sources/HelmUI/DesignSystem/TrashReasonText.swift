@@ -27,6 +27,13 @@ public enum TrashReasonText {
             // Duplicates' claim and was untrue even there: nothing re-checks
             // duplication. Drawn over a launch agent it was simply false.
             return L("This is not where Helm found it, so nothing was moved. Scan again to see where it is now.")
+        case TrashFailure.Reason.missing.rawValue:
+            // Not the neighbouring sentence, and the difference is the whole
+            // point: `changedSinceScan` is a file that is somewhere else, this is
+            // a file that is nowhere. It names the list rather than the file,
+            // because the list is what was wrong — the person picked this from a
+            // measurement that has since stopped being true.
+            return L("This is not there any more, so nothing was moved. Scan again to see what is left.")
         case TrashFailure.Reason.readOnlyVolume.rawValue:
             return L("The disk this is on is read-only. Eject it and unlock it, or copy what you need elsewhere.")
         case TrashFailure.Reason.diskFull.rawValue:

@@ -120,6 +120,7 @@
 "The rules stored on this Mac were not written by Helm, so none of them are running." = "Правила, сохранённые на этом Mac, записаны не приложением Helm — ни одно из них не выполняется.";
 "This decides the words. Whether the icon turns is the switch below." = "Здесь только слова. Вращается ли значок — решает переключатель ниже.";
 "This folder is no longer there" = "Этой папки больше нет";
+"This is not there any more, so nothing was moved. Scan again to see what is left." = "Объекта уже нет — Helm ничего не переместил. Сканируйте заново, чтобы увидеть, что осталось.";
 "This is not where Helm found it, so nothing was moved. Scan again to see where it is now." = "Файл уже не там, где его нашли, — Helm его не тронул. Сканируйте заново, чтобы увидеть, где он теперь.";
 "Warning" = "Предупреждение";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "Если это выключено, а уведомление — «Ничего», правило подключит или отключит туннель незаметно.";

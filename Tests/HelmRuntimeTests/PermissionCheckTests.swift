@@ -24,11 +24,16 @@ final class PermissionCheckTests: XCTestCase {
     }
 
     /// Same protected path, but macOS refused for another reason — do not
-    /// blame permissions.
+    /// blame permissions. Code 4 is «there is nothing there», which is a fact
+    /// about the list rather than about the grant.
     func testOtherErrorsOnProtectedPathsAreNotBlamedOnAccess() {
         XCTAssertEqual(
             TrashFailure.reason(path: "/Users/x/Library/Containers/com.a.b",
                                 errorCode: 4, hasSystemExtension: false),
+            .missing)
+        XCTAssertEqual(
+            TrashFailure.reason(path: "/Users/x/Library/Containers/com.a.b",
+                                errorCode: 99_999, hasSystemExtension: false),
             .systemRefused)
     }
 

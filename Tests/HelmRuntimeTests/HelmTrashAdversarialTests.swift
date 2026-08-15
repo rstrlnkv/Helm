@@ -70,7 +70,7 @@ final class HelmTrashAdversarialTests: XCTestCase {
         XCTAssertEqual(result.removed, [],
                        "the port moved nothing, so nothing may be reported as moved")
         XCTAssertEqual(Set(result.refused.map(\.path)), [folder, parent])
-        XCTAssertEqual(Set(result.refused.map(\.reason)), [.systemRefused])
+        XCTAssertEqual(Set(result.refused.map(\.reason)), [.missing])
         XCTAssertEqual(result.freedBytes, 0)
         XCTAssertTrue(FileManager.default.fileExists(atPath: parent),
                       "the file is gone, so the refusal above was the honest answer and "
@@ -143,7 +143,7 @@ final class HelmTrashAdversarialTests: XCTestCase {
         XCTAssertEqual(result.refused.map(\.path), [lookalike],
                        "a path that only shares a prefix was reported as having gone with "
                        + "a folder that never contained it")
-        XCTAssertEqual(result.refused.map(\.reason), [.systemRefused])
+        XCTAssertEqual(result.refused.map(\.reason), [.missing])
     }
 
     // MARK: - Order

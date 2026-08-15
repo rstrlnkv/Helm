@@ -138,6 +138,9 @@ public enum TrashFailure {
         /// Helm itself refused: the path is not inside a folder an app may
         /// leave things in. Not a macOS error — nothing was attempted.
         case outOfScope
+        /// It is not there. Read again at the moment of the move, the path names
+        /// nothing — deleted since the list was drawn, or renamed away.
+        case missing
         /// Helm itself refused, again, and for the other reason it ever does:
         /// the file is no longer what the scan said it was. Read again just
         /// before the move, the pair no longer matches — edited since, or a
@@ -147,6 +150,10 @@ public enum TrashFailure {
 
     /// Cocoa's "you may not write here" error.
     private static let noPermissionCode = 513   // NSFileWriteNoPermissionError
+    /// Nothing at that path. The ordinary refusal wherever a list outlives the
+    /// disk it describes — Disk acts on a tree up to 24 h old, and Caches,
+    /// DerivedData and Downloads are exactly the folders that change under it.
+    private static let noSuchFileCode = NSFileNoSuchFileError
     /// The two other Cocoa codes a move to the Trash actually produces, and
     /// which used to arrive as the general refusal — a sentence with no cause
     /// in it and no step out.
@@ -157,6 +164,10 @@ public enum TrashFailure {
     /// blaming Full Disk Access for every container failure sent users to a
     /// setting they had already granted.
     public static func reason(path: String, errorCode: Int, hasSystemExtension: Bool) -> Reason {
+        // **Before the extension**, which is a test of the path's *shape* while
+        // this is what macOS answered: «turn off its system extension» is an
+        // instruction about a bundle, and this bundle is not on the disk.
+        if errorCode == noSuchFileCode { return .missing }
         if hasSystemExtension, path.hasSuffix(".app") { return .activeSystemExtension }
         if errorCode == readOnlyVolumeCode { return .readOnlyVolume }
         if errorCode == outOfSpaceCode { return .diskFull }
