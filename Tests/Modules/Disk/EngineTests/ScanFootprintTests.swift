@@ -1,5 +1,6 @@
 import Foundation
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_Disk_Engine
 
@@ -34,13 +35,6 @@ final class ScanFootprintTests: XCTestCase {
     /// *this* fixture and means nothing away from it.
     private static let depth = 16
     private static let files = 8_000
-
-    private final class ProgressBox: @unchecked Sendable {
-        private let lock = NSLock()
-        private var stored = 0
-        func record(_ n: Int) { lock.lock(); stored = n; lock.unlock() }
-        var filesSeen: Int { lock.lock(); defer { lock.unlock() }; return stored }
-    }
 
     /// `depth` nested directories with `files` empty files at the bottom.
     ///
@@ -77,7 +71,7 @@ final class ScanFootprintTests: XCTestCase {
         let after = try XCTUnwrap(MemoryFootprint.current())
 
         XCTAssertNotNil(tree, "the fixture did not walk at all")
-        let seen = box.filesSeen
+        let seen = box.value
         // Asserted, not assumed: a walk that found nothing divides a footprint
         // difference by a small number and passes whatever the loop did.
         XCTAssertGreaterThanOrEqual(seen, Self.files,

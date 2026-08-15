@@ -1,5 +1,6 @@
 import Foundation
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_Duplicates_Engine
 
@@ -32,21 +33,12 @@ import XCTest
 ///     HELM_BENCH=1 swift test --filter WalkFootprintTests
 final class WalkFootprintTests: XCTestCase {
 
-    /// The progress callback is `@Sendable`, so the count it reports cannot be
-    /// a captured `var` — the same box `ScanFootprintTests` uses next door.
-    private final class SeenBox: @unchecked Sendable {
-        private let lock = NSLock()
-        private var value = 0
-        func record(_ n: Int) { lock.lock(); value = n; lock.unlock() }
-        var count: Int { lock.lock(); defer { lock.unlock() }; return value }
-    }
-
     func testTheWalkCostsItsTreeAndNotEverythingItLookedAt() throws {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["HELM_BENCH"] == "1")
         let home = FileManager.default.homeDirectoryForCurrentUser.path
 
         let scanner = DuplicateScanner()
-        let box = SeenBox()
+        let box = ProgressBox()
         let before = try XCTUnwrap(MemoryFootprint.current())
         let started = Date()
         // The walk alone: `find` would hash whatever it nominates, and the
@@ -55,7 +47,7 @@ final class WalkFootprintTests: XCTestCase {
         let after = try XCTUnwrap(MemoryFootprint.current())
 
         let grew = after - before
-        let seen = box.count
+        let seen = box.value
         let perEntry = seen > 0 ? Double(grew) / Double(seen) : 0
         print(String(format: "walked %d entries in %.2f s, kept %d files: "
                      + "footprint grew %.1f MB (%.0f bytes/entry)",
