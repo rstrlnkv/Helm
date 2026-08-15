@@ -19,11 +19,11 @@ final class TheScansNobodyWatchesHaveASwitchTests: XCTestCase {
     /// CLAUDE.md § A hand-written list warns about: a scan added to
     /// `ScanRunner.scannableModules` and forgotten here reads as consent nobody
     /// was asked for.
-    func testEveryScanThatCanRunHasARowOnTheScreen() {
+    func testEveryScanThatCanRunHasARowOnTheScreen() throws {
         let everyModule = Set(ModuleRegistry.all.map(\.idRaw))
-        let rows = MenuBarSettingsView.scanRows(enabled: everyModule,
-                                                disabledScans: [],
-                                                lastRun: [:])
+        let rows = try XCTUnwrap(MenuBarSettingsView.scanRows(enabled: everyModule,
+                                                              disabledScans: [],
+                                                              lastRun: [:]))
         XCTAssertEqual(rows.map(\.id), ScanRunner.scannableModules)
         XCTAssertTrue(rows.allSatisfy(\.isOn))
     }
@@ -31,10 +31,12 @@ final class TheScansNobodyWatchesHaveASwitchTests: XCTestCase {
     /// The screen and the getter answer the same question, so they read the
     /// same default: Disk's whole-volume walk is off until somebody says
     /// otherwise, and the row has to show that rather than its own guess.
-    func testTheScreenStartsWhereTheStoredDefaultStarts() {
-        let rows = MenuBarSettingsView.scanRows(enabled: Set(ModuleRegistry.all.map(\.idRaw)),
-                                                disabledScans: AppSettings.defaultDisabledScans,
-                                                lastRun: [:])
+    func testTheScreenStartsWhereTheStoredDefaultStarts() throws {
+        let all = Set(ModuleRegistry.all.map(\.idRaw))
+        let rows = try XCTUnwrap(
+            MenuBarSettingsView.scanRows(enabled: all,
+                                         disabledScans: AppSettings.defaultDisabledScans,
+                                         lastRun: [:]))
         XCTAssertEqual(rows.first { !$0.isOn }.map(\.id), "disk",
                        "the one scan off by default is Disk's, and the row must say so")
         XCTAssertEqual(rows.filter(\.isOn).count, ScanRunner.scannableModules.count - 1)

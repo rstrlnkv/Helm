@@ -33,7 +33,20 @@ struct MenuBarSettingsView: View {
     /// broken seal answers "every scan is off" whatever was just pressed, and a
     /// switch that stays where the finger left it would be the screen telling
     /// the person something the coordinator does not believe.
-    @State private var disabledScans = AppSettings.disabledScans
+    ///
+    /// **Nil until the task below has read it, and never read on the way in.**
+    /// This is the one setting on the page whose getter is sealed, so getting it
+    /// reaches the login keychain — and on an ad-hoc build, where the cdhash
+    /// changes with every build and no ACL an earlier one wrote still matches, a
+    /// keychain read is a modal authorization dialog. As a `@State` initial value
+    /// it was evaluated when SwiftUI installed the state, which is inside
+    /// `SettingsWindow.init`, so the dialog stood in front of the settings window
+    /// before the window had drawn anything (ARCHITECTURE.md § A seal needs a
+    /// signature — the same fact that keeps `clamshellEnabled` unsealed, reached
+    /// through a second door). Nil rather than an empty set: an empty off-list
+    /// means every scan is on, and standing in for "not read yet" with it would
+    /// show a whole-volume walk switched on to somebody who never said so.
+    @State private var disabledScans: Set<String>?
     @State private var lastScanAt = AppSettings.lastScanAt
     private let adHocBuild = PermissionCheck.isAdHocSigned()
 
@@ -55,13 +68,13 @@ struct MenuBarSettingsView: View {
     /// testable at all: what a person is asked about must be
     /// `ScanRunner.scannableModules` and not a second list written for the view
     /// — a scan added there and forgotten here would run with nobody asked.
-    static func scanRows(enabled: Set<String>, disabledScans: Set<String>,
-                         lastRun: [String: Date]) -> [ScanConsent.Row] {
+    static func scanRows(enabled: Set<String>, disabledScans: Set<String>?,
+                         lastRun: [String: Date]) -> [ScanConsent.Row]? {
         ScanConsent.rows(scannable: ScanRunner.scannableModules, enabled: enabled,
                          disabledScans: disabledScans, lastRun: lastRun)
     }
 
-    private var scanRows: [ScanConsent.Row] {
+    private var scanRows: [ScanConsent.Row]? {
         Self.scanRows(enabled: host.enabledModuleIDs,
                       disabledScans: disabledScans, lastRun: lastScanAt)
     }
@@ -116,8 +129,13 @@ struct MenuBarSettingsView: View {
     /// answers "every scan off"; a screen that kept the answer it was given
     /// would be the last place that fact could be seen.
     private func setScan(_ id: String, on: Bool) {
+        // There is no row to press until the off-list has been read, so this is
+        // unreachable rather than a case with a policy — and the policy it would
+        // otherwise need is "write a list you have not seen", which is how a
+        // scan somebody switched off comes back on.
+        guard let disabledScans else { return }
         AppSettings.disabledScans = ScanConsent.toggling(id, to: on, in: disabledScans)
-        disabledScans = AppSettings.disabledScans
+        self.disabledScans = AppSettings.disabledScans
     }
 
     private var settingsForm: some View {
@@ -200,7 +218,10 @@ struct MenuBarSettingsView: View {
             // Only when there is a row: with all three of those modules
             // switched off the heading would stand over an empty card, which is
             // the gap the Permissions section documents just below.
-            if !scanRows.isEmpty {
+            // Nil until the off-list has been read, which happens in the task
+            // below rather than on the way in: nothing is claimed about a scan
+            // whose switch nobody has looked up yet.
+            if let scanRows, !scanRows.isEmpty {
                 Section(header: HelmSectionTitle(AppStr.backgroundScansSection)) {
                     ForEach(scanRows, id: \.id) { row in scanRow(row) }
                     Text(AppStr.backgroundScansNote)
@@ -383,6 +404,18 @@ struct MenuBarSettingsView: View {
         .task {
             diskAccess = PermissionCheck.currentFullDiskAccess()
             accessibility = PermissionCheck.currentAccessibility()
+            // Here and not in the state's initial value: this getter verifies a
+            // seal, which reaches the login keychain, and on an ad-hoc build a
+            // keychain read is a modal dialog.
+            //
+            // The task alone is not the fix, and it was measured not being one:
+            // a `.task` continuation is drained by the very layout pass that
+            // draws the page, so a blocking read inside it still delays the
+            // first frame. Warming first is what moves the round trip off this
+            // thread — the await suspends, the page lays out and draws, and the
+            // read below is then memory (`SealKeyCache`).
+            await AppSettings.scanGuard.warmKey()
+            disabledScans = AppSettings.disabledScans
         }
         .confirmationDialog(AppStr.resetConfirmTitle, isPresented: $confirmingReset,
                             titleVisibility: .visible) {

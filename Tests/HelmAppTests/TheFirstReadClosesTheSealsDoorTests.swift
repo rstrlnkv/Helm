@@ -1,29 +1,7 @@
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import HelmApp
-
-/// A keychain that can be in the state the real one starts in.
-///
-/// `TestKey` in `DisabledScansMustBeHelmsOwnTests` answers with a fixed
-/// `firstUse` for ever, which is a fake simpler than its port: `KeychainSealKey`
-/// **spends** first use — the run that creates the item gets `true` and every
-/// later read gets `false`. So "the key was created by an earlier read, and the
-/// door is shut" was a state no test could write down, which is exactly where
-/// the defect lived.
-private final class FakeKeychain: SealKeyPort, @unchecked Sendable {
-    /// Only ever touched from the test's own main actor; `@unchecked` rather
-    /// than a lock, so the fake's behaviour stays readable.
-    private(set) var reads = 0
-    private var material: Data?
-
-    func key() -> SealKey? {
-        reads += 1
-        if let material { return SealKey(material: material, firstUse: false) }
-        let made = Data(repeating: 0x5A, count: 32)
-        material = made
-        return SealKey(material: made, firstUse: true)
-    }
-}
 
 /// The one door the seal leaves open, and who walks through it.
 ///
@@ -56,10 +34,10 @@ final class TheFirstReadClosesTheSealsDoorTests: XCTestCase {
     }
 
     /// A Mac nobody has configured: no stored value, no MAC, no keychain item.
-    private func freshMac() -> FakeKeychain {
+    private func freshMac() -> SealKeyProbe {
         AppSettings.store.set(nil, for: key)
         AppSettings.store.set(nil, for: macKey)
-        let keychain = FakeKeychain()
+        let keychain = SealKeyProbe()
         AppSettings.scanGuard = SettingGuard(keys: keychain)
         return keychain
     }

@@ -54,6 +54,21 @@ public struct SettingGuard: Sendable {
     /// establishes the key on its first read, whatever is stored.
     public func establishKey() { _ = keys.key() }
 
+    /// Fetch the key without holding the thread that called, so a screen can pay
+    /// for the keychain before it needs an answer from it.
+    ///
+    /// Every other member here is synchronous because a verdict is arithmetic;
+    /// the fetch behind it is not, and on an ad-hoc build it is a modal dialog
+    /// (see `SealKeyCache`). Taken on the main thread inside a window's own
+    /// construction, that dialog stood in front of a window with nothing drawn
+    /// in it. Awaiting this suspends rather than blocks, so the window lays out
+    /// and draws while the keychain is still deciding; with `SealKeyCache` in
+    /// front of the port, the read that follows is then memory.
+    public func warmKey() async {
+        let keys = self.keys
+        await Task.detached(priority: .userInitiated) { _ = keys.key() }.value
+    }
+
     /// The key a MAC is stored under, beside the value's own.
     ///
     /// One spelling, because the writer and the reader are usually in different

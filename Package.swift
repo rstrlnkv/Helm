@@ -111,8 +111,12 @@ let foundation: [Target] = [
 /// wrong: a scratch directory whose teardown **drains**, and the file-of-N-bytes
 /// every filesystem test needs. `Tests/Support/ScratchDirectory.swift` carries
 /// the measurement that says why.
+/// It depends on `HelmRuntime` for one reason: a stand-in for a *port* has to
+/// conform to that port's protocol, and `SealKeyPort` lives there. The
+/// dependency runs the only way it can — support may reach the shared plumbing,
+/// nothing may reach support.
 let support: [Target] = [
-    .target(name: "HelmTestSupport", path: "Tests/Support"),
+    .target(name: "HelmTestSupport", dependencies: ["HelmRuntime"], path: "Tests/Support"),
 ]
 
 /// The host and the tests that belong to no module.

@@ -21,15 +21,28 @@ public enum ScanConsent {
         public let lastRun: Date?
     }
 
-    /// One row per background scan, in the order the scans are declared.
+    /// One row per background scan, in the order the scans are declared, or nil
+    /// while the off-list has not been read.
     ///
     /// **Filtered to modules that are on.** `ScanCoordinator.run` starts with
     /// `host.liveModule(id)`, which a switched-off module has none of, so a row
     /// for it would be a switch over something that cannot happen either way.
+    ///
+    /// **`disabledScans` is optional because the read is not free.** The list is
+    /// sealed, so getting it can reach the login keychain — and on an ad-hoc
+    /// build that is an authorization dialog, which is why it cannot be read on
+    /// the path that builds the screen (`MenuBarSettingsView`). Nil is "not read
+    /// yet" and draws nothing. It is deliberately not the empty set: an empty
+    /// off-list means *every* scan is on, so standing in for an unknown answer
+    /// with it would show a whole-volume walk switched on to somebody who has
+    /// never said so. Nil is also not `[]` on the way out — no rows because
+    /// there is nothing to ask about is a different sentence from nothing to say
+    /// yet, and the screen draws its heading over one and not the other.
     public static func rows(scannable: [String], enabled: Set<String>,
-                            disabledScans: Set<String>,
-                            lastRun: [String: Date]) -> [Row] {
-        scannable
+                            disabledScans: Set<String>?,
+                            lastRun: [String: Date]) -> [Row]? {
+        guard let disabledScans else { return nil }
+        return scannable
             .filter(enabled.contains)
             .map { Row(id: $0, isOn: !disabledScans.contains($0), lastRun: lastRun[$0]) }
     }

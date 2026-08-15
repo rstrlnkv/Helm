@@ -162,9 +162,17 @@ extension Notification.Name {
     /// A `var` for one reason, stated so nobody has to guess at it: a test must
     /// not write to the person's login keychain, and this type is reached
     /// statically from every page in the app. Nothing in the app assigns it.
-    static var scanGuard = SettingGuard(keys: KeychainSealKey(service: "com.helm.app",
-                                                              account: "settings-seal",
-                                                              category: "scan"))
+    ///
+    /// Behind `SealKeyCache`, so the keychain is asked once for the whole
+    /// process rather than once per verdict: the getter above is read on every
+    /// coordinator tick and, until 2026-08-15, inside the settings window's own
+    /// construction — where the round trip is a modal authorization dialog on
+    /// every ad-hoc build. `warmKey()` is how a screen pays for it off the main
+    /// thread before it needs the answer.
+    static var scanGuard = SettingGuard(
+        keys: SealKeyCache(KeychainSealKey(service: "com.helm.app",
+                                           account: "settings-seal",
+                                           category: "scan")))
 
     /// When each background scan last **completed** — came back with a report.
     ///
