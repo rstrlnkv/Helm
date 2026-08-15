@@ -72,6 +72,24 @@ public struct ScanResult: Codable, Equatable, Sendable {
         self.filesScanned = filesScanned; self.seconds = seconds
         self.advice = advice
     }
+
+    /// The same repair its two members already carry, and for the same reason:
+    /// **the `= []` above does not make an older document decode.** The
+    /// synthesised `Decodable` requires the key whatever a property's default
+    /// argument says, and `JSONDecoder` gives up on the whole document rather
+    /// than filling in the one field — so a `last-scan.json` written before
+    /// `advice` existed took the entire tree down with it, and the module spent
+    /// another minute walking the volume at the first launch after the update.
+    /// The next field added here is the same trap again, which is why the four
+    /// that were always written are read outright and anything later is not.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        root = try c.decode(DiskEntry.self, forKey: .root)
+        freeBytes = try c.decode(Int.self, forKey: .freeBytes)
+        filesScanned = try c.decode(Int.self, forKey: .filesScanned)
+        seconds = try c.decode(Double.self, forKey: .seconds)
+        advice = try c.decodeIfPresent([DiskAdvice].self, forKey: .advice) ?? []
+    }
 }
 
 public extension DiskEntry {
