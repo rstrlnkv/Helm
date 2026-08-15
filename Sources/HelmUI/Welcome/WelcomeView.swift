@@ -21,6 +21,11 @@ public struct WelcomeView: View {
     /// re-runs `.onAppear` each time the step changes, so this never carries a
     /// stale value from the step before it.
     @State private var switchOn = false
+    /// Moves VoiceOver to the new step's content when the step changes. Without
+    /// it a tour walked from the keyboard leaves the reader on the Next button
+    /// while the words behind it change, and nothing says a new screen arrived.
+    /// First use of `AccessibilityFocusState` in the app.
+    @AccessibilityFocusState private var focus: String?
 
     public init(steps: [WelcomeStep],
                 actions: WelcomeActions = WelcomeActions(),
@@ -40,6 +45,7 @@ public struct WelcomeView: View {
             if let step {
                 VStack(spacing: HelmSpace.s6) {
                     stepContent(step)
+                        .accessibilityFocused($focus, equals: step.id)
                     switchSection(step)
                 }
                 .frame(maxWidth: 420)
@@ -54,6 +60,7 @@ public struct WelcomeView: View {
                 .onAppear { switchOn = currentSwitchValue(step) }
                 .onChange(of: flow.step) { _, newStep in
                     if newStep != 0 { revealed = false }
+                    if steps.indices.contains(newStep) { focus = steps[newStep].id }
                 }
             }
 

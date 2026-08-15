@@ -77,3 +77,18 @@ public enum HelmA11y {
         AccessibilityNotification.Announcement(text).post()
     }
 }
+
+public extension View {
+    /// Speaks `text` once, each time it becomes a new non-nil value.
+    ///
+    /// For a verdict that grows into a banner without moving focus or changing
+    /// the value of anything a VoiceOver reader is on — a removal report, a
+    /// return's report — so it is not silent to them. Disk and Autopilot each
+    /// spelled the same `onChange` around `HelmA11y.announce`; this is the one
+    /// place it lives now.
+    func helmAnnounces(_ text: String?) -> some View {
+        onChange(of: text) { _, new in
+            if let new { HelmA11y.announce(new) }
+        }
+    }
+}

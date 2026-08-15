@@ -50,6 +50,9 @@ struct DiskSettingsPage: View {
         // The basket bar inserts a divider and 45 pt under the ring; without
         // this the whole screen jumped upward when the sheet closed.
         .animation(HelmMotion.interface, value: dvm.basket.isEmpty)
+        // The verdict of a removal grows into the bar without moving focus, so
+        // it is silent to a VoiceOver reader unless said.
+        .helmAnnounces(dvm.banner)
         // **The question is asked of the plan.** Both halves used to be built from
         // the basket, which for a cache row is one entry standing for the contents
         // of a folder that stays exactly where it is: «Move 1 item (120 MB) to the
