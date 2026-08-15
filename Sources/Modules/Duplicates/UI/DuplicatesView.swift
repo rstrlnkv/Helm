@@ -120,12 +120,20 @@ struct DuplicatesView: View {
             Spacer()
             // Only where there is something to put back. A control that undoes
             // a choice nobody made is a control that has to explain itself.
+            //
+            // Both buttons pinned: unpinned, the first thing a narrow pane
+            // compressed was «Restore the recommendation»'s own words, while
+            // the reason above sat whole — the reason is the part with
+            // `lineLimit(1)`, so the reason is the part that yields.
+            // `TheGroupHeaderKeepsItsButtonsTests` holds the arithmetic.
             if grounds == .byHand {
                 Button(DupStr.restoreRecommendation) { dvm.restoreRecommendation(for: group) }
                     .controlSize(.small)
+                    .fixedSize()
             }
             Button(DupStr.markGroupExtras) { dvm.basketExtras(of: group) }
                 .controlSize(.small)
+                .fixedSize()
         }
     }
 
