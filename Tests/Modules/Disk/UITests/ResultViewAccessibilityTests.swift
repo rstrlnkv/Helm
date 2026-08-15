@@ -68,9 +68,13 @@ final class ResultViewAccessibilityTests: XCTestCase {
         XCTAssertFalse(DkStr.basketAction(basketed: true).isEmpty)
     }
 
-    /// And both places that draw it say so. There are two — the list row and the
-    /// Advice popover's row — and they had drifted into agreeing on the wrong
-    /// thing, which is what a shared pair of strings is for.
+    /// And wherever it is drawn, it says so.
+    ///
+    /// This used to read «both places», because there were two — the list row and
+    /// the Advice popover's row, written out separately and drifted into agreeing
+    /// on the wrong thing. They are one `BasketButton` now, so the drift this
+    /// scan was compensating for is not available: the count below is what makes
+    /// that a rule rather than today's arrangement.
     func testEveryBasketButtonTakesItsNameAndItsTraitFromItsState() throws {
         var offenders: [String] = []
 
@@ -93,15 +97,23 @@ final class ResultViewAccessibilityTests: XCTestCase {
         XCTAssertEqual(offenders, [], "\(offenders.joined(separator: "\n"))")
     }
 
-    /// The scan must be finding both of them: a window that has stopped
-    /// matching passes with nothing in it.
-    func testBothBasketButtonsAreFound() throws {
-        var found = 0
+    /// **One drawing, two doors.** The scan above must be finding something — a
+    /// window that has stopped matching passes with nothing in it — and what it
+    /// has to find is exactly one, because a second copy is how the names drifted
+    /// the first time and how `.disabled` came to be remembered at neither.
+    func testTheBasketButtonIsDrawnOnceAndReachedFromTwoRows() throws {
+        var drawings = 0
+        var uses = 0
         for url in try Self.swiftFiles() {
             let source = try String(contentsOf: url, encoding: .utf8)
-            found += source.components(separatedBy: #"basketed ? "checkmark.circle.fill""#).count - 1
+            drawings += source.components(separatedBy: #"basketed ? "checkmark.circle.fill""#).count - 1
+            uses += source.components(separatedBy: "BasketButton(basketed:").count - 1
         }
-        XCTAssertEqual(found, 2, "the list row and the Advice popover's row")
+        XCTAssertEqual(drawings, 1,
+                       "the mark button is drawn in \(drawings) places; anything true of it — "
+                       + "its name, its trait, whether it dims during a removal — then has to "
+                       + "be remembered at each")
+        XCTAssertEqual(uses, 2, "the list row and the Advice popover's row both reach it")
     }
 
     // MARK: - Actions a mouse is not required for

@@ -135,12 +135,17 @@ enum NoEngine: Error { case gone }
 
 /// Every "scan" parks until the test releases it and events are pushed by hand,
 /// so the interleaving is chosen rather than raced — and a walk can be caught
-/// in flight, which is the state the Stop button is visible in.
+/// in flight, which is the state the Stop button is visible in. A removal parks
+/// too when the test asks for it (`holdTrash`), which is the state the basket
+/// must not move in.
 final class HeldTransport: EngineTransport, @unchecked Sendable {
     private let lock = NSLock()
     private var parked: [CheckedContinuation<Data, Never>] = []
     private var requests: [ScanRequest] = []
+    private var trashBatches: [[String]] = []
     private var removal = DiskRemoval(removed: [], refused: [], freedBytes: 0)
+    private var heldTrash: [CheckedContinuation<Data, Never>] = []
+    private var holdsTrash = false
     private var continuation: AsyncStream<EngineEvent>.Continuation?
     let events: AsyncStream<EngineEvent>
 
@@ -161,7 +166,11 @@ final class HeldTransport: EngineTransport, @unchecked Sendable {
             }
             return await withCheckedContinuation { park($0) }
         case "trash":
-            return (try? JSONEncoder().encode(currentRemoval)) ?? Data()
+            noteTrash((try? JSONDecoder().decode([String].self, from: command.payload)) ?? [])
+            guard isHoldingTrash else {
+                return (try? JSONEncoder().encode(currentRemoval)) ?? Data()
+            }
+            return await withCheckedContinuation { parkTrash($0) }
         default:
             return Data()
         }
@@ -171,6 +180,48 @@ final class HeldTransport: EngineTransport, @unchecked Sendable {
     // point is what the compiler objects to, and it is right to.
     private func note(_ request: ScanRequest) {
         lock.lock(); requests.append(request); lock.unlock()
+    }
+
+    private func noteTrash(_ paths: [String]) {
+        lock.lock(); trashBatches.append(paths); lock.unlock()
+    }
+
+    private func parkTrash(_ continuation: CheckedContinuation<Data, Never>) {
+        lock.lock(); heldTrash.append(continuation); lock.unlock()
+    }
+
+    private var isHoldingTrash: Bool {
+        lock.lock(); defer { lock.unlock() }; return holdsTrash
+    }
+
+    /// Hold the removal open until `releaseTrash()`.
+    ///
+    /// **A fake that answers a removal on the spot cannot express a removal that
+    /// is running**, and everything the page does *during* one — the button that
+    /// should be dim, the row that should not be tickable — is then a state no
+    /// test could write down whatever anybody wrote. It is off by default
+    /// because the other files here are about what the model holds afterwards,
+    /// and a batch that never comes back would hang those instead of failing
+    /// them.
+    func holdTrash() {
+        lock.lock(); holdsTrash = true; lock.unlock()
+    }
+
+    /// Every batch the engine was really handed, in order. A basket row and a
+    /// removal are not one to one, and a second press sends a second batch:
+    /// counting them is how a refusal is told from a silence.
+    var trashRequests: [[String]] {
+        lock.lock(); defer { lock.unlock() }; return trashBatches
+    }
+
+    func releaseTrash() {
+        lock.lock()
+        let waiting = heldTrash
+        heldTrash = []
+        let answer = removal
+        lock.unlock()
+        let payload = (try? JSONEncoder().encode(answer)) ?? Data()
+        waiting.forEach { $0.resume(returning: payload) }
     }
 
     private func park(_ continuation: CheckedContinuation<Data, Never>) {
@@ -226,6 +277,13 @@ func folder(_ path: String, bytes: Int, children: [DiskEntry] = []) -> DiskEntry
 @MainActor
 func untilParked(_ transport: HeldTransport, count: Int) async {
     for _ in 0..<1000 where transport.parkedCount < count { await Task.yield() }
+}
+
+/// The same wait for a removal: it has left the model and is suspended inside
+/// the transport, which is the only moment «while a removal runs» exists in.
+@MainActor
+func untilTrashing(_ transport: HeldTransport, count: Int = 1) async {
+    for _ in 0..<1000 where transport.trashRequests.count < count { await Task.yield() }
 }
 
 /// Room for the tasks already scheduled to land. The two copies of this yielded

@@ -102,6 +102,7 @@ struct DiskResultView: View {
                          fraction: fraction(of: child),
                          hovered: $hovered,
                          basketed: dvm.isBasketed(child),
+                         removing: dvm.busy,
                          onToggleBasket: { dvm.toggleBasket(child) },
                          onDrill: { drill(into: child) })
                     .tag(child.path)
@@ -332,6 +333,50 @@ private struct BreadcrumbBar: View {
     }
 }
 
+// MARK: - The one way into the basket
+
+/// The `+` on a row, and the same `+` on a Recommendations row.
+///
+/// One control drawn in two places, and it was written out twice — same glyph
+/// pair, same tint, same style, same `DkStr.basketAction` in three of the four
+/// modifiers. What that costs is not the six lines: the two copies are the two
+/// doors into the basket, so anything true of the control has to be remembered
+/// at both, and `.disabled` while a removal runs was remembered at neither.
+///
+/// **Dim, because the model refuses.** ARCHITECTURE.md § One removal at a time:
+/// the basket is what the reply in flight is about, so `DiskViewModel.toggleBasket`
+/// declines while `busy` — and a button that is live over a refusal is a press
+/// that does nothing, which is worse than the discard it replaced.
+///
+/// **And `.disabled` on its own leaves this one drawn exactly as it was.**
+/// SwiftUI dims a control through the foreground style it would otherwise
+/// choose, and this label chooses its own — measured, two mounts of the same
+/// rows read 25 471 668 ink apiece with `.disabled(removing)` in place and
+/// nothing else changed. So the tint answers to the same flag the press does,
+/// one line below it, at the 0.4 AppKit gives a disabled template image. The
+/// name and the trait keep their own tight chain under the button, where
+/// `ResultViewAccessibilityTests` reads them — and the button toggles, so the
+/// name has to: it read "Add" in both states, which on a marked row is the
+/// opposite of what pressing it does.
+private struct BasketButton: View {
+    let basketed: Bool
+    let removing: Bool
+    let toggle: () -> Void
+
+    var body: some View {
+        Button(action: toggle) {
+            Image(systemName: basketed ? "checkmark.circle.fill" : "plus.circle")
+                .foregroundStyle(basketed ? Color.accentColor : .secondary)
+                .opacity(removing ? 0.4 : 1)
+        }
+        .buttonStyle(.borderless)
+        .disabled(removing)
+        .help(DkStr.basketAction(basketed: basketed))
+        .accessibilityLabel(DkStr.basketAction(basketed: basketed))
+        .accessibilityAddTraits(basketed ? .isSelected : [])
+    }
+}
+
 // MARK: - Row
 
 /// A row mirrors its wedge: same swatch, and a background bar whose width is
@@ -347,6 +392,9 @@ private struct ChildRow: View {
     let fraction: Double
     @Binding var hovered: String?
     let basketed: Bool
+    /// A removal is running, so the basket this button edits is the batch that
+    /// is already on its way to the engine.
+    let removing: Bool
     let onToggleBasket: () -> Void
     let onDrill: () -> Void
 
@@ -381,17 +429,7 @@ private struct ChildRow: View {
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(HelmText.quiet)
             if removable {
-                Button(action: onToggleBasket) {
-                    Image(systemName: basketed ? "checkmark.circle.fill" : "plus.circle")
-                        .foregroundStyle(basketed ? Color.accentColor : .secondary)
-                }
-                .buttonStyle(.borderless)
-                // The button toggles, so its name has to. It read "Add" in both
-                // states — on a basketed row that is the opposite of what
-                // pressing it does.
-                .help(DkStr.basketAction(basketed: basketed))
-                .accessibilityLabel(DkStr.basketAction(basketed: basketed))
-                .accessibilityAddTraits(basketed ? .isSelected : [])
+                BasketButton(basketed: basketed, removing: removing, toggle: onToggleBasket)
             }
         }
         .padding(.vertical, HelmSpace.s1)
@@ -486,16 +524,7 @@ private struct AdviceList: View {
             Text(Bytes(item.bytes))
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(HelmText.quiet)
-            Button {
-                dvm.toggleBasket(entry)
-            } label: {
-                Image(systemName: basketed ? "checkmark.circle.fill" : "plus.circle")
-                    .foregroundStyle(basketed ? Color.accentColor : .secondary)
-            }
-            .buttonStyle(.borderless)
-            .help(DkStr.basketAction(basketed: basketed))
-            .accessibilityLabel(DkStr.basketAction(basketed: basketed))
-            .accessibilityAddTraits(basketed ? .isSelected : [])
+            BasketButton(basketed: basketed, removing: dvm.busy) { dvm.toggleBasket(entry) }
         }
         .padding(.vertical, HelmSpace.s2).padding(.horizontal, HelmSpace.s4)
         .contextMenu {

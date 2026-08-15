@@ -441,7 +441,20 @@ import Module_Disk_Engine
 
     // MARK: - Basket
 
+    /// **The basket does not move while a removal is in flight.**
+    ///
+    /// `emptyBasket` sends what is ticked, waits, and then empties the basket
+    /// wholesale — so a row ticked in between was accepted and then discarded:
+    /// never sent, never refused, never mentioned, and still sitting on the ring
+    /// afterwards. Unticking one in the meantime is the mirror image, and worse
+    /// to read: the report then names a folder the person had just withdrawn.
+    ///
+    /// The guard is here as well as on the button (`.disabled(dvm.busy)` in
+    /// `DiskResultView`) because ARCHITECTURE.md § One removal at a time asks
+    /// for both — the page is a redraw away, and this method is also what the
+    /// bar's menu calls.
     public func toggleBasket(_ entry: DiskEntry) {
+        guard !busy else { return }
         if let index = basket.firstIndex(where: { $0.path == entry.path }) {
             basket.remove(at: index)
         } else if UserFileScope.isRemovable(entry.path) {

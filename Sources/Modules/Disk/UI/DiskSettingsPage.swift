@@ -223,6 +223,10 @@ struct DiskSettingsPage: View {
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()
+                // Every entry in it unticks a row, and the basket is what the
+                // reply in flight is about — so this is the third door the same
+                // guard covers, dimmed beside the button it sits next to.
+                .disabled(dvm.busy)
                 .help(DkStr.basketContents)
                 Spacer()
                 Button(DkStr.moveToTrash) { confirming = true }
