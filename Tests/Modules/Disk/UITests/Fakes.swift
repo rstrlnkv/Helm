@@ -1,8 +1,12 @@
+import AppKit
 import Foundation
 import HelmContract
 import HelmRuntime
+import HelmTestSupport
+import HelmUI
 import Module_Disk_Engine
 import XCTest
+@testable import Module_Disk_UI
 
 /// The two transports this module's page tests are written against, and the
 /// waits that go with them.
@@ -321,4 +325,22 @@ func untilTrashing(_ transport: HeldTransport, count: Int = 1) async {
 @MainActor
 func settle() async {
     for _ in 0..<50 { await Task.yield() }
+}
+
+// MARK: - The page, mounted
+
+/// `DiskSettingsPage` in a window, with its grants **named**.
+///
+/// The environment value is the whole reason this is here rather than at each
+/// call site: the page draws a Full Disk Access note of its own, so a render
+/// that inherits `helmGrants` is a measurement of whichever permissions this
+/// terminal happens to hold that hour — the same trap `MountedRender` refuses
+/// for appearance by making it a required argument. Three files were spelling it
+/// out, and a fourth would have been the one that forgot.
+@MainActor
+func mountedDiskPage(vm: ModuleViewModel, width: CGFloat, height: CGFloat,
+                     appearance: NSAppearance.Name) -> MountedRender {
+    MountedRender(DiskSettingsPage(vm: vm)
+        .environment(\.helmGrants, HelmGrants(accessibility: .granted, fullDisk: .granted)),
+                  width: width, height: height, appearance: appearance)
 }

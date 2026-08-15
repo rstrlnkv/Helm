@@ -172,10 +172,8 @@ final class AMeasuredFolderIsNotASilentClickTests: XCTestCase {
             let transport = HeldTransport()
             let vm = ModuleViewModel(transport: transport)
             let dvm = DiskViewModel.shared(vm: vm)
-            let mount = MountedRender(DiskSettingsPage(vm: vm)
-                .environment(\.helmGrants, HelmGrants(accessibility: .granted,
-                                                      fullDisk: .granted)),
-                                      width: 810, height: 600, appearance: appearance)
+            let mount = mountedDiskPage(vm: vm, width: 810, height: 600,
+                                        appearance: appearance)
             renders.append(mount)
 
             Task { await dvm.scan(path: "/Volumes/Big") }

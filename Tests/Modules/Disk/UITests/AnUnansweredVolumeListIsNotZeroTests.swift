@@ -149,18 +149,23 @@ final class AnUnansweredVolumeListIsNotZeroTests: XCTestCase {
     /// The flag has to be drawn, and the two screens it tells apart are the ones
     /// a person cannot otherwise tell apart: an answered empty list, and no
     /// answer at all. Both draw no cards; only one of them has a reason to give.
-    func testTheStartScreenSaysWhyItHasNoVolumes() async {
+    func testTheStartScreenSaysWhyItHasNoVolumes() async throws {
         for appearance in RenderedInk.bothAppearances {
             let answered = await mount(volumes: [], silent: false, appearance: appearance)
             let unanswered = await mount(volumes: [big], silent: true, appearance: appearance)
 
-            let quiet = try? XCTUnwrap(answered.render.settledInk())
-            let spoken = try? XCTUnwrap(unanswered.render.settledInk())
+            // `try`, not `try?`: a reading that never settled is a broken
+            // measurement, and folded to 0 it would arrive as «the two screens
+            // are the same», which is this test's own verdict.
+            let quiet = try XCTUnwrap(answered.render.settledInk(),
+                                      "the answered screen never settled")
+            let spoken = try XCTUnwrap(unanswered.render.settledInk(),
+                                       "the unanswered screen never settled")
 
             XCTAssertTrue(answered.model.volumes.isEmpty, "precondition: neither draws a card")
             XCTAssertTrue(unanswered.model.volumes.isEmpty)
             XCTAssertTrue(unanswered.model.volumeListLost, "precondition: one of them is a silence")
-            XCTAssertGreaterThan(spoken ?? 0, quiet ?? 0, """
+            XCTAssertGreaterThan(spoken, quiet, """
                 the start screen after a volume list nobody answered is the same drawing as \
                 after a list that answered «none» (\(RenderedInk.label(of: appearance))): the \
                 page claims this Mac has no disks and gives no reason.
@@ -171,10 +176,6 @@ final class AnUnansweredVolumeListIsNotZeroTests: XCTestCase {
     /// The real page, on a view model of its own — `DiskViewModel.shared(vm:)` is
     /// keyed to the `ModuleViewModel` it was built against, so two transports give
     /// two models and the two screens compared above are not one screen twice.
-    ///
-    /// The grants are named rather than inherited: the page draws a Full Disk
-    /// Access note of its own, and no reading here is a fact about this terminal's
-    /// permissions.
     private func mount(volumes: [VolumeInfo], silent: Bool,
                        appearance: NSAppearance.Name) async
         -> (model: DiskViewModel, render: MountedRender) {
@@ -182,9 +183,7 @@ final class AnUnansweredVolumeListIsNotZeroTests: XCTestCase {
         if silent { transport.answers(.nothing) }
         let vm = ModuleViewModel(transport: transport)
         let dvm = DiskViewModel.shared(vm: vm)
-        let render = MountedRender(DiskSettingsPage(vm: vm)
-            .environment(\.helmGrants, HelmGrants(accessibility: .granted, fullDisk: .granted)),
-                                   width: 744, height: 400, appearance: appearance)
+        let render = mountedDiskPage(vm: vm, width: 744, height: 400, appearance: appearance)
         renders.append(render)
         await dvm.loadVolumes()
         render.settle(20)
