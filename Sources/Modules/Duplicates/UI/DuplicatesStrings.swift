@@ -54,7 +54,14 @@ enum DupStr {
     static var moduleName: String { L("Duplicates") }
     static var summary: String { L("Files that exist more than once") }
     static var searching: String { L("Reading files…") }
-    static func progressLine(_ done: Int, _ total: Int) -> String { L("\(done) of \(total) checks done", [.ru: "Проверок сделано: \(done) из \(total)", .es: "\(done) de \(total) comprobaciones hechas", .fr: "\(done) vérifications sur \(total)", .de: "\(done) von \(total) Prüfungen erledigt", .ja: "\(total) 件中 \(done) 件を確認済み", .zh: "已完成 \(done) / \(total) 项检查", .pt: "\(done) de \(total) verificações feitas"]) }
+    /// Both counts go through `Count` — the candidate total runs over every
+    /// large file under the folder, which is six digits on a real library.
+    /// `BigCountsReadGroupedTests` holds this line and `found` below.
+    static func progressLine(_ done: Int, _ total: Int,
+                             language: AppLanguage = AppLanguage.current) -> String {
+        let (a, b) = (Count(done, language: language), Count(total, language: language))
+        return L("\(a) of \(b) checks done", [.ru: "Проверок сделано: \(a) из \(b)", .es: "\(a) de \(b) comprobaciones hechas", .fr: "\(a) vérifications sur \(b)", .de: "\(a) von \(b) Prüfungen erledigt", .ja: "\(b) 件中 \(a) 件を確認済み", .zh: "已完成 \(a) / \(b) 项检查", .pt: "\(a) de \(b) verificações feitas"], language: language)
+    }
     /// Takes the language, as `found` above does and for the same reason: the
     /// suite runs in this machine's language, so a sentence that reads
     /// `AppLanguage.current` is checked in one language eight times. This one is
@@ -117,7 +124,10 @@ enum DupStr {
     /// `DuplicatesLayout.barWithCount` has to ask it about German from a suite
     /// running in English.
     static func found(_ groups: Int, _ wasted: String,
-                      language: AppLanguage = AppLanguage.current) -> String { L("Groups: \(groups) · \(wasted) once the Trash is emptied", [.ru: "Групп: \(groups) · \(wasted) после очистки Корзины", .es: "Grupos: \(groups) · \(wasted) al vaciar la papelera", .fr: "Groupes : \(groups) · \(wasted) après avoir vidé la corbeille", .de: "Gruppen: \(groups) · \(wasted) nach dem Leeren des Papierkorbs", .ja: "\(groups) グループ・ゴミ箱を空にすると \(wasted)", .zh: "\(groups) 组 · 清倒废纸篓后 \(wasted)", .pt: "Grupos: \(groups) · \(wasted) ao esvaziar o Lixo"], language: language) }
+                      language: AppLanguage = AppLanguage.current) -> String {
+        let n = Count(groups, language: language)
+        return L("Groups: \(n) · \(wasted) once the Trash is emptied", [.ru: "Групп: \(n) · \(wasted) после очистки Корзины", .es: "Grupos: \(n) · \(wasted) al vaciar la papelera", .fr: "Groupes : \(n) · \(wasted) après avoir vidé la corbeille", .de: "Gruppen: \(n) · \(wasted) nach dem Leeren des Papierkorbs", .ja: "\(n) グループ・ゴミ箱を空にすると \(wasted)", .zh: "\(n) 组 · 清倒废纸篓后 \(wasted)", .pt: "Grupos: \(n) · \(wasted) ao esvaziar o Lixo"], language: language)
+    }
     static var keep: String { L("stays") }
     /// The badge on a row whose survivor the person chose. Two words in a pill,
     /// beside «stays» rather than instead of it — which of the two a group shows

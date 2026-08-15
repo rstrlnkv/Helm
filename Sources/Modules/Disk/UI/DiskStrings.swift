@@ -71,7 +71,14 @@ enum DkStr {
     /// differs: there, a list from the previous scan; here, a picker that may be
     /// missing a disk somebody is looking for.
     static var volumeListLost: String { L("Helm got no answer, so this may not be every volume.") }
-    static func scannedIn(_ files: Int, _ seconds: String) -> String { L("\(files) files in \(seconds) s", [.ru: "Файлов: \(files) за \(seconds) с", .es: "\(files) archivos en \(seconds) s", .fr: "\(files) fichiers en \(seconds) s", .de: "\(files) Dateien in \(seconds) s", .ja: "\(files) ファイル / \(seconds) 秒", .zh: "\(files) 个文件，\(seconds) 秒", .pt: "\(files) arquivos em \(seconds) s"]) }
+    /// The count goes through `Count`: a scan of `/` reports seven digits, and
+    /// seven ungrouped digits are read by counting them. Same in the two
+    /// statements below — `BigCountsReadGroupedTests` holds all three.
+    static func scannedIn(_ files: Int, _ seconds: String,
+                          language: AppLanguage = AppLanguage.current) -> String {
+        let n = Count(files, language: language)
+        return L("\(n) files in \(seconds) s", [.ru: "Файлов: \(n) за \(seconds) с", .es: "\(n) archivos en \(seconds) s", .fr: "\(n) fichiers en \(seconds) s", .de: "\(n) Dateien in \(seconds) s", .ja: "\(n) ファイル / \(seconds) 秒", .zh: "\(n) 个文件，\(seconds) 秒", .pt: "\(n) arquivos em \(seconds) s"], language: language)
+    }
     /// Where the files went, not what the disk gained: the Trash is a folder on
     /// the same volume, so nothing is free until it is emptied. Same wording as
     /// the button that started it (Finder's `AL13`), in the past tense.
@@ -105,7 +112,11 @@ enum DkStr {
     /// floor and not a total — which is the number somebody would be deciding to
     /// delete on. Interpolated, so it keeps an inline table: the lookup would
     /// otherwise be asked for a key with the count already in it.
-    static func stoppedHint(_ files: Int) -> String { L("The walk was stopped after \(files) files, so a folder may hold more than it shows.", [.ru: "Обход прерван, измерено файлов: \(files). Папка может содержать больше, чем показано.", .es: "El recorrido se detuvo tras \(files) archivos, así que una carpeta puede contener más de lo que muestra.", .fr: "L’analyse a été arrêtée après \(files) fichiers : un dossier peut contenir plus que ce qu’il affiche.", .de: "Der Durchlauf wurde nach \(files) Dateien gestoppt, daher kann ein Ordner mehr enthalten als angezeigt.", .ja: "\(files) ファイルで走査を停止したため、フォルダの実際の容量は表示より大きい場合があります。", .zh: "扫描在 \(files) 个文件后停止，文件夹的实际大小可能大于显示值。", .pt: "A varredura parou após \(files) arquivos, então uma pasta pode conter mais do que mostra."]) }
+    static func stoppedHint(_ files: Int,
+                            language: AppLanguage = AppLanguage.current) -> String {
+        let n = Count(files, language: language)
+        return L("The walk was stopped after \(n) files, so a folder may hold more than it shows.", [.ru: "Обход прерван, измерено файлов: \(n). Папка может содержать больше, чем показано.", .es: "El recorrido se detuvo tras \(n) archivos, así que una carpeta puede contener más de lo que muestra.", .fr: "L’analyse a été arrêtée après \(n) fichiers : un dossier peut contenir plus que ce qu’il affiche.", .de: "Der Durchlauf wurde nach \(n) Dateien gestoppt, daher kann ein Ordner mehr enthalten als angezeigt.", .ja: "\(n) ファイルで走査を停止したため、フォルダの実際の容量は表示より大きい場合があります。", .zh: "扫描在 \(n) 个文件后停止，文件夹的实际大小可能大于显示值。", .pt: "A varredura parou após \(n) arquivos, então uma pasta pode conter mais do que mostra."], language: language)
+    }
     static var advice: String { L("Recommendations") }
     static var adviceHint: String { L("What could be deleted") }
     static var adviceKindCache: String { L("Cache — apps rebuild it") }
@@ -152,5 +163,9 @@ enum DkStr {
     static var openFolder: String { L("Look inside") }
     static func ringShare(_ name: String, _ size: String, _ percent: Int) -> String { L("\(name), \(size), \(percent)% of this folder", [.ru: "\(name), \(size), \(percent) % этой папки", .es: "\(name), \(size), \(percent) % de esta carpeta", .fr: "\(name), \(size), \(percent) % de ce dossier", .de: "\(name), \(size), \(percent) % dieses Ordners", .ja: "\(name)、\(size)、このフォルダの \(percent)%", .zh: "\(name)，\(size)，占此文件夹 \(percent)%", .pt: "\(name), \(size), \(percent)% desta pasta"]) }
     static var back: String { L("Back") }
-    static func liveCount(_ files: Int) -> String { L("\(files) files", [.ru: "Файлов: \(files)", .es: "\(files) archivos", .fr: "\(files) fichiers", .de: "\(files) Dateien", .ja: "\(files) ファイル", .zh: "\(files) 个文件", .pt: "\(files) arquivos"]) }
+    static func liveCount(_ files: Int,
+                          language: AppLanguage = AppLanguage.current) -> String {
+        let n = Count(files, language: language)
+        return L("\(n) files", [.ru: "Файлов: \(n)", .es: "\(n) archivos", .fr: "\(n) fichiers", .de: "\(n) Dateien", .ja: "\(n) ファイル", .zh: "\(n) 个文件", .pt: "\(n) arquivos"], language: language)
+    }
 }

@@ -198,8 +198,8 @@ public func Decimal(_ value: Double, decimals: Int = 1) -> String {
 ///
 /// Not `Decimal`, which turns grouping off on purpose: that one writes the
 /// mantissa of a size, where a separator would be a second decimal mark.
-public func Count(_ value: Int) -> String {
-    HelmBytes.grouped(value, language: AppLanguage.current.rawValue)
+public func Count(_ value: Int, language: AppLanguage = AppLanguage.current) -> String {
+    HelmBytes.grouped(value, language: language.rawValue)
 }
 
 /// Dates in the app's language, not the system's.

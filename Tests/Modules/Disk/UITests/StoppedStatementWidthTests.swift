@@ -83,9 +83,12 @@ final class StoppedStatementWidthTests: XCTestCase {
     }
 
     /// The hint carries what the statement gave up, so it has to actually carry
-    /// it: the count is the reason the trade was worth making.
+    /// it: the count is the reason the trade was worth making. Compared with
+    /// the separators stripped, because the count is grouped now
+    /// (`BigCountsReadGroupedTests`) and the claim here is only that it is
+    /// named at all.
     func testTheHintNamesTheCountTheStatementNoLongerShows() {
-        XCTAssertTrue(DkStr.stoppedHint(263_144).contains("263144"),
-                      DkStr.stoppedHint(263_144))
+        let digits = DkStr.stoppedHint(263_144).filter(\.isNumber)
+        XCTAssertTrue(digits.contains("263144"), DkStr.stoppedHint(263_144))
     }
 }

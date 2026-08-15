@@ -18,19 +18,22 @@ import Foundation
 /// `HelmConfirm.trash` takes it: the eight tables cannot be tested otherwise.
 public enum HelmBasket {
 
-    /// "To remove: 3 · 1,5 GB" — `size` arrives already localized.
+    /// "To remove: 3 · 1,5 GB" — `size` arrives already localized, and the
+    /// count is grouped by `Count`: «Mark every extra copy» over a large
+    /// library puts five or six digits here.
     public static func line(count: Int, size: String,
                             language: AppLanguage = AppLanguage.current) -> String {
+        let n = Count(count, language: language)
         let table: [AppLanguage: String] = [
-            .ru: "К удалению: \(count) · \(size)",
-            .es: "Para eliminar: \(count) · \(size)",
-            .fr: "À supprimer : \(count) · \(size)",
-            .de: "Zu entfernen: \(count) · \(size)",
-            .ja: "削除予定：\(count)・\(size)",
-            .zh: "待删除 \(count) · \(size)",
-            .pt: "Para remover: \(count) · \(size)",
+            .ru: "К удалению: \(n) · \(size)",
+            .es: "Para eliminar: \(n) · \(size)",
+            .fr: "À supprimer : \(n) · \(size)",
+            .de: "Zu entfernen: \(n) · \(size)",
+            .ja: "削除予定：\(n)・\(size)",
+            .zh: "待删除 \(n) · \(size)",
+            .pt: "Para remover: \(n) · \(size)",
         ]
-        let english = "To remove: \(count) · \(size)"
+        let english = "To remove: \(n) · \(size)"
         return language == .en ? english : table[language] ?? english
     }
 
