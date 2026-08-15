@@ -321,8 +321,10 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
                                     "refused \(unreadable.count) — could not be read")
             }
             // Spelled once for both ways out: a reply that dropped these on
-            // either path would be a refusal silently discarded.
-            let staleRefusals = stale.map {
+            // either path would be a refusal silently discarded. Both verdicts
+            // of the reading, not only the stale one — the name has to say so,
+            // or the next reader folds them back.
+            let verifyRefusals = stale.map {
                 HelmTrash.Refusal(path: $0, reason: .changedSinceScan)
             } + unreadable.map {
                 HelmTrash.Refusal(path: $0, reason: .unreadable)
@@ -340,7 +342,7 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
                     removed: [],
                     refused: outOfScope.map {
                         HelmTrash.Refusal(path: $0, reason: .outOfScope)
-                    } + staleRefusals,
+                    } + verifyRefusals,
                     freedBytes: 0, cancelled: true)
             }
             // The copies that stay, named for the batch's clone accounting: a
@@ -356,7 +358,7 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
             // ever silently discarded — the house rule this module answers to.
             return DuplicateRemoval(
                 removed: result.removed,
-                refused: result.refused + staleRefusals,
+                refused: result.refused + verifyRefusals,
                 freedBytes: result.freedBytes)
         }
     }
