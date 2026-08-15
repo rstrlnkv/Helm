@@ -142,6 +142,28 @@ final class ChoosingTheCopyThatStaysTests: XCTestCase {
         XCTAssertEqual(dvm.groups.first?.paths.first, filed)
     }
 
+    /// A search re-reads the folder and re-decides everything, which is what
+    /// pressing Search again asks for. The choice belonged to the list it is
+    /// replacing — and the same content found again has the same id, so a pin
+    /// held across a search would step over the new answer with nothing on
+    /// screen to say why.
+    func testASearchForgetsTheChoicesItReplaces() async throws {
+        let dvm = await searched([trio()])
+        dvm.choose(.byDate)
+        dvm.keep(archived, in: try XCTUnwrap(dvm.groups.first))
+
+        dvm.search()
+        for _ in 0..<200 where dvm.phase != .result { await Task.yield() }
+        dvm.choose(.byPlace)
+
+        // The rung, whichever it is, rather than `.byHand`: both filed copies
+        // clear the transit tier, so what separates them is the date — the
+        // reason is about the survivor and the copy that came closest, not about
+        // the policy's name.
+        XCTAssertEqual(dvm.grounds(of: try XCTUnwrap(dvm.groups.first)), .rung(.date))
+        XCTAssertEqual(dvm.groups.first?.paths.first, filed)
+    }
+
     // MARK: - What the header says about it
 
     func testAGroupChosenByHandSaysSo() async throws {

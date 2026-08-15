@@ -69,6 +69,28 @@ final class PolicyChangeRearrangesTheListTests: XCTestCase {
         XCTAssertEqual(dvm.groups.count, 1)
     }
 
+    /// A search takes minutes, and the popup is live while it runs.
+    ///
+    /// The request carries the policy it was pressed with, so the engine's answer
+    /// arrives ordered by *that* one. Landing it as it came would leave the list
+    /// in one order while the sentence above it named another — and the header's
+    /// reason, which asks the ladder rather than the array, would describe a copy
+    /// that is not the one on the first row.
+    func testAnAnswerThatLandsAfterThePolicyChangedIsPutInTheNewOrder() async {
+        let wire = DuplicatesWire(groups: [group()], answering: .park)
+        let dvm = model(wire)
+        dvm.choose(.byDate)
+        dvm.search()
+        for _ in 0..<1000 where wire.parkedCount < 1 { await Task.yield() }
+
+        dvm.choose(.byPlace)
+        wire.releaseParked()
+        for _ in 0..<200 where dvm.phase != .result { await Task.yield() }
+
+        XCTAssertEqual(dvm.groups.first?.paths.first, filed,
+                       "the list is in the order the request asked for, not the one on screen")
+    }
+
     // MARK: - And the marks follow the list
 
     func testAMarkThatBecameTheSurvivorIsTakenOff() async {

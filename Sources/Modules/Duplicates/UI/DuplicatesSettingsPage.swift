@@ -68,7 +68,10 @@ struct DuplicatesSettingsPage: View {
                 Divider()
             }
             content
-            if !dvm.basket.isEmpty || hasReport {
+            // The note about the marks brings the bar up on its own: «skipped:
+            // 3» is drawn for a press that marked nothing at all, which is
+            // exactly the press worth explaining.
+            if !dvm.basket.isEmpty || hasReport || dvm.marksNote != nil {
                 Divider()
                 basketBar
             }
@@ -263,6 +266,13 @@ struct DuplicatesSettingsPage: View {
         VStack(alignment: .leading, spacing: 8) {
             if hasReport {
                 outcomeRow
+            }
+            // What the last press did to the marks, above the count it changed:
+            // «unmarked: 2» is only worth reading beside the figure it explains.
+            if let note = dvm.marksNote {
+                Text(note)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             if !dvm.basket.isEmpty {
                 basketRow

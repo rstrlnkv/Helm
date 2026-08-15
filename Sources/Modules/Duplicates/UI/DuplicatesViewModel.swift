@@ -329,6 +329,14 @@ public enum KeepGrounds: Equatable, Sendable {
         // *this* list being older than the press, and there is about to be a
         // different list.
         replyLost = false
+        // And the same for the marks: «unmarked: 2» is about a basket that has
+        // just been emptied by the line above, and the groups it named are gone.
+        marksNote = nil
+        // Every hand-made choice belonged to the list that is being replaced. A
+        // pin held across a search would step over the new answer for a group
+        // whose id happens to match — the same content found again — while the
+        // person is watching a search they asked for.
+        pinned = []
         let mine = searches.take()
         let path = folder.path
         // Taken here, with the folder, so the request describes the page as it
@@ -354,6 +362,15 @@ public enum KeepGrounds: Equatable, Sendable {
             // announce a clean folder nobody finished checking.
             guard let found else { phase = .start; return }
             groups = found.groups
+            // The answer is ordered by the policy the *request* carried, and a
+            // search takes minutes with the popup live throughout. When the two
+            // still agree there is nothing to do — re-deciding what the engine
+            // has just decided by the same rule is the second pipeline this
+            // module has already paid for once. When they do not, the list would
+            // otherwise sit in one order while the sentence above it named
+            // another, and the header's reason — which asks the ladder rather
+            // than the array — would describe a copy that is not on the first row.
+            if chosen != policy { rearrange() }
             unreadable = found.unreadable
             librariesSkipped = found.librariesSkipped
             phase = .result
