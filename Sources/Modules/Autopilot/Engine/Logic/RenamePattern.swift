@@ -83,6 +83,38 @@ enum SortBucket {
         }
     }
 
+    /// Whether a folder of this name is one this scheme makes.
+    ///
+    /// **Any of them, not only the one a given file would land in.** `Images/`
+    /// holds what a sorting rule filed there, and a rule that takes folders
+    /// would move it into `Folders/Images` — the rule tearing up its own
+    /// filing. So the question is about the scheme, not about the item.
+    ///
+    /// Caseless for the same reason `RuleRunner` compares caselessly: `images`
+    /// and `Images` are one folder on the volume Helm ships to.
+    static func isBucket(_ name: String, of scheme: SortScheme) -> Bool {
+        switch scheme {
+        case .kind:
+            FileKind.allCases.contains {
+                kindName($0).compare(name, options: .caseInsensitive) == .orderedSame
+            }
+        case .month:
+            isMonth(name)
+        }
+    }
+
+    /// `yyyy-MM`, read rather than parsed: `DateFormatter` rolls `2026-13` over
+    /// into January and would call somebody's folder a bucket of this scheme.
+    /// A name the scheme cannot produce is an ordinary folder.
+    private static func isMonth(_ name: String) -> Bool {
+        let parts = name.split(separator: "-", omittingEmptySubsequences: false)
+        guard parts.count == 2, parts[0].count == 4, parts[1].count == 2,
+              parts.allSatisfy({ $0.allSatisfy { $0.isASCII && $0.isNumber } }),
+              let month = Int(parts[1]), (1...12).contains(month)
+        else { return false }
+        return true
+    }
+
     /// `2026-07` — sorts by name into chronological order, which a localised
     /// month name does not. The date *added*, because "when this arrived" is
     /// what a Downloads folder is asking about.

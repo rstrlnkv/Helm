@@ -31,9 +31,35 @@ public extension RulePlan {
             // rule below it gets its turn — which is what switching one off to
             // see what the next one does is for. Same for a rule with no
             // conditions: `RuleMatcher` refuses it, and the search continues.
+            // And the same for a folder this rule made, which steps aside for
+            // the rule below rather than swallowing it: a bucket is not an item
+            // *of this rule*, not "not an item".
+            guard !sortsItsOwnBucket(facts, rule) else { continue }
             if RuleMatcher.matches(facts, rule) { return RulePlan(facts: facts, rule: rule) }
         }
         return nil
+    }
+
+    /// **A folder a sorting rule makes is not one of the things it sorts.**
+    ///
+    /// `sortIntoSubfolder(.kind)` calls a directory a `.folder`, whose bucket is
+    /// `Folders` — so once the rule has made `~/Downloads/Folders`, every sweep
+    /// planned to move that folder inside itself. `RuleRunner.move` refused it
+    /// `outOfScope`, correctly and for ever: an hourly warning in the log and an
+    /// hourly row in the history, about a folder nobody had asked to move.
+    ///
+    /// Decided here rather than in the runner because the plan is the one value
+    /// the dry run shows and the runner executes. A refusal would be the wrong
+    /// word anyway — it says something was going to happen and could not, and
+    /// this was never going to happen.
+    ///
+    /// Only a sorting rule, and only a directory: a *file* called `Folders` is
+    /// an ordinary file, and a `2026-07/` met by a `.kind` rule is somebody's
+    /// folder, which that rule may honestly move.
+    private static func sortsItsOwnBucket(_ facts: FileFacts, _ rule: Rule) -> Bool {
+        guard facts.isDirectory, case let .sortIntoSubfolder(scheme) = rule.action
+        else { return false }
+        return SortBucket.isBucket(facts.name, of: scheme)
     }
 
     /// The whole folder, in one pass. Files nothing matches are absent rather
