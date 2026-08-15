@@ -392,6 +392,7 @@
 "Removing…" = "Removing…";
 "Rename" = "Rename";
 "Renaming scheme" = "Renaming scheme";
+"Review" = "Review";
 "Reset" = "Reset";
 "Reset all settings, in Settings → Settings. Helm goes back to how it was just after installing: preferences forgotten, each module’s saved state and the diagnostics log in the Trash — not deleted outright, so you can get them back — and the welcome tour again at the next launch. Access you granted in System Settings is macOS’s and is left alone." = "Reset all settings, in Settings → Settings. Helm goes back to how it was just after installing: preferences forgotten, each module’s saved state and the diagnostics log in the Trash — not deleted outright, so you can get them back — and the welcome tour again at the next launch. Access you granted in System Settings is macOS’s and is left alone.";
 "Reset all settings?" = "Reset all settings?";

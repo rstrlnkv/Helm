@@ -392,6 +392,7 @@
 "Removing…" = "删除中…";
 "Rename" = "重命名";
 "Renaming scheme" = "重命名方式";
+"Review" = "查看";
 "Reset" = "重置";
 "Reset all settings, in Settings → Settings. Helm goes back to how it was just after installing: preferences forgotten, each module’s saved state and the diagnostics log in the Trash — not deleted outright, so you can get them back — and the welcome tour again at the next launch. Access you granted in System Settings is macOS’s and is left alone." = "在设置 → “设置”中可以重置所有设置。Helm 会回到刚安装完的状态；已保存的内容会移到废纸篓，而不是直接删除。你在系统设置中授予的权限不受影响。";
 "Reset all settings?" = "要重置所有设置吗？";

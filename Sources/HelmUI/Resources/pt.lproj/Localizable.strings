@@ -392,6 +392,7 @@
 "Removing…" = "Removendo…";
 "Rename" = "Renomear";
 "Renaming scheme" = "Esquema de renomeação";
+"Review" = "Revisar";
 "Reset" = "Redefinir";
 "Reset all settings, in Settings → Settings. Helm goes back to how it was just after installing: preferences forgotten, each module’s saved state and the diagnostics log in the Trash — not deleted outright, so you can get them back — and the welcome tour again at the next launch. Access you granted in System Settings is macOS’s and is left alone." = "Redefinir todos os ajustes, em Ajustes → Ajustes. O Helm volta a como estava logo após a instalação; o que estava salvo vai para o Lixo em vez de ser apagado de vez. O acesso concedido nos Ajustes do Sistema não é tocado.";
 "Reset all settings?" = "Redefinir todos os ajustes?";

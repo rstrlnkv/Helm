@@ -392,6 +392,7 @@
 "Removing…" = "削除中…";
 "Rename" = "名前を変更";
 "Renaming scheme" = "リネームの方式";
+"Review" = "確認";
 "Reset" = "リセット";
 "Reset all settings, in Settings → Settings. Helm goes back to how it was just after installing: preferences forgotten, each module’s saved state and the diagnostics log in the Trash — not deleted outright, so you can get them back — and the welcome tour again at the next launch. Access you granted in System Settings is macOS’s and is left alone." = "設定 → “設定”で、すべての設定をリセットできます。Helm はインストール直後の状態に戻り、保存されていたものは完全削除ではなくゴミ箱に移動します。システム設定で許可したアクセスはそのままです。";
 "Reset all settings?" = "すべての設定をリセットしますか？";

@@ -392,6 +392,7 @@
 "Removing…" = "Удаление…";
 "Rename" = "Переименовать";
 "Renaming scheme" = "Схема переименования";
+"Review" = "Просмотреть";
 "Reset" = "Сброс";
 "Reset all settings, in Settings → Settings. Helm goes back to how it was just after installing: preferences forgotten, each module’s saved state and the diagnostics log in the Trash — not deleted outright, so you can get them back — and the welcome tour again at the next launch. Access you granted in System Settings is macOS’s and is left alone." = "Сброс всех настроек — в Настройках → «Настройки». Helm вернётся к состоянию сразу после установки: настройки забыты, сохранённое состояние модулей и журнал диагностики отправлены в Корзину (не удалены безвозвратно — их можно вернуть), а при следующем запуске снова появится приветственное окно. Доступ, выданный в Системных настройках, принадлежит macOS и не трогается.";
 "Reset all settings?" = "Сбросить все настройки?";
