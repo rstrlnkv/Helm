@@ -53,7 +53,35 @@ enum DupStr {
     }
     static var moduleName: String { L("Duplicates") }
     static var summary: String { L("Files that exist more than once") }
-    static var searching: String { L("Reading files…") }
+    /// Takes the language, as `none` below does and for the same reason:
+    /// `busyLine` chooses between this and `progressLine`, and a choice checked
+    /// only in the suite's own language is checked in one language eight times.
+    static func searching(language: AppLanguage = AppLanguage.current) -> String {
+        L("Reading files…", language: language)
+    }
+    /// The one sentence a busy screen draws: the tick when there is one, the
+    /// plain «reading» when there is not — true of a search and of a removal's
+    /// verification alike, since both are files being read in full.
+    ///
+    /// A function rather than an expression inside the page, because the page's
+    /// branch was exercised by nothing: no fake could emit a progress event, so
+    /// the `progressLine` half had never been reached by any test.
+    static func busyLine(_ progress: DuplicateProgress?,
+                         language: AppLanguage = AppLanguage.current) -> String {
+        guard let progress, progress.candidates > 0 else {
+            return searching(language: language)
+        }
+        return progressLine(progress.hashed, progress.candidates, language: language)
+    }
+    /// The button beside a running removal. Not `stop` — that key says «Stop
+    /// scan», and this press must not read as one about the search.
+    static var stopRemoval: String { L("Stop removal") }
+    /// The named outcome of a stopped removal. What did move before the stop is
+    /// the banner's to say; this sentence owns the other half — that from the
+    /// stop on, nothing else went.
+    static func removalStopped(language: AppLanguage = AppLanguage.current) -> String {
+        L("Removal stopped — nothing more was moved.", language: language)
+    }
     /// Both counts go through `Count` — the candidate total runs over every
     /// large file under the folder, which is six digits on a real library.
     /// `BigCountsReadGroupedTests` holds this line and `found` below.

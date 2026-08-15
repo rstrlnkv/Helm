@@ -386,6 +386,7 @@
 "Red" = "Vermelho";
 "Redesigned About: the icon sits in a bezel that turns while updates are checked, version and build read as instrument dials, and update controls live in one card." = "Janela Sobre redesenhada: o ícone num aro que gira durante a verificação de atualizações, versão e build como mostradores, e os controles de atualização em um único cartão.";
 "Refresh list" = "Recarregar lista";
+"Removal stopped — nothing more was moved." = "Remoção interrompida — nada mais foi movido.";
 "Remove" = "Remover";
 "Remove an app with all of its files" = "Remover um app com todos os seus arquivos";
 "Removing an app no longer offers another app’s files. Leftovers were matched by the start of a bundle id and never checked against what is installed — and an app kept one folder down, or one that simply claimed somebody else’s id, could still slip past that check. Nothing from another app is offered pre-ticked now." = "Remover um app não oferece mais arquivos de outro. Os restos eram encontrados pelo início do bundle id, sem conferir o que está instalado — e um app guardado numa subpasta, ou que simplesmente declarava o id de outro, ainda escapava dessa checagem. Nada de outro app vem pré-selecionado agora.";
@@ -452,6 +453,7 @@
 "Startup items, extensions, and what removed apps left behind" = "Itens de início, extensões e restos de apps removidos";
 "Stop" = "Parar";
 "Stop could leave an abandoned scan’s folders sitting in the basket, above the Trash button, on a screen that no longer had anything to do with them — and emptying the basket credited the space to whichever volume you’d since picked." = "Parar podia deixar as pastas de um escaneamento abandonado paradas na cesta, acima do botão da Lixeira, numa tela que já não tinha nada a ver com elas — e esvaziar a cesta creditava o espaço ao volume escolhido até então.";
+"Stop removal" = "Parar a remoção";
 "Stop scan" = "Parar";
 "Stop stops the disk scan. Opening a folder mid-scan used to start a second one that took over, leaving the first walking the disk with nothing able to stop it and the ring flickering between the two. And the duplicate finder’s “freed” figure now counts the copies that actually leave." = "Parar interrompe mesmo o escaneamento do disco, e o espaço liberado nas duplicatas conta as cópias que saem.";
 "Stop watching" = "Parar de vigiar";

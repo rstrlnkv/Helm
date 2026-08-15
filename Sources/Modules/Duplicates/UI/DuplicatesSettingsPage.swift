@@ -84,6 +84,9 @@ struct DuplicatesSettingsPage: View {
         // emptying the basket animated the bar and dropped the rows it emptied
         // in one frame. The same line Leftovers already has.
         .animation(HelmMotion.interface, value: dvm.groups.count)
+        // And on `busy`, which brings the removal's own row — progress and
+        // Stop — up and down in the bar the way the neighbours above arrive.
+        .animation(HelmMotion.interface, value: dvm.busy)
         .confirmationDialog(DupStr.confirmTrash(dvm.basket.count, Bytes(dvm.basketBytes)),
                             isPresented: $confirming, titleVisibility: .visible) {
             Button(DupStr.moveToTrash, role: .destructive) {
@@ -239,9 +242,7 @@ struct DuplicatesSettingsPage: View {
                 }
             }
         case .searching:
-            HelmBusyState(dvm.progress.map { $0.candidates > 0
-                                             ? DupStr.progressLine($0.hashed, $0.candidates)
-                                             : DupStr.searching } ?? DupStr.searching)
+            HelmBusyState(DupStr.busyLine(dvm.progress))
         case .result:
             // **`nothingToShow`, not `groups.isEmpty`.** The two agree on when
             // there is no list and not on what to say about it: a walk refused
@@ -267,6 +268,23 @@ struct DuplicatesSettingsPage: View {
             if hasReport {
                 outcomeRow
             }
+            // The removal, while it runs: the same tick the search draws — both
+            // are files being read in full — and the way out `cancel` never
+            // was. Above the basket row so the count being acted on stays put
+            // under it, and the destructive button keeps its own width ladder.
+            if dvm.busy {
+                HStack(spacing: HelmSpace.s5) {
+                    ProgressView().controlSize(.small)
+                    Text(DupStr.busyLine(dvm.progress))
+                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                        .contentTransition(.numericText())
+                        .animation(HelmMotion.interface, value: dvm.progress?.hashed)
+                    Spacer(minLength: 8)
+                    Button(DupStr.stopRemoval) { dvm.stopRemoval() }
+                        .controlSize(.small)
+                        .fixedSize()
+                }
+            }
             // What the last press did to the marks, above the count it changed:
             // «unmarked: 2» is only worth reading beside the figure it explains.
             if let note = dvm.marksNote {
@@ -287,7 +305,7 @@ struct DuplicatesSettingsPage: View {
     /// disagree, and the one that draws the report is not the one that makes room
     /// for it.
     private var hasReport: Bool {
-        dvm.replyLost || dvm.banner != nil || !dvm.failures.isEmpty
+        dvm.replyLost || dvm.removalStopped || dvm.banner != nil || !dvm.failures.isEmpty
     }
 
     /// What actually happened, named and reasoned — the component Disk,
@@ -324,11 +342,22 @@ struct DuplicatesSettingsPage: View {
         if dvm.replyLost {
             HelmRemovalOutcome.unansweredWithStaleList
         } else {
-            HelmRemovalOutcome(
-                succeededText: dvm.banner ?? "",
-                removed: dvm.removedCount,
-                failures: dvm.failures.map(HelmRemovalFailure.init),
-                needsFullDiskAccess: diskAccess == .denied)
+            VStack(alignment: .leading, spacing: HelmSpace.s3) {
+                // Above the counts, because it qualifies them: what the banner
+                // says moved did move — before the stop — and this owns the
+                // other half. Read off the reply, so a removal that ran to the
+                // end never draws it.
+                if dvm.removalStopped {
+                    Text(DupStr.removalStopped())
+                        .font(HelmText.rowDetail)
+                        .foregroundStyle(HelmText.quiet)
+                }
+                HelmRemovalOutcome(
+                    succeededText: dvm.banner ?? "",
+                    removed: dvm.removedCount,
+                    failures: dvm.failures.map(HelmRemovalFailure.init),
+                    needsFullDiskAccess: diskAccess == .denied)
+            }
         }
     }
 

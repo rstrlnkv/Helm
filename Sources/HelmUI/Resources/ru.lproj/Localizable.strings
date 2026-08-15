@@ -386,6 +386,7 @@
 "Red" = "Красный";
 "Redesigned About: the icon sits in a bezel that turns while updates are checked, version and build read as instrument dials, and update controls live in one card." = "Новое окно «О Helm»: иконка в безеле, который вращается во время проверки обновлений, версия и сборка — как показания приборов, управление обновлениями собрано в одну карточку.";
 "Refresh list" = "Перечитать список";
+"Removal stopped — nothing more was moved." = "Удаление остановлено — больше ничего не перемещалось.";
 "Remove" = "Убрать";
 "Remove an app with all of its files" = "Удаление приложения вместе со всеми его файлами";
 "Removing an app no longer offers another app’s files. Leftovers were matched by the start of a bundle id and never checked against what is installed — and an app kept one folder down, or one that simply claimed somebody else’s id, could still slip past that check. Nothing from another app is offered pre-ticked now." = "Удаление приложения больше не предлагает файлы чужого. Остатки искались по началу bundle id и не сверялись с тем, что установлено, — а приложение, лежащее во вложенной папке, или просто присвоившее себе чужой id, всё ещё проходило мимо этой проверки. Теперь ничего чужого не предлагается заранее отмеченным.";
@@ -452,6 +453,7 @@
 "Startup items, extensions, and what removed apps left behind" = "Автозагрузка, расширения и остатки удалённых приложений";
 "Stop" = "Стоп";
 "Stop could leave an abandoned scan’s folders sitting in the basket, above the Trash button, on a screen that no longer had anything to do with them — and emptying the basket credited the space to whichever volume you’d since picked." = "«Стоп» мог оставить папки брошенного скана лежащими в корзине приложения, над кнопкой «Переместить в Корзину», на экране, который уже не имел к ним отношения, — а опустошение корзины засчитывало место тому, который был выбран к этому моменту.";
+"Stop removal" = "Остановить удаление";
 "Stop scan" = "Остановить";
 "Stop stops the disk scan. Opening a folder mid-scan used to start a second one that took over, leaving the first walking the disk with nothing able to stop it and the ring flickering between the two. And the duplicate finder’s “freed” figure now counts the copies that actually leave." = "Кнопка остановки действительно останавливает скан. Переход в папку посреди скана запускал второй, и первый оставался ходить по диску без возможности его прервать. А в дубликатах «освободится» теперь считает именно те копии, которые уйдут.";
 "Stop watching" = "Перестать следить";

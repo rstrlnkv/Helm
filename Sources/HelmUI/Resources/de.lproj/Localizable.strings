@@ -386,6 +386,7 @@
 "Red" = "Rot";
 "Redesigned About: the icon sits in a bezel that turns while updates are checked, version and build read as instrument dials, and update controls live in one card." = "Neu gestaltetes Über-Fenster: das Symbol in einer Lünette, die sich während der Update-Prüfung dreht, Version und Build als Instrumentenanzeige, Update-Steuerung in einer Karte.";
 "Refresh list" = "Liste aktualisieren";
+"Removal stopped — nothing more was moved." = "Entfernen gestoppt – nichts Weiteres wurde verschoben.";
 "Remove" = "Entfernen";
 "Remove an app with all of its files" = "Eine App mit allen ihren Dateien entfernen";
 "Removing an app no longer offers another app’s files. Leftovers were matched by the start of a bundle id and never checked against what is installed — and an app kept one folder down, or one that simply claimed somebody else’s id, could still slip past that check. Nothing from another app is offered pre-ticked now." = "Das Entfernen einer App bietet keine Dateien einer anderen mehr an. Reste wurden am Anfang der Bundle-ID erkannt, ohne Abgleich mit dem, was installiert ist — und eine App in einem Unterordner, oder eine, die einfach eine fremde ID angab, kam trotzdem durch. Nichts Fremdes ist jetzt vorausgewählt.";
@@ -452,6 +453,7 @@
 "Startup items, extensions, and what removed apps left behind" = "Anmeldeobjekte, Erweiterungen und Reste entfernter Apps";
 "Stop" = "Stopp";
 "Stop could leave an abandoned scan’s folders sitting in the basket, above the Trash button, on a screen that no longer had anything to do with them — and emptying the basket credited the space to whichever volume you’d since picked." = "Stopp konnte die Ordner eines verlassenen Scans im Korb liegen lassen, über dem Papierkorb-Knopf, auf einem Bildschirm, der nichts mehr mit ihnen zu tun hatte — und das Leeren des Korbs schrieb den Platz dem gerade gewählten Volume gut.";
+"Stop removal" = "Entfernen stoppen";
 "Stop scan" = "Stoppen";
 "Stop stops the disk scan. Opening a folder mid-scan used to start a second one that took over, leaving the first walking the disk with nothing able to stop it and the ring flickering between the two. And the duplicate finder’s “freed” figure now counts the copies that actually leave." = "Stopp stoppt den Festplatten-Scan, und die freigegebene Größe bei Duplikaten zählt die Kopien, die gehen.";
 "Stop watching" = "Nicht mehr beobachten";

@@ -386,6 +386,7 @@
 "Red" = "Rojo";
 "Redesigned About: the icon sits in a bezel that turns while updates are checked, version and build read as instrument dials, and update controls live in one card." = "Ventana Acerca de renovada: el icono en un bisel que gira mientras se buscan actualizaciones, versión y compilación como diales, y los controles de actualización en una sola tarjeta.";
 "Refresh list" = "Recargar lista";
+"Removal stopped — nothing more was moved." = "Eliminación detenida — no se movió nada más.";
 "Remove" = "Quitar";
 "Remove an app with all of its files" = "Eliminar una app con todos sus archivos";
 "Removing an app no longer offers another app’s files. Leftovers were matched by the start of a bundle id and never checked against what is installed — and an app kept one folder down, or one that simply claimed somebody else’s id, could still slip past that check. Nothing from another app is offered pre-ticked now." = "Desinstalar una app ya no ofrece archivos de otra. Los restos se buscaban por el principio del bundle id y no se comparaban con lo instalado — y una app en una subcarpeta, o que simplemente declaraba el id de otra, seía colándose. Ahora nada ajeno viene preseleccionado.";
@@ -452,6 +453,7 @@
 "Startup items, extensions, and what removed apps left behind" = "Ítems de inicio, extensiones y restos de apps eliminadas";
 "Stop" = "Detener";
 "Stop could leave an abandoned scan’s folders sitting in the basket, above the Trash button, on a screen that no longer had anything to do with them — and emptying the basket credited the space to whichever volume you’d since picked." = "Detener podía dejar las carpetas de un escaneo abandonado en la cesta, encima del botón de Papelera, en una pantalla que ya no tenía nada que ver con ellas — y vaciar la cesta acreditaba el espacio al volumen que estuviera elegido entonces.";
+"Stop removal" = "Detener la eliminación";
 "Stop scan" = "Detener";
 "Stop stops the disk scan. Opening a folder mid-scan used to start a second one that took over, leaving the first walking the disk with nothing able to stop it and the ring flickering between the two. And the duplicate finder’s “freed” figure now counts the copies that actually leave." = "Detener detiene el escaneo del disco, y la cifra de espacio liberado en duplicados cuenta las copias que se van.";
 "Stop watching" = "Dejar de vigilar";

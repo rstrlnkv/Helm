@@ -386,6 +386,7 @@
 "Red" = "赤";
 "Redesigned About: the icon sits in a bezel that turns while updates are checked, version and build read as instrument dials, and update controls live in one card." = "“Helm について”を刷新：アップデート確認中に回転するベゼル内のアイコン、計器のようなバージョンとビルド表示、更新操作を1枚のカードに集約。";
 "Refresh list" = "リストを更新";
+"Removal stopped — nothing more was moved." = "削除を停止しました — これ以上は移動されていません。";
 "Remove" = "削除";
 "Remove an app with all of its files" = "アプリを関連ファイルごと削除";
 "Removing an app no longer offers another app’s files. Leftovers were matched by the start of a bundle id and never checked against what is installed — and an app kept one folder down, or one that simply claimed somebody else’s id, could still slip past that check. Nothing from another app is offered pre-ticked now." = "アプリの削除時に、別のアプリのファイルを提案しなくなりました。他のアプリのものが既定で選択されることはもうありません。";
@@ -452,6 +453,7 @@
 "Startup items, extensions, and what removed apps left behind" = "起動項目、機能拡張、削除済みアプリの残存物";
 "Stop" = "停止";
 "Stop could leave an abandoned scan’s folders sitting in the basket, above the Trash button, on a screen that no longer had anything to do with them — and emptying the basket credited the space to whichever volume you’d since picked." = "“停止”を押すと、放棄されたスキャンのフォルダがバスケットに残ったまま、もう無関係な画面のゴミ箱ボタンの上に表示され続けることがありました。バスケットを空にすると、その空き容量はその時点で選ばれていたボリュームに加算されていました。";
+"Stop removal" = "削除を停止";
 "Stop scan" = "停止";
 "Stop stops the disk scan. Opening a folder mid-scan used to start a second one that took over, leaving the first walking the disk with nothing able to stop it and the ring flickering between the two. And the duplicate finder’s “freed” figure now counts the copies that actually leave." = "停止がディスクスキャンを確実に止めます。重複の“空き容量”は実際に消えるコピーを数えます。";
 "Stop watching" = "監視をやめる";

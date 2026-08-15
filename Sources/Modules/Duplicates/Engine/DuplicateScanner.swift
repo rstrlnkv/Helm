@@ -9,6 +9,14 @@ public struct DuplicateProgress: Codable, Sendable {
     public let candidates: Int
     /// How many of them have been hashed so far.
     public let hashed: Int
+
+    /// Public because the type crosses the target boundary: the UI's fakes
+    /// build the tick the engine would have emitted, and a wire type only one
+    /// side can construct is a branch no test on the other side can reach.
+    public init(candidates: Int, hashed: Int) {
+        self.candidates = candidates
+        self.hashed = hashed
+    }
 }
 
 /// Finds files with identical content under one folder.

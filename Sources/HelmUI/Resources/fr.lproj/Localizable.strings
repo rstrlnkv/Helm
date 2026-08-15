@@ -386,6 +386,7 @@
 "Red" = "Rouge";
 "Redesigned About: the icon sits in a bezel that turns while updates are checked, version and build read as instrument dials, and update controls live in one card." = "Fenêtre À propos repensée : l’icône dans un cerclage qui tourne pendant la recherche de mises à jour, version et build en cadrans, et les commandes de mise à jour réunies dans une carte.";
 "Refresh list" = "Actualiser la liste";
+"Removal stopped — nothing more was moved." = "Suppression arrêtée — plus rien n’a été déplacé.";
 "Remove" = "Retirer";
 "Remove an app with all of its files" = "Supprimer une app avec tous ses fichiers";
 "Removing an app no longer offers another app’s files. Leftovers were matched by the start of a bundle id and never checked against what is installed — and an app kept one folder down, or one that simply claimed somebody else’s id, could still slip past that check. Nothing from another app is offered pre-ticked now." = "Désinstaller une app ne propose plus les fichiers d’une autre. Les restes étaient trouvés par le début du bundle id, sans vérifier ce qui est installé — et une app rangée dans un sous-dossier, ou qui déclarait simplement l’id d’une autre, passait encore au travers. Rien d’étranger n’est présélectionné désormais.";
@@ -452,6 +453,7 @@
 "Startup items, extensions, and what removed apps left behind" = "Éléments de démarrage, extensions et résidus d’apps supprimées";
 "Stop" = "Arrêter";
 "Stop could leave an abandoned scan’s folders sitting in the basket, above the Trash button, on a screen that no longer had anything to do with them — and emptying the basket credited the space to whichever volume you’d since picked." = "Arrêter pouvait laisser les dossiers d’une analyse abandonnée dans le panier, au-dessus du bouton Corbeille, sur un écran qui n’avait plus rien à voir avec eux — et vider le panier créditait l’espace au volume alors sélectionné.";
+"Stop removal" = "Arrêter la suppression";
 "Stop scan" = "Arrêter";
 "Stop stops the disk scan. Opening a folder mid-scan used to start a second one that took over, leaving the first walking the disk with nothing able to stop it and the ring flickering between the two. And the duplicate finder’s “freed” figure now counts the copies that actually leave." = "Arrêter arrête l’analyse du disque, et l’espace libéré des doublons compte les copies qui partent.";
 "Stop watching" = "Ne plus surveiller";

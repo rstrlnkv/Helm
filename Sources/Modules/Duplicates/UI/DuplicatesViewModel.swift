@@ -57,6 +57,14 @@ public enum KeepGrounds: Equatable, Sendable {
     /// `HelmRemovalOutcome.unansweredWithStaleList` and not the plain sentence,
     /// whose second half points at a list its caller has just refreshed.
     @Published public private(set) var replyLost = false
+    /// The last removal was stopped by the person, between files.
+    ///
+    /// The fifth thing the report is read as — not a success, not a refusal,
+    /// not silence and not a lost reply. Read off the *reply*, never off the
+    /// press: the stop is a request, and what actually happened before it
+    /// landed is the engine's to say. What did move before the stop is still
+    /// in `removedCount` and the banner, so the two can be true at once.
+    @Published public private(set) var removalStopped = false
 
     /// Which search the groups belong to, so a late answer cannot resurrect
     /// itself over a newer one — or over a cancellation, which is a token taken
@@ -366,6 +374,7 @@ public enum KeepGrounds: Equatable, Sendable {
         // *this* list being older than the press, and there is about to be a
         // different list.
         replyLost = false
+        removalStopped = false
         // And the same for the marks: «unmarked: 2» is about a basket that has
         // just been emptied by the line above, and the groups it named are gone.
         marksNote = nil
@@ -530,7 +539,14 @@ public enum KeepGrounds: Equatable, Sendable {
         // the lines below overwrite the report of the removal that worked.
         guard !busy else { return }
         busy = true
-        defer { busy = false }
+        // The ticks belong to the removal that made them: cleared on the way
+        // in so the busy row cannot open on the last press's «N of M», and on
+        // the way out so the next one cannot.
+        progress = nil
+        defer {
+            busy = false
+            progress = nil
+        }
         let removal: DuplicateRemoval? = await client.request(DuplicatesCommand.trash, encoding: plans)
         // **An unanswered removal is not a removal that did nothing.**
         // `TransportClient.request` answers nil for a request that threw and for
@@ -558,6 +574,9 @@ public enum KeepGrounds: Equatable, Sendable {
         // The five fields are one report, so a round that *was* answered puts the
         // previous round's «no answer» down as well.
         replyLost = false
+        // Off the reply, not off the press: the engine says whether the stop
+        // landed in time, and a removal that ran to the end never says stopped.
+        removalStopped = removal.cancelled
         let gone = Set(removal.removed)
         groups = groups.compactMap { group in
             let left = group.copies.filter { !gone.contains($0.path) }
@@ -594,6 +613,19 @@ public enum KeepGrounds: Equatable, Sendable {
         failures = []
         removedCount = 0
         replyLost = false
+        removalStopped = false
+    }
+
+    /// Asks the engine to stop the removal in flight, between files.
+    ///
+    /// Its own command, never `cancel`: that one reaches the search, and a
+    /// person stopping a removal must not silently kill a search they started
+    /// after it. The press claims nothing — the basket, the groups and `busy`
+    /// all stand until the reply says what actually happened, because a stop
+    /// that lands after the last file is a removal that ran to the end.
+    public func stopRemoval() {
+        guard busy else { return }
+        Task { await client.send(DuplicatesCommand.stopRemoval) }
     }
 
     // MARK: - Events

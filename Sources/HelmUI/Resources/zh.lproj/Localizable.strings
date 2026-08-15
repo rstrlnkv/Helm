@@ -386,6 +386,7 @@
 "Red" = "红色";
 "Redesigned About: the icon sits in a bezel that turns while updates are checked, version and build read as instrument dials, and update controls live in one card." = "重新设计“关于”：图标置于检查更新时旋转的表圈中，版本与构建如仪表读数，更新控件集中在一张卡片。";
 "Refresh list" = "刷新列表";
+"Removal stopped — nothing more was moved." = "移除已停止 — 未再移动任何内容。";
 "Remove" = "移除";
 "Remove an app with all of its files" = "连同全部文件一起删除应用";
 "Removing an app no longer offers another app’s files. Leftovers were matched by the start of a bundle id and never checked against what is installed — and an app kept one folder down, or one that simply claimed somebody else’s id, could still slip past that check. Nothing from another app is offered pre-ticked now." = "卸载一个应用不会再列出另一个应用的文件。现在不会再预先勾选任何其他应用的内容。";
@@ -452,6 +453,7 @@
 "Startup items, extensions, and what removed apps left behind" = "启动项、扩展，以及已删除应用的残留";
 "Stop" = "停止";
 "Stop could leave an abandoned scan’s folders sitting in the basket, above the Trash button, on a screen that no longer had anything to do with them — and emptying the basket credited the space to whichever volume you’d since picked." = "点击“停止”后，被放弃扫描的文件夹可能仍留在收纳篮里，出现在与它们已无关的界面上的废纸篓按钮上方——清空收纳篮时，释放的空间还会被计入当时选中的那个宗卷。";
+"Stop removal" = "停止移除";
 "Stop scan" = "停止";
 "Stop stops the disk scan. Opening a folder mid-scan used to start a second one that took over, leaving the first walking the disk with nothing able to stop it and the ring flickering between the two. And the duplicate finder’s “freed” figure now counts the copies that actually leave." = "停止能真正停止磁盘扫描；重复文件的“可释放”数字按实际会删除的副本计算。";
 "Stop watching" = "停止监视";

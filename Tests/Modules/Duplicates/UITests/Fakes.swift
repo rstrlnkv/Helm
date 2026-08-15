@@ -156,7 +156,24 @@ final class DuplicatesWire: EngineTransport, @unchecked Sendable {
     private var planned: [[DuplicatePlan]] = []
     private var held: [(command: DuplicatesCommand, continuation: CheckedContinuation<Data, Never>)] = []
 
-    var events: AsyncStream<EngineEvent> { AsyncStream { _ in } }
+    /// Stored, not rebuilt per access: the view model subscribes once at init,
+    /// and a fresh empty stream per read is a wire nothing can arrive on. Until
+    /// this, every fake's `events` was exactly that, so the progress branch the
+    /// busy screen draws was exercised by nothing.
+    private let eventStream: AsyncStream<EngineEvent>
+    private let eventContinuation: AsyncStream<EngineEvent>.Continuation
+
+    var events: AsyncStream<EngineEvent> { eventStream }
+
+    /// A tick, as the engine emits one. Takes the progress value and not a free
+    /// name-and-payload pair: the real port can only say `progress` with a
+    /// `DuplicateProgress` in it, and a fake that could say more would let a
+    /// test pass on an event no engine can produce.
+    func emits(_ progress: DuplicateProgress) {
+        eventContinuation.yield(EngineEvent(
+            name: DuplicatesEvent.progress.rawValue,
+            payload: (try? JSONEncoder().encode(progress)) ?? Data()))
+    }
 
     init(groups: [DuplicateGroup],
          unreadable: Int = 0,
@@ -168,6 +185,7 @@ final class DuplicatesWire: EngineTransport, @unchecked Sendable {
         self.librariesSkipped = librariesSkipped
         self.removal = removal
         self.answer = answer
+        (eventStream, eventContinuation) = AsyncStream.makeStream(of: EngineEvent.self)
     }
 
     /// The engine going away under the page, or coming back. A port that can
