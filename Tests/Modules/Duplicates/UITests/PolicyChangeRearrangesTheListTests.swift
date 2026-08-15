@@ -32,16 +32,11 @@ final class PolicyChangeRearrangesTheListTests: XCTestCase {
     }
 
     private func model(_ wire: DuplicatesWire) -> DuplicatesViewModel {
-        DuplicatesViewModel(vm: ModuleViewModel(transport: wire),
-                            store: duplicatesStore(folder: "\(home)/Downloads"),
-                            settings: SettingGuard(keys: PlantedSealKey()))
+        duplicatesModel(over: wire)
     }
 
     private func searched(_ wire: DuplicatesWire) async -> DuplicatesViewModel {
-        let dvm = model(wire)
-        dvm.search()
-        for _ in 0..<200 where dvm.phase != .result { await Task.yield() }
-        return dvm
+        await searchedModel(over: wire)
     }
 
     // MARK: - The list follows the answer

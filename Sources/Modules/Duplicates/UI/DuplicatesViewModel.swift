@@ -236,20 +236,20 @@ public enum KeepGrounds: Equatable, Sendable {
     /// that disagreement is the defect `KeepPolicy.ladder` exists to prevent.
     private func rearrange() {
         let rule = KeepRule(policy)
-        groups = groups.map { group in
-            guard !pinned.contains(group.id) else { return group }
-            return DuplicateGroup(copies: SurvivingCopy.order(group.copies, by: rule))
-        }
+        groups = groups.map { pinned.contains($0.id) ? $0 : ordered($0, by: rule) }
         dropMarksOnCopiesThatStay()
     }
 
-    /// A ticked copy that has just become the one that stays comes off the list.
+    /// One group in the ladder's order — the one spelling, since the policy and
+    /// a group handed back to it ask for exactly the same thing.
     ///
-    /// The invariant the whole page rests on is that the first copy of a group is
-    /// never removed, and `emptyBasket` enforces it by building its plans from
-    /// the copies after the first. So a mark left on a promoted survivor is not a
-    /// file at risk — it is a *count* at risk: the bar would promise four files
-    /// and three would go, which is the arithmetic this module is measured by.
+    /// Takes the rule rather than reading `policy`: building it is a question
+    /// about this Mac's folders, which belongs to the pass and not to each group
+    /// in it.
+    private func ordered(_ group: DuplicateGroup, by rule: KeepRule) -> DuplicateGroup {
+        DuplicateGroup(copies: SurvivingCopy.order(group.copies, by: rule))
+    }
+
     /// The person's answer for one group, where they know something the ladder
     /// cannot see.
     ///
@@ -285,8 +285,7 @@ public enum KeepGrounds: Equatable, Sendable {
     public func restoreRecommendation(for group: DuplicateGroup) {
         guard let index = groups.firstIndex(where: { $0.id == group.id }) else { return }
         pinned.remove(group.id)
-        groups[index] = DuplicateGroup(copies: SurvivingCopy.order(groups[index].copies,
-                                                                   by: KeepRule(policy)))
+        groups[index] = ordered(groups[index], by: KeepRule(policy))
         dropMarksOnCopiesThatStay()
     }
 
@@ -300,6 +299,13 @@ public enum KeepGrounds: Equatable, Sendable {
         return SurvivingCopy.reason(among: group.copies, by: KeepRule(policy)).map(KeepGrounds.rung)
     }
 
+    /// A ticked copy that has just become the one that stays comes off the list.
+    ///
+    /// The invariant the whole page rests on is that the first copy of a group is
+    /// never removed, and `emptyBasket` enforces it by building its plans from
+    /// the copies after the first. So a mark left on a promoted survivor is not a
+    /// file at risk — it is a *count* at risk: the bar would promise four files
+    /// and three would go, which is the arithmetic this module is measured by.
     private func dropMarksOnCopiesThatStay() {
         let staying = Set(groups.compactMap { $0.copies.first?.path })
         let freed = basket.filter { staying.contains($0) }

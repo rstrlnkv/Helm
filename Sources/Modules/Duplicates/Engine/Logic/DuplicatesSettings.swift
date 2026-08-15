@@ -60,7 +60,11 @@ public enum DuplicatesSettings {
             settings.establishKey()
             return .standard
         case .notHelmsOwn:
-            HelmLog.shared.warn(logCategory, "the stored keep policy is not Helm's own; "
+            // The engine's constant, not the word again: a module's id is
+            // written down once (CLAUDE.md § A module's own id is the engine's
+            // constant), and this file is in the engine's target.
+            HelmLog.shared.warn(DuplicatesEngine.moduleID,
+                                "the stored keep policy is not Helm's own; "
                                 + "keeping the copy that was filed rather than downloaded")
             return .standard
         case .mine(let stored):
@@ -85,11 +89,6 @@ public enum DuplicatesSettings {
         store.set(settings.seal(Data(policy.rawValue.utf8)) ?? "",
                   for: SettingGuard.macKey(for: keepPolicyKey))
     }
-
-    /// What the log calls this module. The engine has `moduleID` for the same
-    /// string, and it is one target down from here — this file is read by both
-    /// halves, so it cannot name the engine.
-    static let logCategory = "duplicates"
 
     /// A stored setting, read back through the seal.
     ///

@@ -30,13 +30,7 @@ final class ChoosingTheCopyThatStaysTests: XCTestCase {
     }
 
     private func searched(_ groups: [DuplicateGroup]) async -> DuplicatesViewModel {
-        let dvm = DuplicatesViewModel(vm: ModuleViewModel(transport:
-            DuplicatesWire(groups: groups)),
-                                      store: duplicatesStore(folder: "\(home)/Downloads"),
-                                      settings: SettingGuard(keys: PlantedSealKey()))
-        dvm.search()
-        for _ in 0..<200 where dvm.phase != .result { await Task.yield() }
-        return dvm
+        await searchedModel(over: DuplicatesWire(groups: groups))
     }
 
     // MARK: - The choice itself

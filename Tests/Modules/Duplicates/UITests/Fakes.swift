@@ -336,22 +336,33 @@ func duplicatesStore(folder: String = "/some/folder") -> NamespacedStore {
     return store
 }
 
+/// A view model over `transport`, with a folder remembered.
+///
+/// **The one place the seal key is injected, and it is not the person's.** The
+/// view model reads the keep policy at `init` — through the same guard the
+/// engine reads it with — so a fixture left on the default would have every test
+/// in this target reach into the login keychain for `com.helm.app / settings-seal`
+/// and create it where it is absent. The machine is a boundary of its own, and a
+/// test does not write to it.
+@MainActor
+func duplicatesModel(over transport: EngineTransport,
+                     folder: String = "\(home)/Downloads") -> DuplicatesViewModel {
+    DuplicatesViewModel(vm: ModuleViewModel(transport: transport),
+                        store: duplicatesStore(folder: folder),
+                        settings: SettingGuard(keys: PlantedSealKey()))
+}
+
 /// A view model that has already searched, with `groups` as the answer.
 @MainActor
 func searchedModel(_ groups: [DuplicateGroup]) async -> DuplicatesViewModel {
-    let dvm = DuplicatesViewModel(vm: ModuleViewModel(transport:
-        OneAnswerTransport(groups: groups)), store: duplicatesStore(folder: "\(home)/Downloads"))
-    dvm.search()
-    for _ in 0..<200 where dvm.phase != .result { await Task.yield() }
-    return dvm
+    await searchedModel(over: OneAnswerTransport(groups: groups))
 }
 
 /// A view model that has already searched over a wire the test goes on
 /// steering — the removal answers, or does not.
 @MainActor
-func searchedModel(over wire: DuplicatesWire) async -> DuplicatesViewModel {
-    let dvm = DuplicatesViewModel(vm: ModuleViewModel(transport: wire),
-                                  store: duplicatesStore(folder: "\(home)/Downloads"))
+func searchedModel(over transport: EngineTransport) async -> DuplicatesViewModel {
+    let dvm = duplicatesModel(over: transport)
     dvm.search()
     for _ in 0..<200 where dvm.phase != .result { await Task.yield() }
     return dvm
@@ -361,8 +372,8 @@ func searchedModel(over wire: DuplicatesWire) async -> DuplicatesViewModel {
 /// flight.
 @MainActor
 func heldModel(_ transport: HeldTransport) -> DuplicatesViewModel {
-    DuplicatesViewModel(vm: ModuleViewModel(transport: transport),
-                        store: duplicatesStore())
+    // The folder nothing walks: a search that parks never reaches it.
+    duplicatesModel(over: transport, folder: "/some/folder")
 }
 
 /// Room for the tasks already scheduled to land. Spelled three times in

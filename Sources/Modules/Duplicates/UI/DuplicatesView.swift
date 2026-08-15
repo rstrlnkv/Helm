@@ -24,13 +24,18 @@ struct DuplicatesView: View {
     var body: some View {
         List(selection: $selection) {
             ForEach(dvm.groups) { group in
+                // Asked once per group, not once per row: answering it runs the
+                // ladder over the group's copies, and the header, the button
+                // beside it and every row want the same answer.
+                let grounds = dvm.grounds(of: group)
                 Section {
                     ForEach(Array(group.paths.enumerated()), id: \.element) { index, path in
-                        row(in: group, path: path, stays: index == 0)
+                        row(in: group, path: path, stays: index == 0,
+                            chosen: grounds == .byHand)
                             .tag(path)
                     }
                 } header: {
-                    header(group)
+                    header(group, grounds)
                 }
             }
         }
@@ -98,7 +103,7 @@ struct DuplicatesView: View {
 
     /// The group's own line: what it is, why this copy stays, and the two things
     /// that can be done to the whole group.
-    private func header(_ group: DuplicateGroup) -> some View {
+    private func header(_ group: DuplicateGroup, _ grounds: KeepGrounds?) -> some View {
         HStack {
             Text("\(Bytes(group.bytes)) × \(group.paths.count)")
                 .font(HelmText.groupLabel)
@@ -106,7 +111,7 @@ struct DuplicatesView: View {
             // tooltip needs a pointer to rest on a pill, and the one that was
             // there said «the copy that was there first» about every group in
             // every language, which the policy made plainly untrue.
-            if let grounds = dvm.grounds(of: group) {
+            if let grounds {
                 Text(DupStr.keptBecause(grounds))
                     .font(HelmText.rowDetail)
                     .foregroundStyle(HelmText.faint)
@@ -115,7 +120,7 @@ struct DuplicatesView: View {
             Spacer()
             // Only where there is something to put back. A control that undoes
             // a choice nobody made is a control that has to explain itself.
-            if dvm.grounds(of: group) == .byHand {
+            if grounds == .byHand {
                 Button(DupStr.restoreRecommendation) { dvm.restoreRecommendation(for: group) }
                     .controlSize(.small)
             }
@@ -124,8 +129,8 @@ struct DuplicatesView: View {
         }
     }
 
-    private func row(in group: DuplicateGroup, path: String, stays: Bool) -> some View {
-        let chosen = dvm.grounds(of: group) == .byHand
+    private func row(in group: DuplicateGroup, path: String, stays: Bool,
+                     chosen: Bool) -> some View {
         let keep = { dvm.keep(path, in: group) }
         return HStack(spacing: 8) {
             // The way into choosing this copy, and on the row it is about. The
