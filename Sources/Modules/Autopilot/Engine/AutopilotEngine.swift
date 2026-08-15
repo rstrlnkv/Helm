@@ -318,8 +318,11 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         return RulePlan.decide(files, rules: folder.rules.filter(\.enabled))
     }
 
+    /// `manual` is the trigger, and it decides the sweep's voice alone —
+    /// `SweepAnnouncement` holds the condition, and `runNow` is the only caller
+    /// that passes `true`.
     @discardableResult
-    public func sweep(_ folder: WatchedFolder) -> SweepReport {
+    public func sweep(_ folder: WatchedFolder, manual: Bool = false) -> SweepReport {
         let reading = reader.reading(in: folder.path, depth: folder.depth)
         let files = reading.files
         let plans = RulePlan.decide(files, rules: folder.activeRules)
@@ -350,9 +353,8 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         let report = SweepReport(folderID: folder.id, examined: files.count,
                                  acted: acted, refused: refused, failed: failed,
                                  folder: reading.state)
-        if acted + refused + failed > 0 {
-            HelmLog.shared.info("autopilot", "swept \(files.count), acted \(acted), " +
-                                         "refused \(refused), failed \(failed)")
+        if let line = SweepAnnouncement.line(for: report, manual: manual) {
+            HelmLog.shared.info("autopilot", line)
         }
         // A folder that could not be read at all is the one thing a sweep of
         // nothing has to say out loud: unattended, hourly, and otherwise
@@ -362,6 +364,23 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
                                 "\(Redact.path(folder.path)) could not be swept: \(reading.state.rawValue)")
         }
         return report
+    }
+
+    /// One folder, because a person asked — and answered out loud, always.
+    ///
+    /// `sweep`'s line is conditional, which is right for the hourly sentinel
+    /// and wrong for a command: a manual run that found nothing to do and a
+    /// manual run that never started were the same silence, in the journal the
+    /// button exists to be seen in. So the command's path writes the fact, the
+    /// phase and the memory reading unconditionally, and the sentinel keeps
+    /// its condition. The reading is inside the phase — a phase that has ended
+    /// cannot be excluded from its own line.
+    @discardableResult
+    public func runNow(_ folder: WatchedFolder) -> SweepReport {
+        HelmActivity.phase("autopilot.runNow") {
+            defer { HelmLog.shared.memory("autopilot.runNow") }
+            return sweep(folder, manual: true)
+        }
     }
 
     /// Every enabled folder, which is what the sweep timer runs.
@@ -584,7 +603,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         else { return Data() }
         // A walk plus N moves, off the cooperative pool — and serialised with the
         // hourly sweep, which is reachable at the same moment.
-        let report = await offQueue { self.sweep(folder) }
+        let report = await offQueue { self.runNow(folder) }
         return EngineReply.encode(report, for: command)
     }
 }

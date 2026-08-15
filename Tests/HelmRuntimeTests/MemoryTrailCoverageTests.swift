@@ -47,6 +47,7 @@ final class MemoryTrailCoverageTests: XCTestCase {
         ("leftovers.scan", "Modules/Leftovers/Engine/LeftoversEngine.swift"),
         ("uninstaller.appSizes", "Modules/Uninstaller/Engine/UninstallerEngine.swift"),
         ("autopilot.sweep", "Modules/Autopilot/Engine/AutopilotEngine.swift"),
+        ("autopilot.runNow", "Modules/Autopilot/Engine/AutopilotEngine.swift"),
         ("homebrew.listInstalled", "Modules/Homebrew/Engine/HomebrewEngine.swift"),
         ("homebrew.outdated", "Modules/Homebrew/Engine/HomebrewEngine.swift"),
         ("update.digest", "HelmApp/UpdateService.swift"),
