@@ -36,11 +36,19 @@ final class AutopilotWire: EngineTransport, @unchecked Sendable {
     private var history: [ActionRecord]
     private var preview: [PreviewRow]
     private var report: SweepReport?
+    /// What a return comes back with. A whole report rather than a flag,
+    /// because a pass is not atomic: the state this has to be able to be in is
+    /// "three went back and two did not", which is exactly what the page has to
+    /// say out loud and what a Bool could not describe.
+    private var undoReport = UndoReport(lines: [])
     private var answer: Answer
     private var seen: [AutopilotCommand] = []
     /// The folder list the page last sent, so a test can ask what a gesture
     /// tried to save — and, for the refusal, that it tried nothing at all.
     private(set) var saved: [[WatchedFolder]] = []
+    /// The ids the page asked to put back, so a test can assert the gesture was
+    /// made before asserting what was said about it.
+    private(set) var returns: [String] = []
     /// The folder the last dry run was asked about. The rules in it are the
     /// finding: the editor used to send a folder of one rule, so what the page
     /// *asks* is as much the subject of a test as what it draws with the answer.
@@ -71,6 +79,7 @@ final class AutopilotWire: EngineTransport, @unchecked Sendable {
     func holds(_ next: [ActionRecord]) { lock.withLock { history = next } }
     func offers(_ next: [PreviewRow]) { lock.withLock { preview = next } }
     func answers(_ next: Answer) { lock.withLock { answer = next } }
+    func answers(_ next: UndoReport) { lock.withLock { undoReport = next } }
 
     /// Which commands reached the wire, in order, so a test can assert that the
     /// act it is about really was attempted before asserting what was said about
@@ -102,6 +111,10 @@ final class AutopilotWire: EngineTransport, @unchecked Sendable {
             }
         case .previewDraft:
             previewed = try? JSONDecoder().decode(WatchedFolder.self, from: payload)
+        case .undo, .undoRun:
+            if let ask = try? JSONDecoder().decode(UndoRequest.self, from: payload) {
+                returns.append(ask.id)
+            }
         case .folders, .status, .discardRefusedRules, .history, .clearHistory, .runNow:
             break
         }
@@ -118,6 +131,7 @@ final class AutopilotWire: EngineTransport, @unchecked Sendable {
         case (.reply, .history): return .json(history)
         case (.reply, .previewDraft): return .json(preview)
         case (.reply, .runNow): return report.map { .json($0) } ?? .empty
+        case (.reply, .undo), (.reply, .undoRun): return .json(undoReport)
         }
     }
 

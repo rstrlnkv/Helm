@@ -28,6 +28,21 @@ public enum AutopilotCommand: String, CaseIterable, Sendable {
     /// Throw away a rule set that was refused. The one gesture a refused page is
     /// allowed to make, and the only way past the guard in `AutopilotEngine.save`.
     case discardRefusedRules
+    /// Put one action back, by the record's own id.
+    case undo
+    /// Put a whole pass back, by its run id — every action of one sweep or one
+    /// batch of filesystem events.
+    case undoRun
+}
+
+/// Which return the page is asking for.
+///
+/// One wire type rather than two near-identical ones: the command says whether
+/// the id names a record or a pass, and a second struct differing only in the
+/// name of its single field is the shape that drifts.
+public struct UndoRequest: Codable, Sendable {
+    public let id: String
+    public init(id: String) { self.id = id }
 }
 
 /// Which watched folder a command is about.

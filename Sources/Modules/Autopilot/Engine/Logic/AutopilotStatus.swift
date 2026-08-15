@@ -22,11 +22,17 @@ public struct AutopilotStatus: Codable, Equatable, Sendable {
     /// reason it exists: both engines used to log that they were watching a
     /// folder with no way to find out whether they were.
     public let watching: Bool?
+    /// Whether the stored history is not Helm's. The history is still shown —
+    /// a rewritten history is itself something that happened — and nothing in
+    /// it may be put back, so the page draws the warning and its one way out
+    /// instead of offering returns that would all refuse.
+    public let historyRefused: Bool
 
     public init(refusal: RuleRefusal?, folders: [String: FolderState] = [:],
-                watching: Bool? = nil) {
+                watching: Bool? = nil, historyRefused: Bool = false) {
         self.refusal = refusal
         self.folders = folders
         self.watching = watching
+        self.historyRefused = historyRefused
     }
 }

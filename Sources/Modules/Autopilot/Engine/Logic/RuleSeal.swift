@@ -25,6 +25,36 @@ enum RuleSeal {
     /// sealed message rather than trusted on its own.
     static let sequenceKey = "foldersSeq"
 
+    /// The seal over the history — `module.autopilot.historyMAC`, beside
+    /// `foldersMAC`, under the same key.
+    ///
+    /// **The history needs one for a stronger reason than the rules do.** A
+    /// rule has to match a file before it does anything; a history record *is*
+    /// the instruction — where the file is, where it goes back to, who it is —
+    /// and a forged one is a ready-made way to make Helm move a file with
+    /// Helm's own Full Disk Access.
+    ///
+    /// No sequence number beside it, deliberately. What a number buys the rules
+    /// is catching an *older* file put back, and putting an older history back
+    /// gains an attacker nothing that deleting it does not: a record is only
+    /// acted on when the file it names is still there, still itself and still
+    /// somewhere a rule may reach.
+    static let historyKey = "historyMAC"
+
+    /// Whether the stored history is one Helm wrote.
+    ///
+    /// **Trust on first use is the rules' migration and is not the history's.**
+    /// The rules had to survive an upgrade because they are configuration a
+    /// person spent time on; a history has nothing to migrate — every record
+    /// written before this build lacks the identity a return needs, so none of
+    /// them could be put back in any case. So a missing seal is refused
+    /// outright, which closes the obvious attack of writing a history and
+    /// deleting the seal beside it.
+    static func historyIsHelms(payload: Data, mac: String?, key: RuleKey) -> Bool {
+        guard let mac, !mac.isEmpty else { return false }
+        return SettingSeal.verdict(payload: payload, mac: mac, key: key) == .sealed
+    }
+
     /// What the plist holds, judged.
     ///
     /// Four answers rather than the shared type's three, because the fourth is

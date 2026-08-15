@@ -211,6 +211,44 @@ final class SealedRules: @unchecked Sendable {
         }
     }
 
+    // MARK: - The history
+
+    /// Whether the stored history is Helm's own, so the returns it offers may
+    /// be acted on. `nil` payload — nothing recorded yet — is not a refusal;
+    /// there is nothing to refuse.
+    ///
+    /// Outside `decisionLock`: this reads the *history*, not the rule set, and
+    /// the lock is about one decision on the rules at a time. It takes the key
+    /// through `resolvedKey`, which carries its own.
+    func historyIsHelms(_ payload: Data?) -> Bool {
+        guard let payload, !payload.isEmpty else { return true }
+        guard let key = resolvedKey() else { return false }
+        return RuleSeal.historyIsHelms(payload: payload,
+                                       mac: store.string(RuleSeal.historyKey, default: ""),
+                                       key: key)
+    }
+
+    /// The seal over a history on its way to the plist. Returns whether one
+    /// could be written: a history saved unsealed would be one no return could
+    /// ever act on, so the caller keeps what it had instead.
+    @discardableResult
+    func seal(history payload: Data) -> Bool {
+        guard let key = resolvedKey() else {
+            HelmLog.shared.warn("autopilot", "could not seal the history, so it was not written")
+            return false
+        }
+        store.set(SettingSeal.mac(for: payload, key: key.material), for: RuleSeal.historyKey)
+        return true
+    }
+
+    /// The history and its seal, thrown away together. The seal is not left
+    /// behind: a MAC with no payload under it is the state the next write
+    /// replaces anyway, and leaving one is a fact about a history nobody has.
+    func clearHistory() {
+        store.set(nil, for: "history")
+        store.set(nil, for: RuleSeal.historyKey)
+    }
+
     private var storedMAC: String? {
         let mac = store.string(RuleSeal.storeKey, default: "")
         return mac.isEmpty ? nil : mac

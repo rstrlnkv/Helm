@@ -22,6 +22,9 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     private let rules: SealedRules
     private let reader = FolderReader()
     private let runner: RuleRunner
+    /// The other direction. Beside the runner and holding the same home,
+    /// because a return goes through a gate measured against the same one.
+    private let undoer: UndoRunner
     private let queue = DispatchQueue(label: "helm.rules", qos: .utility)
     /// Behind `queue`, like everything else here. It is written on the main
     /// actor (`activate`/`deactivate` — `ModuleHost` is `@MainActor`) and read
@@ -45,6 +48,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
                 keys: RuleKeyPort = KeychainRuleKey(),
                 sequence: RuleSequencePort = KeychainRuleSequence()) {
         self.runner = RuleRunner(home: home)
+        self.undoer = UndoRunner(home: home)
         self.store = store
         self.rules = SealedRules(store: store, keys: keys, sequence: sequence)
         self.localTransport = transport
@@ -94,7 +98,8 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         var states: [String: FolderState] = [:]
         for folder in watched { states[folder.id] = reader.state(of: folder.path) }
         return AutopilotStatus(refusal: reason, folders: states,
-                               watching: watchLock.withLock { watching })
+                               watching: watchLock.withLock { watching },
+                               historyRefused: historyRefused)
     }
 
     public func activate() {
@@ -175,6 +180,15 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         ActionHistory.within(ActionHistory.decode(store.data(Self.historyKey)))
     }
 
+    /// Whether the stored history is not Helm's, in which case nothing in it
+    /// may be put back and nothing is added to it.
+    ///
+    /// Shown all the same: the page's job is to say what happened, and a
+    /// history that has been rewritten is itself something that happened.
+    public var historyRefused: Bool {
+        !rules.historyIsHelms(queue.sync { store.data(Self.historyKey) })
+    }
+
     /// On the engine's own queue, like every write to this key.
     ///
     /// `remember` is a read-modify-write and reaches the store from the timer,
@@ -187,21 +201,112 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         // and a clear that has not landed yet reads as a clear that did not
         // happen. Safe from the transport, which arrives on the concurrency
         // pool and never on this queue.
-        queue.sync { store.set(nil, for: Self.historyKey) }
+        queue.sync { rules.clearHistory() }
     }
 
     private static let historyKey = "history"
 
     /// Written once for a whole pass rather than once per file: a sweep of a
     /// full Downloads folder is one write, not two hundred.
+    ///
+    /// **Nothing is folded into a history that does not verify.** Appending to
+    /// one and sealing the result would put Helm's own signature over records
+    /// something else wrote — which is the laundering the seal exists to stop,
+    /// and it would turn a forged record into one a return will act on.
+    /// Deleting it instead would take the warning off the page before anybody
+    /// read it. So it is frozen where it is, with the way out on the page, and
+    /// the run's work is in the log as it always was.
     private func remember(_ records: [ActionRecord]) {
         guard !records.isEmpty else { return }
-        var kept = ActionHistory.decode(store.data(Self.historyKey))
+        let stored = store.data(Self.historyKey)
+        guard rules.historyIsHelms(stored) else {
+            HelmLog.shared.error("autopilot",
+                                 "the stored history was not written by Helm, so \(records.count) "
+                                 + "records were not added to it and none of it can be put back")
+            return
+        }
+        var kept = ActionHistory.decode(stored)
         // Oldest first, so the newest ends up at the head after the last insert.
         for record in records.sorted(by: { $0.at < $1.at }) {
             kept = ActionHistory.recording(record, into: kept)
         }
-        store.set(ActionHistory.encode(kept), for: Self.historyKey)
+        write(kept)
+    }
+
+    /// The seal first, then the history it signs.
+    ///
+    /// Either order leaves a mismatched pair if the process dies between the
+    /// two writes, and a mismatched pair refuses — which is the survivable
+    /// half. This order is the one where a keychain that will not answer costs
+    /// nothing: the seal fails, and the history that was already there is still
+    /// the history, still signed.
+    private func write(_ history: [ActionRecord]) {
+        guard let data = ActionHistory.encode(history), rules.seal(history: data) else { return }
+        store.set(data, for: Self.historyKey)
+    }
+
+    // MARK: - Putting it back
+
+    /// Put one action back.
+    ///
+    /// A report of one line rather than a bare outcome, so the page reads a
+    /// single return and a whole pass the same way — and so the sentence that
+    /// says what happened is composed once.
+    @discardableResult
+    public func undo(_ recordID: String) -> UndoReport {
+        queue.sync { putBack { $0.id == recordID } }
+    }
+
+    /// Put a whole pass back — every action of one sweep or one batch of
+    /// events, newest first.
+    ///
+    /// Newest first because a pass can have moved two files onto one name: the
+    /// second arrival was numbered, and undoing it before the first is what
+    /// gives each of them its own name back.
+    @discardableResult
+    public func undoRun(_ run: String) -> UndoReport {
+        queue.sync { putBack { $0.run == run } }
+    }
+
+    /// On `queue`, like every other read-modify-write of this key.
+    ///
+    /// **The seal is asked once, for the whole gesture.** A history something
+    /// else wrote is refused entire rather than record by record: every field a
+    /// return acts on comes out of it, so there is no half of it worth
+    /// believing — and the refusal is reported per line, because the page's
+    /// report is the only place it can be said.
+    private func putBack(_ matching: (ActionRecord) -> Bool) -> UndoReport {
+        let stored = store.data(Self.historyKey)
+        var history = ActionHistory.within(ActionHistory.decode(stored))
+        let chosen = history.filter(matching)
+        guard rules.historyIsHelms(stored) else {
+            return UndoReport(lines: chosen.map {
+                UndoReport.Line(id: $0.id, file: $0.file, outcome: .refused(.historyRefused))
+            })
+        }
+        let key = rules.keyMaterial
+        let now = Date()
+        var lines: [UndoReport.Line] = []
+        // Newest first, which `within` already sorts them into.
+        for record in chosen {
+            let outcome = undoer.undo(record, key: key)
+            lines.append(UndoReport.Line(id: record.id, file: record.file, outcome: outcome))
+            // Only what really went back is marked. A row marked after a
+            // refusal is a row that can never be tried again.
+            guard case .restored = outcome,
+                  let index = history.firstIndex(where: { $0.id == record.id })
+            else { continue }
+            history[index] = history[index].undone(at: now)
+        }
+        let report = UndoReport(lines: lines)
+        if !report.restored.isEmpty {
+            write(history)
+            HelmLog.shared.info("autopilot", "put back \(report.restored.count) of \(lines.count)")
+        }
+        if !report.notPutBack.isEmpty {
+            HelmLog.shared.warn("autopilot", "could not put back \(report.notPutBack.count)")
+        }
+        return report
     }
 
     /// What a folder's rules would do to what is in it right now.
@@ -221,12 +326,15 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         let files = reading.files
         let plans = RulePlan.decide(files, rules: folder.activeRules)
         let key = rules.keyMaterial
+        // One value for the whole pass, so the page can offer to put a sweep
+        // back rather than five hundred separate rows.
+        let pass = UUID().uuidString
         var acted = 0, refused = 0, failed = 0
         var records: [ActionRecord] = []
         for plan in plans {
             let path = plan.facts.path
             let outcome = runner.run(plan, at: path, key: key)
-            if let record = ActionRecord.of(plan, outcome) { records.append(record) }
+            if let record = ActionRecord.of(plan, outcome, run: pass) { records.append(record) }
             switch outcome {
             case .moved, .renamed, .tagged, .trashed:
                 acted += 1
@@ -299,10 +407,12 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
             var acted = 0
             var records: [ActionRecord] = []
             let key = rules.keyMaterial
+            // One batch of events is one pass, the way one sweep is.
+            let pass = UUID().uuidString
             for path in Set(changed) {
                 guard let plan = self.plan(for: path, among: watched) else { continue }
                 let outcome = runner.run(plan, at: path, key: key)
-                if let record = ActionRecord.of(plan, outcome) { records.append(record) }
+                if let record = ActionRecord.of(plan, outcome, run: pass) { records.append(record) }
                 if self.note(outcome, at: path) { acted += 1 }
             }
             self.remember(records)
@@ -409,6 +519,10 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
                 return await self.previewed(command)
             case .runNow:
                 return await self.swept(command)
+            case .undo:
+                return await self.putBack(command) { self.undo($0) }
+            case .undoRun:
+                return await self.putBack(command) { self.undoRun($0) }
             }
         }
     }
@@ -430,6 +544,18 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         // Runs on every keystroke in the rule editor.
         let rows = await offQueue { self.preview(draft).map(PreviewRow.init) }
         return EngineReply.encode(rows, for: command)
+    }
+
+    /// Both returns, which differ only in what the id names.
+    ///
+    /// Off the cooperative pool and onto the engine's queue like every other
+    /// piece of blocking work here — a whole pass is N moves, and it must not
+    /// run while the hourly sweep is walking the same folder.
+    private func putBack(_ command: EngineCommand,
+                         _ work: @escaping @Sendable (String) -> UndoReport) async -> Data {
+        guard let payload = EngineReply.decode(UndoRequest.self, from: command) else { return Data() }
+        let report = await offQueue { work(payload.id) }
+        return EngineReply.encode(report, for: command)
     }
 
     private func swept(_ command: EngineCommand) async -> Data {
