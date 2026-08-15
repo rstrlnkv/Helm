@@ -1,5 +1,6 @@
-import XCTest
+import HelmTestSupport
 import HelmUI
+import XCTest
 @testable import Module_Uninstaller_UI
 
 /// The uninstaller may not say space came back.
@@ -10,7 +11,7 @@ import HelmUI
 ///
 /// Disk landed this correction first, and its verb and noun per language were
 /// read out of Finder's own `AL13` key rather than translated again — so this
-/// compares the two tables instead of asserting a second phrasing of my own.
+/// compares the four tables instead of asserting a second phrasing of my own.
 /// `L()` answers in whichever language the machine is set to, so eight
 /// languages cannot be exercised through the accessor; the tables are read from
 /// the source, which is where the defect was.
@@ -30,6 +31,33 @@ final class MovedNotFreedTests: XCTestCase {
         XCTAssertEqual(mine["en"], "Moved to the Trash — \\(size)")
         for language in Self.languages {
             XCTAssertNotNil(mine[language], "\(language) is missing")
+        }
+    }
+
+    /// **Four modules say this sentence, and the guard used to hold two of
+    /// them.** `DupStr.movedToTrash`'s own doc claimed word-for-word agreement
+    /// while its es table had drifted to a colon and its de table to an en
+    /// dash — a promise written in prose with nothing under it. Duplicates must
+    /// match Disk exactly; Leftovers carries a count as well as a size, so what
+    /// is pinned there is the verb phrase — the part Finder's `AL13` key
+    /// settled — opening the sentence in every language.
+    func testAllFourModulesOpenWithDisksVerbPhrase() throws {
+        let disk = try table(in: diskStrings(), function: "movedToTrash")
+        XCTAssertFalse(disk.isEmpty, "the Disk table was not found — this compares nothing")
+
+        let duplicates = try table(in: moduleStrings("Duplicates"), function: "movedToTrash")
+        XCTAssertEqual(duplicates, disk,
+                       "Duplicates has drifted from the sentence its own doc promises")
+
+        let leftovers = try table(in: moduleStrings("Leftovers"), function: "movedToTrash")
+        for (language, sentence) in disk {
+            let verb = try XCTUnwrap(sentence.components(separatedBy: " — ").first,
+                                     "\(language): the Disk sentence has no verb phrase")
+            let theirs = try XCTUnwrap(leftovers[language], "\(language) is missing in Leftovers")
+            XCTAssertTrue(theirs.hasPrefix(verb), """
+                \(language): Leftovers opens «\(theirs)» where Disk's verb phrase \
+                is «\(verb)» — the fourth module has drifted.
+                """)
         }
     }
 
@@ -76,46 +104,50 @@ final class MovedNotFreedTests: XCTestCase {
 
     // MARK: - Reading the tables
 
-    private func repoRoot() -> URL {
-        URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()   // UITests
-            .deletingLastPathComponent()   // Uninstaller
-            .deletingLastPathComponent()   // Modules
-            .deletingLastPathComponent()   // Tests
-            .deletingLastPathComponent()   // repo
-    }
-
     private func uninstallerStrings() throws -> String {
-        try String(contentsOf: repoRoot()
-            .appendingPathComponent("Sources/Modules/Uninstaller/UI/UninstallerStrings.swift"),
-                   encoding: .utf8)
+        try moduleStrings("Uninstaller")
     }
 
     private func diskStrings() throws -> String {
-        try String(contentsOf: repoRoot()
-            .appendingPathComponent("Sources/Modules/Disk/UI/DiskStrings.swift"),
-                   encoding: .utf8)
+        try moduleStrings("Disk")
     }
 
-    /// `static func name(_ size: String) -> String { L("…", [.ru: "…", …]) }`
-    /// as a language → text dictionary, English under "en".
+    /// Every module spells the file the same way, and `RepoSource` walks to the
+    /// root from any depth — the hand-counted `deletingLastPathComponent`s this
+    /// replaces were a fact about where *this* test sat.
+    private func moduleStrings(_ module: String) throws -> String {
+        try RepoSource.text(of: "Sources/Modules/\(module)/UI/\(module)Strings.swift")
+    }
+
+    /// `static func name(…) -> String { L("…", [.ru: "…", …]) }` as a
+    /// language → text dictionary, English under "en".
+    ///
+    /// Over the function's whole body, not its first line: Leftovers and
+    /// Duplicates declare theirs across several lines, and a parser that read
+    /// one line answered an empty table — a check that cannot fail. The chunk
+    /// ends at the next member, so a neighbouring function's table cannot leak
+    /// into this one.
     private func table(in source: String, function: String) throws -> [String: String] {
-        let line = try XCTUnwrap(
-            source.components(separatedBy: "\n").first { $0.contains("func \(function)(") },
-            "\(function) is not declared")
-        let quoted = try XCTUnwrap(NSRegularExpression(pattern: "\"([^\"]*)\""))
+        let opens = try XCTUnwrap(source.range(of: "static func \(function)("),
+                                  "\(function) is not declared")
+        let tail = source[opens.upperBound...]
+        let end = tail.range(of: "\n    static ")?.lowerBound
+            ?? tail.range(of: "\n}")?.lowerBound
+            ?? tail.endIndex
+        let body = String(source[opens.lowerBound..<end])
+        let english = try XCTUnwrap(NSRegularExpression(pattern: "L\\(\"([^\"]*)\""))
         let tagged = try XCTUnwrap(NSRegularExpression(pattern: "\\.([a-z]{2}): \"([^\"]*)\""))
-        let whole = NSRange(line.startIndex..., in: line)
+        let whole = NSRange(body.startIndex..., in: body)
 
         var out: [String: String] = [:]
-        if let first = quoted.firstMatch(in: line, range: whole),
-           let range = Range(first.range(at: 1), in: line) {
-            out["en"] = String(line[range])
+        if let first = english.firstMatch(in: body, range: whole),
+           let range = Range(first.range(at: 1), in: body) {
+            out["en"] = String(body[range])
         }
-        for match in tagged.matches(in: line, range: whole) {
-            guard let key = Range(match.range(at: 1), in: line),
-                  let value = Range(match.range(at: 2), in: line) else { continue }
-            out[String(line[key])] = String(line[value])
+        for match in tagged.matches(in: body, range: whole) {
+            guard let key = Range(match.range(at: 1), in: body),
+                  let value = Range(match.range(at: 2), in: body) else { continue }
+            out[String(body[key])] = String(body[value])
         }
         return out
     }
