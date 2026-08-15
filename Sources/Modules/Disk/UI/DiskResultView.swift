@@ -187,7 +187,14 @@ private struct BreadcrumbBar: View {
 
             Spacer(minLength: 12)
 
-            if dvm.live {
+            // **Either walk**, not only the volume's. Drilling past the depth the
+            // scan reached starts a real walk of that folder, and this pair was
+            // behind `live` alone — so the click looked dead, the ring changed
+            // under the person when it landed, and there was nothing to press to
+            // stop it. The file count belongs to the volume walk and is absent
+            // here by construction: a folder measurement's progress events carry
+            // its own scan's name, which is not the one the screen is showing.
+            if dvm.walking {
                 HStack(spacing: 6) {
                     ProgressView().controlSize(.small)
                     if let tick = dvm.tick, layout.showsScanStatement {

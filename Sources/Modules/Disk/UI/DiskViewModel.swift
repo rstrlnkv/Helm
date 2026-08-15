@@ -224,6 +224,17 @@ import Module_Disk_Engine
         newScan()
     }
 
+    /// A walk is running — the volume's, or one folder's measured on demand.
+    ///
+    /// Here rather than in the header because it is what the spinner and Stop are
+    /// drawn by, and the two flags behind it are not interchangeable anywhere
+    /// else: `live` is also what says snapshots may repaint the ring, and
+    /// `measuring` is also the guard against a second walk of the same folder. The
+    /// header wants neither of those questions — it wants «is Helm reading the
+    /// disk right now», and that question had no name, which is how a folder
+    /// measurement came to run in complete silence.
+    public var walking: Bool { live || measuring }
+
     public var focus: DiskEntry? { focusPath.last }
     public var basketBytes: Int { basket.reduce(0) { $0 + $1.bytes } }
     /// Whether the page draws the bar under the ring — for a basket waiting to
@@ -324,20 +335,30 @@ import Module_Disk_Engine
         showingScan = nextScanID()
         Task { await client.send(DiskCommand.cancel, encoding: [String]()) }
         let wasWalking = live
+        // The other walk this button is drawn over. Cleared here rather than left
+        // to `measureAndDrill`'s own `defer`, which cannot run until the engine
+        // answers a request the person has just withdrawn — the spinner would
+        // keep turning for as long as the folder took.
+        let wasMeasuring = measuring
         live = false
+        measuring = false
         // There is a tree worth keeping only when a walk was actually running and
         // had reported at least one snapshot. Two other callers arrive here:
         // `newScan()`, which wants the screen emptied, and Stop pressed inside
         // the first third of a second, before any partial. Both are the volume
         // picker, as they always were — and a finished tree must never be marked
         // stopped, which is the whole difference this flag carries.
-        guard wasWalking, phase == .result, result != nil else {
+        guard wasWalking || wasMeasuring, phase == .result, result != nil else {
             phase = .start
             basket = []
             clearRemovalReport()
             return
         }
-        stopped = true
+        // **Only a stopped *walk* leaves floors.** A folder measurement that was
+        // stopped simply never grafted anything: the tree on screen is the one the
+        // volume walk finished, and marking it stopped would put «a folder may
+        // hold more than it shows» over numbers that are totals.
+        if wasWalking { stopped = true }
     }
 
     /// Nothing on screen about a removal. The four fields are read as one report,
@@ -404,12 +425,15 @@ import Module_Disk_Engine
     private func measureAndDrill(into path: String) async {
         guard !measuring else { return }
         measuring = true
-        defer { measuring = false }
         // A name of its own, and deliberately not the one the screen is
         // showing: this scan's snapshots are a folder, and the ring is a
         // volume. Only its final tree is wanted, and only if the tree it is
         // grafted into is still the one on screen.
         let owner = showingScan
+        // The screen's own scan, so a withdrawn measurement cannot put down the
+        // flag of the one that replaced it: Stop clears it and moves `showingScan`
+        // on, and this arrives afterwards.
+        defer { if owner == showingScan { measuring = false } }
         let scan: ScanResult? = await client.request(DiskCommand.scan,
                                                      encoding: ScanRequest(path: path,
                                                                            scan: nextScanID()))
@@ -660,33 +684,4 @@ import Module_Disk_Engine
                  children: entry.children.map(node(from:)))
     }
 
-}
-
-/// Disks appearing and disappearing, for as long as this object is held.
-///
-/// A separate type because its `deinit` is the whole point and a `@MainActor`
-/// class cannot have one that reads its own tokens — Swift 6 refuses a
-/// nonisolated `deinit` touching non-`Sendable` state, which is how «the
-/// observer nobody takes out» gets written by accident. Here the subscription
-/// *is* the lifetime, so there is nothing left to remember.
-///
-/// `NSWorkspace`'s own centre, not `NotificationCenter.default`: these two
-/// notifications are posted there and nowhere else. Delivered on the main
-/// queue, where every reader of this lives. Local to Disk while Disk is the
-/// only module that wants it; a second one moves it to `HelmRuntime`.
-private final class MountWatch {
-    private let tokens: [NSObjectProtocol]
-
-    init(_ onChange: @escaping @Sendable () -> Void) {
-        let center = NSWorkspace.shared.notificationCenter
-        tokens = [NSWorkspace.didMountNotification,
-                  NSWorkspace.didUnmountNotification].map { name in
-            center.addObserver(forName: name, object: nil, queue: .main) { _ in onChange() }
-        }
-    }
-
-    deinit {
-        let center = NSWorkspace.shared.notificationCenter
-        for token in tokens { center.removeObserver(token) }
-    }
 }
