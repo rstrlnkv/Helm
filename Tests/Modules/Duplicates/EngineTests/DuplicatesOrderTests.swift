@@ -37,10 +37,10 @@ final class DuplicatesOrderTests: XCTestCase {
         let realCopy = file("/h/other.bin", id: 9, added: 300)
 
         let asWalkedForwards = Duplicates.groups(
-            files: [newName, oldName, realCopy], minBytes: 1_000_000,
+            files: [newName, oldName, realCopy], minBytes: 1_000_000, by: KeepRule(.standard),
             partial: { _ in "p" }, full: { _ in "f" })
         let asWalkedBackwards = Duplicates.groups(
-            files: [oldName, newName, realCopy], minBytes: 1_000_000,
+            files: [oldName, newName, realCopy], minBytes: 1_000_000, by: KeepRule(.standard),
             partial: { _ in "p" }, full: { _ in "f" })
 
         XCTAssertEqual(asWalkedForwards.map(\.paths), asWalkedBackwards.map(\.paths),
@@ -61,7 +61,7 @@ final class DuplicatesOrderTests: XCTestCase {
         let realCopy = file("/h/other.bin", id: 9, added: 300)
 
         let groups = Duplicates.groups(
-            files: [newName, oldName, realCopy], minBytes: 1_000_000,
+            files: [newName, oldName, realCopy], minBytes: 1_000_000, by: KeepRule(.standard),
             partial: { _ in "p" }, full: { _ in "f" })
 
         XCTAssertEqual(groups.count, 1)
@@ -100,7 +100,7 @@ final class DuplicatesOrderTests: XCTestCase {
         // exactly the same and nothing but the tiebreak can order them.
         func survivors(digestedWith salt: String) -> [String] {
             let digest: (FileFacts) -> String? = { salt + String($0.path.split(separator: "/")[0]) }
-            return Duplicates.groups(files: files, minBytes: 1_000_000,
+            return Duplicates.groups(files: files, minBytes: 1_000_000, by: KeepRule(.standard),
                                      partial: digest, full: digest).map { $0.paths[0] }
         }
 

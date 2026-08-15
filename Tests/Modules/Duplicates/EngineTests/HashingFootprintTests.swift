@@ -46,7 +46,7 @@ final class HashingFootprintTests: XCTestCase {
         XCTAssertGreaterThan(volumeRead, 300, "the fixture has to read enough to show the defect")
 
         let before = try XCTUnwrap(MemoryFootprint.current())
-        let groups = DuplicateScanner().find(under: folder.path)
+        let groups = DuplicateScanner().find(under: folder.path, by: KeepRule(.standard))
         let after = try XCTUnwrap(MemoryFootprint.current())
 
         XCTAssertEqual(groups?.count, pairs, "each pair is a group, or the fixture is wrong")

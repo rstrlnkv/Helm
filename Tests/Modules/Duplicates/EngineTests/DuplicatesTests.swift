@@ -24,7 +24,7 @@ final class DuplicatesTests: XCTestCase {
             file("/c", bytes: 7_000_000, id: 3),          // alone in its size
             file("/d", bytes: 100, id: 4),                 // below the floor
             file("/e", bytes: 100, id: 5),
-        ], minBytes: 1_000_000)
+        ], minBytes: 1_000_000, by: KeepRule(.standard))
         XCTAssertEqual(groups.count, 1)
         XCTAssertEqual(Set(groups[0].map(\.path)), ["/a", "/b"])
     }
@@ -35,7 +35,7 @@ final class DuplicatesTests: XCTestCase {
         let groups = Duplicates.sizeGroups([
             file("/original", bytes: 5_000_000, id: 42),
             file("/hardlink", bytes: 5_000_000, id: 42),
-        ], minBytes: 1_000_000)
+        ], minBytes: 1_000_000, by: KeepRule(.standard))
         XCTAssertTrue(groups.isEmpty)
     }
 
@@ -44,7 +44,7 @@ final class DuplicatesTests: XCTestCase {
             file("/original", bytes: 5_000_000, id: 42),
             file("/hardlink", bytes: 5_000_000, id: 42),
             file("/realcopy", bytes: 5_000_000, id: 7),
-        ], minBytes: 1_000_000)
+        ], minBytes: 1_000_000, by: KeepRule(.standard))
         // One of the linked pair stays to represent the inode; the copy joins it.
         XCTAssertEqual(groups.count, 1)
         XCTAssertEqual(groups[0].count, 2)
@@ -57,7 +57,7 @@ final class DuplicatesTests: XCTestCase {
         let facts = [file("/a", bytes: 5_000_000, id: 1),
                      file("/b", bytes: 5_000_000, id: 2)]
         let groups = Duplicates.groups(
-            files: facts, minBytes: 1_000_000,
+            files: facts, minBytes: 1_000_000, by: KeepRule(.standard),
             partial: { $0.path == "/a" ? "aaaa" : "bbbb" },
             full: { _ in XCTFail("full hash after partial already split"); return nil })
         XCTAssertTrue(groups.isEmpty)
@@ -69,7 +69,7 @@ final class DuplicatesTests: XCTestCase {
         let facts = [file("/a", bytes: 5_000_000, id: 1),
                      file("/b", bytes: 5_000_000, id: 2)]
         let groups = Duplicates.groups(
-            files: facts, minBytes: 1_000_000,
+            files: facts, minBytes: 1_000_000, by: KeepRule(.standard),
             partial: { _ in "same-prefix" },
             full: { $0.path == "/a" ? "AAAA" : "BBBB" })
         XCTAssertTrue(groups.isEmpty)
@@ -80,7 +80,7 @@ final class DuplicatesTests: XCTestCase {
                      file("/b", bytes: 5_000_000, id: 2),
                      file("/c", bytes: 5_000_000, id: 3)]
         let groups = Duplicates.groups(
-            files: facts, minBytes: 1_000_000,
+            files: facts, minBytes: 1_000_000, by: KeepRule(.standard),
             partial: { _ in "p" }, full: { _ in "f" })
         XCTAssertEqual(groups.count, 1)
         XCTAssertEqual(groups[0].paths.count, 3)
@@ -97,7 +97,7 @@ final class DuplicatesTests: XCTestCase {
                      file("/b", bytes: 5_000_000, id: 2),
                      file("/locked", bytes: 5_000_000, id: 3)]
         let groups = Duplicates.groups(
-            files: facts, minBytes: 1_000_000,
+            files: facts, minBytes: 1_000_000, by: KeepRule(.standard),
             partial: { $0.path == "/locked" ? nil : "p" },
             full: { $0.path == "/locked" ? nil : "f" })
         XCTAssertEqual(groups.count, 1)
@@ -111,7 +111,7 @@ final class DuplicatesTests: XCTestCase {
                      file("/sm2", bytes: 2_000_000, id: 4),
                      file("/sm3", bytes: 2_000_000, id: 5)]
         let groups = Duplicates.groups(
-            files: facts, minBytes: 1_000_000,
+            files: facts, minBytes: 1_000_000, by: KeepRule(.standard),
             partial: { ["\u{2F}big1": "b", "/big2": "b"][$0.path] ?? "s" },
             full: { ["\u{2F}big1": "b", "/big2": "b"][$0.path] ?? "s" })
         XCTAssertEqual(groups.count, 2)
@@ -122,7 +122,7 @@ final class DuplicatesTests: XCTestCase {
         let facts = [file("/z", bytes: 5_000_000, id: 1),
                      file("/a", bytes: 5_000_000, id: 2)]
         let groups = Duplicates.groups(
-            files: facts, minBytes: 1_000_000,
+            files: facts, minBytes: 1_000_000, by: KeepRule(.standard),
             partial: { _ in "p" }, full: { _ in "f" })
         XCTAssertEqual(groups[0].paths, ["/a", "/z"])
     }
@@ -136,7 +136,7 @@ extension DuplicatesTests {
         let groups = Duplicates.sizeGroups([
             FileFacts(path: "/a", bytes: 5_000_000, fileID: 0),
             FileFacts(path: "/b", bytes: 5_000_000, fileID: 0),
-        ], minBytes: 1_000_000)
+        ], minBytes: 1_000_000, by: KeepRule(.standard))
         XCTAssertEqual(groups.count, 1)
         XCTAssertEqual(groups[0].count, 2)
     }

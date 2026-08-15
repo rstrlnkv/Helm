@@ -62,7 +62,7 @@ final class DuplicateWalkErrorsTests: XCTestCase {
     func testAnUnreadableDirectoryDoesNotEndTheWalk() throws {
         try twoBranchesEachBehindAnUnreadableDirectory()
 
-        let groups = try XCTUnwrap(DuplicateScanner().find(under: root.path))
+        let groups = try XCTUnwrap(DuplicateScanner().find(under: root.path, by: KeepRule(.standard)))
 
         XCTAssertEqual(groups.count, 1, "the walk ended at the first unreadable directory")
         XCTAssertEqual(Set(groups[0].paths.map { ($0 as NSString).lastPathComponent }),
@@ -77,7 +77,7 @@ final class DuplicateWalkErrorsTests: XCTestCase {
         try twoBranchesEachBehindAnUnreadableDirectory()
 
         let scanner = DuplicateScanner()
-        _ = scanner.find(under: root.path)
+        _ = scanner.find(under: root.path, by: KeepRule(.standard))
 
         XCTAssertEqual(scanner.unreadablePaths, 2)
     }
@@ -88,7 +88,7 @@ final class DuplicateWalkErrorsTests: XCTestCase {
         try Data(repeating: 3, count: 1_200_000)
             .write(to: root.appendingPathComponent("a.bin"))
         let scanner = DuplicateScanner()
-        _ = scanner.find(under: root.path)
+        _ = scanner.find(under: root.path, by: KeepRule(.standard))
         XCTAssertEqual(scanner.unreadablePaths, 0)
     }
 }

@@ -89,7 +89,12 @@ final class DuplicateScanner: @unchecked Sendable {
     ///   what any search does the first time. When one is supplied it is also
     ///   **filled**: whatever this search reads is written back, so the caller
     ///   can persist it and the next search reads less.
-    func find(under root: String,
+    /// - Parameter rule: which copy of identical content the search keeps. It is
+    ///   needed **before** the hashing and not only after it: the name that
+    ///   stands for a set of hard links is chosen by the same rule, and a
+    ///   representative picked one way while the survivor is picked another is
+    ///   the two-pipelines defect this module has already paid for once.
+    func find(under root: String, by rule: KeepRule,
               cache: HashCache? = nil,
               onProgress: (@Sendable (DuplicateProgress) -> Void)? = nil)
     -> [DuplicateGroup]? {
@@ -109,7 +114,7 @@ final class DuplicateScanner: @unchecked Sendable {
         HelmLog.shared.info("duplicates", "walked \(LogRoot.label(root)): "
                             + "\(files.count) files at or above the floor"
                             + (refused > 0 ? ", \(refused) unreadable" : ""))
-        let candidates = Duplicates.sizeGroups(files, minBytes: Self.minBytes)
+        let candidates = Duplicates.sizeGroups(files, minBytes: Self.minBytes, by: rule)
         let total = candidates.reduce(0) { $0 + $1.count }
         // Twice per candidate: the prefix pass, then the full pass for
         // whatever survives it. Counting each candidate once parked the bar at
@@ -172,7 +177,7 @@ final class DuplicateScanner: @unchecked Sendable {
                         if digest == nil { progress.noteUnreadable() }
                         return digest
                     }) {
-                        found.append(Duplicates.group(identical))
+                        found.append(Duplicates.group(identical, by: rule))
                     }
                 }
                 bucketLock.lock(); buckets[index] = found; bucketLock.unlock()

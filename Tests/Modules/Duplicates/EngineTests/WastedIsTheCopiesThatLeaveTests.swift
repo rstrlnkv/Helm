@@ -31,7 +31,7 @@ final class WastedIsTheCopiesThatLeaveTests: XCTestCase {
         let files = facts([("/clone.bin", 0), ("/middle.bin", 1_000_000),
                            ("/real.bin", 4_000_000)])
 
-        let group = Duplicates.group(files)
+        let group = Duplicates.group(files, by: KeepRule(.standard))
 
         let survivor = try XCTUnwrap(group.paths.first)
         let leaving = files.filter { $0.path != survivor }.reduce(0) { $0 + $1.allocated }
@@ -44,9 +44,11 @@ final class WastedIsTheCopiesThatLeaveTests: XCTestCase {
     /// which copy the walk reached first.
     func testACloneAndItsOriginalAgreeWhicheverWayTheyArrive() {
         let forwards = Duplicates.group(facts([("/a-clone.bin", 0),
-                                               ("/b-real.bin", 4_000_000)]))
+                                               ("/b-real.bin", 4_000_000)]),
+                                        by: KeepRule(.standard))
         let backwards = Duplicates.group(facts([("/b-real.bin", 4_000_000),
-                                                ("/a-clone.bin", 0)]))
+                                                ("/a-clone.bin", 0)]),
+                                         by: KeepRule(.standard))
         XCTAssertEqual(forwards.paths, backwards.paths)
         XCTAssertEqual(forwards.wasted, backwards.wasted)
     }
@@ -54,7 +56,8 @@ final class WastedIsTheCopiesThatLeaveTests: XCTestCase {
     /// And the size shown per row is the copy's own, not the group's average or
     /// its first-reached member.
     func testEachCopyCarriesItsOwnSize() throws {
-        let group = Duplicates.group(facts([("/clone.bin", 0), ("/real.bin", 4_000_000)]))
+        let group = Duplicates.group(facts([("/clone.bin", 0), ("/real.bin", 4_000_000)]),
+                                     by: KeepRule(.standard))
         let sizes = Dictionary(uniqueKeysWithValues: group.copies.map { ($0.path, $0.bytes) })
         XCTAssertEqual(sizes["/clone.bin"], 0)
         XCTAssertEqual(sizes["/real.bin"], 4_000_000)
@@ -64,7 +67,8 @@ final class WastedIsTheCopiesThatLeaveTests: XCTestCase {
     /// from the copies that are still there, not carried over.
     func testAGroupThatLosesACopyRecountsWhatIsLeft() {
         let group = Duplicates.group(facts([("/a.bin", 1_000_000), ("/b.bin", 2_000_000),
-                                            ("/c.bin", 3_000_000)]))
+                                            ("/c.bin", 3_000_000)]),
+                                     by: KeepRule(.standard))
         let survivor = group.paths[0]
         let left = DuplicateGroup(copies: group.copies.filter { $0.path != group.paths[1] })
 

@@ -41,5 +41,32 @@ public enum DuplicatesEvent: String, Sendable {
 /// nothing at all.
 public struct DuplicateSearchRequest: Codable, Sendable {
     public let path: String
-    public init(path: String) { self.path = path }
+
+    /// Which copy of identical content this search should keep, as the person
+    /// has the page set right now.
+    ///
+    /// **Optional, and a raw string.** A non-optional field with a default would
+    /// not decode a payload written before it existed: a synthesised `Decodable`
+    /// demands the key whatever the property's initial value is, and
+    /// `JSONDecoder` then abandons the whole request rather than the one field —
+    /// so a search sent by an older caller would arrive as no search at all
+    /// (CLAUDE.md § A `defaulted` property on a `Codable` payload). `nil` means
+    /// «the caller did not say», and the engine falls back to what is stored.
+    ///
+    /// A string on the wire because a `KeepPolicy` this build does not know is a
+    /// value to fall back from, not a document to throw away; `keepPolicy` below
+    /// is the only place it is turned back into one.
+    public let policy: String?
+
+    /// The policy this request carries, or nil when it carries none — including
+    /// a spelling this build has never heard of.
+    public var keepPolicy: KeepPolicy? { policy.flatMap(KeepPolicy.init(rawValue:)) }
+
+    /// Taking the policy itself rather than its spelling: the caller cannot
+    /// write a value the engine will not recognise, which is the whole failure a
+    /// name shared across a target boundary has.
+    public init(path: String, policy: KeepPolicy? = nil) {
+        self.path = path
+        self.policy = policy?.rawValue
+    }
 }

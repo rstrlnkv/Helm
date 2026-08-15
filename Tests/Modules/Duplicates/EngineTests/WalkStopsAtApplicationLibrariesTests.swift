@@ -37,7 +37,7 @@ final class WalkStopsAtApplicationLibrariesTests: XCTestCase {
     }
 
     func testAFileInsideALibraryIsNeverOfferedAsADuplicate() throws {
-        let groups = try XCTUnwrap(DuplicateScanner().find(under: fixture.path))
+        let groups = try XCTUnwrap(DuplicateScanner().find(under: fixture.path, by: KeepRule(.standard)))
         let paths = groups.flatMap(\.paths)
         XCTAssertFalse(paths.contains { $0.contains(".fcpbundle/") },
                        "a path inside an application database reached the result: \(paths)")

@@ -64,7 +64,7 @@ final class AScanThatCouldNotLookIsNotAllClearTests: XCTestCase {
         try FileManager.default.setAttributes([.posixPermissions: 0o000],
                                               ofItemAtPath: wall.path)
 
-        let reply = await DuplicatesEngine().find(under: root.path)
+        let reply = await DuplicatesEngine().find(under: root.path, keeping: .standard)
         let found = try XCTUnwrap(reply)
 
         XCTAssertTrue(found.groups.isEmpty, "precondition: this fixture has no duplicates")
@@ -82,7 +82,7 @@ final class AScanThatCouldNotLookIsNotAllClearTests: XCTestCase {
         let root = scratchDirectory("dup-empty-clean")
         try write("a.bin", in: root, bytes: 1_200_000, filler: 3)
 
-        let reply = await DuplicatesEngine().find(under: root.path)
+        let reply = await DuplicatesEngine().find(under: root.path, keeping: .standard)
         let found = try XCTUnwrap(reply)
 
         XCTAssertEqual(found.unreadable, 0)
@@ -116,7 +116,7 @@ final class AScanThatCouldNotLookIsNotAllClearTests: XCTestCase {
         try FileManager.default.setAttributes([.posixPermissions: 0o000],
                                               ofItemAtPath: locked.path)
 
-        let reply = await DuplicatesEngine().find(under: root.path)
+        let reply = await DuplicatesEngine().find(under: root.path, keeping: .standard)
         let found = try XCTUnwrap(reply)
 
         XCTAssertTrue(found.groups.isEmpty, """
@@ -140,7 +140,7 @@ final class AScanThatCouldNotLookIsNotAllClearTests: XCTestCase {
         try write("Family.photoslibrary/one.bin", in: root, bytes: 1_200_000, filler: 9)
         try write("Family.photoslibrary/two.bin", in: root, bytes: 1_200_000, filler: 9)
 
-        let reply = await DuplicatesEngine().find(under: root.path)
+        let reply = await DuplicatesEngine().find(under: root.path, keeping: .standard)
         let found = try XCTUnwrap(reply)
 
         XCTAssertTrue(found.groups.isEmpty,

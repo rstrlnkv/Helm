@@ -39,7 +39,7 @@ final class WastedBytesTests: XCTestCase {
         _ = try write("a.bin", 7)
         _ = try write("b.bin", 7)
 
-        let group = try XCTUnwrap(DuplicateScanner().find(under: root.path)?.first)
+        let group = try XCTUnwrap(DuplicateScanner().find(under: root.path, by: KeepRule(.standard))?.first)
         XCTAssertEqual(group.paths.count, 2)
 
         XCTAssertEqual(group.wasted, freedByRemovingTheExtras(of: group),
@@ -59,7 +59,7 @@ final class WastedBytesTests: XCTestCase {
         XCTAssertEqual(CloneShare.familyID(ofFileAt: clone), family,
                        "precondition: the fixture is a clone family")
 
-        let group = try XCTUnwrap(DuplicateScanner().find(under: root.path)?.first)
+        let group = try XCTUnwrap(DuplicateScanner().find(under: root.path, by: KeepRule(.standard))?.first)
         XCTAssertEqual(group.paths.count, 2, "precondition: the pair was found at all")
 
         XCTAssertEqual(group.wasted, 0)
@@ -81,6 +81,6 @@ final class WastedBytesTests: XCTestCase {
     func testTwoIdenticalFilesAreStillFound() throws {
         _ = try write("one.bin", 3)
         _ = try write("two.bin", 3)
-        XCTAssertEqual(DuplicateScanner().find(under: root.path)?.count, 1)
+        XCTAssertEqual(DuplicateScanner().find(under: root.path, by: KeepRule(.standard))?.count, 1)
     }
 }

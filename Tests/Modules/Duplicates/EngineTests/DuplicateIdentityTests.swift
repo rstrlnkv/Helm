@@ -32,7 +32,7 @@ final class DuplicateIdentityTests: XCTestCase {
         let groups = Duplicates.sizeGroups([
             file("/a", bytes: 5_000_000, id: 0),
             file("/b", bytes: 5_000_000, id: 0),
-        ], minBytes: 1_000_000)
+        ], minBytes: 1_000_000, by: KeepRule(.standard))
         XCTAssertEqual(groups.count, 1,
                        "two files of unknown identity were collapsed into one — "
                        + "fileID 0 means unread, not hard-linked")
@@ -48,7 +48,7 @@ final class DuplicateIdentityTests: XCTestCase {
             file("/small-unknown", bytes: 5_000_000, id: 0),
             file("/big-unknown", bytes: 7_000_000, id: 0),
             file("/big-twin", bytes: 7_000_000, id: 9),
-        ], minBytes: 1_000_000)
+        ], minBytes: 1_000_000, by: KeepRule(.standard))
         XCTAssertEqual(groups.count, 1,
                        "the 7 MB candidate pair is gone — a 5 MB file with the "
                        + "same sentinel id absorbed it")
@@ -62,7 +62,7 @@ final class DuplicateIdentityTests: XCTestCase {
         let groups = Duplicates.sizeGroups([
             file("/original", bytes: 5_000_000, id: 42),
             file("/hardlink", bytes: 5_000_000, id: 42),
-        ], minBytes: 1_000_000)
+        ], minBytes: 1_000_000, by: KeepRule(.standard))
         XCTAssertTrue(groups.isEmpty)
     }
 }

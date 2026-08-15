@@ -89,7 +89,7 @@ final class ACopyRemembersWhenItArrivedTests: XCTestCase {
             FileFacts(path: "/Users/me/Documents/a.bin", bytes: 1_000_000,
                       fileID: 1, added: older),
             FileFacts(path: "/Users/me/Downloads/c.bin", bytes: 1_000_000, fileID: 3),
-        ])
+        ], by: KeepRule(.standard))
 
         // By path, because the order is the survivor rule's to decide and this
         // is not a test of that rule.
@@ -124,7 +124,7 @@ final class TheScannerCarriesTheDateItReadTests: XCTestCase {
         try write("a.bin", in: root, bytes: 1_200_000, filler: 7)
         try write("archive/b.bin", in: root, bytes: 1_200_000, filler: 7)
 
-        let group = try XCTUnwrap(DuplicateScanner().find(under: root.path)?.first)
+        let group = try XCTUnwrap(DuplicateScanner().find(under: root.path, by: KeepRule(.standard))?.first)
         let expected = group.paths.map(added(of:))
         try XCTSkipIf(expected.contains(where: { $0 == nil }),
                       "this volume does not record when a file was added")

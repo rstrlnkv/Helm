@@ -184,7 +184,8 @@ enum Duplicates {
 
     /// Groups worth hashing: same size, above the floor, more than one file —
     /// with hard-linked twins collapsed to one representative first.
-    static func sizeGroups(_ files: [FileFacts], minBytes: Int) -> [[FileFacts]] {
+    static func sizeGroups(_ files: [FileFacts], minBytes: Int,
+                           by rule: KeepRule) -> [[FileFacts]] {
         var byID: [UInt64: FileFacts] = [:]
         // fileID 0 means the inode could not be read. Unknown is not "the
         // same": collapsing all unknowns into one representative would hide
@@ -200,8 +201,12 @@ enum Duplicates {
                 // apart. Reached-first is the walk order, which is not a fact
                 // about the files. The one that would survive among its own
                 // names stands for them all.
-                let keeper = SurvivingCopy.order([standing, file]).first
-                byID[file.fileID] = keeper == standing.path ? standing : file
+                //
+                // **Chosen before the hashing, and the policy is why.** The
+                // representative is what the group would offer to keep, so
+                // deciding it by one rule and the survivor by another would let
+                // a search set to «by place» keep the name in Downloads.
+                byID[file.fileID] = SurvivingCopy.order([standing, file], by: rule)[0]
             } else {
                 byID[file.fileID] = file
             }
@@ -243,7 +248,7 @@ enum Duplicates {
     /// page explained one rule in its tooltip while the app followed another.
     /// Both call this now, and a change to which copy survives cannot land in
     /// one line and miss the other.
-    static func group(_ identical: [FileFacts]) -> DuplicateGroup {
+    static func group(_ identical: [FileFacts], by rule: KeepRule) -> DuplicateGroup {
         // Each copy with what it occupies, because `wasted` promises what
         // removing the extras frees and the removal reports the same measure.
         // One size for the group took it from the walk order while the paths
@@ -251,33 +256,30 @@ enum Duplicates {
         // beside its original reported nothing wasted or everything wasted
         // depending on which was reached first.
         //
-        // One table and not one per field: three parallel dictionaries keyed on
-        // the same path is three chances for a field to be looked up in the
-        // wrong one, and every field a copy gains adds another.
-        let facts = Dictionary(identical.map { ($0.path, $0) },
-                               uniquingKeysWith: { first, _ in first })
-        return DuplicateGroup(copies: SurvivingCopy.order(identical).map { path in
-            let fact = facts[path]
+        // **The order carries the facts with it.** It used to hand back paths,
+        // and this rebuilt each copy through a dictionary keyed on the path —
+        // one ordering of an array joined to another, and a lookup that had to
+        // answer `nil` for a fact that was in hand the whole time.
+        DuplicateGroup(copies: SurvivingCopy.order(identical, by: rule).map { fact in
             // The date the walk already read for the survivor rule, carried
             // instead of dropped: re-deciding which copy stays needs it and
             // nothing else.
-            return DuplicateGroup.Copy(path: path, bytes: fact?.allocated ?? 0,
-                                       cloneFamily: fact?.cloneFamily,
-                                       added: fact?.added)
+            DuplicateGroup.Copy(path: fact.path, bytes: fact.allocated,
+                                cloneFamily: fact.cloneFamily, added: fact.added)
         })
     }
 
     /// The whole pipeline: size → prefix hash → full hash → groups, largest
     /// waste first. `partial` and `full` are injected so the pipeline can be
     /// tested without a disk and driven with real hashing in production.
-    static func groups(files: [FileFacts], minBytes: Int,
+    static func groups(files: [FileFacts], minBytes: Int, by rule: KeepRule,
                        partial: (FileFacts) -> String?,
                        full: (FileFacts) -> String?) -> [DuplicateGroup] {
         var result: [DuplicateGroup] = []
-        for candidates in sizeGroups(files, minBytes: minBytes) {
+        for candidates in sizeGroups(files, minBytes: minBytes, by: rule) {
             for byPrefix in refine(candidates, by: partial) {
                 for identical in refine(byPrefix, by: full) {
-                    result.append(group(identical))
+                    result.append(group(identical, by: rule))
                 }
             }
         }

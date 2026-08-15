@@ -9,40 +9,84 @@ import Foundation
 /// `~/Documents/Archive/2019/photo.jpg` and Helm offered to delete the filed
 /// original while keeping the clutter.
 ///
-/// Three things decide it, in this order:
+/// It then became the date added, which was a belief — «the original is the one
+/// that has been there longest» — held silently and wrong often enough to matter:
+/// a file downloaded and *then* filed keeps the download. `KeepPolicy` is that
+/// belief made a question the person answers, and this is where the answer is
+/// applied. The rungs and their order belong to the policy; what is left here is
+/// what each rung reads.
 ///
-/// 1. **The oldest date added.** The original is the one that has been there
-///    longest; everything after it is a copy of it. This is the same date the
-///    Finder calls "Date Added" and the same one Autopilot's rules read — not
-///    the creation date, which a file carries with it when it is copied and
-///    which would call the copy as old as the original.
-/// 2. **The shallowest path.** Filesystems batch the date for files that
-///    arrived together, so it ties often. A file four folders down was put
-///    there by somebody; a file at the top of the folder is where things land.
-/// 3. **Alphabetically**, so two copies that are alike in every way the rule
-///    can see still come back in one fixed order and the row does not move
-///    between scans.
+/// **A rung that cannot tell hands on rather than deciding.** An unknown date is
+/// the case that matters: a volume that does not record when a file was added
+/// reports nothing, and nothing is evidence for neither copy. Read as a loss it
+/// handed the whole decision to a fact the filesystem happened to keep, skipping
+/// every rung below.
 enum SurvivingCopy {
 
-    /// The group's paths, the survivor first.
-    static func order(_ files: [FileFacts]) -> [String] {
-        files.sorted(by: keeps).map(\.path)
+    /// The group's copies, the survivor first.
+    ///
+    /// Returns the copies rather than their paths: the caller wants the whole of
+    /// each one — its size, its clone family, its date — and a list of paths
+    /// made it look them up again in a table built for the purpose, which is one
+    /// ordering of an array joined to another by a dictionary.
+    static func order<T: KeepCandidate>(_ files: [T], by rule: KeepRule) -> [T] {
+        files.sorted { decide($0, over: $1, by: rule).keepsFirst }
     }
 
-    private static func keeps(_ a: FileFacts, _ b: FileFacts) -> Bool {
-        // A volume that does not record when a file was added reports nothing,
-        // and nothing is not "the beginning of time": read that way it would
-        // hand the decision to whichever copy the filesystem knows least about.
-        // A copy we know something about outranks one we do not.
-        switch (a.added, b.added) {
-        case let (x?, y?) where x != y: return x < y
-        case (_?, nil): return true
-        case (nil, _?): return false
-        default: break
+    /// Why the survivor of these copies is the one that stays — the rung that
+    /// separated it from the copy that came closest.
+    ///
+    /// Nil when there is nothing to compare it against. Not «the reason it beat
+    /// the worst of them», which would be the rung that separates the group's
+    /// two extremes and says nothing about the choice actually made.
+    static func reason<T: KeepCandidate>(among files: [T], by rule: KeepRule) -> KeepReason? {
+        let ordered = order(files, by: rule)
+        guard ordered.count > 1 else { return nil }
+        return decide(ordered[0], over: ordered[1], by: rule).reason
+    }
+
+    /// Which of two copies stays, and which rung said so — one answer, because
+    /// the order and the explanation must not be able to disagree.
+    private static func decide(_ a: some KeepCandidate, over b: some KeepCandidate,
+                               by rule: KeepRule) -> (keepsFirst: Bool, reason: KeepReason) {
+        for rung in rule.policy.ladder {
+            if let verdict = separates(rung, a, b, rule.transit) { return (verdict, rung) }
         }
-        let depthA = depth(a.path), depthB = depth(b.path)
-        if depthA != depthB { return depthA < depthB }
-        return a.path < b.path
+        // Alike on every rung, which for distinct paths cannot happen: `.name`
+        // is the last one and two paths in a group are two different strings.
+        // The same file listed twice lands here, and either answer orders it.
+        return (false, .name)
+    }
+
+    /// True when `a` stays, false when `b` does, nil when this rung cannot tell
+    /// them apart.
+    private static func separates(_ rung: KeepReason,
+                                  _ a: some KeepCandidate, _ b: some KeepCandidate,
+                                  _ transit: TransitFolders) -> Bool? {
+        switch rung {
+        case .place:
+            let (transitA, transitB) = (transit.holds(a.path), transit.holds(b.path))
+            // Both landed in the same kind of place, or neither did: the tier
+            // knows nothing about which of them somebody meant to keep.
+            guard transitA != transitB else { return nil }
+            return transitB
+        case .date:
+            // Two dates decide; one date and one blank decide nothing.
+            guard let dateA = a.added, let dateB = b.added, dateA != dateB else { return nil }
+            return dateA < dateB
+        case .depth:
+            // Filesystems batch the date for files that arrived together, so it
+            // ties often. A file four folders down was put there by somebody; a
+            // file at the top of the folder is where things land.
+            let (depthA, depthB) = (depth(a.path), depth(b.path))
+            guard depthA != depthB else { return nil }
+            return depthA < depthB
+        case .name:
+            // So two copies alike in every way the rule can see still come back
+            // in one fixed order and the row does not move between scans.
+            guard a.path != b.path else { return nil }
+            return a.path < b.path
+        }
     }
 
     private static func depth(_ path: String) -> Int {

@@ -79,7 +79,7 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     /// instance that did the walking is still in hand — a hole nobody is told
     /// about reads as a clean folder, which was this module's whole answer in the
     /// case where it is most likely to be wrong.
-    private func run(under path: String, cache: HashCache?,
+    private func run(under path: String, by rule: KeepRule, cache: HashCache?,
                      onProgress: (@Sendable (DuplicateProgress) -> Void)?)
     async -> DuplicateFindings? {
         // A new search supersedes any still running.
@@ -88,7 +88,7 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
         let slot = finderBox.start(finder)
         defer { slot.finish() }
         return await offTheCooperativePool {
-            guard let groups = finder.find(under: path, cache: cache,
+            guard let groups = finder.find(under: path, by: rule, cache: cache,
                                            onProgress: onProgress) else { return nil }
             return DuplicateFindings(
                 groups: groups,
@@ -103,8 +103,14 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
 
     /// The search a person is watching: no cache — they have already accepted
     /// the wait — and every tick of progress crosses the transport.
-    public func find(under path: String) async -> DuplicateFindings? {
-        await run(under: path, cache: nil, onProgress: { progress in
+    ///
+    /// The policy is the caller's, because the person at the open page may be
+    /// looking at one they have just changed and not yet stored. No default: a
+    /// search that quietly keeps `standard` while the page says otherwise is the
+    /// two-pipelines defect wearing a parameter list.
+    public func find(under path: String, keeping policy: KeepPolicy)
+    async -> DuplicateFindings? {
+        await run(under: path, by: KeepRule(policy), cache: nil, onProgress: { progress in
             self.localTransport.emit(DuplicatesEvent.progress, encoding: progress)
         })
     }
@@ -176,7 +182,8 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
         // No progress: nobody is watching, so every tick would cross the
         // transport to a view model that may not exist.
         let cache = Self.loadCache() ?? HashCache()
-        guard let found = await run(under: root, cache: cache, onProgress: nil) else { return nil }
+        guard let found = await run(under: root, by: KeepRule(.standard),
+                                    cache: cache, onProgress: nil) else { return nil }
         let groups = found.groups
         // Compacted on the way out, never on the way in: a scan cut short would
         // otherwise replace the settled segment with a fresh one holding only
@@ -268,7 +275,12 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
             case .find:
                 guard let payload = EngineReply.decode(DuplicateSearchRequest.self, from: command)
                 else { return Data() }
-                return EngineReply.encode(await self.find(under: payload.path), for: command)
+                // What the page asked for. A payload from before the policy
+                // existed carries none, and takes what a Mac that was never
+                // asked gets.
+                let policy = payload.keepPolicy ?? .standard
+                return EngineReply.encode(await self.find(under: payload.path, keeping: policy),
+                                          for: command)
             case .backgroundScan:
                 return EngineReply.encode(await self.backgroundScan(), for: command)
             case .cancel:

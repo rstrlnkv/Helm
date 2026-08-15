@@ -25,7 +25,7 @@ final class DuplicateScannerTests: XCTestCase {
                                                 withIntermediateDirectories: true)
         let b = try write("sub/b.bin", 7)        // same content, one level down
         _ = try write("c.bin", 9)                // same size, different content
-        let groups = DuplicateScanner().find(under: root.path)
+        let groups = DuplicateScanner().find(under: root.path, by: KeepRule(.standard))
         XCTAssertEqual(groups?.count, 1)
         // The enumerator resolves /var to /private/var; compare by tail.
         let tails = Set((groups?.first?.paths ?? []).map { ($0 as NSString).lastPathComponent })
@@ -43,14 +43,14 @@ final class DuplicateScannerTests: XCTestCase {
         let a = try write("original.bin", 3)
         let linked = root.appendingPathComponent("link.bin").path
         try FileManager.default.linkItem(atPath: a, toPath: linked)
-        let groups = DuplicateScanner().find(under: root.path)
+        let groups = DuplicateScanner().find(under: root.path, by: KeepRule(.standard))
         XCTAssertEqual(groups, [])
     }
 
     func testSmallFilesAreBelowTheFloor() throws {
         _ = try write("small1.bin", 1, count: 10_000)
         _ = try write("small2.bin", 1, count: 10_000)
-        let groups = DuplicateScanner().find(under: root.path)
+        let groups = DuplicateScanner().find(under: root.path, by: KeepRule(.standard))
         XCTAssertEqual(groups, [])
     }
 
@@ -59,7 +59,7 @@ final class DuplicateScannerTests: XCTestCase {
         _ = try write("b.bin", 7)
         let scanner = DuplicateScanner()
         scanner.cancel()
-        XCTAssertNil(scanner.find(under: root.path))
+        XCTAssertNil(scanner.find(under: root.path, by: KeepRule(.standard)))
     }
 }
 
@@ -86,7 +86,7 @@ extension DuplicateScannerTests {
                                                        ofItemAtPath: path)
             }
         }
-        XCTAssertEqual(DuplicateScanner().find(under: root.path), [])
+        XCTAssertEqual(DuplicateScanner().find(under: root.path, by: KeepRule(.standard)), [])
     }
 }
 
@@ -125,14 +125,16 @@ final class SurvivorThroughTheScannerTests: XCTestCase {
         try write("archive/2019/alpha.bin", 7)
         try write("middle/beta.bin", 7)
 
-        let group = try XCTUnwrap(DuplicateScanner().find(under: root.path)?.first)
+        let group = try XCTUnwrap(DuplicateScanner()
+            .find(under: root.path, by: KeepRule(.standard))?.first)
         let facts = group.paths.map { path -> FileFacts in
             let url = URL(fileURLWithPath: path)
             let values = try? url.resourceValues(forKeys: [.addedToDirectoryDateKey])
             return FileFacts(path: path, bytes: 1_200_000, fileID: 0,
                              added: values?.addedToDirectoryDate)
         }
-        XCTAssertEqual(group.paths, SurvivingCopy.order(facts),
+        XCTAssertEqual(group.paths,
+                       SurvivingCopy.order(facts, by: KeepRule(.standard)).map(\.path),
                        "the scanner the engine calls is not using the survivor rule")
     }
 
@@ -150,7 +152,7 @@ final class SurvivorThroughTheScannerTests: XCTestCase {
         try XCTSkipIf(dates.contains(where: { $0 == nil || $0 == .some(nil) }),
                       "this volume does not record when a file was added")
 
-        let group = try XCTUnwrap(DuplicateScanner().find(under: root.path)?.first)
+        let group = try XCTUnwrap(DuplicateScanner().find(under: root.path, by: KeepRule(.standard))?.first)
         XCTAssertEqual((group.paths.first! as NSString).lastPathComponent, "photo.bin",
                        "the copy on top won because its path sorts first")
     }
