@@ -47,11 +47,14 @@ final class AHistoryReadsAsPassesTests: XCTestCase {
     /// The folder is only named when there is one to name. A watched folder
     /// with subfolders makes a pass that touched three of them, and "Downloads"
     /// over rows from `2025` and `2026` would be a header inventing a fact.
+    ///
+    /// The whole path, because macOS has its own name for `~/Downloads` in
+    /// seven languages and reading it takes the path, not the last component.
     func testTheFolderIsNamedOnlyWhenThePassCameFromOne() {
         let one = ActionHistory.runs(of: [record("a.pdf", run: "one", at: 1),
                                           record("b.pdf", run: "one", at: 2)],
                                      now: at(6))
-        XCTAssertEqual(one.first?.folder, "Downloads")
+        XCTAssertEqual(one.first?.folder, "/Users/x/Downloads")
 
         let two = ActionHistory.runs(of: [record("a.pdf", run: "one", at: 1,
                                                  folder: "/Users/x/Downloads/2025"),

@@ -67,7 +67,9 @@ struct HistorySection: View {
                     .foregroundStyle(HelmText.quiet)
             }
             Spacer(minLength: 8)
-            if !history.isEmpty {
+            // Not while the card below is showing, which carries the same
+            // gesture under a label that says what it does.
+            if !history.isEmpty, !refused {
                 Button(ApStr.historyClear, action: clear)
                     .controlSize(.small)
             }
@@ -108,23 +110,13 @@ struct HistorySection: View {
 
     private func row(_ record: ActionRecord) -> some View {
         HStack(spacing: 8) {
-            Text(HelmDates.dayAndMinute(record.at))
-                // **10 is meant here, and the column is why.** This is a figure
-                // read down a column, so the house says `.helmFigure()` — and
-                // that is SF Mono 11, where the widest of the eight languages
-                // measures 115.6 pt against a frame of 96. At tabular 11 the
-                // widest is 100.4, still over. Moving the size means moving the
-                // column,
-                // and the column belongs to the row's composition rather than
-                // to its vocabulary: recorded as a finding, not swept.
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(HelmText.quiet)
-                // The width is fixed and the format is macOS's, not ours:
-                // Russian and Portuguese measure 92 pt in this font, four short
-                // of the frame. Without the limit the overflow wraps to a second
-                // line and takes the height of the whole row with it.
-                .lineLimit(1)
-                .frame(width: 96, alignment: .leading)
+            // **The time is the pass's, not the row's.** It used to sit here, in
+            // a 96-point column, and once the rows were grouped it said the same
+            // thing as the header directly above it — five times over, since a
+            // sweep's records are all of one moment. The column is gone with it,
+            // and so is the finding about its width in eight languages: the
+            // header is a line of its own and has the room.
+            Spacer().frame(width: HelmSpace.s4)
             Text(record.file)
                 .font(HelmText.rowTitle)
                 .lineLimit(1).truncationMode(.middle)

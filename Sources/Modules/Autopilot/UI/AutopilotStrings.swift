@@ -276,9 +276,18 @@ enum ApStr {
     /// the middle one is a folder name and the last already agrees with its own
     /// number in eight languages.
     static func passHeader(at when: Date, folder: String?, files: Int,
-                           language: AppLanguage = AppLanguage.current) -> String {
-        [HelmDates.dayAndMinute(when), folder,
-         Plural.files(files, language: language.rawValue)]
+                           language: AppLanguage = AppLanguage.current,
+                           home: String = NSHomeDirectory()) -> String {
+        // macOS calls `~/Downloads` «Загрузки» and «ダウンロード», and it is the
+        // one that gets to name its own folders — a ninth translation of a name
+        // the system already has is how the same folder comes to have two names
+        // on one screen.
+        let named = folder.map {
+            SystemFolderNames.display(path: $0, home: home, language: language.rawValue)
+                ?? ($0 as NSString).lastPathComponent
+        }
+        return [HelmDates.dayAndMinute(when), named,
+                Plural.files(files, language: language.rawValue)]
             .compactMap { $0 }
             .joined(separator: " · ")
     }

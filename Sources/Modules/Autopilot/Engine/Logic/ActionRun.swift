@@ -12,9 +12,13 @@ public struct ActionRun: Identifiable, Equatable, Sendable {
     public let id: String
     /// When the pass happened, which for a reader is its newest action.
     public let at: Date
-    /// The one folder these came from, by name, or nothing when they came from
-    /// several. A watched folder with subfolders makes passes that touch three
+    /// The one folder these came from, in full, or nothing when they came from
+    /// several — a watched folder with subfolders makes passes that touch three
     /// of them at once.
+    ///
+    /// The whole path rather than the name, because macOS has its own name for
+    /// `~/Downloads` in seven of the eight languages and reading it needs the
+    /// path. Which is `SystemFolderNames`' job, one target up: this is data.
     public let folder: String?
     /// Every record in the pass, in the order the page draws them — including
     /// the ones that cannot be put back, because the pass is a record of what
@@ -60,11 +64,10 @@ public extension ActionHistory {
         }
     }
 
-    /// The folder every one of these came from, by name, or nothing.
+    /// The folder every one of these came from, or nothing.
     private static func oneFolder(of records: [ActionRecord]) -> String? {
         let folders = Set(records.map { ($0.path as NSString).deletingLastPathComponent })
         guard folders.count == 1, let only = folders.first, !only.isEmpty else { return nil }
-        let name = (only as NSString).lastPathComponent
-        return name.isEmpty ? nil : name
+        return only
     }
 }
