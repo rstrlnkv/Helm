@@ -252,7 +252,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// says what happened is composed once.
     @discardableResult
     public func undo(_ recordID: String) -> UndoReport {
-        queue.sync { putBack { $0.id == recordID } }
+        putBack { $0.id == recordID }
     }
 
     /// Put a whole pass back — every action of one sweep or one batch of
@@ -263,7 +263,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// gives each of them its own name back.
     @discardableResult
     public func undoRun(_ run: String) -> UndoReport {
-        queue.sync { putBack { $0.run == run } }
+        putBack { $0.run == run }
     }
 
     /// On `queue`, like every other read-modify-write of this key.
