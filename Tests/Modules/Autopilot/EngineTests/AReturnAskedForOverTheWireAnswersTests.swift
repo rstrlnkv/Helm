@@ -38,6 +38,14 @@ import XCTest
 /// HELM_WIRE_UNDO=1 swift test --filter AReturnAskedForOverTheWireAnswersTests
 /// ```
 ///
+/// **Running it that way leaves a directory behind, and there is no way not to.**
+/// `scratchDirectory` reclaims in a teardown block, and a process that aborts
+/// runs no teardown — so each gated run leaves one `helm-home-…` in `$TMPDIR`.
+/// Said out loud rather than left to be discovered, since 7621 of those
+/// accumulated once from teardowns that merely looked right:
+/// `rm -rf "$TMPDIR"/helm-home-*` afterwards, or run it once and read the crash
+/// report. This stops being true the day the defect is fixed.
+///
 /// Every case is written with a timeout rather than an `await` that would hang,
 /// so that a fix which turns the trap into a wait is reported rather than waited
 /// on — and each asserts first that the thing it is about really happened, since
