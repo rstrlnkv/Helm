@@ -5,6 +5,20 @@ import HelmUI
 import Module_Duplicates_Engine
 import SwiftUI
 
+/// Why a group's first copy is the one that stays.
+///
+/// The engine's `KeepReason` and one case more: the person said so. It is not a
+/// case of `KeepReason` itself, and deliberately — that enum is the ladder, and
+/// every rung of it is something `SurvivingCopy.separates` has to be able to
+/// answer. A rung that only a human can climb would have to be handled there and
+/// could never be reached.
+public enum KeepGrounds: Equatable, Sendable {
+    /// The rung of the policy's ladder that separated it from the next copy.
+    case rung(KeepReason)
+    /// Chosen on this page, in this session.
+    case byHand
+}
+
 /// The module's state: which folder, what was found, what is going to the bin.
 @MainActor public final class DuplicatesViewModel: ObservableObject {
     public enum Phase: Equatable { case start, searching, result }
@@ -236,6 +250,56 @@ import SwiftUI
     /// the copies after the first. So a mark left on a promoted survivor is not a
     /// file at risk — it is a *count* at risk: the bar would promise four files
     /// and three would go, which is the arithmetic this module is measured by.
+    /// The person's answer for one group, where they know something the ladder
+    /// cannot see.
+    ///
+    /// **A rearrangement, not a second kind of state.** Everything on this page
+    /// reads one invariant — the first copy of a group is the one that stays —
+    /// so a chosen survivor held beside the array would be a second answer to a
+    /// question the array already answers, and `wasted`, the basket arithmetic,
+    /// the plans and the background scan's report would each have to be taught
+    /// about it. Moving the copy to the front teaches none of them anything.
+    ///
+    /// The group is pinned by the same act, and its id is a digest of the paths
+    /// *sorted*, so pinning survives the very rearrangement it records.
+    public func keep(_ path: String, in group: DuplicateGroup) {
+        guard let index = groups.firstIndex(where: { $0.id == group.id }),
+              let chosen = groups[index].copies.first(where: { $0.path == path })
+        else { return }
+        pinned.insert(group.id)
+        groups[index] = DuplicateGroup(copies: [chosen]
+            + groups[index].copies.filter { $0.path != path })
+        // Silently, unlike a policy change: the row the person just clicked is
+        // the row that changes, from a checkbox into the badge that says it
+        // stays. A line of report about something visible under the pointer is
+        // noise; the policy's is not, because that one moves rows nobody is
+        // looking at.
+        basket.removeAll { $0 == path }
+    }
+
+    /// Hands the group back to the policy.
+    ///
+    /// It releases the pin as well as re-ordering: a group left pinned to an
+    /// order the rule happens to agree with would silently step over the next
+    /// policy change, and nothing on screen would say why.
+    public func restoreRecommendation(for group: DuplicateGroup) {
+        guard let index = groups.firstIndex(where: { $0.id == group.id }) else { return }
+        pinned.remove(group.id)
+        groups[index] = DuplicateGroup(copies: SurvivingCopy.order(groups[index].copies,
+                                                                   by: KeepRule(policy)))
+        dropMarksOnCopiesThatStay()
+    }
+
+    /// Why this group's first copy is the one that stays — what the header says.
+    ///
+    /// Nil for a group of one, which the list does not draw: `SurvivingCopy`
+    /// answers the rung that separated the survivor from the copy that came
+    /// closest, and with nothing to compare against there is no rung.
+    public func grounds(of group: DuplicateGroup) -> KeepGrounds? {
+        if pinned.contains(group.id) { return .byHand }
+        return SurvivingCopy.reason(among: group.copies, by: KeepRule(policy)).map(KeepGrounds.rung)
+    }
+
     private func dropMarksOnCopiesThatStay() {
         let staying = Set(groups.compactMap { $0.copies.first?.path })
         let freed = basket.filter { staying.contains($0) }
