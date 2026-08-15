@@ -307,6 +307,11 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
                 HelmLog.shared.info("duplicates",
                                     "refused \(stale.count) — changed since the scan")
             }
+            // Spelled once for both ways out: a reply that dropped these on
+            // either path would be a refusal silently discarded.
+            let staleRefusals = stale.map {
+                HelmTrash.Refusal(path: $0, reason: .changedSinceScan)
+            }
             if stopped {
                 // A named outcome, not silence — and nothing moves from here:
                 // the verified remainder was about to be trashed, and Stop
@@ -319,9 +324,7 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
                     removed: [],
                     refused: outOfScope.map {
                         HelmTrash.Refusal(path: $0, reason: .outOfScope)
-                    } + stale.map {
-                        HelmTrash.Refusal(path: $0, reason: .changedSinceScan)
-                    },
+                    } + staleRefusals,
                     freedBytes: 0, cancelled: true)
             }
             // The copies that stay, named for the batch's clone accounting: a
@@ -337,9 +340,7 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
             // ever silently discarded — the house rule this module answers to.
             return DuplicateRemoval(
                 removed: result.removed,
-                refused: result.refused + stale.map {
-                    HelmTrash.Refusal(path: $0, reason: .changedSinceScan)
-                },
+                refused: result.refused + staleRefusals,
                 freedBytes: result.freedBytes)
         }
     }
