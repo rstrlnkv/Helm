@@ -3,33 +3,41 @@ import Foundation
 /// Counted nouns. Interpolating a number in front of a fixed word produces
 /// "Переместить 3 объектов" in Russian and "Move 1 items" in English; both
 /// read as a bug to the person looking at the dialog.
+///
+/// The digits are grouped the way the language groups them (`HelmBytes.grouped`)
+/// rather than interpolated raw: the Disk basket runs to five digits, and
+/// "12345 файлов" in a confirmation dialog is read by counting the digits.
+/// The word's form still follows the raw `count` — grouping changes how the
+/// number is drawn, never which form it takes.
 public enum Plural {
     /// "3 объекта", "1 item" — the generic noun Helm counts in confirmations.
     public static func items(_ count: Int, language: String) -> String {
+        let digits = HelmBytes.grouped(count, language: language)
         switch language {
-        case "ru": return "\(count) " + russian(count, "объект", "объекта", "объектов")
-        case "es": return "\(count) " + (count == 1 ? "elemento" : "elementos")
-        case "fr": return "\(count) " + (count <= 1 ? "élément" : "éléments")
-        case "de": return "\(count) " + (count == 1 ? "Objekt" : "Objekte")
-        case "pt": return "\(count) " + (count == 1 ? "item" : "itens")
-        case "ja": return "\(count)項目"
-        case "zh": return "\(count)个项目"
-        default: return "\(count) " + (count == 1 ? "item" : "items")
+        case "ru": return digits + " " + russian(count, "объект", "объекта", "объектов")
+        case "es": return digits + " " + (count == 1 ? "elemento" : "elementos")
+        case "fr": return digits + " " + (count <= 1 ? "élément" : "éléments")
+        case "de": return digits + " " + (count == 1 ? "Objekt" : "Objekte")
+        case "pt": return digits + " " + (count == 1 ? "item" : "itens")
+        case "ja": return "\(digits)項目"
+        case "zh": return "\(digits)个项目"
+        default: return digits + " " + (count == 1 ? "item" : "items")
         }
     }
 
     /// "3 приложения", "1 app" — the uninstaller's status line, which counts
     /// applications rather than the files inside them.
     public static func apps(_ count: Int, language: String) -> String {
+        let digits = HelmBytes.grouped(count, language: language)
         switch language {
-        case "ru": return "\(count) " + russian(count, "приложение", "приложения", "приложений")
-        case "es": return "\(count) " + (count == 1 ? "app" : "apps")
-        case "fr": return "\(count) " + (count <= 1 ? "app" : "apps")
-        case "de": return "\(count) " + (count == 1 ? "App" : "Apps")
-        case "pt": return "\(count) " + (count == 1 ? "app" : "apps")
-        case "ja": return "アプリ\(count)件"
-        case "zh": return "\(count)个应用"
-        default: return "\(count) " + (count == 1 ? "app" : "apps")
+        case "ru": return digits + " " + russian(count, "приложение", "приложения", "приложений")
+        case "es": return digits + " " + (count == 1 ? "app" : "apps")
+        case "fr": return digits + " " + (count <= 1 ? "app" : "apps")
+        case "de": return digits + " " + (count == 1 ? "App" : "Apps")
+        case "pt": return digits + " " + (count == 1 ? "app" : "apps")
+        case "ja": return "アプリ\(digits)件"
+        case "zh": return "\(digits)个应用"
+        default: return digits + " " + (count == 1 ? "app" : "apps")
         }
     }
 
@@ -37,43 +45,46 @@ public enum Plural {
     /// generic objects `items` counts. A duplicate finder saying "2 файлов"
     /// reads as a bug in exactly the dialog that must not look buggy.
     public static func files(_ count: Int, language: String) -> String {
+        let digits = HelmBytes.grouped(count, language: language)
         switch language {
-        case "ru": return "\(count) " + russian(count, "файл", "файла", "файлов")
-        case "es": return "\(count) " + (count == 1 ? "archivo" : "archivos")
-        case "fr": return "\(count) " + (count <= 1 ? "fichier" : "fichiers")
-        case "de": return "\(count) " + (count == 1 ? "Datei" : "Dateien")
-        case "pt": return "\(count) " + (count == 1 ? "arquivo" : "arquivos")
-        case "ja": return "\(count)個のファイル"
-        case "zh": return "\(count)个文件"
-        default: return "\(count) " + (count == 1 ? "file" : "files")
+        case "ru": return digits + " " + russian(count, "файл", "файла", "файлов")
+        case "es": return digits + " " + (count == 1 ? "archivo" : "archivos")
+        case "fr": return digits + " " + (count <= 1 ? "fichier" : "fichiers")
+        case "de": return digits + " " + (count == 1 ? "Datei" : "Dateien")
+        case "pt": return digits + " " + (count == 1 ? "arquivo" : "arquivos")
+        case "ja": return "\(digits)個のファイル"
+        case "zh": return "\(digits)个文件"
+        default: return digits + " " + (count == 1 ? "file" : "files")
         }
     }
 
     /// "3 правила", "1 rule" — the autopilot page counts these.
     public static func rules(_ count: Int, language: String) -> String {
+        let digits = HelmBytes.grouped(count, language: language)
         switch language {
-        case "ru": return "\(count) " + russian(count, "правило", "правила", "правил")
-        case "es": return "\(count) " + (count == 1 ? "regla" : "reglas")
-        case "fr": return "\(count) " + (count <= 1 ? "règle" : "règles")
-        case "de": return "\(count) " + (count == 1 ? "Regel" : "Regeln")
-        case "pt": return "\(count) " + (count == 1 ? "regra" : "regras")
-        case "ja": return "\(count)個のルール"
-        case "zh": return "\(count)条规则"
-        default: return "\(count) " + (count == 1 ? "rule" : "rules")
+        case "ru": return digits + " " + russian(count, "правило", "правила", "правил")
+        case "es": return digits + " " + (count == 1 ? "regla" : "reglas")
+        case "fr": return digits + " " + (count <= 1 ? "règle" : "règles")
+        case "de": return digits + " " + (count == 1 ? "Regel" : "Regeln")
+        case "pt": return digits + " " + (count == 1 ? "regra" : "regras")
+        case "ja": return "\(digits)個のルール"
+        case "zh": return "\(digits)条规则"
+        default: return digits + " " + (count == 1 ? "rule" : "rules")
         }
     }
 
     /// "30 дней", "1 day" — a rule's age conditions are written in these.
     public static func days(_ count: Int, language: String) -> String {
+        let digits = HelmBytes.grouped(count, language: language)
         switch language {
-        case "ru": return "\(count) " + russian(count, "день", "дня", "дней")
-        case "es": return "\(count) " + (count == 1 ? "día" : "días")
-        case "fr": return "\(count) " + (count <= 1 ? "jour" : "jours")
-        case "de": return "\(count) " + (count == 1 ? "Tag" : "Tage")
-        case "pt": return "\(count) " + (count == 1 ? "dia" : "dias")
-        case "ja": return "\(count)日"
-        case "zh": return "\(count)天"
-        default: return "\(count) " + (count == 1 ? "day" : "days")
+        case "ru": return digits + " " + russian(count, "день", "дня", "дней")
+        case "es": return digits + " " + (count == 1 ? "día" : "días")
+        case "fr": return digits + " " + (count <= 1 ? "jour" : "jours")
+        case "de": return digits + " " + (count == 1 ? "Tag" : "Tage")
+        case "pt": return digits + " " + (count == 1 ? "dia" : "dias")
+        case "ja": return "\(digits)日"
+        case "zh": return "\(digits)天"
+        default: return digits + " " + (count == 1 ? "day" : "days")
         }
     }
 
