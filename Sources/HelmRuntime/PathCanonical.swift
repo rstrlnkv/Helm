@@ -70,6 +70,31 @@ public enum PathCanonical {
                                 inode: info.st_ino)
     }
 
+    /// The directory a path names, with the leaf resolved too.
+    ///
+    /// The other half of `resolvingAncestors`, and the difference is the whole
+    /// reason both exist. A gate over *removal* leaves the leaf alone, because
+    /// trashing a stale alias must remove the alias. A gate over *reading* has
+    /// no such case: you cannot walk a link, only what it points at — and
+    /// `FileManager.enumerator` handed a link to a directory yields nothing,
+    /// which is how a moved `~/Downloads` came back as an empty scan recorded as
+    /// «looked, and it was clean».
+    ///
+    /// Standardized **before** anything else: `URL(fileURLWithPath:)` resolves a
+    /// relative path against the process's working directory, so canonicalizing
+    /// first answers a question nobody asked. `ScanRoot.resolve` records what the
+    /// `$HOME/link/.` spelling cost when the two steps were the other way round.
+    ///
+    /// Written twice before it moved here — the scan root gate and the duplicate
+    /// finder's transit tier, which compare a stored path and a system folder
+    /// against paths a walk produced, and are wrong in the same way if either
+    /// side is left unresolved.
+    public static func resolvingWholePath(_ path: String) -> String {
+        let standardized = (path as NSString).standardizingPath
+        return URL(fileURLWithPath: standardized)
+            .resolvingSymlinksInPath().standardizedFileURL.path
+    }
+
     /// The path with every symlink in its parent chain resolved, and its last
     /// component put back untouched.
     ///

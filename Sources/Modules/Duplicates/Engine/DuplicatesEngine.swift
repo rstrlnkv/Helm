@@ -131,34 +131,64 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     /// exactly that (ARCHITECTURE.md § And a seal's first use has to actually
     /// happen).
     func storedKeepPolicy() -> KeepPolicy {
-        // No store is no settings at all — the shape every test that never asked
-        // for one is in, and there is nothing to seal or to adopt.
-        guard let store else { return .standard }
-        let key = DuplicatesSettings.keepPolicyKey
-        let stored = store.string(key, default: "")
-        guard !stored.isEmpty else {
+        switch storedSetting(DuplicatesSettings.keepPolicyKey) {
+        case .unset:
+            // Spend the adoption door here, on the read that answers with a
+            // default — that is what «on first use» means, and a getter that
+            // returns before touching the guard never spends it.
             settings.establishKey()
             return .standard
-        }
-        switch settings.verdict(payload: Data(stored.utf8),
-                                mac: store.string(SettingGuard.macKey(for: key), default: "")) {
-        case .sealed:
-            break
-        case .adopt:
-            // Chosen before this setting was sealed, on an installation that has
-            // never sealed anything: accepted once and sealed, so tomorrow's run
-            // has nothing to trust.
-            store.set(settings.seal(Data(stored.utf8)) ?? "",
-                      for: SettingGuard.macKey(for: key))
-        case .broken:
+        case .notHelmsOwn:
             HelmLog.shared.warn("duplicates", "the stored keep policy is not Helm's own; "
                                 + "keeping the copy that was filed rather than downloaded")
             return .standard
+        case .mine(let stored):
+            // Read only after the seal has spoken. A value from the file that no
+            // longer matches its MAC is somebody else's opinion about which of
+            // the person's files is the spare one.
+            return KeepPolicy(rawValue: stored) ?? .standard
         }
-        // Read only after the seal has spoken. A value from the file that no
-        // longer matches its MAC is somebody else's opinion about which of the
-        // person's files is the spare one.
-        return KeepPolicy(rawValue: stored) ?? .standard
+    }
+
+    /// A stored setting, read back through the seal.
+    ///
+    /// The three answers are kept apart because the two callers say different
+    /// things about them and refuse in different directions — the folder stops
+    /// the walk and the policy falls back to its default, and «nothing stored»
+    /// is a sentence of its own in both. What they share is the part with no
+    /// judgement in it: read the value, read the MAC beside it, ask the guard,
+    /// and seal what the one open door adopts.
+    private enum StoredSetting {
+        /// Nothing there, or no store at all — which is every caller that never
+        /// asked for one, and has nothing to seal or to adopt.
+        case unset
+        /// Stored, and Helm is the one who stored it. Adopted and sealed on the
+        /// run that creates the key.
+        case mine(String)
+        /// Stored by something else. Whoever can write the value can delete the
+        /// MAC beside it, so a missing seal is this too — everywhere but on the
+        /// run that made the key.
+        case notHelmsOwn
+    }
+
+    private func storedSetting(_ key: String) -> StoredSetting {
+        guard let store else { return .unset }
+        let stored = store.string(key, default: "")
+        guard !stored.isEmpty else { return .unset }
+        let payload = Data(stored.utf8)
+        switch settings.verdict(payload: payload,
+                                mac: store.string(SettingGuard.macKey(for: key), default: "")) {
+        case .sealed:
+            return .mine(stored)
+        case .adopt:
+            // Chosen before this setting was sealed, on an installation that has
+            // never sealed anything: accepted once and sealed, so tomorrow's run
+            // does not have to trust anything.
+            store.set(settings.seal(payload) ?? "", for: SettingGuard.macKey(for: key))
+            return .mine(stored)
+        case .broken:
+            return .notHelmsOwn
+        }
     }
 
     /// Beside the journal, and private for the same reason: the keys name
@@ -194,29 +224,23 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
         // The walk uses what the gate returned, never what was stored. Judging
         // one spelling and walking another is how `$HOME/link/.` got past a
         // check that had already approved a different path.
-        guard let stored = store?.string("folder", default: ""), !stored.isEmpty else {
-            HelmLog.shared.info("scan", "duplicates: no folder chosen yet")
-            return nil
-        }
+        //
         // **The stored root is not evidence of anything on its own.** It is a
         // plain string in a plist any process running as this user can rewrite,
         // and here it decides how far a reader reaches with nobody at the desk.
-        // `ScanRoot` below bounds where it may point; this says whether Helm is
-        // the one who put it there.
-        let mac = store?.string(SettingGuard.macKey(for: "folder"), default: "")
-        switch settings.verdict(payload: Data(stored.utf8), mac: mac) {
-        case .sealed:
-            break
-        case .adopt:
-            // Chosen before sealing existed, on an installation that has never
-            // sealed anything. Accepted once and sealed, the same trust-on-first
-            // -use Autopilot's rules take.
-            store?.set(settings.seal(Data(stored.utf8)) ?? "",
-                       for: SettingGuard.macKey(for: "folder"))
-        case .broken:
+        // `ScanRoot` below bounds where it may point; the seal says whether Helm
+        // is the one who put it there.
+        let stored: String
+        switch storedSetting("folder") {
+        case .unset:
+            HelmLog.shared.info("scan", "duplicates: no folder chosen yet")
+            return nil
+        case .notHelmsOwn:
             HelmLog.shared.warn("scan", "duplicates: the stored folder is not Helm's own; "
                                 + "choose it again to scan in the background")
             return nil
+        case .mine(let folder):
+            stored = folder
         }
         guard let root = ScanRoot.resolve(stored) else {
             HelmLog.shared.warn("scan", "duplicates: stored root refused")

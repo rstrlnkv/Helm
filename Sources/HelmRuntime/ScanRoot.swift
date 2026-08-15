@@ -70,8 +70,7 @@ public enum ScanRoot {
         let standardized = (rawPath as NSString).standardizingPath
         guard standardized.hasPrefix("/"), standardized != "/" else { return nil }
 
-        let path = URL(fileURLWithPath: standardized)
-            .resolvingSymlinksInPath().standardizedFileURL.path
+        let path = PathCanonical.resolvingWholePath(standardized)
         guard path.hasPrefix("/"), path != "/" else { return nil }
 
         // Folded, because the boot volume is case-insensitive while
@@ -79,8 +78,7 @@ public enum ScanRoot {
         // resolved the same way, or a home that is itself reached through a link
         // would never match its own children.
         let lowered = path.lowercased()
-        let loweredHome = URL(fileURLWithPath: home)
-            .resolvingSymlinksInPath().standardizedFileURL.path.lowercased()
+        let loweredHome = PathCanonical.resolvingWholePath(home).lowercased()
         guard lowered == loweredHome || lowered.hasPrefix(loweredHome + "/") else {
             return nil
         }

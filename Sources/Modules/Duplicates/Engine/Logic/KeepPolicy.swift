@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 /// What the person believes an extra copy *is*.
 ///
@@ -83,10 +84,11 @@ enum KeepReason: String, Sendable {
 /// on-disk name, so it is built from the home directory.
 struct TransitFolders: Sendable {
 
-    /// Lower-cased directory paths, each with a trailing separator, so a prefix
-    /// test cannot mistake `~/DownloadsArchive` for something inside
-    /// `~/Downloads`.
-    private let roots: [String]
+    /// Lower-cased directory paths, each ending in a separator, so a prefix test
+    /// cannot mistake `~/DownloadsArchive` for something inside `~/Downloads`.
+    /// A set, because the only question asked of them is whether one of them
+    /// begins a path.
+    private let roots: Set<String>
 
     /// **Both spellings of every root, and that is the point.** A moved
     /// Downloads is a link to somewhere else with a link left behind:
@@ -98,21 +100,15 @@ struct TransitFolders: Sendable {
     /// of the walk already real, and asking the filesystem again for each of a
     /// hundred thousand of them is a question that belongs to the group.
     init(roots: [String]) {
-        var seen: Set<String> = []
-        var ordered: [String] = []
-        for raw in roots {
-            let standardized = (raw as NSString).standardizingPath
-            let resolved = URL(fileURLWithPath: standardized)
-                .resolvingSymlinksInPath().standardizedFileURL.path
-            for spelling in [standardized, resolved] {
-                // Folded, because the boot volume is case-insensitive while a
-                // path comparison is not — the same reasoning, and the same
-                // fold, as `ScanRoot`.
-                let prefix = spelling.lowercased() + "/"
-                if seen.insert(prefix).inserted { ordered.append(prefix) }
+        self.roots = Set(roots.flatMap { raw -> [String] in
+            let named = (raw as NSString).standardizingPath
+            return [named, PathCanonical.resolvingWholePath(named)].map {
+                // One trailing separator however the caller spelled it, and
+                // folded — the boot volume is case-insensitive while a path
+                // comparison is not, which is the same fold `ScanRoot` makes.
+                PathCanonical.withoutTrailingSeparators($0).lowercased() + "/"
             }
-        }
-        self.roots = ordered
+        })
     }
 
     /// Where this Mac lands what arrives.
