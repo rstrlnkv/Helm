@@ -20,6 +20,12 @@ import SwiftUI
 
     let vm: ModuleViewModel
     private let client: TransportClient
+    /// Where this Mac keeps the folders the presets are about, and the home
+    /// directory `WatchScope` measures against. Both injected for the same
+    /// reason: a test must be able to stand a moved Downloads, or one that leads
+    /// out of the home directory, in front of the gate.
+    private let presetFolders: any PresetFolderPort
+    private let home: String
 
     /// **No shared instance, deliberately.**
     ///
@@ -33,9 +39,13 @@ import SwiftUI
     /// If Autopilot does get a tile, the thing to bring back is this cache: the
     /// initialiser asks the engine for the folders and the history, and a view
     /// that rebuilds would send both requests again every time.
-    init(vm: ModuleViewModel) {
+    init(vm: ModuleViewModel,
+         presetFolders: any PresetFolderPort = SystemPresetFolders(),
+         home: String = NSHomeDirectory()) {
         self.vm = vm
         self.client = TransportClient(vm.transport)
+        self.presetFolders = presetFolders
+        self.home = home
         Task { await load() }
     }
 
@@ -53,7 +63,25 @@ import SwiftUI
         // drawing: refusing every return is a claim about somebody's Mac, and
         // a request that came back with nothing cannot make one.
         historyRefused = status?.historyRefused ?? false
+        refreshPresets()
         await loadHistory()
+    }
+
+    // MARK: - Rules somebody can have without writing one
+
+    /// The presets still worth offering, held rather than derived on every body
+    /// pass: the answer changes only when the rule set does, and computing it
+    /// asks `FileManager` where two folders are.
+    @Published private(set) var presets: [OfferedPreset] = []
+
+    /// **Nothing is offered while the rules are refused.** Every preset is a
+    /// save, and while the rules are refused a save is refused with them — so
+    /// the whole section would be buttons whose only outcome is a line in the
+    /// log.
+    private func refreshPresets() {
+        presets = refusal == nil
+            ? PresetOffer.offered(watching: folders, paths: presetFolders, home: home)
+            : []
     }
 
     /// Why none of the stored rules are running, or `nil` when they are.
@@ -136,6 +164,13 @@ import SwiftUI
         // thing anybody can act on, and "the twelve files that arrived at
         // 14:22" is.
         runs = ActionHistory.runs(of: history)
+    }
+
+    /// Why the record is empty, when it is. Three states wore one sentence, and
+    /// two of them are about the rules rather than about the module — which is
+    /// why this is asked of the folders as well as of the passes.
+    var historyEmpty: HistoryEmpty.Reason? {
+        HistoryEmpty.reason(folders: folders, runs: runs)
     }
 
     func clearHistory() {
@@ -221,9 +256,23 @@ import SwiftUI
     /// write too, and that is the guard that matters; this is the half that stops
     /// the page offering a gesture whose only outcome is a line in the log.
     private func save() {
+        // Before the guard, because every gesture that reaches here changed the
+        // rule set: a preset added, a rule deleted — which offers that preset
+        // again — a folder no longer watched.
+        refreshPresets()
         guard refusal == nil else { return }
         let list = folders
-        Task { await client.send(AutopilotCommand.setFolders, encoding: list) }
+        Task { await sendFolders(list) }
+    }
+
+    /// The same write, waited for.
+    ///
+    /// One caller needs that: a folder arriving with a preset in it is swept
+    /// straight afterwards, and the sweep names the folder by id — so a
+    /// `runNow` that overtook the write would ask the engine about a folder it
+    /// had not been told about yet, and answer nothing.
+    private func sendFolders(_ list: [WatchedFolder]) async {
+        await client.send(AutopilotCommand.setFolders, encoding: list)
     }
 
     // MARK: - Folders
@@ -270,13 +319,64 @@ import SwiftUI
         return rule
     }
 
-    func save(_ rule: Rule, in folder: WatchedFolder) {
-        update(folder) { current in
+    /// The editor's Done, for every rule in the module.
+    ///
+    /// Asynchronous for the one folder that is not being watched yet: a preset's
+    /// draft. Waiting is the whole of it — the write has to land before the
+    /// sweep that follows can name the folder.
+    func save(_ rule: Rule, in folder: WatchedFolder) async {
+        guard folders.contains(where: { $0.id == folder.id }) else {
+            await saveRuleWithItsFolder(rule, in: folder)
+            return
+        }
+        // Changed and written in one breath rather than through `update`, whose
+        // write is a detached task: the two branches of this function have to
+        // finish at the same point, or a caller that waits for one is racing the
+        // other.
+        change(folder) { current in
             guard let index = current.rules.firstIndex(where: { $0.id == rule.id }) else {
                 current.rules.append(rule); return
             }
             current.rules[index] = rule
         }
+        refreshPresets()
+        guard refusal == nil else { return }
+        await sendFolders(folders)
+    }
+
+    /// **A folder that arrives with a rule already in it, and no panel.**
+    ///
+    /// The single named exception to «a folder gets in through the open panel»,
+    /// and it is narrow by construction: the path was `FileManager`'s answer,
+    /// the button said which folder in words, and the dry run the person just
+    /// read was of that folder. The same gate the panel path applies is applied
+    /// here too — the runner refuses out-of-scope work anyway, and this is the
+    /// half that says so in a sentence instead of in the log.
+    ///
+    /// Only the rule that was shown. The draft handed to the editor is a whole
+    /// `WatchedFolder`, and a dry run of the folder fills it with every other
+    /// rule that would run there; storing it as it stands would store rules
+    /// nobody agreed to.
+    ///
+    /// **And then the one automatic sweep in the module.** A rule is a decision
+    /// carried out from then on, and «from then on» starting an hour later
+    /// leaves somebody looking at a folder that has not changed. This is the
+    /// only place it happens, because it is the only place Helm knows the folder
+    /// holds nothing but what a preset just put there: a folder somebody was
+    /// already watching has their own rules in it, and sweeping it on their
+    /// behalf would run all of them over everything in it.
+    private func saveRuleWithItsFolder(_ rule: Rule, in folder: WatchedFolder) async {
+        guard refusal == nil else { return }
+        guard WatchScope.allows(folder.path, home: home) else {
+            banner = ApStr.needsAccess
+            return
+        }
+        var fresh = folder
+        fresh.rules = [rule]
+        folders.append(fresh)
+        refreshPresets()
+        await sendFolders(folders)
+        await runNow(fresh)
     }
 
     func remove(_ rule: Rule, from folder: WatchedFolder) {
@@ -292,10 +392,17 @@ import SwiftUI
         }
     }
 
-    private func update(_ folder: WatchedFolder, _ change: (inout WatchedFolder) -> Void) {
-        guard let index = folders.firstIndex(where: { $0.id == folder.id }) else { return }
-        change(&folders[index])
+    private func update(_ folder: WatchedFolder, _ edit: (inout WatchedFolder) -> Void) {
+        change(folder, edit)
         save()
+    }
+
+    /// The edit without the write. Split off for `save(_:in:)`, which is
+    /// `async` and does its own writing — everything else here is a gesture with
+    /// nothing waiting on it.
+    private func change(_ folder: WatchedFolder, _ edit: (inout WatchedFolder) -> Void) {
+        guard let index = folders.firstIndex(where: { $0.id == folder.id }) else { return }
+        edit(&folders[index])
     }
 
     // MARK: - Seeing before doing

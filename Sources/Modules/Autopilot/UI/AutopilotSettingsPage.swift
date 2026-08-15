@@ -210,7 +210,7 @@ struct AutopilotSettingsPage: View {
             Toggle("", isOn: Binding(get: { rule.enabled }, set: { on in
                 var copy = rule
                 copy.enabled = on
-                rvm.save(copy, in: folder)
+                Task { await rvm.save(copy, in: folder) }
             }))
             .toggleStyle(.switch)
             .controlSize(.mini)

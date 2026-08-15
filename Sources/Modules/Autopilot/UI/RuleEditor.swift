@@ -226,7 +226,11 @@ struct RuleEditor: View {
             Button(ApStr.cancel) { dismiss() }
                 .keyboardShortcut(.cancelAction)
             Button(ApStr.done) {
-                rvm.save(rule, in: folder)
+                // The task outlives the sheet on purpose. A preset's folder is
+                // written and then swept, and the report belongs on the page
+                // this is dismissing back to — not to a window that is waiting
+                // for a sweep before it closes.
+                Task { await rvm.save(rule, in: folder) }
                 dismiss()
             }
             .buttonStyle(.borderedProminent)
