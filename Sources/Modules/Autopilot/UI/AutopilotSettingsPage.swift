@@ -41,9 +41,23 @@ struct AutopilotSettingsPage: View {
             content
             if let banner = rvm.banner {
                 Divider()
-                HStack {
+                HStack(alignment: .top) {
+                    // A return's report is several lines — one per file that
+                    // did not go back, with its reason — and a single-line
+                    // banner would truncate exactly the part that explains
+                    // itself.
                     Text(banner).font(HelmText.rowTitle)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .multilineTextAlignment(.leading)
                     Spacer()
+                    // The pass this run just made, offered where the sentence
+                    // about it is.
+                    if let pass = rvm.bannerRun {
+                        Button(ApStr.putBackFiles(pass.undoable.count)) {
+                            Task { await rvm.undoRun(pass) }
+                        }
+                        .controlSize(.small)
+                    }
                     Button(ApStr.done) { rvm.dismissBanner() }.controlSize(.small)
                 }
                 .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)

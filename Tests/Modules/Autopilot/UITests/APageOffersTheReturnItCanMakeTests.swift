@@ -160,6 +160,59 @@ final class APageOffersTheReturnItCanMakeTests: XCTestCase {
         XCTAssertFalse(model.canPutBack(try XCTUnwrap(model.history.first)))
     }
 
+    // MARK: - Straight after a run
+
+    /// **The moment somebody most wants it.** A rule has just run on a folder
+    /// they were watching it do, and the report says it acted on twelve files;
+    /// the gesture that belongs beside that sentence is "put those twelve
+    /// back", not "scroll down and find the pass".
+    func testARunThatActedOffersThatPassBackOnTheBanner() async throws {
+        let wire = AutopilotWire(folders: [WatchedFolder(id: "f", path: "/tmp/watched")],
+                                 history: [record("a.pdf"), record("b.pdf", at: 2)],
+                                 report: SweepReport(folderID: "f", examined: 2, acted: 2,
+                                                     refused: 0, failed: 0))
+        let model = model(on: wire)
+        await model.load()
+
+        await model.runNow(try XCTUnwrap(model.folders.first))
+
+        XCTAssertNotNil(model.banner, "precondition: the run reported something")
+        XCTAssertEqual(model.bannerRun?.id, "pass-1")
+        XCTAssertEqual(model.bannerRun?.undoable.count, 2)
+    }
+
+    /// A run that moved nothing has no pass to offer, and the newest pass in
+    /// the history is somebody else's work from an hour ago.
+    func testARunThatActedOnNothingOffersNoReturn() async throws {
+        let wire = AutopilotWire(folders: [WatchedFolder(id: "f", path: "/tmp/watched")],
+                                 history: [record("a.pdf")],
+                                 report: SweepReport(folderID: "f", examined: 2, acted: 0,
+                                                     refused: 2, failed: 0))
+        let model = model(on: wire)
+        await model.load()
+
+        await model.runNow(try XCTUnwrap(model.folders.first))
+
+        XCTAssertNotNil(model.banner, "precondition: the run reported something")
+        XCTAssertNil(model.bannerRun)
+    }
+
+    /// And it goes away with the banner it belongs to.
+    func testTheOfferGoesWithTheBanner() async throws {
+        let wire = AutopilotWire(folders: [WatchedFolder(id: "f", path: "/tmp/watched")],
+                                 history: [record("a.pdf")],
+                                 report: SweepReport(folderID: "f", examined: 1, acted: 1,
+                                                     refused: 0, failed: 0))
+        let model = model(on: wire)
+        await model.load()
+        await model.runNow(try XCTUnwrap(model.folders.first))
+        XCTAssertNotNil(model.bannerRun, "precondition: the offer was made")
+
+        model.dismissBanner()
+
+        XCTAssertNil(model.bannerRun)
+    }
+
     /// A history something else wrote is drawn and offers nothing, because
     /// every return out of it would refuse.
     func testAHistoryThatIsNotHelmsOffersNoReturns() async throws {

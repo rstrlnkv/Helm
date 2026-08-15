@@ -117,6 +117,16 @@ import SwiftUI
     /// out instead of items that could only fail.
     @Published private(set) var historyRefused = false
 
+    /// The pass the banner is about, when there is one to offer.
+    ///
+    /// **The moment somebody most wants a return.** A rule has just run on a
+    /// folder they were watching it run on, and the report says it acted on
+    /// twelve files; the gesture that belongs beside that sentence is "put
+    /// those twelve back", not "scroll down and find the pass". Nil when the
+    /// run acted on nothing, because the newest pass in the history is then
+    /// somebody else's work from an hour ago.
+    @Published private(set) var bannerRun: ActionRun?
+
     /// The history in passes, which is what the section draws: five hundred
     /// rows is not a thing anybody can act on, and "the twelve files that
     /// arrived at 14:22" is.
@@ -166,6 +176,7 @@ import SwiftUI
         let report: UndoReport? = await client.request(command, encoding: UndoRequest(id: id))
         guard let report else { return }
         bannerFolderID = nil
+        bannerRun = nil
         banner = sentence(for: report)
         await loadHistory()
     }
@@ -332,9 +343,25 @@ import SwiftUI
         // still said nothing, at the one moment somebody is looking straight at
         // the module asking why a rule did nothing.
         await loadHistory()
+        // The pass this run just made, which is the newest one in the history
+        // it has only now read back. A run that acted on nothing has none —
+        // the newest pass is then work from an hour ago, and offering to put
+        // *that* back beside «Acted on 0 of 3» would be the wrong sentence
+        // attached to the wrong twelve files.
+        bannerRun = report.acted > 0 ? runs.first.flatMap { canPutBack($0.id) } : nil
     }
 
-    func dismissBanner() { banner = nil; bannerFolderID = nil }
+    /// The pass with that id, when there is anything in it a return could act
+    /// on. One place, so the banner and the section cannot disagree about what
+    /// is offered.
+    private func canPutBack(_ run: String) -> ActionRun? {
+        guard !historyRefused, let pass = runs.first(where: { $0.id == run }),
+              !pass.undoable.isEmpty
+        else { return nil }
+        return pass
+    }
+
+    func dismissBanner() { banner = nil; bannerFolderID = nil; bannerRun = nil }
 }
 
 /// What the page draws where the folder list goes.
