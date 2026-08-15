@@ -85,11 +85,23 @@ struct HomebrewSettingsPage: View {
     // MARK: - Manager
 
     /// Counts as a quiet status line rather than a panel of dials.
-    private var statusLine: String {
+    ///
+    /// Internal rather than private, for the reason the Uninstaller's
+    /// `statusLine` gives: which sentence stands over which loading state is
+    /// the whole of a fix, and a `body` is not somewhere a test can reach.
+    var statusLine: String {
         // A count that has not arrived is not a count of zero. The list reloads
         // after every operation, and for that second the line read
         // "0 packages · 0 updates · 0 casks" over a machine with 53 of them.
         guard hb.loadedInstalled else { return HbStr.packagesLoading }
+        // The same rule for updates, which this guard fixed only half of the
+        // first time: `loadIfNeeded` deliberately never asks `brew outdated`,
+        // so on first open the line said «Updates: 0» about a question with no
+        // answer — for as long as nobody visited the Updates tab.
+        guard hb.loadedOutdated else {
+            return HbStr.packagesStatusNoUpdates(hb.installed.count,
+                                                 hb.installed.filter(\.isCask).count)
+        }
         return HbStr.packagesStatus(hb.installed.count,
                              hb.outdated.count,
                              hb.installed.filter(\.isCask).count)
