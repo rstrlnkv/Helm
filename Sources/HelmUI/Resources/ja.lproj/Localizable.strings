@@ -82,6 +82,7 @@
 "Choose…" = "選択…";
 "Clear" = "消去";
 "Clear selection" = "選択を解除";
+"Clear the marks" = "削除予定を解除";
 "Clipboard" = "クリップボード";
 "Close" = "閉じる";
 "Collapsed" = "折りたたみ済み";
@@ -809,7 +810,7 @@
 "kept: by folder" = "残す理由: フォルダ";
 "kept: arrived first" = "残す理由: 先に来た";
 "kept: the shorter path" = "残す理由: パスが短い";
-"kept: by name" = "残す理由: 名前順";
+"kept: first alphabetically" = "残す理由: アルファベット順で先頭";
 "kept: your choice" = "残す理由: あなたの選択";
 "your choice" = "あなたの選択";
 "Keep this copy" = "このコピーを残す";

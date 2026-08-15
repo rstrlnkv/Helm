@@ -44,7 +44,7 @@ enum DupStr {
     /// is emptied. Word for word `DiskStrings.movedToTrash` — four modules say
     /// this sentence now and they must say it the same way.
     static func movedToTrash(_ size: String) -> String {
-        L("Moved to the Trash — \(size)", [.ru: "Перемещено в Корзину — \(size)", .es: "Trasladado a la papelera: \(size)", .fr: "Placé dans la corbeille — \(size)", .de: "In den Papierkorb gelegt – \(size)", .ja: "ゴミ箱に入れました — \(size)", .zh: "已移到废纸篓 — \(size)", .pt: "Movido para o Lixo — \(size)"])
+        L("Moved to the Trash — \(size)", [.ru: "Перемещено в Корзину — \(size)", .es: "Trasladado a la papelera — \(size)", .fr: "Placé dans la corbeille — \(size)", .de: "In den Papierkorb gelegt — \(size)", .ja: "ゴミ箱に入れました — \(size)", .zh: "已移到废纸篓 — \(size)", .pt: "Movido para o Lixo — \(size)"])
     }
     static func confirmTrash(_ count: Int, _ size: String) -> String {
         // The size stays — how much is going is worth knowing — but the promise
@@ -152,8 +152,10 @@ enum DupStr {
         // nothing on a screen; the shorter path is what somebody can look at.
         case .rung(.depth): return L("kept: the shorter path", language: language)
         // A coin toss, and it has to look like one: two copies alike in every
-        // way the rule can see were separated by the alphabet.
-        case .rung(.name): return L("kept: by name", language: language)
+        // way the rule can see were separated by the alphabet. «By name» sold
+        // that tie-break as a criterion; «first alphabetically» says the coin
+        // it actually is.
+        case .rung(.name): return L("kept: first alphabetically", language: language)
         case .byHand: return L("kept: your choice", language: language)
         }
     }
@@ -166,7 +168,12 @@ enum DupStr {
     /// refuses. A control that lies about its effect on files is the failure
     /// this page is most exposed to.
     static var basketAllExtras: String { L("Mark every extra copy") }
-    static var clearBasket: String { L("Clear selection") }
+    /// **Not «Clear selection».** That key is Leftovers' and the Uninstaller's,
+    /// where a checkbox is a selection; here a copy is *marked* for removal, and
+    /// the module says «Mark…» everywhere else. Sharing the selection key gave it
+    /// «Снять выбор» in Russian against three «Отметить…» buttons — its own key
+    /// pairs it with them and reads «Снять отметки». One English key, one meaning.
+    static var clearBasket: String { L("Clear the marks") }
 
     // MARK: - What an extra copy is
 

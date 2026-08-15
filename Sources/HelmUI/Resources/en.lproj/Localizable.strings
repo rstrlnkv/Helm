@@ -82,6 +82,7 @@
 "Choose…" = "Choose…";
 "Clear" = "Clear";
 "Clear selection" = "Clear selection";
+"Clear the marks" = "Clear the marks";
 "Clipboard" = "Clipboard";
 "Close" = "Close";
 "Collapsed" = "Collapsed";
@@ -809,7 +810,7 @@
 "kept: by folder" = "kept: by folder";
 "kept: arrived first" = "kept: arrived first";
 "kept: the shorter path" = "kept: the shorter path";
-"kept: by name" = "kept: by name";
+"kept: first alphabetically" = "kept: first alphabetically";
 "kept: your choice" = "kept: your choice";
 "your choice" = "your choice";
 "Keep this copy" = "Keep this copy";

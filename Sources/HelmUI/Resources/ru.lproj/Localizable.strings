@@ -82,6 +82,7 @@
 "Choose…" = "Выбрать…";
 "Clear" = "Очистить";
 "Clear selection" = "Снять выбор";
+"Clear the marks" = "Снять отметки";
 "Clipboard" = "Буфер обмена";
 "Close" = "Закрыть";
 "Collapsed" = "Свёрнуто";
@@ -794,9 +795,9 @@
 "Put back" = "Вернуть";
 "back where it was" = "возвращено";
 "The mark that stops a rule acting twice could not be written, so the rule may take this file again within the hour." = "Метку, которая не даёт правилу сработать дважды, записать не удалось — в течение часа правило может забрать этот файл снова.";
-"The record of what Autopilot did was not written by Helm, so nothing in it can be put back." = "Записи о том, что делал автопилот, написаны не Helm — вернуть из них ничего нельзя.";
+"The record of what Autopilot did was not written by Helm, so nothing in it can be put back." = "Записи о том, что делал Автопилот, написаны не Helm — вернуть из них ничего нельзя.";
 "Clear the record and start again" = "Очистить историю и начать заново";
-"it is no longer where Autopilot put it" = "его больше нет там, куда его положил автопилот";
+"it is no longer where Autopilot put it" = "его больше нет там, куда его положил Автопилот";
 "something else is there now" = "там теперь другой файл";
 "the folder it came from is gone" = "папки, откуда он взят, больше нет";
 "it is outside the folders a rule may reach" = "он вне папок, куда правилу можно";
@@ -806,10 +807,10 @@
 "this record was not written by Helm" = "эта запись написана не Helm";
 "Helm did not record enough to put it back" = "Helm записал слишком мало, чтобы вернуть его";
 "the path changed underneath" = "путь под ним изменился";
-"kept: by folder" = "оставлена: по месту";
+"kept: by folder" = "оставлена: по папке";
 "kept: arrived first" = "оставлена: появилась раньше";
 "kept: the shorter path" = "оставлена: путь короче";
-"kept: by name" = "оставлена: по имени";
+"kept: first alphabetically" = "оставлена: первая по алфавиту";
 "kept: your choice" = "оставлена: ваш выбор";
 "your choice" = "ваш выбор";
 "Keep this copy" = "Оставить эту копию";

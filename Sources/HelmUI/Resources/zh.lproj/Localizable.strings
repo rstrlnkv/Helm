@@ -59,8 +59,8 @@
 "Autopilot" = "自动整理";
 "Autopilot shows what it did. A report of the last 30 days at the bottom of the page: which file, where it went, and which rule decided — because a folder that tidies itself is only worth trusting if it can say what it tidied." = "自动整理会说明它做过什么。最近 30 天的报告：哪个文件、去了哪里、由哪条规则决定。";
 "Autopilot stops sinking files on a USB stick. Sorting into a subfolder used the file’s current parent, so on a disk that cannot carry Helm’s “already done” mark every sweep sorted the result again. A rule with nowhere to move to can no longer be switched on." = "修正了文件在 U 盘上被逐层埋深的问题；没有目标文件夹的规则不能再开启。";
-"Autopilot's preview now says where each file would land, not only what would be done to it. And About shows both badges that apply: the program is in beta, and this copy is on the dev channel." = "“自动驾驶”的预览现在会说明每个文件会落到哪里，而不只是会发生什么。“关于 Helm”同时显示两个适用的标签。";
-"Autopilot: folders that keep themselves in order. Point Helm at a folder and give it rules — a file that arrives is checked against them in order, and the first one that matches is the one that runs. Sort by kind or by month, move, rename, tag, or bin; conditions include the site a file was downloaded from. A new rule is shown before it is switched on: the editor lists what is in the folder now and what would happen to each file. Nothing is ever overwritten, and nothing is acted on twice." = "“自动驾驶”：会自己保持整齐的文件夹。指定一个文件夹并设定规则，新到的文件按顺序检查，第一条匹配的规则执行。按种类或月份归类、移动、重命名、加标签或移到废纸篓。新规则在开启前先展示：编辑器会列出文件夹里现在有什么、每个文件会发生什么。";
+"Autopilot's preview now says where each file would land, not only what would be done to it. And About shows both badges that apply: the program is in beta, and this copy is on the dev channel." = "“自动整理”的预览现在会说明每个文件会落到哪里，而不只是会发生什么。“关于 Helm”同时显示两个适用的标签。";
+"Autopilot: folders that keep themselves in order. Point Helm at a folder and give it rules — a file that arrives is checked against them in order, and the first one that matches is the one that runs. Sort by kind or by month, move, rename, tag, or bin; conditions include the site a file was downloaded from. A new rule is shown before it is switched on: the editor lists what is in the folder now and what would happen to each file. Nothing is ever overwritten, and nothing is acted on twice." = "“自动整理”：会自己保持整齐的文件夹。指定一个文件夹并设定规则，新到的文件按顺序检查，第一条匹配的规则执行。按种类或月份归类、移动、重命名、加标签或移到废纸篓。新规则在开启前先展示：编辑器会列出文件夹里现在有什么、每个文件会发生什么。";
 "BETA" = "BETA";
 "BUILD" = "构建";
 "Back" = "返回";
@@ -82,6 +82,7 @@
 "Choose…" = "选择…";
 "Clear" = "清除";
 "Clear selection" = "取消选择";
+"Clear the marks" = "清除标记";
 "Clipboard" = "剪贴板";
 "Close" = "关闭";
 "Collapsed" = "已折叠";
@@ -794,9 +795,9 @@
 "Put back" = "放回";
 "back where it was" = "已放回原处";
 "The mark that stops a rule acting twice could not be written, so the rule may take this file again within the hour." = "无法写入阻止规则重复执行的标记，规则可能在一小时内再次处理这个文件。";
-"The record of what Autopilot did was not written by Helm, so nothing in it can be put back." = "自动驾驶的操作记录不是 Helm 写的，因此其中的任何内容都无法放回。";
+"The record of what Autopilot did was not written by Helm, so nothing in it can be put back." = "自动整理的操作记录不是 Helm 写的，因此其中的任何内容都无法放回。";
 "Clear the record and start again" = "清除记录并重新开始";
-"it is no longer where Autopilot put it" = "它已不在自动驾驶放置的位置";
+"it is no longer where Autopilot put it" = "它已不在自动整理放置的位置";
 "something else is there now" = "那里现在是别的文件";
 "the folder it came from is gone" = "它原来所在的文件夹已不存在";
 "it is outside the folders a rule may reach" = "它不在规则可以触及的文件夹内";
@@ -809,7 +810,7 @@
 "kept: by folder" = "保留原因：所在文件夹";
 "kept: arrived first" = "保留原因：先出现";
 "kept: the shorter path" = "保留原因：路径更短";
-"kept: by name" = "保留原因：按名称";
+"kept: first alphabetically" = "保留原因：字母顺序在前";
 "kept: your choice" = "保留原因：你的选择";
 "your choice" = "你的选择";
 "Keep this copy" = "保留这份副本";

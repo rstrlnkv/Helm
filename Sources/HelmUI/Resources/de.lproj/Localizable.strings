@@ -82,6 +82,7 @@
 "Choose…" = "Wählen…";
 "Clear" = "Löschen";
 "Clear selection" = "Auswahl aufheben";
+"Clear the marks" = "Markierungen entfernen";
 "Clipboard" = "Zwischenablage";
 "Close" = "Schließen";
 "Collapsed" = "Zugeklappt";
@@ -809,7 +810,7 @@
 "kept: by folder" = "bleibt: wegen des Ordners";
 "kept: arrived first" = "bleibt: war zuerst da";
 "kept: the shorter path" = "bleibt: der kürzere Pfad";
-"kept: by name" = "bleibt: nach dem Namen";
+"kept: first alphabetically" = "bleibt: alphabetisch die erste";
 "kept: your choice" = "bleibt: Ihre Wahl";
 "your choice" = "Ihre Wahl";
 "Keep this copy" = "Diese Kopie behalten";

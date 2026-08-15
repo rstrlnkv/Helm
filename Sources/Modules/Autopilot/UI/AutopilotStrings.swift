@@ -118,7 +118,7 @@ enum ApStr {
     /// never a ninth translation of one the system already has.
     static func seePreset(in folder: String,
                           language: AppLanguage = AppLanguage.current) -> String {
-        L("See what it would do in \(folder)", [.ru: "Посмотреть, что будет в папке \(folder)", .es: "Ver qué haría en \(folder)", .fr: "Voir ce que ça donnerait dans \(folder)", .de: "Ansehen, was in \(folder) passieren würde", .ja: "\(folder) で何が起きるか見る", .zh: "看看在\(folder)里会发生什么", .pt: "Ver o que faria em \(folder)"], language: language)
+        L("What would happen in \(folder)", [.ru: "Что будет в папке \(folder)", .es: "Qué pasaría en \(folder)", .fr: "Ce qui se passerait dans \(folder)", .de: "Was in \(folder) passieren würde", .ja: "\(folder) で何が起きるか", .zh: "在\(folder)里会发生什么", .pt: "O que aconteceria em \(folder)"], language: language)
     }
 
     // MARK: - Dry run
