@@ -35,42 +35,16 @@ final class TheBasketRowFitsThePaneTests: XCTestCase {
                                    size: HelmBytes.string(118_900_000_000,
                                                           language: language.rawValue),
                                    language: language)
-        return (line as NSString).size(withAttributes: [
-            .font: NSFont.monospacedSystemFont(ofSize: 11, weight: .regular),
-        ]).width
-    }
-
-    private func smallButton(_ title: String) -> CGFloat {
-        let button = NSButton(title: title, target: nil, action: nil)
-        button.bezelStyle = .push
-        button.controlSize = .small
-        button.font = NSFont.systemFont(ofSize: NSFont.systemFontSize(for: .small))
-        button.sizeToFit()
-        return button.fittingSize.width
-    }
-
-    /// The prominent button is a regular-size control.
-    private func prominentButton(_ title: String) -> CGFloat {
-        let button = NSButton(title: title, target: nil, action: nil)
-        button.bezelStyle = .push
-        button.sizeToFit()
-        return button.fittingSize.width
-    }
-
-    private func symbolControl(_ name: String) -> CGFloat {
-        let image = NSImage(systemSymbolName: name, accessibilityDescription: nil)!
-        let button = NSButton(image: image, target: nil, action: nil)
-        button.bezelStyle = .push
-        button.controlSize = .small
-        button.sizeToFit()
-        return button.fittingSize.width
+        return ControlMetrics.label(line,
+                                    font: .monospacedSystemFont(ofSize: 11, weight: .regular))
     }
 
     private func demand(in language: AppLanguage, clearLabelled: Bool) -> CGFloat {
         Chrome.total + countLine(language)
-            + (clearLabelled ? smallButton(L(Key.clear, language: language))
-                             : symbolControl("xmark.circle"))
-            + prominentButton(L(Key.trash, language: language))
+            + (clearLabelled ? ControlMetrics.smallButton(L(Key.clear, language: language))
+                             : ControlMetrics.smallSymbolButton("xmark.circle"))
+            // The prominent button is a regular-size control.
+            + ControlMetrics.button(L(Key.trash, language: language))
     }
 
     private func widest(clearLabelled: Bool) -> (AppLanguage, CGFloat) {

@@ -33,17 +33,12 @@ final class TheTrashOfferFooterFitsTheWindowTests: XCTestCase {
     }
 
     private func button(_ title: String) -> CGFloat {
-        let button = NSButton(title: title, target: nil, action: nil)
-        button.bezelStyle = .push
-        button.sizeToFit()
-        return button.fittingSize.width
+        ControlMetrics.button(title)
     }
 
     /// The summary at `HelmText.rowDetail`, which is `Font.system(size: 11)`.
     private func summary(_ string: String) -> CGFloat {
-        (string as NSString).size(withAttributes: [
-            .font: NSFont.systemFont(ofSize: 11),
-        ]).width
+        ControlMetrics.label(string, font: NSFont.systemFont(ofSize: 11))
     }
 
     /// What the footer asks for in one language, with a summary a real removal

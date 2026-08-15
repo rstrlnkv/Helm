@@ -31,12 +31,7 @@ final class TheReturnBannerFoldsItsButtonsTests: XCTestCase {
     }
 
     private func button(_ title: String) -> CGFloat {
-        let button = NSButton(title: title, target: nil, action: nil)
-        button.bezelStyle = .push
-        button.controlSize = .small
-        button.font = NSFont.systemFont(ofSize: NSFont.systemFontSize(for: .small))
-        button.sizeToFit()
-        return button.fittingSize.width
+        ControlMetrics.smallButton(title)
     }
 
     /// The bezel around an empty title: what the cap on the *label* leaves out.

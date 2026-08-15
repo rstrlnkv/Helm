@@ -29,21 +29,14 @@ final class TheGroupHeaderKeepsItsButtonsTests: XCTestCase {
     }
 
     private func button(_ title: String) -> CGFloat {
-        let button = NSButton(title: title, target: nil, action: nil)
-        button.bezelStyle = .push
-        button.controlSize = .small
-        button.font = NSFont.systemFont(ofSize: NSFont.systemFontSize(for: .small))
-        button.sizeToFit()
-        return button.fittingSize.width
+        ControlMetrics.smallButton(title)
     }
 
     /// The size-and-count label at `HelmText.groupLabel` — system 11 semibold —
     /// with a figure a real library produces.
     private func sizeLabel(_ language: AppLanguage) -> CGFloat {
         let line = "\(HelmBytes.string(250_300_000, language: language.rawValue)) × 33"
-        return (line as NSString).size(withAttributes: [
-            .font: NSFont.systemFont(ofSize: 11, weight: .semibold),
-        ]).width
+        return ControlMetrics.label(line, font: .systemFont(ofSize: 11, weight: .semibold))
     }
 
     func testBothButtonsAndTheLabelFitTheNarrowestPane() {
