@@ -5,6 +5,109 @@ All notable changes to Helm are documented here. The format is loosely based on
 global changes, MINOR = new/polished features, PATCH = fixes. Every release
 bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 
+## [0.10.0-dev.7] — 2026-08-15
+
+> A large, self-contained wave: Autopilot can put back what it moved, renamed,
+> tagged or deleted; Duplicates was found completely broken for search and is
+> repaired along with it; Disk gets five separate correctness fixes; and a
+> crash in the new "Put back" button is closed. `dev.6` was never tagged
+> either, so this section covers everything that landed after its own
+> `## [0.10.0-dev.6]` section above was last written — presets and the
+> Duplicates keep policy, both already recorded there, are not repeated here.
+
+### Added
+- **Autopilot can put back what it did.** A moved, renamed, tagged or deleted
+  file can be returned to where it was — one file at a time from its own row,
+  or a whole run at once from the banner that reports it or from the history
+  below, grouped by the sweep or the batch of events that produced it rather
+  than as five hundred separate rows: a header of time, folder and count, with
+  one «Put back N files» button over each. The report after a return says both
+  halves always — each failure named with its own reason, each file that came
+  back under a different name saying so — and when the mark that stops a rule
+  acting on a file twice cannot be rewritten, the one line about it carries a
+  «Turn off» button for that rule, since otherwise it takes the returned file
+  again within the hour. A record is data in the same sealed plist the rules
+  live in, not an instruction: four gates (already put back, `WatchScope` on
+  both ends, the file's own identity, where both ends now lead) are read at
+  the check and again beside the move, the same discipline `RuleRunner`
+  already held for acting the first time. Reachable without a mouse — every
+  row's Put back is in its context menu and its accessibility actions, offered
+  once on the record rather than by re-testing the file for every row a page
+  of up to five hundred draws.
+
+### Fixed
+- **Pressing "Put back" no longer crashed the whole app.** `undo(_:)` and
+  `undoRun(_:)` opened with `queue.sync` while already running on that same
+  serial queue — a `dispatch_sync` a queue gives itself traps outright, so the
+  press took down the hourly sweep, the FSEvents batch and Clear all with it,
+  since all four share the one queue. The two methods no longer ask the queue
+  to wait for itself.
+- **A sorting rule stopped trying to file its own buckets into themselves.**
+  `sortIntoSubfolder(.kind)` makes a folder called `Folders` for the
+  directories it sorts — so once that folder existed, every hourly sweep tried
+  to move `Folders` inside `Folders`, was correctly refused, and logged the
+  refusal forever. A sorting rule is no longer offered the buckets its own
+  scheme made.
+- **Duplicates was completely broken, and the search that never returned a
+  duplicate was one symptom of it.** The engine encoded one reply shape and
+  the view model decoded another, so every search decoded as `nil` — read as
+  a cancellation — and the page fell back to "Pick a folder" on every press;
+  every fake in the test target encoded the reply the same wrong way, so
+  nothing caught it. Fixed alongside it: the banner had been double-counting
+  the space a removal would free wherever Finder's own Duplicate had made a
+  clone; a removal that got no answer said nothing at all, on a second press
+  as well as the first; and the empty state no longer reads a folder macOS
+  refused to open the same as a folder that genuinely holds nothing twice.
+- **A copy chosen by hand can now survive the removal it caused.** The pin
+  recording "you chose this one" was keyed by the group's digest, which moves
+  every time a removal changes the group's membership — so emptying the
+  basket un-chose the very copy just picked, the header stopped crediting the
+  choice, and "mark every extra copy" could go on to tick it. The pin is now
+  keyed by the survivor's own path, which the removal that changes the
+  group's digest does not touch.
+- **Disk says when a folder is still being measured, and Stop now stops it.**
+  Opening a wedge past what a scan had already walked started a real
+  measurement behind a header drawn exactly as if nothing were happening, and
+  Stop during it threw away the walk and emptied the basket rather than
+  keeping what had been measured.
+- **An unanswered request for the volume list no longer reads as "this Mac
+  has no disks."** Every Mac has at least one browsable volume, so folding a
+  failed read to an empty list was never a true answer; the start screen now
+  says the read failed instead of showing an empty picker.
+- **A file already gone by the time Disk tries to remove it gets its own
+  verdict**, instead of "macOS would not move this — show it in the Finder and
+  try from there," which sends someone to look at a file that is not there.
+  The fix is shared plumbing (`HelmRuntime`), so every module that deletes —
+  Disk foremost, since it is the one acting on a tree that can be up to a day
+  old — benefits from it.
+- **The disk-free tile on the panel updates again.** It read the free space
+  from the first time the panel was ever opened for as long as the app kept
+  running, so the red-over-90% warning could never fire on a disk that filled
+  up while Helm was open — the only way a disk fills up. A drive plugged in
+  while the page is open now reaches the picker as well.
+- **A removal in progress can no longer lose its marks.** Ticking or
+  unticking a row on Disk's ring between the press and the reply landing was
+  accepted and then silently discarded when the answer emptied the basket
+  wholesale; the basket and its button now hold still while a removal it
+  belongs to is running.
+- **The basket button on Disk's ring says which row it marks**, instead of
+  the same four words on every row down a list of two hundred — a screen
+  reader used to announce "Mark for removal" with nothing to say what it
+  would mark.
+- **The log page shows the log, not this session's tail.** It filled its
+  view only from lines written since the app launched, so the event from
+  yesterday's crash was almost never on the page a person opens when
+  something has gone wrong — under a footer that read "45 of 45 lines" as
+  though that were the whole log. It now seeds itself from the log files on
+  disk at first read.
+- The log's filter row, folded onto one line at a narrow window width, no
+  longer sits off-centre against the rows above and below it; French no
+  longer folds a row that fits at the width it actually needs.
+- **Removal, sweep and return reports are announced to VoiceOver as they
+  appear**, instead of only being visible; the welcome tour now moves
+  VoiceOver's focus to each step's own content as the step changes, rather
+  than leaving it on the Next button while the words behind it change.
+
 ## [0.10.0-dev.6] — 2026-08-12
 
 > Keep Awake's v3 page, and three passes over it — adversarial, security,
