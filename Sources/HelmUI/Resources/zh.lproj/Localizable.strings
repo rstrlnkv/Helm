@@ -828,3 +828,5 @@
 "Nothing yet. A file that arrives is checked as it lands, and every watched folder is swept once an hour." = "暂时还没有。文件一到就会检查，每个受监视的文件夹每小时清理一次。";
 "Subfolders are included for this folder, so this rule reaches into them too." = "该文件夹已包含子文件夹，因此这条规则也会作用到子文件夹里。";
 "Show the rules to start with" = "查看可以从这里开始的规则";
+"Autopilot offers five rules you can have without writing one — screenshots into their own folder, downloads sorted by kind, old installers to the Trash, a tag on big downloads, the desktop sorted by month. A row opens the ordinary editor on a draft that is saved nowhere, so you see what it would do to your real folder first: cancel and nothing is left behind, confirm and the folder is tidied once straight away, with a way to put it all back." = "自动整理新增五条无需自己编写的规则：截屏放进专属文件夹、下载按类型归类、旧安装包移到废纸篓、给较大的下载加标记、桌面按月份归类。点开一行会用不保存到任何地方的草稿打开常规编辑器，先看清它对真实文件夹会做什么：取消则不留痕迹，确认则立即整理该文件夹，并且随时可以放回。";
+"The record of what Autopilot did now says why it is empty — nothing is being watched, every rule is switched off, or nothing has matched yet." = "自动整理的记录为空时，现在会说明原因：没有在监视任何文件夹、所有规则都已关闭，或者还没有匹配到任何文件。";

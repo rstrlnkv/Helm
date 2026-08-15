@@ -14,6 +14,34 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 > `dev.7` for a build that has never itself gone out.
 
 ### Added
+- **Autopilot offers five rules you can have without writing one.** Screenshots
+  into their own folder, Downloads sorted by kind, old installers to the Trash,
+  a tag on big downloads, the Desktop sorted by month — under the empty state on
+  a Mac with no rules yet, and above the history on one that has some. A row is
+  a button rather than a switch: it opens the ordinary rule editor on a draft
+  that is not saved anywhere, so the dry run is of the real folder and Cancel
+  leaves no folder and no rule behind. Done saves it and, when the preset
+  brought the folder with it, sweeps that folder once straight away — with the
+  report and its «Put back» beside it.
+  A preset is an ordinary rule with a fixed id (`preset.screenshots` and four
+  siblings), so it takes the stamp, the thirty-day history and the return the
+  module already had, and «already added» survives renaming, editing and
+  reordering it; delete it and it is offered again. The folder is the one that
+  does not come through the open panel, so the path is `FileManager`'s answer
+  rather than `~/Downloads` spelled out, the button names the folder in macOS's
+  own word for it, and `WatchScope` is asked before the row is drawn — a folder
+  a rule may not watch is never offered. Without Full Disk Access the section
+  asks for the grant instead of showing buttons, because those folders read as
+  empty without it. The tour's Autopilot step leads straight here.
+- **An empty history now says which empty it is.** «Autopilot has not done
+  anything yet» was drawn over three different Macs: one watching nothing, one
+  whose every rule is switched off, and one that is running and has found
+  nothing to do. Only the third earns the sentence about a file being checked as
+  it lands and every folder being swept once an hour; the first two are about
+  the rules, and the person can do something about each.
+- **The rule editor says when a folder includes its subfolders.** That setting
+  belongs to the folder rather than to the rule, so nothing on the editor's
+  screen showed how far the rule it is writing actually reaches.
 - **Duplicates asks what an extra copy is, and the whole screen answers to it.**
   A row under the toolbar — «An extra copy is …» with two beliefs to finish the
   sentence: the copy sitting in Downloads or on the Desktop, or the copy that
