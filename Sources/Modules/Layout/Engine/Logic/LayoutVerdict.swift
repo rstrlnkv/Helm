@@ -50,6 +50,20 @@ enum LayoutVerdict {
         return .convert(translated)
     }
 
+    /// The gesture's verdict: the user asked for this word by name, so the
+    /// dictionary's guards are rightly skipped — the never-list is not. The
+    /// list is also the user's own word, and newer; whoever wants the
+    /// conversion anyway removes the entry. Both forms, as `decide` checks
+    /// them, and for the same reason.
+    static func decideForced(word: String,
+                             translated: String,
+                             exceptions: Set<String>) -> Decision {
+        guard !translated.isEmpty, translated != word else { return .leave }
+        guard !exceptions.contains(word.lowercased()),
+              !exceptions.contains(translated.lowercased()) else { return .leave }
+        return .convert(translated)
+    }
+
     /// Paths, URLs and addresses are not prose, and each is correct as typed
     /// even when no dictionary agrees.
     private static func looksLikeAddress(_ word: String) -> Bool {

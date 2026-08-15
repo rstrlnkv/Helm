@@ -330,6 +330,10 @@ struct UtilitiesSection: View {
                 Image(systemName: "arrow.up.forward")
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(HelmText.faint)
+                    // Decoration: the row is a button and the arrow only
+                    // repeats «opens elsewhere» — read aloud it was a second
+                    // anonymous image after every module's name.
+                    .accessibilityHidden(true)
             }
             .padding(.vertical, 3)
             .contentShape(Rectangle())

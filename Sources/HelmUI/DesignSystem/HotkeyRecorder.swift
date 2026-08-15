@@ -128,11 +128,23 @@ public struct HelmHotkeyRow: View {
                     Text(Self.pressKeys).foregroundStyle(HelmText.quiet)
                 } else if !recorder.label.isEmpty {
                     Text(recorder.label).font(.body.monospaced())
+                        // «⌃⌥K» read as symbols is noise; the combination in
+                        // words is what a reader can actually repeat.
+                        .accessibilityLabel(Self.spoken(recorder.label))
                 } else {
                     Text(Self.none).foregroundStyle(HelmText.quiet)
                 }
                 Button(recorder.recording ? Self.cancel : Self.record) {
-                    recorder.recording ? recorder.stop() : recorder.startRecording()
+                    if recorder.recording {
+                        recorder.stop()
+                    } else {
+                        recorder.startRecording()
+                        // The row's text swaps to «Press keys…», but nothing a
+                        // reader is on changed its value — and from here every
+                        // keystroke is swallowed, which unannounced is a
+                        // keyboard that just stopped working.
+                        HelmA11y.announce(Self.pressKeys)
+                    }
                 }
                 .controlSize(.small)
                 Button(Self.clear) { recorder.clear() }
@@ -145,6 +157,21 @@ public struct HelmHotkeyRow: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+
+    /// The recorded label, in words: `⌃⌥K` becomes «Control, Option, K». The
+    /// symbols are what the eye wants and exactly what a reader cannot use —
+    /// spoken one glyph at a time they are ornament names, not keys.
+    static func spoken(_ label: String) -> String {
+        label.map { character -> String in
+            switch character {
+            case "⌃": return L("Control")
+            case "⌥": return L("Option")
+            case "⇧": return L("Shift")
+            case "⌘": return L("Command")
+            default: return String(character)
+            }
+        }.joined(separator: ", ")
     }
 
     private static var pressKeys: String { L("Press keys…") }

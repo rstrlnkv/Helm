@@ -40,6 +40,7 @@ import Module_Layout_Engine
                             spell: SystemSpell(),
                             secure: AXSecureContext(),
                             sound: SystemSound(),
+                            announcer: LayoutAnnouncer(store: store),
                             selection: AXSelection(),
                             // Nothing about the stored settings is passed here.
                             // `activate()` reads all of them, and passing a

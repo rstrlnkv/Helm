@@ -30,6 +30,12 @@ public struct ConversionTriggers: Equatable, Sendable {
         self.onPunctuation = onPunctuation
     }
 
+    /// All three off: no ending ever confirms a word, so «Fix as I type» is
+    /// dead whatever the page's badge says. One word here rather than an `&&`
+    /// assembled in the view, so the page's warning cannot drift from what
+    /// `converts` actually answers.
+    public var fixesNothing: Bool { !onSpace && !onReturn && !onPunctuation }
+
     public func converts(_ event: TypingBuffer.Event) -> Bool {
         switch event {
         case .space: return onSpace

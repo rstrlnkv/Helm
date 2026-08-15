@@ -7,6 +7,7 @@ import Module_Layout_Engine
     @Published public private(set) var state = LayoutState(enabled: false, automatic: true,
                                                            suspended: false,
                                                            lastConversion: nil,
+                                                           lastConversionUndone: false,
                                                            conversionsToday: 0)
     public let vm: ModuleViewModel
 

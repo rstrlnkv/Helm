@@ -99,6 +99,18 @@ final class FakeSources: LayoutSourcePort, @unchecked Sendable {
     func select(_ sourceID: String) { selected.append(sourceID); live = sourceID }
 }
 
+/// The newest state the engine published — `LocalTransport` replays the last
+/// event per name to every new subscriber, so this is not racing the emit.
+/// Beside the shared fakes for the reason they are here: three suites read the
+/// state back and each had spelled this loop for itself.
+func latestLayoutState(_ engine: LayoutEngine) async -> LayoutState? {
+    for await event in engine.transport.events
+    where event.name == LayoutEvent.layoutState.rawValue {
+        return try? JSONDecoder().decode(LayoutState.self, from: event.payload)
+    }
+    return nil
+}
+
 /// The engine's own job is refusing: everything it does that is not a
 /// conversion is a guard, and each of these is one of them.
 final class LayoutEngineTests: XCTestCase {

@@ -86,6 +86,20 @@ struct LayoutSettingsPage: View {
         // row appeared the same way.
         .animation(HelmMotion.interface, value: indicator)
         .animation(HelmMotion.interface, value: lvm.state.lastConversion)
+        // Said once, out loud: losing the grant swaps the whole page for the
+        // empty state, and nothing a VoiceOver reader is on changes its value.
+        .helmAnnounces(accessibility == .denied ? LyStr.deniedTitle : nil)
+    }
+
+    /// The undo gesture as it is actually bound right now: the tap key first,
+    /// the recorded chord when the key is off, nil when neither exists. Every
+    /// sentence naming the gesture is built from this, so none can drift from
+    /// the control it names — and nil is the honest case the strings must not
+    /// paper over: with no binding there is no undo.
+    private var gestureName: String? {
+        if tapKey != .off { return LyStr.tapKeyName(tapKey) }
+        if !convertKey.label.isEmpty { return convertKey.label }
+        return nil
     }
 
     /// **In the page, not in a sheet.**
@@ -98,7 +112,7 @@ struct LayoutSettingsPage: View {
     /// than asks — and «Got it» does exactly what it did.
     private var introSection: some View {
         Section {
-            LayoutIntro {
+            LayoutIntro(gesture: gestureName) {
                 store.set(true, for: LayoutKey.introSeen)
                 withAnimation(HelmMotion.disclosure) { introSeen = true }
             }
@@ -152,6 +166,10 @@ struct LayoutSettingsPage: View {
                 .foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
         }
+        // One element: the 40 pt figure, its badge and its caption are one
+        // fact, and read apart they are a bare number, a bare word and a
+        // caption with no number in it.
+        .accessibilityElement(children: .combine)
     }
 
     /// The hero rides on the first section's header, for the reason Keep Awake's
@@ -200,7 +218,9 @@ struct LayoutSettingsPage: View {
                 // cannot fire is worse than no button. So the sentence saying
                 // how to undo is this row's own note rather than a row of its
                 // own with a hairline between it and the thing it explains.
-                HelmSettingRow(LyStr.lastChange, note: LyStr.undoHint) {
+                HelmSettingRow(lvm.state.lastConversionUndone
+                                ? LyStr.lastChangeUndone : LyStr.lastChange,
+                               note: lastChangeNote) {
                     // A 48-character word used to put «Last change» on two
                     // lines: inside `HelmSettingRow` the label holds the layout
                     // priority and a value with a line limit gives way, so the
@@ -210,10 +230,16 @@ struct LayoutSettingsPage: View {
                         .font(HelmText.figureFont)
                         .lineLimit(1).truncationMode(.middle)
                     // Unlike undoing, this works from anywhere: it changes
-                    // a list, not somebody else's text.
-                    Button(LyStr.neverThisWord) { addException(last.before) }
-                        .controlSize(.small)
-                        .disabled(exceptionsContain(last.before))
+                    // a list, not somebody else's text. Not for a forced
+                    // conversion, though: there `before` is arbitrary typed
+                    // text the dictionary never vouched for — possibly a field
+                    // nothing recognised as secure — and this button is the
+                    // module's one path from typed text to a file on disk.
+                    if !last.forced {
+                        Button(LyStr.neverThisWord) { addException(last.before) }
+                            .controlSize(.small)
+                            .disabled(exceptionsContain(last.before))
+                    }
                 }
             }
         }
@@ -244,7 +270,21 @@ struct LayoutSettingsPage: View {
         } header: {
             HelmSectionTitle(LyStr.triggers)
         } footer: {
-            sectionNote(LyStr.triggersHint)
+            VStack(alignment: .leading, spacing: HelmSpace.s2) {
+                sectionNote(LyStr.triggersHint)
+                // All three off is «Fix as I type» switched on and doing
+                // nothing: no ending ever confirms a word, and the green badge
+                // above keeps saying «Active» because the tap is, in fact,
+                // alive. Judged by the same value the engine acts on, not by a
+                // hand-assembled `&&` that could drift from it.
+                if ConversionTriggers(onSpace: onSpace, onReturn: onReturn,
+                                      onPunctuation: onPunctuation).fixesNothing {
+                    Text(LyStr.noTriggers)
+                        .font(HelmText.rowDetail)
+                        .foregroundStyle(HelmSignal.warning)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
         }
     }
 
@@ -290,8 +330,27 @@ struct LayoutSettingsPage: View {
     /// hairlines for one control.
     private var tapKeyNote: String {
         if tapKey == .globe { return LyStr.tapKeyHint + " " + LyStr.globeNote }
+        // Either Control: a solo Control tap is VoiceOver's own «pause speech»
+        // gesture, and the person choosing it should hear that here, not
+        // discover the collision later. The left one still carries the
+        // typing-key trade as well.
+        if tapKey == .leftControl || tapKey == .rightControl {
+            let habit = tapKey.isFrequentlyUsed ? LyStr.leftKeyNote + " " : ""
+            return LyStr.tapKeyHint + " " + habit + LyStr.controlKeyNote
+        }
         if tapKey.isFrequentlyUsed { return LyStr.tapKeyHint + " " + LyStr.leftKeyNote }
         return LyStr.tapKeyHint
+    }
+
+    /// The note under «Last change», built from the current binding the way
+    /// `VPNStr.secretNeedsAPress` is — the sentence cannot drift from the
+    /// control it names. Three honest states: a gesture exists and is named;
+    /// none exists and the hint says the change can only be put back by hand;
+    /// the change was already taken back and needs no undo instructions.
+    private var lastChangeNote: String? {
+        if lvm.state.lastConversionUndone { return nil }
+        guard let gestureName else { return LyStr.undoImpossible }
+        return LyStr.undoHint(gesture: gestureName)
     }
 
     /// Abbreviations, and the one typing habit Helm is sure enough about to
@@ -319,6 +378,11 @@ struct LayoutSettingsPage: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel("\(HelmA11y.remove), \(entry.from)")
                 }
+                // One element per abbreviation: read apart, the row was a
+                // token, «right arrow», a phrase and a button with nothing
+                // saying the four belong together. The remove button's action
+                // survives the merge as the element's action.
+                .accessibilityElement(children: .combine)
             }
             HStack(spacing: 8) {
                 // `prompt:` rather than a title, and labels hidden: inside a
@@ -379,6 +443,11 @@ struct LayoutSettingsPage: View {
         Section {
             TextEditor(text: $exceptions)
                 .font(.system(size: 13, design: .monospaced))
+                // The one place a saved word can be removed, and to VoiceOver
+                // it was an anonymous text area: the section header does not
+                // name a bare editor the way it names a labelled control.
+                .accessibilityLabel(LyStr.exceptions)
+                .accessibilityHint(LyStr.exceptionsHint)
                 // **A ceiling, because the list is somebody else's length.** At
                 // 14.55 pt a line, 200 words made the page 4695 pt: an editor
                 // with no maximum grows the whole form instead of scrolling

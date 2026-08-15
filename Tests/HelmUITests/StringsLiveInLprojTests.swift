@@ -158,6 +158,14 @@ final class StringsLiveInLprojTests: XCTestCase {
         "Capsule": [.fr],
         "cask": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         "Cookies": [.ru, .es, .fr, .de, .pt],
+        // The four modifier-key names are macOS's own words, read from
+        // AppKit's FunctionKeyNames.loctable rather than translated: ru and zh
+        // keep all four in English there; ja keeps three («shift» differs by
+        // its case); es keeps «Control», fr keeps «Option», pt keeps «Shift».
+        "Command": [.ru, .ja, .zh],
+        "Control": [.ru, .es, .ja, .zh],
+        "Option": [.ru, .fr, .ja, .zh],
+        "Shift": [.ru, .pt, .zh],
         "Cyan": [.fr, .de],
         "DEV": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         "Dev": [.ru, .es, .fr, .de, .ja, .zh, .pt],

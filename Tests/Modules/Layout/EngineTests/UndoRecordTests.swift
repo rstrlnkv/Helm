@@ -6,7 +6,8 @@ import XCTest
 final class UndoRecordTests: XCTestCase {
     private func record() -> UndoRecord {
         UndoRecord(event: ConversionEvent(before: "ghbdtn", after: "привет",
-                                          app: "com.apple.Notes"))
+                                          app: "com.apple.Notes"),
+                   from: "en", to: "ru")
     }
 
     func testAFreshRecordCanBeUndoneInTheSameApp() {

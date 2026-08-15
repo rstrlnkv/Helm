@@ -8,10 +8,22 @@ import Foundation
 /// somebody's text.
 struct UndoRecord: Equatable, Sendable {
     let event: ConversionEvent
+    /// The input sources the conversion switched between. An undo is the person
+    /// saying «I meant what I typed» — and what they typed was typed on `from`,
+    /// so putting the text back without putting the keyboard back manufactures
+    /// the very defect the module exists to fix, one word later. Required, not
+    /// defaulted: a record that cannot say where the keyboard was is a record
+    /// that cannot be taken back whole.
+    let from: String
+    let to: String
     private var valid = true
     private var softened = false
 
-    init(event: ConversionEvent) { self.event = event }
+    init(event: ConversionEvent, from: String, to: String) {
+        self.event = event
+        self.from = from
+        self.to = to
+    }
 
     func canUndo(in bundleID: String) -> Bool {
         // An empty id is "no idea which app", which is not a match for anything

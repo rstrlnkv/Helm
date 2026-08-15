@@ -347,6 +347,7 @@ extension ModulePageRender {
         enabled: true, automatic: true, suspended: true,
         lastConversion: ConversionEvent(before: "ghbdtn", after: "привет",
                                         app: "com.example.render", trailing: " "),
+        lastConversionUndone: false,
         conversionsToday: 17)
 
     // MARK: - Leftovers

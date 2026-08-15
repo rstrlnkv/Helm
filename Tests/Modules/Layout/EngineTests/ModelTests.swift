@@ -12,7 +12,8 @@ final class ModelTests: XCTestCase {
 
     func testStateRoundTrips() throws {
         let state = LayoutState(enabled: true, automatic: true, suspended: false,
-                                lastConversion: nil, conversionsToday: 3)
+                                lastConversion: nil, lastConversionUndone: false,
+                                conversionsToday: 3)
         let data = try JSONEncoder().encode(state)
         XCTAssertEqual(try JSONDecoder().decode(LayoutState.self, from: data), state)
     }

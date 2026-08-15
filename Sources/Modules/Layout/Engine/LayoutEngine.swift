@@ -19,6 +19,9 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     private let spell: SpellPort
     private let secure: SecureContextPort
     private let sound: SoundPort?
+    /// Optional like `sound`, and for the same reason: absent in the tests
+    /// that are not about it; the descriptor wires the real one.
+    private let announcer: AnnouncePort?
     /// Absent in tests, where the values are injected directly.
     private let settings: NamespacedStore?
     private let localTransport: LocalTransport
@@ -34,6 +37,11 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     private var lastCompleted: RememberedWord?
     private var activeObserver: NSObjectProtocol?
     private var undo: UndoRecord?
+    /// The last conversion as the page shows it, kept apart from `undo`: the
+    /// right to a blind edit dies with the caret's next move, but the record —
+    /// and its «Never this word» button — must outlive the rejection.
+    private var lastEvent: ConversionEvent?
+    private var lastEventUndone = false
     private var scope: AppScope
     private var exceptions: Exceptions
     private let selection: SelectionPort?
@@ -54,6 +62,11 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// read back as typing. The marker on the events is the first line of
     /// defence; this is the second, for anything the marker misses.
     private var performing = false
+    /// Whether the keystrokes arriving right now are a secure-input episode.
+    /// Kept only to know its *edges*: the page is told «Paused» at the first
+    /// secure key and «Active» at the first ordinary one, and nothing between —
+    /// `emitState` reaches the accessibility server, not a per-key price.
+    private var inSecureEpisode = false
 
     public init(tap: KeyTapPort,
                 typing: TypingPort,
@@ -62,6 +75,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                 spell: SpellPort,
                 secure: SecureContextPort,
                 sound: SoundPort? = nil,
+                announcer: AnnouncePort? = nil,
                 selection: SelectionPort? = nil,
                 autoReplace: [AutoReplace.Entry] = [],
                 fixCapitals: Bool = false,
@@ -79,6 +93,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         self.spell = spell
         self.secure = secure
         self.sound = sound
+        self.announcer = announcer
         self.selection = selection
         self.autoReplace = AutoReplace(entries: autoReplace)
         self.fixCapitals = fixCapitals
@@ -154,6 +169,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// is what makes the retry the module already had reach the tap.
     private func tapDied() {
         lock.lock(); tapped = false; lock.unlock()
+        announcer?.announce(.grantLost)
         emitState()
     }
 
@@ -202,6 +218,10 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         buffer.clear()
         undo = nil
         lastCompleted = nil
+        // The page's record goes with the rest — nothing that names typed text
+        // survives; the paths that *want* one assign it after this runs.
+        lastEvent = nil
+        lastEventUndone = false
     }
 
     private func handle(_ event: TypingBuffer.Event) {
@@ -212,9 +232,27 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             // All three places a word lives, as in deactivate: a retained
             // lastCompleted could later be typed back by the hotkey into
             // whatever field happens to be focused.
-            lock.lock(); forgetTheWord(); lock.unlock()
+            lock.lock()
+            forgetTheWord()
+            let entered = !inSecureEpisode
+            inSecureEpisode = true
+            lock.unlock()
+            // The page says «Paused» while the pause is happening: this early
+            // return used to skip the emit entirely, so the one moment the
+            // suspension was true was the one moment the page never showed it.
+            if entered {
+                emitState()
+                announcer?.announce(.securePause)
+            }
             return
         }
+        lock.lock()
+        let leftSecureEpisode = inSecureEpisode
+        inSecureEpisode = false
+        lock.unlock()
+        // The other edge: the dialog is gone, and «Paused» must go with it
+        // rather than stand until something else happens to emit.
+        if leftSecureEpisode { emitState() }
         lock.lock()
         guard !performing else { lock.unlock(); return }
         // Typing, clicking, navigating and leaving end the chance to undo: an
@@ -261,12 +299,16 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             lock.unlock()
         }
         guard let completed = finished else { return }
-        // Three things can happen to a finished word, and exactly one does.
-        // The order is fixed and is not a preference: an abbreviation is an
-        // instruction somebody wrote down, a habit correction is about how the
-        // keyboard was held, and a layout conversion is a guess — most explicit
-        // first. Two edits to one word would be one edit the undo shortcut
-        // cannot take back in a single press.
+        wordConfirmed(completed, auto: auto, confirms: confirms)
+    }
+
+    /// Three things can happen to a finished word, and exactly one does.
+    /// The order is fixed and is not a preference: an abbreviation is an
+    /// instruction somebody wrote down, a habit correction is about how the
+    /// keyboard was held, and a layout conversion is a guess — most explicit
+    /// first. Two edits to one word would be one edit the undo shortcut
+    /// cannot take back in a single press.
+    private func wordConfirmed(_ completed: TypingBuffer.Completion, auto: Bool, confirms: Bool) {
         guard confirms else { return }
         if replaceWord(completed) { return }
         guard auto else { return }
@@ -383,6 +425,12 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             return
         }
         if audible { sound?.playSwitch() }
+        // A selection put right is a word fixed today: this door used to fix
+        // words without telling the page's one figure about them.
+        lock.lock()
+        _ = conversions.add(on: Date())
+        lock.unlock()
+        emitState()
     }
 
     /// `force` is the hotkey: the user asked for this word by name, so the
@@ -410,21 +458,24 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
               let translated = translation.translate(word, from: from, to: to)
         else { return }
 
-        let replacement: String
+        lock.lock(); let list = exceptions.words; lock.unlock()
+        let decision: LayoutVerdict.Decision
         if force {
-            guard !translated.isEmpty, translated != word else { return }
-            replacement = translated
+            // The gesture skips the dictionary, never the never-list: the
+            // list's own header is absolute, and both are the user's word —
+            // `LayoutVerdict.decideForced` says why the list wins.
+            decision = LayoutVerdict.decideForced(word: word, translated: translated,
+                                                  exceptions: list)
         } else {
             guard let typedIsWord = spell.isWord(word, sourceID: from),
                   let translatedIsWord = spell.isWord(translated, sourceID: to)
             else { return }
-            lock.lock(); let list = exceptions.words; lock.unlock()
-            guard case .convert(let candidate) = LayoutVerdict.decide(
+            decision = LayoutVerdict.decide(
                 word: word, translated: translated,
                 validAsTyped: typedIsWord, validTranslated: translatedIsWord,
-                exceptions: list) else { return }
-            replacement = candidate
+                exceptions: list)
         }
+        guard case .convert(let replacement) = decision else { return }
 
         guard let plan = SwitchPlan.make(replacing: word, with: replacement,
                                          trailing: trailing) else { return }
@@ -440,14 +491,21 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         sources.select(to)
         lock.lock(); let announce = audible; lock.unlock()
         if announce { sound?.playSwitch() }
+        let event = ConversionEvent(before: word, after: replacement,
+                                    app: bundleID,
+                                    trailing: trailing.map(String.init) ?? "",
+                                    forced: force)
         lock.lock()
-        undo = UndoRecord(event: ConversionEvent(before: word, after: replacement,
-                                                 app: bundleID,
-                                                 trailing: trailing.map(String.init) ?? ""))
+        undo = UndoRecord(event: event, from: from, to: to)
+        lastEvent = event
+        lastEventUndone = false
         _ = conversions.add(on: Date())
         lock.unlock()
         // Counts, never content: the words themselves stay out of the log.
         HelmLog.shared.info(Self.moduleID, "converted a word in \(Redact.app(bundleID))")
+        // The words *do* go here: an announcement is spoken and gone — the one
+        // channel with the same lifetime as the memory they are promised to.
+        announcer?.announce(.converted(event))
         emitState()
     }
 
@@ -535,7 +593,21 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
               let plan = record.reversePlan() else { lock.unlock(); return }
         undo = nil
         lock.unlock()
-        perform(plan)
+        // Both halves of the conversion or neither: the person who rejected it
+        // is about to keep typing in the layout they typed with, and the text
+        // alone put back left every next keystroke in the refused alphabet.
+        guard perform(plan) else {
+            emitState()
+            return
+        }
+        sources.select(record.from)
+        // `perform` forgot everything, including the page's record. The
+        // rejection is exactly when the record earns its keep — «Never this
+        // word» answers it — so it comes back, marked as taken back.
+        lock.lock()
+        lastEvent = record.event
+        lastEventUndone = true
+        lock.unlock()
         emitState()
     }
 
@@ -619,7 +691,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         lock.lock()
         let state = LayoutState(enabled: tapped, automatic: automatic,
                                 suspended: suspended,
-                                lastConversion: undo?.event,
+                                lastConversion: lastEvent,
+                                lastConversionUndone: lastEventUndone,
                                 conversionsToday: conversions.value(on: Date()))
         lock.unlock()
         localTransport.emit(LayoutEvent.layoutState, encoding: state)

@@ -7,7 +7,8 @@ final class UndoRecordEdgeTests: XCTestCase {
     private func record(before: String = "ghbdtn", after: String = "привет",
                         app: String = "com.apple.Notes", trailing: String = "") -> UndoRecord {
         UndoRecord(event: ConversionEvent(before: before, after: after,
-                                          app: app, trailing: trailing))
+                                          app: app, trailing: trailing),
+                   from: "en", to: "ru")
     }
 
     /// Nothing to put back, or nothing to take away, is not a plan to send zero

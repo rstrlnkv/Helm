@@ -8,7 +8,17 @@ import HelmUI
 /// person who went looking for it, at the moment they did — not in a queue of
 /// notices on first launch that nobody reads.
 struct LayoutIntro: View {
+    /// The undo gesture as bound right now — a key name or a chord label,
+    /// nil when neither exists. An automatic conversion is a change the person
+    /// pressed no key for, so «tap the same key again» named nothing; the
+    /// intro names the actual key or stops promising an undo it cannot offer.
+    let gesture: String?
     let onDone: () -> Void
+
+    init(gesture: String?, onDone: @escaping () -> Void) {
+        self.gesture = gesture
+        self.onDone = onDone
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s6) {
@@ -24,7 +34,7 @@ struct LayoutIntro: View {
                 point("textformat.abc", LyStr.introWhat)
                 point("checkmark.shield", LyStr.introWhen)
                 point("hand.raised", LyStr.introWhere)
-                point("arrow.uturn.backward", LyStr.introUndo)
+                point("arrow.uturn.backward", LyStr.introUndo(gesture: gesture))
             }
 
             HStack {

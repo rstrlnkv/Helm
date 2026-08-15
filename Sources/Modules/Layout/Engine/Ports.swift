@@ -60,6 +60,28 @@ public protocol SoundPort: Sendable {
     func playSwitch()
 }
 
+/// The things the module does that a person who is not looking must still be
+/// told about. It rewrites text in somebody else's app, switches the keyboard
+/// under their hands, pauses itself for a password, and loses its grant behind
+/// their back — all invisible to VoiceOver, because nothing moved focus and
+/// nothing the reader is on changed its value.
+public enum LayoutAnnouncement: Equatable, Sendable {
+    /// A word was rewritten and the input source switched to match.
+    case converted(ConversionEvent)
+    /// Secure input began: the module is deliberately deaf until it ends.
+    case securePause
+    /// macOS took the tap away — the module stopped fixing words entirely.
+    case grantLost
+}
+
+/// The engine names what happened; the words said and the channel they reach a
+/// reader by are the UI's side of this port. Separate from `SoundPort` because
+/// the sound is a preference and this is an account: one is off unless asked
+/// for, the other exists precisely for the person who was not asked.
+public protocol AnnouncePort: Sendable {
+    func announce(_ what: LayoutAnnouncement)
+}
+
 public protocol SecureContextPort: Sendable {
     /// The cheap half — one syscall, no accessibility round-trip — so it can be
     /// asked on every keystroke rather than once per word.
