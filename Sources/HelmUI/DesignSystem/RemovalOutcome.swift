@@ -26,9 +26,19 @@ public struct HelmRemovalFailure: Identifiable, Equatable, Sendable {
     /// lines, reaching past this type to `TrashReasonText` for the sentence. The
     /// lookup belongs beside the sentences, and the third copy of it arrived the
     /// day Leftovers stopped carrying a refusal shape of its own.
-    public init(_ refusal: HelmTrash.Refusal) {
+    ///
+    /// `refresh` is the verb of the caller's own refresh control, where the
+    /// sentence ends by naming one — Duplicates passes `.search`. Its own
+    /// initializer rather than a defaulted parameter, because the three scan
+    /// modules build theirs point-free (`map(HelmRemovalFailure.init)`) and a
+    /// default does not survive that reference.
+    public init(_ refusal: HelmTrash.Refusal, refresh: TrashReasonText.Refresh) {
         self.init(path: refusal.path,
-                  reason: TrashReasonText.sentence(refusal.reason.rawValue))
+                  reason: TrashReasonText.sentence(refusal.reason.rawValue, refresh: refresh))
+    }
+
+    public init(_ refusal: HelmTrash.Refusal) {
+        self.init(refusal, refresh: .scan)
     }
 }
 

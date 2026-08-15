@@ -105,6 +105,7 @@
 "Helm cannot read the key its rules are sealed with, so none of them are running." = "Helm ne peut pas lire la clé qui scelle ses règles : aucune ne s’exécute.";
 "Helm cannot read this folder" = "Helm ne peut pas lire ce dossier";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm connecte les configurations que macOS conserve — à la main, ou selon une règle à l’ouverture d’une app. Ajoutez-en une dans les Réglages Système.";
+"Helm could not read it, or the copy that stays, so nothing was moved. Check that both can be opened and try again." = "Helm n’a pas pu lire ce fichier, ou la copie conservée — rien n’a été déplacé. Vérifiez que les deux peuvent être ouverts et réessayez.";
 "Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm n’a reçu aucune réponse et ne sait pas quels fichiers ont été déplacés. La liste ci-dessus montre où ils sont maintenant.";
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm n’a reçu aucune réponse et ne sait pas quels fichiers ont été déplacés. La liste ci-dessus montre encore où ils étaient avant.";
 "Helm got no answer, so the list above is still from the previous scan." = "Helm n’a reçu aucune réponse, la liste ci-dessus est donc encore celle de l’analyse précédente.";
@@ -122,7 +123,9 @@
 "This decides the words. Whether the icon turns is the switch below." = "Ceci décide des mots. C’est l’interrupteur ci-dessous qui décide si l’icône tourne.";
 "This folder is no longer there" = "Ce dossier n’existe plus";
 "This is not there any more, so nothing was moved. Scan again to see what is left." = "Cet élément n’existe plus, rien n’a été déplacé. Réanalysez pour voir ce qui reste.";
+"This is not there any more, so nothing was moved. Search again to see what is left." = "Cet élément n’existe plus, rien n’a été déplacé. Recherchez à nouveau pour voir ce qui reste.";
 "This is not where Helm found it, so nothing was moved. Scan again to see where it is now." = "Ce fichier n’est plus là où Helm l’a trouvé — rien n’a été déplacé. Réanalysez pour voir où il est maintenant.";
+"This is not where Helm found it, so nothing was moved. Search again to see where it is now." = "Ce fichier n’est plus là où Helm l’a trouvé — rien n’a été déplacé. Recherchez à nouveau pour voir où il est maintenant.";
 "Warning" = "Avertissement";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "Avec ceci désactivé et l’avis réglé sur « Rien », une règle qui connecte ou coupe un tunnel ne donne aucun signe.";
 "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "macOS n’autorise pas les notifications de Helm : le nom apparaît donc dans la barre des menus.";
@@ -420,6 +423,7 @@
 "Scanning…" = "Analyse…";
 "Search" = "Rechercher";
 "Search again" = "Rechercher à nouveau";
+"Search stopped — the folder was not read to the end." = "Recherche arrêtée — le dossier n’a pas été lu jusqu’au bout.";
 "Search apps" = "Rechercher des apps";
 "Search now" = "Rechercher";
 "Search packages" = "Rechercher des paquets";

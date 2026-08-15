@@ -105,6 +105,7 @@
 "Helm cannot read the key its rules are sealed with, so none of them are running." = "Helm не может прочитать ключ, которым подписаны правила, — ни одно из них не выполняется.";
 "Helm cannot read this folder" = "Helm не может прочитать эту папку";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm подключает конфигурации, которые хранит macOS, — вручную или по правилам, когда открывается приложение. Новую добавьте в Системных настройках.";
+"Helm could not read it, or the copy that stays, so nothing was moved. Check that both can be opened and try again." = "Helm не смог прочитать файл или ту копию, что остаётся, — ничего не перемещено. Проверьте, что оба открываются, и повторите попытку.";
 "Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm не получил ответа и не знает, какие файлы перемещены. Список выше показывает, где они сейчас.";
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm не получил ответа и не знает, какие файлы перемещены. Список выше по-прежнему показывает, где они были до перемещения.";
 "Helm got no answer, so the list above is still from the previous scan." = "Helm не получил ответа, поэтому список выше остался от прошлого сканирования.";
@@ -122,7 +123,9 @@
 "This decides the words. Whether the icon turns is the switch below." = "Здесь только слова. Вращается ли значок — решает переключатель ниже.";
 "This folder is no longer there" = "Этой папки больше нет";
 "This is not there any more, so nothing was moved. Scan again to see what is left." = "Объекта уже нет — Helm ничего не переместил. Сканируйте заново, чтобы увидеть, что осталось.";
+"This is not there any more, so nothing was moved. Search again to see what is left." = "Объекта уже нет — Helm ничего не переместил. Поищите заново, чтобы увидеть, что осталось.";
 "This is not where Helm found it, so nothing was moved. Scan again to see where it is now." = "Файл уже не там, где его нашли, — Helm его не тронул. Сканируйте заново, чтобы увидеть, где он теперь.";
+"This is not where Helm found it, so nothing was moved. Search again to see where it is now." = "Файл уже не там, где его нашли, — Helm его не тронул. Поищите заново, чтобы увидеть, где он теперь.";
 "Warning" = "Предупреждение";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "Если это выключено, а уведомление — «Ничего», правило подключит или отключит туннель незаметно.";
 "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "macOS не разрешает уведомления от Helm — имя появится в строке меню.";
@@ -420,6 +423,7 @@
 "Scanning…" = "Сканирование…";
 "Search" = "Поиск";
 "Search again" = "Искать заново";
+"Search stopped — the folder was not read to the end." = "Поиск остановлен — папка прочитана не до конца.";
 "Search apps" = "Поиск приложений";
 "Search now" = "Искать";
 "Search packages" = "Поиск пакетов";

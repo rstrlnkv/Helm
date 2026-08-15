@@ -105,6 +105,7 @@
 "Helm cannot read the key its rules are sealed with, so none of them are running." = "Helm 无法读取用于签名规则的密钥，因此没有任何规则在运行。";
 "Helm cannot read this folder" = "Helm 无法读取此文件夹";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm 可以手动连接 macOS 保存的配置，也可以在应用启动时按规则连接。配置本身在“系统设置”中添加。";
+"Helm could not read it, or the copy that stays, so nothing was moved. Check that both can be opened and try again." = "Helm 无法读取它或保留的那份副本，因此没有移动任何内容。请确认两者都能打开，然后重试。";
 "Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm 未收到回应，无法判断哪些文件已移动。上方列表显示它们现在的位置。";
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm 未收到回应，无法判断哪些文件已移动。上方列表显示的仍是移动前的位置。";
 "Helm got no answer, so the list above is still from the previous scan." = "Helm 未收到回应，上方列表仍是上次扫描的结果。";
@@ -122,7 +123,9 @@
 "This decides the words. Whether the icon turns is the switch below." = "这里只决定文字。图标是否转动由下面的开关决定。";
 "This folder is no longer there" = "此文件夹已不存在";
 "This is not there any more, so nothing was moved. Scan again to see what is left." = "它已不存在，因此没有移动任何内容。请重新扫描以查看还剩下什么。";
+"This is not there any more, so nothing was moved. Search again to see what is left." = "它已不存在，因此没有移动任何内容。请重新搜索以查看还剩下什么。";
 "This is not where Helm found it, so nothing was moved. Scan again to see where it is now." = "它已不在 Helm 找到它的位置，因此没有移动任何内容。请重新扫描以查看它现在的位置。";
+"This is not where Helm found it, so nothing was moved. Search again to see where it is now." = "它已不在 Helm 找到它的位置，因此没有移动任何内容。请重新搜索以查看它现在的位置。";
 "Warning" = "警告";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "关闭此项且提示设为“无”时，规则连接或断开隧道将没有任何提示。";
 "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "macOS 不允许 Helm 发送通知。将改为在菜单栏显示名称。";
@@ -420,6 +423,7 @@
 "Scanning…" = "扫描中…";
 "Search" = "搜索";
 "Search again" = "重新搜索";
+"Search stopped — the folder was not read to the end." = "搜索已停止 — 文件夹未读取到末尾。";
 "Search apps" = "搜索应用";
 "Search now" = "搜索";
 "Search packages" = "搜索软件包";

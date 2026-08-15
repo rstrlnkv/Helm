@@ -146,6 +146,14 @@ public enum TrashFailure {
         /// before the move, the pair no longer matches — edited since, or a
         /// hard link, or one of them gone. Nothing was attempted.
         case changedSinceScan
+        /// Helm could not read the file — or, in Duplicates, the surviving
+        /// copy it had to be compared against — at the moment of the move. A
+        /// permission withdrawn, a volume gone, a file busy. **Not
+        /// `changedSinceScan`:** that one says «it is not where Helm found it»
+        /// about a file that may be exactly there, and the two are acted on
+        /// differently — a person told «it moved» looks for the file, a person
+        /// told «it could not be read» checks the access. Nothing was attempted.
+        case unreadable
     }
 
     /// Cocoa's "you may not write here" error.

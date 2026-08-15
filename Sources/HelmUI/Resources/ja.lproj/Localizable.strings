@@ -105,6 +105,7 @@
 "Helm cannot read the key its rules are sealed with, so none of them are running." = "ルールの署名に使う鍵を読み取れません。どのルールも実行されません。";
 "Helm cannot read this folder" = "このフォルダを読み取れません";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm は macOS が保持する構成を、手動でも、アプリの起動に合わせたルールでも接続できます。構成そのものはシステム設定で追加します。";
+"Helm could not read it, or the copy that stays, so nothing was moved. Check that both can be opened and try again." = "Helm はこのファイル、または残るコピーを読み取れなかったため、何も移動していません。両方を開けることを確認して、もう一度お試しください。";
 "Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm は応答を受け取れず、どのファイルが移動したかわかりません。上のリストが現在の場所を示しています。";
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm は応答を受け取れず、どのファイルが移動したかわかりません。上のリストは移動前の場所を示したままです。";
 "Helm got no answer, so the list above is still from the previous scan." = "Helm は応答を受け取れず、上のリストは前回のスキャンのままです。";
@@ -122,7 +123,9 @@
 "This decides the words. Whether the icon turns is the switch below." = "ここで決まるのは文字だけです。アイコンが回るかどうかは下のスイッチで決まります。";
 "This folder is no longer there" = "このフォルダはもうありません";
 "This is not there any more, so nothing was moved. Scan again to see what is left." = "これはもう存在しないため、何も移動していません。再スキャンして残りを確認してください。";
+"This is not there any more, so nothing was moved. Search again to see what is left." = "これはもう存在しないため、何も移動していません。もう一度検索して残りを確認してください。";
 "This is not where Helm found it, so nothing was moved. Scan again to see where it is now." = "Helm が見つけた場所にもう存在しないため、何も移動していません。再スキャンして現在の場所を確認してください。";
+"This is not where Helm found it, so nothing was moved. Search again to see where it is now." = "Helm が見つけた場所にもう存在しないため、何も移動していません。もう一度検索して現在の場所を確認してください。";
 "Warning" = "警告";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "これをオフにし、通知も“なし”にすると、ルールが接続・切断しても何も知らせません。";
 "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "macOS が Helm の通知を許可していません。代わりにメニューバーに名前を表示します。";
@@ -420,6 +423,7 @@
 "Scanning…" = "スキャン中…";
 "Search" = "検索";
 "Search again" = "もう一度検索";
+"Search stopped — the folder was not read to the end." = "検索を停止しました — フォルダは最後まで読み取られていません。";
 "Search apps" = "アプリを検索";
 "Search now" = "検索";
 "Search packages" = "パッケージを検索";

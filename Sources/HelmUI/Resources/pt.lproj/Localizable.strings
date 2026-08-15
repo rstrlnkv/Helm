@@ -105,6 +105,7 @@
 "Helm cannot read the key its rules are sealed with, so none of them are running." = "O Helm não consegue ler a chave que sela as suas regras, por isso nenhuma está a ser executada.";
 "Helm cannot read this folder" = "O Helm não consegue ler esta pasta";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "O Helm conecta as configurações que o macOS mantém — à mão ou por regra, quando um app abre. Adicione uma nos Ajustes do Sistema.";
+"Helm could not read it, or the copy that stays, so nothing was moved. Check that both can be opened and try again." = "O Helm não conseguiu lê-lo, ou a cópia que fica, então nada foi movido. Verifique se ambos podem ser abertos e tente de novo.";
 "Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "O Helm não recebeu resposta e não sabe quais arquivos foram movidos. A lista acima mostra onde eles estão agora.";
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "O Helm não recebeu resposta e não sabe quais arquivos foram movidos. A lista acima ainda mostra onde os arquivos estavam antes.";
 "Helm got no answer, so the list above is still from the previous scan." = "O Helm não recebeu resposta, então a lista acima ainda é a do escaneamento anterior.";
@@ -122,7 +123,9 @@
 "This decides the words. Whether the icon turns is the switch below." = "Isto decide as palavras. Se o ícone gira é o interruptor abaixo que decide.";
 "This folder is no longer there" = "Esta pasta não existe mais";
 "This is not there any more, so nothing was moved. Scan again to see what is left." = "Isto já não existe, então nada foi movido. Escaneie de novo para ver o que restou.";
+"This is not there any more, so nothing was moved. Search again to see what is left." = "Isto já não existe, então nada foi movido. Busque de novo para ver o que restou.";
 "This is not where Helm found it, so nothing was moved. Scan again to see where it is now." = "Isto já não está onde o Helm encontrou, então nada foi movido. Escaneie de novo para ver onde está agora.";
+"This is not where Helm found it, so nothing was moved. Search again to see where it is now." = "Isto já não está onde o Helm encontrou, então nada foi movido. Busque de novo para ver onde está agora.";
 "Warning" = "Aviso";
 "With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all." = "Com isto desligado e o aviso em “Nada”, uma regra que conecta ou derruba um túnel não dá sinal algum.";
 "macOS is not allowing notifications from Helm, so the name appears in the menu bar instead." = "O macOS não está permitindo notificações do Helm, então o nome aparece na barra de menus.";
@@ -420,6 +423,7 @@
 "Scanning…" = "Escaneando…";
 "Search" = "Buscar";
 "Search again" = "Buscar de novo";
+"Search stopped — the folder was not read to the end." = "Busca interrompida — a pasta não foi lida até o fim.";
 "Search apps" = "Buscar apps";
 "Search now" = "Buscar";
 "Search packages" = "Buscar pacotes";

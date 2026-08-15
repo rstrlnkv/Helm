@@ -277,6 +277,13 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
 
             var allowed: [String] = []
             var stale: [String] = []
+            // Apart from `stale`, because the verdicts are two facts: a pair
+            // that stopped matching *moved on*, a pair that could not be read
+            // is wherever it was — a permission withdrawn, a volume gone, or
+            // the survivor unreadable. Folded together, the person was told
+            // «this is not where Helm found it» about a file that is exactly
+            // there, and the actionable half — check the access — was hidden.
+            var unreadable: [String] = []
             // Its own phase, beside the `duplicates.trash` one `HelmTrash.remove`
             // opens below: the re-reading is where the minutes go, and it ran
             // namelessly — a spike in the memory trail had no operation named
@@ -292,14 +299,16 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
                     guard let plan = byPath[path] else { continue }
                     switch verify(path, plan.keep) {
                     case .identical: allowed.append(path)
-                    case .changed, .unreadable: stale.append(path)
+                    case .changed: stale.append(path)
+                    case .unreadable: unreadable.append(path)
                     }
                     // Every tick is a whole file read in full, so the ticks are
                     // already paced by the disk — no throttle needed where the
                     // search needs one per 128 KB prefix.
                     self.localTransport.emit(DuplicatesEvent.progress, encoding:
                         DuplicateProgress(candidates: inScope.count,
-                                          hashed: allowed.count + stale.count))
+                                          hashed: allowed.count + stale.count
+                                              + unreadable.count))
                 }
                 return stop.isStopped
             }
@@ -307,10 +316,16 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
                 HelmLog.shared.info("duplicates",
                                     "refused \(stale.count) — changed since the scan")
             }
+            if !unreadable.isEmpty {
+                HelmLog.shared.info("duplicates",
+                                    "refused \(unreadable.count) — could not be read")
+            }
             // Spelled once for both ways out: a reply that dropped these on
             // either path would be a refusal silently discarded.
             let staleRefusals = stale.map {
                 HelmTrash.Refusal(path: $0, reason: .changedSinceScan)
+            } + unreadable.map {
+                HelmTrash.Refusal(path: $0, reason: .unreadable)
             }
             if stopped {
                 // A named outcome, not silence — and nothing moves from here:
@@ -318,7 +333,8 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
                 // means stop. What was already known stays reported; a refusal
                 // is never silently discarded, stopped or not.
                 HelmLog.shared.info("duplicates",
-                                    "removal stopped — verified \(allowed.count + stale.count)"
+                                    "removal stopped — verified "
+                                    + "\(allowed.count + stale.count + unreadable.count)"
                                     + " of \(inScope.count), nothing moved")
                 return DuplicateRemoval(
                     removed: [],
