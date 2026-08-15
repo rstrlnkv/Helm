@@ -141,7 +141,20 @@ enum DupStr {
     /// what was unmarked is on the screen the sentence is under.
     static func unmarkedSurvivors(_ count: Int,
                                   language: AppLanguage = AppLanguage.current) -> String {
-        L("Unmarked: \(count) — those copies stay now", [.ru: "Снято отметок: \(count) — эти копии теперь остаются", .es: "Desmarcados: \(count): esas copias ahora se conservan", .fr: "Décochés : \(count) — ces copies sont désormais conservées", .de: "Markierung entfernt: \(count) – diese Kopien bleiben jetzt", .ja: "選択を解除: \(count) — これらのコピーは残ります", .zh: "已取消勾选：\(count) — 这些副本现在会保留", .pt: "Desmarcados: \(count) — essas cópias agora ficam"], language: language)
+        L("Unmarked: \(count) — those copies stay now", [.ru: "Снято отметок: \(count) — эти копии теперь остаются", .es: "Desmarcados: \(count) — esas copias ahora se conservan", .fr: "Décochés\u{00A0}: \(count) — ces copies sont désormais conservées", .de: "Markierung entfernt: \(count) – diese Kopien bleiben jetzt", .ja: "選択を解除: \(count) — これらのコピーは残ります", .zh: "已取消勾选：\(count) — 这些副本现在会保留", .pt: "Desmarcados: \(count) — essas cópias agora ficam"], language: language)
+    }
+
+    /// Copies «Mark every extra copy» passed over: paths outside what Helm may
+    /// remove at all.
+    ///
+    /// Says what Helm may not do rather than what the file is — «System» is a
+    /// label on a row, and this is a sentence about a press. The count carries
+    /// its noun through `Plural`, because after the colon it is still a counted
+    /// noun in six of the eight languages.
+    static func skippedNotRemovable(_ count: Int,
+                                    language: AppLanguage = AppLanguage.current) -> String {
+        let files = Plural.files(count, language: language.rawValue)
+        return L("Skipped: \(files) — Helm may not remove those", [.ru: "Пропущено: \(files) — их нельзя удалить", .es: "Omitidos: \(files) — Helm no puede eliminarlos", .fr: "Ignorés\u{00A0}: \(files) — Helm n’a pas le droit de les supprimer", .de: "Übersprungen: \(files) – die darf Helm nicht entfernen", .ja: "スキップ: \(files) — Helm はこれらを削除できません", .zh: "已跳过：\(files) — Helm 不能移除它们", .pt: "Ignorados: \(files) — o Helm não pode removê-los"], language: language)
     }
     static var cancel: String { L("Cancel") }
     static var close: String { L("Close") }

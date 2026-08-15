@@ -389,18 +389,39 @@ public enum KeepGrounds: Equatable, Sendable {
     /// Every path in the group except the first — the first is the copy that
     /// stays, and there is deliberately no way to ask for all of them.
     public func basketExtras(of group: DuplicateGroup) {
-        for path in group.paths.dropFirst() where !basket.contains(path) {
-            if UserFileScope.isRemovable(path) { basket.append(path) }
-        }
+        report(skipped: mark(extrasOf: group))
     }
 
     /// Every group's extras, through the same rule the per-group button uses.
     ///
-    /// Deliberately a loop over `basketExtras(of:)` rather than its own walk of
-    /// the groups: two implementations of "which copy survives" is two answers
-    /// to the only question on this page that costs someone a file.
+    /// Deliberately over `mark(extrasOf:)` rather than its own walk of the
+    /// groups: two implementations of "which copy survives" is two answers to
+    /// the only question on this page that costs someone a file.
     public func basketAllExtras() {
-        for group in groups { basketExtras(of: group) }
+        report(skipped: groups.reduce(0) { $0 + mark(extrasOf: $1) })
+    }
+
+    /// Marks what may be marked, and answers how many copies it passed over.
+    ///
+    /// The scope gate is `UserFileScope`, the same one the engine has the last
+    /// word with — a checkbox that ticked something the engine will refuse would
+    /// be a promise the page cannot keep. What was missing is the count: the
+    /// refusal was silent, and one press stands for a page of decisions.
+    private func mark(extrasOf group: DuplicateGroup) -> Int {
+        var skipped = 0
+        for path in group.paths.dropFirst() where !basket.contains(path) {
+            if UserFileScope.isRemovable(path) {
+                basket.append(path)
+            } else {
+                skipped += 1
+            }
+        }
+        return skipped
+    }
+
+    /// One line about what the press passed over, or none.
+    private func report(skipped: Int) {
+        marksNote = skipped == 0 ? nil : DupStr.skippedNotRemovable(skipped)
     }
 
     /// Empties the basket. Nothing is deleted, nothing is moved.
