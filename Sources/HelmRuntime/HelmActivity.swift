@@ -109,10 +109,16 @@ public enum HelmActivity {
     /// beside it, which is the only thing worth appending. Without this the line
     /// read `uninstaller.appSizes: 59 MB — nothing running`, which denies the
     /// operation named at the start of the same sentence.
+    ///
+    /// «No phases running», not «nothing running»: an empty registry means no
+    /// *named phase* is open, and that is all it means. The SwiftUI render, a
+    /// VPN refresh, the Layout tap, the update check and the trash sweep all
+    /// run outside this registry — a reading taken beside any of them is not a
+    /// reading of an idle app, and the line must not say it is.
     public static func describe(_ running: [Running], now: Date = Date(),
                                 excluding label: String? = nil) -> String {
         let running = running.filter { $0.label != label }
-        guard !running.isEmpty else { return label == nil ? "nothing running" : "" }
+        guard !running.isEmpty else { return label == nil ? "no phases running" : "" }
         return running
             .sorted { $0.started < $1.started }
             .map { "\($0.label) \(Int(now.timeIntervalSince($0.started))) s" }

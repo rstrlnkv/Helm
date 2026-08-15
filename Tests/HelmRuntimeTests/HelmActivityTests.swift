@@ -82,10 +82,13 @@ final class HelmActivityTests: XCTestCase {
         XCTAssertEqual(HelmActivity.describe(running, now: now), "disk.scan 31 s, duplicates.hash 4 s")
     }
 
-    /// Nothing running is a real answer and has to read as one — the reader who
-    /// mistook a timer sample for an idle app needed exactly this word.
-    func testNothingRunningSaysSo() {
-        XCTAssertEqual(HelmActivity.describe([], now: Date()), "nothing running")
+    /// An empty registry is a real answer and has to read as one — and as no
+    /// more than one. The registry knows only about named phases; SwiftUI's
+    /// render, a VPN refresh, the update check and the trash sweep all run
+    /// outside it, so «nothing running» claimed an idle app on the strength of
+    /// an empty dictionary. The line says what it knows: no *phases*.
+    func testAnEmptyRegistryClaimsOnlyPhases() {
+        XCTAssertEqual(HelmActivity.describe([], now: Date()), "no phases running")
     }
 
     /// Long-running phases are the interesting ones, so they lead.
