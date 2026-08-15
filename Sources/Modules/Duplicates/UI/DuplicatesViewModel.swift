@@ -50,9 +50,18 @@ import SwiftUI
     /// and Leftovers' had both written it out by hand.
     private var searches = LatestRequest()
 
+    /// What the person believes an extra copy is, as the popup under the toolbar
+    /// shows it — and as the engine has it stored, since the two are read from
+    /// one place.
+    @Published public private(set) var policy: KeepPolicy
+
     let vm: ModuleViewModel
     private let client: TransportClient
     private let store: NamespacedStore
+    /// How a stored setting is judged to be Helm's own. A port for the reason
+    /// every port here is one: the production answer is the login keychain, and
+    /// a test must not write to the person's.
+    private let settings: SettingGuard
     private var eventsTask: Task<Void, Never>?
 
     /// Search state must outlive the settings page. Settings tears the page down
@@ -73,10 +82,16 @@ import SwiftUI
         return created
     }
 
-    public init(vm: ModuleViewModel, store: NamespacedStore) {
+    public init(vm: ModuleViewModel, store: NamespacedStore,
+                settings: SettingGuard = DuplicatesSettings.guardOfScanSettings) {
         self.vm = vm
         self.store = store
+        self.settings = settings
         self.client = TransportClient(vm.transport)
+        // Through the engine's own reading, seal and all: a page that parsed the
+        // plist itself would show a forged policy as the one in force, which is
+        // the single place the forgery must not be believed.
+        self.policy = DuplicatesSettings.keepPolicy(in: store, guardedBy: settings)
         let remembered = store.string("folder", default: "")
         if !remembered.isEmpty { folder = URL(fileURLWithPath: remembered) }
         // The stream is captured here and `self` re-acquired per event: handing
@@ -156,9 +171,24 @@ import SwiftUI
         // Sealed here because here is where the authority is: an open panel the
         // person just used. The background scan reads this value with nobody
         // watching and refuses it if the seal does not match — see `SettingGuard`.
-        store.set(DuplicatesSettings.guardOfScanSettings.seal(Data(url.path.utf8)) ?? "",
+        store.set(settings.seal(Data(url.path.utf8)) ?? "",
                   for: SettingGuard.macKey(for: "folder"))
         search()
+    }
+
+    // MARK: - Which copy stays
+
+    /// The person's answer to what an extra copy is.
+    ///
+    /// Stored and sealed here, because here is where the authority is — a popup
+    /// somebody just used — and read back by the background scan, which has
+    /// nobody at the desk. The seal is written with the value: the engine refuses
+    /// a policy it did not write, so a value saved without its MAC would leave
+    /// every unattended scan on the default while this page said otherwise.
+    public func choose(_ chosen: KeepPolicy) {
+        guard chosen != policy else { return }
+        policy = chosen
+        DuplicatesSettings.setKeepPolicy(chosen, in: store, guardedBy: settings)
     }
 
     // MARK: - Searching
@@ -183,6 +213,10 @@ import SwiftUI
         replyLost = false
         let mine = searches.take()
         let path = folder.path
+        // Taken here, with the folder, so the request describes the page as it
+        // was when the button was pressed rather than as it is whenever the task
+        // happens to run.
+        let chosen = policy
         Task {
             // `DuplicateFindings`, the type the engine's `find` answers — the
             // one place these two targets have to agree, and they had stopped:
@@ -190,8 +224,13 @@ import SwiftUI
             // send made every search decode as nothing, which this method reads
             // as a cancellation. It built clean and no fake could see it,
             // because every fake in the test target spells the reply itself.
-            let found: DuplicateFindings? = await client.request(DuplicatesCommand.find,
-                                                                 encoding: DuplicateSearchRequest(path: path))
+            // The policy travels with the request. The engine needs it before it
+            // hashes anything — the name that stands for a hard-linked set is
+            // chosen by the same ladder — and the person at an open page may be
+            // looking at one they have just changed.
+            let found: DuplicateFindings? = await client.request(
+                DuplicatesCommand.find,
+                encoding: DuplicateSearchRequest(path: path, policy: chosen))
             guard searches.isLatest(mine) else { return }
             // Cancelled comes back nil: go back to where we were rather than
             // announce a clean folder nobody finished checking.

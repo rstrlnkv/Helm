@@ -142,6 +142,18 @@ final class DuplicatesWire: EngineTransport, @unchecked Sendable {
     /// the removal that is parked while the search answers.
     private var overrides: [DuplicatesCommand: Answer] = [:]
     private var seen: [DuplicatesCommand] = []
+    /// The searches that reached the wire, as the engine would decode them.
+    ///
+    /// The policy the page is showing travels in the request, and a request is
+    /// the one place a test can see it before the engine has it — a fake that
+    /// only counted its commands could not tell a search that carries the popup's
+    /// answer from one that carries nothing and leaves the engine on what it had
+    /// stored.
+    private var searched: [DuplicateSearchRequest] = []
+    /// The removals that reached the wire, likewise: a plan names the copy that
+    /// goes and the copy it duplicates, and «the survivor was never sent» is a
+    /// claim about the payload rather than about the command.
+    private var planned: [[DuplicatePlan]] = []
     private var held: [(command: DuplicatesCommand, continuation: CheckedContinuation<Data, Never>)] = []
 
     var events: AsyncStream<EngineEvent> { AsyncStream { _ in } }
@@ -172,6 +184,12 @@ final class DuplicatesWire: EngineTransport, @unchecked Sendable {
     /// act it is about really was attempted before asserting what was said about
     /// it. An assertion about an absence passes when the subject never happened.
     var commands: [DuplicatesCommand] { lock.withLock { seen } }
+
+    /// What each search asked for, in order.
+    var searches: [DuplicateSearchRequest] { lock.withLock { searched } }
+
+    /// What each removal asked for, in order.
+    var removals: [[DuplicatePlan]] { lock.withLock { planned } }
 
     var parkedCount: Int { lock.withLock { held.count } }
 
@@ -210,7 +228,7 @@ final class DuplicatesWire: EngineTransport, @unchecked Sendable {
     func send(_ command: EngineCommand) async throws -> Data {
         let name = DuplicatesCommand(rawValue: command.name)
         let reply: Reply = lock.withLock {
-            if let name { seen.append(name) }
+            record(name, command.payload)
             let answer = name.flatMap { overrides[$0] } ?? answer
             switch (answer, name) {
             case (.refuse, _): return .refuse
@@ -228,6 +246,29 @@ final class DuplicatesWire: EngineTransport, @unchecked Sendable {
         }
     }
 
+    /// What reached the wire, decoded the way the engine would decode it: a test
+    /// asks whether the *policy* travelled with the search and whether the
+    /// survivor stayed out of the plans, and both are facts about the payload.
+    ///
+    /// Called with the lock already held, from `send`.
+    private func record(_ name: DuplicatesCommand?, _ payload: Data) {
+        guard let name else { return }
+        seen.append(name)
+        switch name {
+        case .find:
+            if let request = try? JSONDecoder().decode(DuplicateSearchRequest.self,
+                                                       from: payload) {
+                searched.append(request)
+            }
+        case .trash:
+            if let plans = try? JSONDecoder().decode([DuplicatePlan].self, from: payload) {
+                planned.append(plans)
+            }
+        case .cancel, .backgroundScan:
+            break
+        }
+    }
+
     private func park(_ command: DuplicatesCommand,
                       _ continuation: CheckedContinuation<Data, Never>) {
         lock.withLock { held.append((command, continuation)) }
@@ -240,6 +281,39 @@ final class DuplicatesWire: EngineTransport, @unchecked Sendable {
         case refuse, empty
         case data(Data)
         case park(DuplicatesCommand)
+    }
+}
+
+// MARK: - The key a setting is sealed with
+
+/// A seal key that is the same on both sides of the boundary.
+///
+/// **Not the login keychain**, which is what `DuplicatesSettings.guardOfScanSettings`
+/// reaches: a test that stores a policy through the real guard writes an item
+/// into the person's own keychain, and the machine is a boundary of its own.
+///
+/// It can also stop answering, because the real one does — a locked keychain at
+/// login returns nil, and `SettingGuard.seal` then hands back nothing while the
+/// value is still written. A fake that always has a key cannot be in that state,
+/// and «the policy was saved unsealed» is exactly what the engine refuses.
+final class PlantedSealKey: SealKeyPort, @unchecked Sendable {
+    private let lock = NSLock()
+    private var material: Data?
+    private let firstUse: Bool
+
+    init(firstUse: Bool = false, available: Bool = true) {
+        self.firstUse = firstUse
+        self.material = available ? Data(repeating: 0x24, count: 32) : nil
+    }
+
+    /// The keychain going away under the app — or coming back.
+    func becomes(available: Bool) {
+        lock.withLock { material = available ? Data(repeating: 0x24, count: 32) : nil }
+    }
+
+    func key() -> SealKey? {
+        guard let material = lock.withLock({ material }) else { return nil }
+        return SealKey(material: material, firstUse: firstUse)
     }
 }
 
