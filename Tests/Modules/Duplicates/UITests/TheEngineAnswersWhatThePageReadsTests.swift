@@ -34,11 +34,20 @@ final class TheEngineAnswersWhatThePageReadsTests: XCTestCase {
         super.tearDown()
     }
 
+    /// Both ends are handed a key of the suite's own. The engine's `settings:`
+    /// and the view model's default to `DuplicatesSettings.guardOfScanSettings`,
+    /// which is `com.helm.app / settings-seal` in the *person's* login keychain —
+    /// and `DuplicatesViewModel.init` reads the keep policy through it, which
+    /// spends `establishKey()` and creates the item where it is absent.
+    /// `ATestNamesTheKeychainPortsItBuildsOverTests` is the rule; the machine is
+    /// a boundary of its own.
     private func model(searching root: URL) async -> DuplicatesViewModel {
         let transport = LocalTransport()
-        engine = DuplicatesEngine(transport: transport, store: nil)
+        engine = DuplicatesEngine(transport: transport, store: nil,
+                                  settings: SettingGuard(keys: PlantedSealKey()))
         let dvm = DuplicatesViewModel(vm: ModuleViewModel(transport: transport),
-                                      store: duplicatesStore(folder: root.path))
+                                      store: duplicatesStore(folder: root.path),
+                                      settings: SettingGuard(keys: PlantedSealKey()))
         dvm.search()
         for _ in 0..<20_000 where dvm.phase == .searching { await Task.yield() }
         return dvm

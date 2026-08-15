@@ -61,7 +61,7 @@ final class StaleRemovalIsRefusedTests: XCTestCase {
         let keep = try write("keep.bin", "original content")
         let remove = try write("remove.bin", "edited since the scan")
 
-        let result = await DuplicatesEngine().trash([
+        let result = await DuplicatesEngine(settings: suiteSealGuard()).trash([
             DuplicatePlan(remove: remove, keep: keep),
         ])
 
@@ -78,7 +78,7 @@ final class StaleRemovalIsRefusedTests: XCTestCase {
         let keep = try write("keep.bin", "the same bytes")
         let remove = try write("remove.bin", "the same bytes")
 
-        let result = await DuplicatesEngine().trash([
+        let result = await DuplicatesEngine(settings: suiteSealGuard()).trash([
             DuplicatePlan(remove: remove, keep: keep),
         ])
 
@@ -94,7 +94,7 @@ final class StaleRemovalIsRefusedTests: XCTestCase {
         let good = try write("good.bin", "shared")
         let stale = try write("stale.bin", "different now")
 
-        let result = await DuplicatesEngine().trash([
+        let result = await DuplicatesEngine(settings: suiteSealGuard()).trash([
             DuplicatePlan(remove: good, keep: keep),
             DuplicatePlan(remove: stale, keep: keep),
         ])

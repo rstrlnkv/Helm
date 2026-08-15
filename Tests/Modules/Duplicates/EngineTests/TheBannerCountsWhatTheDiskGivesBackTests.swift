@@ -104,6 +104,6 @@ final class TheBannerCountsWhatTheDiskGivesBackTests: XCTestCase {
     /// what is under test is the arithmetic, which `HelmTrash` computes before
     /// the move and would compute the same way after it.
     private func engine() -> DuplicatesEngine {
-        DuplicatesEngine(trashing: { _ in })
+        DuplicatesEngine(settings: suiteSealGuard(), trashing: { _ in })
     }
 }

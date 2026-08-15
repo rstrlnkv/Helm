@@ -45,9 +45,13 @@ final class DuplicateRemovalOutcomeTests: XCTestCase {
         let groups = [DuplicateGroup(copies: [.init(path: first, bytes: 1_000_000),
                                               .init(path: second, bytes: 1_000_000),
                                               .init(path: third, bytes: 1_000_000)])]
+        // The key is the suite's, not the person's: `init` reads the keep policy
+        // through this guard, and the default reaches `com.helm.app /
+        // settings-seal` in the login keychain — creating it where it is absent.
         let dvm = DuplicatesViewModel(
             vm: ModuleViewModel(transport: RemovingTransport(groups: groups, removal: removal)),
-            store: duplicatesStore(folder: "\(home)/Downloads"))
+            store: duplicatesStore(folder: "\(home)/Downloads"),
+            settings: SettingGuard(keys: PlantedSealKey()))
         dvm.search()
         for _ in 0..<200 where dvm.phase != .result { await Task.yield() }
         return dvm

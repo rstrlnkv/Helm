@@ -20,8 +20,13 @@ final class EventsTaskRetainTests: XCTestCase {
         // person to add a `store.set` here would not have noticed.
         let store = NamespacedStore(namespace: "test.duplicates.retain",
                                     backing: InMemoryKeyValueStore())
+        // And the seal key is the suite's. The store is empty, so `init`'s read
+        // of the keep policy lands on `.unset` and spends `establishKey()` — one
+        // `SecItemAdd` of `com.helm.app / settings-seal` into the login keychain
+        // of whoever runs the suite, from a test about a retain cycle.
         var dvm: DuplicatesViewModel? = DuplicatesViewModel(
-            vm: ModuleViewModel(transport: transport), store: store)
+            vm: ModuleViewModel(transport: transport), store: store,
+            settings: SettingGuard(keys: PlantedSealKey()))
         weak var weakDvm = dvm
 
         // Let observeEvents() actually start and park on the stream, as it
