@@ -47,13 +47,16 @@ struct PresetSection: View {
     }
 
     private func row(_ offer: OfferedPreset) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
+        // Built once. `draft` composes a `Rule` and looks its name up, and the
+        // two lines below both want it.
+        let draft = offer.draft
+        return HStack(alignment: .firstTextBaseline, spacing: 8) {
             VStack(alignment: .leading, spacing: HelmSpace.s1) {
-                Text(offer.draft.name).font(HelmText.rowTitle)
+                Text(draft.name).font(HelmText.rowTitle)
                 // The rule saying itself. Nothing here describes a preset in
                 // prose: a sentence written beside a rule is a second place the
                 // rule lives, and the one that goes stale is always the prose.
-                Text(RuleSummary.describe(offer.draft))
+                Text(RuleSummary.describe(draft))
                     .font(.caption2).foregroundStyle(HelmText.faint)
                     .lineLimit(2).fixedSize(horizontal: false, vertical: true)
             }
@@ -79,8 +82,7 @@ extension OfferedPreset {
     /// path component for a folder macOS does not name — one somebody moved to
     /// another disk.
     func folderName(home: String = NSHomeDirectory()) -> String {
-        SystemFolderNames.display(path: folder.path, home: home,
-                                  language: AppLanguage.current.rawValue)
-            ?? (folder.path as NSString).lastPathComponent
+        SystemFolderNames.displayOrOwn(path: folder.path, home: home,
+                                       language: AppLanguage.current.rawValue)
     }
 }

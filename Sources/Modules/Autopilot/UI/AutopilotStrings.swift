@@ -346,8 +346,7 @@ enum ApStr {
         // the system already has is how the same folder comes to have two names
         // on one screen.
         let named = folder.map {
-            SystemFolderNames.display(path: $0, home: home, language: language.rawValue)
-                ?? ($0 as NSString).lastPathComponent
+            SystemFolderNames.displayOrOwn(path: $0, home: home, language: language.rawValue)
         }
         return [HelmDates.dayAndMinute(when), named,
                 Plural.files(files, language: language.rawValue)]

@@ -34,6 +34,20 @@ public enum SystemFolderNames {
         return nil
     }
 
+    /// What to call this folder on screen: macOS's own name for it, or the last
+    /// component of the path when macOS has none.
+    ///
+    /// **The fallback belongs here rather than at every call site.** Three of
+    /// them had spelled `display(…) ?? (path as NSString).lastPathComponent`
+    /// themselves — Autopilot's pass header, its preset rows, and the
+    /// Duplicates sentence about transit folders — and each one carried its own
+    /// comment explaining that a Mac which cannot name its own Downloads folder
+    /// answers the English word. One sentence, one place.
+    public static func displayOrOwn(path: String, home: String, language: String) -> String {
+        display(path: path, home: home, language: language)
+            ?? (path as NSString).lastPathComponent
+    }
+
     /// The localized name, or nil when there is nothing to translate.
     public static func display(path: String, home: String, language: String) -> String? {
         guard language != "en", let key = key(forPath: path, home: home),
