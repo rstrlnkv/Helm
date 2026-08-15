@@ -40,7 +40,12 @@ final class TheRemovalNamesItselfWhileItRunsTests: XCTestCase {
         XCTAssertTrue(HelmActivity.running.contains { $0.label == probe },
                       "the probe never opened, so the check below is vacuous")
 
-        _ = await DiskEngine().trash(["/System/Library"])
+        let removal = await DiskEngine().trash(["/System/Library"])
+        // Said out loud rather than assumed: this test hands a system folder to
+        // a real engine, and the reason that is safe is `UserFileScope`. If it
+        // ever stopped refusing, the test would be moving `/System/Library` to
+        // somebody's Trash to check a log label.
+        XCTAssertTrue(removal.removed.isEmpty, "the gate let a system folder through")
 
         XCTAssertFalse(HelmActivity.running.contains { $0.label == "disk.trash" }, """
             the removal left its interval open. Every memory reading taken from now on names \
