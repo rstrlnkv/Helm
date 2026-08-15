@@ -4,33 +4,6 @@ import HelmTestSupport
 @testable import HelmRuntime
 @testable import Module_Autopilot_Engine
 
-/// A key port that has been asked and has not answered.
-///
-/// This is what an ad-hoc build meets every time it is rebuilt: the binary's
-/// designated requirement is its cdhash, so a rebuild is a different
-/// application to the keychain, the item's access list no longer matches, and
-/// `SecItemCopyMatching` sits inside a modal prompt until a person deals with
-/// it. Measured on an installed build: 20.7 s and 31.1 s on two launches.
-///
-/// Nothing here answers on its own. The test decides when — and mostly never,
-/// which is the case that matters.
-private final class StalledRuleKey: RuleKeyPort, @unchecked Sendable {
-    private let entered = DispatchSemaphore(value: 0)
-    private let answered = DispatchSemaphore(value: 0)
-
-    func key() -> RuleKey? {
-        entered.signal()
-        answered.wait()
-        return nil
-    }
-
-    /// True once something is blocked inside `key()`.
-    func waitUntilAsked() -> Bool { entered.wait(timeout: .now() + 5) == .success }
-
-    /// Released in `tearDown` so no test leaves a thread parked forever.
-    func release() { answered.signal() }
-}
-
 /// What the engine may do while it is being built and started.
 ///
 /// `ModuleHost.bootstrap()` builds and activates every enabled module's engine

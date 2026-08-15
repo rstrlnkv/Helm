@@ -438,9 +438,15 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// a file a test writes raises no event of its own, and a test of the stream
     /// would be a test of a child process.
     func handle(_ changed: [String]) {
-        let watched = folders.filter(\.enabled)
-        guard !watched.isEmpty else { return }
         queue.async { [self] in
+            // Read here, on the engine's queue, never on the caller's thread:
+            // this arrives synchronously from `FolderWatcher`'s callback, on the
+            // same serial queue `watch` and `stop` are handed to — and reading
+            // the rule set resolves the seal's key, which can sit behind a modal
+            // keychain prompt. A read before the dispatch parked the watcher for
+            // the whole prompt (`AWatcherEventReturnsWhileTheKeychainStallsTests`).
+            let watched = folders.filter(\.enabled)
+            guard !watched.isEmpty else { return }
             // Named while it runs, like the sweep — this is where the module
             // does all of its unattended work, and it was the one leg the
             // memory trail could not blame. The phase itself writes no log

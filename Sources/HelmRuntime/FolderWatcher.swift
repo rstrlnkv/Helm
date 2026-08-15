@@ -38,10 +38,11 @@ public final class FolderWatcher: @unchecked Sendable {
     ///
     /// A channel rather than a return value, and the queue is the reason: the work
     /// is handed to this instance's serial queue, where the change callbacks are
-    /// delivered as well — and one of those can take as long as Autopilot's
-    /// `folders` getter, which reads a keychain item. A `queue.sync` here would
-    /// park whoever asked, up to and including the thread that draws, until a
-    /// change notification finished.
+    /// delivered as well — so a `queue.sync` here would park whoever asked, up to
+    /// and including the thread that draws, until a change notification finished.
+    /// How long a callback takes is the caller's decision, not this class's:
+    /// Autopilot's used to read a keychain item on this queue before it learned
+    /// to enqueue instead, and nothing stops the next caller doing the same.
     public func watch(_ folders: [String], started: (@Sendable (Bool) -> Void)? = nil) {
         queue.async { [self] in
             stopStream()

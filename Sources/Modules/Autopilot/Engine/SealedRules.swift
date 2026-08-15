@@ -22,10 +22,11 @@ import HelmRuntime
 ///   open, which is why it is never held across a port call.
 final class SealedRules: @unchecked Sendable {
     private let store: NamespacedStore
-    /// The rule set is read from the sweep timer, from FSEvents and from the
-    /// transport — three threads, none of them the engine's queue, because the
-    /// read has to answer before the work is dispatched onto it. So the key and
-    /// the verdict carry their own lock rather than borrowing one held elsewhere.
+    /// The rule set is read from the engine's queue — the sweep timer and the
+    /// FSEvents leg both land there first — and from the transport, which
+    /// answers `folders` and `status` on whatever thread asked. Two threads at
+    /// least, so the key and the verdict carry their own lock rather than
+    /// borrowing one held elsewhere.
     private let keys: RuleKeyPort
     /// Where the mark lives — the second half of the seal, and the half the
     /// plist's author cannot reach.

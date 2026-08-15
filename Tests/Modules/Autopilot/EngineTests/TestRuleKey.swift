@@ -9,6 +9,35 @@ import Foundation
 /// `com.helm.autopilot` into the *user's* login keychain, and a suite that left
 /// that behind would be a harness leaving something behind; worse, the second
 /// run would find the first run's key and no longer be testing a first run.
+/// A key port that has been asked and has not answered.
+///
+/// This is what an ad-hoc build meets every time it is rebuilt: the binary's
+/// designated requirement is its cdhash, so a rebuild is a different
+/// application to the keychain, the item's access list no longer matches, and
+/// `SecItemCopyMatching` sits inside a modal prompt until a person deals with
+/// it. Measured on an installed build: 20.7 s and 31.1 s on two launches.
+///
+/// Nothing here answers on its own. The test decides when — and mostly never,
+/// which is the case that matters. Beside `TestRuleKey` because two files ask
+/// the same question of it now: what may run while the keychain has not
+/// answered — the launch, and a watcher event.
+final class StalledRuleKey: RuleKeyPort, @unchecked Sendable {
+    private let entered = DispatchSemaphore(value: 0)
+    private let answered = DispatchSemaphore(value: 0)
+
+    func key() -> RuleKey? {
+        entered.signal()
+        answered.wait()
+        return nil
+    }
+
+    /// True once something is blocked inside `key()`.
+    func waitUntilAsked() -> Bool { entered.wait(timeout: .now() + 5) == .success }
+
+    /// Released in `tearDown` so no test leaves a thread parked forever.
+    func release() { answered.signal() }
+}
+
 final class TestRuleKey: RuleKeyPort, @unchecked Sendable {
     /// The key itself, so a test can ask the same questions of a file that the
     /// engine holding one of these will ask — whether a mark on it is Helm's.
