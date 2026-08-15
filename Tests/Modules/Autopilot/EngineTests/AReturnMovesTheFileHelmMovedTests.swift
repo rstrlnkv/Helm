@@ -168,6 +168,11 @@ final class AReturnMovesTheFileHelmMovedTests: XCTestCase {
         XCTAssertEqual(runner.undo(record(), key: key),
                        .restored(to: "/Users/x/Downloads/march 2.pdf", stamped: true))
         XCTAssertNotNil(files.identity(of: origin), "the file that was already there was overwritten")
+        // **The mark goes where the file landed**, not where the record said
+        // it came from. The same line is what makes a return across volumes
+        // work: the inode changes with the move, so a mark written against the
+        // recorded identity would match nothing.
+        XCTAssertEqual(files.stamps.map(\.path), ["/Users/x/Downloads/march 2.pdf"])
     }
 
     /// A rename must not. The subject of the operation *is* the name, so
