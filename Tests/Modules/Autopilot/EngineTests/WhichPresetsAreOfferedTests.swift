@@ -85,6 +85,52 @@ final class WhichPresetsAreOfferedTests: XCTestCase {
         XCTAssertEqual(all.map(\.preset.folder), [.downloads, .downloads, .downloads])
     }
 
+    /// **A Mac with «Desktop & Documents in iCloud Drive» switched on.** `~/Desktop`
+    /// is then a symbolic link into `~/Library/Mobile Documents/com~apple~CloudDocs`,
+    /// and `FileManager` still answers `~/Desktop` — the link, not what it leads
+    /// to. So the path the port hands over passes every test that reads it as a
+    /// string: it is inside the home directory and it does not spell `Library`.
+    ///
+    /// It has to be refused all the same, and for a reason bigger than the gate's
+    /// wording. The files under that folder are iCloud's: some of them are
+    /// *evicted*, present only as a stub until something reads them, and a rule
+    /// that moves them between folders on an hourly timer with nobody watching is
+    /// an unattended process rearranging somebody's cloud storage. `~/Library`
+    /// being refused whole is what catches it, and the only thing that makes the
+    /// refusal reach this path is `WatchScope.canonical` resolving the link
+    /// before it compares.
+    ///
+    /// The link is real rather than described, because that resolution is the
+    /// whole of what is being tested — a fixture that spelled the iCloud path
+    /// directly would be the case already covered two tests up.
+    ///
+    /// The three Downloads presets are still offered: one folder being out of
+    /// bounds is not a reason to withhold the others.
+    func testADesktopThatIsAnICloudLinkIsNotOffered() throws {
+        let scratch = scratchDirectory("preset-icloud")
+        let home = scratch.appendingPathComponent("home")
+        let cloud = home.appendingPathComponent(
+            "Library/Mobile Documents/com~apple~CloudDocs/Desktop")
+        try FileManager.default.createDirectory(at: cloud, withIntermediateDirectories: true)
+        let link = home.appendingPathComponent("Desktop")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: cloud)
+        // The spelling FileManager would hand over says nothing about iCloud, so
+        // a gate that read the string would let this through.
+        XCTAssertFalse(link.path.contains("Library"), "the fixture is not the case it claims")
+
+        let all = PresetOffer.offered(
+            watching: [],
+            paths: FakePresetFolders([.desktop: link.path,
+                                      .downloads: home.appendingPathComponent("Downloads").path]),
+            home: home.path)
+
+        XCTAssertEqual(all.map(\.preset.folder), [.downloads, .downloads, .downloads], """
+            a Desktop that is really a folder inside ~/Library/Mobile Documents was offered to \
+            an unattended rule — Autopilot would move iCloud Drive's own files, including ones \
+            evicted to a stub, on an hourly timer
+            """)
+    }
+
     // MARK: - Already added
 
     private var screenshots: Rule {
