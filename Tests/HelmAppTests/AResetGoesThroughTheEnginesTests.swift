@@ -55,13 +55,13 @@ final class AResetGoesThroughTheEnginesTests: XCTestCase {
     /// call that means «the person is here».
     func testTheHostAsksEveryLiveEngine() throws {
         let host = try source("Sources/HelmApp/ModuleHost.swift")
-        let after = try XCTUnwrap(host.range(of: "func handBackSystemState()"),
-                                  "the host has no way to be asked for what its engines "
-                                  + "hold outside Helm")
-        let rest = host[after.upperBound...]
-        let end = [rest.range(of: "\n    func "), rest.range(of: "\n    private func ")]
-            .compactMap { $0?.lowerBound }.min()
-        let body = String(end.map { rest[..<$0] } ?? rest)
+        // `SwiftSource`, not a hand-rolled slice to the next `func`: this used
+        // to scan for the following declaration at one exact indent, which a
+        // nested function or a closure between the two would have broken
+        // silently — brace matching is the reading that survives nesting.
+        let body = try XCTUnwrap(SwiftSource.body(of: "handBackSystemState", in: host),
+                                 "the host has no way to be asked for what its engines "
+                                 + "hold outside Helm")
         XCTAssertTrue(body.contains("willDisable()"),
                       "the host is asked and tells nobody: `willDisable()` is the only "
                       + "call that means «the person is at the screen and this is the "
