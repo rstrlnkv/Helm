@@ -60,6 +60,15 @@ final class ASortRuleDoesNotSortItsOwnBucketsTests: XCTestCase {
         }
     }
 
+    /// `folders` and `Folders` are one folder on the volume Helm ships to, so
+    /// the lowercase one is the bucket too — and moving it into `Folders/`
+    /// there is the same move into itself. `RuleRunner` compares caselessly for
+    /// this reason and this is the same trade, made one layer up.
+    func testTheBucketIsTheBucketWhateverItsCase() {
+        XCTAssertNil(RulePlan.decide(facts("folders"),
+                                     rules: [sorting(.kind, named: "folders")]))
+    }
+
     func testAMonthFolderIsTheBucketOfAMonthRule() {
         XCTAssertNil(RulePlan.decide(facts("2026-07"),
                                      rules: [sorting(.month, named: "2026-07")]))
@@ -94,6 +103,15 @@ final class ASortRuleDoesNotSortItsOwnBucketsTests: XCTestCase {
         XCTAssertEqual(RulePlan.decide(facts("2026-13"),
                                        rules: [sorting(.month, named: "2026-13")])?.rule.id,
                        "sort")
+    }
+
+    /// And neither is one the scheme could only ever *read*. `2026-7` is a
+    /// month somebody typed: `DateFormatter` takes it, and the scheme would
+    /// have written `2026-07` — so it is a folder of their own, not a bucket.
+    func testAMonthTheSchemeWouldNeverHaveWrittenIsAnOrdinaryFolder() {
+        XCTAssertEqual(RulePlan.decide(facts("2026-7"),
+                                       rules: [sorting(.month, named: "2026-7")])?.rule.id,
+                       "sort", "a month the scheme reads but never writes")
     }
 
     /// The skip steps aside the way a disabled rule does: the rule below gets

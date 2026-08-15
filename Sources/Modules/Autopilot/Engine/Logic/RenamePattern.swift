@@ -95,24 +95,25 @@ enum SortBucket {
     static func isBucket(_ name: String, of scheme: SortScheme) -> Bool {
         switch scheme {
         case .kind:
-            FileKind.allCases.contains {
-                kindName($0).compare(name, options: .caseInsensitive) == .orderedSame
-            }
+            FileKind.allCases.contains { kindName($0).caseInsensitiveCompare(name) == .orderedSame }
         case .month:
             isMonth(name)
         }
     }
 
-    /// `yyyy-MM`, read rather than parsed: `DateFormatter` rolls `2026-13` over
-    /// into January and would call somebody's folder a bucket of this scheme.
-    /// A name the scheme cannot produce is an ordinary folder.
+    /// Asked of the formatter that writes these names, and asked *back*: a name
+    /// is this scheme's when the formatter both reads it and would have written
+    /// it that way. The shape is not spelled a second time here, so a change to
+    /// `month`'s format cannot leave the two disagreeing.
+    ///
+    /// Reading alone is too generous, and measured rather than assumed:
+    /// `date(from:)` takes `2026-7`, which `string(from:)` writes back as
+    /// `2026-07`. (It refuses `2026-13` on its own — non-lenient, so nothing
+    /// rolls over into January.) A folder the scheme could not have made is
+    /// somebody else's folder.
     private static func isMonth(_ name: String) -> Bool {
-        let parts = name.split(separator: "-", omittingEmptySubsequences: false)
-        guard parts.count == 2, parts[0].count == 4, parts[1].count == 2,
-              parts.allSatisfy({ $0.allSatisfy { $0.isASCII && $0.isNumber } }),
-              let month = Int(parts[1]), (1...12).contains(month)
-        else { return false }
-        return true
+        guard let date = month.date(from: name) else { return false }
+        return month.string(from: date) == name
     }
 
     /// `2026-07` — sorts by name into chronological order, which a localised
