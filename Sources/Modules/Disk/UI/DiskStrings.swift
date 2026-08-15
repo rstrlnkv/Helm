@@ -41,17 +41,23 @@ enum DkStr {
     static func basketItem(_ name: String, _ size: String) -> String {
         HelmBasket.item(name: name, size: size)
     }
-    /// The name of the action, not of the gesture: "Add" has no object, and a
-    /// screen reader says it once per row down a list of two hundred.
-    static var markForRemoval: String { L("Mark for removal") }
-    /// What the same button does when the item is already marked — which is
-    /// what it was announcing as "Add".
-    static var unmarkForRemoval: String { L("Unmark for removal") }
-    /// One button, two meanings. Kept here rather than at the two call sites so
-    /// the pair cannot drift apart — they already had, in the direction where
-    /// the label described neither state.
-    static func basketAction(basketed: Bool) -> String {
-        basketed ? unmarkForRemoval : markForRemoval
+    /// The name of the action **and its object**, which is the half that was
+    /// missing: "Add" had no object, and the fix for that changed the verb only —
+    /// so a screen reader still said the same four words once per row down a list
+    /// of two hundred. The row's own name is the only part of this button that
+    /// differs between rows, and it is what the person is listening for.
+    ///
+    /// One button, two meanings, one place: the pair had already drifted apart
+    /// once, in the direction where the label described neither state.
+    /// Interpolated, so it keeps an inline table — the lookup would otherwise be
+    /// asked for a key with a folder name already in it — and the name goes
+    /// through `Quoted`, because it is somebody's own file inside a sentence.
+    static func basketAction(name: String, basketed: Bool,
+                             language: AppLanguage = AppLanguage.current) -> String {
+        let it = Quoted(name, language: language)
+        return basketed
+            ? L("Unmark \(it) for removal", [.ru: "Снять отметку удаления с \(it)", .es: "Desmarcar \(it) para eliminar", .fr: "Ne plus marquer \(it) pour suppression", .de: "Markierung zum Entfernen für \(it) aufheben", .ja: "\(it) を削除予定から外す", .zh: "取消\(it)的待删除标记", .pt: "Desmarcar \(it) para remoção"], language: language)
+            : L("Mark \(it) for removal", [.ru: "Отметить \(it) к удалению", .es: "Marcar \(it) para eliminar", .fr: "Marquer \(it) pour suppression", .de: "\(it) zum Entfernen markieren", .ja: "\(it) を削除予定に追加", .zh: "将\(it)标记为待删除", .pt: "Marcar \(it) para remoção"], language: language)
     }
     static var systemItem: String { L("System") }
     static var emptyFolder: String { L("Nothing in this folder.") }

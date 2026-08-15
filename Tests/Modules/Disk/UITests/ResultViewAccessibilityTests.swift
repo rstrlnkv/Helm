@@ -61,11 +61,11 @@ final class ResultViewAccessibilityTests: XCTestCase {
     /// marked — where pressing it takes the item back out — VoiceOver announced
     /// the opposite of what it does.
     func testTheBasketButtonIsNamedForTheStateItIsIn() {
-        XCTAssertNotEqual(DkStr.basketAction(basketed: true),
-                          DkStr.basketAction(basketed: false),
+        XCTAssertNotEqual(DkStr.basketAction(name: "Downloads", basketed: true),
+                          DkStr.basketAction(name: "Downloads", basketed: false),
                           "one name for two opposite actions")
-        XCTAssertFalse(DkStr.basketAction(basketed: false).isEmpty)
-        XCTAssertFalse(DkStr.basketAction(basketed: true).isEmpty)
+        XCTAssertFalse(DkStr.basketAction(name: "Downloads", basketed: false).isEmpty)
+        XCTAssertFalse(DkStr.basketAction(name: "Downloads", basketed: true).isEmpty)
     }
 
     /// And wherever it is drawn, it says so.
@@ -83,7 +83,7 @@ final class ResultViewAccessibilityTests: XCTestCase {
             for (index, line) in lines.enumerated()
             where line.contains(#"basketed ? "checkmark.circle.fill""#) {
                 let chain = lines.dropFirst(index).prefix(10).joined(separator: "\n")
-                if !chain.contains("accessibilityLabel(DkStr.basketAction(basketed:") {
+                if !chain.contains("accessibilityLabel(DkStr.basketAction(name:") {
                     offenders.append("\(url.lastPathComponent):\(index + 1)  no name for the "
                                      + "state it is in")
                 }
@@ -107,7 +107,7 @@ final class ResultViewAccessibilityTests: XCTestCase {
         for url in try Self.swiftFiles() {
             let source = try String(contentsOf: url, encoding: .utf8)
             drawings += source.components(separatedBy: #"basketed ? "checkmark.circle.fill""#).count - 1
-            uses += source.components(separatedBy: "BasketButton(basketed:").count - 1
+            uses += source.components(separatedBy: "BasketButton(name:").count - 1
         }
         XCTAssertEqual(drawings, 1,
                        "the mark button is drawn in \(drawings) places; anything true of it — "

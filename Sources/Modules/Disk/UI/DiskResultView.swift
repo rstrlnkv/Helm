@@ -366,6 +366,11 @@ private struct BreadcrumbBar: View {
 /// name has to: it read "Add" in both states, which on a marked row is the
 /// opposite of what pressing it does.
 private struct BasketButton: View {
+    /// The row this button belongs to, as the row draws it. Read aloud once per
+    /// row down a list of two hundred, and without it every one of them was
+    /// «Mark for removal» — the name of the *action*, with no object, which is
+    /// the defect `DkStr.markForRemoval` was written to fix and only half fixed.
+    let name: String
     let basketed: Bool
     let removing: Bool
     let toggle: () -> Void
@@ -378,8 +383,8 @@ private struct BasketButton: View {
         }
         .buttonStyle(.borderless)
         .disabled(removing)
-        .help(DkStr.basketAction(basketed: basketed))
-        .accessibilityLabel(DkStr.basketAction(basketed: basketed))
+        .help(DkStr.basketAction(name: name, basketed: basketed))
+        .accessibilityLabel(DkStr.basketAction(name: name, basketed: basketed))
         .accessibilityAddTraits(basketed ? .isSelected : [])
     }
 }
@@ -405,6 +410,13 @@ private struct ChildRow: View {
     let onToggleBasket: () -> Void
     let onDrill: () -> Void
 
+    /// What the row draws, and therefore what its button is named after — the
+    /// flag rather than the name for a folded bucket, since a person's own file
+    /// called "…" was once labelled "Other items" and given the bucket's size.
+    /// One spelling: a second copy is how the two would come to name different
+    /// things on one row.
+    private var drawnName: String { child.isFolded ? DkStr.otherItems : title }
+
     private var removable: Bool { UserFileScope.isRemovable(child.path) }
     private var isHovered: Bool { hovered == child.path }
 
@@ -419,7 +431,7 @@ private struct ChildRow: View {
             VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 // The flag, not the name: a person's own file called "…" was
                 // labelled "Other items" and given the bucket's size.
-                Text(child.isFolded ? DkStr.otherItems : title)
+                Text(drawnName)
                     .lineLimit(1).truncationMode(.middle)
                 if child.noAccess {
                     // The token, not `.orange`: the system colour is tuned for
@@ -436,7 +448,8 @@ private struct ChildRow: View {
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(HelmText.quiet)
             if removable {
-                BasketButton(basketed: basketed, removing: removing, toggle: onToggleBasket)
+                BasketButton(name: drawnName, basketed: basketed, removing: removing,
+                             toggle: onToggleBasket)
             }
         }
         .padding(.vertical, HelmSpace.s1)
@@ -531,7 +544,8 @@ private struct AdviceList: View {
             Text(Bytes(item.bytes))
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(HelmText.quiet)
-            BasketButton(basketed: basketed, removing: dvm.busy) { dvm.toggleBasket(entry) }
+            BasketButton(name: item.name, basketed: basketed,
+                         removing: dvm.busy) { dvm.toggleBasket(entry) }
         }
         .padding(.vertical, HelmSpace.s2).padding(.horizontal, HelmSpace.s4)
         .contextMenu {
