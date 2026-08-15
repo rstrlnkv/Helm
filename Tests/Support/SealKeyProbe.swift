@@ -26,9 +26,25 @@ public final class SealKeyProbe: SealKeyPort, @unchecked Sendable {
     private var mainThread = false
     private var material: Data?
     private let gate: DispatchSemaphore?
+    /// Raised as each caller *enters*, before the gate is waited on.
+    ///
+    /// `reads` cannot answer «somebody is inside right now»: it is incremented on
+    /// the way out, so a caller parked on the gate is invisible in it — which is
+    /// precisely the state a test about two callers arriving together has to be
+    /// able to wait for. Without it the interleaving is a guess about scheduling,
+    /// and the arrangement being tested may never occur.
+    private let entered = DispatchSemaphore(value: 0)
 
     /// - Parameter gate: held shut until a test opens it. Nil answers at once.
     public init(gate: DispatchSemaphore? = nil) { self.gate = gate }
+
+    /// Blocks until a caller has reached the gate, so a test can arrange a second
+    /// one behind the first. False when nobody arrived inside `seconds`, which is
+    /// a failure the caller reports rather than a wait that never ends.
+    @discardableResult
+    public func waitUntilAsked(seconds: TimeInterval = 5) -> Bool {
+        entered.wait(timeout: .now() + seconds) == .success
+    }
 
     /// How many times the key has been asked for.
     public var reads: Int { lock.withLock { count } }
@@ -41,6 +57,7 @@ public final class SealKeyProbe: SealKeyPort, @unchecked Sendable {
         // which thread it is, which is the only thing a deadlocked test could
         // otherwise never report.
         let onMain = Thread.isMainThread
+        entered.signal()
         gate?.wait()
         return lock.withLock {
             count += 1

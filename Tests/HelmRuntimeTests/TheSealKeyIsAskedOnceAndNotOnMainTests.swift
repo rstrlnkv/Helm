@@ -94,4 +94,96 @@ final class TheSealKeyIsAskedOnceAndNotOnMainTests: XCTestCase {
         await warming.value
         XCTAssertEqual(source.reads, 1)
     }
+
+    // MARK: - Two callers arriving together
+
+    /// **One round trip, and therefore one dialog.** The cache holds its lock
+    /// *across* the source's own call, and its comment says why: two threads
+    /// arriving together must produce one keychain read rather than two, because
+    /// on an ad-hoc build a read is a modal authorization dialog and two of them
+    /// is two dialogs stacked in front of a window.
+    ///
+    /// That claim had no test. Every other case here calls the cache once, or
+    /// twice in sequence, and both orders pass whether the lock wraps the source
+    /// call or is taken after it returns.
+    ///
+    /// **One signal, deliberately.** If the lock were taken after the fetch, the
+    /// second caller would reach the source too, park on the gate, and never
+    /// return — so the wait below times out rather than the count merely reading
+    /// 2. Both callers finishing on one signal *is* the assertion; the count
+    /// corroborates it.
+    ///
+    /// The first caller is known to be inside before the second starts —
+    /// `waitUntilAsked` — because otherwise the two might not overlap at all and
+    /// the arrangement under test would never occur.
+    func testTwoCallersArrivingTogetherCostOneRoundTrip() {
+        let gate = DispatchSemaphore(value: 0)
+        let source = SealKeyProbe(gate: gate)
+        let cache = SealKeyCache(source)
+        let both = expectation(description: "both callers answered")
+        both.expectedFulfillmentCount = 2
+
+        DispatchQueue.global().async {
+            _ = cache.key()
+            both.fulfill()
+        }
+        XCTAssertTrue(source.waitUntilAsked(),
+                      "the first caller never reached the keychain, so nothing below is about "
+                      + "two callers overlapping")
+        DispatchQueue.global().async {
+            _ = cache.key()
+            both.fulfill()
+        }
+        // Only the first caller is let through.
+        gate.signal()
+
+        wait(for: [both], timeout: 5)
+        XCTAssertEqual(source.reads, 1, """
+            two callers arriving together made \(source.reads) keychain round trips, which on an \
+            ad-hoc build is that many modal authorization dialogs — the cache's lock has to be \
+            held across the source's own call, not taken after it returns
+            """)
+    }
+
+    /// And the answer is the same key for both, not a key for one and a refusal
+    /// for the other: the second caller is served from what the first stored.
+    func testTheSecondCallerIsServedTheKeyTheFirstFetched() {
+        let gate = DispatchSemaphore(value: 0)
+        let source = SealKeyProbe(gate: gate)
+        let cache = SealKeyCache(source)
+        let answers = Answers()
+        let both = expectation(description: "both callers answered")
+        both.expectedFulfillmentCount = 2
+
+        for _ in 0..<2 {
+            DispatchQueue.global().async {
+                answers.add(cache.key())
+                both.fulfill()
+            }
+        }
+        gate.signal()
+        wait(for: [both], timeout: 5)
+
+        let material = answers.taken.map(\.?.material)
+        XCTAssertEqual(material.count, 2, "one of the callers never answered")
+        XCTAssertNil(material.first(where: { $0 == nil }) ?? nil,
+                     "a caller was told there is no key while the other had one")
+        XCTAssertEqual(Set(material.compactMap { $0 }).count, 1,
+                       "the two callers were given different keys, so a value sealed by one "
+                       + "would be refused by the other")
+        // Exactly one of them may spend first use — the trust-on-first-use door
+        // is one door, and two callers holding it open is the defect
+        // `TheFirstReadClosesTheSealsDoorTests` exists for, arriving by another
+        // route.
+        XCTAssertEqual(answers.taken.filter { $0?.firstUse == true }.count, 1)
+    }
+
+    /// What the two background callers answered. A class behind a lock, because
+    /// they write from two queues and `wait(for:)` reads afterwards.
+    private final class Answers: @unchecked Sendable {
+        private let lock = NSLock()
+        private var stored: [SealKey?] = []
+        func add(_ key: SealKey?) { lock.withLock { stored.append(key) } }
+        var taken: [SealKey?] { lock.withLock { stored } }
+    }
 }
