@@ -44,8 +44,13 @@ final class OneRemovalAtATimeEverywhereTests: XCTestCase {
         var offenders: [String] = []
         let files = FileManager.default.enumerator(at: modules, includingPropertiesForKeys: nil)
         while let url = files?.nextObject() as? URL {
+            // `contains`, not `hasSuffix`: a view model may be split across
+            // extension files (`DiskViewModel+Basket.swift` holds Disk's
+            // `emptyBasket`), and the unit this guard is about is the file that
+            // *sends* the command — the `guard !busy` has to stand beside the
+            // request it gates, whichever file of the type that is.
             guard url.pathExtension == "swift",
-                  url.lastPathComponent.hasSuffix("ViewModel.swift"),
+                  url.lastPathComponent.contains("ViewModel"),
                   let source = try? String(contentsOf: url, encoding: .utf8),
                   source.contains("Command.trash")
             else { continue }
