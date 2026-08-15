@@ -143,21 +143,36 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
         return values?.volumeAvailableCapacity ?? 0
     }
 
+    /// **The heaviest removal in the app, and it had no name while it ran.**
+    ///
+    /// `HelmTrash.remove` weighs every path in the batch with `FileWeight` before
+    /// it moves anything — a folder, so a walk each — and a memory reading taken
+    /// during one used to arrive with nothing beside it. The scope form rather
+    /// than `begin` + `defer`: the phase is this body and the closure takes it,
+    /// so the interval closes on return, on throw and on cancellation without
+    /// anybody balancing a pair. The reading is inside the phase deliberately —
+    /// `HelmLog.memory` names what else is running by asking `HelmActivity`, and
+    /// a phase that has already ended cannot be excluded from its own line.
     public func trash(_ paths: [String]) async -> DiskRemoval {
-        await offTheCooperativePool {
-            // Refused, not dropped. Filtering the loop meant a path the gate
-            // rejected reached neither list, and the page then announced
-            // "Removed — N freed" over a file still sitting there.
-            // `UserFileScope.partition` is written to the same *shape* as
-            // `RemovableScope.partition` and answers a different question —
-            // what belongs to the user, not what belongs to an application.
-            // The two are not interchangeable and the earlier wording here
-            // ("one question, two spellings") read as an invitation to merge
-            // them: wiring a module to the wrong gate is a real mistake with a
-            // misleading symptom, and the duplicate finder shipped one
-            // (ARCHITECTURE.md § Removal scope).
-            let (allowed, refused) = UserFileScope.partition(Array(Set(paths)))
-            return HelmTrash.remove(allowed: allowed, outOfScope: refused, module: Self.moduleID)
+        await HelmActivity.phase("disk.trash") {
+            let removal = await offTheCooperativePool {
+                // Refused, not dropped. Filtering the loop meant a path the gate
+                // rejected reached neither list, and the page then announced
+                // "Removed — N freed" over a file still sitting there.
+                // `UserFileScope.partition` is written to the same *shape* as
+                // `RemovableScope.partition` and answers a different question —
+                // what belongs to the user, not what belongs to an application.
+                // The two are not interchangeable and the earlier wording here
+                // ("one question, two spellings") read as an invitation to merge
+                // them: wiring a module to the wrong gate is a real mistake with
+                // a misleading symptom, and the duplicate finder shipped one
+                // (ARCHITECTURE.md § Removal scope).
+                let (allowed, refused) = UserFileScope.partition(Array(Set(paths)))
+                return HelmTrash.remove(allowed: allowed, outOfScope: refused,
+                                        module: Self.moduleID)
+            }
+            HelmLog.shared.memory("disk.trash")
+            return removal
         }
     }
 

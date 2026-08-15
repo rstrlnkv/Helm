@@ -56,10 +56,38 @@ final class AdviceReasonTests: XCTestCase {
                        DkStr.notModifiedInMonths)
     }
 
-    func testTheOtherTwoKindsKeepTheirOwnReason() {
+    /// A cache is a folder, and a folder's own mtime says when something was
+    /// last added to it and nothing about what is inside — so this row has no
+    /// date to offer and says what it is instead.
+    func testACacheKeepsItsOwnReason() {
         XCTAssertEqual(DkStr.adviceReason(advice(.cache, modified: nil)),
                        DkStr.adviceKindCache)
-        XCTAssertEqual(DkStr.adviceReason(advice(.oldDownload, modified: modified)),
+    }
+
+    /// **And an old download carries a date it was not showing.**
+    ///
+    /// `DiskAdvisor` builds this advice with `modified:` — the threshold *is* a
+    /// date, thirty days — and the row answered «Old download», a category word,
+    /// over a request to bin an 8 GB installer. The evidence was already in the
+    /// payload and the sentence for it already in the table.
+    func testAnOldDownloadOffersTheDateItWasJudgedBy() {
+        let line = DkStr.adviceReason(advice(.oldDownload, modified: modified))
+        XCTAssertTrue(line.contains(HelmDates.day(modified)),
+                      "the row's whole evidence is a category word: \(line)")
+    }
+
+    /// Two downloads of different ages read differently, which is the whole
+    /// difference between a reason and a label.
+    func testTwoDownloadsOfDifferentAgesReadDifferently() {
+        let older = advice(.oldDownload, modified: Date(timeIntervalSince1970: 1_500_000_000))
+        XCTAssertNotEqual(DkStr.adviceReason(advice(.oldDownload, modified: modified)),
+                          DkStr.adviceReason(older))
+    }
+
+    /// Advice cached by a build that did not carry the date falls back to the
+    /// category word rather than claiming a day it does not know.
+    func testAnOldDownloadWithNoDateFallsBackToItsCategory() {
+        XCTAssertEqual(DkStr.adviceReason(advice(.oldDownload, modified: nil)),
                        DkStr.adviceKindOldDownload)
     }
 }

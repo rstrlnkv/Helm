@@ -116,16 +116,24 @@ enum DkStr {
     /// ask about without rendering anything.
     static func adviceReason(_ advice: DiskAdvice) -> String {
         switch advice.kind {
+        // A folder, whose own mtime says when something was last added to it
+        // and nothing about what is inside. No date to offer, so no date.
         case .cache: adviceKindCache
-        case .oldDownload: adviceKindOldDownload
-        case .largeOld:
-            // The day, not the minute: this line explains an advice measured in
-            // months, and "19:00" is noise on a file nobody has touched since
-            // March.
-            advice.modified.map {
-                notModifiedSince(HelmDates.day(Date(timeIntervalSince1970: $0)))
-            } ?? notModifiedInMonths
+        // Both file verdicts are dates — thirty days for a download, half a year
+        // for a large file — and the download row offered the category word as
+        // its whole evidence against a request to bin an 8 GB installer. Each
+        // keeps its own fallback beside it, for advice cached by a build that
+        // did not carry the date.
+        case .oldDownload: dated(advice.modified) ?? adviceKindOldDownload
+        case .largeOld: dated(advice.modified) ?? notModifiedInMonths
         }
+    }
+
+    /// The day, not the minute: these judgements are measured in months, and
+    /// "19:00" is noise on a file nobody has touched since March. nil where
+    /// there is no date to say anything about.
+    private static func dated(_ modified: TimeInterval?) -> String? {
+        modified.map { notModifiedSince(HelmDates.day(Date(timeIntervalSince1970: $0))) }
     }
     static var otherItems: String { L("Smaller items") }
     static var ringMap: String { L("Disk map") }

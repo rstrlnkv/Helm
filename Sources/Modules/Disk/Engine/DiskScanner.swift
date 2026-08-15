@@ -281,7 +281,21 @@ final class DiskScanner: @unchecked Sendable {
     private func readDirectory(_ path: String) -> ReadOutcome {
         let fd = open(path, O_RDONLY | O_DIRECTORY)
         guard fd >= 0 else {
-            return errno == EACCES || errno == EPERM ? .denied : .entries([])
+            // **A directory that would not open is never an empty one.** This
+            // used to answer `.entries([])` for everything but `EACCES` and
+            // `EPERM` — the right side of that line carries every TCC refusal
+            // (measured: `~/Library/Mail`, `~/Library/Messages`, `~/Library/Safari`
+            // and a Photos library all answer `EPERM`), and the wrong side
+            // carried a disk that is failing or has been unplugged (`EIO`,
+            // `ETIMEDOUT`) and a directory replaced under the walk (`ENOTDIR`,
+            // errno 20). Each of those was drawn as a genuine zero on a map
+            // whose whole job is where the space went.
+            //
+            // `noAccess` is the only signal the tree has, and it is the honest
+            // half of all of them: the walk did not get in, so nothing below is
+            // counted. The row's word is «No access», which for a vanished
+            // folder is imprecise and for none of them is a lie about size.
+            return .denied
         }
         defer { close(fd) }
 
