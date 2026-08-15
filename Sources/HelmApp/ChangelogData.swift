@@ -61,6 +61,7 @@ enum Changelog {
     static var entries: [ChangelogEntry] {
         [
             ChangelogEntry(version: "0.10.0", date: "2026-08-09", items: [
+                ChangeItem(kind: .new, text: L("Duplicates asks what an extra copy is: the one sitting in Downloads or on the Desktop, or the one that arrived later. It followed the second rule in silence before, so a file you downloaded and then filed away kept the download \u{2014} and Helm offered to delete the copy you had put away. Every group now says why its copy was kept, any row can be made the one that stays, and \u{201C}Restore the recommendation\u{201D} puts that back.")),
                 ChangeItem(kind: .new, text: L("A timer can end automation too. Switch it on, and a timer set while an app is holding the Mac ends that as well \u{2014} until the app is launched again.")),
                 ChangeItem(kind: .upd, text: L("The sidebar is narrower and you can drag it wider or thinner \u{2014} whatever you settle on comes back next time.")),
                 ChangeItem(kind: .new, text: L("A silenced rule says so in the panel, with a way to start it again. Stopping a session by hand, or a timer that ends automation, leaves the rule quiet until it applies afresh \u{2014} and nothing said so where you would look.")),

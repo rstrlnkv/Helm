@@ -14,6 +14,25 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 > `dev.7` for a build that has never itself gone out.
 
 ### Added
+- **Duplicates asks what an extra copy is, and the whole screen answers to it.**
+  A row under the toolbar — «An extra copy is …» with two beliefs to finish the
+  sentence: the copy sitting in Downloads or on the Desktop, or the copy that
+  arrived later. The second was the rule the module followed in silence, and it
+  was wrong often enough to matter: a file downloaded and *then* filed away kept
+  the download, so Helm offered to delete the copy somebody had deliberately put
+  away. The folders are named by macOS through `TransitFolders.named` and
+  `SystemFolderNames`, never translated a ninth time.
+  Changing the belief rearranges what is already on screen — the copies carry
+  their own date added, so nothing is read or hashed again — and a mark left on
+  a copy that has just become the one that stays comes off, with a line saying
+  how many, because the bar would otherwise promise four files while three went.
+  Every group header carries the rung that decided it (by folder, arrived first,
+  the shorter path, by name, or your choice) in place of a tooltip that said «the
+  copy that was there first» about all of them in eight languages; that key is
+  gone from all eight files. Any row can be made the one that stays — the icon at
+  its left, its context menu and its accessibility actions are one act — and the
+  header offers the way back. «Mark every extra copy» now says how many copies it
+  passed over, instead of applying the removal scope in silence.
 - **The page now says what the engine already knew.** The battery guard's stop
   reaches the panel and the settings page (`batteryStopped`/`batteryFloor` are
   wired into `KeepAwakeHero`, no longer defaulted and silently dropped by the

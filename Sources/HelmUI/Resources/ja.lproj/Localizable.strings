@@ -817,3 +817,4 @@
 "Restore the recommendation" = "おすすめに戻す";
 "An extra copy is" = "余分なコピーとは";
 "the one that arrived later" = "あとから来たもの";
+"Duplicates asks what an extra copy is: the one sitting in Downloads or on the Desktop, or the one that arrived later. It followed the second rule in silence before, so a file you downloaded and then filed away kept the download — and Helm offered to delete the copy you had put away. Every group now says why its copy was kept, any row can be made the one that stays, and “Restore the recommendation” puts that back." = "“重複”は、余分なコピーとは何かを尋ねるようになりました。ダウンロードやデスクトップにあるものか、あとから来たものかです。以前は後者の規則が黙って使われていたため、ダウンロードしてから整理したファイルはダウンロード側が残り、Helm は片づけたほうのコピーの削除を勧めていました。今はグループごとに残す理由が表示され、どの行でも残す側にでき、“おすすめに戻す”で元に戻せます。";

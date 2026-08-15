@@ -817,3 +817,4 @@
 "Restore the recommendation" = "恢复推荐选择";
 "An extra copy is" = "多余的副本是指";
 "the one that arrived later" = "较晚出现的那份";
+"Duplicates asks what an extra copy is: the one sitting in Downloads or on the Desktop, or the one that arrived later. It followed the second rule in silence before, so a file you downloaded and then filed away kept the download — and Helm offered to delete the copy you had put away. Every group now says why its copy was kept, any row can be made the one that stays, and “Restore the recommendation” puts that back." = "“重复文件”会先问什么算多余的副本：位于“下载”或“桌面”中的那份，还是较晚出现的那份。以前默认按后一条规则处理，于是先下载、后整理归档的文件反而保留了下载的那份，Helm 建议删除的恰恰是你收好的副本。现在每组都会说明为什么保留这份副本，任意一行都可以设为保留，“恢复推荐选择”可以撤回。";
