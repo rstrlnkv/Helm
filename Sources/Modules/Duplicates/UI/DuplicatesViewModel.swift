@@ -57,6 +57,17 @@ public enum KeepGrounds: Equatable, Sendable {
     /// `HelmRemovalOutcome.unansweredWithStaleList` and not the plain sentence,
     /// whose second half points at a list its caller has just refreshed.
     @Published public private(set) var replyLost = false
+    /// The last search did not run to its end — stopped by the person, or
+    /// given up by the engine.
+    ///
+    /// `removalStopped`'s repair, one act over: `cancel()` lands on `phase =
+    /// .start` with the folder still chosen, so without this the screen read
+    /// exactly as it does before anything has happened. Set on the press rather
+    /// than off a reply, because for the search the press is authoritative —
+    /// the same line drops the request token, so no answer can land after it —
+    /// and set again where the engine itself answers nothing, which is its own
+    /// way of not finishing. The next search withdraws it on the way in.
+    @Published public private(set) var searchStopped = false
     /// The last removal was stopped by the person, between files.
     ///
     /// The fifth thing the report is read as — not a success, not a refusal,
@@ -370,11 +381,15 @@ public enum KeepGrounds: Equatable, Sendable {
         // folder nobody is reading any more.
         unreadable = 0
         librariesSkipped = 0
-        // A report about a press two screens ago. The sentence it draws is about
-        // *this* list being older than the press, and there is about to be a
-        // different list.
-        replyLost = false
-        removalStopped = false
+        // The whole removal report, not two fields of it. Clearing `replyLost`
+        // alone left the banner, the failures and the count standing — a
+        // refusal from the last removal drawn under a different folder's
+        // results, saying «could not be moved» about a file the new search
+        // never returned. The fields are one report and go together.
+        clearRemovalReport()
+        // The previous search's own outcome goes the same way: this press is
+        // the answer to it.
+        searchStopped = false
         // And the same for the marks: «unmarked: 2» is about a basket that has
         // just been emptied by the line above, and the groups it named are gone.
         marksNote = nil
@@ -405,8 +420,15 @@ public enum KeepGrounds: Equatable, Sendable {
                 encoding: DuplicateSearchRequest(path: path, policy: chosen))
             guard searches.isLatest(mine) else { return }
             // Cancelled comes back nil: go back to where we were rather than
-            // announce a clean folder nobody finished checking.
-            guard let found else { phase = .start; return }
+            // announce a clean folder nobody finished checking — and say so.
+            // The engine answering nothing is its own way of not finishing,
+            // and a start screen with the folder still chosen otherwise reads
+            // as if nothing had happened.
+            guard let found else {
+                phase = .start
+                searchStopped = true
+                return
+            }
             groups = found.groups
             // The answer is ordered by the policy the *request* carried, and a
             // search takes minutes with the popup live throughout. When the two
@@ -429,6 +451,10 @@ public enum KeepGrounds: Equatable, Sendable {
         // No payload. It used to encode an empty `[String]` the engine never
         // decodes — two bytes of JSON standing where «nothing» was meant.
         Task { await client.send(DuplicatesCommand.cancel) }
+        // A named outcome, and only for a search that was actually running: a
+        // press is authoritative here because the token above is already
+        // dropped, so no answer can land after it (see `searchStopped`).
+        if phase == .searching { searchStopped = true }
         // Back to the start, whether or not a folder is chosen. This was
         // `folder == nil ? .start : .start` — a ternary whose two branches are
         // the same value, which is a decision somebody meant to make and did
