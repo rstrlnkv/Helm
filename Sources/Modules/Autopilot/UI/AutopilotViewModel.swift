@@ -367,15 +367,23 @@ import SwiftUI
         panel.allowsMultipleSelection = false
         panel.prompt = ApStr.addFolder
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        // The same gate the engine applies, applied early so the refusal is a
-        // sentence rather than a rule that silently never fires.
-        guard WatchScope.allows(url.path) else {
-            banner = ApStr.needsAccess
-            return
-        }
+        guard admitted(url.path) else { return }
         guard !folders.contains(where: { $0.path == url.path }) else { return }
         folders.append(WatchedFolder(path: url.path))
         save()
+    }
+
+    /// The same gate the engine applies, asked early so the refusal is a
+    /// sentence rather than a rule that silently never fires. Both ways in —
+    /// the panel and a preset's folder — come through here, so the sentence is
+    /// decided once. It is `WatchScope`'s, which refuses by *position*: sending
+    /// this person for a grant would earn them the same refusal twice.
+    private func admitted(_ path: String) -> Bool {
+        guard WatchScope.allows(path, home: home) else {
+            banner = ApStr.folderOutOfReach
+            return false
+        }
+        return true
     }
 
     func removeFolder(_ folder: WatchedFolder) {
@@ -454,10 +462,7 @@ import SwiftUI
     /// behalf would run all of them over everything in it.
     private func saveRuleWithItsFolder(_ rule: Rule, in folder: WatchedFolder) async {
         guard refusal == nil else { return }
-        guard WatchScope.allows(folder.path, home: home) else {
-            banner = ApStr.needsAccess
-            return
-        }
+        guard admitted(folder.path) else { return }
         var fresh = folder
         fresh.rules = [rule]
         folders.append(fresh)

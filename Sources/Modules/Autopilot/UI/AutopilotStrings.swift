@@ -25,6 +25,11 @@ enum ApStr {
     static var summary: String { L("Folders that keep themselves in order") }
     static var startHint: String { L("Point Helm at a folder and give it rules. A file that arrives is checked against them in order and the first match wins — and every watched folder is checked again once an hour, so age rules come round.") }
     static var needsAccess: String { L("Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do.") }
+    /// `WatchScope`'s refusal, which is positional: `~/Library`, a whole volume,
+    /// anything outside the home. Its own sentence, never `needsAccess` — that
+    /// one names a grant, and no grant changes a position, so it sent people to
+    /// System Settings to earn the same refusal twice.
+    static var folderOutOfReach: String { L("A rule can watch folders inside your home folder, but not the Library and not a whole volume.") }
 
     // MARK: - Rules that are not Helm's to run
 

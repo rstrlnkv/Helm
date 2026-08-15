@@ -575,6 +575,7 @@
 "Without Full Disk Access Helm cannot check every item, and a short list of leftovers looks exactly like a Mac with none." = "Without Full Disk Access Helm cannot check every item, and a short list of leftovers looks exactly like a Mac with none.";
 "Without Full Disk Access Helm cannot read every folder, and a short list of duplicates looks exactly like a folder that has none." = "Without Full Disk Access Helm cannot read every folder, and a short list of duplicates looks exactly like a folder that has none.";
 "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do." = "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do.";
+"A rule can watch folders inside your home folder, but not the Library and not a whole volume." = "A rule can watch folders inside your home folder, but not the Library and not a whole volume.";
 "Without Full Disk Access an app’s containers stay behind, and Helm cannot see the Trash to look for leftovers." = "Without Full Disk Access an app’s containers stay behind, and Helm cannot see the Trash to look for leftovers.";
 "Without Full Disk Access an app’s containers stay behind." = "Without Full Disk Access an app’s containers stay behind.";
 "Without Full Disk Access some folders scan as empty." = "Without Full Disk Access some folders scan as empty.";

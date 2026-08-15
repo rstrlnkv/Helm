@@ -575,6 +575,7 @@
 "Without Full Disk Access Helm cannot check every item, and a short list of leftovers looks exactly like a Mac with none." = "Ohne Festplattenvollzugriff kann Helm nicht jedes Objekt prüfen — und eine kurze Liste von Resten sieht genauso aus wie ein Mac ganz ohne Reste.";
 "Without Full Disk Access Helm cannot read every folder, and a short list of duplicates looks exactly like a folder that has none." = "Ohne Festplattenvollzugriff kann Helm nicht jeden Ordner lesen — und eine kurze Liste sieht genauso aus wie ein Ordner ohne Duplikate.";
 "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do." = "Ohne Festplattenvollzugriff liest sich ein geschützter Ordner als leer: keine Regel greift, und das sieht genauso aus wie ein Ordner ohne Arbeit.";
+"A rule can watch folders inside your home folder, but not the Library and not a whole volume." = "Eine Regel kann Ordner im Benutzerordner beobachten, aber weder die Library noch ein ganzes Volume.";
 "Without Full Disk Access an app’s containers stay behind, and Helm cannot see the Trash to look for leftovers." = "Ohne Festplattenvollzugriff bleiben die Container einer App liegen, und Helm sieht den Papierkorb nicht, um nach Resten zu suchen.";
 "Without Full Disk Access an app’s containers stay behind." = "Ohne Festplattenvollzugriff bleiben die Container der App liegen.";
 "Without Full Disk Access some folders scan as empty." = "Ohne Festplattenvollzugriff erscheinen manche Ordner leer.";

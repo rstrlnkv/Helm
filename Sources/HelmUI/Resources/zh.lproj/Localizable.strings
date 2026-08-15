@@ -575,6 +575,7 @@
 "Without Full Disk Access Helm cannot check every item, and a short list of leftovers looks exactly like a Mac with none." = "没有完全磁盘访问权限时，Helm 无法检查全部项目；残留项少和没有残留看起来一模一样。";
 "Without Full Disk Access Helm cannot read every folder, and a short list of duplicates looks exactly like a folder that has none." = "没有完全磁盘访问权限时，Helm 无法读取全部文件夹；结果少和没有重复看起来一模一样。";
 "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do." = "没有完全磁盘访问权限时，受保护的文件夹会被读成空的：没有规则匹配，而这看起来和一个无事可做的文件夹一模一样。";
+"A rule can watch folders inside your home folder, but not the Library and not a whole volume." = "规则可以监视个人文件夹内的文件夹，但不能监视资源库或整个宗卷。";
 "Without Full Disk Access an app’s containers stay behind, and Helm cannot see the Trash to look for leftovers." = "没有完全磁盘访问权限，App 的容器会残留，Helm 也看不到废纸篓、无法查找残留文件。";
 "Without Full Disk Access an app’s containers stay behind." = "没有完全磁盘访问权限时，应用的容器会残留。";
 "Without Full Disk Access some folders scan as empty." = "没有完全磁盘访问权限时，部分文件夹会显示为空。";
