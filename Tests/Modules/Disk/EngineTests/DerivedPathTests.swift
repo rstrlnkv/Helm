@@ -27,13 +27,14 @@ final class DerivedPathTests: XCTestCase {
     /// The saving is a stored field that is not there, so this asserts on the
     /// shape of the node rather than on a measurement.
     ///
-    /// `ScanFootprintTests` cannot do it: its ceiling is 2000 bytes per file,
-    /// deliberately loose because a real home directory differs machine to
-    /// machine, and it guards an order-of-magnitude defect in the walk's
-    /// autoreleasepool. Putting the path back measured 597 bytes per file
-    /// against 442–457 without it on this machine — a difference far too small
-    /// for that ceiling to notice, and far too machine-dependent to assert.
-    /// Whether the field exists is neither.
+    /// `ScanFootprintTests` cannot do it, and no tightening of its ceiling
+    /// would: that test measures a fixture of **empty** files, which fold into
+    /// a bucket and make no node at all, precisely so its reading is about the
+    /// path arithmetic and about nothing else. The cost of a stored path scales
+    /// with the node count rather than the file count — 597 bytes per file
+    /// against 442–457 without it on this machine, measured over a real home
+    /// directory, and far too machine-dependent to assert. Whether the field
+    /// exists is neither.
     func testANodeStoresNoPath() {
         let mirror = Mirror(reflecting: DiskNode(name: "x", bytes: 1, isDirectory: false))
         let labels = mirror.children.compactMap(\.label)
