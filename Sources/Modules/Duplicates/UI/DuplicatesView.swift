@@ -145,15 +145,7 @@ struct DuplicatesView: View {
                     .foregroundStyle(HelmSignal.success)
                     .accessibilityHidden(true)
             } else {
-                Button {
-                    keep()
-                } label: {
-                    Image(systemName: "circle")
-                        .foregroundStyle(HelmText.quiet)
-                }
-                .buttonStyle(.plain)
-                .help(DupStr.keepThisCopy)
-                .accessibilityLabel(DupStr.keepThisCopy)
+                KeepThisCopyButton(keep: keep)
             }
             VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 Text((path as NSString).lastPathComponent)
@@ -208,5 +200,31 @@ struct DuplicatesView: View {
 
     private func basketBinding(_ path: String) -> Binding<Bool> {
         Binding(get: { dvm.isBasketed(path) }, set: { _ in dvm.toggleBasket(path) })
+    }
+}
+
+/// The circle that chooses this copy as the one to keep.
+///
+/// **A pixel from the status glyph beside it.** The copy that already stays wears
+/// a green `checkmark.circle`; an empty grey `circle` is what marks the ones that
+/// do not — and at rest the second reads as a second status icon rather than a
+/// button. On hover it fills with the same green the outcome wears, so the
+/// pointer previews «press and this becomes the kept one» and the control reads
+/// as pressable. Its own view for the `@State` a hover needs, which a row-drawing
+/// method cannot hold.
+private struct KeepThisCopyButton: View {
+    let keep: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: keep) {
+            Image(systemName: hovering ? "circle.fill" : "circle")
+                .foregroundStyle(hovering ? HelmSignal.success : HelmText.quiet)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help(DupStr.keepThisCopy)
+        .accessibilityLabel(DupStr.keepThisCopy)
     }
 }
