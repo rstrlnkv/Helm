@@ -142,11 +142,16 @@ struct HistorySection: View {
             Text(record.file)
                 .font(HelmText.rowTitle)
                 .lineLimit(1).truncationMode(.middle)
+            // Tail, not middle: this column never holds a path — a folder's
+            // name for a move, the landed name for a rename, a sentence for a
+            // refusal — and a sentence cut in the middle read «отказано:
+            // в…ённых папок». The file name above keeps `.middle`, being the
+            // one thing here whose both ends carry meaning.
             Text(detail(record))
                 .font(HelmText.rowDetail)
                 .foregroundStyle(record.kind == .failed || record.kind == .refused
                                  ? Color.orange : HelmText.quiet)
-                .lineLimit(1).truncationMode(.middle)
+                .lineLimit(1).truncationMode(.tail)
             // The row stays after it goes back, marked. A history that deleted
             // what it had undone would be hiding an action Autopilot took.
             if record.undoneAt != nil {
