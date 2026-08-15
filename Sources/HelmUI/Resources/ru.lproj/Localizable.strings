@@ -472,7 +472,6 @@
 "The VPN dial counted connections that had started themselves automatically, sitting right above the list of rules it looked like it was counting. Login Items & Extensions’ bottom bar mixed how many items were found with the size of what you’d selected." = "Циферблат VPN считал соединения, установленные автоматически, находясь прямо над списком правил, который он, казалось бы, и считал. Нижняя панель «Объектов входа и расширений» путала количество найденного с размером выбранного.";
 "The app itself — always removed" = "Само приложение удаляется всегда";
 "The battery guard — which stops Keep Awake from running a session down to empty — now starts on for new installs, at 20%. It shipped off by default, beside a session length that defaults to indefinite." = "Защита батареи — та, что не даёт «Не спать» разряжать её в ноль, — теперь при новой установке включена по умолчанию, на уровне 20 %. Раньше она была выключена по умолчанию рядом с настройкой длительности, которая по умолчанию — «бессрочно».";
-"The copy that was there first. Helm never offers every copy of a file." = "Копия, появившаяся раньше остальных. Helm никогда не предлагает удалить все копии файла.";
 "The disk is full. Moving to the Trash needs room, because the Trash is a folder on the same disk — empty it and try again." = "На диске нет места. Корзина — папка на том же диске, поэтому для перемещения тоже нужно место. Очистите Корзину и попробуйте снова.";
 "The disk list can be walked from the keyboard: arrow keys between rows, Return to go into a folder, ⌘↑ to come back out. And the screen now fits the width it has: on a narrow window the ring gives way to the list, which carries the same facts in less room." = "По списку в «Диске» теперь можно ходить с клавиатуры: стрелки между строками, Return — войти в папку, ⌘↑ — вернуться. А экран подстраивается под ширину окна: когда её мало, кольцо уступает место списку — он несёт те же факты и требует меньше места.";
 "The disk map now answers VoiceOver: every wedge reads its name, its size and its share of the folder, and can be opened from there. Folders in the list beside it can be opened from the context menu too — the double-click still works and is no longer the only way." = "Карта диска теперь отвечает VoiceOver: каждый сегмент называет папку, размер и её долю, и оттуда же в неё можно провалиться. Папки в списке рядом открываются и через контекстное меню — двойной клик работает по-прежнему, но перестал быть единственным способом.";
@@ -808,3 +807,11 @@
 "this record was not written by Helm" = "эта запись написана не Helm";
 "Helm did not record enough to put it back" = "Helm записал слишком мало, чтобы вернуть его";
 "the path changed underneath" = "путь под ним изменился";
+"kept: by folder" = "оставлена: по месту";
+"kept: arrived first" = "оставлена: появилась раньше";
+"kept: the shorter path" = "оставлена: путь короче";
+"kept: by name" = "оставлена: по имени";
+"kept: your choice" = "оставлена: ваш выбор";
+"your choice" = "ваш выбор";
+"Keep this copy" = "Оставить эту копию";
+"Restore the recommendation" = "Вернуть рекомендацию";

@@ -472,7 +472,6 @@
 "The VPN dial counted connections that had started themselves automatically, sitting right above the list of rules it looked like it was counting. Login Items & Extensions’ bottom bar mixed how many items were found with the size of what you’d selected." = "El dial de VPN contaba conexiones que se habían iniciado solas, justo encima de la lista de reglas que parecía estar contando. La barra inferior de Ítems de inicio y extensiones mezclaba cuántos elementos se habían encontrado con el tamaño de lo seleccionado.";
 "The app itself — always removed" = "La app en sí: siempre se elimina";
 "The battery guard — which stops Keep Awake from running a session down to empty — now starts on for new installs, at 20%. It shipped off by default, beside a session length that defaults to indefinite." = "La protección de batería — la que evita que Mantener activo la agote del todo — ahora viene activada de fábrica al 20 % en instalaciones nuevas. Antes venía desactivada, junto a una duración cuyo valor predeterminado es indefinida.";
-"The copy that was there first. Helm never offers every copy of a file." = "La copia que lleva más tiempo ahí. Helm nunca ofrece todas las copias de un archivo.";
 "The disk is full. Moving to the Trash needs room, because the Trash is a folder on the same disk — empty it and try again." = "El disco está lleno. Trasladar a la papelera necesita espacio, porque la papelera es una carpeta del mismo disco: vacíala e inténtalo de nuevo.";
 "The disk list can be walked from the keyboard: arrow keys between rows, Return to go into a folder, ⌘↑ to come back out. And the screen now fits the width it has: on a narrow window the ring gives way to the list, which carries the same facts in less room." = "La lista del disco se puede recorrer con el teclado: flechas entre filas, Retorno para entrar en una carpeta, ⌘↑ para volver. Y la barra superior vuelve a caber: el dato del escaneo pasó debajo del anillo.";
 "The disk map now answers VoiceOver: every wedge reads its name, its size and its share of the folder, and can be opened from there. Folders in the list beside it can be opened from the context menu too — the double-click still works and is no longer the only way." = "El mapa del disco ahora responde a VoiceOver: cada sector dice su nombre, tamaño y porcentaje, y se puede abrir desde ahí. Las carpetas de la lista también se abren desde el menú contextual.";
@@ -808,3 +807,11 @@
 "this record was not written by Helm" = "este registro no lo escribió Helm";
 "Helm did not record enough to put it back" = "Helm no registró lo suficiente para devolverlo";
 "the path changed underneath" = "la ruta cambió por debajo";
+"kept: by folder" = "se conserva: por la carpeta";
+"kept: arrived first" = "se conserva: llegó antes";
+"kept: the shorter path" = "se conserva: la ruta más corta";
+"kept: by name" = "se conserva: por el nombre";
+"kept: your choice" = "se conserva: tu elección";
+"your choice" = "tu elección";
+"Keep this copy" = "Conservar esta copia";
+"Restore the recommendation" = "Volver a la recomendación";

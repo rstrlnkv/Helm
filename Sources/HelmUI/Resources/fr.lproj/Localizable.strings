@@ -472,7 +472,6 @@
 "The VPN dial counted connections that had started themselves automatically, sitting right above the list of rules it looked like it was counting. Login Items & Extensions’ bottom bar mixed how many items were found with the size of what you’d selected." = "Le cadran VPN comptait les connexions qui s’étaient lancées automatiquement, juste au-dessus de la liste de règles qu’il semblait compter. Le bas de page d’Ouverture et extensions mélangeait le nombre d’éléments trouvés avec la taille de ce que vous aviez sélectionné.";
 "The app itself — always removed" = "L’app elle-même — toujours supprimée";
 "The battery guard — which stops Keep Awake from running a session down to empty — now starts on for new installs, at 20%. It shipped off by default, beside a session length that defaults to indefinite." = "La protection de batterie — celle qui empêche Rester éveillé de la vider complètement — est désormais activée par défaut à 20 % sur les nouvelles installations. Elle était désactivée par défaut, juste à côté d’une durée qui vaut par défaut « indéfinie ».";
-"The copy that was there first. Helm never offers every copy of a file." = "La copie présente depuis le plus longtemps. Helm ne propose jamais toutes les copies d’un fichier.";
 "The disk is full. Moving to the Trash needs room, because the Trash is a folder on the same disk — empty it and try again." = "Le disque est plein. Placer dans la corbeille demande de la place, car la corbeille est un dossier du même disque — videz-la et réessayez.";
 "The disk list can be walked from the keyboard: arrow keys between rows, Return to go into a folder, ⌘↑ to come back out. And the screen now fits the width it has: on a narrow window the ring gives way to the list, which carries the same facts in less room." = "La liste du disque se parcourt au clavier : flèches entre les lignes, Retour pour entrer dans un dossier, ⌘↑ pour ressortir. Et la barre du haut tient à nouveau : l’info d’analyse est passée sous l’anneau.";
 "The disk map now answers VoiceOver: every wedge reads its name, its size and its share of the folder, and can be opened from there. Folders in the list beside it can be opened from the context menu too — the double-click still works and is no longer the only way." = "La carte du disque répond désormais à VoiceOver : chaque secteur annonce son nom, sa taille et sa part, et peut être ouvert de là. Les dossiers de la liste s’ouvrent aussi via le menu contextuel.";
@@ -808,3 +807,11 @@
 "this record was not written by Helm" = "cette entrée n’a pas été écrite par Helm";
 "Helm did not record enough to put it back" = "Helm n’en a pas assez noté pour le restaurer";
 "the path changed underneath" = "le chemin a changé entre-temps";
+"kept: by folder" = "conservée : d’après le dossier";
+"kept: arrived first" = "conservée : arrivée en premier";
+"kept: the shorter path" = "conservée : le chemin le plus court";
+"kept: by name" = "conservée : d’après le nom";
+"kept: your choice" = "conservée : votre choix";
+"your choice" = "votre choix";
+"Keep this copy" = "Conserver cette copie";
+"Restore the recommendation" = "Rétablir la recommandation";

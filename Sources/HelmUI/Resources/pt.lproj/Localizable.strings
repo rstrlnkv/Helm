@@ -472,7 +472,6 @@
 "The VPN dial counted connections that had started themselves automatically, sitting right above the list of rules it looked like it was counting. Login Items & Extensions’ bottom bar mixed how many items were found with the size of what you’d selected." = "O mostrador do VPN contava conexões que haviam se iniciado sozinhas, bem acima da lista de regras que parecia estar contando. A barra inferior de Itens de início e extensões misturava quantos itens foram encontrados com o tamanho do que você havia selecionado.";
 "The app itself — always removed" = "O app em si — sempre removido";
 "The battery guard — which stops Keep Awake from running a session down to empty — now starts on for new installs, at 20%. It shipped off by default, beside a session length that defaults to indefinite." = "A proteção de bateria — que impede o Manter ativo de esgotá-la por completo — agora vem ativada de fábrica em 20% nas instalações novas. Ela vinha desativada por padrão, bem ao lado de uma duração cujo padrão é indefinida.";
-"The copy that was there first. Helm never offers every copy of a file." = "A cópia que está lá há mais tempo. O Helm nunca oferece todas as cópias de um arquivo.";
 "The disk is full. Moving to the Trash needs room, because the Trash is a folder on the same disk — empty it and try again." = "O disco está cheio. Mover para o Lixo precisa de espaço, porque o Lixo é uma pasta do mesmo disco — esvazie-o e tente de novo.";
 "The disk list can be walked from the keyboard: arrow keys between rows, Return to go into a folder, ⌘↑ to come back out. And the screen now fits the width it has: on a narrow window the ring gives way to the list, which carries the same facts in less room." = "A lista do disco pode ser percorrida pelo teclado: setas entre linhas, Return para entrar numa pasta, ⌘↑ para voltar. E a barra acima cabe de novo — a informação do escaneamento foi para baixo do anel.";
 "The disk map now answers VoiceOver: every wedge reads its name, its size and its share of the folder, and can be opened from there. Folders in the list beside it can be opened from the context menu too — the double-click still works and is no longer the only way." = "O mapa do disco agora responde ao VoiceOver: cada setor diz seu nome, tamanho e porcentagem, e pode ser aberto dali. As pastas da lista também abrem pelo menu de contexto.";
@@ -808,3 +807,11 @@
 "this record was not written by Helm" = "este registro não foi escrito pelo Helm";
 "Helm did not record enough to put it back" = "o Helm não registrou o suficiente para devolvê-lo";
 "the path changed underneath" = "o caminho mudou por baixo";
+"kept: by folder" = "fica: pela pasta";
+"kept: arrived first" = "fica: chegou antes";
+"kept: the shorter path" = "fica: o caminho mais curto";
+"kept: by name" = "fica: pelo nome";
+"kept: your choice" = "fica: sua escolha";
+"your choice" = "sua escolha";
+"Keep this copy" = "Manter esta cópia";
+"Restore the recommendation" = "Voltar à recomendação";

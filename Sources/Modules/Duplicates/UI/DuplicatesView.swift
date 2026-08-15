@@ -26,17 +26,11 @@ struct DuplicatesView: View {
             ForEach(dvm.groups) { group in
                 Section {
                     ForEach(Array(group.paths.enumerated()), id: \.element) { index, path in
-                        row(path: path, stays: index == 0)
+                        row(in: group, path: path, stays: index == 0)
                             .tag(path)
                     }
                 } header: {
-                    HStack {
-                        Text("\(Bytes(group.bytes)) × \(group.paths.count)")
-                            .font(HelmText.groupLabel)
-                        Spacer()
-                        Button(DupStr.markGroupExtras) { dvm.basketExtras(of: group) }
-                            .controlSize(.small)
-                    }
+                    header(group)
                 }
             }
         }
@@ -102,14 +96,60 @@ struct DuplicatesView: View {
         }
     }
 
-    private func row(path: String, stays: Bool) -> some View {
-        HStack(spacing: 8) {
-            // Decorative: the badge or the checkbox already says which is which.
-            Image(systemName: stays ? "checkmark.circle" : "doc.on.doc")
-                // The token, not SwiftUI's green: that one measures 2.22:1 in
-                // light mode against `HelmSignal.success`'s 4.58:1.
-                .foregroundStyle(stays ? HelmSignal.success : HelmText.quiet)
-                .accessibilityHidden(true)
+    /// The group's own line: what it is, why this copy stays, and the two things
+    /// that can be done to the whole group.
+    private func header(_ group: DuplicateGroup) -> some View {
+        HStack {
+            Text("\(Bytes(group.bytes)) × \(group.paths.count)")
+                .font(HelmText.groupLabel)
+            // Why, in the header rather than in a tooltip on the badge: a
+            // tooltip needs a pointer to rest on a pill, and the one that was
+            // there said «the copy that was there first» about every group in
+            // every language, which the policy made plainly untrue.
+            if let grounds = dvm.grounds(of: group) {
+                Text(DupStr.keptBecause(grounds))
+                    .font(HelmText.rowDetail)
+                    .foregroundStyle(HelmText.faint)
+                    .lineLimit(1)
+            }
+            Spacer()
+            // Only where there is something to put back. A control that undoes
+            // a choice nobody made is a control that has to explain itself.
+            if dvm.grounds(of: group) == .byHand {
+                Button(DupStr.restoreRecommendation) { dvm.restoreRecommendation(for: group) }
+                    .controlSize(.small)
+            }
+            Button(DupStr.markGroupExtras) { dvm.basketExtras(of: group) }
+                .controlSize(.small)
+        }
+    }
+
+    private func row(in group: DuplicateGroup, path: String, stays: Bool) -> some View {
+        let chosen = dvm.grounds(of: group) == .byHand
+        let keep = { dvm.keep(path, in: group) }
+        return HStack(spacing: 8) {
+            // The way into choosing this copy, and on the row it is about. The
+            // checkmark is not a control: that copy already stays, and a button
+            // that does nothing when pressed is a control that lies. On the
+            // extras it is the same act the context menu and the accessibility
+            // action below carry, which is why all three read one string.
+            if stays {
+                Image(systemName: "checkmark.circle")
+                    // The token, not SwiftUI's green: that one measures 2.22:1
+                    // in light mode against `HelmSignal.success`'s 4.58:1.
+                    .foregroundStyle(HelmSignal.success)
+                    .accessibilityHidden(true)
+            } else {
+                Button {
+                    keep()
+                } label: {
+                    Image(systemName: "circle")
+                        .foregroundStyle(HelmText.quiet)
+                }
+                .buttonStyle(.plain)
+                .help(DupStr.keepThisCopy)
+                .accessibilityLabel(DupStr.keepThisCopy)
+            }
             VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 Text((path as NSString).lastPathComponent)
                     .lineLimit(1).truncationMode(.middle)
@@ -120,8 +160,14 @@ struct DuplicatesView: View {
             .accessibilityElement(children: .combine)
             Spacer()
             if stays {
+                // Two pills and not one word swapped: «stays» is what the row
+                // means and «your choice» is who decided it, and a badge that
+                // said only the second would leave the survivor of a chosen
+                // group as the one row on the page that never says it stays.
+                if chosen {
+                    HelmBadge(DupStr.yourChoice)
+                }
                 HelmBadge(DupStr.keep, tint: HelmSignal.success)
-                    .help(DupStr.keepWhy)
             } else {
                 // The title names the file, so a dozen checkboxes are a dozen
                 // different controls to VoiceOver; labelsHidden keeps it out of
@@ -138,12 +184,18 @@ struct DuplicatesView: View {
             }
         }
         .contextMenu {
+            if !stays {
+                Button(DupStr.keepThisCopy) { keep() }
+            }
             Button(DupStr.quickLook) { preview(path) }
             Button(DupStr.reveal) { reveal(path) }
         }
         // The same actions where VoiceOver can reach them, since the menu
         // above needs a right-click.
         .accessibilityActions {
+            if !stays {
+                Button(DupStr.keepThisCopy) { keep() }
+            }
             Button(DupStr.quickLook) { preview(path) }
             Button(DupStr.reveal) { reveal(path) }
         }

@@ -472,7 +472,6 @@
 "The VPN dial counted connections that had started themselves automatically, sitting right above the list of rules it looked like it was counting. Login Items & Extensions’ bottom bar mixed how many items were found with the size of what you’d selected." = "The VPN dial counted connections that had started themselves automatically, sitting right above the list of rules it looked like it was counting. Login Items & Extensions’ bottom bar mixed how many items were found with the size of what you’d selected.";
 "The app itself — always removed" = "The app itself — always removed";
 "The battery guard — which stops Keep Awake from running a session down to empty — now starts on for new installs, at 20%. It shipped off by default, beside a session length that defaults to indefinite." = "The battery guard — which stops Keep Awake from running a session down to empty — now starts on for new installs, at 20%. It shipped off by default, beside a session length that defaults to indefinite.";
-"The copy that was there first. Helm never offers every copy of a file." = "The copy that was there first. Helm never offers every copy of a file.";
 "The disk is full. Moving to the Trash needs room, because the Trash is a folder on the same disk — empty it and try again." = "The disk is full. Moving to the Trash needs room, because the Trash is a folder on the same disk — empty it and try again.";
 "The disk list can be walked from the keyboard: arrow keys between rows, Return to go into a folder, ⌘↑ to come back out. And the screen now fits the width it has: on a narrow window the ring gives way to the list, which carries the same facts in less room." = "The disk list can be walked from the keyboard: arrow keys between rows, Return to go into a folder, ⌘↑ to come back out. And the screen now fits the width it has: on a narrow window the ring gives way to the list, which carries the same facts in less room.";
 "The disk map now answers VoiceOver: every wedge reads its name, its size and its share of the folder, and can be opened from there. Folders in the list beside it can be opened from the context menu too — the double-click still works and is no longer the only way." = "The disk map now answers VoiceOver: every wedge reads its name, its size and its share of the folder, and can be opened from there. Folders in the list beside it can be opened from the context menu too — the double-click still works and is no longer the only way.";
@@ -808,3 +807,11 @@
 "this record was not written by Helm" = "this record was not written by Helm";
 "Helm did not record enough to put it back" = "Helm did not record enough to put it back";
 "the path changed underneath" = "the path changed underneath";
+"kept: by folder" = "kept: by folder";
+"kept: arrived first" = "kept: arrived first";
+"kept: the shorter path" = "kept: the shorter path";
+"kept: by name" = "kept: by name";
+"kept: your choice" = "kept: your choice";
+"your choice" = "your choice";
+"Keep this copy" = "Keep this copy";
+"Restore the recommendation" = "Restore the recommendation";

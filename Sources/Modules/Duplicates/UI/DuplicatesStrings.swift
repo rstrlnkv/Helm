@@ -117,8 +117,45 @@ enum DupStr {
     /// running in English.
     static func found(_ groups: Int, _ wasted: String,
                       language: AppLanguage = AppLanguage.current) -> String { L("Groups: \(groups) · \(wasted) once the Trash is emptied", [.ru: "Групп: \(groups) · \(wasted) после очистки Корзины", .es: "Grupos: \(groups) · \(wasted) al vaciar la papelera", .fr: "Groupes : \(groups) · \(wasted) après avoir vidé la corbeille", .de: "Gruppen: \(groups) · \(wasted) nach dem Leeren des Papierkorbs", .ja: "\(groups) グループ・ゴミ箱を空にすると \(wasted)", .zh: "\(groups) 组 · 清倒废纸篓后 \(wasted)", .pt: "Grupos: \(groups) · \(wasted) ao esvaziar o Lixo"], language: language) }
-    static var keepWhy: String { L("The copy that was there first. Helm never offers every copy of a file.") }
     static var keep: String { L("stays") }
+    /// The badge on a row whose survivor the person chose. Two words in a pill,
+    /// beside «stays» rather than instead of it — which of the two a group shows
+    /// is the whole difference the badge exists to draw.
+    static var yourChoice: String { L("your choice") }
+    /// The row's own way in, on the icon at its left, in its context menu and in
+    /// its accessibility actions — one name for one act, three places.
+    static var keepThisCopy: String { L("Keep this copy") }
+    /// And the way back, in the header of a group that has been chosen.
+    static var restoreRecommendation: String { L("Restore the recommendation") }
+
+    /// Why this group's first copy is the one that stays.
+    ///
+    /// **This replaces a tooltip that was wrong in eight languages.** «The copy
+    /// that was there first» was drawn on every group's badge whatever had
+    /// actually decided it — and once the policy existed it was not even the
+    /// usual case. The English key was the error, so it was deleted from all
+    /// eight files rather than translated again (CLAUDE.md § A changelog entry
+    /// that names a control).
+    ///
+    /// Exhaustive, with no `default`: a rung added to `KeepReason` is a build
+    /// error here, not a header that quietly says the wrong one of the four.
+    static func keptBecause(_ grounds: KeepGrounds,
+                            language: AppLanguage = AppLanguage.current) -> String {
+        switch grounds {
+        // Not «by place», which is the policy's name: what the person sees is a
+        // folder, and the tier is the thing being explained rather than a word
+        // to reuse.
+        case .rung(.place): return L("kept: by folder", language: language)
+        case .rung(.date): return L("kept: arrived first", language: language)
+        // Said as the fact it is. «By depth» is the rule's word for it and means
+        // nothing on a screen; the shorter path is what somebody can look at.
+        case .rung(.depth): return L("kept: the shorter path", language: language)
+        // A coin toss, and it has to look like one: two copies alike in every
+        // way the rule can see were separated by the alphabet.
+        case .rung(.name): return L("kept: by name", language: language)
+        case .byHand: return L("kept: your choice", language: language)
+        }
+    }
     /// One key used to label two different actions: a group button meaning
     /// "mark this group's extras" and a row checkbox meaning "mark this copy".
     /// One English key means one thing.

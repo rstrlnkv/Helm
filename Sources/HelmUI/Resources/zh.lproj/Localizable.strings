@@ -472,7 +472,6 @@
 "The VPN dial counted connections that had started themselves automatically, sitting right above the list of rules it looked like it was counting. Login Items & Extensions’ bottom bar mixed how many items were found with the size of what you’d selected." = "VPN 表盘统计的是自动连接的数量，而它正上方却是看起来应该被统计的规则列表。“登录项与扩展”底部栏把“找到的数量”和“已选中的大小”混在了一起。";
 "The app itself — always removed" = "应用本体 — 总是会被删除";
 "The battery guard — which stops Keep Awake from running a session down to empty — now starts on for new installs, at 20%. It shipped off by default, beside a session length that defaults to indefinite." = "电池保护功能——防止“保持唤醒”把电量耗到底——现在新安装时默认在 20% 处开启。此前它默认是关闭的，而紧挨着它的时长设置默认却是“无限期”。";
-"The copy that was there first. Helm never offers every copy of a file." = "最早存在的那份副本。Helm 绝不会把文件的所有副本都列为可删。";
 "The disk is full. Moving to the Trash needs room, because the Trash is a folder on the same disk — empty it and try again." = "磁盘已满。废纸篓就在同一块磁盘上，所以移入也需要空间——请先清倒废纸篓再试。";
 "The disk list can be walked from the keyboard: arrow keys between rows, Return to go into a folder, ⌘↑ to come back out. And the screen now fits the width it has: on a narrow window the ring gives way to the list, which carries the same facts in less room." = "磁盘列表现在可以用键盘浏览：方向键移动，Return 进入文件夹，⌘↑ 返回上层。上方的栏也重新放得下了——扫描信息移到了环形图下方。";
 "The disk map now answers VoiceOver: every wedge reads its name, its size and its share of the folder, and can be opened from there. Folders in the list beside it can be opened from the context menu too — the double-click still works and is no longer the only way." = "磁盘分布图现在支持 VoiceOver：每个扇区会读出名称、大小和占比，并可从那里打开。旁边列表中的文件夹也能通过右键菜单打开。";
@@ -808,3 +807,11 @@
 "this record was not written by Helm" = "这条记录不是 Helm 写的";
 "Helm did not record enough to put it back" = "Helm 记录的信息不足以将其放回";
 "the path changed underneath" = "路径在中途发生了变化";
+"kept: by folder" = "保留原因：所在文件夹";
+"kept: arrived first" = "保留原因：先出现";
+"kept: the shorter path" = "保留原因：路径更短";
+"kept: by name" = "保留原因：按名称";
+"kept: your choice" = "保留原因：你的选择";
+"your choice" = "你的选择";
+"Keep this copy" = "保留这份副本";
+"Restore the recommendation" = "恢复推荐选择";
