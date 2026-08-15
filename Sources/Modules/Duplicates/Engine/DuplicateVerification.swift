@@ -57,7 +57,10 @@ enum DuplicateVerification {
     /// last pair asks. The cache the doc comment above refuses is the *scan's*
     /// — a digest older than the offer, standing in for a file nobody re-read —
     /// and nothing here outlives the press.
-    final class Batch {
+    /// `@unchecked Sendable` because the engine's default `verifying` closure
+    /// is `@Sendable` and captures one: the memo is mutated from the one serial
+    /// loop of the removal that made it, which the compiler cannot see.
+    final class Batch: @unchecked Sendable {
         /// A survivor's one reading — or the fact that it could not be taken,
         /// remembered so an unreadable survivor is not retried per copy.
         private enum Survivor {

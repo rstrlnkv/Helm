@@ -216,7 +216,7 @@ final class DuplicatesWire: EngineTransport, @unchecked Sendable {
                 one.continuation.resume(returning: answers.find)
             case .trash:
                 one.continuation.resume(returning: (try? JSONEncoder().encode(answers.removal)) ?? Data())
-            case .cancel, .backgroundScan:
+            case .cancel, .stopRemoval, .backgroundScan:
                 one.continuation.resume(returning: Data())
             }
         }
@@ -232,7 +232,8 @@ final class DuplicatesWire: EngineTransport, @unchecked Sendable {
             let answer = name.flatMap { overrides[$0] } ?? answer
             switch (answer, name) {
             case (.refuse, _): return .refuse
-            case (.nothing, _), (_, .none), (_, .cancel), (_, .backgroundScan): return .empty
+            case (.nothing, _), (_, .none), (_, .cancel), (_, .stopRemoval),
+                 (_, .backgroundScan): return .empty
             case (.park, .find), (.park, .trash): return .park(name!)
             case (.reply, .find): return .data(self.findReply)
             case (.reply, .trash): return .data((try? JSONEncoder().encode(removal)) ?? Data())
@@ -264,7 +265,7 @@ final class DuplicatesWire: EngineTransport, @unchecked Sendable {
             if let plans = try? JSONDecoder().decode([DuplicatePlan].self, from: payload) {
                 planned.append(plans)
             }
-        case .cancel, .backgroundScan:
+        case .cancel, .stopRemoval, .backgroundScan:
             break
         }
     }

@@ -41,25 +41,59 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     ///   freed is arithmetic over a *clone family*, and the only fixture that can
     ///   exercise it is a real `clonefile` pair — so the test that proves the
     ///   figure must be able to run without moving anybody's file to the Trash.
-    public init(transport: LocalTransport = LocalTransport(),
-                store: NamespacedStore? = nil,
-                settings: SettingGuard = DuplicatesSettings.guardOfScanSettings,
-                trashing: @escaping @Sendable (URL) throws -> Void = {
-                    try FileManager.default.trashItem(at: $0, resultingItemURL: nil)
-                }) {
+    public convenience init(transport: LocalTransport = LocalTransport(),
+                            store: NamespacedStore? = nil,
+                            settings: SettingGuard = DuplicatesSettings.guardOfScanSettings,
+                            trashing: @escaping @Sendable (URL) throws -> Void = {
+                                try FileManager.default.trashItem(at: $0, resultingItemURL: nil)
+                            }) {
+        // One fresh `Batch` per removal: the factory runs at the top of every
+        // `trash` call, so the survivor memo lives exactly as long as the press
+        // that made it.
+        self.init(transport: transport, store: store, settings: settings,
+                  trashing: trashing, verifying: {
+                      let batch = DuplicateVerification.Batch()
+                      return { batch.verify(remove: $0, keep: $1) }
+                  })
+    }
+
+    /// One pair's verdict, as `trash` asks for it.
+    typealias PairCheck = @Sendable (_ remove: String, _ keep: String)
+        -> DuplicateVerification.Verdict
+
+    /// - Parameter verifying: builds the pair check one removal uses — a port
+    ///   for the same reason `trashing` is one, and internal because the only
+    ///   caller that names it is a test: verification reads real minutes off a
+    ///   real disk, and a check that answers on the spot is over before Stop
+    ///   can be pressed, so the tests about "while it runs" need one that can
+    ///   be mid-read.
+    init(transport: LocalTransport = LocalTransport(),
+         store: NamespacedStore? = nil,
+         settings: SettingGuard = DuplicatesSettings.guardOfScanSettings,
+         trashing: @escaping @Sendable (URL) throws -> Void,
+         verifying: @escaping @Sendable () -> PairCheck) {
         self.localTransport = transport
         self.transport = transport
         self.store = store
         self.settings = settings
         self.trashing = trashing
+        self.verifying = verifying
         wireTransport()
     }
 
     private let settings: SettingGuard
     private let trashing: @Sendable (URL) throws -> Void
+    private let verifying: @Sendable () -> PairCheck
+    /// The stop flag of the removal in flight, so `stopRemoval` can reach it.
+    private let removalBox = InFlightBox<RemovalStop>()
 
     public func activate() {}
-    public func deactivate() { finderBox.current?.cancel() }
+    public func deactivate() {
+        finderBox.current?.cancel()
+        // The verification stops the same way: nothing has moved yet at that
+        // point, and an engine going away must not leave a loop reading files.
+        removalBox.current?.stop()
+    }
 
     /// The one place a search is started.
     ///
@@ -229,6 +263,13 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     /// sense, and the engine has the last word on both.
     public func trash(_ plans: [DuplicatePlan]) async -> DuplicateRemoval {
         let trashing = self.trashing
+        let verify = verifying()
+        // The flag lives in the box so `stopRemoval` can reach it, and is this
+        // call's own: a stop pressed with nothing running must not cancel the
+        // removal after it.
+        let stop = RemovalStop()
+        let slot = removalBox.start(stop)
+        defer { slot.finish() }
         return await offTheCooperativePool {
             var byPath: [String: DuplicatePlan] = [:]
             for plan in plans { byPath[plan.remove] = plan }
@@ -236,16 +277,52 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
 
             var allowed: [String] = []
             var stale: [String] = []
-            for path in inScope {
-                guard let plan = byPath[path] else { continue }
-                switch DuplicateVerification.verify(remove: path, keep: plan.keep) {
-                case .identical: allowed.append(path)
-                case .changed, .unreadable: stale.append(path)
+            // Its own phase, beside the `duplicates.trash` one `HelmTrash.remove`
+            // opens below: the re-reading is where the minutes go, and it ran
+            // namelessly — a spike in the memory trail had no operation named
+            // against it.
+            let stopped = HelmActivity.phase("duplicates.verify") { () -> Bool in
+                // Before the phase ends, as `HelmTrash` takes it: the line names
+                // what else runs beside the label it excludes.
+                defer { HelmLog.shared.memory("duplicates.verify") }
+                for path in inScope {
+                    // Between files, never mid-read: a pair that began its
+                    // verification finishes it, so a verdict is never partial.
+                    if stop.isStopped { return true }
+                    guard let plan = byPath[path] else { continue }
+                    switch verify(path, plan.keep) {
+                    case .identical: allowed.append(path)
+                    case .changed, .unreadable: stale.append(path)
+                    }
+                    // Every tick is a whole file read in full, so the ticks are
+                    // already paced by the disk — no throttle needed where the
+                    // search needs one per 128 KB prefix.
+                    self.localTransport.emit(DuplicatesEvent.progress, encoding:
+                        DuplicateProgress(candidates: inScope.count,
+                                          hashed: allowed.count + stale.count))
                 }
+                return stop.isStopped
             }
             if !stale.isEmpty {
                 HelmLog.shared.info("duplicates",
                                     "refused \(stale.count) — changed since the scan")
+            }
+            if stopped {
+                // A named outcome, not silence — and nothing moves from here:
+                // the verified remainder was about to be trashed, and Stop
+                // means stop. What was already known stays reported; a refusal
+                // is never silently discarded, stopped or not.
+                HelmLog.shared.info("duplicates",
+                                    "removal stopped — verified \(allowed.count + stale.count)"
+                                    + " of \(inScope.count), nothing moved")
+                return DuplicateRemoval(
+                    removed: [],
+                    refused: outOfScope.map {
+                        HelmTrash.Refusal(path: $0, reason: .outOfScope)
+                    } + stale.map {
+                        HelmTrash.Refusal(path: $0, reason: .changedSinceScan)
+                    },
+                    freedBytes: 0, cancelled: true)
             }
             // The copies that stay, named for the batch's clone accounting: a
             // marked copy that shares its blocks with its survivor gives the disk
@@ -290,6 +367,9 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
                 return EngineReply.encode(await self.backgroundScan(), for: command)
             case .cancel:
                 self.finderBox.current?.cancel()
+                return Data()
+            case .stopRemoval:
+                self.removalBox.current?.stop()
                 return Data()
             case .trash:
                 // Plans, not paths. The old shape cannot be verified — the
@@ -412,39 +492,55 @@ public struct DuplicatePlan: Codable, Equatable, Sendable {
     }
 }
 
-/// Serial box around the in-flight search, so cancel can reach it.
+/// Serial box around an in-flight job, so cancel can reach it.
 ///
-/// A search leaving clears the slot it was given and no other. It used to clear
-/// the box outright: a superseded search returning — cancelled, and after its
-/// replacement had already started — emptied the box behind the search that had
-/// taken its place, and from then on Stop reached nothing and `deactivate()`
-/// left the hashing running.
-final class FinderBox: @unchecked Sendable {
+/// A job leaving clears the slot it was given and no other. The search's box
+/// used to clear itself outright: a superseded search returning — cancelled,
+/// and after its replacement had already started — emptied the box behind the
+/// search that had taken its place, and from then on Stop reached nothing and
+/// `deactivate()` left the hashing running. The removal's stop flag sits in
+/// the same shape for the same reason, which is why the box is generic rather
+/// than written twice.
+final class InFlightBox<Job: AnyObject>: @unchecked Sendable {
     /// A serial queue rather than a lock: the callers are async, and an NSLock
     /// cannot be taken across a suspension point.
-    private let queue = DispatchQueue(label: "helm.duplicates.finder")
-    private var finder: DuplicateScanner?
+    private let queue = DispatchQueue(label: "helm.duplicates.inflight")
+    private var job: Job?
     private var token = 0
 
     /// The right to clear one slot, spent once.
     struct Slot {
         fileprivate let token: Int
-        fileprivate let box: FinderBox
+        fileprivate let box: InFlightBox
         func finish() { box.finish(token) }
     }
 
-    var current: DuplicateScanner? { queue.sync { finder } }
+    var current: Job? { queue.sync { job } }
 
-    func start(_ value: DuplicateScanner) -> Slot {
+    func start(_ value: Job) -> Slot {
         let mine = queue.sync { () -> Int in
             token += 1
-            finder = value
+            job = value
             return token
         }
         return Slot(token: mine, box: self)
     }
 
     private func finish(_ owner: Int) {
-        queue.sync { if owner == token { finder = nil } }
+        queue.sync { if owner == token { job = nil } }
     }
+}
+
+/// The slot the running search sits in.
+typealias FinderBox = InFlightBox<DuplicateScanner>
+
+/// The one thing a running removal can be told: stop. Checked between files —
+/// a file mid-verification finishes its read — and never carried over to the
+/// next removal: each `trash` call starts a flag of its own in the box.
+final class RemovalStop: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stopped = false
+
+    func stop() { lock.lock(); stopped = true; lock.unlock() }
+    var isStopped: Bool { lock.lock(); defer { lock.unlock() }; return stopped }
 }

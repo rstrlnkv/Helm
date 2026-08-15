@@ -16,6 +16,11 @@ public enum DuplicatesCommand: String, CaseIterable, Sendable {
     case find
     case cancel
     case trash
+    /// Stop the removal in flight, between files. Its own name rather than a
+    /// second meaning for `cancel`: that one reaches the search, and a person
+    /// stopping a removal must not silently kill a search they started after
+    /// it — one command, one act.
+    case stopRemoval
     /// Shares its spelling with `ScanCommand.backgroundScan`, which is what the
     /// coordinator sends — pinned by a test, because the two live in different
     /// targets and neither compiler sees both.
