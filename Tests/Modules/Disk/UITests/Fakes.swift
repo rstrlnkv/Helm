@@ -8,21 +8,21 @@ import Module_Disk_Engine
 import XCTest
 @testable import Module_Disk_UI
 
-/// The two transports this module's page tests are written against, and the
-/// waits that go with them.
-///
-/// **They are two on purpose.** `AnsweringTransport` answers on the spot;
-/// `HeldTransport` parks every scan until a test releases it. A fake that
-/// answers synchronously releases a gate before the call it is gating returns,
-/// so a test of a busy gate passes with the gate deleted — which is why
-/// `DiskScanRaceTests` and `StopKeepsWhatItMeasuredTests` need the parking one
-/// and cannot be served by the immediate one. Merging them would take the
-/// mid-walk state out of the language these tests are written in.
-///
-/// Each was spelled twice before it moved here, and the copies had drifted: one
-/// `HeldTransport` had grown a "trash" case the other had not. The union is
-/// kept — a fake simpler than the thing it stands for cannot fail the way the
-/// thing can.
+// The two transports this module's page tests are written against, and the
+// waits that go with them.
+//
+// **They are two on purpose.** `AnsweringTransport` answers on the spot;
+// `HeldTransport` parks every scan until a test releases it. A fake that
+// answers synchronously releases a gate before the call it is gating returns,
+// so a test of a busy gate passes with the gate deleted — which is why
+// `DiskScanRaceTests` and `StopKeepsWhatItMeasuredTests` need the parking one
+// and cannot be served by the immediate one. Merging them would take the
+// mid-walk state out of the language these tests are written in.
+//
+// Each was spelled twice before it moved here, and the copies had drifted: one
+// `HeldTransport` had grown a "trash" case the other had not. The union is
+// kept — a fake simpler than the thing it stands for cannot fail the way the
+// thing can.
 
 // MARK: - Answers on the spot
 
