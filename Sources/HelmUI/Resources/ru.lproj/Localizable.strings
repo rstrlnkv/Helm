@@ -576,6 +576,7 @@
 "Without Full Disk Access Helm cannot read every folder, and a short list of duplicates looks exactly like a folder that has none." = "Без «Доступа к диску» Helm прочитает не все папки: часть дубликатов не найдётся, а результат будет выглядеть так же, как чистая папка.";
 "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do." = "Без «Доступа к диску» защищённая папка читается пустой: ни одно правило не срабатывает — и это выглядит так же, как папка, где нечего делать.";
 "A rule can watch folders inside your home folder, but not the Library and not a whole volume." = "Правило может наблюдать за папками внутри домашней папки, но не за Библиотекой и не за целым томом.";
+"Watch this folder" = "Наблюдать за этой папкой";
 "Without Full Disk Access an app’s containers stay behind, and Helm cannot see the Trash to look for leftovers." = "Без «Доступа к диску» контейнеры приложения останутся на диске, а Корзину Helm не увидит и остатки не найдёт.";
 "Without Full Disk Access an app’s containers stay behind." = "Без «Доступа к диску» контейнеры приложения останутся на диске.";
 "Without Full Disk Access some folders scan as empty." = "Без «Доступа к диску» часть папок будет показана пустыми.";

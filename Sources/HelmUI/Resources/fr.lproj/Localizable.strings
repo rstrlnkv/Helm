@@ -576,6 +576,7 @@
 "Without Full Disk Access Helm cannot read every folder, and a short list of duplicates looks exactly like a folder that has none." = "Sans accès complet au disque, Helm ne peut pas lire tous les dossiers, et une courte liste ressemble exactement à un dossier sans doublons.";
 "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do." = "Sans accès complet au disque, un dossier protégé se lit comme vide : aucune règle ne correspond, et cela ressemble exactement à un dossier sans rien à faire.";
 "A rule can watch folders inside your home folder, but not the Library and not a whole volume." = "Une règle peut surveiller des dossiers dans votre dossier personnel, mais pas la Bibliothèque ni un volume entier.";
+"Watch this folder" = "Surveiller ce dossier";
 "Without Full Disk Access an app’s containers stay behind, and Helm cannot see the Trash to look for leftovers." = "Sans accès complet au disque, les conteneurs d’une app restent en place et Helm ne voit pas la corbeille pour y chercher des restes.";
 "Without Full Disk Access an app’s containers stay behind." = "Sans accès complet au disque, les conteneurs de l’app resteront.";
 "Without Full Disk Access some folders scan as empty." = "Sans accès complet au disque, certains dossiers apparaîtront vides.";

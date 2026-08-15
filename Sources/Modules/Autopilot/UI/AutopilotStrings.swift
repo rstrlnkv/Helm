@@ -47,6 +47,11 @@ enum ApStr {
     // MARK: - Folders
 
     static var addFolder: String { L("Add folder…") }
+    /// The folder header's switch, which carries no words on screen. The name
+    /// says what the switch does and the path beside it says which folder —
+    /// labelled with the bare path, VoiceOver read the path twice and the verb
+    /// never.
+    static var watchFolder: String { L("Watch this folder") }
     static var removeFolder: String { L("Stop watching") }
     static var runNow: String { L("Run now") }
     static var noRules: String { L("No rules yet") }

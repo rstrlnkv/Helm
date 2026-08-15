@@ -236,7 +236,11 @@ struct AutopilotSettingsPage: View {
                 .toggleStyle(.switch)
                 .controlSize(.mini)
                 .labelsHidden()
-                .accessibilityLabel(Redact.path(folder.path))
+                // The verb first, then which folder — the same shape as the
+                // rule rows' "\(ApStr.edit), \(rule.name)". Labelled with the
+                // bare path this read as the Text beside it said twice, and
+                // never as a switch that does something.
+                .accessibilityLabel("\(ApStr.watchFolder), \(Redact.path(folder.path))")
             Text(Redact.path(folder.path))
                 .font(HelmText.sectionHeading)
                 .lineLimit(1).truncationMode(.middle)
