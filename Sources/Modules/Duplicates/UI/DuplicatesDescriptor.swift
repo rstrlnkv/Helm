@@ -16,16 +16,27 @@ import SwiftUI
 
     public init() {}
 
+    private var store: NamespacedStore?
+
     /// The store reaches the engine because a background scan reads the folder
     /// the person chose, and there is no view model awake when the timer fires.
     public func makeEngine(store: NamespacedStore) -> any ModuleEngine {
-        DuplicatesEngine(store: store)
+        self.store = store
+        return DuplicatesEngine(store: store)
     }
     public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { .utility }
     public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
-        AnyView(DuplicatesSettingsPage(
-            vm: vm, store: NamespacedStore(namespace: DuplicatesDescriptor.id.rawValue,
-                                           backing: UserDefaults.standard)))
+        AnyView(DuplicatesSettingsPage(vm: vm, store: settingsStore))
+    }
+
+    /// The module's own defaults, whether or not the engine has been built yet —
+    /// the seam `VPNDescriptor` and `KeepAwakeDescriptor` already keep. The page
+    /// building its own UserDefaults-backed store here meant the store the host
+    /// handed `makeEngine` was read by the engine and by nobody else: the page
+    /// and the engine could be opened on two different rule sets, and no harness
+    /// could seed what the page reads.
+    private var settingsStore: NamespacedStore {
+        store ?? NamespacedStore(namespace: Self.id.rawValue, backing: UserDefaults.standard)
     }
 }
 

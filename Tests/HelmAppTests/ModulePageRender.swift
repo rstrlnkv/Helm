@@ -526,7 +526,13 @@ extension ModulePageRender.Page {
     ///
     /// Duplicates' and Autopilot's 8 is not slack, it is the whole page: both draw
     /// an empty state until a folder is chosen, and the question their floor can
-    /// answer is «did anything render at all».
+    /// answer is «did anything render at all». Duplicates has a fixture now, and
+    /// its 8 stays anyway, because the folder is the **store's** half: this table
+    /// is what a page draws wired but unseeded, which for that module is still
+    /// the empty state. The configured page — seed, wire and press together — is
+    /// **228 layers, three consecutive runs, measured 2026-08-15**, and
+    /// `TheWireFixtureReachesThePagesTests` carries its floor of 200 beside the
+    /// structural guards, the way the leftovers press is guarded.
     ///
     /// **Leftovers is 210 from 2026-08-13, and it has been 24 and 28 in one day.**
     /// 24 was the invitation before it gained a verb; 28 the same invitation with the

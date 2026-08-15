@@ -1,6 +1,9 @@
 import AppKit
 import HelmContract
+import HelmRuntime
+import Module_Autopilot_UI
 import Module_Duplicates_Engine
+import Module_Duplicates_UI
 import Module_Homebrew_UI
 import Module_Layout_UI
 import Module_Leftovers_Engine
@@ -205,6 +208,58 @@ final class TheWireFixtureReachesThePagesTests: XCTestCase {
             """)
     }
 
+    /// **Duplicates' screen takes all three parts, and this render had none of
+    /// them.** The folder is the store's (`configured` writes what `chooseFolder`
+    /// would have), the findings are the wire's (`find` is a reply, and the page
+    /// draws nothing it was not answered), and the search is a press (`opened`
+    /// searches and then marks every extra copy, which is what fills the basket
+    /// bar) — so until today the groups, the group headers and the basket bar
+    /// were measured by nothing at the app level, and `floors["duplicates"]`
+    /// was the empty state's 8.
+    ///
+    /// The model's own state is asserted before any count: `shared(vm:)` keys
+    /// its cache on the view model, so a model here that never searched is not
+    /// the model the render drew, and every layer number after that would be
+    /// about a different page.
+    func testTheWiredDuplicatesPageDrawsTheGroupsAndTheBasket() {
+        let silent = page(for: duplicates, wiredBy: ModulePageRender.unwired)
+        let wired = page(for: duplicates, seededBy: ModulePageRender.configured,
+                         wiredBy: ModulePageRender.answering)
+        // The empty state's own measured floor — what `floors["duplicates"]`
+        // carried while there was no fixture.
+        silent.assertItDrewSomething(atLeast: 8)
+        // The whole fixture reads **228 layers, three consecutive runs, measured
+        // 2026-08-15** — three groups of headers and rows, the toolbar, the
+        // policy row, the excuses note and the basket bar. 200 is a group's
+        // worth under that; losing any of the three parts fails it by ~220,
+        // because the page without them is the empty state's 9.
+        wired.assertItDrewSomething(atLeast: 200)
+
+        let model = DuplicatesViewModel.shared(
+            vm: wired.viewModel,
+            store: NamespacedStore(namespace: DuplicatesEngine.moduleID,
+                                   backing: InMemoryKeyValueStore()))
+        XCTAssertEqual(model.phase, .result, """
+            the page's own model never finished a search, so either the folder the seed \
+            writes is not reaching the store the page reads, or the findings the wire \
+            answers are not reaching the model — and the render below is still the \
+            empty state.
+            """)
+        XCTAssertEqual(model.groups.count, ModulePageRender.duplicateGroups.count,
+                       "the findings reached the model as \(model.groups.count) groups")
+        XCTAssertEqual(model.basket.count, ModulePageRender.duplicateExtras, """
+            «mark every extra copy» ticked \(model.basket.count) of \
+            \(ModulePageRender.duplicateExtras) extras, so the basket bar under the list \
+            is drawn by no reading of this render.
+            """)
+        XCTAssertGreaterThan(wired.layers.count, silent.layers.count + 100, """
+            duplicates draws \(wired.layers.count) layers with the whole fixture and \
+            \(silent.layers.count) empty — a list of \(ModulePageRender.duplicateGroups.count) \
+            groups with headers, rows and the basket bar is worth well over a hundred, so \
+            the fixture is reaching the model and not the screen.
+            """)
+    }
+
     /// And the priming is a press, not a second fixture: the same wire with nobody
     /// pressing anything draws the invitation, which is what every reading of this
     /// page was before today.
@@ -271,15 +326,15 @@ final class TheWireFixtureReachesThePagesTests: XCTestCase {
     /// **Silence is still the default, and it is the same object saying it.** A
     /// module nobody wrote a fixture for has to draw exactly what it drew before,
     /// or every recorded number in this suite moved for a reason nobody wrote
-    /// down. Duplicates is wired by nothing, so the two renders may differ by
+    /// down. Autopilot is wired by nothing, so the two renders may differ by
     /// nothing.
     func testAModuleWithNoFixtureIsDrawnExactlyAsBefore() {
-        let silent = page(for: duplicates, wiredBy: ModulePageRender.unwired)
-        let offered = page(for: duplicates, wiredBy: ModulePageRender.answering)
+        let silent = page(for: autopilot, wiredBy: ModulePageRender.unwired)
+        let offered = page(for: autopilot, wiredBy: ModulePageRender.answering)
         silent.assertItDrewSomething()
 
         XCTAssertEqual(offered.layers.count, silent.layers.count, """
-            duplicates draws \(offered.layers.count) layers with the fixture table offered and \
+            autopilot draws \(offered.layers.count) layers with the fixture table offered and \
             \(silent.layers.count) without it, and there is no fixture for that module — so the \
             wire is answering something it was never given.
             """)
@@ -334,7 +389,8 @@ final class TheWireFixtureReachesThePagesTests: XCTestCase {
     private var vpn: any ModuleDescriptor { descriptor(VPNDescriptor.id.rawValue) }
     private var homebrew: any ModuleDescriptor { descriptor(HomebrewDescriptor.id.rawValue) }
     private var layout: any ModuleDescriptor { descriptor(LayoutDescriptor.id.rawValue) }
-    /// The module with no fixture, and it stands for the other five.
     private var duplicates: any ModuleDescriptor { descriptor(DuplicatesEngine.moduleID) }
     private var leftovers: any ModuleDescriptor { descriptor(LeftoversEngine.moduleID) }
+    /// The module with no fixture, and it stands for the other three.
+    private var autopilot: any ModuleDescriptor { descriptor(AutopilotDescriptor.id.rawValue) }
 }

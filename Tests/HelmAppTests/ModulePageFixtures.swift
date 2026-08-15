@@ -1,6 +1,9 @@
 import Foundation
 import HelmContract
 import HelmRuntime
+import HelmUI
+import Module_Duplicates_Engine
+import Module_Duplicates_UI
 import Module_Homebrew_Engine
 import Module_Homebrew_UI
 import Module_KeepAwake_Engine
@@ -60,6 +63,7 @@ extension ModulePageRender {
         switch id {
         case KeepAwakeEngine.moduleID: configureKeepAwake(store)
         case VPNDescriptor.id.rawValue: configureVPN(store)
+        case DuplicatesEngine.moduleID: configureDuplicates(store)
         default: break
         }
     }
@@ -109,6 +113,18 @@ extension ModulePageRender {
                                                 connectOnLaunch: true,
                                                 disconnectOnQuit: false),
         ]))
+    }
+
+    /// The folder a person has already chosen — what `chooseFolder` writes when
+    /// the open panel closes, minus the panel.
+    ///
+    /// **The seal is deliberately not written.** It exists for the background
+    /// scan, which reads this value with nobody at the desk; the page reads the
+    /// folder plain, and a fixture that sealed it would need a keychain to seal
+    /// it *with* — the person's own, which is the machine boundary every fixture
+    /// in this file stays inside.
+    private static func configureDuplicates(_ store: NamespacedStore) {
+        store.set(duplicatesFolder, for: "folder")
     }
 }
 
@@ -176,10 +192,10 @@ extension ModulePageRender {
 
     /// What each module's engine says, fixed.
     ///
-    /// Three modules, because three modules are the shape this exists for: a page
-    /// whose whole content arrives over the wire. The other six read their store
-    /// and are already measured; wiring them would be adding a fixture for a
-    /// difference nobody has found.
+    /// Five modules, because five modules are the shape this exists for: a page
+    /// whose whole content arrives over the wire. The other four read their
+    /// store and are already measured; wiring them would be adding a fixture for
+    /// a difference nobody has found.
     ///
     /// **VPN, because VPN was the module that lost a page.** On 2026-08-12 three
     /// sections went behind `!vm.connections.isEmpty` — correctly: a Mac with no
@@ -258,6 +274,8 @@ extension ModulePageRender {
         case LeftoversEngine.moduleID:
             wire.answers(LeftoversCommand.scan, with: leftovers)
             wire.answers(LeftoversCommand.trash, with: leftoversRemoval)
+        case DuplicatesEngine.moduleID:
+            wire.answers(DuplicatesCommand.find, with: duplicateFindings)
         default:
             break
         }
@@ -445,17 +463,111 @@ extension ModulePageRender {
     /// `init` calls — keyed to this `ModuleViewModel`, so this is the same object the
     /// page draws and not a second one beside it.
     static let opened: Priming = { id, vm in
-        guard id == LeftoversEngine.moduleID else { return nil }
-        return { @MainActor in
-            let lvm = LeftoversViewModel.shared(vm: vm)
-            await lvm.scan()
-            // Exactly the batch `leftoversRemoval` answers, read off that value
-            // rather than written out again beside it.
-            lvm.selected = Set(leftoversRemoval.removed
-                + leftoversRemoval.refused.map(\.path))
-            await lvm.removeSelected()
+        switch id {
+        case LeftoversEngine.moduleID:
+            return { @MainActor in
+                let lvm = LeftoversViewModel.shared(vm: vm)
+                await lvm.scan()
+                // Exactly the batch `leftoversRemoval` answers, read off that value
+                // rather than written out again beside it.
+                lvm.selected = Set(leftoversRemoval.removed
+                    + leftoversRemoval.refused.map(\.path))
+                await lvm.removeSelected()
+            }
+        case DuplicatesEngine.moduleID:
+            return { @MainActor in await openDuplicates(vm) }
+        default:
+            return nil
         }
     }
+
+    // MARK: - Duplicates
+
+    /// The two presses this page needs before it holds anything: **Search, then
+    /// Mark every extra copy.**
+    ///
+    /// Through the model's own calls, like the leftovers press above: `search()`
+    /// is the button, and the loop after it is `settle`'s job done early — the
+    /// reply changes the tree, so the marking must land on the page that holds
+    /// it. `basketAllExtras()` is what fills the basket bar, and it goes through
+    /// the same scope gate the per-group button uses, so the count the bar draws
+    /// is one the engine would honour.
+    ///
+    /// `DuplicatesViewModel.shared(vm:store:)` is the seam because it is what the
+    /// page's own `init` calls — keyed to this `ModuleViewModel`, so this is the
+    /// same object the page draws. The store handed here is only read on a cache
+    /// miss, which is a page that was never built; its model then has no folder
+    /// and the guard below makes the press a no-op — the unseeded render, where
+    /// the empty state is exactly what should be measured.
+    @MainActor private static func openDuplicates(_ vm: ModuleViewModel) async {
+        let dvm = DuplicatesViewModel.shared(
+            vm: vm, store: NamespacedStore(namespace: DuplicatesEngine.moduleID,
+                                           backing: InMemoryKeyValueStore()))
+        // No folder, no search to press: the unseeded page draws its start
+        // screen, and pressing anything on it would be fixturing a state the
+        // module cannot reach.
+        guard dvm.folder != nil else { return }
+        dvm.search()
+        for _ in 0..<20_000 where dvm.phase == .searching { await Task.yield() }
+        dvm.basketAllExtras()
+    }
+
+    /// A folder nobody has, the `fixtureHome` rule one section down: the page
+    /// draws the path as text and the wire answers the search, so nothing here
+    /// reads this Mac.
+    static let duplicatesFolder = "/Users/fixture/Documents"
+
+    /// Three groups, and each is a different row.
+    ///
+    /// A plain pair, because that is the module's ordinary case and it carries
+    /// the group header's figure; a trio with a deliberately long name, because
+    /// the row was measured against names that wrap and a comfortable fixture
+    /// measures nothing; and an APFS clone pair — same `cloneFamily` — because
+    /// its header is the one that says removing the copy frees *nothing*, which
+    /// is the arithmetic `TheGroupHeaderSaysWhatItIsWorthTests` pins one target
+    /// over and this render had never drawn.
+    ///
+    /// Dates are fixed, not `Date()`: the survivor is decided by «date added»,
+    /// and a fixture that moved with the clock would re-decide it on some
+    /// future afternoon. Each group's first copy is the one that stays —
+    /// `SurvivingCopy`'s order, which is how the engine answers.
+    static let duplicateGroups = [
+        DuplicateGroup(copies: [
+            .init(path: "\(duplicatesFolder)/Reports/statement-2025.pdf",
+                  bytes: 9_000_000, added: Date(timeIntervalSinceReferenceDate: 700_000_000)),
+            .init(path: "\(duplicatesFolder)/Archive/statement-2025.pdf",
+                  bytes: 9_000_000, added: Date(timeIntervalSinceReferenceDate: 760_000_000)),
+        ]),
+        DuplicateGroup(copies: [
+            .init(path: "\(duplicatesFolder)/Camera/a-deliberately-long-fixture-photo-export-name.heic",
+                  bytes: 3_400_000, added: Date(timeIntervalSinceReferenceDate: 710_000_000)),
+            .init(path: "\(duplicatesFolder)/Shared/a-deliberately-long-fixture-photo-export-name.heic",
+                  bytes: 3_400_000, added: Date(timeIntervalSinceReferenceDate: 720_000_000)),
+            .init(path: "\(duplicatesFolder)/Backup/a-deliberately-long-fixture-photo-export-name.heic",
+                  bytes: 3_400_000, added: Date(timeIntervalSinceReferenceDate: 730_000_000)),
+        ]),
+        DuplicateGroup(copies: [
+            .init(path: "\(duplicatesFolder)/Cuts/interview.mov", bytes: 48_000_000,
+                  cloneFamily: 42, added: Date(timeIntervalSinceReferenceDate: 705_000_000)),
+            .init(path: "\(duplicatesFolder)/Cuts/interview copy.mov", bytes: 48_000_000,
+                  cloneFamily: 42, added: Date(timeIntervalSinceReferenceDate: 706_000_000)),
+        ]),
+    ]
+
+    /// Every copy after each group's first — what «Mark every extra copy» may
+    /// tick, read off the groups rather than counted by hand beside them. All
+    /// the fixture's paths pass `UserFileScope`, so the count the bar draws is
+    /// the whole set.
+    static var duplicateExtras: Int {
+        duplicateGroups.reduce(0) { $0 + $1.copies.count - 1 }
+    }
+
+    /// The counts travel with the groups, because the page draws them as one
+    /// answer: the excuses note under the toolbar — three files the walk could
+    /// not compare, one application library stepped over — was behind a reply
+    /// nothing answered, like everything else on this screen.
+    private static let duplicateFindings = DuplicateFindings(
+        groups: duplicateGroups, unreadable: 3, librariesSkipped: 1)
 }
 
 /// A transport that answers exactly what a fixture gave it, and nothing else.
