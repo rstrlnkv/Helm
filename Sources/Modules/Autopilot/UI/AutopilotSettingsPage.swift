@@ -89,7 +89,12 @@ struct AutopilotSettingsPage: View {
                     }
                 }
                 Section {
-                    HistorySection(history: rvm.history) { rvm.clearHistory() }
+                    HistorySection(history: rvm.history, clear: { rvm.clearHistory() },
+                                   refused: rvm.historyRefused,
+                                   canPutBack: rvm.canPutBack,
+                                   canPutBackRun: rvm.canPutBack,
+                                   putBack: { record in Task { await rvm.undo(record) } },
+                                   putBackRun: { pass in Task { await rvm.undoRun(pass) } })
                 }
             }
             .listStyle(.inset)

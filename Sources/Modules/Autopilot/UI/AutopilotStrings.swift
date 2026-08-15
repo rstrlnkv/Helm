@@ -8,6 +8,8 @@
 // a notice about runaway *code* — instead of firing 61 times on the one case
 // it excuses.
 
+import Foundation
+import HelmRuntime
 import HelmUI
 import Module_Autopilot_Engine
 
@@ -223,7 +225,7 @@ enum ApStr {
         // for two through four in Russian, and the same trap waits in every
         // language that agrees a verb with a numeral; a colon makes the number
         // a count rather than a subject and the agreement question disappears.
-        L("not completed: \(count)", [.ru: "не выполнено: \(count)", .es: "sin completar: \(count)", .fr: "non effectuées : \(count)", .de: "nicht ausgeführt: \(count)", .ja: "未実行: \(count)", .zh: "未完成：\(count)", .pt: "não concluídas: \(count)"], language: language)
+        L("not completed: \(count)", [.ru: "не выполнено: \(count)", .es: "sin completar: \(count)", .fr: "non effectuées : \(count)", .de: "nicht ausgeführt: \(count)", .ja: "未実行: \(count)", .zh: "未完成：\(count)", .pt: "não concluídas: \(count)"], language: language)
     }
 
     /// The verb for one row. Past tense, because the row is a record of
@@ -244,6 +246,104 @@ enum ApStr {
         case .failed: L("failed")
         }
     }
+
+    // MARK: - Putting it back
+
+    /// The item on a row and the button on a pass's header.
+    static var putBack: String { L("Put back") }
+
+    /// The button over a pass. The count is what could actually go back, which
+    /// is what makes it a promise rather than an intention.
+    static func putBackFiles(_ count: Int,
+                             language: AppLanguage = AppLanguage.current) -> String {
+        // Interpolated, so the table is inline: the lookup happens after the
+        // number is already in the string.
+        L("Put back \(count) files", [.ru: "Вернуть \(Plural.files(count, language: "ru"))", .es: "Devolver \(Plural.files(count, language: "es"))", .fr: "Restaurer \(Plural.files(count, language: "fr"))", .de: "\(Plural.files(count, language: "de")) zurücklegen", .ja: "\(Plural.files(count, language: "ja"))を戻す", .zh: "放回\(Plural.files(count, language: "zh"))", .pt: "Devolver \(Plural.files(count, language: "pt"))"], language: language)
+    }
+
+    /// The word on a row that has already gone back. The row stays — a history
+    /// that hid what it had undone would be hiding an action.
+    ///
+    /// Not "put back" again: that is the button's key, and one English key
+    /// means one thing. Two keys differing only in a capital letter is the same
+    /// collision wearing a disguise.
+    static var putBackAlready: String { L("back where it was") }
+
+    /// The header over one pass: the time, the folder the files came from when
+    /// they all came from one, and how many there were.
+    ///
+    /// Composed from three pieces rather than written as a sentence, because
+    /// the middle one is a folder name and the last already agrees with its own
+    /// number in eight languages.
+    static func passHeader(at when: Date, folder: String?, files: Int,
+                           language: AppLanguage = AppLanguage.current) -> String {
+        [HelmDates.dayAndMinute(when), folder,
+         Plural.files(files, language: language.rawValue)]
+            .compactMap { $0 }
+            .joined(separator: " · ")
+    }
+
+    /// What a return came to. Both halves always, because "8 back" alone reads
+    /// as "all of them" — and a pass is not atomic.
+    static func putBackReport(_ restored: Int, notPutBack: Int,
+                              language: AppLanguage = AppLanguage.current) -> String {
+        let done = L("put back: \(restored)", [.ru: "возвращено: \(restored)", .es: "devueltos: \(restored)", .fr: "restaurés : \(restored)", .de: "zurückgelegt: \(restored)", .ja: "戻した件数: \(restored)", .zh: "已放回：\(restored)", .pt: "devolvidos: \(restored)"], language: language)
+        guard notPutBack > 0 else { return done }
+        return done + " · " + L("not put back: \(notPutBack)", [.ru: "не возвращено: \(notPutBack)", .es: "sin devolver: \(notPutBack)", .fr: "non restaurés : \(notPutBack)", .de: "nicht zurückgelegt: \(notPutBack)", .ja: "戻せなかった件数: \(notPutBack)", .zh: "未放回：\(notPutBack)", .pt: "não devolvidos: \(notPutBack)"], language: language)
+    }
+
+    /// A file that came back under a name it did not have. Told outright,
+    /// because otherwise somebody goes looking for `march.pdf` and it is
+    /// `march 2.pdf`.
+    static func landedAs(_ file: String, as name: String,
+                         language: AppLanguage = AppLanguage.current) -> String {
+        // The marks are `Quoted`'s. Every language here punctuates quotation
+        // differently and a table spelling them itself is a table that gets one
+        // of them wrong.
+        L("\(Quoted(file, language: language)) came back as \(Quoted(name, language: language))", [.ru: "\(Quoted(file, language: language)) вернулся как \(Quoted(name, language: language))", .es: "\(Quoted(file, language: language)) volvió como \(Quoted(name, language: language))", .fr: "\(Quoted(file, language: language)) est revenu sous le nom \(Quoted(name, language: language))", .de: "\(Quoted(file, language: language)) kam zurück als \(Quoted(name, language: language))", .ja: "\(Quoted(file, language: language)) は \(Quoted(name, language: language)) として戻りました", .zh: "\(Quoted(file, language: language)) 已作为 \(Quoted(name, language: language)) 放回", .pt: "\(Quoted(file, language: language)) voltou como \(Quoted(name, language: language))"], language: language)
+    }
+
+    /// The mark that stops a rule acting twice did not stick, so the rule will
+    /// take this file again on the next sweep. The one line in this report with
+    /// something for a person to do about it.
+    static var ruleMayTakeItAgain: String {
+        L("The mark that stops a rule acting twice could not be written, so the rule may take this file again within the hour.")
+    }
+
+    /// Beside that warning. Named, because a person with four rules needs to
+    /// know which one is about to take the file back.
+    static func turnRuleOff(_ rule: String,
+                            language: AppLanguage = AppLanguage.current) -> String {
+        L("Turn off \(Quoted(rule, language: language))", [.ru: "Выключить правило \(Quoted(rule, language: language))", .es: "Desactivar \(Quoted(rule, language: language))", .fr: "Désactiver \(Quoted(rule, language: language))", .de: "\(Quoted(rule, language: language)) ausschalten", .ja: "\(Quoted(rule, language: language)) をオフにする", .zh: "关闭\(Quoted(rule, language: language))", .pt: "Desativar \(Quoted(rule, language: language))"], language: language)
+    }
+
+    /// Why one file did not go back. Exhaustive on purpose, like the rule
+    /// refusals beside it: a new reason refuses to build until it can say
+    /// itself, and the `rawValue` never reaches a screen.
+    static func undoRefusal(_ reason: UndoRefusal,
+                            language: AppLanguage = AppLanguage.current) -> String {
+        switch reason {
+        case .notThere: L("it is no longer where Autopilot put it", language: language)
+        case .notTheSameFile: L("something else is there now", language: language)
+        case .originGone: L("the folder it came from is gone", language: language)
+        case .originOutOfScope: L("it is outside the folders a rule may reach", language: language)
+        case .changedSinceCheck: L("the path changed underneath", language: language)
+        case .nameTaken: L("the old name is taken", language: language)
+        case .trashEmptied: L("it is no longer in the Trash", language: language)
+        case .alreadyUndone: L("it has already been put back", language: language)
+        case .historyRefused: L("this record was not written by Helm", language: language)
+        case .noIdentity: L("Helm did not record enough to put it back", language: language)
+        }
+    }
+
+    /// The card over a history that something else wrote. Its own sentence
+    /// rather than `rulesTampered`: the rules being forged and the history
+    /// being forged are different things to be told, and the second one leaves
+    /// the module working.
+    static var historyTampered: String { L("The record of what Autopilot did was not written by Helm, so nothing in it can be put back.") }
+    /// The verb beside it. Says what it does — the record goes, and Autopilot
+    /// starts keeping one again — rather than «OK».
+    static var discardHistory: String { L("Clear the record and start again") }
 
     /// Why a row was refused, in the reader's language. The record stores the
     /// reason's rawValue — data, stable across releases — and this is the only

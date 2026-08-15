@@ -49,6 +49,10 @@ import SwiftUI
         refusal = status?.refusal
         folderStates = status?.folders ?? [:]
         watching = status?.watching
+        // A lost reply leaves this false, which is the page it was already
+        // drawing: refusing every return is a claim about somebody's Mac, and
+        // a request that came back with nothing cannot make one.
+        historyRefused = status?.historyRefused ?? false
         await loadHistory()
     }
 
@@ -108,6 +112,16 @@ import SwiftUI
 
     @Published private(set) var history: [ActionRecord] = []
 
+    /// Whether the stored history is not Helm's. Drawn all the same, and every
+    /// return out of it refused — so the page shows the card and its one way
+    /// out instead of items that could only fail.
+    @Published private(set) var historyRefused = false
+
+    /// The history in passes, which is what the section draws: five hundred
+    /// rows is not a thing anybody can act on, and "the twelve files that
+    /// arrived at 14:22" is.
+    var runs: [ActionRun] { ActionHistory.runs(of: history) }
+
     /// Asked for rather than pushed, like the folders: the engine acts on its
     /// own queue and on FSEvents, and a page that is not open does not need
     /// telling.
@@ -118,7 +132,73 @@ import SwiftUI
     func clearHistory() {
         Task {
             await client.send(AutopilotCommand.clearHistory)
-            await loadHistory()
+            await load()
+        }
+    }
+
+    // MARK: - Putting it back
+
+    /// Whether a row may be offered a return.
+    ///
+    /// Two questions, both cheap: the record's own shape — is there anywhere to
+    /// go back from, and anything to check it against — and whether the history
+    /// it came out of is Helm's. **Neither touches the disk**, on purpose: this
+    /// is asked once per row and the page draws up to five hundred of them, and
+    /// the verdict that needs a `stat` is the engine's, after the press.
+    func canPutBack(_ record: ActionRecord) -> Bool { !historyRefused && record.undoable }
+
+    func canPutBack(_ run: ActionRun) -> Bool { !historyRefused && run.canBePutBack }
+
+    func undo(_ record: ActionRecord) async {
+        await putBack(AutopilotCommand.undo, id: record.id)
+    }
+
+    func undoRun(_ run: ActionRun) async {
+        await putBack(AutopilotCommand.undoRun, id: run.id)
+    }
+
+    /// Both gestures, which differ only in what the id names.
+    ///
+    /// The history is read back afterwards, because the rows the page would
+    /// offer again are exactly what has changed — and the banner is the report,
+    /// composed from the lines rather than from a count the engine sent.
+    private func putBack(_ command: AutopilotCommand, id: String) async {
+        let report: UndoReport? = await client.request(command, encoding: UndoRequest(id: id))
+        guard let report else { return }
+        bannerFolderID = nil
+        banner = sentence(for: report)
+        await loadHistory()
+    }
+
+    /// What a return says afterwards.
+    ///
+    /// Both counts always, then a line per file that did not go back with its
+    /// own reason, then the names that changed, then the one warning that has
+    /// something to do about it. Nothing is rounded and nothing is summarised:
+    /// a pass is not atomic, and «8 back» over a pass where two refused is the
+    /// sentence this whole report exists to avoid.
+    private func sentence(for report: UndoReport) -> String {
+        var lines = [ApStr.putBackReport(report.restored.count, notPutBack: report.notPutBack.count)]
+        for line in report.notPutBack {
+            lines.append("\(line.file) — \(reason(for: line.outcome))")
+        }
+        for line in report.restored {
+            guard let name = line.landedAs else { continue }
+            lines.append(ApStr.landedAs(line.file, as: name))
+        }
+        if !report.unmarked.isEmpty { lines.append(ApStr.ruleMayTakeItAgain) }
+        return lines.joined(separator: "\n")
+    }
+
+    /// Why one file did not go back, in the reader's language. A failure
+    /// carries the system's own description, which is already a sentence.
+    private func reason(for outcome: UndoOutcome) -> String {
+        switch outcome {
+        case let .refused(reason): ApStr.undoRefusal(reason)
+        case let .failed(description): description
+        // Not reachable — these are the lines that did *not* go back — and
+        // named rather than defaulted, so a fourth outcome is a build error.
+        case let .restored(to: path, stamped: _): (path as NSString).lastPathComponent
         }
     }
 
