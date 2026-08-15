@@ -81,8 +81,12 @@ struct DiskSettingsPage: View {
     private var startState: some View {
         ScrollView {
             VStack(spacing: 12) {
+                // The same leading pin as the note under it and the cards
+                // below: without a frame the `VStack` centred this one line
+                // over a left-aligned column.
                 Text(DkStr.startHint)
                     .font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, 4)
                 // Above the cards rather than under them: with the list missing
                 // there are no cards, and the sentence is what the person is
