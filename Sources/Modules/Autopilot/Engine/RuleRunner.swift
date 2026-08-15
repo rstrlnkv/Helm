@@ -308,29 +308,19 @@ struct RuleRunner: Sendable {
         }
     }
 
-    /// A name nothing is using yet. Overwriting is the one failure this module
-    /// could commit that nobody can undo, so an arriving file is numbered
-    /// — `a 2.pdf` — the way the Finder numbers a copy.
     /// A name nothing else is holding — `moving` excepted, which is the file
-    /// being renamed.
+    /// being renamed. The numbering itself is `FreeName`, shared with the
+    /// return, which numbers a file coming back for the same reason.
     ///
     /// On a case-insensitive volume `report.pdf` and `REPORT.pdf` are one name,
     /// so asking for the second found the first "taken" — by the very file
     /// being renamed — and produced `REPORT 2.pdf`. The person asked for
-    /// capitals, not for a second file.
+    /// capitals, not for a second file. That exception belongs to the rename
+    /// and stays here.
     private func free(_ url: URL, moving from: URL? = nil) -> URL {
         if let from, url.path.compare(from.path, options: .caseInsensitive) == .orderedSame {
             return url
         }
-        guard FileManager.default.fileExists(atPath: url.path) else { return url }
-        let folder = url.deletingLastPathComponent()
-        let stem = url.deletingPathExtension().lastPathComponent
-        let ext = url.pathExtension
-        for index in 2...999 {
-            let name = ext.isEmpty ? "\(stem) \(index)" : "\(stem) \(index).\(ext)"
-            let candidate = folder.appendingPathComponent(name)
-            if !FileManager.default.fileExists(atPath: candidate.path) { return candidate }
-        }
-        return url
+        return FreeName.beside(url) { FileManager.default.fileExists(atPath: $0) }
     }
 }
