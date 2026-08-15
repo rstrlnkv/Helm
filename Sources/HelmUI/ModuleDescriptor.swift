@@ -5,6 +5,15 @@ import HelmRuntime
 
 @MainActor public protocol ModuleDescriptor {
     static var id: ModuleID { get }
+    /// **Computed on every read, never stored.** `ModuleMetadata` is a struct of
+    /// finished strings, so a `static let` calls `L()` once — the first time
+    /// anything in the process touches the descriptor — and keeps that language
+    /// until the app is restarted. All nine were declared that way, and the
+    /// sidebar, the page headers, the welcome steps and the panel all draw the
+    /// module's name from here: switching language in Settings redrew the pages
+    /// under names that did not change, which is the one thing the in-app picker
+    /// exists to avoid. `AModuleNamesItselfInTodaysLanguageTests` fails per
+    /// module on a stored one.
     static var metadata: ModuleMetadata { get }
     static var category: ModuleCategory { get }
     /// The colour this module is known by.

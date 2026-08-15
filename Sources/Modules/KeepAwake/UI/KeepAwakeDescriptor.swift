@@ -9,7 +9,7 @@ import Module_KeepAwake_Engine
     /// The engine's constant, forwarded. Not a second literal: a name only one
     /// side changes is an error nowhere.
     public static let id = ModuleID(KeepAwakeEngine.moduleID)
-    public static let metadata = ModuleMetadata(
+    public static var metadata: ModuleMetadata { ModuleMetadata(
         id: id, name: KAStr.moduleName,
         summary: KAStr.summary,
         // Accessibility as well as the admin prompt: the pointer nudge posts a
@@ -17,7 +17,7 @@ import Module_KeepAwake_Engine
         // after an update speaks only about permissions a module declares, so
         // without this line a Keep Awake user who does not also run Layout was
         // never told the grant had lapsed.
-        sfSymbol: "moon.zzz.fill", permissions: [.adminHelper, .accessibility])
+        sfSymbol: "moon.zzz.fill", permissions: [.adminHelper, .accessibility]) }
     /// The store the host handed us, or this module's own if it handed none.
     ///
     /// Spelled out at four call sites — three of them identical and one wrapped

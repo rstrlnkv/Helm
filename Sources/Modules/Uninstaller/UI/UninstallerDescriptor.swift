@@ -6,9 +6,9 @@ import Module_Uninstaller_Engine
 
 @MainActor public final class UninstallerDescriptor: ModuleDescriptor {
     public static let id = ModuleID(UninstallerEngine.moduleID)
-    public static let metadata = ModuleMetadata(
+    public static var metadata: ModuleMetadata { ModuleMetadata(
         id: id, name: UnStr.moduleName, summary: UnStr.summary,
-        sfSymbol: "trash", permissions: [.fullDisk])
+        sfSymbol: "trash", permissions: [.fullDisk]) }
     public static let category: ModuleCategory = .files
     public static let tint: ModuleTint = .uninstaller
     /// The page draws across the pane; its header must not centre itself.

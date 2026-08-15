@@ -7,12 +7,12 @@ import Module_Layout_Engine
 
 @MainActor public final class LayoutDescriptor: ModuleDescriptor {
     public static let id = ModuleID(LayoutEngine.moduleID)
-    public static let metadata = ModuleMetadata(
+    public static var metadata: ModuleMetadata { ModuleMetadata(
         id: id, name: LyStr.moduleName, summary: LyStr.summary,
         sfSymbol: "keyboard", permissions: [.accessibility],
         // Without the grant it watches nothing: 84 logged warnings of
         // `no accessibility grant — not watching` and no other way to work.
-        inertWithout: [.accessibility])
+        inertWithout: [.accessibility]) }
     public static let category: ModuleCategory = .utilities
     public static let tint: ModuleTint = .keyboard
 

@@ -6,10 +6,10 @@ import Module_Leftovers_Engine
 
 @MainActor public final class LeftoversDescriptor: ModuleDescriptor {
     public static let id = ModuleID(LeftoversEngine.moduleID)
-    public static let metadata = ModuleMetadata(
+    public static var metadata: ModuleMetadata { ModuleMetadata(
         id: id, name: LfStr.moduleName, shortName: LfStr.moduleNameShort,
         summary: LfStr.summary,
-        sfSymbol: "wand.and.rays", permissions: [.fullDisk])
+        sfSymbol: "wand.and.rays", permissions: [.fullDisk]) }
     public static let category: ModuleCategory = .utilities
     public static let tint: ModuleTint = .leftovers
     /// The page draws across the pane; its header must not centre itself.

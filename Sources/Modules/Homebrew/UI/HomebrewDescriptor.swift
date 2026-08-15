@@ -7,9 +7,9 @@ import Module_Homebrew_Engine
 
 @MainActor public final class HomebrewDescriptor: ModuleDescriptor {
     public static let id = ModuleID("homebrew")
-    public static let metadata = ModuleMetadata(
+    public static var metadata: ModuleMetadata { ModuleMetadata(
         id: id, name: HbStr.moduleName, summary: HbStr.summary,
-        sfSymbol: "shippingbox", permissions: [])
+        sfSymbol: "shippingbox", permissions: []) }
     public static let category: ModuleCategory = .utilities
     public static let tint: ModuleTint = .homebrew
     /// The page draws across the pane; its header must not centre itself.

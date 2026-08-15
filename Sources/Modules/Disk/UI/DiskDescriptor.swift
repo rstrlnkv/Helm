@@ -6,9 +6,9 @@ import Module_Disk_Engine
 
 @MainActor public final class DiskDescriptor: ModuleDescriptor {
     public static let id = ModuleID(DiskEngine.moduleID)
-    public static let metadata = ModuleMetadata(
+    public static var metadata: ModuleMetadata { ModuleMetadata(
         id: id, name: DkStr.moduleName, summary: DkStr.summary,
-        sfSymbol: "chart.pie", permissions: [.fullDisk])
+        sfSymbol: "chart.pie", permissions: [.fullDisk]) }
     public static let category: ModuleCategory = .files
     public static let tint: ModuleTint = .disk
     /// The page draws across the pane; its header must not centre itself.
