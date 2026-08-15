@@ -29,9 +29,9 @@ struct VPNCompactWidget: View {
                 }
             }
             if vm.connections.isEmpty {
-                HelmWidgetUnmeasured(VPNStr.noVPNs)
+                HelmWidgetUnmeasured(VPNStr.noVPNs())
             } else {
-                HelmWidgetFigure("\(up)/\(vm.connections.count)", VPNStr.connections, .compact)
+                HelmWidgetFigure("\(up)/\(vm.connections.count)", VPNStr.connections(), .compact)
             }
         }
     }

@@ -24,7 +24,11 @@ public extension View {
     /// Wrap a module tile in the shared panel card.
     func helmPanelCard() -> some View {
         self
-            .padding(12)
+            // The ladder's own «a card's inner padding», not a 12 of this file's:
+            // it is what a 1×1 tile has left over for its words, and
+            // `TheCompactTileFitsItsOwnWordsTests` measures against it — a number
+            // spelled twice across that boundary is one only this side can change.
+            .padding(HelmSpace.s5)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: HelmRadius.frame, style: .continuous)

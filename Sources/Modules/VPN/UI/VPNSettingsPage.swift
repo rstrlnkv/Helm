@@ -56,7 +56,7 @@ struct VPNSettingsPage: View {
     /// The connections block, and the heading of the section it rides on.
     private var connectionsAndTitle: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HelmSectionTitle(VPNStr.connections)
+            HelmSectionTitle(VPNStr.connections())
             connectionsList
             if hasConnections {
                 Text(VPNStr.connectionsHint)

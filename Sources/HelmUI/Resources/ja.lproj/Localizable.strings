@@ -307,7 +307,7 @@
 "Never this word" = "この単語は変更しない";
 "New rule" = "新しいルール";
 "Next" = "次へ";
-"No VPNs configured" = "VPN が設定されていません";
+"No VPNs" = "VPN なし";
 "No abbreviations yet" = "短縮入力はまだありません";
 "No access" = "アクセス不可";
 "No duplicates here. Every large file under this folder is one of a kind." = "重複はありません。このフォルダの大きなファイルはすべて 1 つだけです。";

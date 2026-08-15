@@ -24,8 +24,18 @@ enum VPNStr {
         // English base carries none in any of the nine.
         L("Connect system VPNs, automatically per app")
     }
-    static var noVPNs: String {
-        L("No VPNs configured")
+    /// What the two panel tiles say when macOS holds no configuration.
+    ///
+    /// **Two words, because the 1×1 tile is 144 pt and cannot grow.**
+    /// «No VPNs configured» measured 142 pt of the 120 the card leaves in
+    /// Portuguese, 131 in Japanese, 127 in German and 121 in Russian, so the
+    /// smallest tile in the panel wrapped to two lines in four of the eight
+    /// languages — and the tile stands under a header that already says VPN, so
+    /// the word the sentence lost was one the reader had just read.
+    /// `TheCompactTileFitsItsOwnWordsTests` holds the budget. The page's own
+    /// empty state is `noVPNsSystem`, which has room to explain.
+    static func noVPNs(language: AppLanguage = AppLanguage.current) -> String {
+        L("No VPNs", language: language)
     }
     /// The page when macOS has no VPN at all.
     ///
@@ -207,8 +217,8 @@ enum VPNStr {
     static var openNetworkSettings: String { L("Open Network settings") }
     /// Nothing to refresh afterwards: the engine watches the list.
     static var noVPNsNote: String { L("Helm picks it up on its own — there is nothing to refresh.") }
-    static var connections: String {
-        L("Connections")
+    static func connections(language: AppLanguage = AppLanguage.current) -> String {
+        L("Connections", language: language)
     }
     static var perAppAutomation: String {
         L("Per-app automation")

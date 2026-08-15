@@ -16,7 +16,7 @@ struct VPNPanelTile: View {
         VStack(alignment: .leading, spacing: 10) {
             header
             if vm.connections.isEmpty {
-                Text(VPNStr.noVPNs)
+                Text(VPNStr.noVPNs())
                     // The panel's scale, not the settings window's.
                     .font(.caption)
                     .foregroundStyle(HelmText.quiet)
