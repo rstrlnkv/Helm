@@ -1,5 +1,6 @@
 import Darwin
 import XCTest
+import HelmTestSupport
 @testable import Module_Duplicates_Engine
 
 /// Two questions about `HashCache` at scale, asked with real numbers rather
@@ -42,13 +43,6 @@ final class HashCacheScaleBenchmark: XCTestCase {
     /// a real one, without hashing gigabytes of real content to produce it.
     private static let digest = String(repeating: "a", count: 64)
 
-    /// Bytes malloc currently has handed out, across every zone.
-    private static func allocatedBytes() -> Int {
-        var stats = malloc_statistics_t()
-        malloc_zone_statistics(nil, &stats)
-        return Int(stats.size_in_use)
-    }
-
     private func fill(_ cache: HashCache, count: Int) {
         for i in 0..<count {
             cache.setPrefix(Self.digest, fileID: UInt64(i), bytes: 1_000_000 + i,
@@ -70,10 +64,10 @@ final class HashCacheScaleBenchmark: XCTestCase {
         // reported *zero* bytes an entry for half a million of them.
         // `size_in_use` is what malloc has handed out, which rises whether or
         // not the pages behind it are new.
-        let before = Self.allocatedBytes()
+        let before = AllocatorBooks.allocatedBytes()
         let cache = HashCache()
         fill(cache, count: count)
-        let after = Self.allocatedBytes()
+        let after = AllocatorBooks.allocatedBytes()
         XCTAssertEqual(cache.count, count)
 
         let grewKB = Double(after - before) / 1024

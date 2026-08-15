@@ -2,6 +2,7 @@ import XCTest
 import SwiftUI
 import AppKit
 import Darwin
+import HelmTestSupport
 import HelmUI
 @testable import Module_KeepAwake_Engine
 @testable import Module_KeepAwake_UI
@@ -155,17 +156,6 @@ final class HeroTickCostBenchmark: XCTestCase {
 
     // MARK: - Memory: a settings window left open for hours
 
-    /// Bytes malloc currently has handed out, across every zone — the
-    /// allocator's own books, not `MemoryFootprint.current()`
-    /// (`phys_footprint`), which answers what the *process* costs the machine
-    /// and can read flat across a fill that really did allocate (§ the house
-    /// rule on `HashCacheScaleBenchmark`).
-    private static func allocatedBytes() -> Int {
-        var stats = malloc_statistics_t()
-        malloc_zone_statistics(nil, &stats)
-        return Int(stats.size_in_use)
-    }
-
     /// A session left running for hours with the settings window open is
     /// thousands of ticks of the same hero, the same `timedNote`, the same
     /// `NSBezierPath`/`NSHostingView` machinery underneath — all of it
@@ -211,11 +201,11 @@ final class HeroTickCostBenchmark: XCTestCase {
         // have settled before either measured lap begins.
         tick(perCheckpoint, from: 0)
         tick(perCheckpoint, from: perCheckpoint)
-        let afterWarmup = Self.allocatedBytes()
+        let afterWarmup = AllocatorBooks.allocatedBytes()
         tick(perCheckpoint, from: perCheckpoint * 2)
-        let afterSecondLap = Self.allocatedBytes()
+        let afterSecondLap = AllocatorBooks.allocatedBytes()
         tick(perCheckpoint, from: perCheckpoint * 3)
-        let afterThirdLap = Self.allocatedBytes()
+        let afterThirdLap = AllocatorBooks.allocatedBytes()
         window.contentView = nil
 
         let firstDelta = afterSecondLap - afterWarmup

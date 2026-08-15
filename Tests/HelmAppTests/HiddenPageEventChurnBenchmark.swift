@@ -4,6 +4,7 @@ import AppKit
 import Darwin
 import HelmContract
 import HelmRuntime
+import HelmTestSupport
 import HelmUI
 @testable import HelmApp
 @testable import Module_VPN_Engine
@@ -30,13 +31,6 @@ import Module_VPN_UI
 /// `HELM_BENCH=1 swift test --filter HiddenPageEventChurnBenchmark`
 @MainActor
 final class HiddenPageEventChurnBenchmark: XCTestCase {
-
-    /// The allocator's own count of bytes handed out, across every zone.
-    private static func allocatedBytes() -> Int {
-        var stats = malloc_statistics_t()
-        malloc_zone_statistics(nil, &stats)
-        return Int(stats.size_in_use)
-    }
 
     /// Two payloads that genuinely differ, so every event is a real state
     /// change the page has to diff — an emission that changes nothing measures
@@ -123,11 +117,11 @@ final class HiddenPageEventChurnBenchmark: XCTestCase {
         // filling: a cache's per-lap growth decays to zero, a per-event keep
         // does not.
         var deltas: [Int] = []
-        var before = Self.allocatedBytes()
+        var before = AllocatorBooks.allocatedBytes()
         let warm = before
         for n in 0..<6 {
             lap(transport, view: view, count: perLap, from: perLap * (2 + n))
-            let after = Self.allocatedBytes()
+            let after = AllocatorBooks.allocatedBytes()
             deltas.append(after - before)
             before = after
         }
@@ -174,11 +168,11 @@ final class HiddenPageEventChurnBenchmark: XCTestCase {
         }
         let perLap = 300
         pump(perLap); pump(perLap)
-        let afterWarmup = Self.allocatedBytes()
+        let afterWarmup = AllocatorBooks.allocatedBytes()
         pump(perLap)
-        let afterSecond = Self.allocatedBytes()
+        let afterSecond = AllocatorBooks.allocatedBytes()
         pump(perLap)
-        let afterThird = Self.allocatedBytes()
+        let afterThird = AllocatorBooks.allocatedBytes()
         print(String(format: "hidden VPN page, no events: size_in_use %d KB after warm-up; "
                      + "+%d KB second lap; +%d KB third lap",
                      afterWarmup / 1024, (afterSecond - afterWarmup) / 1024,
