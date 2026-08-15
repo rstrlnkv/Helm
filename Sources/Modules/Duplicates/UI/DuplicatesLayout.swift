@@ -78,7 +78,15 @@ struct DuplicatesLayout {
                                 minimum: 200)
     }
 
+    /// The basket row's one rung: the count, the clear control and the
+    /// prominent trash button. 587.3 measured in German with a real library's
+    /// figures, plus slack — below this the clear control keeps its act as a
+    /// symbol and gives up only its words, the same trade the toolbar's
+    /// mark-all makes. `TheBasketRowFitsThePaneTests` holds it.
+    static let basketWithClearLabel: CGFloat = 620
+
     var showsCount: Bool { availableWidth >= Self.barWithCount }
     var labelsMarkAll: Bool { availableWidth >= Self.barWithMarkAllLabel }
     var labelsSearch: Bool { availableWidth >= Self.barWithSearchLabel }
+    var labelsClear: Bool { availableWidth >= Self.basketWithClearLabel }
 }

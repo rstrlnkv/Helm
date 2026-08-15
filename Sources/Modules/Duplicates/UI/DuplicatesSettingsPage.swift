@@ -275,7 +275,7 @@ struct DuplicatesSettingsPage: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             if !dvm.basket.isEmpty {
-                basketRow
+                basketRow(DuplicatesLayout(availableWidth: paneWidth))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -332,7 +332,12 @@ struct DuplicatesSettingsPage: View {
         }
     }
 
-    private var basketRow: some View {
+    /// Measured like the toolbar, because it had the toolbar's defect without
+    /// the toolbar's ladder: the count is `fixedSize` and nothing here gave
+    /// anything up, so at the narrowest pane the *prominent* button truncated
+    /// to «In den Papierkorb l…» — on the control that deletes.
+    /// `TheBasketRowFitsThePaneTests` holds the rung.
+    private func basketRow(_ layout: DuplicatesLayout) -> some View {
         HStack(spacing: HelmSpace.s5) {
             // A count is not a list. Everything about to be trashed can be
             // named here, and taken back out without hunting for its row.
@@ -357,13 +362,19 @@ struct DuplicatesSettingsPage: View {
             Spacer()
             // Dimmed while a removal runs, for the reason `clearBasket` states:
             // the paths are already on the wire, so emptying the basket here
-            // clears the screen and not the request.
-            Button(DupStr.clearBasket) { dvm.clearBasket() }
+            // clears the screen and not the request. On a narrow pane it keeps
+            // its act as a symbol and gives up only its words — the trade the
+            // toolbar's mark-all already makes, through the same `control`.
+            control(DupStr.clearBasket, symbol: "xmark.circle",
+                    labelled: layout.labelsClear) { dvm.clearBasket() }
                 .disabled(dvm.busy)
-                .controlSize(.small)
             Button(DupStr.moveToTrash) { confirming = true }
                     .disabled(dvm.busy)
                 .buttonStyle(.borderedProminent)
+                // Never truncated: this is the one control on the page whose
+                // words must survive every width, and the ladder above is what
+                // makes the room.
+                .fixedSize()
         }
     }
 }
