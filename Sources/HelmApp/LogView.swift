@@ -112,7 +112,11 @@ struct LogView: View {
         .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
     }
 
-    private var levelLabels: [String] {
+    /// The three words the level picker is sized from — one declaration, because
+    /// anything measuring this row has to compute the same width from the same
+    /// labels, and a second copy of them is a width that agrees until somebody
+    /// changes a word.
+    static var levelLabels: [String] {
         [AppStr.logLevelAll, AppStr.logLevelWarnings, AppStr.logLevelErrors]
     }
 
@@ -169,16 +173,16 @@ struct LogView: View {
 
     private var levelFilter: some View {
         Picker(AppStr.logLevel, selection: $minimumLevel) {
-            Text(levelLabels[0]).tag(LogLevel.info)
-            Text(levelLabels[1]).tag(LogLevel.warn)
-            Text(levelLabels[2]).tag(LogLevel.error)
+            Text(Self.levelLabels[0]).tag(LogLevel.info)
+            Text(Self.levelLabels[1]).tag(LogLevel.warn)
+            Text(Self.levelLabels[2]).tag(LogLevel.error)
         }
         .pickerStyle(.segmented).labelsHidden()
         // Measured per language, not 260 and not 263: a segmented control
         // draws every segment as wide as the widest label, so its width is
         // the widest × three — 403.5 pt in Russian, where adding the three
         // labels up answered 263 and clipped two of them.
-        .frame(width: HelmPickerWidth.segmented(levelLabels))
+        .frame(width: HelmPickerWidth.segmented(Self.levelLabels))
     }
 
     /// Built from what has arrived, so it names the modules that spoke rather

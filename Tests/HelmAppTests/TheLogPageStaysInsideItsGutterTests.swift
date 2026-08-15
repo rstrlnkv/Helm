@@ -37,11 +37,6 @@ final class TheLogPageStaysInsideItsGutterTests: XCTestCase {
     /// The pane at the default 1060 pt window, where nothing has ever overflowed.
     private let widest: CGFloat = 810
 
-    /// Both, always. A reading has a screen (`ModulePageRender` § the appearance
-    /// is named by the caller), and the two are not the same tree: SwiftUI draws
-    /// layers in one that it does not draw in the other.
-    private let appearances: [NSAppearance.Name] = [.aqua, .darkAqua]
-
     override func tearDown() {
         AppLanguage.override = nil
         super.tearDown()
@@ -166,31 +161,31 @@ final class TheLogPageStaysInsideItsGutterTests: XCTestCase {
     func testTheFoldedFilterRowStartsAtTheGutterInEveryLanguage() {
         let inset = HelmLayout.formInset
         for width in [narrowest, narrowestWithWidestSidebar] {
-            for appearance in appearances {
+            // Both, always: a reading has a screen, and the two are not the same
+            // tree — SwiftUI draws layers in one it does not draw in the other.
+            for appearance in RenderedInk.bothAppearances {
                 for language in AppLanguage.allCases {
                     AppLanguage.override = language
                     let drawn = page(width, appearance)
+                    let screen = "\(language.rawValue) at \(width) pt, "
+                        + RenderedInk.label(of: appearance)
 
                     XCTAssertGreaterThanOrEqual(drawn.layers.count, 20, """
-                        the log page drew \(drawn.layers.count) layers in \(language.rawValue) at \
-                        \(width) pt — nothing rendered, and the edge below is then whatever an \
-                        empty list defaults to
+                        the log page drew \(drawn.layers.count) layers in \(screen) — nothing \
+                        rendered, and the edge below is then whatever an empty list defaults to
                         """)
                     guard let edge = levelPickerEdge(inFilterRowOf: drawn) else {
                         XCTFail("""
-                            no layer in the filter band is \(HelmPickerWidth.segmented(
-                                [AppStr.logLevelAll, AppStr.logLevelWarnings, AppStr.logLevelErrors]
-                            )) pt wide in \(language.rawValue) at \(width) pt — the level picker \
-                            is not where this measurement looks for it, and an edge read from \
-                            nothing would pass for free
+                            no layer in the filter band is \(levelPickerWidth) pt wide in \
+                            \(screen) — the level picker is not where this measurement looks for \
+                            it, and an edge read from nothing would pass for free
                             """)
                         continue
                     }
                     XCTAssertEqual(edge, inset, accuracy: 0.5, """
-                        the filter row starts at x = \(edge) in \(language.rawValue) at a \
-                        \(width) pt pane (\(appearance.rawValue)), not at the \(inset) pt inset \
-                        every other row on this page starts at. The row is centred in the pane \
-                        rather than laid against the gutter.
+                        the filter row starts at x = \(edge) in \(screen), not at the \(inset) pt \
+                        inset every other row on this page starts at. The row is centred in the \
+                        pane rather than laid against the gutter.
                         """)
                 }
             }
@@ -218,16 +213,16 @@ final class TheLogPageStaysInsideItsGutterTests: XCTestCase {
         AppLanguage.override = .fr
         let drawn = page(narrowest)
         let height = filterRowHeight(drawn)
+        let rightEdge = furthestDrawn(inFilterRowOf: drawn)
+        let gutter = narrowest - HelmLayout.formInset
 
         XCTAssertEqual(height, oneLineRow, accuracy: 1, """
             the French filter row is \(height) pt tall at \(narrowest) pt against the \
             \(oneLineRow) pt one line takes — it has folded at a width it fits in
             """)
-        XCTAssertEqual(furthestDrawn(inFilterRowOf: drawn), narrowest - HelmLayout.formInset,
-                       accuracy: 1, """
-            the French filter row ends at x = \(furthestDrawn(inFilterRowOf: drawn)) at \
-            \(narrowest) pt, not at the \(narrowest - HelmLayout.formInset) pt gutter — Follow \
-            has stopped being pushed to the right edge
+        XCTAssertEqual(rightEdge, gutter, accuracy: 1, """
+            the French filter row ends at x = \(rightEdge) at \(narrowest) pt, not at the \
+            \(gutter) pt gutter — Follow has stopped being pushed to the right edge
             """)
     }
 
@@ -256,13 +251,16 @@ final class TheLogPageStaysInsideItsGutterTests: XCTestCase {
     /// and in all eight languages, and `HelmWrappingRow` starts every line at
     /// `bounds.minX` — so where the picker is, the row is.
     private func levelPickerEdge(inFilterRowOf shell: ModulePageRender.Shell) -> CGFloat? {
-        let width = HelmPickerWidth.segmented([AppStr.logLevelAll, AppStr.logLevelWarnings,
-                                               AppStr.logLevelErrors])
-        return inFilterRow(of: shell)
-            .filter { abs($0.frame.width - width) < 0.5 }
+        inFilterRow(of: shell)
+            .filter { abs($0.frame.width - levelPickerWidth) < 0.5 }
             .map(\.frame.minX)
             .min()
     }
+
+    /// Computed from the page's own labels, never from a second copy of them:
+    /// this is the width `levelFilter` pins the control to, so the two cannot
+    /// disagree when somebody changes one of the three words.
+    private var levelPickerWidth: CGFloat { HelmPickerWidth.segmented(LogView.levelLabels) }
 
     /// The content of the filter band: everything drawn between the second and
     /// third rules that is not itself a full-width container.
