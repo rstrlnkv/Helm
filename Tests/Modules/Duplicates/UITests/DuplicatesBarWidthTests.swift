@@ -189,7 +189,11 @@ final class DuplicatesBarWidthTests: XCTestCase {
         let page = try RepoSource.text(of:
             "Sources/Modules/Duplicates/UI/DuplicatesSettingsPage.swift")
         let opens = try XCTUnwrap(page.range(of: "private func toolbar("))
-        let closes = try XCTUnwrap(page.range(of: "// MARK: - Content"))
+        // The next section, whichever it is. Naming `// MARK: - Content`
+        // outright made this read every section between the two: the policy row
+        // landed there and its two strings were counted as the toolbar's.
+        let closes = try XCTUnwrap(page.range(of: "// MARK: -",
+                                              range: opens.upperBound..<page.endIndex))
         let toolbar = String(page[opens.lowerBound..<closes.lowerBound])
         XCTAssertTrue(toolbar.contains("HStack(spacing: 8)"),
                       "the toolbar body was not found — this check reads nothing")

@@ -122,19 +122,31 @@ public struct TransitFolders: Sendable {
     /// it under test would cost the one thing worth having, which is that
     /// `testTheSystemTierIsTheFoldersMacOSNames` asks this Mac where Downloads
     /// really is rather than asking a fixture what it was told.
-    public static let system = TransitFolders(roots: systemRoots())
+    public static let system = TransitFolders(roots: named + [dropBox])
 
-    private static func systemRoots() -> [String] {
-        let manager = FileManager.default
-        var roots = [FileManager.SearchPathDirectory.downloadsDirectory, .desktopDirectory]
-            .compactMap { try? manager.url(for: $0, in: .userDomainMask,
-                                           appropriateFor: nil, create: false).path }
-        // What somebody else dropped on this Mac over the network: arrived, and
-        // never put anywhere by the person who owns the account.
-        roots.append(manager.homeDirectoryForCurrentUser
-            .appendingPathComponent("Public/Drop Box").path)
-        return roots
-    }
+    /// The transit folders worth naming to a person, in the order a sentence
+    /// says them, as paths — what this Mac calls them is `SystemFolderNames`'
+    /// answer, one target up.
+    ///
+    /// **The tier and the sentence describing it read one list.** The popup
+    /// under the toolbar says «the one in Downloads or on the Desktop», which is
+    /// a claim about this rule; spelled a second time in the UI it would go on
+    /// saying it after the tier changed, and nothing would be an error anywhere.
+    ///
+    /// The drop box is deliberately not among them and is still a root: it is
+    /// what somebody else left on this Mac over the network, which nobody
+    /// looking through their own duplicates recognises as a folder of theirs —
+    /// and a sentence naming three folders to explain two is a worse sentence.
+    public static let named: [String] = [
+        FileManager.SearchPathDirectory.downloadsDirectory, .desktopDirectory,
+    ].compactMap { try? FileManager.default.url(for: $0, in: .userDomainMask,
+                                                appropriateFor: nil, create: false).path }
+
+    /// What somebody else dropped on this Mac over the network: arrived, and
+    /// never put anywhere by the person who owns the account. From the home
+    /// directory, because it has no search-path constant of its own.
+    private static let dropBox = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent("Public/Drop Box").path
 
     /// Whether this file is sitting in one of them.
     public func holds(_ path: String) -> Bool {

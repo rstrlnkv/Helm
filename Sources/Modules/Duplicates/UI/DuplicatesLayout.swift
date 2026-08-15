@@ -1,4 +1,6 @@
 import CoreGraphics
+import HelmUI
+import Module_Duplicates_Engine
 
 /// What fits in the duplicates toolbar, at the width there actually is.
 ///
@@ -59,6 +61,22 @@ struct DuplicatesLayout {
     static let barWithMarkAllLabel: CGFloat = 760
     /// 607.0 measured in French, plus slack.
     static let barWithSearchLabel: CGFloat = 660
+
+    /// How wide the keep-policy pop-up has to be to say what it is set to.
+    ///
+    /// Measured rather than written down, for the reason `HelmPickerWidth`
+    /// exists: the labels are whole clauses, and they name folders macOS
+    /// translates — so the widest of them is not a number anybody can know in
+    /// advance. The floor is only there to keep the control from collapsing
+    /// where a language is unusually terse.
+    ///
+    /// Static and language-taking, so the page and `ThePolicyRowFitsThePaneTests`
+    /// read one arithmetic: a width test holding its own copy of the width goes
+    /// on passing whatever the page starts drawing.
+    static func policyPickerWidth(language: AppLanguage = AppLanguage.current) -> CGFloat {
+        HelmPickerWidth.fitting(KeepPolicy.allCases.map { DupStr.policyName($0, language: language) },
+                                minimum: 200)
+    }
 
     var showsCount: Bool { availableWidth >= Self.barWithCount }
     var labelsMarkAll: Bool { availableWidth >= Self.barWithMarkAllLabel }

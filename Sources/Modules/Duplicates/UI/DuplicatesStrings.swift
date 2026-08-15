@@ -8,6 +8,7 @@
 // a notice about runaway *code* — instead of firing 61 times on the one case
 // it excuses.
 
+import Foundation
 import HelmRuntime
 import HelmUI
 import Module_Duplicates_Engine
@@ -166,6 +167,57 @@ enum DupStr {
     /// this page is most exposed to.
     static var basketAllExtras: String { L("Mark every extra copy") }
     static var clearBasket: String { L("Clear selection") }
+
+    // MARK: - What an extra copy is
+
+    /// The label in front of the policy popup. Half a sentence, and the popup
+    /// finishes it — a question with a title and a control under it takes four
+    /// lines to say what one line says here.
+    static var extraCopyIs: String { L("An extra copy is") }
+
+    /// One policy, as the popup says it — the second half of the sentence above.
+    ///
+    /// Exhaustive over `KeepPolicy` with no `default`: a third belief would
+    /// otherwise draw as an empty row in the popup that decides what Helm offers
+    /// to delete.
+    static func policyName(_ policy: KeepPolicy,
+                           language: AppLanguage = AppLanguage.current) -> String {
+        switch policy {
+        case .byPlace: return theOneInTransit(language: language)
+        case .byDate: return L("the one that arrived later", language: language)
+        }
+    }
+
+    /// «the one in “Downloads” or “Desktop”», with the folders named the way
+    /// this Mac names them.
+    ///
+    /// **macOS spells its own folders**, and it is not a translation Helm gets
+    /// to make: Finder says «Загрузки»,「デスクトップ」and, in Portuguese, `Mesa`
+    /// — a ninth translation of a name the system already has is how one folder
+    /// comes to have two names on one screen. The paths come from
+    /// `TransitFolders.named`, so the sentence cannot describe a tier the rule
+    /// no longer has.
+    ///
+    /// Quoted, because they are names: the alternative is declining them, and
+    /// «в Загрузки» is what interpolating a nominative folder name into a
+    /// Russian preposition produces. `Quoted` is the house's marks per language,
+    /// French's unbreakable spaces and all.
+    ///
+    /// Interpolated, so the table is inline — the lookup happens after the names
+    /// are already in the string.
+    private static func theOneInTransit(language: AppLanguage) -> String {
+        let folders = TransitFolders.named.map { path in
+            SystemFolderNames.display(path: path, home: NSHomeDirectory(),
+                                      language: language.rawValue)
+                ?? (path as NSString).lastPathComponent
+        }
+        // A Mac that cannot say where its own Downloads folder is answers the
+        // English word, which is what the path's last component would have said.
+        let (downloads, desktop) = (folders.first ?? "Downloads",
+                                    folders.dropFirst().first ?? "Desktop")
+        let (dl, dk) = (Quoted(downloads, language: language), Quoted(desktop, language: language))
+        return L("the one in \(dl) or \(dk)", [.ru: "та, что в папке \(dl) или \(dk)", .es: "la que está en \(dl) o \(dk)", .fr: "celle dans \(dl) ou \(dk)", .de: "die in \(dl) oder \(dk)", .ja: "\(dl)または\(dk)にあるもの", .zh: "位于\(dl)或\(dk)中的那份", .pt: "a que está em \(dl) ou \(dk)"], language: language)
+    }
 
     // MARK: - What the last press did to the marks
 

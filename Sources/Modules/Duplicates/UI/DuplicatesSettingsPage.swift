@@ -1,5 +1,6 @@
 import HelmRuntime
 import HelmUI
+import Module_Duplicates_Engine
 import SwiftUI
 
 /// The module's page: pick a folder, watch it read, decide what goes.
@@ -45,6 +46,14 @@ struct DuplicatesSettingsPage: View {
                 // Measured, not guessed: what the row drops is decided by what
                 // it can hold. `DuplicatesLayout` has the numbers.
                 toolbar(DuplicatesLayout(availableWidth: paneWidth))
+                Divider()
+            }
+            // Under the toolbar and above everything the search says, because it
+            // is the question the answer is to — and from the moment a folder is
+            // chosen, not only when there are results: it decides what the next
+            // search offers to delete, so it cannot wait for one.
+            if dvm.folder != nil {
+                policyRow
                 Divider()
             }
             // What the answer excludes belongs with the answer. This note used
@@ -171,6 +180,41 @@ struct DuplicatesSettingsPage: View {
         .fixedSize()
         .help(title)
         .accessibilityLabel(title)
+    }
+
+    // MARK: - What an extra copy is
+
+    /// One sentence with a pop-up in the middle: «An extra copy is …».
+    ///
+    /// **A sentence and not a titled setting.** A label above a control and a
+    /// caption under it would take four lines to say what this says in one, and
+    /// the thing being chosen is a belief rather than a preference — the two
+    /// options are the only two halves that finish the sentence.
+    ///
+    /// Nothing here narrows: `DuplicatesLayout.policyPickerWidth` is measured
+    /// from the labels themselves, and `ThePolicyRowFitsThePaneTests` holds the
+    /// whole row against the narrowest pane in all eight languages.
+    private var policyRow: some View {
+        HStack(spacing: 8) {
+            Text(DupStr.extraCopyIs)
+                .font(HelmText.rowDetail)
+            // Named with the label beside it and drawn without it: that is what
+            // `labelsHidden` is for, and an empty title is a pop-up VoiceOver
+            // reads as «pop up button» with nothing to say what it decides.
+            Picker(DupStr.extraCopyIs,
+                   selection: Binding(get: { dvm.policy }, set: { dvm.choose($0) })) {
+                // The enum, in its own order: a pop-up listing what a module
+                // believes is the one place a new belief must appear without
+                // anybody remembering to add it.
+                ForEach(KeepPolicy.allCases, id: \.self) { policy in
+                    Text(DupStr.policyName(policy)).tag(policy)
+                }
+            }
+            .labelsHidden()
+            .frame(width: DuplicatesLayout.policyPickerWidth())
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 8)
     }
 
     // MARK: - Content
