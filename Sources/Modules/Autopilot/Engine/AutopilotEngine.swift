@@ -228,7 +228,14 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         for record in records.sorted(by: { $0.at < $1.at }) {
             kept = ActionHistory.recording(record, into: kept)
         }
-        write(kept)
+        guard write(kept) else { return }
+        // Said only when the write landed: the engine acts on a timer and on
+        // files arriving, and an open page that reads the history once would
+        // draw an hour of this as nothing. The event carries no data — the
+        // page re-asks, so the read that fills the screen stays the one that
+        // judges the seal and the window. A return's write is not announced
+        // here: its only writer is the page's own gesture, which reloads.
+        localTransport.emit(EngineEvent(name: AutopilotEvent.history.rawValue, payload: Data()))
     }
 
     /// The seal first, then the history it signs.
@@ -238,9 +245,14 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// half. This order is the one where a keychain that will not answer costs
     /// nothing: the seal fails, and the history that was already there is still
     /// the history, still signed.
-    private func write(_ history: [ActionRecord]) {
-        guard let data = ActionHistory.encode(history), rules.seal(history: data) else { return }
+    ///
+    /// Answers whether it wrote, because `remember`'s announcement must not
+    /// outrun a seal that refused.
+    @discardableResult
+    private func write(_ history: [ActionRecord]) -> Bool {
+        guard let data = ActionHistory.encode(history), rules.seal(history: data) else { return false }
         store.set(data, for: ActionHistory.storeKey)
+        return true
     }
 
     // MARK: - Putting it back

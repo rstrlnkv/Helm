@@ -35,6 +35,18 @@ public enum AutopilotCommand: String, CaseIterable, Sendable {
     case undoRun
 }
 
+/// What the engine announces without being asked.
+///
+/// One event: the history has a new pass in it. The engine acts on a timer and
+/// on files arriving, with the page open and nobody pressing anything — and
+/// until this existed the open page read the history once and then showed an
+/// hour of work as nothing. The payload is empty on purpose: the page re-asks
+/// through `AutopilotCommand.history`, so the read that fills the screen stays
+/// the one that judges the seal and the thirty-day window.
+public enum AutopilotEvent: String, Sendable {
+    case history
+}
+
 /// Which return the page is asking for.
 ///
 /// One wire type rather than two near-identical ones: the command says whether

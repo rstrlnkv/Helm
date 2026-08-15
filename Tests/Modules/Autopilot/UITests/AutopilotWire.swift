@@ -54,7 +54,34 @@ final class AutopilotWire: EngineTransport, @unchecked Sendable {
     /// *asks* is as much the subject of a test as what it draws with the answer.
     private(set) var previewed: WatchedFolder?
 
-    var events: AsyncStream<EngineEvent> { AsyncStream { _ in } }
+    /// The engine speaking without being asked — one continuation per reader,
+    /// the shape `LocalTransport` has. A wire whose stream could never yield
+    /// made every test of "the page heard" unwritable, which is the fake being
+    /// simpler than the thing it stands for.
+    private var eventReaders: [UUID: AsyncStream<EngineEvent>.Continuation] = [:]
+
+    var events: AsyncStream<EngineEvent> {
+        AsyncStream { continuation in
+            let id = UUID()
+            lock.withLock { eventReaders[id] = continuation }
+            continuation.onTermination = { [weak self] _ in
+                guard let self else { return }
+                self.lock.withLock { self.eventReaders[id] = nil }
+            }
+        }
+    }
+
+    /// Whether anybody is listening yet, so a test can announce *after* the
+    /// subscription exists instead of racing it.
+    var eventReaderCount: Int { lock.withLock { eventReaders.count } }
+
+    /// What the engine would announce.
+    func announce<E: RawRepresentable>(_ event: E) where E.RawValue == String {
+        let readers = lock.withLock { Array(eventReaders.values) }
+        for reader in readers {
+            reader.yield(EngineEvent(name: event.rawValue, payload: Data()))
+        }
+    }
 
     init(folders: [WatchedFolder] = [],
          status: AutopilotStatus = AutopilotStatus(refusal: nil),

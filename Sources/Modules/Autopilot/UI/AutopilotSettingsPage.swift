@@ -163,9 +163,12 @@ struct AutopilotSettingsPage: View {
                 }
             }
             .listStyle(.inset)
-            // The engine acts on a timer and on files arriving, so what the
-            // page holds is whatever was true when it opened.
-            .task { await rvm.loadHistory() }
+            // No history read here on purpose. The engine acts on a timer and
+            // on files arriving, and it *announces* those passes — the view
+            // model subscribes for the life of the page and re-asks, so a
+            // `.task` here would only re-read the same store on open and on
+            // every remount after an off-screen idle.
+            // `ThePageHearsWhatTheEngineDidTests` holds both halves.
         }
     }
 

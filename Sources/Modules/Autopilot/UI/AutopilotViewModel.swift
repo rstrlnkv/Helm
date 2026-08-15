@@ -49,6 +49,7 @@ import SwiftUI
     /// 200. The page is unaffected: it builds the model once, waits for
     /// nothing, and reads whatever state the load publishes.
     private(set) var firstLoad: Task<Void, Never>?
+    private var eventsTask: Task<Void, Never>?
 
     init(vm: ModuleViewModel,
          presetFolders: any PresetFolderPort = SystemPresetFolders(),
@@ -58,6 +59,32 @@ import SwiftUI
         self.presetFolders = presetFolders
         self.home = home
         firstLoad = Task { await load() }
+        // The stream is captured here and `self` re-acquired per event, the way
+        // `DuplicatesViewModel` does and for the reason it documents: handing
+        // the loop to an instance method holds `self` for a call that never
+        // returns, and the `deinit` below then cancels nothing.
+        //
+        // The subscription lives here and not in the page: pages unmount off
+        // screen (`helmIdlesOffScreen`) while this model keeps its state, so an
+        // event lands as one published change with nobody drawing — instead of
+        // a `.task` re-reading the store on every remount.
+        let events = vm.transport.events
+        eventsTask = Task { [weak self] in
+            for await event in events {
+                guard let self else { break }
+                await self.handle(event)
+            }
+        }
+    }
+
+    deinit { eventsTask?.cancel() }
+
+    /// The engine saying its history changed — on a timer or on a file
+    /// arriving, with nobody pressing anything. The event carries no data; the
+    /// model re-asks, so the read that fills the page stays the engine's.
+    private func handle(_ event: EngineEvent) async {
+        guard AutopilotEvent(rawValue: event.name) == .history else { return }
+        await loadHistory()
     }
 
     func load() async {
@@ -166,9 +193,9 @@ import SwiftUI
     /// somebody else's work from an hour ago.
     @Published private(set) var bannerRun: ActionRun?
 
-    /// Asked for rather than pushed, like the folders: the engine acts on its
-    /// own queue and on FSEvents, and a page that is not open does not need
-    /// telling.
+    /// Asked for rather than pushed, like the folders — the announcement that
+    /// prompts a re-ask (`AutopilotEvent.history`) carries no data, so the
+    /// engine's read stays the only one that judges the seal and the window.
     func loadHistory() async {
         history = await client.request(AutopilotCommand.history) ?? []
         // The one place the grouping is computed. Five hundred rows is not a
