@@ -22,7 +22,7 @@ import XCTest
 /// answered at all. A port that never answers cannot be beaten by a race — and
 /// the test can lose, because moving the read back onto the caller's thread
 /// leaves `returned` unfulfilled whatever the machine.
-final class AWatcherEventReturnsWhileTheKeychainStallsTests: XCTestCase {
+final class AWatcherEventNeverAwaitsTheKeychainTests: XCTestCase {
 
     private var home: URL!
     private var stalled: StalledRuleKey!

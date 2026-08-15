@@ -444,7 +444,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
             // same serial queue `watch` and `stop` are handed to — and reading
             // the rule set resolves the seal's key, which can sit behind a modal
             // keychain prompt. A read before the dispatch parked the watcher for
-            // the whole prompt (`AWatcherEventReturnsWhileTheKeychainStallsTests`).
+            // the whole prompt (`AWatcherEventNeverAwaitsTheKeychainTests`).
             let watched = folders.filter(\.enabled)
             guard !watched.isEmpty else { return }
             // Named while it runs, like the sweep — this is where the module
