@@ -91,7 +91,13 @@ final class StartScreenColumnTests: XCTestCase {
 
     /// The x of the first column holding anything but the background.
     private func edge(of view: some View, width: CGFloat) throws -> CGFloat {
-        let renderer = ImageRenderer(content: view.frame(width: width).background(.white))
+        // Needed here for the bench declaration's second effect: without it
+        // `helmIdlesOffScreen` (which `helmSettingsColumn` carries) mounts a
+        // window reader, and `ImageRenderer` renders any subtree holding an
+        // `NSViewRepresentable` as transparent — which this pixel walk reads
+        // as ink at x = 0.
+        let renderer = ImageRenderer(content: view.frame(width: width).background(.white)
+            .helmMeasuringBench())
         renderer.scale = 1
         let image = try XCTUnwrap(renderer.cgImage, "SwiftUI rendered nothing")
         let bytesPerRow = image.width * 4

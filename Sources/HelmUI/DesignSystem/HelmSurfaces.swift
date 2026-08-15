@@ -193,9 +193,14 @@ public struct HelmIconPlate: View {
 /// reads as one deliberate column rather than as content stuck to one edge.
 /// This is what System Settings does with its own window.
 public extension View {
+    /// …and the page idles while its window is off screen, wherever it is
+    /// mounted (`OffScreenIdle` has the numbers). The pages that do not cap
+    /// themselves here are covered a level up, by the settings window's own
+    /// hosting roots — this call is what covers a page mounted anywhere else.
     func helmSettingsColumn() -> some View {
         frame(maxWidth: HelmLayout.settingsColumn)
             .frame(maxWidth: .infinity)
+            .helmIdlesOffScreen()
     }
 }
 

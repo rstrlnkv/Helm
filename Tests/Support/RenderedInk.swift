@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import HelmUI
 
 /// What a view drew, measured so the answer does not depend on which appearance
 /// the Mac happens to be in.
@@ -165,7 +166,10 @@ public final class MountedRender {
                          appearance: NSAppearance.Name) {
         self.appearance = appearance
         let named = NSAppearance(named: appearance)
-        host = NSHostingView(rootView: AnyView(VStack(spacing: 0) { view }.frame(width: width)))
+        // The window below is never ordered in, and a page that idles off
+        // screen (`helmIdlesOffScreen`) would hand every reading an empty pane.
+        host = NSHostingView(rootView: AnyView(VStack(spacing: 0) { view }.frame(width: width)
+            .helmMeasuringBench()))
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: width, height: height),
                               styleMask: [.titled], backing: .buffered, defer: false)
         window.appearance = named

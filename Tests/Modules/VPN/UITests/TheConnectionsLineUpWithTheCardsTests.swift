@@ -6,6 +6,7 @@ import SwiftUI
 import AppKit
 import HelmContract
 import HelmRuntime
+import HelmUI
 @testable import Module_VPN_Engine
 @testable import Module_VPN_UI
 
@@ -79,7 +80,10 @@ final class TheConnectionsLineUpWithTheCardsTests: XCTestCase {
 
     private func shoot() throws -> NSBitmapImageRep {
         let (view, _) = page()
-        let host = NSHostingView(rootView: view.frame(width: Self.width, height: Self.height))
+        // This window never orders in, and a page that idles off screen
+        // (`helmIdlesOffScreen`) would hand the bitmap an empty pane.
+        let host = NSHostingView(rootView: view.frame(width: Self.width, height: Self.height)
+            .helmMeasuringBench())
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: Self.width, height: Self.height),
                               styleMask: [.titled], backing: .buffered, defer: false)
         window.contentView = host

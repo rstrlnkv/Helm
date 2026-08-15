@@ -116,7 +116,9 @@ let foundation: [Target] = [
 /// dependency runs the only way it can — support may reach the shared plumbing,
 /// nothing may reach support.
 let support: [Target] = [
-    .target(name: "HelmTestSupport", dependencies: ["HelmRuntime"], path: "Tests/Support"),
+    // `HelmUI` for the measuring-bench declaration `MountedRender` makes:
+    // a page idles while its window is off screen, and every bench window is.
+    .target(name: "HelmTestSupport", dependencies: ["HelmRuntime", "HelmUI"], path: "Tests/Support"),
 ]
 
 /// The host and the tests that belong to no module.

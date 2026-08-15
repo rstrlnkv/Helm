@@ -145,7 +145,12 @@ final class SettingsSplitViewController: NSSplitViewController {
 
         let sidebar = NSHostingController(
             rootView: SettingsSidebar(model: model, host: model.host)
-                .modifier(RebuiltOnLanguageChange(model: model)))
+                .modifier(RebuiltOnLanguageChange(model: model))
+                // The window survives closing (`isReleasedWhenClosed = false`),
+                // so without this both panes went on re-rendering — and keeping
+                // memory — for every engine event for as long as the app ran.
+                // `OffScreenIdle` in HelmUI has the measurements.
+                .helmIdlesOffScreen())
         // Own the top strip ourselves: with the automatic titlebar safe area the
         // list scrolls under the traffic lights and gets the system scroll-edge
         // fade; dropping the safe area and reserving a fixed strip in the view
@@ -174,7 +179,11 @@ final class SettingsSplitViewController: NSSplitViewController {
 
         let detail = NSHostingController(
             rootView: SettingsDetail(model: model)
-                .modifier(RebuiltOnLanguageChange(model: model)))
+                .modifier(RebuiltOnLanguageChange(model: model))
+                // Same reason as the sidebar's, and this pane is the expensive
+                // one: it holds whichever module page was open, and LogView's
+                // live tail, when the window was closed.
+                .helmIdlesOffScreen())
         // fullSizeContentView + a transparent title bar makes AppKit inset the
         // detail pane by the title-bar height, leaving a dead gap above the
         // module header. The pane draws its own top padding, so drop the inset.

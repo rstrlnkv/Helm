@@ -55,7 +55,10 @@ final class SettingsPageProbe {
     /// caller's, since what has to be inside the frame differs per check.
     func mount(height: CGFloat = 900) -> KeepAwakeViewModel {
         let vm = ModuleViewModel(transport: transport)
-        let view = NSHostingView(rootView: AnyView(KeepAwakeSettingsPage(vm: vm, store: store)))
+        // This window never orders in, and a page that idles off screen
+        // (`helmIdlesOffScreen`) would hand every reading an empty pane.
+        let view = NSHostingView(rootView: AnyView(KeepAwakeSettingsPage(vm: vm, store: store)
+            .helmMeasuringBench()))
         let panel = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 810, height: height),
                              styleMask: [.titled], backing: .buffered, defer: false)
         panel.contentView = view

@@ -261,7 +261,12 @@ enum ModulePageRender {
             .frame(width: width)
             // Named, not inherited: see `granted` above. Nil inside would mean
             // «ask this Mac», which is the dependence this parameter removes.
-            .environment(\.helmGrants, grants))
+            .environment(\.helmGrants, grants)
+            // This window never orders in and the page must draw anyway —
+            // without the declaration `helmIdlesOffScreen` (which every
+            // settings page carries) unmounts the content of an off-screen
+            // window, and every reading here would read an empty pane.
+            .helmMeasuringBench())
         view.frame = NSRect(x: 0, y: 0, width: width, height: pageHeight)
         let window = NSWindow(contentRect: view.frame, styleMask: [.titled],
                               backing: .buffered, defer: false)
@@ -307,7 +312,9 @@ enum ModulePageRender {
     /// the same window come to disagree.
     static func drawn(_ view: some View, in appearance: NSAppearance.Name,
                       width: CGFloat, height: CGFloat = pageHeight) -> Shell {
-        let host = NSHostingView(rootView: view.frame(width: width))
+        // The same measuring-bench declaration as `page(for:)`, same reason.
+        let host = NSHostingView(rootView: view.frame(width: width)
+            .helmMeasuringBench())
         host.frame = NSRect(x: 0, y: 0, width: width, height: height)
         let window = NSWindow(contentRect: host.frame, styleMask: [.titled],
                               backing: .buffered, defer: false)
