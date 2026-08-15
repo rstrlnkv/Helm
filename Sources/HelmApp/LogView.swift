@@ -132,12 +132,29 @@ struct LogView: View {
     /// `HelmWrappingRow`, which is what that `Layout` exists for: an `HStack`
     /// asked for more than it has *compresses* its children rather than moving
     /// one down.
+    ///
+    /// **The spacer's minimum is 0 and the fold is pinned left**, and both are
+    /// about widths `ViewThatFits` reads rather than about how the row looks.
+    ///
+    /// A `Spacer(minLength: 12)` puts 12 pt of its own *and* a third 12 pt gap
+    /// into the arrangement's ideal width, and French wanted 607.0 of the 605 it
+    /// has at 645 pt — folding a row that fits, for 2.0 pt of a gap whose whole
+    /// job is to be elastic. At 0 it asks 595.0 and is taken.
+    ///
+    /// And `HelmWrappingRow.sizeThatFits` answers with its widest *line*, not
+    /// with the width it was proposed — correctly, since that is what a row
+    /// costs. `ViewThatFits` then hands the branch it picked that ideal instead
+    /// of the pane, so the block is narrower than the pane and the default
+    /// centring drops it in the middle: the Russian fold started at x = 68.0
+    /// against 20.0 for the rows above and below it. The frame belongs here and
+    /// not in the row, whose `.center` default is what the Keep Awake hero's
+    /// preset rows want.
     private var filters: some View {
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 12) {
                 levelFilter
                 moduleFilter
-                Spacer(minLength: 12)
+                Spacer(minLength: 0)
                 followToggle
             }
             HelmWrappingRow(spacing: 12, lineSpacing: HelmSpace.s3, alignment: .leading) {
@@ -145,6 +162,7 @@ struct LogView: View {
                 moduleFilter
                 followToggle
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
     }
