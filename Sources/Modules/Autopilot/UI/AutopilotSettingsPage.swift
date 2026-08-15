@@ -41,7 +41,7 @@ struct AutopilotSettingsPage: View {
             content
             if let banner = rvm.banner {
                 Divider()
-                HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: HelmSpace.s3) {
                     // A return's report is several lines — one per file that
                     // did not go back, with its reason — and a single-line
                     // banner would truncate exactly the part that explains
@@ -49,25 +49,44 @@ struct AutopilotSettingsPage: View {
                     Text(banner).font(HelmText.rowTitle)
                         .fixedSize(horizontal: false, vertical: true)
                         .multilineTextAlignment(.leading)
-                    Spacer()
-                    // The pass this run just made, offered where the sentence
-                    // about it is.
-                    if let pass = rvm.bannerRun {
-                        Button(ApStr.putBackFiles(pass.undoable.count)) {
-                            Task { await rvm.undoRun(pass) }
-                        }
-                        .controlSize(.small)
-                    }
-                    // The one line in a return's report with something to do:
-                    // a rule that could not be re-marked will take the file back
-                    // within the hour, so the lever to switch it off is here,
-                    // named, beside the warning that says so.
-                    ForEach(rvm.unmarkedRules) { rule in
-                        Button(ApStr.turnRuleOff(rule.name)) { rvm.turnOffRule(rule) }
+                    // Under the text and wrapping, never beside it in one
+                    // HStack: the turn-off button carries a rule's *name* —
+                    // the person's own text, with no bound — and beside the
+                    // report it compressed to «Выключить правило „Ск…“» at the
+                    // narrow pane. Pinned leading because `HelmWrappingRow`
+                    // answers with its widest line and centres otherwise.
+                    // `TheReturnBannerFoldsItsButtonsTests` holds all three.
+                    HelmWrappingRow(spacing: 8, lineSpacing: HelmSpace.s3,
+                                    alignment: .leading) {
+                        // The pass this run just made, offered where the
+                        // sentence about it is.
+                        if let pass = rvm.bannerRun {
+                            Button(ApStr.putBackFiles(pass.undoable.count)) {
+                                Task { await rvm.undoRun(pass) }
+                            }
                             .controlSize(.small)
+                        }
+                        // The one line in a return's report with something to
+                        // do: a rule that could not be re-marked will take the
+                        // file back within the hour, so the lever to switch it
+                        // off is here, named, beside the warning that says so.
+                        // Capped, because the wrapping row gives an over-wide
+                        // child a whole line rather than folding it — a name
+                        // longer than the pane still has to truncate, and in
+                        // the middle, so its opening survives.
+                        ForEach(rvm.unmarkedRules) { rule in
+                            Button { rvm.turnOffRule(rule) } label: {
+                                Text(ApStr.turnRuleOff(rule.name))
+                                    .lineLimit(1).truncationMode(.middle)
+                                    .frame(maxWidth: AutopilotLayout.turnOffButtonCap)
+                            }
+                            .controlSize(.small)
+                        }
+                        Button(ApStr.done) { rvm.dismissBanner() }.controlSize(.small)
                     }
-                    Button(ApStr.done) { rvm.dismissBanner() }.controlSize(.small)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
             }
         }
