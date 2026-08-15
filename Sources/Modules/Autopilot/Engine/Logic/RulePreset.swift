@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 /// A rule somebody can have without writing one.
 ///
@@ -158,6 +159,13 @@ public struct SystemPresetFolders: PresetFolderPort {
     public init() {}
 
     public func path(of folder: PresetFolder) -> String? {
+        // **A suite run has no preset folders.** This is the question every site
+        // in the tree that resolves a folder of somebody's own has to ask: a
+        // page built in a test would otherwise hold their real Desktop and
+        // Downloads, offer five rules over them, and be one press away from
+        // watching them. A test that wants an offer plants the paths through
+        // the port, which is what the port is for.
+        guard !TestProcess.isRunning else { return nil }
         let directory: FileManager.SearchPathDirectory = switch folder {
         case .desktop: .desktopDirectory
         case .downloads: .downloadsDirectory

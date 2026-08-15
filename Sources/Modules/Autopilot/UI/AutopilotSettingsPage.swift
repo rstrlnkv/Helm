@@ -88,23 +88,28 @@ struct AutopilotSettingsPage: View {
         case let .rulesRefused(reason):
             refused(reason)
         case .noFolders:
-            ScrollView {
-                VStack(spacing: HelmSpace.s6) {
-                    HelmEmptyState(symbol: "location.north.circle",
-                                   tint: ModuleCategory.files.tint,
-                                   message: ApStr.startHint) {
-                        Button(ApStr.addFolder) { rvm.addFolder() }
-                            .buttonStyle(.borderedProminent)
-                    }
-                    // The second answer to «what do I do with this page», and
-                    // on a Mac that has never had a rule it is the easier one:
-                    // the empty state's button opens a panel and asks for a
-                    // decision, and this one shows what a decision would do.
-                    presets
+            // **No `ScrollView` around this.** `HelmEmptyState` centres itself
+            // in whatever space it is given, with `maxHeight: .infinity`; inside
+            // a scroll view that height is unbounded and the page draws
+            // differently — measured at 25 layers against 44 for the same page
+            // under two permission readings, which inverted a guard in
+            // `PagesAreToldAboutTheDiskGrantTests`. The empty state takes the
+            // flexible space and the card sits under it.
+            VStack(spacing: HelmSpace.s6) {
+                HelmEmptyState(symbol: "location.north.circle",
+                               tint: ModuleCategory.files.tint,
+                               message: ApStr.startHint) {
+                    Button(ApStr.addFolder) { rvm.addFolder() }
+                        .buttonStyle(.borderedProminent)
                 }
-                .padding(.horizontal, HelmLayout.formInset)
-                .padding(.vertical, HelmSpace.s5)
+                // The second answer to «what do I do with this page», and on a
+                // Mac that has never had a rule it is the easier one: the empty
+                // state's button opens a panel and asks for a decision, and this
+                // one shows what a decision would do.
+                presets
             }
+            .padding(.horizontal, HelmLayout.formInset)
+            .padding(.bottom, HelmSpace.s5)
         case .folders:
             List {
                 ForEach(rvm.folders) { folder in
