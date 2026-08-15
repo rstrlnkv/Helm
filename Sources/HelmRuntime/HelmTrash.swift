@@ -111,128 +111,138 @@ public enum HelmTrash {
                                                                     resultingItemURL: nil)
                               })
         -> Result {
-        var removed: [String] = []
-        var refused = outOfScope.map { Refusal(path: $0, reason: .outOfScope) }
-        var freed = 0
+        // One phase for all four deleting modules, named per module: only Disk
+        // wrapped its call, and Disk was not the outlier, it was the one that got
+        // audited. Scope form, so the interval closes on every way out.
+        let phase = "\(module).trash"
+        return HelmActivity.phase(phase) {
+            // Taken before the phase ends, not after: `HelmLog.memory` names what
+            // else runs beside the label it excludes, and a phase already closed
+            // cannot be excluded from its own line.
+            defer { HelmLog.shared.memory(phase) }
+            var removed: [String] = []
+            var refused = outOfScope.map { Refusal(path: $0, reason: .outOfScope) }
+            var freed = 0
 
-        for path in outOfScope {
-            HelmLog.shared.warn(module,
-                                "refused out-of-scope path: \(Redact.path(path, leaf: leaf))")
-        }
-
-        // One ledger for the batch: a hard link is one allocation under several
-        // names, and the second name frees nothing — and neither does the second
-        // member of an APFS clone family, whose blocks come back once when the
-        // family goes (`FileWeight.reclaimed`). Opened owing whatever the files
-        // that stay already hold: a family with a survivor gives back nothing at
-        // all, however many of its members this batch takes.
-        var counted = FileWeight.Ledger(sharedWith: sharedWith)
-
-        // One outcome per path, whatever the caller handed over. `removed` and
-        // `failed` are read as one description of one batch, and the same file
-        // appeared in both when a path arrived twice: the first turn trashed
-        // it, the second met `NSFileNoSuchFileError` and the "went with its
-        // parent" branch does not fire for a path that *is* itself. Every
-        // caller writes `Array(Set(paths))` today; nothing in this signature
-        // said they had to.
-        //
-        // A trailing slash names the same folder and is a different string, so
-        // it is stripped before either the dedupe or the ancestry test — that
-        // test is a raw prefix comparison, and `…/folder/` never prefixes
-        // `…/folder/inside.bin` with the separator this expects. **All of
-        // them**: a path joined onto a root that already ended in one carries
-        // two, and stripping a single separator left `p` and `p//` as two
-        // entries in one batch — the first moved, the second met "no such
-        // file", and the branch below forgave it as a child of the first,
-        // because `p//` really does begin with `p/`. One folder, two removals,
-        // and `removed.count` is what the banner counts.
-        //
-        // Shortest first, so a folder is taken before anything inside it and
-        // the child can tell "the batch took my parent" from "it was never
-        // there". `DiskEngine` hands over a `Set`, whose order is a hash seed —
-        // the same basket gave two different answers on two runs.
-        var seenPaths: Set<String> = []
-        let ordered = allowed
-            .map(PathCanonical.withoutTrailingSeparators)
-            .filter { seenPaths.insert($0).inserted }
-            .sorted { $0.count < $1.count }
-
-        // The reference read, taken before any walk weighs the batch: the walk is
-        // the window an attacker widens, so it has to sit inside the brackets, not
-        // straddle them.
-        let approvedAncestry = ordered.map(ancestry)
-
-        for (index, path) in ordered.enumerated() {
-            let url = URL(fileURLWithPath: path)
-            // Weighed against a slate of this path's own, folded into the
-            // batch's ledger only where the path really goes.
-            //
-            // Weighing *writes* — that is how an allocation wearing several
-            // names is charged once — and it happens before the recheck below,
-            // which cannot move: being the last thing before the move is the
-            // whole of its value. So a path that is then refused had already
-            // spent the ledger, and the next name for the same allocation was
-            // weighed as something already counted and added 0 — a batch
-            // reporting that it freed nothing about a file it really did trash.
-            var slate = counted
-            // Read before the move: afterwards the URL points at nothing.
-            let size = FileWeight.reclaimed(of: url, charging: &slate)
-            // Read the ancestry again, now, against what the gate approved. A
-            // swapped symlink lands on a *different existing* directory object, so
-            // a redirected subtree stops here rather than in someone's Documents.
-            //
-            // Only when the parent still exists: a `nil` here is the parent gone,
-            // which is the went-with-its-parent case one folder up in this same
-            // batch (the `NSFileNoSuchFileError` branch below owns that), never a
-            // redirection — trashing a path whose parent has vanished moves
-            // nothing. A parent that appeared where the gate saw none, or moved to
-            // another object, is the change that matters, and both differ from the
-            // reference.
-            if let now = ancestry(path), now != approvedAncestry[index] {
-                refused.append(Refusal(path: path, reason: .changedSinceScan))
+            for path in outOfScope {
                 HelmLog.shared.warn(module,
-                    "refused: ancestor changed since the gate: \(Redact.path(path, leaf: leaf))")
-                continue
+                                    "refused out-of-scope path: \(Redact.path(path, leaf: leaf))")
             }
-            do {
-                try trashing(url)
-                removed.append(path)
-                // The one place the batch's ledger grows: what it has charged
-                // is exactly what it has taken.
-                counted = slate
-                freed += size
-            } catch let error as NSError
-                where error.code == NSFileNoSuchFileError
-                   && !FileManager.default.fileExists(atPath: path)
-                   && removed.contains(where: { path.hasPrefix($0 + "/") }) {
-                // It went with its parent, earlier in this same batch: basket a
-                // folder from one screen and a file inside it from another and
-                // the child's turn comes after the folder has moved. Reporting
-                // "macOS refused" would send somebody looking for a file that is
-                // in the Trash, and the count would say one when two went.
-                //
-                // Only when this batch is what took it. A path that was already
-                // gone before any of this started is still a refusal with a
-                // reason — the person is looking at a stale list and should be
-                // told so.
-                removed.append(path)
-            } catch {
-                let reason = TrashFailure.reason(path: path,
-                                                 errorCode: (error as NSError).code,
-                                                 hasSystemExtension: hasSystemExtension(path))
-                refused.append(Refusal(path: path, reason: reason))
-                // Composed here rather than through `HelmLog.failure`, which is the
-                // same line at the same level, because **the system's half of it
-                // names the file too**: `trashItem` refusing answers «The file
-                // “com.acme.tool.plist” doesn’t exist» and repeats the path under
-                // `NSFilePathErrorKey`, so redacting Helm's own half would leave a
-                // module whose leaf is a bundle id naming it twice more.
-                HelmLog.shared.error(module, "trash refused \(Redact.path(path, leaf: leaf)): "
-                    + Redact.naming(HelmFailure.describe(error), software: path, leaf: leaf))
-            }
-        }
 
-        HelmLog.shared.info(module, "trashed \(removed.count), failed \(refused.count)")
-        return Result(removed: removed, refused: refused, freedBytes: freed)
+            // One ledger for the batch: a hard link is one allocation under several
+            // names, and the second name frees nothing — and neither does the second
+            // member of an APFS clone family, whose blocks come back once when the
+            // family goes (`FileWeight.reclaimed`). Opened owing whatever the files
+            // that stay already hold: a family with a survivor gives back nothing at
+            // all, however many of its members this batch takes.
+            var counted = FileWeight.Ledger(sharedWith: sharedWith)
+
+            // One outcome per path, whatever the caller handed over. `removed` and
+            // `failed` are read as one description of one batch, and the same file
+            // appeared in both when a path arrived twice: the first turn trashed
+            // it, the second met `NSFileNoSuchFileError` and the "went with its
+            // parent" branch does not fire for a path that *is* itself. Every
+            // caller writes `Array(Set(paths))` today; nothing in this signature
+            // said they had to.
+            //
+            // A trailing slash names the same folder and is a different string, so
+            // it is stripped before either the dedupe or the ancestry test — that
+            // test is a raw prefix comparison, and `…/folder/` never prefixes
+            // `…/folder/inside.bin` with the separator this expects. **All of
+            // them**: a path joined onto a root that already ended in one carries
+            // two, and stripping a single separator left `p` and `p//` as two
+            // entries in one batch — the first moved, the second met "no such
+            // file", and the branch below forgave it as a child of the first,
+            // because `p//` really does begin with `p/`. One folder, two removals,
+            // and `removed.count` is what the banner counts.
+            //
+            // Shortest first, so a folder is taken before anything inside it and
+            // the child can tell "the batch took my parent" from "it was never
+            // there". `DiskEngine` hands over a `Set`, whose order is a hash seed —
+            // the same basket gave two different answers on two runs.
+            var seenPaths: Set<String> = []
+            let ordered = allowed
+                .map(PathCanonical.withoutTrailingSeparators)
+                .filter { seenPaths.insert($0).inserted }
+                .sorted { $0.count < $1.count }
+
+            // The reference read, taken before any walk weighs the batch: the walk is
+            // the window an attacker widens, so it has to sit inside the brackets, not
+            // straddle them.
+            let approvedAncestry = ordered.map(ancestry)
+
+            for (index, path) in ordered.enumerated() {
+                let url = URL(fileURLWithPath: path)
+                // Weighed against a slate of this path's own, folded into the
+                // batch's ledger only where the path really goes.
+                //
+                // Weighing *writes* — that is how an allocation wearing several
+                // names is charged once — and it happens before the recheck below,
+                // which cannot move: being the last thing before the move is the
+                // whole of its value. So a path that is then refused had already
+                // spent the ledger, and the next name for the same allocation was
+                // weighed as something already counted and added 0 — a batch
+                // reporting that it freed nothing about a file it really did trash.
+                var slate = counted
+                // Read before the move: afterwards the URL points at nothing.
+                let size = FileWeight.reclaimed(of: url, charging: &slate)
+                // Read the ancestry again, now, against what the gate approved. A
+                // swapped symlink lands on a *different existing* directory object, so
+                // a redirected subtree stops here rather than in someone's Documents.
+                //
+                // Only when the parent still exists: a `nil` here is the parent gone,
+                // which is the went-with-its-parent case one folder up in this same
+                // batch (the `NSFileNoSuchFileError` branch below owns that), never a
+                // redirection — trashing a path whose parent has vanished moves
+                // nothing. A parent that appeared where the gate saw none, or moved to
+                // another object, is the change that matters, and both differ from the
+                // reference.
+                if let now = ancestry(path), now != approvedAncestry[index] {
+                    refused.append(Refusal(path: path, reason: .changedSinceScan))
+                    HelmLog.shared.warn(module,
+                        "refused: ancestor changed since the gate: \(Redact.path(path, leaf: leaf))")
+                    continue
+                }
+                do {
+                    try trashing(url)
+                    removed.append(path)
+                    // The one place the batch's ledger grows: what it has charged
+                    // is exactly what it has taken.
+                    counted = slate
+                    freed += size
+                } catch let error as NSError
+                    where error.code == NSFileNoSuchFileError
+                       && !FileManager.default.fileExists(atPath: path)
+                       && removed.contains(where: { path.hasPrefix($0 + "/") }) {
+                    // It went with its parent, earlier in this same batch: basket a
+                    // folder from one screen and a file inside it from another and
+                    // the child's turn comes after the folder has moved. Reporting
+                    // "macOS refused" would send somebody looking for a file that is
+                    // in the Trash, and the count would say one when two went.
+                    //
+                    // Only when this batch is what took it. A path that was already
+                    // gone before any of this started is still a refusal with a
+                    // reason — the person is looking at a stale list and should be
+                    // told so.
+                    removed.append(path)
+                } catch {
+                    let reason = TrashFailure.reason(path: path,
+                                                     errorCode: (error as NSError).code,
+                                                     hasSystemExtension: hasSystemExtension(path))
+                    refused.append(Refusal(path: path, reason: reason))
+                    // Composed here rather than through `HelmLog.failure`, which is the
+                    // same line at the same level, because **the system's half of it
+                    // names the file too**: `trashItem` refusing answers «The file
+                    // “com.acme.tool.plist” doesn’t exist» and repeats the path under
+                    // `NSFilePathErrorKey`, so redacting Helm's own half would leave a
+                    // module whose leaf is a bundle id naming it twice more.
+                    HelmLog.shared.error(module, "trash refused \(Redact.path(path, leaf: leaf)): "
+                        + Redact.naming(HelmFailure.describe(error), software: path, leaf: leaf))
+                }
+            }
+
+            HelmLog.shared.info(module, "trashed \(removed.count), failed \(refused.count)")
+            return Result(removed: removed, refused: refused, freedBytes: freed)
+        }
     }
 }
