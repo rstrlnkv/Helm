@@ -282,16 +282,17 @@ struct LogView: View {
             Text(entry.category)
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(HelmText.faint)
-                // 126, and a limit: three categories in the source are longer
-                // than the old 92 — `homebrew.listInstalled` wrapped and made
-                // the row twice as tall with a blank half beside it.
+                // 126, and a limit: categories in the source run longer than
+                // the old 92 — `homebrew.listInstalled` wrapped and made the
+                // row twice as tall with a blank half beside it.
                 //
                 // It was 116 at 10 pt, and the number moved with the size
-                // rather than being left behind by it: re-measured, the same
-                // three that fitted at 10/116 fit at 11/126
-                // (`homebrew.listInstalled` 121.1, `keepawake.assertions`
-                // 118.6, `autopilot.applyRules` 110.1) and the same one still
-                // truncates (`uninstaller.scanLeftovers`, 134.7).
+                // rather than being left behind by it: re-measured at 11 pt,
+                // the wide ones fit at 126 (`homebrew.listInstalled` 121.1,
+                // `keepawake.assertions` 118.6, `autopilot.preview` 93.2 —
+                // an earlier reading here cited an `autopilot.applyRules`
+                // that never existed outside this comment) and the same one
+                // still truncates (`uninstaller.scanLeftovers`, 134.7).
                 .lineLimit(1).truncationMode(.tail)
                 .frame(width: 126, alignment: .leading)
             Text(entry.message)
