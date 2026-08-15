@@ -80,6 +80,40 @@ public extension RuleCondition {
     static let lowerBound: Double = 0
     static let upperBound: Double = 1e9
 
+    /// Whether this condition names everything it needs to be asked of a file.
+    ///
+    /// `RuleAction.isComplete` from the other side. The blank states are the
+    /// editor's own: a text comparison starts with an empty value, an extension
+    /// list starts empty, and «name begins with ‹nothing›» is true of every
+    /// file in the folder — with the action set to Trash, that is a working
+    /// all-matcher three ordinary gestures from a blank rule. The safe reading
+    /// of half-written is the matcher's for an empty rule: it must not run.
+    ///
+    /// Every case named, and no `default`, like `storable` above and for the
+    /// same reason: a tenth condition must be a build error here, not a
+    /// condition the switch silently calls finished.
+    var isComplete: Bool {
+        func named(_ value: String) -> Bool {
+            !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+        switch self {
+        case let .name(_, value), let .baseName(_, value),
+             let .downloadedFrom(value), let .tag(value):
+            return named(value)
+        case let .fileExtension(list):
+            return list.contains(where: named)
+        // A kind is picked from a popup, and every position of the popup names
+        // one — there is no half-written state to refuse.
+        case .kind:
+            return true
+        // The numbers the editor's own field would take, which is the bound
+        // `storable` already reads. Reachable only by hand-edited plist.
+        case let .size(_, megabytes: value),
+             let .dateAdded(_, days: value), let .dateModified(_, days: value):
+            return Self.accepts(value)
+        }
+    }
+
     /// The same condition, or nothing when the number it carries is not one
     /// the editor would let anybody type.
     ///
@@ -171,10 +205,14 @@ public struct Rule: Codable, Equatable, Identifiable, Sendable {
 
     /// Whether this rule could actually do something if it were switched on.
     ///
-    /// A rule with no conditions matches nothing and a rule whose action names
-    /// nothing refuses everything; either way the switch would be switching on
-    /// a rule that cannot work. Both halves live here rather than in the
-    /// editor's `.disabled` so the screen and `storable` cannot answer
-    /// differently.
-    public var canBeEnabled: Bool { !conditions.isEmpty && action.isComplete }
+    /// A rule with no conditions matches nothing, a rule with a half-written
+    /// one matches every file in the folder, and a rule whose action names
+    /// nothing refuses everything; each way the switch would be switching on a
+    /// rule that cannot work — and the middle one is the worst thing this
+    /// module can do, one popup selection from the editor's blank state. All
+    /// three halves live here rather than in the editor's `.disabled` so the
+    /// screen and `storable` cannot answer differently.
+    public var canBeEnabled: Bool {
+        !conditions.isEmpty && conditions.allSatisfy(\.isComplete) && action.isComplete
+    }
 }
