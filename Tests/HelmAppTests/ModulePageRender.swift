@@ -406,20 +406,14 @@ enum ModulePageRender {
     }
 
     private static func controls(of view: NSView, module: String) -> [Control] {
-        var out: [Control] = []
-        func walk(_ subject: NSView) {
-            let name = String(describing: type(of: subject))
-            // The innermost of the three views AppKit stacks per control: the
-            // platform host, the SwiftUI shim, and this. Counting all three
-            // reports one squeezed segmented control as three.
-            if name.hasPrefix("_NSCoreHostingView<AppKit") {
-                out.append(Control(module: module, name: name, frame: subject.frame,
-                                   intrinsic: subject.intrinsicContentSize))
-            }
-            subject.subviews.forEach(walk)
-        }
-        walk(view)
-        return out
+        // The innermost of the three views AppKit stacks per control: the
+        // platform host, the SwiftUI shim, and this. Counting all three reports
+        // one squeezed segmented control as three. A prefix rather than
+        // `everyView(named:)`, because the name is a generic and carries its
+        // argument.
+        view.everyView.filter { $0.appKitClassName.hasPrefix("_NSCoreHostingView<AppKit") }
+            .map { Control(module: module, name: $0.appKitClassName, frame: $0.frame,
+                           intrinsic: $0.intrinsicContentSize) }
     }
 }
 

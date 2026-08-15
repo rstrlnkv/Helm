@@ -246,20 +246,16 @@ final class AnImposedPickerWidthFitsItsLabelsTests: XCTestCase {
         for _ in 0..<60 {
             host.layoutSubtreeIfNeeded()
             RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
-            walk(host) { view in
-                if String(describing: type(of: view))
-                    .hasPrefix("_NSCoreHostingView<AppKitSegmented") {
-                    found = view.intrinsicContentSize.width
-                }
+            // The last one, as the hand-written walk answered: it assigned on
+            // every hit rather than stopping.
+            if let picker = host.everyView.last(where: {
+                $0.appKitClassName.hasPrefix("_NSCoreHostingView<AppKitSegmented")
+            }) {
+                found = picker.intrinsicContentSize.width
             }
             if found > 0 { return found }
         }
         return found
-    }
-
-    private func walk(_ view: NSView, _ body: (NSView) -> Void) {
-        body(view)
-        view.subviews.forEach { walk($0, body) }
     }
 
     /// What a site imposes, in the language currently overridden.

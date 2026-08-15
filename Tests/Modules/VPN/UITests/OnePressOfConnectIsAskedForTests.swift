@@ -214,13 +214,8 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
     }
 
     private func sectionCards(_ render: MountedRender) -> [NSRect] {
-        var found: Set<NSRect> = []
-        func recurse(_ view: NSView) {
-            if "\(type(of: view))" == "_NSGraphicsView" { found.insert(view.frame) }
-            for sub in view.subviews { recurse(sub) }
-        }
-        recurse(render.host)
-        return found.sorted { $0.minY < $1.minY }
+        Set(render.host.everyView(named: "_NSGraphicsView").map(\.frame))
+            .sorted { $0.minY < $1.minY }
     }
 
     private func rulesCardHeight(locked: [String]) -> CGFloat {
@@ -254,14 +249,8 @@ private extension NSRect {
     /// means nothing without the space it was read in, and the section cards sit
     /// several containers down from the host.
     func superview(in root: NSView) -> NSView {
-        var answer = root
-        func recurse(_ view: NSView) {
-            for sub in view.subviews {
-                if sub.frame == self { answer = view }
-                recurse(sub)
-            }
-        }
-        recurse(root)
-        return answer
+        // The last match, which is what the hand-written walk answered: it
+        // overwrote `answer` on every hit rather than stopping at the first.
+        root.everyViewWithAncestry.last { $0.view.frame == self }?.ancestry.last ?? root
     }
 }

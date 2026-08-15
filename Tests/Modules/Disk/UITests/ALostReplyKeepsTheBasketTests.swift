@@ -243,15 +243,9 @@ final class ALostReplyKeepsTheBasketTests: XCTestCase {
     /// `List` with on macOS 26/27, and its frame is the room the rows have — the
     /// quantity a row added below it takes from.
     private static func listHeight(in host: NSView) -> CGFloat? {
-        var found: CGFloat?
-        func walk(_ view: NSView) {
-            if String(describing: type(of: view)).contains("ListCoreScrollView") {
-                found = max(found ?? 0, view.bounds.height)
-            }
-            view.subviews.forEach(walk)
-        }
-        walk(host)
-        return found
+        host.everyView.filter { $0.appKitClassName.contains("ListCoreScrollView") }
+            .map(\.bounds.height)
+            .max()
     }
 
     /// A new scan is a new screen, so the sentence about the last one goes with it.

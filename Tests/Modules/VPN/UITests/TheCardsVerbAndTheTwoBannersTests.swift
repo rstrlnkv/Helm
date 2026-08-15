@@ -109,11 +109,8 @@ final class TheCardsVerbAndTheTwoBannersTests: XCTestCase {
     /// is backed by a view carrying the **section's** frame, so the distinct
     /// frames are the cards.
     private func sectionCards(_ render: MountedRender) -> [NSRect] {
-        var found: Set<NSRect> = []
-        walk(render.host) { view, _ in
-            if "\(type(of: view))" == "_NSGraphicsView" { found.insert(view.frame) }
-        }
-        return found.sorted { $0.minY < $1.minY }
+        Set(render.host.everyView(named: "_NSGraphicsView").map(\.frame))
+            .sorted { $0.minY < $1.minY }
     }
 
     /// The focus rings of the controls drawn on the **bare pane** — outside every
@@ -122,20 +119,14 @@ final class TheCardsVerbAndTheTwoBannersTests: XCTestCase {
     /// of a grouped form drawn on the pane, and the header holds no other
     /// control. Left to right.
     private func verbs(_ render: MountedRender) -> [NSRect] {
-        var found: [NSRect] = []
-        walk(render.host) { view, insideCard in
-            if "\(type(of: view))" == "_FocusRingView", !insideCard { found.append(view.frame) }
-        }
-        return found.sorted { $0.minX < $1.minX }
-    }
-
-    private func walk(_ view: NSView, _ visit: (NSView, Bool) -> Void) {
-        func recurse(_ view: NSView, _ insideCard: Bool) {
-            let card = insideCard || "\(type(of: view))" == "_NSGraphicsView"
-            visit(view, insideCard)
-            for sub in view.subviews { recurse(sub, card) }
-        }
-        recurse(view, false)
+        // «Outside a card» is a fact about what is *above* this view, which is
+        // why the walk cannot be a filter over a flat list — `everyViewWithAncestry`
+        // is the shared walk that still carries it.
+        render.host.everyViewWithAncestry
+            .filter { $0.view.appKitClassName == "_FocusRingView" }
+            .filter { !$0.ancestry.contains { $0.appKitClassName == "_NSGraphicsView" } }
+            .map(\.view.frame)
+            .sorted { $0.minX < $1.minX }
     }
 
     // MARK: - The verb does not move when a tunnel comes up
@@ -331,14 +322,8 @@ private extension NSRect {
     /// the space it was read in, and the section cards sit several containers
     /// down from the host.
     func superview(in root: NSView) -> NSView {
-        var answer = root
-        func recurse(_ view: NSView) {
-            for sub in view.subviews {
-                if sub.frame == self { answer = view }
-                recurse(sub)
-            }
-        }
-        recurse(root)
-        return answer
+        // The last match, which is what the hand-written walk answered: it
+        // overwrote `answer` on every hit rather than stopping at the first.
+        root.everyViewWithAncestry.last { $0.view.frame == self }?.ancestry.last ?? root
     }
 }

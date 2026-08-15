@@ -211,12 +211,6 @@ final class AMeasuredFolderIsNotASilentClickTests: XCTestCase {
 
     /// What SwiftUI's `ProgressView().controlSize(.small)` becomes on macOS.
     private static func hasSpinner(_ host: NSView) -> Bool {
-        var found = false
-        func walk(_ view: NSView) {
-            if view is NSProgressIndicator { found = true }
-            view.subviews.forEach(walk)
-        }
-        walk(host)
-        return found
+        !host.everyView(ofType: NSProgressIndicator.self).isEmpty
     }
 }

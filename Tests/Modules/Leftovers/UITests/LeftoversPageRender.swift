@@ -59,15 +59,9 @@ enum LeftoversPageRender {
 
     /// Every control's frame in the page's own coordinates, left to right.
     static func controls(in mount: MountedRender) -> [CGRect] {
-        var found: [CGRect] = []
-        func walk(_ view: NSView) {
-            if "\(type(of: view))" == "_FocusRingView" {
-                found.append(view.convert(view.bounds, to: mount.host))
-            }
-            view.subviews.forEach(walk)
-        }
-        walk(mount.host)
-        return found.sorted { $0.minX < $1.minX }
+        mount.host.everyView(named: "_FocusRingView")
+            .map { $0.convert($0.bounds, to: mount.host) }
+            .sorted { $0.minX < $1.minX }
     }
 
     /// What one button asks for when nothing is squeezing it: the same control,

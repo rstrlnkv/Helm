@@ -113,16 +113,11 @@ final class AReportKeepsTheHalfThatCountsTests: XCTestCase {
     }
 
     private static func list(in host: NSView) -> CGRect? {
-        var found: CGRect?
-        func walk(_ view: NSView) {
-            if String(describing: type(of: view)).contains("ListCoreScrollView") {
-                let frame = view.convert(view.bounds, to: host)
-                if frame.height > (found?.height ?? 0) { found = frame }
-            }
-            view.subviews.forEach(walk)
-        }
-        walk(host)
-        return found
+        // The list is the tallest of them: SwiftUI nests scroll views, and the
+        // outer one is the page.
+        host.everyView.filter { $0.appKitClassName.contains("ListCoreScrollView") }
+            .map { $0.convert($0.bounds, to: host) }
+            .max { $0.height < $1.height }
     }
 
     // MARK: -
