@@ -499,32 +499,54 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         localTransport.setHandler { [weak self] command in
             guard let self else { return Data() }
             guard let name = AutopilotCommand(rawValue: command.name) else { return Data() }
-            switch name {
-            case .folders:
-                return EngineReply.encode(self.folders, for: command)
-            case .status:
-                return EngineReply.encode(self.status, for: command)
-            case .discardRefusedRules:
-                self.discardRefusedRules()
-                return Data()
-            case .history:
-                return EngineReply.encode(self.history, for: command)
-            case .clearHistory:
-                self.clearHistory()
-                return Data()
-            case .setFolders:
-                self.setFolders(command)
-                return Data()
-            case .previewDraft:
-                return await self.previewed(command)
-            case .runNow:
-                return await self.swept(command)
-            case .undo:
-                return await self.putBack(command) { self.undo($0) }
-            case .undoRun:
-                return await self.putBack(command) { self.undoRun($0) }
-            }
+            return await self.answer(name, command)
         }
+    }
+
+    /// The four commands that do real work, and everything else.
+    ///
+    /// Split in two because these are the ones that walk a folder or move
+    /// files: each goes off the cooperative pool and onto the engine's own
+    /// queue, and that is what serialises them against the hourly sweep. Both
+    /// switches are exhaustive with no `default`, so a command added to the
+    /// enum is a build error in whichever half it belongs to.
+    private func answer(_ name: AutopilotCommand, _ command: EngineCommand) async -> Data {
+        switch name {
+        case .previewDraft:
+            return await previewed(command)
+        case .runNow:
+            return await swept(command)
+        case .undo:
+            return await putBack(command) { self.undo($0) }
+        case .undoRun:
+            return await putBack(command) { self.undoRun($0) }
+        case .folders, .status, .discardRefusedRules, .history, .clearHistory, .setFolders:
+            return answerAtOnce(name, command)
+        }
+    }
+
+    /// The commands that read state or hand a value on, which are cheap enough
+    /// to answer on the thread that asked.
+    private func answerAtOnce(_ name: AutopilotCommand, _ command: EngineCommand) -> Data {
+        switch name {
+        case .folders:
+            return EngineReply.encode(folders, for: command)
+        case .status:
+            return EngineReply.encode(status, for: command)
+        case .discardRefusedRules:
+            discardRefusedRules()
+        case .history:
+            return EngineReply.encode(history, for: command)
+        case .clearHistory:
+            clearHistory()
+        case .setFolders:
+            setFolders(command)
+        case .previewDraft, .runNow, .undo, .undoRun:
+            // Answered by the half above. Named rather than defaulted, so a
+            // command that moves to the other half is a build error here.
+            break
+        }
+        return Data()
     }
 
     /// A list that will not decode changes nothing: the setter is what refuses a

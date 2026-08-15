@@ -12,7 +12,7 @@ import HelmTestSupport
 ///
 /// So a history that does not verify is shown and never acted on, and the one
 /// way forward is to throw it away, exactly as it is for a refused rule set.
-final class AHistoryThatIsNotHelmsPutsNothingBackTests: XCTestCase {
+final class AHistoryNotHelmsPutsNothingBackTests: XCTestCase {
 
     private var home: URL!
     private var root: URL!
