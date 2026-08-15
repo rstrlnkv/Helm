@@ -71,6 +71,8 @@ final class DocumentsNameTheTreeTests: XCTestCase {
         "SidebarComposerRedraw": "the value that told that table what to do, and the paragraph naming it is its obituary",
         "hasPrevious": "the misspelling this check could not see while it skipped lowercase names; the passage naming it is the account of that blind spot",
         "SleepHoldersPort": "the port behind «something other than Helm is keeping this Mac awake»; the section naming it is about why a correctly-filtered signal was still not one",
+        "DuplicatesLayout.barWithCount": "the threshold that hid the duplicates total at every width the window opens at; deleted when the total moved under the floor note, and the passages naming it are that defect's history",
+        "barWithCount": "the same constant, named bare in the measuring-script passage",
     ]
 
     /// This check's own machinery, which the documents describe by name.

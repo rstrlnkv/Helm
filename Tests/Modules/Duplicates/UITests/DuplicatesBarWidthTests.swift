@@ -9,10 +9,9 @@ import XCTest
 /// shipped, in all eight languages.
 ///
 /// The thresholds were once numbers a script had printed, and the script summed
-/// **two** of the row's three controls and a count line somebody had typed out
-/// in five languages. So `barWithCount` said 760 for a row that needs 1000, and
-/// the page overflowed its pane at the size the window opens at — in seven of
-/// the eight languages, from the day the third control was added.
+/// **two** of the row's three controls. The page overflowed its pane at the
+/// size the window opens at — in seven of the eight languages, from the day
+/// the third control was added.
 ///
 /// This is the same measurement, living where it cannot go stale: real AppKit
 /// control metrics, the `.lproj` tables read at test time, and a check that the
@@ -20,8 +19,11 @@ import XCTest
 /// render — a test that needs a window server is a test that is green on this
 /// machine and absent on the next. It is calibrated against one: drawing the
 /// real row offscreen and binary-searching the narrowest pane it draws whole in
-/// gives 968.5 / 717.5 / 603.5 / 497.5 pt for the four rows, 2.7 to 4.5 pt under
+/// gives 717.5 / 603.5 / 497.5 pt for the three rows, 2.7 to 4.5 pt under
 /// what this model says, because ink stops inside the last button's bezel.
+/// (The count row measured here once as well — 968.5 pt — is not a row any
+/// more: the total moved under the floor note,
+/// `TheHonestTotalIsDrawnAtEveryWidthTests`.)
 ///
 /// One limit, stated rather than discovered later: the suite runs in this
 /// machine's language, and a Japanese or Chinese string measured from an English
@@ -89,23 +91,10 @@ final class DuplicatesBarWidthTests: XCTestCase {
         return button.fittingSize.width
     }
 
-    private func captionWidth(_ string: String) -> CGFloat {
-        (string as NSString).size(withAttributes: [
-            .font: NSFont.preferredFont(forTextStyle: .caption1),
-        ]).width
-    }
-
-    /// The count line as a real library produces it, not as a demonstration
-    /// does: the count is `fixedSize`, so bigger figures widen the row rather
-    /// than truncating inside it.
-    private func countLine(_ language: AppLanguage) -> String {
-        DupStr.found(12_345, HelmBytes.string(118_900_000_000, language: language.rawValue),
-                     language: language)
-    }
-
-    /// The four rows of the ladder, widest first.
+    /// The three rows of the ladder, widest first. The count row is gone with
+    /// the count: the total is not a toolbar item any more
+    /// (`TheHonestTotalIsDrawnAtEveryWidthTests` holds where it went).
     private enum Row: String, CaseIterable {
-        case countAndThreeLabels = "path + three labelled controls + count"
         case threeLabels = "path + three labelled controls"
         case markAllAsSymbol = "…with mark-all as a symbol"
         case searchAsSymbolToo = "…with search as a symbol too"
@@ -118,11 +107,8 @@ final class DuplicatesBarWidthTests: XCTestCase {
         let markAll = labelledControl(L(Key.markEveryExtra, language: language))
         let clock = symbolControl("arrow.clockwise")
         let checklist = symbolControl("checklist")
-        let threeLabels = Chrome.total + choose + search + markAll
         return [
-            .countAndThreeLabels: threeLabels
-                + captionWidth(countLine(language)) + Chrome.spacing,
-            .threeLabels: threeLabels,
+            .threeLabels: Chrome.total + choose + search + markAll,
             .markAllAsSymbol: Chrome.total + choose + search + checklist,
             .searchAsSymbolToo: Chrome.total + choose + clock + checklist,
         ]
@@ -141,15 +127,14 @@ final class DuplicatesBarWidthTests: XCTestCase {
     /// `DuplicatesLayout` itself: a copy of the number here would keep this
     /// file green through any edit to the one that ships.
     private static let rungs: [(Row, CGFloat, String)] = [
-        (.countAndThreeLabels, DuplicatesLayout.barWithCount, "barWithCount"),
         (.threeLabels, DuplicatesLayout.barWithMarkAllLabel, "barWithMarkAllLabel"),
         (.markAllAsSymbol, DuplicatesLayout.barWithSearchLabel, "barWithSearchLabel"),
     ]
 
     /// Every rung of the ladder, against the width that lets it through, with
     /// room to spare. This is the check the shipped thresholds would have
-    /// failed: at 810 pt of pane — the default window — `showsCount` was true
-    /// and the row it drew needed 1000.
+    /// failed: a threshold sat 240 pt below the row it let through, so
+    /// crossing it switched that row *into* an overflow.
     ///
     /// Fitting is not enough on its own. A threshold a few points over its row
     /// is a coincidence rather than a margin, and this is a model of a drawn
@@ -208,7 +193,7 @@ final class DuplicatesBarWidthTests: XCTestCase {
         XCTAssertEqual(drawn, [
             // Measured here, each in its own rung.
             "chooseFolder", "chooseAnother", "search", "searchAgain",
-            "basketAllExtras", "found",
+            "basketAllExtras",
             // The searching row, which draws none of the above.
             "stop",
         ], """
@@ -230,13 +215,4 @@ final class DuplicatesBarWidthTests: XCTestCase {
         XCTAssertEqual(DupStr.basketAllExtras, L(Key.markEveryExtra, language: language))
     }
 
-    /// The count line differs by language by more than the two controls beside
-    /// it do, which is why it is the first thing the row gives up.
-    func testTheCountLineIsWhatSetsTheWidestRow() {
-        let (language, _) = widest(.countAndThreeLabels)
-        XCTAssertEqual(language, .de, """
-            German was the language the count threshold was measured in; the \
-            widest is now \(language.rawValue), so re-measure.
-            """)
-    }
 }

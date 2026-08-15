@@ -82,6 +82,14 @@ enum DupStr {
     static func removalStopped(language: AppLanguage = AppLanguage.current) -> String {
         L("Removal stopped — nothing more was moved.", language: language)
     }
+    /// The named outcome of a stopped search — drawn as the start screen's
+    /// message, because a cancelled search lands on the start phase and the
+    /// screen otherwise reads as if nothing had happened. It covers the engine
+    /// giving up as well as the person pressing Stop: either way the folder
+    /// was not read to the end, which is the half the person acts on.
+    static func searchStopped(language: AppLanguage = AppLanguage.current) -> String {
+        L("Search stopped — the folder was not read to the end.", language: language)
+    }
     /// Both counts go through `Count` — the candidate total runs over every
     /// large file under the folder, which is six digits on a real library.
     /// `BigCountsReadGroupedTests` holds this line and `found` below.
@@ -147,14 +155,28 @@ enum DupStr {
     /// share their blocks, so a cloned copy returns nothing — the figure can
     /// say so. It still names the Trash: the copies land there first, and the
     /// space arrives when it is emptied, which is the rule Disk already keeps.
-    /// Takes the language, as `Quoted` and `HelmConfirm.trash` do: this is the
-    /// widest thing the toolbar can carry, and the width test that holds
-    /// `DuplicatesLayout.barWithCount` has to ask it about German from a suite
-    /// running in English.
+    /// Takes the language, as `Quoted` and `HelmConfirm.trash` do:
+    /// `TheHonestTotalIsDrawnAtEveryWidthTests` has to ask it about German from
+    /// a suite running in English.
+    /// Built from `onceEmptied` below rather than spelling the tail again —
+    /// `VPNStr.secretNeedsAPress`'s construction: the total line and the group
+    /// headers say the same sentence because it is the same sentence, not
+    /// because somebody keeps two tables in step.
     static func found(_ groups: Int, _ wasted: String,
                       language: AppLanguage = AppLanguage.current) -> String {
         let n = Count(groups, language: language)
-        return L("Groups: \(n) · \(wasted) once the Trash is emptied", [.ru: "Групп: \(n) · \(wasted) после очистки Корзины", .es: "Grupos: \(n) · \(wasted) al vaciar la papelera", .fr: "Groupes : \(n) · \(wasted) après avoir vidé la corbeille", .de: "Gruppen: \(n) · \(wasted) nach dem Leeren des Papierkorbs", .ja: "\(n) グループ・ゴミ箱を空にすると \(wasted)", .zh: "\(n) 组 · 清倒废纸篓后 \(wasted)", .pt: "Grupos: \(n) · \(wasted) ao esvaziar o Lixo"], language: language)
+        let tail = onceEmptied(wasted, language: language)
+        return L("Groups: \(n) · \(tail)", [.ru: "Групп: \(n) · \(tail)", .es: "Grupos: \(n) · \(tail)", .fr: "Groupes : \(n) · \(tail)", .de: "Gruppen: \(n) · \(tail)", .ja: "\(n) グループ・\(tail)", .zh: "\(n) 组 · \(tail)", .pt: "Grupos: \(n) · \(tail)"], language: language)
+    }
+    /// «\(size) once the Trash is emptied» — the tail of `found` above, on its
+    /// own for the group headers: each group says what removing its extras
+    /// returns, through the same words as the page's total, and
+    /// `TheGroupHeaderSaysWhatItIsWorthTests` holds that `found` still contains
+    /// this sentence per language — two spellings of one tail is how
+    /// `movedToTrash` drifted.
+    static func onceEmptied(_ size: String,
+                            language: AppLanguage = AppLanguage.current) -> String {
+        L("\(size) once the Trash is emptied", [.ru: "\(size) после очистки Корзины", .es: "\(size) al vaciar la papelera", .fr: "\(size) après avoir vidé la corbeille", .de: "\(size) nach dem Leeren des Papierkorbs", .ja: "ゴミ箱を空にすると \(size)", .zh: "清倒废纸篓后 \(size)", .pt: "\(size) ao esvaziar o Lixo"], language: language)
     }
     static var keep: String { L("stays") }
     /// The badge on a row whose survivor the person chose. Two words in a pill,

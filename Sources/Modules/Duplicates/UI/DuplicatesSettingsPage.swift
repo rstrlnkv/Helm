@@ -60,11 +60,23 @@ struct DuplicatesSettingsPage: View {
             // to appear only when nothing was found, so anyone who got results
             // was never told that files under a megabyte were never compared.
             if dvm.phase == .result, !dvm.groups.isEmpty {
-                Text(DupStr.floorNote)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 8)
+                VStack(alignment: .leading, spacing: HelmSpace.s3) {
+                    Text(DupStr.floorNote)
+                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                        .fixedSize(horizontal: false, vertical: true)
+                    // The one clone-corrected total on the page, at every
+                    // width. It was a toolbar item behind a measured 1040 pt
+                    // threshold, which the window never reaches — so the only
+                    // honest figure was drawn at no width the app opens at.
+                    // Measured 2026-08-15: 324 pt in German, the widest, in a
+                    // 540 pt worst-case pane; `TheHonestTotalIsDrawnAtEveryWidthTests`
+                    // keeps the fit against the shipped strings.
+                    Text(DupStr.found(dvm.groups.count, Bytes(dvm.wastedBytes)))
+                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 8)
                 Divider()
             }
             content
@@ -133,14 +145,6 @@ struct DuplicatesSettingsPage: View {
                 Button(DupStr.stop) { dvm.cancel() }
                     .controlSize(.small)
             } else {
-                if !dvm.groups.isEmpty, layout.showsCount {
-                    // A count that wraps onto a second line makes the row
-                    // taller than the buttons in it; the path yields first,
-                    // being the thing that already truncates.
-                    Text(DupStr.found(dvm.groups.count, Bytes(dvm.wastedBytes)))
-                        .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
-                        .lineLimit(1).fixedSize()
-                }
                 // Every control stays at every width. What a narrow pane takes
                 // is labels, and only from the two whose words are said again
                 // elsewhere on the page — the path truncates, being the one
@@ -228,8 +232,11 @@ struct DuplicatesSettingsPage: View {
     @ViewBuilder private var content: some View {
         switch dvm.phase {
         case .start:
+            // A stopped search is a named outcome, not a return to «Pick a
+            // folder»: the folder is still chosen and the toolbar shows it, so
+            // the hint would read as if nothing had happened.
             HelmEmptyState(symbol: "doc.on.doc", tint: ModuleCategory.files.tint,
-                           message: DupStr.startHint) {
+                           message: dvm.searchStopped ? DupStr.searchStopped() : DupStr.startHint) {
                 // With a folder already remembered the page must not ask for
                 // one again — the toolbar above is showing it. Reading it is
                 // expensive, so it is offered rather than started.
@@ -355,7 +362,12 @@ struct DuplicatesSettingsPage: View {
                 HelmRemovalOutcome(
                     succeededText: dvm.banner ?? "",
                     removed: dvm.removedCount,
-                    failures: dvm.failures.map(HelmRemovalFailure.init),
+                    // `.search`, because the sentence's closing verb names a
+                    // control: three modules draw «Scan again», this page's
+                    // button is «Search again» — and `changedSinceScan` is this
+                    // module's *ordinary* refusal, raised by the engine itself
+                    // for every pair that stopped matching.
+                    failures: dvm.failures.map { HelmRemovalFailure($0, refresh: .search) },
                     needsFullDiskAccess: diskAccess == .denied)
             }
         }

@@ -107,6 +107,16 @@ struct DuplicatesView: View {
         HStack {
             Text("\(Bytes(group.bytes)) × \(group.paths.count)")
                 .font(HelmText.groupLabel)
+            // What the group is worth, not only what it is: «21 MB × 2» invites
+            // multiplying, and for a clone pair the product is space the disk
+            // will not give back. `wasted` is the clone-aware fold every other
+            // figure on the page already uses, and the tail is the total line's
+            // own sentence, so the two cannot drift apart. It yields with the
+            // reason — the buttons stay pinned.
+            Text(DupStr.onceEmptied(Bytes(group.wasted)))
+                .font(HelmText.rowDetail)
+                .foregroundStyle(HelmText.faint)
+                .lineLimit(1)
             // Why, in the header rather than in a tooltip on the badge: a
             // tooltip needs a pointer to rest on a pill, and the one that was
             // there said «the copy that was there first» about every group in
