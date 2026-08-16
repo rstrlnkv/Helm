@@ -193,7 +193,13 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
             var urls: [URL] = c.isGlob ? fs.glob(c.url) : (fs.exists(c.url) ? [c.url] : [])
             // A candidate built from the display name is a different guess with
             // a different default — `defaultSelection` leaves it unticked — and
-            // carries no id for these rules to weigh.
+            // carries no id for these rules to weigh. **Not a check that was
+            // skipped: applying it here deletes the guesses**, since `claims`
+            // asks where the bundle id sits in the name and a display name holds
+            // none — measured, and the log then calls them another app's
+            // (`ANameIsAGuessNotAnOwnershipQuestionTests`). Whether another
+            // installed app is *called* this is a different question, and
+            // nothing on this path reads the installed display names.
             if !c.matchedByName, !urls.isEmpty {
                 let owner = ownership ?? makeOwnership(bundleID: bundleID)
                 ownership = owner
