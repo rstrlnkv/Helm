@@ -65,15 +65,38 @@ import Module_Layout_Engine
         item = nil
     }
 
+    /// The one setting three sites read: the switch that draws it, the press
+    /// that flips it, and the redraw that obeys it.
+    private var showsName: Bool { store.bool(LayoutKey.indicatorShowsName, default: false) }
+
+    private var badgeStyle: BadgeStyle {
+        BadgeStyle.from(store.string(LayoutKey.badgeStyle, default: BadgeStyle.default.rawValue))
+    }
+
+    /// The badge and its template flag together — the pair the menu bar and
+    /// every menu row draw, so the two cannot disagree about either half.
+    private func badge(for source: InputSourceInfo, points: CGFloat) -> NSImage {
+        let image = BadgeImage.make(label: source.badge, flag: source.emojiFlag,
+                                    region: source.region, style: badgeStyle,
+                                    points: points)
+        image.isTemplate = (badgeStyle == .plain)
+        return image
+    }
+
     private func redraw() {
         guard let button = item?.button else { return }
-        let style = BadgeStyle.from(store.string(LayoutKey.badgeStyle, default: BadgeStyle.default.rawValue))
-        let size = MenuBarIconSize(stored: store.string(LayoutKey.badgeSize, default: "small"))
         let source = InputSourceInfo.current()
-        button.image = BadgeImage.make(label: source.badge, flag: source.emojiFlag,
-                                       region: source.region, style: style,
-                                       points: size.points)
-        button.image?.isTemplate = (style == .plain)
+        // The system input menu's «Show Input Source Name»: the layout's name
+        // where the badge would be, which is what the system's own indicator
+        // shows with that switch on.
+        if showsName {
+            button.image = nil
+            button.title = source.name
+        } else {
+            let size = MenuBarIconSize(stored: store.string(LayoutKey.badgeSize, default: "small"))
+            button.title = ""
+            button.image = badge(for: source, points: size.points)
+        }
         button.toolTip = source.name
         // The label says what the control is; the value says the one fact it
         // exists to show. Set here, not in build(), so it tracks every switch.
@@ -82,19 +105,34 @@ import Module_Layout_Engine
 
     // MARK: - Menu
 
+    /// The sections macOS's own input menu draws, in its order: layouts wearing
+    /// their badges, the emoji palette door, the source-name switch, the
+    /// keyboard settings door. No Keyboard Viewer item on purpose — every route
+    /// to opening one was measured dead on macOS 27 (the guard test's doc has
+    /// the three routes), and a door that opens nothing is worse than none.
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
         let current = InputSourceInfo.current()
+        // The rows wear the badge the person chose for the menu bar, at one
+        // fixed size: the style is the layout's identity, the stored size is a
+        // fact about the menu bar's density, not the menu's.
         for source in InputSourceInfo.all() {
             let entry = NSMenuItem(title: source.name, action: #selector(pick(_:)), keyEquivalent: "")
             entry.target = self
             entry.representedObject = source.id
             entry.state = source.id == current.id ? .on : .off
+            entry.image = badge(for: source, points: MenuBarIconSize.small.points)
             menu.addItem(entry)
         }
         menu.addItem(.separator())
-        // The two system doors, in the order macOS's own input menu draws them.
-        menu.addItem(actionItem(LyStr.emojiAndSymbols, #selector(openEmojiPalette)))
+        let emoji = actionItem(LyStr.showEmojiPanel(), #selector(openEmojiPalette))
+        emoji.image = EmojiPalette.icon
+        menu.addItem(emoji)
+        menu.addItem(.separator())
+        let name = actionItem(LyStr.showInputSourceName, #selector(toggleSourceName))
+        name.state = showsName ? .on : .off
+        menu.addItem(name)
+        menu.addItem(.separator())
         menu.addItem(actionItem(LyStr.openKeyboardSettings, #selector(openSettings)))
     }
 
@@ -116,6 +154,13 @@ import Module_Layout_Engine
     /// carry no such item, a silent press would look like a dead control.
     @objc private func openEmojiPalette() {
         if !EmojiPalette.openInFrontmostApp() { NSSound.beep() }
+    }
+
+    /// The write redraws by itself: `set` posts `.helmStoreChanged`, the
+    /// descriptor's observer calls `refresh()`, and the indicator swaps badge
+    /// for name — the same round trip any other window's write makes.
+    @objc private func toggleSourceName() {
+        store.set(!showsName, for: LayoutKey.indicatorShowsName)
     }
 
     @objc private func openSettings() {

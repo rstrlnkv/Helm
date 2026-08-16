@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import Carbon
 
 /// Opens macOS's emoji palette over whichever app holds the keyboard.
 ///
@@ -40,6 +41,25 @@ enum EmojiPalette {
             if let name = language["Emoji & Symbols"] { names.insert(name) }
         }
         return names
+    }()
+
+    /// The palette's own icon, the one the system input menu draws beside its
+    /// emoji item: TIS's `kTISPropertyIconImageURL` for
+    /// `com.apple.CharacterPaletteIM` — read, not redrawn. A template, so the
+    /// menu colours it. Nil when macOS stops handing one out, and the guard
+    /// test says so out loud rather than letting the door go bare silently.
+    /// Read once: an input method's icon cannot change under a running system.
+    static let icon: NSImage? = {
+        let filter = [kTISPropertyInputSourceID as String: "com.apple.CharacterPaletteIM"]
+        guard let list = TISCreateInputSourceList(filter as CFDictionary, true)
+            .takeRetainedValue() as? [TISInputSource],
+              let source = list.first,
+              let pointer = TISGetInputSourceProperty(source, kTISPropertyIconImageURL)
+        else { return nil }
+        let url = Unmanaged<CFURL>.fromOpaque(pointer).takeUnretainedValue() as URL
+        guard let image = NSImage(contentsOf: url.absoluteURL) else { return nil }
+        image.isTemplate = true
+        return image
     }()
 
     /// Presses the frontmost app's own «Emoji & Symbols» item. False when

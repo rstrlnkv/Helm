@@ -23,6 +23,19 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   no window, and a forged shortcut arrives as plain typing — a letter into
   the person's document. The item is recognised by the names macOS itself
   gives it, in every system language, read from AppKit's own table.
+- **The keyboard indicator's menu reads like the system input menu.** Every
+  layout row wears its badge, the emoji door says «Show Emoji & Symbols» with
+  the palette's own icon (both built from the system's own tables — the
+  `Show palette class IM` template around AppKit's name, so ru reads
+  «Показать панель «Эмодзи и символы»»), a new «Show Input Source Name»
+  switch puts the layout's name in the menu bar in place of the badge, and
+  the settings door takes the system's exact spelling in all eight languages
+  (four rows had been retranslated by hand). One system item is deliberately
+  absent: every route to opening the Keyboard Viewer was measured dead on
+  macOS 27 — selecting `com.apple.inputmethod.AssistiveControl` answers
+  success and draws nothing, launching the input-method bundle is refused by
+  launchd, and the system's own menu item exists only while the system
+  indicator is on. A door that opens nothing is worse than none.
 
 ### Changed
 - **Every module's log category is its id, read from the engine's constant.**
