@@ -1,3 +1,5 @@
+import Foundation
+import HelmTestSupport
 import XCTest
 
 /// Every control the app draws must have a name, even when the screen shows it
@@ -68,6 +70,107 @@ final class NamedControlsTests: XCTestCase {
             or "text field" with nothing to say what they are:
             \(offenders.joined(separator: "\n"))
             """)
+    }
+
+    /// A control whose whole face is a glyph has no name unless somebody gives
+    /// it one. The Log page's Follow toggle traded its word for one line of
+    /// filter row, which is right for the row and nothing for VoiceOver: a
+    /// `Toggle` labelled by an `Image` alone is read as "button", and a person
+    /// who cannot see the arrow has no idea what pressing it follows.
+    ///
+    /// The first scan above cannot see this shape — it looks for an empty
+    /// *string* label, and a glyph-only control has no string at all. So this
+    /// one reads the statement: a `Button`, `Toggle` or `Menu` whose label
+    /// holds an `Image(systemName:)` and neither a `Text` nor a `Label` must
+    /// carry `.accessibilityLabel(…)`.
+    func testNoGlyphOnlyControlIsDrawnWithoutAName() throws {
+        var offenders: [String] = []
+
+        // `UISources.everyDrawnFile()`, not a third hand-rolled walk: every
+        // file that draws a window, and it throws — rather than covering eight
+        // modules quietly — when a module's UI directory stops being read.
+        for file in try UISources.everyDrawnFile() {
+            let lines = try RepoSource.lines(of: file)
+
+            for (index, line) in lines.enumerated() where Self.opensAControl(line) {
+                let statement = Self.statement(in: lines, from: index)
+                guard Self.isGlyphOnly(statement),
+                      !statement.contains("accessibilityLabel") else { continue }
+                offenders.append("\(URL(fileURLWithPath: file).lastPathComponent):\(index + 1)  "
+                    + line.trimmingCharacters(in: .whitespaces))
+            }
+        }
+
+        XCTAssertEqual(offenders, [], """
+            These controls show only a glyph and name themselves to nobody. \
+            VoiceOver reads each as "button" with nothing to say what it does — \
+            give the word to `.accessibilityLabel(…)` (and a sighted person gets \
+            it from `.help(…)`):
+            \(offenders.joined(separator: "\n"))
+            """)
+    }
+
+    /// The glyph scan is worth nothing if it stops seeing the shape it is for.
+    /// Both halves are fed a synthetic statement, so a parser that quietly
+    /// stops matching fails here rather than by passing everything.
+    func testTheGlyphScanSeesTheShape() throws {
+        let unnamed = """
+            Toggle(isOn: $following) {
+                Image(systemName: "arrow.down.to.line")
+            }
+            .toggleStyle(.button)
+            .fixedSize()
+            """.components(separatedBy: "\n")
+        XCTAssertTrue(Self.opensAControl(unnamed[0]), "the Toggle opener is no longer recognised")
+        let statement = Self.statement(in: unnamed, from: 0)
+        XCTAssertTrue(statement.contains(".fixedSize()"),
+                      "the statement walk stopped at the label's closing brace, so a modifier "
+                      + "after it — where accessibilityLabel lives — is never seen")
+        XCTAssertTrue(Self.isGlyphOnly(statement))
+
+        // A glyph beside a word is a labelled control, not this defect.
+        let worded = """
+            Button(action: retry) {
+                Label(Str.retry, systemImage: "arrow.clockwise")
+            }
+            """.components(separatedBy: "\n")
+        XCTAssertFalse(Self.isGlyphOnly(Self.statement(in: worded, from: 0)))
+    }
+
+    // MARK: - The glyph shape
+
+    private static func opensAControl(_ line: String) -> Bool {
+        var body = line.trimmingCharacters(in: .whitespaces)
+        if body.hasPrefix("return ") { body.removeFirst("return ".count) }
+        return ["Button {", "Button(", "Toggle(", "Menu {", "Menu("]
+            .contains { body.hasPrefix($0) }
+    }
+
+    /// The control and everything chained onto it. Unlike the walk in the test
+    /// above, this one has to survive a trailing closure: the label's `}` and a
+    /// `} label: {` sit at the control's own indent and the modifiers come
+    /// *after* them, so a walk that stops at the first non-dot line at that
+    /// indent never reads the `.accessibilityLabel` it is looking for.
+    private static func statement(in lines: [String], from index: Int) -> String {
+        let indent = lines[index].prefix { $0 == " " }.count
+        var statement = lines[index]
+        for next in lines.dropFirst(index + 1).prefix(40) {
+            let body = next.trimmingCharacters(in: .whitespaces)
+            let deeper = next.prefix { $0 == " " }.count
+            if !body.isEmpty, deeper < indent { break }
+            if !body.isEmpty, deeper == indent,
+               !body.hasPrefix("."), !body.hasPrefix("//"), !body.hasPrefix("}") {
+                break
+            }
+            statement += "\n" + next
+        }
+        return statement
+    }
+
+    private static func isGlyphOnly(_ statement: String) -> Bool {
+        statement.contains("Image(systemName:")
+            && !statement.contains("Text(")
+            && !statement.contains("Label(")
     }
 
     /// The scan is worth nothing if it stops finding files.

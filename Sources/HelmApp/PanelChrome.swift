@@ -280,6 +280,13 @@ struct UtilitiesSection: View {
                                                      ? Color.accentColor : HelmText.faint)
                             }
                             .buttonStyle(.plain)
+                            // The tick is the whole face of this control, so
+                            // read aloud it was "button" — which module it
+                            // admits to the panel is the name, and the tick
+                            // itself is the selection, said in the system's
+                            // own word rather than through a new key.
+                            .accessibilityLabel(live.descriptor.moduleMetadata.shortName)
+                            .accessibilityAddTraits(isOn(live.descriptor.idRaw) ? .isSelected : [])
                         }
                     }
                 }
