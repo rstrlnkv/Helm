@@ -29,9 +29,10 @@ private final class RecordingRunner: ProcessRunner, @unchecked Sendable {
 
     func stream(_ launchPath: String, _ args: [String], env: [String: String],
                 onLine: @escaping @Sendable (String) -> Void,
-                onExit: @escaping @Sendable (Int32) -> Void) {
+                onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
         lock.lock(); _calls.append(args); lock.unlock()
         onExit(0)
+        return NoProcess()
     }
 }
 

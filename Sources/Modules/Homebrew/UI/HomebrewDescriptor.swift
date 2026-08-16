@@ -20,7 +20,8 @@ import Module_Homebrew_Engine
     public func makeEngine(store: NamespacedStore) -> any ModuleEngine {
         let ports = HomebrewSystemPorts()
         return HomebrewEngine(locator: ports.locator, runner: ports.runner,
-                              privileged: ports.privileged, user: NSUserName())
+                              privileged: ports.privileged, user: NSUserName(),
+                              marker: ports.marker)
     }
 
     public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { .utility }

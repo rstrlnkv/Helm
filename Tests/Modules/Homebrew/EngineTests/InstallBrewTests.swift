@@ -67,11 +67,12 @@ final class InstallBrewTests: XCTestCase {
 
         func stream(_ launchPath: String, _ args: [String], env: [String: String],
                     onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) {
+                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
             lock.lock()
             _streamCalls.append(StreamCall(launch: launchPath, args: args, env: env))
             _exits.append(onExit)
             lock.unlock()
+            return NoProcess()
         }
 
         func finishAll(code: Int32 = 0) {

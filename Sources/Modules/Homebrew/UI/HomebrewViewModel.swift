@@ -102,7 +102,11 @@ import Module_Homebrew_Engine
         case .opState:
             guard let s = try? JSONDecoder().decode(OpState.self, from: e.payload) else { return }
             op = s
-            if s.phase == .done { Task { await self.refreshAfterOp() } }
+            // `.failed` as well as `.done`: a failed operation is not a no-op on
+            // the machine. `brew upgrade` walks the outdated list and exits
+            // non-zero when one package fails to build — everything before it is
+            // already upgraded, so the pre-operation lists are stale either way.
+            if s.phase == .done || s.phase == .failed { Task { await self.refreshAfterOp() } }
         case .none:
             break
         }
@@ -129,20 +133,37 @@ import Module_Homebrew_Engine
     public func refreshStatus() async {
         status = await client.request(HomebrewCommand.status) ?? status
         loadedStatus = true
+        // Carried once: the engine's marker is consumed by the read, so only
+        // the first status after an interrupted quit says it — into the
+        // console, the surface that already narrates operations.
+        if let label = status.interruptedOp {
+            consoleLines.append(HbStr.interruptedAtQuit(label))
+        }
     }
+    /// No `?? []` on any list reply: an empty reply is "the module could not
+    /// answer" — a hung brew cut off at the runner's deadline — and it used to
+    /// replace a real package list with "No packages installed." The last
+    /// answer stays; the log names the outcome; Refresh stays live for a retry.
     public func refreshInstalled() async {
-        installed = await client.request(HomebrewCommand.listInstalled) ?? []
+        guard let answer: [BrewPackage] = await client.request(HomebrewCommand.listInstalled)
+        else { return }
+        installed = answer
         loadedInstalled = true
         await loadDescriptions(formulae: installed.filter { !$0.isCask }.map(\.name),
                                casks: installed.filter(\.isCask).map(\.name))
     }
     public func refreshOutdated() async {
-        outdated = await client.request(HomebrewCommand.outdated) ?? []
+        guard let answer: [OutdatedPackage] = await client.request(HomebrewCommand.outdated)
+        else { return }
+        outdated = answer
         loadedOutdated = true
     }
     @Published public private(set) var loadedOutdated = false
     public func search(_ q: String) async {
-        searchHits = await client.request(HomebrewCommand.search, payload: Data(q.utf8)) ?? []
+        guard let hits: [SearchHit] = await client.request(HomebrewCommand.search,
+                                                           payload: Data(q.utf8))
+        else { return }
+        searchHits = hits
         await loadDescriptions(formulae: searchHits.filter { !$0.isCask }.map(\.name),
                                casks: searchHits.filter(\.isCask).map(\.name))
     }
@@ -187,6 +208,8 @@ import Module_Homebrew_Engine
     }
     public func upgradeAll() { client.fire(HomebrewCommand.upgradeAll) }
     public func installBrew() { consoleLines.removeAll(); client.fire(HomebrewCommand.installBrew) }
+    /// Ends the running operation; the engine reports the exit as `.stopped`.
+    public func stop() { client.fire(HomebrewCommand.stop) }
 
     public func clearConsole() { consoleLines.removeAll() }
 }

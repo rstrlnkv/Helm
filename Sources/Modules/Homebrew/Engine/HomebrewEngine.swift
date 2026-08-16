@@ -19,21 +19,32 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     private let privileged: PrivilegedRunner
     private let user: String
     private let localTransport: LocalTransport
+    private let marker: OpMarker
     public let transport: EngineTransport
 
     private let lock = NSLock()
     private var busy = false
+    /// The running operation's process, for `stop` — and the retention that
+    /// keeps it addressable at all: the runner's local reference used to be
+    /// the only one.
+    private var current: RunningProcess?
+    /// Whether the person asked for the end that is coming, so a signal death
+    /// they requested is reported as `.stopped` and one they did not stays an
+    /// honest failure. Cleared when the next operation starts.
+    private var stopRequested = false
 
     private static let installerURL = "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
 
     public init(locator: BrewLocator, runner: ProcessRunner, privileged: PrivilegedRunner,
-                user: String, transport: LocalTransport = LocalTransport()) {
+                user: String, transport: LocalTransport = LocalTransport(),
+                marker: OpMarker = InMemoryOpMarker()) {
         self.locator = locator
         self.runner = runner
         self.privileged = privileged
         self.user = user
         self.localTransport = transport
         self.transport = transport
+        self.marker = marker
         wireTransport()
     }
 
@@ -44,7 +55,32 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     public func status() -> BrewStatus {
         let path = locator.brewPath()
-        return BrewStatus(installed: path != nil, brewPath: path)
+        // Not while an operation runs: the marker belongs to the launch after
+        // this one, and the page refreshes its status freely.
+        lock.lock(); let running = busy; lock.unlock()
+        let interrupted = running ? nil : marker.take()
+        if let interrupted {
+            // The label names a package; the log carries counts and outcomes.
+            HelmLog.shared.warn("homebrew",
+                                "an operation was still running when Helm last quit "
+                                + "(\(Redact.pkg(interrupted)))")
+        }
+        return BrewStatus(installed: path != nil, brewPath: path, interruptedOp: interrupted)
+    }
+
+    /// Whether the runner's deadline passed — with the outcome named in the
+    /// log, because "brew is hung" shown as an empty list is a lie about the
+    /// machine (`ATimedOutQueryIsANamedRefusalTests`).
+    private func timedOut(_ status: Int32, query: String) -> Bool {
+        guard status == HelmProcess.timedOutStatus else { return false }
+        HelmLog.shared.warn("homebrew", "\(query) timed out — keeping the last answer")
+        return true
+    }
+
+    /// The tool's answer, or nil past the runner's deadline.
+    private func completed(_ result: (status: Int32, stdout: String),
+                           query: String) -> String? {
+        timedOut(result.status, query: query) ? nil : result.stdout
     }
 
     /// Labelled, like the scans in the other modules: reading and parsing the
@@ -57,33 +93,43 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// there is no reclaim for a phase to be missing; and `HelmLog.memory`
     /// prints on every call now rather than above 8 MB, because a gate that
     /// hides zero hides the answer (ARCHITECTURE.md § Memory).
-    public func listInstalled() -> [BrewPackage] {
+    ///
+    /// nil when brew did not answer in time — never an empty list, which reads
+    /// as a clean machine.
+    public func listInstalled() -> [BrewPackage]? {
         guard let brew = locator.brewPath() else {
             // The module's whole surface is empty in this case, and until now
             // nothing said why: a person reads "no packages" as a clean machine.
             HelmLog.shared.warn("homebrew", "brew is not installed — nothing to list")
             return []
         }
-        let packages = HelmActivity.phase("homebrew.listInstalled") { () -> [BrewPackage] in
-            let f = runner.run(brew, ["list", "--versions", "--formula"], env: [:]).stdout
-            let c = runner.run(brew, ["list", "--versions", "--cask"], env: [:]).stdout
+        let packages = HelmActivity.phase("homebrew.listInstalled") { () -> [BrewPackage]? in
+            guard let f = completed(runner.run(brew, ["list", "--versions", "--formula"], env: [:]),
+                                    query: "list formulae"),
+                  let c = completed(runner.run(brew, ["list", "--versions", "--cask"], env: [:]),
+                                    query: "list casks")
+            else { return nil }
             return BrewListParser.parse(f, isCask: false) + BrewListParser.parse(c, isCask: true)
         }
         HelmLog.shared.memory("homebrew.listInstalled")
         // Counts, never names: a list of installed packages is a description of
         // somebody's machine and their work.
-        HelmLog.shared.info("homebrew", "installed: \(packages.count)")
+        if let packages { HelmLog.shared.info("homebrew", "installed: \(packages.count)") }
         return packages
     }
 
-    public func outdated() -> [OutdatedPackage] {
+    public func outdated() -> [OutdatedPackage]? {
         guard let brew = locator.brewPath() else { return [] }
-        let parsed = HelmActivity.phase("homebrew.outdated") { () -> [OutdatedPackage] in
-            let out = runner.run(brew, ["outdated", "--json=v2"], env: [:]).stdout
-            return BrewOutdatedParser.parse(Data(out.utf8))
+        let parsed = HelmActivity.phase("homebrew.outdated") { () -> [OutdatedPackage]? in
+            // `runData`, because the parser wants bytes: routing them through a
+            // String held a second copy of the whole payload for the parse
+            // (`OutdatedQueryAllocationBenchmark`).
+            let result = runner.runData(brew, ["outdated", "--json=v2"], env: [:])
+            guard !timedOut(result.status, query: "outdated") else { return nil }
+            return BrewOutdatedParser.parse(result.stdout)
         }
         HelmLog.shared.memory("homebrew.outdated")
-        HelmLog.shared.info("homebrew", "outdated: \(parsed.count)")
+        if let parsed { HelmLog.shared.info("homebrew", "outdated: \(parsed.count)") }
         return parsed
     }
 
@@ -102,12 +148,22 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// exactly one.
     public func descriptions(names: [String], isCask: Bool) -> [String: String] {
         guard let brew = locator.brewPath(), !names.isEmpty else { return [:] }
-        return describe(names, isCask: isCask, brew: brew)
+        // Named while it runs, like the two list queries: one batch covers the
+        // whole installed set, and a bad name in it turns into a dozen calls.
+        let found = HelmActivity.phase("homebrew.descriptions") {
+            describe(names, isCask: isCask, brew: brew)
+        }
+        HelmLog.shared.memory("homebrew.descriptions")
+        return found
     }
 
     private func describe(_ names: [String], isCask: Bool, brew: String) -> [String: String] {
         let result = runner.run(brew, ["desc", isCask ? "--cask" : "--formula", "--"] + names, env: [:])
         if result.status == 0 { return BrewDescParser.parse(result.stdout) }
+        // A timeout, never split: each half would hang for the same full
+        // deadline, so a fifty-name batch would park the queue for hours.
+        // Descriptions are a nicety; the rows draw without them.
+        guard completed(result, query: "descriptions") != nil else { return [:] }
         // One name and it still failed: that is the name brew cannot resolve.
         // Nothing to say about it, and nothing it should cost the others.
         guard names.count > 1 else { return [:] }
@@ -116,29 +172,86 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             .merging(describe(Array(names[middle...]), isCask: isCask, brew: brew)) { a, _ in a }
     }
 
-    public func search(_ query: String) -> [SearchHit] {
+    public func search(_ query: String) -> [SearchHit]? {
         guard let brew = locator.brewPath(), !query.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
-        // One call per kind: brew no longer labels a flat result list, and the
-        // kind decides whether the install is `brew install` or `brew install
-        // --cask`. Ids are already namespaced f:/c:, so a name that exists as
-        // both stays two distinguishable rows.
-        let formulae = runner.run(brew, ["search", "--formula", "--", query], env: [:]).stdout
-        let casks = runner.run(brew, ["search", "--cask", "--", query], env: [:]).stdout
-        let hits = BrewSearchParser.parse(formulae, isCask: false)
+        let hits = HelmActivity.phase("homebrew.search") { () -> [SearchHit]? in
+            // One call per kind: brew no longer labels a flat result list, and
+            // the kind decides whether the install is `brew install` or `brew
+            // install --cask`. Ids are already namespaced f:/c:, so a name that
+            // exists as both stays two distinguishable rows.
+            guard let formulae = completed(runner.run(brew, ["search", "--formula", "--", query], env: [:]),
+                                           query: "search formulae"),
+                  let casks = completed(runner.run(brew, ["search", "--cask", "--", query], env: [:]),
+                                        query: "search casks")
+            else { return nil }
+            return BrewSearchParser.parse(formulae, isCask: false)
                  + BrewSearchParser.parse(casks, isCask: true)
+        }
+        HelmLog.shared.memory("homebrew.search")
         // brew answers alphabetically, which buries the obvious one.
-        return SearchRanking.rank(hits, query: query)
+        return hits.map { SearchRanking.rank($0, query: query) }
     }
 
     // MARK: - Long operations
+
+    /// One phase for all five long operations, opened and closed by the busy
+    /// gate itself. An operation ends in a callback, so no scope can hold its
+    /// phase — but a `begin` balanced by hand is what the scope rule exists to
+    /// remove, so the balance rides the one this module already keeps: the
+    /// gate, whose release `OneOperationAtATimeTests` guards on every path. An
+    /// unclosed phase here is a wedged module, which is a failure four tests
+    /// already catch. The verb is in the `[homebrew]` info line beside it; the
+    /// label carries no package name, because the trail is the log's.
+    private static let operationPhase = "homebrew.operation"
 
     private func beginBusy() -> Bool {
         lock.lock(); defer { lock.unlock() }
         if busy { return false }
         busy = true
+        stopRequested = false
+        HelmActivity.begin(Self.operationPhase)
         return true
     }
-    private func endBusy() { lock.lock(); busy = false; lock.unlock() }
+    private func endBusy() {
+        lock.lock(); busy = false; current = nil; lock.unlock()
+        HelmActivity.end(Self.operationPhase)
+        HelmLog.shared.memory("homebrew.operation")
+    }
+
+    /// Whether the exit that just landed was asked for. Read at the exit, not
+    /// when Stop is pressed: the answer belongs to the operation that ends.
+    private var wasStopped: Bool {
+        lock.lock(); defer { lock.unlock() }
+        return stopRequested
+    }
+
+    /// The one way every long operation ends, whatever started it: the stop
+    /// answer is read while it is still this operation's, the marker cleared
+    /// before the gate opens (or the next operation's marker could lose to
+    /// this one's clear), the gate opened, the state event sent. Returns
+    /// whether the end was asked for, so the caller can word its log line.
+    @discardableResult
+    private func concludeOp(code: Int32, label: String) -> Bool {
+        let stopped = wasStopped
+        marker.clear()
+        endBusy()
+        emitState(OpState(phase: code == 0 ? .done : .failed,
+                          label: label, exitCode: Int(code),
+                          reason: code != 0 && stopped ? .stopped : nil))
+        return stopped
+    }
+
+    /// Ends the running long operation, if any. SIGTERM through the handle;
+    /// the exit arrives the way every exit does — EOF, then `onExit` — so the
+    /// busy gate and the state event follow the one path they already have.
+    public func stop() {
+        lock.lock()
+        guard busy, let handle = current else { lock.unlock(); return }
+        stopRequested = true
+        lock.unlock()
+        HelmLog.shared.info("homebrew", "stop requested")
+        handle.terminate()
+    }
 
     private func emitLog(_ line: String) {
         localTransport.emit(EngineEvent(name: HomebrewEvent.opLog.rawValue,
@@ -166,35 +279,60 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         let what = subject.map { "\(verb) \(Redact.pkg($0))" } ?? verb
         HelmLog.shared.info("homebrew", "\(what) started")
         emitState(OpState(phase: .running, label: label))
-        runner.stream(launch, args, env: env,
+        // The child survives a quit; whatever is still written at the next
+        // launch is the report (`AQuitMidOperationIsReportedTests`).
+        marker.write(label)
+        let handle = runner.stream(launch, args, env: env,
                       onLine: { [weak self] line in self?.emitLog(line) },
                       onExit: { [weak self] code in
                           guard let self else { return }
-                          self.endBusy()
+                          let stopped = self.concludeOp(code: code, label: label)
                           if code == 0 {
                               HelmLog.shared.info("homebrew", "\(what) done")
+                          } else if stopped {
+                              HelmLog.shared.info("homebrew", "\(what) stopped on request, exit \(code)")
                           } else {
                               HelmLog.shared.warn("homebrew", "\(what) failed, exit \(code)")
                           }
-                          self.emitState(OpState(phase: code == 0 ? .done : .failed,
-                                                 label: label, exitCode: Int(code)))
                       })
+        adopt(handle)
+    }
+
+    /// The handle joins the operation it belongs to — unless the operation has
+    /// already ended (a stream that exits synchronously releases the gate
+    /// before it returns), in which case there is nothing left to address.
+    private func adopt(_ handle: RunningProcess) {
+        lock.lock()
+        if busy { current = handle }
+        lock.unlock()
+    }
+
+    /// brew can vanish between `status()` and the press: Homebrew's own
+    /// uninstaller in a terminal, with Helm's window sitting open on the list
+    /// brew answered before it went. This used to be a bare `return` — no
+    /// `opState`, no log, a button that did nothing visibly forever. A refusal
+    /// is an outcome and it is named (`AVanishedBrewIsNotASilentPressTests`).
+    private func brewOrRefuse(verb: String, label: String) -> String? {
+        if let brew = locator.brewPath() { return brew }
+        HelmLog.shared.warn("homebrew", "\(verb) refused: brew is no longer installed")
+        emitState(OpState(phase: .failed, label: label, reason: .brewMissing))
+        return nil
     }
 
     public func install(name: String, isCask: Bool) {
-        guard let brew = locator.brewPath() else { return }
+        guard let brew = brewOrRefuse(verb: "install", label: "install \(name)") else { return }
         runOp(verb: "install", subject: name, label: "install \(name)", launch: brew, args: isCask ? ["install", "--cask", "--", name] : ["install", "--", name])
     }
     public func uninstall(name: String, isCask: Bool) {
-        guard let brew = locator.brewPath() else { return }
+        guard let brew = brewOrRefuse(verb: "uninstall", label: "uninstall \(name)") else { return }
         runOp(verb: "uninstall", subject: name, label: "uninstall \(name)", launch: brew, args: isCask ? ["uninstall", "--cask", "--", name] : ["uninstall", "--", name])
     }
     public func upgrade(name: String) {
-        guard let brew = locator.brewPath() else { return }
+        guard let brew = brewOrRefuse(verb: "upgrade", label: "upgrade \(name)") else { return }
         runOp(verb: "upgrade", subject: name, label: "upgrade \(name)", launch: brew, args: ["upgrade", "--", name])
     }
     public func upgradeAll() {
-        guard let brew = locator.brewPath() else { return }
+        guard let brew = brewOrRefuse(verb: "upgrade all", label: "upgrade all") else { return }
         runOp(verb: "upgrade all", label: "upgrade all", launch: brew, args: ["upgrade"])
     }
 
@@ -231,17 +369,26 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         let installer = "set -e; script=$(/usr/bin/mktemp); "
                       + "/usr/bin/curl -fsSL \(Self.installerURL) -o \"$script\"; "
                       + "/bin/bash \"$script\"; rc=$?; /bin/rm -f \"$script\"; exit $rc"
-        runner.stream("/bin/bash", ["-c", installer], env: ["NONINTERACTIVE": "1"],
+        marker.write("install Homebrew")
+        let handle = runner.stream("/bin/bash", ["-c", installer], env: ["NONINTERACTIVE": "1"],
                       onLine: { [weak self] line in self?.emitLog(line) },
                       onExit: { [weak self] code in
-                          guard let self else { return }
-                          self.endBusy()
-                          self.emitState(OpState(phase: code == 0 ? .done : .failed,
-                                                 label: "install Homebrew", exitCode: Int(code)))
+                          self?.concludeOp(code: code, label: "install Homebrew")
                       })
+        adopt(handle)
     }
 
     // MARK: - Transport
+
+    /// nil folded to the wire's zero bytes — "the module could not answer",
+    /// which a timed-out query is; the view model keeps the last answer it
+    /// had. `fileID`/`line` pass through, so `EngineReply`'s error line still
+    /// names the arm and not this fold.
+    private func reply<T: Encodable>(_ value: T?, for cmd: EngineCommand,
+                                     fileID: String = #fileID, line: Int = #line) -> Data {
+        guard let value else { return Data() }
+        return EngineReply.encode(value, for: cmd, fileID: fileID, line: line)
+    }
 
     /// **No `default`.** Every case of `HomebrewCommand` has an arm, which is
     /// what the enum's own doc comment promises — and a `default: break` sat at
@@ -260,13 +407,16 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             switch name {
             case .status:
                 return EngineReply.encode(await offTheCooperativePool { self.status() }, for: cmd)
+            // The three queries below can answer nil — a timeout, which must
+            // not reach the page as an empty machine; `reply` folds it to the
+            // wire's zero bytes.
             case .listInstalled:
-                return EngineReply.encode(await offTheCooperativePool { self.listInstalled() }, for: cmd)
+                return self.reply(await offTheCooperativePool { self.listInstalled() }, for: cmd)
             case .outdated:
-                return EngineReply.encode(await offTheCooperativePool { self.outdated() }, for: cmd)
+                return self.reply(await offTheCooperativePool { self.outdated() }, for: cmd)
             case .search:
                 let query = String(decoding: cmd.payload, as: UTF8.self)
-                return EngineReply.encode(await offTheCooperativePool { self.search(query) }, for: cmd)
+                return self.reply(await offTheCooperativePool { self.search(query) }, for: cmd)
             case .descriptions:
                 guard let r = EngineReply.decode(DescriptionsRequest.self, from: cmd)
                 else { return Data() }
@@ -285,6 +435,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             case .upgrade: self.upgrade(name: String(decoding: cmd.payload, as: UTF8.self))
             case .upgradeAll: self.upgradeAll()
             case .installBrew: self.installBrew()
+            case .stop: self.stop()
             }
             return Data()
         }

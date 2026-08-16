@@ -55,6 +55,15 @@ final class MemoryTrailCoverageTests: XCTestCase {
         ("autopilot.preview", "Modules/Autopilot/Engine/AutopilotEngine.swift"),
         ("homebrew.listInstalled", "Modules/Homebrew/Engine/HomebrewEngine.swift"),
         ("homebrew.outdated", "Modules/Homebrew/Engine/HomebrewEngine.swift"),
+        // The whole `brew desc` batch over the installed set, and the search's
+        // two network-bound calls — both ran unnamed while the trail was read.
+        ("homebrew.descriptions", "Modules/Homebrew/Engine/HomebrewEngine.swift"),
+        ("homebrew.search", "Modules/Homebrew/Engine/HomebrewEngine.swift"),
+        // One label for all five long operations: the busy gate makes them
+        // serial, and the [homebrew] info line beside it names the verb. Two
+        // package operations that changed the machine used to log 0 lines; a
+        // 226 MB sample on 2026-08-16 could say only "no phases running".
+        ("homebrew.operation", "Modules/Homebrew/Engine/HomebrewEngine.swift"),
         ("update.digest", "HelmApp/UpdateService.swift"),
         ("sample", "HelmApp/AppDelegate.swift"),
         ("launch", "HelmApp/AppDelegate.swift"),

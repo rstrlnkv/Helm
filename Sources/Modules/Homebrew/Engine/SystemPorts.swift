@@ -70,7 +70,23 @@ private final class StatusBox: @unchecked Sendable {
 }
 
 public struct ShellProcessRunner: ProcessRunner {
-    public init() {}
+    /// How long a *query* may go unanswered before it is a hang, not a wait.
+    ///
+    /// `run` serves only the read-only queries (list, outdated, desc, search);
+    /// the long operations stream and are stopped by hand, never by a clock.
+    /// Measured on the owner's log before choosing: warm queries answer in
+    /// 0.3–0.6 s, and a cold `brew outdated` — which goes to the network —
+    /// took 7.4 s (helm.log, 2026-08-15 16:09:35→42). Ninety seconds clears the
+    /// slowest measured query more than tenfold and still ends a hung brew —
+    /// another brew's lock never released, a stalled network read — inside the
+    /// same sitting, with the Refresh button live again.
+    public static let defaultQueryTimeout: TimeInterval = 90
+
+    private let queryTimeout: TimeInterval
+
+    public init(queryTimeout: TimeInterval = ShellProcessRunner.defaultQueryTimeout) {
+        self.queryTimeout = queryTimeout
+    }
 
     private func environment(_ extra: [String: String]) -> [String: String] {
         var e = ProcessInfo.processInfo.environment
@@ -92,8 +108,16 @@ public struct ShellProcessRunner: ProcessRunner {
     /// `stream` keeps stderr: a console should show what the tool says. It is
     /// output that gets parsed that must not carry diagnostics.
     public func run(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, stdout: String) {
-        let result = HelmProcess.run(launchPath, args, env: environment(env))
+        let result = HelmProcess.run(launchPath, args, env: environment(env),
+                                     timeout: queryTimeout)
         return (result.status, result.output)
+    }
+
+    /// The bytes without the String round-trip — `HelmProcess.runData`'s doc
+    /// comment carries the measured difference.
+    public func runData(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, stdout: Data) {
+        let r = HelmProcess.runData(launchPath, args, env: environment(env), timeout: queryTimeout)
+        return (r.status, r.output)
     }
 
     /// **The exit is reported at end of pipe, not at end of process.** These are
@@ -111,9 +135,10 @@ public struct ShellProcessRunner: ProcessRunner {
     /// for the same reason. EOF arrives only when every writer has closed, so
     /// by then the child has finished; the wait below is immediate rather than
     /// a poll.
+    @discardableResult
     public func stream(_ launchPath: String, _ args: [String], env: [String: String],
                        onLine: @escaping @Sendable (String) -> Void,
-                       onExit: @escaping @Sendable (Int32) -> Void) {
+                       onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: launchPath)
         p.arguments = args
@@ -147,7 +172,23 @@ public struct ShellProcessRunner: ProcessRunner {
             // spinner forever waiting for one.
             pipe.fileHandleForReading.readabilityHandler = nil
             onExit(-1)
+            return NoProcess()
         }
+        // The handle retains the `Process`: it used to be a local nobody kept,
+        // leaving the running child with no way to be addressed again.
+        return LiveProcess(p)
+    }
+}
+
+/// The real handle: SIGTERM, so a brew mid-operation gets to clean up after
+/// itself — never KILL, which is how half-written Cellar state is made. The
+/// exit still arrives through the pipe's EOF, the same way an honest exit does.
+private struct LiveProcess: RunningProcess, @unchecked Sendable {
+    let process: Process
+    init(_ process: Process) { self.process = process }
+    func terminate() {
+        guard process.isRunning else { return }
+        process.terminate()
     }
 }
 
@@ -163,11 +204,44 @@ public struct OSAPrivilegedRunner: PrivilegedRunner {
     }
 }
 
+// MARK: - Operation marker
+
+/// The marker as a file, so it survives the quit it exists to report.
+///
+/// The label an operation writes is a brew command with a package name in it —
+/// a fact about the person's machine, so the file goes through `PrivateFile`
+/// like every other file that names somebody's things. It lives in Helm's own
+/// Application Support folder, which `HelmSupport.directory` already redirects
+/// into scratch under a test runner.
+public struct FileOpMarker: OpMarker {
+    private let url: URL
+
+    public init(directory: URL = HelmSupport.directory) {
+        url = directory.appendingPathComponent("homebrew-operation")
+    }
+
+    public func write(_ label: String) {
+        _ = PrivateFile.directory(at: url.deletingLastPathComponent())
+        _ = PrivateFile.write(Data(label.utf8), to: url)
+    }
+
+    public func clear() {
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    public func take() -> String? {
+        guard let data = try? Data(contentsOf: url), !data.isEmpty else { return nil }
+        clear()
+        return String(bytes: data, encoding: .utf8)
+    }
+}
+
 // MARK: - Factory
 
 public struct HomebrewSystemPorts {
     public let locator = FSBrewLocator()
     public let runner = ShellProcessRunner()
     public let privileged = OSAPrivilegedRunner()
+    public let marker = FileOpMarker()
     public init() {}
 }

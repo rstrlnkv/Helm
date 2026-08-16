@@ -49,6 +49,33 @@ enum HbStr {
     static var done: String { L("Done") }
     static var failed: String { L("Failed") }
     static var clear: String { L("Clear") }
+    /// Ends the running operation — the only way out of a brew that will not
+    /// finish. "Stop"/"Stopped" are the app's existing pair; Keep Awake and
+    /// Disk already draw them with the same meaning.
+    static var stop: String { L("Stop") }
+    static var stopped: String { L("Stopped") }
+    /// Why the operation failed before it could start: brew vanished between
+    /// the page's status and the press — its own uninstaller in a terminal.
+    static var brewGone: String { L("Homebrew is no longer installed.") }
+
+    /// The console's first line after a launch that follows an interrupted
+    /// quit: the child brew survived Helm and kept changing the Cellar with
+    /// nobody watching. Interpolated, so the table lives here; the label is a
+    /// brew command and stays whole in every language, quoted with the
+    /// language's own marks.
+    static func interruptedAtQuit(_ label: String,
+                                  language: AppLanguage = AppLanguage.current) -> String {
+        let q = Quoted(label, language: language)
+        return L("Helm quit while \(q) was still running. It may not have finished.",
+                 [.ru: "Helm завершил работу, пока выполнялось \(q). Операция могла не завершиться.",
+                  .es: "Helm se cerró mientras \(q) seguía en ejecución. Puede que no haya terminado.",
+                  .fr: "Helm a quitté pendant que \(q) était encore en cours. L’opération ne s’est peut-être pas terminée.",
+                  .de: "Helm wurde beendet, während \(q) noch lief. Der Vorgang ist womöglich nicht abgeschlossen.",
+                  .ja: "\(q) の実行中に Helm が終了しました。完了していない可能性があります。",
+                  .zh: "Helm 在 \(q) 仍在运行时退出。该操作可能未完成。",
+                  .pt: "O Helm foi encerrado enquanto \(q) ainda estava em execução. A operação pode não ter sido concluída."],
+                 language: language)
+    }
     /// Not "Actualizar lista" / "Atualizar lista": the Updates screen shows the
     /// toolbar's refresh and a per-row Upgrade button at the same time, and in
     /// Spanish and Portuguese both said *Actualizar* / *Atualizar* — one verb

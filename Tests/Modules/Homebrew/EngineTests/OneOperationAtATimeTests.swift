@@ -44,8 +44,9 @@ final class OneOperationAtATimeTests: XCTestCase {
 
         func stream(_ launchPath: String, _ args: [String], env: [String: String],
                     onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) {
+                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
             lock.lock(); _calls.append(args); _exits.append(onExit); lock.unlock()
+            return NoProcess()
         }
 
         /// Lets the operation that is in flight finish, the way a `brew` that

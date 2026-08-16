@@ -70,17 +70,46 @@ public struct SearchHit: Codable, Equatable, Sendable, Identifiable {
 public struct BrewStatus: Codable, Equatable, Sendable {
     public let installed: Bool
     public let brewPath: String?
-    public init(installed: Bool, brewPath: String?) { self.installed = installed; self.brewPath = brewPath }
+    /// The label of an operation that was still running when Helm last quit —
+    /// the child brew survives the app, so the Cellar may have changed with no
+    /// observer. Carried once, by the first `status()` of the next launch.
+    /// Optional, so the synthesized decode reads an older payload without it.
+    public let interruptedOp: String?
+    public init(installed: Bool, brewPath: String?, interruptedOp: String? = nil) {
+        self.installed = installed; self.brewPath = brewPath
+        self.interruptedOp = interruptedOp
+    }
 }
 
 public enum OpPhase: String, Codable, Sendable { case idle, running, done, failed }
+
+/// Why a failed operation failed, when the engine knows more than an exit code.
+///
+/// A named outcome, never silence: each of these used to be a bare `return` (a
+/// press that did nothing, visibly forever) or an exit code indistinguishable
+/// from a build failure. The engine names the reason; the UI owns the words, so
+/// the eight languages live where `L()` can reach them.
+public enum OpFailureReason: String, Codable, Sendable {
+    /// brew vanished between `status()` and the press — Homebrew's own
+    /// uninstaller ran in a terminal while Helm's window sat open.
+    case brewMissing
+    /// The person pressed Stop; the exit code is the signal, not a defect.
+    /// (A timed-out *query* never comes through here: queries answer nil and
+    /// the log names the outcome — an operation state about no operation
+    /// would loop the view model's refresh-on-failure.)
+    case stopped
+}
 
 public struct OpState: Codable, Equatable, Sendable {
     public let phase: OpPhase
     public let label: String
     public let exitCode: Int?
-    public init(phase: OpPhase, label: String, exitCode: Int? = nil) {
+    /// Optional, so the synthesized decode reads an older payload without it.
+    public let reason: OpFailureReason?
+    public init(phase: OpPhase, label: String, exitCode: Int? = nil,
+                reason: OpFailureReason? = nil) {
         self.phase = phase; self.label = label; self.exitCode = exitCode
+        self.reason = reason
     }
     public static let idle = OpState(phase: .idle, label: "")
 }

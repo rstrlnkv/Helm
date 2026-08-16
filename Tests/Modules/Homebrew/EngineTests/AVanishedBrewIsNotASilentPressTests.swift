@@ -36,9 +36,10 @@ final class AVanishedBrewIsNotASilentPressTests: XCTestCase {
         }
         func stream(_ launchPath: String, _ args: [String], env: [String: String],
                     onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) {
+                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
             lock.lock(); _launched.append(launchPath); lock.unlock()
             onExit(127)
+            return NoProcess()
         }
     }
 

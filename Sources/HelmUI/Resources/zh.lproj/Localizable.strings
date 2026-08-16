@@ -229,6 +229,7 @@
 "Helm’s language now reaches the parts macOS draws for it. The folder picker, its sidebar and the menus on a text field were English whatever language you had chosen. Numbers and dates follow the language too: a count of files is grouped the way your language groups digits, and a date is written the way your language writes one." = "Helm 的语言现在也适用于 macOS 为它绘制的部分：选择文件夹的窗口、它的边栏以及文本框的菜单此前始终是英文。数字和日期也会按你的语言书写。";
 "Helm’s own copy of the menu-bar indicator, with the choices the system’s one does not offer. macOS shows its own — turn that one off in Keyboard settings, or you get two." = "菜单栏指示器的自有副本，带有系统版本没有的选项。系统的那个仍在：请在键盘设置中关闭，否则会有两个。";
 "Homebrew" = "Homebrew";
+"Homebrew is no longer installed." = "Homebrew 已被卸载。";
 "Homebrew isn’t installed" = "未安装 Homebrew";
 "Homebrew module: installed packages, updates, search and install, with a live console and package descriptions." = "Homebrew 模块：已安装包、更新、搜索与安装，带实时控制台和包描述。";
 "Homebrew removes it right away. It does not go to the Trash, and this cannot be undone." = "Homebrew 会立即删除。它不会进入废纸篓，也无法撤销。";

@@ -229,6 +229,7 @@
 "Helm’s language now reaches the parts macOS draws for it. The folder picker, its sidebar and the menus on a text field were English whatever language you had chosen. Numbers and dates follow the language too: a count of files is grouped the way your language groups digits, and a date is written the way your language writes one." = "macOS が描く部分にも Helm の言語が届くようになりました。フォルダ選択画面やそのサイドバー、テキストフィールドのメニューは英語のままでした。数字や日付も言語に合わせて表記されます。";
 "Helm’s own copy of the menu-bar indicator, with the choices the system’s one does not offer. macOS shows its own — turn that one off in Keyboard settings, or you get two." = "システムの入力ソース表示を、設定できる形で複製したものです。システム側は残るので、キーボード設定でオフにしないと2つ並びます。";
 "Homebrew" = "Homebrew";
+"Homebrew is no longer installed." = "Homebrew はアンインストールされています。";
 "Homebrew isn’t installed" = "Homebrew がインストールされていません";
 "Homebrew module: installed packages, updates, search and install, with a live console and package descriptions." = "Homebrew モジュール：インストール済みパッケージ、アップデート、検索とインストール。ライブコンソールと説明付き。";
 "Homebrew removes it right away. It does not go to the Trash, and this cannot be undone." = "Homebrew はすぐに削除します。ゴミ箱には入らず、取り消せません。";

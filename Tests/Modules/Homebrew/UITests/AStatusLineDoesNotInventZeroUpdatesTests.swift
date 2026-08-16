@@ -15,14 +15,18 @@ import Module_Homebrew_Engine
 @MainActor
 final class AStatusLineDoesNotInventZeroUpdatesTests: XCTestCase {
 
-    private final class SilentTransport: EngineTransport, @unchecked Sendable {
+    /// Answers every list query with an empty list — `[]` as JSON, the bytes
+    /// the real engine sends for a machine with nothing installed. Zero bytes
+    /// would be freer than the port: that is the wire's "could not answer",
+    /// and the view model rightly keeps its last answer on seeing it.
+    private final class EmptyMachineTransport: EngineTransport, @unchecked Sendable {
         let stream = AsyncStream<EngineEvent>.makeStream()
         var events: AsyncStream<EngineEvent> { stream.stream }
-        func send(_ command: EngineCommand) async throws -> Data { Data() }
+        func send(_ command: EngineCommand) async throws -> Data { Data("[]".utf8) }
     }
 
     func testTheLineIsSilentAboutUpdatesUntilTheyHaveLoaded() async {
-        let vm = ModuleViewModel(transport: SilentTransport())
+        let vm = ModuleViewModel(transport: EmptyMachineTransport())
         let page = HomebrewSettingsPage(vm: vm)
         let model = HomebrewViewModel.shared(vm: vm)
 

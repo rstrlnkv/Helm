@@ -213,7 +213,7 @@ struct HomebrewSettingsPage: View {
                 .padding(.top, 12)
                 .padding(.bottom, HelmSpace.s5)
             Divider()
-            if query.isEmpty && hb.searchHits.isEmpty {
+            if SearchDisplay.state(query: query, hasHits: !hb.searchHits.isEmpty) == .prompt {
                 HelmEmptyState(message: HbStr.typeToSearch)
             } else {
                 listOrEmpty(hb.searchHits, empty: HbStr.noResults, busy: HbStr.searching) { hit in
@@ -235,6 +235,11 @@ struct HomebrewSettingsPage: View {
             HStack(spacing: 8) {
                 statusPill
                 Spacer()
+                if hb.running {
+                    // The only way out of a brew that will not finish — the
+                    // module used to be dead until an app restart.
+                    Button(HbStr.stop) { hb.stop() }.controlSize(.small)
+                }
                 Button(HbStr.clear) { hb.clearConsole() }.controlSize(.small).disabled(hb.running)
             }
             ScrollViewReader { proxy in
@@ -265,8 +270,17 @@ struct HomebrewSettingsPage: View {
             HStack(spacing: 6) { ProgressView().controlSize(.small); Text(hb.op.label).font(HelmText.rowDetail) }
         case .done:
             Label(HbStr.done, systemImage: "checkmark.circle.fill").foregroundStyle(HelmSignal.success).font(HelmText.rowDetail)
+        case .failed where hb.op.reason == .stopped:
+            // The person asked for this end; a red octagon would call their own
+            // press a defect.
+            Label(HbStr.stopped, systemImage: "stop.circle.fill").foregroundStyle(HelmText.quiet).font(HelmText.rowDetail)
         case .failed:
-            Label(HbStr.failed, systemImage: "xmark.octagon.fill").foregroundStyle(HelmSignal.danger).font(HelmText.rowDetail)
+            HStack(spacing: 6) {
+                Label(HbStr.failed, systemImage: "xmark.octagon.fill").foregroundStyle(HelmSignal.danger).font(HelmText.rowDetail)
+                if hb.op.reason == .brewMissing {
+                    Text(HbStr.brewGone).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                }
+            }
         case .idle:
             EmptyView()
         }

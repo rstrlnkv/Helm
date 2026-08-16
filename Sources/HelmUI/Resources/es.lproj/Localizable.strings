@@ -229,6 +229,7 @@
 "Helm’s language now reaches the parts macOS draws for it. The folder picker, its sidebar and the menus on a text field were English whatever language you had chosen. Numbers and dates follow the language too: a count of files is grouped the way your language groups digits, and a date is written the way your language writes one." = "El idioma de Helm llega ahora a lo que dibuja macOS: el selector de carpetas, su barra lateral y los menús de un campo de texto seguían en inglés. Los números y las fechas también siguen al idioma.";
 "Helm’s own copy of the menu-bar indicator, with the choices the system’s one does not offer. macOS shows its own — turn that one off in Keyboard settings, or you get two." = "Una copia propia del indicador con las opciones que el del sistema no ofrece. El del sistema sigue ahí: desactívalo en Ajustes de teclado o tendrás dos.";
 "Homebrew" = "Homebrew";
+"Homebrew is no longer installed." = "Homebrew ya no está instalado.";
 "Homebrew isn’t installed" = "Homebrew no está instalado";
 "Homebrew module: installed packages, updates, search and install, with a live console and package descriptions." = "Módulo Homebrew: paquetes instalados, actualizaciones, búsqueda e instalación, con consola en vivo y descripciones.";
 "Homebrew removes it right away. It does not go to the Trash, and this cannot be undone." = "Homebrew lo elimina de inmediato. No va a la papelera y no se puede deshacer.";

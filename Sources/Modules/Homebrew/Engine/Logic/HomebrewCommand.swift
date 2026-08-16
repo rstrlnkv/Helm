@@ -17,6 +17,10 @@ public enum HomebrewCommand: String, CaseIterable, Sendable {
     case upgrade
     case upgradeAll
     case installBrew
+    /// End the running long operation, if any. The only way out of a brew that
+    /// will not finish — operations have no deadline, because an install may
+    /// honestly take an hour.
+    case stop
 }
 
 /// Everything the module's engine says while a long operation runs.

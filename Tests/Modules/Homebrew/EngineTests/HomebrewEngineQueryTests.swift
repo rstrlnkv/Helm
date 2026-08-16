@@ -45,7 +45,10 @@ private final class BrewLikeRunner: ProcessRunner, @unchecked Sendable {
 
     func stream(_ launchPath: String, _ args: [String], env: [String: String],
                 onLine: @escaping @Sendable (String) -> Void,
-                onExit: @escaping @Sendable (Int32) -> Void) { onExit(0) }
+                onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
+        onExit(0)
+        return NoProcess()
+    }
 }
 
 /// What the queries do when `brew` does not answer the way the happy path
