@@ -5,6 +5,48 @@ All notable changes to Helm are documented here. The format is loosely based on
 global changes, MINOR = new/polished features, PATCH = fixes. Every release
 bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 
+## [0.10.0-dev.9] — 2026-08-16
+
+> A short round. `dev.8` was built and installed at the owner's at 05:34
+> (build 1056), and nine commits landed on main after it — so the number
+> `dev.8` was about to mean two different builds. This version exists to keep
+> it meaning the one that is installed; the section covers only what came
+> after that build.
+
+### Added
+- **The keyboard indicator's menu opens the emoji palette where you type.**
+  «Emoji & Symbols» presses the frontmost app's *own* Edit-menu item over
+  Accessibility, so the palette anchors to that app's insertion point — Helm
+  never activates and focus never moves. No API does this from a menu-bar
+  app: `orderFrontCharacterPalette` shows the palette only for the calling
+  app, selecting the character-palette input source answers success and draws
+  no window, and a forged shortcut arrives as plain typing — a letter into
+  the person's document. The item is recognised by the names macOS itself
+  gives it, in every system language, read from AppKit's own table.
+
+### Changed
+- **Every module's log category is its id, read from the engine's constant.**
+  Keep Awake wrote `keepawake` against an id of `keep-awake` — nineteen log
+  lines and the notice area filed under a word the Log page's module filter
+  could not connect to the module — and Disk, Duplicates and Leftovers each
+  spelled their id as a literal beside the constant that already existed.
+  Old lines in the file keep the old word until the log rolls over, so the
+  module menu lists both `keepawake` and `keep-awake` for a while — history
+  draining, not a defect. No stored-settings id changed by a byte;
+  `LogCategoriesAreModuleIdsTests` now fails on any literal category in a
+  module, proven red on all 27 literals before the change.
+
+### Internal
+- The last engines gained the `moduleID` constant the others already carried
+  (Autopilot, Homebrew, VPN), and a new app-layer test checks every one of
+  the nine descriptors forwards its engine's id — the house rule is a guard
+  now, not prose.
+- Three memory benchmarks pin the work no phase names: restoring the last
+  scan, the log page's once-a-second tick, and the result screen's remount.
+  The hunt that produced them ended outside the heap: the ±100 MB transients
+  are window-server surfaces compositing Helm's glass, back a second later,
+  and no code here can return them sooner.
+
 ## [0.10.0-dev.8] — 2026-08-16
 
 > Waves 3 and 4. The Keyboard batch (undo puts the layout back, and the module
