@@ -160,6 +160,10 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 > either, so this section covers everything that landed after its own
 > `## [0.10.0-dev.6]` section above was last written — presets and the
 > Duplicates keep policy, both already recorded there, are not repeated here.
+> The Leftovers wave (six commits) and the first half of the Uninstaller wave
+> shipped in this build as well; their entries below carry the same
+> *recorded after the fact* mark as the settings-window fix, written
+> 2026-08-16 when the release-notes audit found them missing.
 
 ### Added
 - **Autopilot can put back what it did.** A moved, renamed, tagged or deleted
@@ -261,6 +265,117 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   and cached (`SealKeyCache`) — the key is cached; the verdict never is. A
   dev-lane defect: settings sealing first shipped in `0.10.0-dev.2`, so no
   beta build ever had it.
+- **Leftovers calls its removal what it is** *(shipped in this build, recorded
+  after the fact)*. The module's most dangerous control was named for an act
+  it does not perform: the dialog asked «Delete X?» over a button that says
+  Move to Trash, the row menu said «Delete…», and the report afterwards said
+  moved — one wrong English key, faithfully translated into seven languages.
+  The row, the three confirmations and the admin refusal all say moving now.
+  Alongside it: the shared refusal for a file changed since it was reviewed
+  stopped calling everything «no longer a duplicate» — a Duplicates sentence
+  raised by every module and untrue even there; es/pt take the system's own
+  scan verbs so a button does not change verb the moment something is scanned;
+  per-language punctuation (French's unbreakable space before ? and :,
+  Japanese's own middle dot, German's space before an ellipsis); and the
+  «At login» badge shrank from 137 pt to 63 in Russian, giving ten of fourteen
+  real launch-agent labels their names back.
+- **A removal Leftovers never got an answer to no longer draws as a success**
+  *(shipped in this build, recorded after the fact)*. A lost reply used to
+  arrive as «Moved to the Trash — 0 B» with zero failures and nothing
+  removed; a scan nobody answered claimed «No leftovers found» — this
+  module's one claim about the state of the machine; and the same lost reply
+  on a rescan threw away the working list and every tick on it. The page
+  keeps what it had now, and a lost removal reply draws a verdict of its own
+  that claims neither success nor failure — it says the list above is where
+  the files are, and the rescan states it.
+- **A scanned folder that is a symlink no longer redirects the whole
+  Leftovers scan** *(shipped in this build, recorded after the fact)*. The
+  module enumerated seven compiled-in paths and never asked whether the
+  directory it opened was the one it named, so a process with no grant of its
+  own could borrow Helm's Full Disk Access to have other apps' containers
+  listed, badged «Leftover», pre-ticked by Select all and offered to the
+  Trash — every row drawing a path the file does not have. A source is its
+  own resolved spelling now, ancestors included. And a login item switches
+  off the job its file actually registers, not the label the file claims —
+  a plist carrying somebody else's label used to switch that job off for
+  real.
+- **A file Helm was not allowed to read is not an orphan** *(shipped in this
+  build, recorded after the fact)*. `fileExists` answers false for «absent»
+  and for «in a directory this process cannot search» alike, and that answer
+  was all that stood between a live login item and a «Leftover» badge with a
+  working Turn off beside it; an unreadable launchd plist was offered for
+  one-click bulk deletion on the strength of its file name. The refused read
+  is its own third answer now, and the row says «Unreadable» — not «In use»
+  and not «System», both of which would be statements about a file nobody
+  read — is never pre-ticked, and keeps its own delete behind a question. An
+  extension tool that answered nothing no longer promotes live extensions to
+  orphans — empty was the unsafe direction. A label carrying a slash is
+  refused on both sides by one predicate (it re-points the service target,
+  and booting that target out ends the login session), and a label carrying
+  a quote and a newline can no longer forge a second line in the disabled
+  list. And the diagnostics log stopped naming the software a person has:
+  in this module the leaf of every path is a bundle id, which is what the
+  app redaction exists for.
+- **A Leftovers scan that finds nothing says so** *(shipped in this build,
+  recorded after the fact)*, instead of five hundred points of blank under
+  «Found: 0 items» — the ordinary first impression, since nearly every
+  preference file is in use. «Everything found is hidden by the filter» gets
+  its own sentence, because that one is actionable: the menu is directly
+  above it. And the caption counts the rows the list draws now, not the rows
+  that may be ticked — it used to read «Found: 3 items» over 542 rows.
+- **Leftovers' action bar keeps its words, and its report stops eating the
+  list** *(shipped in this build, recorded after the fact)*. Truncation took
+  40 pt off the German destructive button and left Russian reading
+  «Переместить в Корзи…» — an invented ellipsis on the one control where the
+  module had just made an ellipsis mean «a question follows»; the caption
+  stands on its own full-width line now and every button keeps its whole
+  word in all eight languages. The report of a partly-failed removal shared
+  a row with three buttons and paid in height — 122 points of the list in
+  Russian, 80 now. The toolbar starts at the page's own gutter in every
+  language instead of 384–463 pt in, the checkbox column lines up (a 14 pt
+  slot held a 16 pt control; the number is `HelmCheckboxSlot` now, drawn by
+  the Uninstaller too), and the empty state's invitation carries its own
+  Scan button instead of pointing at one 374 points away.
+- **Nothing in Leftovers starts work mid-removal any more** *(shipped in
+  this build, recorded after the fact)*. «Turn off» during a removal really
+  did ask launchd and rescan on top of the report the removal was about to
+  write, and Scan was the sixth control able to start work under one. Two
+  scans could also land out of order, handing the list to the last
+  completion rather than the last request — the counter is `LatestRequest`
+  in `HelmRuntime` now, replacing the same arithmetic Duplicates had written
+  by hand.
+- **The Uninstaller no longer reads a lost reply as an answer** *(shipped in
+  this build, recorded after the fact)*. One nil, read three ways, none
+  right: where the engine's removal reply was lost, the page said the
+  removal had worked — «Moved to the Trash — 0 bytes», zero failures, the
+  review and the person's own selection thrown away — and the Trash-offer
+  window read the same silence as the opposite, writing every group off as
+  dismissed and closing. A lost reply now keeps the review, keeps the window
+  open, and says so through the shared unanswered verdict. And whether the
+  app is running is asked at the moment of removal, from the bundle's own
+  Info.plist, not from a snapshot taken when the review was built — an app
+  that quit no longer leaves its button dead for good, an app that came back
+  up is quit and waited for, and a batch whose app will not go moves nothing
+  at all, since removing everything except the bundle is exactly the
+  half-uninstall this was meant to prevent.
+- **The Uninstaller's Trash-watch switch says what it is doing** *(shipped
+  in this build, recorded after the fact)*. It reported itself on with no
+  channel from either fact that could make that false: a watcher macOS
+  refused returned silently, and the feature needs Full Disk Access, which
+  only a running sweep ever discovered. The state is one value now — «on and
+  watching while the Trash cannot be read» is not something anybody can
+  write down — both facts are probed, and the two blind states have the
+  localizer's own sentences. A `systemextensionsctl` that did not answer was
+  folded to an empty listing, costing the module its best sentence: a bundle
+  macOS refused because its extension is live got classified from the bare
+  Cocoa code, and the failure sheet's «Open Extensions…» button never
+  appeared — the port answers three ways now, and a silence is never
+  memoised. An unanswered app list no longer reads «0 apps» for the life of
+  the process. A symlinked bundle in /Applications — listed as installed,
+  weighed at zero, offered for removal — is skipped, except an Apple bundle
+  such as Safari, whose row was never an offer. And the report of a
+  partly-failed removal grows instead of truncating — it used to lose the
+  half naming the count at the app's minimum width, 39 % of it in Russian.
 
 ## [0.10.0-dev.6] — 2026-08-12
 
