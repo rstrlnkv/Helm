@@ -5,6 +5,110 @@ All notable changes to Helm are documented here. The format is loosely based on
 global changes, MINOR = new/polished features, PATCH = fixes. Every release
 bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 
+## [0.10.0-dev.10] — 2026-08-16
+
+> `dev.9` was built and installed at the owner's at 15:23 (build 1072); this
+> section covers what landed on main after it. Two entries below were first
+> written into earlier sections and are moved here rather than kept twice:
+> the system-input-menu follow-up had been appended to `dev.9`'s own section
+> above, and the in-app changelog rewrite had been appended to the tail of
+> `dev.8`'s, two releases below where the work was actually done.
+
+### Added
+- **The keyboard indicator's menu reads like the system input menu.** Every
+  layout row wears its badge, the emoji door says «Show Emoji & Symbols» with
+  the palette's own icon (both built from the system's own tables — the
+  `Show palette class IM` template around AppKit's name, so ru reads
+  «Показать панель «Эмодзи и символы»»), a new «Show Input Source Name»
+  switch puts the layout's name in the menu bar in place of the badge, and
+  the settings door takes the system's exact spelling in all eight languages
+  (four rows had been retranslated by hand). One system item is deliberately
+  absent: every route to opening the Keyboard Viewer was measured dead on
+  macOS 27 — selecting `com.apple.inputmethod.AssistiveControl` answers
+  success and draws nothing, launching the input-method bundle is refused by
+  launchd, and the system's own menu item exists only while the system
+  indicator is on. A door that opens nothing is worse than none.
+
+### Changed
+- **The in-app changelog is written for the person using Helm, not for the
+  person who fixed it.** 77 of its 213 entries were rewritten and the other
+  136 were left exactly as they were, which is the point: a key here is also
+  the English that seven `.strings` files answer, so rewriting a compliant
+  entry costs eight files and buys nothing. What came out of the 77 was the
+  mechanism — threads, log lines, caches, render passes, the internal parts by
+  name — all of which this file already carried and still does; what stayed is
+  what is different for the reader, plus at most one clause of what used to
+  happen instead. Three entries admitted in so many words that they were not
+  for the reader; the worst opened «a few things fixed that you're unlikely to
+  ever notice directly» and ran 82 words, of which the one user-facing fact —
+  a removal could follow a symbolic link out of the folder you confirmed — now
+  stands alone in 21. Rewritten entries are a quarter shorter, 3434 words to
+  2565. `ChangelogData.swift` carries the rule in its own doc comment, so the
+  next entry is written to it rather than against it.
+- **The rule that a changelog entry naming a control is a claim caught one on
+  the way in.** A rewrite called the Autopilot history «Autopilot's report»,
+  a name the app does not use anywhere: the section is headed «Last 30 days»
+  and the app's own phrase for it is `AutopilotStrings.historyTampered`'s «the
+  record of what Autopilot did». The entry was reverted to the original text
+  rather than shipped in eight languages under an invented name.
+
+### Fixed
+- **An empty Apps tab in the Uninstaller now says which emptiness it is.**
+  `pickStep` branched on `loading` alone, so a search that matched nothing, a
+  Mac whose app folders really are empty, and a list the engine never
+  answered all drew the same picture — the last of them under a footer that
+  was still saying «Counting apps…». `AppsEmpty` now judges the rule over
+  counts, the way `DuplicatesEmpty` and `LeftoversEmpty` already do for their
+  screens, and only the no-results state offers a button, since a repeat
+  question or a reload is never the right offer for the other two.
+- **Four translations called Autopilot something else.** `zh` wrote 自动驾驶 —
+  autonomous driving — in four changelog entries while the module's own name
+  key reads 自动整理; `es` wrote «Autopiloto» against «Piloto automático» and
+  `pt` «Piloto Automático» against «Piloto automático», in the same four. All
+  four sat inside the 77 entries being rewritten and were corrected there.
+- **The last Russian «Полный доступ к диску» is gone.** Six strings already
+  read «Доступ к диску», the name the row itself carries on macOS 27; one
+  changelog entry still carried the older, longer invention, and it was one of
+  the 77.
+- **34 French changelog values used a breaking space where macOS uses an
+  unbreakable one** — before `:`, `;`, `?` and `!`, and inside guillemets.
+  `PunctuationIsTerminologyTests` counted 63 such spaces in the new French and
+  refused the suite; every one was in a line this change had just written, and
+  none anywhere else in the file.
+- **A path in Login Items & Extensions no longer compresses to one unreadable
+  glyph.** At the 540 pt pane the detail line's path could shrink to a single
+  character — still drawn, still read to VoiceOver, saying nothing.
+  `LeftoverPathFloor` gives it a floor (an ellipsis plus its own last path
+  component, at the detail line's size); below the floor the line falls back
+  to the reason alone, through `ViewThatFits`, and `LfStr.Detail` now composes
+  the bare clause and its separator so «· Points at…» never opens a line with
+  nothing in front of it. The floor is measured once per line rather than
+  twice, a follow-up read alongside the fix.
+
+### Internal
+- **Two Uninstaller commands nobody sent are gone**
+  (`UninstallerCommand.uninstall`, `.systemExtensions`), confirmed by grep and
+  by the compiler: with both cases removed, the package and every test target
+  still build, so no caller was hiding behind either name. `uninstall` was
+  `trashPaths` with the app bundle appended — a second door to a removal the
+  review screen's own plan already puts the bundle first for — and
+  `.systemExtensions` was the only route to a folded reader in
+  `SystemExtensionCLI` that answered the same empty result for «no
+  extensions» and «the utility did not run»; every reader left behind can now
+  say which. The engine's switch stays exhaustive with no `default`, so a
+  tenth case still fails the build rather than falling through silently. A
+  follow-up quality pass moved `[.refuse, .nothing]` — the two answers
+  `TransportClient.request` folds to one nil — onto `UninstallerWire.Answer`,
+  the one place that fact belongs, out of two test files that had each
+  spelled it separately.
+- **The name-matched leftover exemption is now measured, not just present.**
+  A survey had read `if !c.matchedByName` as a stray ownership check; with it
+  removed, 240 engine tests still passed, because nothing exercised the guess
+  a folder named after an app's display name (no bundle id to check) is
+  entitled to. Three cases now close that hole — the rule refusing a name it
+  cannot read, the scan keeping the guess unticked and badged, the log not
+  blaming another app for it — and all three fail with the exemption gone.
+
 ## [0.10.0-dev.9] — 2026-08-16
 
 > A short round. `dev.8` was built and installed at the owner's at 05:34
@@ -23,19 +127,6 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   no window, and a forged shortcut arrives as plain typing — a letter into
   the person's document. The item is recognised by the names macOS itself
   gives it, in every system language, read from AppKit's own table.
-- **The keyboard indicator's menu reads like the system input menu.** Every
-  layout row wears its badge, the emoji door says «Show Emoji & Symbols» with
-  the palette's own icon (both built from the system's own tables — the
-  `Show palette class IM` template around AppKit's name, so ru reads
-  «Показать панель «Эмодзи и символы»»), a new «Show Input Source Name»
-  switch puts the layout's name in the menu bar in place of the badge, and
-  the settings door takes the system's exact spelling in all eight languages
-  (four rows had been retranslated by hand). One system item is deliberately
-  absent: every route to opening the Keyboard Viewer was measured dead on
-  macOS 27 — selecting `com.apple.inputmethod.AssistiveControl` answers
-  success and draws nothing, launching the input-method bundle is refused by
-  launchd, and the system's own menu item exists only while the system
-  indicator is on. A door that opens nothing is worse than none.
 
 ### Changed
 - **Every module's log category is its id, read from the engine's constant.**
@@ -205,45 +296,6 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   says «no phases running» instead of calling the whole app idle; and
   Homebrew's long operations, searches and descriptions each run under a
   named phase, so the next log can name or exonerate the module.
-
-### Changed
-- **The in-app changelog is written for the person using Helm, not for the
-  person who fixed it.** 77 of its 213 entries were rewritten and the other
-  136 were left exactly as they were, which is the point: a key here is also
-  the English that seven `.strings` files answer, so rewriting a compliant
-  entry costs eight files and buys nothing. What came out of the 77 was the
-  mechanism — threads, log lines, caches, render passes, the internal parts by
-  name — all of which this file already carried and still does; what stayed is
-  what is different for the reader, plus at most one clause of what used to
-  happen instead. Three entries admitted in so many words that they were not
-  for the reader; the worst opened «a few things fixed that you're unlikely to
-  ever notice directly» and ran 82 words, of which the one user-facing fact —
-  a removal could follow a symbolic link out of the folder you confirmed — now
-  stands alone in 21. Rewritten entries are a quarter shorter, 3434 words to
-  2565. `ChangelogData.swift` carries the rule in its own doc comment, so the
-  next entry is written to it rather than against it.
-- **The rule that a changelog entry naming a control is a claim caught one on
-  the way in.** A rewrite called the Autopilot history «Autopilot's report»,
-  a name the app does not use anywhere: the section is headed «Last 30 days»
-  and the app's own phrase for it is `AutopilotStrings.historyTampered`'s «the
-  record of what Autopilot did». The entry was reverted to the original text
-  rather than shipped in eight languages under an invented name.
-
-### Fixed
-- **Four translations called Autopilot something else.** `zh` wrote 自动驾驶 —
-  autonomous driving — in four changelog entries while the module's own name
-  key reads 自动整理; `es` wrote «Autopiloto» against «Piloto automático» and
-  `pt` «Piloto Automático» against «Piloto automático», in the same four. All
-  four sat inside the 77 entries being rewritten and were corrected there.
-- **The last Russian «Полный доступ к диску» is gone.** Six strings already
-  read «Доступ к диску», the name the row itself carries on macOS 27; one
-  changelog entry still carried the older, longer invention, and it was one of
-  the 77.
-- **34 French changelog values used a breaking space where macOS uses an
-  unbreakable one** — before `:`, `;`, `?` and `!`, and inside guillemets.
-  `PunctuationIsTerminologyTests` counted 63 such spaces in the new French and
-  refused the suite; every one was in a line this change had just written, and
-  none anywhere else in the file.
 
 ## [0.10.0-dev.7] — 2026-08-15
 

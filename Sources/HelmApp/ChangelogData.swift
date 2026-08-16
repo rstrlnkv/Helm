@@ -147,6 +147,8 @@ enum Changelog {
                 ChangeItem(kind: .fix, text: L("The buttons of Login Items & Extensions keep their whole words in every language, the report of a partly failed removal stops squeezing the list beneath it, and nothing on the page can start new work while a removal is running.")),
                 ChangeItem(kind: .new, text: L("Keyboard's menu-bar indicator now offers “Emoji & Symbols”: one press opens the system emoji palette in the app you are typing in — Helm stays in the background, and your focus does not move.")),
                 ChangeItem(kind: .fix, text: L("Keep Awake's lines in the log now file under the module filter's own name for it. Lines written before this build keep the old spelling, so the module menu may list two words for one module until the log rolls over — that is the old lines draining away, not a defect.")),
+                ChangeItem(kind: .upd, text: L("Keyboard's menu-bar indicator now matches the system's own input menu: each layout row shows its badge, a new “Show Input Source Name” switch puts the layout's name in the menu bar instead of the badge, and “Open Keyboard Settings…” takes you straight to the pane that opens.")),
+                ChangeItem(kind: .fix, text: L("The Uninstaller's Apps tab now says why it's empty — a search that matched nothing, a Mac with no more apps to show, or a list still being read — instead of showing the same blank screen for all three.")),
             ]),
             ChangelogEntry(version: "0.9.0", date: "2026-08-09", items: [
                 ChangeItem(kind: .new, text: L("Widgets are moved by hand. Pick one up and it follows the pointer; the others slide aside; letting go sets it down where the space opened.")),
