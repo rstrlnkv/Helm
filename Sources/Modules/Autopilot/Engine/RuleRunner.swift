@@ -104,7 +104,7 @@ struct RuleRunner: Sendable {
     /// re-runs an idempotent action on an unchanged file.
     private func note(_ path: String, _ plan: RulePlan, _ stamp: RuleStamp?) {
         guard stamp?.stamp(path, by: plan.rule.id) != true else { return }
-        HelmLog.shared.warn("autopilot", "could not stamp \(Redact.path(path))")
+        HelmLog.shared.warn(AutopilotEngine.moduleID, "could not stamp \(Redact.path(path))")
     }
 
     private func perform(_ plan: RulePlan, at path: String,

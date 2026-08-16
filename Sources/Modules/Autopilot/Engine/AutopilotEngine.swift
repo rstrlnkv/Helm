@@ -14,6 +14,19 @@ import HelmRuntime
 /// - **Run now**, because someone who has just written a rule wants to see it
 ///   work rather than wait an hour to find out it does not.
 public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
+    /// This module's id, and the only place it is written down.
+    ///
+    /// It is the `module.autopilot.*` prefix of every setting this module has
+    /// ever saved and the category its log lines file under.
+    /// `AutopilotDescriptor.id` is built from this rather than repeating it,
+    /// the direction the descriptors already carry their command enums, so the
+    /// two spellings are one. **The string itself never changes** — it names
+    /// stored settings already on people's machines. The keychain service and
+    /// the stamp attribute stay `com.helm.autopilot*` literals on purpose:
+    /// each is deployed under its own name and documents why it must not
+    /// follow a rename (`RuleKeychain`, `RuleStamp`).
+    public static let moduleID = "autopilot"
+
     private let localTransport: LocalTransport
     public let transport: EngineTransport
     private let store: NamespacedStore
@@ -153,9 +166,9 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         }
         guard changed else { return }
         if started {
-            HelmLog.shared.info("autopilot", "watching \(count) folder(s)")
+            HelmLog.shared.info(Self.moduleID, "watching \(count) folder(s)")
         } else if count > 0 {
-            HelmLog.shared.error("autopilot",
+            HelmLog.shared.error(Self.moduleID,
                                  "nothing is watching \(count) folder(s); "
                                  + "only the hourly sweep will act")
         }
@@ -218,7 +231,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         guard !records.isEmpty else { return }
         let stored = store.data(ActionHistory.storeKey)
         guard rules.historyIsHelms(stored) else {
-            HelmLog.shared.error("autopilot",
+            HelmLog.shared.error(Self.moduleID,
                                  "the stored history was not written by Helm, so \(records.count) "
                                  + "records were not added to it and none of it can be put back")
             return
@@ -311,10 +324,10 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         let report = UndoReport(lines: lines)
         if !report.restored.isEmpty {
             write(history)
-            HelmLog.shared.info("autopilot", "put back \(report.restored.count) of \(lines.count)")
+            HelmLog.shared.info(Self.moduleID, "put back \(report.restored.count) of \(lines.count)")
         }
         if !report.notPutBack.isEmpty {
-            HelmLog.shared.warn("autopilot", "could not put back \(report.notPutBack.count)")
+            HelmLog.shared.warn(Self.moduleID, "could not put back \(report.notPutBack.count)")
         }
         return report
     }
@@ -363,10 +376,10 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
                 break
             case let .refused(reason):
                 refused += 1
-                HelmLog.shared.warn("autopilot", "refused \(Redact.path(path)): \(reason.rawValue)")
+                HelmLog.shared.warn(Self.moduleID, "refused \(Redact.path(path)): \(reason.rawValue)")
             case let .failed(description):
                 failed += 1
-                HelmLog.shared.warn("autopilot", "failed \(Redact.path(path)): \(description)")
+                HelmLog.shared.warn(Self.moduleID, "failed \(Redact.path(path)): \(description)")
             }
         }
         remember(records)
@@ -374,13 +387,13 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
                                  acted: acted, refused: refused, failed: failed,
                                  folder: reading.state)
         if let line = SweepAnnouncement.line(for: report, manual: manual) {
-            HelmLog.shared.info("autopilot", line)
+            HelmLog.shared.info(Self.moduleID, line)
         }
         // A folder that could not be read at all is the one thing a sweep of
         // nothing has to say out loud: unattended, hourly, and otherwise
         // indistinguishable from a folder where there was nothing to do.
         if reading.state != .read {
-            HelmLog.shared.warn("autopilot",
+            HelmLog.shared.warn(Self.moduleID,
                                 "\(Redact.path(folder.path)) could not be swept: \(reading.state.rawValue)")
         }
         return report
@@ -467,7 +480,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
                 }
                 self.remember(records)
                 if acted > 0 {
-                    HelmLog.shared.info("autopilot",
+                    HelmLog.shared.info(Self.moduleID,
                                         "watcher acted on \(acted) of \(Set(changed).count)")
                 }
                 // Only a batch that did something is read: events coalesce to
@@ -498,22 +511,22 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     private func note(_ outcome: RuleOutcome, at path: String) -> Bool {
         switch outcome {
         case let .moved(destination):
-            HelmLog.shared.info("autopilot",
+            HelmLog.shared.info(Self.moduleID,
                                 "moved \(Redact.path(path)) → \(Redact.path(destination))")
         case let .renamed(name):
-            HelmLog.shared.info("autopilot",
+            HelmLog.shared.info(Self.moduleID,
                                 "renamed \(Redact.path(path)) → \(Redact.path(name))")
         case let .tagged(tag):
-            HelmLog.shared.info("autopilot", "tagged \(Redact.path(path)): \(tag)")
+            HelmLog.shared.info(Self.moduleID, "tagged \(Redact.path(path)): \(tag)")
         case .trashed:
-            HelmLog.shared.info("autopilot", "trashed \(Redact.path(path))")
+            HelmLog.shared.info(Self.moduleID, "trashed \(Redact.path(path))")
         case .alreadyDone:
             return false
         case let .refused(reason):
-            HelmLog.shared.warn("autopilot", "refused \(Redact.path(path)): \(reason.rawValue)")
+            HelmLog.shared.warn(Self.moduleID, "refused \(Redact.path(path)): \(reason.rawValue)")
             return false
         case let .failed(description):
-            HelmLog.shared.warn("autopilot", "failed \(Redact.path(path)): \(description)")
+            HelmLog.shared.warn(Self.moduleID, "failed \(Redact.path(path)): \(description)")
             return false
         }
         return true

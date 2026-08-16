@@ -27,7 +27,7 @@ private let ruleKeychainService = "com.helm.autopilot"
 public final class KeychainRuleKey: RuleKeyPort {
     private let keychain = KeychainSealKey(service: ruleKeychainService,
                                             account: "rule-seal",
-                                            category: "autopilot")
+                                            category: AutopilotEngine.moduleID)
 
     public init() {}
 
@@ -79,7 +79,7 @@ public final class KeychainRuleSequence: RuleSequencePort {
         case errSecItemNotFound:
             return .absent
         default:
-            HelmLog.shared.warn("autopilot",
+            HelmLog.shared.warn(AutopilotEngine.moduleID,
                                 "could not read which rule set is the current one: "
                                 + HelmFailure.osStatus(status))
             return .unavailable
@@ -103,12 +103,12 @@ public final class KeychainRuleSequence: RuleSequencePort {
             attributes[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
             let added = SecItemAdd(attributes as CFDictionary, nil)
             guard added != errSecSuccess else { return true }
-            HelmLog.shared.warn("autopilot",
+            HelmLog.shared.warn(AutopilotEngine.moduleID,
                                 "could not start counting rule sets: "
                                 + HelmFailure.osStatus(added))
             return false
         default:
-            HelmLog.shared.warn("autopilot",
+            HelmLog.shared.warn(AutopilotEngine.moduleID,
                                 "could not record which rule set is the current one: "
                                 + HelmFailure.osStatus(updated))
             return false

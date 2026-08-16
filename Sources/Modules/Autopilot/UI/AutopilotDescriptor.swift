@@ -5,7 +5,7 @@ import Module_Autopilot_Engine
 import SwiftUI
 
 @MainActor public final class AutopilotDescriptor: ModuleDescriptor {
-    public static let id = ModuleID("autopilot")
+    public static let id = ModuleID(AutopilotEngine.moduleID)
     /// **The one module that has something to hand over on a first launch.**
     /// Every other one either works the moment it is switched on or waits for a
     /// gesture; this one does nothing at all until somebody writes a rule, and a

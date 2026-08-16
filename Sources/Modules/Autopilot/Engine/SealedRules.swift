@@ -134,7 +134,7 @@ final class SealedRules: @unchecked Sendable {
             break
         case .adopt:
             seal(data, key)
-            HelmLog.shared.info("autopilot", "sealed the rules that were already here")
+            HelmLog.shared.info(AutopilotEngine.moduleID, "sealed the rules that were already here")
         case .broken:
             refusing(.tampered)
             return []
@@ -170,7 +170,7 @@ final class SealedRules: @unchecked Sendable {
         // refusing: the next launch would read them as somebody else's and
         // throw away work the person had just done.
         guard let key = resolvedKey() else {
-            HelmLog.shared.error("autopilot",
+            HelmLog.shared.error(AutopilotEngine.moduleID,
                                  "could not seal \(folders.count) folders, so they were not saved")
             return false
         }
@@ -181,7 +181,7 @@ final class SealedRules: @unchecked Sendable {
         // destroying the thing it exists to protect.
         guard RuleSeal.mayOverwrite(storedJudgement(key)) else {
             refusing(.tampered)
-            HelmLog.shared.error("autopilot",
+            HelmLog.shared.error(AutopilotEngine.moduleID,
                                  "the stored rules were not written by Helm, so \(folders.count) " +
                                  "folders were not saved over them")
             return false
@@ -207,7 +207,7 @@ final class SealedRules: @unchecked Sendable {
             refusing(nil)
             return true
         } catch {
-            HelmLog.shared.failure("autopilot", "could not save \(folders.count) folders", error)
+            HelmLog.shared.failure(AutopilotEngine.moduleID, "could not save \(folders.count) folders", error)
             return false
         }
     }
@@ -235,7 +235,7 @@ final class SealedRules: @unchecked Sendable {
     @discardableResult
     func seal(history payload: Data) -> Bool {
         guard let key = resolvedKey() else {
-            HelmLog.shared.warn("autopilot", "could not seal the history, so it was not written")
+            HelmLog.shared.warn(AutopilotEngine.moduleID, "could not seal the history, so it was not written")
             return false
         }
         store.set(SettingSeal.mac(for: payload, key: key.material), for: RuleSeal.historyKey)
@@ -298,7 +298,7 @@ final class SealedRules: @unchecked Sendable {
         store.set(RuleSeal.mac(for: data, seq: next, key: key.material), for: RuleSeal.storeKey)
         store.set(Int(next), for: RuleSeal.sequenceKey)
         guard sequence.raise(to: next) else {
-            HelmLog.shared.warn("autopilot",
+            HelmLog.shared.warn(AutopilotEngine.moduleID,
                                 "could not record which rule set is the current one; "
                                 + "an older one could be put back without Helm noticing")
             return
@@ -338,7 +338,7 @@ final class SealedRules: @unchecked Sendable {
             // it is what stops the discarded set being put back afterwards.
             store.set(nil, for: RuleSeal.sequenceKey)
             refusing(nil)
-            HelmLog.shared.info("autopilot", "the rules that did not match their seal were discarded")
+            HelmLog.shared.info(AutopilotEngine.moduleID, "the rules that did not match their seal were discarded")
         }
     }
     // MARK: - Whose rules these are
@@ -377,12 +377,12 @@ final class SealedRules: @unchecked Sendable {
         case .tampered:
             // No path, no folder, no rule name: the log ships to strangers, and
             // this line is about the rule set as a whole in any case.
-            HelmLog.shared.error("autopilot",
+            HelmLog.shared.error(AutopilotEngine.moduleID,
                                  line ??
                                  "the stored rules do not match their seal — something other " +
                                  "than Helm wrote them; none of them will run")
         case .noKey:
-            HelmLog.shared.error("autopilot",
+            HelmLog.shared.error(AutopilotEngine.moduleID,
                                  "the key the rules are sealed with is unavailable; " +
                                  "no rules will run until it can be read")
         case .none:
