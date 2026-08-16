@@ -5,6 +5,152 @@ All notable changes to Helm are documented here. The format is loosely based on
 global changes, MINOR = new/polished features, PATCH = fixes. Every release
 bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 
+## [0.10.0-dev.8] — 2026-08-16
+
+> Waves 3 and 4. The Keyboard batch (undo puts the layout back, and the module
+> speaks), the Homebrew batch (a hang has a deadline, an operation can be
+> stopped, an orphaned brew reports itself), Duplicates gains a stoppable
+> removal and loses three dishonest figures, Autopilot's rule editing stops
+> being dangerous, and an app-wide memory fix: pages in closed windows stop
+> rendering — and stop keeping — every update. `dev.7` is installed at the
+> owner's, so everything that landed after it ships on this version.
+
+### Added
+- **Removing duplicates shows its progress and obeys Stop.** The removal
+  reports how far it has come, and a «Stop removal» button ends it where it
+  is — what already moved stays moved, and the report says «Removal stopped —
+  nothing more was moved», never a failure. The engine names the phase while
+  it runs, and one removal now verifies its surviving copy once, not once per
+  copy removed.
+- **A Homebrew operation can be stopped**, and an exit the person asked for
+  reports itself as «Stopped», not as a failure. A brew child that outlives
+  Helm — the app quit mid-operation — is reported once at the next launch, in
+  the console, in all eight languages («Helm quit while … was still running.
+  It may not have finished»), instead of never being mentioned again.
+- **Keyboard speaks.** With VoiceOver on, a conversion is announced with its
+  words, the pause at a password field is announced at both of its edges, and
+  a revoked Accessibility grant is announced rather than discovered. The
+  exceptions editor is named and hinted, the hero and each abbreviation row
+  read as one element, the shortcut recorder speaks its combination in words
+  and says that recording began — and the note under the tap key warns that a
+  solo Control tap is also VoiceOver's own pause-speech gesture, for either
+  Control.
+
+### Fixed
+- **A half-written Autopilot condition keeps the switch off.** «Name begins
+  with ‹nothing›» with the action set to Trash was a working match-everything
+  rule three gestures from a blank editor. `RuleCondition.isComplete` is asked
+  by the switch, the store and a hand-edited plist alike; the rule is kept,
+  switched off, for the person to finish.
+- **«New rule» is a draft until Done.** The rule used to be written into the
+  folder — saved and re-sealed — before the editor even opened, so Cancel
+  meant «keep an Untitled rule». `addRule` now returns a draft and touches
+  nothing; Done appends a rule the folder has never seen, the same way a
+  preset's draft saves.
+- **A pass the engine just made reaches the open page.** Autopilot acts on a
+  timer and on folder events with nobody pressing anything, and the page read
+  the history exactly once — an hour of unattended work drew as nothing until
+  the page was reopened. The engine announces a landed write now and the open
+  page re-reads.
+- **A person's «Run now» is always answered in the diagnostics log**, even
+  when it found nothing to do — a manual run that swept and acted on nothing
+  and one that never started were the same silence before. The line also
+  names its trigger; the hourly sentinel keeps its condition.
+- **A folder Autopilot may never watch is refused in its own words.**
+  `WatchScope` refuses by position — ~/Library, a whole volume, outside the
+  home — and no grant changes a position; both refusal sites shared the Full
+  Disk Access sentence, so the person was sent to System Settings to earn the
+  same refusal twice.
+- **A watcher event no longer parks Autopilot behind a keychain prompt.** The
+  folder-event callback read the sealed rules on the watcher's own serial
+  queue, and that read can wait on a modal keychain dialog — one stalled read
+  stopped watching, stopping and starting alike. The read happens inside the
+  engine's dispatch now, like the sweep timer's.
+- **Autopilot reads a folder without paying for what no rule can use** — a
+  plain folder is no longer weighed by a full recursive walk when the only
+  reader of bytes refuses directories, the walk prunes at its depth limit
+  instead of filtering entry by entry, and the editor no longer runs its dry
+  run twice on every opening.
+- **An unreadable pair is its own refusal in Duplicates.** A pair the engine
+  could not read — a permission withdrawn, a volume gone, the *survivor*
+  unreadable — was told «this is not where Helm found it» about a file that is
+  exactly there. It has its own sentence in eight languages now, on the
+  finished path and the stopped one alike — and every refusal on this page
+  closes with «Search again», the control the page actually has, instead of
+  the «Scan again» of the modules the sentence was written for.
+- **A new duplicates search drops the old report, and a stopped search says
+  so.** A refusal from the last removal could stand under a different folder's
+  results; and Stop landed on «Pick a folder» with the folder still chosen —
+  «Search stopped — the folder was not read to the end» now.
+- **The group header says what a group is worth, not what it multiplies to.**
+  «21 MB × 2» invited multiplying into space a clone pair will not give back;
+  the header now carries the group's freeable figure through the same
+  clone-honest tail the total uses. And that corrected total itself was a
+  toolbar item behind a 1040 pt threshold first reached at a window wider
+  than the app ever opens — it is drawn at every width now.
+- **Undoing a Keyboard conversion puts the layout back too.** The undo
+  restored the text and left the input source switched, so the next word came
+  out wrong again — the record carries the from/to pair now and the undo takes
+  back both halves or neither.
+- **A word fixed by selecting it counts into the day's figure.**
+- **A conversion the person rejected stays on the page**, marked undone, so
+  «Never this word» is reachable exactly when it was just earned — and the
+  never-list now outranks the forced gesture too, in both forms of the word.
+- **The Keyboard page says «Paused» while the pause is happening.** A
+  secure-input episode reports both its edges now, not at the next
+  conversion — and when all three switches are off, the page says the module
+  will do nothing rather than looking configured.
+- **The Keyboard intro and undo hint name the actual binding** — built from
+  it, so the sentence cannot drift — and with no key and no chord set they
+  stop promising an undo that does not exist. The denied message no longer
+  claims the menu-bar indicator needs the Accessibility grant.
+- **A brew that stops answering no longer hangs Homebrew.** Queries are cut
+  at 90 s (warm queries measure 0.3–0.6 s, a cold `outdated` 7.4 s), the view
+  model keeps its last answer instead of publishing an empty page, a press
+  with brew vanished reports a named failure instead of returning bare, and a
+  failed operation re-asks the lists it may have half-changed. The `outdated`
+  parse also stopped holding a second copy of its payload — 79–80 MB at peak
+  for a 13 MB answer, 50–51 MB now.
+- **Homebrew's status line no longer invents «Updates: 0»** about a question
+  never asked — until the updates list has actually loaded, the line carries
+  only the two counts that arrived. And an erased search shows the prompt
+  again instead of pinning old hits.
+- **Helm's memory no longer grows while its windows are closed.** The panel's
+  tree is mounted from first open to quit and the settings window survives
+  closing, so every engine emission re-rendered pages nobody could see — and
+  each render kept 2.5–6 KB in SwiftUI's attribute graph, unfreeable while
+  the tree lives (~3 MB/h at rest on the installed build). A page in a
+  non-visible window is unmounted now and rebuilt from current state when the
+  window returns — 7–33 ms, against a render bill that never ended. Alongside
+  it, a VPN poll that learned nothing says nothing: a hanging tunnel used to
+  put up to 26 identical payloads on the wire behind one connect, each one
+  re-rendering every mounted page all night.
+- **Six-digit counts read grouped, in every language** — the Disk ring said
+  «1499308 files», the confirmation said «Переместить в Корзину 12345
+  файлов»; every counted noun and every drawn count now groups its digits the
+  way the language does.
+- **The log's filter row keeps to one line in every language.** Follow is a
+  glyph now — the word lives in its tooltip and its accessibility label, the
+  bezel's fill says the state — because three words beside a picker that is
+  its own labels' width was a row only some languages could afford.
+- **The Uninstaller's Review button at zero says only its verb** instead of
+  «Review 0», and the drag-to-Trash offer window is sized to its footer as
+  well as its header — both footer verbs truncated in German, Spanish and
+  French at the old width.
+- **The panel's module tick tells VoiceOver which module it admits** — it was
+  read as a bare «button». Autopilot's folder switch is announced as «Watch
+  this folder, ‹path›» instead of the path twice and the verb never; its
+  return banner wraps its buttons instead of compressing the one carrying the
+  person's own rule name to two letters; a refusal sentence in the history
+  truncates at its tail, keeping its opening; Duplicates' basket row and
+  group-header buttons survive narrow panes whole; and Disk's start hint
+  aligns with the column it heads.
+- **Diagnostics claims only what it knows.** Every deleting module names its
+  trash phase beside its memory reading now, not only Disk; the memory line
+  says «no phases running» instead of calling the whole app idle; and
+  Homebrew's long operations, searches and descriptions each run under a
+  named phase, so the next log can name or exonerate the module.
+
 ## [0.10.0-dev.7] — 2026-08-15
 
 > A large, self-contained wave: Autopilot can put back what it moved, renamed,
@@ -107,6 +253,14 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   appear**, instead of only being visible; the welcome tour now moves
   VoiceOver's focus to each step's own content as the step changes, rather
   than leaving it on the Next button while the words behind it change.
+- **The settings window no longer waits on the keychain before its first
+  frame** *(shipped in this build, recorded after the fact)*. The settings
+  page read a sealed setting inside the window's own state initialisation, so
+  a keychain dialog could stand in front of a window that had drawn nothing.
+  The seal's key is fetched from a detached task now (`SettingGuard.warmKey`)
+  and cached (`SealKeyCache`) — the key is cached; the verdict never is. A
+  dev-lane defect: settings sealing first shipped in `0.10.0-dev.2`, so no
+  beta build ever had it.
 
 ## [0.10.0-dev.6] — 2026-08-12
 
