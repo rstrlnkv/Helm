@@ -39,10 +39,10 @@ struct LeftoverDetailLine: View {
 
     var body: some View {
         if let clause = detail.clause, let reason = detail.reason {
+            let floor = LeftoverPathFloor.width(of: detail.path)
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 0) {
-                    path.frame(minWidth: LeftoverPathFloor.width(of: detail.path),
-                               idealWidth: LeftoverPathFloor.width(of: detail.path),
+                    path.frame(minWidth: floor, idealWidth: floor,
                                alignment: .leading)
                     // The room is taken here first; what is left is the
                     // path's. Its separator travels with it, or the

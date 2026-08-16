@@ -6,17 +6,18 @@ import XCTest
 import Module_Leftovers_Engine
 @testable import Module_Leftovers_UI
 
-/// The detail line under a dead login item holds two halves — the path, and the
-/// reason with `layoutPriority(1)` — and the reason is the half that keeps its
-/// words. At the 540 pt pane a real reason left the path **one glyph**: «/»,
-/// still drawn, still read to VoiceOver, saying nothing.
+/// The detail line under a dead login item holds two halves, and the reason is
+/// the half that keeps its words. At the 540 pt pane a real reason left the
+/// path **one glyph**: «/», still drawn, still read to VoiceOver, saying
+/// nothing.
 ///
 /// The rule this file guards: a path that cannot show at least its own last
 /// component is not information, and is not drawn at all — the row falls back
-/// to the reason alone. Three claims, the way
+/// to the reason alone, bare of its separator. The claims split the way
 /// `TheReturnBannerFoldsItsButtonsTests` splits them: the hazard is real in
-/// every language, the floor is the name and not a glyph, and the shipped row
-/// is built of the parts measured here.
+/// every language, the floor is the name and not a glyph, the narrow pane is
+/// measured drawing no path, and the shipped row is built of the parts
+/// measured here.
 final class AnUnreadablePathIsNotDrawnTests: XCTestCase {
 
     /// A login item the way the defect arrives: a helper agent whose plist
