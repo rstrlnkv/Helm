@@ -394,22 +394,11 @@ struct LeftoversSettingsPage: View {
                 // missing file: …», which is the strongest evidence a login item is
                 // dead, never drew at all in either. The path is cut in the middle,
                 // where both its ends carry meaning, and the clause is whole.
+                // And below its floor the path gives way entirely — the line
+                // and the floor it reads are `LeftoverDetailLine`'s.
                 if let detail = LfStr.detail(for: item) {
-                    HStack(spacing: 0) {
-                        Text(detail.path)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                        if let reason = detail.reason {
-                            // The room is taken here first; what is left is the
-                            // path's. Its separator travels with it, or the
-                            // truncation eats the dot and leaves the sentence
-                            // hanging off the end of a path.
-                            Text(reason)
-                                .lineLimit(1)
-                                .layoutPriority(1)
-                        }
-                    }
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                    LeftoverDetailLine(detail: detail)
+                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                 }
             }
             // A name, up to two badges and a line saying where the file is and

@@ -323,7 +323,11 @@ public enum HelmText {
     public static let rowTitle = Font.system(size: 13)
     /// The line under a row's name, and the note under a group: secondary copy
     /// that a reader takes in after the thing it describes.
-    public static let rowDetail = Font.system(size: 11)
+    public static let rowDetail = Font.system(size: rowDetailSize)
+    /// The number `rowDetail` is built from, for the one place that measures
+    /// AppKit text at the detail size (`LeftoverPathFloor`) — a size spelled
+    /// twice across that boundary would drift with nothing being an error.
+    public static let rowDetailSize: CGFloat = 11
     /// The heading over a card, on the page rather than inside it.
     public static let sectionHeading = Font.system(size: 13, weight: .semibold)
     /// The heading of a group *inside* a list — the sidebar's own section

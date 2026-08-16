@@ -283,22 +283,36 @@ enum LfStr {
     /// defect one character shorter.
     struct Detail: Equatable, Sendable {
         /// Where the file is: the half that gives way, and is cut in the middle,
-        /// because both its ends carry meaning.
+        /// because both its ends carry meaning — or is not drawn at all, below
+        /// the width of its own last component (`LeftoverPathFloor`).
         let path: String
-        /// What is wrong with it, separator and all — or nil where nothing is.
-        /// Drawn whole: it is the strongest evidence a login item is dead.
-        let reason: String?
+        /// What is wrong with it, bare — the fallback where the path is not
+        /// drawn: with nothing in front of it, a separator would dangle at the
+        /// line's *start*, the defect below one character earlier.
+        let clause: String?
+        /// The language-shaped mark between the halves. It belongs to the
+        /// reason, not the path: left on the path it is the first thing the
+        /// truncation eats, and a middle dot with nothing after it is the same
+        /// defect one character shorter.
+        let separator: String
+        /// What is wrong with it, separator and all — drawn whole beside the
+        /// path: it is the strongest evidence a login item is dead. Computed,
+        /// so the two spellings of the reason cannot drift apart.
+        var reason: String? { clause.map { separator + $0 } }
     }
 
     static func detail(for item: StaleItem,
                        language: AppLanguage = AppLanguage.current) -> Detail? {
         guard item.kind != .systemExtension else { return nil }
-        guard let target = item.missingTarget else { return Detail(path: item.path, reason: nil) }
         // Written as the one difference rather than as eight rows of which seven
         // are identical: only Japanese changes the mark.
         let dot = language == .ja ? "・" : " · "
+        guard let target = item.missingTarget else {
+            return Detail(path: item.path, clause: nil, separator: dot)
+        }
         return Detail(path: item.path,
-                      reason: "\(dot)\(missingTarget(target, language: language))")
+                      clause: missingTarget(target, language: language),
+                      separator: dot)
     }
     static func missingTarget(_ path: String,
                               language: AppLanguage = AppLanguage.current) -> String {

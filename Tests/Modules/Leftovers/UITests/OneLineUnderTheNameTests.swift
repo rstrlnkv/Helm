@@ -32,7 +32,9 @@ final class OneLineUnderTheNameTests: XCTestCase {
     func testARowWithNothingWrongWithItSaysWhereItIs() throws {
         let item = agent("plain")
 
-        XCTAssertEqual(LfStr.detail(for: item), LfStr.Detail(path: item.path, reason: nil))
+        let detail = try XCTUnwrap(LfStr.detail(for: item))
+        XCTAssertEqual(detail.path, item.path)
+        XCTAssertNil(detail.reason)
     }
 
     /// And a row that points at a file that has gone says both facts on one line,
