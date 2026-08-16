@@ -276,6 +276,7 @@ extension ModulePageRender {
             wire.answers(LeftoversCommand.trash, with: leftoversRemoval)
         case DuplicatesEngine.moduleID:
             wire.answers(DuplicatesCommand.find, with: duplicateFindings)
+            wire.answers(DuplicatesCommand.trash, with: duplicatesRemoval)
         default:
             break
         }
@@ -484,15 +485,19 @@ extension ModulePageRender {
 
     // MARK: - Duplicates
 
-    /// The two presses this page needs before it holds anything: **Search, then
-    /// Mark every extra copy.**
+    /// The three presses this page needs before it holds everything: **Search,
+    /// then Mark every extra copy, then Move to Trash** — the leftovers press
+    /// above, one press longer, because the report of a partly-failed removal
+    /// is the row no reading had ever drawn.
     ///
-    /// Through the model's own calls, like the leftovers press above: `search()`
-    /// is the button, and the loop after it is `settle`'s job done early — the
-    /// reply changes the tree, so the marking must land on the page that holds
-    /// it. `basketAllExtras()` is what fills the basket bar, and it goes through
-    /// the same scope gate the per-group button uses, so the count the bar draws
-    /// is one the engine would honour.
+    /// Through the model's own calls: `search()` is the button, and the loop
+    /// after it is `settle`'s job done early — the reply changes the tree, so
+    /// the marking must land on the page that holds it. `basketAllExtras()` is
+    /// what fills the basket bar, and it goes through the same scope gate the
+    /// per-group button uses, so the count the bar draws is one the engine
+    /// would honour. `emptyBasket()` sends exactly that basket and writes the
+    /// report off `duplicatesRemoval`; what refused stays ticked, so the bar
+    /// is still drawn under the report it now shares the foot with.
     ///
     /// `DuplicatesViewModel.shared(vm:store:)` is the seam because it is what the
     /// page's own `init` calls — keyed to this `ModuleViewModel`, so this is the
@@ -511,6 +516,7 @@ extension ModulePageRender {
         dvm.search()
         for _ in 0..<20_000 where dvm.phase == .searching { await Task.yield() }
         dvm.basketAllExtras()
+        await dvm.emptyBasket()
     }
 
     /// A folder nobody has, the `fixtureHome` rule one section down: the page
@@ -569,6 +575,30 @@ extension ModulePageRender {
     /// nothing answered, like everything else on this screen.
     private static let duplicateFindings = DuplicateFindings(
         groups: duplicateGroups, unreadable: 3, librariesSkipped: 1)
+
+    /// The removal the third press is answered with: one file moved, three
+    /// refused — the leftovers batch's shape, because the report of a
+    /// partly-failed removal is the row that had rendered in no ratchet.
+    ///
+    /// **Every group keeps at least two copies.** The model prunes groups from
+    /// this reply and drops any that thin to one copy, so a reply that took a
+    /// pair's extra would take the pair's header and its clone note with it —
+    /// the removed path is the trio's first extra, and the trio survives as a
+    /// pair. What refused stays in the basket, which is what keeps the basket
+    /// bar drawn under the report.
+    ///
+    /// The reasons are three the *module* can produce, each a different row:
+    /// a folder the grant does not cover, a file somebody else owns, and the
+    /// refusal this engine alone adds — the pair no longer matches the scan.
+    static let duplicatesRemoval = DuplicateRemoval(
+        removed: [duplicateGroups[1].copies[1].path],
+        refused: [HelmTrash.Refusal(path: duplicateGroups[0].copies[1].path,
+                                    reason: .needsFullDiskAccess),
+                  HelmTrash.Refusal(path: duplicateGroups[1].copies[2].path,
+                                    reason: .noPermission),
+                  HelmTrash.Refusal(path: duplicateGroups[2].copies[1].path,
+                                    reason: .changedSinceScan)],
+        freedBytes: 3_400_000)
 }
 
 /// A transport that answers exactly what a fixture gave it, and nothing else.

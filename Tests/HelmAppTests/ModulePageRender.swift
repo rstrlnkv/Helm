@@ -529,10 +529,11 @@ extension ModulePageRender.Page {
     /// answer is «did anything render at all». Duplicates has a fixture now, and
     /// its 8 stays anyway, because the folder is the **store's** half: this table
     /// is what a page draws wired but unseeded, which for that module is still
-    /// the empty state. The configured page — seed, wire and press together — is
-    /// **228 layers, three consecutive runs, measured 2026-08-15**, and
-    /// `TheWireFixtureReachesThePagesTests` carries its floor of 200 beside the
-    /// structural guards, the way the leftovers press is guarded.
+    /// the empty state. The configured page — seed, wire and three presses,
+    /// ending on the removal — is **238 layers, nine readings across three suite
+    /// launches, measured 2026-08-16** (228 while the press stopped short of the
+    /// removal), and `TheWireFixtureReachesThePagesTests` carries its floor of
+    /// 210 beside the structural guards, the way the leftovers press is guarded.
     ///
     /// **Leftovers is 210 from 2026-08-13, and it has been 24 and 28 in one day.**
     /// 24 was the invitation before it gained a verb; 28 the same invitation with the

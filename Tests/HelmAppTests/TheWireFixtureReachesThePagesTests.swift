@@ -211,29 +211,31 @@ final class TheWireFixtureReachesThePagesTests: XCTestCase {
     /// **Duplicates' screen takes all three parts, and this render had none of
     /// them.** The folder is the store's (`configured` writes what `chooseFolder`
     /// would have), the findings are the wire's (`find` is a reply, and the page
-    /// draws nothing it was not answered), and the search is a press (`opened`
-    /// searches and then marks every extra copy, which is what fills the basket
-    /// bar) — so until today the groups, the group headers and the basket bar
-    /// were measured by nothing at the app level, and `floors["duplicates"]`
-    /// was the empty state's 8.
+    /// draws nothing it was not answered), and the presses are `opened`'s —
+    /// search, mark every extra copy, and then **Move to Trash**, the way the
+    /// leftovers press ends: until that third press the report of a
+    /// partly-failed removal was rendered by nothing at the app level, and
+    /// before the first two `floors["duplicates"]` was the empty state's 8.
     ///
     /// The model's own state is asserted before any count: `shared(vm:)` keys
     /// its cache on the view model, so a model here that never searched is not
     /// the model the render drew, and every layer number after that would be
     /// about a different page.
-    func testTheWiredDuplicatesPageDrawsTheGroupsAndTheBasket() {
+    func testTheWiredDuplicatesPageDrawsTheGroupsTheBasketAndTheReport() {
         let silent = page(for: duplicates, wiredBy: ModulePageRender.unwired)
         let wired = page(for: duplicates, seededBy: ModulePageRender.configured,
                          wiredBy: ModulePageRender.answering)
         // The empty state's own measured floor — what `floors["duplicates"]`
         // carried while there was no fixture.
         silent.assertItDrewSomething(atLeast: 8)
-        // The whole fixture reads **228 layers, three consecutive runs, measured
-        // 2026-08-15** — three groups of headers and rows, the toolbar, the
-        // policy row, the excuses note and the basket bar. 200 is a group's
-        // worth under that; losing any of the three parts fails it by ~220,
-        // because the page without them is the empty state's 9.
-        wired.assertItDrewSomething(atLeast: 200)
+        // The whole fixture reads **238 layers in light, nine readings across
+        // three suite launches, measured 2026-08-16** — three groups of headers
+        // and rows (one row taken by the removal), the toolbar, the policy row,
+        // the excuses note, the basket bar and the report of a partly-failed
+        // removal above it. 210 is a group's worth under that; losing any of
+        // the parts fails it by ~200, because the page without them is the
+        // empty state's 9.
+        wired.assertItDrewSomething(atLeast: 210)
 
         let model = DuplicatesViewModel.shared(
             vm: wired.viewModel,
@@ -245,18 +247,32 @@ final class TheWireFixtureReachesThePagesTests: XCTestCase {
             answers are not reaching the model — and the render below is still the \
             empty state.
             """)
-        XCTAssertEqual(model.groups.count, ModulePageRender.duplicateGroups.count,
-                       "the findings reached the model as \(model.groups.count) groups")
-        XCTAssertEqual(model.basket.count, ModulePageRender.duplicateExtras, """
-            «mark every extra copy» ticked \(model.basket.count) of \
-            \(ModulePageRender.duplicateExtras) extras, so the basket bar under the list \
-            is drawn by no reading of this render.
+        XCTAssertEqual(model.groups.count, ModulePageRender.duplicateGroups.count, """
+            the findings reached the model as \(model.groups.count) groups — the removal \
+            reply is written so every group keeps at least two copies, because a group \
+            that thins to one is dropped and the render loses a header nobody meant to \
+            take away.
+            """)
+        // The removal's own arithmetic, read off the reply the wire answers
+        // rather than written out again beside it.
+        XCTAssertEqual(model.removedCount, ModulePageRender.duplicatesRemoval.removed.count,
+                       "the removal report's heading is drawn by no reading of this render")
+        XCTAssertEqual(model.failures.count, ModulePageRender.duplicatesRemoval.refused.count, """
+            the removal report is \(model.failures.count) refusals rather than \
+            \(ModulePageRender.duplicatesRemoval.refused.count), so the refusal rows above \
+            the basket bar are drawn by no reading of this render.
+            """)
+        XCTAssertEqual(model.basket.count,
+                       ModulePageRender.duplicateExtras
+                           - ModulePageRender.duplicatesRemoval.removed.count, """
+            the basket holds \(model.basket.count) — what refused stays ticked and what \
+            moved is dropped, so a different count means the reply pruned the wrong side.
             """)
         XCTAssertGreaterThan(wired.layers.count, silent.layers.count + 100, """
             duplicates draws \(wired.layers.count) layers with the whole fixture and \
             \(silent.layers.count) empty — a list of \(ModulePageRender.duplicateGroups.count) \
-            groups with headers, rows and the basket bar is worth well over a hundred, so \
-            the fixture is reaching the model and not the screen.
+            groups with headers, rows, the basket bar and the removal report is worth well \
+            over a hundred, so the fixture is reaching the model and not the screen.
             """)
     }
 
