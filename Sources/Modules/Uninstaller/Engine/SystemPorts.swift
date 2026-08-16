@@ -285,5 +285,4 @@ public struct SystemExtensionLister: SystemExtensionPort {
     public func activeExtensionHosts() -> Set<String>? {
         SystemExtensionCLI.hostIdentifiersIfAnswered()
     }
-    public func installedExtensions() -> [SystemExtensionInfo] { SystemExtensionCLI.installed() }
 }

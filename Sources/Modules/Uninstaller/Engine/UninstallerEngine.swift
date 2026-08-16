@@ -255,16 +255,6 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                             + "candidate(s) belonging to another installed app")
     }
 
-    /// Trashes the selected leftover paths plus the app bundle. Sizes are read
-    /// before trashing; only successfully trashed items count toward freedBytes.
-    public func uninstall(appPath: String, paths: [String]) async throws -> UninstallResult {
-        var targets = paths
-        if !targets.contains(appPath) { targets.append(appPath) }
-        // Through the same door as every other batch, so the running app is asked
-        // about here too rather than in whichever caller remembered to.
-        return await removeBatch(targets, quittingRunningApps: false)
-    }
-
     public func quit(bundleID: String, force: Bool = false) { running.quit(bundleID: bundleID, force: force) }
 
     /// Waits for a quit to have actually happened.
@@ -645,14 +635,6 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                 else { return Data() }
                 let res = try await self.scan(bundleID: r.bundleID, appPath: r.appPath, appName: r.appName)
                 return EngineReply.encode(res, for: cmd)
-            case .uninstall:
-                guard let r = EngineReply.decode(UninstallRequest.self, from: cmd)
-                else { return Data() }
-                let res = try await self.uninstall(appPath: r.appPath, paths: r.paths)
-                return EngineReply.encode(res, for: cmd)
-            case .systemExtensions:
-                let list = await offTheCooperativePool { self.extensions.installedExtensions() }
-                return EngineReply.encode(list, for: cmd)
             case .scanOrphans:
                 return EngineReply.encode(await self.scanOrphans(), for: cmd)
             case .backgroundScan:

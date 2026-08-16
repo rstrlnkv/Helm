@@ -204,7 +204,7 @@ final class TrashBatchFollowsTheSharedRulesTests: XCTestCase {
         let app = try appBundle(bytes: 100_000)
         let weights = [cache, plist, app].map(weight)
 
-        let result = try await engine().uninstall(appPath: app, paths: [cache, plist])
+        let result = await engine().trashPaths([cache, plist, app])
 
         XCTAssertEqual(Set(trash.moved), [cache, plist, app])
         XCTAssertTrue(result.failures.isEmpty)
@@ -225,7 +225,7 @@ final class TrashBatchFollowsTheSharedRulesTests: XCTestCase {
                                        trash: FakeTrash(failing: [locked]),
                                        running: FakeRunning(running: []))
 
-        let result = try await engine.uninstall(appPath: app, paths: [cache, locked])
+        let result = await engine.trashPaths([cache, locked, app])
 
         XCTAssertEqual(result.failed, [locked])
         XCTAssertEqual(result.freedBytes, moved.reduce(0, +))

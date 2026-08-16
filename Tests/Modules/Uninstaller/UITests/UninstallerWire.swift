@@ -131,11 +131,10 @@ final class UninstallerWire: EngineTransport, @unchecked Sendable {
                                              appPath: request?.appPath ?? "",
                                              appSizeBytes: 0, leftovers: [],
                                              runningNow: false))
-        case .trashPaths, .uninstall: return .json(removal)
+        case .trashPaths: return .json(removal)
         case .trashedAppLeftovers: return .json(offers)
         case .watchingTrash: return .json(watch)
         case .scanOrphans: return .json([OrphanGroup]())
-        case .systemExtensions: return .json([SystemExtensionInfo]())
         // No reply at all is what the engine itself answers to these.
         case .backgroundScan, .quit, .setWatchingTrash, .dismissTrashedApp: return .empty
         }

@@ -6,15 +6,22 @@ import Foundation
 /// is a build error rather than a command that silently answers nothing. A
 /// string this enum cannot parse is a command the engine does not know, refused
 /// once at the door instead of falling through a `default` nobody re-reads.
+///
+/// **Two cases were removed on 2026-08-16 rather than kept as room to grow.**
+/// `uninstall` was `trashPaths` with the app bundle appended — a second door to
+/// the same removal, skipping the plan that already appends it
+/// (`UninstallPlan.paths`) — and `systemExtensions` was the only route to a port
+/// member and a `systemextensionsctl` call that no screen ever drew. Nothing in
+/// `Sources` sent either, and `periphery` cannot see it: a `case` a switch
+/// handles is a case that is used. A command kept for a screen that may be
+/// written one day is a command nobody deletes and nobody notices rotting.
 public enum UninstallerCommand: String, CaseIterable, Sendable {
     case listApps
     case appSizes
     case scan
     case scanOrphans
-    case uninstall
     case trashPaths
     case quit
-    case systemExtensions
     /// Shares its spelling with `ScanCommand.backgroundScan`, which is what
     /// the coordinator sends — pinned by a test, because the two live in
     /// different targets and neither compiler sees both.
@@ -50,7 +57,8 @@ public enum UninstallerEvent: String, Sendable {
 // `UninstallReq` and `QuitReq` were `private struct`s inside the engine and
 // `private struct`s again inside the view model, matched to each other by field
 // name across a JSON hop with no compiler between them — the same pair found in
-// Keep Awake, Homebrew and VPN.
+// Keep Awake, Homebrew and VPN. Two of the three are below; `UninstallReq`'s
+// successor went with the `uninstall` command it was the payload of.
 //
 // Here it had already gone wrong. The engine's `QuitReq` read
 // `let force: Bool?` and the view model's read `let force: Bool`: one side had
@@ -69,16 +77,6 @@ public struct UninstallScanRequest: Codable, Sendable {
         self.bundleID = bundleID
         self.appPath = appPath
         self.appName = appName
-    }
-}
-
-/// The bundle to remove and everything chosen to go with it.
-struct UninstallRequest: Codable, Sendable {
-    let appPath: String
-    let paths: [String]
-    public init(appPath: String, paths: [String]) {
-        self.appPath = appPath
-        self.paths = paths
     }
 }
 

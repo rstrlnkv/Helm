@@ -90,6 +90,12 @@ public protocol TrashPort: Sendable {
 
 /// System extensions block their host app from being moved; the UI needs to
 /// name that reason instead of reporting a bare failure.
+///
+/// One question, because that is the one this module asks. It also had
+/// `installedExtensions()` — the whole list, reached only by a `systemExtensions`
+/// command no screen ever sent, so a port member and a `systemextensionsctl`
+/// call existed for nobody. The list is still read where somebody draws it:
+/// Leftovers has its own port for it, and answers `nil` when the tool did not.
 public protocol SystemExtensionPort: Sendable {
     /// Bundle ids that currently have an activated system extension, or `nil` when
     /// `systemextensionsctl` did not answer at all.
@@ -103,7 +109,6 @@ public protocol SystemExtensionPort: Sendable {
     /// non-optionals, which is the `PowerSource.supply()` lesson one module over:
     /// the repair belongs on the port.
     func activeExtensionHosts() -> Set<String>?
-    func installedExtensions() -> [SystemExtensionInfo]
 }
 
 public protocol RunningAppsPort: Sendable {
@@ -120,5 +125,4 @@ public protocol RunningAppsPort: Sendable {
 public struct NoSystemExtensions: SystemExtensionPort {
     public init() {}
     public func activeExtensionHosts() -> Set<String>? { [] }
-    public func installedExtensions() -> [SystemExtensionInfo] { [] }
 }

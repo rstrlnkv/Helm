@@ -71,26 +71,15 @@ public enum SystemExtensionCLI {
         return result.status == 0 ? result.output : nil
     }
 
-    /// The folded reading: empty for a tool that did not answer.
-    ///
-    /// **This used to say that the two readings «lead to the same screen» for the
-    /// callers that count rather than judge, and named the uninstaller's host
-    /// lookup as one of them. They do not.** An absent reading made
-    /// `hasSystemExtension` answer false, so a bundle macOS had refused *because
-    /// its extension is live* was classified from the bare Cocoa code and the
-    /// failure sheet lost its «Open Extensions…» button — the one thing on that
-    /// screen anybody can act on. That lookup takes `hostIdentifiersIfAnswered()`
-    /// now, and this is left with one caller, `installed()`.
-    ///
-    /// A caller that decides whether something may be *deleted*, or draws a control
-    /// on the strength of what is loaded, takes `listing()`,
-    /// `installedIfAnswered()` or `hostIdentifiersIfAnswered()` — every one of
-    /// which can say that the tool was not there.
-    public static func listOutput() -> String { listing() ?? "" }
-
-    public static func installed() -> [SystemExtensionInfo] {
-        SystemExtensionParser.parse(listOutput())
-    }
+    // **The folded pair is gone, and nothing here can lose the tool's silence
+    // again.** `listOutput()` answered `""` for a tool that did not run and
+    // `installed()` parsed that into an empty list, so «no extensions on this
+    // Mac» and «the tool was not there» arrived as one value. The last reader of
+    // either was the uninstaller's `systemExtensions` command, which no screen
+    // ever sent; it went on 2026-08-16 and took them with it. Every reader below
+    // can say that the tool did not answer, which is what a caller deciding
+    // whether something may be deleted — or drawing a control on the strength of
+    // what is loaded — has to be able to tell.
 
     /// The list, or `nil` when `systemextensionsctl` itself did not answer.
     public static func installedIfAnswered() -> [SystemExtensionInfo]? {

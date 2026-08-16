@@ -39,7 +39,6 @@ private final class ToolThatMaySayNothing: SystemExtensionPort, @unchecked Senda
         }
     }
 
-    func installedExtensions() -> [SystemExtensionInfo] { [] }
 }
 
 /// Refuses every bundle, so the classification is what the test is about.
