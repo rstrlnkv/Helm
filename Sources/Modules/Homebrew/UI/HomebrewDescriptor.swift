@@ -6,7 +6,7 @@ import HelmUI
 import Module_Homebrew_Engine
 
 @MainActor public final class HomebrewDescriptor: ModuleDescriptor {
-    public static let id = ModuleID("homebrew")
+    public static let id = ModuleID(HomebrewEngine.moduleID)
     public static var metadata: ModuleMetadata { ModuleMetadata(
         id: id, name: HbStr.moduleName, summary: HbStr.summary,
         sfSymbol: "shippingbox", permissions: []) }

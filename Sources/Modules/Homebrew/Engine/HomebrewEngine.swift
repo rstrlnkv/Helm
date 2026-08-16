@@ -14,6 +14,16 @@ import HelmContract
 /// -n` prints usage and never searches, while `brew search --formula -- -n`
 /// searches for `-n`.
 public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
+    /// This module's id, and the only place it is written down.
+    ///
+    /// It is the `module.homebrew.*` prefix of every setting this module has
+    /// ever saved and the category its log lines file under.
+    /// `HomebrewDescriptor.id` is built from this rather than repeating it,
+    /// the direction the descriptors already carry their command enums, so the
+    /// two spellings are one. **The string itself never changes** — it names
+    /// stored settings already on people's machines.
+    public static let moduleID = "homebrew"
+
     private let locator: BrewLocator
     private let runner: ProcessRunner
     private let privileged: PrivilegedRunner
@@ -61,7 +71,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         let interrupted = running ? nil : marker.take()
         if let interrupted {
             // The label names a package; the log carries counts and outcomes.
-            HelmLog.shared.warn("homebrew",
+            HelmLog.shared.warn(Self.moduleID,
                                 "an operation was still running when Helm last quit "
                                 + "(\(Redact.pkg(interrupted)))")
         }
@@ -73,7 +83,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// machine (`ATimedOutQueryIsANamedRefusalTests`).
     private func timedOut(_ status: Int32, query: String) -> Bool {
         guard status == HelmProcess.timedOutStatus else { return false }
-        HelmLog.shared.warn("homebrew", "\(query) timed out — keeping the last answer")
+        HelmLog.shared.warn(Self.moduleID, "\(query) timed out — keeping the last answer")
         return true
     }
 
@@ -100,7 +110,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         guard let brew = locator.brewPath() else {
             // The module's whole surface is empty in this case, and until now
             // nothing said why: a person reads "no packages" as a clean machine.
-            HelmLog.shared.warn("homebrew", "brew is not installed — nothing to list")
+            HelmLog.shared.warn(Self.moduleID, "brew is not installed — nothing to list")
             return []
         }
         let packages = HelmActivity.phase("homebrew.listInstalled") { () -> [BrewPackage]? in
@@ -114,7 +124,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         HelmLog.shared.memory("homebrew.listInstalled")
         // Counts, never names: a list of installed packages is a description of
         // somebody's machine and their work.
-        if let packages { HelmLog.shared.info("homebrew", "installed: \(packages.count)") }
+        if let packages { HelmLog.shared.info(Self.moduleID, "installed: \(packages.count)") }
         return packages
     }
 
@@ -129,7 +139,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             return BrewOutdatedParser.parse(result.stdout)
         }
         HelmLog.shared.memory("homebrew.outdated")
-        if let parsed { HelmLog.shared.info("homebrew", "outdated: \(parsed.count)") }
+        if let parsed { HelmLog.shared.info(Self.moduleID, "outdated: \(parsed.count)") }
         return parsed
     }
 
@@ -249,7 +259,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         guard busy, let handle = current else { lock.unlock(); return }
         stopRequested = true
         lock.unlock()
-        HelmLog.shared.info("homebrew", "stop requested")
+        HelmLog.shared.info(Self.moduleID, "stop requested")
         handle.terminate()
     }
 
@@ -272,12 +282,12 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
                        label: String, launch: String, args: [String],
                        env: [String: String] = [:]) {
         guard beginBusy() else {
-            HelmLog.shared.warn("homebrew", "\(verb) refused: another operation is running")
+            HelmLog.shared.warn(Self.moduleID, "\(verb) refused: another operation is running")
             emitLog("⚠︎ Another operation is already running.")
             return
         }
         let what = subject.map { "\(verb) \(Redact.pkg($0))" } ?? verb
-        HelmLog.shared.info("homebrew", "\(what) started")
+        HelmLog.shared.info(Self.moduleID, "\(what) started")
         emitState(OpState(phase: .running, label: label))
         // The child survives a quit; whatever is still written at the next
         // launch is the report (`AQuitMidOperationIsReportedTests`).
@@ -288,11 +298,11 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
                           guard let self else { return }
                           let stopped = self.concludeOp(code: code, label: label)
                           if code == 0 {
-                              HelmLog.shared.info("homebrew", "\(what) done")
+                              HelmLog.shared.info(Self.moduleID, "\(what) done")
                           } else if stopped {
-                              HelmLog.shared.info("homebrew", "\(what) stopped on request, exit \(code)")
+                              HelmLog.shared.info(Self.moduleID, "\(what) stopped on request, exit \(code)")
                           } else {
-                              HelmLog.shared.warn("homebrew", "\(what) failed, exit \(code)")
+                              HelmLog.shared.warn(Self.moduleID, "\(what) failed, exit \(code)")
                           }
                       })
         adopt(handle)
@@ -314,7 +324,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// is an outcome and it is named (`AVanishedBrewIsNotASilentPressTests`).
     private func brewOrRefuse(verb: String, label: String) -> String? {
         if let brew = locator.brewPath() { return brew }
-        HelmLog.shared.warn("homebrew", "\(verb) refused: brew is no longer installed")
+        HelmLog.shared.warn(Self.moduleID, "\(verb) refused: brew is no longer installed")
         emitState(OpState(phase: .failed, label: label, reason: .brewMissing))
         return nil
     }
