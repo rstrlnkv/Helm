@@ -109,7 +109,7 @@ public final class DynamicStoreNetworkWatch: NetworkWatchPort {
         }
         guard let store = SCDynamicStoreCreate(nil, "com.helm.vpn" as CFString,
                                                callback, &context) else {
-            HelmLog.shared.warn("vpn", "no network-state session; the connection list "
+            HelmLog.shared.warn(VPNEngine.moduleID, "no network-state session; the connection list "
                 + "will only be re-read when Helm is asked")
             return
         }
@@ -130,7 +130,7 @@ public final class DynamicStoreNetworkWatch: NetworkWatchPort {
         ]
         guard SCDynamicStoreSetNotificationKeys(store, keys as CFArray, patterns as CFArray),
               SCDynamicStoreSetDispatchQueue(store, queue) else {
-            HelmLog.shared.warn("vpn", "could not subscribe to network-state changes")
+            HelmLog.shared.warn(VPNEngine.moduleID, "could not subscribe to network-state changes")
             return
         }
         lock.lock()
@@ -198,7 +198,7 @@ public final class KeychainCredentials: VPNCredentialsPort {
         PrivateFile.directory(at: marker.deletingLastPathComponent())
         PrivateFile.write(Data(), to: marker)
         if status == errSecSuccess {
-            HelmLog.shared.info("vpn", "cleared the old credential cache")
+            HelmLog.shared.info(VPNEngine.moduleID, "cleared the old credential cache")
         }
     }
 
@@ -229,7 +229,7 @@ public final class KeychainCredentials: VPNCredentialsPort {
         // one. Logged with the status, because «no cached credentials» sent the
         // last investigation looking for a purge that had run hours earlier.
         if case .refused(let status) = cached {
-            HelmLog.shared.warn("vpn", "the cached credential for \(Redact.vpn(name)) is not "
+            HelmLog.shared.warn(VPNEngine.moduleID, "the cached credential for \(Redact.vpn(name)) is not "
                 + "readable by this build: \(HelmFailure.osStatus(status))")
         }
 
@@ -239,7 +239,7 @@ public final class KeychainCredentials: VPNCredentialsPort {
         // configuration and *when*, so it gets the cache or nothing; the prompt
         // waits for somebody pressing Connect.
         guard promptingAllowed else {
-            HelmLog.shared.info("vpn", "no cached credentials for \(Redact.vpn(name)); an "
+            HelmLog.shared.info(VPNEngine.moduleID, "no cached credentials for \(Redact.vpn(name)); an "
                 + "automatic connect does not ask the System keychain")
             return .behindAPrompt
         }
@@ -357,7 +357,7 @@ public final class KeychainCredentials: VPNCredentialsPort {
         attributes[kSecValueData as String] = Data(value.utf8)
         let status = SecItemAdd(attributes as CFDictionary, nil)
         if status != errSecSuccess {
-            HelmLog.shared.warn("vpn", "could not cache credentials: \(HelmFailure.osStatus(status))")
+            HelmLog.shared.warn(VPNEngine.moduleID, "could not cache credentials: \(HelmFailure.osStatus(status))")
         }
     }
 

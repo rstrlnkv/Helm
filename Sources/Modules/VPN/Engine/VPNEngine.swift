@@ -8,40 +8,21 @@ import HelmRuntime
 /// Orchestrates VPN connect/disconnect/toggle (via `scutil --nc`) and per-app
 /// auto-connect (VPNAutoConnectCore) against the injected ports. `activate()`/
 /// `deactivate()` are the MODULE lifecycle (host enables/disables the module);
-/// they also start/stop the auto-connect app observation.
-/// Where the engine does work that blocks.
-///
-/// `scutil` is a subprocess: on this machine a single `--nc list` measured
-/// 16 ms, and a connect polls it up to 25 times. All of that used to run on the
-/// main thread — through `DispatchQueue.main.asyncAfter` for the poll, and
-/// through AppKit's own running-applications notification for auto-connect,
-/// which also reaches a synchronous keychain read that can put a modal panel on
-/// screen. Tests drive the engine synchronously and assert on the commands it
-/// issued, so they run it `.inline`; the app runs it `.background`.
-public enum VPNWorkQueue: Sendable {
-    case background
-    case inline
-
-    fileprivate func run(_ block: @escaping @Sendable () -> Void) {
-        switch self {
-        case .inline: block()
-        case .background: Self.queue.async(execute: block)
-        }
-    }
-
-    fileprivate func run(after seconds: Double, _ block: @escaping @Sendable () -> Void) {
-        switch self {
-        case .inline: block()
-        case .background: Self.queue.asyncAfter(deadline: .now() + seconds, execute: block)
-        }
-    }
-
-    /// Serial: the engine's state is guarded by a lock, but the commands it
-    /// sends to `scutil` still have to arrive in the order they were asked for.
-    private static let queue = DispatchQueue(label: "helm.vpn", qos: .userInitiated)
-}
-
+/// they also start/stop the auto-connect app observation. Blocking work runs
+/// on `VPNWorkQueue`, which says why it exists.
 public final class VPNEngine: ModuleEngine, @unchecked Sendable {
+    /// This module's id, and the only place it is written down.
+    ///
+    /// It is the `module.vpn.*` prefix of every setting this module has ever
+    /// saved and the category its log lines file under. `VPNDescriptor.id` is
+    /// built from this rather than repeating it, the direction the descriptors
+    /// already carry their command enums, so the two spellings are one. **The
+    /// string itself never changes** — it names stored settings already on
+    /// people's machines. The keychain service stays its `com.helm.vpn`
+    /// literal on purpose: it is deployed under its own name
+    /// (`KeychainCredentials`) and must not follow a rename.
+    public static let moduleID = "vpn"
+
     private let settings: VPNSettings
     private let runner: VPNRunnerPort
     private let credentials: VPNCredentialsPort?
@@ -189,7 +170,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             // nothing changed look identical from outside the process, and the
             // release process triages dev builds against the log. One line per
             // real network event, no names in it.
-            HelmLog.shared.info("vpn", "network state changed; re-reading")
+            HelmLog.shared.info(Self.moduleID, "network state changed; re-reading")
             self?.refresh()
         }
     }
@@ -220,7 +201,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         // Helm ever raised fell over at once. Keeping the last real answer is
         // the only honest response to not being told anything.
         guard VPNListParser.isReadable(output) else {
-            HelmLog.shared.warn("vpn", "connection list unreadable; keeping the last answer")
+            HelmLog.shared.warn(Self.moduleID, "connection list unreadable; keeping the last answer")
             return
         }
         let parsed = VPNListParser.parseList(output)
@@ -265,7 +246,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         // that when several go at once the last one written is the same on
         // every run.
         for name in dropped.sorted() {
-            HelmLog.shared.info("vpn", "automatic connection dropped: \(Redact.vpn(name))")
+            HelmLog.shared.info(Self.moduleID, "automatic connection dropped: \(Redact.vpn(name))")
             // `.dropped`, not `.disconnected`. Nobody asked for this one: the
             // network went, the server hung up, or somebody stopped it in
             // System Settings — and the person is now sending everything in
@@ -304,7 +285,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     }
 
     private func connectNow(_ name: String, auto: Bool) {
-        HelmLog.shared.info("vpn", "connect \(Redact.vpn(name))\(auto ? " (auto)" : "")")
+        HelmLog.shared.info(Self.moduleID, "connect \(Redact.vpn(name))\(auto ? " (auto)" : "")")
         // Read before anything is asked of the tool, so this is what was true
         // when the rule asked rather than what Helm has since written down.
         let alreadyUp = auto ? status(name).isUp : false
@@ -351,7 +332,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         case .nothingToSupply, .tryWithoutIt:
             break
         case .refuse:
-            HelmLog.shared.info("vpn", "no usable secret for \(Redact.vpn(name)) and a "
+            HelmLog.shared.info(Self.moduleID, "no usable secret for \(Redact.vpn(name)) and a "
                 + "rule may not ask for one; not attempted")
             // The one publication point, on the early return as well: a path that
             // skips it leaves the screen holding whatever it had.
@@ -402,7 +383,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     }
 
     private func disconnectNow(_ name: String, auto: Bool) {
-        HelmLog.shared.info("vpn", "disconnect \(Redact.vpn(name))\(auto ? " (auto)" : "")")
+        HelmLog.shared.info(Self.moduleID, "disconnect \(Redact.vpn(name))\(auto ? " (auto)" : "")")
         // Read before the books are touched, and mirror the connect side: a
         // teardown of a tunnel that is already down changes nothing, so
         // `scutil --nc stop` is a no-op and there is nothing to announce.
@@ -538,12 +519,12 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             let trail = self.connections.map { "\(Redact.vpn($0.name))=\($0.status)" }
                 .joined(separator: ", ")
             if Self.settled(self.connections, into: wanted, for: name) {
-                HelmLog.shared.info("vpn", "settled: " + trail)
+                HelmLog.shared.info(Self.moduleID, "settled: " + trail)
             } else if self.pollAttempts < self.maxPollAttempts {
                 self.pollAttempts += 1
                 self.pollUntilSettled(name, wanted)
             } else {
-                HelmLog.shared.warn("vpn", "\(Redact.vpn(name)) never reached \(wanted) after "
+                HelmLog.shared.warn(Self.moduleID, "\(Redact.vpn(name)) never reached \(wanted) after "
                     + "\(self.pollAttempts) polls: " + trail)
             }
         }
@@ -569,13 +550,13 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         case .accepted:
             lock.lock(); _lastFailure = nil; lock.unlock()
         case .noSuchService:
-            HelmLog.shared.warn("vpn", "\(verb.rawValue) \(Redact.vpn(name)): "
+            HelmLog.shared.warn(Self.moduleID, "\(verb.rawValue) \(Redact.vpn(name)): "
                 + "no such configuration")
             lock.lock()
             _lastFailure = VPNFailure(name: name, reason: .noSuchService, verb: verb)
             lock.unlock()
         case .refused(let text):
-            HelmLog.shared.warn("vpn", "\(verb.rawValue) \(Redact.vpn(name)) refused: \(text)")
+            HelmLog.shared.warn(Self.moduleID, "\(verb.rawValue) \(Redact.vpn(name)) refused: \(text)")
             lock.lock()
             _lastFailure = VPNFailure(name: name, reason: .refused, verb: verb)
             lock.unlock()
@@ -643,7 +624,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         guard let rule = core.rules[bundleID] else { return }
         let verdict = VPNRuleTrust.judge(rule: rule, running: apps.identity(of: bundleID))
         guard verdict == .act else {
-            HelmLog.shared.warn("vpn", "rule for \(Redact.app(bundleID)) did not fire: "
+            HelmLog.shared.warn(Self.moduleID, "rule for \(Redact.app(bundleID)) did not fire: "
                 + verdict.rawValue)
             return
         }
