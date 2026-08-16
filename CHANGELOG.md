@@ -206,6 +206,45 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   Homebrew's long operations, searches and descriptions each run under a
   named phase, so the next log can name or exonerate the module.
 
+### Changed
+- **The in-app changelog is written for the person using Helm, not for the
+  person who fixed it.** 77 of its 213 entries were rewritten and the other
+  136 were left exactly as they were, which is the point: a key here is also
+  the English that seven `.strings` files answer, so rewriting a compliant
+  entry costs eight files and buys nothing. What came out of the 77 was the
+  mechanism — threads, log lines, caches, render passes, the internal parts by
+  name — all of which this file already carried and still does; what stayed is
+  what is different for the reader, plus at most one clause of what used to
+  happen instead. Three entries admitted in so many words that they were not
+  for the reader; the worst opened «a few things fixed that you're unlikely to
+  ever notice directly» and ran 82 words, of which the one user-facing fact —
+  a removal could follow a symbolic link out of the folder you confirmed — now
+  stands alone in 21. Rewritten entries are a quarter shorter, 3434 words to
+  2565. `ChangelogData.swift` carries the rule in its own doc comment, so the
+  next entry is written to it rather than against it.
+- **The rule that a changelog entry naming a control is a claim caught one on
+  the way in.** A rewrite called the Autopilot history «Autopilot's report»,
+  a name the app does not use anywhere: the section is headed «Last 30 days»
+  and the app's own phrase for it is `AutopilotStrings.historyTampered`'s «the
+  record of what Autopilot did». The entry was reverted to the original text
+  rather than shipped in eight languages under an invented name.
+
+### Fixed
+- **Four translations called Autopilot something else.** `zh` wrote 自动驾驶 —
+  autonomous driving — in four changelog entries while the module's own name
+  key reads 自动整理; `es` wrote «Autopiloto» against «Piloto automático» and
+  `pt` «Piloto Automático» against «Piloto automático», in the same four. All
+  four sat inside the 77 entries being rewritten and were corrected there.
+- **The last Russian «Полный доступ к диску» is gone.** Six strings already
+  read «Доступ к диску», the name the row itself carries on macOS 27; one
+  changelog entry still carried the older, longer invention, and it was one of
+  the 77.
+- **34 French changelog values used a breaking space where macOS uses an
+  unbreakable one** — before `:`, `;`, `?` and `!`, and inside guillemets.
+  `PunctuationIsTerminologyTests` counted 63 such spaces in the new French and
+  refused the suite; every one was in a line this change had just written, and
+  none anywhere else in the file.
+
 ## [0.10.0-dev.7] — 2026-08-15
 
 > A large, self-contained wave: Autopilot can put back what it moved, renamed,
