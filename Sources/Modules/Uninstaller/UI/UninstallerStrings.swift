@@ -158,6 +158,30 @@ enum UnStr {
     /// («по названию», 名前一致), which is what an under-specified fragment does.
     /// The word this app already uses for the thing is a guess.
     static var matchedByName: String { L("guess") }
+    /// The message over an empty Apps tab, one per reason there is no list.
+    ///
+    /// Takes the language rather than reading `AppLanguage.current`: the suite
+    /// runs in whatever language this machine is set to, so a sentence checked
+    /// against `.current` is checked in one language eight times — and these
+    /// three are compared against each other, which is a check that cannot fail
+    /// when all three sides move together.
+    ///
+    /// Exhaustive over the enum, with no `default`: a fourth reason would
+    /// otherwise be drawn as one of these three, which is the defect
+    /// `AppsEmpty.Reason` exists for.
+    static func emptyMessage(_ nothing: AppsEmpty.Reason,
+                             language: AppLanguage = AppLanguage.current) -> String {
+        switch nothing {
+        // Not «No applications found.» — nothing was found because nothing was
+        // read, and the footer beside it already refuses that fold
+        // (`UninstallerViewModel.appCount`).
+        case .neverAnswered: return L("Helm could not read the list of applications.", language: language)
+        case .noApps: return L("No applications found.", language: language)
+        // A claim about the search field, which is on screen directly above this
+        // message — not about the Mac.
+        case .searchHidesAll: return L("No applications match this search.", language: language)
+        }
+    }
     static var openDiskAccess: String { L("Open Full Disk Access…") }
     /// `HelmUI`'s, because Leftovers' extension row draws the same label over the
     /// same call — it said «Manage…» there until the two were made one.

@@ -109,6 +109,7 @@
 "Helm cannot read this folder" = "Helm cannot read this folder";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings.";
 "Helm could not read it, or the copy that stays, so nothing was moved. Check that both can be opened and try again." = "Helm could not read it, or the copy that stays, so nothing was moved. Check that both can be opened and try again.";
+"Helm could not read the list of applications." = "Helm could not read the list of applications.";
 "Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm got no answer, so it does not know what moved. The list above shows where the files are now.";
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm got no answer, so it does not know what moved. The list above still shows where the files were before.";
 "Helm got no answer, so the list above is still from the previous scan." = "Helm got no answer, so the list above is still from the previous scan.";
@@ -325,6 +326,8 @@
 "No VPNs" = "No VPNs";
 "No abbreviations yet" = "No abbreviations yet";
 "No access" = "No access";
+"No applications found." = "No applications found.";
+"No applications match this search." = "No applications match this search.";
 "No duplicates here. Every large file under this folder is one of a kind." = "No duplicates here. Every large file under this folder is one of a kind.";
 "Photo and music libraries were not opened, so what is inside them was not compared." = "Photo and music libraries were not opened, so what is inside them was not compared.";
 "No extra files found." = "No extra files found.";

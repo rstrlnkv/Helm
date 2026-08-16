@@ -186,12 +186,30 @@ struct UninstallerSettingsPage: View {
 
     // MARK: - Step 1: pick apps
 
+    /// Why the list has no rows — and nil when it has some, which is what the
+    /// body branches on.
+    ///
+    /// **Not `filtered.isEmpty`.** The three ways this tab comes up empty want
+    /// three different sentences, and it drew the same empty inset `List` for all
+    /// of them: `AppsEmpty` holds the rule and says why there are three. The
+    /// «answered» half is the view model's own flag, the one the footer's count
+    /// reads, so the body cannot contradict the line under it.
+    ///
+    /// Internal rather than private, for the reason `statusLine` gives: which of
+    /// these three sentences stands over which state is the whole of the fix, and
+    /// a `body` is not somewhere a test can reach.
+    var appsEmpty: AppsEmpty.Reason? {
+        AppsEmpty.reason(answered: uvm.listAnswered, apps: apps.count, shown: filtered.count)
+    }
+
     private var pickStep: some View {
         VStack(spacing: 0) {
             if loading {
                 Spacer()
                 ProgressView().controlSize(.small)
                 Spacer()
+            } else if let nothing = appsEmpty {
+                emptyState(nothing)
             } else {
                 List {
                     ForEach(filtered) { app in
@@ -231,6 +249,30 @@ struct UninstallerSettingsPage: View {
                 .disabled(checked.isEmpty || uvm.scanning)
             }
             .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
+        }
+    }
+
+    /// The sentence over an empty list, and a verb only where there is one to
+    /// give.
+    ///
+    /// The split is `AppsEmpty.invites`, which is also the split
+    /// `HelmEmptyState`'s two initialisers draw along: a list nobody answered is
+    /// a dead end and gets the plate and the button, while «no applications» and
+    /// «nothing matches this search» are statements — one asking to repeat a
+    /// question just answered, the other to reload the Mac when the search field
+    /// that hid the rows is a few points above the message.
+    @ViewBuilder private func emptyState(_ nothing: AppsEmpty.Reason) -> some View {
+        if AppsEmpty.invites(nothing) {
+            // The toolbar's own icon for the toolbar's own act: the button and
+            // the round arrow above it ask for the same thing.
+            HelmEmptyState(symbol: "arrow.clockwise", tint: ModuleCategory.files.tint,
+                           message: UnStr.emptyMessage(nothing)) {
+                Button(UnStr.refreshList) { Task { await refreshApps() } }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(loading)
+            }
+        } else {
+            HelmEmptyState(message: UnStr.emptyMessage(nothing))
         }
     }
 

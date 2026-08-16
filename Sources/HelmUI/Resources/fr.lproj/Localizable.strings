@@ -109,6 +109,7 @@
 "Helm cannot read this folder" = "Helm ne peut pas lire ce dossier";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm connecte les configurations que macOS conserve — à la main, ou selon une règle à l’ouverture d’une app. Ajoutez-en une dans les Réglages Système.";
 "Helm could not read it, or the copy that stays, so nothing was moved. Check that both can be opened and try again." = "Helm n’a pas pu lire ce fichier, ou la copie conservée — rien n’a été déplacé. Vérifiez que les deux peuvent être ouverts et réessayez.";
+"Helm could not read the list of applications." = "Helm n’a pas pu lire la liste des apps.";
 "Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm n’a reçu aucune réponse et ne sait pas quels fichiers ont été déplacés. La liste ci-dessus montre où ils sont maintenant.";
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm n’a reçu aucune réponse et ne sait pas quels fichiers ont été déplacés. La liste ci-dessus montre encore où ils étaient avant.";
 "Helm got no answer, so the list above is still from the previous scan." = "Helm n’a reçu aucune réponse, la liste ci-dessus est donc encore celle de l’analyse précédente.";
@@ -325,6 +326,8 @@
 "No VPNs" = "Aucun VPN";
 "No abbreviations yet" = "Pas encore d’abréviations";
 "No access" = "Pas d’accès";
+"No applications found." = "Aucune app trouvée.";
+"No applications match this search." = "Aucune app ne correspond à cette recherche.";
 "No duplicates here. Every large file under this folder is one of a kind." = "Aucun doublon. Chaque gros fichier de ce dossier est unique.";
 "Photo and music libraries were not opened, so what is inside them was not compared." = "Les photothèques et bibliothèques musicales n’ont pas été ouvertes, leur contenu n’a donc pas été comparé.";
 "No extra files found." = "Aucun fichier supplémentaire trouvé.";

@@ -109,6 +109,7 @@
 "Helm cannot read this folder" = "Helm kann diesen Ordner nicht lesen";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm verbindet die Konfigurationen, die macOS verwaltet — von Hand oder nach einer Regel, wenn eine App startet. Neue legst du in den Systemeinstellungen an.";
 "Helm could not read it, or the copy that stays, so nothing was moved. Check that both can be opened and try again." = "Helm konnte es oder die verbleibende Kopie nicht lesen, es wurde also nichts verschoben. Prüfe, ob sich beide öffnen lassen, und versuche es erneut.";
+"Helm could not read the list of applications." = "Helm konnte die Liste der Apps nicht lesen.";
 "Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm hat keine Antwort erhalten und weiß nicht, welche Dateien verschoben wurden. Die Liste oben zeigt, wo sie jetzt sind.";
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm hat keine Antwort erhalten und weiß nicht, welche Dateien verschoben wurden. Die Liste oben zeigt weiterhin, wo die Dateien vorher lagen.";
 "Helm got no answer, so the list above is still from the previous scan." = "Helm hat keine Antwort erhalten, deshalb stammt die Liste oben noch vom vorherigen Scan.";
@@ -325,6 +326,8 @@
 "No VPNs" = "Keine VPNs";
 "No abbreviations yet" = "Noch keine Abkürzungen";
 "No access" = "Kein Zugriff";
+"No applications found." = "Keine Apps gefunden.";
+"No applications match this search." = "Keine App entspricht dieser Suche.";
 "No duplicates here. Every large file under this folder is one of a kind." = "Keine Duplikate. Jede große Datei in diesem Ordner gibt es genau einmal.";
 "Photo and music libraries were not opened, so what is inside them was not compared." = "Foto- und Musikmediatheken wurden nicht geöffnet, ihr Inhalt wurde daher nicht verglichen.";
 "No extra files found." = "Keine zusätzlichen Dateien gefunden.";

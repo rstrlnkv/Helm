@@ -109,6 +109,7 @@
 "Helm cannot read this folder" = "O Helm não consegue ler esta pasta";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "O Helm conecta as configurações que o macOS mantém — à mão ou por regra, quando um app abre. Adicione uma nos Ajustes do Sistema.";
 "Helm could not read it, or the copy that stays, so nothing was moved. Check that both can be opened and try again." = "O Helm não conseguiu lê-lo, ou a cópia que fica, então nada foi movido. Verifique se ambos podem ser abertos e tente de novo.";
+"Helm could not read the list of applications." = "O Helm não conseguiu ler a lista de apps.";
 "Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "O Helm não recebeu resposta e não sabe quais arquivos foram movidos. A lista acima mostra onde eles estão agora.";
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "O Helm não recebeu resposta e não sabe quais arquivos foram movidos. A lista acima ainda mostra onde os arquivos estavam antes.";
 "Helm got no answer, so the list above is still from the previous scan." = "O Helm não recebeu resposta, então a lista acima ainda é a do escaneamento anterior.";
@@ -325,6 +326,8 @@
 "No VPNs" = "Nenhuma VPN";
 "No abbreviations yet" = "Ainda sem abreviações";
 "No access" = "Sem acesso";
+"No applications found." = "Nenhum app encontrado.";
+"No applications match this search." = "Nenhum app corresponde a esta busca.";
 "No duplicates here. Every large file under this folder is one of a kind." = "Sem duplicatas. Cada arquivo grande nesta pasta é único.";
 "Photo and music libraries were not opened, so what is inside them was not compared." = "As fototecas e bibliotecas de música não foram abertas, portanto o conteúdo delas não foi comparado.";
 "No extra files found." = "Nenhum arquivo adicional encontrado.";

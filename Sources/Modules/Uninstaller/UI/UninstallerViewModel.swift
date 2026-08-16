@@ -33,6 +33,15 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
     /// button would.
     private var loadedApps = false
 
+    /// Whether the list has been answered at all, for the page to read.
+    ///
+    /// The same flag `appCount` folds, published rather than spelled a second
+    /// time: the body draws `AppsEmpty.reason(answered:apps:shown:)` and the
+    /// footer draws `UnStr.appsCount`, and two sources of "has anybody answered"
+    /// would drift into a page whose count says «Counting apps…» over a body
+    /// claiming the Mac holds no applications.
+    public var listAnswered: Bool { loadedApps }
+
     /// How many applications are installed, or nil while Helm does not know.
     ///
     /// The page's footer draws this through `UnStr.appsCount`, which already has a
@@ -41,7 +50,7 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
     /// Read from the flag rather than from `apps.isEmpty`, because a Mac with no
     /// applications on it is an answer and reads as «0 apps».
     public var appCount: Int? {
-        guard loadedApps, !loadingApps else { return nil }
+        guard listAnswered, !loadingApps else { return nil }
         return apps.count
     }
 

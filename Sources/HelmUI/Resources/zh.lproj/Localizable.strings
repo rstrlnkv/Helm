@@ -109,6 +109,7 @@
 "Helm cannot read this folder" = "Helm 无法读取此文件夹";
 "Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings." = "Helm 可以手动连接 macOS 保存的配置，也可以在应用启动时按规则连接。配置本身在“系统设置”中添加。";
 "Helm could not read it, or the copy that stays, so nothing was moved. Check that both can be opened and try again." = "Helm 无法读取它或保留的那份副本，因此没有移动任何内容。请确认两者都能打开，然后重试。";
+"Helm could not read the list of applications." = "Helm 无法读取应用列表。";
 "Helm got no answer, so it does not know what moved. The list above shows where the files are now." = "Helm 未收到回应，无法判断哪些文件已移动。上方列表显示它们现在的位置。";
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm 未收到回应，无法判断哪些文件已移动。上方列表显示的仍是移动前的位置。";
 "Helm got no answer, so the list above is still from the previous scan." = "Helm 未收到回应，上方列表仍是上次扫描的结果。";
@@ -325,6 +326,8 @@
 "No VPNs" = "无 VPN";
 "No abbreviations yet" = "还没有缩写";
 "No access" = "无访问权限";
+"No applications found." = "未找到应用。";
+"No applications match this search." = "没有与此搜索匹配的应用。";
 "No duplicates here. Every large file under this folder is one of a kind." = "没有重复文件。此文件夹下的每个大文件都只有一份。";
 "Photo and music libraries were not opened, so what is inside them was not compared." = "照片图库和音乐资料库未打开，因此其中的内容未参与比较。";
 "No extra files found." = "未找到附加文件。";
