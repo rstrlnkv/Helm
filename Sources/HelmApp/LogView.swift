@@ -137,6 +137,14 @@ struct LogView: View {
     /// asked for more than it has *compresses* its children rather than moving
     /// one down.
     ///
+    /// **Follow is a glyph now** (`LogFollowToggle`), which moved the fold's
+    /// frontier: the owner's screenshot showed Russian folding at panes the fix
+    /// above had declared wide enough, because a word beside a 403.5 pt picker
+    /// is a cost only some languages can pay. Without the word every language
+    /// keeps one line down to 645 — `testEveryLanguageKeepsOneLineAtTheNarrowestPane`
+    /// — and the fold below remains only for 539, where Russian's picker and
+    /// menu alone outrun the pane whatever Follow costs.
+    ///
     /// **The spacer's minimum is 0 and the fold is pinned left**, and both are
     /// about widths `ViewThatFits` reads rather than about how the row looks.
     ///
@@ -209,15 +217,8 @@ struct LogView: View {
         .fixedSize()
     }
 
-    /// A button rather than a checkbox: three bezelled controls read as one row,
-    /// and the Portuguese label wrapped to two lines inside a checkbox at the
-    /// minimum window.
     private var followToggle: some View {
-        Toggle(isOn: $following) {
-            Label(AppStr.logFollow, systemImage: "arrow.down.to.line")
-        }
-        .toggleStyle(.button)
-        .fixedSize()
+        LogFollowToggle(isOn: $following)
     }
 
     @ViewBuilder private var lines: some View {
@@ -380,5 +381,34 @@ struct LogView: View {
     private func refresh() {
         entries = source()
         hasStoredLog = storedLog()
+    }
+}
+
+/// Whether the page follows the tail. A glyph without its word: «Follow» made
+/// the filter row two lines in Russian at every pane — not only the narrow ones
+/// — so the word moved into the tooltip and the accessibility label, which is
+/// where a control's name lives when the screen shows it none.
+///
+/// A button rather than a checkbox: three bezelled controls read as one row,
+/// and the Portuguese label wrapped to two lines inside a checkbox at the
+/// minimum window. The bezel is also what says the state now — a button toggle
+/// draws its on state as a filled tint — and
+/// `TheFollowGlyphShowsItsStateTests` measures that the two states stay apart,
+/// because with the word gone the fill is the only thing on screen that
+/// answers «is it following».
+///
+/// Its own view rather than a computed property, so the two states can be
+/// rendered and compared without driving the whole page's timer.
+struct LogFollowToggle: View {
+    @Binding var isOn: Bool
+
+    var body: some View {
+        Toggle(isOn: $isOn) {
+            Image(systemName: "arrow.down.to.line")
+        }
+        .toggleStyle(.button)
+        .help(AppStr.logFollow)
+        .accessibilityLabel(AppStr.logFollow)
+        .fixedSize()
     }
 }

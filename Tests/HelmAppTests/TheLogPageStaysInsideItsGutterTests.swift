@@ -91,15 +91,18 @@ final class TheLogPageStaysInsideItsGutterTests: XCTestCase {
         }
     }
 
-    /// **The fold happened**, and this is the assertion that says the test above
-    /// is measuring a fix rather than a page that stopped drawing. Russian at
-    /// 645 pt is the one reading that overflowed, and it is the one row here that
-    /// is two lines tall.
-    func testTheRussianRowFoldsAtTheNarrowestPane() {
+    /// **The fold happened**, and this is the assertion that says the tests here
+    /// are measuring a fix rather than a page that stopped drawing. At 539 pt the
+    /// Russian row cannot be one line whatever Follow costs: the segmented picker
+    /// alone is 403.5 pt and the module menu 107, against the 499 the pane has —
+    /// so this is the one reading that is still two lines tall, and the one that
+    /// proves `filterRowHeight` can see a fold at all.
+    func testTheRussianRowFoldsAtTheNarrowestPaneWithTheWidestSidebar() {
         AppLanguage.override = .ru
 
-        XCTAssertGreaterThan(filterRowHeight(page(narrowest)), filterRowHeight(page(widest)) + 10,
-                             "the Russian filter row is the same height at 645 pt as at 810 — it "
+        XCTAssertGreaterThan(filterRowHeight(page(narrowestWithWidestSidebar)),
+                             filterRowHeight(page(widest)) + 10,
+                             "the Russian filter row is the same height at 539 pt as at 810 — it "
                              + "did not fold, so whatever keeps it inside the inset is something "
                              + "else")
     }
@@ -192,38 +195,45 @@ final class TheLogPageStaysInsideItsGutterTests: XCTestCase {
         }
     }
 
-    /// French keeps the arrangement at 645 pt, and it is 2.0 pt that decides.
+    /// Every language keeps one line at 645 pt, which is what Follow gave its
+    /// word up for.
     ///
-    /// Measured 2026-08-14: the unfolded arrangement asks for **607.0** pt of the
-    /// 605 it has, so `ViewThatFits` refuses it — for a `Spacer(minLength: 12)`
-    /// that contributes its own 12 pt *and* a third 12 pt gap to an ideal width,
-    /// in a row whose spacer exists only to push Follow right. At `minLength: 0`
-    /// the same row asks 595.0 and is taken.
+    /// The owner's screenshot showed the Russian row folding while seven others
+    /// kept the line: three words plus a picker that is its own labels' width is
+    /// a row only some languages can afford. Follow is a glyph now — the name
+    /// lives in its tooltip and its accessibility label — and the row it leaves
+    /// behind fits in all eight languages at every pane down to 645. Measured
+    /// 2026-08-16: with the word the Russian row was 79 pt tall — folded — at
+    /// 645 and reached only x = 542.5; without it the row is 49 pt everywhere
+    /// down to 645 and ends at the 625 pt gutter.
     ///
-    /// **The height is not what says so, which is why the right edge is asserted
-    /// here.** The three controls do fit on one line of the wrapping row too, so
-    /// French measured 49.0 pt — one line — while being drawn 20…613.5 packed and
-    /// centred, with no gap between the menu and Follow. The gutter is the only
-    /// reading that tells the two apart.
+    /// French is the fine print this test also carries, measured 2026-08-14: a
+    /// `Spacer(minLength: 12)` put 24 pt into the ideal width and folded a row
+    /// that fits by 2.0 pt. At `minLength: 0` it is taken.
     ///
-    /// A separate test from the eight-language edge check above, because it is
-    /// the other half of the fix and it fails on its own: a row laid correctly
-    /// against the gutter is still the wrong arrangement.
-    func testFrenchKeepsOneLineAtTheNarrowestPane() {
-        AppLanguage.override = .fr
-        let drawn = page(narrowest)
-        let height = filterRowHeight(drawn)
-        let rightEdge = furthestDrawn(inFilterRowOf: drawn)
+    /// **The height is not enough on its own, which is why the right edge is
+    /// asserted too.** The three controls fit on one line of the wrapping row as
+    /// well, so a wrongly-folded French row measured 49.0 pt — one line — while
+    /// being drawn 20…613.5 packed and centred, with no gap between the menu and
+    /// Follow. The gutter is the only reading that tells the two apart.
+    func testEveryLanguageKeepsOneLineAtTheNarrowestPane() {
         let gutter = narrowest - HelmLayout.formInset
+        for language in AppLanguage.allCases {
+            AppLanguage.override = language
+            let drawn = page(narrowest)
+            let height = filterRowHeight(drawn)
+            let rightEdge = furthestDrawn(inFilterRowOf: drawn)
 
-        XCTAssertEqual(height, oneLineRow, accuracy: 1, """
-            the French filter row is \(height) pt tall at \(narrowest) pt against the \
-            \(oneLineRow) pt one line takes — it has folded at a width it fits in
-            """)
-        XCTAssertEqual(rightEdge, gutter, accuracy: 1, """
-            the French filter row ends at x = \(rightEdge) at \(narrowest) pt, not at the \
-            \(gutter) pt gutter — Follow has stopped being pushed to the right edge
-            """)
+            XCTAssertEqual(height, oneLineRow, accuracy: 1, """
+                the \(language.rawValue) filter row is \(height) pt tall at \(narrowest) pt \
+                against the \(oneLineRow) pt one line takes — Follow is on a second line again, \
+                which is the fold its label was traded away to end
+                """)
+            XCTAssertEqual(rightEdge, gutter, accuracy: 1, """
+                the \(language.rawValue) filter row ends at x = \(rightEdge) at \(narrowest) pt, \
+                not at the \(gutter) pt gutter — Follow has stopped being pushed to the right edge
+                """)
+        }
     }
 
     /// The furthest right anything is drawn *inside the filter band*. The page's
