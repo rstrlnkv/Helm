@@ -1,5 +1,3 @@
-import HelmContract
-import HelmRuntime
 import HelmUI
 import XCTest
 import Module_Uninstaller_Engine
@@ -32,7 +30,7 @@ final class AnEmptyAppsTabSaysWhichEmptinessTests: XCTestCase {
     }
 
     /// Both silences the wire has, folded to one nil by `TransportClient`.
-    private static let silences: [UninstallerWire.Answer] = [.refuse, .nothing]
+    private static let silences = UninstallerWire.Answer.silences
 
     // MARK: -
 
@@ -78,17 +76,19 @@ final class AnEmptyAppsTabSaysWhichEmptinessTests: XCTestCase {
 
     /// The flag the footer reads and the flag the body reads are one flag. Two
     /// would drift, and the drift would be a page whose count says «Counting
-    /// apps…» over a body claiming the Mac is empty.
+    /// apps…» over a body claiming the Mac is empty. Which sentence the footer
+    /// then draws is `AnUnansweredListIsNotAnEmptyMacTests`', so this holds the
+    /// two halves rather than spelling that assertion again.
     func testTheBodyAndTheFooterReadTheSameAnswer() async {
         for silence in Self.silences {
             let wire = UninstallerWire(apps: [tool], answering: silence)
-            let (page, uvm) = page(wire)
+            let (_, uvm) = page(wire)
 
             await uvm.loadAppsIfNeeded()
 
-            XCTAssertNil(uvm.appCount, "precondition: the footer does not know either (\(silence))")
             XCTAssertFalse(uvm.listAnswered, "(\(silence))")
-            XCTAssertEqual(page.statusLine, UnStr.appsCount(nil), "(\(silence))")
+            XCTAssertNil(uvm.appCount,
+                         "the count claims to know something the body does not (\(silence))")
         }
     }
 

@@ -23,8 +23,9 @@ final class AnUnansweredListIsNotAnEmptyMacTests: XCTestCase {
 
     /// Both silences the wire has, and `TransportClient.request` folds them to
     /// one nil: a `send` that throws, and the empty `Data` the engine itself
-    /// answers when it has gone under a page that is still up.
-    private static let silences: [UninstallerWire.Answer] = [.refuse, .nothing]
+    /// answers when it has gone under a page that is still up. The wire owns the
+    /// list — this file and the empty-state one both ran over it.
+    private static let silences = UninstallerWire.Answer.silences
 
     private let tool = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
                                     path: "/Applications/Tool.app", sizeBytes: 4_096)

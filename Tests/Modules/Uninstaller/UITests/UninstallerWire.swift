@@ -27,6 +27,12 @@ final class UninstallerWire: EngineTransport, @unchecked Sendable {
         case refuse
         /// Empty `Data` — an engine that is gone, or a command it does not know.
         case nothing
+
+        /// The two the caller cannot tell apart: `TransportClient.request` folds
+        /// both to one nil. A test about "nobody answered" runs over this rather
+        /// than picking one, and it lives here because it is a fact about the
+        /// wire — two test files had written the pair out.
+        static let silences: [Answer] = [.refuse, .nothing]
     }
 
     private let lock = NSLock()
