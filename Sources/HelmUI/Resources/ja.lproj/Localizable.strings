@@ -126,6 +126,7 @@
 "Option" = "Option";
 "Other…" = "その他…";
 "Shift" = "shift";
+"Show Input Source Name" = "入力ソース名を表示";
 "Spin the menu-bar icon" = "メニューバーのアイコンを回す";
 "Tap it on its own. With text selected it fixes the selection — select it again to change it back; otherwise it fixes the last word, and tapping again puts it back. Held down or pressed with anything else it is still an ordinary modifier." = "単独で押して離します。テキストが選択されていれば選択範囲を直します（もう一度選択すれば戻せます）。なければ直前の単語を直し、もう一度押すと元に戻ります。押しっぱなしや同時押しでは通常の修飾キーのままです。";
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "Control キーを単独で押すと VoiceOver の読み上げも一時停止します。VoiceOver をお使いなら別のキーを選んでください。";
@@ -362,7 +363,7 @@
 "Open Extensions…" = "機能拡張を開く…";
 "Open Full Disk Access…" = "フルディスクアクセスを開く…";
 "Open Helm at login" = "ログイン時に Helm を開く";
-"Open Keyboard settings…" = "キーボード設定を開く…";
+"Open Keyboard Settings…" = "キーボード設定を開く…";
 "Or a key combination" = "またはキーの組み合わせ";
 "Orange" = "オレンジ";
 "Other" = "その他";

@@ -126,6 +126,7 @@
 "Option" = "Option";
 "Other…" = "其他…";
 "Shift" = "Shift";
+"Show Input Source Name" = "显示输入法名称";
 "Spin the menu-bar icon" = "转动菜单栏图标";
 "Tap it on its own. With text selected it fixes the selection — select it again to change it back; otherwise it fixes the last word, and tapping again puts it back. Held down or pressed with anything else it is still an ordinary modifier." = "单独按下再松开。若已选中文本则修正选区——再次选中即可改回；否则修正上一个词，再按一次还原。按住不放或与其他键同时按下时仍是普通修饰键。";
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "单独按下 Control 也会暂停 VoiceOver 的朗读。如果你使用 VoiceOver，请选择其他按键。";
@@ -362,7 +363,7 @@
 "Open Extensions…" = "打开扩展…";
 "Open Full Disk Access…" = "打开完全磁盘访问权限…";
 "Open Helm at login" = "登录时打开 Helm";
-"Open Keyboard settings…" = "打开键盘设置…";
+"Open Keyboard Settings…" = "打开键盘设置…";
 "Or a key combination" = "或使用组合键";
 "Orange" = "橙色";
 "Other" = "其他";

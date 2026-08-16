@@ -126,6 +126,7 @@
 "Option" = "Opción";
 "Other…" = "Otro…";
 "Shift" = "Mayúsculas";
+"Show Input Source Name" = "Mostrar nombre de fuentes de entrada";
 "Spin the menu-bar icon" = "Girar el icono de la barra de menús";
 "Tap it on its own. With text selected it fixes the selection — select it again to change it back; otherwise it fixes the last word, and tapping again puts it back. Held down or pressed with anything else it is still an ordinary modifier." = "Púlsala y suéltala sola. Si hay texto seleccionado corrige la selección — selecciónalo otra vez para devolverlo; si no, la última palabra, y al pulsarla otra vez la devuelve. Mantenida o con otra tecla sigue siendo un modificador normal.";
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "Pulsar Control a solas también pausa la voz de VoiceOver. Si usas VoiceOver, elige otra tecla.";
@@ -362,7 +363,7 @@
 "Open Extensions…" = "Abrir Extensiones…";
 "Open Full Disk Access…" = "Abrir Acceso total al disco…";
 "Open Helm at login" = "Abrir Helm al iniciar sesión";
-"Open Keyboard settings…" = "Abrir Ajustes de teclado…";
+"Open Keyboard Settings…" = "Abrir ajustes del teclado…";
 "Or a key combination" = "O una combinación de teclas";
 "Orange" = "Naranja";
 "Other" = "Otro";

@@ -126,6 +126,7 @@
 "Option" = "Option-Taste";
 "Other…" = "Andere …";
 "Shift" = "Umschalttaste";
+"Show Input Source Name" = "Name der Eingabequelle einblenden";
 "Spin the menu-bar icon" = "Menüleistensymbol drehen";
 "Tap it on its own. With text selected it fixes the selection — select it again to change it back; otherwise it fixes the last word, and tapping again puts it back. Held down or pressed with anything else it is still an ordinary modifier." = "Allein drücken und loslassen. Ist Text markiert, korrigiert sie die Markierung — erneut markieren stellt sie zurück; sonst das letzte Wort, und noch einmal stellt es zurück. Gehalten oder mit etwas anderem gedrückt bleibt sie ein gewöhnlicher Modifikator.";
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "Ein einzelnes Tippen auf die Control-Taste pausiert auch die VoiceOver-Sprachausgabe. Wer VoiceOver nutzt, wählt besser eine andere Taste.";
@@ -362,7 +363,7 @@
 "Open Extensions…" = "Erweiterungen öffnen…";
 "Open Full Disk Access…" = "Festplattenvollzugriff öffnen…";
 "Open Helm at login" = "Helm bei der Anmeldung öffnen";
-"Open Keyboard settings…" = "Tastatur-Einstellungen öffnen…";
+"Open Keyboard Settings…" = "Tastatureinstellungen öffnen …";
 "Or a key combination" = "Oder eine Tastenkombination";
 "Orange" = "Orange";
 "Other" = "Anderes";

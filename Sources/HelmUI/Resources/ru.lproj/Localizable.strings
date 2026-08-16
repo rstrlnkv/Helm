@@ -126,6 +126,7 @@
 "Option" = "Option";
 "Other…" = "Другое…";
 "Shift" = "Shift";
+"Show Input Source Name" = "Показывать имя источника ввода";
 "Spin the menu-bar icon" = "Вращать значок в строке меню";
 "Tap it on its own. With text selected it fixes the selection — select it again to change it back; otherwise it fixes the last word, and tapping again puts it back. Held down or pressed with anything else it is still an ordinary modifier." = "Нажмите и отпустите её, ничего больше не нажимая. Если текст выделен — исправит выделенное (вернуть его можно, выделив снова); если нет — последнее слово, и повторное нажатие вернёт замену. Зажатая или нажатая вместе с чем-то ещё, она остаётся обычным модификатором.";
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "Одиночное нажатие Control также приостанавливает речь VoiceOver. Если вы пользуетесь VoiceOver, выберите другую клавишу.";
@@ -362,7 +363,7 @@
 "Open Extensions…" = "Открыть «Расширения»…";
 "Open Full Disk Access…" = "Открыть «Доступ к диску»…";
 "Open Helm at login" = "Открывать Helm при входе";
-"Open Keyboard settings…" = "Открыть настройки клавиатуры…";
+"Open Keyboard Settings…" = "Открыть настройки клавиатуры…";
 "Or a key combination" = "Или сочетание клавиш";
 "Orange" = "Оранжевый";
 "Other" = "Другое";

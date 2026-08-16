@@ -173,13 +173,39 @@ enum LyStr {
     }
     static var badgePreview: String { L("Your layouts, as they will look:") }
     static var flagNote: String { L("A layout that names no country keeps its letters, in a frame the same size as a flag.") }
-    static var openKeyboardSettings: String { L("Open Keyboard settings…") }
+    /// The system's own spelling of its input menu's last item, read from
+    /// `TextInputMenuCore.bundle` (key `Open Keyboard Settings`) rather than
+    /// translated again — German keeps the table's no-break space before the
+    /// ellipsis. This key used to be «Open Keyboard settings…», a near-copy
+    /// with four of eight rows retranslated by hand.
+    static var openKeyboardSettings: String { L("Open Keyboard Settings…") }
     /// macOS's own name for its palette, read from AppKit's
     /// `InputManager.loctable` (key `Emoji & Symbols`) rather than translated
     /// again — the Edit menu of every app spells it this way. Helm's zh takes
     /// the `zh_CN` row and its pt the `pt_BR` row, the variants the rest of
     /// the app follows.
     static var emojiAndSymbols: String { L("Emoji & Symbols") }
+    /// The emoji door's full title, built the way the system input menu builds
+    /// it: the `Show palette class IM` template (`TextInputMenuCore.bundle`)
+    /// around the palette's own name — so the sentence cannot drift from the
+    /// palette it opens, the same construction as `VPNStr.secretNeedsAPress`.
+    /// Interpolated, so the template keeps its own table.
+    static func showEmojiPanel(language: AppLanguage = AppLanguage.current) -> String {
+        let name = L("Emoji & Symbols", language: language)
+        let table: [AppLanguage: String] = [
+            .ru: "Показать панель «\(name)»",
+            .es: "Mostrar \(name)",
+            .fr: "Afficher \(name)",
+            .de: "\(name) einblenden",
+            .ja: "\(name)を表示",
+            .zh: "显示\(name)",
+            .pt: "Mostrar \(name)",
+        ]
+        return language == .en ? "Show \(name)" : table[language] ?? "Show \(name)"
+    }
+    /// The system input menu's switch, spelled its way: `TextInputMenuCore.bundle`,
+    /// key `Show Name of Source in Menu Bar`.
+    static var showInputSourceName: String { L("Show Input Source Name") }
     static var neverThisWord: String { L("Never this word") }
     static var audible: String { L("Play a sound when a word is fixed") }
     /// Built from the current binding, never spelled by hand — the same
