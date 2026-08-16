@@ -174,6 +174,12 @@ enum LyStr {
     static var badgePreview: String { L("Your layouts, as they will look:") }
     static var flagNote: String { L("A layout that names no country keeps its letters, in a frame the same size as a flag.") }
     static var openKeyboardSettings: String { L("Open Keyboard settings…") }
+    /// macOS's own name for its palette, read from AppKit's
+    /// `InputManager.loctable` (key `Emoji & Symbols`) rather than translated
+    /// again — the Edit menu of every app spells it this way. Helm's zh takes
+    /// the `zh_CN` row and its pt the `pt_BR` row, the variants the rest of
+    /// the app follows.
+    static var emojiAndSymbols: String { L("Emoji & Symbols") }
     static var neverThisWord: String { L("Never this word") }
     static var audible: String { L("Play a sound when a word is fixed") }
     /// Built from the current binding, never spelled by hand — the same

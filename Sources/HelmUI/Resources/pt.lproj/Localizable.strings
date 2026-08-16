@@ -177,6 +177,7 @@
 "Each module’s saved data and the diagnostics log go to the Trash, where you can get them back. Your preferences — which modules are on, their order, your shortcuts — are forgotten for good. Helm restarts and greets you as it did the first time." = "Os dados salvos de cada módulo e o registro de diagnóstico vão para o Lixo, de onde você pode recuperá-los. Os ajustes em si (quais módulos estão ativos, a ordem deles, seus atalhos) são esquecidos para sempre. O Helm reinicia e recebe você como da primeira vez.";
 "Early builds with new features — expect rough edges." = "Builds iniciais com novidades — pode haver arestas.";
 "Edit" = "Editar";
+"Emoji & Symbols" = "Emoji e Símbolos";
 "Enable a module in Settings." = "Ative um módulo nos Ajustes.";
 "Errors" = "Erros";
 "Escape closes the menu-bar panel, the way it closes every other menu on the Mac. It could be opened with a keyboard shortcut and then only be closed with the mouse." = "Esc fecha o painel da barra de menus, como fecha qualquer outro menu no Mac. Dava para abrir pelo teclado e só fechar com o mouse.";

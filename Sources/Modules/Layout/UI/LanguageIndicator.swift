@@ -93,15 +93,29 @@ import Module_Layout_Engine
             menu.addItem(entry)
         }
         menu.addItem(.separator())
-        let settings = NSMenuItem(title: LyStr.openKeyboardSettings,
-                                  action: #selector(openSettings), keyEquivalent: "")
-        settings.target = self
-        menu.addItem(settings)
+        // The two system doors, in the order macOS's own input menu draws them.
+        menu.addItem(actionItem(LyStr.emojiAndSymbols, #selector(openEmojiPalette)))
+        menu.addItem(actionItem(LyStr.openKeyboardSettings, #selector(openSettings)))
+    }
+
+    private func actionItem(_ title: String, _ action: Selector) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+        item.target = self
+        return item
     }
 
     @objc private func pick(_ sender: NSMenuItem) {
         guard let id = sender.representedObject as? String else { return }
         TISLayoutSources().select(id)
+    }
+
+    /// The palette lands on whichever app holds the keyboard — a status-item
+    /// menu does not take it away, and `EmojiPalette` never activates Helm, so
+    /// the person's focus stays where they were typing. The beep is the
+    /// refusal said out loud: without Accessibility, or in an app whose menus
+    /// carry no such item, a silent press would look like a dead control.
+    @objc private func openEmojiPalette() {
+        if !EmojiPalette.openInFrontmostApp() { NSSound.beep() }
     }
 
     @objc private func openSettings() {
