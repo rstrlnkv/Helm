@@ -169,7 +169,7 @@ final class AFileWithMoreRulesThanAnybodyChoseTests: XCTestCase {
 
         XCTAssertFalse(engine.isActive)
         XCTAssertTrue(HelmLog.shared.recentEntries().contains {
-            $0.category == "keepawake" && $0.message.contains("could not be read")
+            $0.category == KeepAwakeEngine.moduleID && $0.message.contains("could not be read")
         }, "a refusal nobody is told about is the module failing silently")
     }
 

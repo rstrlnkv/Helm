@@ -229,7 +229,7 @@ final class SettingsFromAPlistThatCanSayAnythingTests: XCTestCase {
             engine().activate()
 
             let said = HelmLog.shared.recentEntries()
-                .filter { $0.category == "keepawake" }
+                .filter { $0.category == KeepAwakeEngine.moduleID }
                 .contains { $0.message.contains("app rules") }
             XCTAssertEqual(said, expected,
                            "\"\(stored)\": the log says \(said) about rules it could not read")

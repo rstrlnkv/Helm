@@ -140,7 +140,7 @@ final class ClamshellCoordinator: @unchecked Sendable {
     /// path and swallowed by the other — which is the defect, not the wording.
     private func restoreSleep(refused: String, restored: String) {
         guard clamshell.setDisableSleep(false) else {
-            HelmLog.shared.warn("keepawake", refused)
+            HelmLog.shared.warn(KeepAwakeEngine.moduleID, refused)
             // Told, for the same reason `reallyEngage`'s refusal tells: this
             // class does not get to assume its callers emit. Every one of them
             // does today — `recompute`, `releaseForBattery`,
@@ -153,7 +153,7 @@ final class ClamshellCoordinator: @unchecked Sendable {
         }
         store.set(false, for: KeepAwakeSettings.Key.clamshellGuard)
         active = false
-        HelmLog.shared.info("keepawake", restored)
+        HelmLog.shared.info(KeepAwakeEngine.moduleID, restored)
     }
 
     /// The module is being switched off, or Helm is quitting. **Sleep goes back;
@@ -206,7 +206,7 @@ final class ClamshellCoordinator: @unchecked Sendable {
         // session goes ahead: an IOKit assertion holds an open Mac awake
         // perfectly well, and the lid is the only part that needs the rule.
         guard mayPrompt else {
-            HelmLog.shared.info("keepawake", "closed-lid sleep needs an administrator "
+            HelmLog.shared.info(KeepAwakeEngine.moduleID, "closed-lid sleep needs an administrator "
                                 + "rule; not asking for one outside a deliberate start")
             return
         }
@@ -248,7 +248,7 @@ final class ClamshellCoordinator: @unchecked Sendable {
         // Claiming a lid is safe to close is the one claim in this module that
         // costs somebody a dead battery in a bag.
         guard clamshell.setDisableSleep(true) else {
-            HelmLog.shared.warn("keepawake", "closed-lid sleep could not be disabled")
+            HelmLog.shared.warn(KeepAwakeEngine.moduleID, "closed-lid sleep could not be disabled")
             active = false
             // Asked and refused, which is not the same as never asked — and it is
             // the difference the lid row draws. Set before the emit, or the
@@ -265,7 +265,7 @@ final class ClamshellCoordinator: @unchecked Sendable {
         // A change to the system's own sleep setting, made through sudo and
         // outliving the process — the one thing here a crash can leave behind.
         // Both ends of it belong in the trail.
-        HelmLog.shared.info("keepawake", "closed-lid sleep disabled")
+        HelmLog.shared.info(KeepAwakeEngine.moduleID, "closed-lid sleep disabled")
     }
 
     func disengage() {
@@ -337,7 +337,7 @@ final class ClamshellCoordinator: @unchecked Sendable {
             // has happened, and how a test of it passes for free.
             let ours = !removed && self.clamshell.isSudoersInstalled()
             if ours {
-                HelmLog.shared.warn("keepawake",
+                HelmLog.shared.warn(KeepAwakeEngine.moduleID,
                                     "the passwordless pmset rule Helm wrote was not removed")
             } else if self.clamshell.canDisableSleepWithoutPassword() {
                 // The file is gone and the grant is not. Measured on a real
@@ -346,7 +346,7 @@ final class ClamshellCoordinator: @unchecked Sendable {
                 // this user still had passwordless `pmset disablesleep`. A
                 // revocation that revokes nothing is worse than none, because it
                 // is reported as done.
-                HelmLog.shared.warn("keepawake",
+                HelmLog.shared.warn(KeepAwakeEngine.moduleID,
                                     "a passwordless pmset rule survives that Helm did not write")
             }
             // State of ours does hop. `removalInFlight` is cleared whatever the

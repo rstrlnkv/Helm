@@ -125,7 +125,7 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
         // on the success path.
         HelmLog.shared.memory("disk.scan")
         if let result {
-            HelmLog.shared.info("disk", "scanned \(LogRoot.label(path)): \(result.filesScanned) files in "
+            HelmLog.shared.info(Self.moduleID, "scanned \(LogRoot.label(path)): \(result.filesScanned) files in "
                                 + String(format: "%.1fs", result.seconds))
         }
         return result

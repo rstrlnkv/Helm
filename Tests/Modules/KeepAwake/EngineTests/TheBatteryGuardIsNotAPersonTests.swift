@@ -263,7 +263,7 @@ final class TheBatteryGuardIsNotAPersonTests: XCTestCase {
 
     private func guardLines() -> Int {
         HelmLog.shared.recentEntries()
-            .filter { $0.category == "keepawake" && $0.message.contains("battery guard") }
+            .filter { $0.category == KeepAwakeEngine.moduleID && $0.message.contains("battery guard") }
             .count
     }
 }

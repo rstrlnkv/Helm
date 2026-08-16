@@ -232,7 +232,7 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
 
     private func lines(containing text: String) -> Int {
         HelmLog.shared.recentEntries()
-            .filter { $0.category == "keepawake" && $0.message.contains(text) }
+            .filter { $0.category == KeepAwakeEngine.moduleID && $0.message.contains(text) }
             .count
     }
 

@@ -98,7 +98,7 @@ enum BatteryVetoNews {
         // cannot happen — folded in rather than given a `default`, so a fourth
         // authorization state stays a build error in `step` above.
         case .ask, .stayQuiet:
-            HelmLog.shared.info("keepawake", "the battery guard's stop was not announced: "
+            HelmLog.shared.info(KeepAwakeEngine.moduleID, "the battery guard's stop was not announced: "
                                 + "macOS says banners are not allowed")
         }
     }

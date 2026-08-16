@@ -51,7 +51,7 @@ public protocol AutomationNoticePort: AnyObject, Sendable {
 /// before anything is asked, so a test that does reach one of these methods
 /// gets a refusal instead of ending the run.
 public final class SystemAutomationNotice: AutomationNoticePort {
-    /// The log area of the module this one belongs to — «vpn», «keepawake».
+    /// The log area of the module this one belongs to — «vpn», «keep-awake».
     /// Passed in rather than fixed, because the one thing this class says in the
     /// log is that the banners are dead, and the module it is dead for is the
     /// whole of that line's value.

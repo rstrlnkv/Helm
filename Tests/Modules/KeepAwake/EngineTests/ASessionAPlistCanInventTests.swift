@@ -207,7 +207,7 @@ final class ASessionAPlistCanInventTests: XCTestCase {
 
     private func restoreLines() -> [String] {
         HelmLog.shared.recentEntries()
-            .filter { $0.category == "keepawake" }
+            .filter { $0.category == KeepAwakeEngine.moduleID }
             .map(\.message)
             .filter { $0.contains("restored") || $0.contains("had already ended") }
     }

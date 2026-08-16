@@ -144,7 +144,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         // the file got wrong reads as no rules, so the apps somebody chose stop
         // holding the Mac awake and every screen goes on looking well.
         if settings.appRulesUnreadable {
-            HelmLog.shared.warn("keepawake", "the stored app rules could not be read; "
+            HelmLog.shared.warn(Self.moduleID, "the stored app rules could not be read; "
                                 + "no app is holding sleep")
         }
         displayObserver.startObserving { [weak self] in self?.recompute() }
@@ -297,7 +297,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     public func resumeAutomation() {
         guard suppressed else { return }
         suppressed = false
-        HelmLog.shared.info("keepawake", "automation resumed by hand")
+        HelmLog.shared.info(Self.moduleID, "automation resumed by hand")
         recompute()
     }
 
@@ -375,7 +375,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         if r.isActive && !isActive {
             isActive = true
             assertions.preventSleep(display: settings.keepDisplayOn)
-            HelmLog.shared.info("keepawake", "holding sleep: \(ConditionLabel.of(r.conditions))"
+            HelmLog.shared.info(Self.moduleID, "holding sleep: \(ConditionLabel.of(r.conditions))"
                                 + (settings.keepDisplayOn ? ", display too" : ""))
             if MacHardware.hasLid, settings.clamshellEnabled {
                 lid.engage(mayPrompt: byGesture)
@@ -384,7 +384,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             scheduleBatteryWatch()
         } else if !r.isActive && isActive {
             assertions.release()
-            HelmLog.shared.info("keepawake", "released")
+            HelmLog.shared.info(Self.moduleID, "released")
             if lid.active { lid.disengage() }
             cancelTimers()
             isActive = false
@@ -473,7 +473,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             // The timer ran out and the Mac stays awake anyway, because a display
             // or the charger is holding it. Without this line the countdown simply
             // disappears and nothing accounts for the assertion still being held.
-            HelmLog.shared.info("keepawake", "timer ended; an automatic condition still holds")
+            HelmLog.shared.info(Self.moduleID, "timer ended; an automatic condition still holds")
             manualOn = false
             endDate = nil
             startDate = nil
@@ -485,7 +485,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             // ran out — and the two leave the Mac in different states: this one
             // leaves an automatic condition true and deliberately ignored.
             if settings.timerEndsAutomation && currentAutoConditionHolds() {
-                HelmLog.shared.info("keepawake",
+                HelmLog.shared.info(Self.moduleID,
                                     "timer ended; automation suppressed until the trigger returns")
             }
             stopSession()
@@ -552,13 +552,13 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             // answer to "why did my Mac sleep" when the app was gone longer than
             // the session had left.
             if hadOne {
-                HelmLog.shared.info("keepawake", "a stored session had already ended")
+                HelmLog.shared.info(Self.moduleID, "a stored session had already ended")
             }
         case .indefinite:
             manualOn = true
             startDate = nil
             endDate = nil
-            HelmLog.shared.info("keepawake", "restored a session with no deadline")
+            HelmLog.shared.info(Self.moduleID, "restored a session with no deadline")
         case .remaining(let left):
             manualOn = true
             startDate = storedStart
@@ -569,7 +569,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             // minus now, converted to an `Int`.
             endDate = clock.now().addingTimeInterval(left)
             scheduleExpiry(after: left)
-            HelmLog.shared.info("keepawake", "restored a session: \(Int(left / 60)) min left")
+            HelmLog.shared.info(Self.moduleID, "restored a session: \(Int(left / 60)) min left")
         }
     }
 
@@ -623,7 +623,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         // a measurement nobody took, and the one charge that means the Mac is
         // about to go out.
         let charge = power.snapshot().map { "\($0.percent)%" } ?? "an unreadable charge"
-        HelmLog.shared.info("keepawake", "battery guard stopped the session at "
+        HelmLog.shared.info(Self.moduleID, "battery guard stopped the session at "
                             + "\(charge) (floor \(settings.batteryGuardPercent)%)")
         assertions.release()
         if lid.active { lid.disengage() }

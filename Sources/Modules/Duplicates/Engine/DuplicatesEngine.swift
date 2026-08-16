@@ -313,11 +313,11 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
                 return stop.isStopped
             }
             if !stale.isEmpty {
-                HelmLog.shared.info("duplicates",
+                HelmLog.shared.info(Self.moduleID,
                                     "refused \(stale.count) — changed since the scan")
             }
             if !unreadable.isEmpty {
-                HelmLog.shared.info("duplicates",
+                HelmLog.shared.info(Self.moduleID,
                                     "refused \(unreadable.count) — could not be read")
             }
             // Spelled once for both ways out: a reply that dropped these on
@@ -334,7 +334,7 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
                 // the verified remainder was about to be trashed, and Stop
                 // means stop. What was already known stays reported; a refusal
                 // is never silently discarded, stopped or not.
-                HelmLog.shared.info("duplicates",
+                HelmLog.shared.info(Self.moduleID,
                                     "removal stopped — verified "
                                     + "\(allowed.count + stale.count + unreadable.count)"
                                     + " of \(inScope.count), nothing moved")

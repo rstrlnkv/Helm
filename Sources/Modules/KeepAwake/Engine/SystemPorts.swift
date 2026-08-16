@@ -326,7 +326,7 @@ public final class PmsetClamshellPort: ClamshellPort {
         DispatchQueue.global(qos: .userInitiated).async {
             let user = NSUserName()
             guard AccountName.isPlausible(user) else {
-                HelmLog.shared.warn("keepawake", "refusing sudoers rule for an implausible account name")
+                HelmLog.shared.warn(KeepAwakeEngine.moduleID, "refusing sudoers rule for an implausible account name")
                 done(false)
                 return
             }
@@ -366,15 +366,15 @@ public struct KeepAwakeSystemPorts {
     public let pointer = CGEventPointer()
     public let clamshell = PmsetClamshellPort()
     public let clock = DispatchClock()
-    /// Where the battery veto's one notification goes. The log area is spelled
-    /// here rather than at the descriptor: «keepawake» is this target's word for
-    /// itself, written in every `HelmLog` call in it, and a second spelling of it
-    /// one target up is a name only one side would ever change.
+    /// Where the battery veto's one notification goes. The log area is the
+    /// module's id — `KeepAwakeEngine.moduleID`, the same constant every
+    /// `HelmLog` call in this target reads, so the Journal files these lines
+    /// with the rest of the module's.
     ///
     /// Its `init` touches nothing — `UNUserNotificationCenter.current()` is
     /// reached inside each method, and would end a whole test run if it were
     /// reached here.
-    public let notices = SystemAutomationNotice(area: "keepawake")
+    public let notices = SystemAutomationNotice(area: KeepAwakeEngine.moduleID)
 
     public init() {}
 }

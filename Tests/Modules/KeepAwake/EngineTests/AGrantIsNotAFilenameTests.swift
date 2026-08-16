@@ -116,7 +116,7 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
 
     private func survivorLines() -> Int {
         HelmLog.shared.recentEntries()
-            .filter { $0.category == "keepawake" && $0.message.contains("survives") }
+            .filter { $0.category == KeepAwakeEngine.moduleID && $0.message.contains("survives") }
             .count
     }
 }

@@ -52,7 +52,7 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
         HelmLog.shared.memory("leftovers.scan")
         // Counts and kinds, no names: a login item names an app, and an app
         // names a habit.
-        HelmLog.shared.info("leftovers", "found \(items.count) stale item(s)")
+        HelmLog.shared.info(Self.moduleID, "found \(items.count) stale item(s)")
         return items
     }
 
@@ -68,7 +68,7 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
             // nothing: `localizedDescription` reached the screen untranslated,
             // so a refusal by Full Disk Access read as "The operation couldn't
             // be completed" with the domain, the code and the path thrown away.
-            HelmLog.shared.info("leftovers",
+            HelmLog.shared.info(Self.moduleID,
                                 "trashing \(allowed.count), refused \(refused.count) out of scope")
             // `hasSystemExtension` is left at its default, `false`, on purpose,
             // not for want of wiring. `activeSystemExtension` only ever classifies
