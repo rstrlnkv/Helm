@@ -17,16 +17,26 @@ import XCTest
 /// check whichever language this machine happens to be set to.
 final class ACountryIsNamedInHelmsLanguageTests: XCTestCase {
 
-    func testARealCodeAnswersARealNameInEveryLanguage() {
+    /// Every test here reads `AppLanguage.current` through the override
+    /// rather than passing a language in, since that is `country(_:)`'s own
+    /// shape — so every test needs the same save-and-restore around it.
+    private func withOverrideRestored(_ body: () -> Void) {
         let previous = AppLanguage.override
         defer { AppLanguage.override = previous }
+        body()
+    }
 
-        for language in AppLanguage.allCases {
-            AppLanguage.override = language
-            let name = VPNStr.country("DE")
-            XCTAssertNotNil(name, "\(language.rawValue) answered nothing for a real region code")
-            XCTAssertFalse(name!.trimmingCharacters(in: .whitespaces).isEmpty,
-                           "\(language.rawValue) answered an empty name for a real region code")
+    func testARealCodeAnswersARealNameInEveryLanguage() {
+        withOverrideRestored {
+            for language in AppLanguage.allCases {
+                AppLanguage.override = language
+                guard let name = VPNStr.country("DE") else {
+                    XCTFail("\(language.rawValue) answered nothing for a real region code")
+                    continue
+                }
+                XCTAssertFalse(name.trimmingCharacters(in: .whitespaces).isEmpty,
+                               "\(language.rawValue) answered an empty name for a real region code")
+            }
         }
     }
 
@@ -34,27 +44,25 @@ final class ACountryIsNamedInHelmsLanguageTests: XCTestCase {
     /// spelling — otherwise the lookup could be silently ignoring the
     /// language and returning ICU's fallback every time.
     func testTheNameDiffersAcrossAtLeastTwoLanguages() {
-        let previous = AppLanguage.override
-        defer { AppLanguage.override = previous }
+        withOverrideRestored {
+            AppLanguage.override = .en
+            let english = VPNStr.country("DE")
+            AppLanguage.override = .ru
+            let russian = VPNStr.country("DE")
 
-        AppLanguage.override = .en
-        let english = VPNStr.country("DE")
-        AppLanguage.override = .ru
-        let russian = VPNStr.country("DE")
-
-        XCTAssertNotEqual(english, russian,
-                          "the English and Russian names for the same country came back identical")
+            XCTAssertNotEqual(english, russian,
+                              "the English and Russian names for the same country came back identical")
+        }
     }
 
     func testACodeThatIsNotOneAnswersNil() {
-        let previous = AppLanguage.override
-        defer { AppLanguage.override = previous }
-
-        AppLanguage.override = .en
-        // "ZZ" is CLDR's own placeholder for "Unknown Region" and answers a
-        // real string — "XX" and the empty string are not region codes at
-        // all, which is the case this guards.
-        XCTAssertNil(VPNStr.country("XX"), "\"XX\" is not a region code and should answer nothing")
-        XCTAssertNil(VPNStr.country(""), "an empty code should answer nothing")
+        withOverrideRestored {
+            AppLanguage.override = .en
+            // "ZZ" is CLDR's own placeholder for "Unknown Region" and answers
+            // a real string — "XX" and the empty string are not region codes
+            // at all, which is the case this guards.
+            XCTAssertNil(VPNStr.country("XX"), "\"XX\" is not a region code and should answer nothing")
+            XCTAssertNil(VPNStr.country(""), "an empty code should answer nothing")
+        }
     }
 }
