@@ -432,12 +432,17 @@ public final class DynamicStoreInterfaces: VPNInterfacePort {
 
 /// Production `VPNExitPort`: Cloudflare's trace endpoint.
 ///
-/// **A region code is all that is taken.** The endpoint answers plain text, one
-/// `key=value` per line, and the line that matters is `loc=NL`; the `ip=` line is
-/// in the same response and is never read into a variable, so there is nothing
-/// holding an address to leak into a log, a payload or a screenshot. The country
-/// the person sees is `Locale`'s own name for that code, in the app's language,
-/// which is also why no third party gets to name a place in Helm's window.
+/// **A region code is all that is kept.** The endpoint answers plain text, one
+/// `key=value` per line, and the whole of it — the `ip=` line included — is in
+/// this process for as long as it takes to read `loc=NL` out of it; a comment
+/// here used to claim the address was «never read into a variable», which was
+/// not true of a body held in `data` and split line by line one call down. What
+/// *is* true is stronger and checkable: the address is never stored, never
+/// returned and never logged, and `regionCode()` answers a two-letter code —
+/// `region(in:)` refuses anything that is not two letters — so no caller has a
+/// value that could carry one. The country the person sees is `Locale`'s own
+/// name for that code, in the app's language, which is also why no third party
+/// gets to name a place in Helm's window.
 ///
 /// Chosen for its size and for answering without an API key. It is a third party
 /// nevertheless: it learns that this machine asked, and that is the cost the
@@ -501,14 +506,33 @@ public final class TraceExit: VPNExitPort {
 public final class NetworkQualitySpeed: VPNSpeedPort {
 
     private let now: @Sendable () -> Date
+    private let run: @Sendable ([String]) -> HelmProcess.Result
 
-    public init(now: @escaping @Sendable () -> Date = Date.init) { self.now = now }
+    /// The tool is a parameter so the case below is a test rather than a memory.
+    /// A port whose only path to its own refusals is a live network is a port
+    /// whose refusals are never exercised.
+    public init(now: @escaping @Sendable () -> Date = Date.init,
+                run: @escaping @Sendable ([String]) -> HelmProcess.Result = {
+                    HelmProcess.run("/usr/bin/networkQuality", $0, timeout: 60)
+                }) {
+        self.now = now
+        self.run = run
+    }
 
     public func measure(onInterface interface: String?) -> VPNSpeedReading? {
         HelmActivity.phase("vpn.speed") {
             var args = ["-c"]
             if let interface { args += ["-I", interface] }
-            let result = HelmProcess.run("/usr/bin/networkQuality", args, timeout: 60)
+            let result = run(args)
+            // **A status of 0 is not a success from this tool.** Measured here on
+            // 2026-08-18: `networkQuality -c -I utunN` against a live tunnel
+            // prints `"error_code": -1009, "error_domain": "NSURLErrorDomain"`,
+            // exits **0**, and carries no throughput keys at all. So this guard
+            // catches only the tool that could not be launched or was killed at
+            // its deadline; what refuses an answer that is not one is the
+            // parser's «every field or nothing», which is where the check
+            // belongs — the tool has more ways to fail successfully than a
+            // status can enumerate.
             guard result.status == 0 else { return nil }
             return VPNSpeedReading.parse(result.output, at: now())
         }
@@ -520,10 +544,20 @@ public final class NetworkQualitySpeed: VPNSpeedPort {
 /// Bundles the production, system-backed ports the VPN engine needs at
 /// runtime. AppKit/Foundation only — kept in this one file so the rest of the
 /// engine target stays SwiftUI/AppKit-free and unit-testable with fakes.
+///
+/// **All of them, which used to be four of seven.** The three ports the tile
+/// strip added reached the engine as default arguments instead, so this type's
+/// own sentence was false and the app's wiring said nothing about what the
+/// module talks to. A bundle that lists some of the ports is worse than no
+/// bundle: the reader takes the list for the answer.
 public struct VPNSystemPorts {
     public let runner = ScutilRunner()
     public let credentials = KeychainCredentials()
     public let apps = WorkspaceAppObserver()
     public let network = DynamicStoreNetworkWatch()
+    public let interfaces = DynamicStoreInterfaces()
+    /// The one server this app talks to that is not the update feed.
+    public let exit = TraceExit()
+    public let speed = NetworkQualitySpeed()
     public init() {}
 }

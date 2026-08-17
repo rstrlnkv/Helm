@@ -12,9 +12,14 @@ import Foundation
 /// warning about nothing, or as «through the tunnel», which is a reassurance
 /// nobody checked.
 public enum VPNExitVerdict: Codable, Equatable, Sendable {
-    /// The default route is the tunnel. The country is what the exit looked like
-    /// from outside, when that could be read.
-    case throughTunnel(country: String?)
+    /// The default route is the tunnel, and this is the **two-letter region
+    /// code** the exit answered — `NL`, not «Netherlands». It was spelled
+    /// `country:` while holding a code, which is the kind of name a reader
+    /// believes: the place is named in the app's own language by
+    /// `VPNStr.country(_:)`, out of `Locale`, so no third party gets to write a
+    /// country's name into Helm's window. Nil when the check could not be made
+    /// or did not answer.
+    case throughTunnel(countryCode: String?)
     /// The tunnel is up and the machine is on the internet through something
     /// else. The state the check exists for.
     case besideTunnel
@@ -23,10 +28,10 @@ public enum VPNExitVerdict: Codable, Equatable, Sendable {
     case unknown
 
     public static func of(tunnelInterface: String?, primaryInterface: String?,
-                          country: String?) -> VPNExitVerdict {
+                          countryCode: String?) -> VPNExitVerdict {
         guard let tunnelInterface, let primaryInterface else { return .unknown }
         return tunnelInterface == primaryInterface
-            ? .throughTunnel(country: country)
+            ? .throughTunnel(countryCode: countryCode)
             : .besideTunnel
     }
 }

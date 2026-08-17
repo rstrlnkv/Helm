@@ -3,6 +3,7 @@
 
 import Foundation
 import HelmContract
+import XCTest
 @testable import Module_VPN_Engine
 
 /// Reading what the engine told the page, the two ways a test needs it. Shared
@@ -43,4 +44,26 @@ func stateEvents(on transport: LocalTransport,
 /// the engine has already spoken receives. Nil is «the engine has said nothing».
 func lastState(on transport: LocalTransport) async -> VPNEngine.StatePayload? {
     await stateEvents(on: transport).last ?? nil
+}
+
+/// Watches the wire until a payload the test is waiting for arrives, and says so
+/// through an expectation.
+///
+/// For the answers that reach the page **when they arrive** rather than by the
+/// time the call returns — the exit check and the speed run both leave the
+/// module's queue. The alternative is a fixed number of yields, which asserts on
+/// whichever half of the work had finished. The caller cancels the returned task.
+func watchState(_ transport: LocalTransport,
+                until matches: @escaping @Sendable (VPNEngine.StatePayload) -> Bool,
+                then arrived: XCTestExpectation) -> Task<Void, Never> {
+    let events = transport.events
+    return Task {
+        for await event in events where event.name == VPNEvent.state.rawValue {
+            guard let payload = try? JSONDecoder().decode(VPNEngine.StatePayload.self,
+                                                          from: event.payload),
+                  matches(payload) else { continue }
+            arrived.fulfill()
+            return
+        }
+    }
 }

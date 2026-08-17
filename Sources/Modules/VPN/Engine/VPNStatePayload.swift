@@ -83,16 +83,18 @@ public struct VPNTunnelState: Codable, Equatable, Sendable {
     /// When Helm saw it come up, or nil when it was already up at launch.
     public let since: Date?
     /// Whole kilobytes, not bytes — see `VPNInterfaceCounters.onTheWire` for
-    /// what a raw counter costs a page that redraws on every payload.
-    public let bytesIn: UInt64
-    public let bytesOut: UInt64
+    /// what a raw counter costs a page that redraws on every payload. Nil when
+    /// the kernel had no counters for the interface, which is not the same news
+    /// as a tunnel that has carried nothing (`VPNTunnelFacts`).
+    public let bytesIn: UInt64?
+    public let bytesOut: UInt64?
     /// Where the traffic actually leaves from. `.unknown` until the first check
     /// answers.
     public let exit: VPNExitVerdict
     public let speed: VPNSpeedReading?
 
-    public init(name: String, interface: String, since: Date?, bytesIn: UInt64,
-                bytesOut: UInt64, exit: VPNExitVerdict, speed: VPNSpeedReading?) {
+    public init(name: String, interface: String, since: Date?, bytesIn: UInt64?,
+                bytesOut: UInt64?, exit: VPNExitVerdict, speed: VPNSpeedReading?) {
         self.name = name
         self.interface = interface
         self.since = since

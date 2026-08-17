@@ -10,6 +10,20 @@ import HelmRuntime
 /// `deactivate()` are the MODULE lifecycle (host enables/disables the module);
 /// they also start/stop the auto-connect app observation. Blocking work runs
 /// on `VPNWorkQueue`, which says why it exists.
+///
+/// **This file is over `file_length` and `type_body_length`, and stays over,
+/// deliberately.** It stood at 681 lines against the 700 `.swiftlint.yml` warns
+/// at, so the tile strip's hundred-odd lines put both counts past — and a
+/// warning nobody has explained is a warning the next person silences. The obvious extraction, moving the strip's
+/// half into an `extension VPNEngine` in a second file, is worse than the
+/// warning: `private` in Swift is file-scoped, so it would turn `raisedAt`,
+/// `lastRegion`, `lastSpeed`, `lock`, `_lastEmitted`, `interfaces`, `speed`,
+/// `work` and `emitState` internal — trading the invariant this class is built
+/// on («touched only from the work queue», enforced today by nothing else being
+/// able to see them) for a line count. The real answer is to decompose the
+/// engine itself — the connect path with its secret handling is one subject, the
+/// auto-connect book another, the strip a third — and that is a change to
+/// somebody's live tunnels, not a tidy-up to be done in passing.
 public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// This module's id, and the only place it is written down.
     ///
@@ -67,9 +81,11 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// from the work queue, read by the page.
     private var _secrets = VPNSecretBook()
     private var _lastAutomation: VPNAutomation?
-    /// The exit check in flight — under the lock because it is started on the
-    /// work queue and cancelled from the host's thread. `cancelExitCheck()`.
+    /// The two pieces of work that leave the module's own queue — under the lock
+    /// because they are started on the work queue and cancelled from the host's
+    /// thread. `cancelWorkThatLeftTheQueue()`.
     private var _exitCheck: Task<Void, Never>?
+    private var _speedRun: Task<Void, Never>?
 
     public var lastAutomation: VPNAutomation? {
         lock.lock(); defer { lock.unlock() }; return _lastAutomation
@@ -209,27 +225,31 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     public func deactivate() {
         running = false
         network?.stopObserving()
-        cancelExitCheck()
+        cancelWorkThatLeftTheQueue()
     }
 
     /// The backstop for the routes that do not go through `deactivate()`.
     /// ARCHITECTURE.md § "An observer outlives the thing it points at".
     deinit {
         network?.stopObserving()
-        cancelExitCheck()
+        cancelWorkThatLeftTheQueue()
     }
 
-    /// The exit check in flight, cancelled from outside rather than left to
-    /// `deinit`.
+    /// The exit check and the speed run, cancelled from outside rather than left
+    /// to `deinit`.
     ///
     /// `Task { [weak self] in await self?.something() }` captures weakly only at
     /// the top: once the body starts it holds `self` for as long as it runs, so
     /// a request waiting on its eight-second timeout holds this engine whoever
     /// else has dropped it — and `deinit` cannot run to cancel it (CLAUDE.md
     /// § `Task { [weak self] … }`).
-    private func cancelExitCheck() {
-        lock.lock(); let inFlight = _exitCheck; _exitCheck = nil; lock.unlock()
-        inFlight?.cancel()
+    private func cancelWorkThatLeftTheQueue() {
+        lock.lock()
+        let inFlight = [_exitCheck, _speedRun]
+        _exitCheck = nil
+        _speedRun = nil
+        lock.unlock()
+        for task in inFlight { task?.cancel() }
     }
 
     // MARK: - VPN control
@@ -741,11 +761,11 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         return VPNTunnelState(name: connection.name,
                               interface: interface,
                               since: raisedAt[connection.id],
-                              bytesIn: VPNInterfaceCounters.onTheWire(carried?.in ?? 0),
-                              bytesOut: VPNInterfaceCounters.onTheWire(carried?.out ?? 0),
+                              bytesIn: carried.map { VPNInterfaceCounters.onTheWire($0.in) },
+                              bytesOut: carried.map { VPNInterfaceCounters.onTheWire($0.out) },
                               exit: VPNExitVerdict.of(tunnelInterface: interface,
                                                       primaryInterface: primary,
-                                                      country: lastRegion),
+                                                      countryCode: lastRegion),
                               speed: lastSpeed)
     }
 
@@ -765,20 +785,51 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         previous?.cancel()
     }
 
-    /// One measurement, on request. See `NetworkQualitySpeed` for why the run is
-    /// not bound to the tunnel's own interface: `-I utunN` answers -1009 and no
-    /// throughput at all on this build of macOS, while the same tool unbound
-    /// answers normally. The strip exists only for the tunnel carrying the
-    /// default route, so an unbound run follows that route and its figure *is*
-    /// that tunnel's — whenever there is a strip on screen to draw it in.
+    /// One measurement, on request.
+    ///
+    /// **Nowhere near the module's serial queue.** `VPNWorkQueue` is one queue
+    /// and every connect, disconnect and poll goes through it, while
+    /// `networkQuality` holds the thread it runs on for about fifteen seconds by
+    /// design and up to the sixty of its deadline — so a run started there
+    /// leaves the module deaf to a person pressing Connect for as long as it
+    /// lasts. Off the cooperative pool as well (`offTheCooperativePool`): that
+    /// pool has one thread per core and this would hold one of them for the same
+    /// quarter of a minute. Only the state write comes back to the queue, the
+    /// way `checkExit` already does.
+    ///
+    /// The decision about *whether* to measure is still the queue's, because it
+    /// reads the connections: nothing up is nothing to measure.
+    ///
+    /// See `NetworkQualitySpeed` for why the run is not bound to the tunnel's
+    /// own interface: `-I utunN` answers -1009 and no throughput at all on this
+    /// build of macOS, while the same tool unbound answers normally. The strip
+    /// exists only for the tunnel carrying the default route, so an unbound run
+    /// follows that route and its figure *is* that tunnel's — whenever there is
+    /// a strip on screen to draw it in.
     ///
     /// The phase is the port's to name (`vpn.speed`), not this caller's.
     private func measureSpeed() {
         work.run { [weak self] in
             guard let self, self.tunnelFacts() != nil else { return }
-            self.lastSpeed = self.speed.measure(onInterface: nil)
-            self.emitState()
+            self.startMeasuring()
         }
+    }
+
+    private func startMeasuring() {
+        let task = Task { [weak self] in
+            // Weakly inside the pool closure too: the engine is not held for the
+            // fifteen seconds the tool takes, and a module switched off in the
+            // middle of a run is dropped then rather than at the end of it.
+            let reading = await offTheCooperativePool { [weak self] in
+                self?.speed.measure(onInterface: nil)
+            }
+            self?.work.run { [weak self] in
+                self?.lastSpeed = reading ?? nil
+                self?.emitState()
+            }
+        }
+        lock.lock(); let previous = _speedRun; _speedRun = task; lock.unlock()
+        previous?.cancel()
     }
 
     // MARK: - Transport

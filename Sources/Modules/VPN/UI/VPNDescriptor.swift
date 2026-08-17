@@ -20,9 +20,14 @@ import Module_VPN_Engine
     public func makeEngine(store: NamespacedStore) -> any ModuleEngine {
         self.store = store
         let ports = VPNSystemPorts()
+        // Every port named, none taken from a default: the app's own wiring is
+        // the one place a reader can see what this module talks to, and three of
+        // these reach the network or run a tool for fifteen seconds.
         return VPNEngine(settings: VPNSettings(store: store),
                          runner: ports.runner, credentials: ports.credentials,
-                         apps: ports.apps, network: ports.network)
+                         apps: ports.apps, network: ports.network,
+                         interfaces: ports.interfaces, exit: ports.exit,
+                         speed: ports.speed)
     }
 
     /// One VPNViewModel per module: building a fresh one each call would leak a

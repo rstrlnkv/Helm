@@ -11,15 +11,15 @@ final class TheVerdictNeverGuessesTests: XCTestCase {
 
     func testTrafficIsInTheTunnelWhenTheDefaultRouteIsTheTunnelsInterface() {
         let verdict = VPNExitVerdict.of(tunnelInterface: "utun4", primaryInterface: "utun4",
-                                        country: "NL")
-        XCTAssertEqual(verdict, .throughTunnel(country: "NL"))
+                                        countryCode: "NL")
+        XCTAssertEqual(verdict, .throughTunnel(countryCode: "NL"))
     }
 
     /// The tunnel is up and the machine is on the internet through Wi-Fi. This
     /// is the state the whole check exists for.
     func testTrafficOutsideTheTunnelIsNamedOutright() {
         let verdict = VPNExitVerdict.of(tunnelInterface: "utun4", primaryInterface: "en0",
-                                        country: "DE")
+                                        countryCode: "DE")
         XCTAssertEqual(verdict, .besideTunnel)
     }
 
@@ -27,17 +27,17 @@ final class TheVerdictNeverGuessesTests: XCTestCase {
     /// answer to the important question, so the verdict stands without a place.
     func testAMissingCountryDoesNotCostTheVerdict() {
         let verdict = VPNExitVerdict.of(tunnelInterface: "utun4", primaryInterface: "utun4",
-                                        country: nil)
-        XCTAssertEqual(verdict, .throughTunnel(country: nil))
+                                        countryCode: nil)
+        XCTAssertEqual(verdict, .throughTunnel(countryCode: nil))
     }
 
     /// Nothing could be read about the route. Not a verdict — an unknown, drawn
     /// as one.
     func testNoRoutingReadingIsUnknownRatherThanGood() {
         XCTAssertEqual(VPNExitVerdict.of(tunnelInterface: nil, primaryInterface: "en0",
-                                         country: "NL"), .unknown)
+                                         countryCode: "NL"), .unknown)
         XCTAssertEqual(VPNExitVerdict.of(tunnelInterface: "utun4", primaryInterface: nil,
-                                         country: "NL"), .unknown)
+                                         countryCode: "NL"), .unknown)
     }
 
     /// A synthesised enum codec can decode a case and silently drop its
@@ -45,8 +45,8 @@ final class TheVerdictNeverGuessesTests: XCTestCase {
     /// Round-trip every case, the country included.
     func testEncodingAndDecodingPreservesEveryCaseAndItsCountry() throws {
         let cases: [VPNExitVerdict] = [
-            .throughTunnel(country: "NL"),
-            .throughTunnel(country: nil),
+            .throughTunnel(countryCode: "NL"),
+            .throughTunnel(countryCode: nil),
             .besideTunnel,
             .unknown,
         ]

@@ -58,7 +58,21 @@ final class FakeRunner: VPNRunnerPort {
     /// «did it re-read» is a count rather than a fact.
     var listReadCount: Int { issued.count { $0 == ["--nc", "list"] } }
 
+    /// Called with each command as it is issued, on the thread that issued it.
+    ///
+    /// The engine runs the tool on its own serial queue, so «the tool was
+    /// reached» is news that arrives on another thread — and a test that reads
+    /// `issued` from its own thread to find out is both a race and a poll. Under
+    /// its own lock because it is the one property here that two threads touch.
+    var onRun: (@Sendable ([String]) -> Void)? {
+        get { hook.lock(); defer { hook.unlock() }; return _onRun }
+        set { hook.lock(); _onRun = newValue; hook.unlock() }
+    }
+    private let hook = NSLock()
+    private var _onRun: (@Sendable ([String]) -> Void)?
+
     func run(_ args: [String]) -> HelmProcess.Result {
+        onRun?(args)
         issued.append(args)
         if args == ["--nc", "list"] {
             defer { listReads += 1 }

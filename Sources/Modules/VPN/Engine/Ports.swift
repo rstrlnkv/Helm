@@ -122,7 +122,10 @@ public protocol VPNInterfacePort: AnyObject {
     /// service is down or the store could not be read.
     func interface(forServiceID id: String) -> String?
     /// The interface carrying the default route, or nil when the machine has
-    /// none — which is the honest answer for a Mac with no network at all.
+    /// none — which is the honest answer for a Mac with no network at all — or
+    /// when the store could not be read. Both causes, like the method above:
+    /// naming one of them is how a reader comes to believe a nil here means the
+    /// machine is offline.
     func primaryInterface() -> String?
     /// What that interface has carried, or nil when the kernel has no counters
     /// for it.
@@ -148,6 +151,18 @@ public protocol VPNExitPort: AnyObject {
 
 /// One measurement of the link, bound to an interface when the caller knows it.
 public protocol VPNSpeedPort: AnyObject {
+    /// **This blocks its thread for about fifteen seconds, and up to sixty at
+    /// its deadline. Never call it on the module's serial queue.**
+    ///
+    /// Said at the protocol because the cost is not visible at the call site and
+    /// was got wrong once already: `networkQuality` measures by moving real
+    /// traffic, so the implementation is a subprocess this waits out. On
+    /// `VPNWorkQueue` that is the whole module deaf — every connect, disconnect
+    /// and poll is behind the same queue — and on the cooperative pool it is one
+    /// of the machine's few pool threads held for the same quarter of a minute.
+    /// `VPNEngine.measureSpeed` goes through `offTheCooperativePool` and comes
+    /// back to the queue only to write what it learned.
+    ///
     /// Nil when the tool did not run, was killed at its deadline, or printed
     /// something this build cannot read.
     func measure(onInterface: String?) -> VPNSpeedReading?

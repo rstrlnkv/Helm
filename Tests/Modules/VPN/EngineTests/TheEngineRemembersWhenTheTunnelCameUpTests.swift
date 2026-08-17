@@ -169,17 +169,9 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
                                 interfaces: tunnelIsTheDefaultRoute(), exit: exit)
 
         let arrived = expectation(description: "the country reached the page")
-        let events = transport.events
-        let watcher = Task {
-            for await event in events where event.name == VPNEvent.state.rawValue {
-                let payload = try? JSONDecoder().decode(VPNEngine.StatePayload.self,
-                                                        from: event.payload)
-                if payload?.facts?.exit == .throughTunnel(country: "NL") {
-                    arrived.fulfill()
-                    return
-                }
-            }
-        }
+        let watcher = watchState(transport,
+                                 until: { $0.facts?.exit == .throughTunnel(countryCode: "NL") },
+                                 then: arrived)
         engine.refresh()
         runner.listOutput = list("Connected")
         engine.refresh()                     // came up: the answer is news
@@ -212,14 +204,58 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         let engine = makeEngine(runner, transport: transport,
                                 interfaces: tunnelIsTheDefaultRoute(), speed: speed)
         engine.refresh()
+        // The run happens off the module's queue now, so the figure arrives when
+        // it arrives: awaited on the payload, never on a count of yields.
+        let landed = expectation(description: "the reading reached the page")
+        let watcher = watchState(transport, until: { $0.facts?.speed == reading }, then: landed)
 
         _ = try await engine.transport.send(EngineCommand(name: VPNCommand.measureSpeed.rawValue))
 
+        await fulfillment(of: [landed], timeout: 5)
+        watcher.cancel()
         XCTAssertEqual(speed.askedFor, [nil],
                        "one run, and unbound: `networkQuality -I utunN` answers -1009 and no "
                        + "throughput at all on this build of macOS")
-        let facts = await lastState(on: transport)?.facts
-        XCTAssertEqual(facts?.speed, reading)
+    }
+
+    /// **The measurement must not hold the module's one serial queue.**
+    ///
+    /// `VPNWorkQueue` is serial and every connect, disconnect and poll passes
+    /// through it; `networkQuality` blocks its thread for fifteen seconds by
+    /// design and up to sixty at its deadline. Run there, a person pressing
+    /// Connect while the tile is measuring waits for the tool — the module is
+    /// simply deaf for the length of a measurement. So: off the queue **and**
+    /// off the cooperative pool, back on the queue for the state write.
+    ///
+    /// This is the one test in the file that runs `.background`, because with
+    /// `.inline` the work queue is the caller's own thread and there is no queue
+    /// to block.
+    func test_a_connect_is_answered_while_a_measurement_is_in_flight() async throws {
+        let runner = FakeRunner()
+        runner.listOutput = list("Connected")
+        let transport = LocalTransport()
+        let speed = FakeSpeed()
+        speed.answer = VPNSpeedReading(down: 240, up: 40, rpm: 300, at: at)
+        speed.blocksUntilReleased = true
+        defer { speed.release() }
+        let measuring = expectation(description: "the run has started and is holding a thread")
+        speed.onStart = { measuring.fulfill() }
+        let answered = expectation(description: "the connect reached the tool")
+        runner.onRun = { args in if args == ["--nc", "start", "A"] { answered.fulfill() } }
+        let engine = VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
+                               transport: transport, interfaces: tunnelIsTheDefaultRoute(),
+                               exit: FakeExit(), speed: speed, work: .background)
+        let ready = expectation(description: "the engine has read the list once")
+        let watcher = watchState(transport, until: { $0.facts != nil }, then: ready)
+        engine.refresh()
+        await fulfillment(of: [ready], timeout: 5)
+        watcher.cancel()
+
+        _ = try await engine.transport.send(EngineCommand(name: VPNCommand.measureSpeed.rawValue))
+        await fulfillment(of: [measuring], timeout: 5)
+        engine.connect("A")
+
+        await fulfillment(of: [answered], timeout: 5)
     }
 
     /// Nothing up is nothing to measure: the tool runs for fifteen seconds and
