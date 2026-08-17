@@ -902,3 +902,15 @@
 "A rule whose VPN has a long name no longer pushes the VPN page out of the window, and the rows’ menus line up in a column." = "A rule whose VPN has a long name no longer pushes the VPN page out of the window, and the rows’ menus line up in a column.";
 "Each VPN can be told how loudly to speak on its own — a notification, the menu bar or nothing, whether the icon spins and what colour it turns. The ones you have not changed keep following the app’s own setting." = "Each VPN can be told how loudly to speak on its own — a notification, the menu bar or nothing, whether the icon spins and what colour it turns. The ones you have not changed keep following the app’s own setting.";
 "The panel’s “permissions not granted” notice is no longer drawn inside a second panel of its own: it is one line across the width, like anything else in the panel." = "The panel’s “permissions not granted” notice is no longer drawn inside a second panel of its own: it is one line across the width, like anything else in the panel.";
+
+"Connected for" = "Connected for";
+"Downloaded" = "Downloaded";
+"Uploaded" = "Uploaded";
+"Speed, Mbit/s" = "Speed, Mbit/s";
+"about 15 s, spends traffic" = "about 15 s, spends traffic";
+"Measure speed" = "Measure speed";
+"Measure again" = "Measure again";
+"Measuring…" = "Measuring…";
+"Traffic goes through the tunnel" = "Traffic goes through the tunnel";
+"Traffic is not going through the tunnel" = "Traffic is not going through the tunnel";
+"Could not check where the traffic goes" = "Could not check where the traffic goes";

@@ -902,3 +902,15 @@
 "A rule whose VPN has a long name no longer pushes the VPN page out of the window, and the rows’ menus line up in a column." = "VPN 名字很长的规则不会再把 VPN 页面挤出窗口，各行的菜单也对齐成一列。";
 "Each VPN can be told how loudly to speak on its own — a notification, the menu bar or nothing, whether the icon spins and what colour it turns. The ones you have not changed keep following the app’s own setting." = "每个 VPN 都可以单独设定音量：通知、菜单栏或什么都不做，图标是否旋转，以及旋转时用什么颜色。你没有改过的，仍然沿用应用本身的设置。";
 "The panel’s “permissions not granted” notice is no longer drawn inside a second panel of its own: it is one line across the width, like anything else in the panel." = "面板里“权限未授予”的提示不再画在另一层卡片里：它就是横贯整宽的一行，和面板里其他内容一样。";
+
+"Connected for" = "已连接";
+"Downloaded" = "已下载";
+"Uploaded" = "已上传";
+"Speed, Mbit/s" = "速度，Mbit/s";
+"about 15 s, spends traffic" = "约15秒，消耗流量";
+"Measure speed" = "测量速度";
+"Measure again" = "再次测量";
+"Measuring…" = "测量中…";
+"Traffic goes through the tunnel" = "流量正在通过隧道";
+"Traffic is not going through the tunnel" = "流量未通过隧道";
+"Could not check where the traffic goes" = "无法确认流量的去向";

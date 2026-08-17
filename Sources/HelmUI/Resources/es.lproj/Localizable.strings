@@ -902,3 +902,15 @@
 "A rule whose VPN has a long name no longer pushes the VPN page out of the window, and the rows’ menus line up in a column." = "Una regla cuya VPN tiene un nombre largo ya no empuja la página de VPN fuera de la ventana, y los menús de las filas quedan en columna.";
 "Each VPN can be told how loudly to speak on its own — a notification, the menu bar or nothing, whether the icon spins and what colour it turns. The ones you have not changed keep following the app’s own setting." = "Cada VPN puede tener su propio volumen: una notificación, la barra de menús o nada, si el icono gira y de qué color. Las que no haya cambiado siguen el ajuste general.";
 "The panel’s “permissions not granted” notice is no longer drawn inside a second panel of its own: it is one line across the width, like anything else in the panel." = "El aviso “faltan permisos” del panel ya no se dibuja dentro de otro recuadro: es una línea a todo el ancho, como el resto del panel.";
+
+"Connected for" = "Conectado durante";
+"Downloaded" = "Descargado";
+"Uploaded" = "Subido";
+"Speed, Mbit/s" = "Velocidad, Mbit/s";
+"about 15 s, spends traffic" = "unos 15 s, consume datos";
+"Measure speed" = "Medir velocidad";
+"Measure again" = "Medir de nuevo";
+"Measuring…" = "Midiendo…";
+"Traffic goes through the tunnel" = "El tráfico pasa por el túnel";
+"Traffic is not going through the tunnel" = "El tráfico no pasa por el túnel";
+"Could not check where the traffic goes" = "No se pudo comprobar hacia dónde va el tráfico";

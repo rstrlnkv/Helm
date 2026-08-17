@@ -902,3 +902,15 @@
 "A rule whose VPN has a long name no longer pushes the VPN page out of the window, and the rows’ menus line up in a column." = "VPN の名前が長い規則が VPN ページを窓の外に押し出すことはなくなり、各行のメニューは一列に並びます。";
 "Each VPN can be told how loudly to speak on its own — a notification, the menu bar or nothing, whether the icon spins and what colour it turns. The ones you have not changed keep following the app’s own setting." = "VPN ごとに通知の大きさを決められます。通知、メニューバー、なし、アイコンを回すかどうか、そして何色で回すか。変更していないものは、これまでどおりアプリ全体の設定に従います。";
 "The panel’s “permissions not granted” notice is no longer drawn inside a second panel of its own: it is one line across the width, like anything else in the panel." = "パネルの“許可が未付与”の表示が、もう一枚の枠の中に描かれることはなくなりました。パネルの他の要素と同じく、横幅いっぱいの一行です。";
+
+"Connected for" = "接続時間";
+"Downloaded" = "ダウンロード";
+"Uploaded" = "アップロード";
+"Speed, Mbit/s" = "速度、Mbit/s";
+"about 15 s, spends traffic" = "約15秒、通信量を使います";
+"Measure speed" = "速度を測定";
+"Measure again" = "もう一度測定";
+"Measuring…" = "測定中…";
+"Traffic goes through the tunnel" = "通信はトンネルを通っています";
+"Traffic is not going through the tunnel" = "通信はトンネルを通っていません";
+"Could not check where the traffic goes" = "通信がどこへ向かうか確認できませんでした";

@@ -5,6 +5,7 @@
 // files still carry one and still need it. A row added to a table below may put
 // a line back over, and then the warning is the notice it is meant to be.
 
+import Foundation
 import HelmUI
 import Module_VPN_Engine
 
@@ -516,4 +517,71 @@ enum VPNStr {
         }
     }
 
+    // MARK: - The tile strip
+
+    /// The heading over the strip: which tunnel these four tiles describe,
+    /// since the strip reads only the connection carrying the default
+    /// route, not every tunnel a card on the grid above might show.
+    static func thisTunnel(_ name: String, language: AppLanguage = AppLanguage.current) -> String {
+        L("This tunnel — \(name)",
+          [.ru: "Этот туннель — \(name)", .es: "Este túnel — \(name)",
+           .fr: "Ce tunnel — \(name)", .de: "Dieser Tunnel — \(name)",
+           .ja: "このトンネル — \(name)", .zh: "此隧道 — \(name)",
+           .pt: "Este túnel — \(name)"],
+          language: language)
+    }
+
+    /// How long the tunnel carrying the default route has been up.
+    static var tileUptime: String { L("Connected for") }
+    /// The tile under it: bytes received since the tunnel came up.
+    static var tileDown: String { L("Downloaded") }
+    /// Bytes sent over the same span.
+    static var tileUp: String { L("Uploaded") }
+    /// The fourth tile, filled only after a press of `measureSpeed` — there is
+    /// no passive way to read a link's throughput, so the tile starts empty
+    /// and says so (`speedNotYet`) rather than a number nobody asked for.
+    static var tileSpeed: String { L("Speed, Mbit/s") }
+
+    /// Under the speed tile before it has ever been pressed. Says the cost
+    /// up front — a real transfer, not a ping — because a person reads this
+    /// before deciding whether the number is worth the megabytes.
+    static var speedNotYet: String { L("about 15 s, spends traffic") }
+    /// The button's first press.
+    static var measureSpeed: String { L("Measure speed") }
+    /// The same button once a reading already sits in the tile — the label
+    /// says a fresh number will replace the stale one, not that none exists.
+    static var measureAgain: String { L("Measure again") }
+    /// While the transfer this button started is running.
+    static var measuring: String { L("Measuring…") }
+
+    /// The bare verdict, for the Mac that has no default-route tunnel to name
+    /// a country for. `trafficThroughTunnel(country:)` is the other half of
+    /// this pair — two members rather than one with an empty half, since a
+    /// sentence ending in a dash and nothing is a sentence that lost its end.
+    static var trafficThroughTunnel: String { L("Traffic goes through the tunnel") }
+    /// The good verdict with a place in it, once the exit's country is known.
+    static func trafficThroughTunnel(country: String, language: AppLanguage = AppLanguage.current) -> String {
+        L("Traffic goes through the tunnel — \(country)",
+          [.ru: "Трафик идёт через туннель — \(country)", .es: "El tráfico pasa por el túnel — \(country)",
+           .fr: "Le trafic passe par le tunnel — \(country)", .de: "Der Datenverkehr läuft durch den Tunnel — \(country)",
+           .ja: "通信はトンネルを通っています — \(country)", .zh: "流量正在通过隧道 — \(country)",
+           .pt: "O tráfego passa pelo túnel — \(country)"],
+          language: language)
+    }
+    /// The bad verdict: a rule brought a tunnel up, and macOS's own route
+    /// table sent the traffic around it anyway — the one outcome this check
+    /// exists to catch, since a card reading "Connected" says nothing about
+    /// where the packets actually went.
+    static var trafficBesideTunnel: String { L("Traffic is not going through the tunnel") }
+    /// Neither verdict: the probe itself failed, which is not the same news
+    /// as the bad one above and must not be read as it.
+    static var trafficUnknown: String { L("Could not check where the traffic goes") }
+
+    /// The country in the app's own language, from the two-letter code the
+    /// exit probe answered. Never the service's own spelling of it — a third
+    /// party does not get to name a place in Helm's window.
+    static func country(_ regionCode: String) -> String? {
+        Locale(identifier: AppLanguage.current.rawValue)
+            .localizedString(forRegionCode: regionCode)
+    }
 }
