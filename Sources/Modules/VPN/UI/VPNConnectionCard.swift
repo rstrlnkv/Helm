@@ -205,7 +205,7 @@ struct VPNConnectionCard: View {
     private var noticesDoor: some View {
         Button { showingNotices = true } label: {
             HStack(spacing: HelmSpace.s3) {
-                Image(systemName: noticeGlyph).font(.system(size: 11))
+                Image(systemName: VPNNoticeGlyph.of(notice)).font(.system(size: 11))
                 chevron
             }
             .foregroundStyle(HelmText.quiet)
@@ -218,16 +218,6 @@ struct VPNConnectionCard: View {
         .help(VPNStr.noticesFor(connection.name))
         .accessibilityLabel(VPNStr.noticesFor(connection.name))
         .popover(isPresented: $showingNotices, arrowEdge: .bottom) { noticesPopover }
-    }
-
-    /// Silence, the menu bar, or a banner — the same three the popover offers,
-    /// as one glyph.
-    private var noticeGlyph: String {
-        switch notice {
-        case .silent: return "bell.slash"
-        case .menuBar: return "menubar.arrow.up.rectangle"
-        case .system: return "bell.badge"
-        }
     }
 
     private var chevron: some View {
