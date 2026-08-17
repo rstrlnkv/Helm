@@ -59,19 +59,32 @@ struct VPNConnectionCard: View {
 
     /// One height for both doors — see the type's own note.
     private static let doorHeight: CGFloat = 30
-    /// **The card the three notice labels have to fit**, and the reason it is
-    /// named rather than typed at the call site: `TheNoticeLabelsFitTheCardTests`
-    /// measures every language's label against it, and a number spelled twice is
-    /// a number one side can change alone.
+    /// **The picture beside one question**, at the proportion every notice
+    /// preview is drawn at (104 : 66). It was derived from the popover's width
+    /// when three of them stood in a row; there is one per question now, and a
+    /// picture that grows with the popover is a picture that takes the room the
+    /// question needs. `TheNoticeLabelsFitTheCardTests` measures the mode labels
+    /// against `modeWidth` instead.
+    static let noticeThumbnail = CGSize(width: 104, height: 66)
+
+    /// The width both mode pop-ups take, in one language.
     ///
-    /// Derived from the popover rather than typed, because the popover's width is
-    /// itself derived (`timingWidth`) — at a typed 88 the three thumbnails ended
-    /// 38 pt short of the popover's right edge, which reads as a row that failed
-    /// to fill. `HelmChoiceCards` puts 12 pt between them. The height keeps the
-    /// proportion the page-wide question was drawn at, 104×66.
-    static var noticeThumbnail: CGSize {
-        let width = ((popoverWidth - HelmSpace.s5 * 2 - 24) / 3).rounded(.down)
-        return CGSize(width: width, height: (width * 66 / 104).rounded())
+    /// **`fittingSymbolled`, because the items carry a glyph** (`VPNNoticeGlyph`)
+    /// and the plain arithmetic is a whole symbol column short: at 150 the
+    /// control asks for 152 in Russian and 170 in French, and a pop-up narrower
+    /// than its own words does not say what it is set to.
+    /// `TheNoticeLabelsFitTheCardTests` measures every language against a real
+    /// control, so a wrong allowance fails there rather than truncating
+    /// «Notification» on somebody else's Mac.
+    ///
+    /// Language-taking for the reason `DuplicatesLayout.policyPickerWidth` is:
+    /// a width read through `AppLanguage.current` is this machine's width eight
+    /// times over. 150 is the column the popover was drawn at, and the terse
+    /// languages keep it.
+    static func modeWidth(language: AppLanguage = AppLanguage.current) -> CGFloat {
+        HelmPickerWidth.fittingSymbolled(
+            VPNNotice.allCases.map { VPNStr.noticeOption($0, language: language) },
+            minimum: 150)
     }
     /// **The timing pop-up's own width, and the popover's from it.** At a typed
     /// 150 pt the Russian «При запуске и выходе» came out «При запуске и в…» —
@@ -321,6 +334,14 @@ struct VPNConnectionCard: View {
     // MARK: - The notices popover
 
     /// Mounted directly by a bench, for the reason `rulesPopover` gives.
+    ///
+    /// **Two questions, two pictures, one right edge.** It used to ask each
+    /// question with a row of three previews — six pictures for three modes,
+    /// 288 pt of the 483 it stood at, and three of them a repeat of the other
+    /// three. The picture that survives is the one showing the mode this
+    /// question is *set to*, beside the control that sets it; the other two
+    /// modes are words in the pop-up, which is where macOS puts a choice of
+    /// three.
     var noticesPopover: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s5) {
             popoverTitle(VPNStr.noticesFor(connection.name))
@@ -339,16 +360,37 @@ struct VPNConnectionCard: View {
                                    openSettings: PermissionCheck.openNotificationSettings)
             }
             Divider()
-            Toggle(VPNStr.spinLabel, isOn: Binding(get: { spin }, set: setSpin))
-                .toggleStyle(.switch)
-                .controlSize(.small)
+            // `HelmSettingRow`, which is a label on the left and its control
+            // flush right — the rhythm this popover now shares with every
+            // settings card, and the reason the palettes stop where the pop-ups
+            // stop. It was passed over here once, when these labels stood
+            // *above* their controls and «Когда правило подключает VPN» took two
+            // lines of the row's label column; beside the control, two lines is
+            // what the shape asks for.
+            HelmSettingRow(VPNStr.spinLabel) {
+                Toggle("", isOn: Binding(get: { spin }, set: setSpin))
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .accessibilityLabel(VPNStr.spinLabel)
+            }
             // **The two colours, under the switch that makes them mean
             // anything.** Disabled rather than taken away while the ring is
             // off: a row that loses its tallest control makes the popover
             // shorter on a setting that has nothing to do with its height,
             // which is the answer Keep Awake reached for the same pair.
-            tint(VPNStr.spinConnected, token: tintUp, kind: .connected)
-            tint(VPNStr.spinDisconnected, token: tintDown, kind: .disconnected)
+            HelmSettingRow(VPNStr.spinConnected) {
+                HelmPaletteSwatches(VPNStr.spinConnected, selection: tintUp) {
+                    setTint(.connected, $0)
+                }
+                .disabled(!spin)
+            }
+            HelmSettingRow(VPNStr.spinDisconnected) {
+                HelmPaletteSwatches(VPNStr.spinDisconnected, selection: tintDown) {
+                    setTint(.disconnected, $0)
+                }
+                .disabled(!spin)
+            }
             // The cost of the two quiet settings meeting, said where they meet:
             // this card's ring off and this card's notice silent is a rule that
             // fires with no sign at all.
@@ -358,51 +400,50 @@ struct VPNConnectionCard: View {
                     .foregroundStyle(HelmSignal.warning)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            // 10, a step below the 11 a note under a control is set in
+            // (`HelmText.rowDetail`): this one is under the whole popover and
+            // has to sit below four labels without competing with any of them.
             Text(VPNStr.onlyThisConnection)
-                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                .font(.system(size: 10)).foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(HelmSpace.s5)
         .frame(width: Self.popoverWidth, alignment: .leading)
     }
 
-    /// The same picture question the page used to ask once for the whole module,
-    /// asked here for one configuration — and it fits: three previews at 88 pt
-    /// come to 288 of the popover's 298 of content.
+    /// One question: the picture of the mode it is set to, its label, its pop-up.
     private func noticeChoice(_ title: String, selection: VPNNotice,
                               set: @escaping (VPNNotice) -> Void) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                .fixedSize(horizontal: false, vertical: true)
-            HelmChoiceCards(selection: Binding(get: { selection }, set: set),
-                            items: [
-                                .init(id: .silent, label: VPNStr.noticeOption(.silent),
-                                      preview: NoticePreview.of(.silent)),
-                                .init(id: .menuBar, label: VPNStr.noticeOption(.menuBar),
-                                      preview: NoticePreview.of(.menuBar)),
-                                .init(id: .system, label: VPNStr.noticeOption(.system),
-                                      preview: NoticePreview.of(.system)),
-                            ],
-                            thumbnail: Self.noticeThumbnail)
-                .accessibilityElement(children: .contain)
+        HStack(alignment: .center, spacing: HelmSpace.s5) {
+            NoticePreview.of(selection)
+                .frame(width: Self.noticeThumbnail.width, height: Self.noticeThumbnail.height)
+                .helmPreviewEdge()
+                .accessibilityHidden(true)   // the pop-up beside it says the mode
+            VStack(alignment: .trailing, spacing: HelmSpace.s3) {
+                Text(title).font(HelmText.rowTitle)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Picker(title, selection: Binding(get: { selection }, set: set)) {
+                    ForEach(VPNNotice.allCases, id: \.self) { mode in
+                        Label(VPNStr.noticeOption(mode),
+                              systemImage: VPNNoticeGlyph.of(mode)).tag(mode)
+                    }
+                }
+                .labelsHidden()
+                // **A named width, not `fixedSize`.** Left to hug, the control
+                // asks for 152 pt here against this width's 156 — near enough
+                // that the frame is not what keeps the two pop-ups in one
+                // column (a pop-up sizes to its widest *item*, so both would
+                // agree anyway). What the frame buys is a number with a name:
+                // `modeWidth` is what the eight-language guard measures, and a
+                // width nobody can name is a width nobody can check.
+                //
+                // Trailing, for the reason the rules row gives: a pop-up hugs
+                // its title inside the width it is given, and centred in it the
+                // two ended 2 pt inside the margin every other control reaches.
+                .frame(width: Self.modeWidth(), alignment: .trailing)
                 .accessibilityLabel(title)
-        }
-    }
-
-    /// One palette, with its name over it rather than beside it.
-    ///
-    /// `HelmSettingRow` is what the page drew these in, and a row needs a label
-    /// column: at the popover's width «Когда правило подключает VPN» took two
-    /// lines of it and the two rows lost their baseline. The label goes above,
-    /// which is the shape the two picture questions above already use — so the
-    /// popover has one rhythm rather than a form's inside a popover's.
-    private func tint(_ title: String, token: String,
-                      kind: VPNAutomation.Kind) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                .fixedSize(horizontal: false, vertical: true)
-            HelmPaletteSwatches(title, selection: token) { setTint(kind, $0) }
-                .disabled(!spin)
+            }
         }
     }
 

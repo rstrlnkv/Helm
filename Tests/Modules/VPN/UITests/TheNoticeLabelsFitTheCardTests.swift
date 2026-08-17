@@ -7,57 +7,72 @@ import XCTest
 @testable import Module_VPN_Engine
 @testable import Module_VPN_UI
 
-/// **A label that wraps puts three cards on three baselines, and the card cannot
-/// grow to fix it.**
+/// **A mode label that does not fit its control is a control that does not say
+/// what it is set to.**
 ///
-/// «Name in menu bar» was the defect: 117.9 pt in German, 125.0 in Portuguese,
-/// 147.3 in Spanish and 148.7 in French against a 104 pt card. Widening the card
-/// is not the answer either — the row label beside it takes what is left of the
-/// 680 pt row, and «Wenn ein Tunnel von selbst abbricht» is 219.1 pt of it, so
-/// the ceiling is about 140. Russian fitted with 3.2 pt to spare, which is what
-/// «it fits on my Mac» is worth.
+/// It used to be a caption under a picture card, and the defect was a label that
+/// wrapped onto two lines: «Name in menu bar» was 117.9 pt in German, 125.0 in
+/// Portuguese, 147.3 in Spanish and 148.7 in French against a 104 pt card. The
+/// three modes are a pop-up's items now (C2), so the same string cannot wrap —
+/// it truncates instead, which is the quieter half of the same fault.
 ///
-/// Measured rather than looked at, because the offender is French and this suite
-/// runs in English. The width comes from `VPNConnectionCard.noticeThumbnail` —
-/// the page's own number, not a copy of it — and the font from `HelmChoiceCards`'
-/// own label: `.caption` at semibold, which is the widest of the two weights
-/// that control draws and the one the chosen card gets.
+/// Measured against **a real `NSPopUpButton` carrying the same titles and the
+/// same glyphs**, not against the arithmetic the card sizes itself with: two
+/// sides reading one helper is a check that cannot fail, and the glyph is
+/// exactly what that helper does not know about — `HelmPickerWidth` is
+/// calibrated on a pop-up of words, and a symbol column is 15…22 pt more.
+///
+/// Parameterized by language, never `AppLanguage.current`: the offender here is
+/// French and this machine is not.
 final class TheNoticeLabelsFitTheCardTests: XCTestCase {
 
-    /// `.caption` is 10 pt on macOS, and the control's own comment says that
-    /// size may not move because these widths were measured against it.
-    private func width(_ text: String) -> CGFloat {
-        let label = NSFont.systemFont(ofSize: 10, weight: .semibold)
-        return (text as NSString).size(withAttributes: [.font: label]).width
+    /// What AppKit itself says a pop-up holding these items needs.
+    @MainActor
+    private func needed(_ items: [(label: String, symbol: String)]) -> CGFloat {
+        let button = NSPopUpButton(frame: .zero, pullsDown: false)
+        for item in items {
+            button.addItem(withTitle: item.label)
+            button.lastItem?.image = NSImage(systemSymbolName: item.symbol,
+                                             accessibilityDescription: nil)
+        }
+        button.sizeToFit()
+        return button.fittingSize.width
     }
 
-    func testEveryNoticeLabelFitsOnOneLineInEveryLanguage() {
-        let card = VPNConnectionCard.noticeThumbnail.width
+    @MainActor
+    private func needed(in language: AppLanguage) -> CGFloat {
+        needed(VPNNotice.allCases.map { (VPNStr.noticeOption($0, language: language),
+                                         VPNNoticeGlyph.of($0)) })
+    }
+
+    @MainActor
+    func testEveryNoticeLabelFitsItsPopUpInEveryLanguage() {
         var offenders: [String] = []
         for language in AppLanguage.allCases {
-            for notice in VPNNotice.allCases {
-                let text = VPNStr.noticeOption(notice, language: language)
-                let measured = width(text)
-                if measured > card {
-                    offenders.append("  \(language.rawValue) \(notice): «\(text)» is "
-                                     + "\(String(format: "%.1f", measured)) pt of \(card)")
-                }
+            let given = VPNConnectionCard.modeWidth(language: language)
+            let wanted = needed(in: language)
+            if wanted > given {
+                offenders.append("  \(language.rawValue): the pop-up asks "
+                                 + "\(String(format: "%.1f", wanted)) pt and is given \(given)")
             }
         }
         XCTAssertTrue(offenders.isEmpty,
-                      "\(offenders.count) notice label(s) are wider than the card they are drawn "
-                      + "under, so that card's label wraps and the row loses its baseline:\n"
+                      "\(offenders.count) language(s) draw a mode pop-up narrower than its own "
+                      + "items, so the control truncates what it is set to:\n"
                       + offenders.sorted().joined(separator: "\n"))
     }
 
     /// The measurement this file is worth nothing without: that the instrument
-    /// still sees the defect. The three labels have 19.7 pt of slack at their
-    /// worst, which is close enough to the card that a threshold set above every
-    /// real case would look exactly like a pass.
+    /// still sees a label the control cannot hold. The eight real label sets
+    /// have 3.2 pt of slack at their worst, which is close enough to the width
+    /// that a threshold above every real case would look exactly like a pass.
+    @MainActor
     func testTheInstrumentStillFailsTheLabelThisReplaced() {
-        let card = VPNConnectionCard.noticeThumbnail.width
         // The French of the key that was deleted, as it shipped in 0.9.0.
-        XCTAssertGreaterThan(width("Nom dans la barre des menus"), card,
+        let old = needed([("Rien", "bell.slash"),
+                          ("Nom dans la barre des menus", "menubar.arrow.up.rectangle"),
+                          ("Notification", "bell.badge")])
+        XCTAssertGreaterThan(old, VPNConnectionCard.modeWidth(language: .fr),
                              "the measurement no longer sees a label that was two lines on "
                              + "screen, so a pass above says nothing")
     }

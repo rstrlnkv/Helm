@@ -37,6 +37,25 @@ public enum HelmPickerWidth {
         max(minimum, (widestInk(of: labels) + chrome).rounded(.up))
     }
 
+    /// The same width for a pop-up whose items carry a **symbol** beside the
+    /// title, which AppKit gives a column of its own.
+    ///
+    /// Measured with `NSPopUpButton.sizeToFit` over an SF Symbol on every item,
+    /// against the eight translations of VPN's three notice modes: 15.1…21.6 pt
+    /// more than `fitting` answers, so 22. Without it the arithmetic is short by
+    /// a whole glyph and the control truncates the word it is set to — which is
+    /// what `fitting` alone was about to do in four of the eight languages.
+    ///
+    /// The floor applies to the finished width, not to the titles: a caller's
+    /// minimum is the column they drew, and a column measured before the symbol
+    /// went in is a different number than the one they meant.
+    public static func fittingSymbolled(_ labels: [String], minimum: CGFloat) -> CGFloat {
+        max(minimum, fitting(labels, minimum: 0) + symbolColumn)
+    }
+
+    /// What a symbol beside the title costs — see `fittingSymbolled`.
+    static let symbolColumn: CGFloat = 22
+
     /// A segmented control's chrome is per *segment*, not per control: 24 pt
     /// around each label, calibrated across eleven label sets, four scripts and
     /// two-to-four segments.

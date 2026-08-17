@@ -59,6 +59,25 @@ public extension View {
             )
     }
 
+    /// The edge of a **preview picture** — a drawn thumbnail of what a setting
+    /// does: clipped to the control corner, with a hairline all round.
+    ///
+    /// The hairline is not decoration. A preview whose own fill matches the
+    /// surface behind it floats in nothing — measured at 1.00:1 for the light
+    /// thumbnail in light appearance and 1.12:1 dark on dark. A chosen one wears
+    /// the accent instead, thicker, which is the only thing that ever differs
+    /// between the two places these are drawn: a row of them to choose from
+    /// (`HelmChoiceCards`) and a single one beside the control that sets it
+    /// (VPN's notices popover).
+    func helmPreviewEdge(chosen: Bool = false) -> some View {
+        clipShape(RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous)
+                    .strokeBorder(chosen ? Color.accentColor : HelmSurface.hairline,
+                                  lineWidth: chosen ? 2.5 : 0.5)
+            }
+    }
+
     /// The one card in Helm: soft fill, continuous corners, no border.
     ///
     /// No border on purpose. Half of Helm's containers are macOS grouped-Form
