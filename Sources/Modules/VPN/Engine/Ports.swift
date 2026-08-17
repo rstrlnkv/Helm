@@ -110,6 +110,39 @@ public protocol NetworkWatchPort: AnyObject {
     func stopObserving()
 }
 
+/// Which interface a configuration is on, and which interface the machine's
+/// default route goes out of.
+///
+/// Two questions rather than one call answering both, because they fail
+/// separately: a service that is not up has no interface at all, while the
+/// machine always has some default route (or none, when it is offline).
+public protocol VPNInterfacePort: AnyObject {
+    /// e.g. `utun4` for the service with this identifier, or nil when the
+    /// service is down or the store could not be read.
+    func interface(forServiceID id: String) -> String?
+    /// The interface carrying the default route, or nil when the machine has
+    /// none — which is the honest answer for a Mac with no network at all.
+    func primaryInterface() -> String?
+}
+
+/// What the machine looks like from outside: a two-letter region code, or nil
+/// when nothing could be read.
+///
+/// **The address itself never leaves this port.** The verdict on screen names a
+/// country and the log names neither (CLAUDE.md § The log carries no names), so
+/// there is nowhere for an address to be kept — and a port that never returns
+/// one cannot leak one later.
+public protocol VPNExitPort: AnyObject {
+    func regionCode() async -> String?
+}
+
+/// One measurement of the link, bound to an interface when the caller knows it.
+public protocol VPNSpeedPort: AnyObject {
+    /// Nil when the tool did not run, was killed at its deadline, or printed
+    /// something this build cannot read.
+    func measure(onInterface: String?) -> VPNSpeedReading?
+}
+
 // MARK: - Banners
 
 // `AutomationNoticePort`, `NoticeAuthorization` and the `UNUserNotificationCenter`
