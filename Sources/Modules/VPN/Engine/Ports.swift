@@ -110,12 +110,13 @@ public protocol NetworkWatchPort: AnyObject {
     func stopObserving()
 }
 
-/// Which interface a configuration is on, and which interface the machine's
-/// default route goes out of.
+/// Which interface a configuration is on, which interface the machine's default
+/// route goes out of, and what an interface has carried.
 ///
-/// Two questions rather than one call answering both, because they fail
-/// separately: a service that is not up has no interface at all, while the
-/// machine always has some default route (or none, when it is offline).
+/// Three questions rather than one call answering them, because they fail
+/// separately: a service that is not up has no interface at all, the machine
+/// always has some default route (or none, when it is offline), and an
+/// interface that has gone has no counters even though its name is still known.
 public protocol VPNInterfacePort: AnyObject {
     /// e.g. `utun4` for the service with this identifier, or nil when the
     /// service is down or the store could not be read.
@@ -123,6 +124,15 @@ public protocol VPNInterfacePort: AnyObject {
     /// The interface carrying the default route, or nil when the machine has
     /// none — which is the honest answer for a Mac with no network at all.
     func primaryInterface() -> String?
+    /// What that interface has carried, or nil when the kernel has no counters
+    /// for it.
+    ///
+    /// A port rather than a call straight to `VPNInterfaceCounters`, because a
+    /// counter is the one thing about a tunnel that moves while nobody touches
+    /// it: what that costs the page is a decision this module makes
+    /// (`VPNInterfaceCounters.onTheWire`), and a decision needs a fake that can
+    /// carry a packet between two readings for anything to test it with.
+    func bytes(on interface: String) -> (in: UInt64, out: UInt64)?
 }
 
 /// What the machine looks like from outside: a two-letter region code, or nil

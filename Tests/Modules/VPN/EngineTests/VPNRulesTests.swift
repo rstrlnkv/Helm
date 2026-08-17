@@ -128,7 +128,9 @@ final class AutoConnectedFollowsRealityTests: XCTestCase {
         runner.listOutput = #"* (Connected) A --> B  "Work" [IKEv2]"#
         let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
             namespace: "vpn", backing: InMemoryKeyValueStore())),
-            runner: runner, apps: FakeApps(), work: .inline)
+            runner: runner, apps: FakeApps(),
+            interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+            work: .inline)
         engine.connect("Work", auto: true)
         XCTAssertEqual(engine.autoConnected, ["Work"])
 
@@ -153,7 +155,9 @@ extension AutoConnectedFollowsRealityTests {
         runner.listOutput = #"(Disconnected) 1111 IPSec "Work""#
         let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
             namespace: "vpn", backing: InMemoryKeyValueStore())),
-            runner: runner, apps: FakeApps(), work: .inline)
+            runner: runner, apps: FakeApps(),
+            interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+            work: .inline)
 
         engine.connect("Work", auto: true)     // the list still says disconnected
         engine.refresh()

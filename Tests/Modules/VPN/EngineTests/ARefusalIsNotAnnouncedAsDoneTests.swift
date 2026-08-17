@@ -47,6 +47,7 @@ final class ARefusalIsNotAnnouncedAsDoneTests: XCTestCase {
                         settings: VPNSettings? = nil) -> VPNEngine {
         let at = self.at
         return VPNEngine(settings: settings ?? self.settings(), runner: runner, apps: apps,
+                         interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                          now: { at }, work: .inline)
     }
 

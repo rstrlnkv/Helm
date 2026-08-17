@@ -22,7 +22,9 @@ final class VPNNetworkWatchTests: XCTestCase {
     func testActivateStartsWatchingTheNetwork() {
         let network = FakeNetwork()
         let engine = VPNEngine(settings: settings(), runner: FakeRunner(),
-                               apps: FakeApps(), network: network, work: .inline)
+                               apps: FakeApps(), network: network,
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
 
         engine.activate()
 
@@ -33,7 +35,9 @@ final class VPNNetworkWatchTests: XCTestCase {
         let runner = FakeRunner()
         let network = FakeNetwork()
         let engine = VPNEngine(settings: settings(), runner: runner,
-                               apps: FakeApps(), network: network, work: .inline)
+                               apps: FakeApps(), network: network,
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
         engine.activate()
         let before = runner.issued.filter { $0 == ["--nc", "list"] }.count
 
@@ -49,7 +53,9 @@ final class VPNNetworkWatchTests: XCTestCase {
     func testDeactivateStopsWatching() {
         let network = FakeNetwork()
         let engine = VPNEngine(settings: settings(), runner: FakeRunner(),
-                               apps: FakeApps(), network: network, work: .inline)
+                               apps: FakeApps(), network: network,
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
         engine.activate()
 
         engine.deactivate()
@@ -64,7 +70,9 @@ final class VPNNetworkWatchTests: XCTestCase {
         let network = FakeNetwork()
         do {
             let engine = VPNEngine(settings: settings(), runner: FakeRunner(),
-                                   apps: FakeApps(), network: network, work: .inline)
+                                   apps: FakeApps(), network: network,
+                                   interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                                   work: .inline)
             engine.activate()
         }
         XCTAssertEqual(network.stops, 1)

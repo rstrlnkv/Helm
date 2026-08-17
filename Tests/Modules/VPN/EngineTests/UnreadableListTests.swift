@@ -38,6 +38,7 @@ final class UnreadableListTests: XCTestCase {
                                                                backing: InMemoryKeyValueStore())),
                   runner: runner,
                   apps: FakeApps(),
+                  interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                   work: .inline)
     }
 

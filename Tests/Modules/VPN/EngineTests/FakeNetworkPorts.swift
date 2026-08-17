@@ -9,8 +9,28 @@ final class FakeInterfaces: VPNInterfacePort, @unchecked Sendable {
     var interfaces: [String: String] = [:]
     /// Nil is a Mac with no default route at all.
     var primary: String?
+    /// What each interface has carried. An interface with no entry is one the
+    /// kernel has no counters for — a tunnel that has just gone.
+    var counters: [String: (in: UInt64, out: UInt64)] = [:]
+    /// What every reading adds to those counters.
+    ///
+    /// A link that answers the same pair however often it is asked is a link
+    /// with nothing on it, and the engine re-reads up to 26 times behind one
+    /// connect — so «the tunnel carried a packet between two readings», which is
+    /// what every live tunnel does, would be a state no test could write down.
+    var carriesPerRead: UInt64 = 0
+
     func interface(forServiceID id: String) -> String? { interfaces[id] }
     func primaryInterface() -> String? { primary }
+
+    func bytes(on interface: String) -> (in: UInt64, out: UInt64)? {
+        guard let carried = counters[interface] else { return nil }
+        defer {
+            counters[interface] = (in: carried.in + carriesPerRead,
+                                   out: carried.out + carriesPerRead)
+        }
+        return carried
+    }
 }
 
 final class FakeExit: VPNExitPort, @unchecked Sendable {

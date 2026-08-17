@@ -41,16 +41,20 @@ extension VPNEngine {
         /// taking every connection the page draws with it (CLAUDE.md § a
         /// `defaulted` property on a `Codable` payload).
         public var secretsBehindAPrompt: [String] = []
+        /// The tunnel carrying the default route, and what is known about it.
+        /// Nil when nothing is up — the strip is absent then, rather than empty.
+        public var facts: VPNTunnelState?
 
         init(connections: [VPNConnection], autoConnected: [String], defaultName: String?,
              lastAutomation: VPNAutomation?, lastFailure: VPNFailure? = nil,
-             secretsBehindAPrompt: [String] = []) {
+             secretsBehindAPrompt: [String] = [], facts: VPNTunnelState? = nil) {
             self.connections = connections
             self.autoConnected = autoConnected
             self.defaultName = defaultName
             self.lastAutomation = lastAutomation
             self.lastFailure = lastFailure
             self.secretsBehindAPrompt = secretsBehindAPrompt
+            self.facts = facts
         }
 
         public init(from decoder: Decoder) throws {
@@ -62,6 +66,39 @@ extension VPNEngine {
             lastFailure = try box.decodeIfPresent(VPNFailure.self, forKey: .lastFailure)
             secretsBehindAPrompt = try box.decodeIfPresent([String].self,
                                                            forKey: .secretsBehindAPrompt) ?? []
+            facts = try box.decodeIfPresent(VPNTunnelState.self, forKey: .facts)
         }
+    }
+}
+
+/// What the page's tile strip draws, as one value on the wire.
+///
+/// Its own type rather than six loose fields on the payload: they are true of
+/// *one* tunnel — the one holding the default route — and six optionals side by
+/// side invite a reader to mix a name from one refresh with a byte count from
+/// the next.
+public struct VPNTunnelState: Codable, Equatable, Sendable {
+    public let name: String
+    public let interface: String
+    /// When Helm saw it come up, or nil when it was already up at launch.
+    public let since: Date?
+    /// Whole kilobytes, not bytes — see `VPNInterfaceCounters.onTheWire` for
+    /// what a raw counter costs a page that redraws on every payload.
+    public let bytesIn: UInt64
+    public let bytesOut: UInt64
+    /// Where the traffic actually leaves from. `.unknown` until the first check
+    /// answers.
+    public let exit: VPNExitVerdict
+    public let speed: VPNSpeedReading?
+
+    public init(name: String, interface: String, since: Date?, bytesIn: UInt64,
+                bytesOut: UInt64, exit: VPNExitVerdict, speed: VPNSpeedReading?) {
+        self.name = name
+        self.interface = interface
+        self.since = since
+        self.bytesIn = bytesIn
+        self.bytesOut = bytesOut
+        self.exit = exit
+        self.speed = speed
     }
 }

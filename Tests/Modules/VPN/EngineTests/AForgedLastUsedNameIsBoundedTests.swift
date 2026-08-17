@@ -45,7 +45,9 @@ final class AForgedLastUsedNameIsBoundedTests: XCTestCase {
         let runner = FakeRunner()
         runner.listOutput = [header, row("Disconnected", a, "Office"), row("Disconnected", b, "Field")]
             .joined(separator: "\n")
-        let engine = VPNEngine(settings: settings, runner: runner, apps: FakeApps(), work: .inline)
+        let engine = VPNEngine(settings: settings, runner: runner, apps: FakeApps(),
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
 
         engine.toggleDefault()
 

@@ -28,7 +28,9 @@ final class AnIdentityIsNotAPositionTests: XCTestCase {
         let at = self.at
         return VPNEngine(settings: VPNSettings(store: NamespacedStore(
                             namespace: "vpn", backing: InMemoryKeyValueStore())),
-                         runner: runner, apps: FakeApps(), now: { at }, work: .inline)
+                         runner: runner, apps: FakeApps(),
+                         interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                         now: { at }, work: .inline)
     }
 
     func testARowKeepsItsIdentityWhenTheListIsPrintedInAnotherOrder() {

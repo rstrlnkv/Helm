@@ -49,6 +49,7 @@ final class AnUnreachableSecretIsNotSilenceTests: XCTestCase {
         let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
                                     namespace: "vpn", backing: InMemoryKeyValueStore())),
                                runner: runner, credentials: creds, apps: FakeApps(),
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                                work: .inline)
         engine.refresh()
         return engine

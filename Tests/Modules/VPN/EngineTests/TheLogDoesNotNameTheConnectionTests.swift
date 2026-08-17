@@ -45,7 +45,9 @@ final class TheLogDoesNotNameTheConnectionTests: XCTestCase {
     }
 
     private func engine(_ runner: FakeRunner) -> VPNEngine {
-        VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(), work: .inline)
+        VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
+                  interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                  work: .inline)
     }
 
     private var vpnLines: [String] {

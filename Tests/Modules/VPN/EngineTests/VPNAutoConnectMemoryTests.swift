@@ -35,7 +35,9 @@ final class VPNAutoConnectMemoryTests: XCTestCase {
     func test_a_vpn_raised_a_second_time_is_still_its_own() {
         let runner = FakeRunner()
         let engine = VPNEngine(settings: makeSettings(), runner: runner,
-                               apps: FakeApps(), work: .inline)
+                               apps: FakeApps(),
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
 
         // First session: Helm raises it, and a later refresh sees it up.
         runner.listOutput = list("Disconnected")
@@ -69,7 +71,9 @@ final class VPNAutoConnectMemoryTests: XCTestCase {
     func test_a_vpn_that_came_up_and_then_went_is_forgotten() {
         let runner = FakeRunner()
         let engine = VPNEngine(settings: makeSettings(), runner: runner,
-                               apps: FakeApps(), work: .inline)
+                               apps: FakeApps(),
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
 
         runner.listOutput = list("Disconnected")
         engine.connect("A", auto: true)
@@ -90,7 +94,9 @@ final class VPNAutoConnectMemoryTests: XCTestCase {
     func test_a_vpn_that_has_not_come_up_yet_is_not_forgotten() {
         let runner = FakeRunner()
         let engine = VPNEngine(settings: makeSettings(), runner: runner,
-                               apps: FakeApps(), work: .inline)
+                               apps: FakeApps(),
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
 
         runner.listOutput = list("Disconnected")
         engine.connect("A", auto: true)

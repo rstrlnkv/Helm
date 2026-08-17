@@ -13,7 +13,9 @@ final class VPNEngineTests: XCTestCase {
     func test_toggle_connects_default_when_disconnected() {
         let runner = FakeRunner()
         runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
-        let engine = VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(), work: .inline)
+        let engine = VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
 
         engine.toggleDefault()
 
@@ -23,7 +25,9 @@ final class VPNEngineTests: XCTestCase {
     func test_toggle_disconnects_when_connected() {
         let runner = FakeRunner()
         runner.listOutput = "(Connected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
-        let engine = VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(), work: .inline)
+        let engine = VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
 
         engine.toggleDefault()
 
@@ -34,7 +38,9 @@ final class VPNEngineTests: XCTestCase {
         let runner = FakeRunner()
         let creds = FakeCreds()
         creds.map["A"] = VPNCredentials(user: "u", password: "p", secret: "s")
-        let engine = VPNEngine(settings: makeSettings(), runner: runner, credentials: creds, apps: FakeApps(), work: .inline)
+        let engine = VPNEngine(settings: makeSettings(), runner: runner, credentials: creds, apps: FakeApps(),
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
 
         engine.connect("A")
 
@@ -48,7 +54,9 @@ final class VPNEngineTests: XCTestCase {
         settings.setRulesJSON(ruleJSONForA)
         let apps = FakeApps.trustingA()
         apps.bundleIDs = []
-        let engine = VPNEngine(settings: settings, runner: runner, apps: apps, work: .inline)
+        let engine = VPNEngine(settings: settings, runner: runner, apps: apps,
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
 
         engine.activate()
         apps.bundleIDs = ["com.a"]
@@ -65,7 +73,9 @@ final class VPNEngineTests: XCTestCase {
         settings.setRulesJSON(ruleJSONForA)
         let apps = FakeApps.trustingA()
         apps.bundleIDs = []
-        let engine = VPNEngine(settings: settings, runner: runner, apps: apps, work: .inline)
+        let engine = VPNEngine(settings: settings, runner: runner, apps: apps,
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
 
         engine.activate()
         apps.bundleIDs = ["com.a"]

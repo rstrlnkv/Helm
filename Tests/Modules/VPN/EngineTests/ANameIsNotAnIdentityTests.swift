@@ -30,7 +30,9 @@ final class ANameIsNotAnIdentityTests: XCTestCase {
         let at = self.at
         return VPNEngine(settings: VPNSettings(store: NamespacedStore(
                             namespace: "vpn", backing: InMemoryKeyValueStore())),
-                         runner: runner, apps: FakeApps(), now: { at }, work: .inline)
+                         runner: runner, apps: FakeApps(),
+                         interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                         now: { at }, work: .inline)
     }
 
     private let a = "11111111-1111-1111-1111-111111111111"

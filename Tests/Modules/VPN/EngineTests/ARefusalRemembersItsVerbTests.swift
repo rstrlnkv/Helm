@@ -24,7 +24,9 @@ final class ARefusalRemembersItsVerbTests: XCTestCase {
     private func engine(_ runner: FakeRunner) -> VPNEngine {
         VPNEngine(settings: VPNSettings(store: NamespacedStore(
                     namespace: "vpn", backing: InMemoryKeyValueStore())),
-                  runner: runner, apps: FakeApps(), work: .inline)
+                  runner: runner, apps: FakeApps(),
+                  interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                  work: .inline)
     }
 
     private func runner(refusing text: String) -> FakeRunner {

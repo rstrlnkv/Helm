@@ -26,6 +26,7 @@ final class VPNAutomationRecordingTests: XCTestCase {
         return VPNEngine(settings: settings ?? makeSettings(),
                          runner: runner,
                          apps: apps,
+                         interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                          now: { at },
                          work: .inline)
     }

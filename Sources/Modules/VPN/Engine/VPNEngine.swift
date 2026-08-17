@@ -28,6 +28,9 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     private let credentials: VPNCredentialsPort?
     private let apps: AppObserverPort
     private let network: NetworkWatchPort?
+    private let interfaces: VPNInterfacePort
+    private let exit: VPNExitPort
+    private let speed: VPNSpeedPort
     private let localTransport: LocalTransport
     public let transport: EngineTransport
 
@@ -64,6 +67,9 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// from the work queue, read by the page.
     private var _secrets = VPNSecretBook()
     private var _lastAutomation: VPNAutomation?
+    /// The exit check in flight — under the lock because it is started on the
+    /// work queue and cancelled from the host's thread. `cancelExitCheck()`.
+    private var _exitCheck: Task<Void, Never>?
 
     public var lastAutomation: VPNAutomation? {
         lock.lock(); defer { lock.unlock() }; return _lastAutomation
@@ -101,6 +107,18 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
 
     private var core = VPNAutoConnectCore(rules: [:])
     private var knownBundleIDs: Set<String> = []
+    /// When Helm saw the current tunnel come up, keyed by service id. Dropped
+    /// when the service goes down, so a stamp can never outlive its tunnel and
+    /// be read against the next one — macOS raises the next one on a different
+    /// `utunN`, and an uptime spanning the gap is a fiction.
+    ///
+    /// Touched only from the work queue, like `core` and `knownBundleIDs` above
+    /// and unlike the fields under the lock.
+    private var raisedAt: [String: Date] = [:]
+    /// The last two answers about the tunnel that is up, and they belong to
+    /// *that* tunnel: both are dropped with its stamp when it goes.
+    private var lastRegion: String?
+    private var lastSpeed: VPNSpeedReading?
     /// Under the lock, like the four above it and unlike the rest of this
     /// group.
     ///
@@ -120,12 +138,22 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// machine — `VPNAutomation.spinPhase` measures from it.
     private let now: @Sendable () -> Date
 
+    /// **Name the three network ports in every test that builds one of these.**
+    /// Their defaults are the real thing: `TraceExit` reaches a server and
+    /// `NetworkQualitySpeed` runs a subprocess for fifteen seconds under load.
+    /// Eleven `AutopilotEngine` tests took a default port that turned out to be
+    /// the owner's own keychain and rolled their rules back (CLAUDE.md § a
+    /// default argument naming a real port); `NoTestTakesAProductionPortTests`
+    /// is this module's guard against the same afternoon.
     public init(settings: VPNSettings,
                 runner: VPNRunnerPort,
                 credentials: VPNCredentialsPort? = nil,
                 apps: AppObserverPort,
                 network: NetworkWatchPort? = nil,
                 transport: LocalTransport = LocalTransport(),
+                interfaces: VPNInterfacePort = DynamicStoreInterfaces(),
+                exit: VPNExitPort = TraceExit(),
+                speed: VPNSpeedPort = NetworkQualitySpeed(),
                 now: @escaping @Sendable () -> Date = Date.init,
                 work: VPNWorkQueue = .background) {
         self.now = now
@@ -135,6 +163,9 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         self.credentials = credentials
         self.apps = apps
         self.network = network
+        self.interfaces = interfaces
+        self.exit = exit
+        self.speed = speed
         self.localTransport = transport
         self.transport = transport
         wireTransport()
@@ -178,11 +209,28 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     public func deactivate() {
         running = false
         network?.stopObserving()
+        cancelExitCheck()
     }
 
     /// The backstop for the routes that do not go through `deactivate()`.
     /// ARCHITECTURE.md § "An observer outlives the thing it points at".
-    deinit { network?.stopObserving() }
+    deinit {
+        network?.stopObserving()
+        cancelExitCheck()
+    }
+
+    /// The exit check in flight, cancelled from outside rather than left to
+    /// `deinit`.
+    ///
+    /// `Task { [weak self] in await self?.something() }` captures weakly only at
+    /// the top: once the body starts it holds `self` for as long as it runs, so
+    /// a request waiting on its eight-second timeout holds this engine whoever
+    /// else has dropped it — and `deinit` cannot run to cancel it (CLAUDE.md
+    /// § `Task { [weak self] … }`).
+    private func cancelExitCheck() {
+        lock.lock(); let inFlight = _exitCheck; _exitCheck = nil; lock.unlock()
+        inFlight?.cancel()
+    }
 
     // MARK: - VPN control
 
@@ -255,6 +303,9 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             // rules stay quiet.
             recordAutomation(name, .dropped)
         }
+        // After the lock, because it asks what the page was last told — and the
+        // question has to be asked before this reading is emitted over it.
+        stampWhatCameUp(parsed)
         emitState()
     }
 
@@ -631,6 +682,105 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         core.appLaunched(bundleID, connect: { [weak self] in self?.connect($0, auto: true) })
     }
 
+    // MARK: - What the strip is told
+
+    /// Notes the moment a tunnel came up, and forgets everything about one that
+    /// has gone.
+    ///
+    /// **`scutil` cannot answer «since when».** The list says `Connected` and
+    /// nothing more, so the only honest stamp is Helm's own observation: a
+    /// service that was down at the last reading and is up at this one. Which
+    /// also means a tunnel that was already up when the process started carries
+    /// no stamp at all — see `wasDown`.
+    private func stampWhatCameUp(_ parsed: [VPNConnection]) {
+        for connection in parsed where connection.status.isConnected {
+            guard raisedAt[connection.id] == nil, wasDown(connection.id) else { continue }
+            raisedAt[connection.id] = now()
+            // The one moment the answer is news, and the one request this app
+            // makes to a server that is not the update feed.
+            checkExit()
+        }
+        let up = Set(parsed.filter(\.status.isConnected).map(\.id))
+        let fallen = raisedAt.keys.filter { !up.contains($0) }
+        guard !fallen.isEmpty else { return }
+        for id in fallen { raisedAt[id] = nil }
+        // The country and the measurement were true of the tunnel that has
+        // gone. Kept, they would be drawn beside the next one.
+        lastRegion = nil
+        lastSpeed = nil
+    }
+
+    /// Was this service **seen** down before this refresh.
+    ///
+    /// False when there is no previous reading at all, which is the first
+    /// refresh of the process: a tunnel that was already up then was not seen
+    /// coming up by anybody, and stamping it there would be Helm timing its own
+    /// launch and calling it the tunnel's age.
+    private func wasDown(_ id: String) -> Bool {
+        lock.lock(); let previous = _lastEmitted; lock.unlock()
+        guard let previous,
+              let before = previous.connections.first(where: { $0.id == id })
+        else { return false }
+        return !before.status.isConnected
+    }
+
+    /// The tunnel the strip is about: the one carrying the default route. On a
+    /// Mac with two tunnels up that is the one the person is on the internet
+    /// through, which is the only one «this tunnel» can honestly mean — and when
+    /// none of them holds the route, the first that is up, with `exit` saying so.
+    private func tunnelFacts() -> VPNTunnelState? {
+        let primary = interfaces.primaryInterface()
+        let tunnels = connections.filter(\.status.isConnected)
+            .compactMap { connection in
+                interfaces.interface(forServiceID: connection.id).map { (connection, $0) }
+            }
+        guard let (connection, interface) = tunnels.first(where: { $0.1 == primary })
+            ?? tunnels.first
+        else { return nil }
+        let carried = interfaces.bytes(on: interface)
+        return VPNTunnelState(name: connection.name,
+                              interface: interface,
+                              since: raisedAt[connection.id],
+                              bytesIn: VPNInterfaceCounters.onTheWire(carried?.in ?? 0),
+                              bytesOut: VPNInterfaceCounters.onTheWire(carried?.out ?? 0),
+                              exit: VPNExitVerdict.of(tunnelInterface: interface,
+                                                      primaryInterface: primary,
+                                                      country: lastRegion),
+                              speed: lastSpeed)
+    }
+
+    /// Asks the outside world where this Mac appears to be. **Only when a tunnel
+    /// has just come up** — this is the app's one request to a server that is not
+    /// the update feed, and it is made when the answer is news.
+    private func checkExit() {
+        let task = Task { [weak self] in
+            guard let self else { return }
+            let region = await self.exit.regionCode()
+            self.work.run { [weak self] in
+                self?.lastRegion = region
+                self?.emitState()
+            }
+        }
+        lock.lock(); let previous = _exitCheck; _exitCheck = task; lock.unlock()
+        previous?.cancel()
+    }
+
+    /// One measurement, on request. See `NetworkQualitySpeed` for why the run is
+    /// not bound to the tunnel's own interface: `-I utunN` answers -1009 and no
+    /// throughput at all on this build of macOS, while the same tool unbound
+    /// answers normally. The strip exists only for the tunnel carrying the
+    /// default route, so an unbound run follows that route and its figure *is*
+    /// that tunnel's — whenever there is a strip on screen to draw it in.
+    ///
+    /// The phase is the port's to name (`vpn.speed`), not this caller's.
+    private func measureSpeed() {
+        work.run { [weak self] in
+            guard let self, self.tunnelFacts() != nil else { return }
+            self.lastSpeed = self.speed.measure(onInterface: nil)
+            self.emitState()
+        }
+    }
+
     // MARK: - Transport
 
     private func wireTransport() {
@@ -652,6 +802,8 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
                 self.refresh()
             case .reloadRules:
                 self.reloadRules()
+            case .measureSpeed:
+                self.measureSpeed()
             }
             return Data()
         }
@@ -665,13 +817,18 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// each duplicate re-rendered every mounted page all night
     /// (`HiddenPageEventChurnBenchmark` prices that). Exact equality withholds
     /// only duplicates, never a change, and replay still serves late subscribers.
+    ///
+    /// Which is why the tunnel's byte counters cross in whole kilobytes: they
+    /// move while nobody touches them, and at byte precision every one of the
+    /// poll's re-reads would be a change (`VPNInterfaceCounters.onTheWire`).
     private func emitState() {
         let payload = StatePayload(connections: connections,
                                     autoConnected: autoConnected.sorted(),
                                     defaultName: defaultConnection?.name,
                                     lastAutomation: lastAutomation,
                                     lastFailure: lastFailure,
-                                    secretsBehindAPrompt: secretsBehindAPrompt)
+                                    secretsBehindAPrompt: secretsBehindAPrompt,
+                                    facts: tunnelFacts())
         lock.lock(); let isDuplicate = payload == _lastEmitted
         _lastEmitted = payload; lock.unlock()
         guard !isDuplicate else { return }

@@ -42,7 +42,9 @@ final class AForgedBundleCannotDropTheTunnelTests: XCTestCase {
         settings.setRulesJSON(VPNRules.encode(
             [bundleID: VPNAppRule(vpnName: "Office", identity: identity)]))
         runner.listOutput = [header, row("Disconnected")].joined(separator: "\n")
-        let engine = VPNEngine(settings: settings, runner: runner, apps: apps, work: .inline)
+        let engine = VPNEngine(settings: settings, runner: runner, apps: apps,
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
         engine.activate()
         return engine
     }

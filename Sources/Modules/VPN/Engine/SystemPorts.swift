@@ -399,9 +399,17 @@ public final class KeychainCredentials: VPNCredentialsPort {
 /// service is actually up, and its `InterfaceName` is the `utunN` the tunnel is
 /// on this time. The global key answers the other half — which interface the
 /// default route goes out of — and that pair is the routing verdict.
+///
+/// The counters are the one answer that does not come from the store: the store
+/// says which interface a service is on, and only the kernel knows what that
+/// interface has carried (`VPNInterfaceCounters`).
 public final class DynamicStoreInterfaces: VPNInterfacePort {
 
     public init() {}
+
+    public func bytes(on interface: String) -> (in: UInt64, out: UInt64)? {
+        VPNInterfaceCounters.bytes(on: interface)
+    }
 
     public func interface(forServiceID id: String) -> String? {
         value(forKey: "State:/Network/Service/\(id)/IPv4" as CFString, field: "InterfaceName")
@@ -478,10 +486,18 @@ public final class TraceExit: VPNExitPort {
 
 /// Production `VPNSpeedPort`: the tool macOS ships.
 ///
-/// `-c` for machine-readable output, `-I` to bind the run to the tunnel's own
-/// interface — so the figure is «this tunnel», not «this Mac's internet». The
+/// `-c` for machine-readable output, `-I` to bind the run to one interface. The
 /// deadline is generous because the tool takes about 15 s by design and a run
 /// killed early prints half its JSON, which `VPNSpeedReading.parse` refuses.
+///
+/// **Nothing binds today, and the parameter stays.** Measured on this machine,
+/// 2026-08-18: `networkQuality -c -I utunN` against a live tunnel prints
+/// `"error_code": -1009, "error_domain": "NSURLErrorDomain"`, exits 0 and
+/// carries no throughput keys at all, while the same tool unbound answers
+/// normally — a socket bound to a point-to-point tun's address does not reach
+/// the network here. So the engine measures unbound and says why
+/// (`VPNEngine.measureSpeed`); this keeps the seam a build with a working bind
+/// goes through, rather than removing the only place the question is asked.
 public final class NetworkQualitySpeed: VPNSpeedPort {
 
     private let now: @Sendable () -> Date

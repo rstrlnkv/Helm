@@ -34,24 +34,6 @@ final class AnUnchangedStateIsSaidOnceTests: XCTestCase {
                                            backing: InMemoryKeyValueStore()))
     }
 
-    /// How many `state` events the transport carried, counted through a
-    /// sentinel: the subscriber registers before the work and reads until it
-    /// meets an event the test itself emitted after it. Structure, not a size a
-    /// race can satisfy — with `.inline` work everything before the sentinel is
-    /// already buffered when the count starts.
-    private func stateEvents(on transport: LocalTransport,
-                             during work: () -> Void) async -> Int {
-        let events = transport.events
-        work()
-        transport.emit(EngineEvent(name: "test.sentinel", payload: Data()))
-        var count = 0
-        for await event in events {
-            if event.name == "test.sentinel" { break }
-            if event.name == VPNEvent.state.rawValue { count += 1 }
-        }
-        return count
-    }
-
     /// The owner's night, in one call: from a state the page has already seen,
     /// a connect the tool accepted whose tunnel never comes up. The poll
     /// re-reads 26 times, the list never changes — one emission in total, for
@@ -61,9 +43,11 @@ final class AnUnchangedStateIsSaidOnceTests: XCTestCase {
         runner.listOutput = list("Disconnected")
         let transport = LocalTransport()
         let engine = VPNEngine(settings: makeSettings(), runner: runner,
-                               apps: FakeApps(), transport: transport, work: .inline)
+                               apps: FakeApps(), transport: transport,
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
 
-        let count = await stateEvents(on: transport) {
+        let events = await stateEvents(on: transport) {
             engine.refresh()                          // the page's baseline
             engine.connect("A")                       // accepted, never settles
         }
@@ -71,9 +55,9 @@ final class AnUnchangedStateIsSaidOnceTests: XCTestCase {
         XCTAssertGreaterThan(runner.listReadCount, 25,
                              "precondition: the poll did run its 26 reads — without them "
                              + "this test would pass against an engine that never polls")
-        XCTAssertEqual(count, 1,
-                       "\(count) state events for one unchanged answer: every mounted page "
-                       + "re-rendered \(count) times to learn nothing")
+        XCTAssertEqual(events.count, 1,
+                       "\(events.count) state events for one unchanged answer: every mounted "
+                       + "page re-rendered \(events.count) times to learn nothing")
     }
 
     /// The other half, without which the first is a page that has gone silent:
@@ -83,9 +67,11 @@ final class AnUnchangedStateIsSaidOnceTests: XCTestCase {
         runner.listOutput = list("Disconnected")
         let transport = LocalTransport()
         let engine = VPNEngine(settings: makeSettings(), runner: runner,
-                               apps: FakeApps(), transport: transport, work: .inline)
+                               apps: FakeApps(), transport: transport,
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
 
-        let count = await stateEvents(on: transport) {
+        let events = await stateEvents(on: transport) {
             engine.refresh()                          // new → emits
             engine.refresh()                          // same → silent
             runner.listOutput = list("Connected")
@@ -94,7 +80,7 @@ final class AnUnchangedStateIsSaidOnceTests: XCTestCase {
             engine.refresh()                          // changed back → emits
         }
 
-        XCTAssertEqual(count, 3,
+        XCTAssertEqual(events.count, 3,
                        "four refreshes over three distinct states must say exactly three "
                        + "things — a suppressed change is a page that is wrong for good, "
                        + "a repeated duplicate is the night of re-renders")
@@ -108,15 +94,17 @@ final class AnUnchangedStateIsSaidOnceTests: XCTestCase {
         runner.listOutput = list("Disconnected", "Office")
         let transport = LocalTransport()
         let engine = VPNEngine(settings: makeSettings(), runner: runner,
-                               apps: FakeApps(), transport: transport, work: .inline)
+                               apps: FakeApps(), transport: transport,
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
 
-        let count = await stateEvents(on: transport) {
+        let events = await stateEvents(on: transport) {
             engine.refresh()                          // baseline state
             runner.reply = "No service"
             engine.connect("Old office")              // list unchanged, failure new
         }
 
-        XCTAssertEqual(count, 2,
+        XCTAssertEqual(events.count, 2,
                        "the refusal reached the wire or the page never learns the "
                        + "command it asked for was refused")
     }

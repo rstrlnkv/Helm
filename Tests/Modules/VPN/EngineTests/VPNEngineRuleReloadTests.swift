@@ -30,7 +30,6 @@ final class VPNEngineRuleReloadTests: XCTestCase {
         VPNSettings(store: NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore()))
     }
 
-
     /// Off and on again. The rule is present, the VPN is present, the app
     /// launches — and the second launch issues nothing.
     func test_rule_removed_and_restored_still_connects_on_the_next_launch() {
@@ -39,7 +38,9 @@ final class VPNEngineRuleReloadTests: XCTestCase {
         let store = settings()
         store.setRulesJSON(ruleJSONForA)
         let apps = FakeApps.trustingA()
-        let engine = VPNEngine(settings: store, runner: runner, apps: apps, work: .inline)
+        let engine = VPNEngine(settings: store, runner: runner, apps: apps,
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
 
         engine.activate()
         apps.bundleIDs = ["com.a"]
@@ -77,7 +78,9 @@ final class VPNEngineRuleReloadTests: XCTestCase {
         let store = settings()
         store.setRulesJSON(ruleJSONForA)
         let apps = FakeApps.trustingA()
-        let engine = VPNEngine(settings: store, runner: runner, apps: apps, work: .inline)
+        let engine = VPNEngine(settings: store, runner: runner, apps: apps,
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
 
         engine.activate()
         apps.bundleIDs = ["com.a"]
@@ -104,7 +107,9 @@ final class VPNEngineRuleReloadTests: XCTestCase {
         let store = settings()
         store.setRulesJSON(ruleJSONForA)
         let apps = FakeApps.trustingA()
-        let engine = VPNEngine(settings: store, runner: runner, apps: apps, work: .inline)
+        let engine = VPNEngine(settings: store, runner: runner, apps: apps,
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
 
         engine.activate()
         apps.bundleIDs = ["com.a"]

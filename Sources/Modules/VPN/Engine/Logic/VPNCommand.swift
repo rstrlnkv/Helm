@@ -12,6 +12,11 @@ public enum VPNCommand: String, CaseIterable, Sendable {
     case disconnect
     case refresh
     case reloadRules
+    /// One `networkQuality` run against the tunnel carrying the traffic. Asked
+    /// for, never scheduled: the tool runs for about fifteen seconds and puts
+    /// the link under load while it does, which is a thing to do when somebody
+    /// presses a button and not on a timer.
+    case measureSpeed
 }
 
 /// Everything the engine says about itself.

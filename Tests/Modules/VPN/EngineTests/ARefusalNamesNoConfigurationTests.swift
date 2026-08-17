@@ -87,7 +87,9 @@ final class ARefusalNamesNoConfigurationTests: XCTestCase {
         runner.replies = [asked: "cannot start \(asked): \(other) holds the interface"]
         let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
                                     namespace: "vpn", backing: InMemoryKeyValueStore())),
-                               runner: runner, apps: FakeApps(), work: .inline)
+                               runner: runner, apps: FakeApps(),
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
         engine.refresh()
 
         engine.connect(asked)

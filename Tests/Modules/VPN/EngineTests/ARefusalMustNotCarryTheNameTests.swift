@@ -104,7 +104,9 @@ final class ARefusalMustNotCarryTheNameTests: XCTestCase {
         runner.reply = "cannot start \(service): resource busy"
         let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
                                     namespace: "vpn", backing: InMemoryKeyValueStore())),
-                               runner: runner, credentials: nil, apps: FakeApps(), work: .inline)
+                               runner: runner, credentials: nil, apps: FakeApps(),
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
 
         engine.connect(service)
 
@@ -126,7 +128,9 @@ final class ARefusalMustNotCarryTheNameTests: XCTestCase {
         runner.reply = "cannot start \(service): resource busy"
         let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
                                     namespace: "vpn", backing: InMemoryKeyValueStore())),
-                               runner: runner, credentials: nil, apps: FakeApps(), work: .inline)
+                               runner: runner, credentials: nil, apps: FakeApps(),
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
 
         engine.connect(service)
 
