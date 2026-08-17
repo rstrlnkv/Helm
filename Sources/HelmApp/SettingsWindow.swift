@@ -22,7 +22,12 @@ import HelmUI
     /// (`DiskLayout.barWithStatement`), and at 940 the pane is 690, so the
     /// statement never appeared out of the box and nothing suggested widening
     /// the window would reveal it. 1060 gives a 810 pt pane, which clears it.
-    private static let defaultSize = NSSize(width: 1060, height: 700)
+    ///
+    /// Not private: `SidebarComposerSheet` caps itself at this height, because
+    /// a sheet is drawn inside this window and the window's own content is the
+    /// ceiling. Two literal 700s in one target, with a comment claiming they
+    /// were the same number, is a comment.
+    nonisolated static let defaultSize = NSSize(width: 1060, height: 700)
     /// Below this the list rows start truncating names and paths.
     private static let minSize = NSSize(width: 860, height: 540)
 
