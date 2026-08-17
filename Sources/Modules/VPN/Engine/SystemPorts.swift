@@ -389,6 +389,116 @@ public final class KeychainCredentials: VPNCredentialsPort {
     }
 }
 
+// MARK: - DynamicStoreInterfaces
+
+/// Production `VPNInterfacePort`: the dynamic store, which is where macOS keeps
+/// what is up right now.
+///
+/// **Not `ifconfig`, and not the configuration.** A configuration says what a
+/// service would be; `State:/Network/Service/<id>/IPv4` exists only while the
+/// service is actually up, and its `InterfaceName` is the `utunN` the tunnel is
+/// on this time. The global key answers the other half — which interface the
+/// default route goes out of — and that pair is the routing verdict.
+public final class DynamicStoreInterfaces: VPNInterfacePort {
+
+    public init() {}
+
+    public func interface(forServiceID id: String) -> String? {
+        value(forKey: "State:/Network/Service/\(id)/IPv4" as CFString, field: "InterfaceName")
+    }
+
+    public func primaryInterface() -> String? {
+        value(forKey: "State:/Network/Global/IPv4" as CFString, field: "PrimaryInterface")
+    }
+
+    private func value(forKey key: CFString, field: String) -> String? {
+        guard let store = SCDynamicStoreCreate(nil, "com.helm.vpn.interfaces" as CFString,
+                                               nil, nil),
+              let dict = SCDynamicStoreCopyValue(store, key) as? [String: Any]
+        else { return nil }
+        return dict[field] as? String
+    }
+}
+
+// MARK: - TraceExit
+
+/// Production `VPNExitPort`: Cloudflare's trace endpoint.
+///
+/// **A region code is all that is taken.** The endpoint answers plain text, one
+/// `key=value` per line, and the line that matters is `loc=NL`; the `ip=` line is
+/// in the same response and is never read into a variable, so there is nothing
+/// holding an address to leak into a log, a payload or a screenshot. The country
+/// the person sees is `Locale`'s own name for that code, in the app's language,
+/// which is also why no third party gets to name a place in Helm's window.
+///
+/// Chosen for its size and for answering without an API key. It is a third party
+/// nevertheless: it learns that this machine asked, and that is the cost the
+/// check has. It is made only when a tunnel comes up.
+public final class TraceExit: VPNExitPort {
+
+    private let url: URL
+    private let session: URLSession
+
+    public init(url: URL = URL(string: "https://cloudflare.com/cdn-cgi/trace")!,
+                session: URLSession = {
+                    let config = URLSessionConfiguration.ephemeral
+                    config.timeoutIntervalForRequest = 8
+                    config.urlCache = nil
+                    return URLSession(configuration: config)
+                }()) {
+        self.url = url
+        self.session = session
+    }
+
+    /// The phase is named here rather than by the caller: this is the shared path
+    /// every exit check goes through, and a wait of up to eight seconds should say
+    /// what it is while it runs (CLAUDE.md § A phase names itself while it runs).
+    public func regionCode() async -> String? {
+        await HelmActivity.phase("vpn.exit") {
+            guard let (data, response) = try? await session.data(from: url),
+                  (response as? HTTPURLResponse)?.statusCode == 200,
+                  let text = String(data: data, encoding: .utf8)
+            else { return nil }
+            return Self.region(in: text)
+        }
+    }
+
+    /// `loc=NL` out of the tool's own line-per-field text. Internal rather than
+    /// private so the parser has a test that runs no request.
+    static func region(in text: String) -> String? {
+        for line in text.split(separator: "\n") where line.hasPrefix("loc=") {
+            let code = line.dropFirst(4).trimmingCharacters(in: .whitespaces)
+            return code.count == 2 ? code.uppercased() : nil
+        }
+        return nil
+    }
+}
+
+// MARK: - NetworkQualitySpeed
+
+/// Production `VPNSpeedPort`: the tool macOS ships.
+///
+/// `-c` for machine-readable output, `-I` to bind the run to the tunnel's own
+/// interface — so the figure is «this tunnel», not «this Mac's internet». The
+/// deadline is generous because the tool takes about 15 s by design and a run
+/// killed early prints half its JSON, which `VPNSpeedReading.parse` refuses.
+public final class NetworkQualitySpeed: VPNSpeedPort {
+
+    private let now: @Sendable () -> Date
+
+    public init(now: @escaping @Sendable () -> Date = Date.init) { self.now = now }
+
+    public func measure(onInterface interface: String?) -> VPNSpeedReading? {
+        HelmActivity.phase("vpn.speed") {
+            var args = ["-c"]
+            if let interface { args += ["-I", interface] }
+            let result = HelmProcess.run("/usr/bin/networkQuality", args, timeout: 60)
+            guard result.status == 0 else { return nil }
+            return VPNSpeedReading.parse(result.output, at: now())
+        }
+    }
+}
+
 // MARK: - VPNSystemPorts
 
 /// Bundles the production, system-backed ports the VPN engine needs at
