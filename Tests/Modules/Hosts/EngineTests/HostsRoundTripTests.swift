@@ -26,6 +26,12 @@ final class HostsRoundTripTests: XCTestCase {
 
     """
 
+    /// **Compares the bytes, because `XCTAssertEqual` on two `String`s does
+    /// not.** Swift's `==` is canonical equivalence: `"cafe\u{301}"` equals
+    /// `"caf\u{E9}"`, so a parser that quietly re-normalised what it read would
+    /// pass every case here while rewriting every decomposed name in somebody's
+    /// file. The doc comment above claims byte for byte; this is what makes
+    /// that a claim the test can fail on.
     private func assertRoundTrips(_ text: String,
                                   _ what: String,
                                   entries expected: Int,
@@ -34,9 +40,13 @@ final class HostsRoundTripTests: XCTestCase {
         XCTAssertEqual(document.entries.count, expected,
                        "\(what) was not read as \(expected) entries",
                        file: file, line: line)
-        XCTAssertEqual(HostsFile.render(document), text,
-                       "\(what) did not survive the round trip",
-                       file: file, line: line)
+        let rendered = HostsFile.render(document)
+        guard Array(rendered.utf8) != Array(text.utf8) else { return }
+        XCTFail("""
+            \(what) did not survive the round trip byte for byte
+              in:  \(text.prefix(300).debugDescription)
+              out: \(rendered.prefix(300).debugDescription)
+            """, file: file, line: line)
     }
 
     func testTheDefaultFileSurvives() {
@@ -71,6 +81,24 @@ final class HostsRoundTripTests: XCTestCase {
     func testAJunkLineSurvivesUntouched() {
         assertRoundTrips("this is not a hosts line at all\n127.0.0.1 a\n",
                          "a line the parser cannot read", entries: 1)
+    }
+
+    /// A name carrying a combining accent, which is the only kind of case the
+    /// byte comparison above can be right about: every other case here is ASCII,
+    /// where canonical equivalence and byte equality agree and the honest
+    /// assertion and the vacuous one cannot be told apart.
+    func testADecomposedNameComesBackInItsOwnSpelling() {
+        assertRoundTrips("127.0.0.1\tcafe\u{301}.local\tsu\u{308}d\n",
+                         "two names spelled with combining accents", entries: 1)
+    }
+
+    /// **The corpus held no disabled entry until 2026-08-18**, so `enabled`
+    /// could be — and was — nailed to `true` with every case still green, in a
+    /// module whose tab exists to switch mappings off.
+    func testADisabledEntrySurvivesAndReadsBackDisabled() {
+        let text = "# 0.0.0.0\tads.example  # blocked in March\n127.0.0.1\tlocalhost\n"
+        assertRoundTrips(text, "a disabled entry beside a live one", entries: 2)
+        XCTAssertEqual(HostsFile.parse(text).entries.map(\.enabled), [false, true])
     }
 
     /// Aligned columns are how a hand-maintained hosts file looks, and the run

@@ -27,16 +27,36 @@ public enum HostsFile {
     /// to a space has rewritten a line it was only asked to read, and aligned
     /// columns are how a hand-maintained hosts file looks.
     public struct Entry: Equatable, Sendable, Identifiable {
-        public var id: String { "\(address)\u{0}\(names.joined(separator: " "))\u{0}\(index)" }
+        /// The row's position, and nothing about what it says.
+        ///
+        /// An id copied from the content is not an identity: SwiftUI destroys
+        /// and rebuilds a `ForEach` row whose id changed, taking `@FocusState`
+        /// and the half-typed text with it, so a field bound to `address` would
+        /// lose the caret after one keystroke. `index` is unique within a parse
+        /// and unchanged by an edit, which is both halves of what an id owes.
+        public var id: Int { index }
         /// Position in the document, so two identical entries are still two rows.
         public var index: Int
         public var address: String
         public var names: [String]
         /// The comment after the names, `#` and all, or an empty string.
         public var trailing: String
-        /// Whether the line is live. A disabled entry is a commented one.
+        /// **Whether the line is live, and the only thing that decides.**
+        ///
+        /// The `#` of a disabled line is not kept in `leading`, where it would
+        /// be a second field saying the same thing: an `Entry` built by a view
+        /// model with `enabled: false` was written as a live mapping for as
+        /// long as those two existed side by side. This file goes to `/etc`
+        /// with administrator rights, so «the model says off and the file says
+        /// on» is the one disagreement it can least afford.
         public var enabled: Bool
+        /// Indentation only — never the comment marker.
         var leading: String
+        /// How this line spelled its `#`, kept so a file Helm only read comes
+        /// back with its own spelling. Consulted for *how* a disabled line is
+        /// written, never for *whether* it is one, and ignored entirely while
+        /// `enabled` is true.
+        var disabledMark: String
         var spacing: String
         /// The gap before each name after the first. Short of the names it
         /// separates — a name added to an entry gets a single space — so a
@@ -44,10 +64,25 @@ public enum HostsFile {
         var separators: [String]
         var ending: String
 
+        /// What a caller outside the engine can build: a mapping, a comment,
+        /// and whether it is live.
+        ///
+        /// The whitespace a line was written with is deliberately not on offer.
+        /// `leading` beside `enabled` is a second way to say whether a mapping
+        /// is commented out, and a public initializer taking both leaves the
+        /// disagreement representable from the one target that will be building
+        /// entries — which is where it would come from.
         public init(index: Int, address: String, names: [String],
-                    trailing: String = "", enabled: Bool = true,
-                    leading: String = "", spacing: String = "\t",
-                    separators: [String] = [], ending: String = "\n") {
+                    trailing: String = "", enabled: Bool = true) {
+            self.init(index: index, address: address, names: names,
+                      trailing: trailing, enabled: enabled, leading: "",
+                      spacing: "\t", separators: [], disabledMark: "", ending: "\n")
+        }
+
+        /// Everything a line was made of, which only the parser knows.
+        init(index: Int, address: String, names: [String], trailing: String,
+             enabled: Bool, leading: String, spacing: String,
+             separators: [String], disabledMark: String, ending: String) {
             self.index = index
             self.address = address
             self.names = names
@@ -56,7 +91,17 @@ public enum HostsFile {
             self.leading = leading
             self.spacing = spacing
             self.separators = separators
+            self.disabledMark = disabledMark
             self.ending = ending
+        }
+
+        /// What stands between the indentation and the address: nothing while
+        /// the mapping is live, and this line's own `#` when it is not. An
+        /// entry switched off by a caller that never read one from a file is
+        /// written the way macOS writes its own.
+        var mark: String {
+            guard !enabled else { return "" }
+            return disabledMark.isEmpty ? "# " : disabledMark
         }
 
         /// The names as they sat in the file.
@@ -123,12 +168,13 @@ public enum HostsFile {
         // A disabled entry is a commented line that still reads as one. Any
         // other `#` line is somebody's comment and stays verbatim.
         var rest = Substring(body)
-        var leading = takeBlanks(&rest)
+        let leading = takeBlanks(&rest)
         var enabled = true
+        var disabledMark = ""
         if rest.hasPrefix("#") {
             enabled = false
             rest = rest.dropFirst()
-            leading += "#" + takeBlanks(&rest)
+            disabledMark = "#" + takeBlanks(&rest)
         }
         guard !rest.isEmpty else { return nil }
 
@@ -152,7 +198,8 @@ public enum HostsFile {
         return Entry(index: index, address: address, names: scanned.names,
                      trailing: scanned.tail + trailing, enabled: enabled,
                      leading: leading, spacing: spacing,
-                     separators: scanned.separators, ending: ending)
+                     separators: scanned.separators, disabledMark: disabledMark,
+                     ending: ending)
     }
 
     /// The names, the gaps between them, and whatever whitespace ran on after
@@ -198,16 +245,89 @@ public enum HostsFile {
         return String(text[..<end])
     }
 
-    /// Whether a token is an address at all. `inet_pton` answers for both
-    /// families and knows the forms a hand-written check gets wrong; the zone
-    /// suffix of a link-local address (`fe80::1%lo0`) is stripped first,
-    /// because it is a scope and not part of the address.
+    // MARK: - Addresses
+    //
+    // **Two questions, two predicates, and they differ on purpose.** libc reads
+    // one token two ways, measured here on macOS 27, 2026-08-18:
+    //
+    //     inet_pton(AF_INET, "0177.0.0.1") -> 177.0.0.1
+    //     inet_aton(         "0177.0.0.1") -> 127.0.0.1     // octal
+    //     inet_pton(AF_INET, "010.0.0.1")  -> 10.0.0.1
+    //     inet_aton(         "010.0.0.1")  -> 8.0.0.1
+    //     inet_pton(AF_INET, "127.1")      -> refused
+    //     inet_aton(         "127.1")      -> 127.0.0.1
+    //
+    // Do not fold these back into one predicate. Reading is generous because a
+    // mapping missing from the table is a mapping nobody can switch off, and
+    // `0177.0.0.1 evil.example` is the loopback wearing an innocent face —
+    // exactly the line a person most needs shown. Writing is strict because
+    // Helm cannot know which parser reads the file it produces, so it must
+    // never *create* a token whose meaning depends on that.
+
+    /// Whether a token is an address to *somebody* — the parse-time question,
+    /// "is this line a row?". Anything `inet_pton` or `inet_aton` accepts.
     public static func isAddress(_ token: String) -> Bool {
-        let bare = token.split(separator: "%", maxSplits: 1).first.map(String.init) ?? token
+        guard isPlausibleToken(token) else { return false }
+        let bare = withoutZone(token)
+        return parsesStrictly(bare) || parsesTheClassicWay(bare)
+    }
+
+    /// Whether Helm may *write* this token — the field-editor question. Strict
+    /// where `isAddress` is generous: `inet_pton` only, and no decimal padded
+    /// with a leading zero, because that is the token the two parsers read
+    /// differently.
+    public static func isWritableAddress(_ token: String) -> Bool {
+        guard isPlausibleToken(token), !hasPaddedDecimal(token) else { return false }
+        if let zone = zone(of: token) {
+            guard !zone.isEmpty, zone.allSatisfy({ $0.isLetter || $0.isNumber }) else { return false }
+        }
+        return parsesStrictly(withoutZone(token))
+    }
+
+    /// What neither predicate will answer about. `withCString` hands C a buffer
+    /// that still holds an embedded NUL and C stops there, so the answer would
+    /// be about a prefix rather than about the token that gets written; and
+    /// `inet_aton` accepts a trailing space (measured), which would vouch for
+    /// one token where the file holds two.
+    private static func isPlausibleToken(_ token: String) -> Bool {
+        !token.isEmpty && !token.contains { $0.isWhitespace || $0 == "\u{0}" }
+    }
+
+    /// The scope of a link-local address (`fe80::1%lo0`) is not part of the
+    /// address, so it is cut off before either parser sees it.
+    private static func withoutZone(_ token: String) -> String {
+        String(token.prefix(while: { $0 != "%" }))
+    }
+
+    private static func zone(of token: String) -> String? {
+        guard let percent = token.firstIndex(of: "%") else { return nil }
+        return String(token[token.index(after: percent)...])
+    }
+
+    private static func parsesStrictly(_ token: String) -> Bool {
         var v4 = in_addr()
-        if bare.withCString({ inet_pton(AF_INET, $0, &v4) }) == 1 { return true }
+        if token.withCString({ inet_pton(AF_INET, $0, &v4) }) == 1 { return true }
         var v6 = in6_addr()
-        return bare.withCString({ inet_pton(AF_INET6, $0, &v6) }) == 1
+        return token.withCString({ inet_pton(AF_INET6, $0, &v6) }) == 1
+    }
+
+    /// `inet_aton` is what much older software reads a hosts file with, and it
+    /// takes `127.1`, `2130706433` and `0x7f.1` as the loopback.
+    private static func parsesTheClassicWay(_ token: String) -> Bool {
+        var v4 = in_addr()
+        return token.withCString({ inet_aton($0, &v4) }) == 1
+    }
+
+    /// Whether a dotted decimal in the token is padded with a leading zero.
+    ///
+    /// Only the dotted tail is read, so an IPv6 group written `0001` is left
+    /// alone — no parser reads a hex group as octal — while the embedded IPv4
+    /// of `::ffff:010.0.0.1`, which `inet_pton` does accept, is caught.
+    private static func hasPaddedDecimal(_ token: String) -> Bool {
+        let tail = token.split(separator: ":").last.map(String.init) ?? token
+        guard tail.contains(".") else { return false }
+        return tail.split(separator: ".", omittingEmptySubsequences: false)
+            .contains { $0.count > 1 && $0.hasPrefix("0") }
     }
 
     // MARK: - Writing
@@ -218,7 +338,7 @@ public enum HostsFile {
             case .verbatim(let raw):
                 text += raw
             case .entry(let entry):
-                text += entry.leading + entry.address + entry.spacing
+                text += entry.leading + entry.mark + entry.address + entry.spacing
                     + entry.namesRendered + entry.trailing + entry.ending
             }
         }
