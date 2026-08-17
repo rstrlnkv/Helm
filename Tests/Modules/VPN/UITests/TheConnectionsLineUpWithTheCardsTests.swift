@@ -7,10 +7,11 @@ import AppKit
 import HelmContract
 import HelmRuntime
 import HelmUI
+import HelmTestSupport
 @testable import Module_VPN_Engine
 @testable import Module_VPN_UI
 
-/// The connection cards and the section cards under them are one column, in
+/// The connection cards and the section card under them are one column, in
 /// pixels.
 ///
 /// The connections block rides on a grouped `Form`'s **section header**, which
@@ -26,6 +27,13 @@ import HelmUI
 /// SwiftUI rather than to us — so this photographs both edges rather than
 /// asserting the constant against itself, which would be a test whose two sides
 /// read one value.
+///
+/// **The card underneath is the page's news now.** The rules and the notices were
+/// two more sections and 800 pt of page; they are popovers on the card that owns
+/// them, and the one section left is what the page has to say — so the fixture
+/// gives it something to say. Which card it is does not matter to the reading —
+/// where it is does, so its row comes from its own AppKit frame rather than from
+/// a number typed here.
 @MainActor
 final class TheConnectionsLineUpWithTheCardsTests: XCTestCase {
 
@@ -40,10 +48,13 @@ final class TheConnectionsLineUpWithTheCardsTests: XCTestCase {
         // card is drawn at its natural width.
         settings.setRulesJSON(VPNRules.encode(["com.apple.Safari": VPNAppRule(vpnName: "One")]))
         let vm = VPNViewModel(transport: transport, settings: settings)
-        let payload = VPNEngine.StatePayload(
+        var payload = VPNEngine.StatePayload(
             connections: [VPNConnection(id: "1", name: "One", status: .disconnected, kind: "IKEv2"),
                           VPNConnection(id: "2", name: "Two", status: .connected, kind: "IKEv2")],
             autoConnected: [], defaultName: nil, lastAutomation: nil)
+        // Something for the page's one section to hold, so there is a card under
+        // the connections to line them up with.
+        payload.secretsBehindAPrompt = ["One"]
         transport.emit(EngineEvent(name: "state", payload: try! JSONEncoder().encode(payload)))
         for _ in 0..<50 where vm.connections.isEmpty {
             RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
@@ -78,7 +89,7 @@ final class TheConnectionsLineUpWithTheCardsTests: XCTestCase {
         return lo < 0 ? nil : (lo / 2, hi / 2)
     }
 
-    private func shoot() throws -> NSBitmapImageRep {
+    private func shoot() throws -> (rep: NSBitmapImageRep, host: NSView) {
         let (view, _) = page()
         // This window never orders in, and a page that idles off screen
         // (`helmIdlesOffScreen`) would hand the bitmap an empty pane.
@@ -95,24 +106,41 @@ final class TheConnectionsLineUpWithTheCardsTests: XCTestCase {
         let rep = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
         host.cacheDisplay(in: host.bounds, to: rep)
         window.contentView = nil
-        return rep
+        return (rep, host)
+    }
+
+    /// The row to sample the section card on: the middle of the first one the form
+    /// draws, in the host's own points. A number typed here would be measuring
+    /// whatever the page happens to put at that height — which is how the first
+    /// version of this test survived the page losing two of its three sections.
+    private func sectionCardRow(_ host: NSView) throws -> (row: Int, frame: NSRect) {
+        let frames = Set(host.everyView(named: "_NSGraphicsView").map(\.frame))
+            .sorted { $0.minY < $1.minY }
+        let card = try XCTUnwrap(frames.first, "the form drew no section card at all")
+        let inHost = host.convert(card, from: card.superview(in: host))
+        return (Int(inHost.midY.rounded()), inHost)
     }
 
     /// The card row, at a height inside the connection cards, and the row of
-    /// the per-app card below them.
+    /// the section card below them.
     ///
     /// Both y values are read off the same photograph rather than assumed: the
     /// test asserts first that it found two different things, so a layout change
     /// that moved either block out from under its sample would fail here rather
     /// than compare a card with itself.
     func testTheConnectionCardsAndTheSectionCardShareOneColumn() throws {
-        let rep = try shoot()
+        let (rep, host) = try shoot()
         try XCTSkipIf(rep.bitmapData == nil, "nothing drew — no window server")
 
         let cards = try XCTUnwrap(edges(rep, atPoint: 60),
                                   "nothing was drawn where the connection cards should be")
-        let section = try XCTUnwrap(edges(rep, atPoint: 260),
-                                    "nothing was drawn where the per-app card should be")
+        let below = try sectionCardRow(host)
+        let section = try XCTUnwrap(edges(rep, atPoint: below.row),
+                                    "nothing was drawn across the section card at y=\(below.row)")
+        // The pixels found the card AppKit named, and not something beside it.
+        XCTAssertEqual(section.left, Int(below.frame.minX.rounded()), accuracy: 1,
+                       "the fill photographed at y=\(below.row) starts at \(section.left) and the "
+                       + "card AppKit reports at \(Int(below.frame.minX)) — two different things")
 
         XCTAssertGreaterThan(cards.right - cards.left, 400,
                              "the sample at y=60 did not land across both cards: \(cards)")

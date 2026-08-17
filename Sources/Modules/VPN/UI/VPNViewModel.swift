@@ -70,6 +70,45 @@ import Module_VPN_Engine
         return VPNNotice.mode(for: kind, rules: rules, drop: drop)
     }
 
+    /// **The configuration a firing happened on, when the name says so without
+    /// ambiguity.**
+    ///
+    /// A firing carries the configuration's *name*, because that is what
+    /// `scutil --nc start` takes; the per-connection settings are keyed by its
+    /// id, because a name is retyped. This is the join, and it refuses to guess:
+    /// macOS lets two configurations carry one display name (ARCHITECTURE.md §
+    /// VPN), and applying one of two namesakes' settings to a firing that might
+    /// be the other's is a setting applied to the wrong tunnel. Two matches, or
+    /// none, and the module-wide value is the honest answer.
+    func connectionID(named name: String) -> String? {
+        let matches = connections.filter { $0.name == name }
+        return matches.count == 1 ? matches[0].id : nil
+    }
+
+    /// The three questions a firing asks, resolved on the configuration it
+    /// happened on. **Nothing in the firing path may read the module-wide value
+    /// directly**: it did until 2026-08-17, and the switch each card had just
+    /// been given was therefore written to the store and never read — the
+    /// popover was a control that changed nothing (`TheRingTurnsInThisTunnelsColourTests`).
+    func notice(for kind: VPNAutomation.Kind, on name: String) -> VPNNotice {
+        guard noticeForTesting == nil, dropNoticeForTesting == nil,
+              let settings, let id = connectionID(named: name)
+        else { return notice(for: kind) }
+        return settings.notice(for: kind, connectionID: id)
+    }
+
+    func automationSpin(on name: String) -> Bool {
+        guard spinForTesting == nil, let settings, let id = connectionID(named: name)
+        else { return automationSpin }
+        return settings.automationSpin(connectionID: id)
+    }
+
+    func spinTint(for kind: VPNAutomation.Kind, on name: String) -> String {
+        guard spinTintsForTesting == nil, let settings, let id = connectionID(named: name)
+        else { return spinTint(for: kind) }
+        return settings.spinTint(for: kind, connectionID: id)
+    }
+
     /// Whether the menu-bar ring turns when a rule fires. Read at every ask
     /// rather than cached, like `notice`, so a change in Settings applies to
     /// the next firing instead of to the next launch.
@@ -108,6 +147,11 @@ import Module_VPN_Engine
     /// rather than from the rules' mode.
     func effectiveNotice(for kind: VPNAutomation.Kind) -> VPNNotice {
         notice(for: kind).effective(bannerAuthorized: bannerAuthorized)
+    }
+
+    /// The same for a firing, on the configuration it happened on.
+    func effectiveNotice(for kind: VPNAutomation.Kind, on name: String) -> VPNNotice {
+        notice(for: kind, on: name).effective(bannerAuthorized: bannerAuthorized)
     }
 
     /// What macOS answered the last time it was asked, this launch — by the
@@ -268,7 +312,7 @@ import Module_VPN_Engine
     /// page displays, and it is written where the person can see it change.
     private func announce(_ firing: VPNAutomation) {
         guard let port = notices else { return }
-        let mode = notice(for: firing.kind)
+        let mode = notice(for: firing.kind, on: firing.name)
         let title = VPNStr.automationBannerTitle(firing.kind)
         let body = VPNStr.automationBannerBody(firing.name, kind: firing.kind)
         // Resolves `self` only after the await, so the wait holds nothing.

@@ -18,7 +18,7 @@ import XCTest
 /// «it fits on my Mac» is worth.
 ///
 /// Measured rather than looked at, because the offender is French and this suite
-/// runs in English. The width comes from `VPNSettingsPage.noticeThumbnail` —
+/// runs in English. The width comes from `VPNConnectionCard.noticeThumbnail` —
 /// the page's own number, not a copy of it — and the font from `HelmChoiceCards`'
 /// own label: `.caption` at semibold, which is the widest of the two weights
 /// that control draws and the one the chosen card gets.
@@ -32,7 +32,7 @@ final class TheNoticeLabelsFitTheCardTests: XCTestCase {
     }
 
     func testEveryNoticeLabelFitsOnOneLineInEveryLanguage() {
-        let card = VPNSettingsPage.noticeThumbnail.width
+        let card = VPNConnectionCard.noticeThumbnail.width
         var offenders: [String] = []
         for language in AppLanguage.allCases {
             for notice in VPNNotice.allCases {
@@ -55,7 +55,7 @@ final class TheNoticeLabelsFitTheCardTests: XCTestCase {
     /// worst, which is close enough to the card that a threshold set above every
     /// real case would look exactly like a pass.
     func testTheInstrumentStillFailsTheLabelThisReplaced() {
-        let card = VPNSettingsPage.noticeThumbnail.width
+        let card = VPNConnectionCard.noticeThumbnail.width
         // The French of the key that was deleted, as it shipped in 0.9.0.
         XCTAssertGreaterThan(width("Nom dans la barre des menus"), card,
                              "the measurement no longer sees a label that was two lines on "

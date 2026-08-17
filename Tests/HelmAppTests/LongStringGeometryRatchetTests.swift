@@ -284,7 +284,7 @@ final class LongStringGeometryRatchetTests: XCTestCase {
         // (`ModulePageRender.Priming`). All three are the fixture's reach rather than
         // a change to any page, and `recordedAtFortyPercent` above moved with the
         // last two.
-        XCTAssertEqual(tally, ["AppKitSwitch": 18, "AppKitTextField": 3,
+        XCTAssertEqual(tally, ["AppKitSwitch": 17, "AppKitTextField": 3,
                                "AppKitSearchField": 1, "AppKitSegmentedControl": 3], """
             the controls this measurement can see are not the ones it was measured with: \
             \(tally.sorted { $0.key < $1.key }.map { "\($0.key)×\($0.value)" }.joined(separator: " ")).

@@ -891,3 +891,18 @@
 "Keep Awake's lines in the log now file under the module filter's own name for it. Lines written before this build keep the old spelling, so the module menu may list two words for one module until the log rolls over — that is the old lines draining away, not a defect." = "“保持唤醒”的日志行现在使用与模块筛选器一致的名称。此版本之前写入的行保留旧写法，所以模块菜单会在一段时间里为同一个模块显示两个词 — 那是旧行在逐渐退出，不是故障。";
 "Keyboard's menu-bar indicator now matches the system's own input menu: each layout row shows its badge, a new “Show Input Source Name” switch puts the layout's name in the menu bar instead of the badge, and “Open Keyboard Settings…” takes you straight to the pane that opens." = "键盘指示器的菜单现在更接近系统自带的输入菜单：每个输入法都显示自己的徽标，新增的“显示输入法名称”开关会用输入法名称代替徽标显示在菜单栏中，“打开键盘设置…”会直接跳到对应的设置面板。";
 "The Uninstaller's Apps tab now says why it's empty — a search that matched nothing, a Mac with no more apps to show, or a list still being read — instead of showing the same blank screen for all three." = "卸载器的“App”标签页现在会说明为什么是空的——搜索没有结果、Mac 上确实没有更多应用了、还是列表尚未返回——而不是三种情况都显示同一个空白画面。";
+
+"Connected by these rules" = "由这些规则连接";
+"Remove rule" = "删除规则";
+"Move to another VPN" = "移到其他 VPN";
+"No longer in System Settings" = "已不在系统设置中";
+"Show fewer" = "收起";
+"Drag an app here" = "把应用拖到这里";
+"The VPN page arranges its connections without a gap at the end of a row — four of them sit two by two — and a Mac with more than six shows six with “Show all” under them. Whatever is connected comes first, so it is never the one behind the button." = "VPN 页面排列连接时不再让行尾留空——四个会排成两行两列；配置超过六个的 Mac 只显示六个，下方是“显示全部”。已连接的排在最前，绝不会被折叠在按钮后面。";
+"A VPN is a row now — its name, the protocol as a tag, what it is doing, and one button: a power key to switch the tunnel, a cross to abandon a handshake. Twice as many fit on the page, and the button says its word when you rest the pointer on it." = "每个 VPN 现在是一行：名称、作为标签的协议、当前状态，以及一个按钮 — 电源用来切换隧道，叉号用来放弃握手。同一页能放下两倍，把指针停在按钮上会显示它的词。";
+"No rules" = "没有规则";
+"Applies to this connection only" = "仅适用于此连接";
+"Everything about one VPN is on its own card now: the applications that raise it, and how loudly it speaks. Two buttons under the card open them." = "关于某个 VPN 的一切现在都在它自己的卡片上：会把它连起来的应用，以及它说话的音量。卡片下方的两个按钮分别打开它们。";
+"A rule whose VPN has a long name no longer pushes the VPN page out of the window, and the rows’ menus line up in a column." = "VPN 名字很长的规则不会再把 VPN 页面挤出窗口，各行的菜单也对齐成一列。";
+"Each VPN can be told how loudly to speak on its own — a notification, the menu bar or nothing, whether the icon spins and what colour it turns. The ones you have not changed keep following the app’s own setting." = "每个 VPN 都可以单独设定音量：通知、菜单栏或什么都不做，图标是否旋转，以及旋转时用什么颜色。你没有改过的，仍然沿用应用本身的设置。";
+"The panel’s “permissions not granted” notice is no longer drawn inside a second panel of its own: it is one line across the width, like anything else in the panel." = "面板里“权限未授予”的提示不再画在另一层卡片里：它就是横贯整宽的一行，和面板里其他内容一样。";

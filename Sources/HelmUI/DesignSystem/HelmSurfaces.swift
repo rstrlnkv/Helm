@@ -231,6 +231,20 @@ public enum HelmLayout {
     /// A number owned by SwiftUI, so `TheConnectionsLineUpWithTheCardsTests`
     /// photographs both edges and fails if a macOS release moves either.
     public static let groupedHeaderOutset: CGFloat = 10
+
+    /// What a grouped `Form` puts between a section header and the section's
+    /// own card — the vertical half of the same story as the outset above.
+    ///
+    /// A block that draws its *own* cards inside a header has to supply this
+    /// itself, and the VPN page did not: photographed at the settings column on
+    /// macOS 27, from the heading's cap top to the card's fill is 21 pt where
+    /// the form draws the card and was 11 where the page drew it, so the
+    /// connections read as having slipped up into their own title.
+    ///
+    /// Also SwiftUI's number rather than ours, so
+    /// `ThePageKeepsOneRhythmTests` compares the two gaps off one photograph
+    /// instead of asserting this constant against itself.
+    public static let groupedHeaderGap: CGFloat = 10
 }
 
 /// Text that recedes, at contrasts that were measured rather than assumed.

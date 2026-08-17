@@ -67,6 +67,8 @@ final class SidebarComposerHeightTests: XCTestCase {
 
     /// Nine modules and four sections still fit under the cap, which is the
     /// promise the cap was chosen for: the standard arrangement never scrolls.
+    /// A tenth module was measured at 683 pt against this 660 — so a module added
+    /// later fails here, which is the conversation this test exists to force.
     func testTheShippedArrangementFitsUnderTheCap() {
         let estimate = SidebarComposerList.estimatedHeight(of: shipped, editing: true)
         XCTAssertLessThanOrEqual(estimate + SidebarComposerSheet.chromeHeight, 660)

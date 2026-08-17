@@ -91,6 +91,44 @@ public struct VPNSettings {
         store.set(authorized, for: "bannerAuthorized")
     }
 
+    /// The per-connection overrides. One key, one JSON document, the way the
+    /// rules are stored — and, like them, keyed by something stable: a
+    /// configuration's `scutil` id rather than its name.
+    ///
+    /// The three settings above stay exactly where they are and keep meaning
+    /// what they mean: whatever the book has no entry for inherits them
+    /// (`VPNNoticeBook`). So an installed build that has never opened the new
+    /// popover behaves as it did, and there is no migration to run twice.
+    public var noticeBook: VPNNoticeBook {
+        VPNNoticeBook.decode(store.string("noticeBook", default: "{}"))
+    }
+    public func setNoticeBook(_ book: VPNNoticeBook) {
+        store.set(VPNNoticeBook.encode(book), for: "noticeBook")
+    }
+
+    /// What a firing of `kind` on **this** configuration is announced as. The
+    /// one call the engine should make: it folds the book and the two global
+    /// settings together so no caller has to remember that absence inherits.
+    public func notice(for kind: VPNAutomation.Kind, connectionID: String?) -> VPNNotice {
+        guard let connectionID else { return notice(for: kind) }
+        return noticeBook.notice(for: connectionID, kind: kind, rules: notice, drop: dropNotice)
+    }
+
+    /// Whether the ring turns for a firing on this configuration.
+    public func automationSpin(connectionID: String?) -> Bool {
+        guard let connectionID else { return automationSpin }
+        return noticeBook.spin(for: connectionID, fallback: automationSpin)
+    }
+
+    /// And what colour it turns in. The module-wide value is the fallback, so a
+    /// configuration nobody has given a colour keeps the green and orange the
+    /// app shipped with.
+    public func spinTint(for kind: VPNAutomation.Kind, connectionID: String?) -> String {
+        guard let connectionID else { return spinTint(for: kind) }
+        return noticeBook.tint(for: connectionID, kind: kind,
+                               fallback: spinTint(for: kind))
+    }
+
     public var lastUsedName: String? {
         let s = store.string("lastUsedName", default: "")
         return s.isEmpty ? nil : s

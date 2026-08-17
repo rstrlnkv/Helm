@@ -29,7 +29,164 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   launchd, and the system's own menu item exists only while the system
   indicator is on. A door that opens nothing is worse than none.
 
-### Changed
+- **Everything about one configuration is on its own card, behind two doors.**
+  The page was the connections and then 800 pt of settings *about* the
+  connections: a flat list of rules keyed by application, two picture questions
+  about how loudly a firing is announced, a switch and two palettes. None of it
+  said which applications hold *this* tunnel up, which is the question a page of
+  tunnels is opened with. Each card wears the answer — a strip of up to four
+  application icons and «+N», the cap being a width measured at the narrowest
+  card this app draws — and opens two popovers: the rules that point at this
+  configuration, and how loudly this configuration speaks.
+  **The two doors are one height by construction**, `doorHeight` on the
+  container rather than on the contents, because sized by what was inside them a
+  door holding four icons stood 30 pt against the notices door's 12 (measured;
+  a mutation putting that back fails
+  `TheCardsVerbAndTheTwoBannersTests`). The notices are per configuration now
+  and **absence means inherit**: `VPNNoticeBook` stores an override only for a
+  card somebody changed, keyed by the configuration's `scutil` UUID rather than
+  its name (a name is retyped, which is why `VPNRules.orphaned` exists), so an
+  installed build that never opens a popover behaves exactly as it did and
+  there is no migration to run twice. Nothing prunes the book against a
+  `scutil` read either — a refusal or a Mac mid-boot answers with a short list,
+  and dropping a person's choices on the strength of one bad read is worse than
+  keeping a record nobody reads. The popover holds **every** rule, not the four
+  the door wears, and scrolls past ten of them; the timing pop-up's width is
+  `HelmPickerWidth`'s rather than a typed 150, at which the Russian «При запуске
+  и выходе» drew «При запуске и в…» — a control that will not say what it is set
+  to. The ring's two colours followed the switch onto the card, so **nothing
+  about a configuration is on the page any more**: the page is the configurations
+  and the two or three sentences that qualify them, and it draws no section card
+  at all when it has nothing to say. A card's colours are disabled rather than
+  hidden while its own ring is off — a row that loses its tallest control makes
+  the popover shorter on a setting that has nothing to do with its height — and
+  their labels sit above the palettes rather than beside them: at the popover's
+  width «Когда правило подключает VPN» took two lines of a form row's label
+  column and the two rows lost their baseline.
+  The refusal note macOS earns by denying notifications is said **once** per
+  popover over both questions (`VPNNotice.permissionMissing`), the way it was
+  said once for the whole card before, and the cost of the two quiet settings
+  meeting is stated where they now meet — this card's ring off and this card's
+  notice silent is a rule that fires with no sign at all.
+- **The ring came off the connected card and the green moved to the button.**
+  A 1.5 pt `HelmSignal.success` border around one card in a row of cards reads
+  as a selection — which is exactly what the accent ring 900 pt down the same
+  page is, on the notice previews. The mark now sits where the eye goes to act:
+  the button's glyph is the signal colour when the tunnel is up and quiet
+  otherwise — `isConnected` and not `isUp`, the distinction the dot has always
+  been drawn from. The accent had «connect» for a few hours of this same
+  section, and a page of six configurations then carried five blue marks saying
+  «press me» against one green saying «this one is up»: a colour that means two
+  things means neither. There is one control on a row, it does not need to
+  advertise itself, and the ink is spent on the fact the page is opened for. The button is a disc rather than a bordered control: at 28 pt a macOS
+  bezel around a 13 pt mark is mostly bezel, and the row already has two round
+  things on it. `TheGreenIsOnTheOneThatIsUpTests` counts green-dominant pixels
+  **in the button's own corner** of the card — the dot at the other end is the
+  page's other green mark, and counting the whole card would pass on the dot
+  alone with the button's colour gone — and measures the mark against its own
+  disc at the 3:1 non-text floor in both appearances, which is what the ring
+  was measured against (3.40:1) when it was the answer. Proved by mutation:
+  `isConnected` swapped for `isUp` fails it.
+- **A connection is a row, and its verb is a glyph.** The card was 116 pt of
+  column — a name, two monospaced lines of readout and a button across the
+  bottom. Laid across it is 51: the protocol becomes a `HelmBadge` beside the
+  status instead of a line of its own, and the verb becomes `power` (`xmark`
+  for abandoning a handshake), which needs 26 pt where «Подключить» needed 100.
+  Eight configurations cost 268 pt of page where they cost 372. **The word is
+  still the control's name** — it is the tooltip and what VoiceOver reads
+  (`VPNStr.cardWord`, unchanged in eight languages), which is what
+  `NamedControlsTests` exists to demand of a glyph-faced control; and connect
+  and disconnect share the power key on purpose, told apart by the accent on
+  the button and by the row they sit in, which
+  `TheCardWearsAGlyphThatExistsTests` asserts as a decision rather than an
+  accident. That test also resolves every symbol against SF Symbols: a
+  misspelled name draws nothing at all and leaves a button that kept its
+  border, its frame and its action, and lost its face.
+  `VPNGridLayout.maxColumns` drops to **2** with it — a third column is 226 pt,
+  which leaves about 104 for the name once the dot, the badge, the status and
+  the button are out, and «NBCom VPN Office» truncates there; at two columns
+  the card is 346 and the same name fits whole. A third column is not a denser
+  page, it is the same page with the names taken out of it.
+  **One test was retired rather than repaired**:
+  `TheCardsVerbAndTheTwoBannersTests` held that the verb is as wide as its card,
+  which was the point when the verb was a stretched word and would now be a
+  300 pt button around a 13 pt mark. What survives is the invariant worth
+  having — the verbs in one row are one width and one baseline, whatever shape
+  they are.
+- **The VPN grid stops ending its last row in a hole, and stops hiding the
+  tunnel that is up.** The column count was `min(count, 3)`, which was measured
+  against one and two connections and never against four: photographed at the
+  settings column, four drew 3+1 with **477 pt** of empty row beside the last
+  card, and eight drew 3+3+2. `VPNGridLayout` states the rule as what it is
+  protecting — the fewest rows among the column counts that leave at most one
+  empty slot, three columns maximum because a fourth is 167 pt against the
+  card's declared 190 — so four is 2×2 and no count leaves two empty slots.
+  It also caps the grid at six cards with «Show all (N)» under it; six because
+  it divides by every column count the rule can return, so the collapsed grid
+  is always a full rectangle. A cap needs an order, or the page hides its own
+  answer: in `scutil --nc list`'s order — the order the configurations were
+  made in — the connected tunnel can be the ninth, so `VPNConnectionOrder`
+  puts whatever is up first and leaves the tail exactly as the system gave it.
+  `TheGridLeavesNoHoleTests` holds the arithmetic, `ATunnelThatIsUpIsNeverHiddenTests`
+  the order, and `TheGridShowsWhatMattersFirstTests` that the page applies both
+  in the only order they work in — sorting first, capping second. Each was
+  proved by a mutation read back off disk: the threshold at 2, the order made
+  the identity, the cap moved ahead of the sort.
+- **Each card's own voice is now read when a tunnel fires, not only written.**
+  For the first hours those popovers existed — including build 1079, which was
+  installed — the settings went into the store per configuration while the firing
+  path asked the module-wide values: `statusAppearance` for the ring, its colour
+  and the menu-bar name, and the banner's own mode in the view model. A card set
+  to silence announced itself anyway, and a card told not to move the ring moved
+  it. Nothing failed, because every test there asked the book directly, which is
+  what makes it worth writing down: a stored setting is only as real as the path
+  that reads it. The join is the piece that was missing — a firing carries the
+  configuration's *name*, because `scutil --nc start` takes a name, and the
+  settings are keyed by its id — and it **refuses to guess**: macOS lets two
+  configurations share one display name, and one namesake's silence applied to a
+  firing that may be the other's is a setting applied to the wrong tunnel, so two
+  matches fall back to the module-wide value.
+  `TheRingTurnsInThisTunnelsColourTests` holds both halves — the resolution, and
+  that the firing path asks with the name at all — and two mutations prove them.
+- **The panel's «permissions not granted» plate is not inside a second plate.**
+  It was drawn in `HelmWidgetBody` — which is a panel card, padding and a fill —
+  and `HelmBanner` draws a filled field of its own, so the panel showed a card
+  inside a card: 12 pt of one plate visible around another, and a full widget's
+  height for one sentence. A widget body is for a widget, which is a figure with a
+  label under it. This is a sentence and a button, so it now takes the row's whole
+  width like any 2×1 and only the height a line needs.
+  **And it is drawn at the panel's step, not a page's.** Out of the second card the
+  sentence still wrapped, because 13 pt is a settings page's size: measured at the
+  panel's 296 pt, «2 permissions not granted» needs 269 in English, 293 in Russian
+  and 303 in Portuguese, so two of the eight languages drew two lines. At 11 pt —
+  which is what the panel's own tiles use — the widest is Portuguese at 278 and
+  every language keeps its line. `ThePanelsPermissionPlateFitsOneLineTests` measures
+  the drawn height in all eight rather than the strings, so a translation that grows
+  fails a test instead of wrapping on somebody's screen; the mutation putting the
+  page's step back fails it in six places. The words also take their width before
+  the spacer does now (`layoutPriority`): both were flexible in that row, so SwiftUI
+  split the space and the text wrapped at 110 pt with 190 available.
+- **The gap under «Connections», photographed rather than argued.** The block
+  rides on a section *header* and draws its own cards there, so nothing supplied
+  the gap a grouped `Form` puts between a header and the card below it: measured
+  from the heading's cap top to the card's fill, 11 pt under «Connections»
+  against 21 under the section beneath it, and the block read as if it had
+  slipped up into its own title. `HelmLayout.groupedHeaderGap` is that
+  difference — the vertical half of the story `groupedHeaderOutset` already
+  tells horizontally — and a number owned by SwiftUI rather than by us.
+  The horizontal half of that hack is **gone** in the same section it was
+  written in: everything the page has to say — a refused command, a
+  configuration whose stored secret nobody has pressed for, a rule pointing at a
+  tunnel this Mac no longer has — is a *row* of the section now rather than a
+  filled field riding the header with the header's inset backed out by hand.
+  A row is where a grouped form gives a field the cards' own geometry.
+- **A configuration whose secret is locked says so however many rules point at
+  it.** The banner used to speak only for the ones no rule covered, because
+  every rule pointing at one said the same sentence on its own row 230 pt below,
+  where it also named the application whose automation was dead. That row is
+  inside a popover now — invisible until somebody opens it — so the filter was
+  removing the only surface there was, and a tunnel no rule could raise
+  announced it nowhere. One sentence per configuration, on the page.
 - **The in-app changelog is written for the person using Helm, not for the
   person who fixed it.** 77 of its 213 entries were rewritten and the other
   136 were left exactly as they were, which is the point: a key here is also
@@ -53,6 +210,24 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   rather than shipped in eight languages under an invented name.
 
 ### Fixed
+- **A per-app rule could push the whole VPN page out of the window.** Both
+  pop-ups in a rule's row were `.fixedSize()`, which reports a view's ideal
+  width as its minimum — and a pop-up's ideal width is its longest title, so the
+  name of a VPN configuration became the row's minimum. A `Form` row cannot
+  compress, so the section's card grew past `helmSettingsColumn` and took the
+  page with it. Photographed against the page's own column of 70…774: 71…773 up
+  to 28 characters, 61…783 at 32, and past the window from 36 on — at 66 the row
+  lost the app's icon and name off the left edge and the remove button off the
+  right. «Mullvad WireGuard Amsterdam» is 27, one character from the edge.
+  One of those two pop-ups is gone rather than fixed: the rules are on the card
+  of the configuration they point at, so the row does not offer to name the
+  configuration it is already under — moving a rule is a menu at the end of it.
+  The other has a measured width: the timings are four strings this app ships,
+  so the widest of them **is** the width (`HelmPickerWidth`), and the popover is
+  as wide as a row of them needs. The alignment sits on the frame rather than the
+  control, for the reason the card's verb already documents — a macOS pop-up hugs
+  its title and centres itself in a frame, so left alone the rows put their
+  chevrons at three different x while occupying identical space.
 - **An empty Apps tab in the Uninstaller now says which emptiness it is.**
   `pickStep` branched on `loading` alone, so a search that matched nothing, a
   Mac whose app folders really are empty, and a list the engine never

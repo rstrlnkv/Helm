@@ -43,11 +43,15 @@ final class TheWireFixtureReachesThePagesTests: XCTestCase {
     /// guard, one argument along.
     ///
     /// Asserted two ways, because one of them is blind. The layer count says the
-    /// page grew; the control walk says *which* control came back — VPN's «spin
-    /// the icon» switch is inside `if hasConnections`, so it is drawn at zero
-    /// connections in no language and on no screen. It is the only AppKit-backed
-    /// control the three recovered sections carry, which is why the inventory in
-    /// `LongStringGeometryRatchetTests` moved by exactly one when the gate landed.
+    /// page grew; the second reading says *what* came back.
+    ///
+    /// **It was the «spin the icon» switch and it cannot be.** That switch is in a
+    /// per-connection popover now — a window macOS orders in, so nothing in it is
+    /// in this render — and the page has no AppKit-backed control left to count,
+    /// which is why the inventory in `LongStringGeometryRatchetTests` went from 18
+    /// switches to 17 in the same commit. What replaces it is the connection card's
+    /// own verb: a 28 pt circle, drawn once per configuration and impossible on a
+    /// page with none. Measured 2026-08-17: three of them wired, none unwired.
     func testTheWiredVPNPageDrawsWhatTheEmptyOneCannot() {
         let silent = page(for: vpn, wiredBy: ModulePageRender.unwired)
         let wired = page(for: vpn, wiredBy: ModulePageRender.answering)
@@ -63,11 +67,11 @@ final class TheWireFixtureReachesThePagesTests: XCTestCase {
             on a transport that never answers, so the connections the fixture sends are not \
             reaching the page at all and every render taken of it is still the empty state.
             """)
-        XCTAssertEqual(switches(in: silent), 0,
-                       "VPN's spin toggle is behind `hasConnections`, so an unwired page has none")
-        XCTAssertGreaterThanOrEqual(switches(in: wired), 1, """
-            no switch is drawn on the wired VPN page, so the spin section is still missing — \
-            the layer count above grew somewhere else.
+        XCTAssertEqual(roundVerbs(in: silent), 0,
+                       "a page with no configuration draws no card, so it has no verb to press")
+        XCTAssertGreaterThanOrEqual(roundVerbs(in: wired), 1, """
+            no connection card verb is drawn on the wired VPN page, so the configurations the \
+            fixture sends are reaching no card — the layer count above grew somewhere else.
             """)
     }
 
@@ -392,6 +396,17 @@ final class TheWireFixtureReachesThePagesTests: XCTestCase {
 
     private func switches(in page: ModulePageRender.Page) -> Int {
         page.controls.filter { $0.shortName == "AppKitSwitch" }.count
+    }
+
+    /// The connection cards' verbs: `VPNConnectionCard` draws each as a 28 pt
+    /// circle, which is a fill nothing else on this page has. A layer reading and
+    /// not a control walk, because the button is `.plain` — SwiftUI draws it
+    /// itself rather than wrapping an AppKit control.
+    private func roundVerbs(in page: ModulePageRender.Page) -> Int {
+        page.layers.filter {
+            abs($0.frame.width - 28) < 1 && abs($0.frame.height - 28) < 1
+                && abs($0.radius - 14) < 1.5
+        }.count
     }
 
     private func segmentedControls(in page: ModulePageRender.Page) -> Int {

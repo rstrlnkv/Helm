@@ -114,9 +114,11 @@ import Module_VPN_Engine
         // The setting decides whether there is movement at all. Reduce Motion
         // is a separate question, answered a level up in `StatusPlan.spins`:
         // this is a preference, that is an instruction from the system.
-        let spinning = model.automationSpin
+        // Every one of these three is asked *on the configuration that fired*,
+        // never module-wide: the settings live on the card now.
+        let spinning = model.automationSpin(on: firing.name)
             && VPNAutomation.spinPhase(firing, now: now) != nil
-        let names = model.effectiveNotice(for: firing.kind).showsMenuBarName
+        let names = model.effectiveNotice(for: firing.kind, on: firing.name).showsMenuBarName
             && VPNAutomation.showsName(firing, now: now)
         // Bounded here, because this is where the unbounded string is: the name
         // comes out of a configuration somebody else wrote, and the host draws
@@ -124,7 +126,8 @@ import Module_VPN_Engine
         // rest of what the host knows about its own menu bar.
         return StatusAppearance(title: names ? StatusPlan.menuBarTitle(firing.name) : nil,
                                 spinUntil: spinning ? VPNAutomation.spinEnd(firing) : nil,
-                                spinTintToken: spinning ? model.spinTint(for: firing.kind) : nil)
+                                spinTintToken: spinning
+                                    ? model.spinTint(for: firing.kind, on: firing.name) : nil)
     }
 
     public func settingsPage(_ vm: ModuleViewModel) -> AnyView {

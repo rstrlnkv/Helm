@@ -71,6 +71,12 @@ enum Changelog {
     static var entries: [ChangelogEntry] {
         [
             ChangelogEntry(version: "0.10.0", date: "2026-08-09", items: [
+                ChangeItem(kind: .fix, text: L("The panel\u{2019}s \u{201C}permissions not granted\u{201D} notice is no longer drawn inside a second panel of its own: it is one line across the width, like anything else in the panel.")),
+                ChangeItem(kind: .upd, text: L("Everything about one VPN is on its own card now: the applications that raise it, and how loudly it speaks. Two buttons under the card open them.")),
+                ChangeItem(kind: .new, text: L("Each VPN can be told how loudly to speak on its own \u{2014} a notification, the menu bar or nothing, whether the icon spins and what colour it turns. The ones you have not changed keep following the app\u{2019}s own setting.")),
+                ChangeItem(kind: .upd, text: L("A VPN is a row now \u{2014} its name, the protocol as a tag, what it is doing, and one button: a power key to switch the tunnel, a cross to abandon a handshake. Twice as many fit on the page, and the button says its word when you rest the pointer on it.")),
+                ChangeItem(kind: .fix, text: L("A rule whose VPN has a long name no longer pushes the VPN page out of the window, and the rows\u{2019} menus line up in a column.")),
+                ChangeItem(kind: .upd, text: L("The VPN page arranges its connections without a gap at the end of a row \u{2014} four of them sit two by two \u{2014} and a Mac with more than six shows six with \u{201C}Show all\u{201D} under them. Whatever is connected comes first, so it is never the one behind the button.")),
                 ChangeItem(kind: .new, text: L("Autopilot comes with five rules you can use without writing one: screenshots into their own folder, downloads sorted by kind, old installers to the Trash, a tag on big downloads, the desktop sorted by month. Opening a rule shows what it would do to your real folder before anything is saved, and the tidying it does can be put back.")),
                 ChangeItem(kind: .new, text: L("The record of what Autopilot did now says why it is empty \u{2014} nothing is being watched, every rule is switched off, or nothing has matched yet.")),
                 ChangeItem(kind: .new, text: L("Duplicates asks which copy is the extra: the one in Downloads or on the Desktop, or the one that arrived later. Every group says why its copy was kept, any row can be made the one that stays, and \u{201C}Restore the recommendation\u{201D} puts that back.")),

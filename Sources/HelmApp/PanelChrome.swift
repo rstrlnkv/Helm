@@ -363,16 +363,22 @@ struct PermissionsWidget: View {
     // the first thing anybody opens when something is wrong. The settings page
     // has the room and says both.
 
+    /// **The banner is the plate.** It used to sit inside `HelmWidgetBody`, which
+    /// is a panel card — padding and a fill — and `HelmBanner` draws a filled field
+    /// of its own, so the panel showed a card inside a card: a plate with 12 pt of
+    /// another plate visible around it, and a height a full widget's rather than a
+    /// line's. A widget body is for a widget, which is a figure with a label under
+    /// it; this is one sentence and one button, so it takes the row's whole width
+    /// like any 2×1 and only the height it needs.
     var body: some View {
-        HelmWidgetBody {
-            // `HelmBanner`, not a fourth hand-rolled row. This was the shape the
-            // banner's own documentation claimed the panel already drew — a mark,
-            // some quiet text and a button, spelled out here at 11 pt with no
-            // field behind it — while the hero and `HelmPermissionNote` drew the
-            // v3 field. One statement, two appearances, decided by which window
-            // you happened to open.
-            HelmBanner(AppStr.permissionsWithheld(count: withheld.count),
-                       symbol: "exclamationmark.circle.fill") {
+        // `HelmBanner`, not a fourth hand-rolled row. This was the shape the
+        // banner's own documentation claimed the panel already drew — a mark,
+        // some quiet text and a button, spelled out here at 11 pt with no
+        // field behind it — while the hero and `HelmPermissionNote` drew the
+        // v3 field. One statement, two appearances, decided by which window
+        // you happened to open.
+        HelmBanner(AppStr.permissionsWithheld(count: withheld.count),
+                   symbol: "exclamationmark.circle.fill", compact: true) {
                 // One withheld grant has one place to go, so go there. Several
                 // do not, and a button that picks one of them silently is a
                 // button that lies about what it opened.
@@ -389,7 +395,6 @@ struct PermissionsWidget: View {
                     .fixedSize()
                 }
             }
-        }
     }
 }
 

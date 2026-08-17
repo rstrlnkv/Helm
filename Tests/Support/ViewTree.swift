@@ -77,3 +77,21 @@ public extension NSView {
         everyView.filter { $0.appKitClassName == name }
     }
 }
+
+public extension NSRect {
+    /// The view whose coordinate space this frame is in, found by matching it in
+    /// the tree under `root`.
+    ///
+    /// A frame read off a subview means nothing without the space it was read in,
+    /// and a grouped form's section cards sit several containers down from the
+    /// host. Written three times in the VPN suite before it moved here — and one
+    /// of the three had the bug the comment below records.
+    ///
+    /// **The last match, not the first.** That is what the hand-written walk this
+    /// replaces answered: it overwrote its answer on every hit rather than
+    /// stopping, and the two are different views whenever a container has the
+    /// same frame as the thing inside it — which a card and its row do.
+    func superview(in root: NSView) -> NSView {
+        root.everyViewWithAncestry.last { $0.view.frame == self }?.ancestry.last ?? root
+    }
+}

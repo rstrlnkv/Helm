@@ -551,8 +551,19 @@ extension ModulePageRender.Page {
     /// invitation both measure that since 2026-08-14. They were 23 and 28: a page
     /// with nothing on it drew a second Scan in the toolbar beside the invitation's
     /// own, and a bar of three buttons with nothing to select or move.
+    /// **VPN is 100 from 2026-08-17, and it was 190 that morning.** Not a page
+    /// that lost its content: the rules, the notices and the ring's two colours
+    /// were three sections and about 800 pt of page, and they are two popovers on
+    /// the card that owns them now — a popover is a window macOS orders in, so
+    /// nothing it holds is in this render at all. Measured in two steps as they
+    /// moved: 139 light / 142 dark with the rules and notices behind doors, then
+    /// **116 light and 119 dark with the wire alone, 121 and 124 with the store
+    /// seeded too, two consecutive runs of each** once the colours followed them.
+    /// 100 is a card's worth under the lowest of those, and the page with no wire
+    /// is 55 — which is what `TheWireFixtureReachesThePagesTests` holds the
+    /// difference against.
     static let floors: [String: Int] = [
-        "keep-awake": 250, "vpn": 190, "uninstaller": 45, "homebrew": 70,
+        "keep-awake": 250, "vpn": 100, "uninstaller": 45, "homebrew": 70,
         "leftovers": 210, "disk": 40, "duplicates": 8, "autopilot": 8, "layout": 230,
     ]
 }

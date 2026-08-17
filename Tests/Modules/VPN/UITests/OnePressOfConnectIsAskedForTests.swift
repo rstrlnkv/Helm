@@ -19,9 +19,12 @@ import HelmTestSupport
 /// `~/Library/Logs/Helm/helm.log`, which is the outcome CLAUDE.md forbids — the app
 /// silently not doing the thing it was asked.
 ///
-/// Two surfaces, because they answer different questions: the banner over the
-/// connections says which configuration is stuck, and the rule's own row is where
-/// somebody looks when a rule stopped working. One sentence, from one place.
+/// **One surface, and it used to be two.** The banner spoke for the configurations
+/// no rule covered and each rule's own row spoke for the rest, which is why
+/// `VPNRules.unspokenFor` existed. The rules live behind a door on their card now,
+/// so that row is invisible until somebody opens a popover — and a configuration
+/// that cannot raise its tunnel said so nowhere at all. Measured here as «the page
+/// grows a news card, once per locked configuration».
 @MainActor
 final class OnePressOfConnectIsAskedForTests: XCTestCase {
 
@@ -93,70 +96,84 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
                        "the engine published it and the page could not see it")
     }
 
-    // MARK: - Both surfaces draw it
+    // MARK: - The page says it
 
-    /// The banner over the connections, measured the way the refusal banner beside
-    /// it is: a **wider fill** appears above the first section card. The control is
-    /// the same page with nothing locked, so «something was drawn» is the reading
-    /// rather than an alignment that would hold on a page drawing no banner at all.
+    /// **The news card appears, and it is what the sentence is drawn in.**
     ///
-    /// The rule on this page points somewhere else, which is what makes the banner
-    /// the surface — see the pair below.
-    func testTheBannerOverTheConnectionsAppearsAndSharesTheCardsColumn() {
-        let quiet = widestFillAboveTheFirstCard(locked: [], ruleFor: "Other")
-        let stuck = widestFillAboveTheFirstCard(locked: ["One"], ruleFor: "Other")
-        guard let quietFill = quiet.fill, let banner = stuck.fill else {
-            return XCTFail("nothing filled was drawn above the first card at all: "
-                           + "\(String(describing: quiet.fill)) / "
-                           + "\(String(describing: stuck.fill))")
+    /// **The page's one section is its news, so with nothing to say it draws no
+    /// card at all** — every setting is on a card or behind its doors. Counted in
+    /// AppKit frames rather than pixels, so «the page grew a card» is a number and
+    /// not an inference from colour, and the quiet page is the control: a page that
+    /// had stopped drawing the sentence fails here rather than passing an alignment
+    /// nobody drew.
+    func testALockedConfigurationPutsANewsCardOnThePage() {
+        XCTAssertEqual(sectionCards(mount(page([]))).count, 0,
+                       "with nothing to say the page draws no section card")
+        XCTAssertEqual(sectionCards(mount(page(["One"]))).count, 1,
+                       "a locked configuration drew no news card")
+    }
+
+    /// **And it says it however many rules point at that configuration.** This is
+    /// the regression the door cost: `unspokenFor` removed a configuration a rule
+    /// covered, on the strength of a row 230 pt below — a row that is inside a
+    /// popover now. Both fixtures have a rule; one points at the locked
+    /// configuration and one somewhere else, and the sentence has to survive both.
+    func testTheRuleBehindTheDoorDoesNotSilenceThePage() {
+        for pointedAt in ["One", "Other"] {
+            let quiet = newsCardHeight(locked: [], ruleFor: pointedAt)
+            let stuck = newsCardHeight(locked: ["One"], ruleFor: pointedAt)
+            XCTAssertGreaterThan(stuck, quiet,
+                                 "with the rule pointing at «\(pointedAt)» the page grew "
+                                 + "\(stuck) against \(quiet): the sentence is nowhere")
         }
-        XCTAssertGreaterThan(banner.count, quietFill.count + 100,
-                             "the state that stops every rule from firing put nothing on the "
-                             + "page — \(banner) against \(quietFill)")
-        let column = stuck.column
-        XCTAssertEqual(banner.lowerBound, Int(column.minX.rounded()), accuracy: 1,
-                       "the banner starts at \(banner.lowerBound) and every card at "
-                       + "\(Int(column.minX)) — a filled field at a heading's inset")
-        XCTAssertEqual(banner.upperBound, Int(column.maxX.rounded()) - 1, accuracy: 2,
-                       "the banner ends at \(banner.upperBound) and every card at "
-                       + "\(Int(column.maxX))")
     }
 
-    /// And the rule's own row says it, which is the surface somebody looks at when
-    /// a rule has stopped working. Measured on the rules card's height, the way the
-    /// notice card's one refusal note is: the row grows by the note it draws.
+    /// One sentence per configuration, and the increment says so: a second locked
+    /// configuration adds exactly the height of the first sentence.
     ///
-    /// The rule in the harness points at «One», so it is exactly the rule whose
-    /// tunnel is stuck — a note drawn under a rule pointing somewhere else would be
-    /// the page inventing a problem, which is the second reading below.
-    func testTheRuleRowSaysIt() {
-        let quiet = rulesCardHeight(locked: [])
-        let stuck = rulesCardHeight(locked: ["One"])
-        XCTAssertGreaterThan(stuck, quiet,
-                             "the row that cannot fire is \(stuck) pt and the working one "
-                             + "\(quiet) pt: the rule says nothing about it")
-        XCTAssertEqual(rulesCardHeight(locked: ["Another"]), quiet, accuracy: 0.5,
-                       "a rule pointing at «One» drew a note about «Another»")
+    /// **Both fixtures keep the rule pointing at «One».** A rule pointing anywhere
+    /// else is a rule pointing at a configuration this Mac does not have, which is
+    /// its own sentence in the same card — measured at 107 pt against 54 while this
+    /// test was being written, and read for a moment as the page saying the locked
+    /// one twice.
+    func testEachLockedConfigurationIsNamedOnce() {
+        let one = newsCardHeight(locked: ["One"], ruleFor: "One")
+        let two = newsCardHeight(locked: ["One", "Two"], ruleFor: "One")
+        XCTAssertLessThan(one, 80,
+                          "one locked configuration drew \(one) pt, which is two rows: the same "
+                          + "sentence twice")
+        XCTAssertEqual(two - one, one, accuracy: 6,
+                       "a second locked configuration added \(two - one) pt where one sentence "
+                       + "is \(one): it is not named, or it is named more than once")
     }
 
-    /// **One sentence per configuration, at the most specific place there is.**
+    /// **And the sentence is drawn inside that card's column.** It is a row of a
+    /// section now rather than a view riding the header, which is what the header's
+    /// 10 pt outset used to be backed out by hand for; a fill escaping the card is
+    /// the defect that shape removes, so it is worth a photograph.
     ///
-    /// Photographed with both surfaces live: the identical sentence twice on one
-    /// page, 230 pt apart — the duplication `VPNNotice.permissionMissing` exists to
-    /// prevent one card lower down, and it was found by looking rather than by any
-    /// of the readings above, each of which was green. So the row wins where there
-    /// is a rule for that configuration, and the banner is what speaks for a
-    /// configuration no rule covers: a rule deleted after the fact, or a keychain
-    /// dialog somebody declined while connecting by hand.
-    func testTheSentenceIsSaidOnceAndTheRulesRowWins() {
-        let quiet = widestFillAboveTheFirstCard(locked: [], ruleFor: "One")
-        let stuck = widestFillAboveTheFirstCard(locked: ["One"], ruleFor: "One")
-        XCTAssertEqual(stuck.fill, quiet.fill,
-                       "the banner said what the rule's own row is already saying 230 pt "
-                       + "below it: \(String(describing: stuck.fill))")
-        XCTAssertGreaterThan(rulesCardHeight(locked: ["One"]), rulesCardHeight(locked: []),
-                             "precondition: the row is the one saying it — an equality above "
-                             + "would otherwise pass on a page that says it nowhere")
+    /// Two instruments: the card's column is an AppKit frame, the fill is read off
+    /// the rendering.
+    func testTheSentenceIsDrawnInsideTheNewsCard() {
+        let render = mount(page(["One"]))
+        let cards = sectionCards(render)
+        guard let card = cards.first else { return XCTFail("no news card was drawn") }
+        let column = render.host.convert(card, from: card.superview(in: render.host))
+        guard let fill = RenderedField.field(render.host,
+                                            inPoints: (Int(column.minY) + 2)...(Int(column.maxY) - 2),
+                                            paneAtX: Int(column.minX) - 8,
+                                            margin: Self.margin) else {
+            return XCTFail("nothing was drawn inside the news card at all")
+        }
+        XCTAssertGreaterThan(fill.count, 400,
+                            "the widest field in the news card is \(fill.count) pt — a banner "
+                            + "spans its row, so this is measuring something else")
+        XCTAssertGreaterThanOrEqual(fill.lowerBound, Int(column.minX.rounded()) - 1,
+                                    "the sentence starts at \(fill.lowerBound), left of the card "
+                                    + "at \(Int(column.minX)) — a filled field at a heading's inset")
+        XCTAssertLessThanOrEqual(fill.upperBound, Int(column.maxX.rounded()) + 1,
+                                 "the sentence ends at \(fill.upperBound), right of the card at "
+                                 + "\(Int(column.maxX))")
     }
 
     // MARK: - The page, and the two instruments
@@ -218,39 +235,11 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
             .sorted { $0.minY < $1.minY }
     }
 
-    private func rulesCardHeight(locked: [String]) -> CGFloat {
-        let cards = sectionCards(mount(page(locked)))
-        XCTAssertEqual(cards.count, 3,
-                       "this page draws three section cards; found \(cards.count)")
-        return cards.first?.height ?? 0
-    }
-
-    private func widestFillAboveTheFirstCard(locked: [String], ruleFor vpn: String)
-        -> (fill: ClosedRange<Int>?, column: NSRect) {
-        let render = mount(page(locked, ruleFor: vpn))
-        let cards = sectionCards(render)
-        XCTAssertFalse(cards.isEmpty, "no section card to line the banner up with")
-        guard let card = cards.first else { return (nil, .zero) }
-        // Into the host's own points, which is what the rendering is read in: the
-        // settings column is centred in a wider window.
-        let column = render.host.convert(card, from: card.superview(in: render.host))
-        // Everything above the first card: the heading, the one connection card
-        // (which stops at half the row by design, so the banner is the wider of the
-        // two), the hint, and the banner if there is one.
-        let band = 0...max(1, Int(column.minY) - 10)
-        return (RenderedField.field(render.host, inPoints: band,
-                                    paneAtX: Int(column.minX) - 8, margin: Self.margin),
-                column)
-    }
-}
-
-private extension NSRect {
-    /// The view whose coordinate space this frame is in. A frame read off a subview
-    /// means nothing without the space it was read in, and the section cards sit
-    /// several containers down from the host.
-    func superview(in root: NSView) -> NSView {
-        // The last match, which is what the hand-written walk answered: it
-        // overwrote `answer` on every hit rather than stopping at the first.
-        root.everyViewWithAncestry.last { $0.view.frame == self }?.ancestry.last ?? root
+    /// The height of everything the page has to say. **Zero is a real answer**:
+    /// the news is the page's only section, so a page with nothing to say draws no
+    /// card — which is what makes «it grew» a reading rather than a comparison of
+    /// two heights that might both be of the wrong card.
+    private func newsCardHeight(locked: [String], ruleFor vpn: String) -> CGFloat {
+        sectionCards(mount(page(locked, ruleFor: vpn))).first?.height ?? 0
     }
 }

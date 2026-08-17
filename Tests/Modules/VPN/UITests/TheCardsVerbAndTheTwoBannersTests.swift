@@ -49,10 +49,17 @@ final class TheCardsVerbAndTheTwoBannersTests: XCTestCase {
     /// different state from a refusal and draws no note at all: a test that let it
     /// stay nil would be measuring a page with no note in it and calling the
     /// absence a pass.
+    /// - Parameter rules: whether the page has any per-app rules at all.
+    ///   **The verb tests below say no**, and that is not tidiness: with rules
+    ///   the heading carries an «Edit» button, which is a focus ring outside a
+    ///   graphics view exactly as a card's verb is, and `verbs(_:)` would count
+    ///   it. The count in those tests is what caught it — measured, the second
+    ///   ring was (660, 143, 54×14) against the verb's (326, 54.5, 28×28).
     private func page(_ connections: [VPNConnection],
                       notice: VPNNotice = .menuBar,
                       dropNotice: VPNNotice = .menuBar,
                       macOS: NoticeAuthorization = .authorized,
+                      rules: Bool = true,
                       failure: VPNFailure? = nil) -> VPNSettingsPage {
         let transport = LocalTransport()
         // In memory, never `UserDefaults.standard`: this page writes its settings
@@ -61,7 +68,10 @@ final class TheCardsVerbAndTheTwoBannersTests: XCTestCase {
         let settings = VPNSettings(store: store)
         // One rule, so the section under the header has a row and its card is
         // drawn at its natural height.
-        settings.setRulesJSON(VPNRules.encode(["com.apple.Safari": VPNAppRule(vpnName: "One")]))
+        if rules {
+            settings.setRulesJSON(VPNRules.encode(["com.apple.Safari":
+                                                    VPNAppRule(vpnName: "One")]))
+        }
         settings.setNotice(notice)
         settings.setDropNotice(dropNotice)
         let vm = VPNViewModel(transport: transport, settings: settings,
@@ -125,7 +135,35 @@ final class TheCardsVerbAndTheTwoBannersTests: XCTestCase {
         render.host.everyViewWithAncestry
             .filter { $0.view.appKitClassName == "_FocusRingView" }
             .filter { !$0.ancestry.contains { $0.appKitClassName == "_NSGraphicsView" } }
+            // **And not the rules.** They are a `List` now — one flat sequence,
+            // because `.onMove` cannot cross a `Section` — so every control in a
+            // rule's row is inside an `NSTableRowView`, and each of them is a
+            // focus ring outside a graphics view exactly as a card's verb is.
+            // Before the rules moved into a table this filter found one view and
+            // the count below said so; the count is what caught it.
+            .filter { !$0.ancestry.contains { $0.appKitClassName.contains("TableRow") } }
             .map(\.view.frame)
+            // **And the verb is the round one.** A card carries three controls
+            // now — the verb, and the two doors under the divider — and all three
+            // are focus rings on the bare pane. The verb is the only circle:
+            // `VPNConnectionCard` draws it 28×28 and gives both doors a fixed
+            // height with the width their contents ask for. Counted rather than
+            // assumed: with three rings a card, every reading below would have
+            // been of a door.
+            .filter { abs($0.width - $0.height) < 1 }
+            .sorted { $0.minX < $1.minX }
+    }
+
+    /// The doors: the other two rings on a card, left to right. One height by
+    /// construction — `VPNConnectionCard.doorHeight` is on the container — and this
+    /// is the reading that says so on the screen rather than in the source.
+    private func doors(_ render: MountedRender) -> [NSRect] {
+        render.host.everyViewWithAncestry
+            .filter { $0.view.appKitClassName == "_FocusRingView" }
+            .filter { !$0.ancestry.contains { $0.appKitClassName == "_NSGraphicsView" } }
+            .filter { !$0.ancestry.contains { $0.appKitClassName.contains("TableRow") } }
+            .map(\.view.frame)
+            .filter { abs($0.width - $0.height) >= 1 }
             .sorted { $0.minX < $1.minX }
     }
 
@@ -144,7 +182,7 @@ final class TheCardsVerbAndTheTwoBannersTests: XCTestCase {
     func testTheVerbKeepsItsRectangleThroughEveryStatus() {
         var seen: [VPNStatus: NSRect] = [:]
         for status in [VPNStatus.disconnected, .connecting, .connected, .disconnecting, .unknown] {
-            let render = mount(page([connection("One", status)]))
+            let render = mount(page([connection("One", status)], rules: false))
             let rings = verbs(render)
             XCTAssertEqual(rings.count, 1,
                            "\(status): one connection draws one verb, not \(rings.count) — "
@@ -161,151 +199,169 @@ final class TheCardsVerbAndTheTwoBannersTests: XCTestCase {
         }
     }
 
-    /// And the verb fills its card, which is what makes three of them line up.
+    /// And the verbs in one row line up.
     ///
-    /// `.frame(maxWidth: .infinity)` on a macOS bordered *button* does not stretch
-    /// it — the control hugs its title and centres itself, which is why the frame
-    /// is on the label. Three cards then had three widths and two left edges: 74
-    /// pt for «Connect», 100 for «Подключить». Measured here as a **ratio of the
-    /// card**, so it stays true if the settings column moves: the card ceiling is
-    /// half the row and the verb is that less 12 pt of padding on each side.
-    func testThreeVerbsInARowShareOneWidthAndOneBaseline() {
+    /// **What this used to assert is deliberately gone.** The verb was a word
+    /// stretched to the card's width — `.frame(maxWidth: .infinity)` on the
+    /// *label*, because a macOS bordered button does not stretch — and the test
+    /// held that width as a ratio of the card. The card is a row now and the
+    /// verb is a glyph with its word in the tooltip and in the VoiceOver label
+    /// (`VPNCardGlyph`, `TheCardWearsAGlyphThatExistsTests`), so a verb as wide
+    /// as its card would be a 300 pt button around a 13 pt mark.
+    ///
+    /// What survives is the invariant that was worth having: the verbs in one
+    /// row are one size and one baseline, whatever shape they are. Two of them,
+    /// because two is what a row holds now.
+    func testTheVerbsInOneRowShareOneWidthAndOneBaseline() {
         let render = mount(page([connection("One", .disconnected),
-                                 connection("Two", .connecting),
-                                 connection("Three", .connected)]))
+                                 connection("Two", .connecting)], rules: false))
         let rings = verbs(render)
-        XCTAssertEqual(rings.count, 3, "three connections, three verbs")
+        XCTAssertEqual(rings.count, 2, "two connections, two verbs")
 
         let widths = rings.map(\.width)
         XCTAssertEqual(widths.min()!, widths.max()!, accuracy: 1,
-                       "three verbs of three widths: \(widths) — a card wide enough for the "
-                       + "verb is what the grid was for")
+                       "two verbs of two widths: \(widths) — «Cancel» and «Connect» are "
+                       + "different words and must not be different buttons")
         let tops = rings.map(\.minY)
         XCTAssertEqual(tops.min()!, tops.max()!, accuracy: 0.5,
-                       "the three verbs sit on \(Set(tops).count) baselines: \(tops)")
-        // Each verb fills its own column rather than hugging its title: three
-        // columns of a 704 pt row, less the 12 pt gutters and 12 pt of card
-        // padding a side, is about 203. A title-sized button is 74…100.
-        XCTAssertGreaterThan(widths.min()!, 150,
-                             "the verbs are \(widths) pt wide, which is the width of their "
-                             + "own words rather than of the card they are in")
+                       "the verbs sit on \(Set(tops).count) baselines: \(tops)")
+    }
+
+    /// **The two doors are one height.** Each used to be sized by what was inside
+    /// it — four application icons on the left, one glyph on the right — so the
+    /// applications door stood taller than the notices door beside it on every
+    /// card. `doorHeight` is on the container now, and this is the measurement of
+    /// that: one connection, two doors, one height and one baseline.
+    func testTheTwoDoorsAreOneHeightAndOneBaseline() {
+        let render = mount(page([connection("One", .disconnected)], rules: false))
+        let leaves = doors(render)
+        XCTAssertEqual(leaves.count, 2,
+                       "a card has two doors; found \(leaves.count) — the reading below would be "
+                       + "of something else")
+        guard leaves.count == 2 else { return }
+        XCTAssertEqual(leaves[0].height, leaves[1].height, accuracy: 0.5,
+                       "the applications door is \(leaves[0].height) pt and the notices door "
+                       + "\(leaves[1].height): two sizes of the same control")
+        XCTAssertEqual(leaves[0].minY, leaves[1].minY, accuracy: 0.5,
+                       "the doors sit on two baselines: \(leaves[0].minY) and \(leaves[1].minY)")
+    }
+
+    /// And a door full of icons is still that height. The defect was a door sized
+    /// by its contents, so the reading that catches it is the same card with four
+    /// applications behind the left door and none behind the right.
+    func testADoorFullOfApplicationsIsStillOneHeight() {
+        let render = mount(page([connection("One", .disconnected)], rules: true))
+        let leaves = doors(render)
+        XCTAssertEqual(leaves.count, 2, "a card has two doors; found \(leaves.count)")
+        guard leaves.count == 2 else { return }
+        XCTAssertEqual(leaves[0].height, leaves[1].height, accuracy: 0.5,
+                       "with a rule behind it the applications door is \(leaves[0].height) pt "
+                       + "against the notices door's \(leaves[1].height)")
     }
 
     // MARK: - One permission note per card
 
-    /// **Both rows wanting a banner is still one question.** The notice card
-    /// decides two events, each row asked macOS's refusal for itself, and choosing
-    /// «System notification» for both and then revoking the permission drew the
-    /// same sentence twice, 300 pt apart. Measured on the card's own height, which
-    /// is the number the survey recorded going 285 → 423.
+    /// **Both questions wanting a banner is still one question — and the card is
+    /// where it is asked now.** The page used to draw the two notice choices for
+    /// the whole module, each asking macOS's refusal for itself: choosing «System
+    /// notification» for both events and then revoking the permission drew the
+    /// same sentence twice, 300 pt apart, and took that card from 285 to 423 pt.
+    /// The choices are in a per-connection popover now.
     ///
-    /// Three readings, because the equality alone is worth nothing: a page that
-    /// had stopped drawing the note at all would satisfy it.
-    func testTheRefusedPermissionIsSaidOnceHoweverManyRowsWantIt() {
-        let quiet = noticeCardHeight(notice: .menuBar, dropNotice: .menuBar, macOS: .denied)
-        let one = noticeCardHeight(notice: .system, dropNotice: .menuBar, macOS: .denied)
-        let both = noticeCardHeight(notice: .system, dropNotice: .system, macOS: .denied)
-
-        XCTAssertGreaterThan(one, quiet,
-                            "precondition: a refused banner mode draws a note at all — "
-                            + "\(one) against \(quiet)")
-        XCTAssertEqual(both, one, accuracy: 0.5,
-                       "the card is \(both) pt with both rows loud and \(one) pt with one: "
-                       + "the same sentence twice")
+    /// **A popover cannot be photographed off screen** — it is a window macOS
+    /// orders in, and this bench has no window server. So the claim is held in two
+    /// halves that cannot both be true of a page that says it twice: the question
+    /// is `VPNNotice.permissionMissing` over **both** modes, measured here for
+    /// every combination, and the source draws the note from that question exactly
+    /// once.
+    func testTheRefusedPermissionIsOneQuestionOverBothModes() {
+        for (rules, drop) in [(VPNNotice.system, VPNNotice.system),
+                              (.system, .menuBar), (.menuBar, .system)] {
+            XCTAssertTrue(VPNNotice.permissionMissing(among: [rules, drop],
+                                                      authorization: .denied),
+                          "\(rules)/\(drop): a refused banner mode was not noticed")
+        }
+        XCTAssertFalse(VPNNotice.permissionMissing(among: [.menuBar, .silent],
+                                                   authorization: .denied),
+                       "a note was drawn for two modes that need no permission")
     }
 
-    /// …and macOS not having refused draws nothing, whatever the rows chose. `nil`
-    /// is the state the page holds before its `.task` runs, and `.notDetermined`
-    /// is a permission nobody has asked for — neither is a refusal, and a note
-    /// drawn from one would accuse macOS of a denial it never made.
-    func testAPermissionThatWasNeverRefusedDrawsNoNote() {
-        let quiet = noticeCardHeight(notice: .menuBar, dropNotice: .menuBar, macOS: .denied)
-        for answer in [NoticeAuthorization.authorized, .notDetermined] {
-            XCTAssertEqual(noticeCardHeight(notice: .system, dropNotice: .system, macOS: answer),
-                           quiet, accuracy: 0.5,
-                           "a \(answer) permission drew the refusal note")
+    /// …and a permission nobody refused draws nothing, whatever the modes are.
+    /// `nil` is the state the card holds before the page's `.task` runs, and
+    /// `.notDetermined` is a permission nobody has asked for — a note from either
+    /// accuses macOS of a denial it never made.
+    func testAPermissionThatWasNeverRefusedIsNotAMissingOne() {
+        for answer in [NoticeAuthorization.authorized, .notDetermined, nil] {
+            XCTAssertFalse(VPNNotice.permissionMissing(among: [.system, .system],
+                                                       authorization: answer),
+                           "a \(String(describing: answer)) permission was read as a refusal")
         }
     }
 
-    /// The notice card is the second of the page's three: the per-app rules, the
-    /// notice choices, the spin. Asserted rather than assumed, so a page that grew
-    /// or lost a section fails here instead of measuring the wrong card.
-    private func noticeCardHeight(notice: VPNNotice, dropNotice: VPNNotice,
-                                  macOS: NoticeAuthorization) -> CGFloat {
-        let render = mount(page([connection("One", .disconnected)],
-                                notice: notice, dropNotice: dropNotice, macOS: macOS))
-        let cards = sectionCards(render)
-        XCTAssertEqual(cards.count, 3,
-                       "this page draws three section cards; found \(cards.count)")
-        return cards.count == 3 ? cards[1].height : 0
+    /// The other half: one note, drawn from that one question, and drawn where the
+    /// modes are chosen. A source reading rather than a rendering, because the
+    /// surface is a popover — and it is the reading that fails if somebody puts the
+    /// note back on each of the two choices.
+    func testTheNoteIsDrawnOnceFromThatOneQuestion() throws {
+        let card = RepoSource.root
+            .appendingPathComponent("Sources/Modules/VPN/UI/VPNConnectionCard.swift")
+        let source = try String(contentsOf: card, encoding: .utf8)
+        XCTAssertEqual(source.components(separatedBy: "HelmPermissionNote").count - 1, 1,
+                       "the refusal note is drawn more than once on one card")
+        XCTAssertTrue(source.contains("permissionMissing(among: [notice, dropNotice]"),
+                      "the note is not drawn from the question that folds both modes into one")
+        let module = RepoSource.root.appendingPathComponent("Sources/Modules/VPN")
+        let elsewhere = try FileManager.default
+            .subpathsOfDirectory(atPath: module.path)
+            .filter { $0.hasSuffix(".swift") && !$0.hasSuffix("VPNConnectionCard.swift") }
+            .filter { (try? String(contentsOf: module.appendingPathComponent($0),
+                                   encoding: .utf8))?.contains("HelmPermissionNote") == true }
+        XCTAssertEqual(elsewhere, [],
+                       "the module draws the refusal note somewhere other than the popover the "
+                       + "modes are chosen in: \(elsewhere)")
     }
 
-    // MARK: - The refusal banner is in the cards' column
+    // MARK: - The refusal banner is a row in the news card
 
-    /// **It has a fill, so it is a card.** The banner naming a command `scutil`
-    /// would not accept lives in the section *header*, which a grouped form insets
+    /// **It has a fill, so it is a row.** The banner naming a command `scutil` would
+    /// not accept used to live in the section *header*, which a grouped form insets
     /// 10 pt further than the section's own card — right for a heading, which sits
-    /// level with what the rows below *say*, and wrong for a filled field.
-    /// Photographed before the fix: 30…713 against 20…723 for every card on the
-    /// page.
+    /// level with what the rows below say, and wrong for a filled field.
+    /// Photographed before that fix: 30…713 against 20…723 for every card on the
+    /// page, and the fix was a hand-written negative inset. It is a row of the
+    /// section now, which is what a row is for.
     ///
-    /// The banner's column comes from the rendering and the card's from AppKit, so
-    /// the two sides of this equality are two different instruments.
-    ///
-    /// **The page with nothing refused is read first**, and it is the control: the
-    /// widest fill above the first card is then the connection card itself, which
-    /// stops at half the row. So «a wider fill has appeared» is what says the
-    /// banner is on the page at all — an alignment assertion on a page that draws
-    /// no banner would otherwise be measuring the connection card against a card,
-    /// which is true and says nothing.
-    func testTheRefusalBannerSharesTheCardsColumn() {
-        let quiet = widestFillAboveTheFirstCard(failure: nil)
-        let refused = widestFillAboveTheFirstCard(
-            failure: VPNFailure(name: "One", reason: .noSuchService, verb: .connect))
-        guard let quietFill = quiet.fill, let banner = refused.fill else {
-            return XCTFail("nothing filled was drawn above the first card at all: "
-                           + "\(String(describing: quiet.fill)) / "
-                           + "\(String(describing: refused.fill))")
-        }
-        XCTAssertGreaterThan(banner.count, quietFill.count + 100,
-                             "precondition: the refusal put a wider field on the page than the "
-                             + "single connection card — \(banner) against \(quietFill)")
+    /// Three readings: the refusal grows a card the quiet page does not have, the
+    /// fill inside it spans a row, and it stays inside the card's own column. The
+    /// column is an AppKit frame and the fill is read off the rendering, so neither
+    /// instrument is checked against itself.
+    func testTheRefusalBannerIsARowInsideTheCardsColumn() {
+        XCTAssertEqual(sectionCards(mount(page([connection("One", .disconnected)]))).count, 0,
+                       "with nothing refused the page has nothing to say and draws no card")
 
-        let column = refused.column
-        XCTAssertEqual(banner.lowerBound, Int(column.minX.rounded()), accuracy: 1,
-                       "the banner starts at \(banner.lowerBound) and every card at "
-                       + "\(Int(column.minX)) — a filled field at a heading's inset")
-        XCTAssertEqual(banner.upperBound, Int(column.maxX.rounded()) - 1, accuracy: 2,
-                       "the banner ends at \(banner.upperBound) and every card at "
-                       + "\(Int(column.maxX))")
-    }
-
-    private func widestFillAboveTheFirstCard(failure: VPNFailure?)
-        -> (fill: ClosedRange<Int>?, column: NSRect) {
-        let render = mount(page([connection("One", .disconnected)], failure: failure))
+        let render = mount(page([connection("One", .disconnected)],
+                                failure: VPNFailure(name: "One", reason: .noSuchService,
+                                                    verb: .connect)))
         let cards = sectionCards(render)
-        XCTAssertFalse(cards.isEmpty, "no section card to line the banner up with")
-        guard let card = cards.first else { return (nil, .zero) }
+        XCTAssertEqual(cards.count, 1, "a refusal drew no news card")
+        guard let card = cards.first else { return }
         // Into the host's own points, which is what the rendering is read in: the
         // settings column is centred in a wider window.
         let column = render.host.convert(card, from: card.superview(in: render.host))
-        return (RenderedField.field(render.host, inPoints: bandAbove(column),
-                                    paneAtX: Int(column.minX) - 8, margin: Self.margin),
-                column)
-    }
-
-    /// Everything the page draws above its first section card, which is where the
-    /// refusal banner lives — the heading, the connections grid, the hint, and the
-    /// banner if there is one.
-    ///
-    /// A whole band rather than an offset, so the test carries no number about
-    /// where the banner happens to sit. The connection card is a fill too and is
-    /// found here as well — which is exactly what makes the control work: **one**
-    /// connection, whose card stops at half the row by design, so the banner is
-    /// the wider of the two and «wider than the control» is the reading that says
-    /// it was drawn.
-    private func bandAbove(_ column: NSRect) -> ClosedRange<Int> {
-        0...max(1, Int(column.minY) - 10)
+        guard let fill = RenderedField.field(
+            render.host, inPoints: (Int(column.minY) + 2)...(Int(column.maxY) - 2),
+            paneAtX: Int(column.minX) - 8, margin: Self.margin) else {
+            return XCTFail("nothing was drawn inside the news card at all")
+        }
+        XCTAssertGreaterThan(fill.count, 400,
+                             "the widest field in the news card is \(fill.count) pt — a banner "
+                             + "spans its row, so this is measuring something else")
+        XCTAssertGreaterThanOrEqual(fill.lowerBound, Int(column.minX.rounded()) - 1,
+                                    "the banner starts at \(fill.lowerBound), left of the card at "
+                                    + "\(Int(column.minX)) — a filled field at a heading's inset")
+        XCTAssertLessThanOrEqual(fill.upperBound, Int(column.maxX.rounded()) + 1,
+                                 "the banner ends at \(fill.upperBound), right of the card at "
+                                 + "\(Int(column.maxX))")
     }
 
     /// Points ignored at each side of the rendering. The hosting view is 845 pt
@@ -314,16 +370,4 @@ final class TheCardsVerbAndTheTwoBannersTests: XCTestCase {
     /// first version of this test found one 765 pt «field» on every page it
     /// photographed, including the ones with no banner at all.
     private static let margin = 60
-}
-
-private extension NSRect {
-    /// The view whose coordinate space this frame is in, found by matching it in
-    /// the tree under `root`. A frame read off a subview means nothing without
-    /// the space it was read in, and the section cards sit several containers
-    /// down from the host.
-    func superview(in root: NSView) -> NSView {
-        // The last match, which is what the hand-written walk answered: it
-        // overwrote `answer` on every hit rather than stopping at the first.
-        root.everyViewWithAncestry.last { $0.view.frame == self }?.ancestry.last ?? root
-    }
 }

@@ -215,6 +215,88 @@ enum VPNStr {
         L("Add another in System Settings and Helm picks it up.")
     }
     static var openNetworkSettings: String { L("Open Network settings") }
+    /// Under a grid that is showing six of more. The **total** is in the word,
+    /// not the remainder: a person who has just counted six cards is being told
+    /// how many there are, and «Show all (2)» over six drawn cards is a sum
+    /// nobody can do without knowing the rule.
+    static func showAllConnections(_ total: Int,
+                                   language: AppLanguage = AppLanguage.current) -> String {
+        let n = Count(total, language: language)
+        return L("Show all (\(n))",
+                 [.ru: "Показать все (\(n))", .es: "Mostrar todas (\(n))",
+                  .fr: "Tout afficher (\(n))", .de: "Alle anzeigen (\(n))",
+                  .ja: "すべて表示（\(n)）", .zh: "显示全部（\(n)）",
+                  .pt: "Mostrar todas (\(n))"],
+                 language: language)
+    }
+    /// The same button, pressed. No count: it is the row above that changes,
+    /// and the number is on screen in cards.
+    static var showFewerConnections: String { L("Show fewer") }
+    /// The rules stand under the tunnel they point at, so the row has no VPN
+    /// pop-up left — this menu is what replaced it.
+    static var moveRule: String { L("Move to another VPN") }
+    static var removeRule: String { L("Remove rule") }
+    /// Under a group's name when Helm itself is the reason that tunnel is up —
+    /// the engine's own book, not a tunnel somebody dialled by hand. It was a
+    /// mark on every row until the rules were grouped, where it is one sentence
+    /// about the tunnel rather than one per application.
+    static var groupHeldByRules: String { L("Connected by these rules") }
+    /// The same news as `missingConnection`, for a place where the name is
+    /// already on screen: a heading that reads «Old office — Old office is
+    /// gone» says it twice, which is what the first drawing did.
+    static var groupMissing: String { L("No longer in System Settings") }
+    /// The left door on a card, and the title of what it opens.
+    static func rulesFor(_ vpn: String, language: AppLanguage = AppLanguage.current) -> String {
+        let it = Quoted(vpn, language: language)
+        return L("Rules for \(it)",
+                 [.ru: "Правила для \(it)", .es: "Reglas de \(it)",
+                  .fr: "Règles de \(it)", .de: "Regeln für \(it)",
+                  .ja: "\(it) の規則", .zh: "\(it) 的规则", .pt: "Regras de \(it)"],
+                 language: language)
+    }
+    /// The right door, and its popover's title. «About», not «for»: these are
+    /// settings about what Helm says, not rules the configuration obeys.
+    static func noticesFor(_ vpn: String, language: AppLanguage = AppLanguage.current) -> String {
+        let it = Quoted(vpn, language: language)
+        return L("Messages about \(it)",
+                 [.ru: "Сообщения о \(it)", .es: "Mensajes sobre \(it)",
+                  .fr: "Messages à propos de \(it)", .de: "Meldungen zu \(it)",
+                  .ja: "\(it) についての通知", .zh: "关于 \(it) 的消息",
+                  .pt: "Mensagens sobre \(it)"],
+                 language: language)
+    }
+    /// The left door when nothing points at this configuration yet.
+    static var noRulesYet: String { L("No rules") }
+    /// The one line for rules whose configuration this Mac does not have. Said
+    /// once, under the grid, because those rules have no card to be on.
+    static func orphanedRules(_ n: Int, language: AppLanguage = AppLanguage.current) -> String {
+        let count = Count(n, language: language)
+        return L("\(count) rules point at a VPN that is no longer in System Settings",
+                 [.ru: "Правил, указывающих на VPN, которого больше нет в Системных настройках: \(count)",
+                  .es: "\(count) reglas apuntan a una VPN que ya no está en Ajustes del Sistema",
+                  .fr: "\(count) règles visent une VPN qui n\u{2019}est plus dans les Réglages Système",
+                  .de: "\(count) Regeln zeigen auf ein VPN, das nicht mehr in den Systemeinstellungen ist",
+                  .ja: "システム設定にない VPN を指す規則が \(count) 件あります",
+                  .zh: "有 \(count) 条规则指向已不在系统设置中的 VPN",
+                  .pt: "\(count) regras apontam para uma VPN que já não está nos Ajustes do Sistema"],
+                 language: language)
+    }
+    /// Under the two picture questions in the notices popover. The one sentence
+    /// a person needs about the change of model: these are this configuration's,
+    /// not the module's.
+    static var onlyThisConnection: String { L("Applies to this connection only") }
+    /// The door into arranging the rules, and out of it — the same two words
+    /// the sidebar's own arrangement uses, and the same two keys: this is one
+    /// English word meaning one thing, so the module spells the key rather than
+    /// reaching into `HelmApp`'s table for it (`AutopilotStr.edit` and
+    /// `UninstallerStr.done` do the same).
+    static var arrange: String { L("Edit") }
+    static var arrangeDone: String { L("Done") }
+    /// The place a rule can be dropped in a tunnel that has none yet — without
+    /// it, an empty configuration could never be given its first application by
+    /// dragging. `AppStr.dragModuleHere` is the sidebar's own copy of this
+    /// sentence, one target over.
+    static var dragAppHere: String { L("Drag an app here") }
     /// Nothing to refresh afterwards: the engine watches the list.
     static var noVPNsNote: String { L("Helm picks it up on its own — there is nothing to refresh.") }
     static func connections(language: AppLanguage = AppLanguage.current) -> String {

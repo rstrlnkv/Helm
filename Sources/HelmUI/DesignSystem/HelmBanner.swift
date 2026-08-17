@@ -31,6 +31,7 @@ public struct HelmBanner<Action: View>: View {
     private let symbol: String
     private let tone: Tone
     private let fillsWidth: Bool
+    private let compact: Bool
     private let action: Action
 
     /// - Parameter fillsWidth: true for a notice that belongs to a card or a
@@ -42,13 +43,22 @@ public struct HelmBanner<Action: View>: View {
     ///   so it matched neither, and read as a third thing wedged between two.
     ///   Sized to its own content and centred, it is plainly part of the block
     ///   it sits in.
+    /// - Parameter compact: the panel's scale rather than a page's. A settings
+    ///   page gives a banner 704 pt and the body step is right there; the panel is
+    ///   a 320 pt window, and at 13 pt «2 permissions not granted» needs 269 of the
+    ///   296 it has in English, 293 in Russian and 303 in Portuguese — so two of
+    ///   the eight wrapped, on the first thing anybody opens when something is
+    ///   wrong. Measured at 11 pt the widest is Portuguese at 278, which leaves
+    ///   every language a line to itself. `ThePanelsPermissionPlateFitsOneLineTests`
+    ///   holds it.
     public init(_ text: String, symbol: String = "exclamationmark.triangle.fill",
-                tone: Tone = .warning, fillsWidth: Bool = true,
+                tone: Tone = .warning, fillsWidth: Bool = true, compact: Bool = false,
                 @ViewBuilder action: () -> Action) {
         self.text = text
         self.symbol = symbol
         self.tone = tone
         self.fillsWidth = fillsWidth
+        self.compact = compact
         self.action = action()
     }
 
@@ -61,6 +71,7 @@ public struct HelmBanner<Action: View>: View {
     public var body: some View {
         HStack(spacing: 8) {
             Image(systemName: symbol)
+                .font(compact ? HelmText.rowDetail : nil)
                 .foregroundStyle(ink)
                 .accessibilityHidden(true)
             Text(text)
@@ -69,13 +80,22 @@ public struct HelmBanner<Action: View>: View {
                 // token spelled as a number, and the thing the tokens exist to
                 // stop. `.callout` is 12 on macOS and 12 is not one of the six
                 // sizes this house has.
-                .font(HelmText.rowTitle)
+                .font(compact ? HelmText.rowDetail : HelmText.rowTitle)
                 // Literal, and deliberately not the ink: a whole sentence in a
                 // signal colour is a shout. The mark carries the signal; the
                 // words carry the meaning.
                 .foregroundStyle(HelmText.quiet)
                 .fixedSize(horizontal: false, vertical: true)
                 .multilineTextAlignment(.leading)
+                // **The words take their width before the spacer does.** Both are
+                // flexible in this row — a `Spacer` entirely so, and a `Text` that
+                // is `fixedSize` only vertically takes whatever is proposed — so
+                // SwiftUI split the space between them and «Не выдано 2
+                // разрешения» wrapped at 110 pt inside a 294 pt panel plate with
+                // 190 available. Priority is what says which of the two is the
+                // content: it still wraps when a language really needs two lines,
+                // and it no longer wraps because a spacer wanted room.
+                .layoutPriority(1)
             // Filling the width, the spacer is what pushes the verb to the
             // far edge; hugging, there is nothing to push against and the two
             // would sit 8 pt apart, which reads as one run-on control.
@@ -83,7 +103,7 @@ public struct HelmBanner<Action: View>: View {
             action
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.vertical, compact ? HelmSpace.s3 : 8)
         .background(
             RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous)
                 .fill(ink.opacity(0.13))

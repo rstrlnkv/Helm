@@ -51,9 +51,11 @@ final class ThePreviewDrawsWhatTheModeDoesTests: XCTestCase {
     /// and the page must not carry a second one. The same rule a command name
     /// follows: a constant both sides read, never a literal typed twice.
     func testThePageDerivesThePicturesRatherThanDescribingThem() throws {
-        let page = RepoSource.root
-            .appendingPathComponent("Sources/Modules/VPN/UI/VPNSettingsPage.swift")
-        let source = try String(contentsOf: page, encoding: .utf8)
+        // The card, not the page: the picture question is asked per configuration
+        // in a popover now, and the page asks it nowhere.
+        let card = RepoSource.root
+            .appendingPathComponent("Sources/Modules/VPN/UI/VPNConnectionCard.swift")
+        let source = try String(contentsOf: card, encoding: .utf8)
         XCTAssertTrue(source.contains("NoticePreview.of("),
                       "the cards should be derived from the mode")
         XCTAssertFalse(source.contains("NoticePreview.strip(name:"),
