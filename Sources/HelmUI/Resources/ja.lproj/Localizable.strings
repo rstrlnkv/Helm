@@ -891,3 +891,6 @@
 "Keep Awake's lines in the log now file under the module filter's own name for it. Lines written before this build keep the old spelling, so the module menu may list two words for one module until the log rolls over — that is the old lines draining away, not a defect." = "“スリープ防止”のログ行は、モジュールフィルタと同じ名前で記録されるようになりました。このビルド以前に書かれた行は古い表記のままなので、しばらくはモジュールメニューに同じモジュールの名前が二つ並びます — 古い行が流れていくだけで、不具合ではありません。";
 "Keyboard's menu-bar indicator now matches the system's own input menu: each layout row shows its badge, a new “Show Input Source Name” switch puts the layout's name in the menu bar instead of the badge, and “Open Keyboard Settings…” takes you straight to the pane that opens." = "キーボードインジケータのメニューがシステムの入力メニューに近づきました。各配列がバッジを表示し、新設のスイッチ“入力ソース名を表示”をオンにするとバッジの代わりにメニューバーに配列名が表示され、“キーボード設定を開く…”は該当パネルへ直接移動します。";
 "The Uninstaller's Apps tab now says why it's empty — a search that matched nothing, a Mac with no more apps to show, or a list still being read — instead of showing the same blank screen for all three." = "アンインストーラの“App”タブが、空である理由を伝えるようになりました。検索結果がゼロなのか、Macに本当にアプリが残っていないのか、リストがまだ読み込み中なのか — これまでは三つとも同じ空白画面でした。";
+"Hosts & Keys" = "ホストと鍵";
+"Hosts" = "ホスト";
+"Edit the hosts file, SSH hosts and keys" = "hosts ファイル、SSH ホスト、鍵を編集";

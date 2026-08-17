@@ -43,6 +43,7 @@ let modules: [Module] = [
     Module(name: "Autopilot"),
     // EmojiOne v2.2.7 flag artwork, CC-BY 4.0 — see NOTICE.md.
     Module(name: "Layout", uiResources: [.copy("Flags")]),
+    Module(name: "Hosts"),
 ]
 
 extension Module {

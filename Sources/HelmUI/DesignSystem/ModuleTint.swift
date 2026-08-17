@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 
-/// The colour a module is known by, and the only place those nine are written.
+/// The colour a module is known by, and the only place they are written.
 ///
 /// **Why not `ModuleCategory.tint`.** That gave one colour to a category, so
 /// Uninstaller, Disk, Duplicates and Autopilot were one blue and Homebrew,
@@ -26,7 +26,7 @@ import AppKit
 /// things is worth more than red anywhere else. Magenta at 320° is 0,237 away
 /// and reads at 4,33:1.
 public enum ModuleTint: String, CaseIterable, Sendable {
-    case keepAwake, vpn, uninstaller, disk, duplicates, autopilot, homebrew, leftovers, keyboard
+    case keepAwake, vpn, uninstaller, disk, duplicates, autopilot, homebrew, leftovers, keyboard, hosts
 
     public var colour: Color {
         switch self {
@@ -48,6 +48,8 @@ public enum ModuleTint: String, CaseIterable, Sendable {
             return adaptive(light: (0.675, 0.498, 0.369), dark: (0.718, 0.541, 0.400))
         case .keyboard:
             return adaptive(light: (0.850, 0.150, 0.650), dark: (0.850, 0.150, 0.650))
+        case .hosts:
+            return adaptive(light: (0.180, 0.412, 0.573), dark: (0.212, 0.463, 0.639))
         }
     }
 

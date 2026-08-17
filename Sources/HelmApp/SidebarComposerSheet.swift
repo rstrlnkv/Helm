@@ -93,11 +93,18 @@ struct SidebarComposerSheet: View {
 
     static var chromeHeight: CGFloat { fixedChrome + noteHeight }
 
-    /// Sized to the arrangement, up to a cap. The cap is what the nine modules
-    /// and four sections Helm ships with need — 485 pt of list — so the
-    /// standard arrangement never scrolls; a person who makes more sections
-    /// than that gets a scroll bar rather than a sheet taller than the window
-    /// it sits in.
+    /// Sized to the arrangement, up to a cap. The cap is what the modules and
+    /// four sections Helm ships with need, so the standard arrangement never
+    /// scrolls; a person who makes more sections than that gets a scroll bar
+    /// rather than a sheet taller than the window it sits in.
+    ///
+    /// **It is a number that moves with the registry**, which is why it is
+    /// 700 and not 660: the tenth module added a 40 pt row and the shipped
+    /// arrangement asked for 683, so at 660 the sheet Helm ships with came up
+    /// scrolling. 700 is the settings window's own content height — the
+    /// ceiling the second half of the sentence above is about —
+    /// and `SidebarComposerHeightTests` is what notices when the arrangement
+    /// grows past it again.
     ///
     /// The floor is also the answer for a height that is not a number, which is
     /// what this line gave as `min(max(360, table + chrome), 660)` —
@@ -108,7 +115,7 @@ struct SidebarComposerSheet: View {
     /// the run loop later. A height that is merely enormous keeps the cap,
     /// which is what a cap is for.
     static func windowHeight(table: CGFloat, chrome: CGFloat) -> CGFloat {
-        (table + chrome).clamped(to: 360...660, whenNotANumber: 360)
+        (table + chrome).clamped(to: 360...700, whenNotANumber: 360)
     }
 
     private var layout: SidebarLayout {

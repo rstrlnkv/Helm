@@ -3,7 +3,7 @@ import SwiftUI
 import AppKit
 @testable import HelmUI
 
-/// The nine colours a module can be, measured rather than chosen.
+/// The colours a module can be, measured rather than chosen.
 ///
 /// Two thresholds, and the system palette fails one of them. `ModuleCategory`
 /// handed plates `.orange`, `.teal` and `.green`, which measure **2,31 / 2,16 /
@@ -29,7 +29,7 @@ final class ModuleTintTests: XCTestCase {
         }
     }
 
-    // MARK: - Nine modules, nine colours
+    // MARK: - One colour per module
 
     /// Far enough apart to be told apart. The number is the point of the whole
     /// change: a colour four modules share distinguishes nothing.
@@ -50,7 +50,7 @@ final class ModuleTintTests: XCTestCase {
 
     /// One case per module, so a module added later cannot quietly share.
     func testThereIsOneTintPerModule() {
-        XCTAssertEqual(ModuleTint.allCases.count, 9)
+        XCTAssertEqual(ModuleTint.allCases.count, 10)
     }
 
     // MARK: - Measuring
