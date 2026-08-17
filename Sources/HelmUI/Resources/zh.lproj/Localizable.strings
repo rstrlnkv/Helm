@@ -114,7 +114,6 @@
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm 未收到回应，无法判断哪些文件已移动。上方列表显示的仍是移动前的位置。";
 "Helm got no answer, so the list above is still from the previous scan." = "Helm 未收到回应，上方列表仍是上次扫描的结果。";
 "Helm got no answer, so this may not be every volume." = "Helm 未收到回应，这里可能不是全部宗卷。";
-"Icon spin" = "图标转动";
 "Last change (undone)" = "最近一次修改（已撤销）";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "启动代理、设置文件、插件与系统扩展。只有残留项可以移到废纸篓。";
 "Menu bar" = "菜单栏";
@@ -132,7 +131,6 @@
 "Tap it on its own. With text selected it fixes the selection — select it again to change it back; otherwise it fixes the last word, and tapping again puts it back. Held down or pressed with anything else it is still an ordinary modifier." = "单独按下再松开。若已选中文本则修正选区——再次选中即可改回；否则修正上一个词，再按一次还原。按住不放或与其他键同时按下时仍是普通修饰键。";
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "单独按下 Control 也会暂停 VoiceOver 的朗读。如果你使用 VoiceOver，请选择其他按键。";
 "The rules stored on this Mac were not written by Helm, so none of them are running." = "这台 Mac 上保存的规则不是 Helm 写入的，因此没有任何规则在运行。";
-"This decides the words. Whether the icon turns is the switch below." = "这里只决定文字。图标是否转动由下面的开关决定。";
 "This folder is no longer there" = "此文件夹已不存在";
 "This is not there any more, so nothing was moved. Scan again to see what is left." = "它已不存在，因此没有移动任何内容。请重新扫描以查看还剩下什么。";
 "This is not there any more, so nothing was moved. Search again to see what is left." = "它已不存在，因此没有移动任何内容。请重新搜索以查看还剩下什么。";
@@ -778,9 +776,7 @@
 "Helm picks it up on its own — there is nothing to refresh." = "Helm 会自动识别——无需刷新。";
 "Connect" = "连接";
 "Disconnect" = "断开连接";
-"Notifications" = "通知";
 "When a tunnel drops on its own" = "隧道自行断开时";
-"A tunnel can go down on its own — the network changes, the server hangs up. That can be louder than the rules." = "隧道可能自行断开：网络变化，服务器挂断。这件事可以比规则提示得更明显。";
 "VPN dropped" = "VPN 已断开";
 "Connected by this rule now" = "当前由此规则连接";
 "A VPN that drops on its own can be announced louder than the rules. A tunnel lost to a network change is the one thing here nobody asked for, and it used to arrive in the same words as a rule doing what it was told." = "自行断开的 VPN 可以比规则提示得更响。因网络切换而丢失的隧道是这里唯一没人要求的事，却和规则照办时用同样的措辞来通报。";

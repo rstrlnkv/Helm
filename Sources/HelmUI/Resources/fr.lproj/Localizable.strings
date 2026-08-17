@@ -114,7 +114,6 @@
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "Helm n’a reçu aucune réponse et ne sait pas quels fichiers ont été déplacés. La liste ci-dessus montre encore où ils étaient avant.";
 "Helm got no answer, so the list above is still from the previous scan." = "Helm n’a reçu aucune réponse, la liste ci-dessus est donc encore celle de l’analyse précédente.";
 "Helm got no answer, so this may not be every volume." = "Helm n’a reçu aucune réponse, certains volumes manquent peut-être.";
-"Icon spin" = "Rotation de l’icône";
 "Last change (undone)" = "Dernier changement (annulé)";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "Agents de lancement, fichiers de réglages, modules et extensions système. Seuls les restes peuvent aller à la corbeille.";
 "Menu bar" = "Barre des menus";
@@ -132,7 +131,6 @@
 "Tap it on its own. With text selected it fixes the selection — select it again to change it back; otherwise it fixes the last word, and tapping again puts it back. Held down or pressed with anything else it is still an ordinary modifier." = "Appuyez puis relâchez-la seule. Si du texte est sélectionné elle corrige la sélection — sélectionnez-le de nouveau pour le rétablir ; sinon le dernier mot, et une seconde pression le restaure. Maintenue ou combinée, elle reste un modificateur ordinaire.";
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "Appuyer sur Contrôle seule met aussi en pause la voix de VoiceOver. Si vous utilisez VoiceOver, choisissez une autre touche.";
 "The rules stored on this Mac were not written by Helm, so none of them are running." = "Les règles enregistrées sur ce Mac n’ont pas été écrites par Helm : aucune ne s’exécute.";
-"This decides the words. Whether the icon turns is the switch below." = "Ceci décide des mots. C’est l’interrupteur ci-dessous qui décide si l’icône tourne.";
 "This folder is no longer there" = "Ce dossier n’existe plus";
 "This is not there any more, so nothing was moved. Scan again to see what is left." = "Cet élément n’existe plus, rien n’a été déplacé. Réanalysez pour voir ce qui reste.";
 "This is not there any more, so nothing was moved. Search again to see what is left." = "Cet élément n’existe plus, rien n’a été déplacé. Recherchez à nouveau pour voir ce qui reste.";
@@ -778,9 +776,7 @@
 "Helm picks it up on its own — there is nothing to refresh." = "Helm la reprend tout seul : rien à actualiser.";
 "Connect" = "Se connecter";
 "Disconnect" = "Se déconnecter";
-"Notifications" = "Notifications";
 "When a tunnel drops on its own" = "Quand un tunnel tombe tout seul";
-"A tunnel can go down on its own — the network changes, the server hangs up. That can be louder than the rules." = "Un tunnel peut tomber tout seul : le réseau change, le serveur raccroche. Cela peut être signalé plus fort que les règles.";
 "VPN dropped" = "Le VPN est tombé";
 "Connected by this rule now" = "Connecté maintenant par cette règle";
 "A VPN that drops on its own can be announced louder than the rules. A tunnel lost to a network change is the one thing here nobody asked for, and it used to arrive in the same words as a rule doing what it was told." = "Un VPN qui tombe tout seul peut être signalé plus fort que les règles. Un tunnel perdu à cause d’un changement de réseau est la seule chose ici que personne n’a demandée, et elle arrivait avec les mêmes mots qu’une règle faisant ce qu’on lui a dit.";

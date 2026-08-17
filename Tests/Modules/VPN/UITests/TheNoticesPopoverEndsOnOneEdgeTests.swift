@@ -45,20 +45,42 @@ final class TheNoticesPopoverEndsOnOneEdgeTests: XCTestCase {
             setSpin: { _ in }, setTint: { _, _ in })
     }
 
+    /// Held, so the teardown can let go of the window: one left holding a
+    /// hosting view holds the view behind it too (`MountedRender.drop`).
+    private var renders: [MountedRender] = []
+
+    override func tearDown() {
+        renders.forEach { $0.drop() }
+        renders = []
+        super.tearDown()
+    }
+
     private func mount() -> MountedRender {
         let render = MountedRender(card().noticesPopover, width: 420, height: 900,
                                    appearance: .darkAqua)
         render.settle(30)
+        renders.append(render)
         return render
     }
 
     /// Both pop-ups, the switch and both palettes have real frames to read.
     /// Their right edges must agree to the point.
+    ///
+    /// **Which five, not how many.** A count alone passes a popover that has
+    /// lost a mode pop-up and grown a ring somewhere else, so the five are
+    /// checked in the order they stand in: two questions, the switch, two
+    /// palettes. Not by width — a pop-up's ring sits at the control's own frame
+    /// (152 pt here), not at the 156 the card gives it, so a width test would be
+    /// asserting what AppKit charges for a bezel.
     func testEveryControlEndsOnTheSameRightEdge() {
         let render = mount()
-        let edges = controls(render.host).map { $0.convert($0.bounds, to: render.host).maxX }
-        XCTAssertGreaterThanOrEqual(edges.count, 5,
-                                    "expected two pop-ups, a switch and two palettes, saw \(edges.count)")
+        let down = controls(render.host)
+            .map { (frame: $0.convert($0.bounds, to: render.host), isSwitch: $0 is NSSwitch) }
+            .sorted { $0.frame.minY < $1.frame.minY }
+        XCTAssertEqual(down.map(\.isSwitch), [false, false, true, false, false],
+                       "expected two mode pop-ups, the switch, then two palettes; saw "
+                       + "\(down.map { $0.isSwitch ? "switch" : "pop-up" })")
+        let edges = down.map(\.frame.maxX)
         let spread = (edges.max() ?? 0) - (edges.min() ?? 0)
         XCTAssertLessThanOrEqual(spread, 1.0,
                                  "controls end \(spread) pt apart: \(edges.sorted())")
@@ -67,15 +89,18 @@ final class TheNoticesPopoverEndsOnOneEdgeTests: XCTestCase {
     /// Two pictures, not six: the two questions each own one, and nothing
     /// repeats.
     func testThePopoverHoldsTwoPreviews() {
-        XCTAssertEqual(previewCount(mount().host), 2)
+        let count = previewCount(mount().host)
+        XCTAssertEqual(count, 2,
+                       "the popover draws \(count) notice preview(s) — if that is 0, read "
+                       + "`previewCount` first: the instrument has stopped matching, which is "
+                       + "not the same finding as a picture having gone")
     }
 
     /// The height this shape was chosen for. A ratchet, not a target: it fails
     /// if the popover grows back towards the 483 pt it replaced.
     func testThePopoverStaysUnderItsCeiling() {
-        let render = mount()
-        XCTAssertLessThanOrEqual(render.host.fittingSize.height, 380,
-                                 "the notices popover grew to \(render.host.fittingSize.height) pt")
+        let height = mount().fittingHeight
+        XCTAssertLessThanOrEqual(height, 380, "the notices popover grew to \(height) pt")
     }
 
     private func controls(_ view: NSView) -> [NSView] {

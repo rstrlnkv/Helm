@@ -87,7 +87,8 @@ final class RadiusLadderRatchetTests: XCTestCase {
     /// Disk's volume cards, VPN's connection cards, Autopilot's history and rule
     /// editor and `HelmBanner` all needing a reply the transport never gave. And:
     /// a mutation this test *does* catch is `HelmChoiceCards`' 6 pt `clipShape` →
-    /// 19 pt, drawn on VPN's page.
+    /// 19 pt, drawn on VPN's page. **That probe has since gone too — see the
+    /// paragraph after next.**
     ///
     /// **Both re-measured 2026-08-12 and neither holds.** `HelmRadius.card` = 11
     /// now draws `11.00 pt on autopilot, disk, duplicates, layout, leftovers,
@@ -99,9 +100,19 @@ final class RadiusLadderRatchetTests: XCTestCase {
     /// module page, VPN's notice section, which `5b675ad` put behind
     /// `!connections.isEmpty` — so from that commit until the wire fixture landed
     /// a 19 pt corner on it was caught by **nothing**, measured both ways on
-    /// 2026-08-12 (unwired: five green; wired: `19.00 pt on vpn`, 8 and 7). It is a
-    /// live probe again, and it is the one to reach for: nothing else in this
-    /// render draws that component.
+    /// 2026-08-12 (unwired: five green; wired: `19.00 pt on vpn`, 8 and 7).
+    ///
+    /// **And that probe is dead as of 2026-08-17: do not reach for it.** VPN's
+    /// notice section left the page — the picture question is asked inside a
+    /// *popover* on each connection card now, and a popover is a window macOS
+    /// orders in, so `ModulePageRender` never draws one. `HelmChoiceCards` kept
+    /// its last call site in `AppearancePicker`, which only the app's General
+    /// page draws, and the corner itself moved out of both into
+    /// `View.helmPreviewEdge`. Measured rather than reasoned: that modifier's
+    /// `HelmRadius.ctl` → 19 pt, both the clip and the overlay, leaves all five
+    /// tests here green. Whoever needs a live probe for this file has to find a
+    /// component the nine module pages actually draw and record the reading —
+    /// mutating this one and reading green proves nothing at all.
     ///
     /// A claim about what a check cannot see is itself a measurement, and it goes
     /// stale in whichever direction the tree moves. Both of these were true when

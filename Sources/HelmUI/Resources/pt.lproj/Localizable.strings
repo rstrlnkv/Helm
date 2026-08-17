@@ -114,7 +114,6 @@
 "Helm got no answer, so it does not know what moved. The list above still shows where the files were before." = "O Helm não recebeu resposta e não sabe quais arquivos foram movidos. A lista acima ainda mostra onde os arquivos estavam antes.";
 "Helm got no answer, so the list above is still from the previous scan." = "O Helm não recebeu resposta, então a lista acima ainda é a do escaneamento anterior.";
 "Helm got no answer, so this may not be every volume." = "O Helm não recebeu resposta, então podem faltar volumes aqui.";
-"Icon spin" = "Giro do ícone";
 "Last change (undone)" = "Última alteração (desfeita)";
 "Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "Agentes de início, arquivos de ajustes, plug-ins e extensões do sistema. Só os restos podem ir para o Lixo.";
 "Menu bar" = "Barra de menus";
@@ -132,7 +131,6 @@
 "Tap it on its own. With text selected it fixes the selection — select it again to change it back; otherwise it fixes the last word, and tapping again puts it back. Held down or pressed with anything else it is still an ordinary modifier." = "Pressione e solte sozinha. Com texto selecionado corrige a seleção — selecione-o de novo para reverter; caso contrário, a última palavra, e apertar de novo desfaz. Segurada ou com outra tecla, continua um modificador comum.";
 "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key." = "Tocar em Controle sozinha também pausa a fala do VoiceOver. Se você usa o VoiceOver, escolha outra tecla.";
 "The rules stored on this Mac were not written by Helm, so none of them are running." = "As regras guardadas neste Mac não foram escritas pelo Helm, por isso nenhuma está a ser executada.";
-"This decides the words. Whether the icon turns is the switch below." = "Isto decide as palavras. Se o ícone gira é o interruptor abaixo que decide.";
 "This folder is no longer there" = "Esta pasta não existe mais";
 "This is not there any more, so nothing was moved. Scan again to see what is left." = "Isto já não existe, então nada foi movido. Escaneie de novo para ver o que restou.";
 "This is not there any more, so nothing was moved. Search again to see what is left." = "Isto já não existe, então nada foi movido. Busque de novo para ver o que restou.";
@@ -778,9 +776,7 @@
 "Helm picks it up on its own — there is nothing to refresh." = "O Helm a detecta sozinho — não há nada para atualizar.";
 "Connect" = "Conectar";
 "Disconnect" = "Desconectar";
-"Notifications" = "Notificações";
 "When a tunnel drops on its own" = "Quando um túnel cai sozinho";
-"A tunnel can go down on its own — the network changes, the server hangs up. That can be louder than the rules." = "Um túnel pode cair sozinho: a rede muda, o servidor desliga. Isso pode ser avisado mais alto do que as regras.";
 "VPN dropped" = "A VPN caiu";
 "Connected by this rule now" = "Conectada agora por esta regra";
 "A VPN that drops on its own can be announced louder than the rules. A tunnel lost to a network change is the one thing here nobody asked for, and it used to arrive in the same words as a rule doing what it was told." = "Uma VPN que cai sozinha pode ser avisada mais alto do que as regras. Um túnel perdido por uma mudança de rede é a única coisa aqui que ninguém pediu, e era anunciada com as mesmas palavras que uma regra fazendo o que lhe foi dito.";

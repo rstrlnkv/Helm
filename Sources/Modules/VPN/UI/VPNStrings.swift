@@ -389,11 +389,9 @@ enum VPNStr {
 
     // MARK: - How a firing is announced
 
-    /// The section now holds two of these, so it is headed by the topic and
-    /// each row says which event it decides.
-    static var noticeSection: String {
-        L("Notifications")
-    }
+    /// The first of the notices popover's two questions, said beside the
+    /// picture of the mode it is set to. There is no section heading over the
+    /// pair — the popover's own title (`noticesFor`) is the heading.
     static var noticeRuleLabel: String {
         L("When a rule fires")
     }
@@ -401,30 +399,22 @@ enum VPNStr {
     static var noticeDropLabel: String {
         L("When a tunnel drops on its own")
     }
-    /// Said under the pair, because the second setting is the reason the first
-    /// one can be left silent.
-    static var noticeDropHint: String {
-        L("A tunnel can go down on its own — the network changes, the server hangs up. That can be louder than the rules.")
-    }
-    /// «Icon spin», not «Menu-bar spin»: all seven translations dropped the
-    /// menu bar independently, and the switch directly under the header says it.
-    static var spinSection: String {
-        L("Icon spin")
-    }
     /// The three answers. "Menu bar" and "Notification" are macOS's own words
     /// for its own things — Menüleiste, メニューバー, Mitteilung — read out of
     /// the system's tables rather than translated (ARCHITECTURE.md §
     /// Localization); German would otherwise have been given
     /// *Benachrichtigung*, which is not what macOS calls it.
     ///
-    /// **Two words each, because the card is 104 pt and cannot grow.** «Имя в
-    /// строке меню» measured 117.9 pt in German, 125.0 in Portuguese, 147.3 in
-    /// Spanish and 148.7 in French — two lines on one card of three puts three
-    /// cards on three baselines — and the row label caps the card at about 140
-    /// pt («Wenn ein Tunnel von selbst abbricht» is 219.1 pt of the 680 the row
-    /// has). Russian had 3.2 pt of slack, which is what «it fits today» is
-    /// worth. The names are the pane's own: `ControlCenterSettings.appex`'s
-    /// display name and `DesktopSettings.appex`'s `Menu Bar`.
+    /// **Two words each, because they are a pop-up's items.** They were
+    /// captions under 104 pt picture cards, where «Имя в строке меню» measured
+    /// 117.9 pt in German, 125.0 in Portuguese, 147.3 in Spanish and 148.7 in
+    /// French and wrapped onto two lines; the three modes are the items of the
+    /// mode pop-up now, where the same length truncates instead. What they have
+    /// to fit is `VPNConnectionCard.modeWidth`, and
+    /// `TheNoticeLabelsFitTheCardTests` measures every language against a real
+    /// `NSPopUpButton` carrying these titles and their glyphs. The names are the
+    /// pane's own: `ControlCenterSettings.appex`'s display name and
+    /// `DesktopSettings.appex`'s `Menu Bar`.
     ///
     /// The language is a parameter, defaulted, so the eight can be measured: a
     /// width read through `AppLanguage.current` is this machine's width eight
@@ -436,21 +426,6 @@ enum VPNStr {
         case .menuBar: return L("Menu bar", language: language)
         case .system: return L("Notification", language: language)
         }
-    }
-
-    /// Said under the picker, which decides the words and nothing else.
-    ///
-    /// It used to say the ring turns in every mode, which was true when the
-    /// spin always played. The spin became a switch of its own and this line
-    /// went on claiming otherwise — sitting directly above the control that
-    /// contradicted it. No test could see that; it was caught by opening the
-    /// page. A sentence about a sibling control has to be re-read when that
-    /// control changes.
-    /// Three names for one object — «the ring» here, «the menu-bar icon» on the
-    /// switch, «spin» in the header above it — was the other half of the same
-    /// defect, and the Russian had no predicate at all.
-    static var noticeHint: String {
-        L("This decides the words. Whether the icon turns is the switch below.")
     }
 
     /// Shown when macOS answered no. It says what will happen instead, because

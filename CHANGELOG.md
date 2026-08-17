@@ -59,10 +59,25 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   and the two or three sentences that qualify them, and it draws no section card
   at all when it has nothing to say. A card's colours are disabled rather than
   hidden while its own ring is off — a row that loses its tallest control makes
-  the popover shorter on a setting that has nothing to do with its height — and
-  their labels sit above the palettes rather than beside them: at the popover's
-  width «Когда правило подключает VPN» took two lines of a form row's label
-  column and the two rows lost their baseline.
+  the popover shorter on a setting that has nothing to do with its height.
+  **The notices popover asks two questions with two pictures.** It opened as a
+  settings page in a popover: 483 pt, each question a row of three wallpaper
+  previews — six pictures for three modes, three of them a repeat of the other
+  three — a switch whose label sat beside it where every other label sat above
+  its control, and two palettes stopping halfway across while the previews
+  reached the margin. Each question now draws the one picture of the mode it is
+  *set to*, beside a pop-up naming all three, and every control in the popover —
+  both pop-ups, the switch and both palettes — ends on one right edge in a
+  `HelmSettingRow`: 364 pt measured, against a guard that fails if it grows back
+  past 380. «Когда правило подключает VPN» takes two lines of the label column,
+  which is what that shape asks for beside a control rather than above one. The
+  mode pop-up's width is `HelmPickerWidth.fittingSymbolled`, because its items
+  carry a glyph and AppKit gives an image a column of its own: at the 150 pt the
+  shape was drawn at, the control asks 152 pt in Russian and 170 in French, so
+  four of the eight languages would have truncated the word the control is set
+  to. Four strings the old shape needed — two section headings and two hints
+  about neighbouring controls — went with it; the popover's own title, its two
+  question labels and the switch's own label say what they said.
   The refusal note macOS earns by denying notifications is said **once** per
   popover over both questions (`VPNNotice.permissionMissing`), the way it was
   said once for the whole card before, and the cost of the two quiet settings
