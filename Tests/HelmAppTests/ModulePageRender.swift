@@ -562,8 +562,24 @@ extension ModulePageRender.Page {
     /// 100 is a card's worth under the lowest of those, and the page with no wire
     /// is 55 — which is what `TheWireFixtureReachesThePagesTests` holds the
     /// difference against.
+    /// **And 124 from 2026-08-18, because the page grew a section the fixture had
+    /// been withholding.** `VPNSettingsPage` draws its tunnel strip behind
+    /// `if let facts`, and `ModulePageFixtures` carried no `facts:` — so the
+    /// tile strip, its four wells and the verdict line under them were in no
+    /// reading of this render, on a page whose floor of 100 would not have
+    /// noticed them leaving either. With the tunnel in the fixture the page is
+    /// **140 layers in light and 143 in dark with the wire alone, 145 and 148
+    /// with the store seeded too — identical in all eight languages, three
+    /// consecutive runs of each**, against 116/119 and 121/124 without it: the
+    /// strip is 24 layers wherever it is measured.
+    ///
+    /// 124 is a card's worth (16, by this page's own arithmetic above) under the
+    /// lowest of those, and it is the first floor here that the strip can fail:
+    /// the page without it draws 116, which misses by eight. That is the whole
+    /// reason the number moves — a floor of 100 would have gone on passing with
+    /// the section gone.
     static let floors: [String: Int] = [
-        "keep-awake": 250, "vpn": 100, "uninstaller": 45, "homebrew": 70,
+        "keep-awake": 250, "vpn": 124, "uninstaller": 45, "homebrew": 70,
         "leftovers": 210, "disk": 40, "duplicates": 8, "autopilot": 8, "layout": 230,
     ]
 }

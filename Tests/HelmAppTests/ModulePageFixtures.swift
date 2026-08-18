@@ -100,8 +100,12 @@ extension ModulePageRender {
     /// System Settings.
     ///
     /// The first points at the tunnel the fixture says is up *and* auto-connected,
-    /// which is what draws the «holding now» dot — both halves, because either
-    /// alone would put that mark under a rule whose VPN is down.
+    /// which is what makes the card read «held by rules» in place of its status
+    /// (`VPNStr.groupHeldByRules`) — both halves, because `heldByHelm` is
+    /// `isConnected && autoConnected.contains(name)` and either alone would put
+    /// that line on a card whose tunnel is down. It was a dot on the rule's own
+    /// row until the rules moved into a popover; `VPNStr.ruleHoldingNow` is the
+    /// string that wore it and now has no call site at all.
     ///
     /// The notice mode and the spin switch are left at their shipped defaults:
     /// they are drawn either way once there are connections, and a fixture that
@@ -230,6 +234,12 @@ extension ModulePageRender {
     /// this Mac has configured — the same reason `configured` uses bundle ids
     /// that resolve to nothing.
     ///
+    /// **`facts` is set, and without it the page's whole lower half is absent.**
+    /// `VPNSettingsPage` draws `VPNTunnelSection` behind `if let facts`, so a
+    /// payload without one renders the connection grid and then nothing — which
+    /// is the shape this file exists for, a fixture complete enough to look
+    /// right and a page measured in its empty state. See `tunnel` below.
+    ///
     /// **Homebrew, because its page has two of them and this render only ever saw
     /// the poorer one.** `HomebrewSettingsPage.body` branches on
     /// `hb.status.installed`, and that status is a *reply* — so against a silent
@@ -283,21 +293,61 @@ extension ModulePageRender {
         return wire
     }
 
-    private static let vpnState = VPNEngine.StatePayload(
-        connections: [
-            VPNConnection(id: "fixture-1", name: "Fixture Amsterdam",
-                          status: .connected, kind: "IKEv2"),
-            VPNConnection(id: "fixture-2", name: "Fixture Reykjavík",
-                          status: .disconnected, kind: "IPSec"),
-            VPNConnection(id: "fixture-3", name: "Fixture Osaka",
-                          status: .connecting, kind: "L2TP"),
-        ],
-        // Helm's own book of what it raised itself. The connected tunnel is in
-        // it, which is what draws the «holding now» mark under a rule.
-        autoConnected: ["Fixture Amsterdam"],
-        defaultName: "Fixture Amsterdam",
-        lastAutomation: nil,
-        lastFailure: VPNFailure(name: "Fixture Reykjavík", reason: .refused, verb: .connect))
+    /// Computed rather than stored, and `tunnel` is the reason — every other
+    /// field here is a constant.
+    private static var vpnState: VPNEngine.StatePayload {
+        VPNEngine.StatePayload(
+            connections: [
+                VPNConnection(id: "fixture-1", name: "Fixture Amsterdam",
+                              status: .connected, kind: "IKEv2"),
+                VPNConnection(id: "fixture-2", name: "Fixture Reykjavík",
+                              status: .disconnected, kind: "IPSec"),
+                VPNConnection(id: "fixture-3", name: "Fixture Osaka",
+                              status: .connecting, kind: "L2TP"),
+            ],
+            // Helm's own book of what it raised itself. The connected tunnel is in
+            // it, which is what draws the «holding now» mark under a rule.
+            autoConnected: ["Fixture Amsterdam"],
+            defaultName: "Fixture Amsterdam",
+            lastAutomation: nil,
+            lastFailure: VPNFailure(name: "Fixture Reykjavík", reason: .refused, verb: .connect),
+            facts: tunnel)
+    }
+
+    /// The tunnel carrying the default route — **all four tiles filled, and the
+    /// verdict at its longest.** It is the connected connection above by name,
+    /// because the strip's heading is `VPNStr.thisTunnel(state.name)`.
+    ///
+    /// Every reading is present on purpose: `VPNTunnelFacts` drops a tile per
+    /// absent one rather than drawing a dash, so each nil would be a piece of
+    /// this strip no render measures. `.throughTunnel` with a code is the verdict
+    /// that interpolates a country — the longest of the three, and the one whose
+    /// word comes out of `Locale` and so differs in each of the eight languages
+    /// `LongStringGeometryRatchetTests` draws. The speed reading is deliberately
+    /// older than `VPNTunnelFacts.speedGoesStaleAfter`, which is what puts the
+    /// third line under the figure and makes the wells unequal in content and
+    /// equal in height. The counters are whole thousands because that is what
+    /// reaches the wire (`VPNInterfaceCounters.onTheWire`).
+    ///
+    /// **The two dates are offsets from now, and that is the determinism
+    /// decision — the opposite way round from `lastAutomation` above.** There is
+    /// no seam for the clock: `VPNSettingsPage` builds the section without a
+    /// `now:`, so an *absolute* date here would draw an uptime that grows for
+    /// ever — «5520h 0m» this afternoon, a different string tomorrow, a third on
+    /// the next Mac. An offset draws «2h 34m» at every hour on every machine,
+    /// which is what «every Mac photographs the same page» asks for; the clock is
+    /// read, nothing about this Mac is. It is also why the payload above is
+    /// computed and not stored — a `static let` is built once per process, and
+    /// this suite renders these pages over several minutes.
+    private static var tunnel: VPNTunnelState {
+        let now = Date()
+        return VPNTunnelState(name: "Fixture Amsterdam", interface: "utun9",
+                              since: now.addingTimeInterval(-9_240),
+                              bytesIn: 4_812_000, bytesOut: 731_000,
+                              exit: .throughTunnel(countryCode: "NL"),
+                              speed: VPNSpeedReading(down: 212, up: 47, rpm: 780,
+                                                     at: now.addingTimeInterval(-90)))
+    }
 
     /// A path nothing on this Mac is at, so the page's own «found at» line is the
     /// fixture's string. `/opt/homebrew` and `/usr/local` are the two real ones

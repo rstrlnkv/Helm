@@ -114,6 +114,28 @@ final class RadiusLadderRatchetTests: XCTestCase {
     /// component the nine module pages actually draw and record the reading —
     /// mutating this one and reading green proves nothing at all.
     ///
+    /// **A live probe exists again, and it does not fire — measured 2026-08-18.**
+    /// The component the paragraph above asks for is now on the page: VPN's tunnel
+    /// strip draws four `HelmRadius.ctl` wells in the render, and unlike a
+    /// `.background(RoundedRectangle)` that never reaches a layer, these do —
+    /// probed layer by layer, `19.00 pt on vpn`, four layers, with
+    /// `VPNTunnelSection.tile`'s radius mutated. **The ratchet stayed green
+    /// anyway**, and the reason is a free slot rather than a blind spot: the tree
+    /// draws **7 distinct off-ladder radii in light and 6 in dark, three
+    /// consecutive runs**, against the 8 and 7 recorded below. The `2.00` in the
+    /// last reading left with the notices section when it became a popover, and
+    /// the slot it vacated is what the mutant was absorbed by.
+    ///
+    /// So the pair below is a ceiling one above the floor, and a first new radius
+    /// anywhere is free. Lowering it to 7 and 6 is what would make this probe bite
+    /// — and it is deliberately **not** done here, because the paragraph on Disk's
+    /// 1.25 says in bold what that costs: the wobble that slot was reserved for
+    /// comes and goes with the person's own last scan, and recording the tight
+    /// number before `TheSuiteDoesNotReadTheUsersLastScanTests`' seam lands is a
+    /// red CI on the day after every Disk scan, wearing a message about corners.
+    /// The measurement is written down so that decision is taken by whoever lands
+    /// the seam, with the reading in hand, rather than re-derived.
+    ///
     /// A claim about what a check cannot see is itself a measurement, and it goes
     /// stale in whichever direction the tree moves. Both of these were true when
     /// written.
