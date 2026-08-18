@@ -235,6 +235,36 @@ final class HostsEditingTests: XCTestCase {
         }
     }
 
+    /// **The editors are the only way a line changes, and that is now true by
+    /// construction rather than by convention.**
+    ///
+    /// Measured on 2026-08-18 with a throwaway file compiled inside
+    /// `Module_Hosts_UI` — a target that only imports the engine, exactly where
+    /// Task 9's view model will live. `Entry.names` and `Document.lines` were
+    /// `public var` and `Document.init(lines:)` was public, so those six lines
+    /// built the payload below and rendered it without going near an editor:
+    /// two live mappings out of one row, the second typed by nobody, on its way
+    /// to `/etc/hosts` as root. `public internal(set)` on the entry's fields
+    /// and on `Document.lines`, with an internal `Document.init(lines:)`, is
+    /// what closed it — outside the engine a document can only come from
+    /// `parse` and can only change through the five editors, which is the same
+    /// rule as «the engine has the last word on deletion» one file over: a gate
+    /// a caller may decline to ask is a gate that eventually goes unasked, and
+    /// the shorter path is always two lines shorter at the worst moment.
+    ///
+    /// **This test cannot prove the setter is gone** — `@testable` sees
+    /// internal, so this very file could still assign the field. It holds the
+    /// route that remains and names, above, why the other one is not there,
+    /// which is the part that stops it coming back.
+    func testTheProbesPayloadHasNoRouteIntoTheFileExceptAnEditorThatRefusesIt() {
+        var document = HostsFile.parse("127.0.0.1 solo\n")
+        XCTAssertEqual(HostsFile.setNames(["ok.local\n0.0.0.0 bank.example"], at: 0, in: &document),
+                       .refused(.unwritableName))
+        XCTAssertEqual(HostsFile.render(document), "127.0.0.1 solo\n")
+        XCTAssertEqual(HostsFile.parse(HostsFile.render(document)).entries.count, 1,
+                       "the file holds a mapping nobody typed")
+    }
+
     /// An index no entry answers to is refused too, rather than editing the
     /// nearest thing or dropping the edit without a word. The table addresses
     /// entries; the document holds comments between them, so the two numbers

@@ -26,6 +26,23 @@ public enum HostsFile {
     /// entry renders back to its own bytes — an editor that normalises a tab
     /// to a space has rewritten a line it was only asked to read, and aligned
     /// columns are how a hand-maintained hosts file looks.
+    ///
+    /// **Readable everywhere, writable only in here.** Every stored field is
+    /// `public internal(set)`: a table outside the engine reads a row, and
+    /// changes one only by calling an editor, which is the one place the file's
+    /// grammar is checked (§ Editing).
+    ///
+    /// It was `public var` until 2026-08-18, and a throwaway file compiled
+    /// inside `Module_Hosts_UI` — the target Task 9's view model lives in —
+    /// proved what that costs: six lines that set `names` to
+    /// `"ok.local\n0.0.0.0 bank.example"`, put the entry back into
+    /// `Document.lines` and rendered it wrote **two live mappings**, the second
+    /// typed by nobody, bound for `/etc/hosts` with administrator rights. The
+    /// house rule that answers it is the one `RemovableScope.partition` already
+    /// answers for deletion: the engine has the last word, because a gate the
+    /// caller may decline to ask is a gate that eventually goes unasked — not
+    /// out of malice, but because setting the field directly is two lines
+    /// shorter on some reasonable afternoon.
     public struct Entry: Equatable, Sendable, Identifiable {
         /// The row's position, and nothing about what it says.
         ///
@@ -36,11 +53,11 @@ public enum HostsFile {
         /// and unchanged by an edit, which is both halves of what an id owes.
         public var id: Int { index }
         /// Position in the document, so two identical entries are still two rows.
-        public var index: Int
-        public var address: String
-        public var names: [String]
+        public internal(set) var index: Int
+        public internal(set) var address: String
+        public internal(set) var names: [String]
         /// The comment after the names, `#` and all, or an empty string.
-        public var trailing: String
+        public internal(set) var trailing: String
         /// **Whether the line is live, and the only thing that decides.**
         ///
         /// The `#` of a disabled line is not kept in `leading`, where it would
@@ -49,7 +66,7 @@ public enum HostsFile {
         /// long as those two existed side by side. This file goes to `/etc`
         /// with administrator rights, so «the model says off and the file says
         /// on» is the one disagreement it can least afford.
-        public var enabled: Bool
+        public internal(set) var enabled: Bool
         /// Indentation only — never the comment marker.
         var leading: String
         /// How this line spelled its `#`, kept so a file Helm only read comes
@@ -115,9 +132,16 @@ public enum HostsFile {
         }
     }
 
+    /// The file, in the order it was written.
+    ///
+    /// A document comes from `parse` and changes through the editors, and
+    /// outside the engine there is no third way: `lines` is readable and not
+    /// writable, and this initializer is internal, so a caller cannot assemble
+    /// a document out of lines it made up — which is how the entry above got
+    /// back into a rendered file with a mapping nobody typed.
     public struct Document: Equatable, Sendable {
-        public var lines: [Line]
-        public init(lines: [Line]) { self.lines = lines }
+        public internal(set) var lines: [Line]
+        init(lines: [Line]) { self.lines = lines }
 
         /// The rows the table draws, in file order.
         public var entries: [Entry] {
