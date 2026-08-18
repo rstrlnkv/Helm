@@ -86,6 +86,7 @@ final class MemoryBackups: BackupPort, @unchecked Sendable {
 /// have — one key, its public half beside it, the directory at 0700 — rather
 /// than an empty one, so the table has a row to draw.
 struct WireKeys: SSHKeysPort {
+    let directory = URL(fileURLWithPath: "/nowhere/.ssh")
     func names() -> [String]? { ["id_ed25519", "id_ed25519.pub", "known_hosts"] }
     func facts(for pair: KeyInventory.Pair) -> KeyFacts {
         KeyFacts(pair: pair,

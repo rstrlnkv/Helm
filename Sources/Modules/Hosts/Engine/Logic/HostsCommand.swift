@@ -20,6 +20,18 @@ public enum HostsCommand: String, CaseIterable, Sendable {
     /// second meaning inside one field, and the exhaustive switch cannot tell
     /// anybody it was forgotten.
     case fixDirectoryPermissions
+    /// Make a key. Payload: `KeyGeneration.Request` — type, name, comment and
+    /// the passphrase as bytes.
+    ///
+    /// **The passphrase is in the payload, and the spec said it would not be.**
+    /// The design called for «whether a passphrase follows», with the secret on
+    /// a second channel. There is no second channel to be had: the transport is
+    /// in this process, and a side channel would need an object both targets can
+    /// name, which is the wire again with fewer guarantees. What the design was
+    /// protecting against is `argv` — every process on the machine can read that
+    /// — and this payload is a `Data` in one process's own memory that the
+    /// engine zeroes after use. Commands are not replayed; only events are.
+    case generateKey
     /// Put a key into `ssh-agent`. Payload: which key.
     case agentLoad
     /// Take it back out. Payload: which key.

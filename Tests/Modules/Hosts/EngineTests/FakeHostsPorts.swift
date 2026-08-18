@@ -241,6 +241,10 @@ final class FakeSSHKeys: SSHKeysPort, @unchecked Sendable {
     private var dirMode: mode_t?
     private var refuses = false
     private var recorded: [String] = []
+    /// A directory that exists nowhere. Nothing here opens it — the paths this
+    /// port composes are compared, not followed — and a fake pointing at a real
+    /// `~/.ssh` is how a test starts writing to somebody's keys.
+    let directory = URL(fileURLWithPath: "/nowhere/.ssh")
 
     init(names: [String]? = ["id_ed25519", "id_ed25519.pub"],
          modes: [String: mode_t] = ["id_ed25519": 0o600],
@@ -355,5 +359,71 @@ final class FakeSSHAgent: SSHAgentPort, @unchecked Sendable {
             }
             return true
         }
+    }
+}
+
+/// `ssh-keygen`, faked — **and able to sit at the prompt for as long as a test
+/// needs.**
+///
+/// A generator that has always already finished makes «does a second press start
+/// a second generation?» vacuous: the subject is over before the code under test
+/// is reached. So this one can be held at the prompt and released, which is the
+/// state a real `ssh-keygen` is in for every second it spends making an RSA key.
+///
+/// It also records the arguments it was given, so «the passphrase is not in the
+/// sentence» can be asserted about the sentence rather than believed about the
+/// design.
+final class FakeGenerator: KeyGeneratorPort, @unchecked Sendable {
+    private let lock = NSLock()
+    private var status: Int32
+    private var runs: [[String]] = []
+    private var answers: [Data] = []
+    private var holds = false
+    private let atThePrompt = DispatchSemaphore(value: 0)
+    private let released = DispatchSemaphore(value: 0)
+
+    init(status: Int32 = 0) { self.status = status }
+
+    var sentences: [[String]] { lock.withLock { runs } }
+    /// What it was answered with — a copy taken before the buffer is zeroed, so
+    /// a test can say «the passphrase reached the tool» and «the caller's copy
+    /// is gone» as two separate facts.
+    var answered: [Data] { lock.withLock { answers } }
+
+    /// The next run stops at the prompt until `finish()`.
+    func sitsAtThePrompt() { lock.withLock { holds = true } }
+    /// Wait until a run is actually sitting there. Without this a test races
+    /// the thread it is trying to hold still.
+    func waitUntilAsked() { atThePrompt.wait() }
+    /// Releases **every** run sitting at the prompt, not one.
+    ///
+    /// Measured, by deleting the engine's gate: with one signal the second run
+    /// sat there for ever and the test hung instead of failing. A hang is not a
+    /// failing guard — it is a suite that has to be killed by hand and a result
+    /// nobody can read. Released generously, the second run finishes and the
+    /// count assertion says plainly that two generations happened.
+    func finish() { for _ in 0..<8 { released.signal() } }
+
+    func generate(_ arguments: [String], answering secret: inout Data) -> Int32 {
+        let waiting: Bool = lock.withLock {
+            runs.append(arguments)
+            answers.append(secret)
+            // **The hold is consumed, so it belongs to one run.** Held for
+            // every run instead, a second generation would sit at the prompt
+            // too — and a test whose gate has been deleted would then hang
+            // rather than fail, which is a suite somebody has to kill by hand.
+            // Measured that way first.
+            defer { holds = false }
+            return holds
+        }
+        // Zeroed here, as the real port does: what the caller handed over is
+        // gone by the time this returns, whatever else happens.
+        secret.resetBytes(in: 0..<secret.count)
+        secret = Data()
+        if waiting {
+            atThePrompt.signal()
+            released.wait()
+        }
+        return lock.withLock { status }
     }
 }

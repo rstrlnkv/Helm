@@ -21,6 +21,14 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
     private let sshConfig: SSHConfigPort
     private let keys: SSHKeysPort
     private let agent: SSHAgentPort
+    private let generator: KeyGeneratorPort
+    /// Whether a key is being made right now, and the lock that answers it.
+    ///
+    /// **A flag rather than a queue.** Two generations pointed at one path is
+    /// how a key that was just made is replaced by another nobody asked for —
+    /// and the second press is answered, not dropped, so the page can say why.
+    private let generating = NSLock()
+    private var makingKey = false
     /// The home directory the gate judges against — injected so a test can own
     /// a home of its own rather than the machine's.
     private let home: URL
@@ -37,6 +45,7 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
                 sshConfig: SSHConfigPort = SystemSSHConfig(),
                 keys: SSHKeysPort = SystemSSHKeys(),
                 agent: SSHAgentPort = SystemSSHAgent(),
+                generator: KeyGeneratorPort = SystemKeyGenerator(),
                 home: URL = FileManager.default.homeDirectoryForCurrentUser,
                 now: @escaping @Sendable () -> Date = { Date() },
                 keptBackups: Int = 10,
@@ -47,6 +56,7 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
         self.sshConfig = sshConfig
         self.keys = keys
         self.agent = agent
+        self.generator = generator
         self.home = home
         self.now = now
         self.keptBackups = keptBackups
@@ -204,6 +214,72 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
             HelmLog.shared.info(Self.moduleID, "the agent refused: \(act.rawValue)")
         }
         return done ? .done : .failed
+    }
+
+    /// Make a key.
+    ///
+    /// Every refusal is decided before a child exists, and the one that matters
+    /// most is `nameTaken`: `ssh-keygen` asks before it overwrites, and an
+    /// answer given to a question the person never saw is how a key is
+    /// destroyed. So Helm never points it at a name that is already there.
+    ///
+    /// **The secret is `inout` all the way down** and the port zeroes it, so
+    /// this function holds nothing to leak after the call returns. The request
+    /// itself is not logged — the log carries no names, and a comment is
+    /// somebody's address.
+    func generate(_ request: KeyGeneration.Request) async -> GenerateOutcome {
+        var request = request
+        defer { request = KeyGeneration.Request(type: request.type, name: request.name,
+                                                comment: request.comment, passphrase: Data()) }
+        guard claimGeneration() else { return .alreadyRunning }
+        defer { releaseGeneration(); emitState() }
+
+        guard KeyGeneration.isPlain(request.name),
+              let names = keys.names(), !names.contains(request.name),
+              !names.contains(request.name + ".pub") else {
+            let refusal: KeyGeneration.Refusal =
+                KeyGeneration.isPlain(request.name) ? .nameTaken : .notAPlainName
+            HelmLog.shared.warn(Self.moduleID, "a key was not made: \(refusal.rawValue)")
+            return GenerateOutcome.of(refusal)
+        }
+
+        switch KeyGeneration.arguments(for: request, in: keys.directory) {
+        case .failure(let refusal):
+            HelmLog.shared.warn(Self.moduleID, "a key was not made: \(refusal.rawValue)")
+            return GenerateOutcome.of(refusal)
+        case .success(let arguments):
+            emitOperation(HostsOperation(running: true))
+            // `ssh-keygen` on an RSA 4096 key is seconds of work and the pty
+            // read blocks for all of them. A pool thread must not be the one
+            // waiting — the rule `apply` follows for the password dialog.
+            //
+            // The buffer the port zeroes is the one made inside the closure:
+            // a `var` captured from out here would be shared with a thread this
+            // one no longer controls, which the compiler refuses and which is
+            // the wrong shape for a secret anyway.
+            let secret = request.passphrase
+            let status = await offTheCooperativePool { [generator] in
+                var carried = secret
+                defer { carried = Data() }
+                return generator.generate(arguments, answering: &carried)
+            }
+            let outcome: GenerateOutcome = status == 0 ? .done : .failed
+            HelmLog.shared.info(Self.moduleID, "generate: \(outcome.rawValue)")
+            emitOperation(HostsOperation(running: false, lastOutcome: outcome.rawValue))
+            return outcome
+        }
+    }
+
+    private func claimGeneration() -> Bool {
+        generating.lock(); defer { generating.unlock() }
+        guard !makingKey else { return false }
+        makingKey = true
+        return true
+    }
+
+    private func releaseGeneration() {
+        generating.lock(); defer { generating.unlock() }
+        makingKey = false
     }
 
     // MARK: - The config in the person's own home
@@ -368,6 +444,10 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
                 guard let request = EngineReply.decode(KeyName.self, from: command)
                 else { return Data() }
                 return EngineReply.encode(self.actOnAgent(name, on: request.name), for: command)
+            case .generateKey:
+                guard let request = EngineReply.decode(KeyGeneration.Request.self, from: command)
+                else { return Data() }
+                return EngineReply.encode(await self.generate(request), for: command)
             case .agentRefresh:
                 return EngineReply.encode(self.emitState(), for: command)
             case .settingsChanged:

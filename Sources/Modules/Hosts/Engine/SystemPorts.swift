@@ -113,7 +113,7 @@ public struct SystemSSHConfig: SSHConfigPort {
 /// prompt and the key's own bytes inside a listing that runs on every refresh.
 public struct SystemSSHKeys: SSHKeysPort {
 
-    private let directory: URL
+    public let directory: URL
     /// Bounded, because both tools can sit. `ssh-keygen` on a file on a stalled
     /// network mount does not return, and this runs on every state emission.
     private let deadline: TimeInterval
@@ -217,5 +217,23 @@ public struct SystemSSHAgent: SSHAgentPort {
         guard !name.isEmpty, !name.contains("/"), name != "..", name != "." else { return false }
         let path = directory.appendingPathComponent(name).path
         return HelmProcess.run("/usr/bin/ssh-add", arguments + [path], timeout: deadline).status == 0
+    }
+}
+
+/// `ssh-keygen`, on a terminal.
+///
+/// The whole body is the pty: no `-N`, so the tool asks the way it asks a
+/// person, and `PTYProcess` answers and zeroes the buffer.
+public struct SystemKeyGenerator: KeyGeneratorPort {
+    private let deadline: TimeInterval
+    /// Longer than the other two tools' bound, and deliberately: an RSA 4096
+    /// key is seconds of work on an old Mac, where `ssh-add -l` is a socket
+    /// round trip. A deadline that fits the fast tool would kill the slow one
+    /// halfway through writing a key.
+    public init(deadline: TimeInterval = 120) { self.deadline = deadline }
+
+    public func generate(_ arguments: [String], answering secret: inout Data) -> Int32 {
+        PTYProcess.run("/usr/bin/ssh-keygen", arguments,
+                       answering: &secret, timeout: deadline).status
     }
 }

@@ -85,6 +85,10 @@ public protocol SSHConfigPort: Sendable {
 /// what a row shows comes from the `.pub` file, from `stat` and from
 /// `ssh-keygen -l`, and this protocol is the whole surface.
 public protocol SSHKeysPort: Sendable {
+    /// Where this port reads — the one place a new key's path may be composed
+    /// from. On the protocol for the reason `SSHConfigPort.url` is: the engine
+    /// has to be able to ask «where would this land» before anything lands.
+    var directory: URL { get }
     /// The file names in the directory, or nil when the directory could not be
     /// read at all — missing, or one this process may not search. Nil is not an
     /// empty directory: a Mac with no keys yet is a page that says «no keys»,
@@ -115,4 +119,22 @@ public protocol SSHAgentPort: Sendable {
     /// answers false, and the passphrase path is `PTYProcess`'s.
     func load(_ name: String) -> Bool
     func unload(_ name: String) -> Bool
+}
+
+/// Making a key.
+///
+/// Its own port rather than a method on `SSHKeysPort`, because it is the only
+/// thing in this module that spawns a child and hands it a secret — and because
+/// a fake of it has to be able to do something no other fake here does: **sit
+/// at the prompt.** A generator that has always already finished makes every
+/// «does a second press start a second one?» test vacuous, since the subject is
+/// over before the code under test is reached.
+public protocol KeyGeneratorPort: Sendable {
+    /// Runs the generator with `arguments`, answering its prompts with
+    /// `secret`, and answers the child's exit status.
+    ///
+    /// **The secret is `inout` and is zeroed by the implementation**, so a
+    /// caller cannot hold a copy by accident: after this returns there is
+    /// nothing in the caller's buffer to leak.
+    func generate(_ arguments: [String], answering secret: inout Data) -> Int32
 }
