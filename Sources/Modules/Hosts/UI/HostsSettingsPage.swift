@@ -9,6 +9,16 @@ struct HostsSettingsPage: View {
     /// visit and a `@StateObject` here would take the parsed file with it.
     @ObservedObject private var hvm: HostsViewModel
     @State private var showingText = false
+    /// Which file the page is about. **Not stored**: it is a state of this
+    /// visit, and the page is torn down and rebuilt on every sidebar click
+    /// anyway — a remembered tab would be the one thing that outlived the
+    /// document it was chosen beside.
+    @State private var tab: Tab = .hosts
+
+    /// The tabs this page has. Keys, the third of the spec's three, is not one
+    /// of them yet — a case here with no page behind it would be a promise the
+    /// sidebar keeps and the page breaks.
+    private enum Tab: Hashable { case hosts, ssh }
 
     /// The bar's natural height, measured, and whether it is *drawn* — which is
     /// not the same as whether there is anything to say. See `unsavedBar`.
@@ -26,6 +36,58 @@ struct HostsSettingsPage: View {
     }
 
     var body: some View {
+        VStack(spacing: 0) {
+            tabs
+            Divider()
+            switch tab {
+            case .hosts: hostsTab
+            case .ssh: sshTab
+            }
+        }
+    }
+
+    /// The two files, as one segmented control on the pane. Above the per-file
+    /// header rather than beside it: which file you are looking at is a bigger
+    /// question than which of its two views you are in, and a page that asks
+    /// both in one row asks them as if they were the same size.
+    private var tabs: some View {
+        HStack {
+            Picker(HostsStr.moduleName, selection: $tab) {
+                Text(HostsStr.hostsTab).tag(Tab.hosts)
+                Text(HostsStr.sshTab).tag(Tab.ssh)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            // **No imposed width here**, unlike the pair below it. A
+            // segmented control sizes itself to its labels, and a number
+            // computed to be exactly that leaves the labels no headroom — which
+            // is what `AnImposedPickerWidthFitsItsLabelsTests` counts, and the
+            // count is only ever lowered. `fixedSize` asks for the same result
+            // without anybody having to keep the arithmetic true.
+            .fixedSize()
+
+            // **One view picker for both files, not one each.** They ask the
+            // same question with the same two words, and a second copy is a
+            // second control with no headroom of its own — measured by
+            // `AnImposedPickerWidthFitsItsLabelsTests`, which counts pickers
+            // whose imposed width leaves their labels nothing. It also means
+            // the choice of table-or-text follows the person across the tabs,
+            // which is what somebody who prefers the raw file wants.
+            Picker(HostsStr.tableView, selection: $showingText) {
+                Text(HostsStr.tableView).tag(false)
+                Text(HostsStr.textView).tag(true)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(width: HelmPickerWidth.segmented([HostsStr.tableView, HostsStr.textView]))
+
+            Spacer()
+        }
+        .padding(.horizontal, HelmLayout.formInset)
+        .padding(.vertical, HelmSpace.s3)
+    }
+
+    private var hostsTab: some View {
         VStack(spacing: 0) {
             header
             Divider()
@@ -96,17 +158,6 @@ struct HostsSettingsPage: View {
             // to its closing brace, so a name given *after* a multi-line
             // trailing closure is a name that scan cannot see; and this is the
             // form its own message recommends first.
-            Picker(HostsStr.hostsFile, selection: $showingText) {
-                Text(HostsStr.tableView).tag(false)
-                Text(HostsStr.textView).tag(true)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            // The width is computed from the labels themselves, so a longer
-            // translation is not cut off. A hard-coded width is the defect
-            // `HelmPickerWidth` exists for.
-            .frame(width: HelmPickerWidth.segmented([HostsStr.tableView, HostsStr.textView]))
-
             Spacer()
 
             if !hvm.backups.isEmpty {
@@ -124,6 +175,78 @@ struct HostsSettingsPage: View {
         }
         .padding(.horizontal, HelmLayout.formInset)
         .padding(.vertical, HelmSpace.s3)
+    }
+
+
+    // MARK: - Tab 2
+
+    /// `~/.ssh/config`: the same pair of views, and a header that says what
+    /// this file does *not* need — no password, because it is the person's own.
+    private var sshTab: some View {
+        VStack(spacing: 0) {
+            sshHeader
+            Divider()
+            if hvm.sshReadable {
+                if !hvm.sshWritable {
+                    // Said on open rather than at the press, for the reason the
+                    // hosts tab says its own refusal early: a refusal somebody
+                    // meets only at Apply is a refusal that costs them their
+                    // work. The file is still shown — Helm reads it either way.
+                    HelmBanner(HostsStr.sshNotWritable)
+                        .padding(.horizontal, HelmLayout.formInset)
+                        .padding(.vertical, HelmSpace.s3)
+                }
+                if showingText {
+                    TextEditor(text: Binding(get: { hvm.sshText },
+                                             set: { hvm.setSSHText($0) }))
+                        .font(.system(.body, design: .monospaced))
+                        .accessibilityLabel(HostsStr.sshTab)
+                        .disabled(!hvm.sshWritable)
+                } else {
+                    ScrollView { SSHConfigTable(hvm: hvm) }
+                }
+            } else {
+                // Missing or not UTF-8. Not an empty config: a table over one
+                // that could not be read would invite a save that overwrites
+                // whatever is actually there.
+                HelmBanner(HostsStr.sshUnreadable)
+                    .padding(HelmSpace.s5)
+                Spacer()
+            }
+        }
+    }
+
+    private var sshHeader: some View {
+        HStack {
+            Spacer()
+
+            if let outcome = hvm.sshOutcome, outcome != .applied {
+                // Only a refusal is kept on screen. `applied` closes the
+                // question — the file on disk is what is drawn — and a green
+                // «Saved» that outlives the next keystroke would be a label
+                // about a state that has moved on.
+                note(sshOutcomeSaid(outcome))
+            }
+            if hvm.sshHasUnsavedChanges {
+                Button(HostsStr.revert) { hvm.revertSSH() }
+                Button(HostsStr.apply) { Task { await hvm.applySSH() } }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!hvm.sshWritable)
+            }
+        }
+        .padding(.horizontal, HelmLayout.formInset)
+        .padding(.vertical, HelmSpace.s3)
+    }
+
+    /// Exhaustive, with no `default`: an outcome added to the engine is a build
+    /// error here rather than a refusal that reaches the person as silence.
+    private func sshOutcomeSaid(_ outcome: SSHConfigOutcome) -> String {
+        switch outcome {
+        case .applied: return HostsStr.sshApplied
+        case .failed: return HostsStr.sshFailed
+        case .notVerified: return HostsStr.sshNotVerified
+        case .outOfScope: return HostsStr.sshNotWritable
+        }
     }
 
     /// A line the page says quietly. One spelling of the step and the ink, so

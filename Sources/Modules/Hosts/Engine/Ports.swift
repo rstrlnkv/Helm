@@ -44,3 +44,29 @@ public protocol BackupPort: Sendable {
     func read(_ name: String) -> String?
     func delete(_ names: [String])
 }
+
+/// `~/.ssh/config`: read and written by the person's own account.
+///
+/// **No `PrivilegedPort` here, and that is the whole difference from the file
+/// next door.** `/etc/hosts` belongs to root and every write is a password
+/// dialog; this file belongs to whoever is logged in, so a write is a write.
+/// What replaces the dialog as the thing standing between a text field and the
+/// disk is `SSHFileScope`, and the engine asks it — a port cannot be trusted to
+/// gate itself when a fake stands where it stands.
+///
+/// `url` is on the protocol because the gate judges a path, not a handle: the
+/// engine has to be able to ask «where would this write land» before letting
+/// one happen.
+public protocol SSHConfigPort: Sendable {
+    /// Where this port reads and writes.
+    var url: URL { get }
+    /// The text, or nil when the file is missing or is not UTF-8 — the same two
+    /// states `HostsFilePort.read` folds, for the same reason: an empty config
+    /// is a thing a person may mean.
+    func read() -> String?
+    /// Writes the text back, answering whether the write itself reported
+    /// success. **Reporting success is not evidence the file changed** — the
+    /// engine reads back and compares, which is the rule `WriteIsVerifiedTests`
+    /// holds for the privileged path and which is no less true here.
+    func write(_ text: String) -> Bool
+}

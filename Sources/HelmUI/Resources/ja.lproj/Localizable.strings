@@ -947,3 +947,11 @@
 "The write reported success, but the file on disk differs" = "書き込みは成功と報告されましたが、ディスク上のファイルが異なります";
 "Nothing was written: a backup could not be saved first" = "何も書き込まれていません。先にバックアップを保存できませんでした";
 "Edit the hosts file from Helm, with a copy kept before every change. Hosts & Keys shows it as a table you can switch entries on and off in, or as plain text — the same file either way. Applying asks for your password once, and the last ten copies are there under “Restore…” if you want one back." = "Helm から hosts ファイルを編集できます。変更の前には必ずコピーを保存します。“ホストと鍵”では、項目を切り替えられる表としても、標準テキストとしても表示できます—どちらも同じファイルです。適用時にパスワードを一度尋ね、直近十件のコピーは“復元…”から戻せます。";
+"Hosts file" = "hosts ファイル";
+"SSH config" = "SSH 設定";
+"No SSH hosts in this file" = "このファイルに SSH ホストはありません";
+"The SSH config could not be read" = "SSH 設定を読み込めませんでした";
+"Helm will not write this file: it is outside your home folder" = "このファイルはホームフォルダの外にあるため、Helm は書き込みません";
+"Saved" = "保存しました";
+"The SSH config could not be saved" = "SSH 設定を保存できませんでした";
+"The save reported success and the file did not change" = "保存は成功と報告しましたが、ファイルは変わっていません";

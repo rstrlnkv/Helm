@@ -947,3 +947,11 @@
 "The write reported success, but the file on disk differs" = "Запись сообщила об успехе, но файл на диске другой";
 "Nothing was written: a backup could not be saved first" = "Ничего не записано: не удалось сохранить копию";
 "Edit the hosts file from Helm, with a copy kept before every change. Hosts & Keys shows it as a table you can switch entries on and off in, or as plain text — the same file either way. Applying asks for your password once, and the last ten copies are there under “Restore…” if you want one back." = "Правьте файл hosts прямо в Helm — перед каждым изменением сохраняется копия. «Хосты и ключи» показывают этот файл таблицей, где записи можно включать и выключать, или простым текстом — это один и тот же файл. При применении пароль спросят один раз, а последние десять копий ждут в меню «Восстановить…».";
+"Hosts file" = "Файл hosts";
+"SSH config" = "Конфиг SSH";
+"No SSH hosts in this file" = "В этом файле нет хостов SSH";
+"The SSH config could not be read" = "Не удалось прочитать конфиг SSH";
+"Helm will not write this file: it is outside your home folder" = "Helm не станет писать в этот файл: он вне вашей домашней папки";
+"Saved" = "Сохранено";
+"The SSH config could not be saved" = "Не удалось сохранить конфиг SSH";
+"The save reported success and the file did not change" = "Запись сообщила об успехе, а файл не изменился";

@@ -25,6 +25,20 @@ enum HostsStr {
     /// itself is macOS's, read out of TextEdit's and Mail's own tables rather
     /// than translated a second time.
     static var textView: String { L("Plain text") }
+    /// The two tabs. **`hostsFile` is not reused for the tab**: it is the
+    /// file's name in a sentence («the hosts file could not be read»), and a
+    /// tab is a title. One English key means one thing.
+    static var hostsTab: String { L("Hosts file") }
+    static var sshTab: String { L("SSH config") }
+    /// The third meaning of «host» — a block in `~/.ssh/config`, not the module
+    /// and not the system file.
+    static var noHostBlocks: String { L("No SSH hosts in this file") }
+    static var sshUnreadable: String { L("The SSH config could not be read") }
+    static var sshNotWritable: String { L("Helm will not write this file: it is outside your home folder") }
+    static var sshApplied: String { L("Saved") }
+    static var sshFailed: String { L("The SSH config could not be saved") }
+    static var sshNotVerified: String { L("The save reported success and the file did not change") }
+
     static var address: String { L("Address") }
     static var names: String { L("Names") }
     static var addEntry: String { L("Add entry") }

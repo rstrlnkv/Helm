@@ -74,3 +74,31 @@ public struct SystemBackups: BackupPort {
         }
     }
 }
+
+/// Production `SSHConfigPort`: `~/.ssh/config`, read and written as the person.
+///
+/// **`PrivateFile` writes it**, not a bare `write(options: .atomic)`: the mode
+/// belongs to the write rather than to the file — `.atomic` renames a new inode
+/// into place, so a fresh write takes the umask — and this is a file `ssh`
+/// refuses to use when its mode is too open. That rule is CLAUDE.md's «a file
+/// that names somebody's files is written through `PrivateFile`», and a config
+/// naming every host somebody connects to is such a file.
+public struct SystemSSHConfig: SSHConfigPort {
+
+    public let url: URL
+
+    public init(url: URL = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent(".ssh/config")) {
+        self.url = url
+    }
+
+    public func read() -> String? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    public func write(_ text: String) -> Bool {
+        guard let data = text.data(using: .utf8) else { return false }
+        return PrivateFile.write(data, to: url)
+    }
+}

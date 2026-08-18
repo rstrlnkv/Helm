@@ -114,8 +114,15 @@ final class LongStringGeometryRatchetTests: XCTestCase {
     /// fall. Unlike the three before it this one is not the fixture's reach — the
     /// control is drawn whatever the wire answers, because which view is on screen
     /// is the page's own state.
+    /// **40 as of 2026-08-18, and it is the same arithmetic a fifth time.** The
+    /// hosts page gained a second segmented control when it gained a second tab
+    /// — «Hosts file / SSH config», at `fixedSize` rather than at an imposed
+    /// width, so drawn *is* intrinsic and `drawn < intrinsic × 1.4` is true by
+    /// construction in each of the eight languages. Eight more readings, and
+    /// not one of them a control that stopped fitting: `atFullSize` is still 0,
+    /// which is the half of this pair that can fall.
     private static let recordedAtFullSize = 0
-    private static let recordedAtFortyPercent = 32
+    private static let recordedAtFortyPercent = 40
 
     /// The audit's number, and the reason it is 1.4 and not 2: a translation is
     /// longer, not unrecognisable.
@@ -305,10 +312,17 @@ final class LongStringGeometryRatchetTests: XCTestCase {
         // popover is a window macOS orders in, so nothing inside one is in this
         // render at all. The count falling is the thing this message warns
         // about, and here it is the intended half of that change rather than a
-        // page that quietly stopped drawing: measured on the merge that first
-        // has both the hosts page and the VPN cards, three consecutive runs.
+        // page that quietly stopped drawing.
+        //
+        // **And a fifth segmented control from 2026-08-18**: the hosts page's two
+        // tabs, «Hosts file / SSH config». A page's own control rather than the
+        // fixture's reach, for the same reason the fourth is — which file you are
+        // looking at is the page's state, drawn whatever the wire answers. The two
+        // changes met in this merge and each moved a different key, which is why
+        // both numbers below are re-measured here rather than inherited from
+        // either side.
         XCTAssertEqual(tally, ["AppKitSwitch": 17, "AppKitTextField": 3,
-                               "AppKitSearchField": 1, "AppKitSegmentedControl": 4], """
+                               "AppKitSearchField": 1, "AppKitSegmentedControl": 5], """
             the controls this measurement can see are not the ones it was measured with: \
             \(tally.sorted { $0.key < $1.key }.map { "\($0.key)×\($0.value)" }.joined(separator: " ")).
             A pop-up, a button or a slider appearing here means the platform now backs them with \

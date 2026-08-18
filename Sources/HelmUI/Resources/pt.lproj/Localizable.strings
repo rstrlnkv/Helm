@@ -947,3 +947,11 @@
 "The write reported success, but the file on disk differs" = "A gravação informou sucesso, mas o arquivo no disco está diferente";
 "Nothing was written: a backup could not be saved first" = "Nada foi gravado: não foi possível salvar uma cópia antes";
 "Edit the hosts file from Helm, with a copy kept before every change. Hosts & Keys shows it as a table you can switch entries on and off in, or as plain text — the same file either way. Applying asks for your password once, and the last ten copies are there under “Restore…” if you want one back." = "Edite o ficheiro hosts a partir do Helm, com uma cópia guardada antes de cada alteração. “Hosts e chaves” mostra-o como uma tabela onde pode ligar e desligar entradas, ou como texto simples — o mesmo ficheiro nos dois casos. Aplicar pede a sua palavra-passe uma vez, e as últimas dez cópias estão em “Restaurar…” caso queira recuperar alguma.";
+"Hosts file" = "Ficheiro hosts";
+"SSH config" = "Configuração SSH";
+"No SSH hosts in this file" = "Nenhum host SSH neste ficheiro";
+"The SSH config could not be read" = "Não foi possível ler a configuração SSH";
+"Helm will not write this file: it is outside your home folder" = "O Helm não escreverá neste ficheiro: está fora da sua pasta pessoal";
+"Saved" = "Guardado";
+"The SSH config could not be saved" = "Não foi possível guardar a configuração SSH";
+"The save reported success and the file did not change" = "A gravação indicou sucesso e o ficheiro não mudou";
