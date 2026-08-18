@@ -906,7 +906,10 @@
 "Connected for" = "Подключён";
 "Downloaded" = "Скачано";
 "Uploaded" = "Отдано";
-"Speed, Mbit/s" = "Скорость, Мбит/с";
+"This tunnel" = "Этот туннель";
+"Speed" = "Скорость";
+"Mbit/s" = "Мбит/с";
+"since the tunnel came up" = "с подъёма туннеля";
 "about 15 s, spends traffic" = "около 15 с, потратит трафик";
 "Measure speed" = "Измерить скорость";
 "Measure again" = "Измерить ещё раз";

@@ -183,6 +183,15 @@ final class StringsLiveInLprojTests: XCTestCase {
         "m": [.es, .fr, .pt],
         "Manual": [.es, .pt],
         "MB": [.es, .de, .ja, .zh, .pt],
+        // The tunnel strip's unit, and the identity is inherited rather than
+        // new: all eight already shipped it inside «Speed, Mbit/s», which
+        // splitting that key into a plain label and a unit turned from a
+        // sentence into six identities and put in front of this list. macOS
+        // spells the same quantity differently and is not the answer —
+        // `MeasurementFormatter` over `UnitInformationStorage.megabits` gives
+        // «Mb» in seven of the eight and «Мбит» in Russian, with no per-second
+        // in any of them.
+        "Mbit/s": [.es, .fr, .de, .ja, .zh, .pt],
         "min": [.es, .fr, .pt],
         "Mint": [.de],
         "MODULES": [.fr],

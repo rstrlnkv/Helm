@@ -65,8 +65,13 @@ struct VPNTunnelStrip {
         let kind: Reading
         let label: String
         let value: String
-        /// The line under the figure, for the tile that has one.
-        let note: String?
+        /// The line under the figure. **Not optional, and that is the row's
+        /// shape.** Three of the four columns had none, so the figures sat over
+        /// nothing while the fourth carried a line — which was invisible while
+        /// each column had a well behind it and is the whole structure now that
+        /// they do not. A column with nothing to say under its figure is a
+        /// column that has not been designed.
+        let note: String
     }
 
     /// **The one dash in the strip, and it is the exception that proves the
@@ -76,9 +81,6 @@ struct VPNTunnelStrip {
     /// link's throughput, and the button under it is the whole point.
     static let noReading = "—"
 
-    /// Which tunnel the four readings are about — the strip reads only the
-    /// connection carrying the default route, not every card on the grid.
-    let title: String
     let tiles: [Tile]
     let verdict: String
     let mark: Mark
@@ -95,7 +97,6 @@ struct VPNTunnelStrip {
     /// `measuring:` by hand to see the state the state was already in.
     init(_ state: VPNTunnelState, now: Date = Date(), measuring: Bool? = nil) {
         let measuring = measuring ?? state.measuring
-        title = VPNStr.thisTunnel(state.name)
         let facts = VPNTunnelFacts(since: state.since, bytesIn: state.bytesIn,
                                    bytesOut: state.bytesOut, speed: state.speed, now: now)
         var tiles: [Tile] = []
@@ -104,15 +105,16 @@ struct VPNTunnelStrip {
         // counters for its interface.
         if let uptime = facts.uptime {
             tiles.append(Tile(kind: .uptime, label: VPNStr.tileUptime,
-                              value: HelmDates.span(uptime), note: nil))
+                              value: HelmDates.span(uptime),
+                              note: VPNStr.tunnelAndInterface(state.name, state.interface)))
         }
         if let bytesIn = facts.bytesIn {
             tiles.append(Tile(kind: .down, label: VPNStr.tileDown,
-                              value: Bytes(Int(clamping: bytesIn)), note: nil))
+                              value: Bytes(Int(clamping: bytesIn)), note: VPNStr.bytesSince))
         }
         if let bytesOut = facts.bytesOut {
             tiles.append(Tile(kind: .up, label: VPNStr.tileUp,
-                              value: Bytes(Int(clamping: bytesOut)), note: nil))
+                              value: Bytes(Int(clamping: bytesOut)), note: VPNStr.bytesSince))
         }
         tiles.append(Self.speedTile(facts, now: now))
         self.tiles = tiles
@@ -146,18 +148,21 @@ struct VPNTunnelStrip {
         }
     }
 
-    /// The fourth tile: a figure once one has been asked for, and before that
+    /// The fourth column: a figure once one has been asked for, and before that
     /// the offer with its price on it.
     ///
-    /// The age is drawn exactly when `VPNTunnelFacts.speedIsStale` says the
-    /// figure can no longer stand as the link's speed now — which is that
-    /// property's own doc comment, and this is its only reader. Written the
-    /// other way round (an age under every reading) the property would be a
-    /// promise with nothing keeping it.
+    /// The note always opens with the unit, because this column's value is two
+    /// numbers and cannot carry one the way a byte figure does — and what
+    /// follows the unit is the one thing worth qualifying it with. The age is
+    /// there exactly when `VPNTunnelFacts.speedIsStale` says the figure can no
+    /// longer stand as the link's speed now, which is that property's own doc
+    /// comment and this is its only reader; a fresh reading keeps the unit
+    /// alone. Written the other way round (an age under every reading) the
+    /// property would be a promise with nothing keeping it.
     private static func speedTile(_ facts: VPNTunnelFacts, now: Date) -> Tile {
         guard let speed = facts.speed else {
             return Tile(kind: .speed, label: VPNStr.tileSpeed,
-                        value: noReading, note: VPNStr.speedNotYet)
+                        value: noReading, note: VPNStr.speedNote(VPNStr.speedNotYet))
         }
         return Tile(kind: .speed, label: VPNStr.tileSpeed,
                     // `Count`, not `Decimal`: the figure is a whole number of
@@ -167,9 +172,8 @@ struct VPNTunnelStrip {
                     // call bound to `Foundation.Decimal.init(_: Int)` and drew its
                     // locale-independent description: «10000» for a 10 Gbit link.
                     value: "\(Count(speed.down)) ↓  \(Count(speed.up)) ↑",
-                    note: facts.speedIsStale
-                        ? VPNStr.speedMeasured(HelmDates.relative(speed.at, to: now))
-                        : nil)
+                    note: VPNStr.speedNote(facts.speedIsStale
+                        ? HelmDates.relative(speed.at, to: now) : nil))
     }
 }
 
@@ -178,13 +182,22 @@ struct VPNTunnelStrip {
 /// The one thing this page can say that a card cannot. A card knows its own
 /// configuration is connected; only the page knows which tunnel the traffic is
 /// actually leaving through, how long it has been that way, and what it has
-/// carried — so the strip is per page and names its tunnel in the heading
-/// rather than being drawn four times over.
+/// carried — so the strip is per page and reads one tunnel rather than being
+/// drawn four times over.
 ///
-/// No card of its own: on the settings page this is a row of a grouped `Form`,
-/// and the section card the form draws *is* the card. The tiles are wells
-/// inside it (`HelmSurface.wellFill`), which is what a recessed area in a card
-/// is for — a `helmCard()` here would be a card inside a card.
+/// **No card of its own, and no heading either.** On the settings page this is
+/// a row of a grouped `Form`, and the section card the form draws *is* the
+/// card; the heading belongs to that section's header, which sits outside it
+/// (`VPNTunnelStrip.heading`).
+///
+/// **And no wells.** The four columns were recessed fills
+/// (`HelmSurface.wellFill`), which drew four boxes where the page wanted one
+/// row of four readings — a card of cards. They are separated by whitespace
+/// now, and what makes them read as one row is that every column has the same
+/// three lines. Hairline rules between them were drawn and rejected by
+/// looking: at 40 pt they begin at the label and end inside the note, so they
+/// read as fragments rather than as structure. The horizontal `Divider()`
+/// below stays, because that one separates two different kinds of thing.
 struct VPNTunnelSection: View {
     private let strip: VPNTunnelStrip
     private let measure: () -> Void
@@ -197,47 +210,44 @@ struct VPNTunnelSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s5) {
-            Text(strip.title)
-                .font(HelmText.sectionHeading)
             HStack(alignment: .top, spacing: HelmSpace.s4) {
-                ForEach(strip.tiles) { tile(_: $0) }
+                ForEach(strip.tiles) { column(_: $0) }
             }
-            // The row takes the height of its tallest tile and no more. Without
-            // it the `maxHeight` each tile carries — which is what makes the
-            // four wells one height — reads as «fill whatever you are given»,
-            // and a container taller than the strip stretches every well to
-            // meet it. Photographed at 190 pt: 100 pt of empty well under the
-            // figures.
+            // The row takes the height of its tallest column and no more.
+            // Without it a container taller than the strip stretches it: the
+            // wells this replaced were photographed at 190 pt with 100 pt of
+            // empty fill under the figures.
             .fixedSize(horizontal: false, vertical: true)
+            Divider()
             verdictLine
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func tile(_ tile: VPNTunnelStrip.Tile) -> some View {
-        VStack(alignment: .leading, spacing: HelmSpace.s1) {
+    /// One reading: what it is, the figure, and the line that qualifies it.
+    ///
+    /// `maxWidth: .infinity` on each is what makes the four equal, and the only
+    /// thing that does now that there is no fill to see the edges of.
+    private func column(_ tile: VPNTunnelStrip.Tile) -> some View {
+        VStack(alignment: .leading, spacing: HelmSpace.s3) {
             Text(tile.label)
                 // 10, the scale's bottom step: a caption over a figure.
                 .font(.system(size: 10))
-                .foregroundStyle(HelmText.faint)
+                .foregroundStyle(HelmText.quiet)
+                .lineLimit(1)
             Text(tile.value)
                 .helmMetricFigure()
-            if let note = tile.note {
-                Text(note)
-                    .font(.system(size: 10))
-                    .foregroundStyle(HelmText.faint)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            Text(tile.note)
+                .font(.system(size: 10))
+                .foregroundStyle(HelmText.faint)
+                // Wrapping rather than truncating: a note that loses its tail
+                // loses the interface out of «incy · utun8», and a tunnel named
+                // at length in System Settings is an ordinary Mac. The columns
+                // are top-aligned, so a second line lengthens one column
+                // without moving a figure beside it.
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(HelmSpace.s4)
-        // Equal wells whatever is in them: the speed tile carries a third line
-        // for most of its life and the three beside it never do.
-        .frame(maxHeight: .infinity, alignment: .topLeading)
-        .background(
-            RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous)
-                .fill(HelmSurface.wellFill)
-        )
     }
 
     private var verdictLine: some View {

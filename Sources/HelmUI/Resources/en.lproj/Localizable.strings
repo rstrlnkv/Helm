@@ -906,7 +906,10 @@
 "Connected for" = "Connected for";
 "Downloaded" = "Downloaded";
 "Uploaded" = "Uploaded";
-"Speed, Mbit/s" = "Speed, Mbit/s";
+"This tunnel" = "This tunnel";
+"Speed" = "Speed";
+"Mbit/s" = "Mbit/s";
+"since the tunnel came up" = "since the tunnel came up";
 "about 15 s, spends traffic" = "about 15 s, spends traffic";
 "Measure speed" = "Measure speed";
 "Measure again" = "Measure again";

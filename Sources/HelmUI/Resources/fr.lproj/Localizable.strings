@@ -906,7 +906,10 @@
 "Connected for" = "Connecté depuis";
 "Downloaded" = "Téléchargé";
 "Uploaded" = "Envoyé";
-"Speed, Mbit/s" = "Débit, Mbit/s";
+"This tunnel" = "Ce tunnel";
+"Speed" = "Débit";
+"Mbit/s" = "Mbit/s";
+"since the tunnel came up" = "depuis l’établissement du tunnel";
 "about 15 s, spends traffic" = "environ 15 s, consomme des données";
 "Measure speed" = "Mesurer le débit";
 "Measure again" = "Mesurer à nouveau";

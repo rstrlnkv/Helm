@@ -517,45 +517,85 @@ enum VPNStr {
         }
     }
 
-    // MARK: - The tile strip
+    // MARK: - The strip
 
-    /// The heading over the strip: which tunnel these four tiles describe,
-    /// since the strip reads only the connection carrying the default
-    /// route, not every tunnel a card on the grid above might show.
-    static func thisTunnel(_ name: String, language: AppLanguage = AppLanguage.current) -> String {
-        L("This tunnel — \(name)",
-          [.ru: "Этот туннель — \(name)", .es: "Este túnel — \(name)",
-           .fr: "Ce tunnel — \(name)", .de: "Dieser Tunnel — \(name)",
-           .ja: "このトンネル — \(name)", .zh: "此隧道 — \(name)",
-           .pt: "Este túnel — \(name)"],
-          language: language)
-    }
+    /// The heading over the strip. **On the pane, above the card, in the
+    /// page's own idiom** — `HelmSectionTitle`, the same as «Connections» a
+    /// section higher. It was a bold title *inside* the card with the tunnel's
+    /// name in it, which is a second heading idiom on one page and a name
+    /// repeated three lines above the row it belongs to; the name is under the
+    /// first column now (`tunnelAndInterface`), beside the interface.
+    static var thisTunnel: String { L("This tunnel") }
 
     /// How long the tunnel carrying the default route has been up.
     static var tileUptime: String { L("Connected for") }
-    /// The tile under it: bytes received since the tunnel came up.
+    /// The column beside it: bytes received since the tunnel came up.
     static var tileDown: String { L("Downloaded") }
     /// Bytes sent over the same span.
     static var tileUp: String { L("Uploaded") }
-    /// The fourth tile, filled only after a press of `measureSpeed` — there is
-    /// no passive way to read a link's throughput, so the tile starts empty
-    /// and says so (`speedNotYet`) rather than a number nobody asked for.
-    static var tileSpeed: String { L("Speed, Mbit/s") }
+    /// The fourth column, filled only after a press of `measureSpeed` — there
+    /// is no passive way to read a link's throughput, so it starts empty and
+    /// says so (`speedNotYet`) rather than a number nobody asked for.
+    ///
+    /// **Plain, and the unit is in the note.** It read «Speed, Mbit/s» beside
+    /// «129.4 MB» and «1.1 GB», which is two grammars for a unit in one row:
+    /// the bytes carry theirs in the value, and this one carried it in the
+    /// label because its value is two numbers and cannot. The unit went down a
+    /// line instead, so all four labels are a plain word.
+    static var tileSpeed: String { L("Speed") }
 
-    /// Under the speed tile before it has ever been pressed. Says the cost
+    /// The unit the speed column's two figures are in, on its note line.
+    ///
+    /// Hand-written rather than read out of macOS, and measured before it was:
+    /// `MeasurementFormatter` over `UnitInformationStorage.megabits` answers
+    /// «Mb» in seven of the eight and «Мбит» in Russian, with no per-second in
+    /// any of them — a different abbreviation from the one every one of these
+    /// eight already shipped inside «Speed, Mbit/s», and not the thing being
+    /// named.
+    static var speedUnit: String { L("Mbit/s") }
+
+    /// Under both byte figures: what span they are a total over. Both, not one
+    /// — every column carries a note so the row has one shape, and a count with
+    /// no span under it is a number the reader has to guess the meaning of.
+    static var bytesSince: String { L("since the tunnel came up") }
+
+    /// Under the speed column before it has ever been pressed. Says the cost
     /// up front — a real transfer, not a ping — because a person reads this
     /// before deciding whether the number is worth the megabytes.
     static var speedNotYet: String { L("about 15 s, spends traffic") }
-    /// Under the figure once one exists: how old it is, so nobody reads a
-    /// three-minute-old number as the link's speed now. Interpolated, so it
-    /// keeps its table here — the lookup would happen after the substitution.
-    static func speedMeasured(_ ago: String,
-                              language: AppLanguage = AppLanguage.current) -> String {
-        L("measured \(ago)",
-          [.ru: "измерено \(ago)", .es: "medido \(ago)", .fr: "mesuré \(ago)",
-           .de: "gemessen \(ago)", .ja: "計測 \(ago)", .zh: "测量于\(ago)",
-           .pt: "medido \(ago)"],
-          language: language)
+
+    /// Under the first column: which tunnel the row is about, and the
+    /// interface it came up on.
+    ///
+    /// **Composition, not a sentence.** Both halves arrive already in the
+    /// reader's language — one is a name the person typed in System Settings,
+    /// the other is what the kernel calls the interface — so there is nothing
+    /// here for a translator to do and no key that would mean one thing.
+    /// `VersionLabel` joins two facts the same way one target over.
+    static func tunnelAndInterface(_ name: String, _ interface: String) -> String {
+        note(name, interface)
+    }
+
+    /// The speed column's note: the unit, and whatever qualifies it.
+    ///
+    /// Two things ever do — how old a figure is once it is too old to stand as
+    /// the link's speed now (`VPNTunnelFacts.speedIsStale`, whose only reader
+    /// this is), and what a first measurement costs before there is a figure at
+    /// all. A fresh reading is qualified by neither and keeps the unit alone,
+    /// which is the distinction that property exists for, drawn as a shorter
+    /// note rather than as no note at all.
+    static func speedNote(_ qualifier: String?) -> String {
+        guard let qualifier else { return speedUnit }
+        return note(speedUnit, qualifier)
+    }
+
+    /// Two facts on one note line. The dot is punctuation between two strings
+    /// that have each already been through `L()`, so it takes no key of its
+    /// own — a key here would be a lookup that can only ever return what it was
+    /// given, which is a translation nobody can get wrong and nobody can get
+    /// right either.
+    private static func note(_ left: String, _ right: String) -> String {
+        left + " · " + right
     }
 
     /// The button's first press.

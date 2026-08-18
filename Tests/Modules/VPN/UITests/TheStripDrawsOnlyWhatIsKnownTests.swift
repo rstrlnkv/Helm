@@ -101,16 +101,23 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
         return render
     }
 
-    /// How many **wells** the drawing holds: the widest count, over every row,
-    /// of runs at least 80 pt across that depart from the pane.
+    /// How many **columns** the drawing holds, counted along the row of labels.
     ///
-    /// A well is one continuous fill from edge to edge — the type inside it
-    /// cannot break the run, since type departs from the pane too — while a
-    /// line of words is a scatter of runs a few points wide each. 80 pt is well
-    /// under the narrowest tile this strip can draw (three across 696 pt is
-    /// 225 each, four is 165) and well over any glyph cluster, so the row that
-    /// scores highest is a row of tiles.
-    private func wells(_ render: MountedRender) -> Int {
+    /// **This used to count wells, and the wells are gone.** A well was one
+    /// continuous fill from edge to edge, which a run of ≥ 80 pt departing from
+    /// the pane found exactly; with the fills removed that probe answers 1 for
+    /// every state, which is a check that cannot fail rather than a check that
+    /// passes. What is left to see is the type, and the type is in columns.
+    ///
+    /// **The labels, and only the labels** — measured before it was written
+    /// this way, because a count over every row is not a count of columns. Two
+    /// rows below carry gaps as wide as the ones between columns and are not
+    /// column boundaries at all: the double space in «191 ↓  60 ↑» opens 26 pt,
+    /// and the em dash in «Traffic goes through the tunnel — Netherlands» opens
+    /// 49 pt, so a three-column strip scored 4 on both. A label is one short
+    /// word at the head of its column, so the band the labels sit in answers
+    /// the question and nothing else does.
+    private func columns(_ render: MountedRender) -> Int {
         let view = render.host
         guard view.bounds.width > 0, view.bounds.height > 0,
               let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return -1 }
@@ -118,28 +125,40 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
         guard let data = rep.bitmapData, rep.samplesPerPixel == 4, rep.bitsPerSample == 8
         else { return -1 }
         let scale = max(1, rep.pixelsHigh / max(1, Int(view.bounds.height)))
-        let wide = 80 * scale
-        var best = 0
-        for y in 0..<rep.pixelsHigh {
+        // Wider than any gap inside a word and far under the pitch of a column,
+        // which is a quarter of 696 pt at its narrowest.
+        let apart = 24 * scale
+        /// The clusters of ink on one row: their count, with anything narrower
+        /// than a label dropped.
+        func clusters(inRow y: Int) -> Int {
             let row = y * rep.bytesPerRow
             // The pane's own colour on this row, read at the very edge — the
-            // section is padded, so x = 0 is never inside a tile.
+            // section is padded, so x = 0 is never inside a column.
             let pane = (0..<3).map { Int(data[row + $0]) }
-            var runs = 0, run = 0
+            var found = 0, first = -1, last = -1
             for x in 0..<rep.pixelsWide {
                 let at = row + x * 4
                 let far = (0..<3).map { abs(Int(data[at + $0]) - pane[$0]) }.max() ?? 0
-                if far > 2 {
-                    run += 1
-                } else {
-                    if run >= wide { runs += 1 }
-                    run = 0
+                guard far > 2 else { continue }
+                if first < 0 || x - last > apart {
+                    if first >= 0, last - first >= apart { found += 1 }
+                    first = x
                 }
+                last = x
             }
-            if run >= wide { runs += 1 }
-            best = max(best, runs)
+            // Measured first mark to last, never as a count of the pixels that
+            // happen to be dark: for a word that is a third of the space it
+            // takes, and every cluster would fall under the threshold.
+            if first >= 0, last - first >= apart { found += 1 }
+            return found
         }
-        return best
+        // The labels are the first thing drawn — this view opens with the row
+        // of columns, its heading having moved to the page — so the band is
+        // found rather than written down: the first row carrying ink, and the
+        // line of type it belongs to.
+        guard let top = (0..<rep.pixelsHigh).first(where: { clusters(inRow: $0) > 0 })
+        else { return 0 }
+        return (top..<min(rep.pixelsHigh, top + 12 * scale)).map(clusters(inRow:)).max() ?? 0
     }
 
     // MARK: - 1. A moment nobody saw is not a dash
@@ -154,12 +173,12 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
             XCTAssertTrue(kinds.contains(.speed),
                           "precondition: \(language.rawValue) drew no tiles at all")
         }
-        // And on the screen: three wells where a stamped tunnel draws four.
-        let seen = wells(mount(tunnel(since: stamped)))
-        XCTAssertEqual(seen, 4, "precondition: the probe cannot see the tiles it is counting")
-        XCTAssertEqual(wells(mount(tunnel(since: nil))), 3, """
-            the drawing still holds four wells with no moment to report: the \
-            uptime tile is being drawn empty rather than left out
+        // And on the screen: three columns where a stamped tunnel draws four.
+        let seen = columns(mount(tunnel(since: stamped)))
+        XCTAssertEqual(seen, 4, "precondition: the probe cannot see the columns it is counting")
+        XCTAssertEqual(columns(mount(tunnel(since: nil))), 3, """
+            the drawing still holds four columns with no moment to report: the \
+            uptime column is being drawn empty rather than left out
             """)
     }
 
@@ -194,8 +213,8 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
             }
             XCTAssertEqual(tile.value, VPNTunnelStrip.noReading,
                            "\(language.rawValue): the speed tile invented a figure")
-            XCTAssertEqual(tile.note, VPNStr.speedNotYet, """
-                \(language.rawValue): the tile does not say what a measurement \
+            XCTAssertEqual(tile.note, VPNStr.speedNote(VPNStr.speedNotYet), """
+                \(language.rawValue): the column does not say what a measurement \
                 costs, so the button under it asks for fifteen seconds and some \
                 traffic without saying so
                 """)
@@ -217,7 +236,7 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
             XCTAssertTrue(tile.value.contains("212") && tile.value.contains("95"), """
                 \(language.rawValue) drew the reading as «\(tile.value)»
                 """)
-            XCTAssertEqual(tile.note, VPNStr.speedMeasured(HelmDates.relative(taken, to: now)), """
+            XCTAssertEqual(tile.note, VPNStr.speedNote(HelmDates.relative(taken, to: now)), """
                 \(language.rawValue): a figure three minutes old is drawn \
                 without its age, which reads as the link's speed now
                 """)
@@ -262,10 +281,95 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
             // The absence below passes for free on a strip that drew nothing.
             XCTAssertEqual(tile?.label, VPNStr.tileSpeed,
                            "precondition: \(language.rawValue) drew no speed tile at all")
-            XCTAssertNil(tile?.note, """
+            XCTAssertEqual(tile?.note, VPNStr.speedUnit, """
                 \(language.rawValue): a five-second-old reading carries an age \
-                line — «\(tile?.note ?? "")»
+                line — «\(tile?.note ?? "")». The note is the unit and nothing \
+                else here; it is not absent, because every column has one.
                 """)
+        }
+    }
+
+    // MARK: - 4b. One shape for the row
+
+    /// **Every column carries a note, and that is the row's shape.**
+    ///
+    /// Three of the four had none: the figures sat over nothing while the
+    /// speed column carried a line, so the row was three columns of one height
+    /// and a fourth of another. The notes are what the wells used to be — the
+    /// thing that makes four columns read as one row — now that there is no
+    /// fill behind them.
+    func testEveryColumnCarriesANote() {
+        let reading = VPNSpeedReading(down: 212, up: 95, rpm: 340, at: now.addingTimeInterval(-5))
+        inEachLanguage { language in
+            let drawn = strip(tunnel(since: stamped, speed: reading))
+            XCTAssertEqual(drawn.tiles.count, 4,
+                           "precondition: \(language.rawValue) drew \(drawn.tiles.count) columns, "
+                           + "so the notes below are not a row")
+            for tile in drawn.tiles {
+                XCTAssertFalse(tile.note.isEmpty, """
+                    \(language.rawValue): the \(tile.kind.rawValue) column has no note, so it \
+                    is a column of a different height beside three that are not
+                    """)
+            }
+        }
+    }
+
+    /// The name left the heading and landed here, beside the interface — the
+    /// one place on the page where «which tunnel» belongs to the row it is
+    /// about rather than to a title three lines above it.
+    func testTheFirstColumnNamesTheTunnelAndItsInterface() {
+        inEachLanguage { language in
+            let tile = strip(tunnel(since: stamped)).tiles.first { $0.kind == .uptime }
+            XCTAssertEqual(tile?.label, VPNStr.tileUptime,
+                           "precondition: \(language.rawValue) drew no uptime column at all")
+            XCTAssertEqual(tile?.note, VPNStr.tunnelAndInterface("incy", "utun4"), """
+                \(language.rawValue) wrote «\(tile?.note ?? "")» where the tunnel this row \
+                is about is named nowhere on the page
+                """)
+            // And the heading it left does not name it either — which is true
+            // by construction, `VPNStr.thisTunnel` taking no tunnel, and worth
+            // one line here because the page draws the two of them 40 pt apart.
+            XCTAssertFalse(VPNStr.thisTunnel.contains("incy"))
+        }
+    }
+
+    /// A total needs its span. Both byte columns, in one assertion, because
+    /// they are the same reading in two directions and a note on one alone
+    /// would read as a difference between them.
+    func testBothByteColumnsSayWhatSpanTheyAreATotalOver() {
+        inEachLanguage { language in
+            let drawn = strip(tunnel(since: stamped))
+            for kind in [VPNTunnelStrip.Reading.down, .up] {
+                let tile = drawn.tiles.first { $0.kind == kind }
+                XCTAssertEqual(tile?.note, VPNStr.bytesSince, """
+                    \(language.rawValue): the \(kind.rawValue) figure is a total over \
+                    nothing the reader is told about
+                    """)
+            }
+        }
+    }
+
+    /// **One grammar for units in one row.** «129.4 MB» carries its unit in the
+    /// value and «Speed, Mbit/s» carried its own in the label, which is the same
+    /// question answered two ways three columns apart. The speed column's value
+    /// is two numbers and cannot hold a unit, so the unit went to the note and
+    /// the label became a plain word like the other three.
+    func testTheSpeedLabelIsAPlainWordAndTheUnitIsInTheNote() {
+        let reading = VPNSpeedReading(down: 212, up: 95, rpm: 340, at: now.addingTimeInterval(-5))
+        inEachLanguage { language in
+            for state in [tunnel(since: stamped), tunnel(since: stamped, speed: reading)] {
+                let tile = strip(state).tiles.first { $0.kind == .speed }
+                XCTAssertEqual(tile?.label, VPNStr.tileSpeed,
+                               "precondition: \(language.rawValue) drew no speed column")
+                XCTAssertFalse(tile?.label.contains(VPNStr.speedUnit) == true, """
+                    \(language.rawValue) put the unit back in the label — «\(tile?.label ?? "")» \
+                    beside a byte figure that carries its own
+                    """)
+                XCTAssertTrue(tile?.note.hasPrefix(VPNStr.speedUnit) == true, """
+                    \(language.rawValue) drew the note as «\(tile?.note ?? "")», which names \
+                    no unit for two bare numbers
+                    """)
+            }
         }
     }
 

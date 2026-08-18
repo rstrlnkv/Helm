@@ -70,14 +70,28 @@ struct VPNSettingsPage: View {
                 // section on this page gets it for free, because the form draws
                 // their cards; this block draws its own, so it pays for it.
                 .padding(.top, HelmLayout.groupedHeaderGap)
-            if hasConnections {
-                Text(VPNStr.connectionsHint)
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmText.quiet)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 8)
-            }
         }
+    }
+
+    /// **The two sentences that close the page, and they close it.**
+    ///
+    /// They used to sit between the connections grid and the tunnel strip —
+    /// 80 pt of grey text cutting apart the two things on this page that belong
+    /// together, one of them as a header's tail and the other as that section's
+    /// footer. macOS puts a sentence of this kind *under* the group it
+    /// qualifies, so both go under the last group there is.
+    ///
+    /// Which group that is depends on whether a tunnel is up: the strip's
+    /// section is absent with nothing to be about. One view, placed by that one
+    /// question, rather than the same two sentences written twice.
+    private var closingNotes: some View {
+        VStack(alignment: .leading, spacing: HelmSpace.s4) {
+            Text(VPNStr.connectionsHint)
+            Text(VPNStr.perAppScopeNote)
+        }
+        .font(HelmText.rowDetail)
+        .foregroundStyle(HelmText.quiet)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     /// Everything the page has to say that is not about one configuration.
@@ -127,12 +141,8 @@ struct VPNSettingsPage: View {
             } header: {
                 connectionsAndTitle
             } footer: {
-                if hasConnections {
-                    Text(VPNStr.perAppScopeNote)
-                        .font(HelmText.rowDetail)
-                        .foregroundStyle(HelmText.quiet)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                // Only when this *is* the last section — see `closingNotes`.
+                if hasConnections, vm.facts == nil { closingNotes }
             }
             // **Only when there is a tunnel to be about.** With nothing up the
             // section is absent rather than empty: a card of dashes is not an
@@ -141,13 +151,24 @@ struct VPNSettingsPage: View {
             if let facts = vm.facts {
                 Section {
                     // The strip draws no card of its own — this row *is* the
-                    // section's card, and the tiles are wells inside it. The
-                    // insets go because the strip pays for its own padding: it
-                    // opens with a heading, which sits at the card's own inset
+                    // section's card. The insets go because the strip pays for
+                    // its own padding, so its columns sit at the card's inset
                     // rather than at a row's.
                     VPNTunnelSection(facts, measuring: vm.measuring) { vm.measureSpeed() }
                         .padding(HelmSpace.s5)
                         .listRowInsets(EdgeInsets())
+                } header: {
+                    // On the pane, above the card, level with «Connections» —
+                    // a `Form` section's header is outside the card it belongs
+                    // to, which is where a page's heading goes. The strip drew
+                    // its own inside the card until 0.10.0-dev.11, which is two
+                    // heading idioms on one page.
+                    HelmSectionTitle(VPNStr.thisTunnel)
+                } footer: {
+                    // Unconditional, unlike the footer above: the strip is
+                    // about a connection, so this section existing is already
+                    // `hasConnections` answered.
+                    closingNotes
                 }
             }
         }

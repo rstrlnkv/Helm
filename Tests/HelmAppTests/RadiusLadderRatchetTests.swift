@@ -114,13 +114,17 @@ final class RadiusLadderRatchetTests: XCTestCase {
     /// component the nine module pages actually draw and record the reading —
     /// mutating this one and reading green proves nothing at all.
     ///
-    /// **A live probe exists again, and it does not fire — measured 2026-08-18.**
-    /// The component the paragraph above asks for is now on the page: VPN's tunnel
-    /// strip draws four `HelmRadius.ctl` wells in the render, and unlike a
-    /// `.background(RoundedRectangle)` that never reaches a layer, these do —
-    /// probed layer by layer, `19.00 pt on vpn`, four layers, with
-    /// `VPNTunnelSection.tile`'s radius mutated. **The ratchet stayed green
-    /// anyway**, and the reason is a free slot rather than a blind spot: the tree
+    /// **A live probe existed for one day, it did not fire, and it has since left
+    /// the tree — measured 2026-08-18, gone the same day.** The component the
+    /// paragraph above asks for was VPN's tunnel strip: it drew four
+    /// `HelmRadius.ctl` wells in the render, and unlike a
+    /// `.background(RoundedRectangle)` that never reaches a layer, those did —
+    /// probed layer by layer, `19.00 pt on vpn`, four layers, with the strip's
+    /// own well radius mutated. **The ratchet stayed green anyway.** The wells
+    /// were then removed by the strip's redesign — the four columns are
+    /// separated by whitespace now and draw no fill at all — so there is again
+    /// no live probe here, and mutating the strip proves nothing. The reason the
+    /// mutant was absorbed is a free slot rather than a blind spot: the tree
     /// draws **7 distinct off-ladder radii in light and 6 in dark, three
     /// consecutive runs**, against the 8 and 7 recorded below. The `2.00` in the
     /// last reading left with the notices section when it became a popover, and

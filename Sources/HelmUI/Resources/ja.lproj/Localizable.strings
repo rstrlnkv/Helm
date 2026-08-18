@@ -906,7 +906,10 @@
 "Connected for" = "接続時間";
 "Downloaded" = "ダウンロード";
 "Uploaded" = "アップロード";
-"Speed, Mbit/s" = "速度、Mbit/s";
+"This tunnel" = "このトンネル";
+"Speed" = "速度";
+"Mbit/s" = "Mbit/s";
+"since the tunnel came up" = "トンネル確立時から";
 "about 15 s, spends traffic" = "約15秒、通信量を使います";
 "Measure speed" = "速度を測定";
 "Measure again" = "もう一度測定";

@@ -17,6 +17,15 @@ import XCTest
 /// Helm timing its own launch and calling it the tunnel's age.
 final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
 
+    /// A reference a `@Sendable` hook may carry. `FakeRunner` is not `Sendable`
+    /// and never claims to be — the engine runs `.inline` in this file, so the
+    /// hook fires on the thread that called `connect`, and the exemption is
+    /// stated here at the one call site rather than by the fake for all of them.
+    private struct OnThisThread<T>: @unchecked Sendable {
+        let value: T
+        init(_ value: T) { self.value = value }
+    }
+
     private let uuid = "11111111-1111-1111-1111-111111111111"
     private let other = "22222222-2222-2222-2222-222222222222"
     private let at = Date(timeIntervalSince1970: 1_700_000_000)
@@ -93,6 +102,80 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         XCTAssertNil(facts?.since,
                      "Helm was launched after this tunnel came up and stamped it anyway — "
                      + "the uptime on screen is then the age of the app, not of the tunnel")
+    }
+
+    /// **And the tunnel Helm raised itself, which is the common case and drew
+    /// nothing.**
+    ///
+    /// A rule fires from `activate()` before anything has read the list, so the
+    /// payload `connectNow` emits names no connections at all — and `wasDown`,
+    /// which asks what the page was last told, finds no previous reading of the
+    /// service and answers false. Whether that matters depends on how fast the
+    /// tunnel comes up: catch it once at `Connecting` and the poll's own
+    /// readings supply the missing «it was down», miss that window and nothing
+    /// ever does.
+    ///
+    /// **Measured, in this Mac's own log rather than reasoned about.** Every
+    /// launch-time connect there settles on the poll's *first* read:
+    ///
+    ///     12:18:51.190 connect vpn#7b99 (auto)
+    ///     12:18:51.992 settled: vpn#dca3=connected, vpn#7b99=connected
+    ///
+    /// 0.8 s is one poll, so the first thing the engine ever learns about that
+    /// service is that it is up — and the uptime column was absent on every one
+    /// of those launches. The fake answers the same way: the list changes
+    /// *because of* the start, which is the one thing a fixed `listOutput`
+    /// cannot express.
+    func test_a_tunnel_helm_raised_itself_is_stamped() async {
+        let runner = FakeRunner()
+        runner.listOutput = list("Disconnected")
+        let connected = list("Connected")
+        // The tool's answer changes *because of* the command, which is the one
+        // thing a fixed `listOutput` and a `listScript` both cannot express: a
+        // script is indexed by how many reads have happened, and how many have
+        // happened before the start is exactly what this test is about.
+        let hook = OnThisThread(runner)
+        runner.onRun = { args in
+            guard args == ["--nc", "start", "A"] else { return }
+            hook.value.listOutput = connected
+        }
+        let transport = LocalTransport()
+        let engine = makeEngine(runner, transport: transport,
+                                interfaces: tunnelIsTheDefaultRoute())
+        XCTAssertTrue(runner.issued.isEmpty,
+                      "precondition: something read the list before the connect, so this is "
+                      + "not the launch-time rule this test is about")
+
+        engine.connect("A", auto: true)
+
+        let facts = await lastState(on: transport)?.facts
+        XCTAssertEqual(facts?.since, at,
+                       "Helm raised this tunnel and stamped nothing, so the strip draws no "
+                       + "uptime for the tunnel every rule on this Mac brings up")
+    }
+
+    /// The other side of the same reading, and the invariant it must not cost:
+    /// a rule firing at launch over a tunnel that is **already up** is asking
+    /// for a no-op, and stamping there would be Helm timing its own launch and
+    /// calling it the tunnel's age — the same fiction
+    /// `test_a_tunnel_already_up_at_the_first_reading_carries_no_stamp` refuses
+    /// for the refresh path. It is not a hypothetical: this Mac's log has two
+    /// launches three minutes apart, both firing `connect` over tunnels that
+    /// were up throughout.
+    func test_a_tunnel_already_up_when_a_rule_asks_for_it_carries_no_stamp() async {
+        let runner = FakeRunner()
+        runner.listOutput = list("Connected")
+        let transport = LocalTransport()
+        let engine = makeEngine(runner, transport: transport,
+                                interfaces: tunnelIsTheDefaultRoute())
+
+        engine.connect("A", auto: true)
+
+        let facts = await lastState(on: transport)?.facts
+        XCTAssertNotNil(facts, "precondition: no strip at all, so the absence below is free")
+        XCTAssertNil(facts?.since,
+                     "the tunnel was up before Helm asked for it and was stamped anyway — the "
+                     + "uptime on screen is the age of the app, not of the tunnel")
     }
 
     func test_a_tunnel_that_comes_up_between_two_readings_is_stamped() async {

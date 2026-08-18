@@ -131,6 +131,12 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// Touched only from the work queue, like `core` and `knownBundleIDs` above
     /// and unlike the fields under the lock.
     private var raisedAt: [String: Date] = [:]
+    /// Whether `--nc list` has ever been read successfully in this process.
+    ///
+    /// The question a connect has to ask before it can trust `status`, and the
+    /// one field that separates «this tunnel is down» from «nobody has looked».
+    /// Touched only from the work queue, like `raisedAt` above.
+    private var hasReadTheList = false
     /// The last two answers about the tunnel that is up, and they belong to
     /// *that* tunnel: both are dropped with its stamp when it goes.
     private var lastRegion: String?
@@ -290,6 +296,10 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             return
         }
         let parsed = VPNListParser.parseList(output)
+        // Only past the guard above: a read that failed is not a reading, and a
+        // connect that took this for one would be back to deciding «already up»
+        // off an empty cache.
+        hasReadTheList = true
         lock.lock()
         _connections = parsed
         // A VPN Helm raised can also drop on its own — the network goes, the
@@ -375,6 +385,24 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
 
     private func connectNow(_ name: String, auto: Bool) {
         HelmLog.shared.info(Self.moduleID, "connect \(Redact.vpn(name))\(auto ? " (auto)" : "")")
+        // **The reading the next line has always claimed to take.** `activate()`
+        // replays every running app, so a rule fires at launch — and nothing
+        // refreshes first. `status` then answers off an empty cache, which is
+        // `.unknown` for a tunnel that is up, and two separate things ride on
+        // that answer being wrong. The secret goes on a command line for a
+        // `--nc start` that changes nothing, which is the exposure `!alreadyUp`
+        // below exists to avoid and does not; and the payload emitted at the end
+        // of this method names no connections at all, so `wasDown` finds no
+        // previous reading of the service and the tunnel Helm has just raised is
+        // never stamped. Both were true of this Mac's own log, where every
+        // launch-time connect settles on the poll's first read — 0.8 s, one poll
+        // — with no `Connecting` in between for the poll's own readings to
+        // supply the missing «it was down».
+        //
+        // One `--nc list`, and only where there is nothing to read from:
+        // refreshing before every connect would be a subprocess per press, and
+        // the answer this needs is only ever missing for the first one.
+        if !hasReadTheList { refreshNow() }
         // Read before anything is asked of the tool, so this is what was true
         // when the rule asked rather than what Helm has since written down.
         let alreadyUp = auto ? status(name).isUp : false

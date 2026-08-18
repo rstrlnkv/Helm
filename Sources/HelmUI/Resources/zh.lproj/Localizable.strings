@@ -906,7 +906,10 @@
 "Connected for" = "已连接";
 "Downloaded" = "已下载";
 "Uploaded" = "已上传";
-"Speed, Mbit/s" = "速度，Mbit/s";
+"This tunnel" = "此隧道";
+"Speed" = "速度";
+"Mbit/s" = "Mbit/s";
+"since the tunnel came up" = "自隧道建立以来";
 "about 15 s, spends traffic" = "约15秒，消耗流量";
 "Measure speed" = "测量速度";
 "Measure again" = "再次测量";
