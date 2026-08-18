@@ -32,7 +32,7 @@ final class PrivilegedRunTests: XCTestCase {
 ///
 /// `osascript(1)`: «e  Print script errors to stderr (default). / o  Print
 /// script errors to stdout.» — and `HelmProcess.run` sends the child's stderr
-/// to `FileHandle.nullDevice` on purpose (`FileHandle.nullDevice`). So a
+/// to `FileHandle.nullDevice` on purpose. So a
 /// cancelled dialog reaches `outcome(status:output:)` as status 1 with an
 /// *empty* output, `.declined` is unreachable, and every cancel is reported as
 /// a failed write. `-s o` is the half that makes the number arrive.

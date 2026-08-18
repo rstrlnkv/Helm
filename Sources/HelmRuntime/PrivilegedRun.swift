@@ -30,12 +30,9 @@ public enum PrivilegedRun {
     /// can be minutes. Callers hop through `offTheCooperativePool` first, or a
     /// pool thread is parked for the length of somebody's coffee break.
     public static func run(_ command: String) -> PrivilegedOutcome {
-        let result = HelmProcess.run(tool, arguments(for: command))
+        let result = HelmProcess.run("/usr/bin/osascript", arguments(for: command))
         return outcome(status: result.status, output: result.output)
     }
-
-    /// `osascript`, as a constant rather than a string typed at the call site.
-    public static let tool = "/usr/bin/osascript"
 
     /// What `run` hands the tool — a seam, so `-s o` below has a test under it
     /// that costs nobody a password dialog.
@@ -53,7 +50,7 @@ public enum PrivilegedRun {
     ///
     /// The escaping stays in `AppleScript`: one place in this app decides
     /// whether root runs a command or an attacker's continuation of it.
-    public static func arguments(for command: String) -> [String] {
+    static func arguments(for command: String) -> [String] {
         ["-s", "o", "-e", AppleScript.administratorShellScript(command)]
     }
 
