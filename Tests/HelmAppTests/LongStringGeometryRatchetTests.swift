@@ -299,7 +299,15 @@ final class LongStringGeometryRatchetTests: XCTestCase {
         // 2026-08-18 with «Table / Plain text» in its header, drawn on every Mac
         // whatever the wire answers, because which of the two views is on screen is
         // the page's own state and not the engine's.
-        XCTAssertEqual(tally, ["AppKitSwitch": 18, "AppKitTextField": 3,
+        // **And 17 again from 2026-08-18, because a switch went behind a door.**
+        // The VPN page drew the menu-bar ring's switch itself until the notices
+        // settings moved onto each connection card, into a popover — and a
+        // popover is a window macOS orders in, so nothing inside one is in this
+        // render at all. The count falling is the thing this message warns
+        // about, and here it is the intended half of that change rather than a
+        // page that quietly stopped drawing: measured on the merge that first
+        // has both the hosts page and the VPN cards, three consecutive runs.
+        XCTAssertEqual(tally, ["AppKitSwitch": 17, "AppKitTextField": 3,
                                "AppKitSearchField": 1, "AppKitSegmentedControl": 4], """
             the controls this measurement can see are not the ones it was measured with: \
             \(tally.sorted { $0.key < $1.key }.map { "\($0.key)×\($0.value)" }.joined(separator: " ")).
