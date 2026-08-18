@@ -71,6 +71,7 @@ enum Changelog {
     static var entries: [ChangelogEntry] {
         [
             ChangelogEntry(version: "0.10.0", date: "2026-08-09", items: [
+                ChangeItem(kind: .new, text: L("The VPN page says what the tunnel carrying your traffic is doing: how long it has been up, what it has carried down and up, and whether traffic really leaves through it and from which country. \u{201C}Measure speed\u{201D} measures the link when you press it \u{2014} about fifteen seconds of real traffic, so it is never measured on its own.")),
                 ChangeItem(kind: .fix, text: L("The panel\u{2019}s \u{201C}permissions not granted\u{201D} notice is no longer drawn inside a second panel of its own: it is one line across the width, like anything else in the panel.")),
                 ChangeItem(kind: .upd, text: L("Everything about one VPN is on its own card now: the applications that raise it, and how loudly it speaks. Two buttons under the card open them.")),
                 ChangeItem(kind: .new, text: L("Each VPN can be told how loudly to speak on its own \u{2014} a notification, the menu bar or nothing, whether the icon spins and what colour it turns. The ones you have not changed keep following the app\u{2019}s own setting.")),

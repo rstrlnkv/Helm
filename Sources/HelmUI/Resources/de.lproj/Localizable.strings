@@ -914,3 +914,4 @@
 "Traffic goes through the tunnel" = "Der Datenverkehr läuft durch den Tunnel";
 "Traffic is not going through the tunnel" = "Der Datenverkehr läuft nicht durch den Tunnel";
 "Could not check where the traffic goes" = "Konnte nicht prüfen, wohin der Datenverkehr geht";
+"The VPN page says what the tunnel carrying your traffic is doing: how long it has been up, what it has carried down and up, and whether traffic really leaves through it and from which country. “Measure speed” measures the link when you press it — about fifteen seconds of real traffic, so it is never measured on its own." = "Die VPN-Seite zeigt, was der Tunnel tut, durch den Ihr Datenverkehr läuft: wie lange er schon verbunden ist, wie viel er empfangen und gesendet hat und ob der Verkehr wirklich durch ihn hinausgeht und aus welchem Land. „Geschwindigkeit messen“ misst die Verbindung auf Knopfdruck – etwa fünfzehn Sekunden echter Datenverkehr, von selbst wird also nie gemessen.";

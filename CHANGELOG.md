@@ -83,6 +83,51 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
   said once for the whole card before, and the cost of the two quiet settings
   meeting is stated where they now meet — this card's ring off and this card's
   notice silent is a rule that fires with no sign at all.
+- **The VPN page says what the tunnel carrying the traffic is doing.** Under the
+  connection grid the page had about 600 pt of nothing: the rules and the
+  notices had gone onto the cards, and what was left was the grid and two or
+  three qualifying sentences. It carries a strip of tiles now, about the one
+  tunnel holding the **default route** rather than about every card on the grid
+  — how long it has been up, what it has carried down and up, and what the link
+  measured when somebody last asked — with a verdict line under it saying
+  whether the traffic really leaves through the tunnel and from which country it
+  appears to.
+  **Every reading can be absent, and an absent one is a missing tile rather than
+  a dash.** Helm can be launched after a tunnel came up, in which case nobody saw
+  the moment and there is no duration to draw; the kernel can have no counters
+  for the interface, which is not the same news as a tunnel that has carried
+  nothing. `VPNTunnelFacts` makes all four optional for that reason — the
+  counters were non-optional first, so «nobody could read this» drew as zero.
+  The one dash is the speed tile, and it is the exception that states the rule:
+  its emptiness is actionable, because there is no passive way to read a link's
+  throughput and the button under it is the point.
+  The measurement is `/usr/bin/networkQuality`, **on a press only** — about
+  fifteen seconds of real traffic, which the tile says up front before anybody
+  spends it — and `VPNSpeedReading.parse` takes every field or none: a run killed
+  at its deadline prints half its JSON, and a reading built from the half that
+  arrived claims 0 Mbit/s in the direction nobody measured. Responsiveness is the
+  one figure the tool legitimately omits, so it is the reading's own nil rather
+  than a zero. A figure older than a minute carries its age, because a link
+  measured three minutes ago is not the link on screen.
+  **Routing decides the verdict and the country only decorates it.** Whether the
+  default route is the tunnel's own interface is a local reading that cannot fail
+  silently; the country comes from Cloudflare's trace endpoint, checked when a
+  tunnel comes up, and that can be slow, blocked or wrong. `VPNExitVerdict` is
+  therefore three answers and not a boolean — folding them would let a failed
+  request read as «not through the tunnel», which is a warning about nothing, or
+  as «through the tunnel», which is a reassurance nobody checked. The place is
+  named out of `Locale` in Helm's own language (`VPNStr.country`), from the
+  two-letter region code: a third party does not get to write a country's name
+  into Helm's window. The counters reach the wire as whole kilobytes
+  (`VPNInterfaceCounters.onTheWire`) because they are the one part of the payload
+  that moves on its own — raw bytes made every one of the 26 re-reads behind a
+  single connect into news, and re-rendered every mounted page for a figure
+  nobody can see change.
+  The strip's content is a value (`VPNTunnelStrip`) rather than a decision taken
+  in a `body`: every rule worth guarding here is about which tiles exist and what
+  each says, and none of it can be read back off a rendering, since an
+  `NSHostingView`'s accessibility tree is empty offscreen.
+  `TheStripDrawsOnlyWhatIsKnownTests` is what that buys.
 - **The ring came off the connected card and the green moved to the button.**
   A 1.5 pt `HelmSignal.success` border around one card in a row of cards reads
   as a selection — which is exactly what the accent ring 900 pt down the same

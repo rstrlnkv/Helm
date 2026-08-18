@@ -914,3 +914,4 @@
 "Traffic goes through the tunnel" = "流量正在通过隧道";
 "Traffic is not going through the tunnel" = "流量未通过隧道";
 "Could not check where the traffic goes" = "无法确认流量的去向";
+"The VPN page says what the tunnel carrying your traffic is doing: how long it has been up, what it has carried down and up, and whether traffic really leaves through it and from which country. “Measure speed” measures the link when you press it — about fifteen seconds of real traffic, so it is never measured on its own." = "VPN 页面会显示承载流量的隧道正在做什么：已连接多久、下载和上传了多少，以及流量是否真的从中流出、看起来来自哪个国家。按下“测量速度”即可测量链路 — 这会花费约十五秒的真实流量，因此不会自行测量。";

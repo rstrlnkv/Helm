@@ -914,3 +914,4 @@
 "Traffic goes through the tunnel" = "Traffic goes through the tunnel";
 "Traffic is not going through the tunnel" = "Traffic is not going through the tunnel";
 "Could not check where the traffic goes" = "Could not check where the traffic goes";
+"The VPN page says what the tunnel carrying your traffic is doing: how long it has been up, what it has carried down and up, and whether traffic really leaves through it and from which country. “Measure speed” measures the link when you press it — about fifteen seconds of real traffic, so it is never measured on its own." = "The VPN page says what the tunnel carrying your traffic is doing: how long it has been up, what it has carried down and up, and whether traffic really leaves through it and from which country. “Measure speed” measures the link when you press it — about fifteen seconds of real traffic, so it is never measured on its own.";
