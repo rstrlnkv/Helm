@@ -10,9 +10,9 @@ import Foundation
 /// raises, so the counter starts at zero when the tunnel comes up and dies with
 /// it. The same code pointed at `en0` would be reporting since boot, which is
 /// why this takes an interface name and never a default.
-public enum VPNInterfaceCounters {
+enum VPNInterfaceCounters {
 
-    public static func bytes(on interface: String) -> (in: UInt64, out: UInt64)? {
+    static func bytes(on interface: String) -> (in: UInt64, out: UInt64)? {
         var head: UnsafeMutablePointer<ifaddrs>?
         guard getifaddrs(&head) == 0, let first = head else { return nil }
         defer { freeifaddrs(head) }
@@ -48,7 +48,7 @@ public enum VPNInterfaceCounters {
     /// nothing re-reads on a timer, so a payload goes out when the network
     /// changes, when a page asks, or on one of the poll's re-reads — and an idle
     /// tunnel does not move a kilobyte between two of those.
-    public static func onTheWire(_ bytes: UInt64) -> UInt64 {
+    static func onTheWire(_ bytes: UInt64) -> UInt64 {
         // A counter near the top of its type is arithmetic nobody performs on
         // purpose; a trap in the engine is a crash in the app.
         guard bytes <= UInt64.max - 500 else { return bytes }
