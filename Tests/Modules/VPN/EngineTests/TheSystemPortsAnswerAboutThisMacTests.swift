@@ -31,13 +31,27 @@ final class TheSystemPortsAnswerAboutThisMacTests: XCTestCase {
         XCTAssertNil(TraceExit.region(in: "loc="))
     }
 
-    /// This Mac has a default route while the suite runs, or it does not — both
-    /// are legitimate answers, and what is asserted is that the port answers at
-    /// all rather than crashing on a store it could not open.
-    func testThePrimaryInterfaceIsReadWithoutThrowing() {
+    /// **A port that answered nil to everything used to pass this.** The only
+    /// positive assertion sat inside `if let primary`, and the other line
+    /// asserts an absence — so a mistyped store key, or a `SCDynamicStoreCreate`
+    /// that stopped working on a later macOS, would leave the tile strip absent
+    /// on every Mac with the suite green.
+    ///
+    /// The machine running the suite has a default route, or it is not on a
+    /// network at all and has bigger problems than this assertion: `scutil -r`
+    /// and `route -n get default` answer for the same store this reads. So the
+    /// answer is required, and the nil below is required to stay nil — a port
+    /// answering an interface for a service id nobody has would be inventing
+    /// one.
+    func testThePrimaryInterfaceIsThisMacsOwn() {
         let port = DynamicStoreInterfaces()
-        let primary = port.primaryInterface()
-        if let primary { XCTAssertFalse(primary.isEmpty) }
+
+        let primary = try? XCTUnwrap(port.primaryInterface(),
+                                     "the dynamic store named no default route on a Mac that "
+                                     + "has one — the key this reads is `State:/Network/Global/"
+                                     + "IPv4`, and the strip is absent for everybody if it is "
+                                     + "wrong")
+        XCTAssertEqual(primary?.isEmpty, false)
         XCTAssertNil(port.interface(forServiceID: "not-a-service-id"))
     }
 

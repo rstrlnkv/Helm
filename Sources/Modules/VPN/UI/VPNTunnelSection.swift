@@ -84,7 +84,17 @@ struct VPNTunnelStrip {
     let mark: Mark
     let action: Action
 
-    init(_ state: VPNTunnelState, now: Date = Date(), measuring: Bool = false) {
+    /// **`measuring` defaults to the state's own answer, not to false.**
+    ///
+    /// The state already carries whether a run is in flight — it is the engine's
+    /// fact, on the wire for exactly that reason — and the parameter is the page
+    /// putting the press in front of it during the moment the command is
+    /// crossing the queue (`VPNViewModel.measuring`). Defaulted to `false` the
+    /// two disagreed by construction: `VPNTunnelStrip(state)` drew the button
+    /// over a running measurement, which is why every test here had to pass
+    /// `measuring:` by hand to see the state the state was already in.
+    init(_ state: VPNTunnelState, now: Date = Date(), measuring: Bool? = nil) {
+        let measuring = measuring ?? state.measuring
         title = VPNStr.thisTunnel(state.name)
         let facts = VPNTunnelFacts(since: state.since, bytesIn: state.bytesIn,
                                    bytesOut: state.bytesOut, speed: state.speed, now: now)
@@ -150,7 +160,13 @@ struct VPNTunnelStrip {
                         value: noReading, note: VPNStr.speedNotYet)
         }
         return Tile(kind: .speed, label: VPNStr.tileSpeed,
-                    value: "\(Decimal(speed.down)) ↓  \(Decimal(speed.up)) ↑",
+                    // `Count`, not `Decimal`: the figure is a whole number of
+                    // megabits and wants the language's digit grouping. Written
+                    // `Decimal(speed.down)` it did not even reach `HelmUI` —
+                    // that member takes a `Double` and `down` is an `Int`, so the
+                    // call bound to `Foundation.Decimal.init(_: Int)` and drew its
+                    // locale-independent description: «10000» for a 10 Gbit link.
+                    value: "\(Count(speed.down)) ↓  \(Count(speed.up)) ↑",
                     note: facts.speedIsStale
                         ? VPNStr.speedMeasured(HelmDates.relative(speed.at, to: now))
                         : nil)
@@ -173,7 +189,7 @@ struct VPNTunnelSection: View {
     private let strip: VPNTunnelStrip
     private let measure: () -> Void
 
-    init(_ state: VPNTunnelState, now: Date = Date(), measuring: Bool = false,
+    init(_ state: VPNTunnelState, now: Date = Date(), measuring: Bool? = nil,
          measure: @escaping () -> Void) {
         self.strip = VPNTunnelStrip(state, now: now, measuring: measuring)
         self.measure = measure

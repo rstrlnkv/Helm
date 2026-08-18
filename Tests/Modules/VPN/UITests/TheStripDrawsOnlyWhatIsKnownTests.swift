@@ -226,6 +226,30 @@ final class TheStripDrawsOnlyWhatIsKnownTests: XCTestCase {
         }
     }
 
+    /// **A four-digit link is where the app's own number formatting shows.**
+    ///
+    /// The figure was interpolated through `Decimal(speed.down)`, which looks
+    /// like `HelmUI`'s member and is not: that one takes a `Double`, `down` is
+    /// an `Int`, Swift will not convert a variable — so the call bound to
+    /// `Foundation.Decimal.init(_: Int)` and the tile drew that type's
+    /// locale-independent `description`. Invisible at three digits and wrong at
+    /// four, where a 10 Gbit link drew «10000» and every other number on the
+    /// page is grouped the way the language groups digits.
+    func testAFourDigitReadingIsGroupedTheWayTheLanguageGroupsDigits() {
+        let reading = VPNSpeedReading(down: 10_000, up: 4_200, rpm: 340,
+                                      at: now.addingTimeInterval(-5))
+        inEachLanguage { language in
+            let tile = strip(tunnel(since: stamped, speed: reading)).tiles
+                .first { $0.kind == .speed }
+            XCTAssertEqual(tile?.label, VPNStr.tileSpeed,
+                           "precondition: \(language.rawValue) drew no speed tile at all")
+            XCTAssertTrue(tile?.value.contains(Count(10_000)) == true, """
+                \(language.rawValue) drew «\(tile?.value ?? "")», where the \
+                language writes «\(Count(10_000))»
+                """)
+        }
+    }
+
     /// The other half of the same rule, and the reader `speedIsStale` was
     /// written for: a reading taken a moment ago **is** the link's speed now,
     /// so it stands without an age under it.

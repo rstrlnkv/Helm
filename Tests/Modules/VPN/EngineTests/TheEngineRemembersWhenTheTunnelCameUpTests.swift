@@ -275,6 +275,48 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         XCTAssertTrue(speed.askedFor.isEmpty)
     }
 
+    /// **A run that is refused is an ending too, and it was the silent one.**
+    ///
+    /// The press sets the page's flag optimistically, because the command has a
+    /// queue to cross. By the time it gets there the tunnel may be gone —
+    /// `DynamicStoreInterfaces` opens a fresh store per call and
+    /// `State:/Network/Service/<id>/IPv4` is missing for a moment while a route
+    /// changes, or the session cannot be opened at all — and the engine then had
+    /// nothing to measure and said so to nobody. Nothing corrected the flag, the
+    /// strip drew a spinner where the button had been so there was no second
+    /// press, and every later refresh over a quiet tunnel was withheld by the
+    /// dedup. The invariant «both ends of a run are changes» did not cover a
+    /// start that never happened.
+    ///
+    /// `connectNow` had the same shape and the same repair — «the one
+    /// publication point, on the early return as well: a path that skips it
+    /// leaves the screen holding whatever it had».
+    func test_a_run_with_nothing_to_measure_still_says_so() async throws {
+        let runner = FakeRunner()
+        runner.listOutput = list("Connected")
+        let transport = LocalTransport()
+        let interfaces = tunnelIsTheDefaultRoute()
+        let speed = FakeSpeed()
+        speed.answer = VPNSpeedReading(down: 1, up: 1, rpm: 1, at: at)
+        let engine = makeEngine(runner, transport: transport, interfaces: interfaces, speed: speed)
+        engine.refresh()
+        let onScreen = await lastState(on: transport)?.facts
+        XCTAssertNotNil(onScreen, "precondition: the strip was never on screen, so the press "
+                        + "this test is about could not have been made")
+
+        // The store stops answering for this service: the tunnel's interface is
+        // gone between the press and the command reaching the queue.
+        interfaces.interfaces = [:]
+        _ = try await engine.transport.send(EngineCommand(name: VPNCommand.measureSpeed.rawValue))
+
+        XCTAssertTrue(speed.askedFor.isEmpty, "precondition: something was measured after all")
+        let after = await lastState(on: transport)
+        XCTAssertNil(after?.facts, """
+            the refusal was silent: the page keeps the strip it had, with a \
+            spinner in it and no button to press again
+            """)
+    }
+
     /// **The dedup could strand the spinner, and this is why «measuring» is on
     /// the wire rather than in the page's head.**
     ///

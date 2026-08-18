@@ -815,11 +815,29 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// The phase is the port's to name (`vpn.speed`), not this caller's.
     private func measureSpeed() {
         work.run { [weak self] in
-            // One run at a time. A second press while the tool is running would
+            guard let self else { return }
+            // **Nothing to measure is an answer, and it is published.** The page
+            // set its own «measuring» on the press, because the command has a
+            // queue to cross; between the press and here the tunnel can be gone
+            // — the store is asked afresh every time and a service's IPv4 entry
+            // is missing for a moment while a route changes. A silent return
+            // then leaves a spinner nobody can clear: the strip draws it instead
+            // of the button, so there is no second press, and every later
+            // refresh over a quiet tunnel is withheld by the dedup. This
+            // emission is not a duplicate — `facts` has just gone from something
+            // to nothing — so it clears the flag and takes the strip away. Same
+            // shape and same reason as the early return in `connectNow`.
+            guard self.tunnelFacts() != nil else {
+                self.emitState()
+                return
+            }
+            // One run at a time, and this one **is** silent: the run already
+            // going will say «not measuring» when it ends, and nothing about the
+            // state has changed in the meantime. A second press would otherwise
             // spend another fifteen seconds of somebody's traffic to answer the
-            // question already being asked, and the first ending would then say
-            // «not measuring» over a run still going.
-            guard let self, self.tunnelFacts() != nil, !self.measuringSpeed else { return }
+            // question already being asked, and the first ending would say the
+            // run had stopped while the second was still going.
+            guard !self.measuringSpeed else { return }
             self.measuringSpeed = true
             // Said before the waiting starts, so the page draws «measuring»
             // whether or not it was the page that asked — and so the run has two
