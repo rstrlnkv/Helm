@@ -10,6 +10,10 @@ import Module_KeepAwake_UI
 import Module_Layout_UI
 import Module_Leftovers_UI
 import Module_Uninstaller_UI
+// `@testable` for the same reason VPN needs it below, one line down from the
+// same door: `HostsViewModel` and its `shared(vm:)` are internal to the
+// module's UI target.
+@testable import Module_Hosts_UI
 // `@testable` for one reason: `VPNDescriptor.viewModel(_:)` is internal, and it
 // is the only door to VPN's cache — the module keys its instance on the
 // descriptor rather than on a static, so `shared(vm:)`'s question has to be
@@ -86,6 +90,9 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
             },
             Cached(module: "Homebrew", id: HomebrewDescriptor.id.rawValue) {
                 _ = HomebrewViewModel.shared(vm: $0)
+            },
+            Cached(module: "Hosts", id: HostsDescriptor.id.rawValue) {
+                _ = HostsViewModel.shared(vm: $0)
             },
             Cached(module: "KeepAwake", id: KeepAwakeDescriptor.id.rawValue) {
                 _ = KeepAwakeViewModel.shared(vm: $0)
