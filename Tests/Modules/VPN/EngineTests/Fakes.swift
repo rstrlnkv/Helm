@@ -27,6 +27,16 @@ final class FakeRunner: VPNRunnerPort {
     var listScript: [String] = []
     private var listReads = 0
 
+    /// What `--nc status <name>` answers, per configuration name.
+    ///
+    /// Keyed by name because that is what the tool takes, and what the module
+    /// has: the interface a tunnel is on cannot be looked up by the id in
+    /// `--nc list`, which is a *configuration*'s id and not a network service's
+    /// (`VPNStatusParser`). A name with no entry here is a connection the tool
+    /// knows and can name no interface for — one that is down, or coming up —
+    /// which is a state the real tool is in for most of every session.
+    var statusOutput: [String: String] = [:]
+
     /// What `start` and `stop` answer, **per configuration name**.
     ///
     /// `reply` alone is a tool that answers the same way about every name, so
@@ -78,6 +88,12 @@ final class FakeRunner: VPNRunnerPort {
             defer { listReads += 1 }
             guard !listScript.isEmpty else { return answer(listOutput) }
             return answer(listScript[min(listReads, listScript.count - 1)])
+        }
+        // Before the `replies` lookup below, which is keyed by the same last
+        // argument: a test scripting a refused `--nc start` must not have that
+        // refusal answered to a status read as well.
+        if args.count == 3, args[0] == "--nc", args[1] == "status" {
+            return answer(statusOutput[args[2]] ?? "No service")
         }
         if let name = args.last, let scripted = replies[name] { return answer(scripted) }
         return answer(reply)

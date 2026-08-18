@@ -11,7 +11,7 @@ final class TheVerdictNeverGuessesTests: XCTestCase {
 
     func testTrafficIsInTheTunnelWhenTheDefaultRouteIsTheTunnelsInterface() {
         let verdict = VPNExitVerdict.of(tunnelInterface: "utun4", primaryInterface: "utun4",
-                                        countryCode: "NL")
+                                        tunnelIsPrimary: nil, countryCode: "NL")
         XCTAssertEqual(verdict, .throughTunnel(countryCode: "NL"))
     }
 
@@ -19,7 +19,7 @@ final class TheVerdictNeverGuessesTests: XCTestCase {
     /// is the state the whole check exists for.
     func testTrafficOutsideTheTunnelIsNamedOutright() {
         let verdict = VPNExitVerdict.of(tunnelInterface: "utun4", primaryInterface: "en0",
-                                        countryCode: "DE")
+                                        tunnelIsPrimary: nil, countryCode: "DE")
         XCTAssertEqual(verdict, .besideTunnel)
     }
 
@@ -27,7 +27,7 @@ final class TheVerdictNeverGuessesTests: XCTestCase {
     /// answer to the important question, so the verdict stands without a place.
     func testAMissingCountryDoesNotCostTheVerdict() {
         let verdict = VPNExitVerdict.of(tunnelInterface: "utun4", primaryInterface: "utun4",
-                                        countryCode: nil)
+                                        tunnelIsPrimary: nil, countryCode: nil)
         XCTAssertEqual(verdict, .throughTunnel(countryCode: nil))
     }
 
@@ -35,9 +35,44 @@ final class TheVerdictNeverGuessesTests: XCTestCase {
     /// as one.
     func testNoRoutingReadingIsUnknownRatherThanGood() {
         XCTAssertEqual(VPNExitVerdict.of(tunnelInterface: nil, primaryInterface: "en0",
-                                         countryCode: "NL"), .unknown)
+                                         tunnelIsPrimary: true, countryCode: "NL"), .unknown)
         XCTAssertEqual(VPNExitVerdict.of(tunnelInterface: "utun4", primaryInterface: nil,
-                                         countryCode: "NL"), .unknown)
+                                         tunnelIsPrimary: nil, countryCode: "NL"), .unknown)
+    }
+
+    // MARK: - The tool's own answer to the same question
+
+    /// **The store can fail to answer, and the same read that named the
+    /// interface already carries the routing flag.** `scutil --nc status` ends
+    /// with `IsPrimaryInterface : 1`, so a dynamic store that could not be
+    /// opened costs the verdict nothing. Preferred the other way round —
+    /// store first — because the global entry is the routing table's own
+    /// answer, while the flag is the connection's view of it.
+    func testTheToolsFlagAnswersWhenTheStoreCannot() {
+        XCTAssertEqual(VPNExitVerdict.of(tunnelInterface: "utun8", primaryInterface: nil,
+                                         tunnelIsPrimary: true, countryCode: "NL"),
+                       .throughTunnel(countryCode: "NL"))
+        XCTAssertEqual(VPNExitVerdict.of(tunnelInterface: "utun8", primaryInterface: nil,
+                                         tunnelIsPrimary: false, countryCode: "NL"),
+                       .besideTunnel)
+    }
+
+    /// And where both can be read, the routing table decides — a flag that has
+    /// gone stale must not overturn what the route says now.
+    func testTheStoreDecidesWhenBothCanBeRead() {
+        XCTAssertEqual(VPNExitVerdict.of(tunnelInterface: "utun8", primaryInterface: "en0",
+                                         tunnelIsPrimary: true, countryCode: "NL"),
+                       .besideTunnel)
+        XCTAssertEqual(VPNExitVerdict.of(tunnelInterface: "utun8", primaryInterface: "utun8",
+                                         tunnelIsPrimary: false, countryCode: "NL"),
+                       .throughTunnel(countryCode: "NL"))
+    }
+
+    /// Neither source answered. Still an unknown, and never dressed as either
+    /// verdict.
+    func testNeitherSourceIsStillUnknown() {
+        XCTAssertEqual(VPNExitVerdict.of(tunnelInterface: "utun8", primaryInterface: nil,
+                                         tunnelIsPrimary: nil, countryCode: "NL"), .unknown)
     }
 
     /// A synthesised enum codec can decode a case and silently drop its

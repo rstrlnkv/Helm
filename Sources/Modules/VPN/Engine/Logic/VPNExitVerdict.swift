@@ -27,11 +27,26 @@ public enum VPNExitVerdict: Codable, Equatable, Sendable {
     /// answer above.
     case unknown
 
+    /// Two sources for the routing half, asked in order.
+    ///
+    /// `primaryInterface` is `State:/Network/Global/IPv4` — the routing table's
+    /// own answer, and the one that decides. `tunnelIsPrimary` is the
+    /// `IsPrimaryInterface` line of the same `scutil --nc status` read that
+    /// named the interface, which costs nothing extra and answers when the
+    /// dynamic store could not be opened at all. A flag can be the connection's
+    /// stale view of a route that has since moved, so it never overturns a store
+    /// that answered; with neither the verdict stays `.unknown`, because a
+    /// guess here is either a warning about nothing or a reassurance nobody
+    /// checked.
     public static func of(tunnelInterface: String?, primaryInterface: String?,
-                          countryCode: String?) -> VPNExitVerdict {
-        guard let tunnelInterface, let primaryInterface else { return .unknown }
-        return tunnelInterface == primaryInterface
-            ? .throughTunnel(countryCode: countryCode)
-            : .besideTunnel
+                          tunnelIsPrimary: Bool?, countryCode: String?) -> VPNExitVerdict {
+        guard let tunnelInterface else { return .unknown }
+        if let primaryInterface {
+            return tunnelInterface == primaryInterface
+                ? .throughTunnel(countryCode: countryCode)
+                : .besideTunnel
+        }
+        guard let tunnelIsPrimary else { return .unknown }
+        return tunnelIsPrimary ? .throughTunnel(countryCode: countryCode) : .besideTunnel
     }
 }

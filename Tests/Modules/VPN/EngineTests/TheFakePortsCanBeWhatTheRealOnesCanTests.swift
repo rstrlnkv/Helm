@@ -11,17 +11,43 @@ import XCTest
 /// ports can really be in, asserted of the fakes that stand for them.
 final class TheFakePortsCanBeWhatTheRealOnesCanTests: XCTestCase {
 
+    /// The two answers this port still gives fail separately: a Mac with no
+    /// default route at all, and an interface the kernel has no counters for.
     func testTheInterfacePortCanBeMissingEitherAnswerSeparately() {
         let port = FakeInterfaces()
-        port.interfaces = [:]                       // the service is down
-        port.primary = "en0"                        // and the Mac is on Wi-Fi
-        XCTAssertNil(port.interface(forServiceID: "svc"))
+        port.primary = "en0"                        // the Mac is on Wi-Fi
+        port.counters = [:]                         // and nothing has counters
         XCTAssertEqual(port.primaryInterface(), "en0")
+        XCTAssertNil(port.bytes(on: "utun4"))
 
-        port.interfaces = ["svc": "utun4"]
         port.primary = nil                          // and now it is offline
-        XCTAssertEqual(port.interface(forServiceID: "svc"), "utun4")
+        port.counters = ["utun4": (in: 10, out: 20)]
         XCTAssertNil(port.primaryInterface())
+        XCTAssertEqual(port.bytes(on: "utun4")?.in, 10)
+    }
+
+    /// **What a tunnel's interface is cannot be planted here at all any more**,
+    /// and that is the repair: the pair this fake used to accept — a `--nc list`
+    /// id and an interface — is one the dynamic store cannot produce for a
+    /// NetworkExtension tunnel, so the suite was green while the strip was
+    /// absent on every Mac. The question is the tool's now, and the fake that
+    /// answers it is `FakeRunner.statusOutput`, keyed by the name the tool takes
+    /// and able to be in the state where the connection is known and no
+    /// interface is named.
+    func testTheInterfaceIsAskedOfTheToolByName() {
+        let runner = FakeRunner()
+        runner.statusOutput = ["incy": """
+        Connected
+        Extended Status <dictionary> {
+          IPv4 : <dictionary> {
+            InterfaceName : utun8
+          }
+        }
+        """]
+        XCTAssertEqual(VPNStatusParser.reading(in: runner.run(["--nc", "status", "incy"]).output)?
+            .interface, "utun8")
+        XCTAssertNil(VPNStatusParser.reading(in: runner.run(["--nc", "status", "other"]).output),
+                     "a name the tool has no answer for must be able to name no interface")
     }
 
     /// The service that never answers. A fake that answers instantly makes every

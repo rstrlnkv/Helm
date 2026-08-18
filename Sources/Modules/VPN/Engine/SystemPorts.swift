@@ -394,11 +394,15 @@ public final class KeychainCredentials: VPNCredentialsPort {
 /// Production `VPNInterfacePort`: the dynamic store, which is where macOS keeps
 /// what is up right now.
 ///
-/// **Not `ifconfig`, and not the configuration.** A configuration says what a
-/// service would be; `State:/Network/Service/<id>/IPv4` exists only while the
-/// service is actually up, and its `InterfaceName` is the `utunN` the tunnel is
-/// on this time. The global key answers the other half — which interface the
-/// default route goes out of — and that pair is the routing verdict.
+/// **The global key only, and that is the lesson.** This class also answered
+/// «which interface is service `<id>` on» out of
+/// `State:/Network/Service/<id>/IPv4`, which cannot be asked with the id the
+/// module has: `scutil --nc list` names a *configuration*, the store is keyed by
+/// *network service*, and for a NetworkExtension tunnel those differ — measured
+/// on 2026-08-18, `02196763-…` against `B8689BB0-…`. The tunnel's own interface
+/// comes from `scutil --nc status <name>` now (`VPNStatusParser`); what stays
+/// here is the routing half of the verdict, which the global key answers
+/// correctly and by no identifier at all.
 ///
 /// The counters are the one answer that does not come from the store: the store
 /// says which interface a service is on, and only the kernel knows what that
@@ -409,10 +413,6 @@ public final class DynamicStoreInterfaces: VPNInterfacePort {
 
     public func bytes(on interface: String) -> (in: UInt64, out: UInt64)? {
         VPNInterfaceCounters.bytes(on: interface)
-    }
-
-    public func interface(forServiceID id: String) -> String? {
-        value(forKey: "State:/Network/Service/\(id)/IPv4" as CFString, field: "InterfaceName")
     }
 
     public func primaryInterface() -> String? {

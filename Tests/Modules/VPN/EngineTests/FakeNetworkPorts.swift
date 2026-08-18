@@ -6,6 +6,14 @@ import Foundation
 
 /// The three ports the module asks the network about, as fakes.
 ///
+/// **`FakeInterfaces` can no longer be planted with a service id → interface
+/// pair**, because the port cannot answer that question any more: the id the
+/// module has is a configuration's and the store is keyed by network service, so
+/// every such pair this fake accepted was one the system could not produce, and
+/// the suite stayed green while the strip was absent on every Mac (CLAUDE.md
+/// § A fake can also be freer than the port). The interface is `scutil`'s answer
+/// now, so it is `FakeRunner.statusOutput` — keyed by the name the tool takes.
+///
 /// **Every one of them is reached from a thread that is not the test's** — the
 /// module's serial queue reads the interfaces on every emission, and the speed
 /// run happens off both that queue and the cooperative pool. They were
@@ -15,16 +23,10 @@ import Foundation
 /// under a lock now.
 final class FakeInterfaces: VPNInterfacePort, @unchecked Sendable {
     private let lock = NSLock()
-    private var _interfaces: [String: String] = [:]
     private var _primary: String?
     private var _counters: [String: (in: UInt64, out: UInt64)] = [:]
     private var _carriesPerRead: UInt64 = 0
 
-    /// Service id → interface. Empty is a service that is not up.
-    var interfaces: [String: String] {
-        get { lock.lock(); defer { lock.unlock() }; return _interfaces }
-        set { lock.lock(); _interfaces = newValue; lock.unlock() }
-    }
     /// Nil is a Mac with no default route at all.
     var primary: String? {
         get { lock.lock(); defer { lock.unlock() }; return _primary }
@@ -47,9 +49,6 @@ final class FakeInterfaces: VPNInterfacePort, @unchecked Sendable {
         set { lock.lock(); _carriesPerRead = newValue; lock.unlock() }
     }
 
-    func interface(forServiceID id: String) -> String? {
-        lock.lock(); defer { lock.unlock() }; return _interfaces[id]
-    }
     func primaryInterface() -> String? {
         lock.lock(); defer { lock.unlock() }; return _primary
     }

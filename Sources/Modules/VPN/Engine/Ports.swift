@@ -110,17 +110,25 @@ public protocol NetworkWatchPort: AnyObject {
     func stopObserving()
 }
 
-/// Which interface a configuration is on, which interface the machine's default
-/// route goes out of, and what an interface has carried.
+/// Which interface the machine's default route goes out of, and what an
+/// interface has carried.
 ///
-/// Three questions rather than one call answering them, because they fail
-/// separately: a service that is not up has no interface at all, the machine
-/// always has some default route (or none, when it is offline), and an
-/// interface that has gone has no counters even though its name is still known.
+/// Two questions rather than one call answering both, because they fail
+/// separately: the machine always has some default route (or none, when it is
+/// offline), and an interface that has gone has no counters even though its name
+/// is still known.
+///
+/// **Which interface a given tunnel is on is not asked here**, and that is the
+/// repair for a defect this port shipped. It was `interface(forServiceID:)` over
+/// `State:/Network/Service/<id>/IPv4`, and the id the module has comes from
+/// `scutil --nc list` — the identifier of a *configuration*, which is the
+/// identifier of a *network service* only for classic PPP/IPSec. For every
+/// NetworkExtension tunnel the lookup answered nil, so the tile strip was absent
+/// on every Mac. The question is `scutil`'s now, asked by name through
+/// `VPNRunnerPort` and read by `VPNStatusParser` — and a fake can no longer be
+/// planted with a pair the system cannot produce (CLAUDE.md § A fake can also be
+/// freer than the port).
 public protocol VPNInterfacePort: AnyObject {
-    /// e.g. `utun4` for the service with this identifier, or nil when the
-    /// service is down or the store could not be read.
-    func interface(forServiceID id: String) -> String?
     /// The interface carrying the default route, or nil when the machine has
     /// none — which is the honest answer for a Mac with no network at all — or
     /// when the store could not be read. Both causes, like the method above:

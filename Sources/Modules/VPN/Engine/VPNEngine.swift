@@ -135,6 +135,19 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// *that* tunnel: both are dropped with its stamp when it goes.
     private var lastRegion: String?
     private var lastSpeed: VPNSpeedReading?
+    /// Which interface each connected tunnel is on, and what the tool said about
+    /// its routing — read once per tunnel and dropped when it goes.
+    ///
+    /// **Read from `scutil --nc status <name>`, not from the dynamic store.**
+    /// The store wants a network service's id and `--nc list` answers with a
+    /// configuration's; they are the same string only for classic PPP/IPSec, so
+    /// the old lookup answered nil for every NetworkExtension tunnel and the
+    /// strip was absent on every Mac (`VPNStatusParser`). Cached because that is
+    /// another subprocess — 16 ms here — and `emitState` runs up to 26 times
+    /// behind one connect, while a tunnel's `utunN` does not change while it is
+    /// up: macOS raises the next one on a new interface, which is exactly why
+    /// the entry is dropped the moment the tunnel is not connected.
+    private var interfaceOf: [String: VPNStatusParser.Reading] = [:]
     /// Whether a measurement is in flight. The engine's own fact, on the wire in
     /// every payload — `VPNTunnelState.measuring` says what a page inferring it
     /// from a press gets wrong. Written on the work queue at both ends of a run.
@@ -330,6 +343,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         // After the lock, because it asks what the page was last told — and the
         // question has to be asked before this reading is emitted over it.
         stampWhatCameUp(parsed)
+        readInterfaces(parsed)
         emitState()
     }
 
@@ -734,6 +748,28 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         lastSpeed = nil
     }
 
+    /// Asks the tool which interface each tunnel that is up came up on, once per
+    /// tunnel, and forgets one that has gone.
+    ///
+    /// The name is what the question takes — `scutil --nc status "<name>"` — and
+    /// the name is what this module has everywhere else too, because
+    /// `--nc start` takes one. Two configurations may share a display name, and
+    /// the answer is then about whichever macOS picks; that ambiguity is the
+    /// tool's own and is recorded at `_cameUp`, which carries it for the same
+    /// reason.
+    private func readInterfaces(_ parsed: [VPNConnection]) {
+        let up = Set(parsed.filter(\.status.isConnected).map(\.id))
+        for id in interfaceOf.keys where !up.contains(id) { interfaceOf[id] = nil }
+        for connection in parsed
+        where connection.status.isConnected && interfaceOf[connection.id] == nil {
+            let output = runner.run(["--nc", "status", connection.name]).output
+            // Nil stays nil: a tunnel that is still coming up names no interface
+            // yet, and the next refresh — there is always one, the poll sees to
+            // that — asks again.
+            interfaceOf[connection.id] = VPNStatusParser.reading(in: output)
+        }
+    }
+
     /// Was this service **seen** down before this refresh.
     ///
     /// False when there is no previous reading at all, which is the first
@@ -755,20 +791,19 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     private func tunnelFacts() -> VPNTunnelState? {
         let primary = interfaces.primaryInterface()
         let tunnels = connections.filter(\.status.isConnected)
-            .compactMap { connection in
-                interfaces.interface(forServiceID: connection.id).map { (connection, $0) }
-            }
-        guard let (connection, interface) = tunnels.first(where: { $0.1 == primary })
+            .compactMap { connection in interfaceOf[connection.id].map { (connection, $0) } }
+        guard let (connection, reading) = tunnels.first(where: { $0.1.interface == primary })
             ?? tunnels.first
         else { return nil }
-        let carried = interfaces.bytes(on: interface)
+        let carried = interfaces.bytes(on: reading.interface)
         return VPNTunnelState(name: connection.name,
-                              interface: interface,
+                              interface: reading.interface,
                               since: raisedAt[connection.id],
                               bytesIn: carried.map { VPNInterfaceCounters.onTheWire($0.in) },
                               bytesOut: carried.map { VPNInterfaceCounters.onTheWire($0.out) },
-                              exit: VPNExitVerdict.of(tunnelInterface: interface,
+                              exit: VPNExitVerdict.of(tunnelInterface: reading.interface,
                                                       primaryInterface: primary,
+                                                      tunnelIsPrimary: reading.isPrimaryInterface,
                                                       countryCode: lastRegion),
                               speed: lastSpeed,
                               measuring: measuringSpeed)
@@ -818,15 +853,18 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             guard let self else { return }
             // **Nothing to measure is an answer, and it is published.** The page
             // set its own «measuring» on the press, because the command has a
-            // queue to cross; between the press and here the tunnel can be gone
-            // — the store is asked afresh every time and a service's IPv4 entry
-            // is missing for a moment while a route changes. A silent return
-            // then leaves a spinner nobody can clear: the strip draws it instead
-            // of the button, so there is no second press, and every later
-            // refresh over a quiet tunnel is withheld by the dedup. This
-            // emission is not a duplicate — `facts` has just gone from something
-            // to nothing — so it clears the flag and takes the strip away. Same
-            // shape and same reason as the early return in `connectNow`.
+            // queue to cross, and by the time it gets here the tunnel can be
+            // gone. A silent return would leave a spinner nobody can clear: the
+            // strip draws it instead of the button, so there is no second press,
+            // and every later refresh over a quiet tunnel is withheld by the
+            // dedup.
+            //
+            // Belt and braces, and said plainly rather than claimed: the refresh
+            // that noticed the drop has already published it, because it is the
+            // same refresh that drops the cached interface. What this covers is
+            // a path reaching here without one — the rule `connectNow` states
+            // for its own early return, that a path skipping publication leaves
+            // the screen holding whatever it had.
             guard self.tunnelFacts() != nil else {
                 self.emitState()
                 return

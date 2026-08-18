@@ -40,6 +40,13 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
                             interfaces: FakeInterfaces,
                             exit: FakeExit = FakeExit(),
                             speed: FakeSpeed = FakeSpeed()) -> VPNEngine {
+        // The tool's answer about the one tunnel these tests raise. Which
+        // interface a tunnel is on is asked of `scutil --nc status <name>` now,
+        // not of the dynamic store by service id — the two identifier spaces are
+        // not the same for a NetworkExtension tunnel, and the strip was absent
+        // on every Mac for exactly that reason (`VPNStatusParser`). A test that
+        // needs another answer sets `statusOutput` itself.
+        if runner.statusOutput["A"] == nil { runner.statusOutput["A"] = statusNaming("utun4") }
         let at = at
         return VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
                          transport: transport, interfaces: interfaces, exit: exit,
@@ -49,10 +56,25 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
     /// A tunnel that is up on `utun4`, with the Mac's default route through it.
     private func tunnelIsTheDefaultRoute() -> FakeInterfaces {
         let interfaces = FakeInterfaces()
-        interfaces.interfaces = [uuid: "utun4"]
         interfaces.primary = "utun4"
         interfaces.counters = ["utun4": (in: 1_000_000, out: 500_000)]
         return interfaces
+    }
+
+    /// What `scutil --nc status "<name>"` prints for a tunnel that is up on this
+    /// interface — the shape of the real thing, trimmed to the two lines the
+    /// parser reads. `TheInterfaceComesFromTheToolTests` carries the whole
+    /// captured output, decoys and all.
+    private func statusNaming(_ interface: String, primary: Bool = true) -> String {
+        """
+        Connected
+        Extended Status <dictionary> {
+          IPv4 : <dictionary> {
+            InterfaceName : \(interface)
+          }
+          IsPrimaryInterface : \(primary ? 1 : 0)
+        }
+        """
     }
 
     // MARK: - Since when
@@ -120,9 +142,10 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
             + list("Connected", "Full", id: other)
         let transport = LocalTransport()
         let interfaces = FakeInterfaces()
-        interfaces.interfaces = [uuid: "utun4", other: "utun5"]
         interfaces.primary = "utun5"
         interfaces.counters = ["utun4": (in: 1, out: 1), "utun5": (in: 2_000, out: 3_000)]
+        runner.statusOutput = ["Split": statusNaming("utun4", primary: false),
+                               "Full": statusNaming("utun5")]
         let engine = makeEngine(runner, transport: transport, interfaces: interfaces)
 
         engine.refresh()
@@ -242,6 +265,7 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         speed.onStart = { measuring.fulfill() }
         let answered = expectation(description: "the connect reached the tool")
         runner.onRun = { args in if args == ["--nc", "start", "A"] { answered.fulfill() } }
+        runner.statusOutput = ["A": statusNaming("utun4")]
         let engine = VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
                                transport: transport, interfaces: tunnelIsTheDefaultRoute(),
                                exit: FakeExit(), speed: speed, work: .background)
@@ -275,46 +299,41 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         XCTAssertTrue(speed.askedFor.isEmpty)
     }
 
-    /// **A run that is refused is an ending too, and it was the silent one.**
+    /// **A press that lands after the tunnel went measures nothing.**
     ///
     /// The press sets the page's flag optimistically, because the command has a
-    /// queue to cross. By the time it gets there the tunnel may be gone —
-    /// `DynamicStoreInterfaces` opens a fresh store per call and
-    /// `State:/Network/Service/<id>/IPv4` is missing for a moment while a route
-    /// changes, or the session cannot be opened at all — and the engine then had
-    /// nothing to measure and said so to nobody. Nothing corrected the flag, the
-    /// strip drew a spinner where the button had been so there was no second
-    /// press, and every later refresh over a quiet tunnel was withheld by the
-    /// dedup. The invariant «both ends of a run are changes» did not cover a
-    /// start that never happened.
-    ///
-    /// `connectNow` had the same shape and the same repair — «the one
-    /// publication point, on the early return as well: a path that skips it
-    /// leaves the screen holding whatever it had».
-    func test_a_run_with_nothing_to_measure_still_says_so() async throws {
+    /// queue to cross, and by the time it gets there the tunnel can be gone. Two
+    /// things must then be true: no fifteen-second subprocess is started for a
+    /// tunnel that is not there, and the page is not left holding a strip with a
+    /// spinner in it and no button to press again. The refresh that noticed the
+    /// drop publishes the second — the interface a tunnel is on is cached and
+    /// dropped by that same refresh — and `measureSpeed` publishes on its own
+    /// early return as well, the way `connectNow` does, for the paths that reach
+    /// it without one.
+    func test_a_press_after_the_tunnel_went_measures_nothing() async throws {
         let runner = FakeRunner()
         runner.listOutput = list("Connected")
         let transport = LocalTransport()
-        let interfaces = tunnelIsTheDefaultRoute()
         let speed = FakeSpeed()
         speed.answer = VPNSpeedReading(down: 1, up: 1, rpm: 1, at: at)
-        let engine = makeEngine(runner, transport: transport, interfaces: interfaces, speed: speed)
+        let engine = makeEngine(runner, transport: transport,
+                                interfaces: tunnelIsTheDefaultRoute(), speed: speed)
         engine.refresh()
         let onScreen = await lastState(on: transport)?.facts
         XCTAssertNotNil(onScreen, "precondition: the strip was never on screen, so the press "
                         + "this test is about could not have been made")
 
-        // The store stops answering for this service: the tunnel's interface is
-        // gone between the press and the command reaching the queue.
-        interfaces.interfaces = [:]
+        // The tunnel goes, and the network watcher's refresh notices — which is
+        // what happens in the app, and what the press is racing.
+        runner.listOutput = list("Disconnected")
+        engine.refresh()
         _ = try await engine.transport.send(EngineCommand(name: VPNCommand.measureSpeed.rawValue))
 
-        XCTAssertTrue(speed.askedFor.isEmpty, "precondition: something was measured after all")
-        let after = await lastState(on: transport)
-        XCTAssertNil(after?.facts, """
-            the refusal was silent: the page keeps the strip it had, with a \
-            spinner in it and no button to press again
-            """)
+        XCTAssertTrue(speed.askedFor.isEmpty,
+                      "fifteen seconds of somebody's traffic spent measuring a tunnel that "
+                      + "is not there")
+        let after = await lastState(on: transport)?.facts
+        XCTAssertNil(after, "the page keeps a strip for a tunnel that has gone")
     }
 
     /// **The dedup could strand the spinner, and this is why «measuring» is on
@@ -344,6 +363,7 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         speed.answer = nil                       // the tool refused
         speed.blocksUntilReleased = true
         defer { speed.release() }
+        runner.statusOutput = ["A": statusNaming("utun4")]
         let engine = VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
                                transport: transport, interfaces: interfaces,
                                exit: FakeExit(), speed: speed, work: .background)
@@ -391,9 +411,9 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         runner.listOutput = list("Connected", "Full", id: other) + "\n" + list("Disconnected")
         let transport = LocalTransport()
         let interfaces = FakeInterfaces()
-        interfaces.interfaces = [other: "utun5"]
         interfaces.primary = "utun5"
         interfaces.counters = ["utun5": (in: 2_000, out: 2_000)]
+        runner.statusOutput = ["Full": statusNaming("utun5")]
         interfaces.carriesPerRead = 40          // a keepalive between two readings
         let engine = makeEngine(runner, transport: transport, interfaces: interfaces)
 
