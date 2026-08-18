@@ -81,7 +81,11 @@ public enum KeyInventory {
     }
 
     /// What `ssh-keygen -l` says about a key.
-    public struct Description: Equatable, Sendable {
+    /// `Codable` because it travels in the state: the row on the page is the
+    /// row the engine read, rather than a second parse of the same line on the
+    /// other side of the wire — a contract with no compiler between its halves
+    /// is what cost this app a `force: Bool?` against a `force: Bool`.
+    public struct Description: Codable, Equatable, Sendable {
         public let bits: Int
         public let fingerprint: String
         /// May be empty: a key generated with `-C ''` has no comment, and an

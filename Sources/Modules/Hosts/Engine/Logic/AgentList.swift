@@ -17,7 +17,10 @@ import Foundation
 ///
 /// This is the `PowerSource.supply()` shape one module over: a port that folds
 /// two questions into one answer leaves a branch nobody can reach.
-public enum AgentList: Equatable, Sendable {
+/// `Codable` because it travels in the state: the badge on a row and the
+/// sentence about the agent are the engine's one reading, not a second parse of
+/// the same output on the far side of the wire.
+public enum AgentList: Codable, Equatable, Sendable {
     case holding([String])
     case empty
     case unreachable

@@ -28,14 +28,36 @@ public struct HostsState: Codable, Sendable, Equatable {
     /// file it will refuse to write is a page that lies at the last moment.
     public var sshWritable: Bool
 
+    /// The keys in `~/.ssh`, one row each, sorted by name.
+    public var keys: [KeyRow]
+    /// False when `~/.ssh` could not be read at all — missing, or a directory
+    /// this process may not search. **Not the same as no keys**: a Mac with
+    /// none yet is an ordinary Mac and its page says «no keys», where a
+    /// directory nobody could open has to say something else or the page reads
+    /// as a claim it cannot support.
+    public var keysReadable: Bool
+    /// `~/.ssh`'s own mode, judged. Its own field rather than folded into the
+    /// rows: it is one fact about the directory and the fix for it is a
+    /// different `chmod` from any key's.
+    public var directoryPermission: KeyRow.Permission
+    /// What the agent said, in its three states.
+    public var agent: AgentList
+
     public init(hostsText: String = "", hostsReadable: Bool = true, backups: [String] = [],
-                sshText: String = "", sshReadable: Bool = true, sshWritable: Bool = true) {
+                sshText: String = "", sshReadable: Bool = true, sshWritable: Bool = true,
+                keys: [KeyRow] = [], keysReadable: Bool = true,
+                directoryPermission: KeyRow.Permission = .unknown,
+                agent: AgentList = .unreachable) {
         self.hostsText = hostsText
         self.hostsReadable = hostsReadable
         self.backups = backups
         self.sshText = sshText
         self.sshReadable = sshReadable
         self.sshWritable = sshWritable
+        self.keys = keys
+        self.keysReadable = keysReadable
+        self.directoryPermission = directoryPermission
+        self.agent = agent
     }
 
     /// The two fields that shipped first are read outright; anything added
@@ -53,6 +75,16 @@ public struct HostsState: Codable, Sendable, Equatable {
         sshText = try container.decodeIfPresent(String.self, forKey: .sshText) ?? ""
         sshReadable = try container.decodeIfPresent(Bool.self, forKey: .sshReadable) ?? true
         sshWritable = try container.decodeIfPresent(Bool.self, forKey: .sshWritable) ?? true
+        // Added with tab 3, and read the same way for the same reason. The
+        // defaults are the cautious ones: no keys and an unreachable agent draw
+        // a page that promises nothing, where `keysReadable: true` over an
+        // empty list would say «this Mac has no keys» on the strength of a
+        // payload that never mentioned them.
+        keys = try container.decodeIfPresent([KeyRow].self, forKey: .keys) ?? []
+        keysReadable = try container.decodeIfPresent(Bool.self, forKey: .keysReadable) ?? false
+        directoryPermission = try container.decodeIfPresent(KeyRow.Permission.self,
+                                                            forKey: .directoryPermission) ?? .unknown
+        agent = try container.decodeIfPresent(AgentList.self, forKey: .agent) ?? .unreachable
     }
 }
 

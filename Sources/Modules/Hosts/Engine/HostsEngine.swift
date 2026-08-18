@@ -19,6 +19,8 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
     private let keptBackups: Int
 
     private let sshConfig: SSHConfigPort
+    private let keys: SSHKeysPort
+    private let agent: SSHAgentPort
     /// The home directory the gate judges against — injected so a test can own
     /// a home of its own rather than the machine's.
     private let home: URL
@@ -33,6 +35,8 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
                 privileged: PrivilegedPort = SystemPrivileged(),
                 backups: BackupPort = SystemBackups(),
                 sshConfig: SSHConfigPort = SystemSSHConfig(),
+                keys: SSHKeysPort = SystemSSHKeys(),
+                agent: SSHAgentPort = SystemSSHAgent(),
                 home: URL = FileManager.default.homeDirectoryForCurrentUser,
                 now: @escaping @Sendable () -> Date = { Date() },
                 keptBackups: Int = 10,
@@ -41,6 +45,8 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
         self.privileged = privileged
         self.backups = backups
         self.sshConfig = sshConfig
+        self.keys = keys
+        self.agent = agent
         self.home = home
         self.now = now
         self.keptBackups = keptBackups
@@ -71,16 +77,133 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
     private func emitState() -> HostsState {
         let text = file.read()
         let ssh = sshConfig.read()
+        let keyring = readKeys()
         let state = HostsState(hostsText: text ?? "", hostsReadable: text != nil,
                                backups: backups.list(),
                                sshText: ssh ?? "", sshReadable: ssh != nil,
-                               sshWritable: mayWriteSSH())
+                               sshWritable: mayWriteSSH(),
+                               keys: keyring.rows, keysReadable: keyring.readable,
+                               directoryPermission: keyring.directory,
+                               agent: keyring.agent)
         localTransport.emit(HostsEvent.state, encoding: state)
         return state
     }
 
     private func emitOperation(_ operation: HostsOperation) {
         localTransport.emit(HostsEvent.operation, encoding: operation)
+    }
+
+    // MARK: - The keys
+
+    /// One reading of `~/.ssh`: what is in it, what the agent holds, and the
+    /// directory's own verdict.
+    ///
+    /// **The agent is asked once per reading, not once per key.** `ssh-add -l`
+    /// is a round trip to a socket and the answer is about all of them; asking
+    /// it per row would also let two rows disagree about the same agent inside
+    /// one snapshot.
+    private func readKeys() -> (rows: [KeyRow], readable: Bool, directory: KeyRow.Permission,
+                                agent: AgentList) {
+        HelmActivity.phase("hosts.keys.read") {
+            guard let names = keys.names() else {
+                // Not there, or a directory this process may not search. Not an
+                // empty directory, and the page says a different thing for each.
+                return ([], false, .unknown, agent.list())
+            }
+            let held = agent.list()
+            let rows = KeyInventory.pairs(in: names).map {
+                KeyRow.row(from: keys.facts(for: $0), agent: held)
+            }
+            return (rows, true, directoryVerdict(), held)
+        }
+    }
+
+    private func directoryVerdict() -> KeyRow.Permission {
+        guard let mode = keys.directoryMode() else { return .unknown }
+        switch KeyPermissions.directory(mode) {
+        case .ok: return .ok
+        case .tooOpen(let fix): return .tooOpen(fix: fix)
+        }
+    }
+
+    /// A name from a payload may only ever *select* a key the engine can
+    /// already see. It never becomes a path here — the port composes one, and
+    /// refuses a name that is not a plain component on its own side.
+    private func selected(_ name: String) -> KeyInventory.Pair? {
+        guard let names = keys.names() else { return nil }
+        return KeyInventory.pairs(in: names).first { $0.name == name }
+    }
+
+    /// `chmod` one key to the mode `ssh` accepts.
+    ///
+    /// A key already at an acceptable mode answers `done` and runs nothing: the
+    /// button is idempotent, and a page one refresh out of date must not turn a
+    /// no-op into a failure. A mode that could not be *read* is not fixed —
+    /// writing a mode over a file this process could not stat is a guess, and
+    /// the page keeps saying it does not know.
+    func fixPermissions(of name: String) -> KeyOutcome {
+        defer { emitState() }
+        guard let pair = selected(name) else {
+            HelmLog.shared.warn(Self.moduleID, "a permission fix named a key that is not there")
+            return .notFound
+        }
+        switch KeyRow.row(from: keys.facts(for: pair), agent: .unreachable).permission {
+        case .ok:
+            return .done
+        case .unknown:
+            HelmLog.shared.warn(Self.moduleID, "the key's mode could not be read; not writing one")
+            return .failed
+        case .tooOpen(let fix):
+            guard keys.chmod(name, to: fix) else {
+                HelmLog.shared.warn(Self.moduleID, "the key's mode could not be changed")
+                return .failed
+            }
+            return .done
+        }
+    }
+
+    /// The same for `~/.ssh` itself, which has its own mode and its own fix.
+    func fixDirectoryPermissions() -> KeyOutcome {
+        defer { emitState() }
+        switch directoryVerdict() {
+        case .ok:
+            return .done
+        case .unknown:
+            HelmLog.shared.warn(Self.moduleID, "the ssh directory's mode could not be read")
+            return .failed
+        case .tooOpen(let fix):
+            guard keys.chmodDirectory(to: fix) else {
+                HelmLog.shared.warn(Self.moduleID, "the ssh directory's mode could not be changed")
+                return .failed
+            }
+            return .done
+        }
+    }
+
+    /// Into the agent, or back out of it.
+    ///
+    /// **An unreachable agent is answered before anything is attempted.** A
+    /// load against a dead socket fails in a way that reads like a problem with
+    /// the key, and the key is fine — there is no agent. The page says so and
+    /// offers nothing to press.
+    func actOnAgent(_ act: HostsCommand, on name: String) -> KeyOutcome {
+        defer { emitState() }
+        guard selected(name) != nil else {
+            HelmLog.shared.warn(Self.moduleID, "an agent act named a key that is not there")
+            return .notFound
+        }
+        guard agent.list() != .unreachable else {
+            HelmLog.shared.info(Self.moduleID, "there is no agent to load a key into")
+            return .agentUnreachable
+        }
+        let done = act == .agentLoad ? agent.load(name) : agent.unload(name)
+        if !done {
+            // An encrypted key is the ordinary reason a load fails, and it is
+            // not a defect: `ssh-add` wants the passphrase, and this path has no
+            // channel for one.
+            HelmLog.shared.info(Self.moduleID, "the agent refused: \(act.rawValue)")
+        }
+        return done ? .done : .failed
     }
 
     // MARK: - The config in the person's own home
@@ -235,6 +358,18 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
                 guard let request = EngineReply.decode(SSHConfigApply.self, from: command)
                 else { return Data() }
                 return EngineReply.encode(self.applySSH(request.text), for: command)
+            case .fixKeyPermissions:
+                guard let request = EngineReply.decode(KeyName.self, from: command)
+                else { return Data() }
+                return EngineReply.encode(self.fixPermissions(of: request.name), for: command)
+            case .fixDirectoryPermissions:
+                return EngineReply.encode(self.fixDirectoryPermissions(), for: command)
+            case .agentLoad, .agentUnload:
+                guard let request = EngineReply.decode(KeyName.self, from: command)
+                else { return Data() }
+                return EngineReply.encode(self.actOnAgent(name, on: request.name), for: command)
+            case .agentRefresh:
+                return EngineReply.encode(self.emitState(), for: command)
             case .settingsChanged:
                 self.emitState()
                 return Data()

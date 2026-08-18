@@ -39,6 +39,7 @@ struct HostsUIWire {
         let engine = HostsEngine(file: FixedFile(file),
                                  privileged: root,
                                  backups: MemoryBackups(backups),
+                                 keys: WireKeys(), agent: WireAgent(),
                                  now: { Date(timeIntervalSince1970: 0) },
                                  transport: transport)
         return HostsUIWire(engine: engine, transport: transport, privileged: root,
@@ -75,4 +76,33 @@ final class MemoryBackups: BackupPort, @unchecked Sendable {
     func list() -> [String] { lock.withLock { files.keys.sorted() } }
     func read(_ name: String) -> String? { lock.withLock { files[name] } }
     func delete(_ names: [String]) { lock.withLock { for name in names { files[name] = nil } } }
+}
+
+/// `~/.ssh` for the pages in this target: one key, at a mode `ssh` accepts.
+///
+/// Deliberately fixed. What the ports can do to the engine is the engine
+/// tests' subject; what is under test here is the page, and a page needs a
+/// keyring that is the same on every run. It is still a keyring a real Mac can
+/// have — one key, its public half beside it, the directory at 0700 — rather
+/// than an empty one, so the table has a row to draw.
+struct WireKeys: SSHKeysPort {
+    func names() -> [String]? { ["id_ed25519", "id_ed25519.pub", "known_hosts"] }
+    func facts(for pair: KeyInventory.Pair) -> KeyFacts {
+        KeyFacts(pair: pair,
+                 describeLine: "256 SHA256:abc123 me@mac (ED25519)",
+                 mode: 0o600,
+                 modified: Date(timeIntervalSince1970: 1_700_000_000),
+                 publicText: "ssh-ed25519 AAAA me@mac\n")
+    }
+    func directoryMode() -> mode_t? { 0o700 }
+    func chmod(_ name: String, to mode: mode_t) -> Bool { true }
+    func chmodDirectory(to mode: mode_t) -> Bool { true }
+}
+
+/// An agent that is running and holding nothing — the state a Mac is in after a
+/// restart, and the one where the load buttons are the point.
+struct WireAgent: SSHAgentPort {
+    func list() -> AgentList { .empty }
+    func load(_ name: String) -> Bool { true }
+    func unload(_ name: String) -> Bool { true }
 }

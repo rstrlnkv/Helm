@@ -222,3 +222,138 @@ final class FakeSSHConfig: SSHConfigPort, @unchecked Sendable {
     /// state for a file that belongs to the person, not a contrived one.
     func changeUnderTheApp(to newText: String?) { lock.withLock { text = newText } }
 }
+
+/// `~/.ssh`, as a fake that can be in the states the directory really reaches.
+///
+/// **It can be unreadable, and that is not an empty directory.** A Mac with no
+/// keys yet and a directory this process may not search are different pages,
+/// and a fake with only a list could represent one of them. It can also hand
+/// back a key whose mode nobody could read, a `ssh-keygen -l` line this build
+/// cannot parse, and a `chmod` that refuses — each of which is a branch in the
+/// engine that would otherwise have nothing behind it.
+final class FakeSSHKeys: SSHKeysPort, @unchecked Sendable {
+    private let lock = NSLock()
+    private var listing: [String]?
+    private var modes: [String: mode_t]
+    private var lines: [String: String]
+    private var publics: [String: String]
+    private var stamps: [String: Date]
+    private var dirMode: mode_t?
+    private var refuses = false
+    private var recorded: [String] = []
+
+    init(names: [String]? = ["id_ed25519", "id_ed25519.pub"],
+         modes: [String: mode_t] = ["id_ed25519": 0o600],
+         lines: [String: String] = ["id_ed25519": "256 SHA256:abc123 me@mac (ED25519)"],
+         publics: [String: String] = ["id_ed25519": "ssh-ed25519 AAAA me@mac\n"],
+         stamps: [String: Date] = [:],
+         directoryMode: mode_t? = 0o700) {
+        self.listing = names
+        self.modes = modes
+        self.lines = lines
+        self.publics = publics
+        self.stamps = stamps
+        self.dirMode = directoryMode
+    }
+
+    /// Every `chmod` this port was asked for, in order — read behind the lock
+    /// like everything else here.
+    var chmods: [String] { lock.withLock { recorded } }
+
+    /// The directory stops being readable. Ejecting a FileVault volume, a
+    /// permission taken away — ordinary, not contrived.
+    func becomesUnreadable() { lock.withLock { listing = nil } }
+    /// `chmod` refuses from now on: an immutable flag, a read-only volume.
+    func refusesToChangeModes() { lock.withLock { refuses = true } }
+
+    func names() -> [String]? { lock.withLock { listing } }
+
+    func facts(for pair: KeyInventory.Pair) -> KeyFacts {
+        lock.withLock {
+            KeyFacts(pair: pair,
+                     describeLine: pair.hasPublicHalf ? lines[pair.name] : nil,
+                     mode: modes[pair.name],
+                     modified: stamps[pair.name],
+                     publicText: pair.hasPublicHalf ? publics[pair.name] : nil)
+        }
+    }
+
+    func directoryMode() -> mode_t? { lock.withLock { dirMode } }
+
+    func chmod(_ name: String, to mode: mode_t) -> Bool {
+        lock.withLock {
+            recorded.append(name)
+            guard !refuses else { return false }
+            modes[name] = mode
+            return true
+        }
+    }
+
+    func chmodDirectory(to mode: mode_t) -> Bool {
+        lock.withLock {
+            recorded.append(".")
+            guard !refuses else { return false }
+            dirMode = mode
+            return true
+        }
+    }
+}
+
+/// The agent, in all three of its states — **and able to refuse a load.**
+///
+/// An encrypted key is the ordinary reason `ssh-add` says no: it wants a
+/// passphrase, and the plain load path has no channel for one. A fake that
+/// always succeeded would make the engine's refusal arm unreachable, and a fake
+/// whose answer never changed after a load would make «the badge comes on»
+/// untestable — so a load moves this one's own answer, the way the real agent's
+/// does.
+final class FakeSSHAgent: SSHAgentPort, @unchecked Sendable {
+    private let lock = NSLock()
+    private var answer: AgentList
+    private var refuses: Bool
+    private var recorded: [String] = []
+    /// What a successful load puts into the agent, keyed by name. A load of a
+    /// key this does not know still succeeds and holds nothing new, which is
+    /// the shape of a tool that reported success over something we cannot see.
+    private var fingerprints: [String: String]
+
+    init(_ answer: AgentList = .empty, refuses: Bool = false,
+         fingerprints: [String: String] = ["id_ed25519": "SHA256:abc123"]) {
+        self.answer = answer
+        self.refuses = refuses
+        self.fingerprints = fingerprints
+    }
+
+    var acts: [String] { lock.withLock { recorded } }
+
+    /// The agent goes away under the app — the socket dies, the process is
+    /// killed. A fact that stops being true on its own.
+    func goesAway() { lock.withLock { answer = .unreachable } }
+
+    func list() -> AgentList { lock.withLock { answer } }
+
+    func load(_ name: String) -> Bool {
+        lock.withLock {
+            recorded.append("load \(name)")
+            guard !refuses else { return false }
+            if let print = fingerprints[name] {
+                var held: [String] = []
+                if case .holding(let existing) = answer { held = existing }
+                answer = .holding(held.contains(print) ? held : held + [print])
+            }
+            return true
+        }
+    }
+
+    func unload(_ name: String) -> Bool {
+        lock.withLock {
+            recorded.append("unload \(name)")
+            guard !refuses else { return false }
+            if let print = fingerprints[name], case .holding(let held) = answer {
+                let left = held.filter { $0 != print }
+                answer = left.isEmpty ? .empty : .holding(left)
+            }
+            return true
+        }
+    }
+}

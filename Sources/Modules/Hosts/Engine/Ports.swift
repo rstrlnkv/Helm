@@ -70,3 +70,49 @@ public protocol SSHConfigPort: Sendable {
     /// holds for the privileged path and which is no less true here.
     func write(_ text: String) -> Bool
 }
+
+/// `~/.ssh` itself: what is in it, what its modes are, and the one write this
+/// module makes to a key — `chmod`.
+///
+/// **Every name crossing this protocol is a bare file name, never a path**, the
+/// rule `BackupPort` states next door and for the same reason: a name reaches
+/// the engine from a payload, so a `..` in one must not be able to become a
+/// directory on the way to a `chmod`. The implementations refuse a name that is
+/// not a plain component, and the engine independently refuses one that is not
+/// among the keys it has just listed. Neither check is the other's excuse.
+///
+/// **No method here opens a private key**, and there is no method that could:
+/// what a row shows comes from the `.pub` file, from `stat` and from
+/// `ssh-keygen -l`, and this protocol is the whole surface.
+public protocol SSHKeysPort: Sendable {
+    /// The file names in the directory, or nil when the directory could not be
+    /// read at all — missing, or one this process may not search. Nil is not an
+    /// empty directory: a Mac with no keys yet is a page that says «no keys»,
+    /// and a directory nobody could open is a page that must say something
+    /// else.
+    func names() -> [String]?
+    /// The four readings behind one row. Gathered here because they come from
+    /// four different system calls; decided in `KeyRow.row(from:agent:)`, which
+    /// is pure and can be asked about the missing ones.
+    func facts(for pair: KeyInventory.Pair) -> KeyFacts
+    /// `~/.ssh`'s own mode. `sshd` refuses an `authorized_keys` under a
+    /// group-writable directory, and the row for the directory is drawn from
+    /// this.
+    func directoryMode() -> mode_t?
+    func chmod(_ name: String, to mode: mode_t) -> Bool
+    func chmodDirectory(to mode: mode_t) -> Bool
+}
+
+/// `ssh-agent`, asked and told.
+///
+/// `list()` answers `AgentList`'s three states rather than an array, because
+/// «reachable and empty» and «no agent at all» decide whether a load button on
+/// the page can work — the `PowerSource.supply()` shape, two modules over.
+public protocol SSHAgentPort: Sendable {
+    func list() -> AgentList
+    /// True when the key went in. An encrypted key prompts for its passphrase,
+    /// which this method has no channel for and must not pretend to have: it
+    /// answers false, and the passphrase path is `PTYProcess`'s.
+    func load(_ name: String) -> Bool
+    func unload(_ name: String) -> Bool
+}

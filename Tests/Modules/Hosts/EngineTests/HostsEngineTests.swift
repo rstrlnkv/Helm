@@ -24,6 +24,7 @@ final class HostsEngineTests: XCTestCase {
         let engine = HostsEngine(file: file,
                                  privileged: FakePrivileged(.succeed, writingTo: file),
                                  backups: FakeBackups(),
+                                 keys: FakeSSHKeys(), agent: FakeSSHAgent(),
                                  now: { Date(timeIntervalSince1970: 1_755_000_000) },
                                  transport: LocalTransport())
         let reply = try await engine.transport.send(EngineCommand(name: "no-such-command"))

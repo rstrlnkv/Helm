@@ -102,3 +102,120 @@ public struct SystemSSHConfig: SSHConfigPort {
         return PrivateFile.write(data, to: url)
     }
 }
+
+/// `~/.ssh` on this Mac.
+///
+/// **The private half is never opened, and the design of `facts(for:)` is where
+/// that is enforced rather than promised.** `ssh-keygen -l -f` reads whichever
+/// file it is handed, so it is handed the `.pub`; a pair whose public half has
+/// been deleted therefore has no description at all, and the row says so. The
+/// alternative — pointing the tool at the private key — would put a passphrase
+/// prompt and the key's own bytes inside a listing that runs on every refresh.
+public struct SystemSSHKeys: SSHKeysPort {
+
+    private let directory: URL
+    /// Bounded, because both tools can sit. `ssh-keygen` on a file on a stalled
+    /// network mount does not return, and this runs on every state emission.
+    private let deadline: TimeInterval
+
+    public init(directory: URL = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent(".ssh"),
+                deadline: TimeInterval = 5) {
+        self.directory = directory
+        self.deadline = deadline
+    }
+
+    public func names() -> [String]? {
+        try? FileManager.default.contentsOfDirectory(atPath: directory.path)
+    }
+
+    public func facts(for pair: KeyInventory.Pair) -> KeyFacts {
+        let path = directory.appendingPathComponent(pair.name).path
+        let publicPath = path + ".pub"
+        let attributes = try? FileManager.default.attributesOfItem(atPath: path)
+        let publicText = pair.hasPublicHalf
+            ? (try? Data(contentsOf: URL(fileURLWithPath: publicPath)))
+                .flatMap { String(data: $0, encoding: .utf8) }
+            : nil
+        var described: String?
+        if pair.hasPublicHalf {
+            let run = HelmProcess.run("/usr/bin/ssh-keygen", ["-l", "-f", publicPath],
+                                      timeout: deadline)
+            described = run.status == 0 ? run.output : nil
+        }
+        return KeyFacts(pair: pair,
+                        describeLine: described,
+                        mode: (attributes?[.posixPermissions] as? NSNumber).map { mode_t($0.uint16Value) },
+                        modified: attributes?[.modificationDate] as? Date,
+                        publicText: publicText)
+    }
+
+    public func directoryMode() -> mode_t? {
+        let attributes = try? FileManager.default.attributesOfItem(atPath: directory.path)
+        return (attributes?[.posixPermissions] as? NSNumber).map { mode_t($0.uint16Value) }
+    }
+
+    public func chmod(_ name: String, to mode: mode_t) -> Bool {
+        guard let url = url(for: name) else { return false }
+        return setMode(mode, at: url.path)
+    }
+
+    public func chmodDirectory(to mode: mode_t) -> Bool { setMode(mode, at: directory.path) }
+
+    /// The one place a name becomes a path, and the gate on the way — the same
+    /// shape `SystemBackups.url(for:)` carries. A name arrives from a payload,
+    /// so it may be a plain component and nothing else: no separator, no `..`,
+    /// and not empty. The engine independently refuses a name that is not among
+    /// the keys it just listed; that check is about *which* key and this one is
+    /// about whether a name is a name at all.
+    private func url(for name: String) -> URL? {
+        guard !name.isEmpty, !name.contains("/"), name != "..", name != "." else { return nil }
+        return directory.appendingPathComponent(name)
+    }
+
+    private func setMode(_ mode: mode_t, at path: String) -> Bool {
+        do {
+            try FileManager.default.setAttributes([.posixPermissions: NSNumber(value: mode)],
+                                                  ofItemAtPath: path)
+            return true
+        } catch {
+            return false
+        }
+    }
+}
+
+/// `ssh-agent`, through `ssh-add`.
+///
+/// Bounded like the keys port and for a sharper reason: `ssh-add` talks to a
+/// socket, and a socket whose other end has gone away is exactly the state this
+/// port exists to report — a version of it that hung there would freeze every
+/// refresh of the page instead.
+public struct SystemSSHAgent: SSHAgentPort {
+
+    private let directory: URL
+    private let deadline: TimeInterval
+
+    public init(directory: URL = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent(".ssh"),
+                deadline: TimeInterval = 5) {
+        self.directory = directory
+        self.deadline = deadline
+    }
+
+    public func list() -> AgentList {
+        let run = HelmProcess.run("/usr/bin/ssh-add", ["-l"], timeout: deadline)
+        // A timeout is not an empty agent and not a full one: `AgentList.read`
+        // is given the status it can only read as unreachable, which is the
+        // honest answer for a socket that did not respond.
+        return AgentList.read(status: run.status, output: run.output)
+    }
+
+    public func load(_ name: String) -> Bool { run(["-q"], on: name) }
+    public func unload(_ name: String) -> Bool { run(["-d"], on: name) }
+
+    private func run(_ arguments: [String], on name: String) -> Bool {
+        guard !name.isEmpty, !name.contains("/"), name != "..", name != "." else { return false }
+        let path = directory.appendingPathComponent(name).path
+        return HelmProcess.run("/usr/bin/ssh-add", arguments + [path], timeout: deadline).status == 0
+    }
+}
