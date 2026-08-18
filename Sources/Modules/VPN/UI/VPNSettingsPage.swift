@@ -163,7 +163,16 @@ struct VPNSettingsPage: View {
                     // to, which is where a page's heading goes. The strip drew
                     // its own inside the card until 0.10.0-dev.11, which is two
                     // heading idioms on one page.
+                    // **The gap above it is paid here.** A grouped `Form`
+                    // spaces its sections by their footers, and the section
+                    // above this one has none once the closing notes moved
+                    // down — photographed on the running app, «Этот туннель»
+                    // sat 14 pt under the connection cards against the 28 the
+                    // page gives «Подключения». The connections block is a
+                    // header riding on this section's neighbour rather than a
+                    // real card, so there is nothing else to pay it.
                     HelmSectionTitle(VPNStr.thisTunnel)
+                        .padding(.top, HelmSpace.s7)
                 } footer: {
                     // Unconditional, unlike the footer above: the strip is
                     // about a connection, so this section existing is already

@@ -5,6 +5,32 @@ All notable changes to Helm are documented here. The format is loosely based on
 global changes, MINOR = new/polished features, PATCH = fixes. Every release
 bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 
+## [0.10.0-dev.12] — 2026-08-18
+
+### Changed
+- **The tunnel strip is four columns rather than four boxes.** The wells behind
+  the figures are gone — whitespace separates them, and the one rule left on the
+  card is the horizontal one over the verdict, which divides two different kinds
+  of thing rather than four of the same kind. Every column carries a note now
+  («incy · utun8», «с подъёма туннеля», «Мбит/с · 14 минут назад»), so the row
+  has one shape whichever readings exist, and the unit lives in one place rather
+  than in the label of one column and the value of two.
+- **The page keeps one kind of heading.** «Этот туннель» is a section title on
+  the pane, level with «Подключения», instead of a bold line inside the card;
+  the tunnel's name moved into the first column's note beside its interface.
+- **The two closing sentences sit under the strip**, not between it and the
+  connections. They qualify the page, and 80 pt of grey text between two groups
+  of cards was cutting apart the two things that belong together.
+
+### Fixed
+- **The uptime column existed for almost nobody.** Every rule fires during
+  `activate()`, before anything has read the tool's list, so a tunnel Helm
+  raised itself was judged against an empty cache and never stamped — which is
+  every tunnel a rule raises. The list is read first now, which also makes the
+  documented «don't hand a secret to a `--nc start` that changes nothing»
+  mitigation work at launch, where it never had. A tunnel already up before Helm
+  launched still carries no time, because nobody saw it come up.
+
 ## [0.10.0-dev.11] — 2026-08-18
 
 ### Fixed
