@@ -52,11 +52,11 @@ struct HelmPanelContent: View {
     /// The grid's natural height, so the scroll view never grows past its own
     /// content — otherwise a panel holding two widgets would be as tall as the
     /// screen.
-    @State private var gridHeight: CGFloat = 0
+    @State private var gridHeight: CGFloat?
     /// The pinned parts, measured rather than derived: what is pinned changes
     /// with the mode, and the grid gets whatever is left.
-    @State private var topChrome: CGFloat = 0
-    @State private var footerHeight: CGFloat = 0
+    @State private var topChrome: CGFloat?
+    @State private var footerHeight: CGFloat?
     /// The tile in the air, and everything the overlay needs to draw it.
     @State private var dragging: Widget?
     /// Pointer location in the grid's own space.
@@ -773,9 +773,13 @@ struct HelmPanelContent: View {
     /// draws reserves nothing — is `PanelGrid.roomForGrid`, where it has a test
     /// per rule; what stays here is which bars are on screen.
     private var availableForGrid: CGFloat {
+        // `?? 0`, not the bare optional: `roomForGrid` reads `nil` as «this
+        // bar is not drawn» and takes its gap away with it, so a bar that *is*
+        // drawn and has not been measured yet has to arrive as 0. The two
+        // meanings shared one spelling while these were `CGFloat = 0`.
         PanelGrid.roomForGrid(strip: stripHeight,
-                              top: showsTabStrip ? topChrome : nil,
-                              foot: showsFooterBlock ? footerHeight : nil)
+                              top: showsTabStrip ? (topChrome ?? 0) : nil,
+                              foot: showsFooterBlock ? (footerHeight ?? 0) : nil)
     }
 
     private func card(_ parts: Candidates, _ items: [Widget]) -> some View {
@@ -804,14 +808,7 @@ struct HelmPanelContent: View {
                     // that change when the mode is entered — the strip appears,
                     // the edit bar appears — so the panel animated its middle
                     // and snapped its ends.
-                    .onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
-                        guard measured > 0, topChrome != measured else { return }
-                        if topChrome == 0 {
-                            topChrome = measured
-                        } else {
-                            withAnimation(HelmMotion.disclosure) { topChrome = measured }
-                        }
-                    }
+                    .helmMeasuredHeight($topChrome)
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: PanelGrid.gap) {
@@ -826,39 +823,26 @@ struct HelmPanelContent: View {
                                   of: { $0.frame(in: .named(Self.stripSpace)).origin }) { origin in
                     if gridOrigin != origin { gridOrigin = origin }
                 }
-                // Written **inside** a transaction, which is the whole fix.
+                // What the card looked like before this measurement travelled
+                // in a transaction: the list unfolded over 0.3 s and the panel
+                // reached its full height in one frame. The law and the
+                // measurements are on `helmMeasuredHeight`.
                 //
-                // `onGeometryChange` hands its measurement over outside the one
-                // that is running, so the card's height arrived unanimated
-                // while the rows it measured were still sliding: the list
-                // unfolded over 0.3 s and the panel reached its full height in
-                // one frame. `.animation(_, value:)` on the frame does not
-                // rescue it — measured against the real view, that variant is
-                // indistinguishable from no animation at all, and only the
-                // explicit transaction ramps. `DisclosureProbe` holds both.
-                .onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
-                    guard measured > 0, gridHeight != measured else { return }
-                    // The first measurement is not a change, it is the answer.
-                    //
-                    // Until it lands the scroll view has no height of its own
-                    // and takes everything it is offered — the whole strip —
-                    // so animating that first write plays the card collapsing
-                    // from full height to its content while the card is pinned
-                    // at the top. Opening the panel looked like the block
-                    // unfolding from its middle in both directions.
-                    if gridHeight == 0 {
-                        gridHeight = measured
-                    } else {
-                        withAnimation(HelmMotion.disclosure) { gridHeight = measured }
-                    }
-                }
+                // Why the first measurement is left alone, in this card's own
+                // terms: until it lands the scroll view has no height of its
+                // own and takes everything it is offered — the whole strip — so
+                // animating that first write plays the card collapsing from
+                // full height to its content while the card is pinned at the
+                // top. Opening the panel looked like the block unfolding from
+                // its middle in both directions.
+                .helmMeasuredHeight($gridHeight)
             }
             // An explicit height, not a `maxHeight`. A `ScrollView`'s ideal
             // height is not its content's, so in a stack that is free to be
             // short it took a few hundred points and clipped the grid halfway
             // through a widget while the card had room to spare. This is the
             // smaller of what the grid needs and what the strip has left.
-            .frame(height: gridHeight > 0 ? min(gridHeight, availableForGrid) : nil)
+            .frame(height: gridHeight.map { min($0, availableForGrid) })
             .scrollIndicators(.automatic)
             // The way out sits with the other two ways out, at the foot of the
             // panel. It was pinned to the top, a hundred points from «Настройки»
@@ -891,14 +875,7 @@ struct HelmPanelContent: View {
                     }
                 }
             }
-            .onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
-                guard measured > 0, footerHeight != measured else { return }
-                if footerHeight == 0 {
-                    footerHeight = measured
-                } else {
-                    withAnimation(HelmMotion.disclosure) { footerHeight = measured }
-                }
-            }
+            .helmMeasuredHeight($footerHeight)
         }
         .padding(PanelGrid.padding)
         .frame(width: helmPanelWidth)

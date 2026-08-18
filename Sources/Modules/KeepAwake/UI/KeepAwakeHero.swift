@@ -115,14 +115,13 @@ struct KeepAwakeHero: View {
     let announce: (String) -> Void
 
     /// Natural height of whichever state is showing, so the block can ramp
-    /// between two of them instead of snapping. Written inside the transaction
-    /// where it lands, never at the change that caused it — `onGeometryChange`
-    /// hands its value over *outside* the running transaction, and a height
-    /// written there is a jump however many animations surround the button.
-    @State private var stateHeight: CGFloat = 0
+    /// between two of them instead of snapping. `nil` until the first one
+    /// lands; the law about writing it inside the transaction where it *lands*
+    /// is on `helmMeasuredHeight`, which does it.
+    @State private var stateHeight: CGFloat?
     /// The same measurement for the suppression row, which grows and shrinks on
     /// the engine's say-so rather than on a press.
-    @State private var suppressedHeight: CGFloat = 0
+    @State private var suppressedHeight: CGFloat?
 
     /// What is *drawn*, as against what is true. Everything below reads these
     /// and nothing draws from the properties directly.
@@ -194,18 +193,13 @@ struct KeepAwakeHero: View {
         VStack(spacing: 0) {
             states
                 .frame(maxWidth: .infinity)
-                .onGeometryChange(for: CGFloat.self, of: \.size.height) { height in
-                    guard height > 0, stateHeight != height else { return }
-                    // The first measurement is not a change. Animating it plays
-                    // the hero collapsing from whatever the unmeasured layout
-                    // happened to be, on the first frame of the page.
-                    if stateHeight == 0 {
-                        stateHeight = height
-                    } else {
-                        withAnimation(HelmMotion.disclosure) { stateHeight = height }
-                    }
-                }
-                .frame(height: stateHeight > 0 ? stateHeight : nil, alignment: .top)
+                // The measurement alone, and **not** `helmAccordion`: this
+                // block has no open state and never collapses. What it needs is
+                // to be the size of whatever it is showing, so that the
+                // cross-fade has an animating frame for its clip to be taken
+                // from — which is the next two lines and their own reason.
+                .helmMeasuredHeight($stateHeight)
+                .frame(height: stateHeight, alignment: .top)
                 // The pair, not either half. The outgoing state is a line
                 // taller than the one arriving, and without an animating frame
                 // for the clip to be taken from it goes on drawing past the
@@ -227,21 +221,13 @@ struct KeepAwakeHero: View {
             // nothing, and there is a third thing to read. It ends by itself
             // when the condition drops, so there is nothing to dismiss.
             //
-            // Not an `if`: removing rows from the hierarchy takes the page's
-            // height with them in one frame, and the row keeps drawing over
-            // whatever is below while it goes. The canonical accordion instead
-            // — the row always exists, its natural height is measured, and the
-            // height animates between 0 and that number.
+            // Not an `if`, but the accordion: the row always exists and its
+            // height animates between 0 and its own measurement. `shownSuppressed`
+            // rather than the incoming flag is what the accordion's «the
+            // transaction comes from the caller» means for a value an engine
+            // publishes — the pair is written below.
             suppressionRow
-                .onGeometryChange(for: CGFloat.self, of: \.size.height) { height in
-                    if height > 0 { suppressedHeight = height }
-                }
-                .frame(height: shownSuppressed ? suppressedHeight : 0, alignment: .top)
-                .clipped()
-                .allowsHitTesting(shownSuppressed)
-                // Clipped is not hidden: VoiceOver read the row while it was
-                // collapsed to nothing.
-                .accessibilityHidden(!shownSuppressed)
+                .helmAccordion(open: shownSuppressed, height: $suppressedHeight)
         }
         // Where the two values land, not where they were set: the engine
         // decides both and publishes them, and a transaction is the only thing
