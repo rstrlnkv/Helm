@@ -53,26 +53,29 @@ public enum SSHConfigFile {
         public let index: Int
     }
 
+    /// **Four, and no more, is a decision.** Every other directive is copied
+    /// verbatim, so the set of things Helm can get wrong is the set of things it
+    /// can write.
+    ///
+    /// Beside `Field` rather than inside it: one level of nesting is what this
+    /// house's linter allows, and the name reads no worse for it.
+    public enum FieldName: String, CaseIterable, Sendable {
+        case hostName = "HostName"
+        case user = "User"
+        case port = "Port"
+        case identityFile = "IdentityFile"
+
+        /// `ssh_config` keywords are case-insensitive, and people write them
+        /// every way there is.
+        static func named(_ keyword: String) -> FieldName? {
+            allCases.first { $0.rawValue.lowercased() == keyword.lowercased() }
+        }
+    }
+
     /// One of the four directives this module edits.
     public struct Field: Equatable, Sendable {
 
-        /// **Four, and no more, is a decision.** Every other directive is
-        /// copied verbatim, so the set of things Helm can get wrong is the set
-        /// of things it can write.
-        public enum Name: String, CaseIterable, Sendable {
-            case hostName = "HostName"
-            case user = "User"
-            case port = "Port"
-            case identityFile = "IdentityFile"
-
-            /// `ssh_config` keywords are case-insensitive, and people write
-            /// them every way there is.
-            static func named(_ keyword: String) -> Name? {
-                allCases.first { $0.rawValue.lowercased() == keyword.lowercased() }
-            }
-        }
-
-        public let name: Name
+        public let name: FieldName
         /// The keyword as written, so `hostname` stays lower-case.
         let keyword: String
         let indent: String
@@ -165,8 +168,17 @@ public enum SSHConfigFile {
 
     /// Splits a directive line into indent, keyword, separator, value and
     /// trailing — or nil when the line holds no keyword at all.
-    private static func parts(_ body: String)
-        -> (indent: String, keyword: String, separator: String, rest: String)? {
+    /// The pieces of a directive line. A struct rather than a tuple: four
+    /// members is one past what this house's linter allows, and the reason it
+    /// allows two is that a longer tuple is read by position at every call.
+    private struct Parts {
+        let indent: String
+        let keyword: String
+        let separator: String
+        let rest: String
+    }
+
+    private static func parts(_ body: String) -> Parts? {
         let indent = String(body.prefix { $0 == " " || $0 == "\t" })
         let afterIndent = String(body.dropFirst(indent.count))
         guard let first = afterIndent.first, first != "#" else { return nil }
@@ -188,7 +200,7 @@ public enum SSHConfigFile {
                 break
             }
         }
-        return (indent, keyword, separator, rest)
+        return Parts(indent: indent, keyword: keyword, separator: separator, rest: rest)
     }
 
     private static func host(from body: String, ending: String, index: Int) -> Host? {
@@ -207,7 +219,7 @@ public enum SSHConfigFile {
 
     private static func field(from body: String, ending: String,
                               host: Int?, index: Int) -> Field? {
-        guard let parts = parts(body), let name = Field.Name.named(parts.keyword),
+        guard let parts = parts(body), let name = FieldName.named(parts.keyword),
               !parts.rest.isEmpty else { return nil }
         let (value, trailing) = split(value: parts.rest)
         return Field(name: name, keyword: parts.keyword, indent: parts.indent,
@@ -271,7 +283,7 @@ public enum SSHConfigFile {
     /// place in the file to argue about — and this refuses it rather than
     /// guessing where a new line goes.
     @discardableResult
-    public static func set(_ value: String, of name: Field.Name, ofHost host: Int,
+    public static func set(_ value: String, of name: FieldName, ofHost host: Int,
                            in document: inout Document) -> Bool {
         guard isWritable(value) else { return false }
         guard let position = document.lines.firstIndex(where: { line in

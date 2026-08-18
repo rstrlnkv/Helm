@@ -172,3 +172,53 @@ final class FakeBackups: BackupPort, @unchecked Sendable {
     /// Listed, and gone or unreadable by the time somebody asks for it.
     func makeUnreadable(_ name: String) { lock.withLock { _ = unreadable.insert(name) } }
 }
+
+/// `~/.ssh/config`, as a port that can be what the real one can.
+///
+/// **It can lie**, which is the capability the read-back exists for: a write
+/// that returns success over a file it did not change. A fake that always wrote
+/// what it was given would make `notVerified` a branch no test could reach —
+/// the shape CLAUDE.md calls a fake simpler than the thing it stands for. It can
+/// also refuse outright, and it counts its writes, so «refused before writing»
+/// is a fact a test can assert rather than infer.
+final class FakeSSHConfig: SSHConfigPort, @unchecked Sendable {
+
+    enum Behaviour: Sendable {
+        case ordinary
+        /// The write reports success and the file stays as it was.
+        case lie
+        case refuse
+    }
+
+    let url: URL
+    private let lock = NSLock()
+    private var text: String?
+    private let behaviour: Behaviour
+    private var written = 0
+
+    init(url: URL, text: String?, behaviour: Behaviour = .ordinary) {
+        self.url = url
+        self.text = text
+        self.behaviour = behaviour
+    }
+
+    /// How many times a write was attempted, whatever it came to.
+    var writes: Int { lock.withLock { written } }
+
+    func read() -> String? { lock.withLock { text } }
+
+    func write(_ newText: String) -> Bool {
+        lock.withLock {
+            written += 1
+            switch behaviour {
+            case .ordinary: text = newText; return true
+            case .lie: return true
+            case .refuse: return false
+            }
+        }
+    }
+
+    /// Somebody edited the file in an editor, or it went away. An ordinary
+    /// state for a file that belongs to the person, not a contrived one.
+    func changeUnderTheApp(to newText: String?) { lock.withLock { text = newText } }
+}

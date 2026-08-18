@@ -24,7 +24,7 @@ final class SSHConfigEditingTests: XCTestCase {
 
     """
 
-    private func edited(_ text: String, host: Int, field: SSHConfigFile.Field.Name,
+    private func edited(_ text: String, host: Int, field: SSHConfigFile.FieldName,
                         to value: String) -> (String, Bool) {
         var document = SSHConfigFile.parse(text)
         let ok = SSHConfigFile.set(value, of: field, ofHost: host, in: &document)

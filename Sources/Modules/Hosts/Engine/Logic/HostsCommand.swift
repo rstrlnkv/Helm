@@ -11,6 +11,8 @@ public enum HostsCommand: String, CaseIterable, Sendable {
     case applyHosts
     /// Put a backup back, through the same privileged path.
     case restoreHosts
+    /// Write `~/.ssh/config`. No dialog: it is the person's own file.
+    case applySSHConfig
     case settingsChanged
 }
 
@@ -40,4 +42,31 @@ public struct HostsApply: Codable, Sendable {
 public struct HostsRestore: Codable, Sendable {
     public let backupID: String
     public init(backupID: String) { self.backupID = backupID }
+}
+
+/// What `applySSHConfig` carries: the whole file, as the person means it to be.
+///
+/// Its own type rather than `HostsApply` reused. The two payloads have the same
+/// shape today and mean different things — one is bound for a file owned by
+/// root through a privileged sentence, the other for a file in the person's own
+/// home — and a type that means two things is the shape this house splits on
+/// sight. It also stops a command's payload being decoded by the wrong arm and
+/// looking plausible.
+public struct SSHConfigApply: Codable, Sendable {
+    public let text: String
+    public init(text: String) { self.text = text }
+}
+
+/// What writing the config came to.
+///
+/// Four answers rather than a `Bool`, because the page says a different sentence
+/// for each and two of them are not failures of the write at all: `outOfScope`
+/// is Helm refusing to follow a path out of the home directory, and
+/// `notVerified` is a write that reported success over a file that did not
+/// change.
+public enum SSHConfigOutcome: String, Codable, Sendable {
+    case applied
+    case failed
+    case notVerified
+    case outOfScope
 }

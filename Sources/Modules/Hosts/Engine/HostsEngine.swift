@@ -18,6 +18,10 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
     private let now: @Sendable () -> Date
     private let keptBackups: Int
 
+    private let sshConfig: SSHConfigPort
+    /// The home directory the gate judges against — injected so a test can own
+    /// a home of its own rather than the machine's.
+    private let home: URL
     private let localTransport: LocalTransport
     public let transport: EngineTransport
 
@@ -28,12 +32,16 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
     public init(file: HostsFilePort = SystemHostsFile(),
                 privileged: PrivilegedPort = SystemPrivileged(),
                 backups: BackupPort = SystemBackups(),
+                sshConfig: SSHConfigPort = SystemSSHConfig(),
+                home: URL = FileManager.default.homeDirectoryForCurrentUser,
                 now: @escaping @Sendable () -> Date = { Date() },
                 keptBackups: Int = 10,
                 transport: LocalTransport = LocalTransport()) {
         self.file = file
         self.privileged = privileged
         self.backups = backups
+        self.sshConfig = sshConfig
+        self.home = home
         self.now = now
         self.keptBackups = keptBackups
         self.localTransport = transport
@@ -62,14 +70,59 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
     @discardableResult
     private func emitState() -> HostsState {
         let text = file.read()
+        let ssh = sshConfig.read()
         let state = HostsState(hostsText: text ?? "", hostsReadable: text != nil,
-                               backups: backups.list())
+                               backups: backups.list(),
+                               sshText: ssh ?? "", sshReadable: ssh != nil,
+                               sshWritable: mayWriteSSH())
         localTransport.emit(HostsEvent.state, encoding: state)
         return state
     }
 
     private func emitOperation(_ operation: HostsOperation) {
         localTransport.emit(HostsEvent.operation, encoding: operation)
+    }
+
+    // MARK: - The config in the person's own home
+
+    /// Whether the gate would let a write through, asked wherever the page or
+    /// the write itself needs to know — one reader, so the button and the
+    /// refusal cannot come to different conclusions.
+    private func mayWriteSSH() -> Bool {
+        SSHFileScope.mayWrite(sshConfig.url, home: home,
+                              under: home.appendingPathComponent(".ssh"))
+    }
+
+    /// Gate, write, read back, compare.
+    ///
+    /// **The read-back is not ceremony.** A write that returns success over a
+    /// file that did not change is exactly the shape the privileged path was
+    /// caught in, and it is reachable here too — a full disk, a file replaced
+    /// under the app between the gate and the write, a port that answers for a
+    /// path it did not touch. Reporting success is a claim; the file is the
+    /// evidence.
+    ///
+    /// No backup and no dialog: the file is the person's own, and this is the
+    /// difference tab 2 has from tab 1 all the way down.
+    private func applySSH(_ text: String) -> SSHConfigOutcome {
+        HelmActivity.phase("hosts.ssh.apply") {
+            defer { emitState() }
+            guard mayWriteSSH() else {
+                HelmLog.shared.warn(Self.moduleID,
+                                    "the ssh config path is outside what may be written")
+                return .outOfScope
+            }
+            guard sshConfig.write(text) else {
+                HelmLog.shared.warn(Self.moduleID, "the ssh config could not be written")
+                return .failed
+            }
+            guard sshConfig.read() == text else {
+                HelmLog.shared.error(Self.moduleID,
+                                     "the write reported success and the file is not what was sent")
+                return .notVerified
+            }
+            return .applied
+        }
     }
 
     // MARK: - Writing
@@ -178,6 +231,10 @@ public final class HostsEngine: ModuleEngine, @unchecked Sendable {
                 guard let request = EngineReply.decode(HostsRestore.self, from: command)
                 else { return Data() }
                 return EngineReply.encode(await self.restore(request.backupID), for: command)
+            case .applySSHConfig:
+                guard let request = EngineReply.decode(SSHConfigApply.self, from: command)
+                else { return Data() }
+                return EngineReply.encode(self.applySSH(request.text), for: command)
             case .settingsChanged:
                 self.emitState()
                 return Data()

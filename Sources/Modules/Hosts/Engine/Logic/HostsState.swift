@@ -18,11 +18,24 @@ public struct HostsState: Codable, Sendable, Equatable {
     public var hostsReadable: Bool
     /// The copies this module holds, oldest first.
     public var backups: [String]
+    /// `~/.ssh/config` as it is on disk right now.
+    public var sshText: String
+    /// False when that file could not be read at all — missing, or not UTF-8.
+    /// Distinct from an empty config for the reason `hostsReadable` is distinct
+    /// from an empty hosts file.
+    public var sshReadable: Bool
+    /// Whether Helm may write it (`SSHFileScope`). A page that offers Apply on a
+    /// file it will refuse to write is a page that lies at the last moment.
+    public var sshWritable: Bool
 
-    public init(hostsText: String = "", hostsReadable: Bool = true, backups: [String] = []) {
+    public init(hostsText: String = "", hostsReadable: Bool = true, backups: [String] = [],
+                sshText: String = "", sshReadable: Bool = true, sshWritable: Bool = true) {
         self.hostsText = hostsText
         self.hostsReadable = hostsReadable
         self.backups = backups
+        self.sshText = sshText
+        self.sshReadable = sshReadable
+        self.sshWritable = sshWritable
     }
 
     /// The two fields that shipped first are read outright; anything added
@@ -34,6 +47,12 @@ public struct HostsState: Codable, Sendable, Equatable {
         hostsText = try container.decode(String.self, forKey: .hostsText)
         hostsReadable = try container.decode(Bool.self, forKey: .hostsReadable)
         backups = try container.decodeIfPresent([String].self, forKey: .backups) ?? []
+        // Added with tab 2, so every one of them is read with `decodeIfPresent`:
+        // a payload from the build before it must still decode, or the page
+        // loses the hosts file as well over a key about SSH.
+        sshText = try container.decodeIfPresent(String.self, forKey: .sshText) ?? ""
+        sshReadable = try container.decodeIfPresent(Bool.self, forKey: .sshReadable) ?? true
+        sshWritable = try container.decodeIfPresent(Bool.self, forKey: .sshWritable) ?? true
     }
 }
 
