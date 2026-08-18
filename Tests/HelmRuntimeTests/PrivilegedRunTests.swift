@@ -11,11 +11,16 @@ final class PrivilegedRunTests: XCTestCase {
         XCTAssertEqual(outcome, .declined)
     }
 
-    /// AppleScript's own error number, in case the wording is localized —
-    /// `osascript` reports errors in the user's language.
+    /// AppleScript's own error number, because the wording is localized —
+    /// `osascript` reports errors in the user's language. Verbatim from row 2
+    /// of the measurement in `PrivilegedRun.arguments(for:)`: it came back in
+    /// Russian on the machine it was run on, which is why nothing in the
+    /// sentence beside the number can be matched on.
     func testTheCancelIsRecognisedByItsNumberToo() {
-        XCTAssertEqual(PrivilegedRun.outcome(status: 1, output: "Пользователь отменил. (-128)"),
-                       .declined)
+        XCTAssertEqual(
+            PrivilegedRun.outcome(status: 1,
+                                  output: "0:17: execution error: Отменено пользователем. (-128)"),
+            .declined)
     }
 
     func testARealFailureCarriesItsStatus() {
@@ -65,5 +70,41 @@ final class ThePrivilegedRunHearsTheCancelTests: XCTestCase {
         let command = "/bin/echo \"hi\""
         let arguments = PrivilegedRun.arguments(for: command)
         XCTAssertEqual(arguments.last, AppleScript.administratorShellScript(command))
+    }
+}
+
+/// `do shell script` puts the failing command's **own output** inside the error
+/// it raises, and that output is text this app never wrote and cannot predict.
+/// So the cancel has to be matched on the shape `osascript` actually prints —
+/// `(-128)`, parentheses included — and not on a bare `-128` that any path,
+/// any version string and any other error number can carry through.
+final class TheCancelIsMatchedOnItsShapeTests: XCTestCase {
+
+    /// A path with the digits in it. The whole message is somebody else's,
+    /// arriving verbatim inside AppleScript's error; a bare-substring match
+    /// reads this as «the person pressed Cancel» and reports a failed write as
+    /// a polite refusal.
+    func testDigitsInsideBorrowedOutputAreNotACancel() {
+        XCTAssertEqual(
+            PrivilegedRun.outcome(status: 1,
+                                  output: "0:0: execution error: rm: /tmp/build-128/x: "
+                                        + "No such file or directory (1)"),
+            .failed(1))
+    }
+
+    /// A different number that merely opens with the same digits. The match is
+    /// the closing parenthesis as much as the opening one.
+    func testALongerNumberBeginningWithTheSameDigitsIsNotACancel() {
+        XCTAssertEqual(PrivilegedRun.outcome(status: 1, output: "execution error: something (-1280)"),
+                       .failed(1))
+    }
+
+    /// Row 3 of the measurement in `PrivilegedRun.arguments(for:)`: a genuine
+    /// script error, verbatim, and it is not a cancel.
+    func testAScriptErrorThatIsNotACancelKeepsItsStatus() {
+        XCTAssertEqual(
+            PrivilegedRun.outcome(status: 1,
+                                  output: "0:18: execution error: Не удается получить «script». (-1728)"),
+            .failed(1))
     }
 }

@@ -20,9 +20,18 @@ public enum PrivilegedOutcome: Equatable, Sendable {
 /// Homebrew's `OSAPrivilegedRunner` adopting it is a separate change.
 public enum PrivilegedRun {
 
-    /// AppleScript's number for a cancelled dialog. The *wording* is localized
-    /// and cannot be matched on; the number is not.
-    private static let userCancelled = "-128"
+    /// AppleScript's number for a cancelled dialog, in the shape `osascript`
+    /// prints it. The *wording* is localized and cannot be matched on; the
+    /// number is not.
+    ///
+    /// **The parentheses are load-bearing.** `do shell script` puts the failing
+    /// command's own output inside the error it raises, so the text this match
+    /// runs over is not all Helm's — a path like `/tmp/build-128/x` carries a
+    /// bare `-128` through, and reading that as a cancel reports a failed write
+    /// to root as a polite refusal. `(-128)` is the whole token, closing
+    /// parenthesis included, so a longer number opening with the same digits is
+    /// not it either.
+    private static let userCancelled = "(-128)"
 
     /// Ask root to run `command`, through the system's own dialog.
     ///
@@ -47,6 +56,28 @@ public enum PrivilegedRun {
     /// number is written to a stream nobody reads, `outcome` sees status 1 with
     /// an empty string, and every cancel is reported as a failed write — a
     /// three-way reading resting on something that is not there.
+    ///
+    /// That paragraph rested on the man page when it was written. It was run on
+    /// this machine on 2026-08-17, and the man page holds — three invocations,
+    /// each reported as exit status, stdout, stderr:
+    ///
+    /// - `osascript -e 'error number -128'` → 1, stdout **empty**, stderr
+    ///   `0:17: execution error: Отменено пользователем. (-128)`
+    /// - `osascript -s o -e 'error number -128'` → 1, stdout
+    ///   `0:17: execution error: Отменено пользователем. (-128)`, stderr empty
+    /// - `osascript -s o -e 'error number -1728'` → 1, stdout
+    ///   `0:18: execution error: Не удается получить «script». (-1728)`, stderr
+    ///   empty
+    ///
+    /// Row 1 is the defect the flag exists to close: the only sign of a cancel
+    /// went to the stream `HelmProcess` discards. Row 3 shows an ordinary script
+    /// error takes the same route, so `outcome` reads one stream for both and
+    /// tells them apart by number.
+    ///
+    /// And the message came back **in Russian** — not because the flag does
+    /// that, but because this Mac runs in Russian. That is the independent
+    /// proof that matching the number rather than the words was right: nothing
+    /// in the sentence beside `(-128)` is the same on the next person's Mac.
     ///
     /// The escaping stays in `AppleScript`: one place in this app decides
     /// whether root runs a command or an attacker's continuation of it.
