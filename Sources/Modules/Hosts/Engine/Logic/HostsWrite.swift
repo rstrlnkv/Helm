@@ -76,8 +76,11 @@ public enum HostsWrite {
     ///
     /// The arithmetic lives here because the ceiling is a fact about the
     /// *sentence*, and only this file knows the sentence's shape — a caller
-    /// computing it would be re-deriving the command.
-    static func fits(_ text: String) -> Bool {
+    /// computing it would be re-deriving the command. `public` for that reason
+    /// and no other: the page says «too large» the moment the file is read,
+    /// which is a target away, and the alternative is the caller re-deriving
+    /// the ceiling from a command it cannot see.
+    public static func fits(_ text: String) -> Bool {
         let bytes = text.utf8.count
         // Base64 is 4 characters per 3 bytes, rounded up to a whole group.
         let payload = 4 * ((bytes + 2) / 3)

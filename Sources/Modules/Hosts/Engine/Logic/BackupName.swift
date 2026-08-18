@@ -36,6 +36,39 @@ public enum BackupName {
         name.hasSuffix(suffix) && (name as NSString).lastPathComponent == name
     }
 
+    /// The moment a name was written for, or `nil` for anything that is not one
+    /// of ours.
+    ///
+    /// **The name orders the history and this does not order anything** — the
+    /// doc above still stands, nothing parses a date back to sort by it. This
+    /// exists because a menu of copies has to say *when*, and the stamp is UTC:
+    /// a page that cut the digits out of the name would be telling somebody in
+    /// Vladivostok about a Greenwich afternoon. `HelmDates` writes it in the
+    /// reader's zone and language once it is a `Date`.
+    ///
+    /// Read with a fixed-format formatter on `en_US_POSIX`, for the reason
+    /// `HelmDates.storage` carries: any other locale answers to the reader's
+    /// calendar, and a Japanese one reads this as an era year and returns nil.
+    public static func date(of name: String) -> Date? {
+        guard isOurs(name) else { return nil }
+        return stamp.date(from: String(name.dropLast(suffix.count)))
+    }
+
+    /// Built once, and shared by nothing else: it is the inverse of the format
+    /// string above, and the two belong side by side.
+    private static let stamp: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = .gmt
+        formatter.dateFormat = "yyyy-MM-dd'T'HHmmss'Z'"
+        // No `isLenient = false` here, and the line was written and then
+        // measured out: it is the default, and setting it either way parses
+        // «2026-13-45T999999Z» to nil just the same. A line whose comment
+        // claims a guard it does not provide is worse than no line.
+        return formatter
+    }()
+
     /// The names to delete, oldest first. Anything that is not one of ours is
     /// never named — a person's own file in that folder is theirs.
     public static func pruned(_ names: [String], keeping limit: Int) -> [String] {

@@ -4,6 +4,7 @@ import SwiftUI
 import XCTest
 @testable import HelmApp
 @testable import HelmUI
+@testable import Module_Hosts_UI
 @testable import Module_Leftovers_UI
 @testable import Module_Uninstaller_UI
 
@@ -97,15 +98,23 @@ final class AnImposedPickerWidthFitsItsLabelsTests: XCTestCase {
     /// a fact about everything above it, so an edit elsewhere in the page would
     /// break the record without touching the picker. Changing the width does break
     /// it, which is the moment it has to be measured again.
-    /// **One entry, and it is the computed one.** Leftovers' written 180 came off on
-    /// 2026-08-13 in favour of `.fixedSize()` — the sixth page to have that figure
-    /// and the last one in the tree — so what is left here is a width the labels
-    /// themselves answer. The scan above is what keeps a seventh from arriving
-    /// unmeasured: a new hand-written width fails `testTheScanAndTheRecordAgree`
+    /// **Two entries, and both are the computed one.** Leftovers' written 180 came
+    /// off on 2026-08-13 in favour of `.fixedSize()` — the sixth page to have that
+    /// figure and the last one in the tree — so what is left here is a width the
+    /// labels themselves answer. The scan above is what keeps a hand-written one
+    /// from arriving unmeasured: a new number fails `testTheScanAndTheRecordAgree`
     /// until somebody records the labels it is supposed to fit.
+    ///
+    /// The hosts page's «Table / Plain text» is the second, added with the page on
+    /// 2026-08-18. The `ModulePageRender` reading can see this control — it is a
+    /// segmented picker, which AppKit draws — so it is in that ratchet as well; it
+    /// is recorded here because this is the file that asks whether an imposed width
+    /// fits the labels *it* draws, and the answer for a computed width has to be
+    /// measured rather than assumed.
     private static let recorded: [String: @Sendable () -> [String]] = [
         "LogView.swift|HelmPickerWidth": { [AppStr.logLevelAll, AppStr.logLevelWarnings,
                                             AppStr.logLevelErrors] },
+        "HostsSettingsPage.swift|HelmPickerWidth": { [HostsStr.tableView, HostsStr.textView] },
     ]
 
     /// **Measured 2026-08-11, three consecutive runs in agreement.** Both numbers
@@ -138,8 +147,14 @@ final class AnImposedPickerWidthFitsItsLabelsTests: XCTestCase {
     /// in `recorded` is computed from the labels it draws.
     ///
     /// Both numbers are only ever lowered, by the commit that lowers them.
+    /// **`tight` is 2 from 2026-08-18**, and the second is the hosts page's
+    /// «Table / Plain text», there for exactly the reason the first one is: a width
+    /// computed from the labels *is* what the control asks for, so the ratio is
+    /// 1.00 × in all eight languages by construction. Padding it to make this
+    /// number stay 1 would put back the defect `HelmPickerWidth` exists to end.
+    /// `clipping` is unmoved at 0, which is the half of this pair that can fall.
     private static let recordedClipping = 0
-    private static let recordedTight = 1
+    private static let recordedTight = 2
     private static let inflation: CGFloat = 1.4
 
     /// Every file a picker can be written in: the shared enumeration the ladder

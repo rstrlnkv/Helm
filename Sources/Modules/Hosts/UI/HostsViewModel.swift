@@ -147,19 +147,32 @@ import Module_Hosts_Engine
     /// which reaches the person as a field that snapped back with no reason
     /// given. So this returns it, and `lastRefusal` is what the page draws.
     ///
-    /// Only a change that happened is re-rendered. Re-rendering a document an
-    /// editor declined to change writes bytes that edit refused to write, and
-    /// publishes `text` under a caret that is mid-word.
+    /// Only a change that happened is published, and *published* is the word:
+    /// what a spurious write to a `@Published` property costs is a body pass,
+    /// and a body pass writes every binding on the page back into the control
+    /// it is bound to — under a caret that is mid-word.
+    ///
+    /// **Which is why «applied» is not the same question as «changed».** A
+    /// names field is bound to `names.joined(separator: " ")`, so the space
+    /// between two names is typed through this editor: «localhost » splits back
+    /// to the one name already there, the edit applies, and the re-render is
+    /// byte-for-byte the document on screen. Publishing it takes the space away
+    /// as fast as it is typed, and a second name cannot be entered at all. So
+    /// the render is compared before it is assigned — and `lastRefusal` is too,
+    /// because clearing a reason that is already nil is just as much a body
+    /// pass as rewriting the text (`HostsFuzzRoundTripTests` proves the render
+    /// is stable, so neither can be caught by looking at the values).
     @discardableResult
     private func edit(_ change: (inout HostsFile.Document) -> HostsFile.Edit) -> HostsFile.Edit {
         var document = HostsFile.parse(text)
         let outcome = change(&document)
         switch outcome {
         case .applied:
-            text = HostsFile.render(document)
-            lastRefusal = nil
+            let rendered = HostsFile.render(document)
+            if rendered != text { text = rendered }
+            if lastRefusal != nil { lastRefusal = nil }
         case .refused(let why):
-            lastRefusal = why
+            if lastRefusal != why { lastRefusal = why }
         }
         return outcome
     }

@@ -192,6 +192,42 @@ final class HostsViewModelTests: XCTestCase {
         XCTAssertEqual(published, 1, "a refused edit re-rendered the document it declined to change")
     }
 
+    /// **And neither does an edit that was applied to no effect**, which is the
+    /// half a refusal-only guard leaves open and the half the table stands on.
+    ///
+    /// A names field is bound to `names.joined(separator: " ")`, so the space
+    /// between two names is typed *through* an editor: «localhost » splits back
+    /// to the one name that is already there, `setNames` applies it, and a
+    /// re-render then publishes a `text` byte-for-byte identical to the one on
+    /// screen. The publication is the whole defect — SwiftUI writes the binding
+    /// back into the field, the trailing space vanishes under the caret, and a
+    /// second name cannot be typed at all.
+    ///
+    /// Counted rather than compared, for the reason the test above gives: the
+    /// rendered string is identical either way, so an assertion on `text` passes
+    /// with the guard deleted. Counted on `objectWillChange` rather than on
+    /// `$text`, because the body pass is the defect and *any* published property
+    /// causes one. The applied edit at the end is the control that proves the
+    /// counter still counts.
+    func testAnEditThatChangedNothingDoesNotRedrawThePage() async {
+        let m = await loaded().model
+        var passes = 0
+        let watching = m.objectWillChange.sink { _ in passes += 1 }
+        defer { watching.cancel() }
+
+        XCTAssertEqual(m.setNames(["localhost"], entry: 0), .applied,
+                       "the names it already has are still a legal set of names")
+        XCTAssertEqual(passes, 0,
+                       "an edit that left the file byte-for-byte as it was redrew the page "
+                       + "anyway — and every published property does it, not only `text`: "
+                       + "clearing a `lastRefusal` that is already nil is a body pass too")
+
+        XCTAssertEqual(m.setNames(["localhost", "box"], entry: 0), .applied)
+        XCTAssertEqual(passes, 1,
+                       "an edit that did change the file must redraw, or this counter "
+                       + "counts nothing")
+    }
+
     // MARK: - The wire
 
     /// The load fired from `init` is **held**, and it fills the page.

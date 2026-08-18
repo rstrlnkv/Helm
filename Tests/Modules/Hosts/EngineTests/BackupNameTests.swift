@@ -20,6 +20,29 @@ final class BackupNameTests: XCTestCase {
         XCTAssertTrue(name.hasSuffix(".hosts"))
     }
 
+    /// **The name is read back as a moment, so a menu can say when rather than
+    /// what the file is called.** The stamp is UTC and the reader is not, so
+    /// this has to come back as a `Date` for `HelmDates` to write in the
+    /// reader's own zone and language — «в 12:00» is a claim about the person's
+    /// afternoon, and a page that simply chopped the digits out of the name
+    /// would be making it in Greenwich.
+    ///
+    /// To the second, because that is all the name carries.
+    func testANameIsReadBackAsTheMomentItWasWrittenFor() {
+        let name = BackupName.name(at: noon)
+        XCTAssertEqual(BackupName.date(of: name)?.timeIntervalSince1970,
+                       noon.timeIntervalSince1970.rounded(.down))
+    }
+
+    /// And nothing else is: a file somebody else left in that folder is not a
+    /// backup, and half a stamp is not a time.
+    func testAnythingThatIsNotOneOfOursHasNoDate() {
+        XCTAssertNil(BackupName.date(of: "notes.txt"))
+        XCTAssertNil(BackupName.date(of: "hosts.hosts"))
+        XCTAssertNil(BackupName.date(of: "2026-13-45T999999Z.hosts"))
+        XCTAssertNil(BackupName.date(of: "../2026-08-18T120000Z.hosts"))
+    }
+
     func testTheOldestGoWhenThereAreMoreThanTen() {
         let names = (0..<13).map { BackupName.name(at: noon.addingTimeInterval(Double($0) * 60)) }
         let doomed = BackupName.pruned(names, keeping: 10)

@@ -551,16 +551,15 @@ extension ModulePageRender.Page {
     /// invitation both measure that since 2026-08-14. They were 23 and 28: a page
     /// with nothing on it drew a second Scan in the toolbar beside the invitation's
     /// own, and a bar of three buttons with nothing to select or move.
-    /// **Hosts is 1, and 1 is not a measurement of a page — it is the mark of a
-    /// module whose page has not been written yet.** `HostsSettingsPage` is an
-    /// `EmptyView` placeholder while the module is being built up task by task,
-    /// so the only question this floor can still answer is «did the render
-    /// happen at all», which is the one thing a run with no window server gets
-    /// wrong. The entry is removed — not raised — when the page lands, so the
-    /// module falls back to the default floor and is measured like the rest.
+    /// **Hosts carried 1 until its page landed, and 1 was never a measurement of
+    /// a page** — it was the mark of a module whose `HostsSettingsPage` was an
+    /// `EmptyView` while the module was built up task by task. The entry was
+    /// removed rather than raised the day the page arrived, so the module falls
+    /// back to the default floor of 9 and is measured like the rest: a real page
+    /// under a floor of 1 is a page whose content can vanish entirely with
+    /// nothing going red, which is the failure this floor exists to prevent.
     static let floors: [String: Int] = [
         "keep-awake": 250, "vpn": 190, "uninstaller": 45, "homebrew": 70,
         "leftovers": 210, "disk": 40, "duplicates": 8, "autopilot": 8, "layout": 230,
-        "hosts": 1,
     ]
 }
