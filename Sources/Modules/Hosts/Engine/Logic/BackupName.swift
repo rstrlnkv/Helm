@@ -23,10 +23,23 @@ public enum BackupName {
                       c.hour ?? 0, c.minute ?? 0, c.second ?? 0, suffix)
     }
 
+    /// Whether a name is one this module made — the one place that question is
+    /// answered, for the listing, the pruning, the reading and the deleting.
+    ///
+    /// Two conditions, and the second is not decoration. A backup id reaches
+    /// the engine inside a payload, so `../../etc/sudoers.hosts` is a string
+    /// this app can be handed; `appendingPathComponent` would build it happily
+    /// and leave the kernel to resolve the `..`. A name is a *name*, so it is
+    /// its own last path component. `name(at:)` never produces anything else,
+    /// so nothing legitimate is refused.
+    public static func isOurs(_ name: String) -> Bool {
+        name.hasSuffix(suffix) && (name as NSString).lastPathComponent == name
+    }
+
     /// The names to delete, oldest first. Anything that is not one of ours is
     /// never named — a person's own file in that folder is theirs.
     public static func pruned(_ names: [String], keeping limit: Int) -> [String] {
-        let ours = names.filter { $0.hasSuffix(suffix) }.sorted()
+        let ours = names.filter(isOurs).sorted()
         guard ours.count > limit else { return [] }
         return Array(ours.prefix(ours.count - limit))
     }
