@@ -114,8 +114,15 @@ final class LongStringGeometryRatchetTests: XCTestCase {
     /// fall. Unlike the three before it this one is not the fixture's reach — the
     /// control is drawn whatever the wire answers, because which view is on screen
     /// is the page's own state.
+    /// **40 as of 2026-08-18, and it is the same arithmetic a fifth time.** The
+    /// hosts page gained a second segmented control when it gained a second tab
+    /// — «Hosts file / SSH config», at `fixedSize` rather than at an imposed
+    /// width, so drawn *is* intrinsic and `drawn < intrinsic × 1.4` is true by
+    /// construction in each of the eight languages. Eight more readings, and
+    /// not one of them a control that stopped fitting: `atFullSize` is still 0,
+    /// which is the half of this pair that can fall.
     private static let recordedAtFullSize = 0
-    private static let recordedAtFortyPercent = 32
+    private static let recordedAtFortyPercent = 40
 
     /// The audit's number, and the reason it is 1.4 and not 2: a translation is
     /// longer, not unrecognisable.
@@ -299,8 +306,12 @@ final class LongStringGeometryRatchetTests: XCTestCase {
         // 2026-08-18 with «Table / Plain text» in its header, drawn on every Mac
         // whatever the wire answers, because which of the two views is on screen is
         // the page's own state and not the engine's.
+        // **And a fifth from 2026-08-18**: the hosts page's two tabs, «Hosts
+        // file / SSH config». A page's own control rather than the fixture's
+        // reach, for the same reason the fourth is — which file you are looking
+        // at is the page's state, drawn whatever the wire answers.
         XCTAssertEqual(tally, ["AppKitSwitch": 18, "AppKitTextField": 3,
-                               "AppKitSearchField": 1, "AppKitSegmentedControl": 4], """
+                               "AppKitSearchField": 1, "AppKitSegmentedControl": 5], """
             the controls this measurement can see are not the ones it was measured with: \
             \(tally.sorted { $0.key < $1.key }.map { "\($0.key)×\($0.value)" }.joined(separator: " ")).
             A pop-up, a button or a slider appearing here means the platform now backs them with \

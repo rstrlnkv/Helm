@@ -33,8 +33,30 @@ import Module_Hosts_Engine
     /// error rather than a field that snaps back in silence.
     @Published private(set) var lastRefusal: HostsFile.Refusal?
 
+    // MARK: - Tab 2, `~/.ssh/config`
+
+    /// The config as the person means it to be. Canonical, exactly as `text`
+    /// is for the file above — the table is derived from it on every read, so a
+    /// row edit and a keystroke in the raw view are one edit to one file.
+    @Published private(set) var sshText: String = ""
+    /// What disk says, which is what «revert» means here too.
+    @Published private(set) var sshOnDisk: String = ""
+    /// False when the config could not be read at all: missing, or not UTF-8.
+    /// An empty config is a thing a person may mean, and this is not it.
+    @Published private(set) var sshReadable = true
+    /// Whether the engine's gate would let a write through (`SSHFileScope`).
+    /// **The page draws Apply from this**, because a button that is refused at
+    /// the last moment is a button that lied while it was being pressed.
+    @Published private(set) var sshWritable = true
+    @Published private(set) var sshOutcome: SSHConfigOutcome?
+
     var entries: [HostsFile.Entry] { HostsFile.parse(text).entries }
     var hasUnsavedChanges: Bool { text != onDisk }
+
+    /// The blocks the SSH table draws, derived on every read for the reason the
+    /// text above is canonical.
+    var sshDocument: SSHConfigFile.Document { SSHConfigFile.parse(sshText) }
+    var sshHasUnsavedChanges: Bool { sshText != sshOnDisk }
 
     let vm: ModuleViewModel
     private let client: TransportClient
@@ -134,6 +156,15 @@ import Module_Hosts_Engine
         readable = state.hostsReadable
         backups = state.backups
         if wasClean { text = state.hostsText }
+
+        // The same rule for the config, and it is needed for the same reason:
+        // `~/.ssh/config` is a file the person edits in their own editor, so a
+        // snapshot can land while somebody is halfway through a change here.
+        let sshWasClean = sshText == sshOnDisk
+        sshOnDisk = state.sshText
+        sshReadable = state.sshReadable
+        sshWritable = state.sshWritable
+        if sshWasClean { sshText = state.sshText }
     }
 
     // MARK: - Editing
@@ -141,6 +172,39 @@ import Module_Hosts_Engine
     func setText(_ new: String) { text = new }
 
     func revert() { text = onDisk }
+
+    func setSSHText(_ new: String) { sshText = new }
+
+    func revertSSH() { sshText = sshOnDisk }
+
+    /// Rewrites one field of one block, and answers whether the editor took it.
+    ///
+    /// Refusals here are the three `SSHConfigFile.set` names — a line break, a
+    /// `#`, an empty value — and the page shows nothing for them: the field
+    /// simply keeps what it had, which is what a control that refuses a
+    /// keystroke looks like. That is the difference from the hosts table, whose
+    /// refusals carry a sentence because they are about the *grammar of an
+    /// address* and a person cannot see why by looking.
+    @discardableResult
+    func setSSHField(_ value: String, of name: SSHConfigFile.FieldName, ofHost host: Int) -> Bool {
+        var document = SSHConfigFile.parse(sshText)
+        guard SSHConfigFile.set(value, of: name, ofHost: host, in: &document) else { return false }
+        let rendered = SSHConfigFile.render(document)
+        // Only a change that happened is published: a body pass writes every
+        // binding on the page back into its control, under a caret that is
+        // mid-word (see `edit` above, which learned this the hard way).
+        if rendered != sshText { sshText = rendered }
+        return true
+    }
+
+    /// Writes the config. No password dialog — it is the person's own file —
+    /// and no backup: the two things standing where those stand on tab 1 are
+    /// the engine's gate and its read-back.
+    func applySSH() async {
+        let outcome: SSHConfigOutcome? = await client.request(
+            HostsCommand.applySSHConfig, encoding: SSHConfigApply(text: sshText))
+        sshOutcome = outcome
+    }
 
     /// **The refusal has to survive the hop.** Every editor answers
     /// `HostsFile.Edit`, and a single-expression closure would discard it —

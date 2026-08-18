@@ -919,3 +919,11 @@
 "The write reported success, but the file on disk differs" = "The write reported success, but the file on disk differs";
 "Nothing was written: a backup could not be saved first" = "Nothing was written: a backup could not be saved first";
 "Edit the hosts file from Helm, with a copy kept before every change. Hosts & Keys shows it as a table you can switch entries on and off in, or as plain text — the same file either way. Applying asks for your password once, and the last ten copies are there under “Restore…” if you want one back." = "Edit the hosts file from Helm, with a copy kept before every change. Hosts & Keys shows it as a table you can switch entries on and off in, or as plain text — the same file either way. Applying asks for your password once, and the last ten copies are there under “Restore…” if you want one back.";
+"Hosts file" = "Hosts file";
+"SSH config" = "SSH config";
+"No SSH hosts in this file" = "No SSH hosts in this file";
+"The SSH config could not be read" = "The SSH config could not be read";
+"Helm will not write this file: it is outside your home folder" = "Helm will not write this file: it is outside your home folder";
+"Saved" = "Saved";
+"The SSH config could not be saved" = "The SSH config could not be saved";
+"The save reported success and the file did not change" = "The save reported success and the file did not change";

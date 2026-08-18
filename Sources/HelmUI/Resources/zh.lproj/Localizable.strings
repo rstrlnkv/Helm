@@ -919,3 +919,11 @@
 "The write reported success, but the file on disk differs" = "写入报告成功，但磁盘上的文件与预期不同";
 "Nothing was written: a backup could not be saved first" = "未写入任何内容：无法先保存备份";
 "Edit the hosts file from Helm, with a copy kept before every change. Hosts & Keys shows it as a table you can switch entries on and off in, or as plain text — the same file either way. Applying asks for your password once, and the last ten copies are there under “Restore…” if you want one back." = "在 Helm 里编辑 hosts 文件，每次修改前都会先留一份副本。“主机与密钥”可以把它显示为可逐条开关的表格，也可以显示为纯文本——两者是同一个文件。应用时会询问一次密码，最近十份副本都在“恢复…”里。";
+"Hosts file" = "hosts 文件";
+"SSH config" = "SSH 配置";
+"No SSH hosts in this file" = "此文件中没有 SSH 主机";
+"The SSH config could not be read" = "无法读取 SSH 配置";
+"Helm will not write this file: it is outside your home folder" = "此文件位于您的个人文件夹之外，Helm 不会写入";
+"Saved" = "已保存";
+"The SSH config could not be saved" = "无法保存 SSH 配置";
+"The save reported success and the file did not change" = "保存报告成功，但文件并未改变";
