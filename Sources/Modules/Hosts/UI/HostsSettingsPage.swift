@@ -59,10 +59,14 @@ struct HostsSettingsPage: View {
         // (`KeepAwakeHero`, `KeepAwakePanelTile`, `PanelChrome`) — and because
         // `onGeometryChange` below hands its value over *outside* the running
         // transaction, so the height would otherwise jump whatever surrounds
-        // the change. **This page's own reveal has not been measured off a
-        // render yet**; an offscreen ink probe could not tell the three
-        // spellings apart here, because its no-animation control ramped as
-        // well. Task 11's harness is where it is looked at.
+        // the change. **This page's reveal is measured now**: 18 distinct
+        // heights over 350 ms off a recording of the real window, against a
+        // control that jumps in one frame. An offscreen *ink* probe could not
+        // tell the three spellings apart — its no-animation control ramped as
+        // well — but the bar's geometry can be sampled without a screen, and
+        // reads 29 distinct heights where a settled page reads one. The bar is
+        // not invisible to `cacheDisplay`, which is what that first failure
+        // looked like and was not (ARCHITECTURE.md § Dev loop).
         .onChange(of: barHasSomethingToSay) { _, something in
             withAnimation(HelmMotion.disclosure) { showingBar = something }
         }
@@ -202,7 +206,12 @@ struct HostsSettingsPage: View {
                     unsavedRow
                 }
             }
-            .padding(.vertical, HelmSpace.s3)
+            // `s5`, which is what every other surface in this app that carries
+            // actions pads at — the log page's footer, Autopilot's banner row,
+            // Disk's «Scan again». At `s3` this bar was 45 pt tall and the
+            // note's descenders ended 6 pt from the window's bottom edge,
+            // which is the tightest thing on any page holding a button.
+            .padding(.vertical, HelmSpace.s5)
         }
     }
 

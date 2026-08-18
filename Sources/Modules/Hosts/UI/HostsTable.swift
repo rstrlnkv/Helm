@@ -32,7 +32,14 @@ struct HostsTable: View {
         // every read, so a body that asked it per row would parse the file as
         // many times as the file has rows.
         let entries = hvm.entries
-        VStack(spacing: 0) {
+        // **Lazy, because this page shows files it cannot write.** `HostsWrite.fits`
+        // stops the privileged sentence at roughly 390 KB and the page says so on
+        // open, so an ad-blocking file of 1–4 MB is displayed on purpose and this
+        // table is handed every row of it. Eagerly that was not slow, it was
+        // fatal — a few thousand rows aborted the process outright.
+        // `TheTableDoesNotGrowWithTheFileTests` holds the measurement and the
+        // guard, which is written about growth rather than about a number.
+        LazyVStack(spacing: 0) {
             ForEach(entries) { entry in
                 row(entry)
                 Divider()
