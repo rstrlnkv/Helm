@@ -226,8 +226,8 @@ struct UtilitiesSection: View {
     let toggle: (String) -> Void
     private var open: Bool { expanded || editing }
     /// Natural height of the rows, measured so the disclosure animates between
-    /// 0 and a concrete value.
-    @State private var rowsHeight: CGFloat = 0
+    /// 0 and a concrete value. `nil` until the first measurement lands.
+    @State private var rowsHeight: CGFloat?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -264,9 +264,8 @@ struct UtilitiesSection: View {
             // Measured height rather than `if expanded`: with the rows removed
             // from the hierarchy the card's background collapsed instantly
             // while the disappearing rows kept drawing over whatever sat
-            // below. Keeping them mounted and clipping to an animated height
-            // means the block's edge always contains its content — the same
-            // pattern Keep Awake's inline block uses.
+            // below. `helmAccordion` is that shape, and why each half of it is
+            // there is written on it.
             VStack(spacing: 2) {
                 ForEach(modules, id: \.descriptor.idRaw) { live in
                     HStack(spacing: 6) {
@@ -292,27 +291,13 @@ struct UtilitiesSection: View {
                 }
             }
             .padding(.top, 8)
-            .onGeometryChange(for: CGFloat.self, of: \.size.height) { height in
-                guard height > 0, rowsHeight != height else { return }
-                // The first measurement is the answer, not a change. Every one
-                // after it is a change the block has to be seen making — the
-                // pencil swaps three rows for nine — and `onGeometryChange`
-                // hands its value over *outside* the running transaction, so
-                // the write has to carry its own. Measured: 102 → 298 pt in a
-                // single frame without this, a ramp with it.
-                if rowsHeight == 0 {
-                    rowsHeight = height
-                } else {
-                    withAnimation(HelmMotion.disclosure) { rowsHeight = height }
-                }
-            }
-            .frame(height: open ? rowsHeight : 0, alignment: .top)
-            // Height + clipping only: fading would isolate these rows in their
-            // own layer and their materials would stop blending with the card.
-            .clipped()
-            .allowsHitTesting(open)
-        // `.clipped()` hides it from the eye, not from the accessibility tree.
-        .accessibilityHidden(!open)
+            // **The one site where the measurement half is load-bearing.**
+            // Everywhere else the block's content is one fixed shape and the
+            // only thing that moves is the gate; here the pencil swaps three
+            // rows for nine, so the height changes *while the block is open*
+            // and has to be seen changing. Measured: 102 → 298 pt in a single
+            // frame before the write carried a transaction.
+            .helmAccordion(open: open, height: $rowsHeight)
         }
         .helmPanelCard()
     }

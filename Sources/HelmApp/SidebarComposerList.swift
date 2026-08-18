@@ -93,17 +93,20 @@ struct SidebarComposerList: View {
             ForEach(rows, id: \.id) { row in
                 SidebarComposerListRow(row: row, layout: layout, host: host,
                                        editing: editing, apply: apply, rename: rename)
-                    .onGeometryChange(for: CGFloat.self, of: \.size.height) { measured in
-                        guard measured > 0, heights[row.id] != measured else { return }
-                        // The first measurement of a row is the answer, not a
-                        // change — `total` already counted it, by estimate.
-                        // Every later one is a correction the list has to be
-                        // seen making, and `onGeometryChange` hands its value
-                        // over outside whatever transaction caused it.
-                        if heights[row.id] == nil { heights[row.id] = measured } else {
-                            withAnimation(HelmMotion.interface) { heights[row.id] = measured }
-                        }
-                    }
+                    // `interface`, not the modifier's default: what these
+                    // measurements correct is a row that is already being
+                    // reordered on that curve, and two systems need one curve
+                    // rather than one duration.
+                    //
+                    // The store is a dictionary, so «not measured yet» is a
+                    // missing key rather than a sentinel — which is the state
+                    // the modifier's `CGFloat?` is named after. The first
+                    // measurement of a row is the answer and not a change here
+                    // for a reason of this list's own: `total` has already
+                    // counted that row, by estimate.
+                    .helmMeasuredHeight(Binding(get: { heights[row.id] },
+                                                set: { heights[row.id] = $0 }),
+                                        animation: HelmMotion.interface)
                     .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)

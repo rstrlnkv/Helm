@@ -10,12 +10,12 @@ struct KeepAwakePanelTile: View {
 
     @State private var customMinutes: Int
     @State private var showMore = false
-    /// Natural height of the ⋯ block, measured once so the disclosure can
-    /// animate between 0 and a concrete value.
-    @State private var moreHeight: CGFloat = 0
+    /// Natural height of the ⋯ block, measured so the disclosure can animate
+    /// between 0 and a concrete value. `nil` until the first one lands.
+    @State private var moreHeight: CGFloat?
     /// Same measurement for the suppression row, which grows and shrinks on the
     /// engine's say-so rather than on a press.
-    @State private var suppressedHeight: CGFloat = 0
+    @State private var suppressedHeight: CGFloat?
     /// What is *drawn*, as against what the engine says. Both rows below read
     /// these and neither reads `vm` directly.
     ///
@@ -80,42 +80,20 @@ struct KeepAwakePanelTile: View {
             // working, so putting it behind a disclosure would leave it exactly
             // as unfindable as the log line it replaces.
             //
-            // The same accordion the block below uses, for the same reason: the
-            // row always exists, its natural height is measured, and the height
-            // animates between 0 and that number. This is the panel — a card
-            // that changes size under the pointer with no motion is the defect
-            // the disclosure token was introduced to end.
+            // The same accordion the block below uses. This is the panel — a
+            // card that changes size under the pointer with no motion is the
+            // defect the disclosure token was introduced to end.
             suppressedRow
-                .onGeometryChange(for: CGFloat.self, of: \.size.height) { h in
-                    if h > 0 { suppressedHeight = h }
-                }
-                .frame(height: shownSuppressed ? suppressedHeight : 0, alignment: .top)
-                .clipped()
-                .allowsHitTesting(shownSuppressed)
-                .accessibilityHidden(!shownSuppressed)
-            // Canonical accordion, available in both states: the block always
-            // exists, its natural height is measured, and the animation
-            // interpolates between 0 and that number (SwiftUI can't animate to
-            // `nil`, which left the card and its content out of step).
+                .helmAccordion(open: shownSuppressed, height: $suppressedHeight)
+            // The accordion, and **available in both states**: the block is
+            // mounted whether or not a session is running, so the ⋯ button
+            // opens the same automation controls either way. Its «no `.opacity`
+            // here on purpose» is the modifier's now — this is the block whose
+            // "Automation" heading snapped colour when the fade's layer was
+            // dropped, and whose divider and switches washed out under a
+            // compositing group.
             moreControls
-                .onGeometryChange(for: CGFloat.self, of: \.size.height) { h in
-                    if h > 0 { moreHeight = h }
-                }
-                .frame(height: showMore ? moreHeight : 0, alignment: .top)
-                // No `.opacity` here on purpose. Fading the block puts it in an
-                // offscreen layer, where hierarchical colours resolve
-                // differently — the "Automation" heading snapped colour when
-                // the layer was dropped at the end of the animation. Forcing a
-                // permanent compositing group fixed that but cost more: system
-                // materials (the divider, switches, bordered buttons) stopped
-                // blending with the card behind them. The height animation
-                // plus clipping is the whole reveal; the content simply slides
-                // out from under the edge, and every colour stays native.
-                .clipped()
-                .allowsHitTesting(showMore)
-                // Clipped is not hidden: VoiceOver read the whole automation
-                // block while it was collapsed.
-                .accessibilityHidden(!showMore)
+                .helmAccordion(open: showMore, height: $moreHeight)
         }
         .helmPanelCard()
         // The transaction, not the modifier — see the note on `shownActive`.
