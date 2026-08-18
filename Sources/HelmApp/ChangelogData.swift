@@ -71,6 +71,7 @@ enum Changelog {
     static var entries: [ChangelogEntry] {
         [
             ChangelogEntry(version: "0.10.0", date: "2026-08-09", items: [
+                ChangeItem(kind: .new, text: L("Edit the hosts file from Helm, with a copy kept before every change. Hosts & Keys shows it as a table you can switch entries on and off in, or as plain text \u{2014} the same file either way. Applying asks for your password once, and the last ten copies are there under \u{201C}Restore\u{2026}\u{201D} if you want one back.")),
                 ChangeItem(kind: .new, text: L("Autopilot comes with five rules you can use without writing one: screenshots into their own folder, downloads sorted by kind, old installers to the Trash, a tag on big downloads, the desktop sorted by month. Opening a rule shows what it would do to your real folder before anything is saved, and the tidying it does can be put back.")),
                 ChangeItem(kind: .new, text: L("The record of what Autopilot did now says why it is empty \u{2014} nothing is being watched, every rule is switched off, or nothing has matched yet.")),
                 ChangeItem(kind: .new, text: L("Duplicates asks which copy is the extra: the one in Downloads or on the Desktop, or the one that arrived later. Every group says why its copy was kept, any row can be made the one that stays, and \u{201C}Restore the recommendation\u{201D} puts that back.")),

@@ -2,7 +2,7 @@ import XCTest
 @testable import HelmApp
 @testable import HelmUI
 
-/// `ModuleTintTests` measures the nine colours; this measures the nine
+/// `ModuleTintTests` measures the colours; this measures the
 /// *modules*. The protocol makes every module declare a tint, and the compiler
 /// enforces that — but nothing stops two of them declaring the same one, which
 /// would put the app back where it started with four modules in one blue.

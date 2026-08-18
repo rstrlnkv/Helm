@@ -87,7 +87,7 @@ enum SettingsSelection: Hashable {
     /// On every build — the logging switch lives in this page, so gating the
     /// page would hide the control that turns the log on. Not a module: no
     /// store, no engine, no tour step, no place in `ModuleOrder`, and nothing
-    /// counts it among the nine.
+    /// counts it among the modules.
     case log
 }
 
@@ -311,7 +311,7 @@ private struct SettingsSidebar: View {
     /// anything looks like a module with nothing to do.
     ///
     /// **`inertWithout`, not `permissions`.** Reading the wider list put the
-    /// triangle on seven of the nine rows — the four Full Disk modules, which
+    /// triangle on seven rows — the four Full Disk modules, which
     /// work and find less, and Keep Awake, which declares Accessibility for a
     /// pointer nudge that ships switched off and never asks for it otherwise.
     /// Seven marks are wallpaper; the row where the warning was true was the

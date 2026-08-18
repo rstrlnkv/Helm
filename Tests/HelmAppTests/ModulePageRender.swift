@@ -5,7 +5,7 @@ import XCTest
 @testable import HelmApp
 @testable import HelmUI
 
-/// The nine module pages, drawn offscreen, as measurements rather than pictures.
+/// Every module page, drawn offscreen, as measurements rather than pictures.
 ///
 /// Two of the four v3 ladder ratchets are read off this render —
 /// `RadiusLadderRatchetTests` and `LongStringGeometryRatchetTests`. The other

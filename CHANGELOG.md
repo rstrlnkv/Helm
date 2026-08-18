@@ -15,6 +15,36 @@ bumps the number, and `-dev.N` prereleases sort below the release they lead to.
 > `dev.8`'s, two releases below where the work was actually done.
 
 ### Added
+- **A tenth module, «Hosts & Keys», edits `/etc/hosts`.** The file is shown as
+  a table of entries — a switch, an address, its names, a way to remove the row
+  — and as «Plain text», which is the same document byte for byte: the text is
+  canonical and the rows are a reading of it, so a comment or an alignment the
+  parser does not model is never quietly reformatted. «Apply» takes one
+  password prompt for the whole batch, «Revert» throws the edits away, and
+  «Restore…» offers the last ten copies by the date they were taken.
+
+  The privileged write carries its content as base64 inside the AppleScript,
+  never a path: the alphabet holds no quote, backtick, semicolon, backslash or
+  newline, so injection is unrepresentable rather than unlikely, and a staged
+  file cannot be swapped between the prompt and the write. The shell counts the
+  decoded bytes with its own decoder *before* the redirect exists, because
+  redirection truncates first and `base64 -D` reading EOF exits 0 — two paths
+  that had reported success over an emptied file. A copy is saved before root
+  is asked and the file is read back and compared by digest afterwards, so a
+  port that reports success over a file it did not change is believed by
+  nothing. There is deliberately no `/etc/sudoers.d` rule: a permanent
+  passwordless root grant is not a price a text editor should charge.
+  `PrivilegedOutcome` has three cases, so «you cancelled» never arrives as
+  «the write failed».
+
+  Files past roughly 390 KB cannot be written — `ARG_MAX` bounds the sentence —
+  and the page says so on open rather than at Apply, because a refusal met after
+  ten minutes of editing costs the editing. Helm still shows them, and the table
+  builds only the rows on screen to do it: built eagerly, a 100 KB file took
+  16.4 s to first frame and 32 408 views, and a 350 KB one aborted the process
+  inside SwiftUI's attribute graph. It is now about 1.3 s and a constant few
+  hundred views from 1 KB to 4 MB, guarded by a test written about growth
+  rather than about a number.
 - **The keyboard indicator's menu reads like the system input menu.** Every
   layout row wears its badge, the emoji door says «Show Emoji & Symbols» with
   the palette's own icon (both built from the system's own tables — the

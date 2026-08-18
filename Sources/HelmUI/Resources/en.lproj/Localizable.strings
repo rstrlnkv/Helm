@@ -918,3 +918,4 @@
 "The hosts file could not be written" = "The hosts file could not be written";
 "The write reported success, but the file on disk differs" = "The write reported success, but the file on disk differs";
 "Nothing was written: a backup could not be saved first" = "Nothing was written: a backup could not be saved first";
+"Edit the hosts file from Helm, with a copy kept before every change. Hosts & Keys shows it as a table you can switch entries on and off in, or as plain text — the same file either way. Applying asks for your password once, and the last ten copies are there under “Restore…” if you want one back." = "Edit the hosts file from Helm, with a copy kept before every change. Hosts & Keys shows it as a table you can switch entries on and off in, or as plain text — the same file either way. Applying asks for your password once, and the last ten copies are there under “Restore…” if you want one back.";
