@@ -129,14 +129,22 @@ public enum KeepGrounds: Equatable, Sendable {
     /// hashing a folder is minutes of reading, so losing it to a click is
     /// hostile. One instance per host view model; the page observes it.
     private static var cached: DuplicatesViewModel?
-    public static func shared(vm: ModuleViewModel, store: NamespacedStore) -> DuplicatesViewModel {
+    ///
+    /// `settings:` is forwarded rather than left to `init`'s default for the
+    /// reason `ATestNamesTheKeychainPortsItBuildsOverTests` gives: the default
+    /// is the login keychain, so a caller that cannot name a double — a test
+    /// switching the module off to watch the subscriber go — would spend
+    /// `SecItemAdd` on somebody's machine to ask a question about ARC.
+    public static func shared(vm: ModuleViewModel, store: NamespacedStore,
+                              settings: SettingGuard = DuplicatesSettings.guardOfScanSettings)
+    -> DuplicatesViewModel {
         // Keyed to the view model it was built against, not merely "exists" —
         // see `DiskViewModel.shared(vm:)`. Turning the module off deallocates
         // the engine while the `LocalTransport` held here survives, and its
         // weakly-captured handler answers every request with empty Data from
         // then on.
         if let cached, cached.vm === vm { return cached }
-        let created = DuplicatesViewModel(vm: vm, store: store)
+        let created = DuplicatesViewModel(vm: vm, store: store, settings: settings)
         cached = created
         ModuleUICache.dropWhenDisabled(DuplicatesDescriptor.id.rawValue) { cached = nil }
         return created
