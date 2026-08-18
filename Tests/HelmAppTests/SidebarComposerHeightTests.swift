@@ -65,13 +65,13 @@ final class SidebarComposerHeightTests: XCTestCase {
                             "the sheet opens clamped, with its own chrome outside the window")
     }
 
-    /// Nine modules and four sections still fit under the cap, which is the
+    /// The arrangement Helm ships with still fits under the cap, which is the
     /// promise the cap was chosen for: the standard arrangement never scrolls.
-    /// A tenth module was measured at 683 pt against this 660 — so a module added
-    /// later fails here, which is the conversation this test exists to force.
+    /// It is read from the registry, so a module gained is a row gained here —
+    /// the tenth module is what moved the cap from 660 to 700.
     func testTheShippedArrangementFitsUnderTheCap() {
         let estimate = SidebarComposerList.estimatedHeight(of: shipped, editing: true)
-        XCTAssertLessThanOrEqual(estimate + SidebarComposerSheet.chromeHeight, 660)
+        XCTAssertLessThanOrEqual(estimate + SidebarComposerSheet.chromeHeight, 700)
     }
 
     /// The note is measured, not guessed — twice in one afternoon a constant
@@ -98,7 +98,7 @@ final class SidebarComposerHeightTests: XCTestCase {
     func testTheSheetIsSizedToItsContentBetweenTheFloorAndTheCap() {
         XCTAssertEqual(SidebarComposerSheet.windowHeight(table: 300, chrome: 129), 429)
         XCTAssertEqual(SidebarComposerSheet.windowHeight(table: 10, chrome: 129), 360)
-        XCTAssertEqual(SidebarComposerSheet.windowHeight(table: 5_000, chrome: 129), 660)
+        XCTAssertEqual(SidebarComposerSheet.windowHeight(table: 5_000, chrome: 129), 700)
     }
 
     /// A height that is not a number is a window AppKit cannot make, and
@@ -116,7 +116,7 @@ final class SidebarComposerHeightTests: XCTestCase {
     /// number line and the cap is the answer for a sheet taller than the
     /// window it sits in, which is the cap's whole job.
     func testAnInfiniteHeightOpensAtTheCap() {
-        XCTAssertEqual(SidebarComposerSheet.windowHeight(table: .infinity, chrome: 129), 660)
+        XCTAssertEqual(SidebarComposerSheet.windowHeight(table: .infinity, chrome: 129), 700)
     }
 
     /// The control. Every assertion above passes on an estimator that returns

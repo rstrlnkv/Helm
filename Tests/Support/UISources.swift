@@ -38,7 +38,7 @@ public enum UISources {
         public var where_: String { "\(file):\(line)" }
     }
 
-    /// The nine module names, read out of `Package.swift`.
+    /// Every module's name, read out of `Package.swift`.
     ///
     /// Not a list written here. A hand-written list of modules is tied to the
     /// thing it names or it is a comment (CLAUDE.md), and the manifest is where

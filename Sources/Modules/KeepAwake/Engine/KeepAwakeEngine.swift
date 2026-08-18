@@ -16,7 +16,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// `DuplicatesEngine`, `LeftoversEngine` and `UninstallerEngine` already
     /// follow. It was a literal in the descriptor while the engine side had no
     /// name at all, so nothing in `Engine/` could say which store it was
-    /// reading. `StoreNamespacesAreModuleIdsTests` records the nine that
+    /// reading. `StoreNamespacesAreModuleIdsTests` records the ids that
     /// shipped and fails on a rename: this is stored-settings data, and a
     /// rename orphans everything anybody has configured.
     public static let moduleID = "keep-awake"

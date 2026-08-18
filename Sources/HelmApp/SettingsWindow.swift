@@ -22,7 +22,12 @@ import HelmUI
     /// (`DiskLayout.barWithStatement`), and at 940 the pane is 690, so the
     /// statement never appeared out of the box and nothing suggested widening
     /// the window would reveal it. 1060 gives a 810 pt pane, which clears it.
-    private static let defaultSize = NSSize(width: 1060, height: 700)
+    ///
+    /// Not private: `SidebarComposerSheet` caps itself at this height, because
+    /// a sheet is drawn inside this window and the window's own content is the
+    /// ceiling. Two literal 700s in one target, with a comment claiming they
+    /// were the same number, is a comment.
+    nonisolated static let defaultSize = NSSize(width: 1060, height: 700)
     /// Below this the list rows start truncating names and paths.
     private static let minSize = NSSize(width: 860, height: 540)
 
@@ -82,7 +87,7 @@ enum SettingsSelection: Hashable {
     /// On every build — the logging switch lives in this page, so gating the
     /// page would hide the control that turns the log on. Not a module: no
     /// store, no engine, no tour step, no place in `ModuleOrder`, and nothing
-    /// counts it among the nine.
+    /// counts it among the modules.
     case log
 }
 
@@ -306,7 +311,7 @@ private struct SettingsSidebar: View {
     /// anything looks like a module with nothing to do.
     ///
     /// **`inertWithout`, not `permissions`.** Reading the wider list put the
-    /// triangle on seven of the nine rows — the four Full Disk modules, which
+    /// triangle on seven rows — the four Full Disk modules, which
     /// work and find less, and Keep Awake, which declares Accessibility for a
     /// pointer nudge that ships switched off and never asks for it otherwise.
     /// Seven marks are wallpaper; the row where the warning was true was the

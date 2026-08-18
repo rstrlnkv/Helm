@@ -179,6 +179,12 @@ final class StringsLiveInLprojTests: XCTestCase {
         "h": [.es, .fr, .pt],
         "Hardware": [.es, .de, .pt],
         "Homebrew": [.ru, .es, .fr, .de, .ja, .zh, .pt],
+        // The networking sense of «host» is a loanword in these three and takes
+        // the English plural in all of them, so the sidebar's short name comes
+        // out identical while the module's full name does not — «Hosts &
+        // Schlüssel», «Hosts y claves», «Hosts e chaves». French and the four
+        // non-Latin scripts have a word of their own and use it.
+        "Hosts": [.es, .de, .pt],
         "Image": [.fr],
         "m": [.es, .fr, .pt],
         "Manual": [.es, .pt],

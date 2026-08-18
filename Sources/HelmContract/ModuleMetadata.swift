@@ -3,7 +3,7 @@ public struct ModuleMetadata: Sendable {
     public let name: String
     /// What the sidebar calls the module, where the column is fixed and a long
     /// name is cut off mid-word rather than wrapped. Defaults to `name`, which
-    /// is what eight of the nine modules want; only the one named after a macOS
+    /// is what every module but one wants; only the one named after a macOS
     /// pane with a compound name needs the short form, and macOS itself carries
     /// both ("Login Items & Extensions" in the pane, "Login Items" in a list).
     /// Everywhere else — the page header, the panel, the icon menu — uses the
@@ -17,7 +17,7 @@ public struct ModuleMetadata: Sendable {
     ///
     /// `permissions` answers a different question — what a module would use —
     /// and the sidebar was reading it as if it answered this one. That marked
-    /// seven of nine rows with «Enabled, but macOS is withholding the access it
+    /// seven rows with «Enabled, but macOS is withholding the access it
     /// needs»: true of Layout, which is inert without Accessibility, and false
     /// of the four Full Disk modules, which work and find less; false of Keep
     /// Awake, which holds a power assertion and never touches Accessibility
@@ -29,8 +29,8 @@ public struct ModuleMetadata: Sendable {
     /// being broken.
     public let inertWithout: [ModulePermission]
     /// The one thing this module offers to set up on a first launch, worded as
-    /// the button that takes somebody there — or nothing, which is what eight of
-    /// the nine say.
+    /// the button that takes somebody there — or nothing, which is what every
+    /// module but one says.
     ///
     /// **Here rather than in the tour**, which is where a list of «modules with
     /// something worth setting up» would have been: a tenth hand-written list of

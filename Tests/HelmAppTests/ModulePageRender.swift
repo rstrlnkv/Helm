@@ -5,7 +5,7 @@ import XCTest
 @testable import HelmApp
 @testable import HelmUI
 
-/// The nine module pages, drawn offscreen, as measurements rather than pictures.
+/// Every module page, drawn offscreen, as measurements rather than pictures.
 ///
 /// Two of the four v3 ladder ratchets are read off this render —
 /// `RadiusLadderRatchetTests` and `LongStringGeometryRatchetTests`. The other
@@ -578,6 +578,13 @@ extension ModulePageRender.Page {
     /// the page without it draws 116, which misses by eight. That is the whole
     /// reason the number moves — a floor of 100 would have gone on passing with
     /// the section gone.
+    /// **Hosts carried 1 until its page landed, and 1 was never a measurement of
+    /// a page** — it was the mark of a module whose `HostsSettingsPage` was an
+    /// `EmptyView` while the module was built up task by task. The entry was
+    /// removed rather than raised the day the page arrived, so the module falls
+    /// back to the default floor of 9 and is measured like the rest: a real page
+    /// under a floor of 1 is a page whose content can vanish entirely with
+    /// nothing going red, which is the failure this floor exists to prevent.
     static let floors: [String: Int] = [
         "keep-awake": 250, "vpn": 124, "uninstaller": 45, "homebrew": 70,
         "leftovers": 210, "disk": 40, "duplicates": 8, "autopilot": 8, "layout": 230,

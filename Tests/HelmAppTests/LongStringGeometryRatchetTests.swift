@@ -104,8 +104,18 @@ final class LongStringGeometryRatchetTests: XCTestCase {
     /// construction — three consecutive runs, 24 each. `atFullSize` is still 0,
     /// which is the half of this pair that can actually fall: the new control fits
     /// the label it has in all eight.
+    ///
+    /// **32 as of 2026-08-18, and it is the same arithmetic a fourth time.** The
+    /// hosts page arrived with a «Table / Plain text» segmented control in its
+    /// header, sized by `HelmPickerWidth.segmented` from its own two labels — so
+    /// drawn *is* intrinsic and `drawn < intrinsic × 1.4` is true by construction,
+    /// in each of the eight languages. Eight more readings, none of them a control
+    /// that stopped fitting; `atFullSize` is still 0, which is the half that can
+    /// fall. Unlike the three before it this one is not the fixture's reach — the
+    /// control is drawn whatever the wire answers, because which view is on screen
+    /// is the page's own state.
     private static let recordedAtFullSize = 0
-    private static let recordedAtFortyPercent = 24
+    private static let recordedAtFortyPercent = 32
 
     /// The audit's number, and the reason it is 1.4 and not 2: a translation is
     /// longer, not unrecognisable.
@@ -284,8 +294,13 @@ final class LongStringGeometryRatchetTests: XCTestCase {
         // (`ModulePageRender.Priming`). All three are the fixture's reach rather than
         // a change to any page, and `recordedAtFortyPercent` above moved with the
         // last two.
-        XCTAssertEqual(tally, ["AppKitSwitch": 17, "AppKitTextField": 3,
-                               "AppKitSearchField": 1, "AppKitSegmentedControl": 3], """
+        //
+        // **The fourth is a page rather than a reach**: the hosts page landed on
+        // 2026-08-18 with «Table / Plain text» in its header, drawn on every Mac
+        // whatever the wire answers, because which of the two views is on screen is
+        // the page's own state and not the engine's.
+        XCTAssertEqual(tally, ["AppKitSwitch": 18, "AppKitTextField": 3,
+                               "AppKitSearchField": 1, "AppKitSegmentedControl": 4], """
             the controls this measurement can see are not the ones it was measured with: \
             \(tally.sorted { $0.key < $1.key }.map { "\($0.key)×\($0.value)" }.joined(separator: " ")).
             A pop-up, a button or a slider appearing here means the platform now backs them with \

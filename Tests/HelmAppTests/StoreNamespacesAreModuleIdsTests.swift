@@ -115,7 +115,7 @@ final class StoreNamespacesAreModuleIdsTests: XCTestCase {
     /// purpose edits it, and that edit is the moment to think about the
     /// settings being left behind.
     private static let shippedIDs: Set<String> = [
-        "autopilot", "disk", "duplicates", "homebrew", "keep-awake",
+        "autopilot", "disk", "duplicates", "homebrew", "hosts", "keep-awake",
         "layout", "leftovers", "uninstaller", "vpn",
     ]
 

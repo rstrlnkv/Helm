@@ -93,11 +93,26 @@ struct SidebarComposerSheet: View {
 
     static var chromeHeight: CGFloat { fixedChrome + noteHeight }
 
-    /// Sized to the arrangement, up to a cap. The cap is what the nine modules
-    /// and four sections Helm ships with need — 485 pt of list — so the
-    /// standard arrangement never scrolls; a person who makes more sections
-    /// than that gets a scroll bar rather than a sheet taller than the window
-    /// it sits in.
+    /// Sized to the arrangement, up to the settings window's own content
+    /// height. The arrangement Helm ships with fits under it, so the standard
+    /// sidebar never scrolls; a person who makes more sections than that gets a
+    /// scroll bar rather than a sheet that keeps growing.
+    ///
+    /// **The cap is read from the window, not written down again.** It was a
+    /// literal 660 beside `SettingsWindow`'s literal 700 and a comment saying
+    /// the two agreed — and they did not: the tenth module added a 40 pt row,
+    /// the shipped arrangement asked for 683, and the composer Helm ships with
+    /// came up scrolling. Anyone changing the window's height now moves this
+    /// with it. `SidebarComposerHeightTests` measures the shipped arrangement
+    /// against its own literal, so the guard still has two sides.
+    ///
+    /// **A resized window can still be shorter than the sheet, and this does
+    /// not know.** `contentMinSize` is 540 and the frame is autosaved, so on a
+    /// window somebody has made small the sheet hangs below the parent's bottom
+    /// edge — 160 pt at worst, where it was 120 before. The fix is a cap that
+    /// follows the *presenting* window rather than the default size, which is a
+    /// larger change than a constant and is written down as its own piece of
+    /// work rather than half-done here.
     ///
     /// The floor is also the answer for a height that is not a number, which is
     /// what this line gave as `min(max(360, table + chrome), 660)` —
@@ -108,7 +123,8 @@ struct SidebarComposerSheet: View {
     /// the run loop later. A height that is merely enormous keeps the cap,
     /// which is what a cap is for.
     static func windowHeight(table: CGFloat, chrome: CGFloat) -> CGFloat {
-        (table + chrome).clamped(to: 360...660, whenNotANumber: 360)
+        (table + chrome).clamped(to: 360...SettingsWindow.defaultSize.height,
+                                 whenNotANumber: 360)
     }
 
     private var layout: SidebarLayout {
