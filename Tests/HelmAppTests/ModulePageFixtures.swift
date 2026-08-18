@@ -112,7 +112,7 @@ extension ModulePageRender {
     /// changed them would be measuring a preference rather than a page.
     private static func configureVPN(_ store: NamespacedStore) {
         VPNSettings(store: store).setRulesJSON(VPNRules.encode([
-            "com.example.render": VPNAppRule(vpnName: "Fixture Amsterdam"),
+            "com.example.render": VPNAppRule(vpnName: connectedTunnel),
             "com.example.conference": VPNAppRule(vpnName: "Fixture Renamed In System Settings",
                                                 connectOnLaunch: true,
                                                 disconnectOnQuit: false),
@@ -234,11 +234,9 @@ extension ModulePageRender {
     /// this Mac has configured — the same reason `configured` uses bundle ids
     /// that resolve to nothing.
     ///
-    /// **`facts` is set, and without it the page's whole lower half is absent.**
+    /// **`facts` is set, and without it the page's whole lower half is absent** —
     /// `VPNSettingsPage` draws `VPNTunnelSection` behind `if let facts`, so a
-    /// payload without one renders the connection grid and then nothing — which
-    /// is the shape this file exists for, a fixture complete enough to look
-    /// right and a page measured in its empty state. See `tunnel` below.
+    /// payload without one renders the grid and then nothing. See `tunnel` below.
     ///
     /// **Homebrew, because its page has two of them and this render only ever saw
     /// the poorer one.** `HomebrewSettingsPage.body` branches on
@@ -293,12 +291,21 @@ extension ModulePageRender {
         return wire
     }
 
-    /// Computed rather than stored, and `tunnel` is the reason — every other
-    /// field here is a constant.
+    /// **The one name four halves of this fixture have to agree on** — the rule's
+    /// target, the connected card, the tunnel Helm says it raised, and the one the
+    /// strip is headed with — so the agreement is the compiler's rather than a
+    /// promise in prose. Spelled five times, a drifting one names no card at all.
+    private static let connectedTunnel = "Fixture Amsterdam"
+
+    /// Old enough that the speed tile carries its age, off the threshold that
+    /// decides it: at a literal, raising it would drop that line silently.
+    private static var staleSpeedAge: TimeInterval { VPNTunnelFacts.speedGoesStaleAfter + 30 }
+
+    /// Computed rather than stored — see the determinism note on `tunnel`.
     private static var vpnState: VPNEngine.StatePayload {
         VPNEngine.StatePayload(
             connections: [
-                VPNConnection(id: "fixture-1", name: "Fixture Amsterdam",
+                VPNConnection(id: "fixture-1", name: connectedTunnel,
                               status: .connected, kind: "IKEv2"),
                 VPNConnection(id: "fixture-2", name: "Fixture Reykjavík",
                               status: .disconnected, kind: "IPSec"),
@@ -307,46 +314,40 @@ extension ModulePageRender {
             ],
             // Helm's own book of what it raised itself. The connected tunnel is in
             // it, which is what draws the «holding now» mark under a rule.
-            autoConnected: ["Fixture Amsterdam"],
-            defaultName: "Fixture Amsterdam",
+            autoConnected: [connectedTunnel],
+            defaultName: connectedTunnel,
             lastAutomation: nil,
             lastFailure: VPNFailure(name: "Fixture Reykjavík", reason: .refused, verb: .connect),
             facts: tunnel)
     }
 
     /// The tunnel carrying the default route — **all four tiles filled, and the
-    /// verdict at its longest.** It is the connected connection above by name,
-    /// because the strip's heading is `VPNStr.thisTunnel(state.name)`.
+    /// verdict at its longest.**
     ///
     /// Every reading is present on purpose: `VPNTunnelFacts` drops a tile per
-    /// absent one rather than drawing a dash, so each nil would be a piece of
-    /// this strip no render measures. `.throughTunnel` with a code is the verdict
-    /// that interpolates a country — the longest of the three, and the one whose
-    /// word comes out of `Locale` and so differs in each of the eight languages
-    /// `LongStringGeometryRatchetTests` draws. The speed reading is deliberately
-    /// older than `VPNTunnelFacts.speedGoesStaleAfter`, which is what puts the
-    /// third line under the figure and makes the wells unequal in content and
-    /// equal in height. The counters are whole thousands because that is what
-    /// reaches the wire (`VPNInterfaceCounters.onTheWire`).
+    /// absent one rather than drawing a dash, so each nil would be a piece of this
+    /// strip no render measures. `.throughTunnel` with a code is the verdict that
+    /// interpolates a country — the longest of the three, and the one whose word
+    /// comes out of `Locale`, so it differs in all eight languages. The counters
+    /// are whole thousands, which is what reaches the wire.
     ///
-    /// **The two dates are offsets from now, and that is the determinism
-    /// decision — the opposite way round from `lastAutomation` above.** There is
-    /// no seam for the clock: `VPNSettingsPage` builds the section without a
-    /// `now:`, so an *absolute* date here would draw an uptime that grows for
-    /// ever — «5520h 0m» this afternoon, a different string tomorrow, a third on
-    /// the next Mac. An offset draws «2h 34m» at every hour on every machine,
-    /// which is what «every Mac photographs the same page» asks for; the clock is
-    /// read, nothing about this Mac is. It is also why the payload above is
-    /// computed and not stored — a `static let` is built once per process, and
-    /// this suite renders these pages over several minutes.
+    /// **The two dates are offsets from now, and that is the determinism decision
+    /// — the opposite way round from `lastAutomation` above.** There is no seam
+    /// for the clock: the page builds the section without a `now:`, so an
+    /// *absolute* date would draw an uptime that grows for ever, and a different
+    /// one on every Mac at every hour. An offset draws «2h 34m» everywhere, which
+    /// is what «every Mac photographs the same page» asks for; the clock is read,
+    /// nothing about this Mac is. It is also why the payload above is computed —
+    /// a `static let` is built once, and this suite renders over several minutes.
     private static var tunnel: VPNTunnelState {
         let now = Date()
-        return VPNTunnelState(name: "Fixture Amsterdam", interface: "utun9",
+        return VPNTunnelState(name: connectedTunnel, interface: "utun9",
                               since: now.addingTimeInterval(-9_240),
                               bytesIn: 4_812_000, bytesOut: 731_000,
                               exit: .throughTunnel(countryCode: "NL"),
-                              speed: VPNSpeedReading(down: 212, up: 47, rpm: 780,
-                                                     at: now.addingTimeInterval(-90)))
+                              speed: VPNSpeedReading(
+                                  down: 212, up: 47, rpm: 780,
+                                  at: now.addingTimeInterval(-staleSpeedAge)))
     }
 
     /// A path nothing on this Mac is at, so the page's own «found at» line is the
