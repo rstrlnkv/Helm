@@ -39,6 +39,66 @@ enum HostsStr {
     static var sshFailed: String { L("The SSH config could not be saved") }
     static var sshNotVerified: String { L("The save reported success and the file did not change") }
 
+    // MARK: - Tab 3, the keys
+
+    /// The third tab. A title, like `hostsTab` and `sshTab` beside it.
+    static var keysTab: String { L("Keys") }
+    /// **Not «No keys».** The sentence names the folder, because the two
+    /// answers a person needs to tell apart are «this Mac has none» and «Helm
+    /// could not look», and a bare «No keys» reads as the first while being
+    /// drawn for either.
+    static var noKeys: String { L("No keys in this folder") }
+    static var keysUnreadable: String { L("The .ssh folder could not be read") }
+    static var keyFingerprint: String { L("Fingerprint") }
+    static var keyType: String { L("Type") }
+    /// The column of the row's own name — the private half's file name, which
+    /// is what `IdentityFile` names.
+    static var keyFile: String { L("File") }
+    static var keyUnreadable: String { L("Helm could not read this key") }
+
+    /// The verdict, and it names the consequence rather than the number: the
+    /// mode is what a person cannot remember, and «ssh will refuse it» is what
+    /// they came to the page about.
+    static var keyTooOpen: String { L("Others can read this key — ssh will refuse to use it") }
+    static var keyModeUnknown: String { L("Helm could not read this key’s permissions") }
+    static var directoryTooOpen: String { L("Others can write to this folder — ssh keys in it are not safe") }
+    /// **Not `L("Fix")`, and the collision was already in the tree.** That key
+    /// is Layout's `ruleOn` — a rule that fixes as you type — and Russian
+    /// spells that sense «Исправлять», the imperfective: a behaviour that goes
+    /// on. This is a button that does one thing once, which is «Исправить».
+    /// One English key means one thing, so this sense gets its own — and the
+    /// longer name is better copy beside the verdict anyway.
+    static var fixPermissions: String { L("Fix permissions") }
+
+    /// The agent. **Three sentences, because the port answers three states** —
+    /// and «no keys loaded» drawn over an agent that is not running is an
+    /// invitation to press something that cannot work.
+    static var agentHolding: String { L("The agent is holding these keys") }
+    static var agentEmpty: String { L("The agent is running and holding no keys") }
+    static var agentMissing: String { L("No agent is running") }
+    static var agentCheck: String { L("Check the agent") }
+    static var inAgent: String { L("In the agent") }
+    static var addToAgent: String { L("Add to the agent") }
+    static var removeFromAgent: String { L("Take out of the agent") }
+
+    static var copyPublicKey: String { L("Copy public key") }
+    static var noPublicHalf: String { L("This key’s public half is missing") }
+
+    /// The sentence for an act on a key, and `nil` for the one that needs none.
+    ///
+    /// Exhaustive, like `sentence(for:)` below it: a case added to `KeyOutcome`
+    /// is a build error here rather than an act that comes back saying nothing.
+    /// `.done` answers nil because the row redraws — the verdict changes, or
+    /// the badge comes on — and that redraw *is* the sentence.
+    static func sentence(for outcome: KeyOutcome) -> String? {
+        switch outcome {
+        case .done: return nil
+        case .failed: return L("That did not work")
+        case .notFound: return L("That key is no longer there")
+        case .agentUnreachable: return agentMissing
+        }
+    }
+
     static var address: String { L("Address") }
     static var names: String { L("Names") }
     static var addEntry: String { L("Add entry") }

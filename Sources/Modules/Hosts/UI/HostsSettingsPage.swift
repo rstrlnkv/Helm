@@ -18,7 +18,7 @@ struct HostsSettingsPage: View {
     /// The tabs this page has. Keys, the third of the spec's three, is not one
     /// of them yet — a case here with no page behind it would be a promise the
     /// sidebar keeps and the page breaks.
-    private enum Tab: Hashable { case hosts, ssh }
+    private enum Tab: Hashable { case hosts, ssh, keys }
 
     /// The bar's natural height, measured, and whether it is *drawn* — which is
     /// not the same as whether there is anything to say. See `unsavedBar`.
@@ -42,6 +42,7 @@ struct HostsSettingsPage: View {
             switch tab {
             case .hosts: hostsTab
             case .ssh: sshTab
+            case .keys: keysTab
             }
         }
     }
@@ -55,6 +56,7 @@ struct HostsSettingsPage: View {
             Picker(HostsStr.moduleName, selection: $tab) {
                 Text(HostsStr.hostsTab).tag(Tab.hosts)
                 Text(HostsStr.sshTab).tag(Tab.ssh)
+                Text(HostsStr.keysTab).tag(Tab.keys)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -177,6 +179,48 @@ struct HostsSettingsPage: View {
         .padding(.vertical, HelmSpace.s3)
     }
 
+
+    // MARK: - Tab 3
+
+    /// The keys, read-only apart from three acts: a `chmod`, and the two the
+    /// agent answers.
+    ///
+    /// **A folder nobody could read is not a folder with no keys**, and the two
+    /// sentences are drawn from different fields for exactly that reason: one
+    /// is a fact about somebody's Mac and the other is Helm admitting it could
+    /// not look.
+    private var keysTab: some View {
+        VStack(spacing: 0) {
+            keysHeader
+            Divider()
+            if !hvm.keysReadable {
+                HelmBanner(HostsStr.keysUnreadable)
+                    .padding(HelmSpace.s5)
+                Spacer()
+            } else if hvm.keys.isEmpty {
+                Text(HostsStr.noKeys)
+                    .foregroundStyle(.secondary)
+                    .padding(HelmSpace.s5)
+                Spacer()
+            } else {
+                ScrollView { KeysTable(hvm: hvm) }
+            }
+        }
+    }
+
+    private var keysHeader: some View {
+        HStack {
+            Spacer()
+            if let outcome = hvm.keyOutcome, let said = HostsStr.sentence(for: outcome) {
+                // Only what needs saying is kept: `.done` redraws the row —
+                // the verdict changes, or the badge comes on — and that redraw
+                // is the sentence.
+                note(said)
+            }
+        }
+        .padding(.horizontal, HelmLayout.formInset)
+        .padding(.vertical, HelmSpace.s3)
+    }
 
     // MARK: - Tab 2
 

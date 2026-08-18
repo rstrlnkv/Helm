@@ -50,6 +50,32 @@ import Module_Hosts_Engine
     @Published private(set) var sshWritable = true
     @Published private(set) var sshOutcome: SSHConfigOutcome?
 
+    // MARK: - Tab 3, the keys
+
+    /// The keys as the engine last read them. **Not canonical the way the two
+    /// documents above are**: there is nothing here for a person to edit, so
+    /// there is no «as they mean it to be» to hold beside «as disk says».
+    @Published private(set) var keys: [KeyRow] = []
+    /// False when `~/.ssh` could not be read at all. Not «no keys» — the page
+    /// says a different sentence for each, and the difference is whether Helm
+    /// is stating a fact about somebody's Mac or admitting it cannot see.
+    @Published private(set) var keysReadable = true
+    @Published private(set) var directoryPermission: KeyRow.Permission = .unknown
+    @Published private(set) var agent: AgentList = .unreachable
+    /// Which row has an act running — a key's name, or `Self.directoryRow` for
+    /// `~/.ssh` itself.
+    ///
+    /// One name rather than a `Bool`, so exactly the row being worked on goes
+    /// quiet and every other row stays live. A page-wide flag would disable
+    /// four keys because one `chmod` is in flight.
+    @Published private(set) var busyKey: String?
+    @Published private(set) var keyOutcome: KeyOutcome?
+
+    /// The name that stands for the directory in `busyKey`. A constant rather
+    /// than a literal at three call sites: the view model and the page read the
+    /// same string, and a name only one side changes is an error nowhere.
+    static let directoryRow = "."
+
     var entries: [HostsFile.Entry] { HostsFile.parse(text).entries }
     var hasUnsavedChanges: Bool { text != onDisk }
 
@@ -165,6 +191,15 @@ import Module_Hosts_Engine
         sshReadable = state.sshReadable
         sshWritable = state.sshWritable
         if sshWasClean { sshText = state.sshText }
+
+        // Nothing to preserve here: the keys are a reading, not a draft. The
+        // whole snapshot is adopted every time, which is what makes the badge
+        // after a load the engine's answer rather than a guess made on this side
+        // about what the act did.
+        keys = state.keys
+        keysReadable = state.keysReadable
+        directoryPermission = state.directoryPermission
+        agent = state.agent
     }
 
     // MARK: - Editing
@@ -281,5 +316,57 @@ import Module_Hosts_Engine
 
     func restore(_ backupID: String) async {
         await client.send(HostsCommand.restoreHosts, encoding: HostsRestore(backupID: backupID))
+    }
+
+    // MARK: - The acts on a key
+
+    /// `chmod` one key to the mode `ssh` accepts.
+    func fixPermissions(of name: String) async {
+        await act(.fixKeyPermissions, naming: name)
+    }
+
+    /// `chmod` `~/.ssh` itself, which has its own mode and its own fix.
+    func fixDirectoryPermissions() async {
+        await act(.fixDirectoryPermissions, on: Self.directoryRow)
+    }
+
+    /// In, or back out — **the direction is read off the row, not off a
+    /// switch's new value.** What the agent holds is the engine's answer, and a
+    /// control deciding from its own state would send `agentLoad` for a key that
+    /// is already in whenever the two had drifted apart.
+    func setInAgent(_ row: KeyRow) async {
+        await act(row.inAgent ? .agentUnload : .agentLoad, naming: row.name)
+    }
+
+    /// Ask the agent again.
+    ///
+    /// The agent is a fact that stops being true on its own — a process somebody
+    /// can start, stop, or take the socket away from — so the page has a way to
+    /// ask rather than a remembered answer. `LayoutEngine.tapped` is the family
+    /// this belongs to.
+    func refreshAgent() async {
+        guard busyKey == nil else { return }
+        await client.send(HostsCommand.agentRefresh)
+    }
+
+    /// One act, one busy row, one outcome.
+    ///
+    /// **The gate is `busyKey` and it is taken before the await.** Two presses
+    /// of Fix land two `chmod`s on one file, which is harmless — two presses of
+    /// the agent control land a load and an unload whose order nobody controls,
+    /// which leaves the badge disagreeing with the agent until the next refresh.
+    private func act(_ command: HostsCommand, on row: String) async {
+        await busy(row) { await self.client.request(command) }
+    }
+
+    private func act(_ command: HostsCommand, naming name: String) async {
+        await busy(name) { await self.client.request(command, encoding: KeyName(name: name)) }
+    }
+
+    private func busy(_ row: String, _ body: () async -> KeyOutcome?) async {
+        guard busyKey == nil else { return }
+        busyKey = row
+        defer { busyKey = nil }
+        keyOutcome = await body()
     }
 }

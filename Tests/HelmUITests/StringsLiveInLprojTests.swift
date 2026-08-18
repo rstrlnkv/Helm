@@ -148,6 +148,11 @@ final class StringsLiveInLprojTests: XCTestCase {
         "Audio": [.es, .fr, .de],
         "Auto": [.fr],
         "Autopilot": [.de],
+        // The key is the column header on the keys tab. French spells the word
+        // exactly as English does — Larousse lists «type» and nothing shorter
+        // fits a column — and the other six all differ, which is what makes
+        // this an identity rather than a table nobody filled in.
+        "Type": [.fr],
         "BETA": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         "Beta": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         "BUILD": [.fr, .de, .pt],
