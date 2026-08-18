@@ -275,6 +275,62 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         XCTAssertTrue(speed.askedFor.isEmpty)
     }
 
+    /// **The dedup could strand the spinner, and this is why «measuring» is on
+    /// the wire rather than in the page's head.**
+    ///
+    /// A payload equal in every field to the last one sent is withheld — which
+    /// is what stops a night of polling re-rendering every page. Now take the
+    /// worst ending a first measurement can have: the tool refuses (`-1009` at
+    /// exit 0, or killed at its deadline), so `speed` was nil and stays nil, and
+    /// over a quiet tunnel the counters have not moved a kilobyte in those
+    /// fifteen seconds either. Every field the same, nothing emitted, and a page
+    /// whose spinner is cleared by the *arrival* of a state turns until the app
+    /// is restarted. A refresh does not rescue it: it goes through the same
+    /// dedup.
+    ///
+    /// With the run's own state in the payload the two ends of a run are
+    /// changes, so they are never withheld — the engine says «measuring» and
+    /// then «not measuring» itself, and no page has to infer it from a press it
+    /// may not even have been there for.
+    func test_a_refused_run_over_a_quiet_tunnel_still_says_it_has_stopped() async throws {
+        let runner = FakeRunner()
+        runner.listOutput = list("Connected")
+        let transport = LocalTransport()
+        let interfaces = tunnelIsTheDefaultRoute()
+        interfaces.carriesPerRead = 0            // a tunnel with nothing on it
+        let speed = FakeSpeed()
+        speed.answer = nil                       // the tool refused
+        speed.blocksUntilReleased = true
+        defer { speed.release() }
+        let engine = VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
+                               transport: transport, interfaces: interfaces,
+                               exit: FakeExit(), speed: speed, work: .background)
+
+        let ready = expectation(description: "the engine has read the list once")
+        let first = watchState(transport, until: { $0.facts != nil }, then: ready)
+        engine.refresh()
+        await fulfillment(of: [ready], timeout: 5)
+        first.cancel()
+
+        let started = expectation(description: "the page was told a run is in flight")
+        let running = watchState(transport, until: { $0.facts?.measuring == true }, then: started)
+        _ = try await engine.transport.send(EngineCommand(name: VPNCommand.measureSpeed.rawValue))
+        await fulfillment(of: [started], timeout: 5)
+        running.cancel()
+
+        // Registered before the run is let go, and the replayed last payload
+        // says «measuring», so nothing here can be satisfied by the state that
+        // is already on the wire.
+        let stopped = expectation(description: "the page was told the run has ended")
+        let ended = watchState(transport, until: { $0.facts?.measuring == false }, then: stopped)
+        speed.release()
+
+        await fulfillment(of: [stopped], timeout: 5)
+        ended.cancel()
+        let facts = await lastState(on: transport)?.facts
+        XCTAssertNil(facts?.speed, "precondition: this is the run that answered nothing")
+    }
+
     // MARK: - What the counters cost the page
 
     /// **The decision about the churn these counters would otherwise cause.**

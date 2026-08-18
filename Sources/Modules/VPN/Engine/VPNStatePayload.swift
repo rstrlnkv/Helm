@@ -92,9 +92,27 @@ public struct VPNTunnelState: Codable, Equatable, Sendable {
     /// answers.
     public let exit: VPNExitVerdict
     public let speed: VPNSpeedReading?
+    /// **Whether a measurement is in flight, as the engine's own answer.**
+    ///
+    /// It began as a `@Published` flag on the view model, set on the press and
+    /// cleared by the arrival of any state — a local boolean standing in for a
+    /// live fact somebody else owns, which is the family CLAUDE.md names in
+    /// § Anything that can stop being true on its own owns a channel to say so.
+    /// It could be wrong in three ways at once: a page opened while a run was
+    /// going knew nothing about it, a run outliving the page that started it
+    /// spun a spinner nobody would clear, and — the one that shipped — a run the
+    /// tool refused over a quiet tunnel changed no other field, so `emitState`
+    /// withheld the payload as a duplicate and the arrival that was supposed to
+    /// clear the spinner never came.
+    ///
+    /// On the wire it fixes that by construction rather than by a rule anybody
+    /// has to keep: the start and the end of a run are both changes, so neither
+    /// can be withheld.
+    public let measuring: Bool
 
     public init(name: String, interface: String, since: Date?, bytesIn: UInt64?,
-                bytesOut: UInt64?, exit: VPNExitVerdict, speed: VPNSpeedReading?) {
+                bytesOut: UInt64?, exit: VPNExitVerdict, speed: VPNSpeedReading?,
+                measuring: Bool = false) {
         self.name = name
         self.interface = interface
         self.since = since
@@ -102,5 +120,24 @@ public struct VPNTunnelState: Codable, Equatable, Sendable {
         self.bytesOut = bytesOut
         self.exit = exit
         self.speed = speed
+        self.measuring = measuring
+    }
+
+    /// Hand-written for the field above: a stored default does **not** make a
+    /// document without the key decode — Swift's synthesised `Decodable` wants
+    /// it regardless and `JSONDecoder` then gives up on the whole payload, which
+    /// here is every tile the strip draws (CLAUDE.md § a `defaulted` property on
+    /// a `Codable` payload). False is what a build from before this field meant:
+    /// it had no way to start a run that outlived its own answer.
+    public init(from decoder: Decoder) throws {
+        let box = try decoder.container(keyedBy: CodingKeys.self)
+        name = try box.decode(String.self, forKey: .name)
+        interface = try box.decode(String.self, forKey: .interface)
+        since = try box.decodeIfPresent(Date.self, forKey: .since)
+        bytesIn = try box.decodeIfPresent(UInt64.self, forKey: .bytesIn)
+        bytesOut = try box.decodeIfPresent(UInt64.self, forKey: .bytesOut)
+        exit = try box.decode(VPNExitVerdict.self, forKey: .exit)
+        speed = try box.decodeIfPresent(VPNSpeedReading.self, forKey: .speed)
+        measuring = try box.decodeIfPresent(Bool.self, forKey: .measuring) ?? false
     }
 }

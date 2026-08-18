@@ -135,6 +135,10 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// *that* tunnel: both are dropped with its stamp when it goes.
     private var lastRegion: String?
     private var lastSpeed: VPNSpeedReading?
+    /// Whether a measurement is in flight. The engine's own fact, on the wire in
+    /// every payload — `VPNTunnelState.measuring` says what a page inferring it
+    /// from a press gets wrong. Written on the work queue at both ends of a run.
+    private var measuringSpeed = false
     /// Under the lock, like the four above it and unlike the rest of this
     /// group.
     ///
@@ -766,7 +770,8 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
                               exit: VPNExitVerdict.of(tunnelInterface: interface,
                                                       primaryInterface: primary,
                                                       countryCode: lastRegion),
-                              speed: lastSpeed)
+                              speed: lastSpeed,
+                              measuring: measuringSpeed)
     }
 
     /// Asks the outside world where this Mac appears to be. **Only when a tunnel
@@ -810,7 +815,16 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// The phase is the port's to name (`vpn.speed`), not this caller's.
     private func measureSpeed() {
         work.run { [weak self] in
-            guard let self, self.tunnelFacts() != nil else { return }
+            // One run at a time. A second press while the tool is running would
+            // spend another fifteen seconds of somebody's traffic to answer the
+            // question already being asked, and the first ending would then say
+            // «not measuring» over a run still going.
+            guard let self, self.tunnelFacts() != nil, !self.measuringSpeed else { return }
+            self.measuringSpeed = true
+            // Said before the waiting starts, so the page draws «measuring»
+            // whether or not it was the page that asked — and so the run has two
+            // ends on the wire rather than one.
+            self.emitState()
             self.startMeasuring()
         }
     }
@@ -824,8 +838,15 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
                 self?.speed.measure(onInterface: nil)
             }
             self?.work.run { [weak self] in
-                self?.lastSpeed = reading ?? nil
-                self?.emitState()
+                guard let self else { return }
+                // **Every ending writes this, refusal included.** The reading may
+                // be the one it already had, or nothing at all — a `-1009`, a
+                // tool killed at its deadline — and over a quiet tunnel not one
+                // other field of the payload will have moved. What makes the end
+                // of a run news is the run's own state changing here.
+                self.measuringSpeed = false
+                self.lastSpeed = reading ?? nil
+                self.emitState()
             }
         }
         lock.lock(); let previous = _speedRun; _speedRun = task; lock.unlock()

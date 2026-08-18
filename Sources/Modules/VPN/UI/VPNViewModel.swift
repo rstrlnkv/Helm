@@ -27,8 +27,18 @@ import Module_VPN_Engine
     /// The tunnel carrying the default route, and what is known about it. Nil
     /// when nothing is up — the strip is absent then, rather than empty.
     @Published private(set) var facts: VPNTunnelState?
-    /// True while a measurement is in flight. Cleared by the state that carries
-    /// its result, so the spinner cannot outlive the run.
+    /// True while a measurement is in flight — **the engine's answer, not this
+    /// object's memory of a press.**
+    ///
+    /// The press still sets it, because the command has a queue to cross and a
+    /// button that does nothing for a moment reads as a button that did not
+    /// work; but every state that arrives overwrites it with what the engine
+    /// says (`VPNTunnelState.measuring`). A flag that only a press could set was
+    /// wrong in three ways: a page opened while a run was going knew nothing
+    /// about it, a run outliving the page that started it left the next one
+    /// spinning, and a run the tool refused over a quiet tunnel changed no other
+    /// field — so the engine withheld the payload as a duplicate and the arrival
+    /// that was meant to clear the spinner never came.
     @Published private(set) var measuring = false
 
     private let transport: EngineTransport
@@ -283,14 +293,16 @@ import Module_VPN_Engine
         lastFailure = p.lastFailure
         secretsBehindAPrompt = p.secretsBehindAPrompt
         facts = p.facts
-        // **The arrival ends the run, not the figure.** Comparing the reading
-        // against the last one is true of neither awkward ending: a run that
-        // answers the same numbers as before would leave the spinner turning
-        // for ever, and a run the port refused — a `-1009`, a tool killed at
-        // its deadline — never touches `speed` at all. The engine writes the
-        // result of every ending and emits, so the arrival is the one signal
-        // that is there whatever happened.
-        measuring = false
+        // **The engine says whether a run is going; this only repeats it.**
+        // Comparing the reading against the last one is true of neither awkward
+        // ending: a run that answers the same numbers as before would leave the
+        // spinner turning for ever, and a run the port refused — a `-1009`, a
+        // tool killed at its deadline — never touches `speed` at all. Clearing
+        // on any arrival covered both, until the arrival itself stopped coming:
+        // over a quiet tunnel a refused run leaves every field of the payload
+        // as it was, and `emitState` withholds a duplicate. So the run's own
+        // state travels with the rest, and both ends of it are a change.
+        measuring = p.facts?.measuring ?? false
         // Stale firings are dropped here rather than downstream. The engine
         // keeps its last one for good and repeats it in every state payload, so
         // the first refresh after launch would otherwise spin the ring for
