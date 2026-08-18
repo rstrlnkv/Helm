@@ -447,6 +447,39 @@ private struct ChildRow: View {
             Text(Bytes(child.bytes))
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(HelmText.quiet)
+            // What the double-click does, as a control: in for a folder, Finder
+            // for a file. It was a double-click and an accessibility action —
+            // mouse-only and VoiceOver-only at once, with nothing for Full
+            // Keyboard Access to land on and nothing on screen saying the row
+            // led anywhere; a folder and a file differed by the colour of an
+            // 8 pt dot. A Button is all three inputs and a visible affordance.
+            //
+            // Nothing for the folded bucket: "…" stands for the children that
+            // were dropped and has no path of its own to open or show.
+            //
+            // A fixed slot, so the basket button beside it sits in the same
+            // place whichever of the three a row is.
+            Group {
+                if child.isFolded {
+                    EmptyView()
+                } else if child.isDirectory {
+                    Button(action: onDrill) {
+                        Image(systemName: "chevron.forward")
+                    }
+                    .help(DkStr.openFolder)
+                    .accessibilityLabel(DkStr.openFolder)
+                } else {
+                    Button(action: reveal) {
+                        Image(systemName: "doc.text.magnifyingglass")
+                    }
+                    .help(HelmA11y.showInFinder)
+                    .accessibilityLabel(HelmA11y.showInFinder)
+                }
+            }
+            .buttonStyle(.borderless)
+            .font(.system(size: 11))
+            .foregroundStyle(HelmText.quiet)
+            .frame(width: 13)
             if removable {
                 BasketButton(name: drawnName, basketed: basketed, removing: removing,
                              toggle: onToggleBasket)
@@ -481,15 +514,13 @@ private struct ChildRow: View {
         // The primary gesture on the primary surface did nothing at all on a
         // file — no drill, no feedback, only a grey dot to have noticed
         // beforehand. A file's equivalent of "open" is Finder.
+        //
+        // A shortcut for the mouse now, and only that: the row's own Button does
+        // the same thing, so does Return on the selected row, so does the menu
+        // below. It used to be the only way in, with an accessibility action
+        // under it that reached VoiceOver and left the keyboard exactly as
+        // stuck — the shape `KeyboardReachableControlsTests` reads.
         .onTapGesture(count: 2) { child.isDirectory ? onDrill() : reveal() }
-        // Double-click is invisible and mouse-only; this is the same drill
-        // where VoiceOver can reach it. Offered only where it does something:
-        // an action that silently fails is worse than one that is absent.
-        .accessibilityActions {
-            if child.isDirectory {
-                Button(DkStr.openFolder) { onDrill() }
-            }
-        }
         .contextMenu {
             if child.isDirectory {
                 Button(DkStr.openFolder) { onDrill() }

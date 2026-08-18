@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 @testable import Module_Disk_UI
 
@@ -119,27 +120,65 @@ final class ResultViewAccessibilityTests: XCTestCase {
     // MARK: - Actions a mouse is not required for
 
     /// A `.contextMenu` needs a right-click, which is a mouse. Wherever a view
-    /// puts an action there it has to offer the same action somewhere VoiceOver
-    /// and Full Keyboard Access can reach — `ChildRow` does exactly this and
-    /// says so in a comment; the Advice popover's row, which duplicates the
-    /// same Reveal, did not, so in that popover an item could be basketed and
-    /// never revealed.
-    func testEveryContextMenuHasAnActionThatDoesNotNeedAMouse() throws {
+    /// puts an action there it has to offer *that action* somewhere VoiceOver
+    /// and Full Keyboard Access can reach: the Advice popover's row duplicated
+    /// `ChildRow`'s Reveal and offered it nowhere else, so in that popover an
+    /// item could be basketed and never looked at.
+    ///
+    /// **Named actions, not a named modifier, and code rather than prose.** This
+    /// asked only whether the view mentioned `.accessibilityActions` anywhere —
+    /// which `ChildRow` satisfied with a *comment* about the accessibility
+    /// action it had just replaced with a Button, on a scan that read comments.
+    /// Both halves of that were wrong: a rule looking for one modifier cannot
+    /// see that a `Button` in the row is the better answer to the same question,
+    /// and a rule that reads comments is answered by its own explanation. Every
+    /// name a menu builds a `Button` from must appear outside that menu — in an
+    /// `.accessibilityActions`, or in a control the row draws.
+    func testEveryContextMenuActionIsOfferedWhereAMouseIsNotNeeded() throws {
         var offenders: [String] = []
 
         for url in try Self.swiftFiles() {
             let source = try String(contentsOf: url, encoding: .utf8)
-            for view in Self.viewDeclarations(in: source) where view.body.contains(".contextMenu") {
-                guard !view.body.contains(".accessibilityActions") else { continue }
-                offenders.append("\(url.lastPathComponent): \(view.name)")
+            for view in Self.viewDeclarations(in: source) {
+                for menu in Self.menus(in: view.body) {
+                    let elsewhere = view.body.replacingOccurrences(of: menu, with: "")
+                    let (named, unreadable) = Self.buttonNames(in: menu)
+                    for action in named where !elsewhere.contains(action) {
+                        offenders.append("\(url.lastPathComponent): \(view.name) — \(action) "
+                                         + "is in the menu and nowhere else")
+                    }
+                    if unreadable > 0 {
+                        offenders.append("\(url.lastPathComponent): \(view.name) — \(unreadable) "
+                                         + "menu button(s) this rule cannot read a name from")
+                    }
+                }
             }
         }
 
         XCTAssertEqual(offenders, [], """
             These offer an action only through a context menu, which needs a \
-            right-click. Add the same action under .accessibilityActions:
+            right-click. Offer the same action as a Button in the view, or under \
+            .accessibilityActions:
             \(offenders.joined(separator: "\n"))
             """)
+    }
+
+    /// And the rule reads the menus it is about, so "no offenders" is not "no
+    /// menus". Both rows put their Reveal in one.
+    func testTheMenuScanFindsTheMenusAndTheirActions() throws {
+        var actions: [String] = []
+        for url in try Self.swiftFiles() {
+            for view in Self.viewDeclarations(in: try String(contentsOf: url, encoding: .utf8)) {
+                for menu in Self.menus(in: view.body) {
+                    actions += Self.buttonNames(in: menu).named
+                }
+            }
+        }
+
+        XCTAssertTrue(actions.contains("HelmA11y.showInFinder"),
+                      "no Reveal in any menu the scan can see: \(actions)")
+        XCTAssertTrue(actions.contains("DkStr.openFolder"), "found: \(actions)")
+        XCTAssertGreaterThanOrEqual(actions.count, 3, "found: \(actions)")
     }
 
     /// The scan has to be finding the views the rule is about — a guard that
@@ -161,14 +200,63 @@ final class ResultViewAccessibilityTests: XCTestCase {
         let body: String
     }
 
-    /// Every `struct … : View` in a file, with everything under it. Declared at
-    /// column zero, which is where all of them are; a nested one would fold
-    /// into its parent, which is the safe direction — it cannot hide an
-    /// offender, only report it against the outer name.
+    /// The `.contextMenu { … }` blocks of a view, brace-counted, so a menu with
+    /// two Buttons on separate lines is one block rather than one line.
+    private static func menus(in body: String) -> [String] {
+        var out: [String] = []
+        let lines = body.components(separatedBy: "\n")
+        for (index, line) in lines.enumerated() where line.contains(".contextMenu") {
+            var text = line
+            var depth = braces(in: line)
+            for next in lines.dropFirst(index + 1) {
+                guard depth > 0 else { break }
+                text += "\n" + next
+                depth += braces(in: next)
+            }
+            out.append(text)
+        }
+        return out
+    }
+
+    private static func braces(in line: String) -> Int {
+        line.filter { $0 == "{" }.count - line.filter { $0 == "}" }.count
+    }
+
+    /// What a menu's buttons are named — `Button(DkStr.openFolder)` gives
+    /// `DkStr.openFolder` — and how many it could not read, because a button
+    /// this rule cannot name is a hole in it rather than a pass.
+    private static func buttonNames(in menu: String) -> (named: [String], unreadable: Int) {
+        var named: [String] = []
+        var unreadable = 0
+        for fragment in menu.components(separatedBy: "Button(").dropFirst() {
+            let argument = fragment.components(separatedBy: ")").first?
+                .trimmingCharacters(in: .whitespaces) ?? ""
+            let parts = argument.components(separatedBy: ".")
+            guard parts.count == 2, let first = parts[0].first, first.isUppercase,
+                  parts[1].allSatisfy({ $0.isLetter || $0.isNumber }), !parts[1].isEmpty else {
+                unreadable += 1
+                continue
+            }
+            named.append(argument)
+        }
+        return (named, unreadable)
+    }
+
+    /// Every `struct … : View` in a file, with everything under it **and its
+    /// comments stripped**. Declared at column zero, which is where all of them
+    /// are; a nested one would fold into its parent, which is the safe direction
+    /// — it cannot hide an offender, only report it against the outer name.
+    ///
+    /// The stripping is not tidiness. This repository explains a rule by naming
+    /// the thing it forbids, right above the line that obeys it, so a scan that
+    /// reads comments is answered by the explanation: `ChildRow` passed the menu
+    /// rule for a day on a comment about the accessibility action it no longer
+    /// had.
     private static func viewDeclarations(in source: String) -> [ViewDeclaration] {
         var out: [ViewDeclaration] = []
         var current: (name: String, lines: [String])?
-        for line in source.components(separatedBy: "\n") {
+        for raw in source.components(separatedBy: "\n") {
+            let line = RepoSource.code(raw)
             if let name = declaredViewName(line) {
                 if let current { out.append(ViewDeclaration(name: current.name,
                                                             body: current.lines.joined(separator: "\n"))) }
