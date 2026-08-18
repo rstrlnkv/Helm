@@ -70,6 +70,11 @@ import Module_Hosts_Engine
     /// four keys because one `chmod` is in flight.
     @Published private(set) var busyKey: String?
     @Published private(set) var keyOutcome: KeyOutcome?
+    /// Whether a key is being made. Its own flag rather than `busyKey`: the
+    /// generation is seconds of work behind a sheet, where the acts on a row
+    /// are one syscall each.
+    @Published private(set) var makingKey = false
+    @Published private(set) var generated: GenerateOutcome?
 
     /// The name that stands for the directory in `busyKey`. A constant rather
     /// than a literal at three call sites: the view model and the page read the
@@ -369,4 +374,31 @@ import Module_Hosts_Engine
         defer { busyKey = nil }
         keyOutcome = await body()
     }
+
+    /// Make a key.
+    ///
+    /// **The passphrase arrives as a `String` and there is no way around it.**
+    /// SwiftUI's `SecureField` binds to `String` and offers nothing else, so
+    /// between the keystroke and this line the secret is a value this code
+    /// cannot overwrite — Swift gives no promise about when a `String`'s buffer
+    /// is freed or whether it was copied. What *is* in this app's gift starts
+    /// here: from this call down it is `Data`, it is never an argument, never
+    /// an environment variable, never a file, never a log line, and
+    /// `PTYProcess` zeroes it. The sheet drops its own copy the moment this
+    /// returns, which is the most a caller of `SecureField` can do.
+    func generate(type: KeyGeneration.KeyType, name: String,
+                  comment: String, passphrase: String) async {
+        guard !makingKey else { return }
+        makingKey = true
+        defer { makingKey = false }
+        generated = await client.request(
+            HostsCommand.generateKey,
+            encoding: KeyGeneration.Request(type: type, name: name, comment: comment,
+                                            passphrase: Data(passphrase.utf8)))
+    }
+
+    /// Forget the last generation's answer — the sheet closing is not the same
+    /// event as the answer being read, and a refusal left behind would greet
+    /// the next opening of the sheet.
+    func forgetGeneration() { generated = nil }
 }

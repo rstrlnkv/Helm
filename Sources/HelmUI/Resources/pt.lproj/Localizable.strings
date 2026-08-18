@@ -977,3 +977,15 @@
 "That did not work" = "Não funcionou";
 "That key is no longer there" = "Essa chave já não existe";
 "Fix permissions" = "Corrigir permissões";
+"New key…" = "Nova chave…";
+"New key" = "Nova chave";
+"File name" = "Nome do arquivo";
+"Comment" = "Comentário";
+"Passphrase" = "Frase-senha";
+"A key with no passphrase can be used by anyone who gets the file" = "Uma chave sem frase-senha pode ser usada por qualquer um que obtenha o arquivo";
+"Create" = "Criar";
+"Making the key…" = "Criando a chave…";
+"A file name cannot contain a slash" = "Um nome de arquivo não pode conter barra";
+"There is already a key with that name" = "Já existe uma chave com esse nome";
+"A comment cannot contain a line break" = "Um comentário não pode conter quebra de linha";
+"The key could not be made" = "Não foi possível criar a chave";

@@ -977,3 +977,15 @@
 "That did not work" = "Не получилось";
 "That key is no longer there" = "Этого ключа больше нет";
 "Fix permissions" = "Исправить права";
+"New key…" = "Новый ключ…";
+"New key" = "Новый ключ";
+"File name" = "Имя файла";
+"Comment" = "Комментарий";
+"Passphrase" = "Парольная фраза";
+"A key with no passphrase can be used by anyone who gets the file" = "Ключ без парольной фразы сможет использовать любой, кому достанется файл";
+"Create" = "Создать";
+"Making the key…" = "Создаётся ключ…";
+"A file name cannot contain a slash" = "В имени файла не может быть косой черты";
+"There is already a key with that name" = "Ключ с таким именем уже есть";
+"A comment cannot contain a line break" = "В комментарии не может быть переноса строки";
+"The key could not be made" = "Не удалось создать ключ";

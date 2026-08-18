@@ -84,6 +84,32 @@ enum HostsStr {
     static var copyPublicKey: String { L("Copy public key") }
     static var noPublicHalf: String { L("This key’s public half is missing") }
 
+    static var newKey: String { L("New key…") }
+    static var newKeyTitle: String { L("New key") }
+    static var keyName: String { L("File name") }
+    static var keyComment: String { L("Comment") }
+    static var keyPassphrase: String { L("Passphrase") }
+    /// **The note under the passphrase field, and it says the cost of an empty
+    /// one rather than «optional».** A key with no passphrase is a key anybody
+    /// who reaches the file can use, and that is the decision being taken here.
+    static var passphraseNote: String { L("A key with no passphrase can be used by anyone who gets the file") }
+    static var create: String { L("Create") }
+    static var cancel: String { L("Cancel") }
+    static var making: String { L("Making the key…") }
+
+    /// Exhaustive over the generator's answers. `.done` says nothing: the new
+    /// key appears in the list behind the sheet, which is the sentence.
+    static func sentence(for outcome: GenerateOutcome) -> String? {
+        switch outcome {
+        case .done: return nil
+        case .notAPlainName: return L("A file name cannot contain a slash")
+        case .nameTaken: return L("There is already a key with that name")
+        case .commentHasALineBreak: return L("A comment cannot contain a line break")
+        case .failed: return L("The key could not be made")
+        case .alreadyRunning: return making
+        }
+    }
+
     /// The sentence for an act on a key, and `nil` for the one that needs none.
     ///
     /// Exhaustive, like `sentence(for:)` below it: a case added to `KeyOutcome`

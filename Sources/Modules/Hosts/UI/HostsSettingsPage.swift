@@ -14,6 +14,10 @@ struct HostsSettingsPage: View {
     /// anyway — a remembered tab would be the one thing that outlived the
     /// document it was chosen beside.
     @State private var tab: Tab = .hosts
+    /// Whether the «New key» sheet is up. Page state rather than the view
+    /// model's: a sheet that outlived the page would be a sheet nobody can see
+    /// and nobody can close.
+    @State private var makingKey = false
 
     /// The tabs this page has. Keys, the third of the spec's three, is not one
     /// of them yet — a case here with no page behind it would be a promise the
@@ -206,10 +210,13 @@ struct HostsSettingsPage: View {
                 ScrollView { KeysTable(hvm: hvm) }
             }
         }
+        .sheet(isPresented: $makingKey) { NewKeySheet(hvm: hvm) }
     }
 
     private var keysHeader: some View {
         HStack {
+            Button(HostsStr.newKey) { makingKey = true }
+                .disabled(!hvm.keysReadable)
             Spacer()
             if let outcome = hvm.keyOutcome, let said = HostsStr.sentence(for: outcome) {
                 // Only what needs saying is kept: `.done` redraws the row —

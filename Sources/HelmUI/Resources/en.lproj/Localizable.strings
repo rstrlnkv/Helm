@@ -977,3 +977,15 @@
 "That did not work" = "That did not work";
 "That key is no longer there" = "That key is no longer there";
 "Fix permissions" = "Fix permissions";
+"New key…" = "New key…";
+"New key" = "New key";
+"File name" = "File name";
+"Comment" = "Comment";
+"Passphrase" = "Passphrase";
+"A key with no passphrase can be used by anyone who gets the file" = "A key with no passphrase can be used by anyone who gets the file";
+"Create" = "Create";
+"Making the key…" = "Making the key…";
+"A file name cannot contain a slash" = "A file name cannot contain a slash";
+"There is already a key with that name" = "There is already a key with that name";
+"A comment cannot contain a line break" = "A comment cannot contain a line break";
+"The key could not be made" = "The key could not be made";

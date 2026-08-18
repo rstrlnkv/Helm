@@ -977,3 +977,15 @@
 "That did not work" = "没有成功";
 "That key is no longer there" = "该密钥已不存在";
 "Fix permissions" = "修复权限";
+"New key…" = "新建密钥…";
+"New key" = "新建密钥";
+"File name" = "文件名";
+"Comment" = "注释";
+"Passphrase" = "口令";
+"A key with no passphrase can be used by anyone who gets the file" = "没有口令的密钥，任何拿到文件的人都能使用";
+"Create" = "创建";
+"Making the key…" = "正在创建密钥…";
+"A file name cannot contain a slash" = "文件名不能包含斜杠";
+"There is already a key with that name" = "已存在同名的密钥";
+"A comment cannot contain a line break" = "注释不能包含换行";
+"The key could not be made" = "无法创建密钥";

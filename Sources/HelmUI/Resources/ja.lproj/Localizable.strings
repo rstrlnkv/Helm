@@ -977,3 +977,15 @@
 "That did not work" = "うまくいきませんでした";
 "That key is no longer there" = "その鍵はもうありません";
 "Fix permissions" = "アクセス権を修正";
+"New key…" = "新しい鍵…";
+"New key" = "新しい鍵";
+"File name" = "ファイル名";
+"Comment" = "コメント";
+"Passphrase" = "パスフレーズ";
+"A key with no passphrase can be used by anyone who gets the file" = "パスフレーズのない鍵は、ファイルを手に入れた人なら誰でも使えます";
+"Create" = "作成";
+"Making the key…" = "鍵を作成中…";
+"A file name cannot contain a slash" = "ファイル名にスラッシュは使えません";
+"There is already a key with that name" = "その名前の鍵はすでにあります";
+"A comment cannot contain a line break" = "コメントに改行は使えません";
+"The key could not be made" = "鍵を作成できませんでした";

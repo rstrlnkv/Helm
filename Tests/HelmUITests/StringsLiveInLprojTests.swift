@@ -153,6 +153,10 @@ final class StringsLiveInLprojTests: XCTestCase {
         // fits a column — and the other six all differ, which is what makes
         // this an identity rather than a table nobody filled in.
         "Type": [.fr],
+        // German borrowed this one whole, the way it borrowed «Filter»: Duden
+        // lists «Passphrase» and the alternatives — «Kennwortsatz» — are
+        // dictionary words nobody types. The other six all differ.
+        "Passphrase": [.de],
         "BETA": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         "Beta": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         "BUILD": [.fr, .de, .pt],
